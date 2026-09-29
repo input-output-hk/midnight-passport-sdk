@@ -101,9 +101,14 @@ flowchart LR
 These were settled in the direction work and the architecture call. The proposal
 treats them as fixed inputs.
 
-1. **Onboarding happens only in the Passport app.** The passkey created there is a
-   full-authority device. No dApp onboards a user, and no dApp or agent ever
-   receives a device key. This supersedes ADR 0005 (§3.1).
+1. **Onboarding happens in the Passport app, or in a dApp through a
+   wallet-as-a-service (WaaS) provider.** The passkey created in the Passport app
+   is a full-authority device. A dApp may onboard a new user only through a WaaS
+   provider: the provider's embedded key for that user becomes the account's first
+   device, and the provider must support metadata attached to the user's key, which
+   carries what the account needs to be found and recovered elsewhere (§8.1). The
+   dApp's own code never holds a device secret, and no dApp or agent ever receives
+   a device key of its own. This supersedes ADR 0005 (§3.1).
 2. **dApps and agents use the same grant mechanism.** Each holds one scoped key
    registered on the ACC. The ACC checks what the key may do, not which dApp is
    calling: one grant to an agent covers every dApp that agent calls.
@@ -130,10 +135,12 @@ treats them as fixed inputs.
 
 Two designs merged to `main` in August and September meet this proposal head-on.
 
-**Partner-origin onboarding is superseded.** ADR 0005 (accepted 2026/08/18),
-requirements §3.13, FS-2.3, and architecture example 6 let a partner dApp issue a
-Passport through the `mn-passport-onboard` facade, which links `core` into the
-dApp's bundle. Decision 1 reverses that, and the reasons are already recorded on
+**Partner-origin onboarding is superseded in its current form.** ADR 0005
+(accepted 2026/08/18), requirements §3.13, FS-2.3, and architecture example 6 let
+a partner dApp issue a Passport through the `mn-passport-onboard` facade, which
+links `core` into the dApp's bundle and mints a passkey device in the partner
+origin. Decision 1 keeps onboarding from a dApp but replaces that mechanism with a
+WaaS provider, and the reasons for dropping the facade are already recorded on
 `main`:
 
 - the facade holds the plaintext device secret in the partner origin during
@@ -148,9 +155,17 @@ output is identical across origins, and a largeBlob written at one origin reads
 back at another, with the rule that the largeBlob is a cache and never the source
 of truth. Those findings serve the Passport app's own recognition of an account,
 and make the largeBlob a candidate carrier for account metadata (open question 4),
-bearing in mind that among platform authenticators only Apple's support it. The
-redirect fallback in §3.13, which sends the user to the Passport app, becomes the
-only route.
+bearing in mind that among platform authenticators only Apple's support it.
+
+With a WaaS provider, neither objection applies. The device key is the user's own
+embedded key, held by the provider for the user and not by the dApp's code, which
+is FS-2.4's rule for a platform that genuinely acts as the user's own device. The
+account's metadata (the ACC address and the viewing key) is attached to that key
+at the provider, so the account can be found and recovered wherever the user signs
+in with the same provider, the Passport app included. The reference demo already
+does this for recovery on a new device. The redirect fallback in §3.13, which
+sends the user to the Passport app, stays as the route for a dApp without a WaaS
+provider.
 
 **Authorising additional keys (FS-2.4) is kept and generalised.** FS-2.4 already
 has the shape §4 argues for. The holder generates its key and exposes a signed
@@ -211,7 +226,7 @@ k256 signer behind `custodyContractSigning.ts` feed one send engine through
 
 | Path | Circuits | Authority | Who may perform it | Where |
 |---|---|---|---|---|
-| **Device** | `activate_initial_device_with_*`, `add_device_with_*` | Full | The user, with an existing device | Passport app only |
+| **Device** | `activate_initial_device_with_*`, `add_device_with_*` | Full | The user, with an existing device | Passport app; or a dApp through a WaaS provider, for the provider's key as the first device |
 | **Grant** | `issue_grant_with_*` | Scoped | The user, approving a request | Passport app, via the grant ceremony |
 
 ```mermaid
@@ -273,7 +288,7 @@ agents one code path, which is what decision 2 asks for.
 | **`mn-passport-account`** | — | **New foundation package.** The ACC client that `core`, `connect`, and the agent library all need, so `connect` still never links `core`: per-arm challenge builders, the coin store and position lookup, the inbox codec (seal and open), payments, the transaction joiner, grant-scope helpers, and the seam interfaces the three entry libraries share (key provider, prover, settlement). The demo's `custodyContractClient.ts`, `custodyInbox.ts`, `custodyInboxIndex.ts`, and `k1CoinStore.ts` are the quarry. |
 | `mn-passport-core` | The kernel for every face: onboarding, connect answer, witness lifecycle, grants, agents | **Narrow.** The Passport app's engine: onboarding, devices, grant issuance and revocation (the authoriser page of MIP §9), private-data custody through WPP, recovery, and distribution of the viewing key. No longer on the dApp or agent path. |
 | `mn-passport-connect` | Thin dApp connector over C23: sign-in, grant requests, witness provisioning, deposit | **Change.** The dApp library: grant ceremony client, dApp per-origin key provider, a Passport-backed private-state provider, ACC calls and payments through `mn-passport-account`, and a project-template skill. Still never links `core`. |
-| `mn-passport-onboard` | Planned facade over `core` for partner-origin issuance (ADR 0005, FS-2.3) | **Retire before it is built** (§3.1). Recognising an account from the passkey and its largeBlob moves into `core`; the shared constants ADR 0005 placed in `mn-passport-protocol` (RP ID, PRF salt, largeBlob schema) stay there. |
+| `mn-passport-onboard` | Planned facade over `core` for partner-origin issuance (ADR 0005, FS-2.3) | **Retire before it is built** (§3.1). Onboarding from a dApp goes through a WaaS provider as key provider, over `mn-passport-account`, so `connect` still never links `core` (open question 15). Recognising an account from the passkey and its largeBlob moves into `core`; the shared constants ADR 0005 placed in `mn-passport-protocol` (RP ID, PRF salt, largeBlob schema) stay there. |
 | **`mn-passport-agent`** | — (was `adapter-agent-ows`) | **New entry package** (Node). Builds the agent's grant request, with helpers to present it as a QR code or a link, a registry client for dApp artefacts, compose and execute, OWS as key provider, and the private-data channel (open question 3). Never links `core`. |
 
 ```mermaid
@@ -372,15 +387,35 @@ redefines two.
 
 ## 8. Flows
 
-### 8.1 Onboarding — Passport app only
+### 8.1 Onboarding
 
-The user creates an account in the Passport app. The ACC is deployed in three
-waves (the circuit roster exceeds one block's write budget), the passkey is
-activated as the first device, and the name is claimed. The provider's embedded
-wallet, if used, is enrolled as a second device, through FS-2.4's signed request.
-No other application runs any part of this: a partner dApp whose user has no
-Passport sends them to the Passport app (§3.13's fallback, now the only route),
-and the user returns through the grant ceremony.
+There are two routes. Either way the ACC is deployed in three waves (the circuit
+roster exceeds one block's write budget), the first device is activated, and the
+name is claimed.
+
+- **In the Passport app.** The passkey is activated as the first device. The
+  provider's embedded wallet, if used, is enrolled as a second device, through
+  FS-2.4's signed request.
+- **In a dApp, through a WaaS provider.** The user signs in with the provider
+  inside the dApp, and the provider's embedded key for that user is activated as
+  the first device (k256, envelope 0). The account's metadata (the ACC address and
+  the viewing key) is written to the metadata the provider attaches to the user's
+  key. When the user later signs in with the same provider elsewhere — the Passport
+  app, or a new device — that metadata finds the account and opens the payments
+  already sealed to it, and the provider's key approves adding a new device. The
+  dApp's own code never holds a device secret. The provider's requirements:
+  - it holds the user's key for the user and signs raw ACC challenges with it;
+  - it attaches metadata to the user's key that the user's sign-in can read and
+    write from any origin the provider serves;
+  - it lets the Passport app sign in to the same user.
+
+  The provider can read that metadata. A viewing key there lets the provider see
+  what the account is paid, never move it; the user is told so (§9). The metadata
+  is small (as little as 2 KB with some providers), so it carries keys and
+  references only, never private state.
+
+A dApp without a WaaS provider sends a user who has no Passport to the Passport
+app (§3.13's fallback), and the user returns through the grant ceremony.
 
 The contract binding must accept a partly deployed account. midnight-js's
 `findDeployedContract` checks every circuit's verifier key, so it refuses an
@@ -509,7 +544,7 @@ unchanged.
 |---|---|---|
 | A dApp's private state | Irreplaceable | WPP |
 | The ACC's coin store (`held_coin`'s data, queued coins, positions) | Rebuildable from the on-chain inbox with the viewing key | Local cache only |
-| Viewing key, ACC address, grant references | Small, rarely changing, needed by every client | WPP metadata, or the passkey's `largeBlob` (open question 4) |
+| Viewing key, ACC address, grant references | Small, rarely changing, needed by every client | WPP metadata, the WaaS provider's metadata on the user's key (for accounts onboarded through one, §8.1), or the passkey's `largeBlob` (open question 4) |
 | Device keys | Regenerable from the passkey | Not stored |
 
 The storage doc also needs three WPP rules it lacks: a user-visible Google Drive
@@ -601,7 +636,10 @@ stands.
 New rules to add: a payment takes a full shielded address; a payment to a Passport
 reads the recipient's key at the moment of sealing; private data is written back
 only after the transaction finalises with `SucceedEntirely`, on every submit path;
-one grantee key per account per origin.
+one grantee key per account per origin; a dApp onboards a user only through a WaaS
+provider that supports metadata attached to the user's key, never with a device
+secret in its own code, and the user is told that the provider can read what that
+metadata holds.
 
 ---
 
@@ -614,7 +652,7 @@ one grantee key per account per origin.
 | | §2.2 | Amend the ceremony rule (§9). |
 | | §2.5 | Remote by default; transaction in, proof out; small circuits only in the tab, later. |
 | | §2.6 | Narrow to the Passport app's own operations; the provider's key is a device. |
-| | §3.1 | Onboarding in the Passport app only; three-wave deploy. |
+| | §3.1 | Onboarding in the Passport app, or in a dApp through a WaaS provider that supports metadata attached to the user's key (§8.1); three-wave deploy. |
 | | §3.2, §3.9 | Rewrite: grant ceremony, per-origin key, private-state provider, joiner. |
 | | §3.6 | Rebuild around WPP and the tiers in §8.5; add the viewing key. |
 | | §3.8 | Rewrite: agents as key providers, the agent grant ceremony (delivery chosen by the agent provider), registry. |
@@ -627,7 +665,7 @@ one grantee key per account per origin.
 | | §4.4 | Packages and adapters per §5 and §7. |
 | | §4.5 | Tiers and WPP. |
 | | §2, §4.4 | Remove the `onboard` facade. |
-| | §4.6 | Replace examples 1–4 and 6 with: onboarding in the app; connect and a joined call; an agent call; a payment to a shielded address. |
+| | §4.6 | Replace examples 1–4 and 6 with: onboarding in the app; onboarding in a dApp through a WaaS provider; connect and a joined call; an agent call; a payment to a shielded address. |
 | `dapp-connection.md` | whole | Rewrite around the two processes and the MIP §9 ceremony; keep only the Phase A release, as §8.5. |
 | `storage-and-recovery.md` | §3–§8 | Rebuild on WPP (§8.5). |
 | `provider-integration.md` | §2–§6 | Narrow to the Passport app; transaction in, proof out; the provider's key as a k256 device. |
@@ -635,13 +673,13 @@ one grantee key per account per origin.
 | FS-0.2 | loader, OQ-2 | Client loads module, decoder, and manifest; partly deployed accounts; dApp artefacts. |
 | FS-0.4, FS-0.5, FS-0.7 | interfaces | Key provider; transaction-in prover; WPP storage. |
 | ADR 0001 | — | Revisit: the passkey is primary, not a fallback. |
-| ADR 0005 | — | Superseded by a new ADR recording decision 1 (§3.1). |
-| `onboarding-and-key-authorisation.md` | §1–§5, §7 | Retire partner-origin issuance; keep the experiment's findings as recognition in the Passport app. |
+| ADR 0005 | — | Superseded by a new ADR recording decision 1 (§3.1): onboarding from a dApp through a WaaS provider instead of the `onboard` facade. |
+| `onboarding-and-key-authorisation.md` | §1–§5, §7 | Replace partner-origin issuance through the facade with onboarding through a WaaS provider; keep the experiment's findings as recognition in the Passport app. |
 | | §6 | Keep; extend the signed request to the grant path; k256 until the p256 arm lands. |
 | | §8 | Keep, including the revocation limits; add that grants, not devices, are the default for platforms, agents, and dApps. |
 | `sdk-requirements.md` | §3.5 | Keep the out-of-band key-authorisation rule; extend it to grants. |
-| | §3.13 | Remove; its redirect fallback becomes §3.1's only route. |
-| FS-2.3 | whole | Retire. |
+| | §3.13 | Rewrite: onboarding from a dApp through a WaaS provider, with the provider's requirements (§8.1); keep the redirect fallback for dApps without one. |
+| FS-2.3 | whole | Rewrite around the WaaS route (§8.1): the provider's key as first device, the account metadata on it, and recovery through the same sign-in. |
 | FS-2.4 | §1–§3 | Keep; amend per §3.1. |
 
 ---
@@ -654,10 +692,11 @@ one grantee key per account per origin.
   exist in the MIP (§10: "There is no identity-only on-chain grant"), so the
   `{ name, account }` profile read is a grant with read scope or waits for the
   unfiled sign-in MIP (open question 1).
-- **M2** also loses FS-2.3 and keeps FS-2.4 (§3.1). Beta-scope item 5
-  (partner-origin onboarding) is removed.
-- **M3 (reference dApp)** must hold a grant for the same reason, and connects
-  existing Passports instead of issuing them.
+- **M2** rewrites FS-2.3 around the WaaS route and keeps FS-2.4 (§3.1).
+  Beta-scope item 5 (partner-origin onboarding) becomes onboarding from a dApp
+  through a WaaS provider that supports metadata attached to the user's key.
+- **M3 (reference dApp)** must hold a grant for the same reason. It connects
+  existing Passports, and may issue new ones through a WaaS provider.
 - **Not built for beta** changes: remove `adapter-agent-ows`,
   `adapter-wallet-connect`, and `adapter-dapp-connection` from the list (they are
   retired, not deferred); add `mn-passport-agent` and the registry as post-beta
@@ -696,7 +735,9 @@ one grantee key per account per origin.
    agent backend, over which channel and under which ceremony, or are agents
    limited to calls that need none?
 4. **The viewing key.** How does it reach OWS and dApps with read grants: WPP
-   metadata, the passkey's `largeBlob` (which needs PRF support), or another route?
+   metadata, the WaaS provider's metadata on the user's key (for accounts
+   onboarded through one), the passkey's `largeBlob` (which needs PRF support), or
+   another route?
    Passkey sync carries the signing key but not the viewing key.
 5. **The registry.** Where do dApps publish their artefacts, and how do agents
    verify them before an on-chain reference exists?
@@ -721,6 +762,11 @@ one grantee key per account per origin.
     account contracts, and is the new ACC authorisation circuit general enough to
     serve other contracts that want to authenticate through Passport?
 
+15. **Onboarding from a dApp.** Which package runs the three-wave deploy and the
+    first-device activation for a dApp using a WaaS provider — `connect` over
+    `mn-passport-account`, or a small onboarding library beside it — and is the
+    WaaS provider an adapter behind the key-provider seam, with a metadata seam of
+    its own?
 ---
 
 ## 14. Sources

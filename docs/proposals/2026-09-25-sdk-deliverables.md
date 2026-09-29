@@ -50,7 +50,7 @@ parallel, by different teams if need be:
 | D13 | Sign-in and grants for dApps | dApps | R05, R12 | Q4 | D2–D4, D8 |
 | D14 | Private data for dApps | dApps | R05, R09 | Q4 | D9, D13 |
 | D15 | Pay with Passport | dApps | R05, R04 | Q4 | D11, D13 |
-| D16 | Onboarding kit for apps | dApps | R11 | Q4 | D6, D13; decision §6 |
+| D16 | Onboarding kit for apps | dApps | R11 | Q4 | D6, D13 |
 | D17 | Onboarding measurements | dApps | R14 | Q4 | D6, D16 |
 | D18 | Agent onboarding | Agents | R37 | Q4 | D4, D8 |
 | D19 | Agent execution | Agents | R15, R22 | Q1 | D2, D3, D18; registry |
@@ -260,8 +260,9 @@ under a grant.
 **D16 — Onboarding kit for apps** (R11)
 Drop-in pieces so an app adds Passport in a few lines: the sign-in button, sending
 a user without a Passport to create one and straight back to the grant request,
-sponsored first fees, and a starter project as an AI-agent skill.
-*Decision needed:* where a new user creates their Passport (§6).
+sponsored first fees, and a starter project as an AI-agent skill. It also covers
+onboarding a new user inside the app through a WaaS provider that supports
+metadata attached to the user's key (§6).
 
 **D17 — Onboarding measurements** (R14)
 Privacy-preserving counts of sign-up completion, time to first action, and
@@ -345,22 +346,24 @@ it asks for that the proposal did not yet name, or that need work outside the SD
 
 ---
 
-## 6. Decision needed: where a new user creates their Passport
+## 6. Decided: where a new user creates their Passport
 
-The realignment proposal creates accounts only in the Passport app. A dApp gets a
-scoped key, never the account's master key, and the account's metadata and backup
-are set up in the app the user controls. The 2026/09/25 product review raised the
-concern that apps will not integrate if a new user has to leave the app to create
-a Passport. Both are real, and D16 cannot be scoped until this is settled.
+The 2026/09/25 product review raised the concern that apps will not integrate if a
+new user has to leave the app to create a Passport. It is settled: a new user can
+create their Passport inside the app, as long as the app onboards them through a
+wallet-as-a-service (WaaS) provider and that provider supports metadata attached
+to the user's key.
 
-| Option | New user's experience | What it costs |
+| Route | New user's experience | What it costs |
 |---|---|---|
-| **A. Create in the Passport app, then return** (current design) | Tap "Continue with Passport"; the Passport app opens, creates the account, and goes straight back to the app's grant request | One hand-off. The master key, backup, and metadata stay in the Passport app. |
-| **B. Passport opened inside the app** | The Passport app's creation flow runs in an embedded frame or pop-up without leaving the page | Still Passport's own origin, so the security model holds; subject to browser limits on embedded passkeys and storage |
-| **C. The app creates the Passport itself** (superseded partner-origin onboarding) | No hand-off | The app's code handles the master key during creation, device revocation cannot reliably take it back (errata 7 and 8), and the app must also set up backup and metadata |
+| **In the app, through a WaaS provider** | Signs in with the provider inside the app; the Passport is created there, with no hand-off | The provider's key for the user is the account's first device, held for the user, not by the app's code. The account's metadata (its address and viewing key) is attached to that key at the provider, so the user finds and recovers the account wherever they sign in with the same provider, the Passport app included. The provider can read that metadata: it can see what the account is paid, never move it. |
+| **In the Passport app, then return** | Taps "Continue with Passport"; the Passport app opens, creates the account, and goes straight back to the app's grant request | One hand-off. The route for an app without a WaaS provider. |
 
-Options A and B keep the model; C reopens it. The proposal recommends A for Q4,
-with B investigated as the smoother version of the same model.
+What stays ruled out is the app creating the Passport with a device secret in its
+own code (the superseded partner-origin facade): device revocation cannot reliably
+take such a key back (errata 7 and 8), and the app would have to set up backup and
+metadata itself. The reference demo already recovers an account on a new device
+from the metadata on the user's key at its provider. D16 can now be scoped.
 
 ---
 
@@ -383,7 +386,8 @@ with B investigated as the smoother version of the same model.
 
 ## 8. Open questions
 
-1. Where does a new user create their Passport (§6)?
+1. Which package runs onboarding from a dApp through a WaaS provider (§6;
+   realignment open question 15)?
 2. Who builds the registry of dApp code, and in what form (§5, D19)?
 3. May an agent receive a dApp's private data (D19)?
 4. Ethereum-style wallets: a new envelope, or through a provider wallet (D7)?
