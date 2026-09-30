@@ -13,11 +13,11 @@
 ## 1. How to read this
 
 A **deliverable** is an SDK capability that can be built, tested, and handed over
-on its own. Each has an ID (D1–D23, with D12 in two parts), a package, the roadmap items it serves, what
+on its own. Each has an ID (D1–D20 and D23, with D12 in two parts), a package, the roadmap items it serves, what
 it depends on, and what it needs from outside the SDK.
 
-Deliverables fall into five lanes. The foundation lane comes first, because
-everything else depends on it. After that the other four lanes can run in
+Deliverables fall into four lanes. The foundation lane comes first, because
+everything else depends on it. After that the other three lanes can run in
 parallel, by different teams if need be:
 
 | Lane | Package | Serves |
@@ -25,8 +25,7 @@ parallel, by different teams if need be:
 | Foundation | `mn-passport-contract`, `mn-passport-account`, `mn-passport-protocol`, adapters | Everything |
 | Passport app | `mn-passport-core` | The user's own account: creation, devices, grants, private data, recovery, payments, identity |
 | dApps | `mn-passport-connect` | Sign-in, grants, private data, and payments for apps |
-| Agents | `mn-passport-agent` | Agent onboarding and execution |
-| Verification | a new server-side verifier | Services that check a grant or a proof |
+| Agents | `mn-passport-agent` | Agent onboarding, execution, and on-chain grant status for OWS |
 
 ---
 
@@ -36,7 +35,7 @@ parallel, by different teams if need be:
 |---|---|---|---|---|---|
 | D1 | Contract binding v2 | Foundation | all | Q4 (first) | ACC v2 artefact |
 | D2 | ACC client | Foundation | all | Q4 (first) | D1 |
-| D3 | Proving and settlement clients | Foundation | all | Q4 (first) | D2 |
+| D3 | Proving and broadcast clients | Foundation | all | Q4 (first) | D2 |
 | D4 | Protocol v2 | Foundation | R05, R12, R37 | Q4 (first) | — |
 | D5 | Platform adapters | Foundation | all | Q4 (first) | — |
 | D6 | Account creation | Passport app | R01, R02, R03 | Q4 | D1–D5 |
@@ -54,15 +53,13 @@ parallel, by different teams if need be:
 | D17 | Onboarding measurements | dApps | R14 | Q4 | D6, D16 |
 | D18 | Agent onboarding | Agents | R37 | Q4 | D4, D8 |
 | D19 | Agent execution | Agents | R15, R22 | Q1 | D2, D3, D18; registry |
-| D20 | Grant check and grant proof | Verification | R19, R21, R25 | Q1 | D2, D8 |
-| D21 | Agent tools (MCP server and skill) | Agents | R20 | Q1 | D19 |
-| D22 | Off-chain policy hook | Agents | R38, R22 | Q2 | D19 |
+| D20 | On-chain grant status for OWS | Agents | R19, R22 | Q1 | D2, D18 |
 | D23 | Credentials | Passport app | R40, R23–R27 | Q1 onwards | D12a |
 
 ```mermaid
 flowchart LR
     subgraph F[Foundation]
-        D1[D1 binding] --> D2[D2 ACC client] --> D3[D3 prover + settlement]
+        D1[D1 binding] --> D2[D2 ACC client] --> D3[D3 prover + broadcast]
         D4[D4 protocol]
         D5[D5 platform]
     end
@@ -84,12 +81,10 @@ flowchart LR
         D16[D16 onboarding kit]
         D17[D17 measurements]
     end
-    subgraph G[Agents and verification]
+    subgraph G[Agents]
         D18[D18 agent onboarding]
         D19[D19 agent execution]
-        D20[D20 grant check]
-        D21[D21 agent tools]
-        D22[D22 policy hook]
+        D20[D20 grant status for OWS]
     end
 
     D3 --> D6
@@ -113,16 +108,14 @@ flowchart LR
     D16 --> D17
     D8 --> D18
     D18 --> D19
-    D19 --> D21
-    D19 --> D22
-    D8 --> D20
+    D18 --> D20
 
     classDef found fill:#0b1f3a,color:#ffffff,stroke:#0b1f3a
     classDef app fill:#dfe7f5,color:#111111,stroke:#5a6b8c
     classDef other fill:#eef1f6,color:#111111,stroke:#8a94a6
     class D1,D2,D3,D4,D5 found
     class D6,D7,D8,D9,D10,D11,D12,D12B,D23 app
-    class D13,D14,D15,D16,D17,D18,D19,D20,D21,D22 other
+    class D13,D14,D15,D16,D17,D18,D19,D20 other
 ```
 
 ---
@@ -135,8 +128,8 @@ flowchart LR
 | **1 — The account** | Q4, early | D6, D7, D8, D11, D12a | A user creates a Passport, adds devices, approves and revokes grants, and pays, all in the Passport app |
 | **2 — Apps and agents join** | Q4, late | D9, D13, D14, D15, D18, D10 | A dApp signs a user in through a grant and uses their private data; an agent is granted on the ACC |
 | **3 — Adoption** | Q4 end / Q1 | D16, D17 | Apps integrate in a few lines; onboarding numbers can be published |
-| **4 — Agents act** | Q1 | D19, D20, D21, D12b, D23 (start) | Agents execute calls through dApps; services check grants from outside; the DID answers to the ACC |
-| **5 — Richer rules** | Q2 | D22, D23 (proofs) | Conditions beyond contract, token, and amount; proofs without documents |
+| **4 — Agents act** | Q1 | D19, D20, D12b, D23 (start) | Agents run dApps' circuits; OWS enforces each grant as read from the chain; the DID answers to the ACC |
+| **5 — Richer rules** | Q2 | D23 (proofs) | Proofs without documents |
 
 Agent execution (D19) is the step that most depends on something outside the
 SDK: a registry where dApps publish their code, so an agent can fetch it (§5).
@@ -151,34 +144,39 @@ SDK: a registry where dApps publish their code, so an agent can fetch it (§5).
 Typed bindings for the ACC at `spec_version = 2` (scoped grants), the version
 registry and artefact integrity checks, detection of a partly deployed account,
 the client artefact set (compiled module, ledger decoder, manifest; ZKIR goes to the
-prover only), and loading a dApp's artefacts with integrity checks.
+prover only), the ACC's interface for dApp circuits (so a dApp's contract can call
+into the ACC), and loading a dApp's artefacts with integrity checks.
 *Needs:* the reference ACC v2 artefact, published and deployed on the target network.
 
 **D2 — ACC client** (`mn-passport-account`)
-The code every client shares: the key-provider interface; challenge builders for
-the JubJub and k256 arms (envelopes 0 and 1); the coin store, including reading a
-coin's position from the chain; the inbox codec (seal and open); payments (full
-shielded addresses, and sealing to a recipient Passport's key at the moment of
-payment); the helper that joins two calls into one transaction; and grant-scope
-helpers.
+The code every client shares: the key-provider interface; challenge builders and
+grant signatures for the JubJub and k256 arms (envelopes 0 and 1); the
+grant-ceremony client that dApps and agents share; on-chain grant reads; the coin
+store, including reading a coin's position from the chain; the inbox codec (seal
+and open); payments (full shielded addresses, and sealing to a recipient
+Passport's key at the moment of payment); the transaction joiner, a helper the
+caller may use to join two intents into one transaction; and grant-scope helpers.
 *Depends on:* D1.
 
-**D3 — Proving and settlement clients** (`mn-passport-account`, adapters)
+**D3 — Proving and broadcast clients** (`mn-passport-account`, adapters)
 A prover interface that takes an unproven transaction and returns it proven, and
-the settlement client (balancing, fees, submission, and bounded waits for
-inclusion).
+the broadcast client (`adapter-broadcast`): it hands the proven transaction to the
+sponsor, which pays the fees and broadcasts it, and tracks it until it is final,
+with bounded waits and resubmission. A user never handles DUST: fees are sponsored,
+or swapped through the Capacity Exchange.
 *Needs:* a proving service that holds or rebuilds proving keys itself, so clients
 never upload them; fee sponsorship.
 
 **D4 — Protocol v2** (`mn-passport-protocol`)
 The messages dApps, agents, and the Passport app exchange: the grant request and
 response of the scoped-grants MIP (§9), the possession proof, the sign-in message,
-and the signed out-of-band request for keys and grants (FS-2.4, extended), in a
-form that travels as a link or a QR code. Versioned.
+and the signed out-of-band request for keys and grants (FS-2.4, extended). The
+grant request is one message for dApps and agents, carried as a redirect, a QR
+code, or a link. Versioned.
 
-**D5 — Platform adapters** (`adapter-browser`, `adapter-node`)
-Browser wiring (passkeys with PRF, WASM runtimes loaded in order) and Node wiring
-(for the agent library and server-side use).
+**D5 — Platform adapters** (`adapter-browser`, `adapter-nodejs`)
+The browser runtime for web apps (passkeys with PRF, WASM runtimes loaded in
+order) and the Node.js runtime for backends, the agent library among them.
 
 ### Passport app
 
@@ -244,10 +242,12 @@ fact without handing over the document.
 ### dApps
 
 **D13 — Sign-in and grants for dApps** (R05, R12)
-The dApp library: the grant ceremony (the dApp's key for its own website, the
-redirect to the Passport app, checking the grant on-chain), sign-in backed by the
-grant, and calls into the ACC, including joining a shielded spend with the dApp's
-own call.
+The dApp library: the grant ceremony, the same as agents' (the dApp's key for its
+own website, the request to the Passport app, checking the grant on-chain), and
+sign-in backed by the grant. The dApp builds the circuit that composes the user's
+ACC; the library supplies the ACC's interface for that circuit, the challenge, and
+the grant key's signature, and the joiner helper for a shielded spend that must
+start its own intent.
 
 **D14 — Private data for dApps** (R05, R09)
 A private-state provider for the dApp whose store is Passport: release of that
@@ -269,34 +269,26 @@ Privacy-preserving counts of sign-up completion, time to first action, and
 retention, emitted by the Passport app and the dApp library, so the numbers can be
 published.
 
-### Agents and verification
+### Agents
 
 **D18 — Agent onboarding** (R37)
-The agent's side: create its key in OWS, build the grant request, and present it as
-a QR code or a link (the agent provider chooses). The user approves it in the
+The agent's side: create its key in OWS, build the grant request — the same one a
+dApp sends — and present it as a QR code or a link (the agent provider chooses). The user approves it in the
 Passport app (D8). The agent receives its readable scope, so OWS can check limits
 before signing. No execution yet.
 
 **D19 — Agent execution** (R15, R22)
-The agent library fetches a dApp's code from the registry and checks it, builds the
-call into the ACC, asks OWS for the signature, has it proved, and submits it.
+The agent library fetches a dApp's circuit and code from the registry and checks
+them, runs the dApp's circuit (which composes the ACC), asks OWS for the signature,
+has it proved, and broadcasts it.
 *Needs:* a registry of dApp code (§5); a decision on whether agents may receive a
 dApp's private data.
 
-**D20 — Grant check and grant proof** (R19, R21, R25 foundation)
-A server-side library a service runs to check an agent's grant: read it from the
-chain, verify the agent's signature over the request, check it against the scope,
-and return yes or no with a receipt. The same result can travel as a field in a
-payment (x402 first).
-
-**D21 — Agent tools** (R20)
-An MCP server and an agent skill over D19, so agents use Passport without installing
-a wallet.
-
-**D22 — Off-chain policy hook** (R38, R22)
-A hook where an agent wallet's policy engine can refuse an action before it is
-signed, for conditions the on-chain grant cannot express. The on-chain scope stays
-the hard limit.
+**D20 — On-chain grant status for OWS** (R19, R22)
+The agent library reads the agent's grant from the ACC on chain — whether it is
+live, and the commitments its readable scope opens — so OWS enforces the grant as
+its policy before it signs. This is a read of the chain, not a server-side
+verifier: the ACC is the source of truth, and its scope is the hard limit.
 
 ---
 
@@ -309,9 +301,7 @@ it asks for that the proposal did not yet name, or that need work outside the SD
 
 | Roadmap | What the SDK needs | Deliverable |
 |---|---|---|
-| R19, R21, R25 | A server-side grant verifier that returns yes/no with a receipt, and a grant proof that fits in a payment field. Nothing in the proposal covers verification by a third party. | D20 (new package) |
-| R20 | An MCP server and an agent skill on top of the agent library | D21 |
-| R38, R22 | A policy hook in the agent library | D22 |
+| R19, R22 | The grant's on-chain status, read from the ACC by the agent library so OWS enforces it | D20 |
 | R14 | Privacy-preserving onboarding measurements | D17 |
 | R39 | A defined DID module (create, link, hold keys, resolve) | D12a |
 | R40, R23–R27 | Holding and presenting credentials | D23 |
@@ -377,8 +367,11 @@ from the metadata on the user's key at its provider. D16 can now be scoped.
   subdomains, and the form where revoking the parent ends everything beneath needs
   chained grants (§5).
 - **R12 (one permission model)** and **R19 (check a grant from the outside)** are
-  distinct in the SDK: R12 is the grant mechanism (D8, D13), R19 is verification
-  by a third party (D20).
+  distinct in the SDK: R12 is the grant mechanism (D8, D13), R19 is reading the
+  grant's status from the ACC on chain (D20). There is no server-side verifier.
+- **R20 (agent tools: an MCP server and a skill)** and **R38 (an off-chain policy
+  hook)** are not SDK deliverables. OWS enforces the grant it reads from the chain
+  (D20).
 - **Package name.** The roadmap names the dApp library `@midnight-passport/connect`;
   the SDK publishes `@midnight-ntwrk/mn-passport-connect`. One should change.
 
@@ -398,3 +391,6 @@ from the metadata on the user's key at its provider. D16 can now be scoped.
 7. Will the DID team take on a controller mode for account contracts (D12b)?
 8. Which roadmap items (R17, R18, R41 full, and the grant for acting on another
    contract that D12b needs) should start MIP work now, so they are ready for Q1?
+9. Is a grant proof for third parties (R21, R25: a proof that travels in a payment
+   field) still wanted, and if so, where does it sit now that there is no
+   server-side verifier?
