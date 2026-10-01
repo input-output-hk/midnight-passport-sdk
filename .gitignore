@@ -36,6 +36,9 @@ Thumbs.db
 *~
 
 # Local, not shared
+.direnv/
+result
+result-*
 .midnight-expert/
 .planning/
 packages/contract/artefact/

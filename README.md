@@ -52,3 +52,14 @@ Claude Code auto-enables it when you trust the repo (via
 
 Prerequisite: the private residual-risk register repo cloned as a sibling at
 `../mn-passport-sdk-debts` (checked by `/mn-passport-skills:devenv`).
+
+### Local toolset (Nix)
+
+`nix develop` (or `direnv allow`, via [`.envrc`](./.envrc)) opens a shell with
+Node 22, pnpm, the Compact CLI (`compact` 0.5.1), and the compiler (`compactc`
+0.31.1, the toolchain [`acc-versions.generated.json`](./packages/contract/acc-versions.generated.json)
+records), plus `gh`, `jq`, and `mkcert` for a local HTTPS origin. The Compact
+binaries are the official releases, fetched by hash through
+[`MediaNoxLabs/flake-collection`](https://github.com/MediaNoxLabs/flake-collection);
+`COMPACT_DIRECTORY` points `compact compile` at that pinned toolchain. The
+proof server and devnet are not part of the shell.
