@@ -1,0 +1,762 @@
+{
+  "dir": "<scratch>/build-a/account",
+  "compiler": {
+    "version": "0.35.0",
+    "language": "0.27.0",
+    "runtime": "0.20.0",
+    "commit": "debb05f9414b9d1e176741c2be289bb32233f0fc"
+  },
+  "circuits": {
+    "total": 81,
+    "proving": 36,
+    "pure": 45
+  },
+  "bytes": {
+    "module": 1585923,
+    "zkir": 802358,
+    "bzkir": 243008,
+    "verifier": 88596,
+    "prover": 5047926556,
+    "largestProver": 247479764
+  },
+  "manifest": {
+    "present": true,
+    "sha256": "7e5055fa707dc26edc1b930f4a3b3c4c1f7e718a2acdaebc0b17c26942ecdf5c",
+    "listedFiles": 148,
+    "listsKeys": true,
+    "mismatches": [],
+    "unlisted": [],
+    "missing": []
+  },
+  "perCircuit": [
+    {
+      "name": "activate_initial_device_with_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 6789,
+      "bzkir": 1993,
+      "verifier": 2313,
+      "prover": 24648297
+    },
+    {
+      "name": "activate_initial_device_with_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 8639,
+      "bzkir": 2509,
+      "verifier": 2745,
+      "prover": 29368305
+    },
+    {
+      "name": "derive_boot_commitment_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "derive_boot_commitment_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "derive_device_entry_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "derive_device_entry_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "envelope_digest",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "compute_public_point_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "compute_public_point_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_withdraw_unshielded_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_withdraw_shielded_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_withdraw_shielded_to_contract_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_append_inbox_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_rotate_enc_key_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_add_device_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_remove_device_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_withdraw_unshielded_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_withdraw_shielded_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_withdraw_shielded_to_contract_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_append_inbox_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_rotate_enc_key_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_add_device_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_remove_device_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "deposit_unshielded",
+      "pure": false,
+      "proof": true,
+      "zkir": 4975,
+      "bzkir": 1654,
+      "verifier": 1353,
+      "prover": 446790
+    },
+    {
+      "name": "withdraw_unshielded_with_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 15368,
+      "bzkir": 4774,
+      "verifier": 2313,
+      "prover": 49292614
+    },
+    {
+      "name": "withdraw_unshielded_with_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 26162,
+      "bzkir": 7812,
+      "verifier": 2745,
+      "prover": 234894504
+    },
+    {
+      "name": "deposit_shielded",
+      "pure": false,
+      "proof": true,
+      "zkir": 5871,
+      "bzkir": 1652,
+      "verifier": 2121,
+      "prover": 11278212
+    },
+    {
+      "name": "append_inbox_with_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 13045,
+      "bzkir": 3907,
+      "verifier": 2313,
+      "prover": 98574819
+    },
+    {
+      "name": "append_inbox_with_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 23841,
+      "bzkir": 6947,
+      "verifier": 2745,
+      "prover": 234893639
+    },
+    {
+      "name": "withdraw_shielded_with_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 18730,
+      "bzkir": 5391,
+      "verifier": 2313,
+      "prover": 98576303
+    },
+    {
+      "name": "withdraw_shielded_with_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 29609,
+      "bzkir": 8514,
+      "verifier": 2745,
+      "prover": 234895206
+    },
+    {
+      "name": "withdraw_shielded_to_contract_with_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 20347,
+      "bzkir": 5898,
+      "verifier": 2313,
+      "prover": 98576810
+    },
+    {
+      "name": "withdraw_shielded_to_contract_with_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 31239,
+      "bzkir": 9034,
+      "verifier": 2745,
+      "prover": 234895726
+    },
+    {
+      "name": "rotate_enc_key_with_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 11013,
+      "bzkir": 3276,
+      "verifier": 2313,
+      "prover": 49291116
+    },
+    {
+      "name": "rotate_enc_key_with_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 21785,
+      "bzkir": 6292,
+      "verifier": 2745,
+      "prover": 234892984
+    },
+    {
+      "name": "add_device_with_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 12609,
+      "bzkir": 3788,
+      "verifier": 2313,
+      "prover": 49291628
+    },
+    {
+      "name": "add_device_with_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 23394,
+      "bzkir": 6817,
+      "verifier": 2745,
+      "prover": 234893509
+    },
+    {
+      "name": "remove_device_with_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 15016,
+      "bzkir": 4497,
+      "verifier": 2313,
+      "prover": 98575409
+    },
+    {
+      "name": "remove_device_with_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 26380,
+      "bzkir": 7713,
+      "verifier": 2745,
+      "prover": 234894405
+    },
+    {
+      "name": "derive_grant_id_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "derive_grant_id_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "derive_grant_object_commit",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "derive_grant_spent_commit",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "derive_grant_rp_commit",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "derive_grant_caller_commit",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "derive_grant_scope_digest",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_withdraw_unshielded_with_grant_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_withdraw_shielded_with_grant_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_withdraw_shielded_to_contract_with_grant_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_withdraw_unshielded_with_grant_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_withdraw_shielded_with_grant_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_withdraw_shielded_to_contract_with_grant_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_issue_grant_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_revoke_grant_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_revoke_all_grants_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_issue_grant_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_revoke_grant_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_revoke_all_grants_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "withdraw_unshielded_with_grant_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 36467,
+      "bzkir": 11003,
+      "verifier": 2745,
+      "prover": 234897695
+    },
+    {
+      "name": "withdraw_shielded_with_grant_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 44618,
+      "bzkir": 13376,
+      "verifier": 2745,
+      "prover": 234900068
+    },
+    {
+      "name": "withdraw_shielded_to_contract_with_grant_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 46246,
+      "bzkir": 13895,
+      "verifier": 2745,
+      "prover": 234900587
+    },
+    {
+      "name": "withdraw_unshielded_with_grant_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 26036,
+      "bzkir": 8019,
+      "verifier": 2313,
+      "prover": 98578931
+    },
+    {
+      "name": "withdraw_shielded_with_grant_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 34150,
+      "bzkir": 10355,
+      "verifier": 2313,
+      "prover": 197147411
+    },
+    {
+      "name": "withdraw_shielded_to_contract_with_grant_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 35780,
+      "bzkir": 10875,
+      "verifier": 2313,
+      "prover": 197147931
+    },
+    {
+      "name": "issue_grant_with_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 42586,
+      "bzkir": 13266,
+      "verifier": 2745,
+      "prover": 234899958
+    },
+    {
+      "name": "revoke_grant_with_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 26208,
+      "bzkir": 7718,
+      "verifier": 2745,
+      "prover": 234894410
+    },
+    {
+      "name": "revoke_all_grants_with_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 22340,
+      "bzkir": 6473,
+      "verifier": 2745,
+      "prover": 234893165
+    },
+    {
+      "name": "issue_grant_with_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 31716,
+      "bzkir": 10152,
+      "verifier": 2313,
+      "prover": 98581064
+    },
+    {
+      "name": "revoke_grant_with_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 15355,
+      "bzkir": 4621,
+      "verifier": 2313,
+      "prover": 49292461
+    },
+    {
+      "name": "revoke_all_grants_with_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 11564,
+      "bzkir": 3453,
+      "verifier": 2313,
+      "prover": 49291293
+    },
+    {
+      "name": "challenge_recover_submit",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_publish_recovery_session_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_publish_recovery_session_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_recover_cancel_with_jubjub",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "challenge_recover_cancel_with_k256",
+      "pure": true,
+      "proof": false,
+      "zkir": null,
+      "bzkir": null,
+      "verifier": null,
+      "prover": null
+    },
+    {
+      "name": "publish_recovery_session_with_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 20252,
+      "bzkir": 6717,
+      "verifier": 2313,
+      "prover": 98577629
+    },
+    {
+      "name": "publish_recovery_session_with_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 31285,
+      "bzkir": 9860,
+      "verifier": 2889,
+      "prover": 247479764
+    },
+    {
+      "name": "recover_submit",
+      "pure": false,
+      "proof": true,
+      "zkir": 16102,
+      "bzkir": 5513,
+      "verifier": 2313,
+      "prover": 49293353
+    },
+    {
+      "name": "recover_cancel_with_jubjub",
+      "pure": false,
+      "proof": true,
+      "zkir": 12846,
+      "bzkir": 4163,
+      "verifier": 2313,
+      "prover": 49292003
+    },
+    {
+      "name": "recover_cancel_with_k256",
+      "pure": false,
+      "proof": true,
+      "zkir": 23712,
+      "bzkir": 7206,
+      "verifier": 2889,
+      "prover": 247477110
+    },
+    {
+      "name": "recover_finalise",
+      "pure": false,
+      "proof": true,
+      "zkir": 10283,
+      "bzkir": 3875,
+      "verifier": 1593,
+      "prover": 4201447
+    }
+  ]
+}

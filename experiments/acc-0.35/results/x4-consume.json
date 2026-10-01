@@ -1,0 +1,23 @@
+{
+  "manifestHash": "7e5055fa707dc26edc1b930f4a3b3c4c1f7e718a2acdaebc0b17c26942ecdf5c",
+  "runtime": "0.20.0",
+  "circuits": 36,
+  "loaded": 36,
+  "proverKeyAbsent": "Error: ENOENT: no such file or directory, open '/private/tmp/claude-501/-Users-ysh-Library-Application-Support-Claude-scratch-w",
+  "tamper": "ZkArtifactIntegrityError: ZK artifact \"keys/activate_initial_device_with_jubjub.verifier\" failed integrity verification: expected sha-256 b33fa139",
+  "wrongPin": "ZkArtifactIntegrityError: ZK artifact manifest failed integrity verification: expected sha-256 000000000000000000000000000000000000000000000000000",
+  "module": {
+    "exports": [
+      "Contract",
+      "circuitSignatures",
+      "declaredInterfaces",
+      "expectedVk",
+      "ledger",
+      "pureCircuits"
+    ],
+    "pureCircuits": 45,
+    "circuitSignatures": 81,
+    "declaredInterfaces": 0,
+    "contractClass": "function"
+  }
+}

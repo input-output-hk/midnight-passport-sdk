@@ -1,0 +1,36 @@
+ok 1 - assertBindingCompatible must gate on the supported set
+ok 2 - buildDeployArgs must order the constructor arguments as the contract declares
+ok 3 - bindAccModule must reject shapes that are not the generated ACC module
+not ok 4 - the real generated module must bind and derive commitments (skips when not built)
+not ok 5 - the dev runtime pin must equal the current binding's recorded runtime version
+ok 6 - loadArtefact must reject an unsupported version before fetching anything
+not ok 7 - loadArtefact must reject a circuit outside the binding inventory
+ok 8 - loadArtefact must verify against an injected registry (runs everywhere)
+ok 9 - loadArtefact must stop between fetches when the signal aborts
+not ok 10 - loadArtefact must verify and return exactly the requested bytes (skips when not built)
+not ok 11 - loadArtefact must load the full provable inventory by default (skips when not built)
+not ok 12 - loadArtefact must throw ZkArtifactIntegrityError on tampered bytes and return nothing (skips when not built)
+not ok 13 - prover keys must be loadable on explicit request only (skips when not built)
+ok 14 - the registry is well-formed and current is a supported version
+not ok 15 - every version pins its full circuit inventory under its own keyLocations
+ok 16 - resolveBinding must reject versions outside the supported set
+ok 17 - detectDeployedVersion must recover a version from its verifier-key hashes
+not ok 18 - the commitment pure circuits the deploy caller needs must be present
+ok 19 - every locally built artefact version must match its committed hashes
+ok 20 - the TypeScript mirror must agree with the canonical registry JSON
+ok 21 - resolveBinding must reject prototype keys, and the registry must be frozen
+ok 22 - detectDeployedVersion must normalise input and reject subsets and supersets
+ok 23 - detection ties must prefer current, then the first supported version
+ok 24 - all expected packages are scaffolded
+ok 25 - every workspace dependency edge is in the architecture §4.4 graph
+ok 26 - every tsconfig project reference mirrors a permitted edge
+ok 27 - connect has no path to core or any adapter, even transitively
+ok 28 - every package skeleton is private, pre-release, and ESM
+ok 29 - every package skeleton builds and loads (run `pnpm build` first)
+ok 30 - the repo is a private pnpm workspace over packages/*
+ok 31 - the Node baseline agrees across manifest, .nvmrc, and the CI gate
+ok 32 - every dependency in every workspace manifest is exact-pinned
+# tests 32
+# pass 23
+# fail 9
+# skipped 0

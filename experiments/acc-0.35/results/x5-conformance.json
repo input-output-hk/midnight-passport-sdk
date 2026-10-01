@@ -1,0 +1,99 @@
+{
+  "testId": "grants-caller",
+  "name": "conformance",
+  "fileName": "conformance.json",
+  "verdict": "PASS",
+  "description": "Callee-enforced immediate contract caller pin on scoped grants",
+  "note": "Real unshielded JubJub grant spends; wrong/direct callers fail at build, fabricated caller fails at node admission. Both arms/all six gates are also covered offline.",
+  "details": {
+    "account": "1525815ce98dc532ab0a0e502bb0147515060dba52769e2daa25366b21390b10",
+    "proxyA": "0ab034230f649e4745b176e713c66adfef9d42fba95f1fa962d66799b2e6109f",
+    "proxyB": "a61608e406f1fab4ab0148e824bc4b122320593b49edc3eb74861168fabeebf1",
+    "transactions": [
+      {
+        "label": "mint",
+        "txId": "0052904ad41f19426671015d557bc37c78b787cb19927e789c2714896eebb32851",
+        "blockHeight": 67,
+        "status": "SUCCESS"
+      },
+      {
+        "label": "deposit",
+        "txId": "00968b1725086abbe8379e19bbbc9f6a4d2ee2a4d128ac74aa3b7d1c70ff0d035a",
+        "blockHeight": 73,
+        "status": "SUCCESS"
+      },
+      {
+        "label": "issue pinned to B",
+        "txId": "00d9ba25c3ce4f8a8bb17cbeb3612dfd20e97945967191dacc35097d6aa7a19ded",
+        "blockHeight": 83,
+        "status": "SUCCESS"
+      },
+      {
+        "label": "B -> account",
+        "txId": "0001660839f270f73567122d4dbbf7478553b49170ce879bfb18d66a8be6ef2c5b",
+        "blockHeight": 88,
+        "status": "SUCCESS"
+      },
+      {
+        "label": "A -> B -> account (B observed)",
+        "txId": "008797faf6fb4e00d88e9034d20a66d96a66d0a2afb4494aad806b98a218edc887",
+        "blockHeight": 93,
+        "status": "SUCCESS"
+      },
+      {
+        "label": "revoke",
+        "txId": "00eb496a27713549ccf67cb2a548c35d8ee76796826d1fcb2a8791e874fa5df46c",
+        "blockHeight": 99,
+        "status": "SUCCESS"
+      },
+      {
+        "label": "reissue unrestricted",
+        "txId": "0023cc3baa9f80f2a4df3d5c2e181e37de1f21f245a8145117b0b0cf48b5ed0b29",
+        "blockHeight": 104,
+        "status": "SUCCESS"
+      },
+      {
+        "label": "unrestricted root",
+        "txId": "0092374dd8142f1dc50cf29ea81c4e6a3499531780704edfec08caf23611af8906",
+        "blockHeight": 109,
+        "status": "SUCCESS"
+      }
+    ],
+    "negatives": [
+      {
+        "label": "direct root",
+        "stage": "build",
+        "message": "Error: Unexpected error executing scoped transaction '<unnamed>': Error: failed assert: grant requires a contract caller"
+      },
+      {
+        "label": "wrong immediate caller A",
+        "stage": "build",
+        "message": "Error: Unexpected error executing scoped transaction '<unnamed>': Error: failed assert: grant caller mismatch"
+      },
+      {
+        "label": "replay through B",
+        "stage": "build",
+        "message": "Error: Unexpected error executing scoped transaction '<unnamed>': Error: range error at account.compact line 2010 char 13: byte vector [49,31,16,14,38,41,228,40,15,215,65,32,108,29,12,66,177,62,228,232,37,69,155,155,21,231,166,5,186,100,223,145] exceeds maximum value 52435875175126190479447740508185965837690552500527637822603658699938581184512 of Field type"
+      },
+      {
+        "label": "fabricated caller without claim",
+        "stage": "node-submit",
+        "rpcError": "Custom error: 104",
+        "txHash": "8a4c87d585427875967068c422d6620cc472bd551e3698417ebd77bb76c61dd5",
+        "nodeLog": "2026-10-01 19:27:54 🚫 Rejected transaction 8a4c87d585427875967068c422d6620cc472bd551e3698417ebd77bb76c61dd5 from mempool: guaranteed execution would fail: mismatch between expected (<[01, 01, a61608e406f1fab4ab0148e824bc4b122320593b49edc3eb74861168fabeebf1, -]: b1b1b32b32>) and actual (<[-, -, -, -]: b1b1b32b32>) read    "
+      }
+    ],
+    "compiler": "0.35.0",
+    "runtime": "0.20.0",
+    "accountZkir": "3.1",
+    "proxyZkir": "2.0",
+    "schema": 3,
+    "limitation": "Caller authenticates the ledger claiming contract; a contract exposing arbitrary claimContractCall can lend its identity. It does not attest a browser origin or a calling circuit."
+  },
+  "ranAt": "2026-10-01T19:29:20.863Z",
+  "stack": {
+    "node": "midnightntwrk/midnight-node:2.1.0-rc.4",
+    "indexer": "ghcr.io/midnightntwrk/indexer-standalone:4.4.0-rc.6-b5e6c809",
+    "proofServer": "midnightntwrk/proof-server:9.0.0-rc.8"
+  }
+}
