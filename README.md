@@ -68,8 +68,8 @@ releases, fetched by hash ([`nix/packages/compact.nix`](./nix/packages/compact.n
 ### Localnet (Docker)
 
 [`infra/localnet/`](./infra/localnet) runs a ledger-9 node, indexer, and proof
-server (`midnight-node` 2.1.0-2e92c4ae642c, `indexer-standalone` 4.4.0-rc.2,
-`proof-server` 9.0.0-rc.6):
+server (`midnight-node` 2.1.0-rc.4, `indexer-standalone` 4.4.0-rc.6-b5e6c809
+from GHCR, `proof-server` 9.0.0-rc.8, which reads ZKIR 3.1):
 
 ```sh
 cp infra/localnet/.env.example infra/localnet/.env   # set APP__INFRA__SECRET

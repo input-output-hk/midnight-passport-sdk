@@ -5,19 +5,22 @@
 #   # macOS: add -f infra/localnet/docker-compose.macos.yml
 #
 # Image tags follow the reference ACC's localnet in the planning workspace
-# (contract/infra/docker-compose.yml there), so contract tests and the SDK
-# run against the same chain. Override a tag with MIDNIGHT_NODE_TAG,
-# MIDNIGHT_INDEXER_TAG, or MIDNIGHT_PROOF_TAG.
+# (contract/infra/docker-compose.yml there, as verified on Compact 0.35.0 on
+# 2026/10/01), so contract tests and the SDK run against the same chain.
+# Override a tag with MIDNIGHT_NODE_TAG, MIDNIGHT_INDEXER_TAG, or
+# MIDNIGHT_PROOF_TAG.
 #
-# Compact 0.35.0 with --feature-zkir-v3 emits ZKIR 3.1, which needs a proof
-# server that reads ZKIR 3.1; check the proof-server tag before proving such
-# circuits. Fresh volumes are mandatory when moving between ledger lines.
+# - proof-server 9.0.0-rc.8 reads ZKIR 3.1 (Compact 0.35.0, --feature-zkir-v3).
+# - The indexer is a commit-pinned rc.6 candidate, published on GHCR only:
+#   the numbered rc.5 exits at genesis on node 2.1.0-rc.x.
+# - Its storage layout changed at rc.5, and ledger lines do not migrate:
+#   use fresh volumes (`docker compose … down -v`) when changing images.
 
 name: mn-passport-sdk-localnet
 
 services:
   node:
-    image: 'midnightntwrk/midnight-node:${MIDNIGHT_NODE_TAG:-2.1.0-2e92c4ae642c}'
+    image: 'midnightntwrk/midnight-node:${MIDNIGHT_NODE_TAG:-2.1.0-rc.4}'
     network_mode: host
     cap_drop:
       - ALL
@@ -38,7 +41,7 @@ services:
       SIDECHAIN_BLOCK_BENEFICIARY: '04bcf7ad3be7a5c790460be82a713af570f22e0f801f6659ab8e84a52be6969e'
 
   indexer:
-    image: 'midnightntwrk/indexer-standalone:${MIDNIGHT_INDEXER_TAG:-4.4.0-rc.2}'
+    image: 'ghcr.io/midnightntwrk/indexer-standalone:${MIDNIGHT_INDEXER_TAG:-4.4.0-rc.6-b5e6c809}'
     network_mode: host
     cap_drop:
       - ALL
@@ -66,7 +69,7 @@ services:
         condition: service_healthy
 
   proof-server:
-    image: 'midnightntwrk/proof-server:${MIDNIGHT_PROOF_TAG:-9.0.0-rc.6}'
+    image: 'midnightntwrk/proof-server:${MIDNIGHT_PROOF_TAG:-9.0.0-rc.8}'
     network_mode: host
     cap_drop:
       - ALL
