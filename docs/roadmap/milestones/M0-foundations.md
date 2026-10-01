@@ -216,3 +216,32 @@
 - **Open questions.** The Platform ↔ ceremony-gate split (which side owns the
   WebAuthn call); the PRF hook shape.
 - **Issue.** `#TBD`
+
+## FS-0.9 — The ACC artefact package over the Compact 0.35.0 reference ACC
+
+- **Objective.** Publish the compiled reference ACC — module, types, contract
+  info, ZKIR, verifier keys, and the compiler's manifest — inside
+  `mn-passport-contract`, under bindings generated from the artefact, with
+  prover keys distributed separately.
+- **In scope.** Canonical Compact 0.35.0 build (`--feature-zkir-v3`); the
+  compiler manifest as the integrity anchor; registry schema v2; a generated
+  binding surface; the package size budget and consumer smoke; the ACC domain
+  model and state machines as the contract-facing model for
+  `mn-passport-account`; the publish route and the deploy planner's inputs.
+- **Out of scope.** Changes to the ACC; the P-256 arm; publishing under
+  `@midnight-ntwrk`.
+- **Backing.** architecture §4.4, §4.6, §8 decision 2; FS-0.2; ADR 0004;
+  provider-integration §5.1, §6; the realignment proposal (decisions 6, 10).
+- **Surface.** `AccBindingV2` (manifest hash, toolchain, schema, roster), the
+  generated circuit catalogue, `AccZkConfigOptions`; the `AccountView` read
+  model and guards in `mn-passport-account`.
+- **Dependencies.** FS-0.2. **Gate:** a pinned source revision from the
+  contract team; the SDK runtime at 0.20.0.
+- **Acceptance.** The committed manifest hash reproduces in the Nix shell; the
+  package is ≤ 5 MB per binding with no prover key; every circuit loads through
+  midnight-js 5 with the pinned manifest; an account deploys and accepts a call
+  on the localnet.
+- **Verify.** `experiments/acc-0.35` promoted to scripts; the localnet compose.
+- **Tranches.** See the spec §12 (seven, T1–T7).
+- **Open questions.** See the spec §14.
+- **Issue.** `#TBD` (owner decision on upstream references).
