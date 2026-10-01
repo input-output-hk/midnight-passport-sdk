@@ -56,10 +56,11 @@ Prerequisite: the private residual-risk register repo cloned as a sibling at
 ### Local toolset (Nix)
 
 `nix develop` (or `direnv allow`, via [`.envrc`](./.envrc)) opens a shell with
-Node 22, pnpm, the Compact CLI (`compact` 0.5.1), and the compiler (`compactc`
-0.31.1, the toolchain [`acc-versions.generated.json`](./packages/contract/acc-versions.generated.json)
-records), plus `gh`, `jq`, and `mkcert` for a local HTTPS origin. The Compact
-binaries are the official releases, fetched by hash through
-[`MediaNoxLabs/flake-collection`](https://github.com/MediaNoxLabs/flake-collection);
-`COMPACT_DIRECTORY` points `compact compile` at that pinned toolchain. The
-proof server and devnet are not part of the shell.
+Node 22, pnpm, the Compact CLI (`compact` 0.5.3), and the Compact toolchain
+0.35.0 (language 0.27.0, runtime 0.20.0, ledger 9; ZKIR 3.1 with
+`--feature-zkir-v3`), plus `gh`, `jq`, and `mkcert` for a local HTTPS origin.
+Toolchain 0.31.1 stays selectable with `compact compile +0.31.1`: it is the one
+[`acc-versions.generated.json`](./packages/contract/acc-versions.generated.json)
+records for the prototype binding. The Compact binaries are the official
+releases, fetched by hash ([`nix/packages/compact.nix`](./nix/packages/compact.nix));
+`COMPACT_DIRECTORY` points `compact` at them.

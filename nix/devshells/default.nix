@@ -20,13 +20,15 @@
           mkcert
 
           self'.packages.compact-midnight
-          self'.packages.compact-toolchain
+          self'.packages.compact-toolchains
         ];
 
         shellHook = ''
-          # Point the `compact` devtool at the pinned, read-only toolchain
-          # instead of ~/.compact, so `compact compile` uses compiler 0.31.1.
-          export COMPACT_DIRECTORY=${self'.packages.compact-toolchain}
+          # Point the `compact` devtool at the pinned, read-only toolchains
+          # instead of ~/.compact: `compact compile` uses 0.35.0, and
+          # `compact compile +0.31.1` the toolchain the prototype binding
+          # records.
+          export COMPACT_DIRECTORY=${self'.packages.compact-toolchains}
         '';
       };
     };

@@ -4,13 +4,8 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
-
-    # The Compact devtool (`compact`) and compiler (`compactc`) come from this
-    # reusable flake, which fetches the official midnightntwrk/compact release
-    # binaries by hash. Its pins (CLI 0.5.1, compiler 0.31.1) match the
-    # toolchain recorded in packages/contract/acc-versions.generated.json.
-    flake-collection.url = "github:MediaNoxLabs/flake-collection";
-    flake-collection.inputs.nixpkgs.follows = "nixpkgs";
+    # The Compact devtool and toolchains are packaged in nix/packages/compact.nix
+    # from the official midnightntwrk/compact release binaries, by hash.
   };
 
   outputs =
