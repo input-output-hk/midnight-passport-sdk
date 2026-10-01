@@ -1,0 +1,37 @@
+# macOS override — Docker Desktop has no host networking for these images,
+# so use a bridge network with the localnet ports published.
+#
+#   docker compose -f infra/localnet/docker-compose.yml \
+#     -f infra/localnet/docker-compose.macos.yml up -d
+
+services:
+  node:
+    network_mode: ''
+    networks: [midnight]
+    ports:
+      - '9944:9944'
+      - '30333:30333'
+
+  indexer:
+    network_mode: ''
+    networks: [midnight]
+    ports:
+      - '8088:8088'
+    environment:
+      # Plaintext ws is intentional: container to container on the private
+      # compose bridge network; the localnet node terminates no TLS.
+      APP__INFRA__NODE__URL: 'ws://node:9944' # nosemgrep
+      # Indexer 4.3+ opens a second (SPO) node connection with its own URL;
+      # without it the indexer dials localhost inside the bridge network and
+      # exits once its reconnect budget runs out.
+      APP__INFRA__SPO_NODE__URL: 'ws://node:9944' # nosemgrep
+
+  proof-server:
+    network_mode: ''
+    networks: [midnight]
+    ports:
+      - '6300:6300'
+
+networks:
+  midnight:
+    driver: bridge

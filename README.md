@@ -64,3 +64,15 @@ Toolchain 0.31.1 stays selectable with `compact compile +0.31.1`: it is the one
 records for the prototype binding. The Compact binaries are the official
 releases, fetched by hash ([`nix/packages/compact.nix`](./nix/packages/compact.nix));
 `COMPACT_DIRECTORY` points `compact` at them.
+
+### Localnet (Docker)
+
+[`infra/localnet/`](./infra/localnet) runs a ledger-9 node, indexer, and proof
+server (`midnight-node` 2.1.0-2e92c4ae642c, `indexer-standalone` 4.4.0-rc.2,
+`proof-server` 9.0.0-rc.6):
+
+```sh
+cp infra/localnet/.env.example infra/localnet/.env   # set APP__INFRA__SECRET
+docker compose -f infra/localnet/docker-compose.yml up -d
+# macOS: add -f infra/localnet/docker-compose.macos.yml
+```
