@@ -150,3 +150,17 @@ the X4 package plus the prover keys from X1 as an overlay — standing in for th
 separate prover-key bundle.
 
 See [`results/x5-localnet.md`](./results/x5-localnet.md).
+
+### X6 — the 52-circuit ACC: full key build, and correspondence (2026/10/03)
+
+Revision `45721e1` (P-256/WebAuthn arm). Full build 1,313 s, peak 7.2 GB on the
+host; 52 proving circuits; prover keys 12,175.5 MB (largest 495.0 MB).
+**All 162 published ZKIR, prover-key and verifier-key hashes of the contract
+team's build are identical to ours** (their M4 Max and installer toolchain; our
+M2 Max and Nix). See [`results/x6-full-build-45721e1.md`](./results/x6-full-build-45721e1.md).
+
+### X7 — P-256/WebAuthn proofs on the localnet (2026/10/03)
+
+The contract team's on-node P-256 scenario, unmodified: **PASS**, 21
+transactions, P-256 account proofs 30–54 s, proof server at 13.5 GiB while
+proving the WebAuthn probe. See [`results/x7-p256-localnet.md`](./results/x7-p256-localnet.md).

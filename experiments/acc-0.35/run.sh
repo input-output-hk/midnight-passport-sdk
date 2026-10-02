@@ -59,7 +59,18 @@ fi
 envfile="$root/infra/localnet/.env"
 [ -f "$envfile" ] || printf 'APP__INFRA__SECRET=%s\n' "$(openssl rand -hex 32)" > "$envfile"
 "${compose[@]}" down -v >/dev/null 2>&1 || true
-"${compose[@]}" up -d --wait
+# The indexer's SPO client fails on a chain still at genesis ("block number 1
+# not found"): start it only once the node has produced a couple of blocks.
+"${compose[@]}" up -d --wait node proof-server
+for _ in $(seq 1 60); do
+  height=$(curl -s -H 'content-type: application/json' \
+    -d '{"id":1,"jsonrpc":"2.0","method":"chain_getHeader","params":[]}' http://localhost:9944 |
+    node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{try{console.log(parseInt(JSON.parse(s).result.number,16))}catch{console.log(0)}})')
+  [ "${height:-0}" -ge 2 ] && break
+  sleep 2
+done
+echo "run: node at block ${height:-0}; starting the indexer"
+"${compose[@]}" up -d --wait indexer
 
 evidence="$dir/evidence-run/$what"
 mkdir -p "$evidence"
