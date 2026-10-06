@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync, unlinkSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { createServer } from '../src/server.ts';
 import { registryRoute } from '../src/routes/registry.ts';
@@ -56,13 +56,18 @@ test('malformed ids or bodies are refused with 400', async (t) => {
     );
     assert.equal(
       (
-        await fetch(`${base}/accounts/undeployed/zz`, {
+        await fetch(`${base}/accounts/undeployed/0a0`, {
           method: 'PUT',
-          body: JSON.stringify(record),
+          body: JSON.stringify({ ...record, credentialId: '0a0' }),
         })
       ).status,
       400,
-      'odd-length credential ID',
+      'odd-length credential ID in PUT',
+    );
+    assert.equal(
+      (await fetch(`${base}/accounts/undeployed/0a0`)).status,
+      400,
+      'odd-length credential ID in GET',
     );
   } finally {
     server.close();
@@ -216,14 +221,17 @@ test('same credential on testnet returns 204, with undeployed untouched', async 
       method: 'PUT',
       body: JSON.stringify(record),
     });
-    await fetch(`${base}/accounts/testnet/0a0b`, {
+    const putTestnet = await fetch(`${base}/accounts/testnet/0a0b`, {
       method: 'PUT',
       body: JSON.stringify(record),
     });
+    assert.equal(putTestnet.status, 204);
     const get1 = await fetch(`${base}/accounts/undeployed/0a0b`);
     const get2 = await fetch(`${base}/accounts/testnet/0a0b`);
     assert.equal(get1.status, 200);
     assert.equal(get2.status, 200);
+    assert.deepEqual(await get1.json(), record);
+    assert.deepEqual(await get2.json(), record);
   } finally {
     server.close();
   }
@@ -283,14 +291,24 @@ test('409 persists after a restart', async (t) => {
 
 test('corrupt registry file returns 500, excludes file contents, and leaves file unchanged', async (t) => {
   const config = testConfig();
-  writeFileSync(config.registryFile, 'not valid json');
+  const corruptContent = 'not valid json';
+  writeFileSync(config.registryFile, corruptContent);
+  const fileContentsBefore = readFileSync(config.registryFile, 'utf8');
   const { base, server } = await start(config);
   try {
     const get = await fetch(`${base}/accounts/undeployed/0a0b`);
     assert.equal(get.status, 500);
     const body = await get.json();
     assert.equal(body.error, 'registry file unreadable');
-    assert(!body.error.includes('not valid json'), 'error should not expose file contents');
+    const fileContentsAfterGet = readFileSync(config.registryFile, 'utf8');
+    assert.equal(fileContentsAfterGet, fileContentsBefore, 'file unchanged after GET');
+    const put = await fetch(`${base}/accounts/undeployed/0a0b`, {
+      method: 'PUT',
+      body: JSON.stringify(record),
+    });
+    assert.equal(put.status, 500);
+    const fileContentsAfterPut = readFileSync(config.registryFile, 'utf8');
+    assert.equal(fileContentsAfterPut, fileContentsBefore, 'file unchanged after PUT');
   } finally {
     server.close();
   }
