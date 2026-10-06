@@ -117,6 +117,17 @@ export function chainRoute(backend: ChainBackend, options: ChainRouteOptions): R
       },
     ],
     [
+      '/prove-tx',
+      {
+        limit: TX_LIMIT,
+        failure: undefined,
+        parse: (b) => {
+          const tx = bytes(b.tx, 'tx');
+          return async () => ({ tx: hex(await queue(() => backend.proveTx(tx))) });
+        },
+      },
+    ],
+    [
       '/sponsor/balance',
       {
         limit: TX_LIMIT,

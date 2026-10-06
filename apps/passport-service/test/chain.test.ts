@@ -16,7 +16,7 @@ function fakeBackend(delayMs = 30) {
   let active = 0;
   let maxActive = 0;
   const seen: Record<string, unknown> = {};
-  const calls = { prove: 0, check: 0, deploy: 0, balance: 0 };
+  const calls = { prove: 0, proveTx: 0, check: 0, deploy: 0, balance: 0 };
   const busy = async () => {
     active++;
     maxActive = Math.max(maxActive, active);
@@ -34,6 +34,12 @@ function fakeBackend(delayMs = 30) {
       await busy();
       seen.prove = [p, k, o];
       return Uint8Array.of(0xaa);
+    },
+    async proveTx(tx) {
+      calls.proveTx++;
+      await busy();
+      seen.proveTx = tx;
+      return Uint8Array.of(...tx, 0xcc);
     },
     async balance(tx) {
       calls.balance++;
@@ -91,6 +97,15 @@ test('/prove decodes hex, passes the binding input as bigint, and returns the pr
   });
   assert.deepEqual(await res.json(), { proof: 'aa' });
   assert.deepEqual(f.seen.prove, [Uint8Array.of(1, 2), CIRCUIT, 5n]);
+});
+
+test('/prove-tx proves a whole transaction through the backend', async (t) => {
+  const f = fakeBackend();
+  const { base } = await start(t, f.backend);
+  const res = await post(`${base}/prove-tx`, { tx: '0102' });
+  assert.deepEqual(await res.json(), { tx: '0102cc' });
+  assert.deepEqual(f.seen.proveTx, Uint8Array.of(1, 2));
+  assert.equal((await post(`${base}/prove-tx`, { tx: 'zz' })).status, 400);
 });
 
 test('/prove without a binding input passes undefined', async (t) => {

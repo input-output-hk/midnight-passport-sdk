@@ -17,6 +17,7 @@ function countingBackend() {
   const backend: ChainBackend = {
     check: async () => [],
     prove: async () => Uint8Array.of(1),
+    proveTx: async (tx) => tx,
     balance: async (tx) => tx,
     submit: async () => 'txid',
     async deploy() {

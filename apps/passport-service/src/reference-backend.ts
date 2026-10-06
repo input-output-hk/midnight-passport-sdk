@@ -89,6 +89,10 @@ interface ProofProviderModule {
 }
 
 /** `@midnightntwrk/ledger-v9`, the module instance the wallet itself uses. */
+interface UnprovenTxLike {
+  prove(provider: ProvingProvider, costModel: unknown): Promise<{ serialize(): Uint8Array }>;
+}
+
 interface LedgerModule extends ActionClasses {
   Transaction: {
     deserialize(
@@ -97,7 +101,14 @@ interface LedgerModule extends ActionClasses {
       markerB: 'pre-binding',
       raw: Uint8Array,
     ): LedgerTxLike;
+    deserialize(
+      markerS: 'signature',
+      markerP: 'pre-proof',
+      markerB: 'pre-binding',
+      raw: Uint8Array,
+    ): UnprovenTxLike;
   };
+  CostModel: { initialCostModel(): unknown };
 }
 
 interface ZkConfigModule {
@@ -178,6 +189,7 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
     'ContractCall',
     'ContractDeploy',
     'MaintenanceUpdate',
+    'CostModel',
   ]);
   const deployments = new DeploymentLog(config);
 
@@ -193,6 +205,11 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
     check: (preimage, keyLocation) => proving.check(preimage, keyLocation),
     prove: (preimage, keyLocation, overwriteBindingInput) =>
       proving.prove(preimage, keyLocation, overwriteBindingInput),
+    proveTx: async (bytes) => {
+      const tx = ledger.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
+      const proven = await tx.prove(proving, ledger.CostModel.initialCostModel());
+      return proven.serialize();
+    },
     // The policy guards this endpoint, not the wallet provider: the reference wave deploy calls
     // `walletProvider.balanceTx` itself for its deployment and maintenance transactions.
     balance: guardedBalance({

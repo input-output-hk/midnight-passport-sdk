@@ -6,6 +6,13 @@ export interface ChainBackend {
     keyLocation: string,
     overwriteBindingInput?: bigint,
   ): Promise<Uint8Array>;
+  /**
+   * Proves a whole unproven transaction (serialised with the `'signature', 'pre-proof',
+   * 'pre-binding'` markers) and returns the proven, unbound one. midnight-js 5's ledger asks its
+   * proving provider for the circuit's key material (`lookupKey`), prover key included, so the
+   * browser cannot prove even with a remote `prove`; the service holds the keys and proves here.
+   */
+  proveTx(tx: Uint8Array): Promise<Uint8Array>;
   /** Adds the sponsor's fees to a proven, unbalanced transaction; returns the finalized bytes. */
   balance(tx: Uint8Array): Promise<Uint8Array>;
   submit(tx: Uint8Array): Promise<string>;

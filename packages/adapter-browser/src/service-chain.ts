@@ -5,7 +5,7 @@ import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-p
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   createMidnightProvider,
-  createProofProvider,
+  createProofProviderFromHandlers,
   createWalletProvider,
   type MidnightProvider,
   type ProofProvider,
@@ -22,7 +22,7 @@ import {
   type FetchLike,
 } from '@midnight-ntwrk/mn-passport-account';
 import { Transaction } from '@midnightntwrk/ledger-v9';
-import { delegatedProvingProvider } from './delegated-proving.js';
+import { DEFAULT_PROVE_TIMEOUT_MS } from './delegated-proving.js';
 import {
   defaultFetch,
   postService,
@@ -47,15 +47,40 @@ interface LedgerShape {
 }
 
 /**
- * midnight-js's proving seam over the service. The era tag is the factory's: it unwraps the
- * `{ version: 'v9', tx }` it is given and tags the proven transaction the same way.
+ * midnight-js's proving seam over the service, at the transaction level. midnight-js 5's ledger
+ * asks its proving provider for each circuit's key material (`lookupKey`), prover key included,
+ * before it proves, so a per-circuit remote `prove` is not enough: the browser would need every
+ * prover key (up to 495 MB). Instead the whole unproven transaction goes to the service's
+ * `/prove-tx`, which proves it with the keys it holds. The era tag is the factory's: it unwraps
+ * `{ version: 'v9', tx }` and tags the proven transaction the same way.
  */
 export function serviceProofProvider(
   base: string,
   fetchFn: FetchLike,
-  proveTimeoutMs?: number,
+  proveTimeoutMs: number = DEFAULT_PROVE_TIMEOUT_MS,
 ): ProofProvider {
-  return createProofProvider(delegatedProvingProvider(base, fetchFn, proveTimeoutMs));
+  return createProofProviderFromHandlers({
+    currentEra: async (tx) => {
+      const answer = await postService(
+        fetchFn,
+        base,
+        '/prove-tx',
+        { tx: toHex(tx.serialize()) },
+        'prover',
+        proveTimeoutMs,
+      );
+      let bytes: Uint8Array;
+      try {
+        bytes = fromHex(stringMember(answer, 'tx', '/prove-tx'));
+      } catch (cause) {
+        if (cause instanceof PassportConnectorError) throw cause;
+        throw new PassportConnectorError('InternalError', '/prove-tx answered a non-hex tx', {
+          cause,
+        });
+      }
+      return Transaction.deserialize('signature', 'proof', 'pre-binding', bytes);
+    },
+  });
 }
 
 /**

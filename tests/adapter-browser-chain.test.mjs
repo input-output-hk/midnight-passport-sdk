@@ -220,18 +220,22 @@ test('the submit seam unwraps the v9 tag, posts hex and answers the transaction 
   assert.equal(f.calls.length, 1, 'the v8 payload never reached the service');
 });
 
-test('the proof seam serves the v9 era and answers in the arm it was asked in', async () => {
-  const f = recordingFetch({});
+test('the proof seam sends the whole transaction to /prove-tx and answers in the v9 arm', async () => {
+  const unproven = ledger.Transaction.fromParts('undeployed');
+  // An empty transaction needs no proof, so the local ledger can stand in for the service.
+  const unused = {
+    check: () => Promise.reject(new Error('unused')),
+    prove: () => Promise.reject(new Error('unused')),
+    lookupKey: () => Promise.resolve(undefined),
+  };
+  const proven = await unproven.prove(unused, ledger.CostModel.initialCostModel());
+  const f = recordingFetch({ '/prove-tx': { status: 200, body: { tx: hex(proven.serialize()) } } });
   const prover = b.serviceProofProvider('http://svc', f.fn);
   assert.deepEqual(prover.supportedEras, ['v9']);
-  // A transaction with no contract action needs no proof, so the prover is not called.
-  const out = await prover.proveTx({
-    version: 'v9',
-    tx: ledger.Transaction.fromParts('undeployed'),
-  });
+  const out = await prover.proveTx({ version: 'v9', tx: unproven });
   assert.equal(out.version, 'v9');
   assert.ok(out.tx instanceof ledger.Transaction);
-  assert.equal(f.calls.length, 0);
+  assert.deepEqual(bodyOf(f.calls[0]), { tx: hex(unproven.serialize()) });
 });
 
 for (const path of ['/sponsor/balance', '/sponsor/submit', '/deploy']) {
