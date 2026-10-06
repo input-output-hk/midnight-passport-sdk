@@ -26,7 +26,7 @@ const pureCircuits = {
 
 /**
  * @typedef {{ booted: boolean; authNonce: bigint; deviceEpoch: bigint; entries: Uint8Array[] }} Ledger
- * @typedef {{ failActivationOnce?: boolean; failActiveRegistryPutOnce?: boolean; owns?: boolean }} WorldOptions
+ * @typedef {{ failActivationOnce?: boolean; failActiveRegistryPutOnce?: boolean; failDeployedPuts?: number; owns?: boolean }} WorldOptions
  */
 
 const ADDRESS = 'cd'.repeat(32);
@@ -35,7 +35,12 @@ const OTHER_ADDRESS = 'ef'.repeat(32);
 const OTHER_PK = { x: 99n, y: 98n, identity: false };
 
 /** @param {WorldOptions} [options] */
-function world({ failActivationOnce = false, failActiveRegistryPutOnce = false, owns } = {}) {
+function world({
+  failActivationOnce = false,
+  failActiveRegistryPutOnce = false,
+  failDeployedPuts = 0,
+  owns,
+} = {}) {
   const credential = {
     credentialId: Uint8Array.of(7),
     publicKey: { x: 11n, y: 13n, identity: false },
@@ -139,6 +144,11 @@ function world({ failActivationOnce = false, failActiveRegistryPutOnce = false, 
     },
     registry: {
       put: async (/** @type {string} */ n, /** @type {Rec} */ r) => {
+        log.push(['put', r.status]);
+        if (r.status === 'deployed' && failDeployedPuts > 0) {
+          failDeployedPuts--;
+          throw new Error('registry down');
+        }
         if (failPutNext && r.status === 'active') {
           failPutNext = false;
           throw new Error('registry down');
@@ -325,4 +335,28 @@ test('R10(b): a record filed under another credential id is refused', async () =
     code: 'AccountNotFound',
     message: /does not belong to this passkey/,
   });
+});
+
+test('M2: the deployed registry write is retried, so a brief outage after deploy loses nothing', async () => {
+  const w = world({ failDeployedPuts: 2 });
+  const account = await a.createPassportConnector(w.seams).createAccount({ userName: 'u' });
+  assert.deepEqual(
+    w.log.filter((l) => l[0] === 'put').map((l) => l[1]),
+    ['deployed', 'deployed', 'deployed', 'active'],
+  );
+  assert.equal(statusOf(w), 'active');
+  assert.equal((await account.state()).booted, true);
+  assert.equal(count(w, 'deploy'), 1, 'never redeploys');
+});
+
+test('M2: a registry that stays down fails after the retries, naming the deployed address', async () => {
+  const w = world({ failDeployedPuts: a.DEPLOYED_PUT_RETRIES + 1 });
+  await assert.rejects(a.createPassportConnector(w.seams).createAccount({ userName: 'u' }), {
+    code: 'InternalError',
+    message: new RegExp(
+      `${ADDRESS} is deployed, but the registry did not record it after 4 attempts`,
+    ),
+  });
+  assert.equal(count(w, 'put'), a.DEPLOYED_PUT_RETRIES + 1);
+  assert.equal(count(w, 'activate_initial_device_with_p256'), 0, 'no activation without a record');
 });

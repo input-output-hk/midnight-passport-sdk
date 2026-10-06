@@ -16,6 +16,17 @@ const equalBytes = (a: Uint8Array, b: Uint8Array): boolean =>
  */
 export const RESCAN_LIMIT = 64;
 
+/**
+ * Retries of the `deployed` registry write after a deploy (Final review M2). The salt it records is
+ * the only way to activate the account, so one lost write would orphan a 10-wave deployment. The
+ * write is idempotent (an identical re-PUT answers 204), so retrying it is safe.
+ */
+export const DEPLOYED_PUT_RETRIES = 3;
+const RETRY_BASE_MS = 200;
+/** Both browsers and Node have `setTimeout`; the package compiles without either's types. */
+const timers = globalThis as unknown as { setTimeout(run: () => void, ms: number): unknown };
+const sleep = (ms: number) => new Promise<void>((resolve) => timers.setTimeout(resolve, ms));
+
 export function createPassportConnector(seams: PassportSeams): PassportConnectorAPI {
   const { chain, passkey, registry, pureCircuits, networkId } = seams;
 
@@ -31,6 +42,24 @@ export function createPassportConnector(seams: PassportSeams): PassportConnector
     const active: AccountRecord = { ...record, status: 'active' };
     await registry.put(networkId, active);
     return active;
+  };
+
+  const recordDeployed = async (record: AccountRecord): Promise<void> => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await registry.put(networkId, record);
+        return;
+      } catch (e) {
+        if (attempt >= DEPLOYED_PUT_RETRIES) {
+          throw new PassportConnectorError(
+            'InternalError',
+            `The account at ${record.address} is deployed, but the registry did not record it after ${attempt + 1} attempts: ${e instanceof Error ? e.message : String(e)}`,
+            { cause: e },
+          );
+        }
+        await sleep(RETRY_BASE_MS * 2 ** attempt);
+      }
+    }
   };
 
   const readView = async (record: AccountRecord): Promise<AccLedgerView> => {
@@ -157,7 +186,7 @@ export function createPassportConnector(seams: PassportSeams): PassportConnector
         const { address } = await chain.deploy({ boot, encKey: seams.encryptionKey() });
         const deployed: AccountRecord = { ...credential, address, salt, status: 'deployed' };
         // Recorded before activation: the salt is the only way to activate (Review Focus 2).
-        await registry.put(networkId, deployed);
+        await recordDeployed(deployed);
         onProgress?.('deployed');
         onProgress?.('activating');
         const active = await activate(deployed);
