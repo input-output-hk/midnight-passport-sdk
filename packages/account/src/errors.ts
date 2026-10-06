@@ -1,15 +1,27 @@
-import { PASSPORT_ERROR_TYPE, type PassportErrorCode, type PassportErrorShape } from '@midnight-ntwrk/mn-passport-protocol';
+import {
+  PASSPORT_ERROR_TYPE,
+  type PassportErrorCode,
+  type PassportErrorShape,
+} from '@midnight-ntwrk/mn-passport-protocol';
 
 export class PassportConnectorError extends Error implements PassportErrorShape {
   override readonly name = 'PassportConnectorError';
   readonly type = PASSPORT_ERROR_TYPE;
-  constructor(readonly code: PassportErrorCode, message: string, options?: { cause?: unknown }) {
+  constructor(
+    readonly code: PassportErrorCode,
+    message: string,
+    options?: { cause?: unknown },
+  ) {
     super(message, options);
   }
 }
 
 export function isPassportError(e: unknown): e is PassportConnectorError {
-  return e instanceof PassportConnectorError;
+  return (
+    e instanceof Error &&
+    (e as { type?: unknown }).type === PASSPORT_ERROR_TYPE &&
+    typeof (e as { code?: unknown }).code === 'string'
+  );
 }
 
 /** Maps any thrown value to the connector taxonomy (spec §6). */
@@ -18,7 +30,9 @@ export function toPassportError(e: unknown): PassportConnectorError {
   const name = e instanceof Error ? e.name : '';
   const message = e instanceof Error ? e.message : String(e);
   if (name === 'NotAllowedError' || name === 'AbortError') {
-    return new PassportConnectorError('UserCancelled', 'The passkey prompt was cancelled.', { cause: e });
+    return new PassportConnectorError('UserCancelled', 'The passkey prompt was cancelled.', {
+      cause: e,
+    });
   }
   if (name === 'ZkArtifactIntegrityError') {
     return new PassportConnectorError('ArtefactIntegrity', message, { cause: e });

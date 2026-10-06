@@ -8,8 +8,12 @@ export type FetchLike = (
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
 interface WireRecord {
-  credentialId: string; address: string; publicKey: { x: string; y: string };
-  policy: { rp_id_hash: string; origin: string }; salt: string; status: AccountRecord['status'];
+  credentialId: string;
+  address: string;
+  publicKey: { x: string; y: string };
+  policy: { rp_id_hash: string; origin: string };
+  salt: string;
+  status: AccountRecord['status'];
 }
 
 const toWire = (r: AccountRecord): WireRecord => ({
@@ -31,8 +35,9 @@ const fromWire = (w: WireRecord): AccountRecord => ({
 });
 
 export function createRegistryClient(baseUrl: string, fetchFn: FetchLike): RegistrySeam {
+  const base = baseUrl.replace(/\/+$/, '');
   const url = (networkId: string, credentialId: Uint8Array) =>
-    `${baseUrl}/accounts/${encodeURIComponent(networkId)}/${toHex(credentialId)}`;
+    `${base}/accounts/${encodeURIComponent(networkId)}/${toHex(credentialId)}`;
   return {
     async put(networkId, record) {
       const res = await fetchFn(url(networkId, record.credentialId), {
