@@ -24,7 +24,7 @@ const pureCircuits = {
     enc(`rot:${pk.x}:${key[0]}:${nonce}`),
 };
 
-function world({ failActivationOnce = false } = {}) {
+function world({ failActivationOnce = false, failActiveRegistryPutOnce = false } = {}) {
   const credential = {
     credentialId: Uint8Array.of(7),
     publicKey: { x: 11n, y: 13n, identity: false },
@@ -37,6 +37,7 @@ function world({ failActivationOnce = false } = {}) {
   /** @type {unknown[][]} */
   const log = [];
   let failNext = failActivationOnce;
+  let failPutNext = failActiveRegistryPutOnce;
   const chain = {
     /** @param {{ boot: Uint8Array }} args */
     async deploy(args) {
@@ -57,6 +58,7 @@ function world({ failActivationOnce = false } = {}) {
     async call(_addr, circuit, args) {
       log.push([circuit]);
       if (circuit === 'activate_initial_device_with_p256') {
+        if (ledger.booted) throw new Error('already activated');
         if (failNext) {
           failNext = false;
           throw new Error('sponsor down');
@@ -113,8 +115,13 @@ function world({ failActivationOnce = false } = {}) {
       },
     },
     registry: {
-      put: async (/** @type {string} */ n, /** @type {Rec} */ r) =>
-        registry.set(`${n}/${r.credentialId}`, r),
+      put: async (/** @type {string} */ n, /** @type {Rec} */ r) => {
+        if (failPutNext && r.status === 'active') {
+          failPutNext = false;
+          throw new Error('registry down');
+        }
+        registry.set(`${n}/${r.credentialId}`, r);
+      },
       get: async (/** @type {string} */ n, /** @type {Uint8Array} */ id) =>
         registry.get(`${n}/${id}`),
     },
@@ -165,6 +172,36 @@ test('a failure after deploy leaves a deployed record that openAccount finishes'
   assert.equal((await account.state()).booted, true);
   assert.equal(/** @type {Rec} */ ([...w.registry.values()][0]).status, 'active');
   assert.equal(w.log.filter((l) => l[0] === 'deploy').length, 1, 'never redeploys');
+});
+
+test('activation landed but the registry write failed: openAccount adopts the booted ledger without re-activating', async () => {
+  const w = world({ failActiveRegistryPutOnce: true });
+  await assert.rejects(a.createPassportConnector(w.seams).createAccount({ userName: 'u' }));
+  assert.equal(/** @type {Rec} */ ([...w.registry.values()][0]).status, 'deployed');
+  assert.equal(w.ledger.booted, true);
+  const account = await a.createPassportConnector(w.seams).openAccount();
+  assert.equal(/** @type {Rec} */ ([...w.registry.values()][0]).status, 'active');
+  assert.equal((await account.state()).booted, true);
+  assert.equal(w.log.filter((l) => l[0] === 'deploy').length, 1, 'never redeploys');
+  assert.equal(
+    w.log.filter((l) => l[0] === 'activate_initial_device_with_p256').length,
+    1,
+    'never re-activates',
+  );
+});
+
+test('a deployed record on an unbooted ledger is activated once by openAccount', async () => {
+  const w = world({ failActivationOnce: true });
+  await assert.rejects(a.createPassportConnector(w.seams).createAccount({ userName: 'u' }));
+  assert.equal(/** @type {Rec} */ ([...w.registry.values()][0]).status, 'deployed');
+  assert.equal(w.ledger.booted, false);
+  const activations = () =>
+    w.log.filter((l) => l[0] === 'activate_initial_device_with_p256').length;
+  const before = activations();
+  await a.createPassportConnector(w.seams).openAccount();
+  assert.equal(activations() - before, 1);
+  assert.equal(w.ledger.booted, true);
+  assert.equal(/** @type {Rec} */ ([...w.registry.values()][0]).status, 'active');
 });
 
 test('openAccount without a record is AccountNotFound', async () => {

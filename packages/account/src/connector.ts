@@ -7,7 +7,10 @@ import { fromHex } from './codec.js';
 import { PassportConnectorError, toPassportError } from './errors.js';
 import type { AccountRecord, PassportSeams } from './seams.js';
 
-/** How many use counters past the last known one the rescan probes (MIP-0013 S11). */
+/**
+ * The rescan probes use counters 0..RESCAN_LIMIT-1 (MIP-0013 S11). The prototype always starts at 0,
+ * so an account allows 64 authorised calls per passkey entry.
+ */
 export const RESCAN_LIMIT = 64;
 
 export function createPassportConnector(seams: PassportSeams): PassportConnectorAPI {
@@ -19,6 +22,20 @@ export function createPassportConnector(seams: PassportSeams): PassportConnector
       record.salt,
       record.policy,
     ]);
+    const active: AccountRecord = { ...record, status: 'active' };
+    await registry.put(networkId, active);
+    return active;
+  };
+
+  /**
+   * Completes a 'deployed' record. Activation may already have landed on-chain while its response
+   * or the registry write was lost, so adopt a booted ledger instead of activating a second time.
+   */
+  const finishActivation = async (record: AccountRecord): Promise<AccountRecord> => {
+    const view = await chain.readLedger(record.address);
+    if (!view)
+      throw new PassportConnectorError('AccountNotFound', `No contract at ${record.address}.`);
+    if (!view.booted) return activate(record);
     const active: AccountRecord = { ...record, status: 'active' };
     await registry.put(networkId, active);
     return active;
@@ -128,7 +145,7 @@ export function createPassportConnector(seams: PassportSeams): PassportConnector
             'AccountNotFound',
             'No Passport account for this passkey on this network.',
           );
-        return account(record.status === 'active' ? record : await activate(record));
+        return account(record.status === 'active' ? record : await finishActivation(record));
       } catch (e) {
         throw toPassportError(e);
       }
