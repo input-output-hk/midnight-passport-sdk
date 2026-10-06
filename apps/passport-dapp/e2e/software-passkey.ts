@@ -1,4 +1,4 @@
-import { createHash, generateKeyPairSync, sign } from 'node:crypto';
+import { createHash, createHmac, generateKeyPairSync, randomBytes, sign } from 'node:crypto';
 import type { PasskeySeam } from '@midnight-ntwrk/mn-passport-account';
 import {
   bigintFromBytes,
@@ -12,13 +12,19 @@ import {
 const sha256 = (data: Uint8Array): Uint8Array =>
   new Uint8Array(createHash('sha256').update(data).digest());
 
+/** The software passkey also answers PRF, as a real one does in its own ceremony. */
+export interface SoftwarePasskey extends PasskeySeam {
+  /** The PRF output at `salt`: HMAC-SHA256 under a random per-credential secret. */
+  prf(salt: Uint8Array): Uint8Array;
+}
+
 /**
  * A P-256 passkey held in memory that signs exactly as a `wa-json134` authenticator does: the
  * signed message is `authenticatorData || SHA-256(clientDataJSON)`, hashed with SHA-256 and
  * DER-encoded, as WebAuthn specifies. For the automated run only; it never touches a browser.
- * The private key lives in this closure and is never exported or logged.
+ * The private key and the PRF secret live in this closure and are never exported or logged.
  */
-export function softwarePasskey(rpId: string, origin: string): PasskeySeam {
+export function softwarePasskey(rpId: string, origin: string): SoftwarePasskey {
   const { privateKey, publicKey: nodePublicKey } = generateKeyPairSync('ec', {
     namedCurve: 'prime256v1',
   });
@@ -31,8 +37,10 @@ export function softwarePasskey(rpId: string, origin: string): PasskeySeam {
   const publicKey = { x: bigintFromBytes(x), y: bigintFromBytes(y), identity: false as const };
   const policy = webauthnPolicy(rpId, origin);
   const credentialId = sha256(new Uint8Array([4, ...x, ...y])).slice(0, 16);
+  const prfSecret = randomBytes(32);
   let counter = 0;
   return {
+    prf: (salt) => new Uint8Array(createHmac('sha256', prfSecret).update(salt).digest()),
     async create() {
       return { credentialId, publicKey, policy };
     },

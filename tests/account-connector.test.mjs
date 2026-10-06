@@ -58,9 +58,9 @@ function world({
   let failNext = failActivationOnce;
   let failPutNext = failActiveRegistryPutOnce;
   const chain = {
-    /** @param {{ boot: Uint8Array }} args */
+    /** @param {{ boot: Uint8Array; encKey: Uint8Array }} args */
     async deploy(args) {
-      log.push(['deploy', args.boot]);
+      log.push(['deploy', args.boot, args.encKey]);
       ledgers.set(ADDRESS, ledger);
       return { address: ADDRESS, txHashes: ['t0'] };
     },
@@ -159,7 +159,7 @@ function world({
         registry.get(`${n}/${id}`),
     },
     random: (/** @type {number} */ n) => new Uint8Array(n).fill(3),
-    encryptionKey: () => new Uint8Array(32).fill(5),
+    encryptionKey: async (/** @type {unknown} */ _credential) => new Uint8Array(32).fill(5),
   };
   return { seams, credential, ledger, ledgers, registry, log };
 }
@@ -203,6 +203,30 @@ test('createAccount deploys, activates, records, and reports progress in order',
   assert.equal(account.address, ADDRESS);
   assert.equal(/** @type {Rec} */ ([...w.registry.values()][0]).status, 'active');
   assert.equal((await account.state()).booted, true);
+});
+
+test('the encryption key comes from the created passkey, before anything deploys', async () => {
+  const w = world();
+  /** @type {unknown[]} */
+  const asked = [];
+  w.seams.encryptionKey = async (/** @type {unknown} */ credential) => {
+    asked.push(credential);
+    return new Uint8Array(32).fill(6);
+  };
+  await a.createPassportConnector(w.seams).createAccount({ userName: 'u' });
+  assert.deepEqual(asked, [w.credential]);
+  assert.deepEqual(w.log.find((l) => l[0] === 'deploy')?.[2], new Uint8Array(32).fill(6));
+
+  // A passkey without PRF fails before the deploy: nothing on chain, nothing registered.
+  const fails = world();
+  fails.seams.encryptionKey = async () => {
+    throw new a.PassportConnectorError('UnsupportedAuthenticator', 'no PRF');
+  };
+  await assert.rejects(a.createPassportConnector(fails.seams).createAccount({ userName: 'u' }), {
+    code: 'UnsupportedAuthenticator',
+  });
+  assert.equal(count(fails, 'deploy'), 0);
+  assert.equal(fails.registry.size, 0);
 });
 
 test('rotate twice: the second call rescans the rolled use counter', async () => {

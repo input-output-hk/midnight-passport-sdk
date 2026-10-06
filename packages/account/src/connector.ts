@@ -176,6 +176,8 @@ export function createPassportConnector(seams: PassportSeams): PassportConnector
       try {
         const credential = await passkey.create(userName);
         onProgress?.('passkey-created');
+        // Before the deploy: a passkey without PRF fails here, with nothing on chain.
+        const encKey = await seams.encryptionKey(credential);
         const salt = seams.random(32);
         const boot = pureCircuits.derive_boot_commitment_with_p256(
           salt,
@@ -183,7 +185,7 @@ export function createPassportConnector(seams: PassportSeams): PassportConnector
           credential.policy,
         );
         onProgress?.('deploying');
-        const { address } = await chain.deploy({ boot, encKey: seams.encryptionKey() });
+        const { address } = await chain.deploy({ boot, encKey });
         const deployed: AccountRecord = { ...credential, address, salt, status: 'deployed' };
         // Recorded before activation: the salt is the only way to activate (Review Focus 2).
         await recordDeployed(deployed);

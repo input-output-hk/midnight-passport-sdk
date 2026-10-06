@@ -111,6 +111,10 @@ export interface PassportSeams {
   readonly registry: RegistrySeam;
   /** Cryptographically secure random bytes. */
   random(length: number): Uint8Array;
-  /** A fresh X25519 public key for the account's inbox (MVP keeps no inbox). */
-  encryptionKey(): Uint8Array;
+  /**
+   * The account's 32-byte X25519 encryption key, for the passkey just created. The browser derives
+   * it from the passkey's PRF (Lace recipe v1, MIP-0015), which costs one more prompt; the MVP
+   * keeps no inbox.
+   */
+  encryptionKey(credential: PasskeyCredential): Uint8Array | Promise<Uint8Array>;
 }

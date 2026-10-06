@@ -16,9 +16,13 @@ import {
   type PassportSeams,
 } from '@midnight-ntwrk/mn-passport-account';
 import {
+  accEncryptionKey,
   createServiceChain,
   defaultFetch,
   fetchServiceConfig,
+  PRF_LABEL_ROOT,
+  prfSalt,
+  seedFromRoot,
   type GeneratedAccModule,
 } from '@midnight-ntwrk/mn-passport-adapter-browser';
 import { assertSingleCompactRuntime } from './runtime-preflight.ts';
@@ -96,15 +100,27 @@ const chain: ChainSeam = {
   },
 };
 
+const passkey = softwarePasskey('localhost', 'http://localhost:5173');
+/** The account's enc_key as the dapp derives it (Lace recipe v1), from the software passkey's PRF. */
+const encryptionKey = (): Uint8Array => {
+  const root = passkey.prf(prfSalt(PRF_LABEL_ROOT));
+  const seed = seedFromRoot(root);
+  try {
+    return accEncryptionKey(seed, NETWORK_ID);
+  } finally {
+    root.fill(0);
+    seed.fill(0);
+  }
+};
 const seams: PassportSeams = {
   networkId: NETWORK_ID,
   bindingId: config.bindingId,
   pureCircuits: accModule.pureCircuits,
-  passkey: softwarePasskey('localhost', 'http://localhost:5173'),
+  passkey,
   chain,
   registry: createRegistryClient(SERVICE, defaultFetch),
   random: (n) => new Uint8Array(randomBytes(n)),
-  encryptionKey: () => new Uint8Array(randomBytes(32)),
+  encryptionKey,
 };
 
 const connector = createPassportConnector(seams);
@@ -119,6 +135,7 @@ const created = await account.state();
 if (!created.booted) fail('the account is not booted after createAccount');
 step('created', { address: account.address, state: created });
 
+// Rotation targets stay random: Lace has no rotation recipe yet (a prototype extension).
 const r1 = await account.rotateEncryptionKey(new Uint8Array(randomBytes(32)));
 step('rotate #1 (passkey-signed, k = 18)', { ...r1, state: await account.state() });
 

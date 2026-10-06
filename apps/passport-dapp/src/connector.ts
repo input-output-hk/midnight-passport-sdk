@@ -1,5 +1,6 @@
 import { createPassportConnector, createRegistryClient } from '@midnight-ntwrk/mn-passport-account';
 import {
+  accEncryptionKeyFromPasskey,
   browserPasskey,
   createServiceChain,
   defaultFetch,
@@ -33,7 +34,15 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
     }),
     registry: createRegistryClient(SERVICE_URL, defaultFetch),
     random: (n) => crypto.getRandomValues(new Uint8Array(n)),
-    encryptionKey: () => crypto.getRandomValues(new Uint8Array(32)),
+    // Lace recipe v1: the passkey's PRF root -> BIP-39 seed -> MIP-0015 at
+    // 'lace-passport:acc-enc:v1', context '<networkId>/0'. Network-bound and reproducible from the
+    // passkey; one more prompt at create, and no PRF means no account (UnsupportedAuthenticator).
+    encryptionKey: (credential) =>
+      accEncryptionKeyFromPasskey({
+        credentialId: credential.credentialId,
+        rpId: RP_ID,
+        networkId,
+      }),
   });
 }
 

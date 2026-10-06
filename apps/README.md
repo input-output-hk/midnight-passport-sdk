@@ -65,16 +65,28 @@ evidence to `experiments/acc-0.35/results/x8-dapp-e2e.json`.
 
 ## What to know
 
-- **Create asks for the passkey twice.** Once to create the credential, and once more for an
-  enrolment probe: a throwaway assertion that proves the authenticator produces the exact WebAuthn
-  material the ACC verifies, before anything is deployed.
+- **Create asks for the passkey three times.** Once to create the credential; once for an
+  enrolment probe, a throwaway assertion that proves the authenticator produces the exact
+  WebAuthn material the ACC verifies; and once for the PRF ceremony that derives the account's
+  encryption key. All three happen before anything is deployed. A passkey without PRF stops
+  here with `UnsupportedAuthenticator`.
 - **Reopening checks the registry.** The registry is only a hint. `openAccount` uses a record only
   when the passkey you picked owns the record's key, a contract exists at its address, and that
   contract holds the passkey as a device. Anything else is `AccountNotFound`, which after a chain
   reset usually means a stale registry (see Troubleshooting).
-- **Encryption keys are throwaway.** The harness draws a random 32-byte encryption key at create
-  and at each rotation and keeps no copy. Nothing encrypted to it can be recovered. Real key
-  management is out of scope.
+- **Keys follow the Lace recipe v1** (lace-platform main, LW-15585 / LW-15584 / LW-15635;
+  `packages/adapter-browser/src/lace-recipe.ts`). One PRF ceremony evaluates
+  `SHA-256('lace-passport/prf/authoriser/v1')` and `SHA-256('lace/prf/root/v1')`. The root
+  (output #2) gives the wallet entropy (HKDF, info `lace/hkdf/wallet-entropy/v1`), 24 BIP-39
+  words (HKDF, salt `lace`, info `wallet-seed`) and the 64-byte BIP-39 seed. The account's
+  `enc_key` is the X25519 public key of MIP-0015 v1 `deriveSymmetricSecret(seed,
+  'lace-passport:acc-enc:v1', '<networkId>/0')`: bound to the network and reproducible from the
+  passkey. The tests reproduce Lace's own vectors.
+  - _Rotation keys are random._ Lace has no rotation recipe yet, so `rotateEncryptionKey` takes
+    a random key and keeps no copy: a prototype extension.
+  - _Divergence from Lace._ Lace's ACC authoriser is a JubJub key from PRF output #1. This
+    prototype uses the ACC's P-256 WebAuthn arm, where the passkey signs each call, so output #1
+    is evaluated but unused.
 - **The service binds loopback** (`127.0.0.1`). CORS lets only the dapp origin read its answers,
   which on its own does not stop a cross-site page from sending a request. So the service also
   answers `415` to any POST or PUT whose `content-type` is not `application/json` (that forces a
@@ -95,12 +107,12 @@ evidence to `experiments/acc-0.35/results/x8-dapp-e2e.json`.
   from the service, which could otherwise vouch for its own tampered artefacts. The service
   verifies the same hash and every listed file at start-up. Changing the artefacts means
   restarting both.
-- **Built-in wallet.** An in-page wallet seeded from the passkey's PRF output at a network-bound
-  salt, exposed as `window.midnight.devwallet`. If the authenticator has no PRF, it falls back to
-  a fresh random seed on `undeployed` only (Ruling R24), and refuses on any other network. That
-  wallet is empty and ephemeral: it holds no funds and is gone on reload. The web app never
-  carries the genesis (sponsor) seed. The ACC flows do not depend on the wallet: fees are
-  sponsored.
+- **Built-in wallet.** An in-page wallet built with `HDWallet.fromSeed` from the passkey's
+  BIP-39 seed (above), exposed as `window.midnight.devwallet`. Lace has no phrase-derived
+  Midnight wallet in scope; this is the prototype's stand-in. Without PRF it fails with
+  `UnsupportedAuthenticator`: there is no fallback seed, so it never opens a different, empty
+  wallet, and the web app never carries the genesis (sponsor) seed. The ACC flows do not depend
+  on the wallet: fees are sponsored.
 
 ## Production requirements (not built)
 

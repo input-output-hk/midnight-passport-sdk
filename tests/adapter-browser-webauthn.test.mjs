@@ -1,4 +1,4 @@
-// The browser adapter's WebAuthn seam and PRF wallet seed. A fake CredentialsContainer is backed
+// The browser adapter's WebAuthn seam and its PRF ceremony (Lace recipe v1). A fake CredentialsContainer is backed
 // by a real P-256 key, so the wa-json134 signature path (DER parsing, SPKI import, ECDSA
 // verification) runs for real; only the browser prompt is faked.
 import { test } from 'node:test';
@@ -16,7 +16,7 @@ const ID = Uint8Array.of(1, 2, 3, 4);
  *   challenge: Uint8Array;
  *   rpId?: string;
  *   allowCredentials?: { type: string; id: Uint8Array }[];
- *   extensions?: { prf?: { eval: { first: Uint8Array } } };
+ *   extensions?: { prf?: { eval: { first: Uint8Array; second?: Uint8Array } } };
  * }} GetOptions
  * @typedef {{ prf?: boolean; cancel?: string; highS?: boolean; empty?: boolean }} AuthenticatorOptions
  * What the next signing assertion carries; tests change it between ceremonies.
@@ -82,12 +82,13 @@ function softwareAuthenticator({ prf = true, cancel, highS = false, empty = fals
         if (empty) return null;
         if (publicKey.extensions?.prf) {
           if (!prf) return { rawId: buffer(ID), getClientExtensionResults: () => ({}) };
-          // A stand-in PRF: a deterministic function of the salt, as the real extension is.
-          const first = sha256(new Uint8Array(publicKey.extensions.prf.eval.first));
-          return {
-            rawId: buffer(ID),
-            getClientExtensionResults: () => ({ prf: { results: { first: buffer(first) } } }),
+          // A stand-in PRF: a deterministic function of each salt, as the real extension is.
+          const { first, second } = publicKey.extensions.prf.eval;
+          const results = {
+            first: buffer(sha256(new Uint8Array(first))),
+            ...(second && { second: buffer(sha256(new Uint8Array(second))) }),
           };
+          return { rawId: buffer(ID), getClientExtensionResults: () => ({ prf: { results } }) };
         }
         const authData = authenticatorData();
         const asked = new Uint8Array(publicKey.challenge);
@@ -202,10 +203,9 @@ test('a cancelled or timed-out prompt is UserCancelled on every ceremony', async
     };
     await assert.rejects(seam.sign(credential, new Uint8Array(32)), { code: 'UserCancelled' });
     await assert.rejects(
-      b.walletSeedFromPasskey({
+      b.passkeyPrf({
         credentialId: ID,
         rpId: RP,
-        networkId: 'undeployed',
         credentials: softwareAuthenticator({ cancel }).container,
       }),
       { code: 'UserCancelled' },
@@ -213,38 +213,48 @@ test('a cancelled or timed-out prompt is UserCancelled on every ceremony', async
   }
 });
 
-test('the PRF wallet seed is network-bound and absent without PRF support', async () => {
+test('the PRF seed is the 64-byte BIP-39 seed of output #2, and fails closed without PRF', async () => {
   const auth = softwareAuthenticator();
-  const seed = (/** @type {string} */ networkId) =>
-    b.walletSeedFromPasskey({ credentialId: ID, rpId: RP, networkId, credentials: auth.container });
-  const a1 = await seed('undeployed');
-  const a2 = await seed('testnet');
-  assert.equal(a1.length, 32);
-  assert.notDeepEqual(a1, a2);
-  assert.deepEqual(await seed('undeployed'), a1);
-  const none = await b.walletSeedFromPasskey({
-    credentialId: ID,
-    rpId: RP,
-    networkId: 'undeployed',
-    credentials: softwareAuthenticator({ prf: false }).container,
+  const opts = { credentialId: ID, rpId: RP, credentials: auth.container };
+  const seed = await b.passkeySeed(opts);
+  assert.equal(seed.length, 64);
+  assert.deepEqual(await b.passkeySeed(opts), seed);
+  const { root } = await b.passkeyPrf(opts);
+  assert.deepEqual(seed, b.seedFromRoot(root));
+  // No fallback seed: a passkey without PRF never opens a different, empty wallet.
+  const noPrf = { ...opts, credentials: softwareAuthenticator({ prf: false }).container };
+  await assert.rejects(b.passkeySeed(noPrf), { code: 'UnsupportedAuthenticator' });
+  await assert.rejects(b.accEncryptionKeyFromPasskey({ ...noPrf, networkId: 'undeployed' }), {
+    code: 'UnsupportedAuthenticator',
   });
-  assert.equal(none, undefined);
 });
 
-test('the PRF salt is the domain-separated hash of the network, in its own ceremony', async () => {
+test('the ACC encryption key is network-bound and reproducible from the passkey', async () => {
+  const opts = { credentialId: ID, rpId: RP, credentials: softwareAuthenticator().container };
+  const key = (/** @type {string} */ networkId) =>
+    b.accEncryptionKeyFromPasskey({ ...opts, networkId });
+  const undeployed = await key('undeployed');
+  assert.equal(undeployed.length, 32);
+  assert.deepEqual(await key('undeployed'), undeployed);
+  assert.notDeepEqual(await key('preview'), undeployed);
+});
+
+test('both Lace PRF salts are evaluated in one ceremony on the given credential', async () => {
   const auth = softwareAuthenticator();
-  await b.walletSeedFromPasskey({
-    credentialId: ID,
-    rpId: RP,
-    networkId: 'testnet',
-    credentials: auth.container,
-  });
+  await b.passkeyPrf({ credentialId: ID, rpId: RP, credentials: auth.container });
+  assert.equal(auth.gets.length, 1);
   const [ceremony] = auth.gets;
-  assert.ok(ceremony);
-  assert.equal(b.PRF_SALT_PREFIX, 'midnight:passport:wallet:v1:');
-  assert.deepEqual(
-    new Uint8Array(ceremony.extensions?.prf?.eval.first ?? []),
-    sha256(new TextEncoder().encode('midnight:passport:wallet:v1:testnet')),
+  assert.equal(ceremony?.rpId, RP);
+  assert.equal(ceremony?.allowCredentials?.length, 1);
+  assert.deepEqual(new Uint8Array(ceremony?.allowCredentials?.[0]?.id ?? []), ID);
+  // Lace's frozen v1 salts: SHA-256 of 'lace-passport/prf/authoriser/v1' and 'lace/prf/root/v1'.
+  assert.equal(
+    hex(new Uint8Array(ceremony?.extensions?.prf?.eval.first ?? [])),
+    '0caadfc9c1ca3f88897abc59fe897f98a3e9f3ff740239b8828121aa7b814fc2',
+  );
+  assert.equal(
+    hex(new Uint8Array(ceremony?.extensions?.prf?.eval.second ?? [])),
+    '7bae2156e6afa3a5aa6e9d8169f633a0d65874995f3770e5c330b2042582812b',
   );
   // A signing assertion never carries the PRF extension: wa-json134 allows no extension data.
   const seam = seamFor(auth);
@@ -252,30 +262,11 @@ test('the PRF salt is the domain-separated hash of the network, in its own cerem
   assert.equal(auth.gets.at(-1)?.extensions, undefined);
 });
 
-test('the PRF ceremony asks for exactly the credential and relying party it was given', async () => {
-  const auth = softwareAuthenticator();
-  await b.walletSeedFromPasskey({
-    credentialId: ID,
-    rpId: RP,
-    networkId: 'undeployed',
-    credentials: auth.container,
-  });
-  const [ceremony] = auth.gets;
-  assert.equal(ceremony?.rpId, RP);
-  assert.equal(ceremony?.allowCredentials?.length, 1);
-  assert.deepEqual(new Uint8Array(ceremony?.allowCredentials?.[0]?.id ?? []), ID);
-});
-
-test('the PRF seed fails on a dismissed prompt or a different credential, never silently', async () => {
-  const seed = (/** @type {Uint8Array} */ credentialId, /** @type {AuthenticatorOptions} */ opts) =>
-    b.walletSeedFromPasskey({
-      credentialId,
-      rpId: RP,
-      networkId: 'undeployed',
-      credentials: softwareAuthenticator(opts).container,
-    });
-  await assert.rejects(seed(ID, { empty: true }), { code: 'UserCancelled' });
-  await assert.rejects(seed(Uint8Array.of(9, 9), {}), {
+test('the PRF ceremony fails on a dismissed prompt or a different credential, never silently', async () => {
+  const prf = (/** @type {Uint8Array} */ credentialId, /** @type {AuthenticatorOptions} */ opts) =>
+    b.passkeyPrf({ credentialId, rpId: RP, credentials: softwareAuthenticator(opts).container });
+  await assert.rejects(prf(ID, { empty: true }), { code: 'UserCancelled' });
+  await assert.rejects(prf(Uint8Array.of(9, 9), {}), {
     code: 'InternalError',
     message: /different credential/,
   });

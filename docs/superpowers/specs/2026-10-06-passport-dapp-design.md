@@ -28,8 +28,8 @@ prototype that it may borrow from.
 3. The passkey is installed as the account's first device.
 4. One transaction **authorised by the passkey** confirms.
 5. After a page reload the **same passkey reopens the same account**.
-6. A built-in Midnight wallet, derived from the passkey's PRF output, is
-   connected through the standard Midnight DApp Connector API to show that
+6. A built-in Midnight wallet, derived from the passkey's PRF output (the Lace
+   recipe v1, §5.4), is connected through the standard Midnight DApp Connector API to show that
    wallet integration works.
 
 Mapping to LW-15635's definition of done, on the standalone network:
@@ -37,9 +37,9 @@ Mapping to LW-15635's definition of done, on the standalone network:
 | LW-15635 item | Here |
 |---|---|
 | A passkey creates a Passport account, and a transaction from it confirms | Steps 1–4 |
-| The fee sponsor ships no funded secret inside the web app | The sponsor key lives only in the service (§4.4); the built-in wallet's no-PRF fallback is a random, empty seed, never the genesis (sponsor) seed (§5.5, Ruling R24) |
+| The fee sponsor ships no funded secret inside the web app | The sponsor key lives only in the service (§4.4); the built-in wallet's seed comes only from the passkey's PRF, with no fallback seed of any kind (§5.5) |
 | The same passkey reopens the same account after a reload | Step 5 (§5.3) |
-| Account keys are bound to the network | Network id in the registry key and the PRF salt (§5.4) |
+| Account keys are bound to the network | Network id in the registry key and in the MIP-0015 context of the account's encryption key (§5.4) |
 | The run is recorded | The app's evidence panel plus an end-to-end script (§8) |
 
 ### 1.2 Out of scope (MVP)
@@ -191,7 +191,9 @@ export interface PassportSeams {
   readonly chain: ChainSeam;               // adapter-browser's createServiceChain over midnight-js
   readonly registry: RegistrySeam;         // HTTP client for /accounts
   random(length: number): Uint8Array;      // cryptographically secure
-  encryptionKey(): Uint8Array;             // the account's 32-byte encryption key (throwaway in the MVP)
+  // The account's X25519 enc_key for the passkey just created: in the browser, the passkey's
+  // PRF root through the Lace recipe v1 and MIP-0015 (§5.4), one more prompt at create.
+  encryptionKey(credential: PasskeyCredential): Uint8Array | Promise<Uint8Array>;
 }
 
 export interface PasskeySeam {
@@ -321,9 +323,9 @@ node endpoints **pinned at build time**, like the manifest, instead of taken fro
   asks to record. A later decision can keep it instead.
 - The **passkey's private key** never leaves the authenticator. The
   account's authority is the passkey's P-256 key (installed by activation).
-- The **wallet seed** comes from the passkey's PRF output at a separate,
-  network-bound salt; it never authorises the ACC (AUTH-7: the authoriser is
-  independent of the wallet seed).
+- The **wallet seed** and the account's **encryption key** come from the
+  passkey's PRF root (output #2, the Lace recipe v1, §5.4); they never authorise
+  the ACC (AUTH-7: the authoriser is independent of the wallet seed).
 
 ## 5. Flows
 
@@ -337,9 +339,12 @@ node endpoints **pinned at build time**, like the manifest, instead of taken fro
    probe**: one throwaway assertion proves the authenticator produces the exact
    `wa-json134` material (flags, 37-byte authenticator data, origin, ES256)
    before anything is deployed. Create therefore asks for the passkey **twice**.
-   PRF is not evaluated here: it is a separate ceremony when the built-in wallet
-   connects (§5.5).
-3. Generate `salt` and a throwaway 32-byte encryption key; compute
+   A third prompt is the PRF ceremony (§5.4), which derives the account's
+   encryption key; a passkey without PRF fails here with
+   `UnsupportedAuthenticator`, before anything is deployed. PRF output adds
+   authenticator extension data, which `wa-json134` rejects, so it cannot share
+   the probe. Create therefore asks for the passkey **three times**.
+3. Generate `salt`; take the encryption key from step 2; compute
    `boot = derive_boot_commitment_with_p256(salt, pk, policy)` with the
    artefact's pure circuit.
 4. `POST /deploy` with the constructor arguments → address (≈ 10 waves).
@@ -391,12 +396,41 @@ open here", with the same remedy, and none is a defect of the connector.
 The checks trust the indexer (§4.3 known limitations, M6). The epic's A6 (discovery
 on a new device) is a later decision — a name lookup or chain scan.
 
-### 5.4 Network binding
+### 5.4 Network binding and the Lace key recipe
 
-The registry is keyed by `networkId`; the wallet's PRF salt is
-`"midnight:passport:wallet:v1:" + networkId`; the connector refuses a service
-whose `networkId` differs from its own. The ACC encryption context also takes
-the network id (the open MIP-0015 point in LW-15635).
+The registry is keyed by `networkId`, and the connector refuses a service whose
+`networkId` differs from its own.
+
+The secrets below the passkey follow the **Lace recipe v1** (lace-platform
+main, LW-15585 / LW-15584 / LW-15635), in
+`packages/adapter-browser/src/lace-recipe.ts`, so the same passkey yields the
+same wallet and the same account key here as in Lace:
+
+1. **One PRF ceremony** on the user's credential (`allowCredentials`) evaluates
+   two salts, each `SHA-256(utf8(label))`: `first` at
+   `lace-passport/prf/authoriser/v1`, `second` at `lace/prf/root/v1`. No PRF, or
+   no results, is `UnsupportedAuthenticator`; there is **no fallback seed**.
+2. **Seed** from the root (output #2):
+   `entropy = HKDF-SHA256(root, salt = empty, info = 'lace/hkdf/wallet-entropy/v1', 32)`;
+   `words = entropyToMnemonic(HKDF-SHA256(entropy, salt = 'lace', info = 'wallet-seed', 32))`
+   (24 English words); `seed = mnemonicToSeedSync(words)` (64 bytes). Every
+   intermediate byte array is zeroed.
+3. **Account encryption key**: MIP-0015 v1 `deriveSymmetricSecret(seed,
+   domain = 'lace-passport:acc-enc:v1', context = '<networkId>/0')`, a SLIP-0021
+   walk then HKDF-SHA256, ported verbatim from lace-platform; the account's
+   `enc_key` is the X25519 public key of that secret. It is the network binding
+   of the account's keys (the open MIP-0015 point in LW-15635), and it is
+   reproducible from the passkey, so nothing stores it.
+4. **Rotation targets** have no Lace recipe yet: `rotateEncryptionKey` takes a
+   random key, a prototype extension.
+
+The wallet seed itself is not network-bound, as in Lace: the network separates
+wallets through address encoding and the wallet's network id.
+
+**Divergence from Lace (recorded, no change).** Lace's ACC authoriser is a
+JubJub key derived from PRF output #1. This prototype uses the ACC's P-256
+WebAuthn arm, where the passkey signs each call itself, so output #1 is
+evaluated (to keep the ceremony identical to Lace's) but unused.
 
 ### 5.5 Built-in wallet
 
@@ -409,16 +443,14 @@ Connector `InitialAPI` / `ConnectedAPI` subset the harness uses:
 balance getters. The harness shows these to prove wallet integration. The ACC
 flows do not depend on the wallet: fees are sponsored.
 
-The PRF output comes from its own WebAuthn ceremony at wallet connect, not at
-create: the user first picks the passkey, then confirms the PRF evaluation, so
-connecting asks for the passkey twice. When the authenticator has no PRF:
-
-- on `undeployed` only (Ruling R22), the wallet falls back to a **fresh random
-  seed** for that page (Ruling R24). That wallet is empty and ephemeral: it holds no
-  funds and is gone on reload, and the page says so. It is never the genesis seed
-  0…01, which is also the service's sponsor seed, so the web app carries no funded
-  secret (§1.1);
-- on any other network, connecting fails with `UnsupportedAuthenticator`.
+The seed is the passkey's 64-byte BIP-39 seed (§5.4), handed to the wallet SDK's
+`HDWallet.fromSeed`. Lace has no phrase-derived Midnight wallet in scope, so this
+is the prototype's stand-in. The PRF output comes from its own WebAuthn ceremony
+at wallet connect: the user first picks the passkey, then confirms the PRF
+evaluation, so connecting asks for the passkey twice. When the authenticator has
+no PRF, connecting fails with `UnsupportedAuthenticator` on every network: it
+never opens a different, empty wallet, and the web app never carries the genesis
+(sponsor) seed (§1.1). This supersedes Rulings R22 and R24 (the random fallback).
 
 ## 6. Errors
 
@@ -428,7 +460,7 @@ statuses):
 | Failure | Code |
 |---|---|
 | WebAuthn `NotAllowedError` or `AbortError`, or a dismissed prompt | `UserCancelled` |
-| No ES256 key, or an enrolment probe outside `wa-json134`; no PRF for the wallet on a network other than `undeployed` | `UnsupportedAuthenticator` |
+| No ES256 key, or an enrolment probe outside `wa-json134`; no PRF (or no PRF results) at create or at wallet connect | `UnsupportedAuthenticator` |
 | `404` from the registry; a record failing the §5.3 checks; no contract at the address | `AccountNotFound` |
 | `ZkArtifactIntegrityError`; an app pin that is not 64 hex characters; a `/config` manifest that is not the pin | `ArtefactIntegrity` |
 | Prover (`/prove`, `/check`): any 5xx (`502` fault, `503` full queue), the 10-minute `/prove` timeout, or an unreachable service | `ProverUnavailable` |
@@ -466,7 +498,7 @@ packages/protocol/       + connector types
 
 | Level | What | Status |
 |---|---|---|
-| Unit (`node --test`, repo style) | Connector flows against fake seams, including the §5.3 registry checks and the deployed-record retry; error mapping; WebAuthn and PRF against a software authenticator; service routes, the `Host` and content-type guards, the registry and the sponsor policy against a fake proof server and node; the shim; the wallet seed policy | Exists; runs in CI (`pnpm test`, `pnpm test:apps`) |
+| Unit (`node --test`, repo style) | Connector flows against fake seams, including the §5.3 registry checks and the deployed-record retry; error mapping; WebAuthn and PRF against a software authenticator; service routes, the `Host` and content-type guards, the registry and the sponsor policy against a fake proof server and node; the shim; the wallet seed policy (fails closed); the Lace recipe and MIP-0015 against Lace's own vectors | Exists; runs in CI (`pnpm test`, `pnpm test:apps`) |
 | Runtime identity (offline) | `apps/passport-dapp/e2e/runtime-identity.e2e.ts`: the generated module, synced into the dapp (`src/acc/generated`, imported as `#acc`), and midnight-js share one `compact-runtime`, with no resolve hook or dedupe | Exists; runs in `test:apps` when `PASSPORT_CONTRACT_DIR` is set, else skips |
 | Integration | The service against the real localnet: `/zk` serves byte-identical files under the pinned manifest, `/prove` proves `activate_initial_device_with_p256`, `/deploy` deploys | Pending (R12): `apps/passport-service/test/reference.it.test.ts` covers the deploy leg behind `PASSPORT_IT=1` and has not yet run against a localnet |
 | End-to-end script | `apps/passport-dapp/e2e/mvp.e2e.ts`: drives create → activate → rotate → reopen through the real connector with a software ES256 authenticator under `wa-json134` (as the contract team's tests do), records network, address, deploy submission ids and transaction hashes. A preflight stops it before any deploy if two `compact-runtime` copies are loaded | Script exists; the recorded run (R20, `experiments/acc-0.35/results/x8-dapp-e2e.json`) is pending |

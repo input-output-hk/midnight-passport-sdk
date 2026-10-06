@@ -75,8 +75,11 @@ export interface DevWallet {
 }
 
 /**
- * Builds the wallet from a 32-byte seed and starts its sync against the service's indexer and
- * node. The seed is used for key derivation only; nothing here logs or returns it.
+ * Builds the wallet from a BIP-32 master seed and starts its sync against the service's indexer
+ * and node. In the page that seed is the passkey's 64-byte BIP-39 seed (Lace recipe v1,
+ * `passkeySeed`), through `HDWallet.fromSeed`. Lace has no phrase-derived Midnight wallet in
+ * scope yet, so this is the prototype's stand-in for one. The seed is used for key derivation
+ * only; nothing here logs or returns it.
  */
 export async function createDevWallet(
   seed: Uint8Array,

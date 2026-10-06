@@ -132,6 +132,9 @@ importers:
       '@noble/hashes':
         specifier: 2.2.0
         version: 2.2.0
+      '@scure/bip39':
+        specifier: 2.4.0
+        version: 2.4.0
 
   packages/adapter-prover-remote:
     dependencies:

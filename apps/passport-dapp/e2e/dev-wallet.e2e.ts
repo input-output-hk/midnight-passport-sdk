@@ -1,7 +1,7 @@
 // The built-in wallet against the localnet: seeds 0…01 (the genesis-funded dev seed), syncs
 // through the service's /config endpoints and answers the DApp Connector calls. The seed lives in
-// this Node check only; the web app never uses it (R24: its no-PRF fallback is a random, empty
-// wallet). Run it with the localnet and the service up:
+// this Node check only; the web app never uses it (its wallet seed comes from the passkey's PRF,
+// with no fallback). Run it with the localnet and the service up:
 //   nix develop -c bash -c 'cd apps/passport-dapp && node --import tsx e2e/dev-wallet.e2e.ts'
 import assert from 'node:assert/strict';
 import { createDevWallet, type DevWalletConfig } from '../src/wallet/dev-wallet.ts';

@@ -47,20 +47,21 @@
       <button id="copy">Copy evidence</button>
     </div>
     <p class="hint">
-      Creating an account asks for your passkey twice: once to create it, and once to verify the
-      authenticator. Rotating asks once more, and proving on the service takes about 30 seconds.
+      Creating an account asks for your passkey three times: to create it, to verify the
+      authenticator, and to derive the account's encryption key from the passkey's PRF. Rotating
+      asks once more, and proving on the service takes about 30 seconds.
     </p>
     <p class="hint" id="rotate-note">
-      Prototype only: the encryption keys are random and not retained, so encrypted account data is
-      not recoverable. Rotating replaces the account's key with another random one.
+      The account's first encryption key is derived from your passkey (Lace recipe v1, MIP-0015), so
+      it is bound to this network and reproducible. Prototype only: rotating replaces it with a
+      random key that is not retained, so data encrypted to a rotated key is not recoverable.
     </p>
     <p class="hint">
       The built-in wallet is a read-only stand-in for the DApp Connector. Its seed comes from your
       passkey's PRF output, which needs a second prompt: first choose the passkey, then confirm to
-      derive the seed. Without PRF it uses a random seed for this page only, so the wallet is empty
-      and ephemeral. It never proves or pays; the service sponsors.
+      derive the seed. A passkey without PRF cannot create an account or open the wallet. It never
+      proves or pays; the service sponsors.
     </p>
-    <p class="warn" id="wallet-note" role="status"></p>
     <h2>Evidence</h2>
     <pre id="evidence"></pre>
     <script type="module" src="/src/main.ts"></script>
