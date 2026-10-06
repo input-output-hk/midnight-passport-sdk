@@ -186,3 +186,16 @@ test('loadConfig refuses a non-integer or out-of-range port', () => {
     );
   }
 });
+
+test('loadConfig refuses an invalid PASSPORT_NETWORK_ID', () => {
+  const base = { PASSPORT_CONTRACT_DIR: '/c', PASSPORT_MANIFEST_SHA256: 'ab' };
+  assert.equal(loadConfig(base).networkId, 'undeployed');
+  assert.equal(loadConfig({ ...base, PASSPORT_NETWORK_ID: 'testnet' }).networkId, 'testnet');
+  for (const bad of ['Test', 'test-net!', 'A'.repeat(33), '', 'test net']) {
+    assert.throws(
+      () => loadConfig({ ...base, PASSPORT_NETWORK_ID: bad }),
+      /PASSPORT_NETWORK_ID/,
+      bad,
+    );
+  }
+});

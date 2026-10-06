@@ -33,12 +33,21 @@ const parsePort = (raw: string): number => {
   return port;
 };
 
+const parseNetworkId = (raw: string): string => {
+  if (!/^[a-z0-9-]{1,32}$/.test(raw)) {
+    throw new Error(
+      `passport-service: PASSPORT_NETWORK_ID must match [a-z0-9-]{1,32}, got "${raw}"`,
+    );
+  }
+  return raw;
+};
+
 export function loadConfig(env: NodeJS.ProcessEnv): ServiceConfig {
   const contractDir = need(env, 'PASSPORT_CONTRACT_DIR');
   return {
     port: parsePort(env.PASSPORT_SERVICE_PORT ?? '8787'),
     corsOrigin: env.PASSPORT_DAPP_ORIGIN ?? 'http://localhost:5173',
-    networkId: env.PASSPORT_NETWORK_ID ?? 'undeployed',
+    networkId: parseNetworkId(env.PASSPORT_NETWORK_ID ?? 'undeployed'),
     bindingId: env.PASSPORT_BINDING_ID ?? 'acc-45721e1',
     contractDir,
     artefactDir: `${contractDir}/contracts/managed/account`,
