@@ -26,6 +26,10 @@
       #status {
         font-weight: 600;
       }
+      .warn {
+        color: #8a3b00;
+        font-weight: 600;
+      }
       .hint {
         color: #555;
         font-size: 0.9em;
@@ -39,6 +43,7 @@
       <button id="create">Create Passport account</button>
       <button id="open">Open with passkey</button>
       <button id="rotate" disabled>Rotate encryption key</button>
+      <button id="wallet">Connect built-in wallet</button>
       <button id="copy">Copy evidence</button>
     </div>
     <p class="hint">
@@ -49,6 +54,12 @@
       Prototype only: the encryption keys are random and not retained, so encrypted account data is
       not recoverable. Rotating replaces the account's key with another random one.
     </p>
+    <p class="hint">
+      The built-in wallet is a read-only stand-in for the DApp Connector. Its seed comes from your
+      passkey's PRF output, which needs a second prompt: first choose the passkey, then confirm to
+      derive the seed. It never proves or pays; the service sponsors.
+    </p>
+    <p class="warn" id="wallet-note" role="status"></p>
     <h2>Evidence</h2>
     <pre id="evidence"></pre>
     <script type="module" src="/src/main.ts"></script>

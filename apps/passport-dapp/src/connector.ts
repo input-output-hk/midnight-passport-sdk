@@ -15,7 +15,7 @@ import { accModule } from './acc-module.js';
 export const SERVICE_URL = import.meta.env.VITE_PASSPORT_SERVICE_URL ?? 'http://localhost:8787';
 /** The artefact manifest hash this build pins (R18); the service's /config is checked against it. */
 export const MANIFEST_SHA256 = __PASSPORT_MANIFEST_SHA256__;
-const RP_ID = 'localhost';
+export const RP_ID = 'localhost';
 const ORIGIN = 'http://localhost:5173';
 
 export async function connect(networkId: string): Promise<PassportConnectorAPI> {

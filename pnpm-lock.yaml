@@ -41,12 +41,36 @@ importers:
       '@midnight-ntwrk/mn-passport-protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+      '@midnightntwrk/ledger-v9':
+        specifier: 1.0.0-rc.5
+        version: 1.0.0-rc.5
+      '@midnightntwrk/wallet-sdk-abstractions':
+        specifier: 3.0.0-rc.0
+        version: 3.0.0-rc.0
+      '@midnightntwrk/wallet-sdk-address-format':
+        specifier: 4.0.0-rc.0
+        version: 4.0.0-rc.0
+      '@midnightntwrk/wallet-sdk-dust-wallet':
+        specifier: 5.0.0-rc.0
+        version: 5.0.0-rc.0(ws@8.22.0)
       '@midnightntwrk/wallet-sdk-facade':
         specifier: 5.0.0-rc.0
         version: 5.0.0-rc.0(ws@8.22.0)
+      '@midnightntwrk/wallet-sdk-hd':
+        specifier: 3.1.0-rc.0
+        version: 3.1.0-rc.0
+      '@midnightntwrk/wallet-sdk-shielded':
+        specifier: 4.0.0-rc.0
+        version: 4.0.0-rc.0(ws@8.22.0)
+      '@midnightntwrk/wallet-sdk-unshielded-wallet':
+        specifier: 4.0.0-rc.0
+        version: 4.0.0-rc.0(ws@8.22.0)
       buffer:
         specifier: 6.0.3
         version: 6.0.3
+      rxjs:
+        specifier: 7.8.2
+        version: 7.8.2
     devDependencies:
       tsx:
         specifier: 4.23.15
@@ -417,6 +441,9 @@ packages:
   '@midnightntwrk/wallet-sdk-facade@5.0.0-rc.0':
     resolution: {integrity: sha512-sXo56UehJHrobvNr2JWkPOhxpljyOrROGaeXLG4NyvRXli0YaZ0pIigOJoEbrrjLEQBa8HiYwUy04zphwuHCtQ==}
 
+  '@midnightntwrk/wallet-sdk-hd@3.1.0-rc.0':
+    resolution: {integrity: sha512-752XTj3j1pwVu5QSzOd//m503vth2TzPR+bWy5gZ24jfG3H7gHlR6d6cVotcetYdcxFCoVy/gNL/YjA+0mExpg==}
+
   '@midnightntwrk/wallet-sdk-indexer-client@2.0.0-rc.0':
     resolution: {integrity: sha512-5BlXHsL1kHAZU2wazMFcTuP0PCdgGS8eShBLnM92oxXmiJjJalD7HGgIJh4u73nkpteWkLDXpZ3exIoORsBp1A==}
 
@@ -482,6 +509,10 @@ packages:
 
   '@noble/curves@2.2.0':
     resolution: {integrity: sha512-T/BoHgFXirb0ENSPBquzX0rcjXeM6Lo892a2jlYJkqk83LqZx0l1Of7DzlKJ6jkpvMrkHSnAcgb5JegL8SeIkQ==}
+    engines: {node: '>= 20.19.0'}
+
+  '@noble/curves@2.4.0':
+    resolution: {integrity: sha512-P4/62zrgfH33CneE3Dn4WhJVA22YUU0eR51wKIan4NVRvwsA0YnPTwWGpNbpuacSujmSFLvyzpyuR30+fbq2Ew==}
     engines: {node: '>= 20.19.0'}
 
   '@noble/hashes@1.8.0':
@@ -773,6 +804,12 @@ packages:
 
   '@scure/base@2.4.0':
     resolution: {integrity: sha512-thZ1TuJwFwBblOhgsjDKvvGirBxNp+wSvY/DR6tJBJOTDhdAAcHJ8Vbr2eFnqaxeca4+t0i9KBf+uHYGWwZORg==}
+
+  '@scure/bip32@2.4.0':
+    resolution: {integrity: sha512-i3DS0CptAocyvqE4n3SUkpzeQK4vJMFwWLofTwRiiKo2aWojBOfyMCgfKw9HVpO6fSY5AK86sHS/Uzn8kK9Few==}
+
+  '@scure/bip39@2.4.0':
+    resolution: {integrity: sha512-82dxFbZUYboyOf0AXiydsQrFQ5Q4h9mX+O2UkE91ROYmsc0BKMGZLwDmy96Jpa2+vrtoxomjUhy1RPIgH/r2nA==}
 
   '@scure/sr25519@0.2.0':
     resolution: {integrity: sha512-uUuLP7Z126XdSizKtrCGqYyR3b3hYtJ6Fg/XFUXmc2//k2aXHDLqZwFeXxL97gg4XydPROPVnuaHGF2+xriSKg==}
@@ -1548,6 +1585,11 @@ snapshots:
       - utf-8-validate
       - ws
 
+  '@midnightntwrk/wallet-sdk-hd@3.1.0-rc.0':
+    dependencies:
+      '@scure/bip32': 2.4.0
+      '@scure/bip39': 2.4.0
+
   '@midnightntwrk/wallet-sdk-indexer-client@2.0.0-rc.0(ws@8.22.0)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@17.0.2)
@@ -1666,6 +1708,10 @@ snapshots:
   '@noble/curves@2.2.0':
     dependencies:
       '@noble/hashes': 2.2.0
+
+  '@noble/curves@2.4.0':
+    dependencies:
+      '@noble/hashes': 2.4.0
 
   '@noble/hashes@1.8.0': {}
 
@@ -2043,6 +2089,16 @@ snapshots:
   '@scure/base@1.2.6': {}
 
   '@scure/base@2.4.0': {}
+
+  '@scure/bip32@2.4.0':
+    dependencies:
+      '@noble/curves': 2.4.0
+      '@noble/hashes': 2.4.0
+      '@scure/base': 2.4.0
+
+  '@scure/bip39@2.4.0':
+    dependencies:
+      '@noble/hashes': 2.4.0
 
   '@scure/sr25519@0.2.0':
     dependencies:

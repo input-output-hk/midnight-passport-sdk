@@ -1,10 +1,18 @@
 import './polyfills.js';
+import { PassportConnectorError, toPassportError } from '@midnight-ntwrk/mn-passport-account';
+import {
+  defaultFetch,
+  fetchServiceConfig,
+  walletSeedFromPasskey,
+} from '@midnight-ntwrk/mn-passport-adapter-browser';
 import type {
   PassportAccount,
   PassportConnectorAPI,
   PassportConnectorDescriptor,
 } from '@midnight-ntwrk/mn-passport-protocol';
-import { MANIFEST_SHA256, SERVICE_URL, installShim } from './connector.js';
+import { MANIFEST_SHA256, RP_ID, SERVICE_URL, installShim } from './connector.js';
+import { type DevWallet, createDevWallet } from './wallet/dev-wallet.js';
+import { resolveWalletSeed } from './wallet/seed.js';
 
 installShim();
 const $ = <T extends HTMLElement>(id: string) => {
@@ -38,6 +46,7 @@ const status = (text: string) => {
 };
 
 let api: PassportConnectorAPI | undefined;
+let devWallet: DevWallet | undefined;
 let account: PassportAccount | undefined;
 const injected = () =>
   (window as unknown as { midnight?: { passport?: PassportConnectorDescriptor } }).midnight
@@ -89,6 +98,59 @@ $('rotate').onclick = run(async () => {
   const r = await account.rotateEncryptionKey(crypto.getRandomValues(new Uint8Array(32)));
   record('rotate', { ...r, state: await account.state() });
   status(`Rotated in transaction ${r.txHash.slice(0, 16)}….`);
+});
+$('wallet').onclick = run(async () => {
+  const network = evidence.network;
+  $('wallet-note').textContent = '';
+  status('Reading the service configuration…');
+  const config = await fetchServiceConfig(SERVICE_URL, defaultFetch, network);
+  status('Choose your passkey, then confirm again to derive the wallet seed (PRF)…');
+  // The PRF ceremony is its own WebAuthn prompt, so the user picks the passkey here first.
+  let picked: PublicKeyCredential | null;
+  try {
+    picked = (await navigator.credentials.get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        rpId: RP_ID,
+        userVerification: 'required',
+      },
+    })) as PublicKeyCredential | null;
+  } catch (e) {
+    throw toPassportError(e);
+  }
+  if (!picked)
+    throw new PassportConnectorError('UserCancelled', 'The passkey prompt was cancelled.');
+  const prfSeed = await walletSeedFromPasskey({
+    credentialId: new Uint8Array(picked.rawId),
+    rpId: RP_ID,
+    networkId: network,
+  });
+  // Without PRF the genesis dev seed is allowed on the undeployed network only; elsewhere this
+  // throws UnsupportedAuthenticator.
+  const { seed, source } = resolveWalletSeed(prfSeed, config.networkId);
+  if (source === 'fallback-dev-seed') {
+    record('wallet:prf-unavailable', { fallback: 'the standalone network dev seed' });
+    $('wallet-note').textContent =
+      'Your authenticator does not support PRF, so the built-in wallet uses the public genesis dev seed (0…01). Anyone can derive this wallet; it is acceptable on the undeployed network only.';
+  }
+  status('Syncing the built-in wallet…');
+  await devWallet?.stop();
+  devWallet = undefined;
+  try {
+    devWallet = await createDevWallet(seed, config);
+  } finally {
+    seed.fill(0);
+  }
+  const midnight = ((window as unknown as { midnight?: Record<string, unknown> }).midnight ??= {});
+  midnight.devwallet = devWallet.descriptor;
+  const w = await devWallet.descriptor.connect(network);
+  record('wallet', {
+    seedSource: source,
+    configuration: await w.getConfiguration(),
+    unshielded: await w.getUnshieldedAddress(),
+    dust: await w.getDustAddress(),
+  });
+  status('Built-in wallet connected through the DApp Connector API.');
 });
 $('copy').onclick = () =>
   void navigator.clipboard
