@@ -220,17 +220,26 @@ and the detail is logged on the service.
   queue. The set is the circuits that have both a prover key and compiled ZKIR in the
   compiler manifest, which is pinned by hash and verified at start-up. The delegated
   proving registry covers the account bundle only.
-- **Sponsor policy.** `/sponsor/balance` balances only a transaction that:
+- **Sponsor policy: calls only.** `/sponsor/balance` balances only a transaction that:
   - is a standard transaction (no rewards claim) with at least one contract action,
     every one of them a **call** to a Passport account this service **deployed** and
     that is **registered** on its network (deploy and maintenance actions are refused);
-  - and moves nothing but Dust: in segment 0 and in every intent and fallible-offer
-    segment, every non-Dust imbalance is zero. The sponsor pays fees, and no value.
+  - carries **no unshielded offer** (guaranteed or fallible, of any content), **no
+    Dust action** (registration or spend) and **no shielded offer**;
+  - and, as defence in depth, moves nothing but Dust: in segment 0 and in every intent
+    and fallible-offer segment, every non-Dust imbalance is zero.
 
-  Bytes that do not deserialise as an unbound transaction are `400`. The guard sits in
-  the service's balance step, not around the wallet provider, because the reference
-  wave deploy balances its own deployment and maintenance transactions through that
-  provider. The deployed set is persisted beside the registry file.
+  The offers are refused outright, not only when they carry value, because the wallet
+  signs without checking owners: `signRecipe` on an unbound recipe signs every intent
+  segment, and the unshielded wallet's `addSignaturesToOffer` puts the sponsor's
+  signature on every input of the guaranteed and fallible offers, whoever owns it. A
+  net-zero offer (an input that is the sponsor's NIGHT, an output paying the client the
+  same) would pass an imbalance check and spend the sponsor's funds; a Dust
+  registration shares the signed segment data and could redirect the sponsor's Dust
+  generation. Bytes that do not deserialise as an unbound transaction are `400`. The
+  guard sits in the service's balance step, not around the wallet provider, because the
+  reference wave deploy balances its own deployment and maintenance transactions
+  through that provider. The deployed set is persisted beside the registry file.
 - **Deploy cap.** At most `PASSPORT_MAX_DEPLOYS` (default 20) `/deploy` requests per
   service process, failures counted, then `429`. Deployments share the proof queue, so
   one never overlaps a 13.5 GiB proof; the queue refuses a ninth waiting job with `503`.
