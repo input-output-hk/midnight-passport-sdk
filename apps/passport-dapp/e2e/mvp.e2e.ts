@@ -66,7 +66,8 @@ const transactions: {
   readonly txHash: string;
   readonly blockHeight?: number;
 }[] = [];
-let deployTxHashes: readonly string[] = [];
+// The service's `/deploy` names them `txHashes`, but they are submission ids (Final review M4).
+let deploySubmissionIds: readonly string[] = [];
 let last = Date.now();
 const step = (name: string, data: Record<string, unknown> = {}): void => {
   const now = Date.now();
@@ -87,7 +88,7 @@ const chain: ChainSeam = {
   readLedger: (address) => serviceChain.readLedger(address),
   async deploy(args) {
     const result = await serviceChain.deploy(args);
-    deployTxHashes = result.txHashes;
+    deploySubmissionIds = result.txHashes;
     return result;
   },
   async call(address, circuit, args) {
@@ -145,7 +146,7 @@ const evidence = {
   binding: config.bindingId,
   manifestSha256: config.manifestSha256,
   address: account.address,
-  deployTxHashes,
+  deploySubmissionIds,
   transactions,
   steps,
   seconds,

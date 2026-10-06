@@ -206,7 +206,9 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
     submit: (tx) => providers.midnightProvider.submitTx(tag(tx)),
     // The route runs deployments through the same queue as proofs, so they never overlap.
     deploy: async (boot, encKey) => {
-      // Records every transaction id the waves submit; the reference returns the address only.
+      // Records what each wave's `submitTx` returns; the reference returns the address only.
+      // These are submission ids (midnight-js's txId), not the hashes of the transactions as
+      // included: the wire keeps the name `txHashes` for the prototype (Final review M4).
       const txHashes: string[] = [];
       const recording: Providers = {
         ...providers,

@@ -68,6 +68,10 @@ export interface ConstructorArgs {
 }
 export type MvpCircuit = 'activate_initial_device_with_p256' | 'rotate_enc_key_with_p256';
 export interface ChainSeam {
+  /**
+   * Deploys the account. Despite the name, `txHashes` are the waves' submission ids, not the
+   * hashes of the transactions as included (Final review M4); `call` answers the real `txHash`.
+   */
   deploy(
     args: ConstructorArgs,
   ): Promise<{ readonly address: string; readonly txHashes: readonly string[] }>;

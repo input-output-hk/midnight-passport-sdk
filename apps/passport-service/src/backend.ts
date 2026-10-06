@@ -10,6 +10,10 @@ export interface ChainBackend {
   balance(tx: Uint8Array): Promise<Uint8Array>;
   submit(tx: Uint8Array): Promise<string>;
   /** Wave deployment with constructor inputs only; retires the maintenance authority. */
+  /**
+   * Runs the wave deploy. `txHashes` carries each wave's submission id (what `submitTx` returns),
+   * not the hash of the transaction as included (Final review M4).
+   */
   deploy(boot: Uint8Array, encKey: Uint8Array): Promise<{ address: string; txHashes: string[] }>;
   sponsorKeys(): { coinPublicKey: string; encryptionPublicKey: string };
 }
