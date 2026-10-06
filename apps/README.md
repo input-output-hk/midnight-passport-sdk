@@ -68,6 +68,10 @@ evidence to `experiments/acc-0.35/results/x8-dapp-e2e.json`.
 - **Create asks for the passkey twice.** Once to create the credential, and once more for an
   enrolment probe: a throwaway assertion that proves the authenticator produces the exact WebAuthn
   material the ACC verifies, before anything is deployed.
+- **Reopening checks the registry.** The registry is only a hint. `openAccount` uses a record only
+  when the passkey you picked owns the record's key, a contract exists at its address, and that
+  contract holds the passkey as a device. Anything else is `AccountNotFound`, which after a chain
+  reset usually means a stale registry (see Troubleshooting).
 - **Encryption keys are throwaway.** The harness draws a random 32-byte encryption key at create
   and at each rotation and keeps no copy. Nothing encrypted to it can be recovered. Real key
   management is out of scope.
@@ -103,7 +107,9 @@ evidence to `experiments/acc-0.35/results/x8-dapp-e2e.json`.
 Authenticated sessions (a signed-in passkey or a dApp credential) on `/prove`, `/sponsor/*` and
 `/deploy`; per-client rate limits; spending caps per client and per day on the sponsor; proof of
 possession on `PUT /accounts`; a per-job timeout on the proof queue; durable deploy counters (the
-cap resets on restart); and TLS in front of the service.
+cap resets on restart); TLS in front of the service; and the indexer and node endpoints pinned at
+build time, like the manifest. Today the browser takes them from the service's `/config`, so a
+compromised service could fake the ledger that `openAccount`'s checks read.
 
 ## Troubleshooting
 
@@ -120,6 +126,14 @@ cap resets on restart); and TLS in front of the service.
   `pnpm prototype:e2e`, which loads `e2e/dedupe-runtime.mjs` (the Node twin of Vite's
   `resolve.dedupe`). `PASSPORT_CONTRACT_DIR=<dir> pnpm --filter passport-dapp test` checks this
   offline in seconds.
+- **`ProverUnavailable` after about 10 minutes.** The dapp gives up on `/prove` after 10 minutes,
+  but proofs and deployments share one queue on the service. A rotation queued behind a `/deploy`
+  (10 waves) can time out while the service keeps proving it. Wait for the deployment to finish,
+  then retry.
+- **Indexer requests fail in the browser.** The page queries the localnet indexer at
+  `http://localhost:8088` from `http://localhost:5173`. Whether the indexer sends CORS headers has
+  not been checked yet; look for a CORS error in the browser console before suspecting the
+  connector.
 - **Docker has too little memory.** Raise it to at least 24 GiB and retry. `/prove` otherwise
   reports `ProverUnavailable`.
 - **Manifest hash does not match.** Recompute `PASSPORT_MANIFEST_SHA256` from the artefacts you

@@ -2,7 +2,8 @@
 
 > **Status:** draft for review · 2026/10/06 · prototype (MVP), branch
 > `passport-acc-prototype` of the fork. Not a source-of-truth doc: accepted
-> parts move into `docs/` through `doc-sync` with an ADR each.
+> parts move into `docs/` through `doc-sync` with an ADR each. Brought in line
+> with the code after the final whole-branch review (C1, C2, I1, M1–M9).
 > **Serves:** Lace epic LW-15579 (Passport smart account as the Lace account
 > model), to unblock LW-15635 (passkey Passport account) **on the standalone
 > network**. Evidence base: `experiments/acc-0.35` (X1–X7).
@@ -36,7 +37,7 @@ Mapping to LW-15635's definition of done, on the standalone network:
 | LW-15635 item | Here |
 |---|---|
 | A passkey creates a Passport account, and a transaction from it confirms | Steps 1–4 |
-| The fee sponsor ships no funded secret inside the web app | The sponsor key lives only in the service (§4.4) |
+| The fee sponsor ships no funded secret inside the web app | The sponsor key lives only in the service (§4.4); the built-in wallet's no-PRF fallback is a random, empty seed, never the genesis (sponsor) seed (§5.5, Ruling R24) |
 | The same passkey reopens the same account after a reload | Step 5 (§5.3) |
 | Account keys are bound to the network | Network id in the registry key and the PRF salt (§5.4) |
 | The run is recorded | The app's evidence panel plus an end-to-end script (§8) |
@@ -105,12 +106,12 @@ flowchart LR
 | Unit | Responsibility | Depends on |
 |---|---|---|
 | `packages/protocol` (existing) | Adds the **prototype connector types**: `PassportConnectorAPI`, its request/response shapes, error codes, `PASSPORT_CONNECTOR_VERSION = '0.1.0-prototype'`. Types and constants only. | — |
-| `packages/account` (new, `@midnight-ntwrk/mn-passport-account`) | The connector **implementation**, platform-neutral: account state read from the indexer, MVP flows (create, open, rotate), P-256 challenge via the artefact's pure circuits, call assembly. Talks to the service and the passkey through injected seams. | `protocol`, `contract` (allowed graph) |
-| `packages/adapter-browser` (new) | Browser seams: WebAuthn `wa-json134` passkey adapter (create credential, assertion, PRF), `fetch` clients for the service, a midnight-js `ProvingProvider` that delegates to `/prove`, and the **shim** `injectPassportConnector(window, connector)`. | `account`, `contract`, `protocol` |
+| `packages/account` (new, `@midnight-ntwrk/mn-passport-account`) | The connector **implementation**, platform-neutral: MVP flows (create, open, rotate), the device-entry counter scan and the P-256 challenge through the artefact's pure circuits (handed in as the `pureCircuits` seam), the registry client, and the checks that treat the registry as an untrusted hint (§5.3). Talks to the chain, the registry and the passkey through injected seams (§4.2); it assembles no transaction itself. | `protocol` |
+| `packages/adapter-browser` (new) | Browser seams: WebAuthn `wa-json134` passkey adapter (create credential with an enrolment probe, identify with proof of ownership, assertion, PRF); the **chain seam** `createServiceChain`, which assembles and submits calls over midnight-js 5 (`submitCallTx`; a `ProvingProvider` that delegates to `/prove`; the service's sponsor as wallet and node provider; an indexer reader; `FetchZkConfigProvider` verifying against the app's manifest pin); `fetch` clients for the service; and the **shim** `injectPassportConnector(window, connector)`. | `account`, `contract`, `protocol` |
 | `apps/passport-service` (new, Node) | ZK artefact host, delegated prover, deploy job, fee sponsor, account registry. Holds the only funded key. | the localnet, the pinned artefacts |
 | `apps/passport-dapp` (new, Vite) | Harness UI; hosts the built-in wallet (a stand-in for lace-sdk's); injects the connector through the shim; shows evidence. | `adapter-browser`, `account`, `protocol` |
 
-`scripts/dependency-graph.mjs` gains `account: ['contract', 'protocol']` and
+`scripts/dependency-graph.mjs` gains `account: ['protocol']` and
 `'adapter-browser': ['account', 'contract', 'protocol']`; `apps/*` join the
 pnpm workspace and stay outside the graph, which governs packages only.
 
@@ -152,7 +153,7 @@ export interface PassportAccount {
 export interface PassportAccountState {
   readonly booted: boolean;
   readonly authNonce: bigint;
-  readonly deviceEpoch: number;
+  readonly deviceEpoch: bigint;
   readonly entryCount: number; // not a device count (erratum 8)
   readonly specVersion: number;
 }
@@ -184,32 +185,65 @@ its own seams.
 ```ts
 export interface PassportSeams {
   readonly networkId: string;
-  readonly passkey: PasskeySeam;      // WebAuthn in the browser; a software ES256 signer in tests
-  readonly service: ServiceSeam;      // HTTP client for apps/passport-service
-  readonly provingProvider: unknown;  // midnight-js ProvingProvider delegating to /prove
-  readonly indexer: { readonly uri: string; readonly wsUri: string };
+  readonly bindingId: string;              // the artefact revision, e.g. 'acc-45721e1'
+  readonly pureCircuits: AccPureCircuits;  // the generated module's pure circuits the MVP calls
+  readonly passkey: PasskeySeam;           // WebAuthn in the browser; a software ES256 signer in the e2e
+  readonly chain: ChainSeam;               // adapter-browser's createServiceChain over midnight-js
+  readonly registry: RegistrySeam;         // HTTP client for /accounts
+  random(length: number): Uint8Array;      // cryptographically secure
+  encryptionKey(): Uint8Array;             // the account's 32-byte encryption key (throwaway in the MVP)
+}
+
+export interface PasskeySeam {
+  create(userName: string): Promise<PasskeyCredential>;   // { credentialId, publicKey, policy }
+  identify(): Promise<PasskeyIdentity>;                   // the discoverable-credential prompt
+  sign(credential: PasskeyCredential, challenge: Uint8Array): Promise<PasskeySignature>;
+}
+export interface PasskeyIdentity {
+  readonly credentialId: Uint8Array;
+  /** True only when identify's own assertion verifies under this key and policy (§5.3). */
+  owns(publicKey: P256PublicKey, policy: WebAuthnPolicy): boolean;
+}
+
+export interface ChainSeam {
+  deploy(args: { boot: Uint8Array; encKey: Uint8Array }):
+    Promise<{ address: string; txHashes: readonly string[] }>;  // txHashes: submission ids (§4.3)
+  readLedger(address: string): Promise<AccLedgerView | undefined>; // booted, authNonce, deviceEpoch, hasEntry, …
+  call(address: string, circuit: MvpCircuit, args: readonly unknown[]): Promise<PassportTxResult>;
+}
+
+export interface RegistrySeam {
+  put(networkId: string, record: AccountRecord): Promise<void>;
+  get(networkId: string, credentialId: Uint8Array): Promise<AccountRecord | undefined>;
 }
 ```
 
 ### 4.3 Service HTTP API (`apps/passport-service`)
 
-All JSON over HTTP, CORS restricted to the dapp origin. Binary values are hex.
+All JSON over HTTP; binary values are hex. CORS lets only the dapp origin **read** an answer,
+which on its own does not stop any page the user visits from **sending** a "simple" request (a
+`text/plain` POST needs no preflight). So the service also answers `415` to any request other than
+`GET`, `HEAD` or `OPTIONS` whose `content-type` is not `application/json`, which forces a CORS
+preflight that only the dapp origin passes, and `421` to any `Host` other than `127.0.0.1`,
+`localhost` or `[::1]` at its port, or `PASSPORT_SERVICE_HOST` when set, which defeats DNS
+rebinding. The adapter's clients always send `application/json`.
 
 | Endpoint | Request | Response | Notes |
 |---|---|---|---|
-| `GET /config` | — | `{ networkId, bindingId, manifestSha256, indexerUri, indexerWsUri, nodeUri }` | The connector checks `networkId`, and checks `manifestSha256` against the app's build-time pin, refusing a mismatch (`ArtefactIntegrity`). Deriving the pin from the contract binding is future work (Ruling R18) |
+| `GET /config` | — | `{ networkId, bindingId, manifestSha256, indexerUri, indexerWsUri, nodeUri, zkBaseUrl, coinPublicKey, encryptionPublicKey }` | The connector checks `networkId`, refuses an app pin that is not 64 hex characters, and checks `manifestSha256` against that build-time pin, refusing a mismatch (`ArtefactIntegrity`). Deriving the pin from the contract binding is future work (Ruling R18). The network id and endpoints are the reference client's fixed localnet values (the service refuses to start with others); `zkBaseUrl` is the service's own `/zk/acc` under the checked `Host`; `coinPublicKey` and `encryptionPublicKey` are the sponsor wallet's, which midnight-js's wallet provider reports. The endpoints are not pinned (see the known limitations) |
 | `GET /zk/acc/{compiler,zkir,keys}/…` | — | the file, `application/octet-stream` | Layout `FetchZkConfigProvider` expects; immutable cache headers, manifest `no-cache`. Prover keys are served (for completeness and other consumers) but the dapp never fetches them |
 | `POST /check` | `{ preimage, keyLocation }` (hex, string) | `{ result: (string\|null)[] }` | midnight-js `ProvingProvider.check`: bigints as decimal strings, `undefined` as `null`. Circuit allow-listed (below) |
 | `POST /prove` | `{ preimage, keyLocation, overwriteBindingInput? }` (hex, string, decimal string of at most 80 digits) | `{ proof }` (hex) | midnight-js `ProvingProvider.prove`: resolves `keyLocation` to the circuit, attaches its ZKIR and keys from the account bundle, calls the proof server. Allow-listed to the binding's circuits. One proof at a time (a P-256 proof needs about 13.5 GiB) |
 | `POST /sponsor/balance` | `{ tx }` (hex; proven, unbound transaction) | `{ tx }` (hex; balanced, finalized) | The wallet provider's `balanceTx`: adds Dust fees from the sponsor wallet. Subject to the sponsor policy (below) |
 | `POST /sponsor/submit` | `{ tx }` (hex; finalized) | `{ txId }` | The node provider's `submitTx` |
-| `POST /deploy` | `{ boot, encKey }` (32 bytes each, hex) | `{ address, txHashes[] }` | Constructor inputs only; the service fills the recovery-at-birth defaults (a random JubJub key whose secret is discarded, a zero wrap, a 3-day veto window), runs the 10 waves and retires the authority in the last. Answers when the waves finish; the connector's `onProgress` steps carry the progress |
+| `POST /deploy` | `{ boot, encKey }` (32 bytes each, hex) | `{ address, txHashes[] }` | `txHashes` carries each wave's **submission id** (what `submitTx` returns), not the hash of the transaction as included; the name stays for the prototype. Constructor inputs only; the service fills the recovery-at-birth defaults (a random JubJub key whose secret is discarded, a zero wrap, a 3-day veto window), runs the 10 waves and retires the authority in the last. Answers when the waves finish; the connector's `onProgress` steps carry the progress |
 | `PUT /accounts/{networkId}/{credentialId}` | `{ credentialId, address, publicKey, salt, policy, status: 'deployed'\|'active' }` | `204`, or `409` if write-once violated | Write-once except `deployed` → `active`; returns `409` for any other transition or field change. Proof of possession required in production. The registry (§5.3) |
 | `GET /accounts/{networkId}/{credentialId}` | — | `{ credentialId, address, publicKey, salt, policy, status }` or `404` | |
 
 #### Service policy
 
-Errors: a malformed or oversized body is `400` or `413`; a policy refusal is `403`;
+Errors: a foreign `Host` is `421`; a body-carrying request that is not `application/json` is
+`415`; a malformed or oversized body is `400` or `413`; a policy refusal is `403`;
 the deploy cap is `429`; a full queue is `503`; a failure of the proof server, the
 wallet or the chain is `502`. The `/sponsor/*` and `/deploy` `502` bodies are generic
 and the detail is logged on the service.
@@ -246,7 +280,13 @@ and the detail is logged on the service.
   The queue has no per-job timeout in the prototype, so a proof server that never
   answers wedges it until the service restarts.
 - **Binding.** The server listens on `127.0.0.1`. `PASSPORT_SERVICE_HOST` overrides
-  it, and a non-loopback host exposes the sponsor to whoever can reach it.
+  it, and a non-loopback host exposes the sponsor to whoever can reach it. The `Host`
+  check and the JSON content type (above) keep cross-site pages out of a loopback service.
+- **Endpoints.** The network id and the indexer, node and proof-server endpoints are the
+  ones the reference client hard-codes (`CONFIG.local`). `PASSPORT_NETWORK_ID`,
+  `PASSPORT_INDEXER_URI`, `PASSPORT_INDEXER_WS_URI`, `PASSPORT_NODE_URI` and
+  `PASSPORT_PROOF_SERVER_URI` may only restate them, and the service compares them with the
+  reference at start-up, so `/config` never advertises a chain the sponsor does not use.
 - **Dust races.** `/sponsor/balance` and `/deploy` are not coordinated, so a balance
   and a deployment wave running together can pick the same Dust. The loser fails at
   submit and no funds are lost; the client retries.
@@ -255,7 +295,22 @@ and the detail is logged on the service.
 (a signed-in passkey or a dApp credential) on `/prove`, `/sponsor/*` and `/deploy`;
 per-client rate limits; spending caps per client and per day on the sponsor; proof of
 possession on `PUT /accounts`; a per-job timeout on the proof queue; durable deploy
-counters (the cap resets on restart); and TLS in front of the service.
+counters (the cap resets on restart); TLS in front of the service; and the indexer and
+node endpoints **pinned at build time**, like the manifest, instead of taken from `/config`
+(final review M6).
+
+**Known limitations (recorded, not fixed).**
+
+- *Untrusted ledger source (M6).* The browser reads the ledger through the indexer `/config`
+  names. The artefacts are pinned and the ledger source is not, so a fully compromised service
+  can fake the ledger: the §5.3 checks defend against a stale or poisoned registry, not a lying
+  indexer.
+- *Timeouts and queue position (M7).* The adapter gives up on `/prove` after 10 minutes and
+  reports `ProverUnavailable`. A rotation queued behind a `/deploy` (10 waves) can exceed that
+  while the service keeps proving; retry once the deployment has finished.
+- *Indexer CORS (M8).* The browser queries `http://localhost:8088/api/v4/graphql` from origin
+  `http://localhost:5173`. Whether the localnet indexer sends CORS headers is unverified; check
+  it on the first manual run before suspecting the connector.
 
 ### 4.4 Secrets and authority
 
@@ -274,18 +329,29 @@ counters (the cap resets on restart); and TLS in front of the service.
 
 ### 5.1 Create (MVP)
 
-1. `connect('undeployed')` → `GET /config`; refuse on network mismatch.
-2. Passkey: `createBrowserCredential(rpId='localhost', origin='http://localhost:5173')`
-   as a **discoverable** (resident) ES256 credential, so §5.3 can find it
-   without a stored id → credential id, P-256 public key; PRF evaluated where
-   supported.
-3. Generate `salt` and an X25519 encryption key pair; compute
+1. `connect('undeployed')` → `GET /config`; refuse on network mismatch, and refuse a
+   malformed app pin or a manifest mismatch (`ArtefactIntegrity`).
+2. Passkey: `browserPasskey({ rpId: 'localhost', origin: 'http://localhost:5173' }).create`
+   makes a **discoverable** (resident) ES256 credential, so §5.3 can find it
+   without a stored id → credential id, P-256 public key. Then an **enrolment
+   probe**: one throwaway assertion proves the authenticator produces the exact
+   `wa-json134` material (flags, 37-byte authenticator data, origin, ES256)
+   before anything is deployed. Create therefore asks for the passkey **twice**.
+   PRF is not evaluated here: it is a separate ceremony when the built-in wallet
+   connects (§5.5).
+3. Generate `salt` and a throwaway 32-byte encryption key; compute
    `boot = derive_boot_commitment_with_p256(salt, pk, policy)` with the
    artefact's pure circuit.
 4. `POST /deploy` with the constructor arguments → address (≈ 10 waves).
-5. Build `activate_initial_device_with_p256(pk, salt, policy)`; prove through
+5. `PUT /accounts/undeployed/{credentialId}` with status `deployed`, **before**
+   activation: the salt it records is the only way to activate the account. The
+   write is idempotent, so it is retried up to 3 times with backoff before
+   `createAccount` fails.
+6. Build `activate_initial_device_with_p256(pk, salt, policy)`; prove through
    `/prove` (k = 14); submit through `/sponsor/balance` and `/sponsor/submit`.
-6. `PUT /accounts/undeployed/{credentialId}`; return the `PassportAccount`.
+7. `PUT` the record again with status `active`; return the `PassportAccount`. If
+   step 6 or 7 fails, the `deployed` record lets `openAccount` finish the job
+   (§5.3).
 
 ### 5.2 Transact (MVP)
 
@@ -298,11 +364,32 @@ pure circuit; ask the passkey for an assertion over it; build
 
 ### 5.3 Reopen after reload
 
-`openAccount()`: a discoverable-credential assertion returns the credential id;
-`GET /accounts/undeployed/{credentialId}` returns the address and public key;
-the account's live state is read from the indexer. The registry is the MVP's
-discovery mechanism; the epic's A6 (discovery on a new device) is a later
-decision — a name lookup or chain scan.
+`openAccount()`: a discoverable-credential assertion (`identify`) returns the
+credential id and an `owns(publicKey, policy)` proof over that same assertion;
+`GET /accounts/undeployed/{credentialId}` returns the record. The registry is the
+MVP's discovery mechanism and an **untrusted hint** (Ruling R10(b)). Before the
+record is returned, or marked active, all of these must hold, else
+`AccountNotFound`:
+
+1. the record's credential id is the picked one, and `owns(record.publicKey,
+   record.policy)` is true: the identify assertion verifies under the record's key
+   and policy, so a record naming some other account and that account's key fails
+   here, with no extra prompt;
+2. a ledger exists at `record.address` (read from the indexer);
+3. for an `active` record, or a `deployed` record whose ledger is already booted,
+   the passkey's device entry is found by the 0..63 counter scan
+   (`derive_device_entry_with_p256`, the same scan rotate uses).
+
+A `deployed` record whose ledger is booted and holds the passkey is adopted without
+activating again (activation landed but its answer or the registry write was lost).
+A `deployed` record on an unbooted ledger is activated: the boot commitment binds pk,
+salt and policy on chain, so a mismatched record cannot activate someone else's
+account; its entry is checked before the record is marked active. `AccountNotFound`
+is the code for every failure: for the caller each means "no account this passkey can
+open here", with the same remedy, and none is a defect of the connector.
+
+The checks trust the indexer (§4.3 known limitations, M6). The epic's A6 (discovery
+on a new device) is a later decision — a name lookup or chain scan.
 
 ### 5.4 Network binding
 
@@ -314,23 +401,45 @@ the network id (the open MIP-0015 point in LW-15635).
 ### 5.5 Built-in wallet
 
 An in-page wallet built on the Midnight wallet SDK against the standalone
-node and indexer, seeded from the PRF output (or a dev seed when PRF is
-unavailable), exposed as `window.midnight.devwallet` with the standard DApp
+node and indexer, seeded from the passkey's PRF output, exposed as
+`window.midnight.devwallet` with the standard DApp
 Connector `InitialAPI` / `ConnectedAPI` subset the harness uses:
 `connect('undeployed')`, `getConfiguration`, `getConnectionStatus`,
 `getShieldedAddresses`, `getUnshieldedAddress`, `getDustAddress`, the three
 balance getters. The harness shows these to prove wallet integration. The ACC
 flows do not depend on the wallet: fees are sponsored.
 
+The PRF output comes from its own WebAuthn ceremony at wallet connect, not at
+create: the user first picks the passkey, then confirms the PRF evaluation, so
+connecting asks for the passkey twice. When the authenticator has no PRF:
+
+- on `undeployed` only (Ruling R22), the wallet falls back to a **fresh random
+  seed** for that page (Ruling R24). That wallet is empty and ephemeral: it holds no
+  funds and is gone on reload, and the page says so. It is never the genesis seed
+  0…01, which is also the service's sponsor seed, so the web app carries no funded
+  secret (§1.1);
+- on any other network, connecting fails with `UnsupportedAuthenticator`.
+
 ## 6. Errors
 
-The connector maps failures to `PassportErrorCode`: a WebAuthn
-`NotAllowedError` → `UserCancelled`; no PRF or ES256 → `UnsupportedAuthenticator`;
-`404` from the registry → `AccountNotFound`; `ZkArtifactIntegrityError` →
-`ArtefactIntegrity`; `/prove` 5xx or timeout → `ProverUnavailable`;
-`/sponsor/*` refusal (`403`) → `SponsorRejected`. The service fails closed when its
-artefact directory does not match the pinned manifest hash, and refuses
-circuits or contracts outside the binding.
+The connector maps failures to `PassportErrorCode` (Ruling R16(b) for the service
+statuses):
+
+| Failure | Code |
+|---|---|
+| WebAuthn `NotAllowedError` or `AbortError`, or a dismissed prompt | `UserCancelled` |
+| No ES256 key, or an enrolment probe outside `wa-json134`; no PRF for the wallet on a network other than `undeployed` | `UnsupportedAuthenticator` |
+| `404` from the registry; a record failing the §5.3 checks; no contract at the address | `AccountNotFound` |
+| `ZkArtifactIntegrityError`; an app pin that is not 64 hex characters; a `/config` manifest that is not the pin | `ArtefactIntegrity` |
+| Prover (`/prove`, `/check`): any 5xx (`502` fault, `503` full queue), the 10-minute `/prove` timeout, or an unreachable service | `ProverUnavailable` |
+| Prover: `400` or `403` (a malformed request or a circuit outside the binding: a defect in the adapter) | `InternalError` |
+| Sponsor (`/sponsor/*`, `/deploy`): `403` (policy), `429` (deploy cap) or any 5xx | `SponsorRejected` |
+| Sponsor: any other 4xx, or a transport fault (no answer at all, which is not a refusal) | `InternalError` |
+| `/config` on another network | `NetworkMismatch` |
+| Anything else | `InternalError` |
+
+The service fails closed when its artefact directory does not match the pinned
+manifest hash, and refuses circuits or contracts outside the binding.
 
 ## 7. Repository layout and build
 
@@ -352,12 +461,13 @@ packages/protocol/       + connector types
 
 ## 8. Testing
 
-| Level | What |
-|---|---|
-| Unit (`node --test`, repo style) | Connector flows against fake seams; error mapping; service routes against a fake proof server and node; registry; the shim |
-| Integration | The service against the real localnet: `/zk` serves byte-identical files under the pinned manifest, `/prove` proves `activate_initial_device_with_p256`, `/deploy` deploys |
-| End-to-end script | `apps/passport-dapp/e2e`: drives create → activate → rotate → reopen through the real connector with a software ES256 authenticator under `wa-json134` (as the contract team's tests do), records network, address, and transaction hashes |
-| Manual, recorded | The same flow with a real passkey in a browser at `http://localhost:5173`; evidence (address, hashes, steps) exported from the app into `experiments/acc-0.35/results/` |
+| Level | What | Status |
+|---|---|---|
+| Unit (`node --test`, repo style) | Connector flows against fake seams, including the §5.3 registry checks and the deployed-record retry; error mapping; WebAuthn and PRF against a software authenticator; service routes, the `Host` and content-type guards, the registry and the sponsor policy against a fake proof server and node; the shim; the wallet seed policy | Exists; runs in CI (`pnpm test`, `pnpm test:apps`) |
+| Runtime identity (offline) | `apps/passport-dapp/e2e/runtime-identity.e2e.ts`: the generated module and midnight-js share one `compact-runtime` under the e2e's resolve hook (`e2e/dedupe-runtime.mjs`, the Node twin of Vite's `resolve.dedupe`) | Exists; runs in `test:apps` when `PASSPORT_CONTRACT_DIR` is set, else skips |
+| Integration | The service against the real localnet: `/zk` serves byte-identical files under the pinned manifest, `/prove` proves `activate_initial_device_with_p256`, `/deploy` deploys | Pending (R12): `apps/passport-service/test/reference.it.test.ts` covers the deploy leg behind `PASSPORT_IT=1` and has not yet run against a localnet |
+| End-to-end script | `apps/passport-dapp/e2e/mvp.e2e.ts`: drives create → activate → rotate → reopen through the real connector with a software ES256 authenticator under `wa-json134` (as the contract team's tests do), records network, address, deploy submission ids and transaction hashes. A preflight stops it before any deploy if two `compact-runtime` copies are loaded | Script exists; the recorded run (R20, `experiments/acc-0.35/results/x8-dapp-e2e.json`) is pending |
+| Manual, recorded | The same flow with a real passkey in a browser at `http://localhost:5173`; evidence (address, hashes, steps) exported from the app into `experiments/acc-0.35/results/` | Pending |
 
 ## 9. Delivery
 
@@ -372,7 +482,7 @@ manual run. The implementation plan breaks these into tasks.
 | # | Item | Mitigation / owner |
 |---|---|---|
 | R1 | The midnight-js 5 / wallet SDK pre-releases are young (7-day rule) and their browser builds may need polyfills | Record exclusions; the passport PWA demo runs the wallet SDK in a tab, so a known path exists |
-| R2 | Building ACC calls in the browser needs the generated module and the wave-deploy helpers, which live in the contract team's TypeScript, not in a package | Port the minimum (challenge, call, activation) into `account`; the service reuses the reference wave-deploy logic |
+| R2 | Building ACC calls in the browser needs the generated module and the wave-deploy helpers, which live in the contract team's TypeScript, not in a package | The dapp bundles the generated module from the pinned artefact build; `adapter-browser` assembles calls over midnight-js 5, and `account` reaches the pure circuits through a seam; the service reuses the reference wave-deploy logic |
 | R3 | Sponsoring a transaction built elsewhere (balance with the sponsor's dust, then submit) | Balance on the service with the sponsor wallet's balancing API (`/sponsor/balance`, then `/sponsor/submit`), under the sponsor policy of §4.3; fall back to the service building the whole call if needed |
 | R4 | Docker memory for P-256 proofs | Documented ≥ 24 GiB; `/prove` reports `ProverUnavailable` clearly |
 | Q1 | Retire the authority at deploy (default) or keep it? | Owner decision (epic risk 12) |
