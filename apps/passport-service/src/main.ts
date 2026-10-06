@@ -1,4 +1,5 @@
-import { verifyArtefacts } from './artefacts.ts';
+import type { AddressInfo } from 'node:net';
+import { bindingCircuits, verifyArtefacts } from './artefacts.ts';
 import { loadConfig } from './config.ts';
 import { loadReferenceBackend } from './reference-backend.ts';
 import { chainRoute } from './routes/chain.ts';
@@ -16,8 +17,12 @@ const server = createServer(config, [
   configRoute(config, () => backend.sponsorKeys()),
   zkRoute(config),
   registryRoute(config),
-  chainRoute(backend),
+  chainRoute(backend, {
+    circuits: bindingCircuits(config.artefactDir),
+    maxDeploys: config.maxDeploys,
+  }),
 ]);
-server.listen(config.port, () =>
-  console.log(`passport-service: http://localhost:${config.port} (network ${config.networkId})`),
-);
+server.listen(config.port, config.host, () => {
+  const { address, port } = server.address() as AddressInfo;
+  console.log(`passport-service: http://${address}:${port} (network ${config.networkId})`);
+});

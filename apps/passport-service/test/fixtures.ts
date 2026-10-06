@@ -35,6 +35,7 @@ export function testConfig(over: Partial<ServiceConfig> = {}): ServiceConfig {
   const { dir, manifestSha256 } = fakeArtefacts();
   return {
     port: 0,
+    host: '127.0.0.1',
     corsOrigin: 'http://localhost:5173',
     networkId: 'undeployed',
     bindingId: 'acc-test',
@@ -47,6 +48,7 @@ export function testConfig(over: Partial<ServiceConfig> = {}): ServiceConfig {
     proofServerUri: 'http://p',
     registryFile: join(dir, 'registry.json'),
     sponsorSeed: '00'.repeat(32),
+    maxDeploys: 20,
     ...over,
   };
 }

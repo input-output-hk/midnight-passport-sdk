@@ -29,3 +29,27 @@ export function verifyArtefacts(dir: string, manifestSha256: string): void {
   };
   walk(JSON.parse(manifestBytes.toString('utf8')) as Record<string, unknown>, '');
 }
+
+/**
+ * The circuits the binding can prove: those with both a prover key and a compiled ZKIR in the
+ * compiler manifest. The manifest is the authority because it is pinned by hash and every file
+ * in it is verified at start-up (`verifyArtefacts`), whereas `contract-info.json` also lists the
+ * pure circuits, which have no keys and are never proved. Call it after `verifyArtefacts`.
+ */
+export function bindingCircuits(dir: string): Set<string> {
+  const manifest = JSON.parse(
+    readFileSync(join(dir, 'compiler/contract-manifest.json'), 'utf8'),
+  ) as Record<string, unknown>;
+  const names = (folder: string, suffix: string): Set<string> => {
+    const out = new Set<string>();
+    const node = manifest[folder];
+    if (!node || typeof node !== 'object') return out;
+    for (const [name, value] of Object.entries(node as Record<string, unknown>)) {
+      const entry = value as { type?: unknown } | null;
+      if (name.endsWith(suffix) && entry?.type === 'file') out.add(name.slice(0, -suffix.length));
+    }
+    return out;
+  };
+  const zkir = names('zkir', '.bzkir');
+  return new Set([...names('keys', '.prover')].filter((circuit) => zkir.has(circuit)));
+}

@@ -1,5 +1,10 @@
 export interface ServiceConfig {
   readonly port: number;
+  /**
+   * The interface the server binds. Loopback by default: the service spends the sponsor's funds
+   * for anyone who can reach it, so a non-loopback host exposes the sponsor.
+   */
+  readonly host: string;
   readonly corsOrigin: string;
   readonly networkId: string;
   readonly bindingId: string;
@@ -15,6 +20,8 @@ export interface ServiceConfig {
   readonly registryFile: string;
   /** Hex wallet seed of the fee sponsor; never sent to a client. */
   readonly sponsorSeed: string;
+  /** How many /deploy requests this process accepts (failures count), bounding sponsor spend. */
+  readonly maxDeploys: number;
 }
 
 const need = (env: NodeJS.ProcessEnv, key: string): string => {
@@ -33,6 +40,16 @@ const parsePort = (raw: string): number => {
   return port;
 };
 
+const parseMaxDeploys = (raw: string): number => {
+  const n = Number(raw);
+  if (!/^\d+$/.test(raw) || !Number.isSafeInteger(n) || n < 1) {
+    throw new Error(
+      `passport-service: PASSPORT_MAX_DEPLOYS must be a positive integer, got "${raw}"`,
+    );
+  }
+  return n;
+};
+
 const parseNetworkId = (raw: string): string => {
   if (!/^[a-z0-9-]{1,32}$/.test(raw)) {
     throw new Error(
@@ -46,6 +63,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServiceConfig {
   const contractDir = need(env, 'PASSPORT_CONTRACT_DIR');
   return {
     port: parsePort(env.PASSPORT_SERVICE_PORT ?? '8787'),
+    host: env.PASSPORT_SERVICE_HOST || '127.0.0.1',
     corsOrigin: env.PASSPORT_DAPP_ORIGIN ?? 'http://localhost:5173',
     networkId: parseNetworkId(env.PASSPORT_NETWORK_ID ?? 'undeployed'),
     bindingId: env.PASSPORT_BINDING_ID ?? 'acc-45721e1',
@@ -61,5 +79,6 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServiceConfig {
     sponsorSeed:
       env.PASSPORT_SPONSOR_SEED ??
       '0000000000000000000000000000000000000000000000000000000000000001',
+    maxDeploys: parseMaxDeploys(env.PASSPORT_MAX_DEPLOYS ?? '20'),
   };
 }

@@ -8,8 +8,8 @@ import { json, readJson, type Route } from '../src/http.ts';
 import { loadConfig } from '../src/config.ts';
 import { mkdirSync } from 'node:fs';
 import { configRoute, zkRoute } from '../src/routes/zk.ts';
-import { verifyArtefacts } from '../src/artefacts.ts';
-import { testConfig } from './fixtures.ts';
+import { bindingCircuits, verifyArtefacts } from '../src/artefacts.ts';
+import { fakeArtefacts, testConfig } from './fixtures.ts';
 
 async function start(config = testConfig()) {
   const server = createServer(config, [configRoute(config, () => ({})), zkRoute(config)]);
@@ -198,4 +198,25 @@ test('loadConfig refuses an invalid PASSPORT_NETWORK_ID', () => {
       bad,
     );
   }
+});
+
+test('loadConfig binds loopback by default and reads the host and deploy cap', () => {
+  const base = { PASSPORT_CONTRACT_DIR: '/c', PASSPORT_MANIFEST_SHA256: 'ab' };
+  assert.equal(loadConfig(base).host, '127.0.0.1');
+  assert.equal(loadConfig({ ...base, PASSPORT_SERVICE_HOST: '' }).host, '127.0.0.1');
+  assert.equal(loadConfig({ ...base, PASSPORT_SERVICE_HOST: '0.0.0.0' }).host, '0.0.0.0');
+  assert.equal(loadConfig(base).maxDeploys, 20);
+  assert.equal(loadConfig({ ...base, PASSPORT_MAX_DEPLOYS: '3' }).maxDeploys, 3);
+  for (const bad of ['0', '-1', '1.5', 'x', '']) {
+    assert.throws(
+      () => loadConfig({ ...base, PASSPORT_MAX_DEPLOYS: bad }),
+      /PASSPORT_MAX_DEPLOYS/,
+      bad,
+    );
+  }
+});
+
+test('bindingCircuits lists the circuits that have a prover key and compiled ZKIR', () => {
+  const { dir } = fakeArtefacts();
+  assert.deepEqual([...bindingCircuits(dir)], ['c']);
 });
