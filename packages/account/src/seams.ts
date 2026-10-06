@@ -21,10 +21,20 @@ export interface PasskeySignature {
   readonly authenticator_data: Uint8Array;
   readonly sig: { readonly r: bigint; readonly s: bigint };
 }
+/** What the discoverable-credential prompt proves about the passkey the user picked. */
+export interface PasskeyIdentity {
+  readonly credentialId: Uint8Array;
+  /**
+   * True only when the assertion `identify()` already obtained verifies under `publicKey` and
+   * `policy` (wa-json134). It binds an untrusted registry record to the picked passkey without a
+   * second prompt (Ruling R10(b)); a record naming another account's key answers false.
+   */
+  owns(publicKey: P256PublicKey, policy: WebAuthnPolicy): boolean;
+}
 export interface PasskeySeam {
   create(userName: string): Promise<PasskeyCredential>;
-  /** Discoverable-credential prompt: which credential the user picked. */
-  identify(): Promise<{ readonly credentialId: Uint8Array }>;
+  /** Discoverable-credential prompt: which credential the user picked, and proof it holds a key. */
+  identify(): Promise<PasskeyIdentity>;
   sign(credential: PasskeyCredential, challenge: Uint8Array): Promise<PasskeySignature>;
 }
 

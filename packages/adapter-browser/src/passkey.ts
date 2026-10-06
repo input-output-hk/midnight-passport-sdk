@@ -122,9 +122,10 @@ export function browserPasskey(opts: {
     },
     async identify() {
       try {
+        const challenge = crypto.getRandomValues(new Uint8Array(32));
         const credential = (await container().get({
           publicKey: {
-            challenge: crypto.getRandomValues(new Uint8Array(32)),
+            challenge: new Uint8Array(challenge),
             rpId: opts.rpId,
             userVerification: 'required',
           },
@@ -132,7 +133,25 @@ export function browserPasskey(opts: {
         if (!credential) {
           throw new PassportConnectorError('UserCancelled', 'No passkey was chosen.');
         }
-        return { credentialId: new Uint8Array(credential.rawId) };
+        const r = credential.response as AuthenticatorAssertionResponse;
+        // Kept for `owns`: the same assertion proves which key the picked passkey holds, so binding
+        // a registry record to it costs no second prompt (Ruling R10(b)).
+        const proof: WebAuthnAssertion = {
+          authenticatorData: new Uint8Array(r.authenticatorData),
+          clientDataJSON: new Uint8Array(r.clientDataJSON),
+          signature: new Uint8Array(r.signature),
+        };
+        return {
+          credentialId: new Uint8Array(credential.rawId),
+          owns(publicKey, keyPolicy) {
+            try {
+              assertionMaterial(challenge, keyPolicy, publicKey, proof);
+              return true;
+            } catch {
+              return false;
+            }
+          },
+        };
       } catch (e) {
         throw toPassportError(e);
       }

@@ -160,6 +160,36 @@ test('identify returns the picked credential id', async () => {
   assert.deepEqual(picked.credentialId, ID);
 });
 
+test('identify proves which key the picked passkey holds, with no second prompt (R10(b))', async () => {
+  const auth = softwareAuthenticator();
+  const seam = seamFor(auth);
+  const enrolled = await seam.create('alice');
+  const before = auth.gets.length;
+  const picked = await seam.identify();
+  assert.equal(auth.gets.length - before, 1, 'one discoverable prompt');
+  assert.equal(picked.owns(enrolled.publicKey, enrolled.policy), true);
+  const other = await seamFor(softwareAuthenticator()).create('bob');
+  assert.equal(picked.owns(other.publicKey, enrolled.policy), false, 'another valid P-256 key');
+  assert.equal(
+    picked.owns(enrolled.publicKey, b.webauthnPolicy(RP, 'http://localhost:5174')),
+    false,
+    'a policy with another origin',
+  );
+  assert.equal(
+    picked.owns(enrolled.publicKey, {
+      ...enrolled.policy,
+      rp_id_hash: sha256(new TextEncoder().encode('example.org')),
+    }),
+    false,
+    'a policy with another relying party',
+  );
+  assert.equal(
+    picked.owns({ x: 1n, y: 1n, identity: false }, enrolled.policy),
+    false,
+    'no curve point',
+  );
+});
+
 test('a cancelled or timed-out prompt is UserCancelled on every ceremony', async () => {
   for (const cancel of ['NotAllowedError', 'AbortError']) {
     const seam = seamFor(softwareAuthenticator({ cancel }));

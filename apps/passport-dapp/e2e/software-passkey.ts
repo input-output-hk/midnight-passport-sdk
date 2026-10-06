@@ -3,6 +3,7 @@ import type { PasskeySeam } from '@midnight-ntwrk/mn-passport-account';
 import {
   bigintFromBytes,
   clientDataJSON,
+  equalBytes,
   fromBase64url,
   parseES256Signature,
   webauthnPolicy,
@@ -36,7 +37,16 @@ export function softwarePasskey(rpId: string, origin: string): PasskeySeam {
       return { credentialId, publicKey, policy };
     },
     async identify() {
-      return { credentialId };
+      return {
+        credentialId,
+        // This key never leaves the closure, so comparing with it stands in for verifying the
+        // discoverable assertion a real authenticator would return.
+        owns: (pk, keyPolicy) =>
+          pk.x === publicKey.x &&
+          pk.y === publicKey.y &&
+          equalBytes(keyPolicy.rp_id_hash, policy.rp_id_hash) &&
+          equalBytes(keyPolicy.origin, policy.origin),
+      };
     },
     async sign(_credential, challenge) {
       counter++;

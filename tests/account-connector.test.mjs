@@ -24,14 +24,28 @@ const pureCircuits = {
     enc(`rot:${pk.x}:${key[0]}:${nonce}`),
 };
 
-function world({ failActivationOnce = false, failActiveRegistryPutOnce = false } = {}) {
+/**
+ * @typedef {{ booted: boolean; authNonce: bigint; deviceEpoch: bigint; entries: Uint8Array[] }} Ledger
+ * @typedef {{ failActivationOnce?: boolean; failActiveRegistryPutOnce?: boolean; owns?: boolean }} WorldOptions
+ */
+
+const ADDRESS = 'cd'.repeat(32);
+const OTHER_ADDRESS = 'ef'.repeat(32);
+/** Another passkey's key: its entries never match this world's passkey. */
+const OTHER_PK = { x: 99n, y: 98n, identity: false };
+
+/** @param {WorldOptions} [options] */
+function world({ failActivationOnce = false, failActiveRegistryPutOnce = false, owns } = {}) {
   const credential = {
     credentialId: Uint8Array.of(7),
     publicKey: { x: 11n, y: 13n, identity: false },
     policy: { rp_id_hash: new Uint8Array(32), origin: enc('http://localhost:5173') },
   };
-  /** @type {{ booted: boolean; authNonce: bigint; deviceEpoch: bigint; entries: Uint8Array[] }} */
+  /** @type {Ledger} */
   const ledger = { booted: false, authNonce: 0n, deviceEpoch: 0n, entries: [] };
+  /** Ledgers by address; an address missing here holds no contract. */
+  /** @type {Map<string, Ledger>} */
+  const ledgers = new Map();
   /** @type {Map<string, Rec>} */
   const registry = new Map();
   /** @type {unknown[][]} */
@@ -42,16 +56,21 @@ function world({ failActivationOnce = false, failActiveRegistryPutOnce = false }
     /** @param {{ boot: Uint8Array }} args */
     async deploy(args) {
       log.push(['deploy', args.boot]);
-      return { address: 'cd'.repeat(32), txHashes: ['t0'] };
+      ledgers.set(ADDRESS, ledger);
+      return { address: ADDRESS, txHashes: ['t0'] };
     },
-    async readLedger() {
+    /** @param {string} address */
+    async readLedger(address) {
+      log.push(['readLedger', address]);
+      const l = ledgers.get(address);
+      if (!l) return undefined;
       return {
-        booted: ledger.booted,
-        authNonce: ledger.authNonce,
-        deviceEpoch: ledger.deviceEpoch,
-        entryCount: ledger.entries.length,
+        booted: l.booted,
+        authNonce: l.authNonce,
+        deviceEpoch: l.deviceEpoch,
+        entryCount: l.entries.length,
         specVersion: 2,
-        hasEntry: (/** @type {Uint8Array} */ e) => ledger.entries.some((x) => eq(x, e)),
+        hasEntry: (/** @type {Uint8Array} */ e) => l.entries.some((x) => eq(x, e)),
       };
     },
     /** @param {string} _addr @param {string} circuit @param {readonly unknown[]} args */
@@ -108,7 +127,11 @@ function world({ failActivationOnce = false, failActiveRegistryPutOnce = false }
     chain,
     passkey: {
       create: async () => credential,
-      identify: async () => ({ credentialId: credential.credentialId }),
+      identify: async () => ({
+        credentialId: credential.credentialId,
+        /** @param {Pk & { y: bigint }} pk */
+        owns: (pk) => owns ?? (pk.x === credential.publicKey.x && pk.y === credential.publicKey.y),
+      }),
       sign: async (/** @type {unknown} */ _c, /** @type {Uint8Array} */ challenge) => {
         log.push(['sign', new TextDecoder().decode(challenge)]);
         return { authenticator_data: new Uint8Array(37), sig: { r: 1n, s: 2n } };
@@ -128,8 +151,36 @@ function world({ failActivationOnce = false, failActiveRegistryPutOnce = false }
     random: (/** @type {number} */ n) => new Uint8Array(n).fill(3),
     encryptionKey: () => new Uint8Array(32).fill(5),
   };
-  return { seams, ledger, registry, log };
+  return { seams, credential, ledger, ledgers, registry, log };
 }
+
+/**
+ * Plants a registry record for this world's passkey, as a stale or poisoned registry could hold it.
+ * @param {ReturnType<typeof world>} w
+ * @param {{ address: string; status: string; publicKey?: { x: bigint; y: bigint; identity: boolean }; credentialId?: Uint8Array }} fields
+ */
+function plant(w, fields) {
+  const record = {
+    ...w.credential,
+    salt: new Uint8Array(32).fill(3),
+    ...fields,
+  };
+  w.registry.set(`undeployed/${w.credential.credentialId}`, record);
+}
+
+/** A booted ledger whose only entry is another passkey's. @returns {Ledger} */
+const bootedByOther = () => ({
+  booted: true,
+  authNonce: 0n,
+  deviceEpoch: 0n,
+  entries: [pureCircuits.derive_device_entry_with_p256(null, OTHER_PK, null, 0n, 0n)],
+});
+
+/** @param {ReturnType<typeof world>} w @param {string} name */
+const count = (w, name) => w.log.filter((l) => l[0] === name).length;
+/** @param {ReturnType<typeof world>} w */
+const statusOf = (w) =>
+  /** @type {Rec} */ (w.registry.get(`undeployed/${w.credential.credentialId}`)).status;
 
 test('createAccount deploys, activates, records, and reports progress in order', async () => {
   const w = world();
@@ -139,7 +190,7 @@ test('createAccount deploys, activates, records, and reports progress in order',
     .createPassportConnector(w.seams)
     .createAccount({ userName: 'u', onProgress: (/** @type {string} */ s) => steps.push(s) });
   assert.deepEqual(steps, ['passkey-created', 'deploying', 'deployed', 'activating', 'active']);
-  assert.equal(account.address, 'cd'.repeat(32));
+  assert.equal(account.address, ADDRESS);
   assert.equal(/** @type {Rec} */ ([...w.registry.values()][0]).status, 'active');
   assert.equal((await account.state()).booted, true);
 });
@@ -208,5 +259,70 @@ test('openAccount without a record is AccountNotFound', async () => {
   const w = world();
   await assert.rejects(a.createPassportConnector(w.seams).openAccount(), {
     code: 'AccountNotFound',
+  });
+});
+
+test('R10(b): an active record pointing at another account is AccountNotFound, with no prompt or call', async () => {
+  const w = world();
+  w.ledgers.set(OTHER_ADDRESS, bootedByOther());
+  plant(w, { address: OTHER_ADDRESS, status: 'active' });
+  await assert.rejects(a.createPassportConnector(w.seams).openAccount(), {
+    code: 'AccountNotFound',
+    message: /does not hold this passkey/,
+  });
+  assert.equal(count(w, 'sign'), 0);
+  assert.equal(count(w, 'activate_initial_device_with_p256'), 0);
+  assert.equal(count(w, 'rotate_enc_key_with_p256'), 0);
+});
+
+test('R10(b): an active record whose address holds no contract is AccountNotFound', async () => {
+  const w = world();
+  plant(w, { address: OTHER_ADDRESS, status: 'active' });
+  await assert.rejects(a.createPassportConnector(w.seams).openAccount(), {
+    code: 'AccountNotFound',
+    message: /No contract at/,
+  });
+  assert.equal(count(w, 'sign'), 0);
+});
+
+test('R10(b): a deployed record on a ledger booted with another key stays deployed and is not activated', async () => {
+  const w = world();
+  w.ledgers.set(OTHER_ADDRESS, bootedByOther());
+  plant(w, { address: OTHER_ADDRESS, status: 'deployed' });
+  await assert.rejects(a.createPassportConnector(w.seams).openAccount(), {
+    code: 'AccountNotFound',
+    message: /does not hold this passkey/,
+  });
+  assert.equal(statusOf(w), 'deployed');
+  assert.equal(count(w, 'activate_initial_device_with_p256'), 0);
+});
+
+test('R10(b): a record the picked passkey does not own is AccountNotFound before any ledger read', async () => {
+  const w = world({ owns: false });
+  plant(w, { address: ADDRESS, status: 'active' });
+  await assert.rejects(a.createPassportConnector(w.seams).openAccount(), {
+    code: 'AccountNotFound',
+    message: /does not belong to this passkey/,
+  });
+  assert.equal(count(w, 'readLedger'), 0);
+});
+
+test("R10(b): a record naming another account's key is refused, though that key's entry is live", async () => {
+  const w = world();
+  w.ledgers.set(OTHER_ADDRESS, bootedByOther());
+  plant(w, { address: OTHER_ADDRESS, status: 'active', publicKey: OTHER_PK });
+  await assert.rejects(a.createPassportConnector(w.seams).openAccount(), {
+    code: 'AccountNotFound',
+    message: /does not belong to this passkey/,
+  });
+  assert.equal(count(w, 'readLedger'), 0);
+});
+
+test('R10(b): a record filed under another credential id is refused', async () => {
+  const w = world();
+  plant(w, { address: ADDRESS, status: 'active', credentialId: Uint8Array.of(8) });
+  await assert.rejects(a.createPassportConnector(w.seams).openAccount(), {
+    code: 'AccountNotFound',
+    message: /does not belong to this passkey/,
   });
 });
