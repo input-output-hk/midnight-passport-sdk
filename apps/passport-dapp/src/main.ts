@@ -134,8 +134,8 @@ async function connectBuiltInWallet(): Promise<void> {
     rpId: RP_ID,
     networkId: network,
   });
-  // Without PRF the genesis dev seed is allowed on the undeployed network only; elsewhere this
-  // throws UnsupportedAuthenticator.
+  // Without PRF an ephemeral random seed (an empty wallet) is allowed on the undeployed network
+  // only (R24); elsewhere this throws UnsupportedAuthenticator.
   if (config.networkId !== network) {
     throw new PassportConnectorError(
       'NetworkMismatch',
@@ -143,10 +143,10 @@ async function connectBuiltInWallet(): Promise<void> {
     );
   }
   const { seed, source } = resolveWalletSeed(prfSeed, network);
-  if (source === 'fallback-dev-seed') {
-    record('wallet:prf-unavailable', { fallback: 'the standalone network dev seed' });
+  if (source === 'ephemeral-random') {
+    record('wallet:prf-unavailable', { fallback: 'an ephemeral random seed (empty wallet)' });
     $('wallet-note').textContent =
-      'Your authenticator does not support PRF, so the built-in wallet uses the public genesis dev seed. Anyone can derive this wallet; it is acceptable on the undeployed network only.';
+      'Your authenticator does not support PRF, so the built-in wallet uses a random seed for this page only. The wallet is empty and ephemeral: it holds no funds and is gone when you reload. This fallback is allowed on the undeployed network only.';
   }
   status('Syncing the built-in wallet…');
   try {

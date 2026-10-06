@@ -57,7 +57,8 @@
     <p class="hint">
       The built-in wallet is a read-only stand-in for the DApp Connector. Its seed comes from your
       passkey's PRF output, which needs a second prompt: first choose the passkey, then confirm to
-      derive the seed. It never proves or pays; the service sponsors.
+      derive the seed. Without PRF it uses a random seed for this page only, so the wallet is empty
+      and ephemeral. It never proves or pays; the service sponsors.
     </p>
     <p class="warn" id="wallet-note" role="status"></p>
     <h2>Evidence</h2>

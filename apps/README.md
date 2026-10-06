@@ -93,8 +93,10 @@ evidence to `experiments/acc-0.35/results/x8-dapp-e2e.json`.
   restarting both.
 - **Built-in wallet.** An in-page wallet seeded from the passkey's PRF output at a network-bound
   salt, exposed as `window.midnight.devwallet`. If the authenticator has no PRF, it falls back to
-  the public genesis dev seed on `undeployed` only, and refuses on any other network. Anyone can
-  derive that wallet. The ACC flows do not depend on it: fees are sponsored.
+  a fresh random seed on `undeployed` only (Ruling R24), and refuses on any other network. That
+  wallet is empty and ephemeral: it holds no funds and is gone on reload. The web app never
+  carries the genesis (sponsor) seed. The ACC flows do not depend on the wallet: fees are
+  sponsored.
 
 ## Production requirements (not built)
 

@@ -1,25 +1,24 @@
 import { PassportConnectorError } from '@midnight-ntwrk/mn-passport-account';
 
-/** The only network on which the built-in wallet may fall back to the well-known dev seed. */
+/** The only network on which the built-in wallet may fall back to an ephemeral seed. */
 export const FALLBACK_NETWORK_ID = 'undeployed';
 
-export type WalletSeedSource = 'passkey-prf' | 'fallback-dev-seed';
+export type WalletSeedSource = 'passkey-prf' | 'ephemeral-random';
 
 /**
- * The genesis-funded dev seed (0…01). It is public knowledge: anyone can derive the same wallet,
- * so it is only ever acceptable on a standalone network that holds no value.
+ * A fresh random seed for this page only (Ruling R24). The wallet it derives is empty and is lost
+ * on reload. It is never the genesis seed 0…01, which is also the service's sponsor seed: the web
+ * app ships no funded secret (spec §1.1).
  */
-export function fallbackDevSeed(): Uint8Array {
-  const seed = new Uint8Array(32);
-  seed[31] = 1;
-  return seed;
+export function ephemeralSeed(): Uint8Array {
+  return crypto.getRandomValues(new Uint8Array(32));
 }
 
 /**
  * Decides which seed the built-in wallet uses. The passkey's PRF output always wins; without PRF
- * the genesis dev seed is allowed on the `undeployed` network only. On any other network the
- * missing PRF is surfaced as `UnsupportedAuthenticator` rather than silently using a public seed.
- * The seed bytes never appear in an error message.
+ * an ephemeral random seed is allowed on the `undeployed` network only. On any other network the
+ * missing PRF is surfaced as `UnsupportedAuthenticator` rather than silently using a throwaway
+ * wallet. The seed bytes never appear in an error message.
  */
 export function resolveWalletSeed(
   prfSeed: Uint8Array | undefined,
@@ -32,5 +31,5 @@ export function resolveWalletSeed(
       `This authenticator does not support the PRF extension, which the built-in wallet needs on ${networkId}.`,
     );
   }
-  return { seed: fallbackDevSeed(), source: 'fallback-dev-seed' };
+  return { seed: ephemeralSeed(), source: 'ephemeral-random' };
 }
