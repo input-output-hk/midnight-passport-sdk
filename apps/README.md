@@ -109,6 +109,10 @@ cap resets on restart); and TLS in front of the service.
   `::1` first and fetches to `http://localhost:8787` are refused, start the dapp with
   `VITE_PASSPORT_SERVICE_URL=http://127.0.0.1:8787`.
 - **`guard:` errors.** You are outside the Nix shell. Run `nix develop`.
+- **`two compact-runtime copies are loaded`.** The e2e ran without the resolve hook. Start it with
+  `pnpm prototype:e2e`, which loads `e2e/dedupe-runtime.mjs` (the Node twin of Vite's
+  `resolve.dedupe`). `PASSPORT_CONTRACT_DIR=<dir> pnpm --filter passport-dapp test` checks this
+  offline in seconds.
 - **Docker has too little memory.** Raise it to at least 24 GiB and retry. `/prove` otherwise
   reports `ProverUnavailable`.
 - **Manifest hash does not match.** Recompute `PASSPORT_MANIFEST_SHA256` from the artefacts you

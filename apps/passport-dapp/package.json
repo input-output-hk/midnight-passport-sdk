@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "../../experiments/acc-0.35/guard.sh && vite",
-    "test": "node --import tsx e2e/seed-policy.e2e.ts",
-    "e2e": "../../experiments/acc-0.35/guard.sh && node --import tsx e2e/mvp.e2e.ts"
+    "test": "node --import tsx e2e/seed-policy.e2e.ts && node --import tsx --import ./e2e/dedupe-runtime.mjs e2e/runtime-identity.e2e.ts",
+    "e2e": "../../experiments/acc-0.35/guard.sh && node --import tsx --import ./e2e/dedupe-runtime.mjs e2e/mvp.e2e.ts"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.20.0",

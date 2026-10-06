@@ -2,7 +2,8 @@
 //
 // It drives the real connector in Node with three seams: a software P-256 passkey, the
 // service-backed chain, and the HTTP registry client against a running apps/passport-service.
-// Run it through `pnpm prototype:e2e` (see the task report for the environment it needs).
+// Run it through `pnpm prototype:e2e` (see the task report for the environment it needs), which
+// loads e2e/dedupe-runtime.mjs so the generated module and midnight-js share one compact-runtime.
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -19,6 +20,7 @@ import {
   fetchServiceConfig,
   type GeneratedAccModule,
 } from '@midnight-ntwrk/mn-passport-adapter-browser';
+import { assertSingleCompactRuntime } from './runtime-preflight.ts';
 import { softwarePasskey } from './software-passkey.ts';
 
 const SERVICE = process.env.PASSPORT_SERVICE_URL ?? 'http://localhost:8787';
@@ -44,6 +46,12 @@ if (!/^[0-9a-fA-F]{64}$/.test(pin)) {
 const accModule = (await import(
   pathToFileURL(`${contractDir}/contracts/managed/account/contract/index.js`).href
 )) as GeneratedAccModule;
+// Fails in milliseconds, before any deploy, when two compact-runtime copies are loaded (C1).
+try {
+  assertSingleCompactRuntime(accModule);
+} catch (e) {
+  fail(e instanceof Error ? e.message : String(e));
+}
 const config = await fetchServiceConfig(SERVICE, defaultFetch, NETWORK_ID);
 
 interface Step {
