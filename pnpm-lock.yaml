@@ -90,9 +90,6 @@ importers:
 
   packages/account:
     dependencies:
-      '@midnight-ntwrk/mn-passport-contract':
-        specifier: workspace:*
-        version: link:../contract
       '@midnight-ntwrk/mn-passport-protocol':
         specifier: workspace:*
         version: link:../protocol
