@@ -16,11 +16,24 @@
 - Network id `'undeployed'`; standalone localnet from `infra/localnet` with Docker memory ≥ 24 GiB.
 - Artefacts: the 52-circuit ACC at revision `45721e1`, produced by `experiments/acc-0.35/fetch-acc.sh 45721e1` and `experiments/acc-0.35/compile.sh <dir> full`. Its compiler manifest hash is pinned and checked at service start-up.
 - WebAuthn: profile `wa-json134`; RP id `localhost`; origin exactly `http://localhost:5173` (21 bytes). The dapp's Vite server uses `strictPort: true` on 5173.
-- Dependencies: exact pins (the repo's `save-exact`); `ignore-scripts=true` stays; any version younger than 7 days needs an owner-approved `minimumReleaseAgeExclude` entry with a comment.
+- Dependencies: exact pins (the repo's `save-exact`); `ignore-scripts=true` stays. **The 7-day cooldown is cancelled for the prototype (owner, 2026/10/06):** `minimumReleaseAge: 0` in `pnpm-workspace.yaml`, and every PR body carries `Cooldown-override: prototype — owner cancelled the 7-day rule (2026/10/06)` for the CI job. Versions: the latest stable Midnight packages where a ledger-9 stable line exists (`compact-runtime` 0.20.0); otherwise the newest ledger-9 release candidates the ACC was verified with (midnight-js 5.0.0-rc.2, compact-js 3.0.0-rc.3, ledger-v9 1.0.0-rc.5, wallet SDK 5.0.0-rc.0). The stable lines (midnight-js 4.1.1, compact-js 2.5.3, wallet SDK 4.1.0) target ledger 8 and cannot run this ACC.
+- Scope: no lace-platform or lace-sdk dependency; the demo and example apps live in this monorepo (`apps/`).
 - Package rules (enforced by `tests/dependency-rules.test.mjs`): every `packages/<dir>` is `@midnight-ntwrk/mn-passport-<dir>`, `"version": "0.0.0"`, `"private": true`, `"type": "module"`, and is in `scripts/dependency-graph.mjs`. `account` is platform-neutral: no `node:` imports, no globals other than `crypto`.
 - Code style: British English, dates `YYYY/MM/DD`; no `any`, and `unknown` only with a comment naming why; vendor-neutral wording in committed docs.
 - Pushed text names no upstream (`midnightntwrk`) repository. Code ported from the planning workspace carries a header naming the file path and revision only.
-- Commits: `git commit -S -s` with an `Assisted-by: AI` trailer, never `Co-Authored-By`; conventional subjects; stage explicit paths, never `git add -A`; verify `git log --format='%h %G?' -1` prints `G`; push only `git push origin refs/heads/passport-acc-prototype:refs/heads/passport-acc-prototype`.
+- Commits: `git commit -S -s` with an `Assisted-by: AI` trailer, never `Co-Authored-By`; conventional subjects; stage explicit paths, never `git add -A`; verify `git log --format='%h %G?' -1` prints `G`. Commits that only operate the fork (CI tweaks) use the subject prefix `fork-only:`.
+
+## Execution workflow (owner-approved 2026/10/06)
+
+Each task is one PR into `passport-acc-prototype` on `input-output-hk/midnight-passport-sdk`:
+
+1. Branch `proto/t<NN>-<slug>` from the latest `origin/passport-acc-prototype` (in a worktree), implement, commit signed.
+2. `git push origin refs/heads/proto/t<NN>-<slug>:refs/heads/proto/t<NN>-<slug>`.
+3. `gh pr create -R input-output-hk/midnight-passport-sdk --base passport-acc-prototype --head proto/t<NN>-<slug>`, with a body that has `Refs LW-15635`, the cooldown-override line, a summary, and the test commands run. No AI-attribution badge.
+4. Wait for `gh pr checks <n> -R input-output-hk/midnight-passport-sdk` to go green; fix red.
+5. Review: a spec-compliance review and a code-quality review (subagents), plus `codex review` or `claude -p` on the diff for non-trivial tasks. Record the outcome as a PR comment.
+6. Merge by fast-forward so our signatures survive: `git push origin proto/t<NN>-<slug>:passport-acc-prototype` (GitHub marks the PR merged). Never force-push `passport-acc-prototype`.
+7. Update the vault task log (MPS-003).
 
 ## Review Focus
 
@@ -63,7 +76,8 @@ Expected: node `2.1.0-1b2b31c7`, proof server `9.0.0-rc.8`, indexer healthy.
 ### Task 1: Workspace scaffolding for the prototype
 
 **Files:**
-- Modify: `pnpm-workspace.yaml`
+- Modify: `pnpm-workspace.yaml`, `.npmrc`
+- Modify: `.github/workflows/pr-checks.yml` (fork-only commit)
 - Modify: `scripts/dependency-graph.mjs`
 - Modify: `scripts/lint-boundaries.mjs:20`
 - Modify: `tsconfig.build.json`
@@ -75,51 +89,42 @@ Expected: node `2.1.0-1b2b31c7`, proof server `9.0.0-rc.8`, indexer healthy.
 - Test: `tests/dependency-rules.test.mjs` (existing, must stay green)
 
 **Interfaces:**
-- Produces: workspace packages `@midnight-ntwrk/mn-passport-account` (deps: contract, protocol) and `@midnight-ntwrk/mn-passport-adapter-browser` (deps: account, contract, protocol); apps `passport-service` and `passport-dapp`.
+- Produces: workspace packages `@midnight-ntwrk/mn-passport-account` (deps: contract, protocol) and `@midnight-ntwrk/mn-passport-adapter-browser` (deps: account, contract, protocol); apps `passport-service` and `passport-dapp`; the cooldown cancelled; the CI issue gate accepting `Refs LW-15635`.
 
-- [ ] **Step 1: Check the cooldown for every new dependency.** Inside `nix develop`:
+- [ ] **Step 1: Cancel the cooldown for the prototype.** In `pnpm-workspace.yaml` change `minimumReleaseAge: 10080` to `minimumReleaseAge: 0` and replace its comment with:
 
-```bash
-for p in @midnight-ntwrk/compact-runtime:0.20.0 @midnight-ntwrk/compact-js:3.0.0-rc.3 \
-  @midnight-ntwrk/midnight-js-contracts:5.0.0-rc.2 @midnight-ntwrk/midnight-js-types:5.0.0-rc.2 \
-  @midnight-ntwrk/midnight-js-fetch-zk-config-provider:5.0.0-rc.2 \
-  @midnight-ntwrk/midnight-js-indexer-public-data-provider:5.0.0-rc.2 \
-  @midnight-ntwrk/midnight-js-network-id:5.0.0-rc.2 @midnightntwrk/ledger-v9:1.0.0-rc.5 \
-  @midnightntwrk/wallet-sdk-facade:5.0.0-rc.0 @noble/curves:2.2.0 @noble/hashes:2.2.0 \
-  vite:8.3.1 vite-plugin-wasm:3.6.0 tsx:4.23.15 buffer:6.0.3; do
-  n=${p%%:*}; v=${p##*:}
-  npm view "$n" time --json | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{const d=JSON.parse(s)['$v'];const age=(Date.now()-Date.parse(d))/864e5;console.log('$n@$v',d,age.toFixed(1)+'d',age<7?'INSIDE 7-DAY WINDOW':'ok')})"
-done
+```yaml
+# Cancelled for the Passport DApp prototype by the owner on 2026/10/06
+# (docs/superpowers/plans/2026-10-06-passport-dapp-prototype.md). Restore 10080
+# before anything leaves the prototype branch.
+minimumReleaseAge: 0
 ```
 
-Expected: every line `ok`, except possibly the 2026/09/29–30 releases (compact-runtime, compact-js, midnight-js). For each `INSIDE 7-DAY WINDOW` line, stop and get the owner's approval before Step 2's exclusion entry.
-
-- [ ] **Step 2: Workspace and cooldown exclusions.** Edit `pnpm-workspace.yaml` so it reads (keep the existing comments):
+In `.npmrc` change `min-release-age = 7` to `min-release-age = 0` with the same comment. Add the apps to the workspace:
 
 ```yaml
 packages:
   - packages/*
   - apps/*
-
-minimumReleaseAge: 10080
-blockExoticSubdeps: true
-trustPolicy: no-downgrade
-minimumReleaseAgeExclude:
-  # Renovate security update: pnpm@10.34.4
-  - pnpm@10.34.4
-  # Passport DApp prototype (docs/superpowers/specs/2026-10-06-passport-dapp-design.md):
-  # the Compact 0.35.0 stack the ACC was verified on; owner-approved on <date>.
-  # Remove each line once its version is older than 7 days.
-  - '@midnight-ntwrk/compact-runtime@0.20.0'
-  - '@midnight-ntwrk/compact-js@3.0.0-rc.3'
-  - '@midnight-ntwrk/midnight-js-contracts@5.0.0-rc.2'
-  - '@midnight-ntwrk/midnight-js-types@5.0.0-rc.2'
-  - '@midnight-ntwrk/midnight-js-fetch-zk-config-provider@5.0.0-rc.2'
-  - '@midnight-ntwrk/midnight-js-indexer-public-data-provider@5.0.0-rc.2'
-  - '@midnight-ntwrk/midnight-js-network-id@5.0.0-rc.2'
 ```
 
-List only the versions Step 1 reported as inside the window.
+- [ ] **Step 2: Accept the Jira key in the CI issue gate (fork-only).** The fork has GitHub Issues disabled; its work is tracked in Jira (LW-15635). In `.github/workflows/pr-checks.yml`, replace the `grep -qiE` pattern of the "PR references its issue" step with:
+
+```bash
+          if ! printf '%s' "$BODY" | grep -qiE '(refs|closes|fixes|resolves)[[:space:]]+(([a-z0-9./-]+)?#[0-9]+|[A-Z][A-Z0-9]+-[0-9]+)'; then
+```
+
+Commit this file on its own:
+
+```bash
+git add .github/workflows/pr-checks.yml
+git commit -S -s -m "fork-only: accept Jira keys in the PR issue gate
+
+The fork tracks the Passport prototype in Jira (LW-15635) and has GitHub
+Issues disabled.
+
+Assisted-by: AI"
+```
 
 - [ ] **Step 3: Dependency graph and platform neutrality.** In `scripts/dependency-graph.mjs` add two entries to `ALLOWED`:
 
@@ -280,12 +285,12 @@ const PLATFORM_NEUTRAL = new Set(['protocol', 'contract', 'core', 'connect', 'ac
 - [ ] **Step 7: Install and run the existing gate.**
 
 Run: `nix develop -c bash -c 'pnpm install && pnpm test && pnpm run lint && pnpm run format:check'`
-Expected: install succeeds with no cooldown refusal; `tests/dependency-rules.test.mjs` passes (both new packages are in the graph, named, private, `0.0.0`, ESM); lint prints `Dependency boundaries respected`.
+Expected: install succeeds; `tests/dependency-rules.test.mjs` passes (both new packages are in the graph, named, private, `0.0.0`, ESM); lint prints `Dependency boundaries respected`.
 
 - [ ] **Step 8: Commit.**
 
 ```bash
-git add pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.build.json scripts/dependency-graph.mjs scripts/lint-boundaries.mjs \
+git add pnpm-workspace.yaml .npmrc pnpm-lock.yaml package.json tsconfig.build.json scripts/dependency-graph.mjs scripts/lint-boundaries.mjs \
   packages/account packages/adapter-browser apps/passport-service/package.json apps/passport-service/tsconfig.json \
   apps/passport-dapp/package.json apps/passport-dapp/tsconfig.json
 git commit -S -s -m "build(prototype): scaffold the account, adapter-browser, service and dapp workspaces
@@ -2634,7 +2639,7 @@ export async function createDevWallet(seed: Uint8Array, config: DevWalletConfig)
 }
 ```
 
-Add to `apps/passport-dapp/package.json` `dependencies`, at the exact versions in `$D/package-lock.json` (after Task 1 Step 1's cooldown check): `@midnightntwrk/ledger-v9`, `@midnightntwrk/wallet-sdk-abstractions`, `-dust-wallet`, `-hd`, `-shielded`, `-unshielded-wallet`, and `rxjs` `7.8.2`. Then run `nix develop -c pnpm install`.
+Add to `apps/passport-dapp/package.json` `dependencies`, at the exact versions in `$D/package-lock.json`: `@midnightntwrk/ledger-v9`, `@midnightntwrk/wallet-sdk-abstractions`, `-dust-wallet`, `-hd`, `-shielded`, `-unshielded-wallet`, and `rxjs` `7.8.2`. Then run `nix develop -c pnpm install`.
 
 - [ ] **Step 4: Run the e2e test.** Run: `nix develop -c bash -c 'cd apps/passport-dapp && node --import tsx e2e/dev-wallet.e2e.ts'`. Expected: `dev wallet: PASS`.
 
