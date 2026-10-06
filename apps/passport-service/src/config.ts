@@ -23,10 +23,20 @@ const need = (env: NodeJS.ProcessEnv, key: string): string => {
   return v;
 };
 
+const parsePort = (raw: string): number => {
+  const port = Number(raw);
+  if (!/^\d+$/.test(raw) || port < 1 || port > 65535) {
+    throw new Error(
+      `passport-service: PASSPORT_SERVICE_PORT must be an integer from 1 to 65535, got "${raw}"`,
+    );
+  }
+  return port;
+};
+
 export function loadConfig(env: NodeJS.ProcessEnv): ServiceConfig {
   const contractDir = need(env, 'PASSPORT_CONTRACT_DIR');
   return {
-    port: Number(env.PASSPORT_SERVICE_PORT ?? '8787'),
+    port: parsePort(env.PASSPORT_SERVICE_PORT ?? '8787'),
     corsOrigin: env.PASSPORT_DAPP_ORIGIN ?? 'http://localhost:5173',
     networkId: env.PASSPORT_NETWORK_ID ?? 'undeployed',
     bindingId: env.PASSPORT_BINDING_ID ?? 'acc-45721e1',

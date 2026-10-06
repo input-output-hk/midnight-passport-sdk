@@ -1,6 +1,6 @@
 import { createServer as createHttpServer, type Server } from 'node:http';
 import type { ServiceConfig } from './config.ts';
-import { json, type Route } from './http.ts';
+import { HttpError, json, type Route } from './http.ts';
 
 export function createServer(config: ServiceConfig, routes: Route[]): Server {
   return createHttpServer(async (req, res) => {
@@ -17,7 +17,13 @@ export function createServer(config: ServiceConfig, routes: Route[]): Server {
       for (const route of routes) if (await route(req, res, url)) return;
       json(res, 404, { error: 'not found' });
     } catch (e) {
-      json(res, 500, { error: e instanceof Error ? e.message : String(e) });
+      if (e instanceof HttpError) {
+        // An oversized body may still be arriving; close the connection once the answer is out.
+        if (e.status === 413) res.setHeader('connection', 'close');
+        json(res, e.status, { error: e.message });
+      } else {
+        json(res, 500, { error: e instanceof Error ? e.message : String(e) });
+      }
     }
   });
 }

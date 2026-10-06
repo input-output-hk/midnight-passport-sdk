@@ -1,9 +1,12 @@
 import { createReadStream, statSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
+import { pipeline } from 'node:stream';
 import type { ServiceConfig } from '../config.ts';
 import { json, type Route } from '../http.ts';
 
 const PREFIX = '/zk/acc/';
+/** The only artefact folders served: the compiler output (manifest, contract-info), ZKIR and keys. */
+const SERVED = ['compiler/', 'zkir/', 'keys/'];
 
 export function zkRoute(config: ServiceConfig): Route {
   const root = resolve(config.artefactDir);
@@ -13,6 +16,10 @@ export function zkRoute(config: ServiceConfig): Route {
     try {
       rel = decodeURIComponent(url.pathname.slice(PREFIX.length));
     } catch {
+      json(res, 404, { error: 'not found' });
+      return true;
+    }
+    if (!SERVED.some((folder) => rel.startsWith(folder))) {
       json(res, 404, { error: 'not found' });
       return true;
     }
@@ -35,7 +42,10 @@ export function zkRoute(config: ServiceConfig): Route {
         ? 'no-cache'
         : 'public, max-age=31536000, immutable',
     });
-    createReadStream(path).pipe(res);
+    // pipeline closes the file on a client abort and surfaces read errors instead of crashing.
+    pipeline(createReadStream(path), res, (err) => {
+      if (err) res.destroy();
+    });
     return true;
   };
 }
@@ -50,7 +60,7 @@ export function configRoute(config: ServiceConfig, extra: () => Record<string, u
       indexerUri: config.indexerUri,
       indexerWsUri: config.indexerWsUri,
       nodeUri: config.nodeUri,
-      zkBaseUrl: `http://${req.headers.host}/zk/acc`,
+      zkBaseUrl: `http://${req.headers.host ?? `localhost:${config.port}`}/zk/acc`,
       ...extra(),
     });
     return true;
