@@ -63,6 +63,17 @@ it started and leaves their volumes, so a rerun resumes the same chain. To reset
 Open `http://localhost:5173` in a browser with a platform passkey. `prototype:e2e` writes its
 evidence to `experiments/acc-0.35/results/x8-dapp-e2e.json`.
 
+**No authenticator?** Under `pnpm prototype:dapp` (Vite dev only), open
+`http://localhost:5173/?mockPasskey`. A dev-only mock (`src/dev/mock-passkey.ts`) replaces
+`navigator.credentials` before the app loads, so the real UI path runs end to end: a WebCrypto
+P-256 key, `wa-json134` assertions (37-byte authenticator data, flags UP+UV) and PRF as
+HMAC-SHA256 under a random per-credential secret. Its credentials, private keys and PRF secrets
+included, are kept in `localStorage` (`passport-dev:mock-passkey:v1`) so that "Open with passkey"
+works after a reload; a discoverable prompt picks the newest one. The page shows a "MOCK PASSKEY —
+dev only" banner and the evidence records `"passkey": "MOCK …"`. Production builds do not contain
+the mock. `pnpm --filter passport-dapp test` checks it against `browserPasskey`'s enrolment probe
+and `assertionMaterial`.
+
 ## What to know
 
 - **Create asks for the passkey three times.** Once to create the credential; once for an

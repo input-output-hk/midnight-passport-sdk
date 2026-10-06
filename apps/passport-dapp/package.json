@@ -9,7 +9,7 @@
     "sync:acc": "node scripts/sync-acc.mjs",
     "dev": "../../experiments/acc-0.35/guard.sh && node scripts/sync-acc.mjs && vite",
     "build": "../../experiments/acc-0.35/guard.sh && node scripts/sync-acc.mjs && vite build",
-    "test": "node scripts/sync-acc.mjs --optional && node --import tsx e2e/seed-policy.e2e.ts && node --import tsx e2e/runtime-identity.e2e.ts",
+    "test": "node scripts/sync-acc.mjs --optional && node --import tsx e2e/seed-policy.e2e.ts && node --import tsx e2e/mock-passkey.e2e.ts && node --import tsx e2e/runtime-identity.e2e.ts",
     "e2e": "../../experiments/acc-0.35/guard.sh && node scripts/sync-acc.mjs && node --import tsx e2e/mvp.e2e.ts"
   },
   "dependencies": {

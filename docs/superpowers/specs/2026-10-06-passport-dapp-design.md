@@ -503,6 +503,7 @@ packages/protocol/       + connector types
 | Integration | The service against the real localnet: `/zk` serves byte-identical files under the pinned manifest, `/prove` proves `activate_initial_device_with_p256`, `/deploy` deploys | Pending (R12): `apps/passport-service/test/reference.it.test.ts` covers the deploy leg behind `PASSPORT_IT=1` and has not yet run against a localnet |
 | End-to-end script | `apps/passport-dapp/e2e/mvp.e2e.ts`: drives create → activate → rotate → reopen through the real connector with a software ES256 authenticator under `wa-json134` (as the contract team's tests do), records network, address, deploy submission ids and transaction hashes. A preflight stops it before any deploy if two `compact-runtime` copies are loaded | Script exists; the recorded run (R20, `experiments/acc-0.35/results/x8-dapp-e2e.json`) is pending |
 | Manual, recorded | The same flow with a real passkey in a browser at `http://localhost:5173`; evidence (address, hashes, steps) exported from the app into `experiments/acc-0.35/results/` | Pending |
+| Browser, no authenticator | `http://localhost:5173/?mockPasskey` under Vite dev: a dev-only mock replaces `navigator.credentials` (WebCrypto P-256, `wa-json134` assertions, PRF as HMAC-SHA256, persisted in `localStorage`), with a "MOCK PASSKEY — dev only" banner; excluded from production builds. `e2e/mock-passkey.e2e.ts` checks it against `browserPasskey`'s enrolment probe and `assertionMaterial` | Mock and its check exist (`test:apps`); a full run needs the localnet |
 
 ## 9. Delivery
 
