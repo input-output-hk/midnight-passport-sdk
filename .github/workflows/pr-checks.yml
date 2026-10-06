@@ -88,3 +88,4 @@ jobs:
           pnpm run build
           pnpm test
           pnpm run test:apps
+          pnpm --filter passport-service exec tsc --noEmit -p .
