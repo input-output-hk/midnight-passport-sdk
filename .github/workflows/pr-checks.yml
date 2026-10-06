@@ -3,9 +3,13 @@
 # exact-pin dependency discipline, applied to the workflow itself).
 name: PR checks
 
+# SUSPENDED for the Passport DApp prototype (owner decision, 2026-10-07): checks run locally while
+# prototyping, and CI will be redesigned from scratch. Nothing below is removed; restore the
+# pull_request trigger to re-enable the gates.
 on:
-  pull_request:
-    types: [opened, edited, synchronize, reopened]
+  workflow_dispatch:
+  # pull_request:
+  #   types: [opened, edited, synchronize, reopened]
 
 permissions:
   contents: read
