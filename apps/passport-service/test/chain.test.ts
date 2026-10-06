@@ -413,6 +413,7 @@ test('/sponsor/balance answers 400 for bytes that are no transaction and 403 for
   const emptyTx: LedgerTxLike = {
     rewards: undefined,
     intents: new Map(),
+    guaranteedOffer: undefined,
     fallibleOffer: undefined,
     imbalances: () => new Map(),
   };

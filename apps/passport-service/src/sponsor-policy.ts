@@ -2,8 +2,16 @@ import { HttpError } from './http.ts';
 
 /**
  * The sponsor pays Dust fees for one kind of transaction: calls to Passport accounts this service
- * deployed, moving no value of their own. This file decides that, purely, over a structural view
- * of the ledger transaction, so the rule is testable without the ledger's wasm.
+ * deployed, and nothing but calls. This file decides that, purely, over a structural view of the
+ * ledger transaction, so the rule is testable without the ledger's wasm.
+ *
+ * Why calls only (Ruling R17): the wallet signs without checking owners. `signRecipe` on an
+ * unbound recipe signs every intent segment, and wallet-sdk-unshielded-wallet's
+ * `addSignaturesToOffer` (v2 TransactionOps) puts the sponsor's signature on every input of the
+ * guaranteed and fallible unshielded offers, whoever owns it; a Dust registration shares the same
+ * signed segment data. A net-zero imbalance check alone would let a client spend the sponsor's
+ * NIGHT (an input of the sponsor's, an output to the client) or redirect its Dust generation.
+ * So a sponsored transaction carries no unshielded offer, no Dust action and no shielded offer.
  */
 
 export type ActionKind = 'call' | 'deploy' | 'maintenance' | 'other';
@@ -14,10 +22,22 @@ export interface ActionView {
   readonly address?: string;
 }
 
+export interface IntentView {
+  readonly actions: readonly ActionView[];
+  /** Present when the intent carries an unshielded offer in that section, whatever is in it. */
+  readonly guaranteedUnshieldedOffer?: unknown;
+  readonly fallibleUnshieldedOffer?: unknown;
+  /** Present when the intent carries any Dust spend or registration. */
+  readonly dustActions?: unknown;
+}
+
 export interface SponsorTxView {
   /** Present on a rewards-claim transaction. */
   readonly rewards?: unknown;
-  readonly intents?: ReadonlyMap<number, { readonly actions: readonly ActionView[] }>;
+  readonly intents?: ReadonlyMap<number, IntentView>;
+  /** Present when the transaction carries a shielded (Zswap) offer in that section. */
+  readonly guaranteedOffer?: unknown;
+  readonly fallibleOffer?: unknown;
   /** Segment 0 (the guaranteed section) plus every intent and fallible-offer segment. */
   readonly segments: readonly number[];
   /** What the transaction leaves unpaid, or over-pays, per token type, in a segment. */
@@ -35,6 +55,18 @@ export function sponsorPolicy(
   if (view.rewards !== undefined) return 'rewards transactions are not sponsored';
   const intents = view.intents;
   if (intents === undefined || intents.size === 0) return 'the transaction has no intents';
+  if (view.guaranteedOffer !== undefined || view.fallibleOffer !== undefined) {
+    return 'transactions with shielded offers are not sponsored';
+  }
+  for (const intent of intents.values()) {
+    if (
+      intent.guaranteedUnshieldedOffer !== undefined ||
+      intent.fallibleUnshieldedOffer !== undefined
+    ) {
+      return 'transactions with unshielded offers are not sponsored';
+    }
+    if (intent.dustActions !== undefined) return 'transactions with Dust actions are not sponsored';
+  }
   let calls = 0;
   for (const intent of intents.values()) {
     for (const action of intent.actions) {
@@ -65,9 +97,18 @@ export function sponsorPolicy(
 }
 
 /** The members of a ledger transaction this file reads (midnightntwrk/ledger-v9). */
+export interface LedgerIntentLike {
+  readonly actions: readonly unknown[];
+  readonly guaranteedUnshieldedOffer: unknown;
+  readonly fallibleUnshieldedOffer: unknown;
+  readonly dustActions:
+    { readonly spends: readonly unknown[]; readonly registrations: readonly unknown[] } | undefined;
+}
+
 export interface LedgerTxLike {
   readonly rewards: unknown;
-  readonly intents: ReadonlyMap<number, { readonly actions: readonly unknown[] }> | undefined;
+  readonly intents: ReadonlyMap<number, LedgerIntentLike> | undefined;
+  readonly guaranteedOffer: unknown;
   readonly fallibleOffer: ReadonlyMap<number, unknown> | undefined;
   imbalances(segment: number): ReadonlyMap<{ readonly tag: string }, bigint>;
 }
@@ -95,6 +136,23 @@ function actionView(action: unknown, classes: ActionClasses): ActionView {
   return { kind: 'other' };
 }
 
+const present = (v: unknown): boolean => v !== undefined && v !== null;
+
+function intentView(intent: LedgerIntentLike, classes: ActionClasses): IntentView {
+  const dust = intent.dustActions;
+  const hasDust = present(dust) && (dust!.spends.length > 0 || dust!.registrations.length > 0);
+  return {
+    actions: intent.actions.map((a) => actionView(a, classes)),
+    ...(present(intent.guaranteedUnshieldedOffer)
+      ? { guaranteedUnshieldedOffer: intent.guaranteedUnshieldedOffer }
+      : {}),
+    ...(present(intent.fallibleUnshieldedOffer)
+      ? { fallibleUnshieldedOffer: intent.fallibleUnshieldedOffer }
+      : {}),
+    ...(hasDust ? { dustActions: dust } : {}),
+  };
+}
+
 /** A thin adapter from a deserialised ledger transaction to the view `sponsorPolicy` reads. */
 export function viewOfLedgerTx(tx: LedgerTxLike, classes: ActionClasses): SponsorTxView {
   const intents = tx.intents;
@@ -106,12 +164,12 @@ export function viewOfLedgerTx(tx: LedgerTxLike, classes: ActionClasses): Sponso
       ? {}
       : {
           intents: new Map(
-            [...intents].map(([segment, intent]) => [
-              segment,
-              { actions: intent.actions.map((a) => actionView(a, classes)) },
-            ]),
+            [...intents].map(([segment, intent]) => [segment, intentView(intent, classes)]),
           ),
         }),
+    ...(present(tx.guaranteedOffer) ? { guaranteedOffer: tx.guaranteedOffer } : {}),
+    // An empty map holds no offer.
+    ...(fallible !== undefined && fallible.size > 0 ? { fallibleOffer: fallible } : {}),
     segments: [...segments],
     imbalances: (segment) => tx.imbalances(segment),
   };
