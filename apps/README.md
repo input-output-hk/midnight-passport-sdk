@@ -35,7 +35,7 @@ pnpm install && pnpm build
 | `PASSPORT_CONTRACT_DIR`    | required                       | The `fetch-acc.sh` output, the directory holding `contracts/managed`.                                                    |
 | `PASSPORT_MANIFEST_SHA256` | required                       | SHA-256 of `compiler/contract-manifest.json`, 64 hex characters (see the manifest pin).                                  |
 | `MIDNIGHT_NETWORK`         | `local` (set by `prototype:up`) | Selects the localnet endpoints in the reference wave-deploy code the service reuses.                                    |
-| `PASSPORT_NETWORK_ID`      | `undeployed`                   | The network id the registry, the PRF salt and the connector's check use.                                                 |
+| `PASSPORT_NETWORK_ID`      | `undeployed`                   | Fixed: the reference client hard-codes the localnet, so any other value refuses to start. The same holds for `PASSPORT_INDEXER_URI`, `PASSPORT_INDEXER_WS_URI`, `PASSPORT_NODE_URI` and `PASSPORT_PROOF_SERVER_URI`. |
 | `PASSPORT_SERVICE_HOST`    | `127.0.0.1`                    | Service bind address. A non-loopback host exposes the sponsor to whoever can reach it.                                   |
 | `PASSPORT_SERVICE_PORT`    | `8787`                         | Service port. The dapp expects 8787 unless `VITE_PASSPORT_SERVICE_URL` says otherwise.                                   |
 | `PASSPORT_MAX_DEPLOYS`     | `20`                           | Deploy cap per service process.                                                                                          |

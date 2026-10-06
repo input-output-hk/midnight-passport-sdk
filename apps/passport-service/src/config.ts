@@ -50,30 +50,57 @@ const parseMaxDeploys = (raw: string): number => {
   return n;
 };
 
-const parseNetworkId = (raw: string): string => {
-  if (!/^[a-z0-9-]{1,32}$/.test(raw)) {
-    throw new Error(
-      `passport-service: PASSPORT_NETWORK_ID must match [a-z0-9-]{1,32}, got "${raw}"`,
-    );
+/**
+ * The localnet endpoints the reference client hard-codes (`CONFIG.local` in the contract tree's
+ * `src/node/wallet.ts`). The sponsor wallet and the wave deploy always use these, so `/config` must
+ * advertise exactly these too (Final review M5); `loadReferenceBackend` checks them against the
+ * reference at start-up.
+ */
+export const REFERENCE_LOCALNET = {
+  networkId: 'undeployed',
+  indexerUri: 'http://localhost:8088/api/v4/graphql',
+  indexerWsUri: 'ws://localhost:8088/api/v4/graphql/ws',
+  nodeUri: 'http://localhost:9944',
+  proofServerUri: 'http://127.0.0.1:6300',
+} as const;
+
+/** The legacy environment knobs, which may only restate the reference value. */
+const FIXED: Record<keyof typeof REFERENCE_LOCALNET, string> = {
+  networkId: 'PASSPORT_NETWORK_ID',
+  indexerUri: 'PASSPORT_INDEXER_URI',
+  indexerWsUri: 'PASSPORT_INDEXER_WS_URI',
+  nodeUri: 'PASSPORT_NODE_URI',
+  proofServerUri: 'PASSPORT_PROOF_SERVER_URI',
+};
+
+const refuseOverrides = (env: NodeJS.ProcessEnv): void => {
+  for (const [field, key] of Object.entries(FIXED) as [keyof typeof FIXED, string][]) {
+    const value = env[key];
+    if (value !== undefined && value !== REFERENCE_LOCALNET[field]) {
+      throw new Error(
+        `passport-service: ${key} is fixed to "${REFERENCE_LOCALNET[field]}" in the prototype, got "${value}". ` +
+          'The reference client hard-codes it, so /config would advertise an endpoint the sponsor never uses.',
+      );
+    }
   }
-  return raw;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv): ServiceConfig {
   const contractDir = need(env, 'PASSPORT_CONTRACT_DIR');
+  refuseOverrides(env);
   return {
     port: parsePort(env.PASSPORT_SERVICE_PORT ?? '8787'),
     host: env.PASSPORT_SERVICE_HOST || '127.0.0.1',
     corsOrigin: env.PASSPORT_DAPP_ORIGIN ?? 'http://localhost:5173',
-    networkId: parseNetworkId(env.PASSPORT_NETWORK_ID ?? 'undeployed'),
+    networkId: REFERENCE_LOCALNET.networkId,
     bindingId: env.PASSPORT_BINDING_ID ?? 'acc-45721e1',
     contractDir,
     artefactDir: `${contractDir}/contracts/managed/account`,
     manifestSha256: need(env, 'PASSPORT_MANIFEST_SHA256'),
-    indexerUri: env.PASSPORT_INDEXER_URI ?? 'http://localhost:8088/api/v4/graphql',
-    indexerWsUri: env.PASSPORT_INDEXER_WS_URI ?? 'ws://localhost:8088/api/v4/graphql/ws',
-    nodeUri: env.PASSPORT_NODE_URI ?? 'http://localhost:9944',
-    proofServerUri: env.PASSPORT_PROOF_SERVER_URI ?? 'http://127.0.0.1:6300',
+    indexerUri: REFERENCE_LOCALNET.indexerUri,
+    indexerWsUri: REFERENCE_LOCALNET.indexerWsUri,
+    nodeUri: REFERENCE_LOCALNET.nodeUri,
+    proofServerUri: REFERENCE_LOCALNET.proofServerUri,
     registryFile: env.PASSPORT_REGISTRY_FILE ?? `${contractDir}/../passport-registry.json`,
     // The standalone network's genesis-funded dev seed; testnet replaces this with a real sponsor.
     sponsorSeed:

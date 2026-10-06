@@ -179,15 +179,28 @@ test('loadConfig refuses a non-integer or out-of-range port', () => {
   }
 });
 
-test('loadConfig refuses an invalid PASSPORT_NETWORK_ID', () => {
+test('loadConfig reports the reference endpoints and refuses an override that differs (M5)', () => {
   const base = { PASSPORT_CONTRACT_DIR: '/c', PASSPORT_MANIFEST_SHA256: 'ab' };
-  assert.equal(loadConfig(base).networkId, 'undeployed');
-  assert.equal(loadConfig({ ...base, PASSPORT_NETWORK_ID: 'testnet' }).networkId, 'testnet');
-  for (const bad of ['Test', 'test-net!', 'A'.repeat(33), '', 'test net']) {
+  const config = loadConfig(base);
+  assert.equal(config.networkId, 'undeployed');
+  assert.equal(config.indexerUri, 'http://localhost:8088/api/v4/graphql');
+  assert.equal(config.indexerWsUri, 'ws://localhost:8088/api/v4/graphql/ws');
+  assert.equal(config.nodeUri, 'http://localhost:9944');
+  assert.equal(config.proofServerUri, 'http://127.0.0.1:6300');
+  // Restating a reference value is harmless.
+  assert.equal(loadConfig({ ...base, PASSPORT_NETWORK_ID: 'undeployed' }).networkId, 'undeployed');
+  for (const [key, value] of [
+    ['PASSPORT_NETWORK_ID', 'testnet'],
+    ['PASSPORT_NETWORK_ID', ''],
+    ['PASSPORT_INDEXER_URI', 'http://indexer.example/api/v4/graphql'],
+    ['PASSPORT_INDEXER_WS_URI', 'ws://indexer.example/api/v4/graphql/ws'],
+    ['PASSPORT_NODE_URI', 'http://node.example:9944'],
+    ['PASSPORT_PROOF_SERVER_URI', 'http://prover.example:6300'],
+  ] as const) {
     assert.throws(
-      () => loadConfig({ ...base, PASSPORT_NETWORK_ID: bad }),
-      /PASSPORT_NETWORK_ID/,
-      bad,
+      () => loadConfig({ ...base, [key]: value }),
+      new RegExp(`${key} is fixed to`),
+      `${key}=${value}`,
     );
   }
 });

@@ -51,6 +51,17 @@ interface SetupModule {
   compiledAccountContract(): unknown;
 }
 
+/** `src/node/wallet.ts`: the endpoints the reference wallet and wave deploy are wired to. */
+interface ReferenceNetworkModule {
+  readonly CONFIG: {
+    readonly networkId: string;
+    readonly indexer: string;
+    readonly indexerWS: string;
+    readonly node: string;
+    readonly proofServer: string;
+  };
+}
+
 interface WaveDeployModule {
   deployAccountInWaves(
     providers: unknown,
@@ -125,6 +136,25 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
     'setupWallet',
     'compiledAccountContract',
   ]);
+  // /config advertises the service's endpoints to the browser; they must be the ones the reference
+  // wallet actually uses, or the browser would read a different chain from the one sponsored (M5).
+  const { CONFIG } = (await import(
+    pathToFileURL(root('src/node/wallet.ts')).href
+  )) as ReferenceNetworkModule;
+  const expected = {
+    networkId: CONFIG.networkId,
+    indexerUri: CONFIG.indexer,
+    indexerWsUri: CONFIG.indexerWS,
+    nodeUri: CONFIG.node,
+    proofServerUri: CONFIG.proofServer,
+  };
+  for (const [field, value] of Object.entries(expected) as [keyof typeof expected, string][]) {
+    if (config[field] !== value) {
+      throw new Error(
+        `passport-service: ${field} is "${config[field]}", but the reference client uses "${value}"; reference client changed`,
+      );
+    }
+  }
   const waves = await loadModule<WaveDeployModule>(root('src/wallet/wave-deploy.ts'), [
     'deployAccountInWaves',
   ]);
