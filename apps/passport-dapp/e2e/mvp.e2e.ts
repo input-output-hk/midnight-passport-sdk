@@ -3,11 +3,12 @@
 // It drives the real connector in Node with three seams: a software P-256 passkey, the
 // service-backed chain, and the HTTP registry client against a running apps/passport-service.
 // Run it through `pnpm prototype:e2e` (see the task report for the environment it needs), which
-// loads e2e/dedupe-runtime.mjs so the generated module and midnight-js share one compact-runtime.
+// first syncs the generated module into src/acc/generated, where it shares midnight-js's
+// compact-runtime (scripts/sync-acc.mjs explains why).
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import {
   createPassportConnector,
   createRegistryClient,
@@ -34,8 +35,7 @@ const fail = (message: string): never => {
   process.exit(1);
 };
 
-const contractDir = process.env.PASSPORT_CONTRACT_DIR;
-if (!contractDir)
+if (!process.env.PASSPORT_CONTRACT_DIR)
   fail('PASSPORT_CONTRACT_DIR is not set (the directory holding contracts/managed).');
 // R18: the app pins the manifest hash itself; it is never read back from the service's /config.
 const pin = process.env.PASSPORT_MANIFEST_SHA256 ?? '';
@@ -43,9 +43,7 @@ if (!/^[0-9a-fA-F]{64}$/.test(pin)) {
   fail('PASSPORT_MANIFEST_SHA256 must be set to the 64 hex characters of the manifest SHA-256.');
 }
 
-const accModule = (await import(
-  pathToFileURL(`${contractDir}/contracts/managed/account/contract/index.js`).href
-)) as GeneratedAccModule;
+const accModule: GeneratedAccModule = await import('#acc');
 // Fails in milliseconds, before any deploy, when two compact-runtime copies are loaded (C1).
 try {
   assertSingleCompactRuntime(accModule);

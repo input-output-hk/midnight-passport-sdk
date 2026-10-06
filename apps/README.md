@@ -122,10 +122,14 @@ compromised service could fake the ledger that `openAccount`'s checks read.
   `::1` first and fetches to `http://localhost:8787` are refused, start the dapp with
   `VITE_PASSPORT_SERVICE_URL=http://127.0.0.1:8787`.
 - **`guard:` errors.** You are outside the Nix shell. Run `nix develop`.
-- **`two compact-runtime copies are loaded`.** The e2e ran without the resolve hook. Start it with
-  `pnpm prototype:e2e`, which loads `e2e/dedupe-runtime.mjs` (the Node twin of Vite's
-  `resolve.dedupe`). `PASSPORT_CONTRACT_DIR=<dir> pnpm --filter passport-dapp test` checks this
-  offline in seconds.
+- **`two compact-runtime copies are loaded`.** The generated contract module was imported from
+  `PASSPORT_CONTRACT_DIR`, where its `compact-runtime` import resolves the contract tree's own copy
+  (onchain-runtime rc.3) instead of the workspace's (rc.4). `dev`, `build`, `test` and `e2e` first
+  run `scripts/sync-acc.mjs`, which copies `index.js`, `index.d.ts` and the source map into
+  `apps/passport-dapp/src/acc/generated/` (git-ignored); the dapp and the e2e import it as `#acc`
+  (package.json `imports`), so it resolves the runtime midnight-js uses. Rerun
+  `pnpm --filter passport-dapp sync:acc` after recompiling the ACC.
+  `PASSPORT_CONTRACT_DIR=<dir> pnpm --filter passport-dapp test` checks this offline in seconds.
 - **`ProverUnavailable` after about 10 minutes.** The dapp gives up on `/prove` after 10 minutes,
   but proofs and deployments share one queue on the service. A rotation queued behind a `/deploy`
   (10 waves) can time out while the service keeps proving it. Wait for the deployment to finish,

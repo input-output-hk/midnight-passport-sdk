@@ -14,7 +14,8 @@ export function assertSingleCompactRuntime(module: { ledger(state: unknown): unk
     const message = e instanceof Error ? e.message : String(e);
     if (/expected instance of/.test(message)) {
       throw new Error(
-        'two compact-runtime copies are loaded: run under `--import ./e2e/dedupe-runtime.mjs` ' +
+        'two compact-runtime copies are loaded: import the generated module through `#acc`, the ' +
+          'copy scripts/sync-acc.mjs puts inside the dapp, not from PASSPORT_CONTRACT_DIR ' +
           `(the generated module's runtime is not midnight-js's: ${message})`,
         { cause: e },
       );

@@ -17,3 +17,4 @@ packages/contract/artefact/
 /experiments/
 renovate.json
 CODEOWNERS
+apps/passport-dapp/src/acc/generated/

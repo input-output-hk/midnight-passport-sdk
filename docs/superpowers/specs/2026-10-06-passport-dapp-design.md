@@ -454,7 +454,10 @@ packages/protocol/       + connector types
 - Artefacts: produced by `experiments/acc-0.35/compile.sh <dir> full` from the
   pinned revision `45721e1`; the service reads them from
   `PASSPORT_ARTEFACT_DIR` and checks the manifest hash at start-up. The dapp
-  bundles the generated contract module from the same directory.
+  bundles the generated contract module from the same directory, copied first
+  into `apps/passport-dapp/src/acc/generated/` (`scripts/sync-acc.mjs`, run
+  before `dev`, `build`, `test` and `e2e`), so that its `compact-runtime` import
+  resolves the workspace's copy, the one midnight-js uses.
 - Everything runs in the Nix shell; the localnet from `infra/localnet` with
   Docker memory ≥ 24 GiB.
 - One command starts the stack: `pnpm prototype:up` (localnet, service, dapp).
@@ -464,7 +467,7 @@ packages/protocol/       + connector types
 | Level | What | Status |
 |---|---|---|
 | Unit (`node --test`, repo style) | Connector flows against fake seams, including the §5.3 registry checks and the deployed-record retry; error mapping; WebAuthn and PRF against a software authenticator; service routes, the `Host` and content-type guards, the registry and the sponsor policy against a fake proof server and node; the shim; the wallet seed policy | Exists; runs in CI (`pnpm test`, `pnpm test:apps`) |
-| Runtime identity (offline) | `apps/passport-dapp/e2e/runtime-identity.e2e.ts`: the generated module and midnight-js share one `compact-runtime` under the e2e's resolve hook (`e2e/dedupe-runtime.mjs`, the Node twin of Vite's `resolve.dedupe`) | Exists; runs in `test:apps` when `PASSPORT_CONTRACT_DIR` is set, else skips |
+| Runtime identity (offline) | `apps/passport-dapp/e2e/runtime-identity.e2e.ts`: the generated module, synced into the dapp (`src/acc/generated`, imported as `#acc`), and midnight-js share one `compact-runtime`, with no resolve hook or dedupe | Exists; runs in `test:apps` when `PASSPORT_CONTRACT_DIR` is set, else skips |
 | Integration | The service against the real localnet: `/zk` serves byte-identical files under the pinned manifest, `/prove` proves `activate_initial_device_with_p256`, `/deploy` deploys | Pending (R12): `apps/passport-service/test/reference.it.test.ts` covers the deploy leg behind `PASSPORT_IT=1` and has not yet run against a localnet |
 | End-to-end script | `apps/passport-dapp/e2e/mvp.e2e.ts`: drives create → activate → rotate → reopen through the real connector with a software ES256 authenticator under `wa-json134` (as the contract team's tests do), records network, address, deploy submission ids and transaction hashes. A preflight stops it before any deploy if two `compact-runtime` copies are loaded | Script exists; the recorded run (R20, `experiments/acc-0.35/results/x8-dapp-e2e.json`) is pending |
 | Manual, recorded | The same flow with a real passkey in a browser at `http://localhost:5173`; evidence (address, hashes, steps) exported from the app into `experiments/acc-0.35/results/` | Pending |

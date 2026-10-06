@@ -2,10 +2,15 @@
   "name": "passport-dapp",
   "private": true,
   "type": "module",
+  "imports": {
+    "#acc": "./src/acc/generated/index.js"
+  },
   "scripts": {
-    "dev": "../../experiments/acc-0.35/guard.sh && vite",
-    "test": "node --import tsx e2e/seed-policy.e2e.ts && node --import tsx --import ./e2e/dedupe-runtime.mjs e2e/runtime-identity.e2e.ts",
-    "e2e": "../../experiments/acc-0.35/guard.sh && node --import tsx --import ./e2e/dedupe-runtime.mjs e2e/mvp.e2e.ts"
+    "sync:acc": "node scripts/sync-acc.mjs",
+    "dev": "../../experiments/acc-0.35/guard.sh && node scripts/sync-acc.mjs && vite",
+    "build": "../../experiments/acc-0.35/guard.sh && node scripts/sync-acc.mjs && vite build",
+    "test": "node scripts/sync-acc.mjs --optional && node --import tsx e2e/seed-policy.e2e.ts && node --import tsx e2e/runtime-identity.e2e.ts",
+    "e2e": "../../experiments/acc-0.35/guard.sh && node scripts/sync-acc.mjs && node --import tsx e2e/mvp.e2e.ts"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.20.0",

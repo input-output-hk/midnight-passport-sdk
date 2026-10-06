@@ -1,12 +1,13 @@
-// One compact-runtime for the Node e2e (Final review C1), offline and in seconds:
-//   PASSPORT_CONTRACT_DIR=<fetch-acc.sh output> \
-//     node --import tsx --import ./e2e/dedupe-runtime.mjs e2e/runtime-identity.e2e.ts
-// It skips when PASSPORT_CONTRACT_DIR is unset, so `pnpm test:apps` stays green without the tree.
+// One compact-runtime for the generated module and midnight-js (Final review C1), offline and in
+// seconds, with no resolve hook:
+//   PASSPORT_CONTRACT_DIR=<fetch-acc.sh output> pnpm --filter passport-dapp test
+// `test` syncs the module into src/acc/generated first. This check skips when
+// PASSPORT_CONTRACT_DIR is unset, so `pnpm test:apps` stays green without the tree.
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { findPackageJSON } from 'node:module';
 import { dirname } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assertSingleCompactRuntime } from './runtime-preflight.ts';
 
 const contractDir = process.env.PASSPORT_CONTRACT_DIR;
@@ -38,11 +39,14 @@ assert.equal(
   'midnight-js-protocol uses another runtime',
 );
 
-// 2. Under the resolve hook, the generated module shares the same classes.
-const generated = `${contractDir}/contracts/managed/account/contract/index.js`;
-const accModule = (await import(pathToFileURL(generated).href)) as {
-  ledger(state: unknown): unknown;
-};
+// 2. The synced module, inside the dapp, resolves that same runtime and shares its classes.
+const generated = new URL('../src/acc/generated/index.js', import.meta.url);
+assert.equal(
+  packageDir(RUNTIME, generated),
+  dapp,
+  `the generated module at ${fileURLToPath(generated)} resolves another runtime`,
+);
+const accModule = await import('#acc');
 assertSingleCompactRuntime(accModule);
 
 console.log(`runtime identity: PASS (one compact-runtime at ${dapp})`);
