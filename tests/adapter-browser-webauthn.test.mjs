@@ -12,8 +12,15 @@ const RP = 'localhost';
 const ID = Uint8Array.of(1, 2, 3, 4);
 
 /**
- * @typedef {{ challenge: Uint8Array; extensions?: { prf?: { eval: { first: Uint8Array } } } }} GetOptions
- * @typedef {{ prf?: boolean; cancel?: string; highS?: boolean }} AuthenticatorOptions
+ * @typedef {{
+ *   challenge: Uint8Array;
+ *   rpId?: string;
+ *   allowCredentials?: { type: string; id: Uint8Array }[];
+ *   extensions?: { prf?: { eval: { first: Uint8Array } } };
+ * }} GetOptions
+ * @typedef {{ prf?: boolean; cancel?: string; highS?: boolean; empty?: boolean }} AuthenticatorOptions
+ * What the next signing assertion carries; tests change it between ceremonies.
+ * @typedef {{ flags: number; extensionData: boolean; rp: string; wrongChallenge: boolean }} Behaviour
  */
 
 /** @param {Uint8Array} bytes @returns {ArrayBuffer} */
@@ -34,20 +41,32 @@ function derSignature(r, s) {
 }
 
 /** A software authenticator behind a CredentialsContainer-shaped fake. @param {AuthenticatorOptions} [opts] */
-function softwareAuthenticator({ prf = true, cancel, highS = false } = {}) {
+function softwareAuthenticator({ prf = true, cancel, highS = false, empty = false } = {}) {
   const sk = p256.utils.randomSecretKey();
   const pub = p256.getPublicKey(sk, false); // 0x04 || x || y
   const spki = new Uint8Array([
     ...Buffer.from('3059301306072a8648ce3d020106082a8648ce3d030107034200', 'hex'),
     ...pub,
   ]);
-  const authData = new Uint8Array([...sha256(new TextEncoder().encode(RP)), 5, 0, 0, 0, 1]);
+  /** @type {Behaviour} */
+  const behaviour = { flags: 5, extensionData: false, rp: RP, wrongChallenge: false };
+  const authenticatorData = () =>
+    new Uint8Array([
+      ...sha256(new TextEncoder().encode(behaviour.rp)),
+      behaviour.flags,
+      0,
+      0,
+      0,
+      1,
+      ...(behaviour.extensionData ? [0xa1, 0x60, 0x00] : []), // a CBOR extensions map
+    ]);
   const cancelled = () => Object.assign(new Error('prompt dismissed'), { name: cancel });
   /** @type {GetOptions[]} */
   const gets = [];
   return {
     pub,
     gets,
+    behaviour,
     container: {
       async create() {
         if (cancel) throw cancelled();
@@ -60,6 +79,7 @@ function softwareAuthenticator({ prf = true, cancel, highS = false } = {}) {
       async get({ publicKey }) {
         if (cancel) throw cancelled();
         gets.push(publicKey);
+        if (empty) return null;
         if (publicKey.extensions?.prf) {
           if (!prf) return { rawId: buffer(ID), getClientExtensionResults: () => ({}) };
           // A stand-in PRF: a deterministic function of the salt, as the real extension is.
@@ -69,8 +89,10 @@ function softwareAuthenticator({ prf = true, cancel, highS = false } = {}) {
             getClientExtensionResults: () => ({ prf: { results: { first: buffer(first) } } }),
           };
         }
+        const authData = authenticatorData();
+        const asked = new Uint8Array(publicKey.challenge);
         const clientData = b.clientDataJSON(
-          new Uint8Array(publicKey.challenge),
+          behaviour.wrongChallenge ? asked.map((v) => v ^ 1) : asked,
           new TextEncoder().encode(ORIGIN),
         );
         const message = new Uint8Array([...authData, ...sha256(clientData)]);
@@ -171,7 +193,7 @@ test('the PRF wallet seed is network-bound and absent without PRF support', asyn
   assert.notDeepEqual(a1, a2);
   assert.deepEqual(await seed('undeployed'), a1);
   const none = await b.walletSeedFromPasskey({
-    credentialId: Uint8Array.of(1),
+    credentialId: ID,
     rpId: RP,
     networkId: 'undeployed',
     credentials: softwareAuthenticator({ prf: false }).container,
@@ -198,4 +220,113 @@ test('the PRF salt is the domain-separated hash of the network, in its own cerem
   const seam = seamFor(auth);
   await seam.sign(await seam.create('alice'), new Uint8Array(32));
   assert.equal(auth.gets.at(-1)?.extensions, undefined);
+});
+
+test('the PRF ceremony asks for exactly the credential and relying party it was given', async () => {
+  const auth = softwareAuthenticator();
+  await b.walletSeedFromPasskey({
+    credentialId: ID,
+    rpId: RP,
+    networkId: 'undeployed',
+    credentials: auth.container,
+  });
+  const [ceremony] = auth.gets;
+  assert.equal(ceremony?.rpId, RP);
+  assert.equal(ceremony?.allowCredentials?.length, 1);
+  assert.deepEqual(new Uint8Array(ceremony?.allowCredentials?.[0]?.id ?? []), ID);
+});
+
+test('the PRF seed fails on a dismissed prompt or a different credential, never silently', async () => {
+  const seed = (/** @type {Uint8Array} */ credentialId, /** @type {AuthenticatorOptions} */ opts) =>
+    b.walletSeedFromPasskey({
+      credentialId,
+      rpId: RP,
+      networkId: 'undeployed',
+      credentials: softwareAuthenticator(opts).container,
+    });
+  await assert.rejects(seed(ID, { empty: true }), { code: 'UserCancelled' });
+  await assert.rejects(seed(Uint8Array.of(9, 9), {}), {
+    code: 'InternalError',
+    message: /different credential/,
+  });
+});
+
+test('create runs an enrolment probe: one throwaway assertion after the create ceremony', async () => {
+  const auth = softwareAuthenticator();
+  await seamFor(auth).create('alice');
+  assert.equal(auth.gets.length, 1);
+  const [probe] = auth.gets;
+  assert.equal(probe?.challenge.length, 32);
+  assert.equal(probe?.rpId, RP);
+  assert.deepEqual(new Uint8Array(probe?.allowCredentials?.[0]?.id ?? []), ID);
+});
+
+test('create refuses an authenticator whose assertions break the profile', async () => {
+  const profile = { code: 'UnsupportedAuthenticator', message: /wa-json134 profile/ };
+  for (const change of [
+    { extensionData: true, flags: 0x85 }, // extension data, as a PRF-capable build may add
+    { flags: 1 }, // no user verification
+    { flags: 0x45 }, // attested credential data
+    { rp: 'example.org' }, // another relying party
+    { wrongChallenge: true }, // clientDataJSON for another challenge
+  ]) {
+    const auth = softwareAuthenticator();
+    Object.assign(auth.behaviour, change);
+    await assert.rejects(seamFor(auth).create('alice'), profile, JSON.stringify(change));
+  }
+});
+
+test('create refuses a page whose origin is not the policy origin', async () => {
+  const auth = softwareAuthenticator();
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'location');
+  try {
+    Object.defineProperty(globalThis, 'location', {
+      value: { origin: 'https://evil.example' },
+      configurable: true,
+    });
+    await assert.rejects(seamFor(auth).create('alice'), { message: /origin mismatch/ });
+    assert.equal(auth.gets.length, 0);
+    Object.defineProperty(globalThis, 'location', {
+      value: { origin: ORIGIN },
+      configurable: true,
+    });
+    await seamFor(auth).create('alice');
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'location', original);
+    else delete (/** @type {{ location?: unknown }} */ (globalThis).location);
+  }
+});
+
+test('sign accepts flags 5, 13 and 29 only, with 37 bytes of authenticator data', async () => {
+  const auth = softwareAuthenticator();
+  const seam = seamFor(auth);
+  const cred = await seam.create('alice');
+  const challenge = new Uint8Array(32).fill(3);
+  for (const flags of [5, 13, 29]) {
+    auth.behaviour.flags = flags;
+    assert.equal((await seam.sign(cred, challenge)).authenticator_data[32], flags);
+  }
+  for (const flags of [0, 1, 4, 7, 21, 0x45, 0x85]) {
+    auth.behaviour.flags = flags;
+    await assert.rejects(
+      seam.sign(cred, challenge),
+      { message: /requires UP\+UV/ },
+      `flags ${flags}`,
+    );
+  }
+  auth.behaviour.flags = 5;
+  auth.behaviour.extensionData = true;
+  await assert.rejects(seam.sign(cred, challenge), { message: /length or RP mismatch/ });
+});
+
+test('sign rejects another RP and a clientDataJSON for another challenge', async () => {
+  const auth = softwareAuthenticator();
+  const seam = seamFor(auth);
+  const cred = await seam.create('alice');
+  const challenge = new Uint8Array(32).fill(3);
+  auth.behaviour.rp = 'example.org';
+  await assert.rejects(seam.sign(cred, challenge), { message: /length or RP mismatch/ });
+  auth.behaviour.rp = RP;
+  auth.behaviour.wrongChallenge = true;
+  await assert.rejects(seam.sign(cred, challenge), { message: /mismatched clientDataJSON/ });
 });

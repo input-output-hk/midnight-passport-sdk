@@ -1,23 +1,17 @@
 // Ported from the planning workspace's contract/src/wallet/webauthn.ts at
 // revision 45721e1 (Apache-2.0): profile wa-json134 helpers, unchanged.
-// (Only `?? 0` / `?? -1` guards for noUncheckedIndexedAccess; behaviour is identical.)
+// Differences: `?? 0` / `?? -1` guards for noUncheckedIndexedAccess (behaviour identical);
+// the policy and key types come from the account seams instead of being redeclared, so they
+// cannot drift; the two decode helpers are exported for passkey.ts.
 // Browser-compatible transport and strict adapter for profile wa-json134.
 // Client validation gives useful errors; the circuit independently rebuilds
 // these signed bytes and checks RP, flags, challenge and the enrolled origin.
+import type { P256PublicKey, WebAuthnPolicy } from '@midnight-ntwrk/mn-passport-account';
 import { p256 } from '@noble/curves/nist.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 
 export const WEBAUTHN_PROFILE = 'wa-json134';
 export const WEBAUTHN_ORIGIN_BYTES = 21;
-export interface WebAuthnPolicy {
-  rp_id_hash: Uint8Array;
-  origin: Uint8Array;
-}
-export interface P256PublicKey {
-  x: bigint;
-  y: bigint;
-  identity: boolean;
-}
 export interface WebAuthnAssertion {
   authenticatorData: Uint8Array;
   clientDataJSON: Uint8Array;
@@ -35,9 +29,10 @@ export function base64url(bytes: Uint8Array): string {
     .replace(/\//g, '_')
     .replace(/=+$/, '');
 }
-const fromBase64url = (s: string): Uint8Array =>
+export const fromBase64url = (s: string): Uint8Array =>
   Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
-const integer = (b: Uint8Array): bigint => b.reduce((n, v) => (n << 8n) | BigInt(v), 0n);
+export const bigintFromBytes = (b: Uint8Array): bigint =>
+  b.reduce((n, v) => (n << 8n) | BigInt(v), 0n);
 
 export function webauthnPolicy(rpId: string, origin: string): WebAuthnPolicy {
   const url = new URL(origin);
@@ -96,7 +91,7 @@ export function parseES256Signature(der: Uint8Array): { r: bigint; s: bigint } {
     ) {
       throw new Error('noncanonical ES256 DER integer');
     }
-    const n = integer(bytes);
+    const n = bigintFromBytes(bytes);
     if (n === 0n || n >= p256.Point.Fn.ORDER) throw new Error('ES256 scalar outside [1,n)');
     return n;
   };

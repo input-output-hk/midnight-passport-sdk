@@ -3,11 +3,15 @@ import {
   toPassportError,
   type PasskeySeam,
 } from '@midnight-ntwrk/mn-passport-account';
-import { assertionMaterial, validateP256Key, webauthnPolicy } from './webauthn.js';
-
-const fromB64url = (s: string) =>
-  Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
-const integer = (b: Uint8Array) => b.reduce((n, v) => (n << 8n) | BigInt(v), 0n);
+import {
+  assertionMaterial,
+  bigintFromBytes,
+  equalBytes,
+  fromBase64url,
+  validateP256Key,
+  webauthnPolicy,
+  type WebAuthnAssertion,
+} from './webauthn.js';
 
 /** wa-json134 passkeys; the private key never leaves the authenticator (spec §4.4). */
 export function browserPasskey(opts: {
@@ -17,9 +21,46 @@ export function browserPasskey(opts: {
 }): PasskeySeam {
   const policy = webauthnPolicy(opts.rpId, opts.origin);
   const container = () => opts.credentials ?? navigator.credentials;
+  /** One assertion ceremony for a known credential; a different credential or a dismissed prompt fails. */
+  const assertion = async (
+    credentialId: Uint8Array,
+    challenge: Uint8Array,
+  ): Promise<WebAuthnAssertion> => {
+    const got = (await container().get({
+      publicKey: {
+        challenge: new Uint8Array(challenge),
+        rpId: opts.rpId,
+        userVerification: 'required',
+        allowCredentials: [{ type: 'public-key', id: new Uint8Array(credentialId) }],
+      },
+    })) as PublicKeyCredential | null;
+    if (!got)
+      throw new PassportConnectorError('UserCancelled', 'The passkey prompt was cancelled.');
+    if (!equalBytes(new Uint8Array(got.rawId), credentialId)) {
+      throw new PassportConnectorError(
+        'InternalError',
+        'The authenticator answered with a different credential than requested.',
+      );
+    }
+    const r = got.response as AuthenticatorAssertionResponse;
+    return {
+      authenticatorData: new Uint8Array(r.authenticatorData),
+      clientDataJSON: new Uint8Array(r.clientDataJSON),
+      signature: new Uint8Array(r.signature),
+    };
+  };
   return {
     async create(userName) {
       try {
+        // The signed origin is fixed at enrolment (21 bytes, wa-json134); enrolling from another
+        // page would bind a credential the contract can never accept.
+        const pageOrigin = globalThis.location?.origin;
+        if (pageOrigin !== undefined && pageOrigin !== opts.origin) {
+          throw new PassportConnectorError(
+            'InternalError',
+            `Passkey enrolment origin mismatch: the page is ${pageOrigin}, the policy is ${opts.origin}.`,
+          );
+        }
         const credential = (await container().create({
           publicKey: {
             challenge: crypto.getRandomValues(new Uint8Array(32)),
@@ -55,12 +96,26 @@ export function browserPasskey(opts: {
         );
         const jwk = await crypto.subtle.exportKey('jwk', key);
         const publicKey = {
-          x: integer(fromB64url(jwk.x!)),
-          y: integer(fromB64url(jwk.y!)),
+          x: bigintFromBytes(fromBase64url(jwk.x!)),
+          y: bigintFromBytes(fromBase64url(jwk.y!)),
           identity: false as const,
         };
         validateP256Key(publicKey);
-        return { credentialId: new Uint8Array(credential.rawId), publicKey, policy };
+        const credentialId = new Uint8Array(credential.rawId);
+        // Enrolment probe: one throwaway assertion proves this authenticator produces the exact
+        // wa-json134 material (flags, 37-byte authData, origin, ES256) before anything is deployed.
+        const challenge = crypto.getRandomValues(new Uint8Array(32));
+        const probe = await assertion(credentialId, challenge);
+        try {
+          assertionMaterial(challenge, policy, publicKey, probe);
+        } catch (e) {
+          throw new PassportConnectorError(
+            'UnsupportedAuthenticator',
+            `The authenticator does not match the wa-json134 profile: ${e instanceof Error ? e.message : String(e)}`,
+            { cause: e },
+          );
+        }
+        return { credentialId, publicKey, policy };
       } catch (e) {
         throw toPassportError(e);
       }
@@ -84,23 +139,12 @@ export function browserPasskey(opts: {
     },
     async sign(credential, challenge) {
       try {
-        const got = (await container().get({
-          publicKey: {
-            challenge: new Uint8Array(challenge),
-            rpId: opts.rpId,
-            userVerification: 'required',
-            allowCredentials: [{ type: 'public-key', id: new Uint8Array(credential.credentialId) }],
-          },
-        })) as PublicKeyCredential | null;
-        if (!got) {
-          throw new PassportConnectorError('UserCancelled', 'The passkey prompt was cancelled.');
-        }
-        const r = got.response as AuthenticatorAssertionResponse;
-        const material = assertionMaterial(challenge, credential.policy, credential.publicKey, {
-          authenticatorData: new Uint8Array(r.authenticatorData),
-          clientDataJSON: new Uint8Array(r.clientDataJSON),
-          signature: new Uint8Array(r.signature),
-        });
+        const material = assertionMaterial(
+          challenge,
+          credential.policy,
+          credential.publicKey,
+          await assertion(credential.credentialId, challenge),
+        );
         return { authenticator_data: material.authenticator_data, sig: material.sig };
       } catch (e) {
         throw toPassportError(e);
