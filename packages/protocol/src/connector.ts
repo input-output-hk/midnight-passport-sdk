@@ -25,7 +25,8 @@ export interface PassportErrorShape extends Error {
   readonly code: PassportErrorCode;
 }
 
-export type CreateAccountStep = 'passkey-created' | 'deploying' | 'deployed' | 'activating' | 'active';
+export type CreateAccountStep =
+  'passkey-created' | 'deploying' | 'deployed' | 'activating' | 'active';
 
 export interface CreateAccountOptions {
   readonly userName: string;
