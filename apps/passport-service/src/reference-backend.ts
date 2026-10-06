@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { ChainBackend } from './backend.ts';
 import type { ServiceConfig } from './config.ts';
-import { serial } from './queue.ts';
+import { DeploymentLog, sponsoredAddresses } from './deployments.ts';
+import { guardedBalance, type ActionClasses, type LedgerTxLike } from './sponsor-policy.ts';
 
 /*
  * The contract team's Node client lives outside this workspace (the fetched tree at
@@ -76,6 +77,18 @@ interface ProofProviderModule {
   httpClientProvingProvider(url: string, zkConfig: unknown): ProvingProvider;
 }
 
+/** `@midnightntwrk/ledger-v9`, the module instance the wallet itself uses. */
+interface LedgerModule extends ActionClasses {
+  Transaction: {
+    deserialize(
+      markerS: 'signature',
+      markerP: 'proof',
+      markerB: 'pre-binding',
+      raw: Uint8Array,
+    ): LedgerTxLike;
+  };
+}
+
 interface ZkConfigModule {
   nodeZkConfigRegistry(artifactRoot: string): Promise<unknown>;
 }
@@ -128,58 +141,68 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
     ['nodeZkConfigRegistry'],
   );
 
+  // The ledger classes the sponsor policy inspects a transaction with. Resolved from the same
+  // tree, so `instanceof` holds against the transactions the wallet's own module deserialises.
+  const ledger = await loadModule<LedgerModule>(pkg('@midnightntwrk/ledger-v9'), [
+    'Transaction',
+    'ContractCall',
+    'ContractDeploy',
+    'MaintenanceUpdate',
+  ]);
+  const deployments = new DeploymentLog(config);
+
   // The sponsor: the reference wallet over the configured seed, synced once. The seed goes in
   // here and nowhere else; it is never logged or returned.
   const { providers } = await setup.setupWallet(config.sponsorSeed);
 
-  // A registry over every compiled bundle, so a proof can resolve its circuit's keys.
-  const registry = await zkConfig.nodeZkConfigRegistry(root('contracts/managed'));
+  // A registry over the account bundle only: delegated proving serves the binding's circuits.
+  const registry = await zkConfig.nodeZkConfigRegistry(config.artefactDir);
   const proving = proofProvider.httpClientProvingProvider(config.proofServerUri, registry);
-
-  // The sponsor wallet balances and submits one deployment at a time: concurrent waves would
-  // race for the same Dust.
-  const deployQueue = serial();
 
   return {
     check: (preimage, keyLocation) => proving.check(preimage, keyLocation),
     prove: (preimage, keyLocation, overwriteBindingInput) =>
       proving.prove(preimage, keyLocation, overwriteBindingInput),
-    balance: async (tx) => {
-      const balanced = await providers.walletProvider.balanceTx(tag(tx));
-      return balanced.tx.serialize();
-    },
+    // The policy guards this endpoint, not the wallet provider: the reference wave deploy calls
+    // `walletProvider.balanceTx` itself for its deployment and maintenance transactions.
+    balance: guardedBalance({
+      // The markers are the ones the wallet facade deserialises an unbound transaction with.
+      deserialize: (bytes) =>
+        ledger.Transaction.deserialize('signature', 'proof', 'pre-binding', bytes),
+      classes: ledger,
+      allowed: () => sponsoredAddresses(config, deployments),
+      balance: async (tx) => (await providers.walletProvider.balanceTx(tag(tx))).tx.serialize(),
+    }),
     submit: (tx) => providers.midnightProvider.submitTx(tag(tx)),
-    deploy: (boot, encKey) =>
-      deployQueue(async () => {
-        // Records every transaction id the waves submit; the reference returns the address only.
-        const txHashes: string[] = [];
-        const recording: Providers = {
-          ...providers,
-          midnightProvider: {
-            ...providers.midnightProvider,
-            submitTx: async (tx) => {
-              const id = await providers.midnightProvider.submitTx(tx);
-              txHashes.push(String(id));
-              return id;
-            },
+    // The route runs deployments through the same queue as proofs, so they never overlap.
+    deploy: async (boot, encKey) => {
+      // Records every transaction id the waves submit; the reference returns the address only.
+      const txHashes: string[] = [];
+      const recording: Providers = {
+        ...providers,
+        midnightProvider: {
+          ...providers.midnightProvider,
+          submitTx: async (tx) => {
+            const id = await providers.midnightProvider.submitTx(tx);
+            txHashes.push(String(id));
+            return id;
           },
-        };
-        // Recovery at birth, as the reference does with no artefacts supplied: a fresh JubJub key
-        // whose secret is discarded here, a zero wrap, and a 3-day veto window.
-        const birth = signer.JubjubDevice.generate();
-        const address = await waves.deployAccountInWaves(
-          recording,
-          setup.compiledAccountContract(),
-          {
-            firstArm: 'p256',
-            args: [boot, encKey, birth.pk, new Uint8Array(64), 3n * 24n * 3600n],
-            privateStateId: `passport-${randomBytes(8).toString('hex')}`,
-            initialPrivateState: witnesses.emptyCoinStore(),
-            retireAuthority: true,
-          },
-        );
-        return { address, txHashes };
-      }),
+        },
+      };
+      // Recovery at birth, as the reference does with no artefacts supplied: a fresh JubJub key
+      // whose secret is discarded here, a zero wrap, and a 3-day veto window.
+      const birth = signer.JubjubDevice.generate();
+      const address = await waves.deployAccountInWaves(recording, setup.compiledAccountContract(), {
+        firstArm: 'p256',
+        args: [boot, encKey, birth.pk, new Uint8Array(64), 3n * 24n * 3600n],
+        privateStateId: `passport-${randomBytes(8).toString('hex')}`,
+        initialPrivateState: witnesses.emptyCoinStore(),
+        retireAuthority: true,
+      });
+      // Only now may the sponsor fund calls to it (Ruling R15), once it is also registered.
+      deployments.add(address);
+      return { address, txHashes };
+    },
     sponsorKeys: () => ({
       coinPublicKey: providers.walletProvider.getCoinPublicKey(),
       encryptionPublicKey: providers.walletProvider.getEncryptionPublicKey(),
