@@ -110,7 +110,7 @@ test('deployed to active transition returns 204 and updates status', async (t) =
     assert.equal(put2.status, 204);
     const get = await fetch(`${base}/accounts/undeployed/0a0b`);
     assert.equal(get.status, 200);
-    const retrieved = await get.json();
+    const retrieved = (await get.json()) as typeof record;
     assert.equal(retrieved.status, 'active');
   } finally {
     server.close();
@@ -150,7 +150,7 @@ test('active to deployed transition returns 409 and record stays active', async 
     });
     assert.equal(put2.status, 409);
     const get = await fetch(`${base}/accounts/undeployed/0a0b`);
-    const retrieved = await get.json();
+    const retrieved = (await get.json()) as typeof record;
     assert.equal(retrieved.status, 'active', 'record should remain active');
   } finally {
     server.close();
@@ -171,7 +171,7 @@ test('different address over existing record returns 409 and GET is unchanged', 
     });
     assert.equal(put2.status, 409);
     const get = await fetch(`${base}/accounts/undeployed/0a0b`);
-    const retrieved = await get.json();
+    const retrieved = (await get.json()) as typeof record;
     assert.equal(retrieved.address, record.address, 'original address should be unchanged');
   } finally {
     server.close();
@@ -298,7 +298,7 @@ test('corrupt registry file returns 500, excludes file contents, and leaves file
   try {
     const get = await fetch(`${base}/accounts/undeployed/0a0b`);
     assert.equal(get.status, 500);
-    const body = await get.json();
+    const body = (await get.json()) as { error: string };
     assert.equal(body.error, 'registry file unreadable');
     const fileContentsAfterGet = readFileSync(config.registryFile, 'utf8');
     assert.equal(fileContentsAfterGet, fileContentsBefore, 'file unchanged after GET');
