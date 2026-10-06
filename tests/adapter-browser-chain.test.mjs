@@ -19,7 +19,7 @@ const ledger = await import(
 /**
  * @typedef {{ status: number; body?: unknown; unreadable?: boolean; hang?: boolean }} Reply
  * @typedef {{ method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal }} Init
- * @typedef {{ url: string; method: string | undefined; body: Record<string, unknown> | undefined }} Call
+ * @typedef {{ url: string; method: string | undefined; contentType: string | undefined; body: Record<string, unknown> | undefined }} Call
  */
 
 /**
@@ -35,6 +35,7 @@ function recordingFetch(responses) {
     calls.push({
       url,
       method: init.method,
+      contentType: init.headers?.['content-type'],
       body: init.body ? JSON.parse(init.body) : undefined,
     });
     const r = responses[new URL(url).pathname];
@@ -322,6 +323,20 @@ test('deploy posts the constructor arguments as hex and returns the address and 
   assert.equal(f.calls[0]?.url, 'http://svc/deploy');
 });
 
+test('every POST to the service is application/json, so a cross-site page needs a preflight (I1)', async () => {
+  const f = recordingFetch({
+    '/deploy': { status: 200, body: { address: 'ff00', txHashes: [] } },
+    '/prove': { status: 200, body: { proof: 'aa' } },
+  });
+  await chainOver(f.fn).deploy({ boot: new Uint8Array(32), encKey: new Uint8Array(32) });
+  await b.delegatedProvingProvider('http://svc', f.fn).prove(Uint8Array.of(1), 'c');
+  assert.equal(f.calls.length, 2);
+  for (const call of f.calls) {
+    assert.equal(call.method, 'POST');
+    assert.equal(call.contentType, 'application/json', call.url);
+  }
+});
+
 test('deploy without an address in a 200 answer is InternalError', async () => {
   const f = recordingFetch({ '/deploy': { status: 200, body: { txHashes: [] } } });
   await assert.rejects(
@@ -419,6 +434,22 @@ test('a service whose manifest hash is not the app pin is refused before any req
   );
   assert.equal(f.calls.length, 0, 'nothing, /zk included, was fetched');
   assert.equal(submitted, false);
+});
+
+test('a pin that is not 64 hex characters is refused, even when /config carries the same value (M1)', () => {
+  for (const pin of ['', 'abc', 'zz'.repeat(32), 'ab'.repeat(33)]) {
+    const f = recordingFetch({});
+    assert.throws(
+      () =>
+        chainOver(f.fn, undefined, {
+          config: { ...CONFIG, manifestSha256: pin },
+          expectedManifestSha256: pin,
+        }),
+      { code: 'ArtefactIntegrity', message: /pin is not 64 hex characters/ },
+      JSON.stringify(pin),
+    );
+    assert.equal(f.calls.length, 0, 'nothing was fetched');
+  }
 });
 
 test('call forwards the call, maps the finalized record and verifies artefacts against the app pin', async () => {

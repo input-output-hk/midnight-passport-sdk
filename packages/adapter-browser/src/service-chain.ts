@@ -111,8 +111,8 @@ export function serviceMidnightProvider(base: string, fetchFn: FetchLike): Midni
  * Side effect: this calls midnight-js's `setNetworkId`, which is module-global state, so one page
  * can be bound to one network at a time.
  *
- * Throws `ArtefactIntegrity` when the service's manifest hash differs from the app's pin
- * (Ruling R18). The pin is the app's own, never the service's: a compromised service could
+ * Throws `ArtefactIntegrity` when the app's pin is not a 64-hex-character SHA-256, or when the
+ * service's manifest hash differs from it (Ruling R18). The pin is the app's own, never the service's: a compromised service could
  * otherwise serve tampered artefacts together with a matching hash.
  */
 export function createServiceChain(opts: {
@@ -128,6 +128,14 @@ export function createServiceChain(opts: {
   submit?: typeof submitCallTx;
 }): ChainSeam {
   const { serviceUrl, config, module } = opts;
+  // The pin must be a SHA-256 itself: an empty or short pin would otherwise match an equally empty
+  // /config value and be refused only at the first verifier-key fetch (Final review M1).
+  if (!/^[0-9a-f]{64}$/i.test(opts.expectedManifestSha256)) {
+    throw new PassportConnectorError(
+      'ArtefactIntegrity',
+      `the app's artefact manifest pin is not 64 hex characters (${JSON.stringify(opts.expectedManifestSha256)})`,
+    );
+  }
   const pin = opts.expectedManifestSha256.toLowerCase();
   if (config.manifestSha256.toLowerCase() !== pin) {
     throw new PassportConnectorError(

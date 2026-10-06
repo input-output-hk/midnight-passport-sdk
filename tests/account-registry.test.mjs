@@ -17,14 +17,14 @@ const record = {
 
 function fakeFetch() {
   const store = new Map();
-  /** @type {{ url: string; method: string }[]} */
+  /** @type {{ url: string; method: string; contentType: string | undefined }[]} */
   const calls = [];
   /**
    * @param {string} url
-   * @param {{ method?: string; body?: string }} [init]
+   * @param {{ method?: string; headers?: Record<string, string>; body?: string }} [init]
    */
   const fn = async (url, init = {}) => {
-    calls.push({ url, method: init.method ?? 'GET' });
+    calls.push({ url, method: init.method ?? 'GET', contentType: init.headers?.['content-type'] });
     const key = new URL(url).pathname;
     if ((init.method ?? 'GET') === 'PUT') {
       store.set(key, init.body);
@@ -51,6 +51,13 @@ test('the registry client round-trips a record under its network and credential 
     /** @type {{ url: string }} */ (calls[0]).url,
     'http://svc/accounts/undeployed/010203',
   );
+});
+
+test('the registry PUT is application/json, which the service requires (I1)', async () => {
+  const { fn, calls } = fakeFetch();
+  await a.createRegistryClient('http://svc', fn).put('undeployed', record);
+  assert.equal(calls[0]?.method, 'PUT');
+  assert.equal(calls[0]?.contentType, 'application/json');
 });
 
 test('an unknown credential is undefined, not an error', async () => {
