@@ -1,0 +1,117 @@
+{
+  "verdict": "PASS",
+  "network": "undeployed",
+  "service": "http://127.0.0.1:8787",
+  "binding": "acc-45721e1",
+  "manifestSha256": "682bfbd3420e4ad1ce8061a585f1029c395d82accdee030751ed25ede62df8ec",
+  "address": "30ef6e2c8d5e8f6ef5d50e9d689649f44b115e86b34eaa5d670f72f6ed59a23e",
+  "deploySubmissionIds": [
+    "00316c8f997cf0a6c096cb59e7fd86f918ff35737b1235203c34a8c1614cd39464",
+    "00263e461b2982760569d2c696e9e7467dbe1d7fb0d5d29179a8827647436f59bb",
+    "007b66ec67a93e5fbf4d54581c2e953b638150beb477d70b5d5bdfd62fa8ee3f1f",
+    "008a28eec59ee3877e7ea913099398e809c3ca575b8ce1c209d8ca599d69fdbcba",
+    "00230c7b72e0848ad8ea4c16033f04fb470ebdcf5d8fa9b3b4ccb435c70b66f626",
+    "009fc27c76fd97bbee1f5febceab34fce3c8d73ffd69e9257512d24688b282b19d",
+    "0079c2ce05a2c7ee123e27d544582bbaa5c432a2519a4dca851c42d65373614e95",
+    "008a10e4104648c383fd996687b899db7e809722dc72aba23f9b60f843efa45066",
+    "00006bf26e37a87d65d8c3a9b29c37f5f0a1f5a1371fb7c2cc5d825324850a626c",
+    "00c59440cadeeec91f2c9013dfd8fd726d395ccfa638e26877cc29e5767c1e8901"
+  ],
+  "transactions": [
+    {
+      "circuit": "activate_initial_device_with_p256",
+      "txHash": "2aebd83083476464a4abceb2ed89bbecc06efd7056dd2a9983d3172b154a8f96",
+      "blockHeight": 258
+    },
+    {
+      "circuit": "rotate_enc_key_with_p256",
+      "txHash": "0eb193f328a11207f7a4f5c65af3a3f12a2faa3ebedb63d77d959ac6046e82fd",
+      "blockHeight": 270
+    },
+    {
+      "circuit": "rotate_enc_key_with_p256",
+      "txHash": "5e2c70c9a3204277ee5d70ed2a159afd67206e7ffffd068e267c9c2f713e9883",
+      "blockHeight": 279
+    }
+  ],
+  "steps": [
+    {
+      "name": "create:passkey-created",
+      "at": "2026-10-06T18:11:50.598Z",
+      "ms": 0
+    },
+    {
+      "name": "create:deploying",
+      "at": "2026-10-06T18:11:50.627Z",
+      "ms": 29
+    },
+    {
+      "name": "create:deployed",
+      "at": "2026-10-06T18:14:50.198Z",
+      "ms": 179571
+    },
+    {
+      "name": "create:activating",
+      "at": "2026-10-06T18:14:50.198Z",
+      "ms": 0
+    },
+    {
+      "name": "create:active",
+      "at": "2026-10-06T18:15:14.219Z",
+      "ms": 24021
+    },
+    {
+      "name": "created",
+      "at": "2026-10-06T18:15:14.266Z",
+      "ms": 47,
+      "address": "30ef6e2c8d5e8f6ef5d50e9d689649f44b115e86b34eaa5d670f72f6ed59a23e",
+      "state": {
+        "booted": true,
+        "authNonce": "0",
+        "deviceEpoch": "0",
+        "entryCount": 1,
+        "specVersion": 2
+      }
+    },
+    {
+      "name": "rotate #1 (passkey-signed, k = 18)",
+      "at": "2026-10-06T18:16:26.426Z",
+      "ms": 72160,
+      "txHash": "0eb193f328a11207f7a4f5c65af3a3f12a2faa3ebedb63d77d959ac6046e82fd",
+      "blockHeight": 270,
+      "state": {
+        "booted": true,
+        "authNonce": "1",
+        "deviceEpoch": "0",
+        "entryCount": 1,
+        "specVersion": 2
+      }
+    },
+    {
+      "name": "reopened after \"reload\"",
+      "at": "2026-10-06T18:16:26.464Z",
+      "ms": 38,
+      "address": "30ef6e2c8d5e8f6ef5d50e9d689649f44b115e86b34eaa5d670f72f6ed59a23e"
+    },
+    {
+      "name": "rotate #2 after reopen (rescanned counter)",
+      "at": "2026-10-06T18:17:19.892Z",
+      "ms": 53428,
+      "txHash": "5e2c70c9a3204277ee5d70ed2a159afd67206e7ffffd068e267c9c2f713e9883",
+      "blockHeight": 279,
+      "state": {
+        "booted": true,
+        "authNonce": "2",
+        "deviceEpoch": "0",
+        "entryCount": 1,
+        "specVersion": 2
+      }
+    }
+  ],
+  "seconds": 329,
+  "versions": {
+    "node": "v22.23.2",
+    "connectorApi": "0.1.0-prototype",
+    "compactRuntime": "0.20.0"
+  }
+}
