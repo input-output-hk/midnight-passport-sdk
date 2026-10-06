@@ -4,7 +4,7 @@ import { writeFileSync, readFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { createServer } from '../src/server.ts';
 import { registryRoute } from '../src/routes/registry.ts';
-import { testConfig } from './fixtures.ts';
+import { JSON_TYPE, testConfig } from './fixtures.ts';
 
 const record = {
   credentialId: '0a0b',
@@ -28,6 +28,7 @@ test('malformed ids or bodies are refused with 400', async (t) => {
       (
         await fetch(`${base}/accounts/undeployed/zz`, {
           method: 'PUT',
+          headers: JSON_TYPE,
           body: JSON.stringify(record),
         })
       ).status,
@@ -38,6 +39,7 @@ test('malformed ids or bodies are refused with 400', async (t) => {
       (
         await fetch(`${base}/accounts/undeployed/0a0b`, {
           method: 'PUT',
+          headers: JSON_TYPE,
           body: JSON.stringify({ ...record, credentialId: '0c' }),
         })
       ).status,
@@ -48,6 +50,7 @@ test('malformed ids or bodies are refused with 400', async (t) => {
       (
         await fetch(`${base}/accounts/undeployed/0a0b`, {
           method: 'PUT',
+          headers: JSON_TYPE,
           body: JSON.stringify({ ...record, status: 'x' }),
         })
       ).status,
@@ -58,6 +61,7 @@ test('malformed ids or bodies are refused with 400', async (t) => {
       (
         await fetch(`${base}/accounts/undeployed/0a0`, {
           method: 'PUT',
+          headers: JSON_TYPE,
           body: JSON.stringify({ ...record, credentialId: '0a0' }),
         })
       ).status,
@@ -79,11 +83,13 @@ test('identical deployed re-PUT returns 204', async (t) => {
   try {
     const put1 = await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     assert.equal(put1.status, 204);
     const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     assert.equal(put2.status, 204);
@@ -100,11 +106,13 @@ test('deployed to active transition returns 204 and updates status', async (t) =
   try {
     await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     const transitioned = { ...record, status: 'active' as const };
     const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(transitioned),
     });
     assert.equal(put2.status, 204);
@@ -123,10 +131,12 @@ test('identical active re-PUT returns 204', async (t) => {
     const activeRecord = { ...record, status: 'active' as const };
     await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(activeRecord),
     });
     const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(activeRecord),
     });
     assert.equal(put2.status, 204);
@@ -141,11 +151,13 @@ test('active to deployed transition returns 409 and record stays active', async 
     const activeRecord = { ...record, status: 'active' as const };
     await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(activeRecord),
     });
     const transition = { ...record, status: 'deployed' as const };
     const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(transition),
     });
     assert.equal(put2.status, 409);
@@ -162,11 +174,13 @@ test('different address over existing record returns 409 and GET is unchanged', 
   try {
     await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     const changed = { ...record, address: 'cd'.repeat(32) };
     const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(changed),
     });
     assert.equal(put2.status, 409);
@@ -183,11 +197,13 @@ test('different salt over existing record returns 409', async (t) => {
   try {
     await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     const changed = { ...record, salt: '05'.repeat(32) };
     const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(changed),
     });
     assert.equal(put2.status, 409);
@@ -201,11 +217,13 @@ test('deployed to active with changed salt returns 409', async (t) => {
   try {
     await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     const changed = { ...record, status: 'active' as const, salt: '05'.repeat(32) };
     const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(changed),
     });
     assert.equal(put2.status, 409);
@@ -219,10 +237,12 @@ test('same credential on testnet returns 204, with undeployed untouched', async 
   try {
     await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     const putTestnet = await fetch(`${base}/accounts/testnet/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     assert.equal(putTestnet.status, 204);
@@ -242,6 +262,7 @@ test('identical record with different key order returns 204', async (t) => {
   try {
     await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     // Reorder keys: credentialId last
@@ -257,6 +278,7 @@ test('identical record with different key order returns 204', async (t) => {
     );
     const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(reordered),
     });
     assert.equal(put2.status, 204);
@@ -270,6 +292,7 @@ test('409 persists after a restart', async (t) => {
   try {
     await fetch(`${first.base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     first.server.close();
@@ -278,6 +301,7 @@ test('409 persists after a restart', async (t) => {
       const changed = { ...record, address: 'cd'.repeat(32) };
       const put2 = await fetch(`${second.base}/accounts/undeployed/0a0b`, {
         method: 'PUT',
+        headers: JSON_TYPE,
         body: JSON.stringify(changed),
       });
       assert.equal(put2.status, 409);
@@ -304,6 +328,7 @@ test('corrupt registry file returns 500, excludes file contents, and leaves file
     assert.equal(fileContentsAfterGet, fileContentsBefore, 'file unchanged after GET');
     const put = await fetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     assert.equal(put.status, 500);
@@ -319,6 +344,7 @@ test('records survive a restart', async (t) => {
   try {
     await fetch(`${first.base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
+      headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     first.server.close();

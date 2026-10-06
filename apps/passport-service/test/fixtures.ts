@@ -52,3 +52,6 @@ export function testConfig(over: Partial<ServiceConfig> = {}): ServiceConfig {
     ...over,
   };
 }
+
+/** The content type every body-carrying request must declare (server.ts, Final review I1). */
+export const JSON_TYPE = { 'content-type': 'application/json' } as const;

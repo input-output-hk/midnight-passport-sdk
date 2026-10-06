@@ -71,7 +71,12 @@ evidence to `experiments/acc-0.35/results/x8-dapp-e2e.json`.
 - **Encryption keys are throwaway.** The harness draws a random 32-byte encryption key at create
   and at each rotation and keeps no copy. Nothing encrypted to it can be recovered. Real key
   management is out of scope.
-- **The service binds loopback** (`127.0.0.1`) and its CORS allows only the dapp origin.
+- **The service binds loopback** (`127.0.0.1`). CORS lets only the dapp origin read its answers,
+  which on its own does not stop a cross-site page from sending a request. So the service also
+  answers `415` to any POST or PUT whose `content-type` is not `application/json` (that forces a
+  CORS preflight, which only the dapp origin passes) and `421` to any `Host` other than
+  `127.0.0.1`, `localhost` or `[::1]` at its port, or `PASSPORT_SERVICE_HOST` when set (DNS
+  rebinding).
 - **Sponsor policy** (spec section 4.3):
   - _Calls only._ `/sponsor/balance` balances only a standard transaction whose every contract
     action is a call.

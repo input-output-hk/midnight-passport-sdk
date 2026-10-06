@@ -9,7 +9,7 @@ import { loadConfig } from '../src/config.ts';
 import { mkdirSync } from 'node:fs';
 import { configRoute, zkRoute } from '../src/routes/zk.ts';
 import { bindingCircuits, verifyArtefacts } from '../src/artefacts.ts';
-import { fakeArtefacts, testConfig } from './fixtures.ts';
+import { JSON_TYPE, fakeArtefacts, testConfig } from './fixtures.ts';
 
 async function start(config = testConfig()) {
   const server = createServer(config, [configRoute(config, () => ({})), zkRoute(config)]);
@@ -71,7 +71,9 @@ test('/config reports the network, binding and pinned manifest', async () => {
 function rawGet(port: number, target: string): Promise<number> {
   return new Promise((resolveStatus, reject) => {
     const socket = connect(port, 'localhost', () =>
-      socket.write(`GET ${target} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n`),
+      socket.write(
+        `GET ${target} HTTP/1.1\r\nHost: localhost:${port}\r\nConnection: close\r\n\r\n`,
+      ),
     );
     let data = '';
     socket.on('data', (chunk) => (data += chunk.toString('latin1')));
@@ -121,7 +123,7 @@ test('/zk survives a client that aborts mid-download', async () => {
   const port = (server.address() as AddressInfo).port;
   await new Promise<void>((resolveAbort, reject) => {
     const socket = connect(port, 'localhost', () =>
-      socket.write('GET /zk/acc/keys/big.prover HTTP/1.1\r\nHost: localhost\r\n\r\n'),
+      socket.write(`GET /zk/acc/keys/big.prover HTTP/1.1\r\nHost: localhost:${port}\r\n\r\n`),
     );
     socket.once('data', () => {
       socket.destroy();
@@ -131,21 +133,6 @@ test('/zk survives a client that aborts mid-download', async () => {
   });
   assert.equal((await fetch(`${base}/config`)).status, 200);
   assert.equal((await fetch(`${base}/zk/acc/keys/c.verifier`)).status, 200);
-  server.close();
-});
-
-test('/config falls back to the configured port when the Host header is missing', async () => {
-  const config = testConfig({ port: 4321 });
-  const { server } = await start(config);
-  const port = (server.address() as AddressInfo).port;
-  const raw = await new Promise<string>((resolveBody, reject) => {
-    const socket = connect(port, 'localhost', () => socket.write('GET /config HTTP/1.0\r\n\r\n'));
-    let data = '';
-    socket.on('data', (chunk) => (data += chunk.toString()));
-    socket.on('error', reject);
-    socket.on('close', () => resolveBody(data));
-  });
-  assert.match(raw, /"zkBaseUrl":"http:\/\/localhost:4321\/zk\/acc"/);
   server.close();
 });
 
@@ -159,14 +146,19 @@ test('readJson answers 400 for malformed JSON and 413 for an oversized body', as
   const server = createServer(config, [echo]);
   await new Promise<void>((r) => server.listen(0, r));
   const base = `http://localhost:${(server.address() as AddressInfo).port}`;
-  const ok = await fetch(`${base}/echo`, { method: 'POST', body: '{"a":1}' });
+  const ok = await fetch(`${base}/echo`, { method: 'POST', headers: JSON_TYPE, body: '{"a":1}' });
   assert.equal(ok.status, 200);
   assert.deepEqual(await ok.json(), { a: 1 });
-  const bad = await fetch(`${base}/echo`, { method: 'POST', body: '{not json' });
+  const bad = await fetch(`${base}/echo`, {
+    method: 'POST',
+    headers: JSON_TYPE,
+    body: '{not json',
+  });
   assert.equal(bad.status, 400);
   assert.match(((await bad.json()) as { error: string }).error, /JSON/);
   const big = await fetch(`${base}/echo`, {
     method: 'POST',
+    headers: JSON_TYPE,
     body: JSON.stringify({ pad: 'x'.repeat(4096) }),
   });
   assert.equal(big.status, 413);

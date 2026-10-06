@@ -6,7 +6,7 @@ import { HttpError } from '../src/http.ts';
 import { chainRoute, type ChainRouteOptions } from '../src/routes/chain.ts';
 import type { ChainBackend } from '../src/backend.ts';
 import { guardedBalance, type LedgerTxLike } from '../src/sponsor-policy.ts';
-import { testConfig } from './fixtures.ts';
+import { JSON_TYPE, testConfig } from './fixtures.ts';
 
 const CIRCUIT = 'c';
 const ADDRESS = 'cc'.repeat(32);
@@ -74,7 +74,11 @@ async function start(
   return { base: `http://localhost:${(server.address() as AddressInfo).port}`, logs };
 }
 const post = (url: string, body: unknown) =>
-  fetch(url, { method: 'POST', body: typeof body === 'string' ? body : JSON.stringify(body) });
+  fetch(url, {
+    method: 'POST',
+    headers: JSON_TYPE,
+    body: typeof body === 'string' ? body : JSON.stringify(body),
+  });
 const deployBody = { boot: '11'.repeat(32), encKey: '22'.repeat(32) };
 
 test('/prove decodes hex, passes the binding input as bigint, and returns the proof', async (t) => {
