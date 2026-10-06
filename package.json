@@ -13,7 +13,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "build:artefact": "node scripts/build-acc-artefact.mjs",
-    "test:apps": "pnpm --filter passport-service test",
+    "test:apps": "pnpm --filter passport-service --filter passport-dapp test",
     "prototype:service": "pnpm --filter passport-service start",
     "prototype:dapp": "pnpm --filter passport-dapp dev",
     "prototype:e2e": "pnpm --filter passport-dapp e2e"

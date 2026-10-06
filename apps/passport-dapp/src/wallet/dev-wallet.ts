@@ -30,6 +30,19 @@ export interface DevWalletConfig {
   nodeUri: string;
 }
 
+/** The DApp Connector API's `APIError` shape: `type`, `code` and `reason`. */
+export type DevWalletErrorCode = 'InternalError' | 'InvalidRequest' | 'Rejected' | 'Disconnected';
+export interface DevWalletApiError extends Error {
+  type: 'DAppConnectorAPIError';
+  code: DevWalletErrorCode;
+  reason: string;
+}
+const apiError = (code: DevWalletErrorCode, reason: string): DevWalletApiError =>
+  Object.assign(new Error(reason), { type: 'DAppConnectorAPIError' as const, code, reason });
+
+/** How long a balance read waits for a synced state before it fails. */
+const SYNC_TIMEOUT_MS = 120_000;
+
 export interface DevWalletConnectedApi {
   getConfiguration(): Promise<{
     indexerUri: string;
@@ -46,7 +59,7 @@ export interface DevWalletConnectedApi {
   getUnshieldedAddress(): Promise<{ unshieldedAddress: string }>;
   getDustAddress(): Promise<{ dustAddress: string }>;
   getUnshieldedBalances(): Promise<Record<string, bigint>>;
-  getDustBalance(): Promise<{ balance: bigint }>;
+  getDustBalance(): Promise<{ balance: bigint; cap: bigint }>;
 }
 
 export interface DevWalletDescriptor {
@@ -101,11 +114,17 @@ export async function createDevWallet(
       UnshieldedWallet(c).startWithPublicKey(PublicKey.fromKeyStore(unshieldedKeystore)),
     dust: (c) => DustWallet(c).startWithSeed(keys[Roles.Dust]),
   });
-  await facade.start({
-    shielded: keys[Roles.Zswap],
-    unshielded: keys[Roles.NightExternal],
-    dust: keys[Roles.Dust],
-  });
+  try {
+    await facade.start({
+      shielded: keys[Roles.Zswap],
+      unshielded: keys[Roles.NightExternal],
+      dust: keys[Roles.Dust],
+    });
+  } catch (e) {
+    // Release the indexer connections the half-started wallets opened, then report the failure.
+    await facade.stop().catch(() => undefined);
+    throw e;
+  }
 
   // Addresses derive from the keys alone, so the first emission answers them. Balances wait for a
   // synced state; the throttle is the reference's: isSynced flaps true, false, true early in sync,
@@ -116,6 +135,17 @@ export async function createDevWallet(
       facade.state().pipe(
         Rx.throttleTime(5_000),
         Rx.filter((s) => s.isSynced),
+        // throttleTime can drop the emission that carries isSynced, so never wait unboundedly.
+        Rx.timeout({
+          first: SYNC_TIMEOUT_MS,
+          with: () =>
+            Rx.throwError(() =>
+              apiError(
+                'InternalError',
+                `the wallet did not sync within ${SYNC_TIMEOUT_MS / 1000} s`,
+              ),
+            ),
+        }),
       ),
     );
   const bech32 = (address: Parameters<typeof MidnightBech32m.encode>[1]): string =>
@@ -146,8 +176,17 @@ export async function createDevWallet(
     getDustAddress: async () => ({ dustAddress: bech32((await current()).dust.address) }),
     // FROM D.TS: UnshieldedWalletState.balances (Record<RawTokenType, bigint>)
     getUnshieldedBalances: async () => ({ ...(await synced()).unshielded.balances }),
-    // FROM D.TS: DustWalletState.balance(time: Date): bigint (Specks)
-    getDustBalance: async () => ({ balance: (await synced()).dust.balance(new Date()) }),
+    // FROM D.TS: DustWalletState.balance(time: Date): bigint (Specks); the cap is the sum of
+    // DustFullInfo.maxCap over DustWalletState.availableCoins. To be confirmed by the runtime
+    // probe at the localnet session (task-12 report), together with whether the API's `cap` is
+    // this sum.
+    getDustBalance: async () => {
+      const dust = (await synced()).dust;
+      return {
+        balance: dust.balance(new Date()),
+        cap: dust.availableCoins.reduce((total, coin) => total + coin.maxCap, 0n),
+      };
+    },
   };
 
   return {
@@ -157,10 +196,10 @@ export async function createDevWallet(
       rdns: 'io.iohk.passport.devwallet',
       async connect(networkId: string) {
         if (networkId !== config.networkId) {
-          throw Object.assign(new Error(`wallet is on ${config.networkId}`), {
-            type: 'DAppConnectorAPIError',
-            code: 'InvalidRequest',
-          });
+          throw apiError(
+            'InvalidRequest',
+            `the wallet is on ${config.networkId}, not ${networkId}`,
+          );
         }
         return connected;
       },
