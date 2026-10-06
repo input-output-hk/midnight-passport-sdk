@@ -197,7 +197,7 @@ All JSON over HTTP, CORS restricted to the dapp origin. Binary values are hex.
 
 | Endpoint | Request | Response | Notes |
 |---|---|---|---|
-| `GET /config` | — | `{ networkId, bindingId, manifestSha256, indexerUri, indexerWsUri, nodeUri }` | The connector checks `networkId` and pins `manifestSha256` |
+| `GET /config` | — | `{ networkId, bindingId, manifestSha256, indexerUri, indexerWsUri, nodeUri }` | The connector checks `networkId`, and checks `manifestSha256` against the app's build-time pin, refusing a mismatch (`ArtefactIntegrity`). Deriving the pin from the contract binding is future work (Ruling R18) |
 | `GET /zk/acc/{compiler,zkir,keys}/…` | — | the file, `application/octet-stream` | Layout `FetchZkConfigProvider` expects; immutable cache headers, manifest `no-cache`. Prover keys are served (for completeness and other consumers) but the dapp never fetches them |
 | `POST /check` | `{ preimage, keyLocation }` (hex, string) | `{ result: (string\|null)[] }` | midnight-js `ProvingProvider.check`: bigints as decimal strings, `undefined` as `null`. Circuit allow-listed (below) |
 | `POST /prove` | `{ preimage, keyLocation, overwriteBindingInput? }` (hex, string, decimal string of at most 80 digits) | `{ proof }` (hex) | midnight-js `ProvingProvider.prove`: resolves `keyLocation` to the circuit, attaches its ZKIR and keys from the account bundle, calls the proof server. Allow-listed to the binding's circuits. One proof at a time (a P-256 proof needs about 13.5 GiB) |

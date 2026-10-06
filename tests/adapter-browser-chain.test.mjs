@@ -17,14 +17,14 @@ const ledger = await import(
 );
 
 /**
- * @typedef {{ status: number; body?: unknown; unreadable?: boolean }} Reply
- * @typedef {{ method?: string; headers?: Record<string, string>; body?: string }} Init
+ * @typedef {{ status: number; body?: unknown; unreadable?: boolean; hang?: boolean }} Reply
+ * @typedef {{ method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal }} Init
  * @typedef {{ url: string; method: string | undefined; body: Record<string, unknown> | undefined }} Call
  */
 
 /**
- * A fake service. A reply with `unreadable` has a body that is not JSON; an `Error` in place of a
- * reply makes the request itself fail, as an unreachable host does.
+ * A fake service. A reply with `unreadable` has a body that is not JSON, one with `hang` never
+ * answers; an `Error` in place of a reply makes the request itself fail, as an unreachable host does.
  * @param {Record<string, Reply | Error>} responses
  */
 function recordingFetch(responses) {
@@ -40,6 +40,14 @@ function recordingFetch(responses) {
     const r = responses[new URL(url).pathname];
     if (r === undefined) throw new Error(`no fake reply for ${url}`);
     if (r instanceof Error) throw r;
+    if (r.hang) {
+      // Never answers; fails only when the caller's signal aborts, as a real fetch does.
+      const { signal } = init;
+      assert.ok(signal, 'a hanging request must carry an abort signal');
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(signal.reason));
+      });
+    }
     return {
       ok: r.status >= 200 && r.status < 300,
       status: r.status,
@@ -283,11 +291,13 @@ const stubLedger = {
  * A chain over a fake service and a fake indexer.
  * @param {(url: string, init?: Init) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>} fetchFn
  * @param {{ queryContractState(address: string): Promise<unknown> }} [indexer]
+ * @param {Record<string, unknown>} [extra] further options, which win
  */
-function chainOver(fetchFn, indexer = { queryContractState: async () => null }) {
+function chainOver(fetchFn, indexer = { queryContractState: async () => null }, extra = {}) {
   return b.createServiceChain({
     serviceUrl: 'http://svc',
     config: CONFIG,
+    expectedManifestSha256: CONFIG.manifestSha256,
     module: {
       Contract: class {},
       ledger: (/** @type {unknown} */ data) => (data === 'state-data' ? stubLedger : undefined),
@@ -295,6 +305,7 @@ function chainOver(fetchFn, indexer = { queryContractState: async () => null }) 
     },
     fetchFn,
     publicDataProvider: indexer,
+    ...extra,
   });
 }
 
@@ -391,3 +402,106 @@ test('fetchServiceConfig failures are InternalError', async () => {
     message: 'service /config has no "bindingId"',
   });
 });
+
+test('a service whose manifest hash is not the app pin is refused before any request (R18)', () => {
+  const f = recordingFetch({});
+  /** @type {boolean} */
+  let submitted = false;
+  assert.throws(
+    () =>
+      chainOver(f.fn, undefined, {
+        expectedManifestSha256: 'cd'.repeat(32),
+        submit: async () => {
+          submitted = true;
+        },
+      }),
+    { code: 'ArtefactIntegrity', type: 'PassportConnectorError' },
+  );
+  assert.equal(f.calls.length, 0, 'nothing, /zk included, was fetched');
+  assert.equal(submitted, false);
+});
+
+test('call forwards the call, maps the finalized record and verifies artefacts against the app pin', async () => {
+  /** @type {{ providers: Record<string, unknown>; options: Record<string, unknown> }[]} */
+  const seen = [];
+  // The pin is the app's (upper-case here), and the service's /config hash merely agrees with it.
+  const chain = chainOver(recordingFetch({}).fn, undefined, {
+    expectedManifestSha256: CONFIG.manifestSha256.toUpperCase(),
+    submit: async (
+      /** @type {Record<string, unknown>} */ providers,
+      /** @type {Record<string, unknown>} */ options,
+    ) => {
+      seen.push({ providers, options });
+      return { public: { txId: 'the-id', txHash: 'the-hash', blockHeight: 42 } };
+    },
+  });
+  const out = await chain.call('addr', 'activate_initial_device_with_p256', [1n, 'x']);
+  // txHash, not txId: the finalized record carries both and PassportTxResult names the hash.
+  assert.deepEqual(out, { txHash: 'the-hash', blockHeight: 42 });
+  const [only] = seen;
+  assert.ok(only);
+  assert.equal(only.options.contractAddress, 'addr');
+  assert.equal(only.options.circuitId, 'activate_initial_device_with_p256');
+  assert.deepEqual(only.options.args, [1n, 'x']);
+  assert.ok(only.options.compiledContract);
+  assert.equal('privateStateId' in only.options, false, 'the MVP circuits keep no private state');
+  assert.equal('privateStateProvider' in only.providers, false);
+  // midnight-js keeps the integrity options in a private field; that is the only place they show.
+  assert.deepEqual(
+    pick(Reflect.get(Object(only.providers.zkConfigProvider), 'integrityOptions'), [
+      'verify',
+      'expectedManifestHash',
+    ]),
+    { verify: 'require', expectedManifestHash: CONFIG.manifestSha256 },
+  );
+  assert.equal(Reflect.get(Object(only.providers.zkConfigProvider), 'baseURL'), CONFIG.zkBaseUrl);
+});
+
+test('deploy refuses an answer whose txHashes are not a list of strings', async () => {
+  for (const txHashes of [undefined, 'abc', ['t1', 2]]) {
+    const f = recordingFetch({ '/deploy': { status: 200, body: { address: 'ff00', txHashes } } });
+    await assert.rejects(
+      chainOver(f.fn).deploy({ boot: new Uint8Array(32), encKey: new Uint8Array(32) }),
+      { code: 'InternalError' },
+    );
+  }
+});
+
+test('/prove that outlasts the timeout is ProverUnavailable, and the abort reaches the request', async () => {
+  const f = recordingFetch({ '/prove': { status: 200, hang: true } });
+  const p = b.delegatedProvingProvider('http://svc', f.fn, 20);
+  // AbortSignal.timeout's timer is unref'd, so a test with nothing else pending must hold the loop.
+  const keepAlive = setTimeout(() => {}, 5000);
+  try {
+    await assert.rejects(p.prove(Uint8Array.of(1), 'k'), {
+      code: 'ProverUnavailable',
+      message: '/prove: no answer within 20 ms',
+    });
+  } finally {
+    clearTimeout(keepAlive);
+  }
+  assert.equal(f.calls.length, 1);
+});
+
+test('/check carries no timeout signal, so only /prove is bounded', async () => {
+  /** @type {Init | undefined} */
+  let seenInit;
+  const p = b.delegatedProvingProvider(
+    'http://svc',
+    async (/** @type {string} */ _url, /** @type {Init} */ init) => {
+      seenInit = init;
+      return { ok: true, status: 200, json: async () => ({ result: [] }) };
+    },
+  );
+  await p.check(Uint8Array.of(1), 'k');
+  assert.equal(seenInit?.signal, undefined);
+});
+
+/**
+ * @param {unknown} value
+ * @param {string[]} keys
+ */
+function pick(value, keys) {
+  const source = /** @type {Record<string, unknown>} */ (Object(value));
+  return Object.fromEntries(keys.map((k) => [k, source[k]]));
+}

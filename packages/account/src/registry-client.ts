@@ -1,10 +1,20 @@
 import { fromHex, toHex } from './codec.js';
 import type { AccountRecord, RegistrySeam } from './seams.js';
 
+/** The part of an `AbortSignal` a caller hands to fetch; the real one satisfies it. */
+export interface AbortSignalLike {
+  readonly aborted: boolean;
+}
+
 /** Structural fetch: the package compiles without DOM or Node types. */
 export type FetchLike = (
   url: string,
-  init?: { method?: string; headers?: Record<string, string>; body?: string },
+  init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    signal?: AbortSignalLike;
+  },
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
 interface WireRecord {

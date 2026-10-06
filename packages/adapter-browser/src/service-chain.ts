@@ -50,8 +50,12 @@ interface LedgerShape {
  * midnight-js's proving seam over the service. The era tag is the factory's: it unwraps the
  * `{ version: 'v9', tx }` it is given and tags the proven transaction the same way.
  */
-export function serviceProofProvider(base: string, fetchFn: FetchLike): ProofProvider {
-  return createProofProvider(delegatedProvingProvider(base, fetchFn));
+export function serviceProofProvider(
+  base: string,
+  fetchFn: FetchLike,
+  proveTimeoutMs?: number,
+): ProofProvider {
+  return createProofProvider(delegatedProvingProvider(base, fetchFn, proveTimeoutMs));
 }
 
 /**
@@ -101,16 +105,38 @@ export function serviceMidnightProvider(base: string, fetchFn: FetchLike): Midni
   });
 }
 
+/**
+ * The chain seam over the service.
+ *
+ * Side effect: this calls midnight-js's `setNetworkId`, which is module-global state, so one page
+ * can be bound to one network at a time.
+ *
+ * Throws `ArtefactIntegrity` when the service's manifest hash differs from the app's pin
+ * (Ruling R18). The pin is the app's own, never the service's: a compromised service could
+ * otherwise serve tampered artefacts together with a matching hash.
+ */
 export function createServiceChain(opts: {
   serviceUrl: string;
   config: ServiceConfigWire;
+  /** The app's build-time SHA-256 of the artefacts' `contract-manifest.json`. */
+  expectedManifestSha256: string;
   module: GeneratedAccModule;
   fetchFn?: FetchLike;
   /** Replaces the indexer-backed reader; a test seam, so `readLedger` needs no indexer. */
   publicDataProvider?: PublicDataProvider;
+  /** Replaces midnight-js's `submitCallTx`; a test seam, so `call` needs no node. */
+  submit?: typeof submitCallTx;
 }): ChainSeam {
   const { serviceUrl, config, module } = opts;
+  const pin = opts.expectedManifestSha256.toLowerCase();
+  if (config.manifestSha256.toLowerCase() !== pin) {
+    throw new PassportConnectorError(
+      'ArtefactIntegrity',
+      `the service's artefact manifest (${config.manifestSha256}) is not the one this app pins (${opts.expectedManifestSha256})`,
+    );
+  }
   const fetchFn = opts.fetchFn ?? defaultFetch;
+  const submit = opts.submit ?? submitCallTx;
   setNetworkId(config.networkId);
   // The MVP circuits never invoke the account's only witness (held_coin); refuse loudly if one does.
   const witnesses = {
@@ -132,7 +158,7 @@ export function createServiceChain(opts: {
     publicDataProvider,
     zkConfigProvider: new FetchZkConfigProvider<string>(config.zkBaseUrl, {
       verify: 'require',
-      expectedManifestHash: config.manifestSha256,
+      expectedManifestHash: pin,
     }),
     proofProvider: serviceProofProvider(serviceUrl, fetchFn),
     walletProvider: serviceWalletProvider(serviceUrl, config, fetchFn),
@@ -149,12 +175,13 @@ export function createServiceChain(opts: {
         'sponsor',
       );
       const hashes = answer.txHashes;
-      return {
-        address: stringMember(answer, 'address', '/deploy'),
-        txHashes: Array.isArray(hashes)
-          ? hashes.filter((h): h is string => typeof h === 'string')
-          : [],
-      };
+      if (!Array.isArray(hashes) || !hashes.every((h): h is string => typeof h === 'string')) {
+        throw new PassportConnectorError(
+          'InternalError',
+          '/deploy answered no "txHashes" list of strings',
+        );
+      }
+      return { address: stringMember(answer, 'address', '/deploy'), txHashes: hashes };
     },
     async readLedger(address): Promise<AccLedgerView | undefined> {
       const state = await publicDataProvider.queryContractState(address);
@@ -172,14 +199,16 @@ export function createServiceChain(opts: {
     async call(address, circuit, args) {
       // `as never` at the one call site: the overloads are generic over the generated module's own
       // circuit and parameter types, which live outside this package.
-      const result = await submitCallTx(providers, {
+      const result = await submit(providers, {
         compiledContract,
         contractAddress: address,
         circuitId: circuit,
         args,
       } as never);
-      const { txId, blockHeight } = result.public;
-      return { txHash: txId, blockHeight };
+      // `public` is the finalized record: `txId` is an identifier of the submission and `txHash`
+      // the hash of the transaction as included, which is what `PassportTxResult` names.
+      const { txHash, blockHeight } = result.public;
+      return { txHash, blockHeight };
     },
   };
 }

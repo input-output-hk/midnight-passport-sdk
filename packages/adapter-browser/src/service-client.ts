@@ -13,7 +13,9 @@ export interface ServiceConfigWire {
   readonly encryptionPublicKey: string;
 }
 
-export const defaultFetch: FetchLike = (url, init) => fetch(url, init);
+// The structural `signal` is a real `AbortSignal` whenever the adapter made it, so the cast only
+// restores the DOM type the structural FetchLike dropped.
+export const defaultFetch: FetchLike = (url, init) => fetch(url, init as RequestInit | undefined);
 
 /** Strips trailing slashes, so `${base}/path` never doubles one. */
 export const trimBase = (base: string): string => base.replace(/\/+$/, '');
@@ -78,6 +80,8 @@ export async function postService(
   path: string,
   body: unknown,
   role: ServiceRole,
+  /** Gives up on a request that has not answered by then; the abort reads as an unreachable service. */
+  timeoutMs?: number,
 ): Promise<Record<string, unknown>> {
   let res;
   try {
@@ -85,13 +89,18 @@ export async function postService(
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
+      ...(timeoutMs === undefined ? {} : { signal: AbortSignal.timeout(timeoutMs) }),
     });
   } catch (cause) {
     // No answer at all: only the prover has a named code for "not there"; for the sponsor this is
     // a transport fault, not a refusal.
+    const timedOut =
+      timeoutMs !== undefined && cause instanceof Error && cause.name === 'TimeoutError';
     throw new PassportConnectorError(
       role === 'prover' ? 'ProverUnavailable' : 'InternalError',
-      `${path}: the service is unreachable`,
+      timedOut
+        ? `${path}: no answer within ${timeoutMs} ms`
+        : `${path}: the service is unreachable`,
       { cause },
     );
   }
