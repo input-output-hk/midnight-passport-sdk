@@ -52,7 +52,7 @@ pnpm prototype:e2e       # in another shell: the automated MVP run with a softwa
 ```
 
 `prototype:up` checks, in order: the Nix toolchain, the two required variables (and that the hash
-matches the manifest on disk), Docker memory, and that ports 9944, 8088, 6300, 8787 and 5173 are
+matches the manifest on disk), Docker memory, and that ports 19944, 18088, 16300, 8787 and 5173 are
 free. If one is taken it names the occupant (container or process) and exits; it never stops
 anything for you. `bash scripts/prototype-up.sh --check` runs only the port check. It then starts
 the node and proof server, waits for block 2 (the indexer's SPO client fails on a chain still at
@@ -136,9 +136,11 @@ compromised service could fake the ledger that `openAccount`'s checks read.
 
 ## Troubleshooting
 
-- **A port is taken.** The preflight names the container or process. The usual cause is another
-  localnet (ports 9944, 8088 and 6300) or a stale run: stop it yourself with `docker stop <name>`
-  or by quitting the process, then retry.
+- **A port is taken.** The preflight names the container or process. The Passport localnet
+  publishes the node, indexer and proof server on host ports 19944, 18088 and 16300
+  (`infra/localnet/ports.env`), so it runs beside another localnet on the Midnight defaults
+  (9944/8088/6300). A clash usually means a stale run: stop it yourself, then retry. To move the
+  stack, edit `ports.env`; the patched reference client and the service read the same variables.
 - **`localhost` or `127.0.0.1`.** Open the dapp at exactly `http://localhost:5173`: the passkey's
   relying party and the ACC's origin binding are tied to that origin, and `127.0.0.1` will not
   work. The service listens on `127.0.0.1` only. If the browser or Node resolves `localhost` to
@@ -158,7 +160,7 @@ compromised service could fake the ledger that `openAccount`'s checks read.
   (10 waves) can time out while the service keeps proving it. Wait for the deployment to finish,
   then retry.
 - **Indexer requests fail in the browser.** The page queries the localnet indexer at
-  `http://localhost:8088` from `http://localhost:5173`. Whether the indexer sends CORS headers has
+  `http://localhost:18088` from `http://localhost:5173`. Whether the indexer sends CORS headers has
   not been checked yet; look for a CORS error in the browser console before suspecting the
   connector.
 - **Docker has too little memory.** Raise it to at least 24 GiB and retry. `/prove` otherwise

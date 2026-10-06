@@ -10,7 +10,12 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
-ports=(9944 8088 6300 8787 5173)
+# Host ports of the Passport localnet (non-default, so another localnet can keep running).
+set -a
+# shellcheck source=../infra/localnet/ports.env
+. "$root/infra/localnet/ports.env"
+set +a
+ports=("$MN_NODE_PORT" "$MN_INDEXER_PORT" "$MN_PROOF_PORT" 8787 5173)
 
 # R23: every port the stack binds must be free before anything starts.
 check_ports() {
@@ -114,7 +119,7 @@ echo "prototype-up: starting the node and the proof server"
 height=0
 for _ in $(seq 1 90); do
   height=$(curl -s -H 'content-type: application/json' \
-    -d '{"id":1,"jsonrpc":"2.0","method":"chain_getHeader","params":[]}' http://localhost:9944 |
+    -d '{"id":1,"jsonrpc":"2.0","method":"chain_getHeader","params":[]}' "http://localhost:$MN_NODE_PORT" |
     node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{try{console.log(parseInt(JSON.parse(s).result.number,16))}catch{console.log(0)}})' || echo 0)
   [ "${height:-0}" -ge 2 ] && break
   sleep 2

@@ -310,7 +310,7 @@ node endpoints **pinned at build time**, like the manifest, instead of taken fro
 - *Timeouts and queue position (M7).* The adapter gives up on `/prove` after 10 minutes and
   reports `ProverUnavailable`. A rotation queued behind a `/deploy` (10 waves) can exceed that
   while the service keeps proving; retry once the deployment has finished.
-- *Indexer CORS (M8).* The browser queries `http://localhost:8088/api/v4/graphql` from origin
+- *Indexer CORS (M8).* The browser queries `http://localhost:18088/api/v4/graphql` (the Passport localnet's host port, `infra/localnet/ports.env`) from origin
   `http://localhost:5173`. Whether the localnet indexer sends CORS headers is unverified; check
   it on the first manual run before suspecting the connector.
 

@@ -41,6 +41,8 @@ for p in "${paths[@]}"; do
   fi
 done
 printf '%s\n' "$full" > "$dest/REVISION"
+# The Passport localnet publishes on non-default host ports (infra/localnet/ports.env).
+"$here/patch-endpoints.sh" "$dest/contract"
 
 src="$dest/contract/contracts"
 impure=$(cat "$src"/account*.compact | grep -c '^export circuit' || true)

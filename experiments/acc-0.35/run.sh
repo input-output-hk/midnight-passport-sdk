@@ -17,6 +17,11 @@ root="$(cd "$here/../.." && pwd)"
 
 dir="$(cd "$1" && pwd)"
 what="${2:?name 'offline', 'down', or an npm script}"
+# Host ports of the Passport localnet; the patched reference client reads the same variables.
+set -a
+# shellcheck source=../../infra/localnet/ports.env
+. "$root/infra/localnet/ports.env"
+set +a
 compose=(docker compose -f "$root/infra/localnet/docker-compose.yml" -f "$root/infra/localnet/docker-compose.macos.yml")
 
 if [ "$what" = down ]; then
@@ -64,7 +69,7 @@ envfile="$root/infra/localnet/.env"
 "${compose[@]}" up -d --wait node proof-server
 for _ in $(seq 1 60); do
   height=$(curl -s -H 'content-type: application/json' \
-    -d '{"id":1,"jsonrpc":"2.0","method":"chain_getHeader","params":[]}' http://localhost:9944 |
+    -d '{"id":1,"jsonrpc":"2.0","method":"chain_getHeader","params":[]}' "http://localhost:${MN_NODE_PORT:-19944}" |
     node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{try{console.log(parseInt(JSON.parse(s).result.number,16))}catch{console.log(0)}})')
   [ "${height:-0}" -ge 2 ] && break
   sleep 2

@@ -1,7 +1,8 @@
 # macOS override — Docker Desktop has no host networking for these images,
-# so use a bridge network with the localnet ports published.
+# so use a bridge network with the localnet ports published on the host ports
+# from ports.env (19944/18088/16300 by default), beside any other localnet.
 #
-#   docker compose -f infra/localnet/docker-compose.yml \
+#   docker compose --env-file infra/localnet/ports.env -f infra/localnet/docker-compose.yml \
 #     -f infra/localnet/docker-compose.macos.yml up -d
 
 services:
@@ -9,14 +10,13 @@ services:
     network_mode: ''
     networks: [midnight]
     ports:
-      - '9944:9944'
-      - '30333:30333'
+      - '127.0.0.1:${MN_NODE_PORT:-19944}:9944'
 
   indexer:
     network_mode: ''
     networks: [midnight]
     ports:
-      - '8088:8088'
+      - '127.0.0.1:${MN_INDEXER_PORT:-18088}:8088'
     environment:
       # Plaintext ws is intentional: container to container on the private
       # compose bridge network; the localnet node terminates no TLS.
@@ -30,7 +30,7 @@ services:
     network_mode: ''
     networks: [midnight]
     ports:
-      - '6300:6300'
+      - '127.0.0.1:${MN_PROOF_PORT:-16300}:6300'
 
 networks:
   midnight:

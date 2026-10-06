@@ -183,10 +183,10 @@ test('loadConfig reports the reference endpoints and refuses an override that di
   const base = { PASSPORT_CONTRACT_DIR: '/c', PASSPORT_MANIFEST_SHA256: 'ab' };
   const config = loadConfig(base);
   assert.equal(config.networkId, 'undeployed');
-  assert.equal(config.indexerUri, 'http://localhost:8088/api/v4/graphql');
-  assert.equal(config.indexerWsUri, 'ws://localhost:8088/api/v4/graphql/ws');
-  assert.equal(config.nodeUri, 'http://localhost:9944');
-  assert.equal(config.proofServerUri, 'http://127.0.0.1:6300');
+  assert.equal(config.indexerUri, 'http://localhost:18088/api/v4/graphql');
+  assert.equal(config.indexerWsUri, 'ws://localhost:18088/api/v4/graphql/ws');
+  assert.equal(config.nodeUri, 'http://localhost:19944');
+  assert.equal(config.proofServerUri, 'http://127.0.0.1:16300');
   // Restating a reference value is harmless.
   assert.equal(loadConfig({ ...base, PASSPORT_NETWORK_ID: 'undeployed' }).networkId, 'undeployed');
   for (const [key, value] of [
