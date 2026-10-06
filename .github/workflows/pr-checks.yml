@@ -87,3 +87,4 @@ jobs:
           pnpm run format:check
           pnpm run build
           pnpm test
+          pnpm run test:apps
