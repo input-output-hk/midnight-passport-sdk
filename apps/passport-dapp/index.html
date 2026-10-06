@@ -45,6 +45,10 @@
       Creating an account asks for your passkey twice: once to create it, and once to verify the
       authenticator. Rotating asks once more, and proving on the service takes about 30 seconds.
     </p>
+    <p class="hint" id="rotate-note">
+      Prototype only: the encryption keys are random and not retained, so encrypted account data is
+      not recoverable. Rotating replaces the account's key with another random one.
+    </p>
     <h2>Evidence</h2>
     <pre id="evidence"></pre>
     <script type="module" src="/src/main.ts"></script>

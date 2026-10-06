@@ -7,13 +7,19 @@ import type {
 import { MANIFEST_SHA256, SERVICE_URL, installShim } from './connector.js';
 
 installShim();
-const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+const $ = <T extends HTMLElement>(id: string) => {
+  const element = document.getElementById(id);
+  if (!element) throw new Error(`index.html has no element with id "${id}"`);
+  return element as T;
+};
 const evidence: {
+  note: string;
   network: string;
   serviceUrl: string;
   pinnedManifestSha256: string;
   steps: unknown[];
 } = {
+  note: 'Prototype: encryption keys are random and not retained, so encrypted account data is not recoverable.',
   network: 'undeployed',
   serviceUrl: SERVICE_URL,
   pinnedManifestSha256: MANIFEST_SHA256,
@@ -45,7 +51,8 @@ const run = (fn: () => Promise<void>) => async () => {
   try {
     await fn();
   } catch (e) {
-    const err = e as { code?: string; message?: string };
+    // A thrown null or undefined is a value too: narrow it to an empty object.
+    const err = (e ?? {}) as { code?: string; message?: string };
     status(`Failed: ${err.code ?? 'Error'} — ${err.message ?? String(e)}`);
     record('error', { code: err.code, message: err.message });
   }
@@ -83,4 +90,8 @@ $('rotate').onclick = run(async () => {
   record('rotate', { ...r, state: await account.state() });
   status(`Rotated in transaction ${r.txHash.slice(0, 16)}….`);
 });
-$('copy').onclick = () => void navigator.clipboard.writeText($('evidence').textContent ?? '');
+$('copy').onclick = () =>
+  void navigator.clipboard
+    .writeText($('evidence').textContent ?? '')
+    .then(() => status('Evidence copied.'))
+    .catch(() => status('Copy failed: the browser refused clipboard access.'));
