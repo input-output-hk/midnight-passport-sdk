@@ -80,7 +80,7 @@ flowchart LR
     ZK["GET /zk/acc/*"]
     Prove["POST /prove"]
     Deploy["POST /deploy"]
-    Sponsor["POST /sponsor"]
+    Sponsor["POST /sponsor/*"]
     Reg["/accounts registry"]
   end
   Disk[("Artefacts<br/>pinned 45721e1")]
@@ -199,11 +199,54 @@ All JSON over HTTP, CORS restricted to the dapp origin. Binary values are hex.
 |---|---|---|---|
 | `GET /config` | — | `{ networkId, bindingId, manifestSha256, indexerUri, indexerWsUri, nodeUri }` | The connector checks `networkId` and pins `manifestSha256` |
 | `GET /zk/acc/{compiler,zkir,keys}/…` | — | the file, `application/octet-stream` | Layout `FetchZkConfigProvider` expects; immutable cache headers, manifest `no-cache`. Prover keys are served (for completeness and other consumers) but the dapp never fetches them |
-| `POST /prove` | `{ serializedPreimage, keyLocation, overwriteBindingInput? }` | the proof bytes | Resolves `keyLocation` to the circuit, loads ZKIR and keys from disk, calls the proof server's `/prove` with the full payload. Allow-listed to the binding's circuits |
-| `POST /deploy` | `{ boot, encKey, recoveryPk, recoveryWrap, vetoWindowSeconds }` | `{ address, txHashes[] }` (streams progress) | Constructor arguments only; runs the 10 waves and retires the authority in the last |
-| `POST /sponsor` | `{ tx }` (proven, unbalanced) | `{ txHash, blockHeight }` | Adds fees from the sponsor wallet, submits, waits for inclusion. Allow-listed to the binding's contract calls |
+| `POST /check` | `{ preimage, keyLocation }` (hex, string) | `{ result: (string\|null)[] }` | midnight-js `ProvingProvider.check`: bigints as decimal strings, `undefined` as `null`. Circuit allow-listed (below) |
+| `POST /prove` | `{ preimage, keyLocation, overwriteBindingInput? }` (hex, string, decimal string of at most 80 digits) | `{ proof }` (hex) | midnight-js `ProvingProvider.prove`: resolves `keyLocation` to the circuit, attaches its ZKIR and keys from the account bundle, calls the proof server. Allow-listed to the binding's circuits. One proof at a time (a P-256 proof needs about 13.5 GiB) |
+| `POST /sponsor/balance` | `{ tx }` (hex; proven, unbound transaction) | `{ tx }` (hex; balanced, finalized) | The wallet provider's `balanceTx`: adds Dust fees from the sponsor wallet. Subject to the sponsor policy (below) |
+| `POST /sponsor/submit` | `{ tx }` (hex; finalized) | `{ txId }` | The node provider's `submitTx` |
+| `POST /deploy` | `{ boot, encKey }` (32 bytes each, hex) | `{ address, txHashes[] }` | Constructor inputs only; the service fills the recovery-at-birth defaults (a random JubJub key whose secret is discarded, a zero wrap, a 3-day veto window), runs the 10 waves and retires the authority in the last. Answers when the waves finish; the connector's `onProgress` steps carry the progress |
 | `PUT /accounts/{networkId}/{credentialId}` | `{ credentialId, address, publicKey, salt, policy, status: 'deployed'\|'active' }` | `204`, or `409` if write-once violated | Write-once except `deployed` → `active`; returns `409` for any other transition or field change. Proof of possession required in production. The registry (§5.3) |
 | `GET /accounts/{networkId}/{credentialId}` | — | `{ credentialId, address, publicKey, salt, policy, status }` or `404` | |
+
+#### Service policy
+
+Errors: a malformed or oversized body is `400` or `413`; a policy refusal is `403`;
+the deploy cap is `429`; a full queue is `503`; a failure of the proof server, the
+wallet or the chain is `502`. The `/sponsor/*` and `/deploy` `502` bodies are generic
+and the detail is logged on the service.
+
+- **Circuit allow-list.** `/check` and `/prove` accept a `keyLocation` that is a bare
+  circuit id or midnight-js's canonical `contract:<address>/<circuit>?vk=<hash>`, and
+  only when the circuit is one of the binding's. Anything else is `403`, before the
+  queue. The set is the circuits that have both a prover key and compiled ZKIR in the
+  compiler manifest, which is pinned by hash and verified at start-up. The delegated
+  proving registry covers the account bundle only.
+- **Sponsor policy.** `/sponsor/balance` balances only a transaction that:
+  - is a standard transaction (no rewards claim) with at least one contract action,
+    every one of them a **call** to a Passport account this service **deployed** and
+    that is **registered** on its network (deploy and maintenance actions are refused);
+  - and moves nothing but Dust: in segment 0 and in every intent and fallible-offer
+    segment, every non-Dust imbalance is zero. The sponsor pays fees, and no value.
+
+  Bytes that do not deserialise as an unbound transaction are `400`. The guard sits in
+  the service's balance step, not around the wallet provider, because the reference
+  wave deploy balances its own deployment and maintenance transactions through that
+  provider. The deployed set is persisted beside the registry file.
+- **Deploy cap.** At most `PASSPORT_MAX_DEPLOYS` (default 20) `/deploy` requests per
+  service process, failures counted, then `429`. Deployments share the proof queue, so
+  one never overlaps a 13.5 GiB proof; the queue refuses a ninth waiting job with `503`.
+  The queue has no per-job timeout in the prototype, so a proof server that never
+  answers wedges it until the service restarts.
+- **Binding.** The server listens on `127.0.0.1`. `PASSPORT_SERVICE_HOST` overrides
+  it, and a non-loopback host exposes the sponsor to whoever can reach it.
+- **Dust races.** `/sponsor/balance` and `/deploy` are not coordinated, so a balance
+  and a deployment wave running together can pick the same Dust. The loser fails at
+  submit and no funds are lost; the client retries.
+
+**Production requirements (not built in the prototype).** Authenticated sessions
+(a signed-in passkey or a dApp credential) on `/prove`, `/sponsor/*` and `/deploy`;
+per-client rate limits; spending caps per client and per day on the sponsor; proof of
+possession on `PUT /accounts`; a per-job timeout on the proof queue; durable deploy
+counters (the cap resets on restart); and TLS in front of the service.
 
 ### 4.4 Secrets and authority
 
@@ -232,7 +275,7 @@ All JSON over HTTP, CORS restricted to the dapp origin. Binary values are hex.
    artefact's pure circuit.
 4. `POST /deploy` with the constructor arguments → address (≈ 10 waves).
 5. Build `activate_initial_device_with_p256(pk, salt, policy)`; prove through
-   `/prove` (k = 14); submit through `/sponsor`.
+   `/prove` (k = 14); submit through `/sponsor/balance` and `/sponsor/submit`.
 6. `PUT /accounts/undeployed/{credentialId}`; return the `PassportAccount`.
 
 ### 5.2 Transact (MVP)
@@ -242,7 +285,7 @@ All JSON over HTTP, CORS restricted to the dapp origin. Binary values are hex.
 pure circuit; ask the passkey for an assertion over it; build
 `rotate_enc_key_with_p256(newKey, auth)`; prove through `/prove` (k = 18,
 ≈ 30 s, ≈ 13.5 GiB on the service's proof server); submit through
-`/sponsor`.
+`/sponsor/balance` and `/sponsor/submit`.
 
 ### 5.3 Reopen after reload
 
@@ -276,7 +319,7 @@ The connector maps failures to `PassportErrorCode`: a WebAuthn
 `NotAllowedError` → `UserCancelled`; no PRF or ES256 → `UnsupportedAuthenticator`;
 `404` from the registry → `AccountNotFound`; `ZkArtifactIntegrityError` →
 `ArtefactIntegrity`; `/prove` 5xx or timeout → `ProverUnavailable`;
-`/sponsor` refusal → `SponsorRejected`. The service fails closed when its
+`/sponsor/*` refusal (`403`) → `SponsorRejected`. The service fails closed when its
 artefact directory does not match the pinned manifest hash, and refuses
 circuits or contracts outside the binding.
 
@@ -321,7 +364,7 @@ manual run. The implementation plan breaks these into tasks.
 |---|---|---|
 | R1 | The midnight-js 5 / wallet SDK pre-releases are young (7-day rule) and their browser builds may need polyfills | Record exclusions; the passport PWA demo runs the wallet SDK in a tab, so a known path exists |
 | R2 | Building ACC calls in the browser needs the generated module and the wave-deploy helpers, which live in the contract team's TypeScript, not in a package | Port the minimum (challenge, call, activation) into `account`; the service reuses the reference wave-deploy logic |
-| R3 | Sponsoring a transaction built elsewhere (balance with the sponsor's dust, then submit) | Balance on the service with the sponsor wallet's balancing API; fall back to the service building the whole call if needed |
+| R3 | Sponsoring a transaction built elsewhere (balance with the sponsor's dust, then submit) | Balance on the service with the sponsor wallet's balancing API (`/sponsor/balance`, then `/sponsor/submit`), under the sponsor policy of §4.3; fall back to the service building the whole call if needed |
 | R4 | Docker memory for P-256 proofs | Documented ≥ 24 GiB; `/prove` reports `ProverUnavailable` clearly |
 | Q1 | Retire the authority at deploy (default) or keep it? | Owner decision (epic risk 12) |
 | Q2 | Registry vs WebAuthn largeBlob vs name lookup for reopening on a new device | Later (epic A6, risk 14) |
