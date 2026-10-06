@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Passport Prototype</title>
+    <style>
+      body {
+        font:
+          15px/1.5 system-ui,
+          sans-serif;
+        max-width: 760px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      button {
+        margin: 0 0.5rem 0.5rem 0;
+        padding: 0.5rem 0.9rem;
+      }
+      pre {
+        background: #f4f4f6;
+        padding: 1rem;
+        overflow-x: auto;
+        min-height: 6rem;
+      }
+      #status {
+        font-weight: 600;
+      }
+      .hint {
+        color: #555;
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Midnight Passport — prototype</h1>
+    <p id="status">Not connected.</p>
+    <div>
+      <button id="create">Create Passport account</button>
+      <button id="open">Open with passkey</button>
+      <button id="rotate" disabled>Rotate encryption key</button>
+      <button id="copy">Copy evidence</button>
+    </div>
+    <p class="hint">
+      Creating an account asks for your passkey twice: once to create it, and once to verify the
+      authenticator. Rotating asks once more, and proving on the service takes about 30 seconds.
+    </p>
+    <h2>Evidence</h2>
+    <pre id="evidence"></pre>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
