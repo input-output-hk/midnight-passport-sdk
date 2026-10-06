@@ -17,7 +17,7 @@ import { ALLOWED, SCOPE } from './dependency-graph.mjs';
 const IMPORT_RE =
   /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"`](@midnight-ntwrk\/mn-passport-[^'"`/]+)/g;
 const NODE_BUILTIN_RE = /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"`](node:[^'"`]+)/g;
-const PLATFORM_NEUTRAL = new Set(['protocol', 'contract', 'core', 'connect']);
+const PLATFORM_NEUTRAL = new Set(['protocol', 'contract', 'core', 'connect', 'account']);
 // Ambient global declarations bypass import scanning, so they are gated by
 // an explicit allowlist: only cross-platform standards may be assumed.
 const GLOBAL_DECLARATION_RE = /declare\s+(?:const|var|let|function)\s+(\w+)/g;

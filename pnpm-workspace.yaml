@@ -1,10 +1,13 @@
 packages:
   - packages/*
+  - apps/*
 
 # Supply-chain posture, natively enforced (docs/development-workflow.md §4;
 # flagged by org code scanning on the migration PR).
-# The 7-day cooldown, applied at resolution time (minutes).
-minimumReleaseAge: 10080
+# Cancelled for the Passport DApp prototype by the owner on 2026/10/06
+# (docs/superpowers/plans/2026-10-06-passport-dapp-prototype.md). Restore 10080
+# before anything leaves the prototype branch.
+minimumReleaseAge: 0
 # No transitive dependencies from git/URL sources — registry only.
 blockExoticSubdeps: true
 # Updates may never weaken these settings.

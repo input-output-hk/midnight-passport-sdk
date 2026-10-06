@@ -1,0 +1,29 @@
+{
+  "name": "@midnight-ntwrk/mn-passport-adapter-browser",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@midnight-ntwrk/compact-js": "3.0.0-rc.3",
+    "@midnight-ntwrk/midnight-js-contracts": "5.0.0-rc.2",
+    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": "5.0.0-rc.2",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "5.0.0-rc.2",
+    "@midnight-ntwrk/midnight-js-network-id": "5.0.0-rc.2",
+    "@midnight-ntwrk/midnight-js-types": "5.0.0-rc.2",
+    "@midnight-ntwrk/mn-passport-account": "workspace:*",
+    "@midnight-ntwrk/mn-passport-contract": "workspace:*",
+    "@midnight-ntwrk/mn-passport-protocol": "workspace:*",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
+    "@noble/curves": "2.2.0",
+    "@noble/hashes": "2.2.0"
+  }
+}

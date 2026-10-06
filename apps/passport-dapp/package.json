@@ -1,0 +1,22 @@
+{
+  "name": "passport-dapp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "../../experiments/acc-0.35/guard.sh && vite",
+    "e2e": "../../experiments/acc-0.35/guard.sh && node --import tsx e2e/mvp.e2e.ts"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.20.0",
+    "@midnight-ntwrk/mn-passport-account": "workspace:*",
+    "@midnight-ntwrk/mn-passport-adapter-browser": "workspace:*",
+    "@midnight-ntwrk/mn-passport-protocol": "workspace:*",
+    "@midnightntwrk/wallet-sdk-facade": "5.0.0-rc.0",
+    "buffer": "6.0.3"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15",
+    "vite": "8.3.1",
+    "vite-plugin-wasm": "3.6.0"
+  }
+}

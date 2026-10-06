@@ -12,4 +12,6 @@ export const ALLOWED = {
   'adapter-signer-managed': ['core'],
   'adapter-signer-local': ['core'],
   'adapter-prover-remote': ['core'],
+  account: ['contract', 'protocol'],
+  'adapter-browser': ['account', 'contract', 'protocol'],
 };

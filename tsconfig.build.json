@@ -21,6 +21,12 @@
     },
     {
       "path": "./packages/adapter-prover-remote"
+    },
+    {
+      "path": "./packages/account"
+    },
+    {
+      "path": "./packages/adapter-browser"
     }
   ]
 }

@@ -1,0 +1,12 @@
+{
+  "name": "passport-service",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "../../experiments/acc-0.35/guard.sh && tsx src/main.ts",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15"
+  }
+}

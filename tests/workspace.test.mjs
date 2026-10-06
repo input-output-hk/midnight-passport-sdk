@@ -51,7 +51,7 @@ test('every dependency in every workspace manifest is exact-pinned', async () =>
       if (version.startsWith('workspace:') || version === '*') continue; // workspace links
       assert.match(
         version,
-        /^\d+\.\d+\.\d+$/,
+        /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/, // exact, prerelease tags allowed (e.g. 3.0.0-rc.3)
         `${path}: ${name} must be an exact pin, got "${version}"`,
       );
     }
