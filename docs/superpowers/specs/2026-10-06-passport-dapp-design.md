@@ -202,8 +202,8 @@ All JSON over HTTP, CORS restricted to the dapp origin. Binary values are hex.
 | `POST /prove` | `{ serializedPreimage, keyLocation, overwriteBindingInput? }` | the proof bytes | Resolves `keyLocation` to the circuit, loads ZKIR and keys from disk, calls the proof server's `/prove` with the full payload. Allow-listed to the binding's circuits |
 | `POST /deploy` | `{ boot, encKey, recoveryPk, recoveryWrap, vetoWindowSeconds }` | `{ address, txHashes[] }` (streams progress) | Constructor arguments only; runs the 10 waves and retires the authority in the last |
 | `POST /sponsor` | `{ tx }` (proven, unbalanced) | `{ txHash, blockHeight }` | Adds fees from the sponsor wallet, submits, waits for inclusion. Allow-listed to the binding's contract calls |
-| `PUT /accounts/{networkId}/{credentialId}` | `{ address, publicKey, salt, policy }` | `204` | The registry (§5.3) |
-| `GET /accounts/{networkId}/{credentialId}` | — | `{ address, publicKey, salt, policy }` or `404` | |
+| `PUT /accounts/{networkId}/{credentialId}` | `{ credentialId, address, publicKey, salt, policy, status: 'deployed'\|'active' }` | `204`, or `409` if write-once violated | Write-once except `deployed` → `active`; returns `409` for any other transition or field change. Proof of possession required in production. The registry (§5.3) |
+| `GET /accounts/{networkId}/{credentialId}` | — | `{ credentialId, address, publicKey, salt, policy, status }` or `404` | |
 
 ### 4.4 Secrets and authority
 
