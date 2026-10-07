@@ -127,7 +127,7 @@ export interface PlainError {
 }
 
 const HINTS: Readonly<Record<string, string>> = {
-  UserCancelled: 'The passkey prompt was cancelled or timed out. Nothing was submitted.',
+  UserCancelled: 'The passkey step did not complete. Nothing was submitted.',
   UnsupportedAuthenticator:
     'This passkey cannot derive keys (no PRF support). Use a passkey saved in Google Password Manager or iCloud Keychain.',
   AccountNotFound:
