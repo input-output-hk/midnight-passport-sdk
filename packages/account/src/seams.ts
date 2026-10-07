@@ -113,8 +113,9 @@ export interface PassportSeams {
   random(length: number): Uint8Array;
   /**
    * The account's 32-byte X25519 encryption key, for the passkey just created. The browser derives
-   * it from the passkey's PRF (Lace recipe v1, MIP-0015), which costs one more prompt; the MVP
-   * keeps no inbox.
+   * it from the passkey's PRF (Lace recipe v1, MIP-0015): from the PRF outputs the provider
+   * returned at creation when it did (no prompt), else from one more PRF ceremony. The MVP keeps
+   * no inbox.
    */
   encryptionKey(credential: PasskeyCredential): Uint8Array | Promise<Uint8Array>;
 }

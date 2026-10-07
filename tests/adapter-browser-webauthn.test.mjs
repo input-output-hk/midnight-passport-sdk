@@ -1,7 +1,7 @@
 // The browser adapter's WebAuthn seam and its PRF ceremony (Lace recipe v1). A fake CredentialsContainer is backed
 // by a real P-256 key, so the wa-json134 signature path (DER parsing, SPKI import, ECDSA
 // verification) runs for real; only the browser prompt is faked.
-import { test } from 'node:test';
+import { mock, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { p256 } from '@noble/curves/nist.js';
 import { sha256 } from '@noble/hashes/sha2.js';
@@ -18,7 +18,15 @@ const ID = Uint8Array.of(1, 2, 3, 4);
  *   allowCredentials?: { type: string; id: Uint8Array }[];
  *   extensions?: { prf?: { eval: { first: Uint8Array; second?: Uint8Array } } };
  * }} GetOptions
- * @typedef {{ prf?: boolean; cancel?: string; highS?: boolean; empty?: boolean }} AuthenticatorOptions
+ * @typedef {{
+ *   challenge: Uint8Array;
+ *   hints?: string[];
+ *   extensions?: { prf?: { eval?: { first: Uint8Array; second?: Uint8Array } } };
+ * }} CreateOptions
+ * What a create that asks for PRF answers: `enabled` only, `enabled` and the results (GPM), or no
+ * `enabled` member at all.
+ * @typedef {'enabled' | 'results' | 'missing'} PrfAtCreate
+ * @typedef {{ prf?: boolean; atCreate?: PrfAtCreate; cancel?: string; highS?: boolean; empty?: boolean }} AuthenticatorOptions
  * What the next signing assertion carries; tests change it between ceremonies.
  * @typedef {{ flags: number; extensionData: boolean; rp: string; wrongChallenge: boolean }} Behaviour
  */
@@ -41,7 +49,13 @@ function derSignature(r, s) {
 }
 
 /** A software authenticator behind a CredentialsContainer-shaped fake. @param {AuthenticatorOptions} [opts] */
-function softwareAuthenticator({ prf = true, cancel, highS = false, empty = false } = {}) {
+function softwareAuthenticator({
+  prf = true,
+  atCreate = 'enabled',
+  cancel,
+  highS = false,
+  empty = false,
+} = {}) {
   const sk = p256.utils.randomSecretKey();
   const pub = p256.getPublicKey(sk, false); // 0x04 || x || y
   const spki = new Uint8Array([
@@ -61,20 +75,37 @@ function softwareAuthenticator({ prf = true, cancel, highS = false, empty = fals
       ...(behaviour.extensionData ? [0xa1, 0x60, 0x00] : []), // a CBOR extensions map
     ]);
   const cancelled = () => Object.assign(new Error('prompt dismissed'), { name: cancel });
+  /** A stand-in PRF: a deterministic function of each salt, as the real extension is. */
+  const evaluate = (/** @type {{ first: Uint8Array; second?: Uint8Array }} */ salts) => ({
+    first: buffer(sha256(new Uint8Array(salts.first))),
+    ...(salts.second && { second: buffer(sha256(new Uint8Array(salts.second))) }),
+  });
   /** @type {GetOptions[]} */
   const gets = [];
+  /** @type {CreateOptions[]} */
+  const creates = [];
   return {
     pub,
     gets,
+    creates,
     behaviour,
     container: {
-      async create() {
+      /** @param {{ publicKey: CreateOptions }} options */
+      async create({ publicKey }) {
         if (cancel) throw cancelled();
+        creates.push(publicKey);
+        const salts = publicKey.extensions?.prf?.eval;
+        // What a provider reports for the PRF extension requested at creation.
+        const reported =
+          !prf || atCreate === 'enabled'
+            ? { enabled: prf }
+            : atCreate === 'results'
+              ? { enabled: true, ...(salts && { results: evaluate(salts) }) }
+              : {};
         return {
           rawId: buffer(ID),
           response: { getPublicKey: () => buffer(spki), getPublicKeyAlgorithm: () => -7 },
-          // What a provider reports for the PRF extension requested at creation.
-          getClientExtensionResults: () => ({ prf: { enabled: prf } }),
+          getClientExtensionResults: () => ({ prf: reported }),
         };
       },
       /** @param {{ publicKey: GetOptions }} options */
@@ -84,12 +115,7 @@ function softwareAuthenticator({ prf = true, cancel, highS = false, empty = fals
         if (empty) return null;
         if (publicKey.extensions?.prf) {
           if (!prf) return { rawId: buffer(ID), getClientExtensionResults: () => ({}) };
-          // A stand-in PRF: a deterministic function of each salt, as the real extension is.
-          const { first, second } = publicKey.extensions.prf.eval;
-          const results = {
-            first: buffer(sha256(new Uint8Array(first))),
-            ...(second && { second: buffer(sha256(new Uint8Array(second))) }),
-          };
+          const results = evaluate(publicKey.extensions.prf.eval);
           return { rawId: buffer(ID), getClientExtensionResults: () => ({ prf: { results } }) };
         }
         const authData = authenticatorData();
@@ -122,15 +148,101 @@ function softwareAuthenticator({ prf = true, cancel, highS = false, empty = fals
 const seamFor = (auth) =>
   b.browserPasskey({ rpId: RP, origin: ORIGIN, credentials: auth.container });
 
-test('create refuses a provider that reports no PRF, before the enrolment probe', async () => {
-  const auth = softwareAuthenticator({ prf: false });
-  await assert.rejects(seamFor(auth).create('alice'), (e) => {
-    const err = /** @type {{ code?: string; message?: string }} */ (e);
-    assert.equal(err.code, 'UnsupportedAuthenticator');
-    assert.match(err.message ?? '', /Google Password Manager or iCloud Keychain/);
-    return true;
+test('create refuses a provider whose PRF is false or missing, before the enrolment probe', async () => {
+  for (const opts of [{ prf: false }, { atCreate: /** @type {const} */ ('missing') }]) {
+    const auth = softwareAuthenticator(opts);
+    await assert.rejects(seamFor(auth).create('alice'), (e) => {
+      const err = /** @type {{ code?: string; message?: string }} */ (e);
+      assert.equal(err.code, 'UnsupportedAuthenticator');
+      assert.equal(err.message, b.PRF_UNSUPPORTED_AT_CREATE);
+      assert.match(err.message ?? '', /PRF-capable provider/);
+      assert.match(err.message ?? '', /Google Password Manager or iCloud Keychain/);
+      return true;
+    });
+    assert.equal(auth.gets.length, 0, `no probe ceremony ran (${JSON.stringify(opts)})`);
+  }
+});
+
+test('create asks for PRF with both Lace salts, and hints at a passkey on this device', async () => {
+  const auth = softwareAuthenticator();
+  await seamFor(auth).create('alice');
+  const [options] = auth.creates;
+  assert.deepEqual(options?.hints, ['client-device']);
+  assert.equal(
+    hex(new Uint8Array(options?.extensions?.prf?.eval?.first ?? [])),
+    hex(b.prfSalt(b.PRF_LABEL_AUTHORISER)),
+  );
+  assert.equal(
+    hex(new Uint8Array(options?.extensions?.prf?.eval?.second ?? [])),
+    hex(b.prfSalt(b.PRF_LABEL_ROOT)),
+  );
+});
+
+test('PRF results returned at create derive the encryption key with no PRF ceremony', async () => {
+  const auth = softwareAuthenticator({ atCreate: 'results' });
+  const cred = await seamFor(auth).create('alice');
+  assert.equal(auth.gets.length, 1, 'create needs only the enrolment probe');
+  // The outputs never ride on the credential, so no spread, log or registry write can carry them.
+  assert.deepEqual(Reflect.ownKeys(cred).sort(), ['credentialId', 'policy', 'publicKey']);
+  const opts = { credentialId: cred.credentialId, rpId: RP, credentials: auth.container };
+  const key = await b.accEncryptionKeyFromPasskey({
+    ...opts,
+    created: cred,
+    networkId: 'undeployed',
   });
-  assert.equal(auth.gets.length, 0, 'no probe ceremony ran');
+  assert.equal(auth.gets.length, 1, 'no separate PRF ceremony: create and probe only');
+  // The same key a PRF ceremony gives; and the held outputs are taken once only.
+  const again = await b.accEncryptionKeyFromPasskey({
+    ...opts,
+    created: cred,
+    networkId: 'undeployed',
+  });
+  assert.equal(auth.gets.length, 2, 'taken once: the second derivation runs its own ceremony');
+  assert.deepEqual(again, key);
+});
+
+test('when create returns only PRF enabled, the encryption key falls back to a pinned PRF ceremony', async () => {
+  const auth = softwareAuthenticator({ atCreate: 'enabled' });
+  const cred = await seamFor(auth).create('alice');
+  const key = await b.accEncryptionKeyFromPasskey({
+    credentialId: cred.credentialId,
+    created: cred,
+    rpId: RP,
+    credentials: auth.container,
+    networkId: 'undeployed',
+  });
+  assert.equal(key.length, 32);
+  assert.equal(auth.gets.length, 2, 'create, probe, then the PRF ceremony');
+  const ceremony = auth.gets.at(-1);
+  assert.ok(ceremony?.extensions?.prf, 'the last get is the PRF ceremony');
+  assert.deepEqual(new Uint8Array(ceremony?.allowCredentials?.[0]?.id ?? []), ID);
+});
+
+test('unused create-time PRF outputs are zeroed and dropped after the TTL', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const auth = softwareAuthenticator({ atCreate: 'results' });
+    const cred = await seamFor(auth).create('alice');
+    mock.timers.tick(60_000);
+    await b.passkeyPrf({
+      credentialId: cred.credentialId,
+      created: cred,
+      rpId: RP,
+      credentials: auth.container,
+    });
+    assert.equal(auth.gets.length, 2, 'expired: a PRF ceremony ran');
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test('passkeyPrf refuses a `created` credential that is not `credentialId`', async () => {
+  const auth = softwareAuthenticator({ atCreate: 'results' });
+  const cred = await seamFor(auth).create('alice');
+  await assert.rejects(b.passkeyPrf({ credentialId: Uint8Array.of(9), created: cred, rpId: RP }), {
+    code: 'InternalError',
+    message: /not the credential/,
+  });
 });
 
 test('create returns the P-256 key and policy for a discoverable credential', async () => {
@@ -280,8 +392,29 @@ test('the PRF ceremony fails on a dismissed prompt or a different credential, ne
     b.passkeyPrf({ credentialId, rpId: RP, credentials: softwareAuthenticator(opts).container });
   await assert.rejects(prf(ID, { empty: true }), { code: 'UserCancelled' });
   await assert.rejects(prf(Uint8Array.of(9, 9), {}), {
-    code: 'InternalError',
-    message: /different credential/,
+    code: 'AccountNotFound',
+    message: b.WRONG_PASSKEY,
+  });
+});
+
+test('a pinned signing ceremony answered by another passkey is the wrong-passkey error', async () => {
+  const seam = seamFor(softwareAuthenticator());
+  const cred = await seam.create('alice');
+  await assert.rejects(seam.sign({ ...cred, credentialId: Uint8Array.of(9) }, new Uint8Array(32)), {
+    code: 'AccountNotFound',
+    message: /not the passkey this account was created with; choose that passkey/,
+  });
+});
+
+test('no PRF at a later ceremony has its own message: maybe not the account passkey', async () => {
+  const noPrf = softwareAuthenticator({ prf: false }).container;
+  await assert.rejects(b.passkeyPrf({ credentialId: ID, rpId: RP, credentials: noPrf }), (e) => {
+    const err = /** @type {{ code?: string; message?: string }} */ (e);
+    assert.equal(err.code, 'UnsupportedAuthenticator');
+    assert.equal(err.message, b.PRF_UNAVAILABLE);
+    assert.notEqual(err.message, b.PRF_UNSUPPORTED_AT_CREATE);
+    assert.match(err.message ?? '', /different passkey/);
+    return true;
   });
 });
 

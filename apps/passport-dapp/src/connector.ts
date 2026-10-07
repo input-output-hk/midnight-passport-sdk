@@ -36,10 +36,13 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
     random: (n) => crypto.getRandomValues(new Uint8Array(n)),
     // Lace recipe v1: the passkey's PRF root -> BIP-39 seed -> MIP-0015 at
     // 'lace-passport:acc-enc:v1', context '<networkId>/0'. Network-bound and reproducible from the
-    // passkey; one more prompt at create, and no PRF means no account (UnsupportedAuthenticator).
+    // passkey. `created` takes the PRF outputs the provider returned at creation, once, when it
+    // returned them (no prompt); otherwise this is one more, pinned PRF prompt. No PRF means no
+    // account (UnsupportedAuthenticator).
     encryptionKey: (credential) =>
       accEncryptionKeyFromPasskey({
         credentialId: credential.credentialId,
+        created: credential,
         rpId: RP_ID,
         networkId,
       }),

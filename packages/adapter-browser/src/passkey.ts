@@ -1,6 +1,7 @@
 import {
   PassportConnectorError,
   toPassportError,
+  type PasskeyCredential,
   type PasskeySeam,
 } from '@midnight-ntwrk/mn-passport-account';
 import {
@@ -12,7 +13,13 @@ import {
   webauthnPolicy,
   type WebAuthnAssertion,
 } from './webauthn.js';
-import { PRF_UNSUPPORTED } from './prf.js';
+import { holdCreatePrf } from './create-prf.js';
+import { lacePrfSalts, PRF_UNSUPPORTED_AT_CREATE, wrongPasskey } from './prf.js';
+
+/** WebAuthn L3 `hints`, which TypeScript's DOM lib does not declare yet. */
+type CreationOptionsWithHints = PublicKeyCredentialCreationOptions & {
+  hints?: ('client-device' | 'security-key' | 'hybrid')[];
+};
 
 /** wa-json134 passkeys; the private key never leaves the authenticator (spec §4.4). */
 export function browserPasskey(opts: {
@@ -22,7 +29,10 @@ export function browserPasskey(opts: {
 }): PasskeySeam {
   const policy = webauthnPolicy(opts.rpId, opts.origin);
   const container = () => opts.credentials ?? navigator.credentials;
-  /** One assertion ceremony for a known credential; a different credential or a dismissed prompt fails. */
+  /**
+   * One assertion ceremony pinned to a known credential (`allowCredentials`): a different credential
+   * fails with WRONG_PASSKEY, a dismissed prompt with UserCancelled.
+   */
   const assertion = async (
     credentialId: Uint8Array,
     challenge: Uint8Array,
@@ -37,12 +47,7 @@ export function browserPasskey(opts: {
     })) as PublicKeyCredential | null;
     if (!got)
       throw new PassportConnectorError('UserCancelled', 'The passkey prompt was cancelled.');
-    if (!equalBytes(new Uint8Array(got.rawId), credentialId)) {
-      throw new PassportConnectorError(
-        'InternalError',
-        'The authenticator answered with a different credential than requested.',
-      );
-    }
+    if (!equalBytes(new Uint8Array(got.rawId), credentialId)) throw wrongPasskey();
     const r = got.response as AuthenticatorAssertionResponse;
     return {
       authenticatorData: new Uint8Array(r.authenticatorData),
@@ -62,30 +67,36 @@ export function browserPasskey(opts: {
             `Passkey enrolment origin mismatch: the page is ${pageOrigin}, the policy is ${opts.origin}.`,
           );
         }
-        const credential = (await container().create({
-          publicKey: {
-            challenge: crypto.getRandomValues(new Uint8Array(32)),
-            rp: { id: opts.rpId, name: 'Midnight Passport' },
-            user: {
-              id: crypto.getRandomValues(new Uint8Array(32)),
-              name: userName,
-              displayName: userName,
-            },
-            pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
-            // Discoverable, so openAccount can find it without a stored id (spec §5.1).
-            authenticatorSelection: { userVerification: 'required', residentKey: 'required' },
-            attestation: 'none',
-            // Ask for PRF at creation, as the Lace key source does: some providers enable it only
-            // for credentials created with the extension. The salts are evaluated later (prf.ts).
-            extensions: { prf: {} },
+        const options: CreationOptionsWithHints = {
+          challenge: crypto.getRandomValues(new Uint8Array(32)),
+          rp: { id: opts.rpId, name: 'Midnight Passport' },
+          user: {
+            id: crypto.getRandomValues(new Uint8Array(32)),
+            name: userName,
+            displayName: userName,
           },
+          pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+          // Discoverable, so openAccount can find it without a stored id (spec §5.1).
+          authenticatorSelection: { userVerification: 'required', residentKey: 'required' },
+          attestation: 'none',
+          // Steer the browser to a passkey provider on this device (Google Password Manager,
+          // iCloud Keychain) rather than a security key, which often has no PRF.
+          hints: ['client-device'],
+          // PRF at creation with both Lace salts, as the Lace key source does: some providers enable
+          // PRF only for credentials created with the extension, and some evaluate it right away.
+          extensions: { prf: { eval: lacePrfSalts() } },
+        };
+        const credential = (await container().create({
+          publicKey: options,
         })) as PublicKeyCredential | null;
         if (!credential) {
           throw new PassportConnectorError('UserCancelled', 'Passkey creation was cancelled.');
         }
-        // A provider that reports PRF as unavailable fails here, before any deployment.
-        if (credential.getClientExtensionResults?.().prf?.enabled === false) {
-          throw new PassportConnectorError('UnsupportedAuthenticator', PRF_UNSUPPORTED);
+        // Strict: only a provider that confirms PRF is accepted, before the probe and any deploy.
+        // `enabled` false or missing (e.g. the "Chrome profile" store) is refused.
+        const prf = credential.getClientExtensionResults?.().prf;
+        if (prf?.enabled !== true) {
+          throw new PassportConnectorError('UnsupportedAuthenticator', PRF_UNSUPPORTED_AT_CREATE);
         }
         const response = credential.response as AuthenticatorAttestationResponse;
         const spki = response.getPublicKey();
@@ -123,7 +134,11 @@ export function browserPasskey(opts: {
             { cause: e },
           );
         }
-        return { credentialId, publicKey, policy };
+        const created: PasskeyCredential = { credentialId, publicKey, policy };
+        // Outputs the provider returned at creation are held (never on `created` itself) for the
+        // encryption-key seam, which then needs no PRF prompt of its own (create-prf.ts).
+        holdCreatePrf(created, prf.results);
+        return created;
       } catch (e) {
         throw toPassportError(e);
       }
