@@ -60,6 +60,7 @@ export function configRoute(config: ServiceConfig, extra: () => Record<string, u
       indexerUri: config.indexerUri,
       indexerWsUri: config.indexerWsUri,
       nodeUri: config.nodeUri,
+      proofServerUri: config.proofServerUri,
       // server.ts has already refused any Host that is not this service's, so echoing it is safe.
       zkBaseUrl: `http://${req.headers.host ?? `localhost:${config.port}`}/zk/acc`,
       ...extra(),

@@ -279,6 +279,7 @@ const CONFIG = {
   indexerUri: 'http://indexer/graphql',
   indexerWsUri: 'ws://indexer/graphql/ws',
   nodeUri: 'ws://node',
+  proofServerUri: 'http://prover',
   zkBaseUrl: 'http://svc/zk/acc',
   coinPublicKey: 'cpk',
   encryptionPublicKey: 'epk',
@@ -398,6 +399,16 @@ test('fetchServiceConfig refuses a service on another network', async () => {
   await assert.rejects(b.fetchServiceConfig('http://svc', f.fn, 'undeployed'), {
     code: 'NetworkMismatch',
   });
+});
+
+test('fetchServiceConfig follows the network the connector is bound to, not a constant', async () => {
+  const f = recordingFetch({
+    '/config': { status: 200, body: { ...CONFIG, networkId: 'preview' } },
+  });
+  await assert.rejects(b.fetchServiceConfig('http://svc', f.fn, 'undeployed'), {
+    code: 'NetworkMismatch',
+  });
+  assert.equal((await b.fetchServiceConfig('http://svc', f.fn, 'preview')).networkId, 'preview');
 });
 
 test('fetchServiceConfig returns the service configuration of the bound network', async () => {

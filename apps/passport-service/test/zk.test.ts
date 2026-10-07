@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { connect, type AddressInfo } from 'node:net';
 import { createServer } from '../src/server.ts';
 import { json, readJson, type Route } from '../src/http.ts';
-import { loadConfig } from '../src/config.ts';
+import { loadConfig, loadStack, type ServiceConfig } from '../src/config.ts';
 import { mkdirSync } from 'node:fs';
 import { configRoute, zkRoute } from '../src/routes/zk.ts';
 import { bindingCircuits, verifyArtefacts } from '../src/artefacts.ts';
@@ -179,30 +179,145 @@ test('loadConfig refuses a non-integer or out-of-range port', () => {
   }
 });
 
-test('loadConfig reports the reference endpoints and refuses an override that differs (M5)', () => {
+const STACK_KEYS = [
+  'networkId',
+  'nodeUri',
+  'indexerUri',
+  'indexerWsUri',
+  'proofServerUri',
+] as const;
+const stackOf = (c: ServiceConfig) => Object.fromEntries(STACK_KEYS.map((k) => [k, c[k]]));
+
+test('loadConfig defaults the stack to the localnet on the ports', () => {
   const base = { PASSPORT_CONTRACT_DIR: '/c', PASSPORT_MANIFEST_SHA256: 'ab' };
-  const config = loadConfig(base);
-  assert.equal(config.networkId, 'undeployed');
-  assert.equal(config.indexerUri, 'http://localhost:18088/api/v4/graphql');
-  assert.equal(config.indexerWsUri, 'ws://localhost:18088/api/v4/graphql/ws');
-  assert.equal(config.nodeUri, 'http://localhost:19944');
-  assert.equal(config.proofServerUri, 'http://127.0.0.1:16300');
-  // Restating a reference value is harmless.
-  assert.equal(loadConfig({ ...base, PASSPORT_NETWORK_ID: 'undeployed' }).networkId, 'undeployed');
-  for (const [key, value] of [
-    ['PASSPORT_NETWORK_ID', 'testnet'],
-    ['PASSPORT_NETWORK_ID', ''],
-    ['PASSPORT_INDEXER_URI', 'http://indexer.example/api/v4/graphql'],
-    ['PASSPORT_INDEXER_WS_URI', 'ws://indexer.example/api/v4/graphql/ws'],
-    ['PASSPORT_NODE_URI', 'http://node.example:9944'],
-    ['PASSPORT_PROOF_SERVER_URI', 'http://prover.example:6300'],
-  ] as const) {
-    assert.throws(
-      () => loadConfig({ ...base, [key]: value }),
-      new RegExp(`${key} is fixed to`),
-      `${key}=${value}`,
+  assert.deepEqual(stackOf(loadConfig(base)), {
+    networkId: 'undeployed',
+    nodeUri: 'http://localhost:19944',
+    indexerUri: 'http://localhost:18088/api/v4/graphql',
+    indexerWsUri: 'ws://localhost:18088/api/v4/graphql/ws',
+    proofServerUri: 'http://127.0.0.1:16300',
+  });
+  // The port variables (infra/localnet/ports.env) still move the defaults.
+  const ported = loadConfig({
+    ...base,
+    MN_NODE_PORT: '1',
+    MN_INDEXER_PORT: '2',
+    MN_PROOF_PORT: '3',
+  });
+  assert.equal(ported.nodeUri, 'http://localhost:1');
+  assert.equal(ported.indexerUri, 'http://localhost:2/api/v4/graphql');
+  assert.equal(ported.indexerWsUri, 'ws://localhost:2/api/v4/graphql/ws');
+  assert.equal(ported.proofServerUri, 'http://127.0.0.1:3');
+});
+
+test('the shipped undeployed.env is the localnet default on the ports.env ports', () => {
+  const parse = (rel: string) =>
+    Object.fromEntries(
+      readFileSync(new URL(`../../../${rel}`, import.meta.url), 'utf8')
+        .split('\n')
+        .filter((l) => /^[A-Z_]+=/.test(l))
+        .map((l) => l.split('=') as [string, string]),
     );
+  const stack = parse('infra/networks/undeployed.env');
+  const fromPorts = loadStack(parse('infra/localnet/ports.env'));
+  assert.deepEqual(loadStack(stack), fromPorts);
+  assert.deepEqual(
+    { ...stack },
+    {
+      MN_NETWORK_ID: fromPorts.networkId,
+      MN_NODE_URL: fromPorts.nodeUri,
+      MN_INDEXER_URL: fromPorts.indexerUri,
+      MN_INDEXER_WS_URL: fromPorts.indexerWsUri,
+      MN_PROOF_SERVER_URL: fromPorts.proofServerUri,
+    },
+  );
+});
+
+test('loadConfig reads the stack from the MN_* variables, and each overrides on its own', () => {
+  const base = {
+    PASSPORT_CONTRACT_DIR: '/c',
+    PASSPORT_MANIFEST_SHA256: 'ab',
+    PASSPORT_SPONSOR_SEED: 'cd'.repeat(32),
+  };
+  const config = loadConfig({
+    ...base,
+    MN_NETWORK_ID: 'preview',
+    MN_NODE_URL: 'https://node.example',
+    MN_INDEXER_URL: 'https://indexer.example/api/v4/graphql',
+    MN_INDEXER_WS_URL: 'wss://indexer.example/api/v4/graphql/ws',
+    MN_PROOF_SERVER_URL: 'https://prover.example',
+  });
+  assert.deepEqual(stackOf(config), {
+    networkId: 'preview',
+    nodeUri: 'https://node.example',
+    indexerUri: 'https://indexer.example/api/v4/graphql',
+    indexerWsUri: 'wss://indexer.example/api/v4/graphql/ws',
+    proofServerUri: 'https://prover.example',
+  });
+  const one = loadConfig({ ...base, MN_NODE_URL: 'http://node.example:9944' });
+  assert.equal(one.nodeUri, 'http://node.example:9944');
+  assert.equal(one.networkId, 'undeployed');
+  assert.equal(one.indexerUri, 'http://localhost:18088/api/v4/graphql');
+  // A URL beats the port variable.
+  assert.equal(
+    loadConfig({ ...base, MN_NODE_URL: 'http://n', MN_NODE_PORT: '5' }).nodeUri,
+    'http://n',
+  );
+});
+
+test('loadConfig validates the stack URLs and the network id', () => {
+  const base = { PASSPORT_CONTRACT_DIR: '/c', PASSPORT_MANIFEST_SHA256: 'ab' };
+  for (const [key, value] of [
+    ['MN_NODE_URL', 'ws://node.example'],
+    ['MN_NODE_URL', 'node.example:9944'],
+    ['MN_NODE_URL', ''],
+    ['MN_INDEXER_URL', 'ftp://indexer.example'],
+    ['MN_INDEXER_URL', 'wss://indexer.example'],
+    ['MN_INDEXER_WS_URL', 'http://indexer.example/ws'],
+    ['MN_INDEXER_WS_URL', 'not a url'],
+    ['MN_PROOF_SERVER_URL', 'ws://prover.example'],
+    ['MN_PROOF_SERVER_URL', ''],
+    ['MN_NETWORK_ID', ''],
+    ['MN_NETWORK_ID', 'Preview'],
+    ['MN_NETWORK_ID', 'a/b'],
+  ] as const) {
+    assert.throws(() => loadConfig({ ...base, [key]: value }), new RegExp(key), `${key}=${value}`);
   }
+});
+
+test('a network other than undeployed needs an explicit sponsor seed', () => {
+  const base = {
+    PASSPORT_CONTRACT_DIR: '/c',
+    PASSPORT_MANIFEST_SHA256: 'ab',
+    MN_NETWORK_ID: 'preview',
+  };
+  assert.throws(() => loadConfig(base), /PASSPORT_SPONSOR_SEED/);
+  assert.throws(() => loadConfig({ ...base, PASSPORT_SPONSOR_SEED: '' }), /PASSPORT_SPONSOR_SEED/);
+  assert.equal(
+    loadConfig({ ...base, PASSPORT_SPONSOR_SEED: '07'.repeat(32) }).sponsorSeed,
+    '07'.repeat(32),
+  );
+  // The localnet keeps its genesis dev seed as the default, and may override it.
+  assert.match(loadConfig({ ...base, MN_NETWORK_ID: 'undeployed' }).sponsorSeed, /^0+1$/);
+  assert.equal(
+    loadConfig({ ...base, MN_NETWORK_ID: 'undeployed', PASSPORT_SPONSOR_SEED: '07'.repeat(32) })
+      .sponsorSeed,
+    '07'.repeat(32),
+  );
+});
+
+test('/config advertises exactly the configured stack', async () => {
+  const config = testConfig({
+    networkId: 'preview',
+    nodeUri: 'https://node.example',
+    indexerUri: 'https://indexer.example/graphql',
+    indexerWsUri: 'wss://indexer.example/graphql/ws',
+    proofServerUri: 'https://prover.example',
+  });
+  const { base, server } = await start(config);
+  const body = (await (await fetch(`${base}/config`)).json()) as Record<string, string>;
+  assert.deepEqual(stackOf(body as unknown as ServiceConfig), stackOf(config));
+  server.close();
 });
 
 test('loadConfig binds loopback by default and reads the host and deploy cap', () => {

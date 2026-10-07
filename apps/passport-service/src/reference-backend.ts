@@ -142,13 +142,14 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
   const pkg = (name: string) => requireFromTree.resolve(name);
 
   // setup.ts pulls in node/wallet.ts, which selects the network (MIDNIGHT_NETWORK, default
-  // `local`: the 'undeployed' localnet endpoints hard-coded there).
+  // `local`) and, once patched by patch-endpoints.sh, reads CONFIG.local from the same MN_* variables
+  // as config.ts.
   const setup = await loadModule<SetupModule>(root('src/node/setup.ts'), [
     'setupWallet',
     'compiledAccountContract',
   ]);
-  // /config advertises the service's endpoints to the browser; they must be the ones the reference
-  // wallet actually uses, or the browser would read a different chain from the one sponsored (M5).
+  // /config advertises the service's stack to the browser; it must be the one the reference wallet
+  // actually uses, or the browser would read a different chain from the one sponsored (M5).
   const { CONFIG } = (await import(
     pathToFileURL(root('src/node/wallet.ts')).href
   )) as ReferenceNetworkModule;
@@ -162,7 +163,7 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
   for (const [field, value] of Object.entries(expected) as [keyof typeof expected, string][]) {
     if (config[field] !== value) {
       throw new Error(
-        `passport-service: ${field} is "${config[field]}", but the reference client uses "${value}"; reference client changed`,
+        `passport-service: ${field} is "${config[field]}", but the reference client uses "${value}"; run experiments/acc-0.35/patch-endpoints.sh on the contract tree, and give it the same MN_* variables`,
       );
     }
   }

@@ -8,6 +8,7 @@ export interface ServiceConfigWire {
   readonly indexerUri: string;
   readonly indexerWsUri: string;
   readonly nodeUri: string;
+  readonly proofServerUri: string;
   readonly zkBaseUrl: string;
   readonly coinPublicKey: string;
   readonly encryptionPublicKey: string;
@@ -165,6 +166,7 @@ export async function fetchServiceConfig(
     indexerUri: text('indexerUri'),
     indexerWsUri: text('indexerWsUri'),
     nodeUri: text('nodeUri'),
+    proofServerUri: text('proofServerUri'),
     zkBaseUrl: text('zkBaseUrl'),
     coinPublicKey: text('coinPublicKey'),
     encryptionPublicKey: text('encryptionPublicKey'),
