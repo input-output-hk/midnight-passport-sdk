@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import wasm from 'vite-plugin-wasm';
+import { readPins } from './build-pins.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -14,20 +15,17 @@ if (!existsSync(path.resolve(here, 'src/acc/generated/index.js'))) {
   );
 }
 // R18: the app pins the artefact manifest itself, at build time. It is never read from the
-// service's /config, which could otherwise vouch for its own tampered artefacts.
-const manifestSha256 = process.env.PASSPORT_MANIFEST_SHA256 ?? '';
-if (!/^[0-9a-fA-F]{64}$/.test(manifestSha256)) {
-  throw new Error(
-    "passport-dapp: set PASSPORT_MANIFEST_SHA256 to the 64 hex characters of the SHA-256 of the artefacts' contract-manifest.json.",
-  );
-}
+// service's /config, which could otherwise vouch for its own tampered artefacts. The network id is
+// pinned the same way (PASSPORT_NETWORK_ID, default `undeployed`).
+const { manifestSha256, networkId } = readPins(process.env);
 
 const buffer = path.resolve(here, 'node_modules/buffer/index.js');
 
 export default defineConfig({
   plugins: [wasm()],
   define: {
-    __PASSPORT_MANIFEST_SHA256__: JSON.stringify(manifestSha256.toLowerCase()),
+    __PASSPORT_MANIFEST_SHA256__: JSON.stringify(manifestSha256),
+    __PASSPORT_NETWORK_ID__: JSON.stringify(networkId),
   },
   resolve: {
     alias: [

@@ -16,6 +16,11 @@ import { accModule } from './acc-module.js';
 export const SERVICE_URL = import.meta.env.VITE_PASSPORT_SERVICE_URL ?? 'http://localhost:8787';
 /** The artefact manifest hash this build pins (R18); the service's /config is checked against it. */
 export const MANIFEST_SHA256 = __PASSPORT_MANIFEST_SHA256__;
+/**
+ * The network this build is bound to, fixed at build time next to the manifest pin. The page, the
+ * connector and the encryption-key context (`<networkId>/0`) all take it from here.
+ */
+export const NETWORK_ID = __PASSPORT_NETWORK_ID__;
 export const RP_ID = 'localhost';
 const ORIGIN = 'http://localhost:5173';
 

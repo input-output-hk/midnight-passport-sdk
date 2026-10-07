@@ -6,7 +6,7 @@ import type {
   PassportConnectorDescriptor,
   PassportTxResult,
 } from '@midnight-ntwrk/mn-passport-protocol';
-import { MANIFEST_SHA256, RP_ID, SERVICE_URL, installShim } from './connector.js';
+import { MANIFEST_SHA256, NETWORK_ID, RP_ID, SERVICE_URL, installShim } from './connector.js';
 import { CREATE_STEP_STAGE, DEPLOY_ESTIMATE_S, FLOWS, ROTATION_ESTIMATE_S } from './flows.js';
 import { createUi } from './ui.js';
 import type { DevWallet } from './wallet/dev-wallet.js';
@@ -14,7 +14,7 @@ import { walletSeed } from './wallet/seed.js';
 
 installShim();
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
-const network = 'undeployed';
+const network = NETWORK_ID;
 const injected = () =>
   (window as unknown as { midnight?: { passport?: PassportConnectorDescriptor } }).midnight
     ?.passport;
