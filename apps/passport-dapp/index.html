@@ -1,70 +1,200 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Passport Prototype</title>
-    <style>
-      body {
-        font:
-          15px/1.5 system-ui,
-          sans-serif;
-        max-width: 760px;
-        margin: 2rem auto;
-        padding: 0 1rem;
-      }
-      button {
-        margin: 0 0.5rem 0.5rem 0;
-        padding: 0.5rem 0.9rem;
-      }
-      pre {
-        background: #f4f4f6;
-        padding: 1rem;
-        overflow-x: auto;
-        min-height: 6rem;
-      }
-      #status {
-        font-weight: 600;
-      }
-      .warn {
-        color: #8a3b00;
-        font-weight: 600;
-      }
-      .hint {
-        color: #555;
-        font-size: 0.9em;
-      }
-    </style>
+    <meta name="color-scheme" content="dark light" />
+    <title>Midnight Passport — prototype</title>
+    <!-- Outfit, the Midnight Brand Hub typeface; a system stack takes over if it cannot load. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <p class="warn" id="mock-banner" role="alert" hidden></p>
-    <h1>Midnight Passport — prototype</h1>
-    <p id="status">Not connected.</p>
-    <div>
-      <button id="create">Create Passport account</button>
-      <button id="open">Open with passkey</button>
-      <button id="rotate" disabled>Rotate encryption key</button>
-      <button id="wallet">Connect built-in wallet</button>
-      <button id="copy">Copy evidence</button>
-    </div>
-    <p class="hint">
-      Creating an account asks for your passkey three times: to create it, to verify the
-      authenticator, and to derive the account's encryption key from the passkey's PRF. Rotating
-      asks once more, and proving on the service takes about 30 seconds.
-    </p>
-    <p class="hint" id="rotate-note">
-      The account's first encryption key is derived from your passkey (Lace recipe v1, MIP-0015), so
-      it is bound to this network and reproducible. Prototype only: rotating replaces it with a
-      random key that is not retained, so data encrypted to a rotated key is not recoverable.
-    </p>
-    <p class="hint">
-      The built-in wallet is a read-only stand-in for the DApp Connector. Its seed comes from your
-      passkey's PRF output, which needs a second prompt: first choose the passkey, then confirm to
-      derive the seed. A passkey without PRF cannot create an account or open the wallet. It never
-      proves or pays; the service sponsors.
-    </p>
-    <h2>Evidence</h2>
-    <pre id="evidence"></pre>
+    <a class="skip-link" href="#main">Skip to the demo</a>
+    <p class="mock-banner" id="mock-banner" role="alert" hidden></p>
+
+    <header class="site-header">
+      <div class="container header-inner">
+        <h1 class="brand">
+          <img
+            class="midnight-logo"
+            src="/src/assets/midnight-logo.svg"
+            alt="Midnight"
+            width="116"
+            height="26"
+          />
+          <span class="brand-divider" aria-hidden="true"></span>
+          <span class="brand-product">Passport</span>
+        </h1>
+        <span class="tag">Prototype</span>
+        <p class="lace-badge">
+          <span class="lace-badge-label">Powered by</span>
+          <img src="/src/assets/lace-logo.svg" alt="" width="20" height="20" />
+          <span class="lace-badge-name">Lace</span>
+        </p>
+      </div>
+    </header>
+
+    <main id="main" class="container layout">
+      <section class="intro" aria-label="About this demo">
+        <p>
+          Create a Passport smart account with a passkey, reopen it after a reload, make a
+          passkey-signed call and connect a wallet seeded from the same passkey. The service proves
+          and sponsors every transaction, on a local <code>undeployed</code> network.
+        </p>
+      </section>
+
+      <section class="panel panel-actions" aria-labelledby="actions-title">
+        <h2 id="actions-title">Actions</h2>
+        <ul class="actions">
+          <li class="action">
+            <button
+              id="create"
+              class="btn btn-primary"
+              type="button"
+              aria-describedby="create-prompts create-desc"
+            >
+              Create account
+            </button>
+            <p class="prompts" id="create-prompts"></p>
+            <p class="action-desc" id="create-desc"></p>
+          </li>
+          <li class="action">
+            <button
+              id="open"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="open-prompts open-desc"
+            >
+              Open with passkey
+            </button>
+            <p class="prompts" id="open-prompts"></p>
+            <p class="action-desc" id="open-desc"></p>
+          </li>
+          <li class="action">
+            <button
+              id="rotate"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="rotate-prompts rotate-desc rotate-needs"
+              disabled
+            >
+              Rotate encryption key
+            </button>
+            <p class="prompts" id="rotate-prompts"></p>
+            <p class="action-desc" id="rotate-desc"></p>
+            <p class="action-needs" id="rotate-needs">Needs an open account.</p>
+          </li>
+          <li class="action">
+            <button
+              id="wallet"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="wallet-prompts wallet-desc"
+            >
+              Connect built-in wallet
+            </button>
+            <p class="prompts" id="wallet-prompts"></p>
+            <p class="action-desc" id="wallet-desc"></p>
+          </li>
+        </ul>
+      </section>
+
+      <section class="panel panel-activity" aria-labelledby="activity-title">
+        <div class="panel-head">
+          <h2 id="activity-title">Progress</h2>
+          <span class="elapsed" id="elapsed" aria-hidden="true"></span>
+        </div>
+        <p class="status" id="status" role="status" aria-live="polite">Loading…</p>
+        <div
+          class="progress"
+          id="progress"
+          role="progressbar"
+          aria-label="Progress of the current action"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        ></div>
+        <p class="progress-label" id="progress-label"></p>
+
+        <div class="panel-head log-head">
+          <h2 id="log-title">Event log</h2>
+          <button id="copy" class="btn btn-ghost" type="button" disabled>Copy evidence</button>
+        </div>
+        <p class="empty" id="log-empty">No actions yet. Each step will appear here, timed.</p>
+        <ol
+          class="log"
+          id="log"
+          role="log"
+          aria-labelledby="log-title"
+          aria-live="polite"
+          aria-relevant="additions"
+        ></ol>
+      </section>
+
+      <div class="cards">
+        <section class="panel" aria-labelledby="account-title">
+          <h2 id="account-title">Passport account</h2>
+          <p class="empty" id="account-empty">
+            No account open. Create one, or open an existing one with your passkey.
+          </p>
+          <dl class="facts" id="account-facts" hidden></dl>
+        </section>
+        <section class="panel" aria-labelledby="wallet-title">
+          <h2 id="wallet-title">Built-in wallet</h2>
+          <p class="empty" id="wallet-empty">
+            Not connected. The wallet is read-only: it never proves or pays.
+          </p>
+          <dl class="facts" id="wallet-facts" hidden></dl>
+        </section>
+      </div>
+
+      <details class="panel evidence">
+        <summary>Evidence (JSON)</summary>
+        <p class="hint">
+          What “Copy evidence” copies: the same rows as the event log, plus the account and the
+          wallet. Public values only, no seeds or keys.
+        </p>
+        <pre id="evidence"></pre>
+      </details>
+
+      <section class="panel notes" aria-labelledby="notes-title">
+        <h2 id="notes-title">Prototype limits</h2>
+        <ul>
+          <li>
+            <strong>Rotated keys are random and not retained.</strong> The first encryption key
+            derives from your passkey (Lace recipe v1, MIP-0015), so it is bound to this network and
+            reproducible. Rotating replaces it with a random key the page does not keep: data
+            encrypted to a rotated key cannot be recovered.
+          </li>
+          <li>
+            <strong>Mock mode is for development only.</strong> With <code>?mockPasskey</code> under
+            the Vite dev server, a software passkey kept in this browser's localStorage stands in
+            for your authenticator, and a banner says so. Production builds do not contain it.
+          </li>
+          <li>
+            <strong>Your passkey provider must support PRF</strong>, as Google Password Manager and
+            iCloud Keychain do. A passkey without PRF cannot create an account or open the wallet.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <p>Midnight Passport · prototype</p>
+        <p class="lace-badge">
+          <span class="lace-badge-label">Powered by</span>
+          <img src="/src/assets/lace-logo.svg" alt="" width="20" height="20" />
+          <span class="lace-badge-name">Lace</span>
+        </p>
+      </div>
+    </footer>
+    <p class="sr-only" id="announce" aria-live="polite"></p>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

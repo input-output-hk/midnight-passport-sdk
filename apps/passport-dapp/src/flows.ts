@@ -90,8 +90,7 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       "A read-only wallet seeded from the passkey's PRF, connected through the DApp Connector API.",
     stages: [
       { id: 'config', label: 'Read the service configuration' },
-      { id: 'pick', label: 'Choose the passkey' },
-      { id: 'seed', label: 'Derive the wallet seed (PRF)' },
+      { id: 'seed', label: 'Confirm the passkey and derive the wallet seed (PRF)' },
       { id: 'sync', label: 'Start the wallet and read its addresses' },
       { id: 'balances', label: 'Wait for sync and read balances' },
     ],
