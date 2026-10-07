@@ -352,11 +352,13 @@ node endpoints **pinned at build time**, like the manifest, instead of taken fro
    carries `hints: ['client-device']` (towards a passkey provider on this device,
    away from security keys) and the PRF extension with **both Lace salts**,
    `prf: { eval: { first: SHA-256('lace-passport/prf/authoriser/v1'), second:
-   SHA-256('lace/prf/root/v1') } }`, as Lace's key source does. **Strict PRF**:
-   the credential is accepted only when `getClientExtensionResults().prf.enabled`
-   is `true`; `false` or missing (the "Chrome profile" store, some security keys)
-   is `UnsupportedAuthenticator`, with advice to choose a PRF-capable provider
-   (Google Password Manager or iCloud Keychain). Then an **enrolment probe**: one
+   SHA-256('lace/prf/root/v1') } }`, as Lace's key source does. **PRF is required
+   before any deploy**: a provider that reports `prf.enabled === false` (the
+   "Chrome profile" store, some security keys) is refused at once with
+   `UnsupportedAuthenticator` and advice to choose a PRF-capable provider (Google
+   Password Manager or iCloud Keychain). A provider that omits `enabled` is not
+   refused there: the PRF ceremony for the encryption key runs before the deploy
+   and refuses it if PRF returns no results, so no account is created without PRF. Then an **enrolment probe**: one
    throwaway assertion, pinned to the new credential, proves the authenticator
    produces the exact `wa-json134` material (flags, 37-byte authenticator data,
    origin, ES256) before anything is deployed.

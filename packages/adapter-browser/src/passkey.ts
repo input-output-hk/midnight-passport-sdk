@@ -92,10 +92,12 @@ export function browserPasskey(opts: {
         if (!credential) {
           throw new PassportConnectorError('UserCancelled', 'Passkey creation was cancelled.');
         }
-        // Strict: only a provider that confirms PRF is accepted, before the probe and any deploy.
-        // `enabled` false or missing (e.g. the "Chrome profile" store) is refused.
+        // A provider that says it cannot do PRF (e.g. the "Chrome profile" store) is refused here,
+        // before the probe and any deploy. One that says nothing is not refused yet: the PRF
+        // ceremony for the encryption key runs before the deploy and refuses it cleanly if PRF
+        // returns no results, so a PRF-capable provider that omits `enabled` still works.
         const prf = credential.getClientExtensionResults?.().prf;
-        if (prf?.enabled !== true) {
+        if (prf?.enabled === false) {
           throw new PassportConnectorError('UnsupportedAuthenticator', PRF_UNSUPPORTED_AT_CREATE);
         }
         const response = credential.response as AuthenticatorAttestationResponse;
@@ -137,7 +139,7 @@ export function browserPasskey(opts: {
         const created: PasskeyCredential = { credentialId, publicKey, policy };
         // Outputs the provider returned at creation are held (never on `created` itself) for the
         // encryption-key seam, which then needs no PRF prompt of its own (create-prf.ts).
-        holdCreatePrf(created, prf.results);
+        holdCreatePrf(created, prf?.results);
         return created;
       } catch (e) {
         throw toPassportError(e);

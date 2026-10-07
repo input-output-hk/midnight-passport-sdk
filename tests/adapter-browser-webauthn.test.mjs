@@ -148,19 +148,23 @@ function softwareAuthenticator({
 const seamFor = (auth) =>
   b.browserPasskey({ rpId: RP, origin: ORIGIN, credentials: auth.container });
 
-test('create refuses a provider whose PRF is false or missing, before the enrolment probe', async () => {
-  for (const opts of [{ prf: false }, { atCreate: /** @type {const} */ ('missing') }]) {
-    const auth = softwareAuthenticator(opts);
-    await assert.rejects(seamFor(auth).create('alice'), (e) => {
-      const err = /** @type {{ code?: string; message?: string }} */ (e);
-      assert.equal(err.code, 'UnsupportedAuthenticator');
-      assert.equal(err.message, b.PRF_UNSUPPORTED_AT_CREATE);
-      assert.match(err.message ?? '', /PRF-capable provider/);
-      assert.match(err.message ?? '', /Google Password Manager or iCloud Keychain/);
-      return true;
-    });
-    assert.equal(auth.gets.length, 0, `no probe ceremony ran (${JSON.stringify(opts)})`);
-  }
+test('create refuses a provider that reports no PRF, before the enrolment probe', async () => {
+  const auth = softwareAuthenticator({ prf: false });
+  await assert.rejects(seamFor(auth).create('alice'), (e) => {
+    const err = /** @type {{ code?: string; message?: string }} */ (e);
+    assert.equal(err.code, 'UnsupportedAuthenticator');
+    assert.equal(err.message, b.PRF_UNSUPPORTED_AT_CREATE);
+    assert.match(err.message ?? '', /PRF-capable provider/);
+    assert.match(err.message ?? '', /Google Password Manager or iCloud Keychain/);
+    return true;
+  });
+  assert.equal(auth.gets.length, 0, 'no probe ceremony ran');
+});
+
+test('create leaves a provider that omits prf.enabled to the PRF ceremony', async () => {
+  const auth = softwareAuthenticator({ atCreate: /** @type {const} */ ('missing') });
+  const cred = await seamFor(auth).create('alice');
+  assert.deepEqual(cred.credentialId, ID);
 });
 
 test('create asks for PRF with both Lace salts, and hints at a passkey on this device', async () => {
