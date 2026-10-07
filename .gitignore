@@ -46,3 +46,7 @@ experiments/acc-0.35/work/
 
 # The dapp's copy of the generated ACC module (apps/passport-dapp/scripts/sync-acc.mjs)
 apps/passport-dapp/src/acc/generated/
+
+# Real network stack files stay local; only *.env.example and the localnet stack are tracked.
+infra/networks/*.env
+!infra/networks/undeployed.env
