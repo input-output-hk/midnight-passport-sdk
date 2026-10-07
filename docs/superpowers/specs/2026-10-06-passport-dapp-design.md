@@ -46,8 +46,10 @@ Mapping to LW-15635's definition of done, on the standalone network:
 
 - The existing-wallet scenario ("add a passkey to an existing Midnight
   wallet"); grants, recovery, withdrawals.
-- A public testnet: the standalone localnet only (LW-15635 itself targets
-  testnet; this unblocks the same flow locally).
+- A public testnet: the standalone localnet is what runs (LW-15635 itself targets
+  testnet; this unblocks the same flow locally). The stack is a set of URLs (§4.3), so a hosted
+  one is a configuration file, but testnet also needs hosted artefacts, a reachable proof
+  server and a real sponsor.
 - Wiring into lace-platform: the fork stays self-contained; lace-sdk imports
   the packages and replaces the built-in wallet with its own.
 - Publishing packages (FS-0.9 owns that); refactoring `mn-passport-contract`
@@ -79,7 +81,7 @@ flowchart LR
   end
   subgraph Service["apps/passport-service (Node)"]
     ZK["GET /zk/acc/*"]
-    Prove["POST /prove"]
+    Prove["POST /prove-tx"]
     Deploy["POST /deploy"]
     Sponsor["POST /sponsor/*"]
     Reg["/accounts registry"]
@@ -107,7 +109,7 @@ flowchart LR
 |---|---|---|
 | `packages/protocol` (existing) | Adds the **prototype connector types**: `PassportConnectorAPI`, its request/response shapes, error codes, `PASSPORT_CONNECTOR_VERSION = '0.1.0-prototype'`. Types and constants only. | — |
 | `packages/account` (new, `@midnight-ntwrk/mn-passport-account`) | The connector **implementation**, platform-neutral: MVP flows (create, open, rotate), the device-entry counter scan and the P-256 challenge through the artefact's pure circuits (handed in as the `pureCircuits` seam), the registry client, and the checks that treat the registry as an untrusted hint (§5.3). Talks to the chain, the registry and the passkey through injected seams (§4.2); it assembles no transaction itself. | `protocol` |
-| `packages/adapter-browser` (new) | Browser seams: WebAuthn `wa-json134` passkey adapter (create credential with an enrolment probe, identify with proof of ownership, assertion, PRF); the **chain seam** `createServiceChain`, which assembles and submits calls over midnight-js 5 (`submitCallTx`; a `ProvingProvider` that delegates to `/prove`; the service's sponsor as wallet and node provider; an indexer reader; `FetchZkConfigProvider` verifying against the app's manifest pin); `fetch` clients for the service; and the **shim** `injectPassportConnector(window, connector)`. | `account`, `contract`, `protocol` |
+| `packages/adapter-browser` (new) | Browser seams: WebAuthn `wa-json134` passkey adapter (create credential with an enrolment probe, identify with proof of ownership, assertion, PRF); the **chain seam** `createServiceChain`, which assembles and submits calls over midnight-js 5 (`submitCallTx`; a proof provider that sends the whole transaction to `/prove-tx`; the service's sponsor as wallet and node provider; an indexer reader; `FetchZkConfigProvider` verifying against the app's manifest pin); `fetch` clients for the service; and the **shim** `injectPassportConnector(window, connector)`. | `account`, `contract`, `protocol` |
 | `apps/passport-service` (new, Node) | ZK artefact host, delegated prover, deploy job, fee sponsor, account registry. Holds the only funded key. | the localnet, the pinned artefacts |
 | `apps/passport-dapp` (new, Vite) | Harness UI; hosts the built-in wallet (a stand-in for lace-sdk's); injects the connector through the shim; shows evidence. | `adapter-browser`, `account`, `protocol` |
 
@@ -235,10 +237,11 @@ rebinding. The adapter's clients always send `application/json`.
 
 | Endpoint | Request | Response | Notes |
 |---|---|---|---|
-| `GET /config` | — | `{ networkId, bindingId, manifestSha256, indexerUri, indexerWsUri, nodeUri, zkBaseUrl, coinPublicKey, encryptionPublicKey }` | The connector checks `networkId`, refuses an app pin that is not 64 hex characters, and checks `manifestSha256` against that build-time pin, refusing a mismatch (`ArtefactIntegrity`). Deriving the pin from the contract binding is future work (Ruling R18). The network id and endpoints are the reference client's fixed localnet values (the service refuses to start with others); `zkBaseUrl` is the service's own `/zk/acc` under the checked `Host`; `coinPublicKey` and `encryptionPublicKey` are the sponsor wallet's, which midnight-js's wallet provider reports. The endpoints are not pinned (see the known limitations) |
+| `GET /config` | — | `{ networkId, bindingId, manifestSha256, nodeUri, indexerUri, indexerWsUri, proofServerUri, zkBaseUrl, coinPublicKey, encryptionPublicKey }` | The connector checks `networkId` against the one its build pins (`PASSPORT_NETWORK_ID`, default `undeployed`), refuses an app pin that is not 64 hex characters, and checks `manifestSha256` against that build-time pin, refusing a mismatch (`ArtefactIntegrity`). Deriving the pin from the contract binding is future work (Ruling R18). The first five are exactly the service's Midnight stack configuration (the Endpoints policy below); `zkBaseUrl` is the service's own `/zk/acc` under the checked `Host`; `coinPublicKey` and `encryptionPublicKey` are the sponsor wallet's, which midnight-js's wallet provider reports. The endpoints are not pinned (see the known limitations) |
 | `GET /zk/acc/{compiler,zkir,keys}/…` | — | the file, `application/octet-stream` | Layout `FetchZkConfigProvider` expects; immutable cache headers, manifest `no-cache`. Prover keys are served (for completeness and other consumers) but the dapp never fetches them |
 | `POST /check` | `{ preimage, keyLocation }` (hex, string) | `{ result: (string\|null)[] }` | midnight-js `ProvingProvider.check`: bigints as decimal strings, `undefined` as `null`. Circuit allow-listed (below) |
-| `POST /prove` | `{ preimage, keyLocation, overwriteBindingInput? }` (hex, string, decimal string of at most 80 digits) | `{ proof }` (hex) | midnight-js `ProvingProvider.prove`: resolves `keyLocation` to the circuit, attaches its ZKIR and keys from the account bundle, calls the proof server. Allow-listed to the binding's circuits. One proof at a time (a P-256 proof needs about 13.5 GiB) |
+| `POST /prove-tx` | `{ tx }` (hex; unproven transaction) | `{ tx }` (hex; proven) | What the connector calls (`service-chain.ts`). midnight-js 5's ledger `lookupKey` asks the proving provider for every circuit's prover key before it proves, so a per-circuit remote prover would need the keys in the browser. The service deserialises the transaction, proves it with the keys it holds and the proof server, and returns it. Not circuit allow-listed: it relies on the service's key registry covering the account bundle only (below). One proof at a time |
+| `POST /prove` | `{ preimage, keyLocation, overwriteBindingInput? }` (hex, string, decimal string of at most 80 digits) | `{ proof }` (hex) | midnight-js `ProvingProvider.prove`: resolves `keyLocation` to the circuit, attaches its ZKIR and keys from the account bundle, calls the proof server. Allow-listed to the binding's circuits. One proof at a time (a P-256 proof needs about 13.5 GiB). `/check` and `/prove` remain served but the connector does not use them |
 | `POST /sponsor/balance` | `{ tx }` (hex; proven, unbound transaction) | `{ tx }` (hex; balanced, finalized) | The wallet provider's `balanceTx`: adds Dust fees from the sponsor wallet. Subject to the sponsor policy (below) |
 | `POST /sponsor/submit` | `{ tx }` (hex; finalized) | `{ txId }` | The node provider's `submitTx` |
 | `POST /deploy` | `{ boot, encKey }` (32 bytes each, hex) | `{ address, txHashes[] }` | `txHashes` carries each wave's **submission id** (what `submitTx` returns), not the hash of the transaction as included; the name stays for the prototype. Constructor inputs only; the service fills the recovery-at-birth defaults (a random JubJub key whose secret is discarded, a zero wrap, a 3-day veto window), runs the 10 waves and retires the authority in the last. Answers when the waves finish; the connector's `onProgress` steps carry the progress |
@@ -258,7 +261,8 @@ and the detail is logged on the service.
   only when the circuit is one of the binding's. Anything else is `403`, before the
   queue. The set is the circuits that have both a prover key and compiled ZKIR in the
   compiler manifest, which is pinned by hash and verified at start-up. The delegated
-  proving registry covers the account bundle only.
+  proving registry covers the account bundle only, and that is the only guard on `/prove-tx`:
+  it has no `keyLocation` to check, and can prove only circuits whose keys the registry holds.
 - **Sponsor policy: calls only.** `/sponsor/balance` balances only a transaction that:
   - is a standard transaction (no rewards claim) with at least one contract action,
     every one of them a **call** to a Passport account this service **deployed** and
@@ -287,17 +291,30 @@ and the detail is logged on the service.
 - **Binding.** The server listens on `127.0.0.1`. `PASSPORT_SERVICE_HOST` overrides
   it, and a non-loopback host exposes the sponsor to whoever can reach it. The `Host`
   check and the JSON content type (above) keep cross-site pages out of a loopback service.
-- **Endpoints.** The network id and the indexer, node and proof-server endpoints are the
-  ones the reference client hard-codes (`CONFIG.local`). `PASSPORT_NETWORK_ID`,
-  `PASSPORT_INDEXER_URI`, `PASSPORT_INDEXER_WS_URI`, `PASSPORT_NODE_URI` and
-  `PASSPORT_PROOF_SERVER_URI` may only restate them, and the service compares them with the
-  reference at start-up, so `/config` never advertises a chain the sponsor does not use.
+- **Midnight stack.** One explicit configuration, `{ networkId, nodeUri, indexerUri,
+  indexerWsUri, proofServerUri }`, used by the service, the reference client, the page and the
+  e2e. The service reads `MN_NETWORK_ID`, `MN_NODE_URL`, `MN_INDEXER_URL`, `MN_INDEXER_WS_URL` and
+  `MN_PROOF_SERVER_URL`; each URL defaults to the localnet value built from the host ports
+  (`MN_NODE_PORT`, `MN_INDEXER_PORT`, `MN_PROOF_PORT`, `infra/localnet/ports.env`), so a
+  ports-only setup keeps working. The node, indexer and proof-server URLs must be `http` or
+  `https`, the indexer WebSocket `ws` or `wss`; anything else refuses to start. The reference
+  client reads the same variables (`experiments/acc-0.35/patch-endpoints.sh` rewrites its
+  `CONFIG.local`, and upgrades an earlier patch), and the service compares its stack with that
+  `CONFIG` at start-up, so `/config` never advertises a chain the sponsor does not use. The page
+  pins the network id at build time (`PASSPORT_NETWORK_ID`, default `undeployed`, next to the
+  manifest pin), refuses a service on another network, and derives the account's encryption key
+  in the context `<networkId>/0` from that same value. One file describes a stack:
+  `infra/networks/<name>.env` (`undeployed.env` for the localnet; `testnet.env.example` with
+  placeholders), and `MIDNIGHT_STACK=<name> pnpm prototype:up` sources it and starts the
+  Docker localnet only for `undeployed`.
+- **Sponsor seed.** The default `PASSPORT_SPONSOR_SEED` is the localnet's public genesis seed. On
+  any network other than `undeployed` the service refuses to start unless the variable is set.
 - **Dust races.** `/sponsor/balance` and `/deploy` are not coordinated, so a balance
   and a deployment wave running together can pick the same Dust. The loser fails at
   submit and no funds are lost; the client retries.
 
 **Production requirements (not built in the prototype).** Authenticated sessions
-(a signed-in passkey or a dApp credential) on `/prove`, `/sponsor/*` and `/deploy`;
+(a signed-in passkey or a dApp credential) on `/prove-tx`, `/sponsor/*` and `/deploy`;
 per-client rate limits; spending caps per client and per day on the sponsor; proof of
 possession on `PUT /accounts`; a per-job timeout on the proof queue; durable deploy
 counters (the cap resets on restart); TLS in front of the service; and the indexer and
@@ -310,16 +327,16 @@ node endpoints **pinned at build time**, like the manifest, instead of taken fro
   names. The artefacts are pinned and the ledger source is not, so a fully compromised service
   can fake the ledger: the §5.3 checks defend against a stale or poisoned registry, not a lying
   indexer.
-- *Timeouts and queue position (M7).* The adapter gives up on `/prove` after 10 minutes and
+- *Timeouts and queue position (M7).* The adapter gives up on `/prove-tx` after 10 minutes and
   reports `ProverUnavailable`. A rotation queued behind a `/deploy` (10 waves) can exceed that
   while the service keeps proving; retry once the deployment has finished.
-- *Indexer CORS (M8).* The browser queries `http://localhost:18088/api/v4/graphql` (the Passport localnet's host port, `infra/localnet/ports.env`) from origin
-  `http://localhost:5173`. Whether the localnet indexer sends CORS headers is unverified; check
-  it on the first manual run before suspecting the connector.
+- *Indexer CORS (M8).* Verified: the page, at origin `http://localhost:5173`, syncs against the
+  localnet indexer (`http://localhost:18088/api/v4/graphql`, `infra/localnet/ports.env`) in the X9
+  and X9a runs. A hosted indexer must allow the page's origin the same way.
 
 ### 4.4 Secrets and authority
 
-- The **sponsor key** (the localnet's genesis seed) and the **maintenance
+- The **sponsor key** (the localnet's genesis seed by default; any other network must set `PASSPORT_SPONSOR_SEED`) and the **maintenance
   authority key** exist only in the service process. The authority is
   generated per deployment and **retired in the last wave**, so a deployed
   account can never be upgraded: the irreversible choice the epic's risk 12
@@ -344,7 +361,7 @@ node endpoints **pinned at build time**, like the manifest, instead of taken fro
 
 ### 5.1 Create (MVP)
 
-1. `connect('undeployed')` → `GET /config`; refuse on network mismatch, and refuse a
+1. `connect(<networkId>)` (the build's pin; `undeployed` by default) → `GET /config`; refuse on network mismatch, and refuse a
    malformed app pin or a manifest mismatch (`ArtefactIntegrity`).
 2. Passkey: `browserPasskey({ rpId: 'localhost', origin: 'http://localhost:5173' }).create`
    makes a **discoverable** (resident) ES256 credential, so §5.3 can find it
@@ -386,12 +403,12 @@ node endpoints **pinned at build time**, like the manifest, instead of taken fro
    `boot = derive_boot_commitment_with_p256(salt, pk, policy)` with the
    artefact's pure circuit.
 4. `POST /deploy` with the constructor arguments → address (≈ 10 waves).
-5. `PUT /accounts/undeployed/{credentialId}` with status `deployed`, **before**
+5. `PUT /accounts/{networkId}/{credentialId}` with status `deployed`, **before**
    activation: the salt it records is the only way to activate the account. The
    write is idempotent, so it is retried up to 3 times with backoff before
    `createAccount` fails.
 6. Build `activate_initial_device_with_p256(pk, salt, policy)`; prove through
-   `/prove` (k = 14); submit through `/sponsor/balance` and `/sponsor/submit`.
+   `/prove-tx` (k = 14); submit through `/sponsor/balance` and `/sponsor/submit`.
 7. `PUT` the record again with status `active`; return the `PassportAccount`. If
    step 6 or 7 fails, the `deployed` record lets `openAccount` finish the job
    (§5.3).
@@ -401,15 +418,15 @@ node endpoints **pinned at build time**, like the manifest, instead of taken fro
 `rotateEncryptionKey(newKey)`: read `auth_nonce` from the indexer; compute
 `challenge_rotate_enc_key_with_p256(address, pk, newKey, authNonce)` with the
 pure circuit; ask the passkey for an assertion over it; build
-`rotate_enc_key_with_p256(newKey, auth)`; prove through `/prove` (k = 18,
-≈ 30 s, ≈ 13.5 GiB on the service's proof server); submit through
+`rotate_enc_key_with_p256(newKey, auth)`; prove through `/prove-tx` (k = 18; the proof is ≈ 22 s,
+≈ 13.5 GiB on the service's proof server, and a rotation takes ≈ 1 min end to end); submit through
 `/sponsor/balance` and `/sponsor/submit`.
 
 ### 5.3 Reopen after reload
 
 `openAccount()`: a discoverable-credential assertion (`identify`) returns the
 credential id and an `owns(publicKey, policy)` proof over that same assertion;
-`GET /accounts/undeployed/{credentialId}` returns the record. The registry is the
+`GET /accounts/{networkId}/{credentialId}` returns the record. The registry is the
 MVP's discovery mechanism and an **untrusted hint** (Ruling R10(b)). Before the
 record is returned, or marked active, all of these must hold, else
 `AccountNotFound`:
@@ -478,7 +495,7 @@ An in-page wallet built on the Midnight wallet SDK against the standalone
 node and indexer, seeded from the passkey's PRF output, exposed as
 `window.midnight.devwallet` with the standard DApp
 Connector `InitialAPI` / `ConnectedAPI` subset the harness uses:
-`connect('undeployed')`, `getConfiguration`, `getConnectionStatus`,
+`connect(<networkId>)`, `getConfiguration`, `getConnectionStatus`,
 `getShieldedAddresses`, `getUnshieldedAddress`, `getDustAddress`, the three
 balance getters. The harness shows these to prove wallet integration. The ACC
 flows do not depend on the wallet: fees are sponsored.
@@ -509,7 +526,7 @@ statuses):
 | A ceremony pinned to the account's credential answered by another passkey (`WRONG_PASSKEY`) | `AccountNotFound` |
 | `404` from the registry; a record failing the §5.3 checks; no contract at the address | `AccountNotFound` |
 | `ZkArtifactIntegrityError`; an app pin that is not 64 hex characters; a `/config` manifest that is not the pin | `ArtefactIntegrity` |
-| Prover (`/prove`, `/check`): any 5xx (`502` fault, `503` full queue), the 10-minute `/prove` timeout, or an unreachable service | `ProverUnavailable` |
+| Prover (`/prove-tx`, and `/prove`, `/check`): any 5xx (`502` fault, `503` full queue), the 10-minute `/prove-tx` timeout, or an unreachable service | `ProverUnavailable` |
 | Prover: `400` or `403` (a malformed request or a circuit outside the binding: a defect in the adapter) | `InternalError` |
 | Sponsor (`/sponsor/*`, `/deploy`): `403` (policy), `429` (deploy cap) or any 5xx | `SponsorRejected` |
 | Sponsor: any other 4xx, or a transport fault (no answer at all, which is not a refusal) | `InternalError` |
@@ -538,7 +555,7 @@ packages/protocol/       + connector types
   resolves the workspace's copy, the one midnight-js uses.
 - Everything runs in the Nix shell; the localnet from `infra/localnet` with
   Docker memory ≥ 24 GiB.
-- One command starts the stack: `pnpm prototype:up` (localnet, service, dapp).
+- One command starts the stack: `pnpm prototype:up` (localnet, service, dapp); `MIDNIGHT_STACK=<name>` selects `infra/networks/<name>.env` (§4.3).
 
 ## 8. Testing
 
@@ -546,10 +563,10 @@ packages/protocol/       + connector types
 |---|---|---|
 | Unit (`node --test`, repo style) | Connector flows against fake seams, including the §5.3 registry checks and the deployed-record retry; error mapping; WebAuthn and PRF against a software authenticator; service routes, the `Host` and content-type guards, the registry and the sponsor policy against a fake proof server and node; the shim; the wallet seed policy (fails closed); the Lace recipe and MIP-0015 against Lace's own vectors | Exists; runs in CI (`pnpm test`, `pnpm test:apps`) |
 | Runtime identity (offline) | `apps/passport-dapp/e2e/runtime-identity.e2e.ts`: the generated module, synced into the dapp (`src/acc/generated`, imported as `#acc`), and midnight-js share one `compact-runtime`, with no resolve hook or dedupe | Exists; runs in `test:apps` when `PASSPORT_CONTRACT_DIR` is set, else skips |
-| Integration | The service against the real localnet: `/zk` serves byte-identical files under the pinned manifest, `/prove` proves `activate_initial_device_with_p256`, `/deploy` deploys | Pending (R12): `apps/passport-service/test/reference.it.test.ts` covers the deploy leg behind `PASSPORT_IT=1` and has not yet run against a localnet |
-| End-to-end script | `apps/passport-dapp/e2e/mvp.e2e.ts`: drives create → activate → rotate → reopen through the real connector with a software ES256 authenticator under `wa-json134` (as the contract team's tests do), records network, address, deploy submission ids and transaction hashes. A preflight stops it before any deploy if two `compact-runtime` copies are loaded | Script exists; the recorded run (R20, `experiments/acc-0.35/results/x8-dapp-e2e.json`) is pending |
-| Manual, recorded | The same flow with a real passkey in a browser at `http://localhost:5173`; evidence (address, hashes, steps) exported from the app into `experiments/acc-0.35/results/` | Pending |
-| Browser, no authenticator | `http://localhost:5173/?mockPasskey` under Vite dev: a dev-only mock replaces `navigator.credentials` (WebCrypto P-256, `wa-json134` assertions, PRF as HMAC-SHA256, persisted in `localStorage`), with a "MOCK PASSKEY — dev only" banner; excluded from production builds. `e2e/mock-passkey.e2e.ts` checks it against `browserPasskey`'s enrolment probe and `assertionMaterial` | Mock and its check exist (`test:apps`); a full run needs the localnet |
+| Integration | The service against the real localnet: `/zk` serves byte-identical files under the pinned manifest, `/prove-tx` proves the `activate_initial_device_with_p256` call, `/deploy` deploys | Pending (R12): `apps/passport-service/test/reference.it.test.ts` covers the deploy leg behind `PASSPORT_IT=1` and has not yet run against a localnet |
+| End-to-end script | `apps/passport-dapp/e2e/mvp.e2e.ts`: drives create → activate → rotate → reopen through the real connector with a software ES256 authenticator under `wa-json134` (as the contract team's tests do), records network, address, deploy submission ids and transaction hashes. A preflight stops it before any deploy if two `compact-runtime` copies are loaded | Done: the recorded run (R20, X8) is `experiments/acc-0.35/results/x8-dapp-e2e.json`. Reads `PASSPORT_NETWORK_ID` (default `undeployed`) |
+| Manual, recorded | The same flow with a real passkey in a browser at `http://localhost:5173`; evidence (address, hashes, steps) exported from the app into `experiments/acc-0.35/results/` | Done: X9 (`x9-dapp-manual-run.md`), with X9a (`x9-dapp-mock-run.md`) for the mock passkey |
+| Browser, no authenticator | `http://localhost:5173/?mockPasskey` under Vite dev: a dev-only mock replaces `navigator.credentials` (WebCrypto P-256, `wa-json134` assertions, PRF as HMAC-SHA256, persisted in `localStorage`), with a "MOCK PASSKEY — dev only" banner; excluded from production builds. `e2e/mock-passkey.e2e.ts` checks it against `browserPasskey`'s enrolment probe and `assertionMaterial` | Mock and its check exist (`test:apps`); a full run needs the localnet (X9a ran it) |
 
 ## 9. Delivery
 
@@ -566,7 +583,7 @@ manual run. The implementation plan breaks these into tasks.
 | R1 | The midnight-js 5 / wallet SDK pre-releases are young (7-day rule) and their browser builds may need polyfills | Record exclusions; the passport PWA demo runs the wallet SDK in a tab, so a known path exists |
 | R2 | Building ACC calls in the browser needs the generated module and the wave-deploy helpers, which live in the contract team's TypeScript, not in a package | The dapp bundles the generated module from the pinned artefact build; `adapter-browser` assembles calls over midnight-js 5, and `account` reaches the pure circuits through a seam; the service reuses the reference wave-deploy logic |
 | R3 | Sponsoring a transaction built elsewhere (balance with the sponsor's dust, then submit) | Balance on the service with the sponsor wallet's balancing API (`/sponsor/balance`, then `/sponsor/submit`), under the sponsor policy of §4.3; fall back to the service building the whole call if needed |
-| R4 | Docker memory for P-256 proofs | Documented ≥ 24 GiB; `/prove` reports `ProverUnavailable` clearly |
+| R4 | Docker memory for P-256 proofs | Documented ≥ 24 GiB; `/prove-tx` reports `ProverUnavailable` clearly |
 | Q1 | Retire the authority at deploy (default) or keep it? | Owner decision (epic risk 12) |
 | Q2 | Registry vs WebAuthn largeBlob vs name lookup for reopening on a new device | Later (epic A6, risk 14) |
 | Q3 | Does lace-sdk inject `window.midnight.passport` or import the factory? | Both supported; Lace team to choose |

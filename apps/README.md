@@ -39,13 +39,40 @@ pnpm install && pnpm build
 | -------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | `PASSPORT_CONTRACT_DIR`    | required                       | The `fetch-acc.sh` output, the directory holding `contracts/managed`.                                                    |
 | `PASSPORT_MANIFEST_SHA256` | required                       | SHA-256 of `compiler/contract-manifest.json`, 64 hex characters (see the manifest pin).                                  |
-| `MIDNIGHT_NETWORK`         | `local` (set by `prototype:up`) | Selects the localnet endpoints in the reference wave-deploy code the service reuses.                                    |
-| `PASSPORT_NETWORK_ID`      | `undeployed`                   | Fixed: the reference client hard-codes the localnet, so any other value refuses to start. The same holds for `PASSPORT_INDEXER_URI`, `PASSPORT_INDEXER_WS_URI`, `PASSPORT_NODE_URI` and `PASSPORT_PROOF_SERVER_URI`. |
+| `MIDNIGHT_NETWORK`         | `local` (set by `prototype:up`) | Selects `CONFIG.local` in the reference wave-deploy code the service reuses; `patch-endpoints.sh` makes that read the `MN_*` variables below. |
+| `MN_NETWORK_ID`            | `undeployed`                   | The Midnight network id: lower-case letters, digits and hyphens.                                                         |
+| `MN_NODE_URL`              | `http://localhost:$MN_NODE_PORT` (19944) | Node, `http` or `https`.                                                                                        |
+| `MN_INDEXER_URL`           | `http://localhost:$MN_INDEXER_PORT/api/v4/graphql` (18088) | Indexer GraphQL, `http` or `https`.                                                    |
+| `MN_INDEXER_WS_URL`        | `ws://localhost:$MN_INDEXER_PORT/api/v4/graphql/ws` | Indexer subscriptions, `ws` or `wss`.                                                             |
+| `MN_PROOF_SERVER_URL`      | `http://127.0.0.1:$MN_PROOF_PORT` (16300) | Proof server, `http` or `https`.                                                                               |
+| `MN_NODE_PORT`, `MN_INDEXER_PORT`, `MN_PROOF_PORT` | 19944, 18088, 16300 | The localnet's host ports (`infra/localnet/ports.env`); only the defaults of the URLs above.                |
+| `PASSPORT_NETWORK_ID`      | `undeployed`                   | Build-time pin of the dapp (read by `vite build`/`dev`) and the e2e: the network the page is bound to. `prototype:up` sets it from `MN_NETWORK_ID`. A service on another network is refused (`NetworkMismatch`). |
 | `PASSPORT_SERVICE_HOST`    | `127.0.0.1`                    | Service bind address. A non-loopback host exposes the sponsor to whoever can reach it.                                   |
 | `PASSPORT_SERVICE_PORT`    | `8787`                         | Service port. The dapp expects 8787 unless `VITE_PASSPORT_SERVICE_URL` says otherwise.                                   |
 | `PASSPORT_MAX_DEPLOYS`     | `20`                           | Deploy cap per service process.                                                                                          |
 | `PASSPORT_REGISTRY_FILE`   | `~/.midnight-passport/registry.json` | The passkey-to-account registry; the deployed set sits beside it as `registry.deployments.json`. Kept outside the repository so accounts can be reopened later. Delete both when you reset the chain. |
-| `PASSPORT_SPONSOR_SEED`    | the localnet genesis dev seed  | The sponsor wallet's seed. The default is public knowledge and funded on the localnet only.                              |
+| `PASSPORT_SPONSOR_SEED`    | the localnet genesis dev seed, on `undeployed` only | The sponsor wallet's seed. The default is public knowledge and funded on the localnet only, so the service refuses to start on any other network unless this is set. |
+
+The service validates the `MN_*` values at start-up (a bad URL or scheme refuses to start) and
+compares them with the reference client's `CONFIG`; `GET /config` advertises exactly this stack
+(`networkId`, `nodeUri`, `indexerUri`, `indexerWsUri`, `proofServerUri`).
+
+### The Midnight stack
+
+One file per stack, `infra/networks/<name>.env`, holds the five `MN_*` values.
+`infra/networks/undeployed.env` is the local Docker localnet, with the URLs written out in full
+(a test keeps it in step with `ports.env`). `infra/networks/testnet.env.example` is a template
+with placeholder URLs for a hosted stack; copy it to `testnet.env` and fill it in. Testnet is
+not ready to run: it needs hosted artefacts, a reachable proof server and a real sponsor
+(LW-15635). Select a stack with `MIDNIGHT_STACK=<name> pnpm prototype:up` (default `undeployed`).
+The script sources the file, starts the Docker localnet only for `undeployed`, and exports
+`PASSPORT_NETWORK_ID` for the dapp. The sponsor seed default is localnet-only: any other stack
+needs `PASSPORT_SPONSOR_SEED`, or the service refuses to start.
+
+The reference client must read the same stack. `experiments/acc-0.35/patch-endpoints.sh <dir>`
+(run by `fetch-acc.sh`) rewrites `CONFIG.local` in its `wallet.ts` and the indexer fallback in
+`capture.ts` to read the `MN_*` variables, falling back to the ports. Rerun it on an already
+patched tree to upgrade an older patch; it is idempotent.
 
 ## Running
 
@@ -58,7 +85,7 @@ pnpm prototype:e2e       # in another shell: the automated MVP run with a softwa
 
 `prototype:up` checks, in order: the Nix toolchain, the two required variables (and that the hash
 matches the manifest on disk), Docker memory, and that ports 19944, 18088, 16300, 8787 and 5173 are
-free. If one is taken it names the occupant (container or process) and exits; it never stops
+free (for another stack, only 8787 and 5173, and no Docker). If one is taken it names the occupant (container or process) and exits; it never stops
 anything for you. `bash scripts/prototype-up.sh --check` runs only the port check. It then starts
 the node and proof server, waits for block 2 (the indexer's SPO client fails on a chain still at
 genesis), starts the indexer, then the service, then the dapp. On exit it stops only the containers
@@ -173,7 +200,7 @@ compromised service could fake the ledger that `openAccount`'s checks read.
   publishes the node, indexer and proof server on host ports 19944, 18088 and 16300
   (`infra/localnet/ports.env`), so it runs beside another localnet on the Midnight defaults
   (9944/8088/6300). A clash usually means a stale run: stop it yourself, then retry. To move the
-  stack, edit `ports.env`; the patched reference client and the service read the same variables.
+  stack, edit `ports.env` and the URLs in `infra/networks/undeployed.env` together.
 - **`localhost` or `127.0.0.1`.** Open the dapp at exactly `http://localhost:5173`: the passkey's
   relying party and the ACC's origin binding are tied to that origin, and `127.0.0.1` will not
   work. The service listens on `127.0.0.1` only. If the browser or Node resolves `localhost` to
