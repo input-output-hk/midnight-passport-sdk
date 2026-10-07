@@ -73,6 +73,8 @@ function softwareAuthenticator({ prf = true, cancel, highS = false, empty = fals
         return {
           rawId: buffer(ID),
           response: { getPublicKey: () => buffer(spki), getPublicKeyAlgorithm: () => -7 },
+          // What a provider reports for the PRF extension requested at creation.
+          getClientExtensionResults: () => ({ prf: { enabled: prf } }),
         };
       },
       /** @param {{ publicKey: GetOptions }} options */
@@ -119,6 +121,17 @@ function softwareAuthenticator({ prf = true, cancel, highS = false, empty = fals
 /** @param {ReturnType<typeof softwareAuthenticator>} auth */
 const seamFor = (auth) =>
   b.browserPasskey({ rpId: RP, origin: ORIGIN, credentials: auth.container });
+
+test('create refuses a provider that reports no PRF, before the enrolment probe', async () => {
+  const auth = softwareAuthenticator({ prf: false });
+  await assert.rejects(seamFor(auth).create('alice'), (e) => {
+    const err = /** @type {{ code?: string; message?: string }} */ (e);
+    assert.equal(err.code, 'UnsupportedAuthenticator');
+    assert.match(err.message ?? '', /Google Password Manager or iCloud Keychain/);
+    return true;
+  });
+  assert.equal(auth.gets.length, 0, 'no probe ceremony ran');
+});
 
 test('create returns the P-256 key and policy for a discoverable credential', async () => {
   const auth = softwareAuthenticator();

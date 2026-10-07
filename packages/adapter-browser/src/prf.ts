@@ -8,6 +8,12 @@ import {
 } from './lace-recipe.js';
 import { equalBytes } from './webauthn.js';
 
+/** The advice shown when a passkey provider cannot evaluate the WebAuthn PRF extension. */
+export const PRF_UNSUPPORTED =
+  'This passkey does not support the PRF extension, which the Passport account and the built-in ' +
+  'wallet need. Create the passkey in Google Password Manager or iCloud Keychain (the "Chrome ' +
+  'profile" store and some security keys have no PRF), then try again.';
+
 /** Both PRF outputs of the Lace recipe v1. The caller zeroes them. */
 export interface PasskeyPrfOutputs {
   /** Output #1, Lace's ACC authoriser. Unused here: this prototype's authoriser is P-256. */
@@ -68,10 +74,7 @@ export async function passkeyPrf(opts: PasskeyPrfOptions): Promise<PasskeyPrfOut
   }
   const results = credential.getClientExtensionResults().prf?.results;
   if (!results?.first || !results.second) {
-    throw new PassportConnectorError(
-      'UnsupportedAuthenticator',
-      'This passkey does not support the PRF extension, which the Passport account and the built-in wallet need.',
-    );
+    throw new PassportConnectorError('UnsupportedAuthenticator', PRF_UNSUPPORTED);
   }
   return { authoriser: copy(results.first), root: copy(results.second) };
 }

@@ -12,6 +12,7 @@ import {
   webauthnPolicy,
   type WebAuthnAssertion,
 } from './webauthn.js';
+import { PRF_UNSUPPORTED } from './prf.js';
 
 /** wa-json134 passkeys; the private key never leaves the authenticator (spec §4.4). */
 export function browserPasskey(opts: {
@@ -74,10 +75,17 @@ export function browserPasskey(opts: {
             // Discoverable, so openAccount can find it without a stored id (spec §5.1).
             authenticatorSelection: { userVerification: 'required', residentKey: 'required' },
             attestation: 'none',
+            // Ask for PRF at creation, as the Lace key source does: some providers enable it only
+            // for credentials created with the extension. The salts are evaluated later (prf.ts).
+            extensions: { prf: {} },
           },
         })) as PublicKeyCredential | null;
         if (!credential) {
           throw new PassportConnectorError('UserCancelled', 'Passkey creation was cancelled.');
+        }
+        // A provider that reports PRF as unavailable fails here, before any deployment.
+        if (credential.getClientExtensionResults?.().prf?.enabled === false) {
+          throw new PassportConnectorError('UnsupportedAuthenticator', PRF_UNSUPPORTED);
         }
         const response = credential.response as AuthenticatorAttestationResponse;
         const spki = response.getPublicKey();
