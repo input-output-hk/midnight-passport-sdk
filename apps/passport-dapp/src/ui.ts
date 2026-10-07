@@ -12,6 +12,8 @@ import {
   promptLabel,
   promptsFor,
 } from './flows.js';
+import { evidenceJson } from './evidence.js';
+import { progressView, segmentGrow } from './progress.js';
 
 export interface EvidenceHeader {
   readonly note: string;
@@ -65,8 +67,6 @@ const clockTime = (t: number) =>
 
 export const shorten = (value: string, head = 8, tail = 6): string =>
   value.length <= head + tail + 1 ? value : `${value.slice(0, head)}…${value.slice(-tail)}`;
-
-const jsonReplacer = (_k: string, v: unknown) => (typeof v === 'bigint' ? v.toString() : v);
 
 const formatAmount = (v: bigint) => v.toLocaleString('en-GB');
 
@@ -147,7 +147,7 @@ export function createUi(header: EvidenceHeader) {
         ...stages.map((stage) => {
           const segment = el('div', 'segment');
           // Known durations get wider segments, so the deployment reads as the long part.
-          segment.style.flexGrow = String(Math.max(1, (stage.estimateMs ?? 0) / 20_000));
+          segment.style.flexGrow = String(segmentGrow(stage));
           segment.title = stage.label;
           const fill = el('div', 'fill');
           segment.append(fill);
@@ -156,49 +156,16 @@ export function createUi(header: EvidenceHeader) {
         }),
       );
     }
-    const now = Date.now();
-    let label = '';
-    stages.forEach((stage, i) => {
-      const step = run.steps.find((s) => s.id === stage.id);
-      const segment = segmentFills[i]?.parentElement;
+    const view = progressView(run, stages, Date.now());
+    view.segments.forEach((segmentView, i) => {
       const fill = segmentFills[i];
+      const segment = fill?.parentElement;
       if (!segment || !fill) return;
-      let state = 'pending';
-      let width = 0;
-      if (step?.state === 'done') {
-        state = 'done';
-        width = 100;
-      } else if (step?.state === 'failed') {
-        state = 'failed';
-        width = 100;
-      } else if (step?.state === 'running') {
-        const elapsed = now - step.startedAt;
-        if (step.estimateMs) {
-          state = 'running';
-          // Never shows full before the stage really ends.
-          width = Math.min(97, (elapsed / step.estimateMs) * 100);
-          const over = elapsed > step.estimateMs;
-          label =
-            `Step ${i + 1} of ${stages.length}: ${step.label} · ${formatClock(elapsed)} of about ` +
-            `${formatClock(step.estimateMs)}${over ? ' (taking longer than usual)' : ''}`;
-        } else {
-          state = 'indeterminate';
-          width = 100;
-          label = `Step ${i + 1} of ${stages.length}: ${step.label}`;
-        }
-      }
-      segment.dataset.state = state;
-      fill.style.width = `${width}%`;
+      segment.dataset.state = segmentView.state;
+      fill.style.width = `${segmentView.width}%`;
     });
-    const end = run.endedAt ?? now;
-    elapsedEl.textContent = formatClock(end - run.startedAt);
-    if (run.state === 'done') {
-      label = `${run.title} finished in ${formatDuration(end - run.startedAt)}.`;
-    } else if (run.state === 'failed') {
-      const at = run.steps.findIndex((s) => s.state === 'failed');
-      const step = run.steps[at];
-      label = `${run.title} failed${step ? ` at “${step.label}”` : ''}.`;
-    }
+    elapsedEl.textContent = formatClock(view.elapsedMs);
+    const label = view.label;
     progressLabel.textContent = label;
     progressEl.setAttribute('aria-valuetext', label);
     if (run.state === 'done') progressEl.setAttribute('aria-valuenow', '100');
@@ -298,21 +265,14 @@ export function createUi(header: EvidenceHeader) {
   };
 
   // --- evidence ----------------------------------------------------------------------------
-  const evidence = () => ({
-    ...header,
-    page: location.origin,
-    account: account && {
-      address: account.address,
-      networkId: account.networkId,
-      bindingId: account.bindingId,
-      state: account.state,
-      lastTx: account.lastTx,
-    },
-    wallet: Object.keys(wallet).length > 0 ? wallet : undefined,
-    runs: log.toJSON(),
-  });
   const renderEvidence = () => {
-    evidenceEl.textContent = JSON.stringify(evidence(), jsonReplacer, 2);
+    evidenceEl.textContent = evidenceJson({
+      header,
+      page: location.origin,
+      account,
+      wallet,
+      runs: log.toJSON(),
+    });
   };
 
   // --- account and wallet cards --------------------------------------------------------------
