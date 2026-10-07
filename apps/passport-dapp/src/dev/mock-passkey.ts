@@ -11,6 +11,10 @@
 // - PRF: `results.first` / `.second` are HMAC-SHA256(prfSecret, salt), with a random 32-byte
 //   secret per credential. A PRF ceremony also sets the ED flag and appends extension data, as a
 //   real authenticator does, so it can never pass for a signing assertion.
+// - PRF at create: like Google Password Manager, a create that asks for `prf.eval` answers
+//   `prf.enabled` and both results, so create needs two prompts (create, probe). With
+//   `?mockPasskey=noprf-results` it answers `enabled` only, as some providers do, so the separate
+//   PRF ceremony (the third prompt) can be clicked through.
 //
 // Credentials, private keys and PRF secrets included, persist in localStorage under
 // MOCK_PASSKEY_STORAGE_KEY, so "Open with passkey" works after a reload. Acceptable for a dev
@@ -81,10 +85,16 @@ const bytesOf = (source: BufferSource): Uint8Array =>
     : new Uint8Array(source.buffer, source.byteOffset, source.byteLength);
 const notAllowed = (message: string): DOMException => new DOMException(message, 'NotAllowedError');
 
+/** What a create asking for PRF answers: `enabled` and the results (GPM), or `enabled` only. */
+export type MockPrfAtCreate = 'results' | 'enabled-only';
+/** The `?mockPasskey=` value that selects `enabled-only`. */
+export const MOCK_PASSKEY_NO_PRF_RESULTS = 'noprf-results';
+
 /** A CredentialsContainer stand-in over `storage`, answering for pages at `origin`. */
 export function createMockCredentials(opts: {
   storage: MockPasskeyStorage;
   origin: string;
+  prfAtCreate?: MockPrfAtCreate | undefined;
 }): CredentialsContainer & { readonly mock: true } {
   const origin = new TextEncoder().encode(opts.origin);
   const load = (): StoredCredential[] =>
@@ -184,6 +194,11 @@ export function createMockCredentials(opts: {
         ]),
       );
       const prfAsked = pk.extensions?.prf !== undefined;
+      const salts = pk.extensions?.prf?.eval;
+      const results =
+        salts && (opts.prfAtCreate ?? 'results') === 'results'
+          ? await prfResults(stored, salts)
+          : undefined;
       return {
         id: stored.id,
         type: 'public-key',
@@ -197,7 +212,8 @@ export function createMockCredentials(opts: {
           getPublicKeyAlgorithm: () => -7,
           getTransports: () => ['internal'],
         },
-        getClientExtensionResults: () => (prfAsked ? { prf: { enabled: true } } : {}),
+        getClientExtensionResults: () =>
+          prfAsked ? { prf: { enabled: true, ...(results && { results }) } } : {},
       } as unknown as PublicKeyCredential;
     },
 
@@ -261,11 +277,19 @@ export function createMockCredentials(opts: {
   };
 }
 
-/** Replaces `navigator.credentials` with the mock, persisting in this origin's localStorage. */
+/**
+ * Replaces `navigator.credentials` with the mock, persisting in this origin's localStorage.
+ * `?mockPasskey=noprf-results` makes create answer `prf.enabled` without results.
+ */
 export function installMockPasskey(): void {
-  const mock = createMockCredentials({ storage: localStorage, origin: location.origin });
+  const mode = new URLSearchParams(location.search).get('mockPasskey');
+  const mock = createMockCredentials({
+    storage: localStorage,
+    origin: location.origin,
+    prfAtCreate: mode === MOCK_PASSKEY_NO_PRF_RESULTS ? 'enabled-only' : 'results',
+  });
   Object.defineProperty(navigator, 'credentials', { value: mock, configurable: true });
   console.warn(
-    `MOCK PASSKEY — dev only: navigator.credentials is a software passkey stored in localStorage["${MOCK_PASSKEY_STORAGE_KEY}"].`,
+    `MOCK PASSKEY — dev only: navigator.credentials is a software passkey stored in localStorage["${MOCK_PASSKEY_STORAGE_KEY}"]; PRF at create: ${mode === MOCK_PASSKEY_NO_PRF_RESULTS ? 'enabled only' : 'enabled and results'}.`,
   );
 }

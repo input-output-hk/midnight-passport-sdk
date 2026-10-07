@@ -89,4 +89,57 @@ const secondPrf = await passkeyPrf({
 });
 assert.notDeepEqual(secondPrf.root, before.root);
 
-console.log('mock passkey: PASS (enrolment probe, assertionMaterial, reload, PRF)');
+// PRF at create, as GPM answers it: create needs two prompts (create, probe), and the encryption
+// key comes from the create-time outputs with no third prompt. It matches a separate ceremony.
+/** A fresh mock that counts its `get` ceremonies (the enrolment probe and any PRF prompt). */
+const counted = (prfAtCreate?: 'results' | 'enabled-only') => {
+  const inner = createMockCredentials({ storage, origin: ORIGIN, prfAtCreate });
+  const counter = {
+    gets: 0,
+    credentials: {
+      ...inner,
+      get: (options?: CredentialRequestOptions) => {
+        counter.gets += 1;
+        return inner.get(options);
+      },
+    },
+  };
+  return counter;
+};
+const twoPrompts = counted();
+const gpm = await browserPasskey({
+  rpId: RP,
+  origin: ORIGIN,
+  credentials: twoPrompts.credentials,
+}).create('c');
+const encKeyAt = (created: typeof gpm | undefined, credentials: CredentialsContainer) =>
+  accEncryptionKeyFromPasskey({
+    credentialId: gpm.credentialId,
+    created,
+    rpId: RP,
+    networkId: 'undeployed',
+    credentials,
+  });
+const fromCreate = await encKeyAt(gpm, twoPrompts.credentials);
+assert.equal(twoPrompts.gets, 1, 'create and the probe only: no PRF prompt');
+assert.deepEqual(await encKeyAt(undefined, page()), fromCreate, 'the same key as a PRF ceremony');
+
+// ?mockPasskey=noprf-results: create answers `enabled` only, so the key needs its own PRF prompt.
+const threePrompts = counted('enabled-only');
+const noResults = await browserPasskey({
+  rpId: RP,
+  origin: ORIGIN,
+  credentials: threePrompts.credentials,
+}).create('d');
+await accEncryptionKeyFromPasskey({
+  credentialId: noResults.credentialId,
+  created: noResults,
+  rpId: RP,
+  networkId: 'undeployed',
+  credentials: threePrompts.credentials,
+});
+assert.equal(threePrompts.gets, 2, 'the probe, then the fallback PRF ceremony');
+
+console.log(
+  'mock passkey: PASS (enrolment probe, assertionMaterial, reload, PRF, PRF at create, fallback)',
+);
