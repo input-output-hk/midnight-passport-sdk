@@ -28,9 +28,17 @@ cd "$dir"
 build() { # <name> [extra flags…]
   local name="$1"; shift
   echo "compile: $name ($*)"
-  /usr/bin/time -l compact compile +0.35.0 "$@" "contracts/$name.compact" "contracts/managed/$name" 2> "contracts/managed-$name.time" \
-    || { cat "contracts/managed-$name.time" >&2; exit 1; }
-  awk '/real/ {printf "  %s s", $1} /maximum resident/ {printf ", peak %.1f GB\n", $1/1e9}' "contracts/managed-$name.time"
+  if [ "$(uname)" = Darwin ]; then
+    /usr/bin/time -l compact compile +0.35.0 "$@" "contracts/$name.compact" "contracts/managed/$name" 2> "contracts/managed-$name.time" \
+      || { cat "contracts/managed-$name.time" >&2; exit 1; }
+    awk '/real/ {printf "  %s s", $1} /maximum resident/ {printf ", peak %.1f GB\n", $1/1e9}' "contracts/managed-$name.time"
+  else
+    # Linux: BSD time's -l is macOS only; time the compile with the shell instead.
+    local start=$SECONDS
+    compact compile +0.35.0 "$@" "contracts/$name.compact" "contracts/managed/$name" 2> "contracts/managed-$name.time" \
+      || { cat "contracts/managed-$name.time" >&2; exit 1; }
+    echo "  $((SECONDS - start)) s"
+  fi
 }
 
 mkdir -p contracts/managed

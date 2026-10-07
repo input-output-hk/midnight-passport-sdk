@@ -107,6 +107,16 @@ actual=$(shasum -a 256 "$manifest" | cut -d' ' -f1)
   exit 1
 }
 
+# The service imports the reference client and its pinned midnight-js packages from the contract
+# tree at run time, so that tree needs its own node_modules (no lifecycle scripts, as run.sh does).
+if [ ! -d "$PASSPORT_CONTRACT_DIR/node_modules" ]; then
+  echo "prototype-up: installing the contract tree's pinned dependencies (once)"
+  (cd "$PASSPORT_CONTRACT_DIR" && npm ci --ignore-scripts --no-audit --no-fund)
+fi
+# The apps import the workspace packages from their dist/ output.
+echo "prototype-up: building the workspace packages"
+(cd "$root" && pnpm install --frozen-lockfile >/dev/null && pnpm run build >/dev/null)
+
 if [ "$local_stack" -eq 1 ]; then
   # Docker reports slightly less than the Settings value (8 GB shows as 7.75 GiB), so round.
   min="${ACC_MIN_DOCKER_GIB:-24}"
