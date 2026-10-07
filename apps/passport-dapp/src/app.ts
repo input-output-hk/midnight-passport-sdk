@@ -1,4 +1,4 @@
-import { PassportConnectorError, toPassportError } from '@midnight-ntwrk/mn-passport-account';
+import { PassportConnectorError } from '@midnight-ntwrk/mn-passport-account';
 import { defaultFetch, fetchServiceConfig } from '@midnight-ntwrk/mn-passport-adapter-browser';
 import type {
   PassportAccount,
@@ -75,7 +75,7 @@ record('page-loaded', { apiVersion: injected()?.apiVersion });
 
 $('create').onclick = run(async () => {
   status(
-    'Creating… the passkey prompt appears three times: create it, verify the authenticator, then derive the encryption key (PRF).',
+    'Creating… the passkey prompt appears twice: create it, then verify the authenticator. A third prompt derives the encryption key (PRF) if the provider did not return it at creation.',
   );
   const a = await (
     await connector()
@@ -119,24 +119,15 @@ async function connectBuiltInWallet(): Promise<void> {
       `service is on ${config.networkId}, the page is bound to ${network}`,
     );
   }
-  status('Choose your passkey, then confirm again to derive the wallet seed (PRF)…');
-  // The PRF ceremony is its own WebAuthn prompt, so the user picks the passkey here first.
-  let picked: PublicKeyCredential | null;
-  try {
-    picked = (await navigator.credentials.get({
-      publicKey: {
-        challenge: crypto.getRandomValues(new Uint8Array(32)),
-        rpId: RP_ID,
-        userVerification: 'required',
-      },
-    })) as PublicKeyCredential | null;
-  } catch (e) {
-    throw toPassportError(e);
-  }
-  if (!picked)
-    throw new PassportConnectorError('UserCancelled', 'The passkey prompt was cancelled.');
-  // Fails closed: without PRF this throws UnsupportedAuthenticator, and no other wallet opens.
-  const seed = await walletSeed({ credentialId: new Uint8Array(picked.rawId), rpId: RP_ID });
+  // With an open account the PRF ceremony is pinned to its passkey (one prompt, no picker); with
+  // none, the user picks a passkey first. Fails closed: without PRF this throws
+  // UnsupportedAuthenticator, and no other wallet opens.
+  status(
+    account
+      ? "Confirm with this account's passkey to derive the wallet seed (PRF)…"
+      : 'Choose your passkey, then confirm again to derive the wallet seed (PRF)…',
+  );
+  const seed = await walletSeed({ rpId: RP_ID, accountCredentialId: account?.credentialId });
   status('Syncing the built-in wallet…');
   try {
     // Loaded on demand: the ledger WASM and the wallet SDK stay out of page start-up.

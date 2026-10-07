@@ -130,6 +130,8 @@ export function createPassportConnector(seams: PassportSeams): PassportConnector
     address: record.address,
     networkId,
     bindingId: seams.bindingId,
+    // A copy: the caller may not alter the id the account's own ceremonies are pinned to.
+    credentialId: record.credentialId.slice(),
     async state() {
       const view = await readView(record);
       return {

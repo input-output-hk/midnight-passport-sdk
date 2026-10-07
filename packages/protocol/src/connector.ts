@@ -52,6 +52,11 @@ export interface PassportAccount {
   readonly networkId: string;
   /** The artefact build the account was deployed from, e.g. 'acc-45721e1'. */
   readonly bindingId: string;
+  /**
+   * The WebAuthn credential id of the passkey the account was created with. Not a secret; a wallet
+   * pins its later ceremonies to it (`allowCredentials`), so the browser offers no other passkey.
+   */
+  readonly credentialId: Uint8Array;
   state(): Promise<PassportAccountState>;
   /** MVP passkey-authorised call: rotates the account's encryption key. */
   rotateEncryptionKey(newKey: Uint8Array): Promise<PassportTxResult>;

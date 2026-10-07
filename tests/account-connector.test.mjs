@@ -249,6 +249,25 @@ test('openAccount after a reload reopens the same account and can still rotate',
   await reopened.rotateEncryptionKey(Uint8Array.of(3));
 });
 
+test("the account names its passkey's credential id, as a copy a caller cannot alter", async () => {
+  const w = world();
+  const created = await a.createPassportConnector(w.seams).createAccount({ userName: 'u' });
+  assert.deepEqual(created.credentialId, w.credential.credentialId);
+  created.credentialId.fill(0xff);
+  const reopened = await a.createPassportConnector(w.seams).openAccount();
+  assert.deepEqual(reopened.credentialId, w.credential.credentialId);
+  // Its own ceremonies still use the enrolled id: rotation signs with the original credential.
+  /** @type {Uint8Array[]} */
+  const signedWith = [];
+  const sign = w.seams.passkey.sign;
+  w.seams.passkey.sign = async (/** @type {unknown} */ c, /** @type {Uint8Array} */ challenge) => {
+    signedWith.push(/** @type {{ credentialId: Uint8Array }} */ (c).credentialId);
+    return sign(c, challenge);
+  };
+  await created.rotateEncryptionKey(Uint8Array.of(4));
+  assert.deepEqual(signedWith, [Uint8Array.of(7)]);
+});
+
 test('a failure after deploy leaves a deployed record that openAccount finishes', async () => {
   const w = world({ failActivationOnce: true });
   await assert.rejects(a.createPassportConnector(w.seams).createAccount({ userName: 'u' }));
