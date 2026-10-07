@@ -45,6 +45,13 @@ export function holdCreatePrf(
   results: AuthenticationExtensionsPRFValues | undefined,
 ): boolean {
   if (!results?.first || !results.second) return false;
+  // Outputs this credential still holds are replaced, so they are zeroed now: their own expiry
+  // would find a different entry and leave them untouched.
+  const previous = held.get(credential);
+  if (previous) {
+    clearTimeout(previous.timer as Parameters<typeof clearTimeout>[0]);
+    zero(previous.outputs);
+  }
   const outputs = { authoriser: copyPrfOutput(results.first), root: copyPrfOutput(results.second) };
   const timer = setTimeout(() => {
     if (held.get(credential)?.outputs !== outputs) return;

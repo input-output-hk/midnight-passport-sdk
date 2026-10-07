@@ -146,6 +146,23 @@ test('outputs are held per credential: one credential expiring does not touch an
   }
 });
 
+test('holding again for the same credential zeroes the outputs it replaces, and the old timer spares the new ones', () => {
+  const h = harness();
+  try {
+    const c = credential();
+    holdCreatePrf(c, results(0x71, 0x72));
+    mock.timers.tick(30_000);
+    holdCreatePrf(c, results(0x81, 0x82));
+    mock.timers.tick(30_000); // the replaced entry's timer is due, the new entry's is not
+    assert.deepEqual(h.held().sort(), [0x71, 0x72], 'the replaced outputs are zeroed, only those');
+    const taken = takeCreatePrf(c);
+    assert.ok(allEqual(taken.authoriser, 0x81), 'the new outputs are still held, intact');
+    assert.ok(allEqual(taken.root, 0x82));
+  } finally {
+    h.restore();
+  }
+});
+
 test('the outputs never appear on the credential object, in its keys, symbols or serialisation', () => {
   const c = credential();
   const keysBefore = Reflect.ownKeys(c);
