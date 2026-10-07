@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import type { ServiceConfig } from '../config.ts';
 import { json, readJson, type Route } from '../http.ts';
 
@@ -79,6 +80,7 @@ export function registryRoute(config: ServiceConfig): Route {
   };
 
   const save = (store: Store) => {
+    mkdirSync(dirname(config.registryFile), { recursive: true, mode: 0o700 });
     writeFileSync(`${config.registryFile}.tmp`, JSON.stringify(store, null, 2));
     renameSync(`${config.registryFile}.tmp`, config.registryFile);
   };

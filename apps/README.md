@@ -39,7 +39,7 @@ pnpm install && pnpm build
 | `PASSPORT_SERVICE_HOST`    | `127.0.0.1`                    | Service bind address. A non-loopback host exposes the sponsor to whoever can reach it.                                   |
 | `PASSPORT_SERVICE_PORT`    | `8787`                         | Service port. The dapp expects 8787 unless `VITE_PASSPORT_SERVICE_URL` says otherwise.                                   |
 | `PASSPORT_MAX_DEPLOYS`     | `20`                           | Deploy cap per service process.                                                                                          |
-| `PASSPORT_REGISTRY_FILE`   | `<contract dir>/../passport-registry.json` | The registry; the deployed set sits beside it as `*.deployments.json`. Delete both when you reset the chain.                         |
+| `PASSPORT_REGISTRY_FILE`   | `~/.midnight-passport/registry.json` | The passkey-to-account registry; the deployed set sits beside it as `registry.deployments.json`. Kept outside the repository so accounts can be reopened later. Delete both when you reset the chain. |
 | `PASSPORT_SPONSOR_SEED`    | the localnet genesis dev seed  | The sponsor wallet's seed. The default is public knowledge and funded on the localnet only.                              |
 
 ## Running
@@ -169,4 +169,4 @@ compromised service could fake the ledger that `openAccount`'s checks read.
   compiled. It is only reproducible from the canonical `compile.sh` invocation.
 - **The service exits at start-up.** Its first line says why: usually missing artefacts or a
   hash mismatch.
-- **Stale registry after a chain reset.** Delete `passport-registry.json` and `passport-registry.deployments.json` when you drop the volumes, or the registry will name accounts the chain no longer has and opening them fails.
+- **Stale registry after a chain reset.** The registry is only valid for the chain it was written on. `prototype:up` stops the localnet with its volumes kept, so accounts survive a restart. If you drop the volumes (`docker compose … down -v`, or `experiments/acc-0.35/run.sh`, which starts fresh), delete `~/.midnight-passport/registry.json` and `registry.deployments.json`, or opening fails with `AccountNotFound`.
