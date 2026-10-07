@@ -9,6 +9,10 @@ connector all resolve to authorised interactions with that on-chain account.
 > **Status:** planning / spec, with a reduced **beta (v1)** defined. This
 > repository will host the SDK packages as they are built.
 
+> **Passport DApp prototype** (branch `passport-acc-prototype`): a working end-to-end demo on a
+> local Midnight network. To run it with Nix, follow [`AGENTS.md`](./AGENTS.md); the design and
+> flows are in [`docs/prototype/`](./docs/prototype/README.md).
+
 ## Documentation
 
 The design lives in [`docs/`](./docs):
