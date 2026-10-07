@@ -8,6 +8,11 @@ lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](.
 | `passport-service` | Serves the ACC's ZK artefacts (`/zk/acc`), proves with server-side keys (`/prove`), deploys in waves (`/deploy`), sponsors fees (`/sponsor/*`) and keeps the passkey-to-account registry (`/accounts`). It holds the only funded key. Binds `127.0.0.1:8787`. |
 | `passport-dapp`    | The harness at `http://localhost:5173`: create a Passport account with a passkey, open it after a reload, rotate its encryption key (a passkey-signed, server-proved call) and connect the built-in wallet.                                           |
 
+## Documentation
+
+The prototype's overview, the demo script, the flows, the key derivation and the limitations are in
+[`docs/prototype/`](../docs/prototype/README.md). This file covers setup and operation.
+
 ## Prerequisites
 
 - **Nix.** Everything runs in the repository's Nix shell (`nix develop`), so no other Compact or
