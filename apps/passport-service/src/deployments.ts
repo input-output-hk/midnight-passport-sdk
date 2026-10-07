@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import type { ServiceConfig } from './config.ts';
 
 type Store = Record<string, string[]>;
@@ -41,6 +42,7 @@ export class DeploymentLog {
     const known = new Set(store[this.#networkId] ?? []);
     known.add(address.toLowerCase());
     store[this.#networkId] = [...known];
+    mkdirSync(dirname(this.#file), { recursive: true, mode: 0o700 });
     writeFileSync(`${this.#file}.tmp`, JSON.stringify(store, null, 2));
     renameSync(`${this.#file}.tmp`, this.#file);
   }

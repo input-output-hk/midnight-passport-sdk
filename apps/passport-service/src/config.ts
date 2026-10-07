@@ -1,3 +1,5 @@
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 export interface ServiceConfig {
   readonly port: number;
   /**
@@ -111,7 +113,11 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServiceConfig {
     indexerWsUri: localnet.indexerWsUri,
     nodeUri: localnet.nodeUri,
     proofServerUri: localnet.proofServerUri,
-    registryFile: env.PASSPORT_REGISTRY_FILE ?? `${contractDir}/../passport-registry.json`,
+    // Kept outside the repository and the contract tree, so accounts survive a rebuild or a fresh
+    // export: ~/.midnight-passport/registry.json unless PASSPORT_REGISTRY_FILE says otherwise.
+    registryFile:
+      env.PASSPORT_REGISTRY_FILE ??
+      join(env.HOME ?? homedir(), '.midnight-passport', 'registry.json'),
     // The standalone network's genesis-funded dev seed; testnet replaces this with a real sponsor.
     sponsorSeed:
       env.PASSPORT_SPONSOR_SEED ??
