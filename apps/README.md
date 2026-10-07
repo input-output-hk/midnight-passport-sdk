@@ -67,7 +67,10 @@ evidence to `experiments/acc-0.35/results/x8-dapp-e2e.json`.
 `http://localhost:5173/?mockPasskey`. A dev-only mock (`src/dev/mock-passkey.ts`) replaces
 `navigator.credentials` before the app loads, so the real UI path runs end to end: a WebCrypto
 P-256 key, `wa-json134` assertions (37-byte authenticator data, flags UP+UV) and PRF as
-HMAC-SHA256 under a random per-credential secret. Its credentials, private keys and PRF secrets
+HMAC-SHA256 under a random per-credential secret. As Google Password Manager is expected to, it answers
+both PRF salts already at create, so create asks twice; `?mockPasskey=noprf-results` answers only
+`prf.enabled` at create, so the third prompt (the separate PRF ceremony) can be clicked through.
+Its credentials, private keys and PRF secrets
 included, are kept in `localStorage` (`passport-dev:mock-passkey:v1`) so that "Open with passkey"
 works after a reload; a discoverable prompt picks the newest one. The page shows a "MOCK PASSKEY —
 dev only" banner and the evidence records `"passkey": "MOCK …"`. Production builds do not contain
@@ -76,11 +79,36 @@ and `assertionMaterial`.
 
 ## What to know
 
-- **Create asks for the passkey three times.** Once to create the credential; once for an
-  enrolment probe, a throwaway assertion that proves the authenticator produces the exact
-  WebAuthn material the ACC verifies; and once for the PRF ceremony that derives the account's
-  encryption key. All three happen before anything is deployed. A passkey without PRF stops
-  here with `UnsupportedAuthenticator`.
+- **Save the passkey in a PRF-capable provider: Google Password Manager or iCloud Keychain.**
+  The account and the built-in wallet need the WebAuthn PRF extension. When Chrome asks where to
+  save the passkey, do not pick the "Chrome profile" store: it has no PRF, and neither do some
+  security keys. Create asks for PRF and refuses, right after the first prompt and before
+  anything is deployed, any provider that does not confirm it (`UnsupportedAuthenticator`, "choose
+  a PRF-capable provider").
+- **How many times the passkey is asked for.** Every prompt after create or open is pinned to the
+  account's own passkey (`allowCredentials`), so the browser offers no other passkey for
+  `localhost`; if another one answers, the error says "This is not the passkey this account was
+  created with; choose that passkey". Only "Open with passkey", and the wallet with no account
+  open, show the passkey picker.
+
+  | Action                                                                                                         | Prompts | Which                                                                         |
+  | -------------------------------------------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------- |
+  | Create, provider returns PRF results at create (the mock; Google Password Manager expected, not yet confirmed) | 2       | create; enrolment probe (the encryption key uses the create-time PRF outputs) |
+  | Create, provider returns only `prf.enabled` (`?mockPasskey=noprf-results`)                                     | 3       | create; enrolment probe; PRF ceremony for the encryption key                  |
+  | Create, provider without PRF                                                                                   | 1       | create, then refused; nothing is deployed                                     |
+  | Open with passkey                                                                                              | 1       | the passkey picker (discoverable)                                             |
+  | Rotate the encryption key                                                                                      | 1       | a signature, pinned to the account's passkey                                  |
+  | Built-in wallet, account open                                                                                  | 1       | the PRF ceremony, pinned to the account's passkey                             |
+  | Built-in wallet, no account open                                                                               | 2       | the passkey picker; then the PRF ceremony, pinned to the passkey picked       |
+
+  The enrolment probe is a throwaway assertion that proves the authenticator produces the exact
+  WebAuthn material the ACC verifies. PRF output adds extension data that this material forbids,
+  so PRF can never share the probe or a signature. PRF outputs returned at create are held in
+  memory only, used once for the encryption key, then zeroed (60 s at most if unused); they are
+  never stored, logged or written into the evidence.
+- **No PRF at a later prompt.** If the wallet's PRF ceremony gets no output, the error says the
+  passkey has no PRF, or is a different passkey from the account's: choose the account's own
+  passkey, saved in Google Password Manager or iCloud Keychain.
 - **Reopening checks the registry.** The registry is only a hint. `openAccount` uses a record only
   when the passkey you picked owns the record's key, a contract exists at its address, and that
   contract holds the passkey as a device. Anything else is `AccountNotFound`, which after a chain

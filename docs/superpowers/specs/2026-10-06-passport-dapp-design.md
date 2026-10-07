@@ -144,6 +144,8 @@ export interface PassportAccount {
   readonly address: string;
   readonly networkId: string;
   readonly bindingId: string; // the artefact revision, e.g. 'acc-45721e1'
+  /** The passkey's WebAuthn credential id (public); later ceremonies pin to it (§5.5). */
+  readonly credentialId: Uint8Array;
   /** Live state read from the indexer. */
   state(): Promise<PassportAccountState>;
   /** MVP passkey-authorised call: rotates the account's encryption key. */
@@ -192,7 +194,8 @@ export interface PassportSeams {
   readonly registry: RegistrySeam;         // HTTP client for /accounts
   random(length: number): Uint8Array;      // cryptographically secure
   // The account's X25519 enc_key for the passkey just created: in the browser, the passkey's
-  // PRF root through the Lace recipe v1 and MIP-0015 (§5.4), one more prompt at create.
+  // PRF root through the Lace recipe v1 and MIP-0015 (§5.4): no prompt when the provider
+  // returned PRF results at create (§5.1), else one more, pinned PRF prompt.
   encryptionKey(credential: PasskeyCredential): Uint8Array | Promise<Uint8Array>;
 }
 
@@ -326,6 +329,16 @@ node endpoints **pinned at build time**, like the manifest, instead of taken fro
 - The **wallet seed** and the account's **encryption key** come from the
   passkey's PRF root (output #2, the Lace recipe v1, §5.4); they never authorise
   the ACC (AUTH-7: the authoriser is independent of the wallet seed).
+- **PRF outputs returned at creation** (§5.1) live only in memory, in a
+  module-private `WeakMap` keyed by the returned credential object, never on the
+  credential itself. The encryption-key seam takes them once and zeroes them; an
+  entry nobody takes is zeroed after 60 s. They are never stored, logged or
+  written into the evidence or the registry.
+- **Pinning.** Once an account is created or open, every WebAuthn ceremony
+  (signing, PRF, the built-in wallet) carries `allowCredentials` with the
+  account's credential id, so the browser offers no other passkey. Discoverable
+  selection is used only where no account is known: `openAccount`, and the
+  built-in wallet with no open account.
 
 ## 5. Flows
 
@@ -335,15 +348,38 @@ node endpoints **pinned at build time**, like the manifest, instead of taken fro
    malformed app pin or a manifest mismatch (`ArtefactIntegrity`).
 2. Passkey: `browserPasskey({ rpId: 'localhost', origin: 'http://localhost:5173' }).create`
    makes a **discoverable** (resident) ES256 credential, so §5.3 can find it
-   without a stored id → credential id, P-256 public key. Then an **enrolment
-   probe**: one throwaway assertion proves the authenticator produces the exact
-   `wa-json134` material (flags, 37-byte authenticator data, origin, ES256)
-   before anything is deployed. Create therefore asks for the passkey **twice**.
-   A third prompt is the PRF ceremony (§5.4), which derives the account's
-   encryption key; a passkey without PRF fails here with
-   `UnsupportedAuthenticator`, before anything is deployed. PRF output adds
-   authenticator extension data, which `wa-json134` rejects, so it cannot share
-   the probe. Create therefore asks for the passkey **three times**.
+   without a stored id → credential id, P-256 public key. The create request
+   carries `hints: ['client-device']` (towards a passkey provider on this device,
+   away from security keys) and the PRF extension with **both Lace salts**,
+   `prf: { eval: { first: SHA-256('lace-passport/prf/authoriser/v1'), second:
+   SHA-256('lace/prf/root/v1') } }`, as Lace's key source does. **Strict PRF**:
+   the credential is accepted only when `getClientExtensionResults().prf.enabled`
+   is `true`; `false` or missing (the "Chrome profile" store, some security keys)
+   is `UnsupportedAuthenticator`, with advice to choose a PRF-capable provider
+   (Google Password Manager or iCloud Keychain). Then an **enrolment probe**: one
+   throwaway assertion, pinned to the new credential, proves the authenticator
+   produces the exact `wa-json134` material (flags, 37-byte authenticator data,
+   origin, ES256) before anything is deployed.
+
+   The account's encryption key (§5.4) needs PRF output #2:
+   - **Results at create** (the mock; expected of Google Password Manager, to be
+     confirmed in a real-passkey run): when the provider
+     returns `prf.results.first` and `.second` from `create()`, the adapter keeps a
+     copy in a module-private `WeakMap` keyed by the returned `PasskeyCredential`
+     object (`adapter-browser/src/create-prf.ts`), never as a property of the
+     credential, so no spread, log, registry write or evidence can carry it. The
+     dapp's encryption-key seam passes that credential as `created`; `passkeyPrf`
+     takes the outputs **once** (the entry is deleted) and the caller zeroes them
+     after deriving the seed. An entry nobody takes is zeroed and dropped after
+     60 s. Create asks for the passkey **twice** (create, probe).
+   - **`enabled` only**: some providers return no results at creation. The seam
+     then runs its own PRF ceremony, pinned to the credential. Create asks for the
+     passkey **three times** (create, probe, PRF).
+
+   PRF output adds authenticator extension data, which `wa-json134` rejects, so
+   the PRF ceremony can never share the probe or a signing assertion. A passkey
+   without PRF output at that ceremony fails with `UnsupportedAuthenticator`,
+   before anything is deployed.
 3. Generate `salt`; take the encryption key from step 2; compute
    `boot = derive_boot_commitment_with_p256(salt, pk, policy)` with the
    artefact's pure circuit.
@@ -406,10 +442,12 @@ main, LW-15585 / LW-15584 / LW-15635), in
 `packages/adapter-browser/src/lace-recipe.ts`, so the same passkey yields the
 same wallet and the same account key here as in Lace:
 
-1. **One PRF ceremony** on the user's credential (`allowCredentials`) evaluates
-   two salts, each `SHA-256(utf8(label))`: `first` at
-   `lace-passport/prf/authoriser/v1`, `second` at `lace/prf/root/v1`. No PRF, or
-   no results, is `UnsupportedAuthenticator`; there is **no fallback seed**.
+1. **One PRF evaluation** on the user's credential evaluates two salts, each
+   `SHA-256(utf8(label))`: `first` at `lace-passport/prf/authoriser/v1`, `second`
+   at `lace/prf/root/v1`. It is either the PRF results the provider returned at
+   creation (§5.1) or a PRF ceremony pinned to the credential
+   (`allowCredentials`). No PRF, or no results, is `UnsupportedAuthenticator`;
+   there is **no fallback seed**.
 2. **Seed** from the root (output #2):
    `entropy = HKDF-SHA256(root, salt = empty, info = 'lace/hkdf/wallet-entropy/v1', 32)`;
    `words = entropyToMnemonic(HKDF-SHA256(entropy, salt = 'lace', info = 'wallet-seed', 32))`
@@ -446,9 +484,14 @@ flows do not depend on the wallet: fees are sponsored.
 The seed is the passkey's 64-byte BIP-39 seed (§5.4), handed to the wallet SDK's
 `HDWallet.fromSeed`. Lace has no phrase-derived Midnight wallet in scope, so this
 is the prototype's stand-in. The PRF output comes from its own WebAuthn ceremony
-at wallet connect: the user first picks the passkey, then confirms the PRF
-evaluation, so connecting asks for the passkey twice. When the authenticator has
-no PRF, connecting fails with `UnsupportedAuthenticator` on every network: it
+at wallet connect. With an **open account**, that ceremony is pinned to the
+account's credential id (`PassportAccount.credentialId`, `allowCredentials`), so
+the browser offers no other passkey and connecting asks **once**. With **no open
+account**, the user first picks a passkey (discoverable), then confirms the PRF
+evaluation pinned to the pick, so connecting asks **twice**. If a pinned ceremony
+answers with another credential, connecting fails with `AccountNotFound`: "This
+is not the passkey this account was created with; choose that passkey". When the
+authenticator has no PRF, connecting fails with `UnsupportedAuthenticator` on every network: it
 never opens a different, empty wallet, and the web app never carries the genesis
 (sponsor) seed (§1.1). This supersedes Rulings R22 and R24 (the random fallback).
 
@@ -460,7 +503,8 @@ statuses):
 | Failure | Code |
 |---|---|
 | WebAuthn `NotAllowedError` or `AbortError`, or a dismissed prompt | `UserCancelled` |
-| No ES256 key, or an enrolment probe outside `wa-json134`; no PRF (or no PRF results) at create or at wallet connect | `UnsupportedAuthenticator` |
+| No ES256 key, or an enrolment probe outside `wa-json134`; no PRF (or no PRF results) at create or at wallet connect. Two messages: at create, "choose a PRF-capable provider" (`PRF_UNSUPPORTED_AT_CREATE`); at a later PRF ceremony, "this passkey has no PRF, or is a different passkey from the account's" (`PRF_UNAVAILABLE`) | `UnsupportedAuthenticator` |
+| A ceremony pinned to the account's credential answered by another passkey (`WRONG_PASSKEY`) | `AccountNotFound` |
 | `404` from the registry; a record failing the §5.3 checks; no contract at the address | `AccountNotFound` |
 | `ZkArtifactIntegrityError`; an app pin that is not 64 hex characters; a `/config` manifest that is not the pin | `ArtefactIntegrity` |
 | Prover (`/prove`, `/check`): any 5xx (`502` fault, `503` full queue), the 10-minute `/prove` timeout, or an unreachable service | `ProverUnavailable` |
