@@ -1,52 +1,21 @@
-// Prototype Midnight Passport DApp Connector API (spec §4.1). Types and
-// constants only, as everything in protocol: the implementation is
-// mn-passport-account's, and a wallet (lace-sdk) exposes it to dApps.
+// The prototype's "DApp Connector API" (prototype spec §4.1), version 0.1.0-prototype. The account
+// connector and the demo still implement it; the account API v1 (api.ts) replaces it (D-8).
+import type { PassportAccountState, PassportTxResult } from './api.js';
+import type { CreateAccountStep } from './events.js';
 
+/**
+ * @deprecated since 1.0.0: the prototype connector's version. Use `PASSPORT_API_VERSION`. Removed
+ * in 2.0.0.
+ */
 export const PASSPORT_CONNECTOR_VERSION = '0.1.0-prototype';
-export const PASSPORT_ERROR_TYPE = 'PassportConnectorError';
-export const PASSPORT_NETWORK_UNDEPLOYED = 'undeployed';
 
-export const PASSPORT_ERROR_CODES = Object.freeze([
-  'UserCancelled',
-  'UnsupportedAuthenticator',
-  'AccountNotFound',
-  'ArtefactIntegrity',
-  'ProverUnavailable',
-  'SponsorRejected',
-  'NetworkMismatch',
-  'InternalError',
-] as const);
-
-export type PassportErrorCode = (typeof PASSPORT_ERROR_CODES)[number];
-
-/** The shape every connector error has; discriminate on `type` and `code`. */
-export interface PassportErrorShape extends Error {
-  readonly type: typeof PASSPORT_ERROR_TYPE;
-  readonly code: PassportErrorCode;
-}
-
-export type CreateAccountStep =
-  'passkey-created' | 'deploying' | 'deployed' | 'activating' | 'active';
-
+/** @deprecated since 1.0.0: use `CreateAccountOptionsV1`, whose shape this name takes. */
 export interface CreateAccountOptions {
   readonly userName: string;
   readonly onProgress?: (step: CreateAccountStep) => void;
 }
 
-export interface PassportTxResult {
-  readonly txHash: string;
-  readonly blockHeight?: number;
-}
-
-export interface PassportAccountState {
-  readonly booted: boolean;
-  readonly authNonce: bigint;
-  readonly deviceEpoch: bigint;
-  /** Entries in the device set; not a device count (erratum 8). */
-  readonly entryCount: number;
-  readonly specVersion: number;
-}
-
+/** @deprecated since 1.0.0: use `PassportAccountV1`, whose shape this name takes. */
 export interface PassportAccount {
   readonly address: string;
   readonly networkId: string;
@@ -62,6 +31,7 @@ export interface PassportAccount {
   rotateEncryptionKey(newKey: Uint8Array): Promise<PassportTxResult>;
 }
 
+/** @deprecated since 1.0.0: use `PassportConnectorAPIV1`, whose shape this name takes. */
 export interface PassportConnectorAPI {
   readonly apiVersion: typeof PASSPORT_CONNECTOR_VERSION;
   readonly networkId: string;
@@ -69,7 +39,7 @@ export interface PassportConnectorAPI {
   openAccount(): Promise<PassportAccount>;
 }
 
-/** What a wallet injects at `window.midnight.passport`. */
+/** @deprecated since 1.0.0: use `PassportConnectorDescriptorV1`, whose shape this name takes. */
 export interface PassportConnectorDescriptor {
   readonly name: string;
   readonly apiVersion: typeof PASSPORT_CONNECTOR_VERSION;
