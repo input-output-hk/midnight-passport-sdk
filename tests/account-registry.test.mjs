@@ -85,10 +85,22 @@ test('a trailing slash on the base URL does not double the separator', async () 
   );
 });
 
-test('a structurally typed connector error from another package copy passes through unchanged', () => {
-  const foreign = Object.assign(new Error('x'), {
+test('a connector error from another package copy keeps its code, message, cause and flags', () => {
+  const foreign = Object.assign(new Error('x', { cause: 'c' }), {
     type: 'PassportConnectorError',
     code: 'NetworkMismatch',
   });
-  assert.equal(a.toPassportError(foreign), foreign);
+  const mapped = a.toPassportError(foreign);
+  assert.ok(mapped instanceof a.PassportConnectorError);
+  assert.deepEqual([mapped.code, mapped.message, mapped.cause], ['NetworkMismatch', 'x', 'c']);
+  assert.equal(mapped.retryable, false, 'the code default, as it named none');
+  const later = Object.assign(new Error('y'), { type: 'PassportConnectorError', code: 'Future' });
+  const flagged = a.toPassportError(Object.assign(later, { retryable: true }), 'prove');
+  assert.deepEqual(
+    [flagged.code, flagged.retryable, flagged.step],
+    ['InternalError', true, 'prove'],
+  );
+  // This copy's own error passes through unchanged.
+  const own = new a.PassportConnectorError('Aborted', 'z', { step: 'deploy' });
+  assert.equal(a.toPassportError(own, 'prove'), own);
 });
