@@ -97,7 +97,9 @@ export function portsFromSeams(seams: PassportSeams): PassportPorts {
       readAccount: (address) => seams.chain.readLedger(address),
     } satisfies Chain,
     deployer: {
-      async deploy({ boot, encKey, retireAuthority }) {
+      async deploy({ boot, encKey, retireAuthority, signal }) {
+        // A deployer honours an abort only before it submits (deployerContract).
+        if (signal?.aborted) throw new PassportConnectorError('Aborted', 'The deploy was aborted.');
         const { address, txHashes } = await seams.chain.deploy({ boot, encKey, retireAuthority });
         return { address, txIds: txHashes };
       },
