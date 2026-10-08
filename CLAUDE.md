@@ -63,8 +63,13 @@ compatibility matrix) and `mn-passport-skills:devenv`.
 - **No issue, no plan.** Every spec names a GitHub issue (`midnightntwrk/passport`).
 - **7-day dependency cooldown.** Never adopt a package version younger than 7
   days (except a *recorded* urgent security patch). Exact pins + committed
-  lockfile; verify versions with `npm view`, never from memory; no custom
-  registry config (`@midnight-ntwrk/*` are on public npm).
+  lockfile; verify versions with `npm view`, never from memory. One scoped
+  registry line only: `@input-output-hk:registry=https://npm.pkg.github.com`,
+  for publishing this fork's packages and for installing them. Every other
+  scope, `@midnight-ntwrk/*` included, resolves from public npm. No token is
+  ever committed. This fork publishes `@input-output-hk/mn-passport-*`
+  ([ADR 0006](./docs/adr/0006-publish-on-github-packages.md)); the workspace
+  names stay `@midnight-ntwrk/mn-passport-*` until the rename in tranche T23.
 - **Registers gitignored** (`.mn-passport-skills/`); **`STATE.md` committed**.
 - **Tranche budget** ≤ 400 net changed lines soft, 600 hard — enforced in
   the loop (plan estimates and `pr-open` split); CI reports it as advisory

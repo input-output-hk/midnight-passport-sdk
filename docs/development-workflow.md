@@ -1,6 +1,6 @@
 # Development workflow — the `mn-passport-skills` family
 
-> **Status:** draft · 2026/07/31
+> **Status:** draft · 2026/10/08
 > **Companion to:** [`sdk-requirements.md`](./sdk-requirements.md) (the *what/why*)
 > and [`architecture.md`](./architecture.md) (the *how*). This document is the
 > *how we build it* — the Claude-harness skills that drive SDK development and
@@ -159,8 +159,10 @@ the ACC artefact (arch §8.2). This skill:
   override is an urgent security patch, taken as a *conscious, recorded*
   decision — never silently.
 - Pins **exact versions** with a committed lockfile; verifies versions with
-  `npm view`, never from memory; adds **no custom registry config**
-  (`@midnight-ntwrk/*` are on public npm).
+  `npm view`, never from memory; adds **one scoped registry line only**,
+  `@input-output-hk:registry=https://npm.pkg.github.com` (every other scope,
+  `@midnight-ntwrk/*` included, is on public npm; no token is ever committed;
+  ADR 0006).
 - Maintains the **compatibility matrix** — the two version axes (wire:
   `mn-passport-protocol`; binding: `mn-passport-contract` ↔ deployed ACC,
   arch §4.6) — and flags when an upstream bump requires a matrix update.

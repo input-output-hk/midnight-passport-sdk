@@ -1,6 +1,6 @@
 # Midnight Passport SDK — Architecture Approaches (Draft)
 
-> **Status:** draft · 2026/07/20
+> **Status:** draft · 2026/07/20 · §4.4 and §8 decision 2 amended in part 2026/10/08
 > **Companion to:** [`sdk-requirements.md`](./sdk-requirements.md) (the
 > *what/why*) and [`development-workflow.md`](./development-workflow.md)
 > (how we build it); the reduced first cut is
@@ -181,6 +181,21 @@ remote proving is active.
   and disposable — multi-account, no globals.
 
 ### 4.4 Packaging
+
+> **Superseded in part, 2026/10/08** by
+> [ADR 0007](./adr/0007-package-set-ports-and-flows.md) (package set, ports and
+> flows), [ADR 0006](./adr/0006-publish-on-github-packages.md) (publishing) and
+> [FS-0.9](./roadmap/specs/M0-Foundations/FS-0.9-acc-artefact-package.md). The
+> seam interfaces and the account owner's flows below, placed in `core`, now live
+> in `mn-passport-account` (ports under `./ports`). The adapter packages below
+> are replaced by the ADR 0007 set (`keys`, `adapter-webauthn`,
+> `adapter-midnight-js`, `adapter-service`, `adapter-browser`, `service`), and
+> this fork publishes them as `@input-output-hk/mn-passport-*` (the names
+> below stay until the rename). `core` is reserved for the Passport app's own concerns.
+> The `connect` rule and the recorded `onboard` exception (ADR 0005) are not
+> changed. The `contract` entry's closing sentence, "The SDK never owns or
+> compiles the contract", is superseded as §8 decision 2 is (see there). The
+> text below is kept until the tranches land.
 
 Dependency rule: everything points **inward** to `@midnight-ntwrk/mn-passport-core`'s
 interfaces; nothing points outward. `@midnight-ntwrk/mn-passport-connect` links neither the
@@ -818,7 +833,14 @@ single swap-point where hash-preimage gives way to Jubjub Schnorr and the
 
 1. **Core ambition — decided.** Approach 2 for v1 with Approach-3-shaped
    seams, evolving to Approach 3.
-2. **ACC source ownership — decided.** The contract is **not owned by the
+2. **ACC source ownership — decided.** *Superseded in part, 2026/10/08, by
+   [ADR 0007](./adr/0007-package-set-ports-and-flows.md),
+   [ADR 0006](./adr/0006-publish-on-github-packages.md) and
+   [FS-0.9](./roadmap/specs/M0-Foundations/FS-0.9-acc-artefact-package.md) D-1
+   to D-3: the contract source is still the contract team's and the SDK never
+   edits it, but the SDK compiles a pinned revision and ships the artefact
+   in `mn-passport-contract`, released in lockstep with the binding set.
+   "Not owned by the SDK" below holds for the source only.* The contract is **not owned by the
    SDK**; it lives in a separate repository (or the same repository under a
    different team). The SDK consumes a **versioned, published ACC artefact**
    (compiled contract module, ZK assets, generated types) and owns only the

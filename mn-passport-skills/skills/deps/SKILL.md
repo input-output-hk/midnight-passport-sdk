@@ -31,8 +31,11 @@ fails the gate).
 - **Exact pins** — no `^` / `~`; the lockfile is committed.
 - **Verify with `npm view`, never from memory** — versions, publish dates,
   and deprecations.
-- **No custom registry configuration** — no `.npmrc` / `.yarnrc.yml`
-  registry overrides; `@midnight-ntwrk/*` are on public npm.
+- **One scoped registry line only** — `@input-output-hk:registry=https://npm.pkg.github.com`
+  (ADR 0006); no other registry override. `@midnight-ntwrk/*` and every other
+  scope are on public npm, and no token is ever committed. The cooldown check
+  reads publish dates for `@input-output-hk/*` from the second registry once the
+  publish workflow lands (tranche T24).
 
 ## Watch list
 
