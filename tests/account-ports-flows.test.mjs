@@ -1,167 +1,52 @@
-// createPassportAccounts over plain port objects, with no seams: the flows, the lazy ports and the
-// arm checks. The deprecated createPassportConnector runs the same flows through its bridge, and
-// account-connector*.test.mjs hold it to the prototype's behaviour unchanged.
+// createPassportAccounts over the fakes of account/testing, with no seams: the flows, the lazy
+// ports and the arm checks. The deprecated createPassportConnector runs the same flows through its
+// bridge, and account-connector*.test.mjs hold it to the prototype's behaviour unchanged.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 const a = await import(new URL('../packages/account/dist/index.js', import.meta.url).href);
+const t = await import(new URL('../packages/account/dist/testing/index.js', import.meta.url).href);
 
 /**
  * @typedef {import('../packages/account/dist/ports/index.js').AccountHint} AccountHint
- * @typedef {import('../packages/account/dist/ports/index.js').AccountDirectory} AccountDirectory
- * @typedef {import('../packages/account/dist/ports/index.js').AccLedgerView} AccLedgerView
- * @typedef {import('../packages/account/dist/ports/index.js').Chain} Chain
  * @typedef {import('../packages/account/dist/ports/index.js').PassportPorts} PassportPorts
- * @typedef {import('../packages/account/dist/ports/index.js').P256PublicKey} P256PublicKey
- * @typedef {import('../packages/account/dist/ports/index.js').WebAuthnPolicy} WebAuthnPolicy
  */
 
-/**
- * Plain port objects for one P-256 passkey, with no seams: an in-memory directory and a ledger
- * whose entries are `${pk.x}:${counter}`.
- */
+/** One world of fakes for one P-256 passkey, its binding and chain behind lazy loaders. */
 function portsWorld() {
-  const enc = (/** @type {string} */ s) => new TextEncoder().encode(s);
-  const text = (/** @type {Uint8Array} */ b) => new TextDecoder().decode(b);
+  const context = t.fakeContext();
   const credentialId = Uint8Array.of(7);
-  /** @type {P256PublicKey} */
-  const publicKey = { x: 11n, y: 13n, identity: false };
-  /** @type {WebAuthnPolicy} */
-  const policy = { rp_id_hash: new Uint8Array(32), origin: enc('http://localhost:5173') };
-  const ledger = {
-    booted: false,
-    authNonce: 0n,
-    entries: new Set(/** @type {string[]} */ ([])),
-    specVersion: 2,
-    /** @type {Uint8Array | undefined} */
-    encKey: undefined,
-  };
-  /** @type {Map<string, AccountHint>} */
-  const hints = new Map();
-  /** @type {unknown[][]} */
-  const log = [];
+  const fake = t.createFakePorts({
+    context,
+    network: t.fakeNetwork({ bindingId: 'acc-test' }),
+    authoriser: t.fakeAuthoriser({ context, credentialId }),
+  });
   const loads = { binding: 0, chain: 0 };
-  /** @type {Chain} */
-  const chain = {
-    async call({ circuit, args, onEvent }) {
-      log.push(['call', circuit, args]);
-      // A chain adapter reports its own steps; the core stamps the flow id on them.
-      for (const [i, step] of /** @type {const} */ ([
-        'prove',
-        'sponsor.balance',
-        'sponsor.submit',
-        'chain.finality',
-      ]).entries()) {
-        const base = {
-          id: `${circuit}-${i}`,
-          flowId: '',
-          step,
-          clock: /** @type {const} */ ('client'),
-        };
-        onEvent?.({ ...base, phase: 'start', at: 1 });
-        onEvent?.({ ...base, phase: 'end', at: 2, durationMs: 1 });
-      }
-      if (circuit === 'activate_initial_device_with_p256') {
-        ledger.booted = true;
-        ledger.entries.add(`${publicKey.x}:0`);
-      } else {
-        const auth = /** @type {{ use_counter: bigint }} */ (args[1]);
-        ledger.entries.delete(`${publicKey.x}:${auth.use_counter}`);
-        ledger.entries.add(`${publicKey.x}:${auth.use_counter + 1n}`);
-        ledger.authNonce += 1n;
-        ledger.encKey = /** @type {Uint8Array} */ (args[0]);
-      }
-      return { txHash: `tx-${log.length}` };
-    },
-    async readAccount() {
-      /** @type {AccLedgerView} */
-      const view = {
-        booted: ledger.booted,
-        authNonce: ledger.authNonce,
-        deviceEpoch: 0n,
-        entryCount: ledger.entries.size,
-        specVersion: ledger.specVersion,
-        ...(ledger.encKey && { encKey: ledger.encKey }),
-        hasEntry: (entry) => ledger.entries.has(text(entry)),
-      };
-      return view;
-    },
-  };
-  /** @type {AccountDirectory} */
-  const directory = {
-    async get(networkId, key) {
-      log.push(['get', networkId, key.kind]);
-      return hints.get(text(key.credentialId));
-    },
-    async put(_networkId, hint) {
-      log.push(['put', hint.status, hint.scheme]);
-      hints.set(text(hint.credentialId ?? new Uint8Array()), hint);
-    },
-  };
   /** @type {PassportPorts} */
-  const ports = {
-    network: {
-      networkId: 'undeployed',
-      indexerUrl: '',
-      indexerWsUrl: '',
-      nodeUrl: '',
-      artefactUrl: '',
-      bindingId: 'acc-test',
-      manifestSha256: '00',
-    },
-    binding: async () => {
-      loads.binding++;
-      return {
-        pureCircuits: {
-          derive_boot_commitment_with_p256: (salt) => enc(`boot:${salt.length}`),
-          derive_device_entry_with_p256: (_self, pk, _policy, _epoch, counter) =>
-            enc(`${pk.x}:${counter}`),
-          challenge_rotate_enc_key_with_p256: (_self, _pk, key, nonce) =>
-            enc(`rot:${key[0]}:${nonce}`),
-        },
-      };
-    },
-    credentials: {
-      create: async ({ name }) => {
-        log.push(['create', name]);
-        return { credentialId };
-      },
-      identify: async () => ({
-        credentialId,
-        owns: (key, keyPolicy) => key.x === publicKey.x && keyPolicy === policy,
-      }),
-    },
-    authoriser: {
-      scheme: 'p256-webauthn',
-      devicePublicKey: async () => ({ x: publicKey.x, y: publicKey.y }),
-      deviceBinding: async () => ({ policy, credentialId }),
-      async authorise(request) {
-        log.push(['authorise', request.circuit, request.credentialId, request.useCounter]);
-        assert.ok(request.challenge instanceof Uint8Array);
-        return {
-          scheme: 'p256-webauthn',
-          pk: publicKey,
-          useCounter: request.useCounter,
-          authenticatorData: new Uint8Array(37),
-          sig: { r: 1n, s: 2n },
-        };
-      },
-    },
-    encryptionKey: { publicKey: async (networkId) => enc(networkId.padEnd(32, '.')) },
-    chain: async () => {
-      loads.chain++;
-      return chain;
-    },
-    deployer: {
-      async deploy(request) {
-        log.push(['deploy', request.retireAuthority, text(request.encKey)]);
-        ledger.encKey = request.encKey;
-        return { address: 'cd'.repeat(32), txIds: ['t0'] };
-      },
-    },
-    directory,
+  let ports = {
+    ...fake,
+    binding: async () => (loads.binding++, fake.binding),
+    chain: async () => (loads.chain++, fake.chain),
   };
-  return { ports, log, loads, hints, credentialId, ledger };
+  return {
+    fake,
+    get ports() {
+      return ports;
+    },
+    set ports(next) {
+      ports = next;
+    },
+    /** @type {unknown[][]} */
+    log: context.log,
+    loads,
+    hints: fake.directory.hints,
+    credentialId,
+    /** The one account the world deployed. */
+    ledger: () =>
+      /** @type {{ encKey?: Uint8Array | undefined; authNonce: bigint; specVersion: number }} */ (
+        [...fake.ledger.values()][0]
+      ),
+  };
 }
 
 test('createPassportAccounts runs create, rotate and open over plain ports, loading lazy ports once', async () => {
@@ -176,29 +61,35 @@ test('createPassportAccounts runs create, rotate and open over plain ports, load
   assert.equal(opened.address, created.address);
   await opened.rotateEncryptionKey(Uint8Array.of(2));
 
+  const points = ['credentials.create', 'deployer.deploy', 'directory.put', 'chain.call'];
+  const log = w.log.filter((l) =>
+    [...points, 'directory.get', 'authoriser.authorise'].includes(/** @type {string} */ (l[0])),
+  );
   assert.deepEqual(
-    w.log.map((l) => l.slice(0, 2)),
+    log.map((l) => l.slice(0, 2)),
     [
-      ['create', 'u'],
-      ['deploy', true],
-      ['put', 'deployed'],
-      ['call', 'activate_initial_device_with_p256'],
-      ['put', 'active'],
-      ['authorise', 'rotate_enc_key_with_p256'],
-      ['call', 'rotate_enc_key_with_p256'],
-      ['get', 'undeployed'],
-      ['authorise', 'rotate_enc_key_with_p256'],
-      ['call', 'rotate_enc_key_with_p256'],
+      ['credentials.create', 'u'],
+      ['deployer.deploy', true],
+      ['directory.put', 'deployed'],
+      ['chain.call', 'activate_initial_device_with_p256'],
+      ['directory.put', 'active'],
+      ['authoriser.authorise', 'rotate_enc_key_with_p256'],
+      ['chain.call', 'rotate_enc_key_with_p256'],
+      ['directory.get', 'undeployed'],
+      ['authoriser.authorise', 'rotate_enc_key_with_p256'],
+      ['chain.call', 'rotate_enc_key_with_p256'],
     ],
   );
-  assert.equal(w.log[1]?.[2], 'undeployed'.padEnd(32, '.'), 'the key for this network');
-  assert.equal(w.log[2]?.[2], 'p256-webauthn', 'hints name their arm');
-  assert.deepEqual(w.log[7]?.[2], 'credential-id');
+  const key = await w.fake.encryptionKey.publicKey('undeployed');
+  assert.deepEqual(log[1]?.[2], key, 'the key for this network');
+  assert.equal(log[2]?.[2], 'p256-webauthn', 'hints name their arm');
+  assert.deepEqual(log[7]?.[2], 'credential-id');
   // The second rotation scanned the rolled counter, and each ceremony is pinned to the account.
-  assert.deepEqual(w.log[8]?.slice(2), [w.credentialId, 1n]);
+  assert.deepEqual(log[8]?.slice(2), [w.credentialId, 1n]);
   // A key given as a bare point reaches the circuits as a P-256 key.
-  const activation = /** @type {unknown[]} */ (w.log[3]?.[2]);
-  assert.deepEqual(activation[0], { x: 11n, y: 13n, identity: false });
+  const activation = /** @type {unknown[]} */ (log[3]?.[2]);
+  const [{ x, y }] = t.FAKE_P256_KEYS;
+  assert.deepEqual(activation[0], { x, y, identity: false });
   // One load per connector for each lazy port.
   assert.deepEqual(w.loads, { binding: 2, chain: 2 });
 });
@@ -313,6 +204,8 @@ test('create, rotate and open each report their steps, every start paired with i
     'passkey.prf:start',
     'passkey.prf:end',
     'deploy:start',
+    // The deployer's own steps, forwarded under this flow.
+    ...['deploy.wave', 'deploy.wave', 'deploy.retire'].flatMap((s) => [`${s}:start`, `${s}:end`]),
     'deploy:end',
     'directory.write:start',
     'directory.write:end',
@@ -428,7 +321,7 @@ test('an abort between steps stops the flow with Aborted, which is retryable', a
     },
   );
   assert.equal(e.trace().at(-1), 'passkey.prf:end', 'the deploy never started');
-  assert.ok(!w.log.some((l) => l[0] === 'deploy'));
+  assert.ok(!w.log.some((l) => l[0] === 'deployer.deploy'));
   assertPaired(e.seen);
 
   // Aborted before the flow starts: no prompt at all.
@@ -436,7 +329,7 @@ test('an abort between steps stops the flow with Aborted, which is retryable', a
     a.createPassportAccounts(w.ports).openAccount({ signal: AbortSignal.abort() }),
     { code: 'Aborted' },
   );
-  assert.ok(!w.log.some((l) => l[0] === 'get'));
+  assert.ok(!w.log.some((l) => l[0] === 'directory.get'));
 });
 
 test('an abort during the deploy still records the deployed account, and stops before activation', async () => {
@@ -448,10 +341,11 @@ test('an abort during the deploy still records the deployed account, and stops b
   w.ports = {
     ...w.ports,
     deployer: {
-      async deploy(request) {
-        signalSeen = request.signal;
+      async deploy({ signal, ...request }) {
+        signalSeen = signal;
+        const deployed = await deploy(request);
         controller.abort(); // too late: this deployer had already submitted
-        return deploy(request);
+        return deployed;
       },
     },
   };
@@ -466,12 +360,13 @@ test('an abort during the deploy still records the deployed account, and stops b
     { code: 'Aborted', retryable: true },
   );
   assert.equal(signalSeen, controller.signal, 'the deployer was handed the signal');
-  assert.deepEqual(e.trace().slice(-4), [
-    'deploy:start',
-    'deploy:end',
-    'directory.write:start',
-    'directory.write:end',
-  ]);
+  assert.deepEqual(
+    e
+      .trace()
+      .filter((s) => !s.startsWith('deploy.'))
+      .slice(-4),
+    ['deploy:start', 'deploy:end', 'directory.write:start', 'directory.write:end'],
+  );
   assert.deepEqual(
     [...w.hints.values()].map((h) => [h.status, h.salt?.length]),
     [['deployed', 32]],
@@ -488,31 +383,13 @@ test('a failure inside the chain call names the step the chain reported, with th
   const created = await a
     .createPassportAccounts(w.ports)
     .createAccount({ userName: 'u', retireAuthority: true });
-  const chain = typeof w.ports.chain === 'function' ? await w.ports.chain() : w.ports.chain;
-  /** @type {Chain} */
-  const failing = {
-    readAccount: (address) => chain.readAccount(address),
-    async call({ onEvent }) {
-      const base = {
-        id: 'p',
-        flowId: '',
-        step: /** @type {const} */ ('prove'),
-        clock: /** @type {const} */ ('client'),
-      };
-      onEvent?.({ ...base, phase: 'start', at: 1 });
-      onEvent?.({
-        ...base,
-        phase: 'error',
-        at: 2,
-        durationMs: 1,
-        error: { code: 'ProverUnavailable', message: 'busy' },
-      });
-      throw new a.PassportConnectorError('ProverUnavailable', 'busy');
-    },
-  };
-  w.ports = { ...w.ports, chain: failing };
   const reopened = await a.createPassportAccounts(w.ports).openAccount();
   assert.equal(reopened.address, created.address);
+  // The prover fails inside the chain call; the fake chain reports it as its prove step.
+  w.fake.context.inject(
+    'prover.proveTx',
+    new a.PassportConnectorError('ProverUnavailable', 'busy'),
+  );
   const e = events();
   await assert.rejects(reopened.rotateEncryptionKey(Uint8Array.of(9), { onEvent: e.onEvent }), {
     code: 'ProverUnavailable',
@@ -604,8 +481,8 @@ test('retireAuthority reaches the deployer as the caller chose it, and is never 
   for (const retireAuthority of [false, true]) {
     const w = portsWorld();
     await a.createPassportAccounts(w.ports).createAccount({ userName: 'u', retireAuthority });
-    assert.deepEqual(w.log.find((l) => l[0] === 'deploy')?.slice(0, 2), [
-      'deploy',
+    assert.deepEqual(w.log.find((l) => l[0] === 'deployer.deploy')?.slice(0, 2), [
+      'deployer.deploy',
       retireAuthority,
     ]);
   }
@@ -627,7 +504,7 @@ test("open compares the derived encryption key with the ledger's while no gated 
   assert.deepEqual(e.trace().slice(-2), ['passkey.prf:start', 'passkey.prf:end']);
 
   // The ledger's key is not the one this passkey derives on this network.
-  w.ledger.encKey = new Uint8Array(32).fill(1);
+  w.ledger().encKey = new Uint8Array(32).fill(1);
   const mismatch = events();
   await assert.rejects(
     a.createPassportAccounts(w.ports).openAccount({ onEvent: mismatch.onEvent }),
@@ -651,11 +528,11 @@ test('open skips the enc_key check once a gated call may have rotated the key, o
   await created.rotateEncryptionKey(Uint8Array.of(42));
   await opensWithoutPrf('rotated');
   // A spec_version whose rules this release does not know, at auth_nonce 0.
-  w.ledger.authNonce = 0n;
-  w.ledger.specVersion = 3;
+  w.ledger().authNonce = 0n;
+  w.ledger().specVersion = 3;
   await opensWithoutPrf('unknown spec_version');
   // A reader that does not report enc_key.
-  w.ledger.specVersion = 2;
-  w.ledger.encKey = undefined;
+  w.ledger().specVersion = 2;
+  w.ledger().encKey = undefined;
   await opensWithoutPrf('no enc_key');
 });

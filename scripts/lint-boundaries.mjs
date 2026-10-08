@@ -32,6 +32,10 @@ const IMPORT_RE =
 // A statement that survives compilation: not `import type`, not `import()`.
 const STATIC_MIDNIGHT_RE =
   /^\s*(?:import|export)\s+(?!type\s)(?:[^'"`;]*?\sfrom\s*)?['"]((?:@midnight-ntwrk\/(?!mn-passport-)|@midnightntwrk\/)[^'"]+)['"]/gm;
+// Every specifier, relative ones included, for the rule on account's `./testing`.
+const ANY_IMPORT_RE =
+  /(?:^\s*(?:import|export)\b[^'"`;=()]*?\bfrom\s*|^\s*import\s*|\b(?:import|require)\s*\(\s*)['"`]([^'"`]+)['"`]/gm;
+const TESTING_DIR = 'packages/account/src/testing/';
 const NODE_BUILTIN_RE = /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"`](node:[^'"`]+)/g;
 const PLATFORM_NEUTRAL = new Set(['protocol', 'contract', 'core', 'connect', 'account']);
 // Ambient global declarations bypass import scanning, so they are gated by
@@ -81,6 +85,17 @@ for (const [pkg, allowed] of Object.entries(graph)) {
     if (!MIDNIGHT_ENTRY_POINTS.some((entry) => path.startsWith(entry))) {
       for (const match of text.matchAll(STATIC_MIDNIGHT_RE)) {
         violations.push(`${file}: "${pkg}" must reach "${match[1]}" through import() (D-6).`);
+      }
+    }
+    if (path.startsWith(TESTING_DIR)) {
+      for (const match of text.matchAll(ANY_IMPORT_RE)) {
+        const spec = match[1] ?? '';
+        const ok =
+          /^\.\/[^/]+$/.test(spec) || spec.startsWith('../ports/') || spec === `${SCOPE}protocol`;
+        if (!ok)
+          violations.push(
+            `${file}: account's ./testing imports only ./ports and protocol, not "${spec}" (design §1.1).`,
+          );
       }
     }
     if (PLATFORM_NEUTRAL.has(pkg)) {

@@ -91,6 +91,25 @@ test('a static Midnight import is refused outside the entry points; type and dyn
   ]);
 });
 
+test("account's ./testing imports only ./ports, protocol and its own files", async () => {
+  const { status, errors } = await lint({
+    'packages/account/src/testing/ok.ts': [
+      "import type { Chain } from '../ports/index.js';",
+      "import { PASSPORT_ERROR_TYPE } from '@midnight-ntwrk/mn-passport-protocol';",
+      "import { fakeDigest } from './support.js';",
+      '',
+    ].join('\n'),
+    'packages/account/src/testing/core.ts': "import { toHex } from '../codec.js';\n",
+    'packages/account/src/testing/node.ts': "import { test } from 'node:test';\n",
+    'packages/account/src/testing/runner.ts': "const v = () => import('vitest');\n",
+  });
+  assert.equal(status, 1);
+  assert.deepEqual(
+    errors.map((e) => e.replace(/^.*\/testing\/(\w+)\.ts: .*"(.+)".*$/, '$1 $2')).sort(),
+    ['core ../codec.js', 'node node:test', 'node node:test', 'runner vitest'],
+  );
+});
+
 test('the repository itself respects every boundary', () => {
   const run = spawnSync(process.execPath, [SCRIPT], {
     cwd: fileURLToPath(new URL('..', import.meta.url)),
