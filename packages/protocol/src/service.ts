@@ -1,6 +1,7 @@
 // The service's HTTP wire v1 (design §4.1, §3.4), exported as `ServiceWire`. Every path sits under
-// `PASSPORT_SERVICE_PATH_PREFIX`; bodies are JSON and bytes travel as lowercase hex. The directory's
-// body (`/v1/accounts`) follows the `AccountHint` and `OwnershipProof` of account/ports (T2).
+// `PASSPORT_SERVICE_PATH_PREFIX`; bodies are JSON and bytes travel as lowercase hex, bigints as
+// lowercase hex without `0x`.
+import type { AuthScheme } from './api.js';
 import type { PassportErrorCode } from './errors.js';
 import type { PassportEvent } from './events.js';
 
@@ -80,3 +81,44 @@ export interface Job<Result> {
   /** When `state` is `failed`. */
   readonly error?: { readonly code: PassportErrorCode; readonly message: string };
 }
+
+/** A curve point; each coordinate a hex bigint. */
+export interface PointBody {
+  readonly x: Hex;
+  readonly y: Hex;
+}
+/** An `AccountHint` of account/ports. The directory never vouches for it (D-12). */
+export interface AccountHintBody {
+  readonly address: Hex;
+  readonly scheme: AuthScheme;
+  readonly credentialId?: Hex;
+  readonly publicKey: PointBody;
+  readonly policy?: { readonly rp_id_hash: Hex; readonly origin: Hex };
+  readonly salt?: Hex;
+  readonly status: 'deployed' | 'active';
+}
+/** An `OwnershipProof` of account/ports. */
+export type OwnershipProofBody =
+  | {
+      readonly scheme: 'p256-webauthn';
+      readonly challenge: Hex;
+      readonly authenticatorData: Hex;
+      readonly clientDataJSON: Hex;
+      readonly signature: Hex;
+    }
+  | {
+      readonly scheme: 'jubjub-schnorr';
+      readonly challenge: Hex;
+      readonly sigR: PointBody;
+      readonly sigS: Hex;
+    };
+/**
+ * `PUT /v1/accounts/{networkId}/{key}`, answered `204`. Write-once, except `deployed` to `active`.
+ * `key` is the hex `DirectoryKey` (the credential id).
+ */
+export interface DirectoryPutRequest {
+  readonly hint: AccountHintBody;
+  readonly proof?: OwnershipProofBody;
+}
+/** `GET /v1/accounts/{networkId}/{key}`, answered `200`, or `404` when there is no hint. */
+export type DirectoryGetResponse = AccountHintBody;
