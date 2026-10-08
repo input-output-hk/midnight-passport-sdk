@@ -7,7 +7,7 @@ import { serial } from '../queue.ts';
  * 8 MiB of hex that `readJson` allows by default is 4 MiB of preimage, which is ample. A
  * transaction is bounded by the ledger's block limits (tens of kilobytes; the largest, a wave
  * maintenance update, carries about 15 kB of verifier keys), so the same 8 MiB of hex covers it
- * with a wide margin and no larger limit is needed. `/deploy` carries two 32-byte values only.
+ * with a wide margin and no larger limit is needed. `/deploy` carries two 32-byte values and a flag.
  */
 const PREIMAGE_LIMIT = 8 * 1024 * 1024;
 const TX_LIMIT = 8 * 1024 * 1024;
@@ -160,13 +160,18 @@ export function chainRoute(backend: ChainBackend, options: ChainRouteOptions): R
           if (boot.length !== 32 || encKey.length !== 32) {
             throw new HttpError(400, 'boot and encKey must be 32 bytes');
           }
+          const { retireAuthority } = b;
+          if (typeof retireAuthority !== 'boolean') {
+            // Irreversible, so the caller says, with no default (D-11).
+            throw new HttpError(400, 'retireAuthority must be true or false');
+          }
           // The cap counts every accepted request, failures included, so failing deployments
           // cannot be spammed. It is checked here, before the queue, so the refusal is immediate.
           if (deploysAccepted >= maxDeploys) {
             throw new HttpError(429, 'deployment limit reached for this service instance');
           }
           deploysAccepted++;
-          return () => queue(() => backend.deploy(boot, encKey));
+          return () => queue(() => backend.deploy(boot, encKey, retireAuthority));
         },
       },
     ],

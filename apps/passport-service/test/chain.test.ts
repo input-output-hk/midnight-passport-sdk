@@ -48,10 +48,10 @@ function fakeBackend(delayMs = 30) {
     async submit() {
       return 'txid-1';
     },
-    async deploy(boot, enc) {
+    async deploy(boot, enc, retireAuthority) {
       calls.deploy++;
       await busy();
-      seen.deploy = [boot, enc];
+      seen.deploy = [boot, enc, retireAuthority];
       return { address: ADDRESS, txHashes: ['a', 'b'] };
     },
     sponsorKeys: () => ({ coinPublicKey: 'cp', encryptionPublicKey: 'ep' }),
@@ -85,7 +85,7 @@ const post = (url: string, body: unknown) =>
     headers: JSON_TYPE,
     body: typeof body === 'string' ? body : JSON.stringify(body),
   });
-const deployBody = { boot: '11'.repeat(32), encKey: '22'.repeat(32) };
+const deployBody = { boot: '11'.repeat(32), encKey: '22'.repeat(32), retireAuthority: true };
 
 test('/prove decodes hex, passes the binding input as bigint, and returns the proof', async (t) => {
   const f = fakeBackend();
@@ -216,28 +216,36 @@ test('/sponsor/balance and /sponsor/submit round-trip hex transactions', async (
   });
 });
 
-test('/deploy takes constructor inputs only and returns the address', async (t) => {
+test("/deploy takes constructor inputs and the caller's retireAuthority, and returns the address", async (t) => {
   const f = fakeBackend();
   const { base } = await start(t, f.backend);
-  const body = (await (await post(`${base}/deploy`, deployBody)).json()) as {
-    address: string;
-    txHashes: string[];
-  };
-  assert.equal(body.address, ADDRESS);
-  assert.deepEqual(body.txHashes, ['a', 'b']);
-  assert.deepEqual(f.seen.deploy, [new Uint8Array(32).fill(0x11), new Uint8Array(32).fill(0x22)]);
+  for (const retireAuthority of [true, false]) {
+    const body = (await (
+      await post(`${base}/deploy`, { ...deployBody, retireAuthority })
+    ).json()) as {
+      address: string;
+      txHashes: string[];
+    };
+    assert.equal(body.address, ADDRESS);
+    assert.deepEqual(body.txHashes, ['a', 'b']);
+    assert.deepEqual(f.seen.deploy, [
+      new Uint8Array(32).fill(0x11),
+      new Uint8Array(32).fill(0x22),
+      retireAuthority,
+    ]);
+  }
   assert.equal((await post(`${base}/deploy`, { boot: '11' })).status, 400);
 });
 
 test('/deploy stops at the cap with 429, and failed deployments count', async (t) => {
   const f = fakeBackend(5);
   const deploy = f.backend.deploy.bind(f.backend);
-  f.backend.deploy = async (b, e) => {
+  f.backend.deploy = async (b, e, r) => {
     if (f.calls.deploy === 0) {
       f.calls.deploy++;
       throw new Error('wave failed');
     }
-    return deploy(b, e);
+    return deploy(b, e, r);
   };
   const { base } = await start(t, f.backend, { maxDeploys: 3 });
   const statuses: number[] = [];
@@ -337,6 +345,10 @@ test('bad fields are 400 and never reach the backend', async (t) => {
     ['/sponsor/submit', {}],
     ['/deploy', { boot: '11'.repeat(32), encKey: '22'.repeat(31) }],
     ['/deploy', { boot: '11'.repeat(33), encKey: '22'.repeat(32) }],
+    // retireAuthority is required, and only a boolean: no default (D-11).
+    ['/deploy', { boot: '11'.repeat(32), encKey: '22'.repeat(32) }],
+    ['/deploy', { boot: '11'.repeat(32), encKey: '22'.repeat(32), retireAuthority: 'true' }],
+    ['/deploy', { boot: '11'.repeat(32), encKey: '22'.repeat(32), retireAuthority: null }],
   ];
   for (const [path, body] of bad) {
     assert.equal(

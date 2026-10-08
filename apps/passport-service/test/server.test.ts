@@ -82,7 +82,11 @@ function http10(port: number): Promise<number> {
   });
 }
 
-const deployBody = JSON.stringify({ boot: '11'.repeat(32), encKey: '22'.repeat(32) });
+const deployBody = JSON.stringify({
+  boot: '11'.repeat(32),
+  encKey: '22'.repeat(32),
+  retireAuthority: true,
+});
 
 test('a request for another host is 421, so DNS rebinding cannot make a page same-origin', async (t) => {
   const { port } = await start(t);

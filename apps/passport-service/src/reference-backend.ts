@@ -223,7 +223,7 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
     }),
     submit: (tx) => providers.midnightProvider.submitTx(tag(tx)),
     // The route runs deployments through the same queue as proofs, so they never overlap.
-    deploy: async (boot, encKey) => {
+    deploy: async (boot, encKey, retireAuthority) => {
       // Records what each wave's `submitTx` returns; the reference returns the address only.
       // These are submission ids (midnight-js's txId), not the hashes of the transactions as
       // included: the wire keeps the name `txHashes` for the prototype (Final review M4).
@@ -247,7 +247,8 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
         args: [boot, encKey, birth.pk, new Uint8Array(64), 3n * 24n * 3600n],
         privateStateId: `passport-${randomBytes(8).toString('hex')}`,
         initialPrivateState: witnesses.emptyCoinStore(),
-        retireAuthority: true,
+        // The caller's choice (D-11). Kept, the authority's key stays with this service's wallet.
+        retireAuthority,
       });
       // Only now may the sponsor fund calls to it (Ruling R15), once it is also registered.
       deployments.add(address);

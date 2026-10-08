@@ -13,6 +13,7 @@ test(
     const { address } = await backend.deploy(
       new Uint8Array(32).fill(1),
       new Uint8Array(32).fill(2),
+      true,
     );
     assert.match(address, /^[0-9a-f]{64}$/);
   },
