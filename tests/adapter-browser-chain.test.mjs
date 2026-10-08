@@ -503,6 +503,67 @@ test('call forwards the call, maps the finalized record and verifies artefacts a
   assert.equal(Reflect.get(Object(only.providers.zkConfigProvider), 'baseURL'), CONFIG.zkBaseUrl);
 });
 
+test('a call reports prove, sponsor.balance, sponsor.submit and chain.finality to the flow', async () => {
+  const unproven = ledger.Transaction.fromParts('undeployed');
+  const { unbound, bound } = await finalizedTx();
+  const f = recordingFetch({
+    '/prove-tx': { status: 200, body: { tx: hex(unbound.serialize()) } },
+    '/sponsor/balance': { status: 200, body: { tx: hex(bound.serialize()) } },
+    '/sponsor/submit': { status: 200, body: { txId: 'id-1' } },
+  });
+  /** @type {() => Promise<void>} */
+  let after = async () => {};
+  // The pipeline midnight-js runs, in order, over the providers it is handed.
+  /**
+   * @param {{ proofProvider: { proveTx(tx: unknown): Promise<unknown> };
+   *   walletProvider: { balanceTx(tx: unknown): Promise<unknown> };
+   *   midnightProvider: { submitTx(tx: unknown): Promise<string> } }} providers
+   */
+  const submit = async (providers) => {
+    const proven = await providers.proofProvider.proveTx({ version: 'v9', tx: unproven });
+    const balanced = await providers.walletProvider.balanceTx(proven);
+    await providers.midnightProvider.submitTx(balanced);
+    await after();
+    return { public: { txId: 'id-1', txHash: 'h', blockHeight: 1 } };
+  };
+  /** @type {import('../packages/protocol/dist/index.js').PassportEvent[]} */
+  const seen = [];
+  const onEvent = (/** @type {(typeof seen)[number]} */ e) => seen.push(e);
+  const chain = chainOver(f.fn, undefined, { submit });
+  await chain.call('addr', 'rotate_enc_key_with_p256', [], { onEvent });
+  assert.deepEqual(
+    seen.map((e) => `${e.step}:${e.phase}`),
+    ['prove', 'sponsor.balance', 'sponsor.submit', 'chain.finality'].flatMap((s) => [
+      `${s}:start`,
+      `${s}:end`,
+    ]),
+  );
+  for (const e of seen.filter((x) => x.phase === 'end')) {
+    assert.equal(seen.filter((x) => x.id === e.id).length, 2, 'a start and an end share an id');
+    assert.equal(typeof e.durationMs, 'number');
+  }
+  // Without a listener the same call reports nothing and still answers.
+  assert.deepEqual(await chain.call('addr', 'rotate_enc_key_with_p256', []), {
+    txHash: 'h',
+    blockHeight: 1,
+  });
+
+  // A transaction that never turns final ends chain.finality with an error.
+  seen.length = 0;
+  after = async () => {
+    throw new Error('the transaction failed on chain');
+  };
+  await assert.rejects(
+    chain.call('addr', 'rotate_enc_key_with_p256', [], { onEvent }),
+    /failed on chain/,
+  );
+  assert.deepEqual(seen.at(-1)?.error, {
+    code: 'InternalError',
+    message: 'the transaction failed on chain',
+  });
+  assert.equal(seen.at(-1)?.step, 'chain.finality');
+});
+
 test('deploy refuses an answer whose txHashes are not a list of strings', async () => {
   for (const txHashes of [undefined, 'abc', ['t1', 2]]) {
     const f = recordingFetch({ '/deploy': { status: 200, body: { address: 'ff00', txHashes } } });

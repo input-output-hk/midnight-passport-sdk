@@ -16,9 +16,11 @@ import {
   PassportConnectorError,
   fromHex,
   toHex,
+  toPassportError,
   type ChainSeam,
   type FetchLike,
 } from '@midnight-ntwrk/mn-passport-account';
+import type { PassportEvent, PassportStep } from '@midnight-ntwrk/mn-passport-protocol';
 import type { AccLedgerView, AccPureCircuits } from '@midnight-ntwrk/mn-passport-account/ports';
 import { Transaction } from '@midnightntwrk/ledger-v9';
 import { DEFAULT_PROVE_TIMEOUT_MS } from './delegated-proving.js';
@@ -36,6 +38,46 @@ export interface GeneratedAccModule {
   ledger(data: unknown): unknown;
   readonly pureCircuits: AccPureCircuits;
 }
+
+/** Runs `work` as one reported step of a chain call. */
+export type TrackStep = <T>(step: PassportStep, work: () => Promise<T>) => Promise<T>;
+
+/**
+ * A chain call's own steps (design §3.4), reported to the flow's `onEvent`. The account core
+ * stamps the flow's id on them, so the id here is left empty.
+ */
+function callSteps(onEvent: ((event: PassportEvent) => void) | undefined) {
+  const open = (step: PassportStep) => {
+    const base = { id: crypto.randomUUID(), flowId: '', step, clock: 'client' as const };
+    const at = Date.now();
+    onEvent?.({ ...base, phase: 'start', at });
+    const close = (error?: unknown) => {
+      const end = Date.now();
+      const failed = error === undefined ? undefined : toPassportError(error, step);
+      onEvent?.({
+        ...base,
+        phase: failed ? 'error' : 'end',
+        at: end,
+        durationMs: end - at,
+        ...(failed && { error: { code: failed.code, message: failed.message } }),
+      });
+    };
+    return { end: () => close(), fail: (e: unknown) => close(e ?? 'failed') };
+  };
+  const track: TrackStep = async (step, work) => {
+    const opened = open(step);
+    try {
+      const value = await work();
+      opened.end();
+      return value;
+    } catch (e) {
+      opened.fail(e);
+      throw e;
+    }
+  };
+  return { open, track };
+}
+const untracked: TrackStep = (_step, work) => work();
 
 interface LedgerShape {
   booted: boolean;
@@ -57,28 +99,30 @@ export function serviceProofProvider(
   base: string,
   fetchFn: FetchLike,
   proveTimeoutMs: number = DEFAULT_PROVE_TIMEOUT_MS,
+  track: TrackStep = untracked,
 ): ProofProvider {
   return createProofProviderFromHandlers({
-    currentEra: async (tx) => {
-      const answer = await postService(
-        fetchFn,
-        base,
-        '/prove-tx',
-        { tx: toHex(tx.serialize()) },
-        'prover',
-        proveTimeoutMs,
-      );
-      let bytes: Uint8Array;
-      try {
-        bytes = fromHex(stringMember(answer, 'tx', '/prove-tx'));
-      } catch (cause) {
-        if (cause instanceof PassportConnectorError) throw cause;
-        throw new PassportConnectorError('InternalError', '/prove-tx answered a non-hex tx', {
-          cause,
-        });
-      }
-      return Transaction.deserialize('signature', 'proof', 'pre-binding', bytes);
-    },
+    currentEra: (tx) =>
+      track('prove', async () => {
+        const answer = await postService(
+          fetchFn,
+          base,
+          '/prove-tx',
+          { tx: toHex(tx.serialize()) },
+          'prover',
+          proveTimeoutMs,
+        );
+        let bytes: Uint8Array;
+        try {
+          bytes = fromHex(stringMember(answer, 'tx', '/prove-tx'));
+        } catch (cause) {
+          if (cause instanceof PassportConnectorError) throw cause;
+          throw new PassportConnectorError('InternalError', '/prove-tx answered a non-hex tx', {
+            cause,
+          });
+        }
+        return Transaction.deserialize('signature', 'proof', 'pre-binding', bytes);
+      }),
   });
 }
 
@@ -92,41 +136,49 @@ export function serviceWalletProvider(
   base: string,
   keys: Pick<ServiceConfigWire, 'coinPublicKey' | 'encryptionPublicKey'>,
   fetchFn: FetchLike,
+  track: TrackStep = untracked,
 ): WalletProvider {
   return createWalletProvider({
     getCoinPublicKey: () => keys.coinPublicKey,
     getEncryptionPublicKey: () => keys.encryptionPublicKey,
     // The service sets the transaction's lifetime, so the caller's `ttl` has no use here.
-    async balanceTx(tx) {
-      const answer = await postService(
-        fetchFn,
-        base,
-        '/sponsor/balance',
-        { tx: toHex(tx.serialize()) },
-        'sponsor',
-      );
-      return Transaction.deserialize(
-        'signature',
-        'proof',
-        'binding',
-        fromHex(stringMember(answer, 'tx', '/sponsor/balance')),
-      );
-    },
+    balanceTx: (tx) =>
+      track('sponsor.balance', async () => {
+        const answer = await postService(
+          fetchFn,
+          base,
+          '/sponsor/balance',
+          { tx: toHex(tx.serialize()) },
+          'sponsor',
+        );
+        return Transaction.deserialize(
+          'signature',
+          'proof',
+          'binding',
+          fromHex(stringMember(answer, 'tx', '/sponsor/balance')),
+        );
+      }),
   });
 }
 
 /** The submit seam: the service's sponsor submits the balanced transaction (Ruling R16(a)). */
-export function serviceMidnightProvider(base: string, fetchFn: FetchLike): MidnightProvider {
-  return createMidnightProvider(async (tx) => {
-    const answer = await postService(
-      fetchFn,
-      base,
-      '/sponsor/submit',
-      { tx: toHex(tx.serialize()) },
-      'sponsor',
-    );
-    return stringMember(answer, 'txId', '/sponsor/submit');
-  });
+export function serviceMidnightProvider(
+  base: string,
+  fetchFn: FetchLike,
+  track: TrackStep = untracked,
+): MidnightProvider {
+  return createMidnightProvider((tx) =>
+    track('sponsor.submit', async () => {
+      const answer = await postService(
+        fetchFn,
+        base,
+        '/sponsor/submit',
+        { tx: toHex(tx.serialize()) },
+        'sponsor',
+      );
+      return stringMember(answer, 'txId', '/sponsor/submit');
+    }),
+  );
 }
 
 /**
@@ -192,9 +244,7 @@ export function createServiceChain(opts: {
       verify: 'require',
       expectedManifestHash: pin,
     }),
-    proofProvider: serviceProofProvider(serviceUrl, fetchFn),
-    walletProvider: serviceWalletProvider(serviceUrl, config, fetchFn),
-    midnightProvider: serviceMidnightProvider(serviceUrl, fetchFn),
+    // The proving, wallet and submit seams are made per call, below.
   };
 
   return {
@@ -228,15 +278,36 @@ export function createServiceChain(opts: {
         hasEntry: (entry) => l.devices.member(entry),
       };
     },
-    async call(address, circuit, args) {
-      // `as never` at the one call site: the overloads are generic over the generated module's own
-      // circuit and parameter types, which live outside this package.
-      const result = await submit(providers, {
-        compiledContract,
-        contractAddress: address,
-        circuitId: circuit,
-        args,
-      } as never);
+    async call(address, circuit, args, options) {
+      // Per call, so each reports to its own flow: prove, sponsor.balance, sponsor.submit, then
+      // chain.finality from the submission until midnight-js sees the transaction final.
+      const { open, track } = callSteps(options?.onEvent);
+      let finality: ReturnType<typeof open> | undefined;
+      const reporting = {
+        ...providers,
+        proofProvider: serviceProofProvider(serviceUrl, fetchFn, undefined, track),
+        walletProvider: serviceWalletProvider(serviceUrl, config, fetchFn, track),
+        midnightProvider: serviceMidnightProvider(serviceUrl, fetchFn, async (step, work) => {
+          const id = await track(step, work);
+          finality = open('chain.finality');
+          return id;
+        }),
+      };
+      let result;
+      try {
+        // `as never` at the one call site: the overloads are generic over the generated module's
+        // own circuit and parameter types, which live outside this package.
+        result = await submit(reporting, {
+          compiledContract,
+          contractAddress: address,
+          circuitId: circuit,
+          args,
+        } as never);
+      } catch (e) {
+        finality?.fail(e);
+        throw e;
+      }
+      finality?.end();
       // `public` is the finalized record: `txId` is an identifier of the submission and `txHash`
       // the hash of the transaction as included, which is what `PassportTxResult` names.
       const { txHash, blockHeight } = result.public;
