@@ -1,7 +1,17 @@
-// The client-side event log (issue #17, client part): one run per action, one step per stage,
-// timed in the browser. No DOM: ui.ts renders it, and the copied evidence is `toJSON()`, so the
-// two always hold the same rows. Only public values go in: never a seed, a key or a PRF output.
-import { type ActionId, FLOWS, type PlainError, type StageDef } from './flows.js';
+// The event log (issue #17): one run per action, one step per stage. The connector's progress
+// events (`onEvent`) start the stages they map to, at their own time, and are kept with the run;
+// the page times only what the connector does not report. No DOM: ui.ts renders it, and the
+// copied evidence is `toJSON()`, so the two always hold the same rows. Only public values go in:
+// never a seed, a key or a PRF output (an event carries none).
+import type { PassportEvent } from '@midnight-ntwrk/mn-passport-protocol';
+import {
+  type ActionId,
+  EVENT_STAGES,
+  FLOWS,
+  formatDuration,
+  type PlainError,
+  type StageDef,
+} from './flows.js';
 
 export type StepState = 'running' | 'done' | 'failed';
 
@@ -24,6 +34,8 @@ export interface LogRun {
   endedAt?: number;
   state: StepState;
   readonly steps: LogStep[];
+  /** The connector's events, as they came. */
+  readonly events: PassportEvent[];
   error?: PlainError;
 }
 
@@ -66,6 +78,7 @@ export class EventLog {
       startedAt: this.now(),
       state: 'running',
       steps: [],
+      events: [],
     };
     this.runs.push(run);
     const first = FLOWS[action].stages[0];
@@ -83,6 +96,25 @@ export class EventLog {
     if (!run || this.runningStep()?.id === id) return;
     this.closeStep(run, 'done');
     this.openStep(run, id);
+    this.emit();
+  }
+
+  /**
+   * A connector event. A step that maps to a stage (`EVENT_STAGES`) starts it at the event's time;
+   * an end or an error is noted on the running stage with the connector's own duration.
+   */
+  event(event: PassportEvent): void {
+    const run = this.current;
+    if (!run) return;
+    run.events.push(event);
+    const stage = EVENT_STAGES[run.action][event.step];
+    if (event.phase === 'start' && stage !== undefined && this.runningStep()?.id !== stage) {
+      this.closeStep(run, 'done', undefined, event.at);
+      this.openStep(run, stage, undefined, event.at);
+    } else if (event.phase !== 'start') {
+      const took = event.phase === 'end' ? formatDuration(event.durationMs ?? 0) : 'failed';
+      this.runningStep()?.notes.push(`${event.step} ${took}`);
+    }
     this.emit();
   }
 
@@ -159,6 +191,16 @@ export class EventLog {
         ...(step.notes.length > 0 && { notes: [...step.notes] }),
         ...(step.data && { data: step.data }),
       })),
+      ...(run.events.length > 0 && {
+        events: run.events.map((e) => ({
+          step: e.step,
+          phase: e.phase,
+          at: iso(e.at),
+          ...(e.durationMs !== undefined && { durationMs: e.durationMs }),
+          ...(e.detail && { detail: e.detail }),
+          ...(e.error && { error: { ...e.error } }),
+        })),
+      }),
     }));
   }
 
@@ -167,24 +209,29 @@ export class EventLog {
     return step?.state === 'running' ? step : undefined;
   }
 
-  private openStep(run: LogRun, id: string, label?: string): void {
+  private openStep(run: LogRun, id: string, label?: string, at = this.now()): void {
     const def = FLOWS[run.action].stages.find((s) => s.id === id);
     run.steps.push({
       id,
       label: label ?? def?.label ?? id,
       ...(def?.estimateMs !== undefined && { estimateMs: def.estimateMs }),
-      startedAt: this.now(),
+      startedAt: at,
       state: 'running',
       notes: [],
     });
   }
 
   /** Closes the running step; false when there was none. */
-  private closeStep(run: LogRun, state: 'done' | 'failed', error?: PlainError): boolean {
+  private closeStep(
+    run: LogRun,
+    state: 'done' | 'failed',
+    error?: PlainError,
+    at = this.now(),
+  ): boolean {
     const step = run.steps.at(-1);
     if (step?.state !== 'running') return false;
     step.state = state;
-    step.endedAt = this.now();
+    step.endedAt = at;
     if (error) step.error = error;
     return true;
   }

@@ -3,11 +3,12 @@
 // error reads to the person at the demo.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPassportConnector } from '@midnight-ntwrk/mn-passport-account';
+import { createPassportAccounts, portsFromSeams } from '@midnight-ntwrk/mn-passport-account';
+import type { PassportEvent } from '@midnight-ntwrk/mn-passport-protocol';
 import {
   ACTIVATION_ESTIMATE_S,
-  CREATE_STEP_STAGE,
   DEPLOY_ESTIMATE_S,
+  EVENT_STAGES,
   FLOWS,
   PASSKEY_PROMPTS,
   ROTATION_ESTIMATE_S,
@@ -115,58 +116,65 @@ test('the account is read at the end of create, open and rotate', () => {
   }
 });
 
-test('every connector step maps to a create stage that exists, or to none', () => {
-  const stageIds = new Set(FLOWS.create.stages.map((s) => s.id));
-  for (const [step, stage] of Object.entries(CREATE_STEP_STAGE)) {
-    assert.ok(stage === null || stageIds.has(stage), `${step} -> ${String(stage)}`);
+test('every event that starts a stage maps to a stage of that action, in flow order', () => {
+  for (const action of ACTIONS) {
+    const ids = FLOWS[action].stages.map((s) => s.id);
+    const indexes = Object.values(EVENT_STAGES[action]).map((id) => ids.indexOf(id));
+    assert.ok(
+      indexes.every((i) => i >= 0),
+      `${action}: ${JSON.stringify(EVENT_STAGES[action])}`,
+    );
+    assert.deepEqual(
+      indexes,
+      [...indexes].sort((a, b) => a - b),
+    );
   }
-  assert.equal(CREATE_STEP_STAGE.deployed, null, 'a note on the deployment, not a stage');
-  // The stages are entered in flow order by the steps in the order the connector reports them.
-  const order = ['passkey-created', 'deploying', 'activating', 'active'].map(
-    (step) => CREATE_STEP_STAGE[step],
-  );
-  const indexes = order.map((id) => FLOWS.create.stages.findIndex((s) => s.id === id));
-  assert.deepEqual(
-    indexes,
-    [...indexes].sort((a, b) => a - b),
-  );
 });
 
-test('the real connector reports no step that the map does not know', async () => {
+test('the real connector enters every create stage before the read, in order', async () => {
   const bytes = (n: number) => new Uint8Array(n).fill(1);
   const credential = {
     credentialId: bytes(1),
     publicKey: { x: 1n, y: 2n, identity: false as const },
     policy: { rp_id_hash: bytes(32), origin: bytes(21) },
   };
-  const connector = createPassportConnector({
-    networkId: 'undeployed',
-    bindingId: 'acc-test',
-    pureCircuits: {
-      derive_boot_commitment_with_p256: () => bytes(32),
-      derive_device_entry_with_p256: () => bytes(32),
-      challenge_rotate_enc_key_with_p256: () => bytes(32),
-    },
-    passkey: {
-      create: async () => credential,
-      identify: async () => ({ credentialId: credential.credentialId, owns: () => true }),
-      sign: async () => ({ authenticator_data: bytes(37), sig: { r: 1n, s: 2n } }),
-    },
-    chain: {
-      deploy: async () => ({ address: 'ab'.repeat(32), txHashes: [] }),
-      readLedger: async () => undefined,
-      call: async () => ({ txHash: 'tx' }),
-    },
-    registry: { put: async () => {}, get: async () => undefined },
-    random: bytes,
-    encryptionKey: async () => bytes(32),
+  const accounts = createPassportAccounts(
+    portsFromSeams({
+      networkId: 'undeployed',
+      bindingId: 'acc-test',
+      pureCircuits: {
+        derive_boot_commitment_with_p256: () => bytes(32),
+        derive_device_entry_with_p256: () => bytes(32),
+        challenge_rotate_enc_key_with_p256: () => bytes(32),
+      },
+      passkey: {
+        create: async () => credential,
+        identify: async () => ({ credentialId: credential.credentialId, owns: () => true }),
+        sign: async () => ({ authenticator_data: bytes(37), sig: { r: 1n, s: 2n } }),
+      },
+      chain: {
+        deploy: async () => ({ address: 'ab'.repeat(32), txHashes: [] }),
+        readLedger: async () => undefined,
+        call: async () => ({ txHash: 'tx' }),
+      },
+      registry: { put: async () => {}, get: async () => undefined },
+      random: bytes,
+      encryptionKey: async () => bytes(32),
+    }),
+  );
+  const events: PassportEvent[] = [];
+  await accounts.createAccount({
+    userName: 'u',
+    retireAuthority: true,
+    onEvent: (e) => events.push(e),
   });
-  const steps: string[] = [];
-  await connector.createAccount({ userName: 'u', onProgress: (s: string) => steps.push(s) });
-  assert.ok(steps.length >= 4);
-  for (const step of steps) {
-    assert.ok(step in CREATE_STEP_STAGE, `the dapp has no mapping for connector step "${step}"`);
-  }
+  const entered = events.flatMap((e) =>
+    e.phase === 'start' && EVENT_STAGES.create[e.step] ? [EVENT_STAGES.create[e.step]] : [],
+  );
+  assert.deepEqual(
+    entered,
+    FLOWS.create.stages.slice(0, -1).map((s) => s.id),
+  );
 });
 
 test('an error carries its code, its message and a hint for each connector code', () => {

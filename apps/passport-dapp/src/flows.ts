@@ -1,5 +1,6 @@
 // What each demo action is, how many passkey prompts it asks for and which stages it goes
-// through. Data only, no DOM: ui.ts renders it and event-log.ts times it.
+// through. Data only, no DOM: ui.ts renders it and event-log.ts times it from the connector's events.
+import type { PassportStep } from '@midnight-ntwrk/mn-passport-protocol';
 
 export type ActionId = 'create' | 'open' | 'rotate' | 'wallet';
 
@@ -101,16 +102,19 @@ export const FLOWS: Record<ActionId, FlowDef> = {
 };
 
 /**
- * The connector's `onProgress` steps, mapped to the create stage that starts with them. `null`
- * means the step starts no new stage (it is noted on the running one). A step not listed starts
- * an ad-hoc stage named after it, so a new connector step still shows up.
+ * The connector's progress events (`onEvent`) that start a stage of an action: the stage begins
+ * at the event's own time. Every other step is noted on the running stage with its duration.
  */
-export const CREATE_STEP_STAGE: Readonly<Record<string, string | null>> = {
-  'passkey-created': 'prf',
-  deploying: 'deploy',
-  deployed: null,
-  activating: 'activate',
-  active: 'read',
+export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep, string>>>> = {
+  create: {
+    'passkey.create': 'passkey',
+    'passkey.prf': 'prf',
+    deploy: 'deploy',
+    activate: 'activate',
+  },
+  open: {},
+  rotate: {},
+  wallet: {},
 };
 
 export const promptCountText = (n: PromptCount): string =>

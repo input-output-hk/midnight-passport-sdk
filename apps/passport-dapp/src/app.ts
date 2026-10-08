@@ -7,7 +7,7 @@ import type {
   PassportTxResult,
 } from '@midnight-ntwrk/mn-passport-protocol';
 import { MANIFEST_SHA256, NETWORK_ID, RP_ID, SERVICE_URL, installShim } from './connector.js';
-import { CREATE_STEP_STAGE, DEPLOY_ESTIMATE_S, FLOWS, ROTATION_ESTIMATE_S } from './flows.js';
+import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS, ROTATION_ESTIMATE_S } from './flows.js';
 import { createUi } from './ui.js';
 import type { DevWallet } from './wallet/dev-wallet.js';
 import { walletSeed } from './wallet/seed.js';
@@ -30,7 +30,7 @@ const ui = createUi({
   pinnedManifestSha256: MANIFEST_SHA256,
   ...(apiVersion !== undefined && { apiVersion }),
 });
-const { status, stage, note, record } = ui;
+const { status, stage, record, event: onEvent } = ui;
 
 let api: PassportConnectorAPI | undefined;
 let devWallet: DevWallet | undefined;
@@ -73,10 +73,9 @@ ui.on('create', async () => {
     // The prototype has always retired the maintenance authority: irreversible, so the account
     // can never be upgraded. The account API makes that the caller's explicit choice.
     retireAuthority: true,
-    onProgress: (s) => {
-      const next = CREATE_STEP_STAGE[s];
-      if (next === null) note(s);
-      else stage(next ?? s);
+    onEvent: (e) => {
+      onEvent(e);
+      const next = e.phase === 'start' ? EVENT_STAGES.create[e.step] : undefined;
       const label = FLOWS.create.stages.find((x) => x.id === next)?.label;
       if (label) status(`Creating: ${label.charAt(0).toLowerCase()}${label.slice(1)}…`);
     },
@@ -87,7 +86,7 @@ ui.on('open', async () => {
   status(
     'Opening… choose your passkey. Until the encryption key is rotated, a second prompt checks it against the chain.',
   );
-  await opened(await (await connector()).openAccount(), 'reopened');
+  await opened(await (await connector()).openAccount({ onEvent }), 'reopened');
 });
 ui.on('rotate', async () => {
   if (!account) throw new Error('open or create an account first');
@@ -95,7 +94,9 @@ ui.on('rotate', async () => {
     `Confirm with your passkey; proving on the service then takes about ${ROTATION_ESTIMATE_S} s…`,
   );
   // Lace has no rotation recipe yet: a random target key is this prototype's extension.
-  const r = await account.rotateEncryptionKey(crypto.getRandomValues(new Uint8Array(32)));
+  const r = await account.rotateEncryptionKey(crypto.getRandomValues(new Uint8Array(32)), {
+    onEvent,
+  });
   await opened(account, 'rotated', r);
   status(`Rotated in transaction ${r.txHash.slice(0, 16)}…`);
 });

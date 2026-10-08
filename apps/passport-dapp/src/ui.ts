@@ -1,7 +1,11 @@
 // Presentation: the action buttons, the progress bar, the event log, the account and wallet cards
 // and the evidence. app.ts keeps the connector calls and drives this through `createUi`.
 // Every dynamic string goes in through textContent or an attribute, never innerHTML.
-import type { PassportAccountState, PassportTxResult } from '@midnight-ntwrk/mn-passport-protocol';
+import type {
+  PassportAccountState,
+  PassportEvent,
+  PassportTxResult,
+} from '@midnight-ntwrk/mn-passport-protocol';
 import { EventLog, type LogRun, type LogStep } from './event-log.js';
 import {
   type ActionId,
@@ -421,6 +425,8 @@ export function createUi(header: EvidenceHeader) {
     /** Ends the running stage and starts `id`. */
     stage: (id: string) => log.stage(id),
     note: (text: string) => log.note(text),
+    /** A connector progress event: it moves the bar and the log (event-log.ts). */
+    event: (e: PassportEvent) => log.event(e),
     /** Public values to keep with the running step and the evidence. */
     record: (name: string, data: Record<string, unknown> = {}) => log.attach({ [name]: data }),
     /**

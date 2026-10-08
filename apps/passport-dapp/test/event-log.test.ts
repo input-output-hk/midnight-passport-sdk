@@ -3,6 +3,7 @@
 // evidence rows that `toJSON` hands to the Copy button.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import type { PassportEvent } from '@midnight-ntwrk/mn-passport-protocol';
 import { EventLog } from '../src/event-log.ts';
 import type { PlainError } from '../src/flows.ts';
 
@@ -407,4 +408,78 @@ test('the evidence carries only what the flow attached: public values in, nothin
   for (const secret of [/seed/i, /secret/i, /private/i, /credentialId/]) {
     assert.doesNotMatch(text, secret);
   }
+});
+
+/** A connector event of one flow, stamped at `at`. */
+const ev = (
+  step: PassportEvent['step'],
+  phase: PassportEvent['phase'],
+  at: number,
+  extra: Partial<PassportEvent> = {},
+): PassportEvent => ({
+  id: `${step}-1`,
+  flowId: 'f',
+  step,
+  phase,
+  at,
+  clock: 'client',
+  ...(phase !== 'start' && { durationMs: 1_500 }),
+  ...extra,
+});
+
+test("connector events start their stages at the events' own time, and note every other step", () => {
+  const { log, at } = make();
+  const run = log.start('create');
+  at(9_000); // the page's clock runs on; the stages take the connector's times
+  log.event(ev('passkey.create', 'start', 10));
+  log.event(ev('passkey.create', 'end', 1_510));
+  log.event(ev('passkey.prf', 'start', 2_000));
+  log.event(ev('passkey.prf', 'end', 3_500));
+  log.event(ev('deploy', 'start', 4_000));
+  log.event(ev('deploy', 'end', 5_500));
+  log.event(ev('directory.write', 'start', 5_600));
+  log.event(ev('directory.write', 'end', 7_100));
+  log.event(ev('activate', 'start', 7_200));
+  assert.deepEqual(
+    run.steps.map((s) => [s.id, s.startedAt, s.endedAt, s.notes]),
+    [
+      ['passkey', 0, 2_000, ['passkey.create 1.5 s']],
+      ['prf', 2_000, 4_000, ['passkey.prf 1.5 s']],
+      ['deploy', 4_000, 7_200, ['deploy 1.5 s', 'directory.write 1.5 s']],
+      ['activate', 7_200, undefined, []],
+    ],
+  );
+  log.event(ev('prove', 'error', 8_000, { error: { code: 'ProverUnavailable', message: 'busy' } }));
+  assert.deepEqual(run.steps.at(-1)?.notes, ['prove failed']);
+  assert.equal(run.events.length, 10);
+});
+
+test('the evidence keeps the connector events of a run, and none for a run without them', () => {
+  const { log, iso } = make();
+  log.start('rotate');
+  log.event(ev('passkey.sign', 'start', 100));
+  log.event(
+    ev('passkey.sign', 'error', 200, {
+      durationMs: 100,
+      error: { code: 'UserCancelled', message: 'closed' },
+    }),
+  );
+  log.fail(error('UserCancelled'));
+  log.start('open');
+  log.finish();
+  const [rotate, open] = log.toJSON() as Record<string, unknown>[];
+  assert.deepEqual(rotate?.events, [
+    { step: 'passkey.sign', phase: 'start', at: iso(100) },
+    {
+      step: 'passkey.sign',
+      phase: 'error',
+      at: iso(200),
+      durationMs: 100,
+      error: { code: 'UserCancelled', message: 'closed' },
+    },
+  ]);
+  assert.equal('events' in (open ?? {}), false);
+  // Events outside a run are dropped.
+  log.event(ev('chain.read', 'start', 300));
+  assert.equal(log.runs.at(-1)?.events.length, 0);
 });
