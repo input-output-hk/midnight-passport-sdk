@@ -1,10 +1,13 @@
 import {
   PASSPORT_CONNECTOR_VERSION,
+  type CreateAccountStep,
+  type FlowOptions,
   type PassportAccount,
   type PassportConnectorAPI,
 } from '@midnight-ntwrk/mn-passport-protocol';
 import { fromHex } from './codec.js';
-import { PassportConnectorError, toPassportError } from './errors.js';
+import { PassportConnectorError } from './errors.js';
+import { startFlow, type Flow } from './flow.js';
 import type {
   AccLedgerView,
   AccountHint,
@@ -78,66 +81,88 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
   const binding = once(ports.binding);
   const chain = once(ports.chain);
   const random = ports.random ?? webRandom;
-  const put = async (record: P256Hint) => directory?.put(networkId, record);
-
-  const submitActivation = async (record: P256Hint) =>
-    (await chain()).call({
-      address: record.address,
-      circuit: 'activate_initial_device_with_p256',
-      args: [p256(record.publicKey), record.salt, record.policy],
-    });
-
-  const activate = async (record: P256Hint): Promise<P256Hint> => {
-    await submitActivation(record);
-    const active: P256Hint = { ...record, status: 'active' };
-    await put(active);
-    return active;
-  };
-
-  const recordDeployed = async (record: P256Hint): Promise<void> => {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        await put(record);
-        return;
-      } catch (e) {
-        if (attempt >= DEPLOYED_PUT_RETRIES) {
-          throw new PassportConnectorError(
-            'InternalError',
-            `The account at ${record.address} is deployed, but the registry did not record it after ${attempt + 1} attempts: ${e instanceof Error ? e.message : String(e)}`,
-            { cause: e },
-          );
-        }
-        await sleep(RETRY_BASE_MS * 2 ** attempt);
-      }
+  /** Records what the chain already holds, so it runs even once the flow is aborted. */
+  const put = (flow: Flow, record: P256Hint) =>
+    flow.step('directory.write', async () => directory?.put(networkId, record), 'always');
+  /** Flows run through `run`: their events, their abort checks and their errors (design §3.3, §3.4). */
+  const run = async <T>(
+    options: FlowOptions,
+    body: (flow: Flow) => Promise<T>,
+    onProgress?: (step: CreateAccountStep) => void,
+  ): Promise<T> => {
+    const flow = startFlow(options, random, onProgress);
+    try {
+      return await body(flow);
+    } catch (e) {
+      throw flow.fail(e);
     }
   };
 
-  const readView = async (record: P256Hint): Promise<AccLedgerView> => {
+  const submitActivation = (flow: Flow, record: P256Hint) =>
+    flow.step('activate', async () =>
+      (await chain()).call({
+        address: record.address,
+        circuit: 'activate_initial_device_with_p256',
+        args: [p256(record.publicKey), record.salt, record.policy],
+        ...flow.ports,
+      }),
+    );
+
+  const activate = async (flow: Flow, record: P256Hint): Promise<P256Hint> => {
+    await submitActivation(flow, record);
+    const active: P256Hint = { ...record, status: 'active' };
+    await put(flow, active);
+    return active;
+  };
+
+  const recordDeployed = (flow: Flow, record: P256Hint) =>
+    flow.step(
+      'directory.write',
+      async () => {
+        for (let attempt = 0; ; attempt++) {
+          try {
+            return await directory?.put(networkId, record);
+          } catch (e) {
+            if (attempt >= DEPLOYED_PUT_RETRIES) {
+              throw new PassportConnectorError(
+                'InternalError',
+                `The account at ${record.address} is deployed, but the registry did not record it after ${attempt + 1} attempts: ${e instanceof Error ? e.message : String(e)}`,
+                { cause: e },
+              );
+            }
+            await sleep(RETRY_BASE_MS * 2 ** attempt);
+          }
+        }
+      },
+      'always',
+    );
+
+  const readAccount = async (record: P256Hint): Promise<AccLedgerView> => {
     const view = await (await chain()).readAccount(record.address);
     if (!view)
       throw new PassportConnectorError('AccountNotFound', `No contract at ${record.address}.`);
     return view;
   };
+  const readView = (flow: Flow, record: P256Hint) =>
+    flow.step('chain.read', () => readAccount(record));
 
   /** The 0..RESCAN_LIMIT-1 counter scan: the counter of this passkey's live entry, if any. */
-  const findCounter = async (
-    record: P256Hint,
-    view: AccLedgerView,
-  ): Promise<bigint | undefined> => {
-    const { pureCircuits } = await binding();
-    const self = { bytes: fromHex(record.address) };
-    for (let k = 0n; k < BigInt(RESCAN_LIMIT); k++) {
-      const entry = pureCircuits.derive_device_entry_with_p256(
-        self,
-        p256(record.publicKey),
-        record.policy,
-        view.deviceEpoch,
-        k,
-      );
-      if (view.hasEntry(entry)) return k;
-    }
-    return undefined;
-  };
+  const findCounter = (flow: Flow, record: P256Hint, view: AccLedgerView) =>
+    flow.step('counter.scan', async (): Promise<bigint | undefined> => {
+      const { pureCircuits } = await binding();
+      const self = { bytes: fromHex(record.address) };
+      for (let k = 0n; k < BigInt(RESCAN_LIMIT); k++) {
+        const entry = pureCircuits.derive_device_entry_with_p256(
+          self,
+          p256(record.publicKey),
+          record.policy,
+          view.deviceEpoch,
+          k,
+        );
+        if (view.hasEntry(entry)) return k;
+      }
+      return undefined;
+    });
 
   const notHeld = (record: P256Hint) =>
     new PassportConnectorError(
@@ -145,9 +170,12 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
       `The account at ${record.address} does not hold this passkey.`,
     );
 
-  const useCounter = async (record: P256Hint): Promise<{ counter: bigint; authNonce: bigint }> => {
-    const view = await readView(record);
-    const counter = await findCounter(record, view);
+  const useCounter = async (
+    flow: Flow,
+    record: P256Hint,
+  ): Promise<{ counter: bigint; authNonce: bigint }> => {
+    const view = await readView(flow, record);
+    const counter = await findCounter(flow, record, view);
     if (counter === undefined) {
       throw new PassportConnectorError(
         'AccountNotFound',
@@ -165,13 +193,18 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
    * mismatched record cannot activate someone else's account, and the entry is checked afterwards
    * all the same before the record is marked active.
    */
-  const finishActivation = async (record: P256Hint, view: AccLedgerView): Promise<P256Hint> => {
+  const finishActivation = async (
+    flow: Flow,
+    record: P256Hint,
+    view: AccLedgerView,
+  ): Promise<P256Hint> => {
     if (!view.booted) {
-      await submitActivation(record);
-      if ((await findCounter(record, await readView(record))) === undefined) throw notHeld(record);
+      await submitActivation(flow, record);
+      const after = await readView(flow, record);
+      if ((await findCounter(flow, record, after)) === undefined) throw notHeld(record);
     }
     const active: P256Hint = { ...record, status: 'active' };
-    await put(active);
+    await put(flow, active);
     return active;
   };
 
@@ -182,7 +215,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     // A copy: the caller may not alter the id the account's own ceremonies are pinned to.
     credentialId: record.credentialId.slice(),
     async state() {
-      const view = await readView(record);
+      const view = await readAccount(record);
       return {
         booted: view.booted,
         authNonce: view.authNonce,
@@ -191,9 +224,9 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         specVersion: view.specVersion,
       };
     },
-    async rotateEncryptionKey(newKey) {
-      try {
-        const { counter, authNonce } = await useCounter(record);
+    rotateEncryptionKey: (newKey, options = {}) =>
+      run(options, async (flow) => {
+        const { counter, authNonce } = await useCounter(flow, record);
         const self = { bytes: fromHex(record.address) };
         const circuit = 'rotate_enc_key_with_p256';
         const challenge = (await binding()).pureCircuits.challenge_rotate_enc_key_with_p256(
@@ -202,16 +235,18 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           newKey,
           authNonce,
         );
-        const signed = await authoriser.authorise({
-          account: record.address,
-          circuit,
-          args: [newKey],
-          witnessValues: [],
-          authNonce,
-          useCounter: counter,
-          challenge,
-          credentialId: record.credentialId,
-        });
+        const signed = await flow.step('passkey.sign', () =>
+          authoriser.authorise({
+            account: record.address,
+            circuit,
+            args: [newKey],
+            witnessValues: [],
+            authNonce,
+            useCounter: counter,
+            challenge,
+            credentialId: record.credentialId,
+          }),
+        );
         if (signed.scheme !== 'p256-webauthn') {
           throw new PassportConnectorError('InternalError', `A ${signed.scheme} authorisation.`);
         }
@@ -222,63 +257,72 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           sig: signed.sig,
           use_counter: counter,
         };
-        return await (
-          await chain()
-        ).call({ address: record.address, circuit, args: [newKey, auth] });
-      } catch (e) {
-        throw toPassportError(e);
-      }
-    },
+        flow.checkpoint();
+        // The chain port reports its own steps (prove, sponsor.*, chain.finality) through `onEvent`.
+        return (await chain()).call({
+          address: record.address,
+          circuit,
+          args: [newKey, auth],
+          ...flow.ports,
+        });
+      }),
   });
 
   return {
     apiVersion: PASSPORT_CONNECTOR_VERSION,
     networkId,
-    async createAccount({ userName, onProgress }) {
-      try {
-        const { credentialId } = await credentials.create({ name: userName });
-        const publicKey = await authoriser.devicePublicKey();
-        const device = (await authoriser.deviceBinding?.())!;
-        onProgress?.('passkey-created');
-        // Before the deploy: a passkey without PRF fails here, with nothing on chain.
-        const encKey = await encryptionKey.publicKey(networkId);
-        const salt = random(32);
-        const { pureCircuits } = await binding();
-        const boot = pureCircuits.derive_boot_commitment_with_p256(
-          salt,
-          p256(publicKey),
-          device.policy,
+    createAccount: ({ userName, onProgress, ...options }) =>
+      run(
+        options,
+        async (flow) => {
+          const { credentialId, publicKey, device } = await flow.step(
+            'passkey.create',
+            async () => {
+              const { credentialId } = await credentials.create({ name: userName });
+              const publicKey = await authoriser.devicePublicKey();
+              const device = (await authoriser.deviceBinding?.())!;
+              return { credentialId, publicKey, device };
+            },
+          );
+          // Before the deploy: a passkey without PRF fails here, with nothing on chain.
+          const encKey = await flow.step('passkey.prf', () => encryptionKey.publicKey(networkId));
+          const salt = random(32);
+          const { pureCircuits } = await binding();
+          const boot = pureCircuits.derive_boot_commitment_with_p256(
+            salt,
+            p256(publicKey),
+            device.policy,
+          );
+          // A deployer honours `signal` only before it submits anything: an account it deployed is
+          // always returned, and recorded below, so its salt is never lost.
+          // The prototype's service always retires the authority; T3b takes it from the caller (D-11).
+          const { address } = await flow.step('deploy', () =>
+            ports.deployer.deploy({ boot, encKey, retireAuthority: true, ...flow.ports }),
+          );
+          const deployed: P256Hint = {
+            scheme: 'p256-webauthn',
+            credentialId,
+            publicKey,
+            policy: device.policy,
+            address,
+            salt,
+            status: 'deployed',
+          };
+          // Recorded before activation: the salt is the only way to activate (Review Focus 2).
+          await recordDeployed(flow, deployed);
+          return account(await activate(flow, deployed));
+        },
+        onProgress,
+      ),
+    openAccount: (options = {}) =>
+      run(options, async (flow) => {
+        const identity = await flow.step('passkey.identify', () => credentials.identify());
+        const hint = await flow.step('directory.read', async () =>
+          directory?.get(networkId, {
+            kind: 'credential-id',
+            credentialId: identity.credentialId,
+          }),
         );
-        onProgress?.('deploying');
-        // The prototype's service always retires the authority; T3 takes it from the caller (D-11).
-        const { address } = await ports.deployer.deploy({ boot, encKey, retireAuthority: true });
-        const deployed: P256Hint = {
-          scheme: 'p256-webauthn',
-          credentialId,
-          publicKey,
-          policy: device.policy,
-          address,
-          salt,
-          status: 'deployed',
-        };
-        // Recorded before activation: the salt is the only way to activate (Review Focus 2).
-        await recordDeployed(deployed);
-        onProgress?.('deployed');
-        onProgress?.('activating');
-        const active = await activate(deployed);
-        onProgress?.('active');
-        return account(active);
-      } catch (e) {
-        throw toPassportError(e);
-      }
-    },
-    async openAccount() {
-      try {
-        const identity = await credentials.identify();
-        const hint = await directory?.get(networkId, {
-          kind: 'credential-id',
-          credentialId: identity.credentialId,
-        });
         if (!hint)
           throw new PassportConnectorError(
             'AccountNotFound',
@@ -296,16 +340,13 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             'The registry record does not belong to this passkey.',
           );
         }
-        const view = await readView(hint);
+        const view = await readView(flow, hint);
         if (
           (hint.status === 'active' || view.booted) &&
-          (await findCounter(hint, view)) === undefined
+          (await findCounter(flow, hint, view)) === undefined
         )
           throw notHeld(hint);
-        return account(hint.status === 'active' ? hint : await finishActivation(hint, view));
-      } catch (e) {
-        throw toPassportError(e);
-      }
-    },
+        return account(hint.status === 'active' ? hint : await finishActivation(flow, hint, view));
+      }),
   };
 }

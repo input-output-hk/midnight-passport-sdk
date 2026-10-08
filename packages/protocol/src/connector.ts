@@ -1,6 +1,6 @@
 // The prototype's "DApp Connector API" (prototype spec §4.1), version 0.1.0-prototype. The account
 // connector and the demo still implement it; the account API v1 (api.ts) replaces it (D-8).
-import type { PassportAccountState, PassportTxResult } from './api.js';
+import type { FlowOptions, PassportAccountState, PassportTxResult } from './api.js';
 import type { CreateAccountStep } from './events.js';
 
 /**
@@ -10,7 +10,7 @@ import type { CreateAccountStep } from './events.js';
 export const PASSPORT_CONNECTOR_VERSION = '0.1.0-prototype';
 
 /** @deprecated since 1.0.0: use `CreateAccountOptionsV1`, whose shape this name takes. */
-export interface CreateAccountOptions {
+export interface CreateAccountOptions extends FlowOptions {
   readonly userName: string;
   readonly onProgress?: (step: CreateAccountStep) => void;
 }
@@ -28,7 +28,7 @@ export interface PassportAccount {
   readonly credentialId: Uint8Array;
   state(): Promise<PassportAccountState>;
   /** MVP passkey-authorised call: rotates the account's encryption key. */
-  rotateEncryptionKey(newKey: Uint8Array): Promise<PassportTxResult>;
+  rotateEncryptionKey(newKey: Uint8Array, options?: FlowOptions): Promise<PassportTxResult>;
 }
 
 /** @deprecated since 1.0.0: use `PassportConnectorAPIV1`, whose shape this name takes. */
@@ -36,7 +36,7 @@ export interface PassportConnectorAPI {
   readonly apiVersion: typeof PASSPORT_CONNECTOR_VERSION;
   readonly networkId: string;
   createAccount(options: CreateAccountOptions): Promise<PassportAccount>;
-  openAccount(): Promise<PassportAccount>;
+  openAccount(options?: FlowOptions): Promise<PassportAccount>;
 }
 
 /** @deprecated since 1.0.0: use `PassportConnectorDescriptorV1`, whose shape this name takes. */

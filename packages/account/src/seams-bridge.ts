@@ -84,7 +84,8 @@ export function portsFromSeams(seams: PassportSeams): PassportPorts {
     },
     encryptionKey: { publicKey: async () => seams.encryptionKey(current()) },
     chain: {
-      call: ({ address, circuit, args }) => seams.chain.call(address, circuit as MvpCircuit, args),
+      call: ({ address, circuit, args, ...options }) =>
+        seams.chain.call(address, circuit as MvpCircuit, args, options),
       readAccount: (address) => seams.chain.readLedger(address),
     } satisfies Chain,
     deployer: {

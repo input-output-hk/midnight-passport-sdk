@@ -36,8 +36,24 @@ function portsWorld() {
   const loads = { binding: 0, chain: 0 };
   /** @type {Chain} */
   const chain = {
-    async call({ circuit, args }) {
+    async call({ circuit, args, onEvent }) {
       log.push(['call', circuit, args]);
+      // A chain adapter reports its own steps; the core stamps the flow id on them.
+      for (const [i, step] of /** @type {const} */ ([
+        'prove',
+        'sponsor.balance',
+        'sponsor.submit',
+        'chain.finality',
+      ]).entries()) {
+        const base = {
+          id: `${circuit}-${i}`,
+          flowId: '',
+          step,
+          clock: /** @type {const} */ ('client'),
+        };
+        onEvent?.({ ...base, phase: 'start', at: 1 });
+        onEvent?.({ ...base, phase: 'end', at: 2, durationMs: 1 });
+      }
       if (circuit === 'activate_initial_device_with_p256') {
         ledger.booted = true;
         ledger.entries.add(`${publicKey.x}:0`);
@@ -217,4 +233,336 @@ test('a failed lazy load is retried on the next use', async () => {
   // The deploy ran before the chain was needed; a retry of the flow loads the chain again.
   const opened = await accounts.openAccount();
   assert.equal((await opened.state()).booted, true);
+});
+
+// ---- Progress events (design §3.4), signal and errors (design §3.3)
+
+/** @typedef {import('../packages/protocol/dist/index.js').PassportEvent} PassportEvent */
+
+/** Collects a flow's events. */
+function events() {
+  /** @type {PassportEvent[]} */
+  const seen = [];
+  return {
+    seen,
+    onEvent: (/** @type {PassportEvent} */ e) => seen.push(e),
+    /** `step:phase` in order. */
+    trace: () => seen.map((e) => `${e.step}:${e.phase}`),
+  };
+}
+
+/**
+ * Every start has exactly one end or error with the same id, after it, in one flow; ends carry a
+ * duration and every event a timestamp.
+ * @param {PassportEvent[]} seen
+ */
+function assertPaired(seen) {
+  const flows = new Set(seen.map((e) => e.flowId));
+  assert.equal(flows.size, 1, 'one flow id');
+  assert.match([...flows][0] ?? '', /^[0-9a-f]{16}$/);
+  for (const [i, e] of seen.entries()) {
+    assert.equal(typeof e.at, 'number');
+    if (e.phase === 'start') {
+      const closes = seen.filter((x) => x.id === e.id && x.phase !== 'start');
+      assert.equal(closes.length, 1, `${e.step} closes once`);
+      assert.ok(
+        seen.indexOf(/** @type {PassportEvent} */ (closes[0])) > i,
+        `${e.step} closes after`,
+      );
+      assert.equal(closes[0]?.step, e.step);
+    } else {
+      assert.equal(typeof e.durationMs, 'number', `${e.step} ${e.phase} has a duration`);
+      assert.ok(
+        seen.some((x) => x.id === e.id && x.phase === 'start'),
+        `${e.step} was started`,
+      );
+    }
+  }
+}
+
+const CHAIN_STEPS = ['prove', 'sponsor.balance', 'sponsor.submit', 'chain.finality'].flatMap(
+  (s) => [`${s}:start`, `${s}:end`],
+);
+
+test('create, rotate and open each report their steps, every start paired with its end', async () => {
+  const w = portsWorld();
+  const create = events();
+  /** @type {string[]} */
+  const progress = [];
+  const created = await a.createPassportAccounts(w.ports).createAccount({
+    userName: 'u',
+    onEvent: create.onEvent,
+    onProgress: (/** @type {string} */ s) => progress.push(s),
+  });
+  assert.deepEqual(create.trace(), [
+    'passkey.create:start',
+    'passkey.create:end',
+    'passkey.prf:start',
+    'passkey.prf:end',
+    'deploy:start',
+    'deploy:end',
+    'directory.write:start',
+    'directory.write:end',
+    'activate:start',
+    ...CHAIN_STEPS,
+    'activate:end',
+    'directory.write:start',
+    'directory.write:end',
+  ]);
+  assertPaired(create.seen);
+  assert.ok(create.seen.every((e) => e.clock === 'client' && !('error' in e)));
+  // The deprecated onProgress still fires its five steps, derived from the events.
+  assert.deepEqual(progress, ['passkey-created', 'deploying', 'deployed', 'activating', 'active']);
+
+  const rotate = events();
+  await created.rotateEncryptionKey(Uint8Array.of(1), { onEvent: rotate.onEvent });
+  assert.deepEqual(rotate.trace(), [
+    'chain.read:start',
+    'chain.read:end',
+    'counter.scan:start',
+    'counter.scan:end',
+    'passkey.sign:start',
+    'passkey.sign:end',
+    ...CHAIN_STEPS,
+  ]);
+  assertPaired(rotate.seen);
+  assert.notEqual(rotate.seen[0]?.flowId, create.seen[0]?.flowId, 'each flow has its own id');
+
+  const open = events();
+  await a.createPassportAccounts(w.ports).openAccount({ onEvent: open.onEvent });
+  assert.deepEqual(open.trace(), [
+    'passkey.identify:start',
+    'passkey.identify:end',
+    'directory.read:start',
+    'directory.read:end',
+    'chain.read:start',
+    'chain.read:end',
+    'counter.scan:start',
+    'counter.scan:end',
+  ]);
+  assertPaired(open.seen);
+});
+
+test('an error mid-deploy ends the deploy step with its error, names the wave and records nothing', async () => {
+  const w = portsWorld();
+  w.ports = {
+    ...w.ports,
+    deployer: {
+      async deploy({ onEvent }) {
+        const wave = (/** @type {number} */ n) => ({
+          id: `w${n}`,
+          flowId: '',
+          step: /** @type {const} */ ('deploy.wave'),
+          clock: /** @type {const} */ ('service'),
+          detail: { wave: n, of: 2 },
+        });
+        onEvent?.({ ...wave(1), phase: 'start', at: 1 });
+        onEvent?.({ ...wave(1), phase: 'end', at: 2, durationMs: 1 });
+        onEvent?.({ ...wave(2), phase: 'start', at: 3 });
+        const refused = new a.PassportConnectorError('SponsorRejected', 'budget spent', {
+          retryable: true,
+        });
+        onEvent?.({
+          ...wave(2),
+          phase: 'error',
+          at: 4,
+          durationMs: 1,
+          error: { code: refused.code, message: refused.message },
+        });
+        throw refused;
+      },
+    },
+  };
+  const e = events();
+  await assert.rejects(
+    a.createPassportAccounts(w.ports).createAccount({ userName: 'u', onEvent: e.onEvent }),
+    { code: 'SponsorRejected', step: 'deploy.wave', retryable: true, message: 'budget spent' },
+  );
+  assert.deepEqual(e.trace().slice(4), [
+    'deploy:start',
+    'deploy.wave:start',
+    'deploy.wave:end',
+    'deploy.wave:start',
+    'deploy.wave:error',
+    'deploy:error',
+  ]);
+  assertPaired(e.seen);
+  assert.deepEqual(e.seen.at(-1)?.error, { code: 'SponsorRejected', message: 'budget spent' });
+  assert.equal(e.seen.find((x) => x.step === 'deploy.wave')?.clock, 'service');
+  assert.equal(w.hints.size, 0, 'nothing recorded');
+});
+
+test('an abort between steps stops the flow with Aborted, which is retryable', async () => {
+  const w = portsWorld();
+  const controller = new AbortController();
+  const e = events();
+  await assert.rejects(
+    a.createPassportAccounts(w.ports).createAccount({
+      userName: 'u',
+      signal: controller.signal,
+      onEvent: (/** @type {PassportEvent} */ event) => {
+        e.onEvent(event);
+        if (event.step === 'passkey.prf' && event.phase === 'end') controller.abort();
+      },
+    }),
+    (/** @type {{ code: string; retryable: boolean; step?: string }} */ err) => {
+      assert.ok(err instanceof a.PassportConnectorError);
+      assert.deepEqual([err.code, err.retryable, err.step], ['Aborted', true, undefined]);
+      return true;
+    },
+  );
+  assert.equal(e.trace().at(-1), 'passkey.prf:end', 'the deploy never started');
+  assert.ok(!w.log.some((l) => l[0] === 'deploy'));
+  assertPaired(e.seen);
+
+  // Aborted before the flow starts: no prompt at all.
+  await assert.rejects(
+    a.createPassportAccounts(w.ports).openAccount({ signal: AbortSignal.abort() }),
+    { code: 'Aborted' },
+  );
+  assert.ok(!w.log.some((l) => l[0] === 'get'));
+});
+
+test('an abort during the deploy still records the deployed account, and stops before activation', async () => {
+  const w = portsWorld();
+  const controller = new AbortController();
+  const deploy = w.ports.deployer.deploy;
+  /** @type {unknown} */
+  let signalSeen;
+  w.ports = {
+    ...w.ports,
+    deployer: {
+      async deploy(request) {
+        signalSeen = request.signal;
+        controller.abort(); // too late: this deployer had already submitted
+        return deploy(request);
+      },
+    },
+  };
+  const e = events();
+  await assert.rejects(
+    a.createPassportAccounts(w.ports).createAccount({
+      userName: 'u',
+      signal: controller.signal,
+      onEvent: e.onEvent,
+    }),
+    { code: 'Aborted', retryable: true },
+  );
+  assert.equal(signalSeen, controller.signal, 'the deployer was handed the signal');
+  assert.deepEqual(e.trace().slice(-4), [
+    'deploy:start',
+    'deploy:end',
+    'directory.write:start',
+    'directory.write:end',
+  ]);
+  assert.deepEqual(
+    [...w.hints.values()].map((h) => [h.status, h.salt?.length]),
+    [['deployed', 32]],
+    'the salt is recorded, so openAccount can finish the account',
+  );
+  assert.ok(!w.log.some((l) => l[1] === 'activate_initial_device_with_p256'));
+  const opened = await a.createPassportAccounts(w.ports).openAccount();
+  assert.equal((await opened.state()).booted, true);
+  assert.equal(w.hints.values().next().value?.status, 'active');
+});
+
+test('a failure inside the chain call names the step the chain reported, with the retry flag', async () => {
+  const w = portsWorld();
+  const created = await a.createPassportAccounts(w.ports).createAccount({ userName: 'u' });
+  const chain = typeof w.ports.chain === 'function' ? await w.ports.chain() : w.ports.chain;
+  /** @type {Chain} */
+  const failing = {
+    readAccount: (address) => chain.readAccount(address),
+    async call({ onEvent }) {
+      const base = {
+        id: 'p',
+        flowId: '',
+        step: /** @type {const} */ ('prove'),
+        clock: /** @type {const} */ ('client'),
+      };
+      onEvent?.({ ...base, phase: 'start', at: 1 });
+      onEvent?.({
+        ...base,
+        phase: 'error',
+        at: 2,
+        durationMs: 1,
+        error: { code: 'ProverUnavailable', message: 'busy' },
+      });
+      throw new a.PassportConnectorError('ProverUnavailable', 'busy');
+    },
+  };
+  w.ports = { ...w.ports, chain: failing };
+  const reopened = await a.createPassportAccounts(w.ports).openAccount();
+  assert.equal(reopened.address, created.address);
+  const e = events();
+  await assert.rejects(reopened.rotateEncryptionKey(Uint8Array.of(9), { onEvent: e.onEvent }), {
+    code: 'ProverUnavailable',
+    step: 'prove',
+    retryable: true,
+  });
+  assertPaired(e.seen);
+
+  // A core step that fails names itself; a thrown non-Error is InternalError, not retryable.
+  w.ports = {
+    ...w.ports,
+    authoriser: {
+      ...w.ports.authoriser,
+      authorise: async () => {
+        throw 'pad lost';
+      },
+    },
+  };
+  const signing = events();
+  const again = await a.createPassportAccounts(w.ports).openAccount();
+  await assert.rejects(again.rotateEncryptionKey(Uint8Array.of(9), { onEvent: signing.onEvent }), {
+    code: 'InternalError',
+    step: 'passkey.sign',
+    retryable: false,
+    message: 'pad lost',
+  });
+  assert.deepEqual(signing.seen.at(-1)?.error, { code: 'InternalError', message: 'pad lost' });
+  assertPaired(signing.seen);
+});
+
+test('a listener that throws never fails the flow', async () => {
+  const w = portsWorld();
+  const created = await a.createPassportAccounts(w.ports).createAccount({
+    userName: 'u',
+    onEvent: () => {
+      throw new Error('listener bug');
+    },
+  });
+  assert.equal(typeof created.address, 'string');
+});
+
+test('lace-platform errors arrive under their v1 codes; anything else is InternalError', () => {
+  /** @type {[unknown, string, boolean][]} */
+  const cases = [
+    [{ code: 'ceremony-cancelled', message: 'closed' }, 'UserCancelled', true],
+    [
+      Object.assign(new Error('no prf'), { code: 'prf-unsupported' }),
+      'UnsupportedAuthenticator',
+      false,
+    ],
+    [{ code: 'account-contract-missing' }, 'AccountNotFound', false],
+    [{ code: 'encryption-key-mismatch' }, 'EncryptionKeyMismatch', false],
+    [{ code: 'sponsor-exhausted' }, 'SponsorRejected', false],
+    [{ code: 'proof-server' }, 'ProverUnavailable', true],
+    [
+      Object.assign(new Error('other'), { name: 'PasskeyCredentialMismatchError' }),
+      'WrongPasskey',
+      true,
+    ],
+    [{ code: 'some-new-lace-code' }, 'InternalError', false],
+    [Object.assign(new Error('refused'), { code: 'ECONNREFUSED' }), 'InternalError', false],
+    [{ code: 'UserCancelled' }, 'InternalError', false],
+  ];
+  for (const [thrown, code, retryable] of cases) {
+    const e = a.toPassportError(thrown, 'prove');
+    assert.deepEqual([e.code, e.retryable, e.step, e.cause], [code, retryable, 'prove', thrown]);
+  }
+  assert.equal(
+    a.toPassportError({ code: 'ceremony-cancelled', message: 'closed' }).message,
+    'closed',
+  );
 });

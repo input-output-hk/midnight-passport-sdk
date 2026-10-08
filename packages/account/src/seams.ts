@@ -1,4 +1,4 @@
-import type { PassportTxResult } from '@midnight-ntwrk/mn-passport-protocol';
+import type { FlowOptions, PassportTxResult } from '@midnight-ntwrk/mn-passport-protocol';
 
 export interface P256PublicKey {
   readonly x: bigint;
@@ -76,7 +76,13 @@ export interface ChainSeam {
     args: ConstructorArgs,
   ): Promise<{ readonly address: string; readonly txHashes: readonly string[] }>;
   readLedger(address: string): Promise<AccLedgerView | undefined>;
-  call(address: string, circuit: MvpCircuit, args: readonly unknown[]): Promise<PassportTxResult>;
+  /** `options` carries the flow's signal and `onEvent`, for the steps the call reports itself. */
+  call(
+    address: string,
+    circuit: MvpCircuit,
+    args: readonly unknown[],
+    options?: FlowOptions,
+  ): Promise<PassportTxResult>;
 }
 
 type ContractAddressArg = { readonly bytes: Uint8Array };
