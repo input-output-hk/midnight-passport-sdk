@@ -16,11 +16,10 @@ import {
   PassportConnectorError,
   fromHex,
   toHex,
-  type AccLedgerView,
-  type AccPureCircuits,
   type ChainSeam,
   type FetchLike,
 } from '@midnight-ntwrk/mn-passport-account';
+import type { AccLedgerView, AccPureCircuits } from '@midnight-ntwrk/mn-passport-account/ports';
 import { Transaction } from '@midnightntwrk/ledger-v9';
 import { DEFAULT_PROVE_TIMEOUT_MS } from './delegated-proving.js';
 import {

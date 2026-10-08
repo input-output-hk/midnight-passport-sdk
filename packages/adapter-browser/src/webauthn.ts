@@ -1,12 +1,12 @@
 // Ported from the planning workspace's contract/src/wallet/webauthn.ts at
 // revision 45721e1 (Apache-2.0): profile wa-json134 helpers, unchanged.
 // Differences: `?? 0` / `?? -1` guards for noUncheckedIndexedAccess (behaviour identical);
-// the policy and key types come from the account seams instead of being redeclared, so they
+// the policy and key types come from the account ports instead of being redeclared, so they
 // cannot drift; the two decode helpers are exported for passkey.ts.
 // Browser-compatible transport and strict adapter for profile wa-json134.
 // Client validation gives useful errors; the circuit independently rebuilds
 // these signed bytes and checks RP, flags, challenge and the enrolled origin.
-import type { P256PublicKey, WebAuthnPolicy } from '@midnight-ntwrk/mn-passport-account';
+import type { P256PublicKey, WebAuthnPolicy } from '@midnight-ntwrk/mn-passport-account/ports';
 import { p256 } from '@noble/curves/nist.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 

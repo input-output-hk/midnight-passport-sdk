@@ -8,14 +8,30 @@
 // and `connect` — architecture §4.4) must not import Node built-ins; only
 // adapters may be platform-specific. The manifest-level twin lives in
 // tests/dependency-rules.test.mjs; both consume scripts/dependency-graph.mjs.
+// Design §1.2: an adapter imports `account/ports`, never the account root, and
+// only the Midnight entry points import a Midnight package statically (D-6).
+// Arguments, for tests: a repository root, and a JSON file of the graph.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
-import { ALLOWED, SCOPE } from './dependency-graph.mjs';
+import { join, relative, sep } from 'node:path';
+import {
+  ACCOUNT_PORTS,
+  ALLOWED,
+  COMPOSITION_ROOTS,
+  MIDNIGHT_ENTRY_POINTS,
+  SCOPE,
+} from './dependency-graph.mjs';
+
+const [root = '.', graphFile] = process.argv.slice(2);
+/** @type {Record<string, string[]>} */
+const graph = graphFile ? JSON.parse(readFileSync(graphFile, 'utf8')) : ALLOWED;
 
 // Matches static imports, re-exports, side-effect imports, require(), and
 // dynamic import() — with ', ", or ` around the specifier.
 const IMPORT_RE =
-  /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"`](@midnight-ntwrk\/mn-passport-[^'"`/]+)/g;
+  /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"`](@midnight-ntwrk\/mn-passport-[^'"`/]+)(\/[^'"`]*)?/g;
+// A statement that survives compilation: not `import type`, not `import()`.
+const STATIC_MIDNIGHT_RE =
+  /^\s*(?:import|export)\s+(?!type\s)(?:[^'"`;]*?\sfrom\s*)?['"]((?:@midnight-ntwrk\/(?!mn-passport-)|@midnightntwrk\/)[^'"]+)['"]/gm;
 const NODE_BUILTIN_RE = /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"`](node:[^'"`]+)/g;
 const PLATFORM_NEUTRAL = new Set(['protocol', 'contract', 'core', 'connect', 'account']);
 // Ambient global declarations bypass import scanning, so they are gated by
@@ -37,11 +53,11 @@ function sourceFiles(dir) {
 
 /** @type {string[]} */
 const violations = [];
-for (const [pkg, allowed] of Object.entries(ALLOWED)) {
+for (const [pkg, allowed] of Object.entries(graph)) {
   const allowedNames = new Set(allowed.map((d) => SCOPE + d));
   let files;
   try {
-    files = sourceFiles(join('packages', pkg, 'src'));
+    files = sourceFiles(join(root, 'packages', pkg, 'src'));
   } catch {
     continue; // The package is not scaffolded yet — nothing to lint.
   }
@@ -49,8 +65,22 @@ for (const [pkg, allowed] of Object.entries(ALLOWED)) {
     const text = readFileSync(file, 'utf8');
     for (const match of text.matchAll(IMPORT_RE)) {
       const target = match[1] ?? '';
+      const spec = target.slice(SCOPE.length) + (match[2] ?? '');
       if (!allowedNames.has(target)) {
         violations.push(`${file}: "${pkg}" must not import "${target}" (architecture §4.4).`);
+      } else if (
+        pkg.startsWith('adapter-') &&
+        target === `${SCOPE}account` &&
+        spec !== ACCOUNT_PORTS &&
+        !COMPOSITION_ROOTS.includes(pkg)
+      ) {
+        violations.push(`${file}: "${pkg}" must import "${SCOPE}${ACCOUNT_PORTS}" (design §1.2).`);
+      }
+    }
+    const path = relative(root, file).split(sep).join('/');
+    if (!MIDNIGHT_ENTRY_POINTS.some((entry) => path.startsWith(entry))) {
+      for (const match of text.matchAll(STATIC_MIDNIGHT_RE)) {
+        violations.push(`${file}: "${pkg}" must reach "${match[1]}" through import() (D-6).`);
       }
     }
     if (PLATFORM_NEUTRAL.has(pkg)) {
@@ -75,4 +105,4 @@ if (violations.length > 0) {
   for (const v of violations) console.error(`Boundary violation — ${v}`);
   process.exit(1);
 }
-console.log('Dependency boundaries respected (architecture §4.4).');
+console.log('Dependency boundaries respected (architecture §4.4, design §1.2).');
