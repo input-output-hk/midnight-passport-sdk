@@ -1,5 +1,5 @@
 import {
-  PASSPORT_CONNECTOR_VERSION,
+  PASSPORT_API_VERSION,
   type CreateAccountStep,
   type FlowOptions,
   type PassportAccount,
@@ -212,6 +212,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     address: record.address,
     networkId,
     bindingId: network.bindingId,
+    scheme: record.scheme,
     // A copy: the caller may not alter the id the account's own ceremonies are pinned to.
     credentialId: record.credentialId.slice(),
     async state() {
@@ -269,12 +270,17 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
   });
 
   return {
-    apiVersion: PASSPORT_CONNECTOR_VERSION,
+    apiVersion: PASSPORT_API_VERSION,
     networkId,
-    createAccount: ({ userName, onProgress, ...options }) =>
+    bindingId: network.bindingId,
+    createAccount: ({ userName, retireAuthority, onProgress, ...options }) =>
       run(
         options,
         async (flow) => {
+          if (typeof retireAuthority !== 'boolean') {
+            // Irreversible, so the caller decides, with no default (D-11); before any prompt.
+            throw new PassportConnectorError('InternalError', 'retireAuthority must be a boolean.');
+          }
           const { credentialId, publicKey, device } = await flow.step(
             'passkey.create',
             async () => {
@@ -295,9 +301,8 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           );
           // A deployer honours `signal` only before it submits anything: an account it deployed is
           // always returned, and recorded below, so its salt is never lost.
-          // The prototype's service always retires the authority; T3b takes it from the caller (D-11).
           const { address } = await flow.step('deploy', () =>
-            ports.deployer.deploy({ boot, encKey, retireAuthority: true, ...flow.ports }),
+            ports.deployer.deploy({ boot, encKey, retireAuthority, ...flow.ports }),
           );
           const deployed: P256Hint = {
             scheme: 'p256-webauthn',

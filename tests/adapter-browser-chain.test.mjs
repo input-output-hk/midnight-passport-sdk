@@ -315,16 +315,26 @@ function chainOver(fetchFn, indexer = { queryContractState: async () => null }, 
   });
 }
 
-test('deploy posts the constructor arguments as hex and returns the address and hashes', async () => {
+test("deploy posts the constructor arguments as hex, and the caller's retireAuthority", async () => {
   const f = recordingFetch({
     '/deploy': { status: 200, body: { address: 'ff00', txHashes: ['t1', 't2'] } },
   });
-  const out = await chainOver(f.fn).deploy({
-    boot: new Uint8Array(32).fill(1),
-    encKey: new Uint8Array(32).fill(2),
-  });
-  assert.deepEqual(out, { address: 'ff00', txHashes: ['t1', 't2'] });
-  assert.deepEqual(bodyOf(f.calls[0]), { boot: '01'.repeat(32), encKey: '02'.repeat(32) });
+  for (const retireAuthority of [true, false]) {
+    const out = await chainOver(f.fn).deploy({
+      boot: new Uint8Array(32).fill(1),
+      encKey: new Uint8Array(32).fill(2),
+      retireAuthority,
+    });
+    assert.deepEqual(out, { address: 'ff00', txHashes: ['t1', 't2'] });
+  }
+  assert.deepEqual(
+    f.calls.map((c) => bodyOf(c)),
+    [true, false].map((retireAuthority) => ({
+      boot: '01'.repeat(32),
+      encKey: '02'.repeat(32),
+      retireAuthority,
+    })),
+  );
   assert.equal(f.calls[0]?.url, 'http://svc/deploy');
 });
 
@@ -377,9 +387,12 @@ test('readLedger projects the on-chain state through the generated ledger, and i
 test('the shim installs a descriptor under window.midnight.passport without clobbering others', () => {
   /** @type {{ midnight?: Record<string, unknown> }} */
   const target = { midnight: { devwallet: { name: 'dev' } } };
+  /** @type {import('../packages/protocol/dist/index.js').PassportConnectorDescriptor} */
   const descriptor = {
+    rdns: 'network.midnight.passport.prototype',
     name: 'Midnight Passport (prototype)',
-    apiVersion: /** @type {const} */ ('0.1.0-prototype'),
+    apiVersion: '1.0.0-pre.0',
+    bindings: ['acc-45721e1'],
     connect: async () => {
       throw new Error('not used');
     },

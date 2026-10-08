@@ -28,7 +28,11 @@ function portsWorld() {
   const publicKey = { x: 11n, y: 13n, identity: false };
   /** @type {WebAuthnPolicy} */
   const policy = { rp_id_hash: new Uint8Array(32), origin: enc('http://localhost:5173') };
-  const ledger = { booted: false, authNonce: 0n, entries: new Set(/** @type {string[]} */ ([])) };
+  const ledger = {
+    booted: false,
+    authNonce: 0n,
+    entries: new Set(/** @type {string[]} */ ([])),
+  };
   /** @type {Map<string, AccountHint>} */
   const hints = new Map();
   /** @type {unknown[][]} */
@@ -158,7 +162,7 @@ test('createPassportAccounts runs create, rotate and open over plain ports, load
   const w = portsWorld();
   const accounts = a.createPassportAccounts(w.ports);
   assert.equal(accounts.networkId, 'undeployed');
-  const created = await accounts.createAccount({ userName: 'u' });
+  const created = await accounts.createAccount({ userName: 'u', retireAuthority: true });
   assert.equal(created.bindingId, 'acc-test');
   assert.deepEqual(created.credentialId, w.credentialId);
   await created.rotateEncryptionKey(Uint8Array.of(1));
@@ -206,7 +210,7 @@ test('createPassportAccounts refuses an arm this release cannot drive, before an
 
 test('a directory hint of another arm does not belong to the picked passkey', async () => {
   const w = portsWorld();
-  await a.createPassportAccounts(w.ports).createAccount({ userName: 'u' });
+  await a.createPassportAccounts(w.ports).createAccount({ userName: 'u', retireAuthority: true });
   const [key, hint] = [...w.hints][0] ?? [];
   w.hints.set(/** @type {string} */ (key), {
     .../** @type {AccountHint} */ (hint),
@@ -229,7 +233,9 @@ test('a failed lazy load is retried on the next use', async () => {
       return typeof load === 'function' ? load() : load;
     },
   });
-  await assert.rejects(accounts.createAccount({ userName: 'u' }), { message: /chunk failed/ });
+  await assert.rejects(accounts.createAccount({ userName: 'u', retireAuthority: true }), {
+    message: /chunk failed/,
+  });
   // The deploy ran before the chain was needed; a retry of the flow loads the chain again.
   const opened = await accounts.openAccount();
   assert.equal((await opened.state()).booted, true);
@@ -291,6 +297,7 @@ test('create, rotate and open each report their steps, every start paired with i
   const progress = [];
   const created = await a.createPassportAccounts(w.ports).createAccount({
     userName: 'u',
+    retireAuthority: true,
     onEvent: create.onEvent,
     onProgress: (/** @type {string} */ s) => progress.push(s),
   });
@@ -375,7 +382,9 @@ test('an error mid-deploy ends the deploy step with its error, names the wave an
   };
   const e = events();
   await assert.rejects(
-    a.createPassportAccounts(w.ports).createAccount({ userName: 'u', onEvent: e.onEvent }),
+    a
+      .createPassportAccounts(w.ports)
+      .createAccount({ userName: 'u', retireAuthority: true, onEvent: e.onEvent }),
     { code: 'SponsorRejected', step: 'deploy.wave', retryable: true, message: 'budget spent' },
   );
   assert.deepEqual(e.trace().slice(4), [
@@ -399,6 +408,7 @@ test('an abort between steps stops the flow with Aborted, which is retryable', a
   await assert.rejects(
     a.createPassportAccounts(w.ports).createAccount({
       userName: 'u',
+      retireAuthority: true,
       signal: controller.signal,
       onEvent: (/** @type {PassportEvent} */ event) => {
         e.onEvent(event);
@@ -443,6 +453,7 @@ test('an abort during the deploy still records the deployed account, and stops b
   await assert.rejects(
     a.createPassportAccounts(w.ports).createAccount({
       userName: 'u',
+      retireAuthority: true,
       signal: controller.signal,
       onEvent: e.onEvent,
     }),
@@ -468,7 +479,9 @@ test('an abort during the deploy still records the deployed account, and stops b
 
 test('a failure inside the chain call names the step the chain reported, with the retry flag', async () => {
   const w = portsWorld();
-  const created = await a.createPassportAccounts(w.ports).createAccount({ userName: 'u' });
+  const created = await a
+    .createPassportAccounts(w.ports)
+    .createAccount({ userName: 'u', retireAuthority: true });
   const chain = typeof w.ports.chain === 'function' ? await w.ports.chain() : w.ports.chain;
   /** @type {Chain} */
   const failing = {
@@ -528,6 +541,7 @@ test('a listener that throws never fails the flow', async () => {
   const w = portsWorld();
   const created = await a.createPassportAccounts(w.ports).createAccount({
     userName: 'u',
+    retireAuthority: true,
     onEvent: () => {
       throw new Error('listener bug');
     },
@@ -565,4 +579,36 @@ test('lace-platform errors arrive under their v1 codes; anything else is Interna
     a.toPassportError({ code: 'ceremony-cancelled', message: 'closed' }).message,
     'closed',
   );
+});
+
+// ---- The account API v1: retireAuthority from the caller
+
+test('the account API v1: its version and binding, and the account names its arm', async () => {
+  const w = portsWorld();
+  const accounts = a.createPassportAccounts(w.ports);
+  assert.deepEqual(
+    [accounts.apiVersion, accounts.networkId, accounts.bindingId],
+    ['1.0.0-pre.0', 'undeployed', 'acc-test'],
+  );
+  const created = await accounts.createAccount({ userName: 'u', retireAuthority: true });
+  assert.equal(created.scheme, 'p256-webauthn');
+});
+
+test('retireAuthority reaches the deployer as the caller chose it, and is never defaulted', async () => {
+  for (const retireAuthority of [false, true]) {
+    const w = portsWorld();
+    await a.createPassportAccounts(w.ports).createAccount({ userName: 'u', retireAuthority });
+    assert.deepEqual(w.log.find((l) => l[0] === 'deploy')?.slice(0, 2), [
+      'deploy',
+      retireAuthority,
+    ]);
+  }
+  const w = portsWorld();
+  for (const retireAuthority of [undefined, 'yes', 1]) {
+    await assert.rejects(
+      a.createPassportAccounts(w.ports).createAccount({ userName: 'u', retireAuthority }),
+      { code: 'InternalError', message: /retireAuthority must be a boolean/ },
+    );
+  }
+  assert.equal(w.log.length, 0, 'refused before any prompt');
 });

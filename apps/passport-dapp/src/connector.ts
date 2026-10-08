@@ -1,4 +1,8 @@
-import { createPassportConnector, createRegistryClient } from '@midnight-ntwrk/mn-passport-account';
+import {
+  createPassportAccounts,
+  createRegistryClient,
+  portsFromSeams,
+} from '@midnight-ntwrk/mn-passport-account';
 import {
   accEncryptionKeyFromPasskey,
   browserPasskey,
@@ -8,7 +12,7 @@ import {
   injectPassportConnector,
 } from '@midnight-ntwrk/mn-passport-adapter-browser';
 import {
-  PASSPORT_CONNECTOR_VERSION,
+  PASSPORT_API_VERSION,
   type PassportConnectorAPI,
 } from '@midnight-ntwrk/mn-passport-protocol';
 import { accModule } from './acc-module.js';
@@ -22,43 +26,50 @@ export const MANIFEST_SHA256 = __PASSPORT_MANIFEST_SHA256__;
  */
 export const NETWORK_ID = __PASSPORT_NETWORK_ID__;
 export const RP_ID = 'localhost';
+/** The binding the prototype deploys: the artefact build the manifest pin above names. */
+export const BINDING_ID = 'acc-45721e1';
 const ORIGIN = 'http://localhost:5173';
 
 export async function connect(networkId: string): Promise<PassportConnectorAPI> {
   const config = await fetchServiceConfig(SERVICE_URL, defaultFetch, networkId);
-  return createPassportConnector({
-    networkId,
-    bindingId: config.bindingId,
-    pureCircuits: accModule.pureCircuits,
-    passkey: browserPasskey({ rpId: RP_ID, origin: ORIGIN }),
-    chain: createServiceChain({
-      serviceUrl: SERVICE_URL,
-      config,
-      expectedManifestSha256: MANIFEST_SHA256,
-      module: accModule,
-    }),
-    registry: createRegistryClient(SERVICE_URL, defaultFetch),
-    random: (n) => crypto.getRandomValues(new Uint8Array(n)),
-    // Lace recipe v1: the passkey's PRF root -> BIP-39 seed -> MIP-0015 at
-    // 'lace-passport:acc-enc:v1', context '<networkId>/0'. Network-bound and reproducible from the
-    // passkey. `created` takes the PRF outputs the provider returned at creation, once, when it
-    // returned them (no prompt); otherwise this is one more, pinned PRF prompt. No PRF means no
-    // account (UnsupportedAuthenticator).
-    encryptionKey: (credential) =>
-      accEncryptionKeyFromPasskey({
-        credentialId: credential.credentialId,
-        created: credential,
-        rpId: RP_ID,
-        networkId,
+  // The account API v1 over the prototype's seams.
+  return createPassportAccounts(
+    portsFromSeams({
+      networkId,
+      bindingId: config.bindingId,
+      pureCircuits: accModule.pureCircuits,
+      passkey: browserPasskey({ rpId: RP_ID, origin: ORIGIN }),
+      chain: createServiceChain({
+        serviceUrl: SERVICE_URL,
+        config,
+        expectedManifestSha256: MANIFEST_SHA256,
+        module: accModule,
       }),
-  });
+      registry: createRegistryClient(SERVICE_URL, defaultFetch),
+      random: (n) => crypto.getRandomValues(new Uint8Array(n)),
+      // Lace recipe v1: the passkey's PRF root -> BIP-39 seed -> MIP-0015 at
+      // 'lace-passport:acc-enc:v1', context '<networkId>/0'. Network-bound and reproducible from the
+      // passkey. `created` takes the PRF outputs the provider returned at creation, once, when it
+      // returned them (no prompt); otherwise this is one more, pinned PRF prompt. No PRF means no
+      // account (UnsupportedAuthenticator).
+      encryptionKey: (credential) =>
+        accEncryptionKeyFromPasskey({
+          credentialId: credential.credentialId,
+          created: credential,
+          rpId: RP_ID,
+          networkId,
+        }),
+    }),
+  );
 }
 
 /** What lace-sdk would inject; the harness discovers it like any dApp would. */
 export function installShim(): void {
   injectPassportConnector(window as unknown as { midnight?: Record<string, unknown> }, {
+    rdns: 'network.midnight.passport.prototype',
     name: 'Midnight Passport (prototype)',
-    apiVersion: PASSPORT_CONNECTOR_VERSION,
+    apiVersion: PASSPORT_API_VERSION,
+    bindings: [BINDING_ID],
     connect,
   });
 }

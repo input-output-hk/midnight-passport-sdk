@@ -120,7 +120,7 @@ test('the deprecated prototype names still resolve to the same values', () => {
 
 // The rest is checked by the compiler (checkJs): the shapes accept what the design says they do.
 
-test('the v1 shapes type-check against design-shaped values', () => {
+test('the v1 shapes type-check against design-shaped values', async () => {
   /** @type {import('../packages/protocol/dist/index.js').AbortSignalLike} */
   const signal = new AbortController().signal;
   /** @type {import('../packages/protocol/dist/index.js').PassportEvent[]} */
@@ -156,6 +156,42 @@ test('the v1 shapes type-check against design-shaped values', () => {
   );
   /** @type {import('../packages/protocol/dist/index.js').CreateAccountStep} */
   const prototypeStep = 'deploying';
+  // The plain names are the v1 shapes; the V1 names are their aliases.
+  /** @type {import('../packages/protocol/dist/index.js').CreateAccountOptions} */
+  const plain = options;
+  /** @type {import('../packages/protocol/dist/index.js').PassportAccount} */
+  const account = {
+    address: 'ab',
+    networkId: 'undeployed',
+    bindingId: 'acc-45721e1',
+    scheme: 'p256-webauthn',
+    state: async () => ({
+      booted: true,
+      authNonce: 0n,
+      deviceEpoch: 0n,
+      entryCount: 1,
+      specVersion: 2,
+    }),
+    rotateEncryptionKey: async () => ({ txHash: 't' }),
+  };
+  /** @type {import('../packages/protocol/dist/index.js').PassportConnectorAPIV1} */
+  const api = {
+    apiVersion: p.PASSPORT_API_VERSION,
+    networkId: 'undeployed',
+    bindingId: 'acc-45721e1',
+    createAccount: async () => account,
+    openAccount: async () => account,
+  };
+  /** @type {import('../packages/protocol/dist/index.js').PassportConnectorDescriptor} */
+  const descriptor = {
+    rdns: 'io.lace.passport',
+    name: 'Lace',
+    apiVersion: p.PASSPORT_API_VERSION,
+    bindings: ['acc-45721e1'],
+    connect: async () => api,
+  };
+  assert.equal(plain.retireAuthority, true);
+  assert.equal((await descriptor.connect('undeployed')).bindingId, 'acc-45721e1');
   assert.equal(job.events[0]?.step, 'deploy.wave');
   assert.equal(error.code, 'Aborted');
   assert.equal(prototypeStep, 'deploying');

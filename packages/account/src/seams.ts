@@ -65,6 +65,8 @@ export interface AccLedgerView {
 export interface ConstructorArgs {
   readonly boot: Uint8Array;
   readonly encKey: Uint8Array;
+  /** Retire the maintenance authority after the waves; the caller's choice (D-11). */
+  readonly retireAuthority: boolean;
 }
 export type MvpCircuit = 'activate_initial_device_with_p256' | 'rotate_enc_key_with_p256';
 export interface ChainSeam {

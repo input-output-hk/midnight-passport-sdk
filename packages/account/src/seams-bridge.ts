@@ -1,4 +1,9 @@
-import type { PassportConnectorAPI } from '@midnight-ntwrk/mn-passport-protocol';
+import {
+  PASSPORT_CONNECTOR_VERSION,
+  type PassportAccount,
+  type PassportAccountPrototype,
+  type PassportConnectorAPIPrototype,
+} from '@midnight-ntwrk/mn-passport-protocol';
 import { toHex } from './codec.js';
 import { createPassportAccounts } from './connector.js';
 import { PassportConnectorError } from './errors.js';
@@ -89,8 +94,8 @@ export function portsFromSeams(seams: PassportSeams): PassportPorts {
       readAccount: (address) => seams.chain.readLedger(address),
     } satisfies Chain,
     deployer: {
-      async deploy({ boot, encKey }) {
-        const { address, txHashes } = await seams.chain.deploy({ boot, encKey });
+      async deploy({ boot, encKey, retireAuthority }) {
+        const { address, txHashes } = await seams.chain.deploy({ boot, encKey, retireAuthority });
         return { address, txIds: txHashes };
       },
     },
@@ -110,9 +115,22 @@ export function portsFromSeams(seams: PassportSeams): PassportPorts {
 }
 
 /**
- * @deprecated since 1.0.0: use `createPassportAccounts(ports)`. The prototype's seams, mapped onto
- * the ports by {@link portsFromSeams}. Removed in 2.0.0.
+ * @deprecated since 1.0.0: use `createPassportAccounts(portsFromSeams(seams))`, the account API
+ * v1. The prototype's API over the same flows; its accounts always retire the maintenance
+ * authority, as the prototype's service did. Removed in 2.0.0.
  */
-export function createPassportConnector(seams: PassportSeams): PassportConnectorAPI {
-  return createPassportAccounts(portsFromSeams(seams));
+export function createPassportConnector(seams: PassportSeams): PassportConnectorAPIPrototype {
+  const accounts = createPassportAccounts(portsFromSeams(seams));
+  // The bridge drives the P-256 arm only, whose accounts always name their credential.
+  const prototype = (account: PassportAccount): PassportAccountPrototype => ({
+    ...account,
+    credentialId: account.credentialId ?? new Uint8Array(),
+  });
+  return {
+    apiVersion: PASSPORT_CONNECTOR_VERSION,
+    networkId: accounts.networkId,
+    createAccount: async (options) =>
+      prototype(await accounts.createAccount({ ...options, retireAuthority: true })),
+    openAccount: async (options) => prototype(await accounts.openAccount(options)),
+  };
 }

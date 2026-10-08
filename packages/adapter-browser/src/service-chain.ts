@@ -253,7 +253,11 @@ export function createServiceChain(opts: {
         fetchFn,
         serviceUrl,
         '/deploy',
-        { boot: toHex(args.boot), encKey: toHex(args.encKey) },
+        {
+          boot: toHex(args.boot),
+          encKey: toHex(args.encKey),
+          retireAuthority: args.retireAuthority,
+        },
         'sponsor',
       );
       const hashes = answer.txHashes;

@@ -1,7 +1,8 @@
 // End-to-end MVP on the localnet: create -> rotate #1 -> reopen -> rotate #2.
 //
-// It drives the real connector in Node with three seams: a software P-256 passkey, the
+// It drives the account API v1 in Node over three seams: a software P-256 passkey, the
 // service-backed chain, and the HTTP registry client against a running apps/passport-service.
+// Every progress event is kept, and every step that starts must end.
 // Run it through `pnpm prototype:e2e` (see the task report for the environment it needs), which
 // first syncs the generated module into src/acc/generated, where it shares midnight-js's
 // compact-runtime (scripts/sync-acc.mjs explains why).
@@ -10,11 +11,13 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  createPassportConnector,
+  createPassportAccounts,
   createRegistryClient,
+  portsFromSeams,
   type ChainSeam,
   type PassportSeams,
 } from '@midnight-ntwrk/mn-passport-account';
+import type { PassportEvent } from '@midnight-ntwrk/mn-passport-protocol';
 import {
   accEncryptionKey,
   createServiceChain,
@@ -93,8 +96,8 @@ const chain: ChainSeam = {
     deploySubmissionIds = result.txHashes;
     return result;
   },
-  async call(address, circuit, args) {
-    const result = await serviceChain.call(address, circuit, args);
+  async call(address, circuit, args, options) {
+    const result = await serviceChain.call(address, circuit, args, options);
     transactions.push({ circuit, ...result });
     return result;
   },
@@ -123,28 +126,51 @@ const seams: PassportSeams = {
   encryptionKey,
 };
 
-const connector = createPassportConnector(seams);
+const events: PassportEvent[] = [];
+const onEvent = (event: PassportEvent): void => {
+  events.push(event);
+  if (event.phase !== 'start')
+    console.log(`  ${event.phase} ${event.step}`, event.durationMs, 'ms');
+};
+const connector = createPassportAccounts(portsFromSeams(seams));
 const started = Date.now();
 last = started;
 
-const account = await connector.createAccount({
-  userName: 'e2e',
-  onProgress: (stage) => step(`create:${stage}`),
-});
+const account = await connector.createAccount({ userName: 'e2e', retireAuthority: true, onEvent });
 const created = await account.state();
 if (!created.booted) fail('the account is not booted after createAccount');
 step('created', { address: account.address, state: created });
 
 // Rotation targets stay random: Lace has no rotation recipe yet (a prototype extension).
-const r1 = await account.rotateEncryptionKey(new Uint8Array(randomBytes(32)));
+const r1 = await account.rotateEncryptionKey(new Uint8Array(randomBytes(32)), { onEvent });
 step('rotate #1 (passkey-signed, k = 18)', { ...r1, state: await account.state() });
 
-const reopened = await createPassportConnector(seams).openAccount();
+const reopened = await createPassportAccounts(portsFromSeams(seams)).openAccount({ onEvent });
 if (reopened.address !== account.address) fail('reopen returned a different account');
 step('reopened after "reload"', { address: reopened.address });
 
-const r2 = await reopened.rotateEncryptionKey(new Uint8Array(randomBytes(32)));
+const r2 = await reopened.rotateEncryptionKey(new Uint8Array(randomBytes(32)), { onEvent });
 step('rotate #2 after reopen (rescanned counter)', { ...r2, state: await reopened.state() });
+
+// Design §3.4: every start has exactly one end with the same id, in the same flow.
+for (const start of events.filter((e) => e.phase === 'start')) {
+  const ends = events.filter(
+    (e) => e.flowId === start.flowId && e.id === start.id && e.phase !== 'start',
+  );
+  if (ends.length !== 1 || ends[0]?.phase !== 'end') {
+    fail(`the ${start.step} step (${start.id}) did not end exactly once`);
+  }
+}
+for (const s of [
+  'deploy',
+  'activate',
+  'passkey.sign',
+  'prove',
+  'sponsor.submit',
+  'chain.finality',
+]) {
+  if (!events.some((e) => e.step === s)) fail(`no ${s} event was reported`);
+}
 
 const seconds = Math.round((Date.now() - started) / 1000);
 const compactRuntime = (
@@ -164,6 +190,7 @@ const evidence = {
   deploySubmissionIds,
   transactions,
   steps,
+  events,
   seconds,
   versions: {
     node: process.version,

@@ -70,6 +70,9 @@ ui.on('create', async () => {
     await connector()
   ).createAccount({
     userName: `passport-${Date.now()}`,
+    // The prototype has always retired the maintenance authority: irreversible, so the account
+    // can never be upgraded. The account API makes that the caller's explicit choice.
+    retireAuthority: true,
     onProgress: (s) => {
       const next = CREATE_STEP_STAGE[s];
       if (next === null) note(s);

@@ -1,5 +1,5 @@
 // The prototype's "DApp Connector API" (prototype spec §4.1), version 0.1.0-prototype. The account
-// connector and the demo still implement it; the account API v1 (api.ts) replaces it (D-8).
+// API v1 (api.ts) replaces it (D-8); only the deprecated `createPassportConnector` still serves it.
 import type { FlowOptions, PassportAccountState, PassportTxResult } from './api.js';
 import type { CreateAccountStep } from './events.js';
 
@@ -9,14 +9,14 @@ import type { CreateAccountStep } from './events.js';
  */
 export const PASSPORT_CONNECTOR_VERSION = '0.1.0-prototype';
 
-/** @deprecated since 1.0.0: use `CreateAccountOptionsV1`, whose shape this name takes. */
-export interface CreateAccountOptions extends FlowOptions {
+/** @deprecated since 1.0.0: use `CreateAccountOptions`. Removed in 2.0.0. */
+export interface CreateAccountOptionsPrototype extends FlowOptions {
   readonly userName: string;
   readonly onProgress?: (step: CreateAccountStep) => void;
 }
 
-/** @deprecated since 1.0.0: use `PassportAccountV1`, whose shape this name takes. */
-export interface PassportAccount {
+/** @deprecated since 1.0.0: use `PassportAccount`. Removed in 2.0.0. */
+export interface PassportAccountPrototype {
   readonly address: string;
   readonly networkId: string;
   /** The artefact build the account was deployed from, e.g. 'acc-45721e1'. */
@@ -31,17 +31,10 @@ export interface PassportAccount {
   rotateEncryptionKey(newKey: Uint8Array, options?: FlowOptions): Promise<PassportTxResult>;
 }
 
-/** @deprecated since 1.0.0: use `PassportConnectorAPIV1`, whose shape this name takes. */
-export interface PassportConnectorAPI {
+/** @deprecated since 1.0.0: use `PassportConnectorAPI`. Removed in 2.0.0. */
+export interface PassportConnectorAPIPrototype {
   readonly apiVersion: typeof PASSPORT_CONNECTOR_VERSION;
   readonly networkId: string;
-  createAccount(options: CreateAccountOptions): Promise<PassportAccount>;
-  openAccount(options?: FlowOptions): Promise<PassportAccount>;
-}
-
-/** @deprecated since 1.0.0: use `PassportConnectorDescriptorV1`, whose shape this name takes. */
-export interface PassportConnectorDescriptor {
-  readonly name: string;
-  readonly apiVersion: typeof PASSPORT_CONNECTOR_VERSION;
-  connect(networkId: string): Promise<PassportConnectorAPI>;
+  createAccount(options: CreateAccountOptionsPrototype): Promise<PassportAccountPrototype>;
+  openAccount(options?: FlowOptions): Promise<PassportAccountPrototype>;
 }

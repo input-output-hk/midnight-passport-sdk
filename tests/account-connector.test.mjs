@@ -58,9 +58,9 @@ function world({
   let failNext = failActivationOnce;
   let failPutNext = failActiveRegistryPutOnce;
   const chain = {
-    /** @param {{ boot: Uint8Array; encKey: Uint8Array }} args */
+    /** @param {{ boot: Uint8Array; encKey: Uint8Array; retireAuthority: boolean }} args */
     async deploy(args) {
-      log.push(['deploy', args.boot, args.encKey]);
+      log.push(['deploy', args.boot, args.encKey, args.retireAuthority]);
       ledgers.set(ADDRESS, ledger);
       return { address: ADDRESS, txHashes: ['t0'] };
     },
@@ -201,6 +201,8 @@ test('createAccount deploys, activates, records, and reports progress in order',
     .createAccount({ userName: 'u', onProgress: (/** @type {string} */ s) => steps.push(s) });
   assert.deepEqual(steps, ['passkey-created', 'deploying', 'deployed', 'activating', 'active']);
   assert.equal(account.address, ADDRESS);
+  assert.equal(w.log.find((l) => l[0] === 'deploy')?.[3], true, 'the prototype path retires');
+  assert.equal(account.credentialId.length, 1, 'a prototype account always names its credential');
   assert.equal(/** @type {Rec} */ ([...w.registry.values()][0]).status, 'active');
   assert.equal((await account.state()).booted, true);
 });

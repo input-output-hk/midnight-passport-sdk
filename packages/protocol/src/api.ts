@@ -1,6 +1,5 @@
-// The account API v1 (design §3.1, §3.2), the account owner's surface (D-8). The shapes carry a
-// `V1` suffix while the account connector implements the prototype's (connector.ts); when it
-// implements v1, the unsuffixed names take these shapes.
+// The account API v1 (design §3.1, §3.2), the account owner's surface (D-8). The prototype called
+// it the "DApp Connector API"; its shapes remain as deprecated `…Prototype` types (connector.ts).
 import type { CreateAccountStep, PassportEvent } from './events.js';
 
 export const PASSPORT_NETWORK_UNDEPLOYED = 'undeployed';
@@ -22,7 +21,7 @@ export interface FlowOptions {
   readonly onEvent?: (event: PassportEvent) => void;
 }
 
-export interface CreateAccountOptionsV1 extends FlowOptions {
+export interface CreateAccountOptions extends FlowOptions {
   readonly userName: string;
   /** Retire the maintenance authority at deploy. Irreversible, so required, with no default (D-11). */
   readonly retireAuthority: boolean;
@@ -44,7 +43,7 @@ export interface PassportAccountState {
   readonly specVersion: number;
 }
 
-export interface PassportAccountV1 {
+export interface PassportAccount {
   readonly address: string;
   readonly networkId: string;
   /** The binding the account was deployed from. */
@@ -56,14 +55,14 @@ export interface PassportAccountV1 {
   rotateEncryptionKey(newKey: Uint8Array, options?: FlowOptions): Promise<PassportTxResult>;
 }
 
-export interface PassportConnectorAPIV1 {
+export interface PassportConnectorAPI {
   /** The `PASSPORT_API_VERSION` implemented. */
   readonly apiVersion: string;
   readonly networkId: string;
   /** The binding new accounts are deployed from. */
   readonly bindingId: string;
-  createAccount(options: CreateAccountOptionsV1): Promise<PassportAccountV1>;
-  openAccount(options?: FlowOptions): Promise<PassportAccountV1>;
+  createAccount(options: CreateAccountOptions): Promise<PassportAccount>;
+  openAccount(options?: FlowOptions): Promise<PassportAccount>;
 }
 
 export interface ConnectOptions {
@@ -72,7 +71,7 @@ export interface ConnectOptions {
 }
 
 /** What a host installs, frozen, at `window.midnight.passport`. */
-export interface PassportConnectorDescriptorV1 {
+export interface PassportConnectorDescriptor {
   /** Reverse-DNS id of the host, for example 'io.lace.passport'. */
   readonly rdns: string;
   readonly name: string;
@@ -82,5 +81,14 @@ export interface PassportConnectorDescriptorV1 {
   readonly apiVersion: string;
   /** Binding ids the host can open; the first is the one it deploys. */
   readonly bindings: readonly string[];
-  connect(networkId: string, options?: ConnectOptions): Promise<PassportConnectorAPIV1>;
+  connect(networkId: string, options?: ConnectOptions): Promise<PassportConnectorAPI>;
 }
+
+/** @deprecated since 1.0.0-pre.0: use `CreateAccountOptions`, of which it is an alias. */
+export type CreateAccountOptionsV1 = CreateAccountOptions;
+/** @deprecated since 1.0.0-pre.0: use `PassportAccount`, of which it is an alias. */
+export type PassportAccountV1 = PassportAccount;
+/** @deprecated since 1.0.0-pre.0: use `PassportConnectorAPI`, of which it is an alias. */
+export type PassportConnectorAPIV1 = PassportConnectorAPI;
+/** @deprecated since 1.0.0-pre.0: use `PassportConnectorDescriptor`, of which it is an alias. */
+export type PassportConnectorDescriptorV1 = PassportConnectorDescriptor;
