@@ -308,3 +308,39 @@ says the flow layer "could move upstream unchanged". That is the same shape as t
   packages fit as libraries that `@lace-module/passport-account` imports.
 - **Long-running work.** Lace's rule for host work that outlives one call is a request that answers
   a handle, then a poll (ADRs 41 and 51). The same pattern suits the deploy and the proof queue.
+
+### 4.3 Running the port contract suites against a host's adapters
+
+`@midnight-ntwrk/mn-passport-account/testing` exports a contract suite per port
+(`authoriserContract`, `credentialContract`, `proverContract`, `feeSponsorContract`,
+`submitterContract`, `chainContract`, `deployerContract` and `directoryContract`) and fakes of every
+port, with `createFakePorts` to wire one world. A suite checks what the port promises, through its
+public members only: a signature that verifies against `devicePublicKey`, `auth_nonce` advancing once
+per gated call, a write-once directory that moves a hint from `deployed` to `active` only, and so
+on. The package imports only `./ports` and `protocol`, and no test framework: each suite takes a
+factory for the adapter under test and the host's `test` and `assert`, so `node:test`, vitest and
+jest can all run it. A host such as lace-platform runs the suites in its own test run, against its
+own adapters, which is how it knows they plug into the SDK:
+
+```ts
+import { assert, test } from 'vitest';
+import { authoriserContract, feeSponsorContract } from '@midnight-ntwrk/mn-passport-account/testing';
+
+const host = { test, assert: { ok: assert.ok, equal: assert.strictEqual } };
+// JubJub is not checked built in: pass a verifier for that arm, or the signature check is skipped.
+authoriserContract(() => createPassportAuthoriser(keySource, binding), host, {
+  verify: (authorisation, request) => verifyJubjub(authorisation, request),
+});
+feeSponsorContract(
+  () => ({ sponsor: laceFeeSponsor, unbalanced: provenFeeOnlyTx, nonFee: provenTransferTx }),
+  host,
+);
+```
+
+Each test calls the factory, so a stateful adapter starts fresh. `chainContract` takes a booted
+account and a `gatedCall()` the host builds for the ledger as it reads; `directoryContract` writes
+fresh credential ids each run, so it can run against a persistent directory. In this repository
+`tests/account-testing.test.mjs` runs every suite against the fakes, the seam-to-port bridge (with
+the registry client behind a fake `fetch` that applies the service's rules), and the
+lace-platform-shaped `PassportAuthoriser` and `FeeSponsor`. The browser adapter's service clients
+are midnight-js providers, not ports, until T7 makes them `Prover`, `FeeSponsor` and `Submitter`.
