@@ -60,6 +60,8 @@ export interface AccLedgerView {
   readonly deviceEpoch: bigint;
   readonly entryCount: number;
   readonly specVersion: number;
+  /** The ACC's `enc_key`, when the reader reports it; the open-time check needs it. */
+  readonly encKey?: Uint8Array;
   hasEntry(entry: Uint8Array): boolean;
 }
 export interface ConstructorArgs {

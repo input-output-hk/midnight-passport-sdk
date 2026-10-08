@@ -32,6 +32,9 @@ function portsWorld() {
     booted: false,
     authNonce: 0n,
     entries: new Set(/** @type {string[]} */ ([])),
+    specVersion: 2,
+    /** @type {Uint8Array | undefined} */
+    encKey: undefined,
   };
   /** @type {Map<string, AccountHint>} */
   const hints = new Map();
@@ -66,6 +69,7 @@ function portsWorld() {
         ledger.entries.delete(`${publicKey.x}:${auth.use_counter}`);
         ledger.entries.add(`${publicKey.x}:${auth.use_counter + 1n}`);
         ledger.authNonce += 1n;
+        ledger.encKey = /** @type {Uint8Array} */ (args[0]);
       }
       return { txHash: `tx-${log.length}` };
     },
@@ -76,7 +80,8 @@ function portsWorld() {
         authNonce: ledger.authNonce,
         deviceEpoch: 0n,
         entryCount: ledger.entries.size,
-        specVersion: 3,
+        specVersion: ledger.specVersion,
+        ...(ledger.encKey && { encKey: ledger.encKey }),
         hasEntry: (entry) => ledger.entries.has(text(entry)),
       };
       return view;
@@ -150,12 +155,13 @@ function portsWorld() {
     deployer: {
       async deploy(request) {
         log.push(['deploy', request.retireAuthority, text(request.encKey)]);
+        ledger.encKey = request.encKey;
         return { address: 'cd'.repeat(32), txIds: ['t0'] };
       },
     },
     directory,
   };
-  return { ports, log, loads, hints, credentialId };
+  return { ports, log, loads, hints, credentialId, ledger };
 }
 
 test('createPassportAccounts runs create, rotate and open over plain ports, loading lazy ports once', async () => {
@@ -581,7 +587,7 @@ test('lace-platform errors arrive under their v1 codes; anything else is Interna
   );
 });
 
-// ---- The account API v1: retireAuthority from the caller
+// ---- The account API v1: retireAuthority from the caller, and the open-time enc_key check
 
 test('the account API v1: its version and binding, and the account names its arm', async () => {
   const w = portsWorld();
@@ -611,4 +617,45 @@ test('retireAuthority reaches the deployer as the caller chose it, and is never 
     );
   }
   assert.equal(w.log.length, 0, 'refused before any prompt');
+});
+
+test("open compares the derived encryption key with the ledger's while no gated call has run", async () => {
+  const w = portsWorld();
+  await a.createPassportAccounts(w.ports).createAccount({ userName: 'u', retireAuthority: true });
+  const e = events();
+  await a.createPassportAccounts(w.ports).openAccount({ onEvent: e.onEvent });
+  assert.deepEqual(e.trace().slice(-2), ['passkey.prf:start', 'passkey.prf:end']);
+
+  // The ledger's key is not the one this passkey derives on this network.
+  w.ledger.encKey = new Uint8Array(32).fill(1);
+  const mismatch = events();
+  await assert.rejects(
+    a.createPassportAccounts(w.ports).openAccount({ onEvent: mismatch.onEvent }),
+    { code: 'EncryptionKeyMismatch', retryable: false, message: /does not derive/ },
+  );
+  assertPaired(mismatch.seen);
+});
+
+test('open skips the enc_key check once a gated call may have rotated the key, or the ledger cannot say', async () => {
+  const w = portsWorld();
+  const created = await a
+    .createPassportAccounts(w.ports)
+    .createAccount({ userName: 'u', retireAuthority: true });
+  /** @param {string} why */
+  const opensWithoutPrf = async (why) => {
+    const e = events();
+    await a.createPassportAccounts(w.ports).openAccount({ onEvent: e.onEvent });
+    assert.ok(!e.trace().includes('passkey.prf:start'), why);
+  };
+  // A rotation to a key the passkey does not derive: auth_nonce is past 0.
+  await created.rotateEncryptionKey(Uint8Array.of(42));
+  await opensWithoutPrf('rotated');
+  // A spec_version whose rules this release does not know, at auth_nonce 0.
+  w.ledger.authNonce = 0n;
+  w.ledger.specVersion = 3;
+  await opensWithoutPrf('unknown spec_version');
+  // A reader that does not report enc_key.
+  w.ledger.specVersion = 2;
+  w.ledger.encKey = undefined;
+  await opensWithoutPrf('no enc_key');
 });

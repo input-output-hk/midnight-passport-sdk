@@ -84,7 +84,9 @@ ui.on('create', async () => {
   await opened(a, 'created');
 });
 ui.on('open', async () => {
-  status('Opening… choose your passkey.');
+  status(
+    'Opening… choose your passkey. Until the encryption key is rotated, a second prompt checks it against the chain.',
+  );
   await opened(await (await connector()).openAccount(), 'reopened');
 });
 ui.on('rotate', async () => {

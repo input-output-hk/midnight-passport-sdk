@@ -30,8 +30,9 @@ test('prompts per action, with and without an account open', () => {
     [2, 3],
     'creating does not depend on an open account',
   );
-  assert.equal(promptsFor('open', false), 1);
-  assert.equal(promptsFor('open', true), 1);
+  // The second prompt checks the encryption key, until it is rotated.
+  assert.deepEqual(promptsFor('open', false), [1, 2]);
+  assert.deepEqual(promptsFor('open', true), [1, 2]);
   assert.equal(promptsFor('rotate', false), 1);
   assert.equal(promptsFor('rotate', true), 1);
   assert.equal(promptsFor('wallet', true), 1, 'pinned to the open account: one PRF prompt');

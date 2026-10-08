@@ -84,6 +84,7 @@ interface LedgerShape {
   auth_nonce: bigint;
   device_epoch: bigint;
   spec_version: bigint;
+  enc_key: Uint8Array;
   devices: { member(e: Uint8Array): boolean; size(): bigint };
 }
 
@@ -279,6 +280,7 @@ export function createServiceChain(opts: {
         deviceEpoch: l.device_epoch,
         entryCount: Number(l.devices.size()),
         specVersion: Number(l.spec_version),
+        encKey: l.enc_key,
         hasEntry: (entry) => l.devices.member(entry),
       };
     },

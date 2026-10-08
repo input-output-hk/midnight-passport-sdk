@@ -405,3 +405,25 @@ test('M2: a registry that stays down fails after the retries, naming the deploye
   assert.equal(count(w, 'put'), a.DEPLOYED_PUT_RETRIES + 1);
   assert.equal(count(w, 'activate_initial_device_with_p256'), 0, 'no activation without a record');
 });
+
+test('the bridge asks the encryption key at open for the passkey identify proved', async () => {
+  const w = world();
+  await a.createPassportConnector(w.seams).createAccount({ userName: 'u' });
+  const read = w.seams.chain.readLedger;
+  w.seams.chain.readLedger = async (/** @type {string} */ address) => {
+    const view = await read(address);
+    return view && { ...view, encKey: new Uint8Array(32).fill(5) };
+  };
+  /** @type {unknown[]} */
+  const asked = [];
+  w.seams.encryptionKey = async (/** @type {unknown} */ credential) => {
+    asked.push(credential);
+    return new Uint8Array(32).fill(5);
+  };
+  await a.createPassportConnector(w.seams).openAccount();
+  assert.deepEqual(asked, [w.credential]);
+  w.seams.encryptionKey = async () => new Uint8Array(32).fill(6);
+  await assert.rejects(a.createPassportConnector(w.seams).openAccount(), {
+    code: 'EncryptionKeyMismatch',
+  });
+});

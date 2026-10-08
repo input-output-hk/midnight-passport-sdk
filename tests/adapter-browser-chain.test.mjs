@@ -290,6 +290,7 @@ const stubLedger = {
   auth_nonce: 4n,
   device_epoch: 2n,
   spec_version: 1n,
+  enc_key: new Uint8Array(32).fill(5),
   devices: { member: (/** @type {Uint8Array} */ e) => e[0] === 1, size: () => 3n },
 };
 
@@ -376,6 +377,7 @@ test('readLedger projects the on-chain state through the generated ledger, and i
       deviceEpoch: 2n,
       entryCount: 3,
       specVersion: 1,
+      encKey: new Uint8Array(32).fill(5),
       hasEntry: undefined,
     },
   );

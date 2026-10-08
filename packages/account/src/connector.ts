@@ -56,6 +56,20 @@ const p256 = (point: CurvePoint): P256PublicKey =>
     ? (point as P256PublicKey)
     : { x: point.x, y: point.y, identity: false };
 
+/**
+ * Whether the open-time `enc_key` check (lace-platform's `encryption-key-mismatch`) can run. The
+ * ACC keeps no epoch for `enc_key`: the constructor sets it, and only `rotate_enc_key_with_*`
+ * changes it, each gated and so each advancing `auth_nonce` (spec_version 2). While `auth_nonce`
+ * is 0 no gated call has run, so `enc_key` must still be the key the passkey derives; after one,
+ * it may have been rotated (to a random key, in the prototype), and the check is skipped rather
+ * than refusing a rotated account. Skipped too when the reader does not report `enc_key`, or for a
+ * spec_version whose rules this release does not know.
+ */
+const encKeyComparable = (
+  view: AccLedgerView,
+): view is AccLedgerView & { readonly encKey: Uint8Array } =>
+  view.encKey !== undefined && view.authNonce === 0n && view.specVersion === 2;
+
 /** Loads a `Lazy` port on first use, once; a failed load is retried on the next use. */
 function once<T>(value: Lazy<T>): () => Promise<T> {
   if (typeof value !== 'function') return () => Promise.resolve(value);
@@ -351,6 +365,15 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           (await findCounter(flow, hint, view)) === undefined
         )
           throw notHeld(hint);
+        if (encKeyComparable(view)) {
+          const derived = await flow.step('passkey.prf', () => encryptionKey.publicKey(networkId));
+          if (!equalBytes(derived, view.encKey)) {
+            throw new PassportConnectorError(
+              'EncryptionKeyMismatch',
+              `The account at ${hint.address} holds an encryption key this passkey does not derive.`,
+            );
+          }
+        }
         return account(hint.status === 'active' ? hint : await finishActivation(flow, hint, view));
       }),
   };

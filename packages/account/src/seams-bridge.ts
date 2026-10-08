@@ -20,14 +20,19 @@ import type {
  * The prototype's seams as ports. The passkey seam signs for a credential it is handed, so the
  * authoriser keeps the credentials this bridge saw created or proven by `identify`, and signs for
  * the one the request names. The encryption key is asked for the credential just created, the same
- * object, so the create-time PRF hold still finds it.
+ * object, so the create-time PRF hold still finds it, or at open for the one `identify` proved.
  */
 export function portsFromSeams(seams: PassportSeams): PassportPorts {
   const known = new Map<string, PasskeyCredential>();
-  let created: PasskeyCredential | undefined;
+  let latest: PasskeyCredential | undefined;
   const current = () => {
-    if (!created) throw new PassportConnectorError('InternalError', 'No passkey was created yet.');
-    return created;
+    if (!latest) {
+      throw new PassportConnectorError(
+        'InternalError',
+        'No passkey was created or identified yet.',
+      );
+    }
+    return latest;
   };
   return {
     // The seams carry no endpoints; the core reads only the network id and the binding id.
@@ -43,7 +48,8 @@ export function portsFromSeams(seams: PassportSeams): PassportPorts {
     binding: { pureCircuits: seams.pureCircuits },
     credentials: {
       async create({ name }) {
-        created = await seams.passkey.create(name);
+        const created = await seams.passkey.create(name);
+        latest = created;
         known.set(toHex(created.credentialId), created);
         return { credentialId: created.credentialId };
       },
@@ -55,11 +61,8 @@ export function portsFromSeams(seams: PassportSeams): PassportPorts {
             // The core hands back the key it read from this bridge's registry: a P-256 key.
             const publicKey = key as P256PublicKey;
             if (!policy || !identity.owns(publicKey, policy)) return false;
-            known.set(toHex(identity.credentialId), {
-              credentialId: identity.credentialId,
-              publicKey,
-              policy,
-            });
+            latest = { credentialId: identity.credentialId, publicKey, policy };
+            known.set(toHex(identity.credentialId), latest);
             return true;
           },
         };

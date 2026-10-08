@@ -10,11 +10,13 @@ export type PromptCount = number | readonly [min: number, max: number];
  * Passkey prompts per action: the one place to change them.
  * - Create: 2 (create, verify) when the provider returns PRF at creation, as Google Password
  *   Manager is expected to; otherwise 3 (create, verify, PRF).
+ * - Open: 1 (pick) once the account's encryption key was rotated; 2 (pick, then PRF to check the
+ *   key against the chain's) before.
  * - Wallet: 1 with an account open (pinned to its passkey), 2 without (pick, then PRF).
  */
 export const PASSKEY_PROMPTS = {
   create: [2, 3],
-  open: 1,
+  open: [1, 2],
   rotate: 1,
   walletWithAccount: 1,
   walletWithoutAccount: 2,
@@ -69,8 +71,9 @@ export const FLOWS: Record<ActionId, FlowDef> = {
   },
   open: {
     title: 'Open with passkey',
-    summary: "Reopens this passkey's account and checks the registry's record against the chain.",
-    stages: [{ id: 'identify', label: 'Choose the passkey and check the registry' }, read],
+    summary:
+      "Reopens this passkey's account, checks the registry's record against the chain and, until it is rotated, the encryption key.",
+    stages: [{ id: 'identify', label: 'Choose the passkey and check it against the chain' }, read],
   },
   rotate: {
     title: 'Rotate encryption key',
