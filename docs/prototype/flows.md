@@ -1,8 +1,9 @@
 # Flows
 
 One sequence diagram for each flow, with the endpoints, circuits and seams involved. The code is the
-reference: `packages/account/src/connector.ts` holds the connector flows,
-`packages/adapter-browser/src` the seams, and `apps/passport-service/src` the service.
+reference: `packages/account/src/connector.ts` holds the flows of the account API (which the
+prototype called the "DApp Connector API"), `packages/adapter-browser/src` the seams, and
+`apps/passport-service/src` the service.
 
 Terms used below:
 
@@ -48,8 +49,8 @@ sequenceDiagram
     K-->>P: PRF outputs
   end
   Note over P: encryption key by the Lace recipe and MIP-0015, then salt, then boot commitment (pure circuit)
-  P->>S: POST /deploy {boot, encKey}
-  S->>C: 10 waves, last wave retires the maintenance authority
+  P->>S: POST /deploy {boot, encKey, retireAuthority}
+  S->>C: 10 waves, the last retires the maintenance authority when asked
   S-->>P: {address, txHashes}
   P->>S: PUT /accounts/undeployed/credentialId (status deployed)
   Note over P,C: activate_initial_device_with_p256 (pk, salt, policy)
@@ -80,11 +81,13 @@ sequenceDiagram
    `UnsupportedAuthenticator`, still before the deploy.
 4. **Boot commitment.** The connector draws a 32-byte `salt` and computes
    `derive_boot_commitment_with_p256(salt, pk, policy)` with the pure circuit.
-5. **`POST /deploy`** with `{ boot, encKey }` (32 bytes each). The service fills the constructor's
+5. **`POST /deploy`** with `{ boot, encKey, retireAuthority }` (32 bytes each, and a boolean the
+   caller must give: `createAccount` has no default for it). The service fills the constructor's
    other arguments (a fresh JubJub recovery key whose secret it discards, a zero wrap and a 3-day
-   veto window) and runs the reference client's `deployAccountInWaves` with `retireAuthority: true`.
-   That is 10 waves inside the 15,000-verifier-byte budget. Once the last wave retires the
-   maintenance authority, the account can never be upgraded. The answer is `{ address, txHashes }`
+   veto window) and runs the reference client's `deployAccountInWaves` with the caller's
+   `retireAuthority`. That is 10 waves inside the 15,000-verifier-byte budget. The demo passes
+   `true`: once the last wave retires the maintenance authority, the account can never be upgraded.
+   With `false` the authority's key stays with the service's sponsor wallet. The answer is `{ address, txHashes }`
    after about 180 seconds. The `txHashes` are the waves' submission ids, not the hashes of the
    transactions as included. The service then records the address as deployed.
 6. **Registry write, `deployed`.** `PUT /accounts/undeployed/{credentialId}` with the credential id,
@@ -100,9 +103,20 @@ sequenceDiagram
    this transition, and only with every other field unchanged. If step 7 or 8 fails, the `deployed`
    record lets **Open with passkey** finish the job.
 
-`onProgress` reports five coarse steps: `passkey-created`, `deploying`, `deployed`, `activating` and
-`active`. Nothing is reported inside the deploy. Fork issue
-[#17](https://github.com/input-output-hk/midnight-passport-sdk/issues/17) tracks richer progress.
+**Progress.** Every flow reports progress events through `onEvent` (design §3.4): a `start`, then
+one `end` or `error` with the same id, for each step. Create reports `passkey.create`,
+`passkey.prf`, `deploy`, `directory.write`, `activate` and `directory.write`; inside the activation
+the chain adapter reports `prove`, `sponsor.balance`, `sponsor.submit` and `chain.finality`. The
+deploy is one step until the service reports its waves (`deploy.wave`,
+[#17](https://github.com/input-output-hk/midnight-passport-sdk/issues/17), tranche T17), so the
+page's bar still fills the deploy against its 3-minute estimate. An error names the step that
+failed (`step`) and whether a retry can succeed (`retryable`). The deprecated `onProgress` still
+reports its five steps, `passkey-created`, `deploying`, `deployed`, `activating` and `active`,
+derived from the events.
+
+**Abort.** A `signal` that aborts ends the flow with `Aborted` at the next step. A registry write
+that records what the chain already holds still runs, so an aborted create still records the
+deployed account and its salt.
 
 ## Open
 
@@ -124,6 +138,10 @@ sequenceDiagram
   Note over P: check 2, a contract exists at the address
   Note over P: check 3, scan counters 0 to 63 with derive_device_entry_with_p256
   Note over P: the passkey's entry must be in the ledger's device set
+  opt auth_nonce is 0 (enc_key never rotated)
+    P->>K: PRF ceremony (pinned), the second prompt
+    Note over P: check 4, the derived encryption key equals the ledger's enc_key
+  end
   alt record is active
     P-->>U: account
   else record is deployed
@@ -147,7 +165,13 @@ policy)` is true: the identify assertion verifies under the record's key and pol
    whose ledger is already booted, the connector scans counters 0 to 63. For each it computes
    `derive_device_entry_with_p256(self, pk, policy, deviceEpoch, counter)` and tests membership in the
    ledger's device set. No hit is `AccountNotFound`.
-6. **Finishing a `deployed` record.** The record says activation may not have landed.
+6. **Check 4, the encryption key.** While the ledger's `auth_nonce` is 0, the connector derives the
+   account's encryption key from the passkey (a pinned PRF ceremony, the second prompt) and
+   compares it with the ledger's `enc_key`; a difference is `EncryptionKeyMismatch`. Only the
+   gated `rotate_enc_key_with_*` circuits change `enc_key`, and each advances `auth_nonce`, so after
+   any gated call the key may have been rotated (to a random key, in the prototype) and the check is
+   skipped: one prompt. It is skipped too for a `spec_version` other than 2.
+7. **Finishing a `deployed` record.** The record says activation may not have landed.
    - If the ledger is already **booted** and holds the passkey, activation landed and only the
      answer or the registry write was lost. The connector adopts it: it writes `active` and does
      not activate again.
@@ -161,7 +185,9 @@ not against a lying indexer. See [limitations.md](./limitations.md).
 
 ## The passkey-signed call (rotate)
 
-`rotateEncryptionKey(newKey)` is the one passkey-authorised call of the prototype. The activation
+`rotateEncryptionKey(newKey, { onEvent })` is the one passkey-authorised call of the prototype. It
+reports `chain.read`, `counter.scan` and `passkey.sign`, then the chain adapter's `prove`,
+`sponsor.balance`, `sponsor.submit` and `chain.finality`. The activation
 call and every later call use the same pipeline.
 
 ```mermaid

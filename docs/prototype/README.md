@@ -1,7 +1,9 @@
 # Midnight Passport DApp prototype
 
-This is a working prototype of the **Passport DApp Connector API** and the web app that carries its
-heavy lifting. It serves Lace epic LW-15579 (the Passport smart account as the Lace account model)
+This is a working prototype of the Passport **account API** and the web app that carries its heavy
+lifting. The prototype called the account API the "DApp Connector API"; every operation in it is the
+account owner's, so it is now the account API v1 (ADR 0007, D-8), and the dApp-facing connection is
+the later grant ceremony. It serves Lace epic LW-15579 (the Passport smart account as the Lace account model)
 and unblocks LW-15635 (a passkey Passport account) **on the standalone network**.
 
 A new user creates a passkey. The prototype deploys a Passport account (the ACC) for it, pays the
@@ -9,8 +11,8 @@ fees, installs the passkey as the first device and confirms one transaction sign
 After a page reload the same passkey reopens the same account. A built-in wallet, derived from the
 same passkey, is connected through the Midnight DApp Connector API.
 
-The official Passport connector API does not exist yet. This one is a prototype that it may borrow
-from. The design is in
+The account API v1 is versioned in `mn-passport-protocol` (`1.0.0-pre.0`); the prototype's
+`0.1.0-prototype` shapes remain as deprecated `…Prototype` types behind `createPassportConnector`. The design is in
 [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](../superpowers/specs/2026-10-06-passport-dapp-design.md).
 This folder describes what the code does today.
 
@@ -37,8 +39,9 @@ The run records are in `experiments/acc-0.35/results/`:
 [`x9-dapp-manual-run.md`](../../experiments/acc-0.35/results/x9-dapp-manual-run.md).
 
 The longest wait is the deploy. The ACC does not fit in one block, so the service deploys it in 10
-waves. The service then retires the maintenance authority in the last wave, so a deployed account
-can never be upgraded.
+waves. The demo asks for the maintenance authority to be retired (`retireAuthority: true`), which
+the last wave does, so a deployed account can never be upgraded. The account API makes the caller
+choose; there is no default.
 
 What does not work, or is not built, is in [limitations.md](./limitations.md). The main points: the
 registry is an off-chain file, the testnet is not wired, and the service has no authentication.

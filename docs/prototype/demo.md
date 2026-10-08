@@ -35,7 +35,8 @@ If the chain was reset since the last run, delete `~/.midnight-passport/registry
   | Create, provider returns PRF results at creation        | 2       | create; enrolment probe                                                 |
   | Create, provider returns only `prf.enabled` at creation | 3       | create; enrolment probe; PRF ceremony for the encryption key            |
   | Create, provider without PRF                            | 1       | create, then refused. Nothing is deployed.                              |
-  | Open with passkey                                       | 1       | the passkey picker                                                      |
+  | Open with passkey, after a rotation                     | 1       | the passkey picker                                                      |
+  | Open with passkey, before the first rotation            | 2       | the passkey picker; then a PRF ceremony that checks the encryption key  |
   | Rotate encryption key                                   | 1       | a signature, pinned to the account's passkey                            |
   | Connect built-in wallet, account open                   | 1       | the PRF ceremony, pinned to the account's passkey                       |
   | Connect built-in wallet, no account open                | 2       | the passkey picker; then the PRF ceremony, pinned to the passkey chosen |

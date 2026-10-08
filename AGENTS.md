@@ -9,7 +9,9 @@ shell.
 - A person creates a Midnight Passport account with only a passkey: no tokens, no recovery phrase.
 - The service deploys the account contract (ACC), proves every transaction, and pays the fees.
 - The page then makes a passkey-signed transaction and reopens the account after a reload.
-- A read-only wallet, seeded from the same passkey, stands behind the DApp Connector API.
+- A read-only wallet, seeded from the same passkey, stands behind the Midnight DApp Connector API.
+- The page drives the Passport account API (which the prototype called the "DApp Connector API")
+  and draws its progress from the account API's progress events.
 
 **Background reading:**
 
@@ -86,11 +88,13 @@ contract's WebAuthn profile are bound to that origin.
 | -------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------ |
 | **Create account**                                       | 2, or 3 if your provider returns PRF only after creation | about 4 min: 10 deploy waves (about 180 s), then activation (about 25 s) |
 | **Rotate encryption key** (a passkey-signed transaction) | 1                                                        | about 1 min                                                              |
-| Reload the page, then **Open with passkey**              | 1                                                        | under a second                                                           |
+| Reload the page, then **Open with passkey**              | 1, or 2 before the first rotation (the key check)        | under a second                                                           |
 | **Connect built-in wallet**                              | 1 with an account open, otherwise 2                      | seconds                                                                  |
 | **Copy evidence**                                        | none                                                     | copies the event log as JSON, with no secrets                            |
 
-The page shows a progress bar and an event log with each step's start, end, duration and any error.
+The page shows a progress bar and an event log with each step's start, end, duration and any error,
+taken from the account API's progress events; the deploy's bar still fills against a 3-minute
+estimate until the service reports its waves.
 
 **Without a real authenticator:** open `http://localhost:5173/?mockPasskey`. This dev-only mock
 keeps its keys in `localStorage`, so it is only for testing. `?mockPasskey=noprf-results` exercises
