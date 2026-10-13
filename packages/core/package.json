@@ -1,7 +1,7 @@
 {
   "name": "@input-output-hk/mn-passport-core",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "exports": {
     ".": {
@@ -15,5 +15,14 @@
   "dependencies": {
     "@input-output-hk/mn-passport-contract": "workspace:*",
     "@input-output-hk/mn-passport-protocol": "workspace:*"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/input-output-hk/midnight-passport-sdk"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
   }
 }

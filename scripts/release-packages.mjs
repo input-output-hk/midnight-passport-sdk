@@ -125,7 +125,9 @@ if (mode === 'pack') {
       if (entries.some((entry) => entry.endsWith('.prover')))
         fail(`${item.directory} contains a prover key; inspect artefact packaging`);
       for (const entry of entries.filter((name) => name.endsWith('.zkir.json.gz'))) {
-        const archive = execFileSync('tar', ['-xOzf', file, entry]);
+        const archive = execFileSync('tar', ['-xOzf', file, entry], {
+          maxBuffer: 32 * 1024 * 1024,
+        });
         const bundle = JSON.parse(gunzipSync(archive).toString('utf8'));
         if (Object.keys(bundle.files ?? {}).some((name) => name.endsWith('.prover')))
           fail(`${item.directory} contains a bundled prover key`);

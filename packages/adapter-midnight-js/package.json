@@ -1,7 +1,7 @@
 {
   "name": "@input-output-hk/mn-passport-adapter-midnight-js",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "exports": {
     ".": {
@@ -33,5 +33,14 @@
     "@midnight-ntwrk/midnight-js-network-id": "5.0.0-rc.2",
     "@midnight-ntwrk/midnight-js-types": "5.0.0-rc.2",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.5"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/input-output-hk/midnight-passport-sdk"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
   }
 }

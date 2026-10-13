@@ -81,16 +81,18 @@ test('connect has no path to core or any adapter, even transitively', () => {
   }
 });
 
-test('every package skeleton is private, pre-release, and ESM', async () => {
+test('every package is release-ready under the fork scope and ESM', async () => {
   for (const dir of dirs) {
     const manifest = await readJson(`../packages/${dir}/package.json`);
     assert.equal(manifest.name, SCOPE + dir);
-    assert.equal(
-      manifest.private,
-      true,
-      `"${dir}" must stay private until the release skill exists`,
-    );
+    assert.equal(manifest.private, false);
     assert.equal(manifest.version, '0.0.0');
     assert.equal(manifest.type, 'module');
+    assert.equal(manifest.license, 'Apache-2.0');
+    assert.equal(manifest.publishConfig.registry, 'https://npm.pkg.github.com');
+    assert.equal(
+      manifest.repository.url,
+      'https://github.com/input-output-hk/midnight-passport-sdk',
+    );
   }
 });
