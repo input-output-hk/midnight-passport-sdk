@@ -35,11 +35,10 @@ stop matching the code.
 Two principles fall out and shape everything below:
 
 - **Skills assist and judge; hooks/CI enforce.** Anything that must be
-  *guaranteed* — a PR always has a description, security findings never land
-  in this repo, dependencies respect the cooldown — lives in the deterministic
+  *guaranteed* — security findings never land in this repo, dependencies
+  respect the cooldown — lives in the deterministic
   layer (hooks/CI), because the harness runs it, not the model. Skills draft,
-  review, and advise; they never *guarantee*. Mixing the two produces a skill
-  that "usually" adds a description.
+  review, and advise; they never *guarantee*.
 - **`sdk/docs` is the source of truth; conformance gives it teeth; doc-sync
   keeps it true.** Per-feature specs are *derived from* the requirements and
   architecture. `mn-passport-skills-conformance` checks code against those docs, so
@@ -318,7 +317,7 @@ flowchart LR
     W2["devenv"]
   end
   subgraph ENFORCE["Enforce — hooks / CI"]
-    E1["description · diff-size · gitignore · format+lint · 7-day dep cooldown"]
+    E1["diff-size · gitignore · format+lint · 7-day dep cooldown"]
   end
 
   DRIVE --> LENSES --> SHIP --> ENFORCE
@@ -352,7 +351,7 @@ The chain runs **issue → spec → tranches → PRs → `STATE.md`**:
   asks** before starting work.
 - `mn-passport-skills-pr-open` links each PR back to that issue (`Refs #NN`, or
   `Closes #NN` on the finishing tranche).
-- The hooks/CI gate checks the PR references its issue (§4).
+- CI does not check the issue reference. `pr-open` adds it.
 - `STATE.md` entries carry the issue number, closing the loop.
 
 ---
@@ -361,8 +360,6 @@ The chain runs **issue → spec → tranches → PRs → `STATE.md`**:
 
 Deterministic guarantees, run by the harness/CI rather than judged by a skill:
 
-- **PR description present**, referencing its spec tranche **and its GitHub
-  issue** (`Refs`/`Closes #NN`).
 - **Diff-size guardrail** — the same numbers as the tranche budget: **soft
   warning past 400 net changed lines, hard past 600** (excluding lockfiles,
   generated code, test fixtures, and the standalone `experiments/` tree —
