@@ -7,6 +7,26 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./prover": {
+      "types": "./dist/prover.d.ts",
+      "default": "./dist/prover.js"
+    },
+    "./sponsor": {
+      "types": "./dist/sponsor.d.ts",
+      "default": "./dist/sponsor.js"
+    },
+    "./deployer": {
+      "types": "./dist/deployer.d.ts",
+      "default": "./dist/deployer.js"
+    },
+    "./directory": {
+      "types": "./dist/directory.d.ts",
+      "default": "./dist/directory.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "default": "./dist/config.js"
     }
   },
   "files": [
