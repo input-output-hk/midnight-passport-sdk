@@ -9,7 +9,12 @@
       "default": "./dist/index.js"
     }
   },
+  "bin": {
+    "mn-passport-restore-keys": "bin/restore-acc-keys.mjs"
+  },
   "files": [
-    "dist"
+    "dist",
+    "bin",
+    "resources"
   ]
 }
