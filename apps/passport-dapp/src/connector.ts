@@ -1,12 +1,9 @@
-import {
-  createPassportAccounts,
-  createRegistryClient,
-  portsFromSeams,
-} from '@midnight-ntwrk/mn-passport-account';
+import { createPassportAccounts, portsFromSeams } from '@midnight-ntwrk/mn-passport-account';
 import {
   accEncryptionKeyFromPasskey,
   browserPasskey,
   createServiceChain,
+  createRegistryClient,
   defaultFetch,
   fetchServiceConfig,
   injectPassportConnector,

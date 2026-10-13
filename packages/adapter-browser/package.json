@@ -21,6 +21,7 @@
     "@midnight-ntwrk/midnight-js-types": "5.0.0-rc.2",
     "@midnight-ntwrk/mn-passport-account": "workspace:*",
     "@midnight-ntwrk/mn-passport-adapter-webauthn": "workspace:*",
+    "@midnight-ntwrk/mn-passport-adapter-service": "workspace:*",
     "@midnight-ntwrk/mn-passport-contract": "workspace:*",
     "@midnight-ntwrk/mn-passport-keys": "workspace:*",
     "@midnight-ntwrk/mn-passport-protocol": "workspace:*",

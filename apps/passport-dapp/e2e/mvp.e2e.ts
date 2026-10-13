@@ -12,7 +12,6 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   createPassportAccounts,
-  createRegistryClient,
   portsFromSeams,
   type ChainSeam,
   type PassportSeams,
@@ -21,6 +20,7 @@ import type { PassportEvent } from '@midnight-ntwrk/mn-passport-protocol';
 import {
   accEncryptionKey,
   createServiceChain,
+  createRegistryClient,
   defaultFetch,
   fetchServiceConfig,
   PRF_LABEL_ROOT,

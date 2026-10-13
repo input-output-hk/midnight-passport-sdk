@@ -10,6 +10,7 @@
   "references": [
     { "path": "../account" },
     { "path": "../adapter-webauthn" },
+    { "path": "../adapter-service" },
     { "path": "../contract" },
     { "path": "../keys" },
     { "path": "../protocol" }

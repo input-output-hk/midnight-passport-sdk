@@ -2,6 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 const a = await import(new URL('../packages/account/dist/index.js', import.meta.url).href);
+const service = await import(
+  new URL('../packages/adapter-service/dist/index.js', import.meta.url).href
+);
 
 const record = {
   credentialId: Uint8Array.of(1, 2, 3),
@@ -43,7 +46,7 @@ test('hex round-trips', () => {
 
 test('the registry client round-trips a record under its network and credential id', async () => {
   const { fn, calls } = fakeFetch();
-  const reg = a.createRegistryClient('http://svc', fn);
+  const reg = service.createRegistryClient('http://svc', fn);
   await reg.put('undeployed', record);
   const back = await reg.get('undeployed', record.credentialId);
   assert.deepEqual(back, record);
@@ -55,13 +58,13 @@ test('the registry client round-trips a record under its network and credential 
 
 test('the registry PUT is application/json, which the service requires (I1)', async () => {
   const { fn, calls } = fakeFetch();
-  await a.createRegistryClient('http://svc', fn).put('undeployed', record);
+  await service.createRegistryClient('http://svc', fn).put('undeployed', record);
   assert.equal(calls[0]?.method, 'PUT');
   assert.equal(calls[0]?.contentType, 'application/json');
 });
 
 test('an unknown credential is undefined, not an error', async () => {
-  const reg = a.createRegistryClient('http://svc', fakeFetch().fn);
+  const reg = service.createRegistryClient('http://svc', fakeFetch().fn);
   assert.equal(await reg.get('undeployed', Uint8Array.of(9)), undefined);
 });
 
@@ -77,7 +80,7 @@ test('errors are typed and WebAuthn cancellation maps to UserCancelled', () => {
 
 test('a trailing slash on the base URL does not double the separator', async () => {
   const { fn, calls } = fakeFetch();
-  const reg = a.createRegistryClient('http://svc/', fn);
+  const reg = service.createRegistryClient('http://svc/', fn);
   await reg.put('undeployed', record);
   assert.equal(
     /** @type {{ url: string }} */ (calls[0]).url,

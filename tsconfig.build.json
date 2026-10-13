@@ -32,6 +32,9 @@
       "path": "./packages/adapter-webauthn"
     },
     {
+      "path": "./packages/adapter-service"
+    },
+    {
       "path": "./packages/adapter-browser"
     }
   ]

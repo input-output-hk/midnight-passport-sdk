@@ -15,7 +15,15 @@ export const ALLOWED = {
   account: ['protocol'],
   keys: ['account'],
   'adapter-webauthn': ['account', 'keys'],
-  'adapter-browser': ['account', 'adapter-webauthn', 'contract', 'keys', 'protocol'],
+  'adapter-service': ['account', 'protocol'],
+  'adapter-browser': [
+    'account',
+    'adapter-webauthn',
+    'adapter-service',
+    'contract',
+    'keys',
+    'protocol',
+  ],
 };
 
 /** An adapter takes `account` through its types-only `./ports` subpath, never the root (D-2). */

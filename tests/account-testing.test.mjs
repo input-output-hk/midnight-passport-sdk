@@ -7,6 +7,9 @@ import { readFile } from 'node:fs/promises';
 import { laceAuthoriser, laceFeeSponsor } from './fixtures/lace-seams.mjs';
 
 const a = await import(new URL('../packages/account/dist/index.js', import.meta.url).href);
+const service = await import(
+  new URL('../packages/adapter-service/dist/index.js', import.meta.url).href
+);
 const t = await import(new URL('../packages/account/dist/testing/index.js', import.meta.url).href);
 
 /**
@@ -16,7 +19,7 @@ const t = await import(new URL('../packages/account/dist/testing/index.js', impo
  * @typedef {import('../packages/account/dist/ports/index.js').WebAuthnPolicy} WebAuthnPolicy
  * @typedef {import('../packages/account/dist/seams.js').PassportSeams} PassportSeams
  * @typedef {import('../packages/account/dist/seams.js').AccountRecord} AccountRecord
- * @typedef {import('../packages/account/dist/index.js').FetchLike} FetchLike
+ * @typedef {import('../packages/account/dist/ports/index.js').FetchLike} FetchLike
  */
 
 const host = { test, assert };
@@ -214,7 +217,7 @@ describe("the bridge's seam-to-port adapters", () => {
   t.directoryContract(async () => /** @type {any} */ ((await bridge()).ports.directory), host);
   // The registry client, through the bridge, against the service's rules behind a fake fetch.
   t.directoryContract(() => {
-    const registry = a.createRegistryClient('http://registry.invalid', registryFetch());
+    const registry = service.createRegistryClient('http://registry.invalid', registryFetch());
     const seams = { ...seamsOver(t.createFakePorts()), registry };
     return /** @type {any} */ (a.portsFromSeams(seams).directory);
   }, host);

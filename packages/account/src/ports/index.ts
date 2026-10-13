@@ -19,6 +19,21 @@ export type {
   PasskeyCredential,
   PasskeySeam,
 } from '../seams.js';
+export type { AccountRecord as LegacyAccountRecord, RegistrySeam } from '../seams.js';
+/** The part of an `AbortSignal` a caller hands to fetch; the real one satisfies it. */
+export interface FetchAbortSignal {
+  readonly aborted: boolean;
+}
+/** Structural fetch: neutral adapters compile without Node or DOM types. */
+export type FetchLike = (
+  url: string,
+  init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    signal?: FetchAbortSignal;
+  },
+) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
 /** An affine point: P-256 for the WebAuthn arm, JubJub for the PRF arm. */
 export interface CurvePoint {

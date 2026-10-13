@@ -1,4 +1,5 @@
-import { PassportConnectorError, type FetchLike } from '@midnight-ntwrk/mn-passport-account';
+import { PassportConnectorError } from '@midnight-ntwrk/mn-passport-account/errors';
+import type { FetchLike } from '@midnight-ntwrk/mn-passport-account/ports';
 
 /** What `GET /config` answers (apps/passport-service routes/zk.ts, plus the sponsor's keys). */
 export interface ServiceConfigWire {

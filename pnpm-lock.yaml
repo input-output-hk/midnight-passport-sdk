@@ -117,6 +117,9 @@ importers:
       '@midnight-ntwrk/mn-passport-account':
         specifier: workspace:*
         version: link:../account
+      '@midnight-ntwrk/mn-passport-adapter-service':
+        specifier: workspace:*
+        version: link:../adapter-service
       '@midnight-ntwrk/mn-passport-adapter-webauthn':
         specifier: workspace:*
         version: link:../adapter-webauthn
@@ -138,6 +141,15 @@ importers:
       '@midnight-ntwrk/mn-passport-core':
         specifier: workspace:*
         version: link:../core
+
+  packages/adapter-service:
+    dependencies:
+      '@midnight-ntwrk/mn-passport-account':
+        specifier: workspace:*
+        version: link:../account
+      '@midnight-ntwrk/mn-passport-protocol':
+        specifier: workspace:*
+        version: link:../protocol
 
   packages/adapter-signer-local:
     dependencies:

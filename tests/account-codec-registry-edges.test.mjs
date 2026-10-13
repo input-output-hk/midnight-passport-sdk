@@ -5,6 +5,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 const a = await import(new URL('../packages/account/dist/index.js', import.meta.url).href);
+const service = await import(
+  new URL('../packages/adapter-service/dist/index.js', import.meta.url).href
+);
 
 /** @typedef {{ url: string; init: { method?: string; headers?: Record<string, string>; body?: string } | undefined }} Call */
 
@@ -83,7 +86,7 @@ test('the fromHex error quotes at most 16 characters of the input, so a long sec
 
 test('a record goes on the wire as bare lower-case hex, with the status and without extra members', async () => {
   const { fn, calls } = answering({ status: 204 });
-  await a.createRegistryClient('http://svc', fn).put('undeployed', record);
+  await service.createRegistryClient('http://svc', fn).put('undeployed', record);
   const body = JSON.parse(calls[0]?.init?.body ?? 'null');
   assert.deepEqual(body, {
     credentialId: '0aff',
@@ -103,7 +106,7 @@ test('a record round-trips its 256-bit coordinates, zero and leading-zero values
   for (const original of [record, big]) {
     /** @type {string | undefined} */
     let stored;
-    const reg = a.createRegistryClient(
+    const reg = service.createRegistryClient(
       'http://svc',
       async (/** @type {string} */ _url, /** @type {Call['init']} */ init) => {
         if (init?.method === 'PUT') stored = init.body;
@@ -117,7 +120,7 @@ test('a record round-trips its 256-bit coordinates, zero and leading-zero values
 
 test('the network id is URL-encoded and trailing slashes of any number are dropped', async () => {
   const { fn, calls } = answering({ status: 404 });
-  const reg = a.createRegistryClient('http://svc/base///', fn);
+  const reg = service.createRegistryClient('http://svc/base///', fn);
   await reg.get('a/b c', Uint8Array.of(1));
   assert.equal(calls[0]?.url, 'http://svc/base/accounts/a%2Fb%20c/01');
   assert.equal(calls[0]?.init, undefined, 'a GET carries no body or method');
@@ -125,13 +128,13 @@ test('the network id is URL-encoded and trailing slashes of any number are dropp
 
 test('a registry that answers 404 has no record, and any other failure is an error naming the status', async () => {
   assert.equal(
-    await a
+    await service
       .createRegistryClient('http://svc', answering({ status: 404 }).fn)
       .get('n', Uint8Array.of(1)),
     undefined,
   );
   for (const status of [400, 401, 403, 500, 503]) {
-    const reg = a.createRegistryClient('http://svc', answering({ status }).fn);
+    const reg = service.createRegistryClient('http://svc', answering({ status }).fn);
     await assert.rejects(
       reg.get('n', Uint8Array.of(1)),
       new RegExp(`registry GET failed: ${status}`),
@@ -142,7 +145,7 @@ test('a registry that answers 404 has no record, and any other failure is an err
 
 test('a PUT answered with any 2xx succeeds, an unchanged re-PUT (204) included', async () => {
   for (const status of [200, 201, 204]) {
-    await a.createRegistryClient('http://svc', answering({ status }).fn).put('n', record);
+    await service.createRegistryClient('http://svc', answering({ status }).fn).put('n', record);
   }
 });
 
@@ -156,7 +159,7 @@ test('a record the registry mangles is refused, never half-read', async () => {
     status: 'active',
   };
   const get = (/** @type {unknown} */ body, unreadable = false) =>
-    a
+    service
       .createRegistryClient('http://svc', answering({ status: 200, body, unreadable }).fn)
       .get('n', Uint8Array.of(1));
   await assert.rejects(get({ ...wire, salt: 'xyz' }), /invalid hex/);
