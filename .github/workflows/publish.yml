@@ -20,6 +20,12 @@ on:
         required: true
         default: true
         type: boolean
+      registry:
+        description: Registries to publish (choose one to retry a partial release)
+        required: true
+        default: both
+        type: choice
+        options: [both, github, npmjs]
 
 permissions:
   contents: read
@@ -47,6 +53,7 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_DIST_TAG: ${{ inputs.dist_tag }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_REGISTRY: ${{ inputs.registry }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = push ]; then
             git fetch --no-tags origin passport-acc-prototype
@@ -68,15 +75,18 @@ jobs:
             else
               tag=latest
             fi
+            registries=both
           else
             version="$INPUT_VERSION"
             tag="$INPUT_DIST_TAG"
             dry_run="$INPUT_DRY_RUN"
+            registries="$INPUT_REGISTRY"
           fi
           {
             echo "version=$version"
             echo "tag=$tag"
             echo "dry_run=$dry_run"
+            echo "registries=$registries"
           } >> "$GITHUB_OUTPUT"
       - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
       - name: Install and verify
@@ -94,18 +104,39 @@ jobs:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           DIST_TAG: ${{ steps.release.outputs.tag }}
         run: nix develop -c node scripts/release-packages.mjs pack
+      - name: Require npmjs publisher credential
+        if: steps.release.outputs.dry_run == 'false' && (steps.release.outputs.registries == 'both' || steps.release.outputs.registries == 'npmjs')
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo 'NPM_TOKEN repository secret is required for npmjs publishing.' >&2
+            exit 1
+          fi
       - name: Attest tarballs
         if: steps.release.outputs.dry_run == 'false'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: release-tarballs/*.tgz
       - name: Publish to GitHub Packages
-        if: steps.release.outputs.dry_run == 'false'
+        if: steps.release.outputs.dry_run == 'false' && (steps.release.outputs.registries == 'both' || steps.release.outputs.registries == 'github')
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLISH_REGISTRY: github
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           DIST_TAG: ${{ steps.release.outputs.tag }}
         run: |
           # shellcheck disable=SC2016 # npm expands the token placeholder at publish time.
           printf '@input-output-hk:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}\n' > "$HOME/.npmrc"
+          nix develop -c node scripts/release-packages.mjs publish
+      - name: Publish to npmjs
+        if: steps.release.outputs.dry_run == 'false' && (steps.release.outputs.registries == 'both' || steps.release.outputs.registries == 'npmjs')
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PUBLISH_REGISTRY: npmjs
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          DIST_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          # shellcheck disable=SC2016 # npm expands the token placeholder at publish time.
+          printf '@input-output-hk:registry=https://registry.npmjs.org\n//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\n' > "$HOME/.npmrc"
           nix develop -c node scripts/release-packages.mjs publish

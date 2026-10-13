@@ -89,7 +89,8 @@ test('every package is release-ready under the fork scope and ESM', async () => 
     assert.equal(manifest.version, '0.0.0');
     assert.equal(manifest.type, 'module');
     assert.equal(manifest.license, 'Apache-2.0');
-    assert.equal(manifest.publishConfig.registry, 'https://npm.pkg.github.com');
+    assert.equal(manifest.publishConfig.access, 'public');
+    assert.equal(manifest.publishConfig.registry, undefined);
     assert.equal(
       manifest.repository.url,
       'https://github.com/input-output-hk/midnight-passport-sdk',

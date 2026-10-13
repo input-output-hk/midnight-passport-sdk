@@ -42,7 +42,6 @@
     "url": "https://github.com/input-output-hk/midnight-passport-sdk"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
     "access": "public"
   }
 }

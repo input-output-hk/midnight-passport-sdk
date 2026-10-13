@@ -16,7 +16,7 @@ permalink: /packages/
 | `mn-passport-contract`                                   | Binding registry and integrity loader                                                 | Prototype registry; artefact assembly pending |
 | `mn-passport-core`, `connect` and signer/prover adapters | Earlier SDK scaffolding                                                               | Not the current passkey integration surface   |
 
-The package names in source use the development scope `@midnight-ntwrk`. The release design assigns `@input-output-hk/mn-passport-*` for GitHub Packages. Do not copy a future `@input-output-hk` install command into an app until a release appears in the registry.
+The package names in source use `@input-output-hk/mn-passport-*` for GitHub Packages and npmjs. Wait for a published release before adding an install command to an application.
 
 ## Dependency direction
 
