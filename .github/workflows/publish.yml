@@ -78,6 +78,15 @@ jobs:
             echo "tag=$tag"
             echo "dry_run=$dry_run"
           } >> "$GITHUB_OUTPUT"
+      - name: Require a private publisher for live releases
+        if: steps.release.outputs.dry_run == 'false'
+        env:
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [ "$REPOSITORY_PRIVATE" != true ]; then
+            echo 'Live GitHub Packages publishing is disabled from this public repository: GITHUB_TOKEN created public packages. Use a private publisher repository and verify package visibility before enabling this step.' >&2
+            exit 1
+          fi
       - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
       - name: Install and verify
         run: |
