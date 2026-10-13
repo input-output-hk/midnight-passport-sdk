@@ -16,7 +16,7 @@ permalink: /packages/
 | `mn-passport-contract`                                   | `acc-s3r1.1` module, binding registry, key manifest, ZKIR and restore CLI             | Both release and prototype bindings packed |
 | `mn-passport-core`, `connect` and signer/prover adapters | Earlier SDK scaffolding                                                               | Packed; not the current passkey surface   |
 
-The package names in source use `@input-output-hk/mn-passport-*` for GitHub Packages and npmjs. Wait for a published release before adding an install command to an application.
+The package names in source use `@input-output-hk/mn-passport-*` for GitHub Packages. Wait for a published release before adding an install command to an application.
 
 ## Dependency direction
 

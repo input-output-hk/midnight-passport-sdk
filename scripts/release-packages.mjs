@@ -12,13 +12,7 @@ const version = process.env.RELEASE_VERSION;
 const tag = process.env.DIST_TAG;
 const root = resolve(import.meta.dirname, '..');
 const output = join(root, 'release-tarballs');
-/** @type {Record<string, string>} */
-const registries = {
-  github: 'https://npm.pkg.github.com',
-  npmjs: 'https://registry.npmjs.org',
-};
-const target = process.env.PUBLISH_REGISTRY ?? 'github';
-const registry = registries[target];
+const registry = 'https://npm.pkg.github.com';
 /** @param {string} message @returns {never} */
 const fail = (message) => {
   throw new Error(`release: ${message}`);
@@ -31,7 +25,6 @@ const read = (path) => JSON.parse(readFileSync(path, 'utf8'));
 const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
 
 if (!mode || !['pack', 'publish'].includes(mode)) fail('expected pack or publish');
-if (!registry) fail('PUBLISH_REGISTRY must be github or npmjs');
 if (!version || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version))
   fail('set RELEASE_VERSION to exact semver');
 if (!tag || !['dev', 'next', 'latest'].includes(tag)) fail('set DIST_TAG to dev, next or latest');
@@ -63,10 +56,11 @@ const packages = names.map((directory) => {
   if (data.name !== `@input-output-hk/mn-passport-${directory}` || data.private !== false)
     fail(`${directory} is not a public @input-output-hk package`);
   if (
-    data.publishConfig?.access !== 'public' ||
+    data.publishConfig?.registry !== registry ||
+    data.publishConfig?.access === 'public' ||
     !data.repository?.url?.includes('input-output-hk/midnight-passport-sdk')
   )
-    fail(`${directory} lacks public access or fork repository metadata`);
+    fail(`${directory} lacks GitHub Packages registry or fork repository metadata`);
   if (!data.files?.includes('dist') || !existsSync(join(root, 'packages', directory, 'dist')))
     fail(`${directory} lacks built dist files`);
   return { directory, path, data };
@@ -188,15 +182,6 @@ if (mode === 'pack') {
       fail(`tarball identity differs from the packed manifest for ${name}`);
   }
   for (const { file } of manifest.files) {
-    run('npm', [
-      'publish',
-      join(output, file),
-      '--registry',
-      registry,
-      '--tag',
-      tag,
-      '--access',
-      'public',
-    ]);
+    run('npm', ['publish', join(output, file), '--registry', registry, '--tag', tag]);
   }
 }

@@ -1,9 +1,9 @@
 # 0006 — Publish the SDK packages on GitHub Packages, from a fork-only workflow
 
-Update 2026/10/14: the owner also requested npmjs distribution. The same
-`@input-output-hk/mn-passport-*` tarballs are now prepared for both registries.
-The workflow retains the fork-only gate and supports retrying either registry.
-The npmjs first publish requires an authenticated publisher for the scope.
+Update 2026/10/14: the owner clarified that these are internal packages for
+GitHub Packages only. The release workflow and manifests target
+`https://npm.pkg.github.com` and do not publish to npmjs. New packages use
+GitHub's default private visibility; access is managed in the organization.
 
 Date: 2026/10/08 · Status: accepted · Settles: FS-0.9 D-10 · Amends: the registry rule in `CLAUDE.md`
 Refs: [input-output-hk/midnight-passport-sdk#31](https://github.com/input-output-hk/midnight-passport-sdk/issues/31)
