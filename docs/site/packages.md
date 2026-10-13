@@ -6,17 +6,21 @@ permalink: /packages/
 
 | Workspace package                                        | Purpose                                                                               | Status                                    |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `mn-passport-protocol`                                   | Versioned account types, events, errors and service wire types                        | Packed for RC1; unpublished               |
-| `mn-passport-account`                                    | Create, open and rotate flows over injected ports; `./ports` and `./testing` subpaths | Packed for RC1; unpublished               |
-| `mn-passport-keys`                                       | Portable implementation of Lace's key recipe and ACC encryption-key source             | Packed for RC1; unpublished               |
-| `mn-passport-adapter-webauthn`                           | WebAuthn credentials, PRF key source and P-256 authoriser                              | Packed for RC1; unpublished               |
-| `mn-passport-adapter-service`                            | Fetch clients for proving, sponsorship, deployment, directory and checked config      | Client ports packed; unpublished          |
-| `mn-passport-adapter-midnight-js`                        | Midnight call pipeline over injected prover, sponsor and submitter ports              | Packed for RC1; unpublished               |
-| `mn-passport-adapter-browser`                            | Browser composition root and shim; `./prototype` keeps legacy demo helpers             | Packed for RC1; unpublished               |
-| `mn-passport-contract`                                   | `acc-s3r1.1` module, binding registry, key manifest, ZKIR and restore CLI             | `acc-s3r1.1` supported; old key bundle archived |
-| `mn-passport-core`, `connect` and signer/prover adapters | Earlier SDK scaffolding                                                               | Packed; not the current passkey surface   |
+| `mn-passport-protocol`                                   | Versioned account types, events, errors and service wire types                        | Private RC1                               |
+| `mn-passport-account`                                    | Create, open and rotate flows over injected ports; `./ports` and `./testing` subpaths | Private RC1                               |
+| `mn-passport-keys`                                       | Portable implementation of Lace's key recipe and ACC encryption-key source           | Private RC1                               |
+| `mn-passport-adapter-webauthn`                           | WebAuthn credentials, PRF key source and P-256 authoriser                              | Private RC1                               |
+| `mn-passport-adapter-service`                            | Fetch clients for proving, sponsorship, deployment, directory and checked config      | Private RC1                               |
+| `mn-passport-adapter-midnight-js`                        | Midnight call pipeline over injected prover, sponsor and submitter ports              | Private RC1                               |
+| `mn-passport-adapter-browser`                            | Browser composition root and shim; `./prototype` keeps legacy demo helpers           | Private RC1                               |
+| `mn-passport-contract`                                   | `acc-s3r1.1` module, binding registry, key manifest, ZKIR and restore CLI             | Private RC1; `acc-s3r1.1` supported       |
+| `mn-passport-core`, `connect` and signer/prover adapters | Earlier SDK scaffolding                                                               | Private RC1; not the current passkey surface |
 
-The package names in source use `@input-output-hk/mn-passport-*` for GitHub Packages. Wait for a published release before adding an install command to an application.
+The 13 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their `0.1.0-rc1` release uses the `next` distribution tag and requires package read access. Configure the scoped registry and authentication as shown in [Releasing]({{ '/releasing/' | relative_url }}), then install the entrypoints your application uses:
+
+```sh
+npm install @input-output-hk/mn-passport-account@0.1.0-rc1 @input-output-hk/mn-passport-adapter-browser@0.1.0-rc1 @input-output-hk/mn-passport-contract@0.1.0-rc1
+```
 
 ## Dependency direction
 

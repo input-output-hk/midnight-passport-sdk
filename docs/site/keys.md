@@ -25,7 +25,7 @@ nix develop -c node packages/contract/bin/restore-acc-keys.mjs \
   --output /persistent/cache/keys
 ```
 
-After package publication, consumers can invoke `mn-passport-restore-keys` from the installed contract package. `--circuit deposit_unshielded` restores only one circuit. `--source /path/to/managed/account` or `--bundle /path/to/bundle` selects another input and may be combined with an independent `--manifest-sha256` pin. Re-running the command verifies cached files and skips compilation when they match. The service should refuse to start if its key cache and the package's manifest disagree.
+Consumers can invoke `mn-passport-restore-keys` from the installed contract package. `--circuit deposit_unshielded` restores only one circuit. `--source /path/to/managed/account` or `--bundle /path/to/bundle` selects another input and may be combined with an independent `--manifest-sha256` pin. Re-running the command verifies cached files and skips compilation when they match. The service should refuse to start if its key cache and the package's manifest disagree.
 
 The [bundle builder](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/scripts/build-acc-key-bundle.mjs) verifies every input against the compiler manifest before compressing it. The restore CLI verifies the full bundle against an independent manifest pin. The [regeneration check](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/experiments/acc-0.35/regen-check.sh) rebuilt all 52 circuits for `acc-s3r1.1` and compared both keys byte for byte with the original Compact output. A later compiler or binding needs its own full check before publication.
 

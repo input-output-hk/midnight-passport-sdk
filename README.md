@@ -31,9 +31,9 @@ Midnight Passport **planning workspace**
 ([midnightntwrk/passport → `docs/plans`](https://github.com/midnightntwrk/passport/tree/main/docs/plans)),
 where the component canvases and promises are maintained.
 
-## Packages (planned)
+## Packages
 
-This fork publishes them as `@input-output-hk/mn-passport-*` on GitHub Packages
+The `0.1.0-rc1` packages are private `@input-output-hk/mn-passport-*` packages on GitHub Packages
 ([ADR 0006](./docs/adr/0006-publish-on-github-packages.md)); the package set, ports
 and roles are in [ADR 0007](./docs/adr/0007-package-set-ports-and-flows.md) and the
 [packages design](./docs/superpowers/specs/2026-10-07-passport-sdk-packages-design.md):
@@ -41,11 +41,11 @@ and roles are in [ADR 0007](./docs/adr/0007-package-set-ports-and-flows.md) and 
 - `mn-passport-protocol` — the account API, error codes, progress events, service wire types.
 - `mn-passport-contract` — the ACC artefact per binding (no prover keys), registry, integrity.
 - `mn-passport-account` — the account flows behind ports (`./ports`), fakes and contract suites (`./testing`).
-- `mn-passport-keys` — the Lace key recipe and the JubJub authoriser.
+- `mn-passport-keys` — the Lace key recipe and the ACC encryption-key source.
 - `mn-passport-adapter-*` — WebAuthn, midnight-js, Passport-service clients, and a browser composition root.
-- `mn-passport-service` — the Passport service as a mountable library.
+- `mn-passport-service` — a planned Passport service library; the current service remains in the demo app.
 
-Reserved for later work: `core`, `connect`, `agent`.
+The published `core` and `connect` packages are earlier scaffolding, not the current passkey integration surface. `agent` and the JubJub authoriser remain planned work. See the [package guide](https://input-output-hk.github.io/midnight-passport-sdk/packages/) for authenticated installation.
 
 ## Development
 
