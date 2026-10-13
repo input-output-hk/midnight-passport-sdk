@@ -202,6 +202,34 @@ test('the WebAuthn adapter supplies credential, PRF and P-256 authoriser ports',
   assert.equal(picked.owns(await adapter.p256.devicePublicKey(), binding?.policy), true);
 });
 
+test('overlapping PRF sessions keep their outputs until both callers finish', async () => {
+  const auth = softwareAuthenticator({ atCreate: 'results' });
+  const adapter = b.webauthnPasskey({ rpId: RP, origin: ORIGIN, credentials: auth.container });
+  await adapter.credentials.create({ name: 'alice' });
+  /** @type {() => void} */
+  let release = () => {};
+  const gate = new Promise((resolve) => {
+    release = () => resolve(undefined);
+  });
+  const first = adapter.prf.withSession(async () => {
+    const secret = await adapter.prf.deviceSecret();
+    await new Promise((resolve) => setImmediate(resolve));
+    return secret;
+  });
+  const second = adapter.prf.withSession(async () => {
+    await gate;
+    return adapter.prf.deviceSecret();
+  });
+  const before = await first;
+  release();
+  const after = await second;
+  assert.deepEqual(after, before);
+  assert.ok(after.some((/** @type {number} */ byte) => byte !== 0));
+  assert.equal(auth.gets.length, 1, 'overlapping users reuse the create-time PRF outputs');
+  before.fill(0);
+  after.fill(0);
+});
+
 test('create refuses a provider that reports no PRF, before the enrolment probe', async () => {
   const auth = softwareAuthenticator({ prf: false });
   await assert.rejects(seamFor(auth).create('alice'), (e) => {

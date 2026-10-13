@@ -19,6 +19,8 @@ export function webauthnPasskey(opts: {
   const known = new Map<string, PasskeyCredential>();
   let current: PasskeyCredential | undefined;
   let session: PasskeyPrfOutputs | undefined;
+  let pendingSession: Promise<PasskeyPrfOutputs> | undefined;
+  let sessionUsers = 0;
   const idHex = (id: Uint8Array): string =>
     Array.from(id, (byte) => byte.toString(16).padStart(2, '0')).join('');
   const selected = (): PasskeyCredential => {
@@ -51,21 +53,32 @@ export function webauthnPasskey(opts: {
   };
   const prf: PrfKeySource = {
     async withSession<T>(operation: () => Promise<T>): Promise<T> {
-      if (session) return operation();
-      const credential = selected();
-      const outputs = await passkeyPrf({
-        credentialId: credential.credentialId,
-        rpId: opts.rpId,
-        ...(opts.credentials && { credentials: opts.credentials }),
-        created: credential,
-      });
-      session = outputs;
+      // Reserve before awaiting the ceremony: overlapping users share one prompt and the outputs
+      // remain live until the last user finishes, even if an earlier operation finishes first.
+      sessionUsers++;
       try {
+        if (!session) {
+          pendingSession ??= (async () => {
+            const credential = selected();
+            return passkeyPrf({
+              credentialId: credential.credentialId,
+              rpId: opts.rpId,
+              ...(opts.credentials && { credentials: opts.credentials }),
+              created: credential,
+            });
+          })().finally(() => {
+            pendingSession = undefined;
+          });
+          session = await pendingSession;
+        }
         return await operation();
       } finally {
-        session = undefined;
-        outputs.authoriser.fill(0);
-        outputs.root.fill(0);
+        sessionUsers--;
+        if (sessionUsers === 0 && session) {
+          session.authoriser.fill(0);
+          session.root.fill(0);
+          session = undefined;
+        }
       }
     },
     async deviceSecret() {
