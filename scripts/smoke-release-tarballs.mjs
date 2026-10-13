@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Exercise the exact tarballs that the release workflow will publish.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -28,6 +28,7 @@ try {
         private: true,
         type: 'module',
         dependencies,
+        devDependencies: { vite: '8.3.1' },
         pnpm: { overrides: dependencies },
       },
       null,
@@ -68,6 +69,23 @@ try {
     ],
     { cwd: scratch, stdio: 'inherit' },
   );
+  mkdirSync(join(scratch, 'src'));
+  writeFileSync(
+    join(scratch, 'index.html'),
+    '<!doctype html><html><body><main id="app"></main><script type="module" src="/src/main.js"></script></body></html>\n',
+  );
+  writeFileSync(
+    join(scratch, 'src/main.js'),
+    `import { BINDING_VERSION } from '@input-output-hk/mn-passport-contract';
+     import { Contract } from '@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1';
+     import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
+     import { createBrowserPassport } from '@input-output-hk/mn-passport-adapter-browser';
+     document.querySelector('#app').textContent =
+       [BINDING_VERSION, Contract.name, createPassportAccounts.name, createBrowserPassport.name].join(' ');\n`,
+  );
+  execFileSync('pnpm', ['exec', 'vite', 'build'], { cwd: scratch, stdio: 'inherit' });
+  if (!existsSync(join(scratch, 'dist/index.html'))) throw new Error('scratch Vite build missing');
+  console.log('scratch Vite app built from packed SDK');
   execFileSync(
     'node',
     [
