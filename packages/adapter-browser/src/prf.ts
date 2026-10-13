@@ -10,7 +10,7 @@ import {
   PRF_LABEL_ROOT,
   prfSalt,
   seedFromRoot,
-} from './lace-recipe.js';
+} from '@midnight-ntwrk/mn-passport-keys';
 import { equalBytes } from './webauthn.js';
 
 /** Creation refused: the provider the passkey was saved in cannot evaluate PRF. */

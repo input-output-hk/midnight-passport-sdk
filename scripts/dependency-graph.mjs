@@ -13,7 +13,8 @@ export const ALLOWED = {
   'adapter-signer-local': ['core'],
   'adapter-prover-remote': ['core'],
   account: ['protocol'],
-  'adapter-browser': ['account', 'contract', 'protocol'],
+  keys: ['account'],
+  'adapter-browser': ['account', 'contract', 'keys', 'protocol'],
 };
 
 /** An adapter takes `account` through its types-only `./ports` subpath, never the root (D-2). */

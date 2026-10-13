@@ -26,6 +26,9 @@
       "path": "./packages/account"
     },
     {
+      "path": "./packages/keys"
+    },
+    {
       "path": "./packages/adapter-browser"
     }
   ]

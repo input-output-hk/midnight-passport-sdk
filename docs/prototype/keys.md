@@ -3,7 +3,7 @@
 The built-in wallet and the account's first encryption key both come from one secret: the
 passkey's PRF output. The prototype follows the **Lace recipe v1**, so that the same passkey gives
 the same wallet and the same account key here as in Lace. The code is
-`packages/adapter-browser/src/lace-recipe.ts` and `prf.ts`. The tests reproduce Lace's own test
+`packages/keys/src/lace-recipe.ts` and `packages/adapter-browser/src/prf.ts`. The tests reproduce Lace's own test
 vectors (`tests/adapter-browser-lace-recipe.test.mjs`).
 
 The passkey's signing key is a separate thing. It never leaves the authenticator and it never

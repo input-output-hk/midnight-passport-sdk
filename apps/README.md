@@ -146,7 +146,7 @@ and `assertionMaterial`.
   contract holds the passkey as a device. Anything else is `AccountNotFound`, which after a chain
   reset usually means a stale registry (see Troubleshooting).
 - **Keys follow the Lace recipe v1** (lace-platform main, LW-15585 / LW-15584 / LW-15635;
-  `packages/adapter-browser/src/lace-recipe.ts`). One PRF ceremony evaluates
+  `packages/keys/src/lace-recipe.ts`). One PRF ceremony evaluates
   `SHA-256('lace-passport/prf/authoriser/v1')` and `SHA-256('lace/prf/root/v1')`. The root
   (output #2) gives the wallet entropy (HKDF, info `lace/hkdf/wallet-entropy/v1`), 24 BIP-39
   words (HKDF, salt `lace`, info `wallet-seed`) and the 64-byte BIP-39 seed. The account's

@@ -37,7 +37,7 @@ const ANY_IMPORT_RE =
   /(?:^\s*(?:import|export)\b[^'"`;=()]*?\bfrom\s*|^\s*import\s*|\b(?:import|require)\s*\(\s*)['"`]([^'"`]+)['"`]/gm;
 const TESTING_DIR = 'packages/account/src/testing/';
 const NODE_BUILTIN_RE = /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"`](node:[^'"`]+)/g;
-const PLATFORM_NEUTRAL = new Set(['protocol', 'contract', 'core', 'connect', 'account']);
+const PLATFORM_NEUTRAL = new Set(['protocol', 'contract', 'core', 'connect', 'account', 'keys']);
 // Ambient global declarations bypass import scanning, so they are gated by
 // an explicit allowlist: only cross-platform standards may be assumed.
 const GLOBAL_DECLARATION_RE = /declare\s+(?:const|var|let|function)\s+(\w+)/g;
