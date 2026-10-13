@@ -33,6 +33,20 @@ const option = (name) => {
   args.splice(index, 2);
   return value;
 };
+const bindingId = args.includes('--binding') ? option('--binding') : 'acc-45721e1';
+/** @type {Record<string, {manifest: string, keys: string}>} */
+const packagePins = {
+  'acc-45721e1': {
+    manifest: '682bfbd3420e4ad1ce8061a585f1029c395d82accdee030751ed25ede62df8ec',
+    keys: '195ed95074cfe6dd6670c5229c59f291761d366238415c25499c54d5f6e98d24',
+  },
+  'acc-s3r1.1': {
+    manifest: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
+    keys: '6f452180f8beb3b4c1844ac18be3517403412be0a06e055dcc867c18e69f52c5',
+  },
+};
+const packagePin = packagePins[bindingId];
+if (!packagePin) fail(`unsupported binding ${bindingId}`);
 const sourceArg = args.includes('--source') ? option('--source') : undefined;
 const bundleArg = args.includes('--bundle') ? option('--bundle') : undefined;
 if (sourceArg && bundleArg) fail('provide at most one of --source or --bundle');
@@ -41,13 +55,11 @@ const bundleFile = source
   ? undefined
   : bundleArg
     ? resolve(bundleArg)
-    : fileURLToPath(new URL('../resources/acc-45721e1.zkir.json.gz', import.meta.url));
+    : fileURLToPath(new URL(`../resources/${bindingId}.zkir.json.gz`, import.meta.url));
 const output = resolve(option('--output'));
-const packageManifestPin = '682bfbd3420e4ad1ce8061a585f1029c395d82accdee030751ed25ede62df8ec';
-const packageKeyManifestPin = '195ed95074cfe6dd6670c5229c59f291761d366238415c25499c54d5f6e98d24';
 const expectedManifest = args.includes('--manifest-sha256')
   ? option('--manifest-sha256')
-  : packageManifestPin;
+  : packagePin.manifest;
 const selected = args.includes('--circuit') ? option('--circuit') : undefined;
 if (args.length) fail(`unexpected arguments: ${args.join(' ')}`);
 if (!/^[a-f0-9]{64}$/.test(expectedManifest))
@@ -75,8 +87,7 @@ if (source) {
   const bundle = JSON.parse(
     gunzipSync(readFileSync(bundleFile), { maxOutputLength: 32 * 1024 * 1024 }).toString('utf8'),
   );
-  if (bundle.schemaVersion !== 1 || bundle.bindingId !== 'acc-45721e1')
-    fail('unsupported key bundle');
+  if (bundle.schemaVersion !== 1 || bundle.bindingId !== bindingId) fail('unsupported key bundle');
   manifestBytes = Buffer.from(bundle.manifest, 'utf8');
   bundledFiles = bundle.files;
   if (!bundledFiles || typeof bundledFiles !== 'object' || Array.isArray(bundledFiles))
@@ -92,16 +103,16 @@ const allCircuits = Object.keys(manifest.keys ?? {})
   .filter((name) => name.endsWith('.prover'))
   .map((name) => name.slice(0, -'.prover'.length))
   .sort();
-if (expectedManifest === packageManifestPin) {
+if (expectedManifest === packagePin.manifest) {
   const keyManifestBytes = readFileSync(
-    new URL('../resources/acc-45721e1.key-manifest.json', import.meta.url),
+    new URL(`../resources/${bindingId}.key-manifest.json`, import.meta.url),
   );
-  if (createHash('sha256').update(keyManifestBytes).digest('hex') !== packageKeyManifestPin)
+  if (createHash('sha256').update(keyManifestBytes).digest('hex') !== packagePin.keys)
     fail('key manifest differs from the package pin');
   const keyManifest = JSON.parse(keyManifestBytes.toString('utf8'));
   if (
     keyManifest.schemaVersion !== 1 ||
-    keyManifest.bindingId !== 'acc-45721e1' ||
+    keyManifest.bindingId !== bindingId ||
     keyManifest.compilerManifestSha256 !== expectedManifest ||
     keyManifest.compiler?.version !== manifest['compiler-version'] ||
     keyManifest.compiler?.commit !== manifest['compiler-commit'] ||

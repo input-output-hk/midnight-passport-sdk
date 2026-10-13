@@ -8,7 +8,12 @@ import { gzipSync } from 'node:zlib';
 
 const source = process.argv[2] && resolve(process.argv[2]);
 const expectedManifest = process.argv[3];
-const bindingId = 'acc-45721e1';
+const bindingId = process.argv[4] ?? 'acc-45721e1';
+/** @type {Record<string, string>} */
+const bindings = {
+  'acc-45721e1': '682bfbd3420e4ad1ce8061a585f1029c395d82accdee030751ed25ede62df8ec',
+  'acc-s3r1.1': '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
+};
 const root = resolve(import.meta.dirname, '..');
 const output = resolve(root, 'packages/contract/resources', `${bindingId}.zkir.json.gz`);
 const keyManifestOutput = resolve(
@@ -20,9 +25,12 @@ const keyManifestOutput = resolve(
 const fail = (message) => {
   throw new Error(`build-acc-key-bundle: ${message}`);
 };
-if (!source || !expectedManifest || process.argv.length !== 4)
-  fail('usage: node scripts/build-acc-key-bundle.mjs <managed/account> <manifest-sha256>');
+if (!source || !expectedManifest || ![4, 5].includes(process.argv.length))
+  fail(
+    'usage: node scripts/build-acc-key-bundle.mjs <managed/account> <manifest-sha256> [binding-id]',
+  );
 if (!/^[a-f0-9]{64}$/.test(expectedManifest)) fail('manifest pin must be 64 lowercase hex');
+if (bindings[bindingId] !== expectedManifest) fail('binding and manifest pin disagree');
 /** @param {Uint8Array} bytes */
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const manifestFile = join(source, 'compiler/contract-manifest.json');

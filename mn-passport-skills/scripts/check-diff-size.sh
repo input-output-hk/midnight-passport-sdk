@@ -23,6 +23,7 @@ EXCLUDES=(
   ':!pnpm-lock.yaml'    ':!**/pnpm-lock.yaml'
   ':!bun.lock'          ':!bun.lockb'
   ':!**/dist/**' ':!**/build/**' ':!**/generated/**' ':!*.generated.*'
+  ':!**/*.key-manifest.json'
   ':!**/managed/**'
   ':!**/fixtures/**' ':!**/__snapshots__/**' ':!**/*.snap'
   ':!experiments'
