@@ -1,4 +1,4 @@
-// The create-time PRF holder (packages/adapter-browser/src/create-prf.ts), unit by unit: held at
+// The create-time PRF holder (packages/adapter-webauthn/src/create-prf.ts), unit by unit: held at
 // most once, taken at most once, zeroed when it expires or after use, and never reachable from the
 // credential object. The module is internal (not exported from the package index), so it is
 // imported from dist directly; the timers are fake, and a spy on `Uint8Array#fill` shows which
@@ -6,7 +6,7 @@
 import { mock, test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const prfUrl = new URL('../packages/adapter-browser/dist/create-prf.js', import.meta.url).href;
+const prfUrl = new URL('../packages/adapter-webauthn/dist/create-prf.js', import.meta.url).href;
 const { holdCreatePrf, takeCreatePrf, copyPrfOutput, CREATE_PRF_TTL_MS } = await import(prfUrl);
 const b = await import(new URL('../packages/adapter-browser/dist/index.js', import.meta.url).href);
 

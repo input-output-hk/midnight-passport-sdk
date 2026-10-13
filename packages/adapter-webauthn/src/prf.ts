@@ -1,8 +1,8 @@
 import {
   PassportConnectorError,
   toPassportError,
-  type PasskeyCredential,
-} from '@midnight-ntwrk/mn-passport-account';
+} from '@midnight-ntwrk/mn-passport-account/errors';
+import type { PasskeyCredential } from '@midnight-ntwrk/mn-passport-account/ports';
 import { copyPrfOutput, takeCreatePrf } from './create-prf.js';
 import {
   accEncryptionKey,

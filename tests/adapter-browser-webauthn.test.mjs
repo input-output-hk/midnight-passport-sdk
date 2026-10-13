@@ -7,6 +7,9 @@ import { p256 } from '@noble/curves/nist.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 
 const b = await import(new URL('../packages/adapter-browser/dist/index.js', import.meta.url).href);
+const contracts = await import(
+  new URL('../packages/account/dist/testing/index.js', import.meta.url).href
+);
 const ORIGIN = 'http://localhost:5173';
 const RP = 'localhost';
 const ID = Uint8Array.of(1, 2, 3, 4);
@@ -147,6 +150,57 @@ function softwareAuthenticator({
 /** @param {ReturnType<typeof softwareAuthenticator>} auth */
 const seamFor = (auth) =>
   b.browserPasskey({ rpId: RP, origin: ORIGIN, credentials: auth.container });
+
+const portFactory = () =>
+  b.webauthnPasskey({
+    rpId: RP,
+    origin: ORIGIN,
+    credentials: softwareAuthenticator().container,
+  });
+contracts.authoriserContract(
+  async () => {
+    const adapter = portFactory();
+    await adapter.credentials.create({ name: 'contract' });
+    return adapter.p256;
+  },
+  { test, assert },
+);
+contracts.credentialContract(
+  async () => {
+    const adapter = portFactory();
+    return { credentials: adapter.credentials, authoriser: adapter.p256 };
+  },
+  { test, assert },
+);
+
+test('the WebAuthn adapter supplies credential, PRF and P-256 authoriser ports', async () => {
+  const auth = softwareAuthenticator({ atCreate: 'results' });
+  const adapter = b.webauthnPasskey({ rpId: RP, origin: ORIGIN, credentials: auth.container });
+  const ref = await adapter.credentials.create({ name: 'alice' });
+  assert.deepEqual(ref.credentialId, ID);
+  const binding = await adapter.p256.deviceBinding();
+  assert.deepEqual(binding?.credentialId, ID);
+  assert.equal(auth.gets.length, 1, 'create ran only the enrolment probe');
+  const key = await b.recipeEncryptionKey(adapter.prf).publicKey('undeployed');
+  assert.equal(key.length, 32);
+  assert.equal(auth.gets.length, 1, 'the key used the create-time PRF outputs');
+  const signed = await adapter.p256.authorise({
+    account: 'test',
+    circuit: 'rotate_enc_key_with_p256',
+    args: [],
+    witnessValues: [],
+    authNonce: 0n,
+    useCounter: 1n,
+    credentialId: ID,
+    challenge: new Uint8Array(32).fill(9),
+  });
+  assert.equal(signed.scheme, 'p256-webauthn');
+  if (signed.scheme !== 'p256-webauthn') throw new Error('expected P-256');
+  assert.equal(signed.useCounter, 1n);
+  assert.equal(signed.authenticatorData.length, 37);
+  const picked = await adapter.credentials.identify();
+  assert.equal(picked.owns(await adapter.p256.devicePublicKey(), binding?.policy), true);
+});
 
 test('create refuses a provider that reports no PRF, before the enrolment probe', async () => {
   const auth = softwareAuthenticator({ prf: false });

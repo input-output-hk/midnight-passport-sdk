@@ -12,6 +12,10 @@
       "types": "./dist/ports/index.d.ts",
       "default": "./dist/ports/index.js"
     },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
+    },
     "./testing": {
       "types": "./dist/testing/index.d.ts",
       "default": "./dist/testing/index.js"

@@ -9,6 +9,7 @@
   "include": ["src"],
   "references": [
     { "path": "../account" },
+    { "path": "../adapter-webauthn" },
     { "path": "../contract" },
     { "path": "../keys" },
     { "path": "../protocol" }

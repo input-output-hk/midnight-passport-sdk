@@ -11,7 +11,14 @@ import type { AccLedgerView, AccPureCircuits, WebAuthnPolicy } from '../seams.js
 
 export type { AuthScheme } from '@midnight-ntwrk/mn-passport-protocol';
 // Defined beside the prototype's seams until T5 to T9 retire them; this is their public home.
-export type { AccLedgerView, AccPureCircuits, P256PublicKey, WebAuthnPolicy } from '../seams.js';
+export type {
+  AccLedgerView,
+  AccPureCircuits,
+  P256PublicKey,
+  WebAuthnPolicy,
+  PasskeyCredential,
+  PasskeySeam,
+} from '../seams.js';
 
 /** An affine point: P-256 for the WebAuthn arm, JubJub for the PRF arm. */
 export interface CurvePoint {

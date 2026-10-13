@@ -76,6 +76,8 @@ for (const [pkg, allowed] of Object.entries(graph)) {
         pkg.startsWith('adapter-') &&
         target === `${SCOPE}account` &&
         spec !== ACCOUNT_PORTS &&
+        // Concrete error mapping is the one runtime helper the WebAuthn adapter needs.
+        !(pkg === 'adapter-webauthn' && spec === 'account/errors') &&
         !COMPOSITION_ROOTS.includes(pkg)
       ) {
         violations.push(`${file}: "${pkg}" must import "${SCOPE}${ACCOUNT_PORTS}" (design §1.2).`);

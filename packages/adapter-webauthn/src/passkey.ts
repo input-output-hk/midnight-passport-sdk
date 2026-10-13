@@ -1,9 +1,8 @@
 import {
   PassportConnectorError,
   toPassportError,
-  type PasskeyCredential,
-  type PasskeySeam,
-} from '@midnight-ntwrk/mn-passport-account';
+} from '@midnight-ntwrk/mn-passport-account/errors';
+import type { PasskeyCredential, PasskeySeam } from '@midnight-ntwrk/mn-passport-account/ports';
 import {
   assertionMaterial,
   bigintFromBytes,

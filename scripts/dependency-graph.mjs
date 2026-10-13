@@ -14,7 +14,8 @@ export const ALLOWED = {
   'adapter-prover-remote': ['core'],
   account: ['protocol'],
   keys: ['account'],
-  'adapter-browser': ['account', 'contract', 'keys', 'protocol'],
+  'adapter-webauthn': ['account', 'keys'],
+  'adapter-browser': ['account', 'adapter-webauthn', 'contract', 'keys', 'protocol'],
 };
 
 /** An adapter takes `account` through its types-only `./ports` subpath, never the root (D-2). */

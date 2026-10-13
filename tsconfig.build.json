@@ -29,6 +29,9 @@
       "path": "./packages/keys"
     },
     {
+      "path": "./packages/adapter-webauthn"
+    },
+    {
       "path": "./packages/adapter-browser"
     }
   ]

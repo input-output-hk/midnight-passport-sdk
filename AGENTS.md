@@ -167,7 +167,9 @@ rotate again. It writes `experiments/acc-0.35/results/x8-dapp-e2e.json` and shou
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `packages/protocol`                | Connector API types, error codes                                                                                                           |
 | `packages/account`                 | Connector flows (create, open, signed calls) behind injected seams; platform-neutral                                                       |
-| `packages/adapter-browser`         | WebAuthn passkey and PRF, the Lace key recipe, the midnight-js chain over the service, the `window.midnight.passport` shim                 |
+| `packages/keys`                    | Platform-neutral Lace key recipe and ACC encryption-key source                                                                                |
+| `packages/adapter-webauthn`        | WebAuthn passkey and PRF, with credential, key-source and P-256 authoriser ports                                                             |
+| `packages/adapter-browser`         | Browser compatibility exports, midnight-js chain over the service, and the `window.midnight.passport` shim                                  |
 | `apps/passport-service`            | Artefact host (`/zk`), transaction prover (`/prove-tx`), fee sponsor (`/sponsor/*`), wave deploy (`/deploy`), account lookup (`/accounts`) |
 | `apps/passport-dapp`               | The demo page, the built-in wallet, the mock passkey, the e2e scripts                                                                      |
 | `infra/localnet`, `infra/networks` | The Passport localnet and the Midnight stack configuration (one file per network)                                                          |

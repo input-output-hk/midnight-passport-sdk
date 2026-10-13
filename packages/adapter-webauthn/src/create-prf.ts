@@ -13,7 +13,7 @@
 //
 // Providers that return only `prf.enabled` at creation hold nothing here, and the encryption-key
 // seam falls back to its own PRF ceremony (prf.ts).
-import type { PasskeyCredential } from '@midnight-ntwrk/mn-passport-account';
+import type { PasskeyCredential } from '@midnight-ntwrk/mn-passport-account/ports';
 import type { PasskeyPrfOutputs } from './prf.js';
 
 /** How long create-time PRF outputs wait for the encryption-key seam before they are zeroed. */
