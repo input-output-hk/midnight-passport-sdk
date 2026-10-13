@@ -43,9 +43,11 @@ const bundleFile = source
     ? resolve(bundleArg)
     : fileURLToPath(new URL('../resources/acc-45721e1.zkir.json.gz', import.meta.url));
 const output = resolve(option('--output'));
+const packageManifestPin = '682bfbd3420e4ad1ce8061a585f1029c395d82accdee030751ed25ede62df8ec';
+const packageKeyManifestPin = '195ed95074cfe6dd6670c5229c59f291761d366238415c25499c54d5f6e98d24';
 const expectedManifest = args.includes('--manifest-sha256')
   ? option('--manifest-sha256')
-  : '682bfbd3420e4ad1ce8061a585f1029c395d82accdee030751ed25ede62df8ec';
+  : packageManifestPin;
 const selected = args.includes('--circuit') ? option('--circuit') : undefined;
 if (args.length) fail(`unexpected arguments: ${args.join(' ')}`);
 if (!/^[a-f0-9]{64}$/.test(expectedManifest))
@@ -90,6 +92,37 @@ const allCircuits = Object.keys(manifest.keys ?? {})
   .filter((name) => name.endsWith('.prover'))
   .map((name) => name.slice(0, -'.prover'.length))
   .sort();
+if (expectedManifest === packageManifestPin) {
+  const keyManifestBytes = readFileSync(
+    new URL('../resources/acc-45721e1.key-manifest.json', import.meta.url),
+  );
+  if (createHash('sha256').update(keyManifestBytes).digest('hex') !== packageKeyManifestPin)
+    fail('key manifest differs from the package pin');
+  const keyManifest = JSON.parse(keyManifestBytes.toString('utf8'));
+  if (
+    keyManifest.schemaVersion !== 1 ||
+    keyManifest.bindingId !== 'acc-45721e1' ||
+    keyManifest.compilerManifestSha256 !== expectedManifest ||
+    keyManifest.compiler?.version !== manifest['compiler-version'] ||
+    keyManifest.compiler?.commit !== manifest['compiler-commit'] ||
+    keyManifest.regeneration?.tool !== 'zkir-v3' ||
+    keyManifest.regeneration?.toolchainVersion !== '0.35.0' ||
+    Object.keys(keyManifest.circuits ?? {}).length !== allCircuits.length
+  )
+    fail('key manifest disagrees with the pinned compiler manifest');
+  for (const circuit of allCircuits) {
+    for (const [kind, pin] of Object.entries({
+      zkir: manifest.zkir?.[`${circuit}.zkir`],
+      bzkir: manifest.zkir?.[`${circuit}.bzkir`],
+      prover: manifest.keys?.[`${circuit}.prover`],
+      verifier: manifest.keys?.[`${circuit}.verifier`],
+    })) {
+      const recorded = keyManifest.circuits[circuit]?.[kind];
+      if (!pin || recorded?.sha256 !== pin.hash || recorded?.size !== pin.size)
+        fail(`${circuit}.${kind}: key manifest differs from the pinned compiler manifest`);
+    }
+  }
+}
 if (bundledFiles) {
   const expected = new Map();
   for (const circuit of allCircuits) {
@@ -119,7 +152,9 @@ if (bundledFiles) {
 
 const compactHome = process.env.COMPACT_DIRECTORY;
 if (!compactHome) fail('run inside the pinned Nix shell (COMPACT_DIRECTORY is missing)');
-const zkirCompiler = join(dirname(readlinkSync(join(compactHome, 'bin', 'compactc'))), 'zkir-v3');
+const compactCompiler = readlinkSync(join(compactHome, 'bin', 'compactc'));
+if (!compactCompiler.includes('/versions/0.35.0/')) fail('Compact 0.35.0 toolchain is required');
+const zkirCompiler = join(dirname(compactCompiler), 'zkir-v3');
 if (!existsSync(zkirCompiler)) fail('pinned zkir-v3 compiler is missing');
 
 const circuits = allCircuits.filter((name) => !selected || name === selected).sort();
