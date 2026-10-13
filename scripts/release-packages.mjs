@@ -4,6 +4,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { gunzipSync } from 'node:zlib';
 
 const mode = process.argv[2];
 const version = process.env.RELEASE_VERSION;
@@ -120,6 +121,12 @@ if (mode === 'pack') {
       const entries = execFileSync('tar', ['-tzf', file], { encoding: 'utf8' }).trim().split('\n');
       if (entries.some((entry) => entry.endsWith('.prover')))
         fail(`${item.directory} contains a prover key; inspect artefact packaging`);
+      for (const entry of entries.filter((name) => name.endsWith('.zkir.json.gz'))) {
+        const archive = execFileSync('tar', ['-xOzf', file, entry]);
+        const bundle = JSON.parse(gunzipSync(archive).toString('utf8'));
+        if (Object.keys(bundle.files ?? {}).some((name) => name.endsWith('.prover')))
+          fail(`${item.directory} contains a bundled prover key`);
+      }
       const packed = JSON.parse(
         execFileSync('tar', ['-xOzf', file, 'package/package.json'], { encoding: 'utf8' }),
       );
