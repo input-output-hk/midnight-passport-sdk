@@ -1,0 +1,100 @@
+name: Publish SDK packages
+
+on:
+  push:
+    tags: ['sdk-v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact shared semver version, for example 0.1.0-dev.1
+        required: true
+        type: string
+      dist_tag:
+        description: GitHub Packages distribution tag
+        required: true
+        default: dev
+        type: choice
+        options: [dev, next, latest]
+      dry_run:
+        description: Build and pack without publishing
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'input-output-hk/midnight-passport-sdk' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/passport-acc-prototype') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/sdk-v')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Select release
+        id: release
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_DIST_TAG: ${{ inputs.dist_tag }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            git fetch --no-tags origin passport-acc-prototype
+            git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD || {
+              echo 'Release tag must point to passport-acc-prototype history.' >&2
+              exit 1
+            }
+            version="${GITHUB_REF_NAME#sdk-v}"
+            if [[ "$version" == *-* ]]; then tag=dev; else tag=latest; fi
+            dry_run=false
+          else
+            version="$INPUT_VERSION"
+            tag="$INPUT_DIST_TAG"
+            dry_run="$INPUT_DRY_RUN"
+          fi
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "dry_run=$dry_run"
+          } >> "$GITHUB_OUTPUT"
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+      - name: Install and verify
+        run: |
+          nix develop -c pnpm install --frozen-lockfile
+          nix develop -c pnpm run lint
+          nix develop -c pnpm run format:check
+          nix develop -c pnpm run build
+          nix develop -c pnpm test
+          nix develop -c pnpm run test:apps
+          nix develop -c pnpm --filter passport-service exec tsc --noEmit -p .
+          nix develop -c pnpm --filter passport-dapp exec tsc --noEmit -p .
+      - name: Pack and inspect publishable tarballs
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          DIST_TAG: ${{ steps.release.outputs.tag }}
+        run: nix develop -c node scripts/release-packages.mjs pack
+      - name: Attest tarballs
+        if: steps.release.outputs.dry_run == 'false'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: release-tarballs/*.tgz
+      - name: Publish to GitHub Packages
+        if: steps.release.outputs.dry_run == 'false'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          DIST_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          # shellcheck disable=SC2016 # npm expands the token placeholder at publish time.
+          printf '@input-output-hk:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}\n' > "$HOME/.npmrc"
+          nix develop -c node scripts/release-packages.mjs publish

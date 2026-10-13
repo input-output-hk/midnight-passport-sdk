@@ -44,6 +44,7 @@ result-*
 packages/contract/artefact/
 experiments/acc-0.35/work/
 _site/
+release-tarballs/
 
 # The dapp's copy of the generated ACC module (apps/passport-dapp/scripts/sync-acc.mjs)
 apps/passport-dapp/src/acc/generated/
