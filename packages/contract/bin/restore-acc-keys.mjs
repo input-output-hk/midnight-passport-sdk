@@ -70,12 +70,15 @@ if (source) {
   manifestBytes = readFileSync(manifestFile);
 } else {
   if (!bundleFile || !existsSync(bundleFile)) fail('key bundle is missing');
-  const bundle = JSON.parse(gunzipSync(readFileSync(bundleFile)).toString('utf8'));
+  const bundle = JSON.parse(
+    gunzipSync(readFileSync(bundleFile), { maxOutputLength: 32 * 1024 * 1024 }).toString('utf8'),
+  );
   if (bundle.schemaVersion !== 1 || bundle.bindingId !== 'acc-45721e1')
     fail('unsupported key bundle');
   manifestBytes = Buffer.from(bundle.manifest, 'utf8');
   bundledFiles = bundle.files;
-  if (!bundledFiles || typeof bundledFiles !== 'object') fail('key bundle has no files');
+  if (!bundledFiles || typeof bundledFiles !== 'object' || Array.isArray(bundledFiles))
+    fail('key bundle has no files');
 }
 if (createHash('sha256').update(manifestBytes).digest('hex') !== expectedManifest)
   fail('compiler manifest does not match the independent SHA-256 pin');
@@ -83,16 +86,43 @@ const manifest = JSON.parse(manifestBytes.toString('utf8'));
 if (manifest['compiler-version'] !== '0.35.0' || manifest['manifest-version'] !== '1')
   fail('unsupported compiler manifest');
 
+const allCircuits = Object.keys(manifest.keys ?? {})
+  .filter((name) => name.endsWith('.prover'))
+  .map((name) => name.slice(0, -'.prover'.length))
+  .sort();
+if (bundledFiles) {
+  const expected = new Map();
+  for (const circuit of allCircuits) {
+    if (!/^[a-z][a-z0-9_]*$/.test(circuit)) fail(`invalid circuit name: ${circuit}`);
+    expected.set(`zkir/${circuit}.zkir`, manifest.zkir?.[`${circuit}.zkir`]);
+    expected.set(`zkir/${circuit}.bzkir`, manifest.zkir?.[`${circuit}.bzkir`]);
+    expected.set(`keys/${circuit}.verifier`, manifest.keys?.[`${circuit}.verifier`]);
+  }
+  if (Object.keys(bundledFiles).length !== expected.size)
+    fail('key bundle does not contain the exact pinned input set');
+  for (const [name, pin] of expected) {
+    const encoded = bundledFiles[name];
+    if (
+      typeof encoded !== 'string' ||
+      !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded) ||
+      !Number.isSafeInteger(pin?.size) ||
+      !/^[a-f0-9]{64}$/.test(pin?.hash ?? '')
+    )
+      fail(`${name}: missing or invalid bundled input`);
+    const bytes = Buffer.from(encoded, 'base64');
+    if (bytes.length !== pin.size || createHash('sha256').update(bytes).digest('hex') !== pin.hash)
+      fail(`${name}: bundled input differs from the pinned manifest`);
+  }
+  if (Object.keys(bundledFiles).some((name) => !expected.has(name)))
+    fail('key bundle contains an unexpected input');
+}
+
 const compactHome = process.env.COMPACT_DIRECTORY;
 if (!compactHome) fail('run inside the pinned Nix shell (COMPACT_DIRECTORY is missing)');
 const zkirCompiler = join(dirname(readlinkSync(join(compactHome, 'bin', 'compactc'))), 'zkir-v3');
 if (!existsSync(zkirCompiler)) fail('pinned zkir-v3 compiler is missing');
 
-const circuits = Object.keys(manifest.keys ?? {})
-  .filter((name) => name.endsWith('.prover'))
-  .map((name) => name.slice(0, -'.prover'.length))
-  .filter((name) => !selected || name === selected)
-  .sort();
+const circuits = allCircuits.filter((name) => !selected || name === selected).sort();
 if (!circuits.length) fail('no matching circuit in manifest');
 mkdirSync(output, { recursive: true });
 for (const circuit of circuits) {

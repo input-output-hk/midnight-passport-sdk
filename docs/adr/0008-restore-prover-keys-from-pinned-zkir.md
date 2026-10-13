@@ -11,7 +11,7 @@ Git LFS can hold individual keys, but the whole set is large: downloads and ever
 
 The existing compiler manifest pins the SHA-256 and size of each ZKIR, prover and verifier file. The `zkir-v3 compile` command can reconstruct both keys from one `.zkir` file. On 2026/10/13, `experiments/acc-0.35/regen-check.sh <contract-dir> --all` completed successfully for all 52 circuits: every regenerated prover and verifier key was byte-for-byte identical to the original Compact output.
 
-The prototype's `packages/contract/resources/acc-45721e1.zkir.json.gz` contains the manifest, ZKIR and verifier keys, with no prover keys. Its reproducible gzip is 1,369,195 bytes (SHA-256 `a6ef8458a37ccbeac502aa65c241f2a026406ae6b89849a7f61ad62f2acb27fa`). `scripts/build-acc-key-bundle.mjs` checks every input against the manifest before writing it, and the contract package's `mn-passport-restore-keys` CLI verifies the independent manifest pin and regenerated outputs.
+The prototype's `packages/contract/resources/acc-45721e1.zkir.json.gz` contains the manifest, ZKIR and verifier keys, with no prover keys. Two builds with the pinned local toolchain produced the same 1,369,195-byte gzip (SHA-256 `a6ef8458a37ccbeac502aa65c241f2a026406ae6b89849a7f61ad62f2acb27fa`). Cross-platform gzip byte identity has not been established; the manifest pins the uncompressed inputs. `scripts/build-acc-key-bundle.mjs` checks every input against the manifest before writing it, and the contract package's `mn-passport-restore-keys` CLI verifies the independent manifest pin, every bundled input and regenerated outputs.
 
 ## Proposed decision
 
