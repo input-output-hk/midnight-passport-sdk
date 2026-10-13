@@ -154,11 +154,22 @@ if (mode === 'pack') {
   if (
     manifest.version !== version ||
     manifest.tag !== tag ||
+    !Array.isArray(manifest.files) ||
     manifest.files.length !== ordered.length
   )
     fail('packed manifest does not match the requested release');
-  for (const { name, file } of manifest.files) {
-    if (!byName.has(name) || !/^[a-z0-9@/_.-]+\.tgz$/.test(file)) fail('invalid packed manifest');
+  for (const [index, { name, file }] of manifest.files.entries()) {
+    if (name !== ordered[index]?.data.name || !/^[a-z0-9@_.-]+\.tgz$/.test(file))
+      fail('packed manifest has a missing, duplicate or out-of-order package');
+    const tarball = join(output, file);
+    if (!existsSync(tarball)) fail(`missing tarball for ${name}`);
+    const packed = JSON.parse(
+      execFileSync('tar', ['-xOzf', tarball, 'package/package.json'], { encoding: 'utf8' }),
+    );
+    if (packed.name !== name || packed.version !== version)
+      fail(`tarball identity differs from the packed manifest for ${name}`);
+  }
+  for (const { file } of manifest.files) {
     run('npm', ['publish', join(output, file), '--registry', registry, '--tag', tag]);
   }
 }
