@@ -136,6 +136,37 @@ importers:
         specifier: 1.0.0-rc.5
         version: 1.0.0-rc.5
 
+  packages/adapter-midnight-js:
+    dependencies:
+      '@midnight-ntwrk/mn-passport-account':
+        specifier: workspace:*
+        version: link:../account
+      '@midnight-ntwrk/mn-passport-protocol':
+        specifier: workspace:*
+        version: link:../protocol
+    devDependencies:
+      '@midnight-ntwrk/compact-js':
+        specifier: 3.0.0-rc.3
+        version: 3.0.0-rc.3
+      '@midnight-ntwrk/midnight-js-contracts':
+        specifier: 5.0.0-rc.2
+        version: 5.0.0-rc.2
+      '@midnight-ntwrk/midnight-js-fetch-zk-config-provider':
+        specifier: 5.0.0-rc.2
+        version: 5.0.0-rc.2
+      '@midnight-ntwrk/midnight-js-indexer-public-data-provider':
+        specifier: 5.0.0-rc.2
+        version: 5.0.0-rc.2
+      '@midnight-ntwrk/midnight-js-network-id':
+        specifier: 5.0.0-rc.2
+        version: 5.0.0-rc.2
+      '@midnight-ntwrk/midnight-js-types':
+        specifier: 5.0.0-rc.2
+        version: 5.0.0-rc.2
+      '@midnightntwrk/ledger-v9':
+        specifier: 1.0.0-rc.5
+        version: 1.0.0-rc.5
+
   packages/adapter-prover-remote:
     dependencies:
       '@midnight-ntwrk/mn-passport-core':

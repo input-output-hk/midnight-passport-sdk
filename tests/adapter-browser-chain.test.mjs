@@ -7,7 +7,10 @@ import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
 const b = await import(new URL('../packages/adapter-browser/dist/index.js', import.meta.url).href);
-// ledger-v9 is the adapter's dependency, so it resolves from the adapter's own manifest.
+const midnight = await import(
+  new URL('../packages/adapter-midnight-js/dist/index.js', import.meta.url).href
+);
+// ledger-v9 is the browser adapter's prototype dependency.
 const ledger = await import(
   pathToFileURL(
     createRequire(new URL('../packages/adapter-browser/package.json', import.meta.url)).resolve(
@@ -577,6 +580,96 @@ test('a call reports prove, sponsor.balance, sponsor.submit and chain.finality t
     message: 'the transaction failed on chain',
   });
   assert.equal(seen.at(-1)?.step, 'chain.finality');
+});
+
+test('the Midnight chain uses injected prover, sponsor and submitter ports', async () => {
+  const unproven = ledger.Transaction.fromParts('undeployed');
+  const { unbound, bound } = await finalizedTx();
+  /** @type {string[]} */
+  const calls = [];
+  /** @type {import('../packages/protocol/dist/index.js').PassportEvent[]} */
+  const events = [];
+  const chain = midnight.createMidnightChain({
+    network: {
+      networkId: 'undeployed',
+      bindingId: 'acc-45721e1',
+      manifestSha256: CONFIG.manifestSha256,
+      indexerUrl: CONFIG.indexerUri,
+      indexerWsUrl: CONFIG.indexerWsUri,
+      nodeUrl: CONFIG.nodeUri,
+      artefactUrl: CONFIG.zkBaseUrl,
+    },
+    binding: { Contract: class {}, ledger: () => stubLedger, pureCircuits: {} },
+    sponsorKeys: { coinPublicKey: 'cpk', encryptionPublicKey: 'epk' },
+    prover: {
+      async proveTx(
+        /** @type {Uint8Array} */ bytes,
+        /** @type {import('../packages/account/dist/ports/index.js').ProveContext} */ context,
+      ) {
+        calls.push('prove');
+        assert.deepEqual(bytes, unproven.serialize());
+        assert.equal(context.networkId, 'undeployed');
+        assert.equal(context.bindingId, 'acc-45721e1');
+        assert.deepEqual(context.circuits, ['rotate_enc_key_with_p256']);
+        return { tx: unbound.serialize(), provenance: 'remote' };
+      },
+    },
+    sponsor: {
+      async balanceAndSign(/** @type {Uint8Array} */ bytes) {
+        calls.push('balance');
+        assert.deepEqual(bytes, unbound.serialize());
+        return bound.serialize();
+      },
+    },
+    submitter: {
+      async submit(/** @type {Uint8Array} */ bytes) {
+        calls.push('submit');
+        assert.deepEqual(bytes, bound.serialize());
+        return 'tx-id';
+      },
+    },
+    publicDataProvider: { queryContractState: async () => ({ data: 'state-data' }) },
+    submit: async (
+      /** @type {{proofProvider: {proveTx(tx: unknown): Promise<unknown>}; walletProvider: {getCoinPublicKey(): Promise<string>; getEncryptionPublicKey(): Promise<string>; balanceTx(tx: unknown): Promise<unknown>}; midnightProvider: {submitTx(tx: unknown): Promise<string>}}} */ providers,
+    ) => {
+      assert.equal(await providers.walletProvider.getCoinPublicKey(), 'cpk');
+      assert.equal(await providers.walletProvider.getEncryptionPublicKey(), 'epk');
+      const proven = await providers.proofProvider.proveTx({ version: 'v9', tx: unproven });
+      const balanced = await providers.walletProvider.balanceTx(proven);
+      await providers.midnightProvider.submitTx(balanced);
+      return { public: { txHash: 'hash', blockHeight: 7 } };
+    },
+  });
+  assert.deepEqual(
+    await chain.call({
+      address: 'addr',
+      circuit: 'rotate_enc_key_with_p256',
+      args: [],
+      onEvent: (/** @type {import('../packages/protocol/dist/index.js').PassportEvent} */ event) =>
+        events.push(event),
+    }),
+    { txHash: 'hash', blockHeight: 7 },
+  );
+  assert.deepEqual(calls, ['prove', 'balance', 'submit']);
+  assert.deepEqual(
+    events.map((event) => `${event.step}:${event.phase}`),
+    ['prove', 'sponsor.balance', 'sponsor.submit', 'chain.finality'].flatMap((step) => [
+      `${step}:start`,
+      `${step}:end`,
+    ]),
+  );
+  assert.equal((await chain.readAccount('addr'))?.authNonce, 4n);
+  assert.deepEqual(
+    await chain.call({
+      address: 'addr',
+      circuit: 'rotate_enc_key_with_p256',
+      args: [],
+      onEvent: () => {
+        throw new Error('UI listener failed');
+      },
+    }),
+    { txHash: 'hash', blockHeight: 7 },
+  );
 });
 
 test('deploy refuses an answer whose txHashes are not a list of strings', async () => {

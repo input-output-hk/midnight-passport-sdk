@@ -16,6 +16,7 @@ export const ALLOWED = {
   keys: ['account'],
   'adapter-webauthn': ['account', 'keys'],
   'adapter-service': ['account', 'protocol'],
+  'adapter-midnight-js': ['account', 'protocol'],
   'adapter-browser': [
     'account',
     'adapter-webauthn',

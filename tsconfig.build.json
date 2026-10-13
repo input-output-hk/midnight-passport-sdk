@@ -35,6 +35,9 @@
       "path": "./packages/adapter-service"
     },
     {
+      "path": "./packages/adapter-midnight-js"
+    },
+    {
       "path": "./packages/adapter-browser"
     }
   ]
