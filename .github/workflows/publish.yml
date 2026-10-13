@@ -104,6 +104,10 @@ jobs:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           DIST_TAG: ${{ steps.release.outputs.tag }}
         run: nix develop -c node scripts/release-packages.mjs pack
+      - name: Install and exercise packed packages
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: nix develop -c node scripts/smoke-release-tarballs.mjs
       - name: Require npmjs publisher credential
         if: steps.release.outputs.dry_run == 'false' && (steps.release.outputs.registries == 'both' || steps.release.outputs.registries == 'npmjs')
         env:
