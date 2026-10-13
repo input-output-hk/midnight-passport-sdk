@@ -1,0 +1,7 @@
+title: Midnight Passport SDK
+description: Packages and API for passkey controlled Midnight accounts
+url: https://input-output-hk.github.io
+baseurl: /midnight-passport-sdk
+markdown: kramdown
+exclude:
+  - README.md
