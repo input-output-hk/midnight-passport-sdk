@@ -13,7 +13,7 @@ permalink: /packages/
 | `mn-passport-adapter-service`                            | Fetch clients for proving, sponsorship, deployment, directory and checked config      | Client ports packed; unpublished          |
 | `mn-passport-adapter-midnight-js`                        | Midnight call pipeline over injected prover, sponsor and submitter ports              | Packed for RC1; unpublished               |
 | `mn-passport-adapter-browser`                            | Browser composition root and shim; `./prototype` keeps legacy demo helpers             | Packed for RC1; unpublished               |
-| `mn-passport-contract`                                   | `acc-s3r1.1` module, binding registry, key manifest, ZKIR and restore CLI             | Both release and prototype bindings packed |
+| `mn-passport-contract`                                   | `acc-s3r1.1` module, binding registry, key manifest, ZKIR and restore CLI             | `acc-s3r1.1` supported; old key bundle archived |
 | `mn-passport-core`, `connect` and signer/prover adapters | Earlier SDK scaffolding                                                               | Packed; not the current passkey surface   |
 
 The package names in source use `@input-output-hk/mn-passport-*` for GitHub Packages. Wait for a published release before adding an install command to an application.

@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-// Add the pinned grants ACC to the SDK registry without changing the demo's
-// current prototype pointer. The release cut switches that pointer separately.
+// Make the pinned grants ACC the release registry's only supported binding.
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -18,7 +17,8 @@ if (
 )
   throw new Error('unexpected ACC release binding');
 const registry = JSON.parse(readFileSync(registryPath, 'utf8'));
-if (registry.current !== '0.0.0-prototype.1') throw new Error('prototype pointer changed');
+if (!['0.0.0-prototype.1', metadata.id].includes(registry.current))
+  throw new Error('unexpected registry pointer');
 
 /** @type {Record<string, unknown>} */
 const circuits = {};
@@ -61,6 +61,8 @@ registry.versions[metadata.id] = {
   },
   circuits: Object.fromEntries(Object.entries(circuits).sort(([a], [b]) => a.localeCompare(b))),
 };
+registry.current = metadata.id;
+delete registry.versions['0.0.0-prototype.1'];
 registry.$generatedBy = 'scripts/sync-acc-release-registry.mjs';
 
 /** @param {string} input @param {string} path */

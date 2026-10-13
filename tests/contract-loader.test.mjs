@@ -47,7 +47,7 @@ test('loadArtefact must reject a circuit outside the binding inventory', async (
     'unknown circuits must fail with their typed error',
   );
   await assert.rejects(
-    loadArtefact(fsSource, { circuits: ['derive_device_commitment'] }),
+    loadArtefact(fsSource, { circuits: ['derive_boot_commitment_with_p256'] }),
     (/** @type {InstanceType<typeof UnknownCircuitError>} */ error) => {
       assert.equal(error.reason, 'pure', 'a pure circuit must be reported as pure, not absent');
       assert.match(error.message, /generated module/, 'the message must point at the module');

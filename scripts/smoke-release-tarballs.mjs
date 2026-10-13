@@ -47,11 +47,23 @@ try {
        import * as binding from '@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1';
        import * as account from '@input-output-hk/mn-passport-account';
        import * as browser from '@input-output-hk/mn-passport-adapter-browser';
-       if (!contract.SUPPORTED_BINDINGS.includes('acc-s3r1.1') ||
+       if (contract.BINDING_VERSION !== 'acc-s3r1.1' ||
+           contract.SUPPORTED_BINDINGS.length !== 1 ||
            typeof binding.Contract !== 'function' ||
            typeof account.createPassportAccounts !== 'function' ||
            typeof browser.createBrowserPassport !== 'function')
          throw new Error('packed SDK exports are incomplete');
+       const checked = contract.bindAccModule(binding);
+       if (Object.keys(checked.pureCircuits).length !== 66)
+         throw new Error('grants generated module does not match the package binder');
+       const args = contract.buildDeployArgs({
+         initialDeviceBoot: new Uint8Array(32),
+         encryptionKey: new Uint8Array(32),
+         initialRecoveryPk: { x: 0n, y: 0n },
+         initialRecoveryWrap: new Uint8Array(64),
+         vetoWindowSeconds: 259200n,
+       });
+       if (args.constructorArgs.length !== 5) throw new Error('old ACC constructor');
        console.log('packed SDK entrypoints loaded');`,
     ],
     { cwd: scratch, stdio: 'inherit' },

@@ -1,38 +1,24 @@
-// The typed deploy caller (FS-0.2 T2, D-5). The ACC has no deploy circuit:
-// deployment is the Compact constructor, so this shapes constructor
-// arguments — the commitments are derived kernel-side (under the ceremony)
-// with the artefact's pure circuits; secrets never reach this package.
+// The acc-s3r1.1 constructor takes five values. They are commitments and
+// public recovery parameters; passkey or recovery secrets stay with the host.
+import type { JubjubPoint } from '@midnight-ntwrk/compact-runtime';
 import { BINDING_VERSION, assertBindingCompatible } from './registry.js';
 
-/** The deploy inputs, as commitments — never secrets (architecture §4.1). */
 export interface AccDeployInputs {
-  /** Via derive_device_commitment over the device secret (kernel-side). */
-  readonly initialDeviceCommitment: bigint;
-  /** Via derive_recovery_commitment over the recovery secret (kernel-side). */
-  readonly recoveryCommitment: bigint;
+  /** P-256 boot commitment derived by the generated pure circuit. */
+  readonly initialDeviceBoot: Uint8Array;
+  readonly encryptionKey: Uint8Array;
+  readonly initialRecoveryPk: JubjubPoint;
+  readonly initialRecoveryWrap: Uint8Array;
+  readonly vetoWindowSeconds: bigint;
 }
 
-/** Ordered constructor arguments plus the binding they deploy. */
 export interface AccDeployArgs {
-  /** A member of `SUPPORTED_BINDINGS`, validated before construction. */
   readonly bindingVersion: string;
-  /**
-   * Positional Compact constructor arguments —
-   * `constructor(initial_device_commitment, recovery_commitment)`. The
-   * order is the contract's, and it matters.
-   */
-  readonly constructorArgs: readonly [bigint, bigint];
+  /** Positional arguments after the Compact constructor context. */
+  readonly constructorArgs: readonly [Uint8Array, Uint8Array, JubjubPoint, Uint8Array, bigint];
 }
 
-/**
- * Shapes the ACC deploy call for a supported binding version (new deploys
- * default to the registry's `current`); throws
- * {@link import('./registry.js').UnsupportedBindingError} for anything
- * else. FS-1.1's call
- * construction turns the result into the deployment transaction, and
- * FS-1.2's onboarding flow records `bindingVersion` as the account's
- * version (spec §4.1).
- */
+/** Build the exact acc-s3r1.1 constructor order and reject unsupported bindings. */
 export function buildDeployArgs(
   inputs: AccDeployInputs,
   bindingVersion: string = BINDING_VERSION,
@@ -40,6 +26,12 @@ export function buildDeployArgs(
   assertBindingCompatible(bindingVersion);
   return {
     bindingVersion,
-    constructorArgs: [inputs.initialDeviceCommitment, inputs.recoveryCommitment],
+    constructorArgs: [
+      inputs.initialDeviceBoot,
+      inputs.encryptionKey,
+      inputs.initialRecoveryPk,
+      inputs.initialRecoveryWrap,
+      inputs.vetoWindowSeconds,
+    ],
   };
 }

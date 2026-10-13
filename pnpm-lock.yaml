@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       '@midnight-ntwrk/compact-runtime':
-        specifier: 0.16.0
-        version: 0.16.0
+        specifier: 0.20.0
+        version: 0.20.0
       '@noble/curves':
         specifier: 2.2.0
         version: 2.2.0

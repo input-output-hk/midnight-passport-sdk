@@ -1,42 +1,36 @@
 # Compatibility matrix
 
-> **Status:** live · started 2026/07/29 (first external Midnight dependency) ·
-> updated 2026/10/08
-> Maintained by `mn-passport-skills:deps` (development-workflow §2): the two
-> version axes of architecture §4.6 — **wire** (`mn-passport-protocol` ↔
-> dApp connectors) and **binding** (`mn-passport-contract` ↔ deployed ACC)
-> — plus the toolchain each binding was produced with. A row changes only
-> through a reviewed PR. From 2026/10/08 the wire axis is the **API axis**
-> and releases are lockstep (see [Axes and releases](#axes-and-releases)).
+> **Status:** live · updated 2026/10/14. Releases are lockstep across the
+> `@input-output-hk/mn-passport-*` packages. The binding data is pinned in
+> `packages/contract/acc-binding-v2.generated.json` and the generated registry.
 
 ## Binding axis
 
-| SDK | ACC binding | Compact CLI | Compiler | Language | Runtime (`@midnight-ntwrk/compact-runtime`) | Status |
-|---|---|---|---|---|---|---|
-| dev (unreleased) | `0.0.0-prototype.1` `[PROVISIONAL]` | 0.5.1 | 0.31.1 | 0.23.0 | **0.16.0** (root devDependency, exact pin) | prototype — re-pinned when [passport#116](https://github.com/midnightntwrk/passport/issues/116) delivers publisher versioning |
+| SDK | ACC binding | Passport source | Compiler | Language | Runtime (`@midnight-ntwrk/compact-runtime`) | Compiler manifest SHA-256 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `0.1.0-rc1` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 
-The runtime column must equal the binding's recorded
-`toolchain.runtimeVersion` (`packages/contract/acc-versions.generated.json`)
-— a test asserts the agreement (`tests/contract-deploy.test.mjs`). If two
-supported bindings ever require different runtime majors, that is a
-compatibility event this matrix must resolve before the second binding is
-adopted (spec D-8). From the first published release, all bindings in one
-release share one Compact runtime (FS-0.9 D-6), so that event is resolved by
-retiring a binding in the release that moves the runtime.
+The package registry supports only `acc-s3r1.1`. The older provisional
+`0.0.0-prototype.1` binding is retired. The separate `acc-45721e1` key bundle
+remains in `mn-passport-contract` for prototype archive work, but the SDK does
+not deploy or resolve it. All supported bindings in this release use the same
+Compact runtime.
 
-## Wire axis
+## API axis
 
-| SDK | `PROTOCOL_VERSION` | Status |
-|---|---|---|
-| dev (unreleased) | — | lands with the M2 wire types (FS-0.1 D-4) |
+| SDK | Account API (`PASSPORT_API_VERSION`) | Service API (`PASSPORT_SERVICE_API_VERSION`) |
+| --- | --- | --- |
+| `0.1.0-rc1` | `1.0.0-pre.0` | `1.0.0-pre.0` |
+
+The local demo service is not a published SDK package. The service API constant
+names the versioned client wire types; the demo still uses its prototype routes.
 
 ## Axes and releases
 
 Added 2026/10/08 ([ADR 0006](./adr/0006-publish-on-github-packages.md),
 [ADR 0007](./adr/0007-package-set-ports-and-flows.md); publishing design
 [§3.5 and §6.5](./superpowers/specs/2026-10-07-passport-sdk-packages-design.md)).
-The wire axis above becomes the API axis when the account API lands (tranche
-T1); `PROTOCOL_VERSION` is replaced by the two constants below.
+The account API and the service wire types are versioned separately.
 
 | Axis | What it versions | Where | Breaking change means |
 |---|---|---|---|
@@ -58,8 +52,8 @@ T1); `PROTOCOL_VERSION` is replaced by the two constants below.
 
 | SDK | API version | Service API version | Supported bindings | Binding for new accounts | Compact runtime | Midnight package set |
 |---|---|---|---|---|---|---|
-| dev (unreleased) | — | — | — | — | — | — |
+| `0.1.0-rc1` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 
-The dev row fills as tranches land: the versions with T1, the bindings and the
-runtime with FS-0.9 (T10 to T13). The first published release adds the first
-real row.
+The release row records the package API and the pinned grants binding. The
+service library and the JubJub authoriser remain future work; RC1 supports the
+P-256 passkey path exercised by the demo.

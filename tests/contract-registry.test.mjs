@@ -25,10 +25,11 @@ const {
 test('the registry is well-formed and current is a supported version', () => {
   assert.ok(SUPPORTED_BINDINGS.length >= 1, 'the registry must hold at least one version');
   assert.ok(SUPPORTED_BINDINGS.includes(BINDING_VERSION), 'current must be a supported version');
+  assert.deepEqual(SUPPORTED_BINDINGS, ['acc-s3r1.1']);
   assert.equal(
     resolveBinding(BINDING_VERSION).provisional,
-    true,
-    'the prototype-era current pin must declare itself provisional',
+    false,
+    'the release binding must not be provisional',
   );
   for (const version of SUPPORTED_BINDINGS) {
     const binding = resolveBinding(version);
@@ -49,7 +50,7 @@ test('every version pins its full circuit inventory under its own keyLocations',
     const binding = resolveBinding(version);
     const pins = Object.entries(binding.circuits);
     const provable = pins.filter(([, pin]) => pin.proof);
-    const expected = version === 'acc-s3r1.1' ? { all: 118, proof: 52 } : { all: 15, proof: 12 };
+    const expected = { all: 118, proof: 52 };
     assert.equal(pins.length, expected.all, `${version} must pin its full circuit inventory`);
     assert.equal(provable.length, expected.proof, `${version} must pin all proof circuits`);
     for (const [name, pin] of pins) {
@@ -94,8 +95,8 @@ test('detectDeployedVersion must recover a version from its verifier-key hashes'
   assert.equal(detectDeployedVersion(tampered), null, 'a foreign key set must detect nothing');
 });
 
-test('the commitment pure circuits the deploy caller needs must be present', () => {
-  for (const name of ['derive_device_commitment', 'derive_recovery_commitment']) {
+test('the release pure circuits the passkey caller needs must be present', () => {
+  for (const name of ['derive_boot_commitment_with_p256', 'challenge_rotate_enc_key_with_p256']) {
     const pin = resolveBinding(BINDING_VERSION).circuits[name];
     assert.ok(pin, `${name} must be in the current binding`);
     assert.equal(pin.pure, true, `${name} must be pure`);
