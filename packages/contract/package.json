@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./bindings/acc-s3r1.1": {
+      "types": "./generated/acc-s3r1.1/index.d.ts",
+      "default": "./generated/acc-s3r1.1/index.js"
     }
   },
   "bin": {
@@ -15,6 +19,11 @@
   "files": [
     "dist",
     "bin",
-    "resources"
-  ]
+    "resources",
+    "generated",
+    "acc-binding-v2.generated.json"
+  ],
+  "peerDependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.20.0"
+  }
 }

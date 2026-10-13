@@ -227,7 +227,11 @@ importers:
         specifier: workspace:*
         version: link:../protocol
 
-  packages/contract: {}
+  packages/contract:
+    dependencies:
+      '@midnight-ntwrk/compact-runtime':
+        specifier: 0.20.0
+        version: 0.20.0
 
   packages/core:
     dependencies:

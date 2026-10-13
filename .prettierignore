@@ -18,3 +18,4 @@ packages/contract/artefact/
 renovate.json
 CODEOWNERS
 apps/passport-dapp/src/acc/generated/
+packages/contract/generated/
