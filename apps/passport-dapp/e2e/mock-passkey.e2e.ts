@@ -10,7 +10,7 @@ import {
   passkeyPrf,
   webauthnPolicy,
   type WebAuthnAssertion,
-} from '@midnight-ntwrk/mn-passport-adapter-browser';
+} from '@midnight-ntwrk/mn-passport-adapter-browser/prototype';
 import { createMockCredentials, MOCK_PASSKEY_STORAGE_KEY } from '../src/dev/mock-passkey.ts';
 
 const ORIGIN = 'http://localhost:5173';

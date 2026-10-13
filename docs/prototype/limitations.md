@@ -96,13 +96,11 @@ caller retries. Proofs are queued, so they never overlap a deploy, but balancing
 
 **Production.** Coordinate the sponsor's Dust use, or give each kind of work its own funded wallet.
 
-## CI is suspended
+## CI coverage
 
-**Prototype.** On 2026/10/07 the owner suspended the pull request checks while the prototype lasts.
-The `pull_request` trigger in `.github/workflows/pr-checks.yml` is commented out, and the workflow
-can still be run by hand. The checks run locally: `pnpm run lint`, `pnpm run format:check`,
-`pnpm test` and `pnpm run test:apps`. The checks that need a localnet and the compiled artefacts
-(`PASSPORT_IT=1`, `PASSPORT_CONTRACT_DIR`, `pnpm prototype:e2e`) were never part of the workflow.
+**Prototype.** Pull request checks were restored on 2026/10/13. The workflow runs lint, formatting,
+build, unit and app tests, and typechecks. The checks that need a localnet and the compiled artefacts
+(`PASSPORT_IT=1`, `PASSPORT_CONTRACT_DIR`, `pnpm prototype:e2e`) are still run separately.
 
 **Production.** CI will be redesigned from scratch. It should build the artefacts, run the
 integration tests against a localnet, and run the end-to-end script.

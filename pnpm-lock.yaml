@@ -38,6 +38,12 @@ importers:
       '@midnight-ntwrk/mn-passport-adapter-browser':
         specifier: workspace:*
         version: link:../../packages/adapter-browser
+      '@midnight-ntwrk/mn-passport-adapter-service':
+        specifier: workspace:*
+        version: link:../../packages/adapter-service
+      '@midnight-ntwrk/mn-passport-adapter-webauthn':
+        specifier: workspace:*
+        version: link:../../packages/adapter-webauthn
       '@midnight-ntwrk/mn-passport-protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -117,6 +123,9 @@ importers:
       '@midnight-ntwrk/mn-passport-account':
         specifier: workspace:*
         version: link:../account
+      '@midnight-ntwrk/mn-passport-adapter-midnight-js':
+        specifier: workspace:*
+        version: link:../adapter-midnight-js
       '@midnight-ntwrk/mn-passport-adapter-service':
         specifier: workspace:*
         version: link:../adapter-service

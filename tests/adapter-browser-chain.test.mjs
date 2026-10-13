@@ -6,7 +6,9 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
-const b = await import(new URL('../packages/adapter-browser/dist/index.js', import.meta.url).href);
+const b = await import(
+  new URL('../packages/adapter-browser/dist/prototype.js', import.meta.url).href
+);
 const midnight = await import(
   new URL('../packages/adapter-midnight-js/dist/index.js', import.meta.url).href
 );

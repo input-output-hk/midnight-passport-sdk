@@ -46,3 +46,17 @@ Each step reports `start` and exactly one `end` or `error` with the same `flowId
 Catch `PassportConnectorError` and use its `code`, `retryable` and `step` fields. Do not branch on message text. Codes include `UserCancelled`, `UnsupportedAuthenticator`, `WrongPasskey`, `AccountNotFound`, `SponsorRejected`, `ProverUnavailable`, `ArtefactIntegrity`, `ApiVersionUnsupported` and `InternalError`. The full table and Lace code mapping live in [errors.ts](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/protocol/src/errors.ts).
 
 `createPassportConnector(seams)` is a deprecated compatibility bridge. New integrations use `createPassportAccounts(ports)`.
+
+## Browser composition
+
+`createBrowserPassport(config)` from `mn-passport-adapter-browser` supplies WebAuthn credentials,
+the P-256 authoriser and the Lace encryption-key recipe. The host passes a pinned `NetworkConfig`,
+the ACC binding, prover, sponsor, submitter, deployer and directory ports. The Midnight call
+pipeline loads on the first chain operation; its network id is set for each read and call. The
+`sponsorKeys` field carries the fee payer's public coin and encryption keys required by midnight-js.
+See [BrowserPassportConfig](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/adapter-browser/src/compose.ts).
+
+`mn-passport-adapter-service` supplies `remoteProver`, `remoteSponsor` (both fee sponsor and
+submitter), `remoteDeployer`, `remoteDirectory` and `fetchCheckedConfig`. Until the service-library
+migration, the demo maps its old `/accounts` registry to the directory port; the versioned
+`remoteDirectory` expects `/v1/accounts` and cannot yet target the prototype server.

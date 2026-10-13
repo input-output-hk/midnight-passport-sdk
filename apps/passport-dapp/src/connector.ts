@@ -1,63 +1,87 @@
-import { createPassportAccounts, portsFromSeams } from '@midnight-ntwrk/mn-passport-account';
+import { PassportConnectorError } from '@midnight-ntwrk/mn-passport-account/errors';
+import type { AccountDirectory, NetworkConfig } from '@midnight-ntwrk/mn-passport-account/ports';
 import {
-  accEncryptionKeyFromPasskey,
-  browserPasskey,
-  createServiceChain,
-  createRegistryClient,
-  defaultFetch,
-  fetchServiceConfig,
+  createBrowserPassport,
   injectPassportConnector,
 } from '@midnight-ntwrk/mn-passport-adapter-browser';
+import {
+  createRegistryClient,
+  defaultFetch,
+  fetchCheckedConfig,
+  remoteDeployer,
+  remoteProver,
+  remoteSponsor,
+} from '@midnight-ntwrk/mn-passport-adapter-service';
 import {
   PASSPORT_API_VERSION,
   type PassportConnectorAPI,
 } from '@midnight-ntwrk/mn-passport-protocol';
-import { accModule } from './acc-module.js';
 
 export const SERVICE_URL = import.meta.env.VITE_PASSPORT_SERVICE_URL ?? 'http://localhost:8787';
 /** The artefact manifest hash this build pins (R18); the service's /config is checked against it. */
 export const MANIFEST_SHA256 = __PASSPORT_MANIFEST_SHA256__;
-/**
- * The network this build is bound to, fixed at build time next to the manifest pin. The page, the
- * connector and the encryption-key context (`<networkId>/0`) all take it from here.
- */
+/** The network this build is bound to, fixed at build time next to the manifest pin. */
 export const NETWORK_ID = __PASSPORT_NETWORK_ID__;
 export const RP_ID = 'localhost';
 /** The binding the prototype deploys: the artefact build the manifest pin above names. */
 export const BINDING_ID = 'acc-45721e1';
 const ORIGIN = 'http://localhost:5173';
 
+/** Adapt the prototype's registry wire format until the versioned service directory replaces it. */
+function prototypeDirectory(): AccountDirectory {
+  const registry = createRegistryClient(SERVICE_URL, defaultFetch);
+  return {
+    async get(networkId, key) {
+      const record = await registry.get(networkId, key.credentialId);
+      return record && { ...record, scheme: 'p256-webauthn' };
+    },
+    put(networkId, hint) {
+      if (!hint.credentialId || !hint.policy || !hint.salt || hint.scheme !== 'p256-webauthn') {
+        throw new PassportConnectorError(
+          'InternalError',
+          'The prototype registry needs a P-256 passkey hint.',
+        );
+      }
+      return registry.put(networkId, {
+        address: hint.address,
+        credentialId: hint.credentialId,
+        publicKey: { ...hint.publicKey, identity: false },
+        policy: hint.policy,
+        salt: hint.salt,
+        status: hint.status,
+      });
+    },
+  };
+}
+
 export async function connect(networkId: string): Promise<PassportConnectorAPI> {
-  const config = await fetchServiceConfig(SERVICE_URL, defaultFetch, networkId);
-  // The account API v1 over the prototype's seams.
-  return createPassportAccounts(
-    portsFromSeams({
-      networkId,
-      bindingId: config.bindingId,
-      pureCircuits: accModule.pureCircuits,
-      passkey: browserPasskey({ rpId: RP_ID, origin: ORIGIN }),
-      chain: createServiceChain({
-        serviceUrl: SERVICE_URL,
-        config,
-        expectedManifestSha256: MANIFEST_SHA256,
-        module: accModule,
-      }),
-      registry: createRegistryClient(SERVICE_URL, defaultFetch),
-      random: (n) => crypto.getRandomValues(new Uint8Array(n)),
-      // Lace recipe v1: the passkey's PRF root -> BIP-39 seed -> MIP-0015 at
-      // 'lace-passport:acc-enc:v1', context '<networkId>/0'. Network-bound and reproducible from the
-      // passkey. `created` takes the PRF outputs the provider returned at creation, once, when it
-      // returned them (no prompt); otherwise this is one more, pinned PRF prompt. No PRF means no
-      // account (UnsupportedAuthenticator).
-      encryptionKey: (credential) =>
-        accEncryptionKeyFromPasskey({
-          credentialId: credential.credentialId,
-          created: credential,
-          rpId: RP_ID,
-          networkId,
-        }),
-    }),
-  );
+  const config = await fetchCheckedConfig(SERVICE_URL, {
+    networkId,
+    bindingId: BINDING_ID,
+    manifestSha256: MANIFEST_SHA256,
+  });
+  const network: NetworkConfig = {
+    networkId,
+    bindingId: BINDING_ID,
+    manifestSha256: MANIFEST_SHA256,
+    indexerUrl: config.indexerUri,
+    indexerWsUrl: config.indexerWsUri,
+    nodeUrl: config.nodeUri,
+    artefactUrl: config.zkBaseUrl,
+  };
+  const sponsor = remoteSponsor(SERVICE_URL);
+  return createBrowserPassport({
+    network,
+    binding: async () => (await import('./acc-module.js')).accModule,
+    passkey: { rpId: RP_ID, origin: ORIGIN },
+    prover: remoteProver(SERVICE_URL),
+    sponsor,
+    sponsorKeys: config,
+    submitter: sponsor,
+    deployer: remoteDeployer(SERVICE_URL),
+    directory: prototypeDirectory(),
+    random: (length) => crypto.getRandomValues(new Uint8Array(length)),
+  });
 }
 
 /** What lace-sdk would inject; the harness discovers it like any dApp would. */

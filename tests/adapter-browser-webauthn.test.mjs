@@ -6,7 +6,9 @@ import assert from 'node:assert/strict';
 import { p256 } from '@noble/curves/nist.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 
-const b = await import(new URL('../packages/adapter-browser/dist/index.js', import.meta.url).href);
+const b = await import(
+  new URL('../packages/adapter-browser/dist/prototype.js', import.meta.url).href
+);
 const contracts = await import(
   new URL('../packages/account/dist/testing/index.js', import.meta.url).href
 );

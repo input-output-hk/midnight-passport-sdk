@@ -1,5 +1,5 @@
 import { PassportConnectorError } from '@midnight-ntwrk/mn-passport-account';
-import { defaultFetch, fetchServiceConfig } from '@midnight-ntwrk/mn-passport-adapter-browser';
+import { defaultFetch, fetchServiceConfig } from '@midnight-ntwrk/mn-passport-adapter-service';
 import type {
   PassportAccount,
   PassportConnectorAPI,

@@ -167,11 +167,11 @@ rotate again. It writes `experiments/acc-0.35/results/x8-dapp-e2e.json` and shou
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `packages/protocol`                | Connector API types, error codes                                                                                                           |
 | `packages/account`                 | Connector flows (create, open, signed calls) behind injected seams; platform-neutral                                                       |
-| `packages/keys`                    | Platform-neutral Lace key recipe and ACC encryption-key source                                                                                |
+| `packages/keys`                    | Portable implementation of Lace's key recipe and ACC encryption-key source                                                                    |
 | `packages/adapter-webauthn`        | WebAuthn passkey and PRF, with credential, key-source and P-256 authoriser ports                                                             |
 | `packages/adapter-service`         | Fetch clients for proving, sponsorship, deployment, directory and checked config                                                           |
 | `packages/adapter-midnight-js`     | The Midnight call pipeline over injectable prover, sponsor and submitter ports                                                              |
-| `packages/adapter-browser`         | Browser compatibility exports, the legacy service chain for the demo, and the `window.midnight.passport` shim                               |
+| `packages/adapter-browser`         | Browser composition root, `window.midnight.passport` shim and `./prototype` compatibility exports                                         |
 | `apps/passport-service`            | Artefact host (`/zk`), transaction prover (`/prove-tx`), fee sponsor (`/sponsor/*`), wave deploy (`/deploy`), account lookup (`/accounts`) |
 | `apps/passport-dapp`               | The demo page, the built-in wallet, the mock passkey, the e2e scripts                                                                      |
 | `infra/localnet`, `infra/networks` | The Passport localnet and the Midnight stack configuration (one file per network)                                                          |

@@ -19,6 +19,7 @@ export const ALLOWED = {
   'adapter-midnight-js': ['account', 'protocol'],
   'adapter-browser': [
     'account',
+    'adapter-midnight-js',
     'adapter-webauthn',
     'adapter-service',
     'contract',

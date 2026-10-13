@@ -7,7 +7,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { x25519 } from '@noble/curves/ed25519.js';
 
-const b = await import(new URL('../packages/adapter-browser/dist/index.js', import.meta.url).href);
+const b = await import(
+  new URL('../packages/adapter-browser/dist/prototype.js', import.meta.url).href
+);
 /** @param {Uint8Array} bytes */
 const hex = (bytes) => Buffer.from(bytes).toString('hex');
 const ROOT = new Uint8Array(32).fill(2);

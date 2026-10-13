@@ -27,7 +27,7 @@ import {
   prfSalt,
   seedFromRoot,
   type GeneratedAccModule,
-} from '@midnight-ntwrk/mn-passport-adapter-browser';
+} from '@midnight-ntwrk/mn-passport-adapter-browser/prototype';
 import { assertSingleCompactRuntime } from './runtime-preflight.ts';
 import { softwarePasskey } from './software-passkey.ts';
 

@@ -8,7 +8,9 @@ import assert from 'node:assert/strict';
 
 const prfUrl = new URL('../packages/adapter-webauthn/dist/create-prf.js', import.meta.url).href;
 const { holdCreatePrf, takeCreatePrf, copyPrfOutput, CREATE_PRF_TTL_MS } = await import(prfUrl);
-const b = await import(new URL('../packages/adapter-browser/dist/index.js', import.meta.url).href);
+const b = await import(
+  new URL('../packages/adapter-browser/dist/prototype.js', import.meta.url).href
+);
 
 /** @param {number} fill @returns {ArrayBuffer} */
 const buffer = (fill) => new Uint8Array(32).fill(fill).buffer;

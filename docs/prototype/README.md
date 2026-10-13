@@ -95,8 +95,9 @@ flowchart LR
   wallet would, and drives it by its buttons. It also hosts the built-in wallet.
 - **The connector** (`packages/account`) holds the flows: create, open and rotate. It reaches the
   passkey, the chain and the registry only through injected seams.
-- **The browser adapter** (`packages/adapter-browser`) supplies those seams: WebAuthn, the Lace key
-  recipe, the clients for the service, and midnight-js 5 for building and submitting calls.
+- **The browser composition** (`packages/adapter-browser`) wires the WebAuthn and key-recipe
+  adapters to service ports and lazy-loads `adapter-midnight-js` for chain calls. The old service
+  chain remains under its `./prototype` export for the e2e harness.
 - **The service** (`apps/passport-service`) serves the ZK artefacts, proves transactions, deploys
   accounts, sponsors fees and keeps the registry. It holds the only funded key.
 - **The localnet** (`infra/localnet`) is a node, an indexer and a proof server in Docker. The

@@ -7,7 +7,7 @@ import {
   fromBase64url,
   parseES256Signature,
   webauthnPolicy,
-} from '@midnight-ntwrk/mn-passport-adapter-browser';
+} from '@midnight-ntwrk/mn-passport-adapter-browser/prototype';
 
 const sha256 = (data: Uint8Array): Uint8Array =>
   new Uint8Array(createHash('sha256').update(data).digest());

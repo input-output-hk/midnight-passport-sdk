@@ -19,7 +19,8 @@ declare const __PASSPORT_NETWORK_ID__: string;
  * git-ignored and excluded from tsconfig.json.
  */
 declare module '#acc' {
-  type Generated = import('@midnight-ntwrk/mn-passport-adapter-browser').GeneratedAccModule;
+  type Generated =
+    import('@midnight-ntwrk/mn-passport-adapter-browser/prototype').GeneratedAccModule;
   export const Contract: Generated['Contract'];
   export const ledger: Generated['ledger'];
   export const pureCircuits: Generated['pureCircuits'];

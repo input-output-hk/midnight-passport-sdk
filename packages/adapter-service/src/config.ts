@@ -6,7 +6,7 @@ import { defaultFetch, fetchServiceConfig, type ServiceConfigWire } from './serv
 /** Check service discovery against a pin supplied by the app, never by the service itself. */
 export async function fetchCheckedConfig(
   base: string,
-  pin: NetworkConfig,
+  pin: Pick<NetworkConfig, 'networkId' | 'bindingId' | 'manifestSha256'>,
   options: RemoteOptions = {},
 ): Promise<ServiceConfigWire> {
   const config = await fetchServiceConfig(base, options.fetch ?? defaultFetch, pin.networkId);

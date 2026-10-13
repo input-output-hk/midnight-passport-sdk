@@ -5,7 +5,9 @@
 import { mock, test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const b = await import(new URL('../packages/adapter-browser/dist/index.js', import.meta.url).href);
+const b = await import(
+  new URL('../packages/adapter-browser/dist/prototype.js', import.meta.url).href
+);
 
 /**
  * @typedef {{ method?: string; headers?: Record<string, string>; body?: string; signal?: { aborted: boolean } }} Init

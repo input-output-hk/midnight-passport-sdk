@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./prototype": {
+      "types": "./dist/prototype.d.ts",
+      "default": "./dist/prototype.js"
     }
   },
   "files": [
@@ -20,6 +24,7 @@
     "@midnight-ntwrk/midnight-js-network-id": "5.0.0-rc.2",
     "@midnight-ntwrk/midnight-js-types": "5.0.0-rc.2",
     "@midnight-ntwrk/mn-passport-account": "workspace:*",
+    "@midnight-ntwrk/mn-passport-adapter-midnight-js": "workspace:*",
     "@midnight-ntwrk/mn-passport-adapter-webauthn": "workspace:*",
     "@midnight-ntwrk/mn-passport-adapter-service": "workspace:*",
     "@midnight-ntwrk/mn-passport-contract": "workspace:*",

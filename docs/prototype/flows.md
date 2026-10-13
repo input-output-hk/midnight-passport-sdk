@@ -2,7 +2,8 @@
 
 One sequence diagram for each flow, with the endpoints, circuits and seams involved. The code is the
 reference: `packages/account/src/connector.ts` holds the flows of the account API (which the
-prototype called the "DApp Connector API"), `packages/adapter-browser/src` the seams, and
+prototype called the "DApp Connector API"), `packages/adapter-browser/src/compose.ts` the browser
+composition, `packages/adapter-midnight-js/src/chain.ts` the call pipeline, and
 `apps/passport-service/src` the service.
 
 Terms used below:
