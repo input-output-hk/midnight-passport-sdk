@@ -139,8 +139,8 @@ rotate again. It writes `experiments/acc-0.35/results/x8-dapp-e2e.json` and shou
 
 - **Use Nix for every command:** `nix develop -c …`. Never call a global `compact`, `node` or
   `pnpm`. The scripts' `guard.sh` refuses any toolchain outside the Nix store.
-- **Run the checks locally before every commit.** CI is suspended while prototyping (its PR trigger
-  is commented out in `.github/workflows/pr-checks.yml`).
+- **Run the checks locally before every commit.** Pull requests also run the checks in
+  `.github/workflows/pr-checks.yml`.
 
   ```sh
   nix develop -c bash -c 'pnpm run lint && pnpm run format:check && pnpm run build && pnpm test \

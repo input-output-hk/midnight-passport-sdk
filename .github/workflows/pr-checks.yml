@@ -3,13 +3,11 @@
 # exact-pin dependency discipline, applied to the workflow itself).
 name: PR checks
 
-# SUSPENDED for the Passport DApp prototype (owner decision, 2026-10-07): checks run locally while
-# prototyping, and CI will be redesigned from scratch. Nothing below is removed; restore the
-# pull_request trigger to re-enable the gates.
+# Required release checks run for every pull request.
 on:
   workflow_dispatch:
-  # pull_request:
-  #   types: [opened, edited, synchronize, reopened]
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
 
 permissions:
   contents: read
@@ -18,6 +16,7 @@ permissions:
 jobs:
   description:
     name: PR references its issue
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Require Refs/Closes #NN in the PR description
@@ -32,6 +31,7 @@ jobs:
 
   diff-size:
     name: Tranche budget (400 soft / 600 hard)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -44,6 +44,7 @@ jobs:
 
   dep-cooldown:
     name: 7-day dependency cooldown
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
