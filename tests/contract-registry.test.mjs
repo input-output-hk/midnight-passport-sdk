@@ -49,8 +49,9 @@ test('every version pins its full circuit inventory under its own keyLocations',
     const binding = resolveBinding(version);
     const pins = Object.entries(binding.circuits);
     const provable = pins.filter(([, pin]) => pin.proof);
-    assert.equal(pins.length, 15, `${version} must pin 15 circuits (12 provable + 3 pure)`);
-    assert.equal(provable.length, 12, `${version} must pin 12 provable circuits`);
+    const expected = version === 'acc-s3r1.1' ? { all: 118, proof: 52 } : { all: 15, proof: 12 };
+    assert.equal(pins.length, expected.all, `${version} must pin its full circuit inventory`);
+    assert.equal(provable.length, expected.proof, `${version} must pin all proof circuits`);
     for (const [name, pin] of pins) {
       if (pin.proof) {
         assert.equal(
@@ -101,6 +102,31 @@ test('the commitment pure circuits the deploy caller needs must be present', () 
   }
 });
 
+test('the grants release binding matches the pinned compiler metadata', () => {
+  const metadata = JSON.parse(
+    readFileSync(
+      new URL('../packages/contract/acc-binding-v2.generated.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  const binding = resolveBinding(metadata.id);
+  assert.equal(binding.provisional, false);
+  assert.equal(binding.toolchain.runtimeVersion, '0.20.0');
+  for (const item of metadata.roster) {
+    const pin = binding.circuits[item.name];
+    assert.equal(pin.proof, true);
+    assert.deepEqual(pin.hashes, {
+      zkir: item.zkir.sha256,
+      bzkir: item.bzkir.sha256,
+      verifierKey: item.verifier.sha256,
+      proverKey: item.prover.sha256,
+    });
+  }
+  for (const name of metadata.pureCircuits) {
+    assert.deepEqual(binding.circuits[name], { pure: true, proof: false });
+  }
+});
+
 test('every locally built artefact version must match its committed hashes', (t) => {
   let verified = 0;
   for (const version of SUPPORTED_BINDINGS) {
@@ -134,7 +160,11 @@ test('the TypeScript mirror must agree with the canonical registry JSON', async 
   const { $generatedBy, schemaVersion, ...json } = JSON.parse(
     readFileSync(registryJsonUrl, 'utf8'),
   );
-  assert.equal($generatedBy, 'scripts/build-acc-artefact.mjs', 'the JSON must carry provenance');
+  assert.equal(
+    $generatedBy,
+    'scripts/sync-acc-release-registry.mjs',
+    'the JSON must carry provenance',
+  );
   assert.equal(schemaVersion, 1, 'the JSON must carry its schema version');
   assert.deepEqual(
     json,
