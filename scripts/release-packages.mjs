@@ -2,6 +2,7 @@
 // Local preflight and the manual GitHub Packages workflow share these checks.
 // Publishing is deliberately impossible while prototype manifests or gates remain.
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
@@ -20,6 +21,8 @@ const fail = (message) => {
 const run = (bin, args, cwd = root) => execFileSync(bin, args, { cwd, stdio: 'inherit' });
 /** @param {string} path */
 const read = (path) => JSON.parse(readFileSync(path, 'utf8'));
+/** @param {string} path */
+const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
 
 if (!mode || !['pack', 'publish'].includes(mode)) fail('expected pack or publish');
 if (!version || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version))
@@ -134,7 +137,7 @@ if (mode === 'pack') {
         fail(`wrong packed identity for ${item.directory}`);
       if (JSON.stringify(packed.dependencies ?? {}).includes('workspace:'))
         fail(`${item.directory} has unresolved workspace dependencies`);
-      files.push({ name: packed.name, file: addedFile });
+      files.push({ name: packed.name, file: addedFile, sha256: sha256(file) });
     }
     writeFileSync(
       join(output, 'manifest.json'),
@@ -158,11 +161,17 @@ if (mode === 'pack') {
     manifest.files.length !== ordered.length
   )
     fail('packed manifest does not match the requested release');
-  for (const [index, { name, file }] of manifest.files.entries()) {
-    if (name !== ordered[index]?.data.name || !/^[a-z0-9@_.-]+\.tgz$/.test(file))
+  for (const [index, { name, file, sha256: expectedSha256 }] of manifest.files.entries()) {
+    if (
+      name !== ordered[index]?.data.name ||
+      !/^[a-z0-9@_.-]+\.tgz$/.test(file) ||
+      !/^[a-f0-9]{64}$/.test(expectedSha256)
+    )
       fail('packed manifest has a missing, duplicate or out-of-order package');
     const tarball = join(output, file);
     if (!existsSync(tarball)) fail(`missing tarball for ${name}`);
+    if (sha256(tarball) !== expectedSha256)
+      fail(`tarball checksum differs from manifest for ${name}`);
     const packed = JSON.parse(
       execFileSync('tar', ['-xOzf', tarball, 'package/package.json'], { encoding: 'utf8' }),
     );
