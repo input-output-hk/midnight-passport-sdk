@@ -571,7 +571,7 @@ ceremony (§2.2), agent by OWS policy engine (§3.8), dApp by user consent
 plus ceremony. One primitive, three issuance paths.
 
 **Packaging.** The connector is a **separate, thin package**
-(`@midnight-ntwrk/mn-passport-connect`-shaped) with a minimal dependency footprint and its
+(`@input-output-hk/mn-passport-connect`-shaped) with a minimal dependency footprint and its
 own threat model. A dApp MUST NOT pull in the wallet / custody / kernel
 core to integrate; the connector speaks the C23 protocol *to* the wallet
 across a trust boundary and never links against it.
@@ -754,7 +754,7 @@ authenticator).
 Normative rules:
 
 - **One implementation.** The capability ships as the
-  `@midnight-ntwrk/mn-passport-onboard` **facade over `mn-passport-core`**
+  `@input-output-hk/mn-passport-onboard` **facade over `mn-passport-core`**
   and the adapters — issuance is custody work, so the kernel is embedded,
   never reimplemented. The facade exposes **issuance and recognition only**
   (`createPassport`, `signIn`); the full account lifecycle stays in the

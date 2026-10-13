@@ -1,9 +1,9 @@
-import { PassportConnectorError } from '@midnight-ntwrk/mn-passport-account/errors';
-import type { AccountDirectory, NetworkConfig } from '@midnight-ntwrk/mn-passport-account/ports';
+import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
+import type { AccountDirectory, NetworkConfig } from '@input-output-hk/mn-passport-account/ports';
 import {
   createBrowserPassport,
   injectPassportConnector,
-} from '@midnight-ntwrk/mn-passport-adapter-browser';
+} from '@input-output-hk/mn-passport-adapter-browser';
 import {
   createRegistryClient,
   defaultFetch,
@@ -11,11 +11,11 @@ import {
   remoteDeployer,
   remoteProver,
   remoteSponsor,
-} from '@midnight-ntwrk/mn-passport-adapter-service';
+} from '@input-output-hk/mn-passport-adapter-service';
 import {
   PASSPORT_API_VERSION,
   type PassportConnectorAPI,
-} from '@midnight-ntwrk/mn-passport-protocol';
+} from '@input-output-hk/mn-passport-protocol';
 
 export const SERVICE_URL = import.meta.env.VITE_PASSPORT_SERVICE_URL ?? 'http://localhost:8787';
 /** The artefact manifest hash this build pins (R18); the service's /config is checked against it. */

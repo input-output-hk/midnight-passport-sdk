@@ -6,7 +6,7 @@
 // Browser-compatible transport and strict adapter for profile wa-json134.
 // Client validation gives useful errors; the circuit independently rebuilds
 // these signed bytes and checks RP, flags, challenge and the enrolled origin.
-import type { P256PublicKey, WebAuthnPolicy } from '@midnight-ntwrk/mn-passport-account/ports';
+import type { P256PublicKey, WebAuthnPolicy } from '@input-output-hk/mn-passport-account/ports';
 import { p256 } from '@noble/curves/nist.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 

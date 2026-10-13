@@ -44,7 +44,7 @@ blob on it is a bootstrap pointer; the chain remains the source of truth.
 
 ## 2. Packaging — a facade over the core, never a fork
 
-The capability ships as **`@midnight-ntwrk/mn-passport-onboard`**: the
+The capability ships as **`@input-output-hk/mn-passport-onboard`**: the
 dApp-side issuance package. It is **composition only** — no custody, ceremony,
 contract, or proving logic of its own:
 

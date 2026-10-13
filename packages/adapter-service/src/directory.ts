@@ -1,10 +1,10 @@
-import { PassportConnectorError } from '@midnight-ntwrk/mn-passport-account/errors';
+import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
 import type {
   AccountDirectory,
   AccountHint,
   OwnershipProof,
-} from '@midnight-ntwrk/mn-passport-account/ports';
-import type { ServiceWire as Wire } from '@midnight-ntwrk/mn-passport-protocol';
+} from '@input-output-hk/mn-passport-account/ports';
+import type { ServiceWire as Wire } from '@input-output-hk/mn-passport-protocol';
 import { fromHex, toHex } from './hex.js';
 import type { RemoteOptions } from './options.js';
 import { defaultFetch, trimBase } from './service-client.js';

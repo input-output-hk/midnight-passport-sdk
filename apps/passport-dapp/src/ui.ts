@@ -5,7 +5,7 @@ import type {
   PassportAccountState,
   PassportEvent,
   PassportTxResult,
-} from '@midnight-ntwrk/mn-passport-protocol';
+} from '@input-output-hk/mn-passport-protocol';
 import { EventLog, type LogRun, type LogStep } from './event-log.js';
 import {
   type ActionId,

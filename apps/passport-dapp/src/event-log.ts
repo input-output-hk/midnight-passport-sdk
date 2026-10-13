@@ -3,7 +3,7 @@
 // the page times only what the connector does not report. No DOM: ui.ts renders it, and the
 // copied evidence is `toJSON()`, so the two always hold the same rows. Only public values go in:
 // never a seed, a key or a PRF output (an event carries none).
-import type { PassportEvent } from '@midnight-ntwrk/mn-passport-protocol';
+import type { PassportEvent } from '@input-output-hk/mn-passport-protocol';
 import {
   type ActionId,
   EVENT_STAGES,

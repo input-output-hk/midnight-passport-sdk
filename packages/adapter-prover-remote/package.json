@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/mn-passport-adapter-prover-remote",
+  "name": "@input-output-hk/mn-passport-adapter-prover-remote",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,6 +13,6 @@
     "dist"
   ],
   "dependencies": {
-    "@midnight-ntwrk/mn-passport-core": "workspace:*"
+    "@input-output-hk/mn-passport-core": "workspace:*"
   }
 }

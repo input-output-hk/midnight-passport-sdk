@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/mn-passport-adapter-midnight-js",
+  "name": "@input-output-hk/mn-passport-adapter-midnight-js",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,8 +13,8 @@
     "dist"
   ],
   "dependencies": {
-    "@midnight-ntwrk/mn-passport-account": "workspace:*",
-    "@midnight-ntwrk/mn-passport-protocol": "workspace:*"
+    "@input-output-hk/mn-passport-account": "workspace:*",
+    "@input-output-hk/mn-passport-protocol": "workspace:*"
   },
   "peerDependencies": {
     "@midnight-ntwrk/compact-js": "3.0.0-rc.3",

@@ -4,7 +4,7 @@ import {
   type FlowOptions,
   type PassportAccount,
   type PassportConnectorAPI,
-} from '@midnight-ntwrk/mn-passport-protocol';
+} from '@input-output-hk/mn-passport-protocol';
 import { fromHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow, type Flow } from './flow.js';

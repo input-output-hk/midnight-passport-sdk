@@ -1,4 +1,4 @@
-import type { FetchLike } from '@midnight-ntwrk/mn-passport-account/ports';
+import type { FetchLike } from '@input-output-hk/mn-passport-account/ports';
 
 export interface RemoteOptions {
   readonly fetch?: FetchLike;

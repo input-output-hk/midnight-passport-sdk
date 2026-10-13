@@ -1,5 +1,5 @@
 import { createHash, createHmac, generateKeyPairSync, randomBytes, sign } from 'node:crypto';
-import type { PasskeySeam } from '@midnight-ntwrk/mn-passport-account';
+import type { PasskeySeam } from '@input-output-hk/mn-passport-account';
 import {
   bigintFromBytes,
   clientDataJSON,
@@ -7,7 +7,7 @@ import {
   fromBase64url,
   parseES256Signature,
   webauthnPolicy,
-} from '@midnight-ntwrk/mn-passport-adapter-browser/prototype';
+} from '@input-output-hk/mn-passport-adapter-browser/prototype';
 
 const sha256 = (data: Uint8Array): Uint8Array =>
   new Uint8Array(createHash('sha256').update(data).digest());

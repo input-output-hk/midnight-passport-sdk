@@ -1,4 +1,4 @@
-import type { FlowOptions, PassportTxResult } from '@midnight-ntwrk/mn-passport-protocol';
+import type { FlowOptions, PassportTxResult } from '@input-output-hk/mn-passport-protocol';
 
 export interface P256PublicKey {
   readonly x: bigint;

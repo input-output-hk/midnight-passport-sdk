@@ -1,4 +1,4 @@
-import type { PassportConnectorDescriptor } from '@midnight-ntwrk/mn-passport-protocol';
+import type { PassportConnectorDescriptor } from '@input-output-hk/mn-passport-protocol';
 
 /** Installs the connector the way a wallet injects into `window.midnight` (spec §4.1). */
 export function injectPassportConnector(

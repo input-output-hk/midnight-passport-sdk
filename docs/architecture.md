@@ -18,9 +18,9 @@ ACC-centric core:
 
 | Face | Consumer | Package |
 |---|---|---|
-| **Wallet** | Official UI (MNF), CLI | `@midnight-ntwrk/mn-passport-core` + adapters |
+| **Wallet** | Official UI (MNF), CLI | `@input-output-hk/mn-passport-core` + adapters |
 | **Agent** | AI agents (OWS) | agent adapter (§3.8) |
-| **dApp** | Partner dApps | `@midnight-ntwrk/mn-passport-connect` (thin, §3.9) |
+| **dApp** | Partner dApps | `@input-output-hk/mn-passport-connect` (thin, §3.9) |
 
 The through-line that keeps them coherent: **scoped grants
 ([C10]/[C11]/[C12]) are the universal authorisation currency.** Devices,
@@ -40,11 +40,11 @@ flowchart TB
   UI["Official UI (MNF)"] --> FLOWS
   CLI["CLI / scripts"] --> FLOWS
   AGENT["AI agent"] --> CONNECT
-  DAPP["Partner dApp"] --> CONNECT["@midnight-ntwrk/mn-passport-connect — thin, C23"]
-  DAPP --> ONBOARD["@midnight-ntwrk/mn-passport-onboard — issuance facade (§3.13)"]
+  DAPP["Partner dApp"] --> CONNECT["@input-output-hk/mn-passport-connect — thin, C23"]
+  DAPP --> ONBOARD["@input-output-hk/mn-passport-onboard — issuance facade (§3.13)"]
   ONBOARD --> FLOWS
 
-  subgraph CORE["@midnight-ntwrk/mn-passport-core — kernel + surface"]
+  subgraph CORE["@input-output-hk/mn-passport-core — kernel + surface"]
     FLOWS["Flow surfaces: onboard, connect, devices, grants, recover, assets, agents"] --> CMD["Command + state surface"]
     CMD --> KERNEL["Kernel: ACC session, ceremony gate, witness lifecycle, grant registry"]
     KERNEL --> SEAMS["Seams: signer, prover-router, storage/sync, indexer, recovery, DID, agent/OWS, dApp-connection"]
@@ -197,12 +197,12 @@ remote proving is active.
 > compiles the contract", is superseded as §8 decision 2 is (see there). The
 > text below is kept until the tranches land.
 
-Dependency rule: everything points **inward** to `@midnight-ntwrk/mn-passport-core`'s
-interfaces; nothing points outward. `@midnight-ntwrk/mn-passport-connect` links neither the
+Dependency rule: everything points **inward** to `@input-output-hk/mn-passport-core`'s
+interfaces; nothing points outward. `@input-output-hk/mn-passport-connect` links neither the
 core nor any adapter — only the shared protocol types and the contract
 bindings (for §3.12 deposits) — so a dApp can never pull the kernel into
 its bundle. **One recorded exception sits beside it:**
-`@midnight-ntwrk/mn-passport-onboard` (§3.13) deliberately *does* link the
+`@input-output-hk/mn-passport-onboard` (§3.13) deliberately *does* link the
 core and adapters, because partner-origin issuance is custody work — it is
 a composition facade, never a reimplementation, and its threat model is
 stated rather than hidden (ADR 0005). The `connect` rule itself is
@@ -210,7 +210,7 @@ unchanged.
 
 **Foundation**
 
-- **`@midnight-ntwrk/mn-passport-protocol`** — the shared wire types and the C23 connection
+- **`@input-output-hk/mn-passport-protocol`** — the shared wire types and the C23 connection
   protocol (EIP-6963 discovery, CAIP-25-shaped requests,
   Sign-In-with-Passport messages). Deliberately dependency-light so *both*
   the wallet side and the thin dApp connector share it without either
@@ -220,7 +220,7 @@ unchanged.
   payload schema — the three things the partner package and the Passport app
   must agree on. Types and constants only, as ever: the blob's pure codec
   lives in `core`.
-- **`@midnight-ntwrk/mn-passport-contract`** — typed bindings and the exported pure
+- **`@input-output-hk/mn-passport-contract`** — typed bindings and the exported pure
   commitment circuits over the **externally-owned, versioned ACC artefact**
   (§8.2). Wraps the contract team's published build (compiled module, ZK
   asset manifest, generated types) and owns the connect-time version guard
@@ -229,20 +229,20 @@ unchanged.
 
 **Core**
 
-- **`@midnight-ntwrk/mn-passport-core`** — the platform-neutral heart. Contains the **kernel**
+- **`@input-output-hk/mn-passport-core`** — the platform-neutral heart. Contains the **kernel**
   (ACC session, ceremony gate, witness / secret lifecycle, private-state
   envelope, grant registry), the **command + state surface**, the **flow
   surfaces** (onboard, connect, devices, grants, recover, assets, agents),
   and the **seam interfaces** (signer, prover, storage/sync, indexer,
   recovery, DID, agent, dApp-connection). Holds **no** platform code (`fs`,
   `window`, `fetch`) and **no** concrete provider — only interfaces; this is
-  what keeps it portable and unit-testable. Depends on `@midnight-ntwrk/mn-passport-contract`
-  and `@midnight-ntwrk/mn-passport-protocol`.
+  what keeps it portable and unit-testable. Depends on `@input-output-hk/mn-passport-contract`
+  and `@input-output-hk/mn-passport-protocol`.
 
 **Platform adapters** — dedupe the prototype's `providers.ts` ≈
 `node/wallet.ts` split into one core plus two thin wirings.
 
-- **`@midnight-ntwrk/mn-passport-adapter-browser`** — wires the seams to browser APIs:
+- **`@input-output-hk/mn-passport-adapter-browser`** — wires the seams to browser APIs:
   `FetchZkConfigProvider` (ZK assets over HTTP), WebAuthn **PRF passkeys**
   for the ceremony — including the Related-Origin-Request credential
   creation and the bundled PRF + largeBlob assertions the §3.13 issuance
@@ -251,7 +251,7 @@ unchanged.
   browser storage / vendor keystore, `fetch` and `WebSocket`. The default target — Passport
   is browser-first. Consumed by the Official UI (MNF) and web dApps
   embedding the wallet.
-- **`@midnight-ntwrk/mn-passport-adapter-node`** — wires the same seams to Node.js so the SDK
+- **`@input-output-hk/mn-passport-adapter-node`** — wires the same seams to Node.js so the SDK
   runs **server-side**: filesystem ZK-asset loading (`NodeZkConfigProvider`),
   disk-backed private state (LevelDB), the `ws` WebSocket, Node crypto, and
   a **non-WebAuthn ceremony / signer** (WebAuthn is browser-only, so on Node
@@ -262,7 +262,7 @@ unchanged.
   ceremony, which is why the agent path is policy-gated, §3.8). This is the
   package that makes the CLI and agent faces possible.
 
-**Seam adapters** — `@midnight-ntwrk/mn-passport-adapter-*`, each implementing one core seam
+**Seam adapters** — `@input-output-hk/mn-passport-adapter-*`, each implementing one core seam
 interface and depending only on that interface plus its own provider SDK;
 the provider-free default always ships.
 
@@ -311,17 +311,17 @@ the provider-free default always ships.
 
 **dApp side**
 
-- **`@midnight-ntwrk/mn-passport-connect`** — the **thin** connector a third-party developer
-  installs (§3.9). Implements the dApp end of C23 over `@midnight-ntwrk/mn-passport-protocol`:
+- **`@input-output-hk/mn-passport-connect`** — the **thin** connector a third-party developer
+  installs (§3.9). Implements the dApp end of C23 over `@input-output-hk/mn-passport-protocol`:
   Sign-In-with-Passport, scoped-grant requests, and requesting
   Passport-provisioned witnesses. Also exposes the **deposit function**
   (§3.12: resolve name → connect to the recipient's ACC → call the deposit
   circuit) — the one direct chain interaction, riding
   `mn-passport-contract` rather than the C23 channel. Minimal footprint,
   own threat model; talks C23 *to* the wallet across a trust boundary and
-  **must not link `@midnight-ntwrk/mn-passport-core`** or any adapter
+  **must not link `@input-output-hk/mn-passport-core`** or any adapter
   (`mn-passport-contract` is a foundation dependency, permitted).
-- **`@midnight-ntwrk/mn-passport-onboard`** — the partner-origin **issuance
+- **`@input-output-hk/mn-passport-onboard`** — the partner-origin **issuance
   facade** (§3.13, [`onboarding-and-key-authorisation.md`](./onboarding-and-key-authorisation.md)). A
   narrow API (`createPassport`, `signIn`, `capabilities`) that is
   composition only: it
@@ -336,14 +336,14 @@ the provider-free default always ships.
 
 ```mermaid
 flowchart LR
-  PROTO["@midnight-ntwrk/mn-passport-protocol"]
-  CONTRACT["@midnight-ntwrk/mn-passport-contract"]
-  CORE["@midnight-ntwrk/mn-passport-core"]
-  CAPS["@midnight-ntwrk/mn-passport-adapter-*"]
-  BROW["@midnight-ntwrk/mn-passport-adapter-browser"]
-  NODE["@midnight-ntwrk/mn-passport-adapter-node"]
-  CONNECT["@midnight-ntwrk/mn-passport-connect"]
-  ONBOARD["@midnight-ntwrk/mn-passport-onboard"]
+  PROTO["@input-output-hk/mn-passport-protocol"]
+  CONTRACT["@input-output-hk/mn-passport-contract"]
+  CORE["@input-output-hk/mn-passport-core"]
+  CAPS["@input-output-hk/mn-passport-adapter-*"]
+  BROW["@input-output-hk/mn-passport-adapter-browser"]
+  NODE["@input-output-hk/mn-passport-adapter-node"]
+  CONNECT["@input-output-hk/mn-passport-connect"]
+  ONBOARD["@input-output-hk/mn-passport-onboard"]
 
   CORE --> CONTRACT
   CORE --> PROTO
@@ -360,10 +360,10 @@ flowchart LR
   ONBOARD --> PROTO
   ONBOARD --> CONTRACT
 ```
-*Arrows read "depends on". `@midnight-ntwrk/mn-passport-connect` reaches only
-`@midnight-ntwrk/mn-passport-protocol` and `@midnight-ntwrk/mn-passport-contract`
+*Arrows read "depends on". `@input-output-hk/mn-passport-connect` reaches only
+`@input-output-hk/mn-passport-protocol` and `@input-output-hk/mn-passport-contract`
 (deposit bindings, §3.12) — never the core or an adapter.
-`@midnight-ntwrk/mn-passport-onboard` is the recorded exception in the other
+`@input-output-hk/mn-passport-onboard` is the recorded exception in the other
 direction: a facade that links the core and adapters because issuance is
 custody work (§3.13, ADR 0005).*
 
@@ -507,9 +507,9 @@ Libraries: `core` (orchestrates the flow + ceremony), `adapter-signer-local`
 (ACC bindings, under `core`).
 
 ```ts
-import { Passport }      from '@midnight-ntwrk/mn-passport-core';
-import { passkeySigner } from '@midnight-ntwrk/mn-passport-adapter-signer-local';
-import { wasmProver }    from '@midnight-ntwrk/mn-passport-adapter-prover-wasm';
+import { Passport }      from '@input-output-hk/mn-passport-core';
+import { passkeySigner } from '@input-output-hk/mn-passport-adapter-signer-local';
+import { wasmProver }    from '@input-output-hk/mn-passport-adapter-prover-wasm';
 
 const passport = await Passport.create({
   signer: passkeySigner(),   // WebAuthn PRF → in-circuit Jubjub (§2.1 decentralised)
@@ -534,7 +534,7 @@ they meet the user's `core` (`adapter-dapp-connection`) only over C23.
 
 ```ts
 // in a partner dApp — installs ONLY the thin connector, never core
-import { connectPassport } from '@midnight-ntwrk/mn-passport-connect';
+import { connectPassport } from '@input-output-hk/mn-passport-connect';
 
 const session = await connectPassport.signIn();        // Sign-In-with-Passport (C23); no keys cross
 const grant   = await connectPassport.requestGrant({   // scoped grant (C10/C11)
@@ -553,7 +553,7 @@ Libraries: `mn-passport-connect` (exposes the deposit function),
 `mn-passport-contract` (deposit-circuit bindings + ZK assets).
 
 ```ts
-import { depositTo } from '@midnight-ntwrk/mn-passport-connect';
+import { depositTo } from '@input-output-hk/mn-passport-connect';
 
 // resolve alice.passport.night → her ACC, call the deposit circuit;
 // proven, balanced and fee-paid by the SENDER's own wallet
@@ -571,8 +571,8 @@ Libraries: `core` (build + authorise + submit), `adapter-fee-capacity-exchange`
 (sponsor), `adapter-prover-*` (proof).
 
 ```ts
-import { Passport }            from '@midnight-ntwrk/mn-passport-core';
-import { capacityExchangeFees } from '@midnight-ntwrk/mn-passport-adapter-fee-capacity-exchange';
+import { Passport }            from '@input-output-hk/mn-passport-core';
+import { capacityExchangeFees } from '@input-output-hk/mn-passport-adapter-fee-capacity-exchange';
 
 const passport = await Passport.create({ /* signer, prover, */ fees: capacityExchangeFees() });
 
@@ -595,7 +595,7 @@ to picture: you never call it, you import types from it. Concretely, a grant
 request:
 
 ```ts
-// ── @midnight-ntwrk/mn-passport-protocol ──  types + constants only, zero logic
+// ── @input-output-hk/mn-passport-protocol ──  types + constants only, zero logic
 export const PROTOCOL_VERSION = 1;
 export interface GrantRequest {
   version:   typeof PROTOCOL_VERSION;
@@ -609,7 +609,7 @@ export interface GrantResponse { granted: boolean; grantId?: string }
 
 ```ts
 // ── dApp side (mn-passport-connect) BUILDS the request ──
-import { PROTOCOL_VERSION, type GrantRequest } from '@midnight-ntwrk/mn-passport-protocol';
+import { PROTOCOL_VERSION, type GrantRequest } from '@input-output-hk/mn-passport-protocol';
 
 const req: GrantRequest = {                 // ← type-checked against the shared shape
   version: PROTOCOL_VERSION,
@@ -621,7 +621,7 @@ transport.send(req);                        // over the wire (postMessage / EIP-
 
 ```ts
 // ── wallet side (inside mn-passport-core) HANDLES it ──
-import { type GrantRequest, type GrantResponse } from '@midnight-ntwrk/mn-passport-protocol';
+import { type GrantRequest, type GrantResponse } from '@input-output-hk/mn-passport-protocol';
 
 async function onGrantRequest(msg: GrantRequest): Promise<GrantResponse> {
   // msg is the SAME type the dApp built — validate, ceremony-gate (§2.2), write to the ACC
@@ -677,7 +677,7 @@ constants from `mn-passport-protocol`. Design:
 
 ```ts
 // in the partner dApp — one import; core + adapters ride along inside
-import { capabilities, createPassport, signIn } from '@midnight-ntwrk/mn-passport-onboard';
+import { capabilities, createPassport, signIn } from '@input-output-hk/mn-passport-onboard';
 
 // 0 · Gate first: below the ROR/PRF floor, issuing here is impossible —
 //     hand the user to first-party onboarding instead.
@@ -806,7 +806,7 @@ policy-engine check against a standing grant instead of a human ceremony
 | Storage / sync (§3.6) | Storage/sync seam + kernel envelope |
 | DID (§3.7) | DID seam |
 | Agents / OWS (§3.8) | `adapter-agent-ows` wrapping WingRiders `ows-core`, mapped to ACC scoped grants |
-| dApp connector (§3.9) | `@midnight-ntwrk/mn-passport-connect` package |
+| dApp connector (§3.9) | `@input-output-hk/mn-passport-connect` package |
 | External wallets (§3.10) | `adapter-wallet-connect` + §2.3 binding (kernel) |
 | DUST sponsorship (§3.11) | Fee seam (`adapter-fee-capacity-exchange`); the balance stage of the command pipeline |
 | Deposit mechanism (§3.12) | `mn-passport-contract` deposit bindings, surfaced via `mn-passport-connect` (dApps) and expected of ecosystem wallets |
@@ -818,7 +818,7 @@ not the SDK skeleton. Lift:
 - `account.compact` and its seam design (epoch invalidation, `round` replay
   counter, single `require_device`/`require_grant` auth seam, exported pure
   commitment circuits) → **seeds the contract team's ACC** (§8.2); the SDK
-  consumes its published build via `@midnight-ntwrk/mn-passport-contract`.
+  consumes its published build via `@input-output-hk/mn-passport-contract`.
 - the witness pipeline shape ([C7]) → kernel witness lifecycle.
 - the browser prover (`wasmProver.ts` + worker split) → prover-wasm
   adapter.

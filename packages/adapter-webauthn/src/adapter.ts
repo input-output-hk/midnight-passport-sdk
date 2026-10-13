@@ -1,11 +1,11 @@
-import { PassportConnectorError } from '@midnight-ntwrk/mn-passport-account/errors';
+import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
 import type {
   Authoriser,
   CredentialPort,
   PasskeyCredential,
   PrfKeySource,
-} from '@midnight-ntwrk/mn-passport-account/ports';
-import { deriveSymmetricSecret, seedFromRoot } from '@midnight-ntwrk/mn-passport-keys';
+} from '@input-output-hk/mn-passport-account/ports';
+import { deriveSymmetricSecret, seedFromRoot } from '@input-output-hk/mn-passport-keys';
 import { browserPasskey } from './passkey.js';
 import { passkeyPrf, type PasskeyPrfOutputs } from './prf.js';
 

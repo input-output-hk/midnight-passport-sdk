@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/mn-passport-connect",
+  "name": "@input-output-hk/mn-passport-connect",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
     "dist"
   ],
   "dependencies": {
-    "@midnight-ntwrk/mn-passport-protocol": "workspace:*",
-    "@midnight-ntwrk/mn-passport-contract": "workspace:*"
+    "@input-output-hk/mn-passport-protocol": "workspace:*",
+    "@input-output-hk/mn-passport-contract": "workspace:*"
   }
 }

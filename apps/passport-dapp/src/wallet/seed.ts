@@ -1,5 +1,5 @@
-import { PassportConnectorError, toPassportError } from '@midnight-ntwrk/mn-passport-account';
-import { passkeySeed } from '@midnight-ntwrk/mn-passport-adapter-webauthn';
+import { PassportConnectorError, toPassportError } from '@input-output-hk/mn-passport-account';
+import { passkeySeed } from '@input-output-hk/mn-passport-adapter-webauthn';
 
 export interface WalletSeedOptions {
   rpId: string;

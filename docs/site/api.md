@@ -7,8 +7,8 @@ permalink: /api/
 The public flow is `createPassportAccounts(ports): PassportConnectorAPI` from `mn-passport-account`. The interfaces are in `mn-passport-protocol`; adapter authors import the contracts from `mn-passport-account/ports`. Source links below point to the exact prototype API.
 
 ```ts
-import { createPassportAccounts } from '@midnight-ntwrk/mn-passport-account';
-import type { PassportPorts } from '@midnight-ntwrk/mn-passport-account/ports';
+import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
+import type { PassportPorts } from '@input-output-hk/mn-passport-account/ports';
 
 declare const ports: PassportPorts; // supplied by the host adapters
 const passport = createPassportAccounts(ports);

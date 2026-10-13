@@ -3,7 +3,7 @@ import {
   type PassportAccount,
   type PassportAccountPrototype,
   type PassportConnectorAPIPrototype,
-} from '@midnight-ntwrk/mn-passport-protocol';
+} from '@input-output-hk/mn-passport-protocol';
 import { toHex } from './codec.js';
 import { createPassportAccounts } from './connector.js';
 import { PassportConnectorError } from './errors.js';

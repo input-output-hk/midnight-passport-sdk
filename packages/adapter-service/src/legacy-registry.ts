@@ -3,7 +3,7 @@ import type {
   FetchLike,
   LegacyAccountRecord as AccountRecord,
   RegistrySeam,
-} from '@midnight-ntwrk/mn-passport-account/ports';
+} from '@input-output-hk/mn-passport-account/ports';
 
 interface WireRecord {
   credentialId: string;

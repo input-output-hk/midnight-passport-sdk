@@ -28,8 +28,8 @@ const asUrl = (dir: string): URL => pathToFileURL(`${dir}/`);
 
 // 1. midnight-js's runtime (reached through the adapter) is the dapp's.
 const dapp = packageDir(RUNTIME, import.meta.url);
-const browser = packageDir('@midnight-ntwrk/mn-passport-adapter-browser', import.meta.url);
-const adapter = packageDir('@midnight-ntwrk/mn-passport-adapter-midnight-js', asUrl(browser));
+const browser = packageDir('@input-output-hk/mn-passport-adapter-browser', import.meta.url);
+const adapter = packageDir('@input-output-hk/mn-passport-adapter-midnight-js', asUrl(browser));
 const compactJs = packageDir('@midnight-ntwrk/compact-js', asUrl(adapter));
 const contracts = packageDir('@midnight-ntwrk/midnight-js-contracts', asUrl(adapter));
 const protocol = packageDir('@midnight-ntwrk/midnight-js-protocol', asUrl(contracts));

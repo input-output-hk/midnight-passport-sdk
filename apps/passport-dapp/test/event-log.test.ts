@@ -3,7 +3,7 @@
 // evidence rows that `toJSON` hands to the Copy button.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { PassportEvent } from '@midnight-ntwrk/mn-passport-protocol';
+import type { PassportEvent } from '@input-output-hk/mn-passport-protocol';
 import { EventLog } from '../src/event-log.ts';
 import type { PlainError } from '../src/flows.ts';
 

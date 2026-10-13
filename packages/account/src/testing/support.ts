@@ -3,7 +3,7 @@ import {
   PASSPORT_ERROR_TYPE,
   isRetryable,
   type PassportErrorCode,
-} from '@midnight-ntwrk/mn-passport-protocol';
+} from '@input-output-hk/mn-passport-protocol';
 
 /** An error the core reads under `code`, made without the account root. */
 export const passportError = (code: PassportErrorCode, message: string): Error =>

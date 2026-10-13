@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/mn-passport-adapter-webauthn",
+  "name": "@input-output-hk/mn-passport-adapter-webauthn",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,8 +13,8 @@
     "dist"
   ],
   "dependencies": {
-    "@midnight-ntwrk/mn-passport-account": "workspace:*",
-    "@midnight-ntwrk/mn-passport-keys": "workspace:*",
+    "@input-output-hk/mn-passport-account": "workspace:*",
+    "@input-output-hk/mn-passport-keys": "workspace:*",
     "@noble/curves": "2.2.0",
     "@noble/hashes": "2.2.0"
   }

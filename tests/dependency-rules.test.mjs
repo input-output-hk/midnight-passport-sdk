@@ -1,5 +1,5 @@
 // Manifest- and tsconfig-level assertion of the architecture §4.4 dependency
-// graph (FS-0.1 D-2/D-3): every @midnight-ntwrk/mn-passport-* edge in a
+// graph (FS-0.1 D-2/D-3): every @input-output-hk/mn-passport-* edge in a
 // workspace manifest or a project reference must be permitted, and `connect`
 // must have no path to `core` or any adapter — not even transitively. The
 // import-level twin is scripts/lint-boundaries.mjs; both consume

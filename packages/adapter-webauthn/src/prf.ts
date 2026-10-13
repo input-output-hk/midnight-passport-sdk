@@ -1,8 +1,8 @@
 import {
   PassportConnectorError,
   toPassportError,
-} from '@midnight-ntwrk/mn-passport-account/errors';
-import type { PasskeyCredential } from '@midnight-ntwrk/mn-passport-account/ports';
+} from '@input-output-hk/mn-passport-account/errors';
+import type { PasskeyCredential } from '@input-output-hk/mn-passport-account/ports';
 import { copyPrfOutput, takeCreatePrf } from './create-prf.js';
 import {
   accEncryptionKey,
@@ -10,7 +10,7 @@ import {
   PRF_LABEL_ROOT,
   prfSalt,
   seedFromRoot,
-} from '@midnight-ntwrk/mn-passport-keys';
+} from '@input-output-hk/mn-passport-keys';
 import { equalBytes } from './webauthn.js';
 
 /** Creation refused: the provider the passkey was saved in cannot evaluate PRF. */

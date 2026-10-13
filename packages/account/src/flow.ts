@@ -5,7 +5,7 @@ import type {
   FlowOptions,
   PassportEvent,
   PassportStep,
-} from '@midnight-ntwrk/mn-passport-protocol';
+} from '@input-output-hk/mn-passport-protocol';
 import { toHex } from './codec.js';
 import { PassportConnectorError, toPassportError } from './errors.js';
 

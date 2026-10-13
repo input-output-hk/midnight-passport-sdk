@@ -38,16 +38,16 @@ async function lint(files) {
 test('an adapter imports account/ports, never the account root or another subpath', async () => {
   const { status, errors } = await lint({
     'packages/adapter-webauthn/src/ok.ts':
-      "import type { Authoriser } from '@midnight-ntwrk/mn-passport-account/ports';\n",
+      "import type { Authoriser } from '@input-output-hk/mn-passport-account/ports';\n",
     'packages/adapter-webauthn/src/root.ts':
-      "import { toPassportError } from '@midnight-ntwrk/mn-passport-account';\n",
+      "import { toPassportError } from '@input-output-hk/mn-passport-account';\n",
     'packages/adapter-webauthn/src/deep.ts':
-      "import type { X } from '@midnight-ntwrk/mn-passport-account/dist/seams.js';\n",
+      "import type { X } from '@input-output-hk/mn-passport-account/dist/seams.js';\n",
   });
   assert.equal(status, 1);
   assert.deepEqual(errors.map((e) => e.replace(/^.*\/packages\//, '')).sort(), [
-    'adapter-webauthn/src/deep.ts: "adapter-webauthn" must import "@midnight-ntwrk/mn-passport-account/ports" (design §1.2).',
-    'adapter-webauthn/src/root.ts: "adapter-webauthn" must import "@midnight-ntwrk/mn-passport-account/ports" (design §1.2).',
+    'adapter-webauthn/src/deep.ts: "adapter-webauthn" must import "@input-output-hk/mn-passport-account/ports" (design §1.2).',
+    'adapter-webauthn/src/root.ts: "adapter-webauthn" must import "@input-output-hk/mn-passport-account/ports" (design §1.2).',
   ]);
 });
 
@@ -55,13 +55,13 @@ test('a composition root may import the account root, and the graph still binds 
   assert.deepEqual(
     await lint({
       'packages/adapter-browser/src/root.ts':
-        "import { createPassportConnector } from '@midnight-ntwrk/mn-passport-account';\n",
+        "import { createPassportConnector } from '@input-output-hk/mn-passport-account';\n",
     }),
     { status: 0, errors: [] },
   );
   const { status, errors } = await lint({
     'packages/account/src/up.ts':
-      "import type { Authoriser } from '@midnight-ntwrk/mn-passport-adapter-webauthn';\n",
+      "import type { Authoriser } from '@input-output-hk/mn-passport-adapter-webauthn';\n",
   });
   assert.equal(status, 1);
   assert.match(errors[0] ?? '', /"account" must not import ".*adapter-webauthn"/);
@@ -77,7 +77,7 @@ test('a static Midnight import is refused outside the entry points; type and dyn
       "import type { Transaction } from '@midnightntwrk/ledger-v9';",
       "const chain = () => import('@midnight-ntwrk/midnight-js-contracts');",
       '// import { x } from "@midnight-ntwrk/compact-runtime" stays a comment',
-      "import { PASSPORT_API_VERSION } from '@midnight-ntwrk/mn-passport-protocol';",
+      "import { PASSPORT_API_VERSION } from '@input-output-hk/mn-passport-protocol';",
       '',
     ].join('\n'),
     'packages/adapter-browser/src/chain.ts':
@@ -95,7 +95,7 @@ test("account's ./testing imports only ./ports, protocol and its own files", asy
   const { status, errors } = await lint({
     'packages/account/src/testing/ok.ts': [
       "import type { Chain } from '../ports/index.js';",
-      "import { PASSPORT_ERROR_TYPE } from '@midnight-ntwrk/mn-passport-protocol';",
+      "import { PASSPORT_ERROR_TYPE } from '@input-output-hk/mn-passport-protocol';",
       "import { fakeDigest } from './support.js';",
       '',
     ].join('\n'),

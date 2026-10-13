@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Import-level dependency-boundary lint (FS-0.1 D-3; architecture §4.4).
-// Every workspace package may import only the @midnight-ntwrk/mn-passport-*
+// Every workspace package may import only the @input-output-hk/mn-passport-*
 // packages the architecture permits — most critically, `connect` must never
 // import `core` or any adapter, so a dApp can never pull the kernel into its
 // bundle. Also enforces platform neutrality at the import level: the four
@@ -28,10 +28,10 @@ const graph = graphFile ? JSON.parse(readFileSync(graphFile, 'utf8')) : ALLOWED;
 // Matches static imports, re-exports, side-effect imports, require(), and
 // dynamic import() — with ', ", or ` around the specifier.
 const IMPORT_RE =
-  /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"`](@midnight-ntwrk\/mn-passport-[^'"`/]+)(\/[^'"`]*)?/g;
+  /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"`](@input-output-hk\/mn-passport-[^'"`/]+)(\/[^'"`]*)?/g;
 // A statement that survives compilation: not `import type`, not `import()`.
 const STATIC_MIDNIGHT_RE =
-  /^\s*(?:import|export)\s+(?!type\s)(?:[^'"`;]*?\sfrom\s*)?['"]((?:@midnight-ntwrk\/(?!mn-passport-)|@midnightntwrk\/)[^'"]+)['"]/gm;
+  /^\s*(?:import|export)\s+(?!type\s)(?:[^'"`;]*?\sfrom\s*)?['"]((?:@midnight-ntwrk\/|@midnightntwrk\/)[^'"]+)['"]/gm;
 // Every specifier, relative ones included, for the rule on account's `./testing`.
 const ANY_IMPORT_RE =
   /(?:^\s*(?:import|export)\b[^'"`;=()]*?\bfrom\s*|^\s*import\s*|\b(?:import|require)\s*\(\s*)['"`]([^'"`]+)['"`]/gm;

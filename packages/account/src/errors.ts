@@ -6,7 +6,7 @@ import {
   type PassportErrorCode,
   type PassportErrorShapeV1,
   type PassportStep,
-} from '@midnight-ntwrk/mn-passport-protocol';
+} from '@input-output-hk/mn-passport-protocol';
 
 export interface PassportErrorOptions {
   readonly cause?: unknown;

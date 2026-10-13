@@ -23,7 +23,7 @@ import {
   base64url,
   clientDataJSON,
   fromBase64url,
-} from '@midnight-ntwrk/mn-passport-adapter-webauthn';
+} from '@input-output-hk/mn-passport-adapter-webauthn';
 
 export const MOCK_PASSKEY_STORAGE_KEY = 'passport-dev:mock-passkey:v1';
 

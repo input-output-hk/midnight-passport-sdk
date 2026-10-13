@@ -6,10 +6,10 @@ import type {
   AuthScheme,
   FlowOptions,
   PassportTxResult,
-} from '@midnight-ntwrk/mn-passport-protocol';
+} from '@input-output-hk/mn-passport-protocol';
 import type { AccLedgerView, AccPureCircuits, WebAuthnPolicy } from '../seams.js';
 
-export type { AuthScheme } from '@midnight-ntwrk/mn-passport-protocol';
+export type { AuthScheme } from '@input-output-hk/mn-passport-protocol';
 // Defined beside the prototype's seams until T5 to T9 retire them; this is their public home.
 export type {
   AccLedgerView,

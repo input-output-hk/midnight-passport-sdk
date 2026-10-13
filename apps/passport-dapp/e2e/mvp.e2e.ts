@@ -15,8 +15,8 @@ import {
   portsFromSeams,
   type ChainSeam,
   type PassportSeams,
-} from '@midnight-ntwrk/mn-passport-account';
-import type { PassportEvent } from '@midnight-ntwrk/mn-passport-protocol';
+} from '@input-output-hk/mn-passport-account';
+import type { PassportEvent } from '@input-output-hk/mn-passport-protocol';
 import {
   accEncryptionKey,
   createServiceChain,
@@ -27,7 +27,7 @@ import {
   prfSalt,
   seedFromRoot,
   type GeneratedAccModule,
-} from '@midnight-ntwrk/mn-passport-adapter-browser/prototype';
+} from '@input-output-hk/mn-passport-adapter-browser/prototype';
 import { assertSingleCompactRuntime } from './runtime-preflight.ts';
 import { softwarePasskey } from './software-passkey.ts';
 

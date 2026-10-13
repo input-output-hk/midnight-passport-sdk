@@ -1,5 +1,5 @@
-import { PassportConnectorError } from '@midnight-ntwrk/mn-passport-account/errors';
-import type { Deployer } from '@midnight-ntwrk/mn-passport-account/ports';
+import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
+import type { Deployer } from '@input-output-hk/mn-passport-account/ports';
 import { toHex } from './hex.js';
 import type { RemoteOptions } from './options.js';
 import { defaultFetch, postService, stringMember } from './service-client.js';

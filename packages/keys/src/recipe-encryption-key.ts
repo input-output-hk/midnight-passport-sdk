@@ -1,5 +1,5 @@
 import { x25519 } from '@noble/curves/ed25519.js';
-import type { EncryptionKeySource, PrfKeySource } from '@midnight-ntwrk/mn-passport-account/ports';
+import type { EncryptionKeySource, PrfKeySource } from '@input-output-hk/mn-passport-account/ports';
 import { ACC_ENC_DOMAIN } from './lace-recipe.js';
 
 /** Derive the ACC's public encryption key inside a key-source session. Secret bytes never leave it. */

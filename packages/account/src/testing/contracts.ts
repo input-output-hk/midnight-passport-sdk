@@ -1,7 +1,7 @@
 // The port contract suites (design §7): what each port promises, run against any adapter. A host
 // passes a factory for the adapter under test and its runner; a suite reads only the port's public
 // surface, and each test makes a fresh adapter. No test framework: `node:test`, vitest and jest fit.
-import type { PassportEvent } from '@midnight-ntwrk/mn-passport-protocol';
+import type { PassportEvent } from '@input-output-hk/mn-passport-protocol';
 import type * as P from '../ports/index.js';
 import { fakeAuthoriser, fakeCredentials } from './fakes.js';
 import { verifyP256 } from './p256.js';

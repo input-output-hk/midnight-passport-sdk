@@ -1,5 +1,5 @@
-import { PassportConnectorError } from '@midnight-ntwrk/mn-passport-account/errors';
-import type { NetworkConfig } from '@midnight-ntwrk/mn-passport-account/ports';
+import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
+import type { NetworkConfig } from '@input-output-hk/mn-passport-account/ports';
 import type { RemoteOptions } from './options.js';
 import { defaultFetch, fetchServiceConfig, type ServiceConfigWire } from './service-client.js';
 

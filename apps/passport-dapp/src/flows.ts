@@ -1,6 +1,6 @@
 // What each demo action is, how many passkey prompts it asks for and which stages it goes
 // through. Data only, no DOM: ui.ts renders it and event-log.ts times it from the connector's events.
-import type { PassportStep } from '@midnight-ntwrk/mn-passport-protocol';
+import type { PassportStep } from '@input-output-hk/mn-passport-protocol';
 
 export type ActionId = 'create' | 'open' | 'rotate' | 'wallet';
 

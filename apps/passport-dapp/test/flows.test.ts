@@ -3,8 +3,8 @@
 // error reads to the person at the demo.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPassportAccounts, portsFromSeams } from '@midnight-ntwrk/mn-passport-account';
-import type { PassportEvent } from '@midnight-ntwrk/mn-passport-protocol';
+import { createPassportAccounts, portsFromSeams } from '@input-output-hk/mn-passport-account';
+import type { PassportEvent } from '@input-output-hk/mn-passport-protocol';
 import {
   ACTIVATION_ESTIMATE_S,
   DEPLOY_ESTIMATE_S,

@@ -8,9 +8,9 @@
 
 **Naming:** development-time skills are prefixed **`mn-passport-skills-*`**
 (invoked `mn-passport-skills:<name>`); the shipped runtime packages are
-**`@midnight-ntwrk/mn-passport-*`** (§4.4 of the architecture). The `-skills`
+**`@input-output-hk/mn-passport-*`** (§4.4 of the architecture). The `-skills`
 infix and the `@midnight-ntwrk/` scope tell them apart: `mn-passport-skills-*`
-build the SDK; `@midnight-ntwrk/mn-passport-*` *are* the SDK.
+build the SDK; `@input-output-hk/mn-passport-*` *are* the SDK.
 
 ---
 

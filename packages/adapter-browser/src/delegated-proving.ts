@@ -1,7 +1,7 @@
-import { PassportConnectorError, fromHex, toHex } from '@midnight-ntwrk/mn-passport-account';
-import type { FetchLike } from '@midnight-ntwrk/mn-passport-account/ports';
+import { PassportConnectorError, fromHex, toHex } from '@input-output-hk/mn-passport-account';
+import type { FetchLike } from '@input-output-hk/mn-passport-account/ports';
 import type { ProvingProvider } from '@midnightntwrk/ledger-v9';
-import { postService, stringMember } from '@midnight-ntwrk/mn-passport-adapter-service';
+import { postService, stringMember } from '@input-output-hk/mn-passport-adapter-service';
 
 const DECIMAL = /^-?\d+$/;
 

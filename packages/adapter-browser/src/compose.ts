@@ -1,4 +1,4 @@
-import { createPassportAccounts } from '@midnight-ntwrk/mn-passport-account';
+import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
 import type {
   AccountDirectory,
   AccountRecordStore,
@@ -8,11 +8,11 @@ import type {
   NetworkConfig,
   Prover,
   Submitter,
-} from '@midnight-ntwrk/mn-passport-account/ports';
-import { webauthnPasskey } from '@midnight-ntwrk/mn-passport-adapter-webauthn';
-import { recipeEncryptionKey } from '@midnight-ntwrk/mn-passport-keys';
-import type { PassportConnectorAPI } from '@midnight-ntwrk/mn-passport-protocol';
-import type { MidnightBinding } from '@midnight-ntwrk/mn-passport-adapter-midnight-js';
+} from '@input-output-hk/mn-passport-account/ports';
+import { webauthnPasskey } from '@input-output-hk/mn-passport-adapter-webauthn';
+import { recipeEncryptionKey } from '@input-output-hk/mn-passport-keys';
+import type { PassportConnectorAPI } from '@input-output-hk/mn-passport-protocol';
+import type { MidnightBinding } from '@input-output-hk/mn-passport-adapter-midnight-js';
 
 /** A browser host supplies policy and network ports; this package supplies the browser key source. */
 export interface BrowserPassportConfig {
@@ -46,7 +46,7 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
     encryptionKey: recipeEncryptionKey(passkey.prf),
     chain: async () => {
       const [{ createMidnightChain }, module] = await Promise.all([
-        import('@midnight-ntwrk/mn-passport-adapter-midnight-js'),
+        import('@input-output-hk/mn-passport-adapter-midnight-js'),
         binding(),
       ]);
       return createMidnightChain({

@@ -12,7 +12,7 @@ import {
 import {
   PassportConnectorError,
   toPassportError,
-} from '@midnight-ntwrk/mn-passport-account/errors';
+} from '@input-output-hk/mn-passport-account/errors';
 import type {
   AccLedgerView,
   AccPureCircuits,
@@ -21,8 +21,8 @@ import type {
   NetworkConfig,
   Prover,
   Submitter,
-} from '@midnight-ntwrk/mn-passport-account/ports';
-import type { PassportEvent, PassportStep } from '@midnight-ntwrk/mn-passport-protocol';
+} from '@input-output-hk/mn-passport-account/ports';
+import type { PassportEvent, PassportStep } from '@input-output-hk/mn-passport-protocol';
 import { Transaction } from '@midnightntwrk/ledger-v9';
 
 interface LedgerShape {

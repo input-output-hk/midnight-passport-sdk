@@ -1,11 +1,11 @@
-import { PassportConnectorError } from '@midnight-ntwrk/mn-passport-account';
-import { defaultFetch, fetchServiceConfig } from '@midnight-ntwrk/mn-passport-adapter-service';
+import { PassportConnectorError } from '@input-output-hk/mn-passport-account';
+import { defaultFetch, fetchServiceConfig } from '@input-output-hk/mn-passport-adapter-service';
 import type {
   PassportAccount,
   PassportConnectorAPI,
   PassportConnectorDescriptor,
   PassportTxResult,
-} from '@midnight-ntwrk/mn-passport-protocol';
+} from '@input-output-hk/mn-passport-protocol';
 import { MANIFEST_SHA256, NETWORK_ID, RP_ID, SERVICE_URL, installShim } from './connector.js';
 import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS, ROTATION_ESTIMATE_S } from './flows.js';
 import { createUi } from './ui.js';

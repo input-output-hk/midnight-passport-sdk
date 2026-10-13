@@ -1,7 +1,7 @@
 // The architecture §4.4 and design §1.2 dependency graph — the single source both
 // enforcement layers consume: scripts/lint-boundaries.mjs (import level)
 // and tests/dependency-rules.test.mjs (manifest and tsconfig level).
-export const SCOPE = '@midnight-ntwrk/mn-passport-';
+export const SCOPE = '@input-output-hk/mn-passport-';
 
 /** @type {Record<string, string[]>} */
 export const ALLOWED = {

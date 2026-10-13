@@ -4,7 +4,7 @@ import {
   asPassportErrorCode,
   type FlowOptions,
   type PassportEvent,
-} from '@midnight-ntwrk/mn-passport-protocol';
+} from '@input-output-hk/mn-passport-protocol';
 import type * as P from '../ports/index.js';
 import { FAKE_P256_KEYS, signP256, verifyP256 } from './p256.js';
 import { ascii, fakeDigest, hex, passportError, sameBytes, unhex } from './support.js';

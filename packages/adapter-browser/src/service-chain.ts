@@ -18,13 +18,13 @@ import {
   toHex,
   toPassportError,
   type ChainSeam,
-} from '@midnight-ntwrk/mn-passport-account';
-import type { PassportEvent, PassportStep } from '@midnight-ntwrk/mn-passport-protocol';
+} from '@input-output-hk/mn-passport-account';
+import type { PassportEvent, PassportStep } from '@input-output-hk/mn-passport-protocol';
 import type {
   AccLedgerView,
   AccPureCircuits,
   FetchLike,
-} from '@midnight-ntwrk/mn-passport-account/ports';
+} from '@input-output-hk/mn-passport-account/ports';
 import { Transaction } from '@midnightntwrk/ledger-v9';
 import { DEFAULT_PROVE_TIMEOUT_MS } from './delegated-proving.js';
 import {
@@ -32,7 +32,7 @@ import {
   postService,
   stringMember,
   type ServiceConfigWire,
-} from '@midnight-ntwrk/mn-passport-adapter-service';
+} from '@input-output-hk/mn-passport-adapter-service';
 
 export interface GeneratedAccModule {
   /** The generated `Contract` class; its witness type is the reference's coin store. */

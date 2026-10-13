@@ -1,5 +1,5 @@
-import { PassportConnectorError } from '@midnight-ntwrk/mn-passport-account/errors';
-import type { Prover } from '@midnight-ntwrk/mn-passport-account/ports';
+import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
+import type { Prover } from '@input-output-hk/mn-passport-account/ports';
 import { fromHex, toHex } from './hex.js';
 import type { RemoteOptions } from './options.js';
 import { defaultFetch, postService, stringMember } from './service-client.js';

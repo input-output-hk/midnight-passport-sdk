@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/mn-passport-keys",
+  "name": "@input-output-hk/mn-passport-keys",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
     "dist"
   ],
   "dependencies": {
-    "@midnight-ntwrk/mn-passport-account": "workspace:*",
+    "@input-output-hk/mn-passport-account": "workspace:*",
     "@noble/curves": "2.2.0",
     "@noble/hashes": "2.2.0",
     "@scure/bip39": "2.4.0"

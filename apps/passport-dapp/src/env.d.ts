@@ -20,7 +20,7 @@ declare const __PASSPORT_NETWORK_ID__: string;
  */
 declare module '#acc' {
   type Generated =
-    import('@midnight-ntwrk/mn-passport-adapter-browser/prototype').GeneratedAccModule;
+    import('@input-output-hk/mn-passport-adapter-browser/prototype').GeneratedAccModule;
   export const Contract: Generated['Contract'];
   export const ledger: Generated['ledger'];
   export const pureCircuits: Generated['pureCircuits'];

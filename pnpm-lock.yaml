@@ -29,24 +29,24 @@ importers:
 
   apps/passport-dapp:
     dependencies:
+      '@input-output-hk/mn-passport-account':
+        specifier: workspace:*
+        version: link:../../packages/account
+      '@input-output-hk/mn-passport-adapter-browser':
+        specifier: workspace:*
+        version: link:../../packages/adapter-browser
+      '@input-output-hk/mn-passport-adapter-service':
+        specifier: workspace:*
+        version: link:../../packages/adapter-service
+      '@input-output-hk/mn-passport-adapter-webauthn':
+        specifier: workspace:*
+        version: link:../../packages/adapter-webauthn
+      '@input-output-hk/mn-passport-protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@midnight-ntwrk/compact-runtime':
         specifier: 0.20.0
         version: 0.20.0
-      '@midnight-ntwrk/mn-passport-account':
-        specifier: workspace:*
-        version: link:../../packages/account
-      '@midnight-ntwrk/mn-passport-adapter-browser':
-        specifier: workspace:*
-        version: link:../../packages/adapter-browser
-      '@midnight-ntwrk/mn-passport-adapter-service':
-        specifier: workspace:*
-        version: link:../../packages/adapter-service
-      '@midnight-ntwrk/mn-passport-adapter-webauthn':
-        specifier: workspace:*
-        version: link:../../packages/adapter-webauthn
-      '@midnight-ntwrk/mn-passport-protocol':
-        specifier: workspace:*
-        version: link:../../packages/protocol
       '@midnightntwrk/ledger-v9':
         specifier: 1.0.0-rc.5
         version: 1.0.0-rc.5
@@ -96,12 +96,33 @@ importers:
 
   packages/account:
     dependencies:
-      '@midnight-ntwrk/mn-passport-protocol':
+      '@input-output-hk/mn-passport-protocol':
         specifier: workspace:*
         version: link:../protocol
 
   packages/adapter-browser:
     dependencies:
+      '@input-output-hk/mn-passport-account':
+        specifier: workspace:*
+        version: link:../account
+      '@input-output-hk/mn-passport-adapter-midnight-js':
+        specifier: workspace:*
+        version: link:../adapter-midnight-js
+      '@input-output-hk/mn-passport-adapter-service':
+        specifier: workspace:*
+        version: link:../adapter-service
+      '@input-output-hk/mn-passport-adapter-webauthn':
+        specifier: workspace:*
+        version: link:../adapter-webauthn
+      '@input-output-hk/mn-passport-contract':
+        specifier: workspace:*
+        version: link:../contract
+      '@input-output-hk/mn-passport-keys':
+        specifier: workspace:*
+        version: link:../keys
+      '@input-output-hk/mn-passport-protocol':
+        specifier: workspace:*
+        version: link:../protocol
       '@midnight-ntwrk/compact-js':
         specifier: 3.0.0-rc.3
         version: 3.0.0-rc.3
@@ -120,37 +141,16 @@ importers:
       '@midnight-ntwrk/midnight-js-types':
         specifier: 5.0.0-rc.2
         version: 5.0.0-rc.2
-      '@midnight-ntwrk/mn-passport-account':
-        specifier: workspace:*
-        version: link:../account
-      '@midnight-ntwrk/mn-passport-adapter-midnight-js':
-        specifier: workspace:*
-        version: link:../adapter-midnight-js
-      '@midnight-ntwrk/mn-passport-adapter-service':
-        specifier: workspace:*
-        version: link:../adapter-service
-      '@midnight-ntwrk/mn-passport-adapter-webauthn':
-        specifier: workspace:*
-        version: link:../adapter-webauthn
-      '@midnight-ntwrk/mn-passport-contract':
-        specifier: workspace:*
-        version: link:../contract
-      '@midnight-ntwrk/mn-passport-keys':
-        specifier: workspace:*
-        version: link:../keys
-      '@midnight-ntwrk/mn-passport-protocol':
-        specifier: workspace:*
-        version: link:../protocol
       '@midnightntwrk/ledger-v9':
         specifier: 1.0.0-rc.5
         version: 1.0.0-rc.5
 
   packages/adapter-midnight-js:
     dependencies:
-      '@midnight-ntwrk/mn-passport-account':
+      '@input-output-hk/mn-passport-account':
         specifier: workspace:*
         version: link:../account
-      '@midnight-ntwrk/mn-passport-protocol':
+      '@input-output-hk/mn-passport-protocol':
         specifier: workspace:*
         version: link:../protocol
     devDependencies:
@@ -178,37 +178,37 @@ importers:
 
   packages/adapter-prover-remote:
     dependencies:
-      '@midnight-ntwrk/mn-passport-core':
+      '@input-output-hk/mn-passport-core':
         specifier: workspace:*
         version: link:../core
 
   packages/adapter-service:
     dependencies:
-      '@midnight-ntwrk/mn-passport-account':
+      '@input-output-hk/mn-passport-account':
         specifier: workspace:*
         version: link:../account
-      '@midnight-ntwrk/mn-passport-protocol':
+      '@input-output-hk/mn-passport-protocol':
         specifier: workspace:*
         version: link:../protocol
 
   packages/adapter-signer-local:
     dependencies:
-      '@midnight-ntwrk/mn-passport-core':
+      '@input-output-hk/mn-passport-core':
         specifier: workspace:*
         version: link:../core
 
   packages/adapter-signer-managed:
     dependencies:
-      '@midnight-ntwrk/mn-passport-core':
+      '@input-output-hk/mn-passport-core':
         specifier: workspace:*
         version: link:../core
 
   packages/adapter-webauthn:
     dependencies:
-      '@midnight-ntwrk/mn-passport-account':
+      '@input-output-hk/mn-passport-account':
         specifier: workspace:*
         version: link:../account
-      '@midnight-ntwrk/mn-passport-keys':
+      '@input-output-hk/mn-passport-keys':
         specifier: workspace:*
         version: link:../keys
       '@noble/curves':
@@ -220,10 +220,10 @@ importers:
 
   packages/connect:
     dependencies:
-      '@midnight-ntwrk/mn-passport-contract':
+      '@input-output-hk/mn-passport-contract':
         specifier: workspace:*
         version: link:../contract
-      '@midnight-ntwrk/mn-passport-protocol':
+      '@input-output-hk/mn-passport-protocol':
         specifier: workspace:*
         version: link:../protocol
 
@@ -235,16 +235,16 @@ importers:
 
   packages/core:
     dependencies:
-      '@midnight-ntwrk/mn-passport-contract':
+      '@input-output-hk/mn-passport-contract':
         specifier: workspace:*
         version: link:../contract
-      '@midnight-ntwrk/mn-passport-protocol':
+      '@input-output-hk/mn-passport-protocol':
         specifier: workspace:*
         version: link:../protocol
 
   packages/keys:
     dependencies:
-      '@midnight-ntwrk/mn-passport-account':
+      '@input-output-hk/mn-passport-account':
         specifier: workspace:*
         version: link:../account
       '@noble/curves':

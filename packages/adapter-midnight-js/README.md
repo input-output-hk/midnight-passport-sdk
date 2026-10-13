@@ -9,7 +9,7 @@ asks its wallet provider for them while assembling a call.
 Load this package after the lightweight account core:
 
 ```ts
-const { createMidnightChain } = await import('@midnight-ntwrk/mn-passport-adapter-midnight-js');
+const { createMidnightChain } = await import('@input-output-hk/mn-passport-adapter-midnight-js');
 const chain = createMidnightChain({
   network, // build-time pinned manifest SHA-256 and network URLs
   binding, // generated ACC module, loaded separately
