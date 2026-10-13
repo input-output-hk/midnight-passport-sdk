@@ -23,8 +23,8 @@ export const MANIFEST_SHA256 = __PASSPORT_MANIFEST_SHA256__;
 /** The network this build is bound to, fixed at build time next to the manifest pin. */
 export const NETWORK_ID = __PASSPORT_NETWORK_ID__;
 export const RP_ID = 'localhost';
-/** The binding the prototype deploys: the artefact build the manifest pin above names. */
-export const BINDING_ID = 'acc-45721e1';
+/** The grants ACC binding this page deploys: the artefact build the manifest pin above names. */
+export const BINDING_ID = 'acc-s3r1.1';
 const ORIGIN = 'http://localhost:5173';
 
 /** Adapt the prototype's registry wire format until the versioned service directory replaces it. */

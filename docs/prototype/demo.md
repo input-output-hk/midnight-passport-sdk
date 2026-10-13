@@ -89,7 +89,7 @@ upgraded. The only authority left is the passkey."
 
 **Evidence.** A `create:passkey-created`, `create:deploying`, `create:deployed`,
 `create:activating`, `create:active` run, each with a timestamp, then a `created` step with the
-account address, the binding (`acc-45721e1`) and the ledger state: booted, authorisation nonce 0,
+account address, the binding (`acc-s3r1.1`) and the ledger state: booted, authorisation nonce 0,
 device epoch 0, one device entry, spec version 2. The gap between `create:deploying` and
 `create:deployed` is the deploy time. The gap to `create:active` is the activation.
 

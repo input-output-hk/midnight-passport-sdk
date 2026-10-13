@@ -4,8 +4,8 @@
 // service-backed chain, and the HTTP registry client against a running apps/passport-service.
 // Every progress event is kept, and every step that starts must end.
 // Run it through `pnpm prototype:e2e` (see the task report for the environment it needs), which
-// first syncs the generated module into src/acc/generated, where it shares midnight-js's
-// compact-runtime (scripts/sync-acc.mjs explains why).
+// imports the generated module from the contract package, which shares midnight-js's
+// compact-runtime through its exact peer dependency.
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';

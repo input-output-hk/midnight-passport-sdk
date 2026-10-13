@@ -26,7 +26,7 @@ shell.
 | macOS or Linux with [Nix](https://nixos.org/download) (flakes enabled)                                          | The shell pins Node, pnpm and Compact 0.35.0. A global `compact` is refused.                                |
 | Docker with **at least 24 GiB memory** (Docker Desktop: Settings → Resources → Memory)                          | A P-256 proof needs about 13.5 GiB on the proof server.                                                     |
 | About 15 GB free disk, and about 8 GB RAM for key generation                                                    | The 52-circuit ACC has 12 GB of prover keys.                                                                |
-| A local checkout of the Passport planning workspace (the passport contract repository; ask the team for access) | The contract source is exported from revision `45721e1`.                                                    |
+| A local checkout of the Passport planning workspace (the passport contract repository; ask the team for access) | The contract source is exported from revision `6458ed5`.                                                    |
 | Chrome or Safari, with a passkey saved in **Google Password Manager or iCloud Keychain**                        | The account needs the WebAuthn PRF extension. Chrome's "Chrome profile" store has no PRF and is refused.    |
 | Free ports 19944, 18088, 16300, 8787 and 5173                                                                   | The Passport localnet uses its own host ports, so it runs beside another Midnight localnet on the defaults. |
 
@@ -39,17 +39,17 @@ git switch passport-acc-prototype
 nix develop                          # or: direnv allow
 
 export PASSPORT_REPO=/path/to/your/passport/checkout
-git -C "$PASSPORT_REPO" fetch        # make sure revision 45721e1 is present
+git -C "$PASSPORT_REPO" fetch        # make sure revision 6458ed5 is present
 
 # Export the contract tree into experiments/acc-0.35/work/ (git-ignored). This also patches the
 # exported reference client so it reads the Passport localnet's ports.
-D=$(experiments/acc-0.35/fetch-acc.sh 45721e1 | tail -1)
+D=$(experiments/acc-0.35/fetch-acc.sh 6458ed5 | tail -1)
 
 # Compile the contract with every prover and verifier key: about 22 minutes, 12 GB, on the host.
 experiments/acc-0.35/compile.sh "$D" full
 
 export PASSPORT_CONTRACT_DIR="$D"
-export PASSPORT_MANIFEST_SHA256=682bfbd3420e4ad1ce8061a585f1029c395d82accdee030751ed25ede62df8ec
+export PASSPORT_MANIFEST_SHA256=77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f
 ```
 
 Check that your build matches the pinned hash. The build is byte-reproducible across machines, but
@@ -57,7 +57,7 @@ only through `compile.sh`'s canonical invocation:
 
 ```sh
 shasum -a 256 "$D/contracts/managed/account/compiler/contract-manifest.json"
-# expect 682bfbd3420e4ad1ce8061a585f1029c395d82accdee030751ed25ede62df8ec
+# expect 77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f
 ```
 
 Put the two `export`s in your shell profile, or in `.envrc.local` if you use direnv, so later shells
@@ -128,7 +128,7 @@ rotate again. It writes `experiments/acc-0.35/results/x8-dapp-e2e.json` and shou
 | `guard: …`                                                       | You are outside the Nix shell. Run `nix develop`.                                                                                                                  |
 | `prototype-up: port … is taken by …`                             | Another process or localnet holds a Passport port. Stop it yourself, or move the Passport stack in `infra/localnet/ports.env` and `infra/networks/undeployed.env`. |
 | `Docker has N GiB; P-256 proofs need at least 24`                | Raise Docker's memory, restart Docker, then retry.                                                                                                                 |
-| `PASSPORT_MANIFEST_SHA256 does not match`                        | The contract wasn't built with `compile.sh … full` from the `45721e1` export, or the build is incomplete. Rebuild.                                                 |
+| `PASSPORT_MANIFEST_SHA256 does not match`                        | The contract wasn't built with `compile.sh … full` from the `6458ed5` export, or the build is incomplete. Rebuild.                                                 |
 | `UnsupportedAuthenticator: … does not support the PRF extension` | Create the passkey in Google Password Manager or iCloud Keychain, not the Chrome profile store. Nothing was deployed.                                              |
 | `The authenticator does not match the wa-json134 profile`        | Your browser produced WebAuthn data the contract's fixed format rejects. Nothing was deployed. Retry, or try another browser.                                      |
 | `This is not the passkey this account was created with`          | Pick the passkey you created the account with.                                                                                                                     |

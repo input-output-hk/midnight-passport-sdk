@@ -9,6 +9,5 @@
     "module": "ESNext",
     "allowImportingTsExtensions": true
   },
-  "include": ["src", "e2e", "test", "vite.config.ts"],
-  "exclude": ["src/acc/generated"]
+  "include": ["src", "e2e", "test", "vite.config.ts"]
 }

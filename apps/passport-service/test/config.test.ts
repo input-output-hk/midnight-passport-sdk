@@ -72,7 +72,7 @@ test('the artefacts are read from contracts/managed/account in the contract dire
 test('the dapp origin, the binding id and the deploy cap have defaults and can each be set', () => {
   const defaults = loadConfig(BASE);
   assert.equal(defaults.corsOrigin, 'http://localhost:5173');
-  assert.equal(defaults.bindingId, 'acc-45721e1');
+  assert.equal(defaults.bindingId, 'acc-s3r1.1');
   assert.equal(defaults.maxDeploys, 20);
   const set = loadConfig({
     ...BASE,

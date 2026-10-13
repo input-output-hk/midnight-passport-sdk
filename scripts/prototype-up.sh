@@ -106,6 +106,11 @@ actual=$(shasum -a 256 "$manifest" | cut -d' ' -f1)
   echo "prototype-up: PASSPORT_MANIFEST_SHA256 does not match $manifest ($actual)." >&2
   exit 1
 }
+release_manifest=$(node -p "require('$root/packages/contract/acc-binding-v2.generated.json').manifestSha256")
+[ "$actual" = "$release_manifest" ] || {
+  echo "prototype-up: the dapp uses acc-s3r1.1; select its compiled artefacts (manifest $release_manifest)." >&2
+  exit 1
+}
 
 # The service imports the reference client and its pinned midnight-js packages from the contract
 # tree at run time, so that tree needs its own node_modules (no lifecycle scripts, as run.sh does).

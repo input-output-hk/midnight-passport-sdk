@@ -3,19 +3,19 @@
   "private": true,
   "type": "module",
   "imports": {
-    "#acc": "./src/acc/generated/index.js"
+    "#acc": "@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1"
   },
   "scripts": {
-    "sync:acc": "node scripts/sync-acc.mjs",
-    "dev": "../../experiments/acc-0.35/guard.sh && node scripts/sync-acc.mjs && vite",
-    "build": "../../experiments/acc-0.35/guard.sh && node scripts/sync-acc.mjs && vite build",
-    "test": "node scripts/sync-acc.mjs --optional && node --import tsx --test test/*.test.ts && node --import tsx e2e/seed-policy.e2e.ts && node --import tsx e2e/network-pin.e2e.ts && node --import tsx e2e/mock-passkey.e2e.ts && node --import tsx e2e/runtime-identity.e2e.ts",
-    "e2e": "../../experiments/acc-0.35/guard.sh && node scripts/sync-acc.mjs && node --import tsx e2e/mvp.e2e.ts"
+    "dev": "../../experiments/acc-0.35/guard.sh && vite",
+    "build": "../../experiments/acc-0.35/guard.sh && vite build",
+    "test": "node --import tsx --test test/*.test.ts && node --import tsx e2e/seed-policy.e2e.ts && node --import tsx e2e/network-pin.e2e.ts && node --import tsx e2e/mock-passkey.e2e.ts && node --import tsx e2e/runtime-identity.e2e.ts",
+    "e2e": "../../experiments/acc-0.35/guard.sh && node --import tsx e2e/mvp.e2e.ts"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.20.0",
     "@input-output-hk/mn-passport-account": "workspace:*",
     "@input-output-hk/mn-passport-adapter-browser": "workspace:*",
+    "@input-output-hk/mn-passport-contract": "workspace:*",
     "@input-output-hk/mn-passport-adapter-service": "workspace:*",
     "@input-output-hk/mn-passport-adapter-webauthn": "workspace:*",
     "@input-output-hk/mn-passport-protocol": "workspace:*",

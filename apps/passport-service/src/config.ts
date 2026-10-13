@@ -145,7 +145,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServiceConfig {
     host: env.PASSPORT_SERVICE_HOST || '127.0.0.1',
     corsOrigin: env.PASSPORT_DAPP_ORIGIN ?? 'http://localhost:5173',
     ...stack,
-    bindingId: env.PASSPORT_BINDING_ID ?? 'acc-45721e1',
+    bindingId: env.PASSPORT_BINDING_ID ?? 'acc-s3r1.1',
     contractDir,
     artefactDir: `${contractDir}/contracts/managed/account`,
     manifestSha256: need(env, 'PASSPORT_MANIFEST_SHA256'),

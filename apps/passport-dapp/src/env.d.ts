@@ -12,16 +12,3 @@ declare const __PASSPORT_MANIFEST_SHA256__: string;
 
 /** The network id this build is bound to (PASSPORT_NETWORK_ID, default `undeployed`), injected by vite.config.ts. */
 declare const __PASSPORT_NETWORK_ID__: string;
-
-/**
- * The generated module of the pinned artefact build (package.json "imports", synced by
- * scripts/sync-acc.mjs). Declared here so that type-checking needs no synced copy: the copy is
- * git-ignored and excluded from tsconfig.json.
- */
-declare module '#acc' {
-  type Generated =
-    import('@input-output-hk/mn-passport-adapter-browser/prototype').GeneratedAccModule;
-  export const Contract: Generated['Contract'];
-  export const ledger: Generated['ledger'];
-  export const pureCircuits: Generated['pureCircuits'];
-}
