@@ -6,7 +6,7 @@ permalink: /
 
 Midnight Passport gives an application a passkey controlled Account Custody Contract (ACC). The account API creates an account, opens it again with its registered passkey, reads its state and makes a signed call. The browser adapter supplies WebAuthn and the local prototype service supplies deployment, proving and fee sponsorship.
 
-> **Current state:** These pages describe the `passport-acc-prototype` branch. Its packages are private workspace packages and are not yet published. The [packaging tracker](https://github.com/input-output-hk/midnight-passport-sdk/issues/31) records the remaining adapter split, ACC artefact package and release work. Only the P-256 WebAuthn arm is driven end to end today.
+> **Current state:** These pages describe the `passport-acc-prototype` branch. The 13 packages can be packed as `0.1.0-rc1`, but have not been published. The packaged release binding is `acc-s3r1.1` from Passport revision `6458ed5`; the running demo still uses its earlier `acc-45721e1` build. Only the P-256 WebAuthn arm is driven end to end today. Follow [the packaging tracker](https://github.com/input-output-hk/midnight-passport-sdk/issues/31) for the release.
 
 ## Start here
 
