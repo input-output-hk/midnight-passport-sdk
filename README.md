@@ -15,6 +15,10 @@ connector all resolve to authorised interactions with that on-chain account.
 
 ## Documentation
 
+The [SDK package and API guide](https://input-output-hk.github.io/midnight-passport-sdk/)
+is the GitHub Pages entry point (source in [`docs/site/`](./docs/site/)). It describes the
+prototype API and is published when Pages is enabled for this fork.
+
 The design lives in [`docs/`](./docs):
 
 - [`sdk-requirements.md`](./docs/sdk-requirements.md) — what the SDK must do, and why.

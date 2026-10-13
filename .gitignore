@@ -39,6 +39,8 @@ Thumbs.db
 .direnv/
 result
 result-*
+release-tarballs/
+_site/
 .midnight-expert/
 .planning/
 packages/contract/artefact/
