@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ page.title | escape }} · {{ site.title | escape }}</title>
+    <meta name="description" content="{{ site.description | escape }}" />
+    <link rel="stylesheet" href="{{ '/assets/site.css' | relative_url }}" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="{{ '/' | relative_url }}">Midnight Passport SDK</a>
+      <nav aria-label="Documentation">
+        <a href="{{ '/packages/' | relative_url }}">Packages</a>
+        <a href="{{ '/api/' | relative_url }}">API</a>
+        <a href="{{ '/service/' | relative_url }}">Service</a>
+        <a href="{{ '/keys/' | relative_url }}">ZK keys</a>
+        <a href="{{ '/releasing/' | relative_url }}">Releasing</a>
+      </nav>
+    </header>
+    <main>
+      <p class="eyebrow">Prototype branch · API 1.0.0-pre.0</p>
+      <h1>{{ page.title | escape }}</h1>
+      {{ content }}
+    </main>
+    <footer>
+      <a href="https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype"
+        >Source</a
+      >
+      ·
+      <a href="https://github.com/input-output-hk/midnight-passport-sdk/issues/31"
+        >Packaging tracker</a
+      >
+    </footer>
+  </body>
+</html>
