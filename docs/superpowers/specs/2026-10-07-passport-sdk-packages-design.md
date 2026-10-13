@@ -954,8 +954,9 @@ repository, made with its owners' approval, not part of this plan.
 6. **One Midnight package set with lace-platform.** Lace moves to midnight-js `5.0.0-rc.2` and
    `compact-runtime` `0.20.0` to share the binding, or the SDK supports Lace's older set for a
    while? Who decides the set per release?
-7. **Which binding comes first.** `acc-45721e1` (the P-256 arm, 52 circuits) re-pinned as
-   `acc-s<…>r<…>.1`, or wait for the caller-pinned grants revision (FS-0.9 OQ-3, OQ-5)?
+7. **First binding (resolved 2026/10/14).** Use revision `6458ed5`, which includes the P-256 arm
+   and caller-pinned grants, as `acc-s3r1.1`. The `acc-45721e1` bundle remains a prototype input
+   until the demo and service consume the new binding.
 8. **The deploy.** Keep the service-side deploy as the default `Deployer`, or move it client-side
    over `planDeploy` and keep the service for the pre-deployed pool (#23)?
 9. **The directory's key (#20).** `transientHash(domain, rp_id_hash, credentialId)` or the P-256
