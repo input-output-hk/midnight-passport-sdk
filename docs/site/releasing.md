@@ -6,9 +6,9 @@ permalink: /releasing/
 
 The release target is GitHub Packages under `@input-output-hk/mn-passport-*`, with one version shared by the published package set. Nothing has been published yet.
 
-The [manual publish workflow](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/.github/workflows/publish.yml) is deliberately gated. It verifies the repository identity, restored seven-day dependency cooldown and active PR checks, built outputs, public package names, versions and packed tarballs. A dry run builds and packs without registry writes. A live run requires an explicit version and tag, attests the tarballs and publishes them with the workflow `GITHUB_TOKEN`.
+The [publish workflow](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/.github/workflows/publish.yml) is deliberately gated. It verifies the repository identity, restored seven-day dependency cooldown and active PR checks, built outputs, public package names, versions and packed tarballs. A dry run builds and packs without registry writes. A live run attests the tarballs and publishes them with the workflow `GITHUB_TOKEN`.
 
-The workflow is available for manual dispatch only after its file reaches the repository's default branch. Enabling the workflow or changing the default branch is a separate repository decision. The prototype branch and package manifests do not yet satisfy its release gates.
+Manual dispatch is available only after the workflow file reaches the repository's default branch. Until then, an owner can deliberately push a `sdk-v<semver>` tag pointing to a commit in `passport-acc-prototype` history to start a live release. A prerelease tag publishes with the `dev` distribution tag; a stable version uses `latest`. The tag path has the same release gates and will fail until the remaining package migration is complete. No release tag has been created.
 
 Consumers add a scoped registry rule and supply a token outside source control:
 
