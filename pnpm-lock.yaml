@@ -266,7 +266,11 @@ importers:
 
   packages/protocol: {}
 
-  packages/service: {}
+  packages/service:
+    dependencies:
+      '@input-output-hk/mn-passport-protocol':
+        specifier: workspace:*
+        version: link:../protocol
 
 packages:
 
