@@ -50,6 +50,8 @@ The same package exports `sponsorPolicy`, `viewOfLedgerTx`, and `guardedBalance`
 
 `mn-passport-adapter-service` exports `remoteV1Prover`, `remoteV1Deployer`, and `remoteV1Sponsor`. The first two submit a v1 job and poll it with a cursor; they forward validated service progress through `onEvent`, honor `signal`, enforce a total timeout, and preserve the service's error code. The sponsor uses the synchronous v1 fee endpoints. `fetchCheckedV1Config` checks the advertised network, binding, manifest, service API version and binding-specific artefact URL against host pins before a host uses these ports. The standalone browser demo uses these clients without changing the account core.
 
+The separate `mn-passport-adapter-service/faucet` subpath exports `remoteFaucet` for `POST /v1/faucet/fund`. A caller supplies a stable UUID, pinned network/binding/manifest, ACC address, allowlisted asset color and decimal amount, plus a callback for fresh authorization headers. The result includes the transaction ID and confirmed credited ACC balance. The funding route and client are available as library pieces; a wallet-backed funding app is not yet running.
+
 A deployed JubJub `AccountHint` may carry up to 16 sealed 192-byte `keyEntries` until they have been appended to the ACC inbox. They contain no raw viewing secret. A directory response is an untrusted pointer: the owner flow must match its credential and device key to the selected passkey, check the on-chain device entry, and open an envelope against the ledger's `enc_key` before completing or accepting it.
 
 ### JubJub viewing-key port

@@ -27,6 +27,10 @@
     "./config": {
       "types": "./dist/config.d.ts",
       "default": "./dist/config.js"
+    },
+    "./faucet": {
+      "types": "./dist/faucet.d.ts",
+      "default": "./dist/faucet.js"
     }
   },
   "files": [
