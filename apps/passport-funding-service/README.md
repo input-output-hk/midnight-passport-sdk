@@ -64,5 +64,45 @@ pending requests, wallet transactions and ACC balances before removing it. Use a
 database for replicas. The source has focused policy and backend tests. On the local `undeployed`
 network, this process deposited 10 units of a faucet-minted non-native unshielded asset into a
 live `spec_version = 3` ACC and observed the credited balance. Repeating the same request ID
-returned the same transaction ID and balance. A container image is still required before
-publishing this service as a release artifact.
+returned the same transaction ID and balance. The container image must still pass its release
+build and mounted-tree smoke test before it is published.
+
+## Container image
+
+The [funding image workflow](../../.github/workflows/publish-funding-image.yml) publishes
+`ghcr.io/input-output-hk/midnight-passport-funding:<version>` and a commit-SHA tag after a
+signed `funding-v<version>` tag or an authorized workflow dispatch. Pin a digest when deploying.
+The image contains the SDK application, not the 11 GiB proving tree, any wallet seed, or tokens.
+Its entrypoint requires a **Linux-prepared** pinned `6458ed5` export at `/data/contract`, including
+compiled `contracts/managed/account` artefacts and that export's `node_modules`. The service
+verifies the complete pinned key tree and manifest before readiness. Mount persistent writable
+state at `/data/state`; its LevelDB wallet state and reservation file live there. The image runs
+as UID/GID `10001:10001` by default.
+
+For a local Docker Desktop demonstration, prepare the export and private files on the host, then
+run the image with the host user's UID so it can read the files and write state. The example uses
+the localnet containers' published host ports; set the four `MN_*_URL` values to your environment
+for another network.
+
+```sh
+docker run --rm --user "$(id -u):$(id -g)" \
+  -p 127.0.0.1:8789:8789 \
+  -v "$PASSPORT_CONTRACT_DIR:/data/contract:ro" \
+  -v "$HOME/.midnight-passport:/data/state" \
+  -e HOME=/data/state \
+  -e PASSPORT_FUNDING_TOKEN_FILE=/data/state/funding-token \
+  -e PASSPORT_FUNDING_ASSETS_FILE=/data/state/funding-assets.json \
+  -e PASSPORT_FUNDING_DEPLOYMENTS_FILE=/data/state/registry.deployments.json \
+  -e MN_NETWORK_ID=undeployed \
+  -e MN_NODE_URL=http://host.docker.internal:19944 \
+  -e MN_INDEXER_URL=http://host.docker.internal:18088/api/v4/graphql \
+  -e MN_INDEXER_WS_URL=ws://host.docker.internal:18088/api/v4/graphql/ws \
+  -e MN_PROOF_SERVER_URL=http://host.docker.internal:16300 \
+  ghcr.io/input-output-hk/midnight-passport-funding:<version>
+```
+
+The source image uses a read-only contract mount and never downloads proving keys at runtime.
+The [key service image](../passport-key-service/README.md) restores and serves keys separately;
+prepare the funding image's contract tree on Linux with the same binding and manifest pin. The
+funding token must stay in a private file or secret mount. GHCR visibility and repository/team
+access are configured on the container package's settings page.

@@ -1,0 +1,33 @@
+name: Check Passport funding image
+
+on:
+  pull_request:
+    paths:
+      - '.dockerignore'
+      - 'apps/passport-funding-service/**'
+      - 'packages/contract/**'
+      - 'packages/protocol/**'
+      - 'packages/service/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/check-funding-image.yml'
+      - '.github/workflows/publish-funding-image.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build Linux image
+        run: docker build -f apps/passport-funding-service/Dockerfile -t midnight-passport-funding:check .
+      - name: Check user and missing-volume refusal
+        run: |
+          test "$(docker image inspect midnight-passport-funding:check --format '{{.Config.User}}')" = '10001:10001'
+          docker run --rm --entrypoint node midnight-passport-funding:check --version
+          if docker run --rm midnight-passport-funding:check > /tmp/funding-image-smoke.log 2>&1; then
+            echo 'Funding image started without its pinned contract mount.' >&2
+            exit 1
+          fi
+          grep -q 'mount a Linux-prepared pinned ACC export' /tmp/funding-image-smoke.log
