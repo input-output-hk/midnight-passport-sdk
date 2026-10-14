@@ -3,6 +3,7 @@ import type {
   CurvePoint,
   PrfKeySource,
 } from '@input-output-hk/mn-passport-account/ports';
+import { jubjub } from '@noble/curves/misc.js';
 import {
   JUBJUB_ORDER,
   littleEndianScalar,
@@ -33,7 +34,8 @@ const accountBytes = (account: string): Uint8Array => {
 export function recipeJubjubAuthoriser(
   source: PrfKeySource,
   pure: JubjubDeviceCircuits,
-): Authoriser & Required<Pick<Authoriser, 'deviceCommitments' | 'withKeySession'>> {
+): Authoriser &
+  Required<Pick<Authoriser, 'deviceCommitments' | 'devicePublicKeyHex' | 'withKeySession'>> {
   const withDevice = <T>(work: (sk: bigint, pk: CurvePoint) => T): Promise<T> =>
     source.withSession(async () => {
       const bytes = await source.deviceSecret();
@@ -49,6 +51,12 @@ export function recipeJubjubAuthoriser(
   return {
     scheme: 'jubjub-schnorr',
     devicePublicKey: () => withDevice((_sk, pk) => pk),
+    devicePublicKeyHex: () =>
+      withDevice((_sk, pk) =>
+        Array.from(jubjub.Point.fromAffine(pk).toBytes(), (byte) =>
+          byte.toString(16).padStart(2, '0'),
+        ).join(''),
+      ),
     deviceCommitments: (account, epoch, counters) =>
       withDevice((_sk, pk) => {
         const self = { bytes: accountBytes(account) };

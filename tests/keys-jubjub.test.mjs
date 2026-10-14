@@ -64,10 +64,14 @@ test('the PRF-backed authoriser batches commitments and clears each secret copy'
   };
   const authoriser = recipeJubjubAuthoriser(source, pureCircuits);
   const pk = await authoriser.devicePublicKey();
+  assert.equal(
+    await authoriser.devicePublicKeyHex(),
+    'c575d508ef43db0e93c46a62ff935d6098e42e86ac7d0325ee40acc500ceca84',
+  );
   const commitments = await authoriser.deviceCommitments(hex(address), 0n, [0n, 1n]);
   assert.equal(commitments[0], '73b71bbbedfc07c5a859cc3c48e64fef1182818d19527ebf314e7194b2d4a1a8');
   assert.equal(commitments.length, 2);
-  assert.equal(sessions, 2);
+  assert.equal(sessions, 3);
   assert.ok(secrets.every((bytes) => bytes.every((value) => value === 0)));
   await assert.rejects(
     authoriser.authorise({

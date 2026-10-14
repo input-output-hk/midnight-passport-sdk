@@ -94,6 +94,8 @@ export type Authorisation = P256Authorisation | JubjubAuthorisation;
 export interface Authoriser {
   readonly scheme: AuthScheme;
   devicePublicKey(): Promise<CurvePoint>;
+  /** JubJub registration's validated compressed 32-byte point, as lowercase hex. */
+  devicePublicKeyHex?(): Promise<string>;
   /** The P-256 arm's WebAuthn binding: the policy and the credential the key lives in. */
   deviceBinding?(): Promise<{ readonly policy: WebAuthnPolicy; readonly credentialId: Uint8Array }>;
   authorise(request: AuthorisationRequest): Promise<Authorisation>;

@@ -18,6 +18,7 @@ export function webauthnPasskey(opts: {
   const seam = browserPasskey(opts);
   const known = new Map<string, PasskeyCredential>();
   let current: PasskeyCredential | undefined;
+  let selectedCredentialId: Uint8Array | undefined;
   let session: PasskeyPrfOutputs | undefined;
   let pendingSession: Promise<PasskeyPrfOutputs> | undefined;
   let sessionUsers = 0;
@@ -31,11 +32,14 @@ export function webauthnPasskey(opts: {
     async create({ name }) {
       const created = await seam.create(name);
       current = created;
+      selectedCredentialId = created.credentialId;
       known.set(idHex(created.credentialId), created);
       return { credentialId: created.credentialId };
     },
     async identify() {
       const identity = await seam.identify();
+      selectedCredentialId = identity.credentialId;
+      current = known.get(idHex(identity.credentialId));
       return {
         credentialId: identity.credentialId,
         owns(key, policy) {
@@ -59,12 +63,14 @@ export function webauthnPasskey(opts: {
       try {
         if (!session) {
           pendingSession ??= (async () => {
-            const credential = selected();
+            const credentialId = selectedCredentialId;
+            if (!credentialId)
+              throw new PassportConnectorError('InternalError', 'No passkey was selected.');
             return passkeyPrf({
-              credentialId: credential.credentialId,
+              credentialId,
               rpId: opts.rpId,
               ...(opts.credentials && { credentials: opts.credentials }),
-              created: credential,
+              ...(current && { created: current }),
             });
           })().finally(() => {
             pendingSession = undefined;

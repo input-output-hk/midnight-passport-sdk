@@ -43,6 +43,8 @@ The account object also exposes `address`, `networkId`, `bindingId`, `scheme` an
 
 `AccountViewingKey` is the port for Lace's random ACC viewing secret and device envelopes. `recipeDeviceKeyring(prfSource)` from `mn-passport-keys` implements it: `readerPublicKey`, `createKeys`, `sealToDevice`, `openInbox`, `sealGrant`, `reencryptInbox`, and `sealView`. The keyring opens the current sealed secret only inside a passkey session, checks it against the ledger's `enc_key`, and clears it after each operation. The account flow must confirm that any joining reader belongs to the device entry being enrolled, and that readers kept during rotation are unique live devices. `openInbox` returns decrypted coin descriptions, device registrations and grant bookkeeping, or `null` for unrelated entries.
 
+The JubJub authoriser also supplies `devicePublicKeyHex()`, a validated compressed point for the device registration. The WebAuthn credential adapter can select a discoverable passkey for a pinned PRF ceremony before a P-256 key is chosen; a JubJub flow verifies the resulting device key against the on-chain entry and the directory hint.
+
 The current `createPassportAccounts` connector does **not** call `AccountViewingKey` yet; its `encryptionKey` port is the P-256 prototype's deterministic key source. The JubJub create/open/rotate path and Lace consumer validation remain release gates. See [key roles and recovery]({{ '/keys/#account-viewing-secrets-and-recovery' | relative_url }}).
 
 ## Events and cancellation

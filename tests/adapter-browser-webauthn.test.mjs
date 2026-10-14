@@ -204,6 +204,18 @@ test('the WebAuthn adapter supplies credential, PRF and P-256 authoriser ports',
   assert.equal(picked.owns(await adapter.p256.devicePublicKey(), binding?.policy), true);
 });
 
+test('a discoverable passkey can derive its PRF key before a P-256 binding is selected', async () => {
+  const auth = softwareAuthenticator();
+  const adapter = b.webauthnPasskey({ rpId: RP, origin: ORIGIN, credentials: auth.container });
+  const picked = await adapter.credentials.identify();
+  assert.deepEqual(picked.credentialId, ID);
+  const secret = await adapter.prf.deviceSecret();
+  assert.equal(secret.length, 32);
+  assert.ok(secret.some((/** @type {number} */ byte) => byte !== 0));
+  secret.fill(0);
+  assert.equal(auth.gets.length, 2, 'discovery and pinned PRF each use one ceremony');
+});
+
 test('overlapping PRF sessions keep their outputs until both callers finish', async () => {
   const auth = softwareAuthenticator({ atCreate: 'results' });
   const adapter = b.webauthnPasskey({ rpId: RP, origin: ORIGIN, credentials: auth.container });
