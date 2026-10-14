@@ -14,6 +14,11 @@ const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 function toWire(hint: AccountHint): Wire.AccountHintBody {
+  if (
+    hint.keyEntries &&
+    (hint.keyEntries.length > 16 || hint.keyEntries.some((entry) => entry.length !== 192))
+  )
+    throw new PassportConnectorError('InternalError', 'directory key entries must be 192 bytes');
   return {
     address: hint.address,
     scheme: hint.scheme,
@@ -23,6 +28,7 @@ function toWire(hint: AccountHint): Wire.AccountHintBody {
       policy: { rp_id_hash: toHex(hint.policy.rp_id_hash), origin: toHex(hint.policy.origin) },
     }),
     ...(hint.salt && { salt: toHex(hint.salt) }),
+    ...(hint.keyEntries && { keyEntries: hint.keyEntries.map(toHex) }),
     status: hint.status,
   };
 }
@@ -48,7 +54,7 @@ function proofToWire(proof: OwnershipProof): Wire.OwnershipProofBody {
 /** Parse untrusted directory JSON before the account core verifies it against the ledger. */
 function fromWire(value: unknown): AccountHint {
   if (!record(value) || !record(value.publicKey)) throw new Error('invalid directory hint');
-  const { address, scheme, credentialId, publicKey, policy, salt, status } = value;
+  const { address, scheme, credentialId, publicKey, policy, salt, keyEntries, status } = value;
   if (
     typeof address !== 'string' ||
     !address ||
@@ -60,6 +66,12 @@ function fromWire(value: unknown): AccountHint {
     !['deployed', 'active'].includes(String(status)) ||
     (credentialId !== undefined && typeof credentialId !== 'string') ||
     (salt !== undefined && typeof salt !== 'string') ||
+    (keyEntries !== undefined &&
+      (!Array.isArray(keyEntries) ||
+        keyEntries.length > 16 ||
+        !keyEntries.every(
+          (entry) => typeof entry === 'string' && /^[0-9a-f]{384}$/.test(entry),
+        ))) ||
     (policy !== undefined &&
       (!record(policy) ||
         typeof policy.rp_id_hash !== 'string' ||
@@ -73,6 +85,7 @@ function fromWire(value: unknown): AccountHint {
     publicKey: { x: BigInt(`0x${publicKey.x}`), y: BigInt(`0x${publicKey.y}`) },
     ...(credentialId !== undefined && { credentialId: fromHex(credentialId) }),
     ...(salt !== undefined && { salt: fromHex(salt) }),
+    ...(keyEntries !== undefined && { keyEntries: (keyEntries as string[]).map(fromHex) }),
     ...(policy !== undefined &&
       record(policy) && {
         policy: {

@@ -11,4 +11,7 @@ test('the release ACC module supplies the browser chain binding shape', () => {
   assert.equal(typeof binding.pureCircuits.derive_boot_commitment_with_p256, 'function');
   assert.equal(typeof binding.pureCircuits.derive_device_entry_with_p256, 'function');
   assert.equal(typeof binding.pureCircuits.challenge_rotate_enc_key_with_p256, 'function');
+  assert.equal(typeof binding.pureCircuits.derive_boot_commitment_with_jubjub, 'function');
+  assert.equal(typeof binding.pureCircuits.derive_device_entry_with_jubjub, 'function');
+  assert.equal(typeof binding.pureCircuits.challenge_append_inbox_with_jubjub, 'function');
 });

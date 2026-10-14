@@ -16,6 +16,7 @@ import {
 import type {
   AccLedgerView,
   AccPureCircuits,
+  JubjubPureCircuits,
   Chain,
   FeeSponsor,
   NetworkConfig,
@@ -50,7 +51,7 @@ function inboxEntries(ledger: LedgerShape): Uint8Array[] {
 export interface MidnightBinding {
   readonly Contract: new (witnesses: never) => Contract.Any;
   ledger(data: unknown): unknown;
-  readonly pureCircuits: AccPureCircuits;
+  readonly pureCircuits: AccPureCircuits & Partial<JubjubPureCircuits>;
 }
 
 /** Injects the heavy Midnight call pipeline behind the account core's Chain port. */

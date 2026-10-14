@@ -23,6 +23,7 @@ import type { PassportEvent, PassportStep } from '@input-output-hk/mn-passport-p
 import type {
   AccLedgerView,
   AccPureCircuits,
+  JubjubPureCircuits,
   FetchLike,
 } from '@input-output-hk/mn-passport-account/ports';
 import { Transaction } from '@midnightntwrk/ledger-v9';
@@ -39,7 +40,7 @@ export interface GeneratedAccModule {
   readonly Contract: new (witnesses: never) => Contract.Any;
   /** The generated ledger projection; `unknown` because the generated `Ledger` type stays in the artefact. */
   ledger(data: unknown): unknown;
-  readonly pureCircuits: AccPureCircuits;
+  readonly pureCircuits: AccPureCircuits & Partial<JubjubPureCircuits>;
 }
 
 /** Runs `work` as one reported step of a chain call. */

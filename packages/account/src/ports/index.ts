@@ -7,13 +7,19 @@ import type {
   FlowOptions,
   PassportTxResult,
 } from '@input-output-hk/mn-passport-protocol';
-import type { AccLedgerView, AccPureCircuits, WebAuthnPolicy } from '../seams.js';
+import type {
+  AccLedgerView,
+  AccPureCircuits,
+  JubjubPureCircuits,
+  WebAuthnPolicy,
+} from '../seams.js';
 
 export type { AuthScheme } from '@input-output-hk/mn-passport-protocol';
 // Defined beside the prototype's seams until T5 to T9 retire them; this is their public home.
 export type {
   AccLedgerView,
   AccPureCircuits,
+  JubjubPureCircuits,
   P256PublicKey,
   WebAuthnPolicy,
   PasskeyCredential,
@@ -281,6 +287,8 @@ export interface AccountHint {
   readonly policy?: WebAuthnPolicy;
   /** Opens the boot commitment, to activate a deployed account. */
   readonly salt?: Uint8Array;
+  /** Sealed device entries retained until a deployed JubJub account has appended them on chain. */
+  readonly keyEntries?: readonly Uint8Array[];
   readonly status: 'deployed' | 'active';
 }
 /** Proof that the writer holds the hint's device key, over a challenge that binds the hint. */
@@ -332,7 +340,7 @@ export interface NetworkConfig {
 
 /** What the core reads of a binding; `info`, `Contract` and `ledger` join with `contract/bindings`. */
 export interface AccBinding {
-  readonly pureCircuits: AccPureCircuits;
+  readonly pureCircuits: AccPureCircuits & Partial<JubjubPureCircuits>;
 }
 /** A value, or a loader the core calls once, so heavy code stays behind `import()`. */
 export type Lazy<T> = T | (() => Promise<T>);
@@ -343,6 +351,8 @@ export interface PassportPorts {
   readonly credentials: CredentialPort;
   readonly authoriser: Authoriser;
   readonly encryptionKey: EncryptionKeySource;
+  /** Random ACC viewing secret behind sealed device envelopes, required by the JubJub arm. */
+  readonly viewingKey?: AccountViewingKey;
   readonly chain: Lazy<Chain>;
   readonly deployer: Deployer;
   readonly directory?: AccountDirectory;

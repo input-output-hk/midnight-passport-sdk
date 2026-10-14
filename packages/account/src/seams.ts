@@ -95,7 +95,34 @@ export interface ChainSeam {
 }
 
 type ContractAddressArg = { readonly bytes: Uint8Array };
-/** The subset of the generated module's pure circuits the MVP calls (Compact runs them in JS). */
+/** JubJub pure helpers the PRF authoriser and owner flows require from the pinned binding. */
+export interface JubjubPureCircuits {
+  compute_public_point_with_jubjub(scalar: bigint): { x: bigint; y: bigint };
+  derive_boot_commitment_with_jubjub(salt: Uint8Array, pk: { x: bigint; y: bigint }): Uint8Array;
+  derive_device_entry_with_jubjub(
+    self: ContractAddressArg,
+    pk: { x: bigint; y: bigint },
+    epoch: bigint,
+    counter: bigint,
+  ): Uint8Array;
+  challenge_append_inbox_with_jubjub(
+    self: ContractAddressArg,
+    sigR: { x: bigint; y: bigint },
+    pk: { x: bigint; y: bigint },
+    entry: Uint8Array,
+    nonce: bigint,
+    grindNonce: bigint,
+  ): Uint8Array;
+  challenge_rotate_enc_key_with_jubjub(
+    self: ContractAddressArg,
+    sigR: { x: bigint; y: bigint },
+    pk: { x: bigint; y: bigint },
+    key: Uint8Array,
+    nonce: bigint,
+    grindNonce: bigint,
+  ): Uint8Array;
+}
+/** The P-256 subset used by the existing prototype flow. */
 export interface AccPureCircuits {
   derive_boot_commitment_with_p256(
     salt: Uint8Array,

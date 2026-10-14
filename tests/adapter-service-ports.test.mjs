@@ -135,6 +135,47 @@ test('remote directory carries hints and proofs on the versioned wire', async ()
   );
 });
 
+test('directory round-trips a sealed JubJub creation entry and refuses a malformed one', async () => {
+  const sealed = new Uint8Array(192).fill(0xd1);
+  const hint = {
+    address: 'ab'.repeat(32),
+    scheme: /** @type {const} */ ('jubjub-schnorr'),
+    credentialId: Uint8Array.of(1),
+    publicKey: { x: 2n, y: 3n },
+    salt: new Uint8Array(32),
+    keyEntries: [sealed],
+    status: /** @type {const} */ ('deployed'),
+  };
+  let returnedEntry = Buffer.from(sealed).toString('hex');
+  /** @type {import('../packages/account/dist/ports/index.js').FetchLike} */
+  const fetchFn = async (_url, init) => {
+    if (init?.method === 'PUT') {
+      assert.deepEqual(JSON.parse(init.body ?? '').hint.keyEntries, [returnedEntry]);
+      return reply(204, undefined);
+    }
+    return reply(200, {
+      address: hint.address,
+      scheme: hint.scheme,
+      credentialId: '01',
+      publicKey: { x: '2', y: '3' },
+      salt: '00'.repeat(32),
+      keyEntries: [returnedEntry],
+      status: 'deployed',
+    });
+  };
+  const directory = remoteDirectory('http://service', { fetch: fetchFn });
+  await directory.put('undeployed', hint);
+  assert.deepEqual(
+    await directory.get('undeployed', { kind: 'credential-id', credentialId: Uint8Array.of(1) }),
+    hint,
+  );
+  returnedEntry = 'ff';
+  await assert.rejects(
+    directory.get('undeployed', { kind: 'credential-id', credentialId: Uint8Array.of(1) }),
+    { code: 'InternalError' },
+  );
+});
+
 test('checked config rejects a service whose binding or manifest differs from the app pin', async () => {
   const pin = {
     networkId: 'undeployed',

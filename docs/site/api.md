@@ -39,6 +39,8 @@ The account object also exposes `address`, `networkId`, `bindingId`, `scheme` an
 
 `Chain.readAccount(address, { includeInbox: true })` also returns the ACC inbox values in ledger-index order, capped at 4096 entries, for flows that need to open sealed account keys. The default read omits the inbox so the P-256 state path does not fetch every entry. The JubJub create/open flow will request this view as part of its viewing-key validation.
 
+A deployed JubJub `AccountHint` may carry up to 16 sealed 192-byte `keyEntries` until they have been appended to the ACC inbox. They contain no raw viewing secret. A directory response is an untrusted pointer: the owner flow must match its credential and device key to the selected passkey, check the on-chain device entry, and open an envelope against the ledger's `enc_key` before completing or accepting it.
+
 ### JubJub viewing-key port
 
 `AccountViewingKey` is the port for Lace's random ACC viewing secret and device envelopes. `recipeDeviceKeyring(prfSource)` from `mn-passport-keys` implements it: `readerPublicKey`, `createKeys`, `sealToDevice`, `openInbox`, `sealGrant`, `reencryptInbox`, and `sealView`. The keyring opens the current sealed secret only inside a passkey session, checks it against the ledger's `enc_key`, and clears it after each operation. The account flow must confirm that any joining reader belongs to the device entry being enrolled, and that readers kept during rotation are unique live devices. `openInbox` returns decrypted coin descriptions, device registrations and grant bookkeeping, or `null` for unrelated entries.

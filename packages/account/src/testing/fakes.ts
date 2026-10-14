@@ -75,6 +75,19 @@ const p256 = (pk: P.CurvePoint) => ({ x: pk.x, y: pk.y, identity: false as const
 /** Pure circuits over `fakeDigest`: deterministic, and distinct wherever the real ones are. */
 export const fakeBinding = (): P.AccBinding => ({
   pureCircuits: {
+    compute_public_point_with_jubjub: (scalar) => ({ x: scalar, y: scalar + 1n }),
+    derive_boot_commitment_with_jubjub: (salt, pk) =>
+      fakeDigest(`jubjub-boot|${hex(salt)}|${point(pk)}`),
+    derive_device_entry_with_jubjub: (self, pk, epoch, counter) =>
+      fakeDigest(`jubjub-entry|${hex(self.bytes)}|${point(pk)}|${epoch}|${counter}`),
+    challenge_append_inbox_with_jubjub: (self, sigR, pk, entry, nonce, grindNonce) =>
+      fakeDigest(
+        `jubjub-append|${hex(self.bytes)}|${point(sigR)}|${point(pk)}|${hex(entry)}|${nonce}|${grindNonce}`,
+      ),
+    challenge_rotate_enc_key_with_jubjub: (self, sigR, pk, key, nonce, grindNonce) =>
+      fakeDigest(
+        `jubjub-rotate|${hex(self.bytes)}|${point(sigR)}|${point(pk)}|${hex(key)}|${nonce}|${grindNonce}`,
+      ),
     derive_boot_commitment_with_p256: (salt, pk, policy) =>
       fakeDigest(`boot|${hex(salt)}|${point(pk)}|${policyText(policy)}`),
     derive_device_entry_with_p256: (self, pk, policy, epoch, k) =>

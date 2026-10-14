@@ -97,6 +97,8 @@ export interface AccountHintBody {
   readonly publicKey: PointBody;
   readonly policy?: { readonly rp_id_hash: Hex; readonly origin: Hex };
   readonly salt?: Hex;
+  /** Sealed 192-byte creation entries; directory data alone cannot authorise their use. */
+  readonly keyEntries?: readonly Hex[];
   readonly status: 'deployed' | 'active';
 }
 /** An `OwnershipProof` of account/ports. */
