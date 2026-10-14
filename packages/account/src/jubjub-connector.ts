@@ -7,6 +7,7 @@ import {
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow, type Flow } from './flow.js';
+import { JUBJUB_READER_SCAN_LIMIT } from './jubjub-readers.js';
 import type {
   AccLedgerView,
   AccountHint,
@@ -16,8 +17,6 @@ import type {
   PassportPorts,
 } from './ports/index.js';
 
-/** Lace's current Passport device-entry rescan bound (PR #2845, 05e1e3d). */
-const MAX_SCAN = 4096n;
 const RETRIES = 30;
 const equal = (a: Uint8Array, b: Uint8Array): boolean =>
   a.length === b.length && a.every((byte, index) => byte === b[index]);
@@ -117,7 +116,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     const pure = recordPure.get(record);
     if (!pure) throw new PassportConnectorError('InternalError', 'No pinned binding for account.');
     const self = { bytes: fromHex(record.address) };
-    for (let counter = 0n; counter < MAX_SCAN; counter++) {
+    for (let counter = 0n; counter < JUBJUB_READER_SCAN_LIMIT; counter++) {
       if (
         view.hasEntry(
           pure.derive_device_entry_with_jubjub(self, record.publicKey, view.deviceEpoch, counter),

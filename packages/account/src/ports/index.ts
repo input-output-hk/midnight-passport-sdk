@@ -217,6 +217,8 @@ export type OpenedInboxEntry =
  * This is distinct from the prototype's passkey-derived `EncryptionKeySource`.
  */
 export interface AccountViewingKey {
+  /** Decode a roster's compressed JubJub device key; malformed points return undefined. */
+  decodeDevicePublicKey?(compressedHex: string): CurvePoint | undefined;
   readerPublicKey(networkId: string): Promise<Uint8Array>;
   createKeys(networkId: string, request: CreateAccountKeys): Promise<AccountKeys>;
   sealToDevice(

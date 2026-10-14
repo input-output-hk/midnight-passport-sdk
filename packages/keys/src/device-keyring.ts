@@ -12,6 +12,7 @@ import type {
   OpenedInboxEntry,
   PrfKeySource,
   ShieldedCoin,
+  CurvePoint,
 } from '@input-output-hk/mn-passport-account/ports';
 import {
   openDeviceEnvelope,
@@ -47,6 +48,15 @@ const validReader = (reader: DeviceReader): void => {
   jubjub.Point.fromBytes(deviceKey);
   // noble refuses small-order X25519 public keys rather than agreeing an all-zero shared secret.
   x25519.getSharedSecret(new Uint8Array(KEY_LENGTH).fill(1), readKey);
+};
+
+/** A roster key is untrusted until it decodes as a JubJub point. */
+const decodeDevicePublicKey = (compressedHex: string): CurvePoint | undefined => {
+  try {
+    return jubjub.Point.fromBytes(fromHex(compressedHex)).toAffine();
+  } catch {
+    return undefined;
+  }
 };
 
 /** Full viewing-key port plus focused coin methods for callers that need only coin entries. */
@@ -338,6 +348,7 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
     );
 
   return {
+    decodeDevicePublicKey,
     readerPublicKey: (networkId) => onNetwork(networkId, async (_secret, publicKey) => publicKey),
     createKeys,
     sealToDevice,
