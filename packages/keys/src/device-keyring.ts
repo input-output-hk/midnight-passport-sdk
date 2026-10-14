@@ -7,7 +7,9 @@ import type {
   CreateAccountKeys,
   DeviceDelivery,
   DeviceReader,
+  GrantRecordPart,
   LiveDeviceReader,
+  OpenedInboxEntry,
   PrfKeySource,
   ShieldedCoin,
 } from '@input-output-hk/mn-passport-account/ports';
@@ -20,6 +22,8 @@ import {
 } from './device-envelope.js';
 import { READER_SECRET_DOMAIN } from './lace-recipe.js';
 import { openInboxCoin, sealInboxCoin } from './inbox-coin.js';
+import { openGrantRecord, sealGrantRecord } from './grant-record.js';
+import { sealGrantView } from './grant-view-seal.js';
 
 const KEY_LENGTH = 32;
 const MAX_ENVELOPES = 4096;
@@ -45,11 +49,8 @@ const validReader = (reader: DeviceReader): void => {
   x25519.getSharedSecret(new Uint8Array(KEY_LENGTH).fill(1), readKey);
 };
 
-/** The exposed methods that operate on device deliveries; other view operations join later. */
-export interface DeviceKeyring extends Pick<
-  AccountViewingKey,
-  'readerPublicKey' | 'createKeys' | 'sealToDevice'
-> {
+/** Full viewing-key port plus focused coin methods for callers that need only coin entries. */
+export interface DeviceKeyring extends AccountViewingKey {
   /** Open coin descriptions with the live and up to 16 previous envelope secrets. */
   openCoins(
     networkId: string,
@@ -282,11 +283,69 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
     );
   };
 
+  const openInbox: AccountViewingKey['openInbox'] = (networkId, keyring, entries) => {
+    checkedEntries(entries);
+    return onNetwork(networkId, async (readerSecret) =>
+      withKeyring(readerSecret, keyring, async ({ live, all }) => {
+        const opened: (OpenedInboxEntry | null)[] = [];
+        for (const entry of entries) {
+          const device = await openDeviceRegistration(live.rosterKey, entry);
+          if (device) {
+            opened.push({ kind: 'device', device });
+            continue;
+          }
+          const record = await openGrantRecord(readerSecret, keyring.account, entry);
+          if (record) {
+            opened.push({ kind: 'grant', record });
+            continue;
+          }
+          const coin = await openCoin(all, entry);
+          opened.push(coin ? { kind: 'coin', coin } : null);
+        }
+        return opened;
+      }),
+    );
+  };
+
+  const sealGrant: AccountViewingKey['sealGrant'] = (networkId, account, grant) =>
+    onNetwork(networkId, async (readerSecret) => {
+      const { object, ...fields } = grant;
+      const parts: GrantRecordPart[] = [
+        { part: 'grant', ...fields },
+        { part: 'object', grantId: grant.grantId, object },
+      ];
+      const entries: Uint8Array[] = [];
+      for (const part of parts) entries.push(await sealGrantRecord(readerSecret, account, part));
+      return entries;
+    });
+
+  const sealView: NonNullable<AccountViewingKey['sealView']> = (networkId, keyring, request) =>
+    onNetwork(networkId, async (readerSecret) =>
+      withKeyring(readerSecret, keyring, async ({ live }) => {
+        if (request.account !== keyring.account)
+          throw new Error('read grant account does not match the keyring');
+        const seal = await sealGrantView(live.secret, request);
+        return {
+          seal,
+          entry: await sealGrantRecord(readerSecret, request.account, {
+            part: 'view',
+            grantId: request.grantId,
+            encKeyPrefix: hex(keyring.encKey.subarray(0, 3)),
+            seal: hex(seal),
+          }),
+        };
+      }),
+    );
+
   return {
     readerPublicKey: (networkId) => onNetwork(networkId, async (_secret, publicKey) => publicKey),
     createKeys,
     sealToDevice,
     openCoins,
     reencryptCoins,
+    openInbox,
+    sealGrant,
+    reencryptInbox: reencryptCoins,
+    sealView,
   };
 }

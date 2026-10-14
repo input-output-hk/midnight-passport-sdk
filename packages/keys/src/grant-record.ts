@@ -110,7 +110,7 @@ const encodePart = (part: GrantRecordPart): Uint8Array => {
       plain[body] = part.slot;
       plain.set(bytes(part.scopeSalt), body + 1);
       plain.set(bytes(part.granteePublicKey), body + 33);
-      if (part.readPublicKey) plain.set(bytes(part.readPublicKey), body + 65);
+      if (part.readPublicKey !== undefined) plain.set(bytes(part.readPublicKey), body + 65);
       break;
     case 'object': {
       plain.set(bytes(part.object.color), body);

@@ -103,6 +103,10 @@ test('grant records reject wrong account, reader, tampering and invalid fields',
   assert.equal(await openGrantRecord(reader, account, entry.subarray(0, 191)), null);
   await assert.rejects(sealGrantRecord(reader, account, { ...grant, slot: 256 }), /unsigned byte/);
   await assert.rejects(
+    sealGrantRecord(reader, account, { ...grant, readPublicKey: '' }),
+    /32-byte lowercase hex/,
+  );
+  await assert.rejects(
     sealGrantRecord(reader, account, {
       ...object,
       object: { ...object.object, maxCoinValue: (1n << 128n).toString() },
