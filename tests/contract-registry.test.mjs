@@ -112,6 +112,7 @@ test('the grants release binding matches the pinned compiler metadata', () => {
   );
   const binding = resolveBinding(metadata.id);
   assert.equal(binding.provisional, false);
+  assert.equal(binding.manifestSha256, metadata.manifestSha256);
   assert.equal(binding.toolchain.runtimeVersion, '0.20.0');
   for (const item of metadata.roster) {
     const pin = binding.circuits[item.name];

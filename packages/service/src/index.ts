@@ -36,6 +36,11 @@ export {
 } from './funding-route.js';
 export { createFileFundingStore } from './file-funding-store.js';
 export {
+  createWalletFundingBackend,
+  type FundingAccount,
+  type WalletFundingOptions,
+} from './wallet-funding-backend.js';
+export {
   sponsorPolicy,
   viewOfLedgerTx,
   guardedBalance,

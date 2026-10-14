@@ -23,6 +23,8 @@ export interface CircuitPin {
 
 export interface AccBinding {
   readonly provisional: boolean;
+  /** SHA-256 of the canonical compiled contract manifest; host services pin this at build time. */
+  readonly manifestSha256: string;
   readonly source: { readonly path: string; readonly sha256: string };
   readonly toolchain: {
     readonly cliVersion: string;
@@ -44,6 +46,7 @@ export const ACC_REGISTRY: AccRegistry = {
   versions: {
     'acc-s3r1.1': {
       provisional: false,
+      manifestSha256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
       source: {
         path: 'midnightntwrk/passport@6458ed5fe6a4843912328bbf11112b97e33abf45/contracts/account.compact',
         sha256: 'a5a05eef67399856dc9d25ae9989a3972b4695f1f2fe6a25bfd68ee51669d3d5',

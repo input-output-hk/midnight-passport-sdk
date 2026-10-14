@@ -44,6 +44,7 @@ for (const item of metadata.roster) {
 }
 registry.versions[metadata.id] = {
   provisional: false,
+  manifestSha256: metadata.manifestSha256,
   source: {
     path: `midnightntwrk/passport@${metadata.source.revision}/contracts/account.compact`,
     sha256: metadata.source.files['contracts/account.compact'],
