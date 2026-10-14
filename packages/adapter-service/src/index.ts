@@ -5,4 +5,6 @@ export * from './deployer.js';
 export * from './directory.js';
 export * from './config.js';
 export * from './legacy-registry.js';
+export * from './v1-jobs.js';
+export * from './v1-ports.js';
 export type * from './options.js';
