@@ -4,6 +4,12 @@ title: Packages
 permalink: /packages/
 ---
 
+The [problem statement]({{ '/problems/' | relative_url }}) maps ACC distribution, proving keys,
+HTTP serving, sponsorship, circuit helpers, faucet funding, and the demo to their package owners.
+The eight implemented libraries are the current foundation and browser path of the upstream
+wallet/dApp/agent vision. The planned `service` library and typed circuit/faucet subpaths will be
+released when they contain reusable implementations.
+
 ## Why RC1 has 13 packages
 
 The release script packed every publishable directory under `packages/`. Eight directories contain

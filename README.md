@@ -1,13 +1,20 @@
 # Midnight Passport SDK
 
+The [problem statement and package boundaries](./docs/site/problems.md) map ACC distribution,
+proving keys, HTTP artefact serving, sponsorship, browser circuit helpers, faucet funding, and the
+demo to current and planned SDK components. It distinguishes ACC key derivation from proving-key
+distribution and fee sponsorship from moving assets into an ACC.
+
 The developer SDK for **Midnight Passport** — the user-facing identity and
 wallet layer for the Midnight network. The SDK is the primary programmatic
 surface for a user's **Account Custody Contract (ACC)**: onboarding,
 authentication, scoped grants, recovery, storage, proving, and the dApp
 connector all resolve to authorised interactions with that on-chain account.
 
-> **Status:** planning / spec, with a reduced **beta (v1)** defined. This
-> repository will host the SDK packages as they are built.
+> **Status:** the `passport-acc-prototype` branch has eight implemented SDK
+> libraries in private GitHub Packages at `0.1.0-rc1`. The wider wallet, dApp,
+> agent, service and funding surfaces remain in development. See the
+> [package map](./docs/site/packages.md) for the exact release state.
 
 > **Passport DApp prototype** (branch `passport-acc-prototype`): a working end-to-end demo on a
 > local Midnight network. To run it with Nix, follow [`AGENTS.md`](./AGENTS.md); the design and

@@ -6,6 +6,8 @@ permalink: /service/
 
 The prototype service runs on `127.0.0.1:8787` by default. It is a development composition, not an authenticated public API. Its wire types are in [`packages/protocol/src/service.ts`](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/protocol/src/service.ts), and the handlers are in [`apps/passport-service/src/routes`](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/apps/passport-service/src/routes).
 
+The [problem statement]({{ '/problems/' | relative_url }}) separates three server responsibilities: serving pinned proving artefacts, sponsoring eligible ACC calls, and the planned faucet that transfers wallet-held assets into an ACC. Only the first two have prototype routes today. The future `mn-passport-service` package will extract reusable handlers and policy ports from this app.
+
 | Route                                | Role                                                                                                                       |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
 | `GET /config`                        | Reports network, binding, manifest and endpoint configuration. The app checks the manifest against its own build-time pin. |
