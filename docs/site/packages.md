@@ -4,19 +4,50 @@ title: Packages
 permalink: /packages/
 ---
 
-| Workspace package                                        | Purpose                                                                               | Status                                    |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `mn-passport-protocol`                                   | Versioned account types, events, errors and service wire types                        | Private RC1                               |
-| `mn-passport-account`                                    | Create, open and rotate flows over injected ports; `./ports` and `./testing` subpaths | Private RC1                               |
-| `mn-passport-keys`                                       | Portable implementation of Lace's key recipe and ACC encryption-key source           | Private RC1                               |
-| `mn-passport-adapter-webauthn`                           | WebAuthn credentials, PRF key source and P-256 authoriser                              | Private RC1                               |
-| `mn-passport-adapter-service`                            | Fetch clients for proving, sponsorship, deployment, directory and checked config      | Private RC1                               |
-| `mn-passport-adapter-midnight-js`                        | Midnight call pipeline over injected prover, sponsor and submitter ports              | Private RC1                               |
-| `mn-passport-adapter-browser`                            | Browser composition root and shim; `./prototype` keeps legacy demo helpers           | Private RC1                               |
-| `mn-passport-contract`                                   | `acc-s3r1.1` module, binding registry, key manifest, ZKIR and restore CLI             | Private RC1; `acc-s3r1.1` supported       |
-| `mn-passport-core`, `connect` and signer/prover adapters | Earlier SDK scaffolding                                                               | Private RC1; not the current passkey surface |
+## Why RC1 has 13 packages
 
-The 13 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their `0.1.0-rc1` release uses the `next` distribution tag and requires package read access. Configure the scoped registry and authentication as shown in [Releasing]({{ '/releasing/' | relative_url }}), then install the entrypoints your application uses:
+The release script packed every publishable directory under `packages/`. Eight directories contain
+the current SDK surface; five are empty `export {}` scaffolds inherited from the earlier architecture.
+Publishing the scaffolds in `0.1.0-rc1` did **not** deliver five more capabilities. The original
+[architecture](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/architecture.md#44-packaging)
+pictured a Passport app engine (`core`), a dApp library (`connect`), shared foundations, and platform
+adapters. The later, accepted [package decision](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0007-package-set-ports-and-flows.md)
+put account-owner flows and ports in `account`, split the prototype's large browser adapter by
+responsibility, reserved `core` and `connect` for later work, and retired three empty adapters.
+
+The table names each released package. “Active” means it exports implementation used by the RC1
+browser account path; it does not mean every feature in the original vision is finished.
+
+| Package (`@input-output-hk/mn-passport-*`) | Purpose and place in the vision | RC1 state |
+| --- | --- | --- |
+| `protocol` | Shared, versioned account API, events, errors, and service wire types. This is the dependency-light contract between hosts and adapters. | Active; types, constants, and pure helpers. |
+| `contract` | Versioned ACC binding and artefacts shared by account and chain callers. | Active; `acc-s3r1.1` generated module, registry, integrity manifest, ZKIR/verifier bundle, and key restore CLI. No prover keys in npm. |
+| `account` | Platform-neutral account-owner flows and ports. This is the shared foundation a wallet host such as Lace can call directly. | Active; create, open, state, and encryption-key rotation. `./ports` and `./testing` support host adapters. Grants, recovery, and the wider flow set remain future work. |
+| `keys` | Platform-neutral key derivation behind the account's key-source port. It holds the recipe so a host need not import browser APIs to derive ACC key material. | Active; Lace-compatible PRF-root recipe and ACC encryption-key source. The planned JubJub authoriser is not in RC1. |
+| `adapter-webauthn` | Browser passkey implementation of the credential, PRF, and authoriser ports. | Active; P-256 WebAuthn arm and passkey PRF. Other authoriser arms remain future work. |
+| `adapter-service` | HTTP implementations of proving, sponsorship/submission, deployment, directory, and checked-config ports. It consolidates service calls behind one wire/error mapping. | Active clients. Its versioned directory route still needs the planned service-library migration; the demo uses a legacy registry client. |
+| `adapter-midnight-js` | Chain port that isolates the heavy Midnight runtime from `account` and lets hosts load it when needed. | Active; ledger reads and call pipeline over injected prover, sponsor, and submitter ports. |
+| `adapter-browser` | Optional browser composition root that wires `account`, passkeys, keys, and the lazy chain adapter; it can install `window.midnight.passport`. | Active; `./prototype` also retains older demo helpers during migration. A host can compose the ports itself. |
+| `core` | Intended Passport app engine for grants, private data, recovery, and DID beyond the shared account-owner flows. | Empty scaffold; reserved by ADR 0007. Do not install for RC1 features. |
+| `connect` | Intended thin dApp-side grant/connection library, separate from the account-owner API. | Empty scaffold; reserved. The current browser descriptor is an account API, not the finished dApp grant protocol. |
+| `adapter-signer-local` | Earlier plan for a local JubJub signer. | Empty scaffold; retired in favour of key providers in `keys`. |
+| `adapter-signer-managed` | Earlier plan for a managed-custody signer. | Empty scaffold; retired from this package map. |
+| `adapter-prover-remote` | Earlier plan for a remote proving adapter. | Empty scaffold; superseded by `adapter-service/prover`. |
+
+The planned `service` library is **not** among the 13 packages: the demo service still lives under
+`apps/passport-service`. RC1 therefore has eight implemented packages, five published placeholders,
+and no published service library. The original vision also includes higher-level `core`, `connect`,
+and `agent` entry libraries for the Passport app, dApps, and agents; RC1 delivers the shared account
+foundation and one browser path first. A host should not have to import every adapter. I recommend
+omitting the five placeholders from the next release; that change would update the release script
+and private publisher's allowlist together. Existing RC1 package records remain historical artifacts.
+
+## What an integrator installs
+
+The 13 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their
+`0.1.0-rc1` release uses the `next` distribution tag and requires package read access. Install the
+entrypoints your code imports; their declared dependencies bring in the supporting packages. A
+browser host using the account API and packaged binding can start with:
 
 ```sh
 npm install @input-output-hk/mn-passport-account@0.1.0-rc1 @input-output-hk/mn-passport-adapter-browser@0.1.0-rc1 @input-output-hk/mn-passport-contract@0.1.0-rc1
