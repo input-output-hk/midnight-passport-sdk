@@ -50,9 +50,12 @@ is an integration gap, not permission to run rotation without a key session.
 
 The older SDK `EncryptionKeySource.publicKey` port is a prototype key source;
 Lace's `PassportEncryptionKey` matches the newer `AccountViewingKey` instead.
-The next release must validate a packed SDK consumer against Lace's current
-types and complete the required owner/circuit flows before claiming full Lace
-compatibility.
+The release preflight now installs the packed SDK tarballs in a scratch host,
+compiles these Lace-shaped seams against the installed account-port types,
+loads the entry points, and builds a browser bundle. This checks packaging and
+type resolution, but uses a copied seam fixture rather than Lace's own build.
+The next release still needs Lace-hosted flow interoperability and the required
+owner/circuit flows before claiming full Lace compatibility.
 
 ## Axes and releases
 

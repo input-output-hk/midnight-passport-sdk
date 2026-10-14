@@ -1,7 +1,15 @@
 #!/usr/bin/env node
 // Exercise the exact tarballs that the release workflow will publish.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -28,7 +36,7 @@ try {
         private: true,
         type: 'module',
         dependencies,
-        devDependencies: { vite: '8.3.1' },
+        devDependencies: { vite: '8.3.1', typescript: '6.0.3' },
         pnpm: { overrides: dependencies },
       },
       null,
@@ -75,6 +83,42 @@ try {
     { cwd: scratch, stdio: 'inherit' },
   );
   mkdirSync(join(scratch, 'src'));
+  copyFileSync(join(root, 'tests/fixtures/lace-seams.mjs'), join(scratch, 'src/lace-seams.mjs'));
+  writeFileSync(
+    join(scratch, 'src/lace-consumer.mjs'),
+    `// Lace PR #2845 at 05e1e3d641a329d20c8272f6405e54ea499d86a1.
+     // Check the installed tarball types, not workspace paths.
+     import { laceAuthoriser, laceFeeSponsor, laceViewingKey } from './lace-seams.mjs';
+     /** @type {import('@input-output-hk/mn-passport-account/ports').FeeSponsor} */
+     const sponsor = laceFeeSponsor();
+     /** @type {import('@input-output-hk/mn-passport-account/ports').AccountViewingKey} */
+     const viewing = laceViewingKey();
+     /** @type {import('@input-output-hk/mn-passport-account/ports').Authoriser} */
+     // @ts-expect-error: Lace has no rotate-encryption-key consent kind yet
+     const directAuthoriser = laceAuthoriser();
+     void [sponsor, viewing, directAuthoriser];\n`,
+  );
+  execFileSync(
+    'pnpm',
+    [
+      'exec',
+      'tsc',
+      '--noEmit',
+      '--allowJs',
+      '--checkJs',
+      '--strict',
+      '--skipLibCheck',
+      '--target',
+      'ES2022',
+      '--module',
+      'NodeNext',
+      '--moduleResolution',
+      'NodeNext',
+      'src/lace-consumer.mjs',
+    ],
+    { cwd: scratch, stdio: 'inherit' },
+  );
+  console.log('Lace-shaped host types checked against packed SDK');
   writeFileSync(
     join(scratch, 'index.html'),
     '<!doctype html><html><body><main id="app"></main><script type="module" src="/src/main.js"></script></body></html>\n',
