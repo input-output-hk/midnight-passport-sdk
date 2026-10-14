@@ -73,7 +73,7 @@ export const FLOWS: Record<ActionId, FlowDef> = {
   open: {
     title: 'Open with passkey',
     summary:
-      "Reopens this passkey's account, checks the registry's record against the chain and, until it is rotated, the encryption key.",
+      "Reopens this passkey's account, checks the directory hint against the chain and, until it is rotated, the encryption key.",
     stages: [{ id: 'identify', label: 'Choose the passkey and check it against the chain' }, read],
   },
   rotate: {
@@ -138,7 +138,7 @@ const HINTS: Readonly<Record<string, string>> = {
   UnsupportedAuthenticator:
     'This passkey cannot derive keys (no PRF support). Use a passkey saved in Google Password Manager or iCloud Keychain.',
   AccountNotFound:
-    'No Passport account for this passkey on this network. After a chain reset the registry may be stale.',
+    'No Passport account for this passkey on this network. After a chain reset the directory may be stale.',
   ArtefactIntegrity:
     "The service's contract artefacts do not match the ones this page was built for. Restart both with the same manifest.",
   ProverUnavailable:

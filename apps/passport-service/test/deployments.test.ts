@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import {
   DeploymentLog,
   deploymentsFile,
+  directoryFile,
   registeredAddresses,
   sponsoredAddresses,
 } from '../src/deployments.ts';
@@ -91,4 +92,6 @@ test('the sponsor funds only accounts that are registered here and deployed by t
     JSON.stringify({ 'undeployed/01': entry(A), 'undeployed/04': entry('dd'.repeat(32)) }),
   );
   assert.deepEqual([...sponsoredAddresses(config, log)].sort(), [A, 'dd'.repeat(32)]);
+  writeFileSync(directoryFile(registryFile), JSON.stringify({ 'undeployed/05': entry(C) }));
+  assert.deepEqual([...sponsoredAddresses(config, log)].sort(), [A, C, 'dd'.repeat(32)]);
 });

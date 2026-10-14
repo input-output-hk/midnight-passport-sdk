@@ -8,6 +8,8 @@ type Store = Record<string, string[]>;
 export const deploymentsFile = (registryFile: string): string =>
   `${registryFile.replace(/\.json$/, '')}.deployments.json`;
 
+export const directoryFile = (registryFile: string): string => `${registryFile}.v1`;
+
 const isStore = (v: unknown): v is Store =>
   typeof v === 'object' &&
   v !== null &&
@@ -48,7 +50,7 @@ export class DeploymentLog {
   }
 }
 
-/** Addresses registered for a network in the /accounts registry file. Read-only. */
+/** Addresses registered for a network in a directory file. Read-only. */
 export function registeredAddresses(registryFile: string, networkId: string): Set<string> {
   const out = new Set<string>();
   if (!existsSync(registryFile)) return out;
@@ -74,7 +76,9 @@ export function sponsoredAddresses(
   log: DeploymentLog,
 ): Set<string> {
   const deployed = log.list();
-  return new Set(
-    [...registeredAddresses(config.registryFile, config.networkId)].filter((a) => deployed.has(a)),
-  );
+  const registered = new Set([
+    ...registeredAddresses(config.registryFile, config.networkId),
+    ...registeredAddresses(directoryFile(config.registryFile), config.networkId),
+  ]);
+  return new Set([...registered].filter((a) => deployed.has(a)));
 }

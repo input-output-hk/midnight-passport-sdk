@@ -6,6 +6,7 @@ import { chainRoute } from './routes/chain.ts';
 import { registryRoute } from './routes/registry.ts';
 import { configRoute, pinnedZkRoute } from './routes/zk.ts';
 import { createServer } from './server.ts';
+import { directoryFile } from './deployments.ts';
 import {
   createDeploymentBudget,
   createMemoryJobStore,
@@ -25,7 +26,7 @@ const backend = await loadReferenceBackend(config);
 const runExclusive = serial(8);
 const deploymentBudget = createDeploymentBudget(config.maxDeploys);
 const jobs = createMemoryJobStore();
-const directory = createFileDirectoryStore(`${config.registryFile}.v1`);
+const directory = createFileDirectoryStore(directoryFile(config.registryFile));
 const server = createServer(config, [
   configRoute(config, () => backend.sponsorKeys()),
   artefactRoute,

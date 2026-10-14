@@ -161,10 +161,11 @@ and `assertionMaterial`.
 - **No PRF at a later prompt.** If the wallet's PRF ceremony gets no output, the error says the
   passkey has no PRF, or is a different passkey from the account's: choose the account's own
   passkey, saved in Google Password Manager or iCloud Keychain.
-- **Reopening checks the registry.** The registry is only a hint. `openAccount` uses a record only
+- **Reopening checks the directory.** The directory is only a hint. `openAccount` uses a record only
   when the passkey you picked owns the record's key, a contract exists at its address, and that
   contract holds the passkey as a device. Anything else is `AccountNotFound`, which after a chain
-  reset usually means a stale registry (see Troubleshooting).
+  reset usually means a stale directory (see Troubleshooting). The demo reads the old registry
+  when the v1 directory has no entry, so existing demo accounts can still reopen.
 - **Keys follow the Lace recipe v1** (lace-platform main, LW-15585 / LW-15584 / LW-15635;
   `packages/keys/src/lace-recipe.ts`). One PRF ceremony evaluates
   `SHA-256('lace-passport/prf/authoriser/v1')` and `SHA-256('lace/prf/root/v1')`. The root
@@ -188,7 +189,7 @@ and `assertionMaterial`.
   - _Calls only._ `/sponsor/balance` balances only a standard transaction whose every contract
     action is a call.
   - _Deployed accounts only._ Each call must target a Passport account this service deployed and
-    that is registered on its network. Deploy and maintenance actions are refused.
+    that is registered on its network in the v1 directory or legacy registry. Deploy and maintenance actions are refused.
   - _Fee-only._ No unshielded offer, no Dust action and no shielded offer, and no non-Dust
     imbalance in any segment.
   - _Deploy cap._ At most `PASSPORT_MAX_DEPLOYS` requests through `/deploy` and `/v1/deploy`
@@ -197,7 +198,7 @@ and `assertionMaterial`.
     first. Omitted `firstArm` retains the prototype's P-256 behavior. The SDK connector currently
     selects P-256; the JubJub account flow is a separate release gate.
 - **Manifest pin (R18).** The dapp bakes `PASSPORT_MANIFEST_SHA256` in when Vite starts and checks
-  the service's `/config` against it, refusing a mismatch (`ArtefactIntegrity`). It is never read
+  the service's `/v1/config` against it, refusing a mismatch (`ArtefactIntegrity`). It is never read
   from the service, which could otherwise vouch for its own tampered artefacts. The service
   verifies the same hash and every listed file at start-up. Changing the artefacts means
   restarting both.
@@ -210,11 +211,11 @@ and `assertionMaterial`.
 
 ## Production requirements (not built)
 
-Authenticated sessions (a signed-in passkey or a dApp credential) on `/prove`, `/sponsor/*` and
-`/deploy`; per-client rate limits; spending caps per client and per day on the sponsor; proof of
-possession on `PUT /accounts`; a per-job timeout on the proof queue; durable deploy counters (the
+Authenticated sessions (a signed-in passkey or a dApp credential) on `/v1/prove-tx`, `/v1/sponsor/*` and
+`/v1/deploy`; per-client rate limits; spending caps per client and per day on the sponsor; proof of
+possession on `PUT /v1/accounts`; a per-job timeout on the proof queue; durable deploy counters (the
 cap resets on restart); TLS in front of the service; and the indexer and node endpoints pinned at
-build time, like the manifest. Today the browser takes them from the service's `/config`, so a
+build time, like the manifest. Today the browser takes them from the service's `/v1/config`, so a
 compromised service could fake the ledger that `openAccount`'s checks read.
 
 ## Troubleshooting
@@ -249,4 +250,4 @@ compromised service could fake the ledger that `openAccount`'s checks read.
   compiled. It is only reproducible from the canonical `compile.sh` invocation.
 - **The service exits at start-up.** Its first line says why: usually missing artefacts or a
   hash mismatch.
-- **Stale registry after a chain reset.** The registry is only valid for the chain it was written on. `prototype:up` stops the localnet with its volumes kept, so accounts survive a restart. If you drop the volumes (`docker compose … down -v`, or `experiments/acc-0.35/run.sh`, which starts fresh), delete `~/.midnight-passport/registry.json` and `registry.deployments.json`, or opening fails with `AccountNotFound`.
+- **Stale directory after a chain reset.** The hint stores are only valid for the chain they were written on. `prototype:up` stops the localnet with its volumes kept, so accounts survive a restart. If you drop the volumes (`docker compose … down -v`, or `experiments/acc-0.35/run.sh`, which starts fresh), delete `~/.midnight-passport/registry.json`, `registry.json.v1` and `registry.deployments.json`, or opening fails with `AccountNotFound`.
