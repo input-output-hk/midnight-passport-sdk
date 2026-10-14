@@ -139,7 +139,7 @@ rotate again. It writes `experiments/acc-0.35/results/x8-dapp-e2e.json` and shou
 | State                                                            | Where                                                                | Reset                                                                                                    |
 | ---------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | The chain (accounts, contracts)                                  | Docker volumes of the `mn-passport-sdk-localnet` compose project     | `docker compose -f infra/localnet/docker-compose.yml -f infra/localnet/docker-compose.macos.yml down -v` |
-| Passkey-to-account lookup, and the accounts the sponsor pays for | `~/.midnight-passport/registry.json` and `registry.deployments.json` | Delete both **whenever you reset the chain**, or Open fails with `AccountNotFound`                       |
+| Passkey-to-account lookup, and the accounts the sponsor pays for | `~/.midnight-passport/registry.json`, `registry.json.v1` and `registry.deployments.json` | Delete all three **whenever you reset the chain**, or Open fails with `AccountNotFound` |
 | Your passkey                                                     | Your password manager                                                | Delete old `localhost` passkeys so the picker offers only the current one                                |
 | Mock passkey                                                     | The page's `localStorage` (`passport-dev:mock-passkey:v1`)           | Clear site data for `localhost:5173`                                                                     |
 
@@ -154,7 +154,7 @@ rotate again. It writes `experiments/acc-0.35/results/x8-dapp-e2e.json` and shou
 | `UnsupportedAuthenticator: … does not support the PRF extension` | Create the passkey in Google Password Manager or iCloud Keychain, not the Chrome profile store. Nothing was deployed.                                              |
 | `The authenticator does not match the wa-json134 profile`        | Your browser produced WebAuthn data the contract's fixed format rejects. Nothing was deployed. Retry, or try another browser.                                      |
 | `This is not the passkey this account was created with`          | Pick the passkey you created the account with.                                                                                                                     |
-| `AccountNotFound` after a chain reset                            | Delete `~/.midnight-passport/registry*.json`.                                                                                                                      |
+| `AccountNotFound` after a chain reset                            | Delete `~/.midnight-passport/registry.json`, `registry.json.v1` and `registry.deployments.json`.                                                                    |
 | `ProverUnavailable` after about 10 minutes                       | A transaction queued behind a deploy timed out. Wait for the deploy to finish, then retry.                                                                         |
 
 ## 8. Rules for coding agents working on this branch

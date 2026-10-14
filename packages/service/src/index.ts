@@ -27,6 +27,14 @@ export {
 } from './directory-route.js';
 export { createFileDirectoryStore } from './file-directory-store.js';
 export {
+  fundingRoute,
+  type FundingAssetPolicy,
+  type FundingReservation,
+  type FundingStore,
+  type FundingBackend,
+  type FundingRouteOptions,
+} from './funding-route.js';
+export {
   sponsorPolicy,
   viewOfLedgerTx,
   guardedBalance,

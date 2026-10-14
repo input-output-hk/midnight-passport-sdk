@@ -1,6 +1,6 @@
 // The service's HTTP wire v1 (design §4.1, §3.4), exported as `ServiceWire`. Every path sits under
-// `PASSPORT_SERVICE_PATH_PREFIX`; bodies are JSON and bytes travel as lowercase hex, bigints as
-// lowercase hex without `0x`.
+// `PASSPORT_SERVICE_PATH_PREFIX`; bodies are JSON and bytes travel as lowercase hex. Amount
+// encodings are documented per endpoint.
 import type { AuthScheme } from './api.js';
 import type { PassportErrorCode } from './errors.js';
 import type { PassportEvent } from './events.js';
@@ -126,3 +126,25 @@ export interface DirectoryPutRequest {
 }
 /** `GET /v1/accounts/{networkId}/{key}`, answered `200`, or `404` when there is no hint. */
 export type DirectoryGetResponse = AccountHintBody;
+
+/** A wallet-funded, permissionless ACC deposit. Separate from fee sponsorship. */
+export interface FundAccRequest {
+  /** Stable idempotency key chosen by the caller; UUID in lowercase form. */
+  readonly requestId: string;
+  readonly networkId: string;
+  readonly bindingId: string;
+  readonly manifestSha256: Hex;
+  readonly accountAddress: Hex;
+  /** An allowlisted 32-byte unshielded asset color. */
+  readonly color: Hex;
+  /** Positive decimal Uint128, encoded as text to preserve precision. */
+  readonly amount: string;
+}
+
+/** `POST /v1/faucet/fund`, after the backend confirms the ACC's credited balance. */
+export interface FundAccResponse {
+  readonly requestId: string;
+  readonly txId: string;
+  /** Decimal Uint128 balance observed on the ACC after confirmation. */
+  readonly creditedBalance: string;
+}
