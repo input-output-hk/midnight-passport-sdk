@@ -38,9 +38,10 @@ The planned `service` library is **not** among the 13 packages: the demo service
 `apps/passport-service`. RC1 therefore has eight implemented packages, five published placeholders,
 and no published service library. The original vision also includes higher-level `core`, `connect`,
 and `agent` entry libraries for the Passport app, dApps, and agents; RC1 delivers the shared account
-foundation and one browser path first. A host should not have to import every adapter. I recommend
-omitting the five placeholders from the next release; that change would update the release script
-and private publisher's allowlist together. Existing RC1 package records remain historical artifacts.
+foundation and one browser path first. A host should not have to import every adapter. The five
+placeholders are now private workspace packages and are excluded by both release allowlists, so
+future releases contain the eight implemented packages. Existing RC1 package records remain
+historical artifacts.
 
 ## What an integrator installs
 

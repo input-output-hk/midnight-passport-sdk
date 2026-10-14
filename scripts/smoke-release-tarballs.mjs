@@ -9,7 +9,7 @@ const root = resolve(import.meta.dirname, '..');
 const tarballs = join(root, 'release-tarballs');
 /** @type {{version: string, files: Array<{name: string, file: string}>}} */
 const manifest = JSON.parse(readFileSync(join(tarballs, 'manifest.json'), 'utf8'));
-if (manifest.version !== process.env.RELEASE_VERSION || manifest.files?.length !== 13)
+if (manifest.version !== process.env.RELEASE_VERSION || manifest.files?.length !== 8)
   throw new Error('release pack manifest is missing or has an unexpected version');
 const dependencies = Object.fromEntries(
   manifest.files.map(({ name, file }) => {

@@ -13,6 +13,16 @@ const tag = process.env.DIST_TAG;
 const root = resolve(import.meta.dirname, '..');
 const output = join(root, 'release-tarballs');
 const registry = 'https://npm.pkg.github.com';
+const expectedPublishable = new Set([
+  'account',
+  'adapter-browser',
+  'adapter-midnight-js',
+  'adapter-service',
+  'adapter-webauthn',
+  'contract',
+  'keys',
+  'protocol',
+]);
 /** @param {string} message @returns {never} */
 const fail = (message) => {
   throw new Error(`release: ${message}`);
@@ -50,11 +60,14 @@ const names = readdirSync(join(root, 'packages'), { withFileTypes: true })
   .map((entry) => entry.name)
   .sort();
 if (names.length === 0) fail('no packages found');
-const packages = names.map((directory) => {
+const packages = names.flatMap((directory) => {
   const path = join(root, 'packages', directory, 'package.json');
   const data = read(path);
-  if (data.name !== `@input-output-hk/mn-passport-${directory}` || data.private !== false)
-    fail(`${directory} is not a public @input-output-hk package`);
+  if (data.name !== `@input-output-hk/mn-passport-${directory}`)
+    fail(`${directory} has an unexpected package name`);
+  if (data.private === true) return [];
+  if (data.private !== false || !expectedPublishable.has(directory))
+    fail(`${directory} is not an approved publishable package`);
   if (
     data.publishConfig?.registry !== registry ||
     data.publishConfig?.access === 'public' ||
@@ -63,8 +76,10 @@ const packages = names.map((directory) => {
     fail(`${directory} lacks GitHub Packages registry or fork repository metadata`);
   if (!data.files?.includes('dist') || !existsSync(join(root, 'packages', directory, 'dist')))
     fail(`${directory} lacks built dist files`);
-  return { directory, path, data };
+  return [{ directory, path, data }];
 });
+if (packages.length !== expectedPublishable.size)
+  fail('the eight approved publishable packages are not all present');
 const byName = new Map(packages.map((item) => [item.data.name, item]));
 for (const item of packages) {
   for (const name of Object.keys({ ...item.data.dependencies, ...item.data.peerDependencies })) {

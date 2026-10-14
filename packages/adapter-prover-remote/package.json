@@ -1,7 +1,7 @@
 {
   "name": "@input-output-hk/mn-passport-adapter-prover-remote",
   "version": "0.0.0",
-  "private": false,
+  "private": true,
   "type": "module",
   "exports": {
     ".": {
@@ -19,8 +19,5 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/input-output-hk/midnight-passport-sdk"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
   }
 }
