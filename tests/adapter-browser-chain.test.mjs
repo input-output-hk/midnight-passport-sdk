@@ -297,6 +297,13 @@ const stubLedger = {
   spec_version: 1n,
   enc_key: new Uint8Array(32).fill(5),
   devices: { member: (/** @type {Uint8Array} */ e) => e[0] === 1, size: () => 3n },
+  inbox: {
+    size: () => 2n,
+    *[Symbol.iterator]() {
+      yield [2n, Uint8Array.of(2)];
+      yield [1n, Uint8Array.of(1)];
+    },
+  },
 };
 
 /**
@@ -388,6 +395,10 @@ test('readLedger projects the on-chain state through the generated ledger, and i
   );
   assert.equal(view.hasEntry(Uint8Array.of(1)), true);
   assert.equal(view.hasEntry(Uint8Array.of(2)), false);
+  assert.deepEqual((await chain.readLedger('addr', { includeInbox: true }))?.inboxEntries, [
+    Uint8Array.of(1),
+    Uint8Array.of(2),
+  ]);
   assert.equal(await chainOver(recordingFetch({}).fn).readLedger('absent'), undefined);
 });
 
@@ -661,6 +672,10 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
     ]),
   );
   assert.equal((await chain.readAccount('addr'))?.authNonce, 4n);
+  assert.deepEqual((await chain.readAccount('addr', { includeInbox: true }))?.inboxEntries, [
+    Uint8Array.of(1),
+    Uint8Array.of(2),
+  ]);
   assert.deepEqual(
     await chain.call({
       address: 'addr',

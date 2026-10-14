@@ -62,6 +62,8 @@ export interface AccLedgerView {
   readonly specVersion: number;
   /** The ACC's `enc_key`, when the reader reports it; the open-time check needs it. */
   readonly encKey?: Uint8Array;
+  /** Inbox values in ledger index order, requested only by flows that recover account keys. */
+  readonly inboxEntries?: readonly Uint8Array[];
   hasEntry(entry: Uint8Array): boolean;
 }
 export interface ConstructorArgs {
@@ -79,7 +81,10 @@ export interface ChainSeam {
   deploy(
     args: ConstructorArgs,
   ): Promise<{ readonly address: string; readonly txHashes: readonly string[] }>;
-  readLedger(address: string): Promise<AccLedgerView | undefined>;
+  readLedger(
+    address: string,
+    options?: { readonly includeInbox?: boolean },
+  ): Promise<AccLedgerView | undefined>;
   /** `options` carries the flow's signal and `onEvent`, for the steps the call reports itself. */
   call(
     address: string,

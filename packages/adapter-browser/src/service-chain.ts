@@ -89,6 +89,17 @@ interface LedgerShape {
   spec_version: bigint;
   enc_key: Uint8Array;
   devices: { member(e: Uint8Array): boolean; size(): bigint };
+  inbox: {
+    size(): bigint;
+    [Symbol.iterator](): Iterator<[bigint, Uint8Array]>;
+  };
+}
+
+function inboxEntries(ledger: LedgerShape): Uint8Array[] {
+  if (ledger.inbox.size() > 4096n) throw new Error('ACC inbox exceeds the supported 4096 entries');
+  return [...ledger.inbox]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([, entry]) => entry);
 }
 
 /**
@@ -273,7 +284,7 @@ export function createServiceChain(opts: {
       }
       return { address: stringMember(answer, 'address', '/deploy'), txHashes: hashes };
     },
-    async readLedger(address): Promise<AccLedgerView | undefined> {
+    async readLedger(address, options): Promise<AccLedgerView | undefined> {
       const state = await publicDataProvider.queryContractState(address);
       if (!state) return undefined;
       const l = module.ledger(state.data) as LedgerShape;
@@ -284,6 +295,7 @@ export function createServiceChain(opts: {
         entryCount: Number(l.devices.size()),
         specVersion: Number(l.spec_version),
         encKey: l.enc_key,
+        ...(options?.includeInbox && { inboxEntries: inboxEntries(l) }),
         hasEntry: (entry) => l.devices.member(entry),
       };
     },

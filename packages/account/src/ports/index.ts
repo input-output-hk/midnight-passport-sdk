@@ -242,7 +242,11 @@ export interface CallRequest extends FlowOptions {
 export type TxResult = PassportTxResult;
 export interface Chain {
   call(request: CallRequest): Promise<TxResult>;
-  readAccount(address: string): Promise<AccLedgerView | undefined>;
+  /** `includeInbox` asks for the bounded, ordered on-chain entries a viewing key opens. */
+  readAccount(
+    address: string,
+    options?: { readonly includeInbox?: boolean },
+  ): Promise<AccLedgerView | undefined>;
 }
 
 export interface DeployRequest extends FlowOptions {

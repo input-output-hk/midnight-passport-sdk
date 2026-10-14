@@ -32,6 +32,18 @@ interface LedgerShape {
   spec_version: bigint;
   enc_key: Uint8Array;
   devices: { member(entry: Uint8Array): boolean; size(): bigint };
+  inbox: {
+    size(): bigint;
+    [Symbol.iterator](): Iterator<[bigint, Uint8Array]>;
+  };
+}
+
+/** The keyring caps openings at 4096; refuse an oversized ledger before collecting its entries. */
+function inboxEntries(ledger: LedgerShape): Uint8Array[] {
+  if (ledger.inbox.size() > 4096n) throw new Error('ACC inbox exceeds the supported 4096 entries');
+  return [...ledger.inbox]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([, entry]) => entry);
 }
 
 /** The generated binding is loaded by the host, normally with import(). */
@@ -81,7 +93,7 @@ export function createMidnightChain(opts: {
   });
 
   return {
-    async readAccount(address): Promise<AccLedgerView | undefined> {
+    async readAccount(address, options): Promise<AccLedgerView | undefined> {
       setNetworkId(network.networkId);
       const state = await publicDataProvider.queryContractState(address);
       if (!state) return undefined;
@@ -93,6 +105,7 @@ export function createMidnightChain(opts: {
         entryCount: Number(ledger.devices.size()),
         specVersion: Number(ledger.spec_version),
         encKey: ledger.enc_key,
+        ...(options?.includeInbox && { inboxEntries: inboxEntries(ledger) }),
         hasEntry: (entry) => ledger.devices.member(entry),
       };
     },
