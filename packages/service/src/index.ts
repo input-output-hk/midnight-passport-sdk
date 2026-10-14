@@ -20,6 +20,13 @@ export { createMemoryJobStore, jobsRoute, type JobStore, type JobStoreOptions } 
 export { v1ChainRoute, type V1ChainRouteOptions } from './v1-chain.js';
 export { serviceConfigRoute, type PublicServiceConfig } from './config-route.js';
 export {
+  directoryRoute,
+  type DirectoryStore,
+  type OwnershipVerifier,
+  type DirectoryRouteOptions,
+} from './directory-route.js';
+export { createFileDirectoryStore } from './file-directory-store.js';
+export {
   sponsorPolicy,
   viewOfLedgerTx,
   guardedBalance,

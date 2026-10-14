@@ -68,7 +68,7 @@ profile that fits it.
 
 ## No authenticated sessions
 
-**Prototype.** Nothing authenticates a caller of `/prove-tx`, `/sponsor/*` or `/deploy`. Anyone who
+**Prototype.** Nothing authenticates a caller of `/prove-tx`, `/sponsor/*`, `/deploy` or their `/v1` counterparts. The `/v1/accounts` directory is also unauthenticated; its hints are untrusted and checked against the ACC ledger before use, but another caller could claim an unwritten directory key and cause denial of service. Anyone who
 reaches the service can use the sponsor, within the policy ([flows.md](./flows.md#the-services-sponsor-policy))
 and the deploy cap. The sponsor policy limits what a transaction may contain. It does not limit who
 sends it or how often. The circuit allow-list covers `/check` and `/prove`. `/prove-tx` relies on

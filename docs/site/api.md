@@ -82,4 +82,4 @@ See [BrowserPassportConfig](https://github.com/input-output-hk/midnight-passport
 `mn-passport-adapter-service` supplies `remoteProver`, `remoteSponsor` (both fee sponsor and
 submitter), `remoteDeployer`, `remoteDirectory` and `fetchCheckedConfig`. Until the service-library
 migration, the demo maps its old `/accounts` registry to the directory port; the versioned
-`remoteDirectory` expects `/v1/accounts` and cannot yet target the prototype server.
+`remoteDirectory` uses `/v1/accounts`; the standalone service now serves it through `directoryRoute` and a single-process file store. Hints are write-once except a `deployed` to `active` status change. A supplied ownership proof is refused unless the host injects an `OwnershipVerifier`; the standalone flow currently writes without one. The directory is an untrusted pointer, and the account core checks its answer against the ACC ledger before using it.

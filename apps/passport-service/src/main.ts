@@ -9,6 +9,8 @@ import { createServer } from './server.ts';
 import {
   createDeploymentBudget,
   createMemoryJobStore,
+  createFileDirectoryStore,
+  directoryRoute,
   jobsRoute,
   serial,
   v1ChainRoute,
@@ -23,10 +25,12 @@ const backend = await loadReferenceBackend(config);
 const runExclusive = serial(8);
 const deploymentBudget = createDeploymentBudget(config.maxDeploys);
 const jobs = createMemoryJobStore();
+const directory = createFileDirectoryStore(`${config.registryFile}.v1`);
 const server = createServer(config, [
   configRoute(config, () => backend.sponsorKeys()),
   artefactRoute,
   registryRoute(config),
+  directoryRoute({ networkId: config.networkId, store: directory }),
   jobsRoute(jobs),
   v1ChainRoute(backend, { jobs, deploymentBudget, runExclusive }),
   chainRoute(backend, {
