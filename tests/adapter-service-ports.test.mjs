@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   fetchCheckedConfig,
+  fetchCheckedV1Config,
   remoteDeployer,
   remoteDirectory,
   remoteProver,
@@ -13,6 +14,45 @@ const reply = (status, body) => ({
   ok: status >= 200 && status < 300,
   status,
   json: async () => body,
+});
+
+test('v1 config checks service version and binding-specific artefact URL against host pins', async () => {
+  const pin = {
+    networkId: 'undeployed',
+    bindingId: 'acc-s3r1.1',
+    manifestSha256: 'a'.repeat(64),
+    artefactUrl: 'http://service/v1/zk/acc-s3r1.1',
+  };
+  const config = {
+    ...pin,
+    indexerUri: 'http://indexer',
+    indexerWsUri: 'ws://indexer',
+    nodeUri: 'http://node',
+    proofServerUri: 'http://proof',
+    zkBaseUrl: pin.artefactUrl,
+    coinPublicKey: 'aa',
+    encryptionPublicKey: 'bb',
+    apiVersions: ['1.0.0-pre.0'],
+  };
+  /** @type {import('../packages/account/dist/ports/index.js').FetchLike} */
+  const good = async (url) => {
+    assert.equal(url, 'http://service/v1/config');
+    return reply(200, config);
+  };
+  assert.deepEqual(await fetchCheckedV1Config('http://service/', pin, { fetch: good }), config);
+  /** @type {[Record<string, unknown>, string][]} */
+  const cases = [
+    [{ networkId: 'another' }, 'NetworkMismatch'],
+    [{ bindingId: 'another' }, 'BindingUnsupported'],
+    [{ manifestSha256: 'b'.repeat(64) }, 'ArtefactIntegrity'],
+    [{ apiVersions: ['0.1.0'] }, 'ApiVersionUnsupported'],
+    [{ zkBaseUrl: 'http://service/v1/zk/another' }, 'ArtefactIntegrity'],
+  ];
+  for (const [change, code] of cases) {
+    /** @type {import('../packages/account/dist/ports/index.js').FetchLike} */
+    const wrong = async () => reply(200, { ...config, ...change });
+    await assert.rejects(fetchCheckedV1Config('http://service', pin, { fetch: wrong }), { code });
+  }
 });
 
 test('remote prover sends an unproven transaction and returns a remote proof', async () => {
