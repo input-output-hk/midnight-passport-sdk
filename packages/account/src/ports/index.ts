@@ -53,7 +53,12 @@ export interface CurvePoint {
 /** The flow a key session serves, so a consent step can show it (lace-platform's `KeySessionFlow`). */
 export interface FlowDescriptor {
   readonly kind:
-    'create-account' | 'sign-in' | 'rotate-encryption-key' | 'add-device' | 'remove-device';
+    | 'create-account'
+    | 'sign-in'
+    | 'rotate-encryption-key'
+    | 'add-device'
+    | 'remove-device'
+    | 'read-holdings';
   /** The device entry a device flow targets. */
   readonly commitmentHex?: string;
 }
