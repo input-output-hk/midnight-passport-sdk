@@ -42,6 +42,8 @@ The account object also exposes `address`, `networkId`, `bindingId`, `scheme` an
 
 `Chain.readAccount(address, { includeDevices: true })` returns up to 64 live device commitments. A rotation or device-management flow must resolve registered reader keys against this set before sealing a new account secret to them; inbox registrations alone are untrusted.
 
+`createMidnightHoldingSource(indexer)` from `mn-passport-adapter-midnight-js` implements `VerifiedHoldingSource` using the Midnight ledger's contract-owned output commitment. The host supplies `enumerateContractActions(account)` and `queryShieldedOutputs(txHash)` from an indexer on the account's pinned network. The adapter selects the first inbox description for each distinct output the chain created for the ACC and ignores decryptable descriptions without such an output. Pass this source as `holdings` to `createBrowserPassport` when enabling JubJub rotation.
+
 A deployed JubJub `AccountHint` may carry up to 16 sealed 192-byte `keyEntries` until they have been appended to the ACC inbox. They contain no raw viewing secret. A directory response is an untrusted pointer: the owner flow must match its credential and device key to the selected passkey, check the on-chain device entry, and open an envelope against the ledger's `enc_key` before completing or accepting it.
 
 ### JubJub viewing-key port
