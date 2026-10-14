@@ -16,7 +16,8 @@ import type {
   PassportPorts,
 } from './ports/index.js';
 
-const MAX_SCAN = 64n;
+/** Lace's current Passport device-entry rescan bound (PR #2845, 05e1e3d). */
+const MAX_SCAN = 4096n;
 const RETRIES = 30;
 const equal = (a: Uint8Array, b: Uint8Array): boolean =>
   a.length === b.length && a.every((byte, index) => byte === b[index]);

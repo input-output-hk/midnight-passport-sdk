@@ -140,6 +140,7 @@ function world() {
     inbox,
     hint: () => hint,
     setHint: (/** @type {typeof hint} */ value) => (hint = value),
+    setCounter: (/** @type {bigint} */ value) => (counter = value),
     interruptActivation: () => (failActivation = true),
     interruptSecondAppend: () => (failSecondAppend = true),
   };
@@ -184,6 +185,13 @@ test('JubJub open resumes a partially appended key delivery without duplicating 
   assert.equal(recovered.address, address);
   assert.equal(w.inbox.length, 2);
   assert.equal(w.hint()?.status, 'active');
+});
+
+test('JubJub open finds a Lace device entry after more than 64 authorised calls', async () => {
+  const w = world();
+  await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  w.setCounter(127n);
+  assert.equal((await w.accounts.openAccount()).address, address);
 });
 
 test('JubJub open refuses a directory key mismatch and a missing valid envelope', async () => {
