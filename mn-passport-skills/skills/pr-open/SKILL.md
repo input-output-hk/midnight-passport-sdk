@@ -71,5 +71,5 @@ and full description into the `title` and `body` query parameters
 so the form arrives ready to submit — the human still performs the outward
 action. Include the description as a plain copy-paste block as well (very
 long bodies can exceed URL limits, and the block survives link mangling).
-The body must contain the `Refs`/`Closes` issue reference the CI
-description gate checks.
+The body contains the `Refs`/`Closes` issue reference when an issue
+exists.
