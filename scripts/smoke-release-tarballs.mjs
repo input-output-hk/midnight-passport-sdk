@@ -55,7 +55,9 @@ try {
            typeof account.createPassportAccounts !== 'function' ||
            typeof browser.createBrowserPassport !== 'function' ||
            typeof service.createServer !== 'function' ||
-           typeof service.chainRoute !== 'function')
+           typeof service.chainRoute !== 'function' ||
+           typeof service.zkRoute !== 'function' ||
+           typeof service.verifyArtefacts !== 'function')
          throw new Error('packed SDK exports are incomplete');
        const checked = contract.bindAccModule(binding);
        if (Object.keys(checked.pureCircuits).length !== 66)

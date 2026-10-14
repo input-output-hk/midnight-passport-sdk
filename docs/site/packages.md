@@ -32,7 +32,7 @@ browser account path; it does not mean every feature in the original vision is f
 | `keys` | Platform-neutral key derivation behind the account's key-source port. It holds the recipe so a host need not import browser APIs to derive ACC key material. | Active; Lace-compatible PRF-root recipe and ACC encryption-key source. The planned JubJub authoriser is not in RC1. |
 | `adapter-webauthn` | Browser passkey implementation of the credential, PRF, and authoriser ports. | Active; P-256 WebAuthn arm and passkey PRF. Other authoriser arms remain future work. |
 | `adapter-service` | HTTP implementations of proving, sponsorship/submission, deployment, directory, and checked-config ports. It consolidates service calls behind one wire/error mapping. | Active clients. Its versioned directory route still needs the planned service-library migration; the demo uses a legacy registry client. |
-| `service` | Node HTTP host and injected chain backend port for proof, sponsorship, submission and deployment handlers. It supplies the server side of the service protocol without a wallet or network choice. | Active HTTP core extracted from the demo. Artefact hosting, directory, reference-wallet replacement, and faucet remain application code or future service modules. |
+| `service` | Node HTTP host and injected chain backend port for proof, sponsorship, submission and deployment handlers. It also verifies and serves a pinned artefact tree. | Active HTTP and artefact core extracted from the demo. Directory, reference-wallet replacement, and faucet remain application code or future service modules. |
 | `adapter-midnight-js` | Chain port that isolates the heavy Midnight runtime from `account` and lets hosts load it when needed. | Active; ledger reads and call pipeline over injected prover, sponsor, and submitter ports. |
 | `adapter-browser` | Optional browser composition root that wires `account`, passkeys, keys, and the lazy chain adapter; it can install `window.midnight.passport`. | Active; `./prototype` also retains older demo helpers during migration. A host can compose the ports itself. |
 | `core` | Intended Passport app engine for grants, private data, recovery, and DID beyond the shared account-owner flows. | Empty scaffold; reserved by ADR 0007. Do not install for RC1 features. |
@@ -44,7 +44,7 @@ browser account path; it does not mean every feature in the original vision is f
 The `service` library was **not** among the 13 RC1 packages: the demo service then lived entirely
 under `apps/passport-service`. RC1 therefore had eight implemented packages and five published
 placeholders. The current source has extracted the server and chain HTTP handler behind an injected
-`ChainBackend`; the demo still owns the wallet, network, key artefacts and directory. The original
+`ChainBackend`; the demo still owns the wallet, network, key cache and directory. The original
 vision also includes higher-level `core`, `connect`, and `agent` entry libraries for the Passport app,
 dApps, and agents. A host should not have to import every adapter. The five placeholders are now
 private workspace packages and are excluded by both release allowlists, so the next release packs

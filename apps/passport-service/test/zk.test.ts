@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { connect, type AddressInfo } from 'node:net';
 import { createServer } from '../src/server.ts';
 import { json, readJson, type Route } from '../src/http.ts';
@@ -51,6 +52,16 @@ test('/zk refuses path traversal and unknown files with 404', async () => {
   ]) {
     assert.equal((await fetch(base + p)).status, 404, p);
   }
+  server.close();
+});
+
+test('/zk refuses a key-tree symlink that resolves outside its verified root', async () => {
+  const config = testConfig();
+  const elsewhere = mkdtempSync(join(tmpdir(), 'acc-external-'));
+  writeFileSync(join(elsewhere, 'secret.txt'), 'do not serve');
+  symlinkSync(join(elsewhere, 'secret.txt'), join(config.artefactDir, 'keys/secret.txt'));
+  const { base, server } = await start(config);
+  assert.equal((await fetch(`${base}/zk/acc/keys/secret.txt`)).status, 404);
   server.close();
 });
 
