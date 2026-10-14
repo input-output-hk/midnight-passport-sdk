@@ -77,16 +77,53 @@ function rangeFor(header, size) {
   return { start, end: Math.min(end, size - 1), partial: true };
 }
 
-export function createKeyServer({ files, manifestBytes, keyManifestBytes, provers, keyDir }) {
+export function createKeyServer({
+  files,
+  manifestBytes,
+  keyManifestBytes,
+  provers,
+  keyDir,
+  profile = { name: 'all', circuits: [...provers.keys()].map((name) => name.slice(0, -7)) },
+  corsOrigins = [],
+}) {
+  const available = new Set(profile.circuits);
   return createServer((req, res) => {
+    const origin = req.headers.origin;
+    if (corsOrigins.length) res.setHeader('vary', 'Origin');
+    if (origin && corsOrigins.includes(origin)) {
+      res.setHeader('access-control-allow-origin', origin);
+      res.setHeader('access-control-allow-methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('access-control-allow-headers', 'range');
+      res.setHeader(
+        'access-control-expose-headers',
+        'accept-ranges, content-range, content-length',
+      );
+    }
+    if (req.method === 'OPTIONS') {
+      res.writeHead(origin && corsOrigins.includes(origin) ? 204 : 403).end();
+      return;
+    }
     if (req.method !== 'GET' && req.method !== 'HEAD') {
-      res.writeHead(405, { allow: 'GET, HEAD' }).end();
+      res.writeHead(405, { allow: 'GET, HEAD, OPTIONS' }).end();
       return;
     }
     const path = new URL(req.url ?? '/', 'http://localhost').pathname;
     if (path === '/healthz') {
       res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(req.method === 'HEAD' ? undefined : JSON.stringify({ ready: true }));
+      res.end(
+        req.method === 'HEAD' ? undefined : JSON.stringify({ ready: true, profile: profile.name }),
+      );
+      return;
+    }
+    if (path === '/v1/profile') {
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' });
+      res.end(req.method === 'HEAD' ? undefined : JSON.stringify(profile));
+      return;
+    }
+    const circuitPath =
+      /^\/zk\/acc\/(?:zkir|keys)\/([a-z][a-z0-9_]*)\.(?:zkir|bzkir|verifier|prover)$/.exec(path);
+    if (circuitPath && !available.has(circuitPath[1])) {
+      res.writeHead(404).end();
       return;
     }
     let bytes;

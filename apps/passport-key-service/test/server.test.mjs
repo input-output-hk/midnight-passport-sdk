@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { gzipSync } from 'node:zlib';
 import { createKeyServer, loadBundle } from '../src/server.mjs';
+import { JUBJUB_OWNER_CIRCUITS, selectKeyProfile } from '../src/profiles.mjs';
 
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const dir = mkdtempSync(join(tmpdir(), 'passport-keys-test-'));
@@ -66,4 +67,64 @@ test('server streams pinned keys with ranges and rejects unknown paths', async (
   );
   assert.equal((await fetch(`${base}/healthz`)).status, 200);
   assert.equal((await fetch(`${base}/v1/manifest`)).status, 200);
+});
+
+test('a selected circuit profile refuses other circuits and reports its coverage', async () => {
+  assert.equal(JUBJUB_OWNER_CIRCUITS.length, 10);
+  assert.throws(() => selectKeyProfile('jubjub-owner-v1', new Map()), /absent/);
+  assert.throws(() => selectKeyProfile('unknown', new Map()), /unsupported/);
+  const loaded = loadBundle(bundlePath, bundle.bindingId, hash(manifestBytes));
+  const profile = { name: 'test', circuits: [] };
+  const server = createKeyServer({
+    ...loaded,
+    keyManifestBytes: Buffer.from('{}'),
+    keyDir: dir,
+    profile,
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  assert.deepEqual(await (await fetch(`${base}/v1/profile`)).json(), profile);
+  assert.equal((await fetch(`${base}/zk/acc/keys/c.prover`)).status, 404);
+  assert.equal((await fetch(`${base}/zk/acc/zkir/c.zkir`)).status, 404);
+  assert.equal((await fetch(`${base}/zk/acc/compiler/contract-manifest.json`)).status, 200);
+});
+
+test('browser origins are allowed explicitly and can read ranged prover responses', async () => {
+  const loaded = loadBundle(bundlePath, bundle.bindingId, hash(manifestBytes));
+  const server = createKeyServer({
+    ...loaded,
+    keyManifestBytes: Buffer.from('{}'),
+    keyDir: dir,
+    corsOrigins: ['https://lace.example'],
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const good = await fetch(`${base}/zk/acc/keys/c.prover`, {
+    headers: { origin: 'https://lace.example', range: 'bytes=2-5' },
+  });
+  assert.equal(good.status, 206);
+  assert.equal(good.headers.get('access-control-allow-origin'), 'https://lace.example');
+  assert.match(good.headers.get('access-control-expose-headers'), /content-range/);
+  assert.equal(await good.text(), 'over');
+  const bad = await fetch(`${base}/zk/acc/keys/c.prover`, {
+    headers: { origin: 'https://other.example' },
+  });
+  assert.equal(bad.headers.get('access-control-allow-origin'), null);
+  const preflight = await fetch(`${base}/zk/acc/keys/c.prover`, {
+    method: 'OPTIONS',
+    headers: { origin: 'https://lace.example', 'access-control-request-headers': 'range' },
+  });
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get('access-control-allow-headers'), 'range');
+  assert.equal(
+    (
+      await fetch(`${base}/zk/acc/keys/c.prover`, {
+        method: 'OPTIONS',
+        headers: { origin: 'https://other.example' },
+      })
+    ).status,
+    403,
+  );
 });

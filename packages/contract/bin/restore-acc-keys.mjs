@@ -61,10 +61,20 @@ const expectedManifest = args.includes('--manifest-sha256')
   ? option('--manifest-sha256')
   : packagePin.manifest;
 const selected = args.includes('--circuit') ? option('--circuit') : undefined;
+const selectedMany = args.includes('--circuits') ? option('--circuits') : undefined;
+if (selected && selectedMany) fail('provide at most one of --circuit or --circuits');
 if (args.length) fail(`unexpected arguments: ${args.join(' ')}`);
 if (!/^[a-f0-9]{64}$/.test(expectedManifest))
   fail('manifest pin must be 64 lowercase hex characters');
 if (selected && !/^[a-z][a-z0-9_]*$/.test(selected)) fail('invalid circuit name');
+const selectedNames = selectedMany?.split(',');
+if (
+  selectedNames &&
+  (!selectedNames.length ||
+    selectedNames.some((name) => !/^[a-z][a-z0-9_]*$/.test(name)) ||
+    new Set(selectedNames).size !== selectedNames.length)
+)
+  fail('invalid --circuits list');
 
 /** @param {string} file */
 const digest = async (file) => {
@@ -168,7 +178,13 @@ if (!compactCompiler.includes('/versions/0.35.0/')) fail('Compact 0.35.0 toolcha
 const zkirCompiler = join(dirname(compactCompiler), 'zkir-v3');
 if (!existsSync(zkirCompiler)) fail('pinned zkir-v3 compiler is missing');
 
-const circuits = allCircuits.filter((name) => !selected || name === selected).sort();
+if (selectedNames?.some((name) => !allCircuits.includes(name)))
+  fail('a selected circuit is absent from the pinned manifest');
+const circuits = allCircuits
+  .filter(
+    (name) => (!selected || name === selected) && (!selectedNames || selectedNames.includes(name)),
+  )
+  .sort();
 if (!circuits.length) fail('no matching circuit in manifest');
 mkdirSync(output, { recursive: true });
 for (const circuit of circuits) {

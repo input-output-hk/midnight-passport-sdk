@@ -35,10 +35,25 @@ ingress; the files are public proving material, but `.prover` downloads are
 large. The image accepts `PASSPORT_KEY_DIR`, `PASSPORT_KEY_HOST` and
 `PASSPORT_KEY_PORT`; the binding and manifest hash are pinned in the image.
 
+For a browser consumer such as Lace, set `PASSPORT_KEY_CORS_ORIGINS` to a
+comma-separated list of exact `http://` or `https://` origins and set the
+consumer's `artefactUrl` to `https://<key-host>/zk/acc`. Browser reads and
+single-range downloads receive CORS headers only for those origins. The
+default list is empty. Keep the service behind a private or controlled ingress.
+
+`PASSPORT_KEY_PROFILE=jubjub-owner-v1` restores and serves the ten proving
+circuits currently used by Lace PR #2845, about 530 MB instead of the full 12 GB.
+The default `all` profile restores all 52 circuits. `/v1/profile` reports the
+active circuit list; `/v1/manifest` remains the complete binding's integrity
+manifest, so a partial profile must not be treated as a complete key cache.
+Use an image version that includes profile and CORS support when configuring
+these variables.
+
 | Endpoint | Response |
 | --- | --- |
 | `GET /healthz` | Ready only after all keys pass verification. |
 | `GET /v1/manifest` | Readable key manifest with per-file SHA-256 and toolchain. |
+| `GET /v1/profile` | Active key profile and available proving circuits. |
 | `GET /zk/acc/compiler/contract-manifest.json` | Pinned compiler manifest. |
 | `GET /zk/acc/zkir/<circuit>.{zkir,bzkir}` | Verified bundled ZKIR. |
 | `GET /zk/acc/keys/<circuit>.verifier` | Verified bundled verifier key. |

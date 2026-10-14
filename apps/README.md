@@ -98,6 +98,11 @@ the whole key cache before it reports ready, so even a rerun may pause there. Th
 ports without stopping their occupants. See [AGENTS.md](../AGENTS.md) for prerequisites and the
 manual setup path.
 
+The standalone key service defaults to all 52 circuits. For a smaller JubJub owner cache, set
+`PASSPORT_KEY_PROFILE=jubjub-owner-v1`; its `/v1/profile` endpoint lists the ten available circuits.
+Set `PASSPORT_KEY_CORS_ORIGINS` to comma-separated browser origins when serving an application such
+as Lace. The [key service guide](passport-key-service/README.md) describes the cache and HTTP paths.
+
 `prototype:up` checks, in order: the Nix toolchain, the two required variables (and that the hash
 matches the manifest on disk), Docker memory, and that ports 19944, 18088, 16300, 8787 and 5173 are
 free (for another stack, only 8787 and 5173, and no Docker). If one is taken it names the occupant (container or process) and exits; it never stops
