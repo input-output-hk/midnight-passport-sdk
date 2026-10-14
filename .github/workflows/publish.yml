@@ -1,4 +1,4 @@
-name: Publish SDK packages
+name: Check SDK release
 
 on:
   push:
@@ -15,11 +15,6 @@ on:
         default: dev
         type: choice
         options: [dev, next, latest]
-      dry_run:
-        description: Build and pack without publishing
-        required: true
-        default: true
-        type: boolean
 
 permissions:
   contents: read
@@ -34,7 +29,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
       id-token: write
       attestations: write
     steps:
@@ -46,7 +40,6 @@ jobs:
         env:
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_DIST_TAG: ${{ inputs.dist_tag }}
-          INPUT_DRY_RUN: ${{ inputs.dry_run }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = push ]; then
             git fetch --no-tags origin passport-acc-prototype
@@ -56,10 +49,8 @@ jobs:
             }
             if [[ "$GITHUB_REF_NAME" == sdk-check-v* ]]; then
               version="${GITHUB_REF_NAME#sdk-check-v}"
-              dry_run=true
             else
               version="${GITHUB_REF_NAME#sdk-v}"
-              dry_run=false
             fi
             if [[ "$version" == *-dev* ]]; then
               tag=dev
@@ -71,22 +62,21 @@ jobs:
           else
             version="$INPUT_VERSION"
             tag="$INPUT_DIST_TAG"
-            dry_run="$INPUT_DRY_RUN"
           fi
           {
             echo "version=$version"
             echo "tag=$tag"
-            echo "dry_run=$dry_run"
           } >> "$GITHUB_OUTPUT"
-      - name: Require a private publisher for live releases
-        if: steps.release.outputs.dry_run == 'false'
+      - name: Verify signed release tag and DCO commit
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/sdk-v')
         env:
-          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "$REPOSITORY_PRIVATE" != true ]; then
-            echo 'Live GitHub Packages publishing is disabled from this public repository: GITHUB_TOKEN created public packages. Use a private publisher repository and verify package visibility before enabling this step.' >&2
-            exit 1
-          fi
+          tag_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$GITHUB_REF_NAME" --jq '.object.sha')
+          gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_sha" \
+            --jq ".verification.verified and .object.sha == \"$GITHUB_SHA\"" | grep -qx true
+          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA" \
+            --jq '.commit.verification.verified and (.commit.message | test("(?m)^Signed-off-by: .+ <[^>]+>$"))' | grep -qx true
       - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
       - name: Install and verify
         run: |
@@ -108,17 +98,7 @@ jobs:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: nix develop -c node scripts/smoke-release-tarballs.mjs
       - name: Attest tarballs
-        if: steps.release.outputs.dry_run == 'false'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/sdk-v')
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: release-tarballs/*.tgz
-      - name: Publish to GitHub Packages
-        if: steps.release.outputs.dry_run == 'false'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
-          DIST_TAG: ${{ steps.release.outputs.tag }}
-        run: |
-          # shellcheck disable=SC2016 # npm expands the token placeholder at publish time.
-          printf '@input-output-hk:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}\n' > "$HOME/.npmrc"
-          nix develop -c node scripts/release-packages.mjs publish
