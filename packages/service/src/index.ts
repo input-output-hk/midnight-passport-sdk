@@ -7,3 +7,16 @@ export { serial } from './queue.js';
 export { verifyArtefacts, bindingCircuits } from './artefacts.js';
 export { zkRoute, type ArtefactRouteConfig } from './artefact-route.js';
 export { createMemoryJobStore, jobsRoute, type JobStore, type JobStoreOptions } from './jobs.js';
+export {
+  sponsorPolicy,
+  viewOfLedgerTx,
+  guardedBalance,
+  type ActionKind,
+  type ActionView,
+  type IntentView,
+  type SponsorTxView,
+  type LedgerIntentLike,
+  type LedgerTxLike,
+  type ActionClasses,
+  type GuardedBalanceDeps,
+} from './sponsor-policy.js';

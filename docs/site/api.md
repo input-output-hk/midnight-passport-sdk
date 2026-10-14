@@ -46,6 +46,8 @@ The account object also exposes `address`, `networkId`, `bindingId`, `scheme` an
 
 The `mn-passport-service` package now exports a bounded `createMemoryJobStore` and `jobsRoute` for `GET /v1/jobs/{id}?after={cursor}`. A submitted job is pollable before work begins; polls return only events after the cursor plus its current result or sanitized error. The memory store is a standalone reference implementation and loses jobs on restart. A deployed backend should inject a durable `JobStore` with the same contract. Versioned deploy/prove/sponsor routes and matching service clients are still being implemented; the demo's existing routes remain the current integration surface.
 
+The same package exports `sponsorPolicy`, `viewOfLedgerTx`, and `guardedBalance`. An operator injects the ledger deserializer, current allowlist of Passport ACCs, and its own funded wallet through `GuardedBalanceDeps`. The policy refuses shielded or unshielded offers, Dust actions, non-call actions, unlisted contracts, and non-Dust value imbalances before it invokes the wallet. Fee sponsorship does not transfer value into an ACC; that needs the separate funding service.
+
 A deployed JubJub `AccountHint` may carry up to 16 sealed 192-byte `keyEntries` until they have been appended to the ACC inbox. They contain no raw viewing secret. A directory response is an untrusted pointer: the owner flow must match its credential and device key to the selected passkey, check the on-chain device entry, and open an envelope against the ledger's `enc_key` before completing or accepting it.
 
 ### JubJub viewing-key port
