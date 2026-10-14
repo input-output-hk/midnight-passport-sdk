@@ -81,16 +81,27 @@ test('connect has no path to core or any adapter, even transitively', () => {
   }
 });
 
-test('every package is release-ready under the fork scope and ESM', async () => {
+test('implemented packages are release-ready and empty scaffolds stay private', async () => {
+  const privateScaffolds = new Set([
+    'core',
+    'connect',
+    'adapter-signer-local',
+    'adapter-signer-managed',
+    'adapter-prover-remote',
+  ]);
   for (const dir of dirs) {
     const manifest = await readJson(`../packages/${dir}/package.json`);
     assert.equal(manifest.name, SCOPE + dir);
-    assert.equal(manifest.private, false);
+    assert.equal(manifest.private, privateScaffolds.has(dir));
     assert.equal(manifest.version, '0.0.0');
     assert.equal(manifest.type, 'module');
     assert.equal(manifest.license, 'Apache-2.0');
-    assert.equal(manifest.publishConfig.access, undefined);
-    assert.equal(manifest.publishConfig.registry, 'https://npm.pkg.github.com');
+    if (privateScaffolds.has(dir)) {
+      assert.equal(manifest.publishConfig, undefined);
+    } else {
+      assert.equal(manifest.publishConfig.access, undefined);
+      assert.equal(manifest.publishConfig.registry, 'https://npm.pkg.github.com');
+    }
     assert.equal(
       manifest.repository.url,
       'https://github.com/input-output-hk/midnight-passport-sdk',
