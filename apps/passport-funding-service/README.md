@@ -101,7 +101,11 @@ docker run --rm --user "$(id -u):$(id -g)" \
   ghcr.io/input-output-hk/midnight-passport-funding:<version>
 ```
 
-The source image uses a read-only contract mount and never downloads proving keys at runtime.
+The local Linux image build and a mounted-tree run succeeded on `undeployed`: an image-backed
+request deposited 10 units of a non-native unshielded asset into a live ACC, changing its
+confirmed balance from 10 to 20; repeating the same request UUID returned the same transaction
+ID and balance. The image has not yet been released to GHCR. The source image uses a read-only
+contract mount and never downloads proving keys at runtime.
 The [key service image](../passport-key-service/README.md) restores and serves keys separately;
 prepare the funding image's contract tree on Linux with the same binding and manifest pin. The
 funding token must stay in a private file or secret mount. GHCR visibility and repository/team

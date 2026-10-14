@@ -1,4 +1,4 @@
-FROM node:22.23.2-bookworm-slim AS build
+FROM node:22.23.2-bookworm-slim@sha256:48e4b67d85f87bd551df43704e24d252f56cc5f8e9718841aace50f19948f0f9 AS build
 
 WORKDIR /opt/passport
 RUN corepack enable
@@ -8,7 +8,7 @@ COPY apps/passport-funding-service/ apps/passport-funding-service/
 RUN pnpm install --frozen-lockfile
 RUN pnpm exec tsc -b tsconfig.build.json
 
-FROM node:22.23.2-bookworm-slim
+FROM node:22.23.2-bookworm-slim@sha256:48e4b67d85f87bd551df43704e24d252f56cc5f8e9718841aace50f19948f0f9
 
 RUN groupadd --gid 10001 passport && useradd --uid 10001 --gid 10001 --home-dir /data/state --create-home passport
 COPY --from=build --chown=10001:10001 /opt/passport /opt/passport
