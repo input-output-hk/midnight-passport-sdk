@@ -2,6 +2,7 @@ import { createReadStream, realpathSync, statSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import { pipeline } from 'node:stream';
 import { json, type Route } from './http.js';
+import { verifyArtefacts } from './artefacts.js';
 
 export interface ArtefactRouteConfig {
   readonly artefactDir: string;
@@ -11,14 +12,15 @@ const PREFIX = '/zk/acc/';
 /** The only artefact folders served: the compiler output (manifest, contract-info), ZKIR and keys. */
 const SERVED = ['compiler/', 'zkir/', 'keys/'];
 
-export function zkRoute(config: ArtefactRouteConfig): Route {
+function artefactRoute(config: ArtefactRouteConfig, prefixes: readonly string[]): Route {
   const root = resolve(config.artefactDir);
   const realRoot = realpathSync(root);
   return async (req, res, url) => {
-    if (req.method !== 'GET' || !url.pathname.startsWith(PREFIX)) return false;
+    const prefix = prefixes.find((candidate) => url.pathname.startsWith(candidate));
+    if (req.method !== 'GET' || prefix === undefined) return false;
     let rel: string;
     try {
-      rel = decodeURIComponent(url.pathname.slice(PREFIX.length));
+      rel = decodeURIComponent(url.pathname.slice(prefix.length));
     } catch {
       json(res, 404, { error: 'not found' });
       return true;
@@ -60,4 +62,22 @@ export function zkRoute(config: ArtefactRouteConfig): Route {
     });
     return true;
   };
+}
+
+/** Legacy prototype path; the caller verifies the tree before serving it. */
+export function zkRoute(config: ArtefactRouteConfig): Route {
+  return artefactRoute(config, [PREFIX]);
+}
+
+export interface PinnedArtefactRouteConfig extends ArtefactRouteConfig {
+  readonly bindingId: string;
+  readonly manifestSha256: string;
+}
+
+/** Verify the full tree once, then serve both legacy and binding-pinned v1 paths. */
+export function pinnedZkRoute(config: PinnedArtefactRouteConfig): Route {
+  if (!/^[a-z0-9][a-z0-9.-]*$/.test(config.bindingId)) throw new Error('invalid ACC binding id');
+  if (!/^[0-9a-f]{64}$/.test(config.manifestSha256)) throw new Error('invalid ACC manifest pin');
+  verifyArtefacts(config.artefactDir, config.manifestSha256);
+  return artefactRoute(config, [PREFIX, `/v1/zk/${config.bindingId}/`]);
 }

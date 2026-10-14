@@ -8,7 +8,7 @@ import { createServer } from '../src/server.ts';
 import { json, readJson, type Route } from '../src/http.ts';
 import { loadConfig, loadStack, type ServiceConfig } from '../src/config.ts';
 import { mkdirSync } from 'node:fs';
-import { configRoute, zkRoute } from '../src/routes/zk.ts';
+import { configRoute, pinnedZkRoute, zkRoute } from '../src/routes/zk.ts';
 import { bindingCircuits, verifyArtefacts } from '../src/artefacts.ts';
 import { JSON_TYPE, fakeArtefacts, testConfig } from './fixtures.ts';
 
@@ -40,6 +40,35 @@ test('/zk serves artefact files as octet-stream with CORS and cache headers', as
   const manifest = await fetch(`${base}/zk/acc/compiler/contract-manifest.json`);
   assert.equal(manifest.headers.get('cache-control'), 'no-cache');
   server.close();
+});
+
+test('/v1/config points at verified binding-specific artefacts', async (t) => {
+  const config = testConfig();
+  const server = createServer(config, [
+    configRoute(config, () => ({ coinPublicKey: 'aa', encryptionPublicKey: 'bb' })),
+    pinnedZkRoute(config),
+  ]);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const response = await fetch(`${base}/v1/config`);
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as Record<string, unknown>;
+  assert.equal(body.bindingId, config.bindingId);
+  assert.equal(body.manifestSha256, config.manifestSha256);
+  assert.deepEqual(body.apiVersions, ['1.0.0-pre.0']);
+  assert.equal(body.zkBaseUrl, `${base}/v1/zk/${config.bindingId}`);
+  const key = await fetch(`${body.zkBaseUrl}/keys/c.verifier`);
+  assert.equal(key.status, 200);
+  assert.deepEqual(new Uint8Array(await key.arrayBuffer()), Uint8Array.of(3));
+  assert.equal((await fetch(`${base}/v1/zk/wrong/keys/c.verifier`)).status, 404);
+});
+
+test('the v1 artefact route refuses an unpinned or corrupt tree at startup', () => {
+  const config = testConfig();
+  assert.throws(() => pinnedZkRoute({ ...config, manifestSha256: '00'.repeat(32) }), /manifest/);
+  writeFileSync(join(config.artefactDir, 'keys/c.verifier'), Uint8Array.of(9));
+  assert.throws(() => pinnedZkRoute(config), /keys\/c\.verifier/);
 });
 
 test('/zk refuses path traversal and unknown files with 404', async () => {
