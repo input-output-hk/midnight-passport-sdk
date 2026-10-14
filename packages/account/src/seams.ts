@@ -64,6 +64,8 @@ export interface AccLedgerView {
   readonly encKey?: Uint8Array;
   /** Inbox values in ledger index order, requested only by flows that recover account keys. */
   readonly inboxEntries?: readonly Uint8Array[];
+  /** Live device commitments, requested only by flows that validate a rotation roster. */
+  readonly deviceEntries?: readonly Uint8Array[];
   hasEntry(entry: Uint8Array): boolean;
 }
 export interface ConstructorArgs {

@@ -39,6 +39,8 @@ The account object also exposes `address`, `networkId`, `bindingId`, `scheme` an
 
 `Chain.readAccount(address, { includeInbox: true })` also returns the ACC inbox values in ledger-index order, capped at 4096 entries, for flows that need to open sealed account keys. The default read omits the inbox so the P-256 state path does not fetch every entry. JubJub create/open requests this view to validate the viewing key.
 
+`Chain.readAccount(address, { includeDevices: true })` returns up to 64 live device commitments. A rotation or device-management flow must resolve registered reader keys against this set before sealing a new account secret to them; inbox registrations alone are untrusted.
+
 A deployed JubJub `AccountHint` may carry up to 16 sealed 192-byte `keyEntries` until they have been appended to the ACC inbox. They contain no raw viewing secret. A directory response is an untrusted pointer: the owner flow must match its credential and device key to the selected passkey, check the on-chain device entry, and open an envelope against the ledger's `enc_key` before completing or accepting it.
 
 ### JubJub viewing-key port

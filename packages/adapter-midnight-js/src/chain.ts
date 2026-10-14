@@ -32,7 +32,11 @@ interface LedgerShape {
   device_epoch: bigint;
   spec_version: bigint;
   enc_key: Uint8Array;
-  devices: { member(entry: Uint8Array): boolean; size(): bigint };
+  devices: {
+    member(entry: Uint8Array): boolean;
+    size(): bigint;
+    [Symbol.iterator](): Iterator<Uint8Array>;
+  };
   inbox: {
     size(): bigint;
     [Symbol.iterator](): Iterator<[bigint, Uint8Array]>;
@@ -45,6 +49,18 @@ function inboxEntries(ledger: LedgerShape): Uint8Array[] {
   return [...ledger.inbox]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([, entry]) => entry);
+}
+
+/** Lace's owner flow names at most 64 live entries when it rotates a viewing secret. */
+function deviceEntries(ledger: LedgerShape): Uint8Array[] {
+  if (ledger.devices.size() > 64n) throw new Error('ACC has more than 64 live device entries');
+  const entries = [...ledger.devices];
+  if (entries.length !== Number(ledger.devices.size()))
+    throw new Error('ACC live device count does not match its set');
+  return entries.map((entry) => {
+    if (entry.length !== 32) throw new Error('ACC has a malformed device commitment');
+    return entry.slice();
+  });
 }
 
 /** The generated binding is loaded by the host, normally with import(). */
@@ -107,6 +123,7 @@ export function createMidnightChain(opts: {
         specVersion: Number(ledger.spec_version),
         encKey: ledger.enc_key,
         ...(options?.includeInbox && { inboxEntries: inboxEntries(ledger) }),
+        ...(options?.includeDevices && { deviceEntries: deviceEntries(ledger) }),
         hasEntry: (entry) => ledger.devices.member(entry),
       };
     },

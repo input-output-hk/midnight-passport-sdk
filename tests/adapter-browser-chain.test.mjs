@@ -296,7 +296,15 @@ const stubLedger = {
   device_epoch: 2n,
   spec_version: 1n,
   enc_key: new Uint8Array(32).fill(5),
-  devices: { member: (/** @type {Uint8Array} */ e) => e[0] === 1, size: () => 3n },
+  devices: {
+    member: (/** @type {Uint8Array} */ e) => e[0] === 1,
+    size: () => 3n,
+    *[Symbol.iterator]() {
+      yield new Uint8Array(32).fill(1);
+      yield new Uint8Array(32).fill(2);
+      yield new Uint8Array(32).fill(3);
+    },
+  },
   inbox: {
     size: () => 2n,
     *[Symbol.iterator]() {
@@ -676,6 +684,11 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
     Uint8Array.of(1),
     Uint8Array.of(2),
   ]);
+  assert.equal((await chain.readAccount('addr'))?.deviceEntries, undefined);
+  assert.deepEqual(
+    (await chain.readAccount('addr', { includeDevices: true }))?.deviceEntries,
+    [1, 2, 3].map((value) => new Uint8Array(32).fill(value)),
+  );
   assert.deepEqual(
     await chain.call({
       address: 'addr',

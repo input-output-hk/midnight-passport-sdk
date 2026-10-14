@@ -250,10 +250,10 @@ export interface CallRequest extends FlowOptions {
 export type TxResult = PassportTxResult;
 export interface Chain {
   call(request: CallRequest): Promise<TxResult>;
-  /** `includeInbox` asks for the bounded, ordered on-chain entries a viewing key opens. */
+  /** Opt in to bounded inbox entries and live device commitments for owner flows. */
   readAccount(
     address: string,
-    options?: { readonly includeInbox?: boolean },
+    options?: { readonly includeInbox?: boolean; readonly includeDevices?: boolean },
   ): Promise<AccLedgerView | undefined>;
 }
 
