@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Generate or verify the release binding's complete circuit capability inventory.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import prettier from 'prettier';
 import ts from 'typescript';
@@ -94,14 +94,21 @@ function evidence(name, isPure) {
       name,
     )
   )
-    return ['prototype', 'tests/account-connector.test.mjs'];
+    return ['typed flow', 'tests/account-connector.test.mjs'];
+  if (
+    /^(activate_initial_device_with_jubjub|append_inbox_with_jubjub|rotate_enc_key_with_jubjub|derive_boot_commitment_with_jubjub|derive_device_entry_with_jubjub|challenge_append_inbox_with_jubjub|challenge_rotate_enc_key_with_jubjub)$/.test(
+      name,
+    )
+  )
+    return ['typed flow', 'tests/account-jubjub.test.mjs'];
   if (
     /^(compute_public_point_with_jubjub|derive_device_entry_with_jubjub|challenge_add_device_with_jubjub)$/.test(
       name,
     )
   )
     return ['key helper', 'tests/keys-jubjub.test.mjs'];
-  if (name === 'deposit_unshielded') return ['experiment', 'experiments/acc-0.35'];
+  if (name === 'deposit_unshielded')
+    return ['service flow', 'tests/service-wallet-funding-backend.test.mjs'];
   return [isPure ? 'binding only' : 'artifact only', '—'];
 }
 /** @param {string} value */
@@ -125,6 +132,8 @@ for (const [name, inputs] of [...pure.entries()].sort(([left], [right]) =>
 for (const { name, isPure, inputs } of inventory) {
   const [authority, consent, owner] = policy(name, isPure);
   const [status, test] = evidence(name, isPure);
+  if (test !== '—' && !existsSync(resolve(root, test)))
+    throw new Error(`missing circuit evidence for ${name}: ${test}`);
   const witness = !isPure && name.includes('withdraw_shielded') ? 'held_coin' : '—';
   const keys = isPure ? 'inline' : profile.includes(name) ? 'all + jubjub-owner-v1' : 'all';
   rows.push(
@@ -142,7 +151,7 @@ permalink: /circuits/
 
 Generated from the pinned \`${binding}\` binding (manifest SHA-256 \`${manifest.compilerManifestSha256}\`). The generated TypeScript declarations supply the exact argument names and types. Every one of the ${pinned.length} proof circuits and ${pure.size} pure helpers appears below. The \`held_coin\` witness is required by shielded withdrawal paths; other circuit inputs are shown directly in the generated signature.
 
-**Status:** \`prototype\` means the P-256 demo flow exercises the circuit; \`key helper\` means the portable key recipe tests the pure helper; \`experiment\` means a local experiment has run but no SDK API exists; \`artifact only\` and \`binding only\` mean the bytes or callable generated helper are packaged, with no typed account flow yet. These labels are release limits, not claims that all 52 circuits are ready for applications. The key service's \`all\` profile serves every proof circuit; \`jubjub-owner-v1\` serves the marked subset.
+**Status:** \`typed flow\` means the account package has a tested typed call path for this circuit; \`service flow\` means the standalone funding service has a tested call path; \`key helper\` means the portable key recipe tests the pure helper. \`artifact only\` and \`binding only\` mean the bytes or callable generated helper are packaged, with no typed account flow yet. The funding service also completed a local node-backed non-native deposit; the account paths have unit tests but need Lace consumer interoperability. These labels are release limits, not claims that all 52 circuits are ready for applications. The key service's \`all\` profile serves every proof circuit; \`jubjub-owner-v1\` serves the marked subset.
 
 ${rows.join('\n')}
 `;
