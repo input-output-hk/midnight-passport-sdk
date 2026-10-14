@@ -170,7 +170,8 @@ export interface ShieldedCoin {
 }
 export interface GrantBookkeeping {
   readonly grantId: string;
-  readonly slot: string;
+  /** ACC grant map position, an unsigned 8-bit integer. */
+  readonly slot: number;
   readonly scopeSalt: string;
   readonly granteePublicKey: string;
   readonly readPublicKey?: string;
