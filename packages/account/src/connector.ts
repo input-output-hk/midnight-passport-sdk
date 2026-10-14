@@ -7,6 +7,7 @@ import {
 } from '@input-output-hk/mn-passport-protocol';
 import { fromHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
+import { createJubjubAccounts } from './jubjub-connector.js';
 import { startFlow, type Flow } from './flow.js';
 import type {
   AccLedgerView,
@@ -43,7 +44,7 @@ const webRandom = (length: number) =>
     globalThis as unknown as { crypto: { getRandomValues(bytes: Uint8Array): Uint8Array } }
   ).crypto.getRandomValues(new Uint8Array(length));
 
-/** A hint of the P-256 arm, the one arm this release drives (#24 adds JubJub). */
+/** A hint for the P-256 arm. */
 type P256Hint = AccountHint & {
   readonly credentialId: Uint8Array;
   readonly policy: WebAuthnPolicy;
@@ -84,12 +85,13 @@ function once<T>(value: Lazy<T>): () => Promise<T> {
 
 /** The account API over the ports (design §1.3, §2.1). */
 export function createPassportAccounts(ports: PassportPorts): PassportConnectorAPI {
+  if (ports.authoriser.scheme === 'jubjub-schnorr') return createJubjubAccounts(ports);
   const { authoriser, credentials, directory, encryptionKey, network } = ports;
   const { networkId } = network;
   if (authoriser.scheme !== 'p256-webauthn' || !authoriser.deviceBinding) {
     throw new PassportConnectorError(
       'BindingUnsupported',
-      'This release drives the p256-webauthn arm only, with its WebAuthn binding.',
+      'The selected authorisation arm needs a compatible authoriser and binding.',
     );
   }
   const binding = once(ports.binding);
