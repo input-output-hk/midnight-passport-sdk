@@ -30,7 +30,29 @@ shell.
 | Chrome or Safari, with a passkey saved in **Google Password Manager or iCloud Keychain**                        | The account needs the WebAuthn PRF extension. Chrome's "Chrome profile" store has no PRF and is refused.    |
 | Free ports 19944, 18088, 16300, 8787 and 5173                                                                   | The Passport localnet uses its own host ports, so it runs beside another Midnight localnet on the defaults. |
 
-## 2. One-time setup
+## 2. One-command setup and launch
+
+From the `passport-acc-prototype` branch, with Docker running and a local checkout of
+`midnightntwrk/passport` that contains revision `6458ed5`:
+
+```sh
+PASSPORT_REPO=/path/to/passport nix develop -c pnpm demo up
+```
+
+The CLI exports the pinned ACC, compiles its 52 circuits and keys if needed, checks the compiler
+manifest, verifies or restores missing keys, installs the reference client dependencies, builds the SDK, then starts the localnet,
+Passport service, browser page, and standalone key server. The first build needs about 15 GB disk
+and tens of minutes; later runs reuse the compiled output and verify the key cache. Open
+`http://localhost:5173/` (or pass `--open`). `--mock-passkey` prints the mock URL. Ctrl-C stops the
+services this command started while preserving the localnet volumes.
+
+`pnpm demo check` tests the toolchain, Docker memory, and required ports without changing state.
+`pnpm demo setup` prepares the ACC without starting services. Pass `--contract-dir /path/to/contract`
+to reuse an existing compiled export, or `--no-key-service` to skip the separate key server. The
+browser still gets contract metadata and artefacts through the Passport service on port 8787; the
+key server on port 8788 is for a proof server or other backend consumer.
+
+## 3. Manual setup
 
 ```sh
 git clone https://github.com/input-output-hk/midnight-passport-sdk.git
@@ -63,7 +85,7 @@ shasum -a 256 "$D/contracts/managed/account/compiler/contract-manifest.json"
 Put the two `export`s in your shell profile, or in `.envrc.local` if you use direnv, so later shells
 have them.
 
-## 3. Run the demo
+## 4. Run the demo manually
 
 ```sh
 nix develop -c pnpm prototype:up
@@ -100,7 +122,7 @@ estimate until the service reports its waves.
 keeps its keys in `localStorage`, so it is only for testing. `?mockPasskey=noprf-results` exercises
 the 3-prompt path.
 
-## 4. Run the automated end-to-end test
+## 5. Run the automated end-to-end test
 
 With `prototype:up` running, open a second shell with the same two variables set:
 
@@ -112,7 +134,7 @@ It drives the real connector with a software passkey through these steps: create
 rotate again. It writes `experiments/acc-0.35/results/x8-dapp-e2e.json` and should end with
 `MVP e2e: PASS` after about 5½ minutes.
 
-## 5. Where state lives, and how to reset it
+## 6. Where state lives, and how to reset it
 
 | State                                                            | Where                                                                | Reset                                                                                                    |
 | ---------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
@@ -121,7 +143,7 @@ rotate again. It writes `experiments/acc-0.35/results/x8-dapp-e2e.json` and shou
 | Your passkey                                                     | Your password manager                                                | Delete old `localhost` passkeys so the picker offers only the current one                                |
 | Mock passkey                                                     | The page's `localStorage` (`passport-dev:mock-passkey:v1`)           | Clear site data for `localhost:5173`                                                                     |
 
-## 6. Troubleshooting
+## 7. Troubleshooting
 
 | You see                                                          | Do this                                                                                                                                                            |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -135,7 +157,7 @@ rotate again. It writes `experiments/acc-0.35/results/x8-dapp-e2e.json` and shou
 | `AccountNotFound` after a chain reset                            | Delete `~/.midnight-passport/registry*.json`.                                                                                                                      |
 | `ProverUnavailable` after about 10 minutes                       | A transaction queued behind a deploy timed out. Wait for the deploy to finish, then retry.                                                                         |
 
-## 7. Rules for coding agents working on this branch
+## 8. Rules for coding agents working on this branch
 
 - **Use Nix for every command:** `nix develop -c …`. Never call a global `compact`, `node` or
   `pnpm`. The scripts' `guard.sh` refuses any toolchain outside the Nix store.

@@ -19,7 +19,8 @@
     "prototype:up": "bash scripts/prototype-up.sh",
     "prototype:service": "pnpm --filter passport-service start",
     "prototype:dapp": "pnpm --filter passport-dapp dev",
-    "prototype:e2e": "pnpm --filter passport-dapp e2e"
+    "prototype:e2e": "pnpm --filter passport-dapp e2e",
+    "demo": "node scripts/demo.mjs"
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.20.0",

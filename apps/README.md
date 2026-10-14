@@ -78,11 +78,25 @@ patched tree to upgrade an older patch; it is idempotent.
 ## Running
 
 ```sh
+PASSPORT_REPO=/path/to/passport nix develop -c pnpm demo up  # pinned export, build, then all services
+pnpm demo check          # preflight only
+pnpm demo setup          # prepare the ACC without starting services
 pnpm prototype:up        # localnet, then service, then dapp; Ctrl-C stops the service and the localnet
 pnpm prototype:service   # the service alone (localnet already up)
 pnpm prototype:dapp      # the dapp alone, at http://localhost:5173
 pnpm prototype:e2e       # in another shell: the automated MVP run with a software passkey
 ```
+
+`pnpm demo up` is the presenter entry point. It uses the ACC revision and compiler-manifest SHA-256
+from the released contract binding, exports the reference source, compiles the keys on first use,
+verifies or restores missing keys, installs and builds dependencies, and launches `prototype:up` plus the standalone key service at
+`127.0.0.1:8788`. It reuses a compiled tree on later runs. The browser still reads its artefacts
+through the Passport service on 8787; the separate key service is available to backend consumers.
+Pass `--contract-dir` to reuse a prepared export, `--no-key-service` to skip that service,
+`--mock-passkey` for the dev-only mock URL, or `--open` to open the page. The key service verifies
+the whole key cache before it reports ready, so even a rerun may pause there. The CLI refuses busy
+ports without stopping their occupants. See [AGENTS.md](../AGENTS.md) for prerequisites and the
+manual setup path.
 
 `prototype:up` checks, in order: the Nix toolchain, the two required variables (and that the hash
 matches the manifest on disk), Docker memory, and that ports 19944, 18088, 16300, 8787 and 5173 are
