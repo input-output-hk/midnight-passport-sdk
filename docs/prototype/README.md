@@ -1,5 +1,7 @@
 # Midnight Passport DApp prototype
 
+The standalone service also exposes `POST /v1/prove-tx` and `POST /v1/deploy` as request-and-poll jobs (`GET /v1/jobs/{id}`), plus `/v1/sponsor/balance` and `/v1/sponsor/submit`. The browser flow shown below still uses the legacy routes. Both route sets share the same serial proof/deploy queue and deployment cap.
+
 This is a working prototype of the Passport **account API** and the web app that carries its heavy
 lifting. The prototype called the account API the "DApp Connector API"; every operation in it is the
 account owner's, so it is now the account API v1 (ADR 0007, D-8), and the dApp-facing connection is

@@ -18,6 +18,7 @@ export interface JobStore {
   /** Accept work now; the caller can poll before the work begins. */
   start<Result>(
     work: (emit: (event: PassportEvent) => void) => Promise<Result>,
+    errorOf?: (cause: unknown) => { code: PassportErrorCode; message: string },
   ): ServiceWire.JobAccepted;
   /** Return only events after an opaque cursor, with the full current outcome. */
   get<Result = unknown>(id: string, after?: string): ServiceWire.Job<Result> | undefined;
@@ -79,7 +80,7 @@ export function createMemoryJobStore(options: JobStoreOptions = {}): JobStore {
   };
 
   return {
-    start(work) {
+    start(work, jobErrorOf) {
       prune();
       if (jobs.size >= maxJobs) throw new HttpError(503, 'job store is full');
       const id = newId();
@@ -96,7 +97,7 @@ export function createMemoryJobStore(options: JobStoreOptions = {}): JobStore {
           job.state = 'done';
         } catch (cause) {
           try {
-            job.error = errorOf(cause);
+            job.error = (jobErrorOf ?? errorOf)(cause);
           } catch {
             job.error = { code: 'InternalError', message: 'job failed' };
           }

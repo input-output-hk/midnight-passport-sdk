@@ -5,7 +5,7 @@ lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](.
 
 | App                | What                                                                                                                                                                                                                                                  |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `passport-service` | Serves the ACC's ZK artefacts (`/zk/acc`), proves with server-side keys (`/prove`), deploys in waves (`/deploy`), sponsors fees (`/sponsor/*`) and keeps the passkey-to-account registry (`/accounts`). It holds the only funded key. Binds `127.0.0.1:8787`. |
+| `passport-service` | Serves the ACC's ZK artefacts (`/zk/acc`), proves with server-side keys (`/prove`), deploys in waves (`/deploy`), sponsors fees (`/sponsor/*`) and keeps the passkey-to-account registry (`/accounts`). It also serves versioned job-based prove/deploy and fee routes under `/v1`. It holds the only funded key. Binds `127.0.0.1:8787`. |
 | `passport-key-service` | Standalone Node container for restoring, verifying and HTTP-serving the pinned ACC keys. It has no sponsor wallet; see its [image and operations guide](passport-key-service/README.md). |
 | `passport-dapp`    | The harness at `http://localhost:5173`: create a Passport account with a passkey, open it after a reload, rotate its encryption key (a passkey-signed, server-proved call) and connect the built-in wallet.                                           |
 
@@ -191,8 +191,8 @@ and `assertionMaterial`.
     that is registered on its network. Deploy and maintenance actions are refused.
   - _Fee-only._ No unshielded offer, no Dust action and no shielded offer, and no non-Dust
     imbalance in any segment.
-  - _Deploy cap._ At most `PASSPORT_MAX_DEPLOYS` `/deploy` requests per service process, failures
-    counted, then `429`. The count resets on restart.
+  - _Deploy cap._ At most `PASSPORT_MAX_DEPLOYS` requests through `/deploy` and `/v1/deploy`
+    combined per service process, failures counted, then `429`. The count resets on restart.
   - _First arm._ `/deploy` accepts `firstArm: "p256" | "jubjub"` and installs that arm's verifier keys
     first. Omitted `firstArm` retains the prototype's P-256 behavior. The SDK connector currently
     selects P-256; the JubJub account flow is a separate release gate.

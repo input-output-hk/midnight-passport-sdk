@@ -23,8 +23,30 @@ export interface ChainRouteOptions {
   /** /deploy requests accepted over the process's life, failures included. */
   readonly maxDeploys: number;
   readonly maxQueued?: number;
+  /** Share one proof/deploy queue with the versioned routes when both are served. */
+  readonly runExclusive?: ReturnType<typeof serial>;
+  /** Share one deployment cap with the versioned routes when both are served. */
+  readonly deploymentBudget?: DeploymentBudget;
   /** Receives backend failures, which are logged here and not all returned to the client. */
   readonly log?: (message: string) => void;
+}
+
+export interface DeploymentBudget {
+  accept(): void;
+}
+
+/** Counts accepted deployments, including failures, across every route wired to the same sponsor. */
+export function createDeploymentBudget(maxDeploys: number): DeploymentBudget {
+  if (!Number.isSafeInteger(maxDeploys) || maxDeploys < 1)
+    throw new Error('maxDeploys must be a positive integer');
+  let accepted = 0;
+  return {
+    accept() {
+      if (accepted >= maxDeploys)
+        throw new HttpError(429, 'deployment limit reached for this service instance');
+      accepted++;
+    },
+  };
 }
 
 const hex = (b: Uint8Array): string => Buffer.from(b).toString('hex');
@@ -82,8 +104,8 @@ export function chainRoute(backend: ChainBackend, options: ChainRouteOptions): R
   const log = options.log ?? ((message: string) => console.error(message));
   // One proof or deployment at a time: a P-256 proof needs ~13.5 GiB (Review Focus 5), and a
   // deployment must not overlap one.
-  const queue = serial(options.maxQueued ?? DEFAULT_MAX_QUEUED);
-  let deploysAccepted = 0;
+  const queue = options.runExclusive ?? serial(options.maxQueued ?? DEFAULT_MAX_QUEUED);
+  const deploymentBudget = options.deploymentBudget ?? createDeploymentBudget(maxDeploys);
   const endpoints = new Map<string, Endpoint>([
     [
       '/check',
@@ -171,10 +193,7 @@ export function chainRoute(backend: ChainBackend, options: ChainRouteOptions): R
           }
           // The cap counts every accepted request, failures included, so failing deployments
           // cannot be spammed. It is checked here, before the queue, so the refusal is immediate.
-          if (deploysAccepted >= maxDeploys) {
-            throw new HttpError(429, 'deployment limit reached for this service instance');
-          }
-          deploysAccepted++;
+          deploymentBudget.accept();
           return () => queue(() => backend.deploy(boot, encKey, retireAuthority, firstArm));
         },
       },
