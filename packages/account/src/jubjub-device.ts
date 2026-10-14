@@ -5,7 +5,6 @@ import { startFlow } from './flow.js';
 import { JUBJUB_READER_SCAN_LIMIT } from './jubjub-readers.js';
 import type {
   AccountHint,
-  AccountRecord,
   AccountRecordStore,
   Authoriser,
   Chain,
@@ -30,7 +29,6 @@ export interface AddJubjubDevicePure extends Pick<
 
 export interface AddJubjubAuthorisingDeviceInput extends FlowOptions {
   readonly hint: AccountHint;
-  readonly record: AccountRecord;
   /** Public key from the joining device, used to derive its epoch-zero entry. */
   readonly joiningPublicKey: CurvePoint;
 }
@@ -51,6 +49,8 @@ export interface AddedJubjubAuthorisingDevice extends PassportTxResult {
 }
 
 const samePoint = (a: CurvePoint, b: CurvePoint): boolean => a.x === b.x && a.y === b.y;
+const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
+  a.length === b.length && a.every((value, index) => value === b[index]);
 const random = (length: number): Uint8Array =>
   (
     globalThis as unknown as { crypto: { getRandomValues(bytes: Uint8Array): Uint8Array } }
@@ -68,13 +68,17 @@ export async function addJubjubAuthorisingDevice(
 ): Promise<AddedJubjubAuthorisingDevice> {
   const flow = startFlow(input, ports.random ?? random);
   try {
-    const { hint, record } = input;
+    const { hint } = input;
+    const record = await ports.records.read();
     if (
       hint.scheme !== 'jubjub-schnorr' ||
-      record.scheme !== 'jubjub-schnorr' ||
+      record?.scheme !== 'jubjub-schnorr' ||
       hint.status !== 'active' ||
       hint.address !== record.address ||
-      record.bindingId !== ports.bindingId
+      record.bindingId !== ports.bindingId ||
+      !hint.credentialId ||
+      !record.credentialId ||
+      !sameBytes(hint.credentialId, record.credentialId)
     )
       throw new PassportConnectorError('NotAuthorised', 'The active JubJub account is required.');
     if (ports.authoriser.scheme !== 'jubjub-schnorr' || !ports.authoriser.withKeySession)

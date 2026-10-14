@@ -9,16 +9,18 @@ const record = {
   address: account,
   bindingId: 'acc-s3r1.1',
   scheme: /** @type {const} */ ('jubjub-schnorr'),
+  credentialId: Uint8Array.of(10),
   localUseCounter: 0n,
 };
 const hint = {
   address: account,
   scheme: /** @type {const} */ ('jubjub-schnorr'),
   publicKey: owner,
+  credentialId: Uint8Array.of(10),
   status: /** @type {const} */ ('active'),
 };
 /** @type {import('../packages/account/dist/jubjub-device.js').AddJubjubAuthorisingDeviceInput} */
-const input = { hint, record, joiningPublicKey: joining };
+const input = { hint, joiningPublicKey: joining };
 
 function fixture() {
   /** @type {string[]} */
@@ -112,7 +114,17 @@ test('self-enrollment and a mismatched account are rejected before any key sessi
     code: 'NotAuthorised',
   });
   await assert.rejects(
-    addJubjubAuthorisingDevice({ ...input, record: { ...record, bindingId: 'other' } }, ports),
+    addJubjubAuthorisingDevice(
+      { ...input, hint: { ...hint, credentialId: Uint8Array.of(11) } },
+      ports,
+    ),
+    { code: 'NotAuthorised' },
+  );
+  await assert.rejects(
+    addJubjubAuthorisingDevice(input, {
+      ...ports,
+      records: { ...ports.records, read: async () => ({ ...record, bindingId: 'other' }) },
+    }),
     { code: 'NotAuthorised' },
   );
   assert.deepEqual(calls, []);
