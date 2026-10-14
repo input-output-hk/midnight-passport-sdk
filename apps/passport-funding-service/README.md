@@ -64,14 +64,17 @@ pending requests, wallet transactions and ACC balances before removing it. Use a
 database for replicas. The source has focused policy and backend tests. On the local `undeployed`
 network, this process deposited 10 units of a faucet-minted non-native unshielded asset into a
 live `spec_version = 3` ACC and observed the credited balance. Repeating the same request ID
-returned the same transaction ID and balance. The container image must still pass its release
-build and mounted-tree smoke test before it is published.
+returned the same transaction ID and balance. The `0.1.0-rc2` container image passed its release
+build and mounted-tree smoke test and is published to GHCR.
 
 ## Container image
 
 The [funding image workflow](../../.github/workflows/publish-funding-image.yml) publishes
 `ghcr.io/input-output-hk/midnight-passport-funding:<version>` and a commit-SHA tag after a
-signed `funding-v<version>` tag or an authorized workflow dispatch. Pin a digest when deploying.
+signed `funding-v<version>` tag or an authorized workflow dispatch. Release `0.1.0-rc2` also has
+`sha-2f7f2b1974f2`; its immutable digest is
+`sha256:5b1aebaba4944c0beccd8d70047b51b9d779f30a8839461af20c5a10f26ca9e5`. The
+published GHCR package is currently public. Pin the digest when deploying.
 The image contains the SDK application, not the 11 GiB proving tree, any wallet seed, or tokens.
 Its entrypoint requires a **Linux-prepared** pinned `6458ed5` export at `/data/contract`, including
 compiled `contracts/managed/account` artefacts and that export's `node_modules`. The service
@@ -85,7 +88,7 @@ the localnet containers' published host ports; set the four `MN_*_URL` values to
 for another network.
 
 ```sh
-docker run --rm --user "$(id -u):$(id -g)" \
+docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" \
   -p 127.0.0.1:8789:8789 \
   -v "$PASSPORT_CONTRACT_DIR:/data/contract:ro" \
   -v "$HOME/.midnight-passport:/data/state" \
@@ -98,14 +101,14 @@ docker run --rm --user "$(id -u):$(id -g)" \
   -e MN_INDEXER_URL=http://host.docker.internal:18088/api/v4/graphql \
   -e MN_INDEXER_WS_URL=ws://host.docker.internal:18088/api/v4/graphql/ws \
   -e MN_PROOF_SERVER_URL=http://host.docker.internal:16300 \
-  ghcr.io/input-output-hk/midnight-passport-funding:<version>
+  ghcr.io/input-output-hk/midnight-passport-funding@sha256:5b1aebaba4944c0beccd8d70047b51b9d779f30a8839461af20c5a10f26ca9e5
 ```
 
 The local Linux image build and a mounted-tree run succeeded on `undeployed`: an image-backed
 request deposited 10 units of a non-native unshielded asset into a live ACC, changing its
 confirmed balance from 10 to 20; repeating the same request UUID returned the same transaction
-ID and balance. The image has not yet been released to GHCR. The source image uses a read-only
-contract mount and never downloads proving keys at runtime.
+ID and balance. The source image uses a read-only contract mount and never downloads proving keys
+at runtime.
 The [key service image](../passport-key-service/README.md) restores and serves keys separately;
 prepare the funding image's contract tree on Linux with the same binding and manifest pin. The
 funding token must stay in a private file or secret mount. GHCR visibility and repository/team
