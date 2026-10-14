@@ -15,24 +15,39 @@ const binding = JSON.parse(
 const revision = binding.source.revision;
 const manifestPin = binding.manifestSha256;
 const keyPort = 8788;
+const fundingPort = 8789;
 
-/** @typedef {{ command: string, keyService: boolean, open: boolean, mockPasskey: boolean, passportRepo?: string, contractDir?: string, help?: boolean }} DemoOptions */
+/** @typedef {{ command: string, keyService: boolean, funding: boolean, open: boolean, mockPasskey: boolean, passportRepo?: string, contractDir?: string, account?: string, color?: string, amount?: string, requestId?: string, help?: boolean }} DemoOptions */
 
 /** @param {string[]} argv @returns {DemoOptions} */
 export function parseArgs(argv) {
   const args = [...argv];
   const first = args[0];
   const command = first && !first.startsWith('-') ? (args.shift() ?? 'up') : 'up';
-  if (!['up', 'setup', 'check'].includes(command)) throw new Error(`unknown command: ${command}`);
+  if (!['up', 'setup', 'check', 'fund'].includes(command))
+    throw new Error(`unknown command: ${command}`);
   /** @type {DemoOptions} */
-  const options = { command, keyService: true, open: false, mockPasskey: false };
+  const options = { command, keyService: true, funding: false, open: false, mockPasskey: false };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--passport-repo' || arg === '--contract-dir') {
       const value = args[++i];
       if (!value || value.startsWith('--')) throw new Error(`${arg} needs a directory`);
       options[arg === '--passport-repo' ? 'passportRepo' : 'contractDir'] = resolve(value);
+    } else if (
+      arg === '--account' ||
+      arg === '--color' ||
+      arg === '--amount' ||
+      arg === '--request-id'
+    ) {
+      const value = args[++i];
+      if (!value || value.startsWith('--')) throw new Error(`${arg} needs a value`);
+      if (arg === '--account') options.account = value;
+      else if (arg === '--color') options.color = value;
+      else if (arg === '--amount') options.amount = value;
+      else options.requestId = value;
     } else if (arg === '--no-key-service') options.keyService = false;
+    else if (arg === '--funding') options.funding = true;
     else if (arg === '--open') options.open = true;
     else if (arg === '--mock-passkey') options.mockPasskey = true;
     else if (arg === '--help' || arg === '-h') options.help = true;
@@ -41,18 +56,25 @@ export function parseArgs(argv) {
   return options;
 }
 
-const usage = `Usage: nix develop -c node scripts/demo.mjs [up|setup|check] [options]
+const usage = `Usage: nix develop -c node scripts/demo.mjs [up|setup|check|fund] [options]
 
   up                 Prepare the pinned ACC, then start the key service,
                      localnet, sponsor/prover backend and browser page.
   setup              Prepare and verify the ACC without starting services.
   check              Check Nix, Docker memory and required local ports.
+  fund               Deposit an allowlisted asset into a deployed ACC through
+                     the running funding service; requires the four flags below.
 
   --passport-repo X  Local checkout of midnightntwrk/passport (or PASSPORT_REPO).
   --contract-dir X   Reuse a previously compiled ACC tree (or PASSPORT_CONTRACT_DIR).
   --no-key-service   Skip the optional standalone key server on port 8788.
+  --funding          Start the separate funding service on port 8789 (localnet).
   --mock-passkey     Use the dev-only mock-passkey URL.
   --open             Open the demo URL in the default browser.
+  --account HEX      Fund command: deployed ACC address (32 bytes).
+  --color HEX        Fund command: allowlisted asset color (32 bytes).
+  --amount N         Fund command: positive decimal amount.
+  --request-id UUID  Fund command: stable idempotency key for retries.
 
 Ctrl-C stops only the processes and localnet containers started by this run.
 `;
@@ -158,6 +180,15 @@ async function check(options) {
     throw new Error(`Docker needs at least ${minimum} GiB for P-256 proofs`);
   run('bash', [join(root, 'scripts/prototype-up.sh'), '--check']);
   if (options.keyService) await freePort(keyPort);
+  if (options.funding) {
+    if ((process.env.MIDNIGHT_STACK ?? 'undeployed') !== 'undeployed')
+      throw new Error('--funding currently requires the local undeployed stack');
+    for (const name of ['PASSPORT_FUNDING_TOKEN_FILE', 'PASSPORT_FUNDING_ASSETS_FILE']) {
+      if (!process.env[name] || !existsSync(process.env[name]))
+        throw new Error(`--funding requires an existing ${name}`);
+    }
+    await freePort(fundingPort);
+  }
   console.log('demo: toolchain, Docker memory and ports are ready');
 }
 
@@ -198,6 +229,87 @@ async function waitForKeyService(child) {
 }
 
 /** @param {import('node:child_process').ChildProcess} child */
+async function waitForFundingService(child) {
+  for (let attempt = 0; attempt < 180; attempt++) {
+    if (child.exitCode !== null || child.signalCode !== null)
+      throw new Error('funding service exited before readiness');
+    try {
+      const response = await fetch(`http://127.0.0.1:${fundingPort}/healthz`, {
+        signal: AbortSignal.timeout(1000),
+      });
+      if (response.ok) return;
+    } catch {
+      /* verifying keys or syncing the dedicated wallet */
+    }
+    await new Promise((done) => setTimeout(done, 1000));
+  }
+  throw new Error('funding service did not become ready within 3 minutes');
+}
+
+/** @param {DemoOptions} options */
+export async function fund(options) {
+  if (!options.account || !/^[0-9a-f]{64}$/.test(options.account))
+    throw new Error('fund needs --account as 32-byte lowercase hex');
+  if (!options.color || !/^[0-9a-f]{64}$/.test(options.color))
+    throw new Error('fund needs --color as 32-byte lowercase hex');
+  if (!options.amount || !/^[1-9][0-9]*$/.test(options.amount))
+    throw new Error('fund needs --amount as a positive decimal');
+  if (
+    !options.requestId ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+      options.requestId,
+    )
+  )
+    throw new Error('fund needs --request-id as a lowercase UUID');
+  const tokenFile = process.env.PASSPORT_FUNDING_TOKEN_FILE;
+  if (!tokenFile) throw new Error('fund needs PASSPORT_FUNDING_TOKEN_FILE');
+  const token = readFileSync(tokenFile, 'utf8').trim();
+  const base = process.env.PASSPORT_FUNDING_URL ?? `http://127.0.0.1:${fundingPort}`;
+  const endpoint = new URL(base);
+  if (
+    endpoint.protocol !== 'https:' &&
+    !(
+      endpoint.protocol === 'http:' &&
+      ['127.0.0.1', 'localhost', '[::1]'].includes(endpoint.hostname)
+    )
+  )
+    throw new Error('PASSPORT_FUNDING_URL must use HTTPS or loopback HTTP');
+  const health = await fetch(new URL('/healthz', endpoint), { signal: AbortSignal.timeout(5000) });
+  if (!health.ok) throw new Error(`funding service is not ready (${health.status})`);
+  const config = /** @type {{ networkId: string, bindingId: string, manifestSha256: string }} */ (
+    await health.json()
+  );
+  if (config.bindingId !== binding.id || config.manifestSha256 !== manifestPin)
+    throw new Error('funding service binding differs from the demo pin');
+  const response = await fetch(new URL('/v1/faucet/fund', endpoint), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(180_000),
+    body: JSON.stringify({
+      requestId: options.requestId,
+      networkId: config.networkId,
+      bindingId: config.bindingId,
+      manifestSha256: config.manifestSha256,
+      accountAddress: options.account,
+      color: options.color,
+      amount: options.amount,
+    }),
+  });
+  const result =
+    /** @type {{ error?: string, requestId?: string, txId?: string, creditedBalance?: string }} */ (
+      await response.json()
+    );
+  if (response.status !== 200)
+    throw new Error(`funding refused (${response.status}): ${result.error ?? 'unknown'}`);
+  if (result.requestId !== options.requestId || !result.txId || !result.creditedBalance)
+    throw new Error('funding service returned an invalid confirmation');
+  console.log(
+    `demo: ACC ${options.account} credited to ${result.creditedBalance}; transaction ${result.txId}`,
+  );
+  return result;
+}
+
+/** @param {import('node:child_process').ChildProcess} child */
 async function waitForPage(child) {
   for (let attempt = 0; attempt < 1800; attempt++) {
     if (child.exitCode !== null || child.signalCode !== null)
@@ -229,7 +341,10 @@ async function up(options) {
   let keys;
   /** @type {import('node:child_process').ChildProcess | undefined} */
   let prototype;
+  /** @type {import('node:child_process').ChildProcess | undefined} */
+  let funding;
   const cleanup = () => {
+    stopOwned(funding);
     stopOwned(prototype);
     stopOwned(keys);
   };
@@ -253,6 +368,12 @@ async function up(options) {
     const mainChild = spawnOwned('bash', [join(root, 'scripts/prototype-up.sh')], env);
     prototype = mainChild;
     await waitForPage(mainChild);
+    if (options.funding) {
+      console.log('demo: starting the dedicated ACC funding wallet');
+      funding = spawnOwned('pnpm', ['prototype:funding-service'], env);
+      await waitForFundingService(funding);
+      console.log(`demo: funding service ready at http://127.0.0.1:${fundingPort}`);
+    }
     console.log(`demo: ready at ${url}`);
     if (options.open) {
       const opener = process.platform === 'darwin' ? 'open' : 'xdg-open';
@@ -286,6 +407,7 @@ async function main() {
   }
   if (options.command === 'check') await check(options);
   else if (options.command === 'setup') prepare(options);
+  else if (options.command === 'fund') await fund(options);
   else await up(options);
 }
 

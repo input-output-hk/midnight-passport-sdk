@@ -24,6 +24,34 @@ Set up the stack as [`apps/README.md`](../../apps/README.md) describes: Nix, Doc
 If the chain was reset since the last run, delete `~/.midnight-passport/registry.json` and
 `registry.deployments.json` first.
 
+## Optional ACC funding demonstration
+
+To run the separate funding wallet with the demo, prepare the private token and asset policy as
+described in the [funding service guide](../../apps/passport-funding-service/README.md). The
+wallet must already hold the allowlisted non-native unshielded asset. Start the local demo with:
+
+```sh
+export PASSPORT_FUNDING_TOKEN_FILE=$HOME/.midnight-passport/funding-token
+export PASSPORT_FUNDING_ASSETS_FILE=$HOME/.midnight-passport/funding-assets.json
+nix develop -c node scripts/demo.mjs up --funding
+```
+
+After creating an ACC in the page, run this command in another terminal, using the account
+address from the evidence panel and the color from the asset policy. Keep the same UUID when
+retrying a request so the service returns its recorded result without paying twice.
+
+```sh
+nix develop -c node scripts/demo.mjs fund \
+  --account '<64-hex ACC address>' \
+  --color '<64-hex asset color>' \
+  --amount 10 \
+  --request-id '12345678-1234-4234-9234-123456789abc'
+```
+
+The command prints the transaction ID and confirmed ACC balance. The funding service listens on
+`127.0.0.1:8789` and stops with the demo. This operator command keeps the bearer token out of
+the browser; the page has no funding button yet.
+
 ## What to know before you start
 
 - **The passkey prompts.** Every prompt after create or open is pinned to the account's own
@@ -90,7 +118,7 @@ upgraded. The only authority left is the passkey."
 **Evidence.** A `create:passkey-created`, `create:deploying`, `create:deployed`,
 `create:activating`, `create:active` run, each with a timestamp, then a `created` step with the
 account address, the binding (`acc-s3r1.1`) and the ledger state: booted, authorisation nonce 0,
-device epoch 0, one device entry, spec version 2. The gap between `create:deploying` and
+device epoch 0, one device entry, spec version 3. The gap between `create:deploying` and
 `create:deployed` is the deploy time. The gap to `create:active` is the activation.
 
 ### 3. Rotate encryption key
