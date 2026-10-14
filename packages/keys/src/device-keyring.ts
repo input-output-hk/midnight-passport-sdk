@@ -9,6 +9,7 @@ import type {
   DeviceReader,
   LiveDeviceReader,
   PrfKeySource,
+  ShieldedCoin,
 } from '@input-output-hk/mn-passport-account/ports';
 import {
   openDeviceEnvelope,
@@ -18,9 +19,12 @@ import {
   type AccountSecrets,
 } from './device-envelope.js';
 import { READER_SECRET_DOMAIN } from './lace-recipe.js';
+import { openInboxCoin, sealInboxCoin } from './inbox-coin.js';
 
 const KEY_LENGTH = 32;
 const MAX_ENVELOPES = 4096;
+const MAX_PREVIOUS_SECRETS = 16;
+const MAX_INBOX_ENTRIES = 4096;
 const hex = (bytes: Uint8Array): string =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 const fromHex = (value: string): Uint8Array => {
@@ -42,10 +46,23 @@ const validReader = (reader: DeviceReader): void => {
 };
 
 /** The exposed methods that operate on device deliveries; other view operations join later. */
-export type DeviceKeyring = Pick<
+export interface DeviceKeyring extends Pick<
   AccountViewingKey,
   'readerPublicKey' | 'createKeys' | 'sealToDevice'
->;
+> {
+  /** Open coin descriptions with the live and up to 16 previous envelope secrets. */
+  openCoins(
+    networkId: string,
+    keyring: AccountKeyring,
+    entries: readonly Uint8Array[],
+  ): Promise<(ShieldedCoin | null)[]>;
+  /** Reseal opened coins to a new public enc_key; return null for non-coin entries. */
+  reencryptCoins(
+    networkId: string,
+    rotation: { readonly keyring: AccountKeyring; readonly to: Uint8Array },
+    entries: readonly Uint8Array[],
+  ): Promise<(Uint8Array | null)[]>;
+}
 
 /**
  * Lace-compatible account-key creation and delivery over a passkey source. A random ACC secret
@@ -75,34 +92,43 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
   const withKeyring = async <T>(
     readerSecret: Uint8Array,
     { encKey, envelopes }: AccountKeyring,
-    use: (secrets: AccountSecrets) => Promise<T>,
+    use: (opened: { live: AccountSecrets; all: readonly AccountSecrets[] }) => Promise<T>,
   ): Promise<T> => {
     if (encKey.length !== KEY_LENGTH) throw new Error('ACC enc_key must be 32 bytes');
     if (envelopes.length > MAX_ENVELOPES) throw new Error('too many device envelopes');
     let live: AccountSecrets | undefined;
+    const earlier: AccountSecrets[] = [];
+    const seen = new Set<string>();
     try {
       // Envelopes are newest first. The oldest matching envelope is the original delivery, before
       // a later party could append another envelope carrying the same secret with a false roster.
       for (const entry of envelopes) {
         const opened = await openDeviceEnvelope(readerSecret, entry);
         if (!opened) continue;
-        let matches = false;
+        let publicKeyHex: string;
         try {
-          matches = hex(x25519.getPublicKey(opened.secret)) === hex(encKey);
+          publicKeyHex = hex(x25519.getPublicKey(opened.secret));
         } catch {
           // A valid envelope may still carry a malformed secret; it is not a ledger key match.
-        }
-        if (!matches) {
           zero(opened);
+          continue;
+        }
+        if (publicKeyHex !== hex(encKey)) {
+          if (seen.has(publicKeyHex) || earlier.length >= MAX_PREVIOUS_SECRETS) zero(opened);
+          else {
+            seen.add(publicKeyHex);
+            earlier.push(opened);
+          }
           continue;
         }
         if (live) zero(live);
         live = opened;
       }
       if (!live) throw new Error('EncryptionKeyMismatch: no envelope opens the ledger enc_key');
-      return await use(live);
+      return await use({ live, all: [live, ...earlier] });
     } finally {
       if (live) zero(live);
+      for (const old of earlier) zero(old);
     }
   };
 
@@ -157,7 +183,7 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
       }
       if (removed && !rotateRoster)
         throw new Error('removing a device requires a fresh roster key');
-      return withKeyring(readerSecret, keyring, async (live) => {
+      return withKeyring(readerSecret, keyring, async ({ live }) => {
         const registered: DeviceReader[] = [];
         for (const entry of registrations) {
           const device = await openDeviceRegistration(live.rosterKey, entry);
@@ -199,10 +225,60 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
   ): Promise<DeviceDelivery> => {
     validReader(reader);
     return onNetwork(networkId, async (readerSecret) =>
-      withKeyring(readerSecret, keyring, async (live) => ({
+      withKeyring(readerSecret, keyring, async ({ live }) => ({
         envelope: await sealDeviceEnvelope(fromHex(reader.readerPublicKey), live),
         registration: await sealDeviceRegistration(live.rosterKey, reader),
       })),
+    );
+  };
+
+  const openCoin = async (
+    secrets: readonly AccountSecrets[],
+    entry: Uint8Array,
+  ): Promise<ShieldedCoin | null> => {
+    for (const { secret } of secrets) {
+      const coin = await openInboxCoin(secret, entry);
+      if (coin) return coin;
+    }
+    return null;
+  };
+
+  const checkedEntries = (entries: readonly Uint8Array[]): void => {
+    if (entries.length > MAX_INBOX_ENTRIES) throw new Error('too many inbox entries');
+  };
+
+  const openCoins: DeviceKeyring['openCoins'] = (networkId, keyring, entries) => {
+    checkedEntries(entries);
+    return onNetwork(networkId, async (readerSecret) =>
+      withKeyring(readerSecret, keyring, async ({ all }) => {
+        const coins: (ShieldedCoin | null)[] = [];
+        for (const entry of entries) coins.push(await openCoin(all, entry));
+        return coins;
+      }),
+    );
+  };
+
+  const reencryptCoins: DeviceKeyring['reencryptCoins'] = (networkId, rotation, entries) => {
+    checkedEntries(entries);
+    if (rotation.to.length !== KEY_LENGTH) throw new Error('new ACC enc_key must be 32 bytes');
+    return onNetwork(networkId, async (readerSecret) =>
+      withKeyring(readerSecret, rotation.keyring, async ({ all }) => {
+        const sealed: (Uint8Array | null)[] = [];
+        for (const entry of entries) {
+          const coin = await openCoin(all, entry);
+          if (!coin) {
+            sealed.push(null);
+            continue;
+          }
+          try {
+            sealed.push(await sealInboxCoin(rotation.to, coin));
+          } finally {
+            coin.nonce.fill(0);
+            coin.color.fill(0);
+          }
+        }
+        return sealed;
+      }),
     );
   };
 
@@ -210,5 +286,7 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
     readerPublicKey: (networkId) => onNetwork(networkId, async (_secret, publicKey) => publicKey),
     createKeys,
     sealToDevice,
+    openCoins,
+    reencryptCoins,
   };
 }
