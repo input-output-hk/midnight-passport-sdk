@@ -6,6 +6,9 @@
     "start": "../../experiments/acc-0.35/guard.sh && tsx src/main.ts",
     "test": "node --import tsx --test test/*.test.ts"
   },
+  "dependencies": {
+    "@input-output-hk/mn-passport-service": "workspace:*"
+  },
   "devDependencies": {
     "tsx": "4.23.15"
   }

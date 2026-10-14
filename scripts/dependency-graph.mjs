@@ -13,6 +13,7 @@ export const ALLOWED = {
   'adapter-signer-local': ['core'],
   'adapter-prover-remote': ['core'],
   account: ['protocol'],
+  service: [],
   keys: ['account'],
   'adapter-webauthn': ['account', 'keys'],
   'adapter-service': ['account', 'protocol'],

@@ -26,6 +26,9 @@
       "path": "./packages/account"
     },
     {
+      "path": "./packages/service"
+    },
+    {
       "path": "./packages/keys"
     },
     {

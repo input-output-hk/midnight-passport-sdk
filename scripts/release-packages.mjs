@@ -22,6 +22,7 @@ const expectedPublishable = new Set([
   'contract',
   'keys',
   'protocol',
+  'service',
 ]);
 /** @param {string} message @returns {never} */
 const fail = (message) => {
@@ -79,7 +80,7 @@ const packages = names.flatMap((directory) => {
   return [{ directory, path, data }];
 });
 if (packages.length !== expectedPublishable.size)
-  fail('the eight approved publishable packages are not all present');
+  fail('the approved publishable packages are not all present');
 const byName = new Map(packages.map((item) => [item.data.name, item]));
 for (const item of packages) {
   for (const name of Object.keys({ ...item.data.dependencies, ...item.data.peerDependencies })) {

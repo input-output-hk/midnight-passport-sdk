@@ -9,7 +9,7 @@ const root = resolve(import.meta.dirname, '..');
 const tarballs = join(root, 'release-tarballs');
 /** @type {{version: string, files: Array<{name: string, file: string}>}} */
 const manifest = JSON.parse(readFileSync(join(tarballs, 'manifest.json'), 'utf8'));
-if (manifest.version !== process.env.RELEASE_VERSION || manifest.files?.length !== 8)
+if (manifest.version !== process.env.RELEASE_VERSION || manifest.files?.length !== 9)
   throw new Error('release pack manifest is missing or has an unexpected version');
 const dependencies = Object.fromEntries(
   manifest.files.map(({ name, file }) => {
@@ -48,11 +48,14 @@ try {
        import * as binding from '@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1';
        import * as account from '@input-output-hk/mn-passport-account';
        import * as browser from '@input-output-hk/mn-passport-adapter-browser';
+       import * as service from '@input-output-hk/mn-passport-service';
        if (contract.BINDING_VERSION !== 'acc-s3r1.1' ||
            contract.SUPPORTED_BINDINGS.length !== 1 ||
            typeof binding.Contract !== 'function' ||
            typeof account.createPassportAccounts !== 'function' ||
-           typeof browser.createBrowserPassport !== 'function')
+           typeof browser.createBrowserPassport !== 'function' ||
+           typeof service.createServer !== 'function' ||
+           typeof service.chainRoute !== 'function')
          throw new Error('packed SDK exports are incomplete');
        const checked = contract.bindAccModule(binding);
        if (Object.keys(checked.pureCircuits).length !== 66)
