@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { laceAuthoriser, laceFeeSponsor } from './fixtures/lace-seams.mjs';
+import { laceAuthoriser, laceFeeSponsor, laceViewingKey } from './fixtures/lace-seams.mjs';
 
 /**
  * @typedef {import('../packages/account/dist/ports/index.js').Authoriser} Authoriser
@@ -13,6 +13,7 @@ import { laceAuthoriser, laceFeeSponsor } from './fixtures/lace-seams.mjs';
  * @typedef {import('../packages/account/dist/ports/index.js').AccLedgerView} AccLedgerView
  * @typedef {import('../packages/account/dist/ports/index.js').Chain} Chain
  * @typedef {import('../packages/account/dist/ports/index.js').EncryptionKeySource} EncryptionKeySource
+ * @typedef {import('../packages/account/dist/ports/index.js').AccountViewingKey} AccountViewingKey
  * @typedef {import('../packages/account/dist/ports/index.js').FeeSponsor} FeeSponsor
  * @typedef {import('../packages/account/dist/ports/index.js').NetworkConfig} NetworkConfig
  * @typedef {import('../packages/account/dist/ports/index.js').PassportPorts} PassportPorts
@@ -27,19 +28,62 @@ import { laceAuthoriser, laceFeeSponsor } from './fixtures/lace-seams.mjs';
  * @typedef {import('./fixtures/lace-seams.mjs').LacePassportEncryptionKey} LacePassportEncryptionKey
  * @typedef {import('./fixtures/lace-seams.mjs').LacePasskeyKeySource} LacePasskeyKeySource
  * @typedef {import('./fixtures/lace-seams.mjs').LacePassportNetworkConfig} LacePassportNetworkConfig
+ * @typedef {import('./fixtures/lace-seams.mjs').AccAddress} LaceAccAddress
+ * @typedef {import('./fixtures/lace-seams.mjs').UseCounter} LaceUseCounter
+ * @typedef {import('./fixtures/lace-seams.mjs').DeviceEpoch} LaceDeviceEpoch
  */
 
-test('a Lace-shaped PassportAuthoriser and FeeSponsor satisfy the ports by assignment', async () => {
+test('current Lace seams fit the SDK ports with an explicit key-session flow guard', async () => {
   const lace = laceAuthoriser();
   /** @type {Authoriser} */
-  const authoriser = lace;
+  // @ts-expect-error: current Lace KeySessionFlow does not include the SDK prototype's rotate-encryption-key kind
+  const directAuthoriser = lace;
+  /** @type {Authoriser} */
+  const authoriser = {
+    scheme: lace.scheme,
+    devicePublicKey: lace.devicePublicKey,
+    authorise: (request) =>
+      lace.authorise({
+        account: /** @type {LaceAccAddress} */ (request.account),
+        circuit: request.circuit,
+        args: request.args,
+        witnessValues: request.witnessValues,
+        authNonce: request.authNonce,
+        useCounter: /** @type {LaceUseCounter} */ (request.useCounter),
+      }),
+    deviceCommitments: async (account, epoch, counters) =>
+      lace.deviceCommitments
+        ? lace.deviceCommitments(
+            /** @type {LaceAccAddress} */ (account),
+            /** @type {LaceDeviceEpoch} */ (epoch),
+            counters.map((counter) => /** @type {LaceUseCounter} */ (counter)),
+          )
+        : Promise.all(
+            counters.map((counter) =>
+              lace.deviceCommitment(
+                /** @type {LaceAccAddress} */ (account),
+                /** @type {LaceDeviceEpoch} */ (epoch),
+                /** @type {LaceUseCounter} */ (counter),
+              ),
+            ),
+          ),
+    withKeySession: (operation, flow) => {
+      const kind = flow?.kind;
+      if (kind === 'rotate-encryption-key')
+        throw new Error('Lace needs an explicit consent descriptor for key rotation');
+      const laceFlow = kind
+        ? { kind, ...(flow?.commitmentHex ? { commitmentHex: flow.commitmentHex } : {}) }
+        : undefined;
+      return lace.withKeySession ? lace.withKeySession(operation, laceFlow) : operation();
+    },
+  };
   const laceSponsor = laceFeeSponsor();
   /** @type {FeeSponsor} */
   const sponsor = laceSponsor;
   /** @type {LacePassportEncryptionKey} */
-  const laceKey = { publicKey: async () => new Uint8Array(32) };
-  /** @type {EncryptionKeySource} */
-  const encryptionKey = laceKey;
+  const laceKey = laceViewingKey();
+  /** @type {AccountViewingKey} */
+  const viewingKey = laceKey;
   /** @type {LacePasskeyKeySource} */
   const laceSource = {
     withSession: (operation) => operation(),
@@ -74,9 +118,32 @@ test('a Lace-shaped PassportAuthoriser and FeeSponsor satisfy the ports by assig
   assert.deepEqual(await authoriser.deviceCommitments?.('cd', 0n, [0n, 1n]), ['ab', 'ab']);
   assert.equal(await authoriser.withKeySession?.(async () => 7, { kind: 'sign-in' }), 7);
   assert.deepEqual(await sponsor.balanceAndSign(Uint8Array.of(1)), Uint8Array.of(1, 9));
-  assert.equal((await encryptionKey.publicKey('undeployed')).length, 32);
+  assert.equal((await viewingKey.readerPublicKey('undeployed')).length, 32);
+  assert.equal(
+    (await viewingKey.createKeys('undeployed', { devicePublicKey: 'ab' })).encKey.length,
+    32,
+  );
   assert.equal(await prf.withSession(async () => 'one prompt'), 'one prompt');
   assert.equal(network.bindingId, 'acc-test');
+  assert.ok(directAuthoriser);
+  if (!authoriser.withKeySession) throw new Error('test adapter has no key session');
+  assert.throws(
+    () => authoriser.withKeySession?.(async () => 1, { kind: 'rotate-encryption-key' }),
+    /explicit consent descriptor/,
+  );
+});
+
+test('current Lace viewing and prover seams are distinct from prototype key and transaction prover ports', () => {
+  const laceKey = laceViewingKey();
+  /** @type {EncryptionKeySource} */
+  // @ts-expect-error: the current Lace viewing key has readerPublicKey and sealed envelopes, not publicKey
+  const prototypeKey = laceKey;
+  /** @type {import('./fixtures/lace-seams.mjs').LacePassportProver} */
+  const laceProver = { prove: async (bytes) => bytes, check: async (bytes) => bytes };
+  /** @type {Prover} */
+  // @ts-expect-error: Lace proves circuit preimages; the SDK port proves a complete transaction
+  const transactionProver = laceProver;
+  assert.ok(prototypeKey && transactionProver);
 });
 
 test('the port types refuse what does not fit', () => {

@@ -1,7 +1,8 @@
 // The ports of the account core (design §2.1, D-2, D-4), exported as `./ports`: types only, so an
 // adapter or a host gets the interfaces without the flows. Where a port means what a lace-platform
-// seam means, it takes that seam's member names and a superset of its shapes, so a lace-platform
-// object fits by assignment. Members use method syntax, so a host's tagged parameter types fit.
+// seam means, it takes that seam's member names and compatible shapes where possible. The current
+// Lace authoriser still needs a key-session flow adapter; see docs/compatibility.md. Members use
+// method syntax so a host's tagged parameter types can fit where their flow contracts agree.
 import type {
   AuthScheme,
   FlowOptions,
@@ -130,7 +131,7 @@ export interface CredentialPort {
   }>;
 }
 
-/** lace-platform's `PassportEncryptionKey`: the X25519 public key, the ACC's `enc_key`. */
+/** Prototype X25519 public-key source. Lace's current `PassportEncryptionKey` fits `AccountViewingKey`. */
 export interface EncryptionKeySource {
   publicKey(networkId: string): Promise<Uint8Array>;
 }

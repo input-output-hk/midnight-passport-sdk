@@ -1,6 +1,6 @@
 # Compatibility matrix
 
-> **Status:** live · updated 2026/10/14. Releases are lockstep across the
+> **Status:** live · updated 2026/10/15. Releases are lockstep across the
 > `@input-output-hk/mn-passport-*` packages. The binding data is pinned in
 > `packages/contract/acc-binding-v2.generated.json` and the generated registry.
 
@@ -24,6 +24,35 @@ Compact runtime.
 
 The local demo service is not a published SDK package. The service API constant
 names the versioned client wire types; the demo still uses its prototype routes.
+
+## Lace consumer seam check
+
+The fixture in `tests/fixtures/lace-seams.mjs` tracks
+[lace-platform PR #2845](https://github.com/input-output-hk/lace-platform/pull/2845)
+at head `05e1e3d641a329d20c8272f6405e54ea499d86a1` (2026/10/15), from
+`packages/contract/passport/src/types.ts`. `tests/account-ports.test.mjs` checks
+the structural TypeScript assignments. This is a seam check against the PR's
+types, not a packed-package Lace build or live transaction test.
+
+| Lace seam | SDK port | Current result |
+| --- | --- | --- |
+| `FeeSponsor.balanceAndSign` | `FeeSponsor` | Direct structural assignment |
+| `PassportEncryptionKey` | `AccountViewingKey` | Direct structural assignment for reader, keyring, inbox, and grant operations |
+| `PassportNetworkConfig` | `NetworkConfig` | Lace network fields fit; the SDK caller must supply its additional ACC binding and manifest pins |
+| `PassportAuthoriser` | `Authoriser` | Needs a boundary adapter for branded account/counter/epoch values and key-session flows |
+| `PassportProver.prove/check` | transaction `Prover.proveTx` | Different abstraction: Lace proves a circuit preimage; a transaction pipeline must wrap it |
+
+The current Lace `KeySessionFlow.kind` omits `rotate-encryption-key`, which the
+SDK's owner flow requests. The test adapter rejects this operation until Lace and
+the SDK agree on its consent descriptor. Other Lace flow kinds include grants
+and holdings, which the SDK's current owner API has not yet implemented. This
+is an integration gap, not permission to run rotation without a key session.
+
+The older SDK `EncryptionKeySource.publicKey` port is a prototype key source;
+Lace's `PassportEncryptionKey` matches the newer `AccountViewingKey` instead.
+The next release must validate a packed SDK consumer against Lace's current
+types and complete the required owner/circuit flows before claiming full Lace
+compatibility.
 
 ## Axes and releases
 
@@ -54,6 +83,6 @@ The account API and the service wire types are versioned separately.
 |---|---|---|---|---|---|---|
 | `0.1.0-rc1` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 
-The release row records the package API and the pinned grants binding. The
-service library and the JubJub authoriser remain future work; RC1 supports the
-P-256 passkey path exercised by the demo.
+The release row records the RC1 package API and pinned grants binding. The
+service library and JubJub authoriser were not part of RC1; development toward
+the next release is tracked separately from this published release row.
