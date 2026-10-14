@@ -20,7 +20,7 @@ const account = await passport.createAccount({
 const state = await account.state();
 ```
 
-`retireAuthority` is required. `true` removes the maintenance authority after the last deployment wave and cannot be undone. A host must make that choice explicitly. The prototype currently accepts only `p256-webauthn`; the types describe future `jubjub-schnorr` and `k256-ecdsa` arms as well.
+`retireAuthority` is required. `true` removes the maintenance authority after the last deployment wave and cannot be undone. A host must make that choice explicitly. The account connector supports P-256 WebAuthn and JubJub Schnorr creation and opening. The typed `k256-ecdsa` arm is not implemented.
 
 ## Flow methods
 
@@ -29,7 +29,7 @@ const state = await account.state();
 | `createAccount({ userName, retireAuthority, signal?, onEvent? })` | `PassportAccount`          | Creates a passkey, deploys the ACC, records a directory hint and activates the first device.                                   |
 | `openAccount({ signal?, onEvent? }?)`                             | `PassportAccount`          | Finds a registered account with a passkey, verifies ownership against the chain and reopens it.                                |
 | `account.state()`                                                 | `PassportAccountState`     | Reads `booted`, `authNonce`, `deviceEpoch`, `entryCount` and `specVersion`. `entryCount` counts entries, not distinct devices. |
-| `account.rotateEncryptionKey(newKey, options?)`                   | `{ txHash, blockHeight? }` | Authorises a gated call with the account passkey. The prototype caller supplies the new 32-byte key.                           |
+| `account.rotateEncryptionKey(newKey, options?)`                   | `{ txHash, blockHeight? }` | P-256 only: authorises a gated call with the account passkey. The caller supplies the new 32-byte key. JubJub rotation is a release gate. |
 
 The account object also exposes `address`, `networkId`, `bindingId`, `scheme` and, for passkeys, `credentialId`. `apiVersion` is currently `1.0.0-pre.0`. See [protocol `api.ts`](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/protocol/src/api.ts) and [account `connector.ts`](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/account/src/connector.ts).
 
@@ -37,7 +37,7 @@ The account object also exposes `address`, `networkId`, `bindingId`, `scheme` an
 
 `PassportPorts` injects a pinned `network` and `binding`, `credentials`, `authoriser`, `encryptionKey`, `chain` and `deployer`. `directory`, `records` and `random` are optional in the current type. Chain-facing ports include `Prover.proveTx`, `FeeSponsor.balanceAndSign` and `Submitter.submit`. A host implements these contracts instead of putting browser, service or Midnight dependencies into the account flow. The [port source](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/account/src/ports/index.ts) is the detailed type reference; [`account/testing`](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/packages/account/src/testing) supplies fakes and contract suites.
 
-`Chain.readAccount(address, { includeInbox: true })` also returns the ACC inbox values in ledger-index order, capped at 4096 entries, for flows that need to open sealed account keys. The default read omits the inbox so the P-256 state path does not fetch every entry. The JubJub create/open flow will request this view as part of its viewing-key validation.
+`Chain.readAccount(address, { includeInbox: true })` also returns the ACC inbox values in ledger-index order, capped at 4096 entries, for flows that need to open sealed account keys. The default read omits the inbox so the P-256 state path does not fetch every entry. JubJub create/open requests this view to validate the viewing key.
 
 A deployed JubJub `AccountHint` may carry up to 16 sealed 192-byte `keyEntries` until they have been appended to the ACC inbox. They contain no raw viewing secret. A directory response is an untrusted pointer: the owner flow must match its credential and device key to the selected passkey, check the on-chain device entry, and open an envelope against the ledger's `enc_key` before completing or accepting it.
 
@@ -47,7 +47,7 @@ A deployed JubJub `AccountHint` may carry up to 16 sealed 192-byte `keyEntries` 
 
 The JubJub authoriser also supplies `devicePublicKeyHex()`, a validated compressed point for the device registration. The WebAuthn credential adapter can select a discoverable passkey for a pinned PRF ceremony before a P-256 key is chosen; a JubJub flow verifies the resulting device key against the on-chain entry and the directory hint.
 
-The current `createPassportAccounts` connector does **not** call `AccountViewingKey` yet; its `encryptionKey` port is the P-256 prototype's deterministic key source. The JubJub create/open/rotate path and Lace consumer validation remain release gates. See [key roles and recovery]({{ '/keys/#account-viewing-secrets-and-recovery' | relative_url }}).
+The JubJub create/open path uses `AccountViewingKey` to create a random account secret, seal it to the passkey-derived reader, and validate it against the live ACC encryption key. It persists sealed entries before activation so `openAccount` can resume an interrupted create. JubJub rotation, grants and Lace consumer validation remain release gates. The `encryptionKey` port remains the P-256 prototype's deterministic key source. See [key roles and recovery]({{ '/keys/#account-viewing-secrets-and-recovery' | relative_url }}).
 
 ## Events and cancellation
 
@@ -62,7 +62,7 @@ Catch `PassportConnectorError` and use its `code`, `retryable` and `step` fields
 ## Browser composition
 
 `createBrowserPassport(config)` from `mn-passport-adapter-browser` supplies WebAuthn credentials,
-the P-256 authoriser and the Lace encryption-key recipe. The host passes a pinned `NetworkConfig`,
+the P-256 authoriser by default, or the JubJub authoriser and device keyring with `arm: 'jubjub'`. The host passes a pinned `NetworkConfig`,
 the ACC binding, prover, sponsor, submitter, deployer and directory ports. The Midnight call
 pipeline loads on the first chain operation; its network id is set for each read and call. The
 `sponsorKeys` field carries the fee payer's public coin and encryption keys required by midnight-js.

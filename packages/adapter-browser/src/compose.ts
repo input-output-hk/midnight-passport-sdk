@@ -2,20 +2,28 @@ import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
 import type {
   AccountDirectory,
   AccountRecordStore,
+  Authoriser,
   Deployer,
   FeeSponsor,
   Lazy,
+  JubjubPureCircuits,
   NetworkConfig,
   Prover,
   Submitter,
 } from '@input-output-hk/mn-passport-account/ports';
 import { webauthnPasskey } from '@input-output-hk/mn-passport-adapter-webauthn';
-import { recipeEncryptionKey } from '@input-output-hk/mn-passport-keys';
+import {
+  recipeDeviceKeyring,
+  recipeEncryptionKey,
+  recipeJubjubAuthoriser,
+} from '@input-output-hk/mn-passport-keys';
 import type { PassportConnectorAPI } from '@input-output-hk/mn-passport-protocol';
 import type { MidnightBinding } from '@input-output-hk/mn-passport-adapter-midnight-js';
 
 /** A browser host supplies policy and network ports; this package supplies the browser key source. */
 export interface BrowserPassportConfig {
+  /** The authorisation arm this browser host offers; P-256 remains the default. */
+  readonly arm?: 'p256' | 'jubjub';
   readonly network: NetworkConfig;
   readonly binding: Lazy<MidnightBinding>;
   readonly passkey: {
@@ -38,12 +46,36 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
   const passkey = webauthnPasskey(config.passkey);
   const binding = async (): Promise<MidnightBinding> =>
     typeof config.binding === 'function' ? config.binding() : config.binding;
+  const jubjub = async () => {
+    const pure = (await binding()).pureCircuits;
+    for (const name of [
+      'compute_public_point_with_jubjub',
+      'derive_device_entry_with_jubjub',
+      'challenge_append_inbox_with_jubjub',
+    ] as const) {
+      if (typeof pure[name] !== 'function') throw new Error(`ACC binding lacks ${name}`);
+    }
+    return recipeJubjubAuthoriser(passkey.prf, pure as typeof pure & JubjubPureCircuits);
+  };
+  const authoriser: Authoriser =
+    config.arm === 'jubjub'
+      ? {
+          scheme: 'jubjub-schnorr',
+          devicePublicKey: async () => (await jubjub()).devicePublicKey(),
+          devicePublicKeyHex: async () => (await jubjub()).devicePublicKeyHex(),
+          deviceCommitments: async (account, epoch, counters) =>
+            (await jubjub()).deviceCommitments(account, epoch, counters),
+          authorise: async (request) => (await jubjub()).authorise(request),
+          withKeySession: (operation) => passkey.prf.withSession(operation),
+        }
+      : passkey.p256;
   return createPassportAccounts({
     network: config.network,
     binding,
     credentials: passkey.credentials,
-    authoriser: passkey.p256,
+    authoriser,
     encryptionKey: recipeEncryptionKey(passkey.prf),
+    ...(config.arm === 'jubjub' && { viewingKey: recipeDeviceKeyring(passkey.prf) }),
     chain: async () => {
       const [{ createMidnightChain }, module] = await Promise.all([
         import('@input-output-hk/mn-passport-adapter-midnight-js'),
