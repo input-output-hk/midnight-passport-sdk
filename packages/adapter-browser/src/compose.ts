@@ -10,6 +10,7 @@ import type {
   NetworkConfig,
   Prover,
   Submitter,
+  VerifiedHoldingSource,
 } from '@input-output-hk/mn-passport-account/ports';
 import { webauthnPasskey } from '@input-output-hk/mn-passport-adapter-webauthn';
 import {
@@ -37,6 +38,7 @@ export interface BrowserPassportConfig {
   readonly submitter: Submitter;
   readonly deployer: Deployer;
   readonly directory: AccountDirectory;
+  readonly holdings?: VerifiedHoldingSource;
   readonly records?: AccountRecordStore;
   readonly random?: (length: number) => Uint8Array;
 }
@@ -92,6 +94,7 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
     },
     deployer: config.deployer,
     directory: config.directory,
+    ...(config.holdings && { holdings: config.holdings }),
     ...(config.records && { records: config.records }),
     ...(config.random && { random: config.random }),
   });

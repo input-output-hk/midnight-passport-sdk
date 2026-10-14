@@ -4,6 +4,7 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 import { createPassportAccounts } from '../packages/account/dist/index.js';
 import { recipeDeviceKeyring, recipeJubjubAuthoriser } from '../packages/keys/dist/index.js';
+import { sealInboxCoin } from '../packages/keys/dist/inbox-coin.js';
 
 const address = 'ab'.repeat(32);
 const credentialId = Uint8Array.of(1, 2, 3);
@@ -26,6 +27,10 @@ function world() {
   let boot = new Uint8Array(32);
   let failActivation = false;
   let failSecondAppend = false;
+  let tamperKeyAfterNextAppend = false;
+  let addInboxAfterNextAppend = false;
+  /** @type {number[]} */
+  let selectedHoldings = [];
   /** @type {import('../packages/account/dist/ports/index.js').PrfKeySource} */
   const source = {
     withSession: async (operation) => operation(),
@@ -42,7 +47,7 @@ function world() {
   const chain = {
     async readAccount(
       /** @type {string} */ at,
-      /** @type {{includeInbox?: boolean}} */ options = {},
+      /** @type {{includeInbox?: boolean, includeDevices?: boolean}} */ options = {},
     ) {
       if (at !== address) return undefined;
       const pk = await authoriser.devicePublicKey();
@@ -60,6 +65,7 @@ function world() {
         specVersion: 2,
         encKey,
         ...(options.includeInbox && { inboxEntries: [...inbox] }),
+        ...(options.includeDevices && { deviceEntries: booted ? [entry] : [] }),
         hasEntry: (/** @type {Uint8Array} */ candidate) => booted && hex(candidate) === hex(entry),
       };
     },
@@ -87,6 +93,19 @@ function world() {
         }
         assert.equal(request.args[2], counter);
         inbox.push(/** @type {Uint8Array} */ (request.args[0]));
+        counter++;
+        nonce++;
+        if (tamperKeyAfterNextAppend) {
+          tamperKeyAfterNextAppend = false;
+          encKey = new Uint8Array(32).fill(9);
+        }
+        if (addInboxAfterNextAppend) {
+          addInboxAfterNextAppend = false;
+          inbox.push(new Uint8Array(192).fill(8));
+        }
+      } else if (request.circuit === 'rotate_enc_key_with_jubjub') {
+        assert.equal(request.args[2], counter);
+        encKey = /** @type {Uint8Array} */ (request.args[0]);
         counter++;
         nonce++;
       } else throw new Error(`unexpected circuit ${request.circuit}`);
@@ -119,6 +138,7 @@ function world() {
     authoriser,
     encryptionKey: { publicKey: async () => new Uint8Array(32) },
     viewingKey: recipeDeviceKeyring(source),
+    holdings: { selectHeldEntries: async () => selectedHoldings },
     chain,
     deployer: {
       async deploy(
@@ -141,8 +161,17 @@ function world() {
     hint: () => hint,
     setHint: (/** @type {typeof hint} */ value) => (hint = value),
     setCounter: (/** @type {bigint} */ value) => (counter = value),
+    setHeldIndices: (/** @type {number[]} */ value) => (selectedHoldings = value),
+    encKey: () => encKey,
+    viewingKey: ports.viewingKey,
+    withoutHoldings: () => {
+      const { holdings: _holdings, ...without } = ports;
+      return createPassportAccounts(without);
+    },
     interruptActivation: () => (failActivation = true),
     interruptSecondAppend: () => (failSecondAppend = true),
+    tamperKeyAfterNextAppend: () => (tamperKeyAfterNextAppend = true),
+    addInboxAfterNextAppend: () => (addInboxAfterNextAppend = true),
   };
 }
 
@@ -208,4 +237,87 @@ test('JubJub open refuses a directory key mismatch and a missing valid envelope'
   w.setHint({ ...good, keyEntries: [badEnvelope, registration] });
   w.inbox.splice(0);
   await assert.rejects(w.accounts.openAccount(), { code: 'EncryptionKeyMismatch' });
+});
+
+test('JubJub rotation seals a fresh key before updating the ACC and stays reopenable', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const before = hex(w.encKey());
+  assert.ok(account.rotateViewingKey);
+  const result = await account.rotateViewingKey();
+  assert.equal(result.txHash, 'tx-5');
+  assert.deepEqual(result.droppedDeviceEntries, []);
+  assert.notEqual(hex(w.encKey()), before);
+  assert.deepEqual(w.calls.slice(3), ['append_inbox_with_jubjub', 'rotate_enc_key_with_jubjub']);
+  assert.equal((await w.accounts.openAccount()).address, address);
+});
+
+test('JubJub rotation refuses unverified holdings and a missing custody port before calls', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  assert.ok(account.rotateViewingKey);
+  w.setHeldIndices([0]);
+  await assert.rejects(account.rotateViewingKey(), { code: 'InternalError' });
+  assert.equal(w.calls.length, 3);
+  const without = await w.withoutHoldings().openAccount();
+  assert.ok(without.rotateViewingKey);
+  await assert.rejects(without.rotateViewingKey(), { code: 'BindingUnsupported' });
+  assert.equal(w.calls.length, 3);
+});
+
+test('JubJub rotation refuses a concurrent ACC key change before its key switch', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  assert.ok(account.rotateViewingKey);
+  w.tamperKeyAfterNextAppend();
+  await assert.rejects(account.rotateViewingKey(), { code: 'EncryptionKeyMismatch' });
+  assert.equal(w.calls.at(-1), 'append_inbox_with_jubjub');
+});
+
+test('JubJub rotation re-encrypts a verified holding under the new ACC key', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const coin = { nonce: new Uint8Array(32).fill(4), color: new Uint8Array(32).fill(5), value: 7n };
+  w.inbox.push(await sealInboxCoin(w.encKey(), coin));
+  w.setHeldIndices([2]);
+  assert.ok(account.rotateViewingKey);
+  await account.rotateViewingKey();
+  assert.deepEqual(w.calls.slice(3), [
+    'append_inbox_with_jubjub',
+    'rotate_enc_key_with_jubjub',
+    'append_inbox_with_jubjub',
+  ]);
+  const newest = w.inbox.at(-1);
+  assert.ok(newest);
+  const [opened] = await w.viewingKey.openInbox(
+    'undeployed',
+    { account: address, encKey: w.encKey(), envelopes: [...w.inbox].reverse() },
+    [newest],
+  );
+  assert.deepEqual(opened, { kind: 'coin', coin });
+});
+
+test('JubJub rotation refuses an inbox entry that lands while new keys are delivered', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  assert.ok(account.rotateViewingKey);
+  w.addInboxAfterNextAppend();
+  await assert.rejects(account.rotateViewingKey(), { code: 'InternalError' });
+  assert.equal(w.calls.at(-1), 'append_inbox_with_jubjub');
+});
+
+test('JubJub rotation refuses grant records until grantee resealing is supported', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const records = await w.viewingKey.sealGrant('undeployed', address, {
+    grantId: 'ab'.repeat(32),
+    slot: 1,
+    scopeSalt: 'bc'.repeat(32),
+    granteePublicKey: 'cd'.repeat(32),
+    object: { color: 'ef'.repeat(32), recipient: { kind: 'any' }, maxCoinValue: '1' },
+  });
+  w.inbox.push(...records);
+  assert.ok(account.rotateViewingKey);
+  await assert.rejects(account.rotateViewingKey(), { code: 'BindingUnsupported' });
+  assert.equal(w.calls.length, 3);
 });

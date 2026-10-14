@@ -244,6 +244,18 @@ export interface AccountViewingKey {
   ): Promise<{ readonly seal: Uint8Array; readonly entry: Uint8Array }>;
 }
 
+/**
+ * A host's chain-backed custody walk. It confirms which opened coin descriptions correspond to
+ * distinct outputs actually received by the ACC; inbox ciphertext alone is not proof of a holding.
+ */
+export interface VerifiedHoldingSource {
+  selectHeldEntries(
+    account: string,
+    entries: readonly Uint8Array[],
+    opened: readonly (OpenedInboxEntry | null)[],
+  ): Promise<readonly number[]>;
+}
+
 export interface CallRequest extends FlowOptions {
   readonly address: string;
   readonly circuit: string;
@@ -355,6 +367,7 @@ export interface PassportPorts {
   readonly encryptionKey: EncryptionKeySource;
   /** Random ACC viewing secret behind sealed device envelopes, required by the JubJub arm. */
   readonly viewingKey?: AccountViewingKey;
+  readonly holdings?: VerifiedHoldingSource;
   readonly chain: Lazy<Chain>;
   readonly deployer: Deployer;
   readonly directory?: AccountDirectory;

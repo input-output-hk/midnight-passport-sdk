@@ -7,7 +7,7 @@ import {
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow, type Flow } from './flow.js';
-import { JUBJUB_READER_SCAN_LIMIT } from './jubjub-readers.js';
+import { JUBJUB_READER_SCAN_LIMIT, resolveJubjubReaders } from './jubjub-readers.js';
 import type {
   AccLedgerView,
   AccountHint,
@@ -62,6 +62,7 @@ function requirePure(value: unknown): JubjubPureCircuits {
     'derive_boot_commitment_with_jubjub',
     'derive_device_entry_with_jubjub',
     'challenge_append_inbox_with_jubjub',
+    'challenge_rotate_enc_key_with_jubjub',
   ] as const) {
     if (typeof pure[name] !== 'function')
       throw new PassportConnectorError('BindingUnsupported', `ACC binding lacks ${name}.`);
@@ -94,11 +95,18 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       throw flow.fail(error);
     }
   };
-  const read = async (record: JubjubHint): Promise<AccLedgerView> => {
-    const view = await (await readChain()).readAccount(record.address, { includeInbox: true });
+  const read = async (record: JubjubHint, includeDevices = false): Promise<AccLedgerView> => {
+    const view = await (
+      await readChain()
+    ).readAccount(record.address, {
+      includeInbox: true,
+      ...(includeDevices && { includeDevices: true }),
+    });
     if (!view) throw new PassportConnectorError('AccountNotFound', `No ACC at ${record.address}.`);
     if (!view.encKey || !view.inboxEntries)
       throw new PassportConnectorError('BindingUnsupported', 'The chain port omits the ACC inbox.');
+    if (includeDevices && !view.deviceEntries)
+      throw new PassportConnectorError('BindingUnsupported', 'The chain port omits live devices.');
     return view;
   };
   const awaitDeployed = async (record: JubjubHint): Promise<AccLedgerView> => {
@@ -243,10 +251,219 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     }
     await keyring(record, view, false);
     const active: JubjubHint = { ...record, status: 'active' };
+    recordPure.set(active, pure);
     if (pending)
       await flow.step('directory.write', () => directory.put(networkId, active), 'always');
     return account(active);
   };
+  const rotateViewingKey = (record: JubjubHint, options: FlowOptions = {}) =>
+    run(options, async (flow) => {
+      const holdings = ports.holdings;
+      const reencrypt = viewingKey.reencryptInbox;
+      const decode = viewingKey.decodeDevicePublicKey;
+      if (!holdings || !reencrypt || !decode)
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'JubJub rotation needs verified holdings and the full viewing-key port.',
+        );
+      return authoriser.withKeySession!(
+        async () => {
+          const pure = requirePure((await readBinding()).pureCircuits);
+          recordPure.set(record, pure);
+          let view = await flow.step('chain.read', () => read(record, true));
+          if (!view.booted || record.status !== 'active')
+            throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
+          const ownCounter = findCounter(record, view);
+          if (ownCounter === undefined)
+            throw new PassportConnectorError(
+              'AccountNotFound',
+              'This device is not live on the ACC.',
+            );
+          await keyring(record, view, false);
+          const oldEntries = [...view.inboxEntries!];
+          const oldKeyring = {
+            account: record.address,
+            encKey: view.encKey!,
+            envelopes: [...oldEntries].reverse(),
+          };
+          const opened = await viewingKey.openInbox(networkId, oldKeyring, oldEntries);
+          if (opened.length !== oldEntries.length)
+            throw new PassportConnectorError(
+              'InternalError',
+              'The viewing key skipped inbox entries.',
+            );
+          // A read grantee needs a fresh seal too. The grant-aware flow will handle this later.
+          if (opened.some((entry) => entry?.kind === 'grant'))
+            throw new PassportConnectorError(
+              'BindingUnsupported',
+              'An ACC with read grants needs grant-aware rotation.',
+            );
+          const liveEntries = view.deviceEntries!;
+          const self = { bytes: fromHex(record.address) };
+          const ownEntry = pure.derive_device_entry_with_jubjub(
+            self,
+            record.publicKey,
+            view.deviceEpoch,
+            ownCounter,
+          );
+          if (!liveEntries.some((entry) => equal(entry, ownEntry)))
+            throw new PassportConnectorError(
+              'InternalError',
+              'The ledger device set is inconsistent.',
+            );
+          const reader = toHex(await viewingKey.readerPublicKey(networkId));
+          const device = await authoriser.devicePublicKeyHex!();
+          const roster = resolveJubjubReaders({
+            account: record.address,
+            epoch: view.deviceEpoch,
+            registered: opened.flatMap((entry) => (entry?.kind === 'device' ? [entry.device] : [])),
+            liveEntries,
+            pure,
+            decodeDevicePublicKey: decode,
+          });
+          const held = await holdings.selectHeldEntries(record.address, oldEntries, opened);
+          const seen = new Set<number>();
+          const holdingEntries: Uint8Array[] = [];
+          for (const index of held) {
+            if (
+              !Number.isSafeInteger(index) ||
+              index < 0 ||
+              index >= oldEntries.length ||
+              seen.has(index) ||
+              opened[index]?.kind !== 'coin'
+            )
+              throw new PassportConnectorError('InternalError', 'Invalid verified holding index.');
+            seen.add(index);
+            holdingEntries.push(oldEntries[index]!);
+          }
+          const registrations = oldEntries.filter(
+            (entry) => entry.length === 192 && entry[0] === 0xd2 && entry[1] === 1,
+          );
+          const keys = await viewingKey.createKeys(networkId, {
+            devicePublicKey: device,
+            keyring: oldKeyring,
+            registrations,
+            readers: roster.readers.filter((item) => item.readerPublicKey !== reader),
+          });
+          const reencrypted = await reencrypt(
+            networkId,
+            { keyring: oldKeyring, to: keys.encKey },
+            holdingEntries,
+          );
+          if (
+            reencrypted.length !== holdingEntries.length ||
+            reencrypted.some((entry) => !(entry instanceof Uint8Array))
+          )
+            throw new PassportConnectorError(
+              'InternalError',
+              'A verified holding could not be sealed.',
+            );
+          for (const entry of [...keys.envelopes, ...keys.registrations])
+            view = await append(flow, record, entry, view);
+          view = await read(record, true);
+          if (!equal(view.encKey!, oldKeyring.encKey))
+            throw new PassportConnectorError(
+              'EncryptionKeyMismatch',
+              'The ACC key changed during rotation.',
+            );
+          const counter = findCounter(record, view);
+          if (counter === undefined)
+            throw new PassportConnectorError('AccountNotFound', 'This device is no longer live.');
+          const latestOwnEntry = pure.derive_device_entry_with_jubjub(
+            self,
+            record.publicKey,
+            view.deviceEpoch,
+            counter,
+          );
+          const baseline = liveEntries
+            .filter((entry) => !equal(entry, ownEntry))
+            .map(toHex)
+            .sort();
+          const current = view
+            .deviceEntries!.filter((entry) => !equal(entry, latestOwnEntry))
+            .map(toHex)
+            .sort();
+          if (baseline.length !== current.length || baseline.some((item, i) => item !== current[i]))
+            throw new PassportConnectorError('InternalError', 'The live device roster changed.');
+          const expected = new Map<string, number>();
+          for (const entry of [...oldEntries, ...keys.envelopes, ...keys.registrations]) {
+            const value = toHex(entry);
+            expected.set(value, (expected.get(value) ?? 0) + 1);
+          }
+          for (const entry of view.inboxEntries!) {
+            const value = toHex(entry);
+            const remaining = expected.get(value) ?? 0;
+            if (!remaining)
+              throw new PassportConnectorError(
+                'InternalError',
+                'The ACC inbox changed during rotation.',
+              );
+            expected.set(value, remaining - 1);
+          }
+          if ([...expected.values()].some((remaining) => remaining !== 0))
+            throw new PassportConnectorError(
+              'InternalError',
+              'The ACC inbox lost an expected entry.',
+            );
+          const nonce = view.authNonce;
+          const circuit = 'rotate_enc_key_with_jubjub';
+          const signed = await flow.step('passkey.sign', () =>
+            authoriser.authorise({
+              account: record.address,
+              circuit,
+              args: [keys.encKey],
+              witnessValues: [],
+              authNonce: nonce,
+              useCounter: counter,
+              challenge: (sigR, grindNonce) =>
+                pure.challenge_rotate_enc_key_with_jubjub(
+                  self,
+                  sigR,
+                  record.publicKey,
+                  keys.encKey,
+                  nonce,
+                  grindNonce,
+                ),
+            }),
+          );
+          if (signed.scheme !== 'jubjub-schnorr')
+            throw new PassportConnectorError(
+              'InternalError',
+              'The authoriser returned another arm.',
+            );
+          flow.checkpoint();
+          const tx = await (
+            await readChain()
+          ).call({
+            address: record.address,
+            circuit,
+            args: [
+              keys.encKey,
+              record.publicKey,
+              counter,
+              signed.sigR,
+              signed.sigS,
+              signed.grindNonce,
+            ],
+            ...flow.ports,
+          });
+          view = await advanced(record, nonce);
+          if (!equal(view.encKey!, keys.encKey))
+            throw new PassportConnectorError(
+              'EncryptionKeyMismatch',
+              'The rotated ACC key did not land.',
+            );
+          for (const entry of reencrypted) view = await append(flow, record, entry!, view);
+          return {
+            ...tx,
+            droppedDeviceEntries: roster.dropped
+              .filter((entry) => !equal(entry, ownEntry))
+              .map(toHex),
+          };
+        },
+        { kind: 'rotate-encryption-key' },
+      );
+    });
   const account = (record: JubjubHint): PassportAccount => ({
     address: record.address,
     networkId,
@@ -269,6 +486,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
         'JubJub rotation requires sealed-key and inbox re-encryption flow.',
       );
     },
+    rotateViewingKey: (options) => rotateViewingKey(record, options),
   });
 
   return {

@@ -43,6 +43,11 @@ export interface PassportAccountState {
   readonly specVersion: number;
 }
 
+export interface ViewingKeyRotationResult extends PassportTxResult {
+  /** Live device commitments that lacked a unique, usable reader registration. */
+  readonly droppedDeviceEntries: readonly string[];
+}
+
 export interface PassportAccount {
   readonly address: string;
   readonly networkId: string;
@@ -53,6 +58,8 @@ export interface PassportAccount {
   readonly credentialId?: Uint8Array;
   state(): Promise<PassportAccountState>;
   rotateEncryptionKey(newKey: Uint8Array, options?: FlowOptions): Promise<PassportTxResult>;
+  /** JubJub accounts rotate a random sealed viewing secret; requires a verified holding source. */
+  rotateViewingKey?(options?: FlowOptions): Promise<ViewingKeyRotationResult>;
 }
 
 export interface PassportConnectorAPI {
