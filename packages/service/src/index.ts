@@ -34,6 +34,7 @@ export {
   type FundingBackend,
   type FundingRouteOptions,
 } from './funding-route.js';
+export { createFileFundingStore } from './file-funding-store.js';
 export {
   sponsorPolicy,
   viewOfLedgerTx,
