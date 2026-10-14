@@ -63,6 +63,7 @@ try {
            typeof account.createPassportAccounts !== 'function' ||
            typeof account.readVerifiedHoldings !== 'function' ||
            typeof account.addJubjubAuthorisingDevice !== 'function' ||
+           typeof account.prepareJubjubGrant !== 'function' ||
            typeof browser.createBrowserPassport !== 'function' ||
            typeof service.createServer !== 'function' ||
            typeof service.chainRoute !== 'function' ||

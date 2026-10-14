@@ -30,6 +30,8 @@ const TABLE = {
   NotAuthorised: { retryable: false, lace: ['not-authorised'] },
   DeviceEntryNotFound: { retryable: false, lace: ['device-entry-not-found'] },
   BindingUnsupported: { retryable: false, lace: [] },
+  GrantScopeInvalid: { retryable: false, lace: ['grant-scope-invalid'] },
+  GrantLimitReached: { retryable: false, lace: ['grant-limit-reached'] },
   ArtefactIntegrity: { retryable: false, lace: ['artefact-integrity'] },
   ProverUnavailable: { retryable: true, lace: ['proof-server'] },
   SponsorRejected: { retryable: 'maybe', lace: ['sponsor-exhausted'] },

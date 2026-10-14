@@ -22,6 +22,8 @@ const TABLE = {
   NotAuthorised: row(false, 'not-authorised'),
   DeviceEntryNotFound: row(false, 'device-entry-not-found'),
   BindingUnsupported: row(false),
+  GrantScopeInvalid: row(false, 'grant-scope-invalid'),
+  GrantLimitReached: row(false, 'grant-limit-reached'),
   ArtefactIntegrity: row(false, 'artefact-integrity'),
   ProverUnavailable: row(true, 'proof-server'),
   SponsorRejected: row('maybe', 'sponsor-exhausted'),

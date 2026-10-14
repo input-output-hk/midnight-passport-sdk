@@ -25,7 +25,9 @@
     "dist"
   ],
   "dependencies": {
-    "@input-output-hk/mn-passport-protocol": "workspace:*"
+    "@input-output-hk/mn-passport-protocol": "workspace:*",
+    "@noble/curves": "2.2.0",
+    "@noble/hashes": "2.2.0"
   },
   "license": "Apache-2.0",
   "repository": {
