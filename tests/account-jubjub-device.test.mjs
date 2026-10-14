@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { addJubjubAuthorisingDevice } from '../packages/account/dist/index.js';
+import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 
 const owner = { x: 1n, y: 2n };
 const joining = { x: 5n, y: 6n };
@@ -157,4 +158,64 @@ test('a key session for another owner cannot authorise enrollment', async () => 
   });
   assert.deepEqual(calls, ['session']);
   assert.deepEqual(writes, []);
+});
+
+test('the packaged ACC pure helpers derive and challenge an actual JubJub enrollment', async () => {
+  const ownerKey = pureCircuits.compute_public_point_with_jubjub(1n);
+  const joiningKey = pureCircuits.compute_public_point_with_jubjub(2n);
+  const self = { bytes: Uint8Array.from({ length: 32 }, () => 0xab) };
+  const ownEntry = pureCircuits.derive_device_entry_with_jubjub(self, ownerKey, 0n, 2n);
+  const joiningEntry = pureCircuits.derive_device_entry_with_jubjub(self, joiningKey, 0n, 0n);
+  let challenged = false;
+  const result = await addJubjubAuthorisingDevice(
+    {
+      hint: { ...hint, publicKey: ownerKey },
+      joiningPublicKey: joiningKey,
+    },
+    {
+      bindingId: 'acc-s3r1.1',
+      pure: pureCircuits,
+      random: (length) => new Uint8Array(length),
+      chain: {
+        readAccount: async () => ({
+          booted: true,
+          authNonce: 7n,
+          deviceEpoch: 0n,
+          entryCount: 1,
+          specVersion: 3,
+          hasEntry: (entry) => Buffer.from(entry).equals(Buffer.from(ownEntry)),
+        }),
+        call: async (request) => {
+          assert.deepEqual(request.args[0], joiningEntry);
+          return { txHash: 'binding-test' };
+        },
+      },
+      authoriser: {
+        scheme: 'jubjub-schnorr',
+        devicePublicKey: async () => ownerKey,
+        withKeySession: (operation) => operation(),
+        authorise: async (request) => {
+          if (typeof request.challenge !== 'function') throw new Error('missing challenge');
+          const challenge = request.challenge(ownerKey, 0n);
+          assert.equal(challenge.length, 32);
+          challenged = true;
+          return {
+            scheme: 'jubjub-schnorr',
+            pk: ownerKey,
+            useCounter: request.useCounter,
+            sigR: ownerKey,
+            sigS: 0n,
+            grindNonce: 0n,
+          };
+        },
+      },
+      records: {
+        read: async () => record,
+        write: async () => undefined,
+        exists: async () => true,
+      },
+    },
+  );
+  assert.equal(challenged, true);
+  assert.equal(result.commitmentHex, Buffer.from(joiningEntry).toString('hex'));
 });
