@@ -89,6 +89,8 @@ function policy(name, isPure) {
 }
 /** @param {string} name @param {boolean} isPure @returns {[string, string]} */
 function evidence(name, isPure) {
+  if (/^(issue_grant_with_jubjub|challenge_issue_grant_with_jubjub)$/.test(name))
+    return ['call helper', 'tests/account-jubjub-grant-issue.test.mjs'];
   if (
     /^(derive_grant_id_with_jubjub|derive_grant_object_commit|derive_grant_scope_digest)$/.test(
       name,

@@ -19,6 +19,8 @@ export const PASSPORT_STEPS = Object.freeze([
   'chain.finality',
   'chain.read',
   'counter.scan',
+  'grant.roster',
+  'grant.stage',
   'directory.read',
   'directory.write',
 ] as const);

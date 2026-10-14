@@ -14,6 +14,7 @@ import type {
   JubjubPureCircuits,
   WebAuthnPolicy,
 } from '../seams.js';
+import type { GrantScopeInput } from '../grant-scope.js';
 
 export type { AuthScheme } from '@input-output-hk/mn-passport-protocol';
 // Defined beside the prototype's seams until T5 to T9 retire them; this is their public home.
@@ -58,9 +59,15 @@ export interface FlowDescriptor {
     | 'rotate-encryption-key'
     | 'add-device'
     | 'remove-device'
-    | 'read-holdings';
+    | 'read-holdings'
+    | 'issue-grant';
   /** The device entry a device flow targets. */
   readonly commitmentHex?: string;
+  /** Scope context shown before an owner signs a grant issue call. */
+  readonly grantId?: string;
+  readonly scope?: GrantScopeInput;
+  readonly scopeDigest?: string;
+  readonly slot?: number;
 }
 /** JubJub's challenge, built per attempt from the announcement and the grind nonce. */
 export type ChallengeBuilder = (sigR: CurvePoint, grindNonce: bigint) => Uint8Array;

@@ -64,6 +64,7 @@ try {
            typeof account.readVerifiedHoldings !== 'function' ||
            typeof account.addJubjubAuthorisingDevice !== 'function' ||
            typeof account.prepareJubjubGrant !== 'function' ||
+           typeof account.issueJubjubGrantCall !== 'function' ||
            typeof browser.createBrowserPassport !== 'function' ||
            typeof service.createServer !== 'function' ||
            typeof service.chainRoute !== 'function' ||
