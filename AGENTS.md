@@ -167,6 +167,7 @@ rotate again. It writes `experiments/acc-0.35/results/x8-dapp-e2e.json` and shou
   ```sh
   nix develop -c bash -c 'pnpm run lint && pnpm run format:check && pnpm run build && pnpm test \
     && pnpm run test:apps && pnpm --filter passport-service exec tsc --noEmit -p . \
+    && pnpm --filter passport-funding-service exec tsc --noEmit -p . \
     && pnpm --filter passport-dapp exec tsc --noEmit -p .'
   ```
 

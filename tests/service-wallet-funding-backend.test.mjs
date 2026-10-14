@@ -22,7 +22,7 @@ test('wallet backend submits a permissionless deposit and waits for the ACC cred
     async ledgerState() {
       const balance = deposits.length && ++readsAfterSubmit >= 2 ? 10n : 0n;
       return {
-        spec_version: 2n,
+        spec_version: 3n,
         unshielded_balances: {
           member: () => balance > 0n,
           lookup: () => balance,
@@ -60,7 +60,7 @@ test('wallet backend rejects unlisted and wrong-version contracts before spendin
       connected++;
       return {
         ledgerState: async () => ({
-          spec_version: 1n,
+          spec_version: 2n,
           unshielded_balances: { member: () => false, lookup: () => 0n },
         }),
         depositUnshielded: async () => {
@@ -83,7 +83,7 @@ test('an unconfirmed credit fails while the route keeps its reservation pending'
     deployed: () => true,
     connect: async () => ({
       ledgerState: async () => ({
-        spec_version: 2n,
+        spec_version: 3n,
         unshielded_balances: { member: () => false, lookup: () => 0n },
       }),
       depositUnshielded: async () => ({ txId: 'tx-1' }),

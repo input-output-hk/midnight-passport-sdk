@@ -87,6 +87,7 @@ jobs:
           nix develop -c pnpm test
           nix develop -c pnpm run test:apps
           nix develop -c pnpm --filter passport-service exec tsc --noEmit -p .
+          nix develop -c pnpm --filter passport-funding-service exec tsc --noEmit -p .
           nix develop -c pnpm --filter passport-dapp exec tsc --noEmit -p .
       - name: Pack and inspect publishable tarballs
         env:

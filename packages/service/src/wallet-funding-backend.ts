@@ -39,12 +39,12 @@ export function createWalletFundingBackend(
   const accountFor = async (address: string): Promise<FundingAccount | undefined> => {
     if (!options.deployed(address)) return undefined;
     const account = await options.connect(address);
-    if ((await account.ledgerState()).spec_version !== 2n) return undefined;
+    if ((await account.ledgerState()).spec_version !== 3n) return undefined;
     return account;
   };
   const balance = async (account: FundingAccount, color: Uint8Array): Promise<bigint> => {
     const ledger = await account.ledgerState();
-    if (ledger.spec_version !== 2n) throw new Error('ACC binding changed during funding');
+    if (ledger.spec_version !== 3n) throw new Error('ACC binding changed during funding');
     return ledger.unshielded_balances.member(color) ? ledger.unshielded_balances.lookup(color) : 0n;
   };
 
