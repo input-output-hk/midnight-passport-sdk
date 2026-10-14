@@ -19,7 +19,7 @@ import { wordlist as english } from '@scure/bip39/wordlists/english.js';
 
 const utf8 = (text: string): Uint8Array => new TextEncoder().encode(text);
 
-/** PRF output #1: Lace's ACC authoriser (a JubJub key). Evaluated here, but unused (spec §5.4). */
+/** PRF output #1: Lace's ACC authoriser (a JubJub key); the prototype flow still uses P-256. */
 export const PRF_LABEL_AUTHORISER = 'lace-passport/prf/authoriser/v1';
 /** PRF output #2: the root every wallet and account secret derives from. */
 export const PRF_LABEL_ROOT = 'lace/prf/root/v1';
