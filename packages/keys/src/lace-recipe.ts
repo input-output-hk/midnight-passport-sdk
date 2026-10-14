@@ -26,6 +26,8 @@ export const PRF_LABEL_ROOT = 'lace/prf/root/v1';
 export const HKDF_WALLET_ENTROPY_INFO = 'lace/hkdf/wallet-entropy/v1';
 /** The MIP-0015 domain of the ACC's encryption key. */
 export const ACC_ENC_DOMAIN = 'lace-passport:acc-enc:v1';
+/** MIP-0015 domain for this device's X25519 reader key in Lace's envelope model. */
+export const READER_SECRET_DOMAIN = 'lace-passport:reader:v1';
 
 /** PRF salts are public domain separators: SHA-256 of their label. */
 export const prfSalt = (label: string): Uint8Array => sha256(utf8(label));
@@ -101,6 +103,20 @@ export function deriveSymmetricSecret(
 /** The ACC's X25519 secret: MIP-0015 at `lace-passport:acc-enc:v1`, context `<network>/0`. */
 export const accEncryptionSecret = (seed: Uint8Array, networkId: string): Uint8Array =>
   deriveSymmetricSecret(seed, { domain: ACC_ENC_DOMAIN, context: `${networkId}/0` });
+
+/** Device reader secret; distinct from both the random ACC viewing secret and wallet seed. */
+const readerSecret = (seed: Uint8Array, networkId: string): Uint8Array =>
+  deriveSymmetricSecret(seed, { domain: READER_SECRET_DOMAIN, context: networkId });
+
+/** The public reader key to which Lace seals this device's account-secret envelopes. */
+export function readerPublicKey(seed: Uint8Array, networkId: string): Uint8Array {
+  const secret = readerSecret(seed, networkId);
+  try {
+    return x25519.getPublicKey(secret);
+  } finally {
+    secret.fill(0);
+  }
+}
 
 /**
  * The ACC's `enc_key`, the X25519 public key of {@link accEncryptionSecret}. Network-bound and

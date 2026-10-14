@@ -127,6 +127,112 @@ export interface EncryptionKeySource {
   publicKey(networkId: string): Promise<Uint8Array>;
 }
 
+/** One enrolled device's X25519 reader key paired with its compressed JubJub device key. */
+export interface DeviceReader {
+  readonly readerPublicKey: string;
+  readonly devicePublicKey: string;
+}
+export interface LiveDeviceReader extends DeviceReader {
+  readonly epoch: bigint;
+  readonly counter: bigint;
+}
+/** Public ledger key plus this device's sealed envelopes, newest first. */
+export interface AccountKeyring {
+  readonly account: string;
+  readonly encKey: Uint8Array;
+  readonly envelopes: readonly Uint8Array[];
+}
+export interface CreateAccountKeys {
+  readonly devicePublicKey: string;
+  readonly keyring?: AccountKeyring;
+  readonly registrations?: readonly Uint8Array[];
+  readonly readers?: readonly LiveDeviceReader[];
+  readonly rotateRoster?: boolean;
+  readonly removed?: {
+    readonly devicePublicKey: string;
+    readonly epoch: bigint;
+    readonly counter: bigint;
+  };
+}
+export interface AccountKeys {
+  readonly encKey: Uint8Array;
+  readonly envelopes: Uint8Array[];
+  readonly registrations: Uint8Array[];
+}
+export interface DeviceDelivery {
+  readonly envelope: Uint8Array;
+  readonly registration: Uint8Array;
+}
+export interface ShieldedCoin {
+  readonly nonce: Uint8Array;
+  readonly color: Uint8Array;
+  readonly value: bigint;
+}
+export interface GrantBookkeeping {
+  readonly grantId: string;
+  readonly slot: string;
+  readonly scopeSalt: string;
+  readonly granteePublicKey: string;
+  readonly readPublicKey?: string;
+  readonly object: {
+    readonly color: string;
+    readonly recipient:
+      | { readonly kind: 'any' }
+      | {
+          readonly kind: 'coin-public-key' | 'contract-address' | 'user-address';
+          readonly value: string;
+        };
+    readonly maxCoinValue: string;
+  };
+}
+export type GrantRecordPart =
+  | ({ readonly part: 'grant' } & Omit<GrantBookkeeping, 'object'>)
+  | {
+      readonly part: 'object';
+      readonly grantId: string;
+      readonly object: GrantBookkeeping['object'];
+    }
+  | {
+      readonly part: 'view';
+      readonly grantId: string;
+      readonly encKeyPrefix: string;
+      readonly seal: string;
+    };
+export type OpenedInboxEntry =
+  | { readonly kind: 'coin'; readonly coin: ShieldedCoin }
+  | { readonly kind: 'device'; readonly device: DeviceReader }
+  | { readonly kind: 'grant'; readonly record: GrantRecordPart };
+/**
+ * Random account viewing secrets remain inside this port. The account flow receives only the
+ * public encryption key, sealed device deliveries, opened inbox data or sealed read grants.
+ * This is distinct from the prototype's passkey-derived `EncryptionKeySource`.
+ */
+export interface AccountViewingKey {
+  readerPublicKey(networkId: string): Promise<Uint8Array>;
+  createKeys(networkId: string, request: CreateAccountKeys): Promise<AccountKeys>;
+  sealToDevice(
+    networkId: string,
+    keyring: AccountKeyring,
+    reader: LiveDeviceReader,
+  ): Promise<DeviceDelivery>;
+  openInbox(
+    networkId: string,
+    keyring: AccountKeyring,
+    entries: readonly Uint8Array[],
+  ): Promise<(OpenedInboxEntry | null)[]>;
+  sealGrant(networkId: string, account: string, grant: GrantBookkeeping): Promise<Uint8Array[]>;
+  reencryptInbox?(
+    networkId: string,
+    rotation: { readonly keyring: AccountKeyring; readonly to: Uint8Array },
+    entries: readonly Uint8Array[],
+  ): Promise<(Uint8Array | null)[]>;
+  sealView?(
+    networkId: string,
+    keyring: AccountKeyring,
+    request: { readonly grantId: string; readonly account: string; readonly readPublicKey: string },
+  ): Promise<{ readonly seal: Uint8Array; readonly entry: Uint8Array }>;
+}
+
 export interface CallRequest extends FlowOptions {
   readonly address: string;
   readonly circuit: string;
