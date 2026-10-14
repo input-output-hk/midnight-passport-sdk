@@ -89,6 +89,8 @@ function policy(name, isPure) {
 }
 /** @param {string} name @param {boolean} isPure @returns {[string, string]} */
 function evidence(name, isPure) {
+  if (/^(add_device_with_jubjub|challenge_add_device_with_jubjub)$/.test(name))
+    return ['typed flow', 'tests/account-jubjub-device.test.mjs'];
   if (
     /^(activate_initial_device_with_p256|rotate_enc_key_with_p256|derive_boot_commitment_with_p256|derive_device_entry_with_p256|challenge_rotate_enc_key_with_p256)$/.test(
       name,
@@ -101,11 +103,7 @@ function evidence(name, isPure) {
     )
   )
     return ['typed flow', 'tests/account-jubjub.test.mjs'];
-  if (
-    /^(compute_public_point_with_jubjub|derive_device_entry_with_jubjub|challenge_add_device_with_jubjub)$/.test(
-      name,
-    )
-  )
+  if (/^(compute_public_point_with_jubjub|derive_device_entry_with_jubjub)$/.test(name))
     return ['key helper', 'tests/keys-jubjub.test.mjs'];
   if (name === 'deposit_unshielded')
     return ['service flow', 'tests/service-wallet-funding-backend.test.mjs'];

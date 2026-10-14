@@ -61,6 +61,8 @@ try {
            contract.SUPPORTED_BINDINGS.length !== 1 ||
            typeof binding.Contract !== 'function' ||
            typeof account.createPassportAccounts !== 'function' ||
+           typeof account.readVerifiedHoldings !== 'function' ||
+           typeof account.addJubjubAuthorisingDevice !== 'function' ||
            typeof browser.createBrowserPassport !== 'function' ||
            typeof service.createServer !== 'function' ||
            typeof service.chainRoute !== 'function' ||

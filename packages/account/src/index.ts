@@ -4,4 +4,5 @@ export * from './holdings.js';
 export type * from './seams.js';
 export * from './connector.js';
 export * from './jubjub-readers.js';
+export * from './jubjub-device.js';
 export * from './seams-bridge.js';
