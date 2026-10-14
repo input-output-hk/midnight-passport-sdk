@@ -15,7 +15,7 @@ The [problem statement]({{ '/problems/' | relative_url }}) separates three serve
 | `POST /prove-tx`                     | Proves an unproven Midnight transaction with service-held keys.                                                            |
 | `POST /sponsor/balance`              | Adds fee inputs only after the sponsor policy accepts the call.                                                            |
 | `POST /sponsor/submit`               | Submits a finalised transaction.                                                                                           |
-| `POST /deploy`                       | Deploys the ACC in waves and returns its address and submission IDs. This may take minutes.                                |
+| `POST /deploy`                       | Deploys the ACC in waves and returns its address and submission IDs. `firstArm` is `p256` or `jubjub` (legacy requests default to `p256`). This may take minutes. |
 | `/accounts/:networkId/:credentialId` | Stores or reads a passkey-to-account hint. The connector checks it against chain state.                                    |
 
 The sponsor pays **calls to accounts this service deployed and registered**. It refuses offers, Dust actions, non-fee imbalance and deploy or maintenance actions on its public sponsor route. Deployment uses the service's own reference wallet path. The proof preimage reaches the service; a production deployment needs TLS, authentication, rate limits and spending controls. See [prototype limitations](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/prototype/limitations.md).

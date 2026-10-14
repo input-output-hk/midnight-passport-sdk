@@ -14,6 +14,7 @@ test(
       new Uint8Array(32).fill(1),
       new Uint8Array(32).fill(2),
       true,
+      'p256',
     );
     assert.match(address, /^[0-9a-f]{64}$/);
   },

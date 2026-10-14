@@ -67,7 +67,7 @@ interface WaveDeployModule {
     providers: unknown,
     compiledContract: unknown,
     options: {
-      firstArm: 'p256';
+      firstArm: 'p256' | 'jubjub';
       args: unknown[];
       privateStateId: string;
       initialPrivateState: unknown;
@@ -223,7 +223,7 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
     }),
     submit: (tx) => providers.midnightProvider.submitTx(tag(tx)),
     // The route runs deployments through the same queue as proofs, so they never overlap.
-    deploy: async (boot, encKey, retireAuthority) => {
+    deploy: async (boot, encKey, retireAuthority, firstArm) => {
       // Records what each wave's `submitTx` returns; the reference returns the address only.
       // These are submission ids (midnight-js's txId), not the hashes of the transactions as
       // included: the wire keeps the name `txHashes` for the prototype (Final review M4).
@@ -243,7 +243,7 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
       // whose secret is discarded here, a zero wrap, and a 3-day veto window.
       const birth = signer.JubjubDevice.generate();
       const address = await waves.deployAccountInWaves(recording, setup.compiledAccountContract(), {
-        firstArm: 'p256',
+        firstArm,
         args: [boot, encKey, birth.pk, new Uint8Array(64), 3n * 24n * 3600n],
         privateStateId: `passport-${randomBytes(8).toString('hex')}`,
         initialPrivateState: witnesses.emptyCoinStore(),

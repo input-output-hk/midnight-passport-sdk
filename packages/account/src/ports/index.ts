@@ -251,6 +251,8 @@ export interface DeployRequest extends FlowOptions {
   readonly encKey: Uint8Array;
   /** Irreversible, so no default (D-11). */
   readonly retireAuthority: boolean;
+  /** Which device arm receives the first verifier-key wave. Omitted only by legacy P-256 hosts. */
+  readonly firstArm?: 'p256' | 'jubjub';
 }
 export interface Deployer {
   /** `txIds`: each wave's submission id, in order. */

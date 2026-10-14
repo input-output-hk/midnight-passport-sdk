@@ -165,13 +165,17 @@ export function chainRoute(backend: ChainBackend, options: ChainRouteOptions): R
             // Irreversible, so the caller says, with no default (D-11).
             throw new HttpError(400, 'retireAuthority must be true or false');
           }
+          const firstArm = b.firstArm ?? 'p256';
+          if (firstArm !== 'p256' && firstArm !== 'jubjub') {
+            throw new HttpError(400, 'firstArm must be p256 or jubjub');
+          }
           // The cap counts every accepted request, failures included, so failing deployments
           // cannot be spammed. It is checked here, before the queue, so the refusal is immediate.
           if (deploysAccepted >= maxDeploys) {
             throw new HttpError(429, 'deployment limit reached for this service instance');
           }
           deploysAccepted++;
-          return () => queue(() => backend.deploy(boot, encKey, retireAuthority));
+          return () => queue(() => backend.deploy(boot, encKey, retireAuthority, firstArm));
         },
       },
     ],

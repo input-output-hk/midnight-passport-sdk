@@ -56,6 +56,8 @@ export interface DeployRequest {
   readonly encKey: Hex;
   /** Retire the maintenance authority after the waves; required, no default (D-11). */
   readonly retireAuthority: boolean;
+  /** Initial device verifier-key wave; omitted requests use the legacy P-256 default. */
+  readonly firstArm?: 'p256' | 'jubjub';
 }
 export interface DeployResult {
   readonly address: Hex;

@@ -48,10 +48,10 @@ function fakeBackend(delayMs = 30) {
     async submit() {
       return 'txid-1';
     },
-    async deploy(boot, enc, retireAuthority) {
+    async deploy(boot, enc, retireAuthority, firstArm) {
       calls.deploy++;
       await busy();
-      seen.deploy = [boot, enc, retireAuthority];
+      seen.deploy = [boot, enc, retireAuthority, firstArm];
       return { address: ADDRESS, txHashes: ['a', 'b'] };
     },
     sponsorKeys: () => ({ coinPublicKey: 'cp', encryptionPublicKey: 'ep' }),
@@ -232,20 +232,23 @@ test("/deploy takes constructor inputs and the caller's retireAuthority, and ret
       new Uint8Array(32).fill(0x11),
       new Uint8Array(32).fill(0x22),
       retireAuthority,
+      'p256',
     ]);
   }
+  assert.equal((await post(`${base}/deploy`, { ...deployBody, firstArm: 'jubjub' })).status, 200);
+  assert.deepEqual((f.seen.deploy as unknown[])[3], 'jubjub');
   assert.equal((await post(`${base}/deploy`, { boot: '11' })).status, 400);
 });
 
 test('/deploy stops at the cap with 429, and failed deployments count', async (t) => {
   const f = fakeBackend(5);
   const deploy = f.backend.deploy.bind(f.backend);
-  f.backend.deploy = async (b, e, r) => {
+  f.backend.deploy = async (b, e, r, arm) => {
     if (f.calls.deploy === 0) {
       f.calls.deploy++;
       throw new Error('wave failed');
     }
-    return deploy(b, e, r);
+    return deploy(b, e, r, arm);
   };
   const { base } = await start(t, f.backend, { maxDeploys: 3 });
   const statuses: number[] = [];
@@ -349,6 +352,8 @@ test('bad fields are 400 and never reach the backend', async (t) => {
     ['/deploy', { boot: '11'.repeat(32), encKey: '22'.repeat(32) }],
     ['/deploy', { boot: '11'.repeat(32), encKey: '22'.repeat(32), retireAuthority: 'true' }],
     ['/deploy', { boot: '11'.repeat(32), encKey: '22'.repeat(32), retireAuthority: null }],
+    ['/deploy', { ...deployBody, firstArm: 'k256' }],
+    ['/deploy', { ...deployBody, firstArm: 5 }],
   ];
   for (const [path, body] of bad) {
     assert.equal(

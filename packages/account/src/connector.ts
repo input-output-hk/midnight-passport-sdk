@@ -316,7 +316,13 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           // A deployer honours `signal` only before it submits anything: an account it deployed is
           // always returned, and recorded below, so its salt is never lost.
           const { address } = await flow.step('deploy', () =>
-            ports.deployer.deploy({ boot, encKey, retireAuthority, ...flow.ports }),
+            ports.deployer.deploy({
+              boot,
+              encKey,
+              retireAuthority,
+              firstArm: 'p256',
+              ...flow.ports,
+            }),
           );
           const deployed: P256Hint = {
             scheme: 'p256-webauthn',

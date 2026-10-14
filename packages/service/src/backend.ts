@@ -25,6 +25,7 @@ export interface ChainBackend {
     boot: Uint8Array,
     encKey: Uint8Array,
     retireAuthority: boolean,
+    firstArm: 'p256' | 'jubjub',
   ): Promise<{ address: string; txHashes: string[] }>;
   sponsorKeys(): { coinPublicKey: string; encryptionPublicKey: string };
 }

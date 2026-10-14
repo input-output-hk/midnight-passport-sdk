@@ -49,7 +49,7 @@ test('remote sponsor and deployer use the transaction endpoints and preserve the
       assert.deepEqual(body, { tx: '02' });
       return reply(200, { txId: 'submission' });
     }
-    assert.deepEqual(body, { boot: '03', encKey: '04', retireAuthority: true });
+    assert.deepEqual(body, { boot: '03', encKey: '04', retireAuthority: true, firstArm: 'jubjub' });
     return reply(200, { address: 'account', txHashes: ['wave-1'] });
   };
   const sponsor = remoteSponsor('http://service', { fetch: fetchFn });
@@ -70,6 +70,7 @@ test('remote sponsor and deployer use the transaction endpoints and preserve the
       boot: Uint8Array.of(3),
       encKey: Uint8Array.of(4),
       retireAuthority: true,
+      firstArm: 'jubjub',
     }),
     { address: 'account', txIds: ['wave-1'] },
   );

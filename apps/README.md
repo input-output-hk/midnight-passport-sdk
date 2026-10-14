@@ -193,6 +193,9 @@ and `assertionMaterial`.
     imbalance in any segment.
   - _Deploy cap._ At most `PASSPORT_MAX_DEPLOYS` `/deploy` requests per service process, failures
     counted, then `429`. The count resets on restart.
+  - _First arm._ `/deploy` accepts `firstArm: "p256" | "jubjub"` and installs that arm's verifier keys
+    first. Omitted `firstArm` retains the prototype's P-256 behavior. The SDK connector currently
+    selects P-256; the JubJub account flow is a separate release gate.
 - **Manifest pin (R18).** The dapp bakes `PASSPORT_MANIFEST_SHA256` in when Vite starts and checks
   the service's `/config` against it, refusing a mismatch (`ArtefactIntegrity`). It is never read
   from the service, which could otherwise vouch for its own tampered artefacts. The service
