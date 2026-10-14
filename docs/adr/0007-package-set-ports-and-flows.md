@@ -11,7 +11,7 @@ D-2 to D-12, §1 to §4 · [FS-0.9](../roadmap/specs/M0-Foundations/FS-0.9-acc-a
 
 ## Context
 
-`architecture.md` §4.4 puts the seam interfaces and the flow surfaces in
+The [pre-realignment architecture](https://github.com/midnightntwrk/midnight-passport-sdk/blob/dfdb3f87f2cc2941530ab398e117f46b348fab7f/docs/architecture.md) §4.4 puts the seam interfaces and the flow surfaces in
 `mn-passport-core`, with a small `connect` and a recorded `onboard` facade
 beside it, and §8 decision 2 says the SDK never owns or compiles the contract.
 The prototype built something different, for reasons recorded in
@@ -77,7 +77,7 @@ working baseline.
 - **The contract package ships the artefact.** The ACC source stays the
   contract team's: the SDK pins a revision and never edits it. It compiles the
   pinned revision, and packages the result with its manifest hash committed
-  (FS-0.9 D-1 to D-3, D-5), so `architecture.md` §8 decision 2, "the SDK never
+  (FS-0.9 D-1 to D-3, D-5), so the pre-realignment architecture §8 decision 2, "the SDK never
   owns or compiles the contract", no longer holds as written. Prover keys are
   not in the package.
 
@@ -172,9 +172,9 @@ checked against it and never trusted. There is no fork issue for this yet.
 
 ## Consequences
 
-- `architecture.md` §4.4 and §8 decision 2 carry superseded notes pointing here,
-  to ADR 0006 and to FS-0.9. Their old text stays, marked, until the
-  tranches land.
+- The pre-realignment architecture §4.4 and §8 decision 2 were superseded by
+  this ADR, ADR 0006 and FS-0.9. The current `architecture.md` describes the
+  target design and points readers here for the fork's implemented boundaries.
 - The per-seam specs FS-0.3 to FS-0.8 place seam interfaces in `core`. T0 does
   not edit them; reconcile each when its tranche is planned.
 - ADR 0001 stands in substance: the self-custody signer is the JubJub PRF

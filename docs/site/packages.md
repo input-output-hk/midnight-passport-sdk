@@ -15,7 +15,7 @@ released when they contain reusable implementations.
 The release script packed every publishable directory under `packages/`. Eight directories contain
 the current SDK surface; five are empty `export {}` scaffolds inherited from the earlier architecture.
 Publishing the scaffolds in `0.1.0-rc1` did **not** deliver five more capabilities. The original
-[architecture](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/architecture.md#44-packaging)
+[original architecture](https://github.com/midnightntwrk/midnight-passport-sdk/blob/dfdb3f87f2cc2941530ab398e117f46b348fab7f/docs/architecture.md#44-packaging)
 pictured a Passport app engine (`core`), a dApp library (`connect`), shared foundations, and platform
 adapters. The later, accepted [package decision](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0007-package-set-ports-and-flows.md)
 put account-owner flows and ports in `account`, split the prototype's large browser adapter by
