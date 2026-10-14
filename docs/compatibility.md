@@ -45,10 +45,10 @@ types, not a packed-package Lace build or live transaction test.
 The current Lace `KeySessionFlow.kind` omits `rotate-encryption-key`, which the
 SDK's owner flow requests. The test adapter rejects this operation until Lace and
 the SDK agree on its consent descriptor. Lace also has grant flows that the SDK
-has not implemented. The SDK's `readVerifiedHoldings` helper uses Lace's
-`read-holdings` descriptor but requires a host-selected keyring and chain-backed
-holding source; it is not yet a full Lace flow replacement. Rotation still needs
-an explicit consent path.
+has not implemented. The SDK's JubJub account read uses Lace's `read-holdings`
+descriptor and a host-injected chain-backed holding source. It has not run in
+Lace's module, so it is not yet a verified Lace flow replacement. Rotation still
+needs an explicit consent path.
 
 The older SDK `EncryptionKeySource.publicKey` port is a prototype key source;
 Lace's `PassportEncryptionKey` matches the newer `AccountViewingKey` instead.

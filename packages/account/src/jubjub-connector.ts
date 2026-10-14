@@ -7,6 +7,7 @@ import {
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow, type Flow } from './flow.js';
+import { readVerifiedHoldings } from './holdings.js';
 import { JUBJUB_READER_SCAN_LIMIT, resolveJubjubReaders } from './jubjub-readers.js';
 import type {
   AccLedgerView,
@@ -487,6 +488,59 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       );
     },
     rotateViewingKey: (options) => rotateViewingKey(record, options),
+    readShieldedHoldings: (options = {}) =>
+      run(options, async (flow) => {
+        if (!ports.holdings)
+          throw new PassportConnectorError(
+            'BindingUnsupported',
+            'Reading shielded holdings requires a chain-backed holding source.',
+          );
+        const view = await flow.step('chain.read', () => read(record));
+        if (!view.booted || record.status !== 'active')
+          throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
+        if (view.specVersion !== 3)
+          throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
+        const pure = requirePure((await readBinding()).pureCircuits);
+        recordPure.set(record, pure);
+        if (findCounter(record, view) === undefined)
+          throw new PassportConnectorError('NotAuthorised', 'This device has no live ACC entry.');
+        // The pinned Lace v1 coin-description format is 192 bytes with the 01 01 prefix.
+        // Device envelopes and grant records need no owner key ceremony for an empty read.
+        if (
+          !view.inboxEntries!.some(
+            (entry) => entry.length === 192 && entry[0] === 1 && entry[1] === 1,
+          )
+        )
+          return [];
+        return authoriser.withKeySession!(
+          async () => {
+            const pk = await authoriser.devicePublicKey();
+            if (!samePoint(pk, record.publicKey))
+              throw new PassportConnectorError(
+                'NotAuthorised',
+                'The selected device does not own this ACC.',
+              );
+            return readVerifiedHoldings(
+              {
+                account: record.address,
+                keyring: {
+                  account: record.address,
+                  encKey: view.encKey!,
+                  envelopes: [...view.inboxEntries!].reverse(),
+                },
+              },
+              {
+                networkId,
+                chain: await readChain(),
+                authoriser,
+                viewingKey,
+                holdings: ports.holdings!,
+              },
+            );
+          },
+          { kind: 'read-holdings' },
+        );
+      }),
   });
 
   return {

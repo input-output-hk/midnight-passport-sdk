@@ -62,7 +62,7 @@ function world() {
         authNonce: nonce,
         deviceEpoch: 0n,
         entryCount: booted ? 1 : 0,
-        specVersion: 2,
+        specVersion: 3,
         encKey,
         ...(options.includeInbox && { inboxEntries: [...inbox] }),
         ...(options.includeDevices && { deviceEntries: booted ? [entry] : [] }),
@@ -295,6 +295,27 @@ test('JubJub rotation re-encrypts a verified holding under the new ACC key', asy
     [newest],
   );
   assert.deepEqual(opened, { kind: 'coin', coin });
+});
+
+test('opened JubJub accounts read only chain-confirmed shielded holdings', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  assert.ok(account.readShieldedHoldings);
+  assert.deepEqual(await account.readShieldedHoldings(), []);
+  const coin = { nonce: new Uint8Array(32).fill(4), color: new Uint8Array(32).fill(5), value: 7n };
+  w.inbox.push(await sealInboxCoin(w.encKey(), coin));
+  w.setHeldIndices([2]);
+  assert.deepEqual(await account.readShieldedHoldings(), [{ inboxIndex: 2, coin }]);
+  w.setHeldIndices([0]);
+  await assert.rejects(account.readShieldedHoldings(), { code: 'InternalError' });
+});
+
+test('a JubJub account without chain-backed holding verification refuses the read', async () => {
+  const w = world();
+  await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const account = await w.withoutHoldings().openAccount();
+  assert.ok(account.readShieldedHoldings);
+  await assert.rejects(account.readShieldedHoldings(), { code: 'BindingUnsupported' });
 });
 
 test('JubJub rotation refuses an inbox entry that lands while new keys are delivered', async () => {

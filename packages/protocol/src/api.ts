@@ -48,6 +48,16 @@ export interface ViewingKeyRotationResult extends PassportTxResult {
   readonly droppedDeviceEntries: readonly string[];
 }
 
+export interface PassportShieldedHolding {
+  /** ACC inbox index of the sealed description confirmed against a chain-created output. */
+  readonly inboxIndex: number;
+  readonly coin: {
+    readonly nonce: Uint8Array;
+    readonly color: Uint8Array;
+    readonly value: bigint;
+  };
+}
+
 export interface PassportAccount {
   readonly address: string;
   readonly networkId: string;
@@ -60,6 +70,8 @@ export interface PassportAccount {
   rotateEncryptionKey(newKey: Uint8Array, options?: FlowOptions): Promise<PassportTxResult>;
   /** JubJub accounts rotate a random sealed viewing secret; requires a verified holding source. */
   rotateViewingKey?(options?: FlowOptions): Promise<ViewingKeyRotationResult>;
+  /** JubJub accounts can read only chain-confirmed shielded holdings through their viewing key. */
+  readShieldedHoldings?(options?: FlowOptions): Promise<readonly PassportShieldedHolding[]>;
 }
 
 export interface PassportConnectorAPI {

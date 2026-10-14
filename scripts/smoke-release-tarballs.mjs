@@ -98,7 +98,9 @@ try {
      /** @type {import('@input-output-hk/mn-passport-account/ports').Authoriser} */
      // @ts-expect-error: Lace has no rotate-encryption-key consent kind yet
      const directAuthoriser = laceAuthoriser();
-     void [sponsor, viewing, directAuthoriser];\n`,
+     /** @param {import('@input-output-hk/mn-passport-protocol').PassportAccount} account */
+     const read = (account) => account.readShieldedHoldings?.();
+     void [sponsor, viewing, directAuthoriser, read];\n`,
   );
   execFileSync(
     'pnpm',
