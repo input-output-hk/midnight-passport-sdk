@@ -168,107 +168,157 @@ test('P-256 rotation refuses a live device without a unique reader registration'
   assert.equal(ledger.authNonce, nonce);
 });
 
-test('P-256 revoke-all rotates away from active read grantees before clearing the map', async () => {
-  const fake = createFakePorts();
-  const grantId = 'cd'.repeat(32);
-  let generation = 7n;
-  let entries = [{ id: grantId, active: true, read: true }];
-  const pure = fake.binding.pureCircuits;
-  const ports = {
-    ...fake,
-    network: { ...fake.network, bindingId: 'acc-s3r1.1' },
-    binding: {
-      pureCircuits: {
-        ...pure,
-        challenge_revoke_all_grants_with_p256: () => new Uint8Array(32).fill(3),
+for (const mode of ['all', 'one', 'one-unsealed'])
+  test(`P-256 ${mode} revocation handles the read-grant roster`, async () => {
+    const fake = createFakePorts();
+    const grantId = 'cd'.repeat(32);
+    const survivorId = 'ef'.repeat(32);
+    let generation = 7n;
+    let entries = [
+      { id: grantId, active: true, read: true },
+      { id: survivorId, active: true, read: true },
+    ];
+    const pure = fake.binding.pureCircuits;
+    const ports = {
+      ...fake,
+      network: { ...fake.network, bindingId: 'acc-s3r1.1' },
+      binding: {
+        pureCircuits: {
+          ...pure,
+          challenge_revoke_all_grants_with_p256: () => new Uint8Array(32).fill(3),
+          challenge_revoke_grant_with_p256: () => new Uint8Array(32).fill(4),
+        },
       },
-    },
-    viewingKey: viewingKey(),
-    authoriser: {
-      ...fake.authoriser,
-      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
-    },
-    holdings: { selectHeldEntries: async () => [] },
-    readGrants: {
-      readActiveReadGrantTargets: async () => ({
-        authNonce: [...fake.ledger.values()][0]?.authNonce ?? 0n,
-        targets: [{ grantId, readPublicKey: hex(x25519.getPublicKey(new Uint8Array(32).fill(7))) }],
-      }),
-    },
-    grantRoster: {
-      readGrantRoster: async () => ({
-        authNonce: [...fake.ledger.values()][0]?.authNonce ?? 0n,
-        generation,
-        entries,
-      }),
-    },
-    chain: {
-      ...fake.chain,
-      /** @param {import('../packages/account/dist/ports/index.js').CallRequest} request */
-      call: async (request) => {
-        if (request.circuit !== 'revoke_all_grants_with_p256') return fake.chain.call(request);
-        const ledger = fake.ledger.get(request.address);
-        assert.ok(ledger);
-        const pk = await fake.authoriser.devicePublicKey();
-        const self = { bytes: Buffer.from(request.address, 'hex') };
-        const counter = Array.from({ length: 64 }, (_, n) => BigInt(n)).find((n) =>
-          ledger.entries.has(
+      viewingKey: viewingKey(),
+      authoriser: {
+        ...fake.authoriser,
+        withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+      },
+      holdings: { selectHeldEntries: async () => [] },
+      readGrants: {
+        readActiveReadGrantTargets: async () => ({
+          authNonce: [...fake.ledger.values()][0]?.authNonce ?? 0n,
+          targets: [
+            { grantId, readPublicKey: hex(x25519.getPublicKey(new Uint8Array(32).fill(7))) },
+            {
+              grantId: survivorId,
+              ...(mode !== 'one-unsealed' && {
+                readPublicKey: hex(x25519.getPublicKey(new Uint8Array(32).fill(8))),
+              }),
+            },
+          ],
+        }),
+      },
+      grantRoster: {
+        readGrantRoster: async () => ({
+          authNonce: [...fake.ledger.values()][0]?.authNonce ?? 0n,
+          generation,
+          entries,
+        }),
+      },
+      grantDetails: {
+        /** @param {string} _account @param {string} id */
+        readGrant: async (_account, id) => {
+          const grant = entries.find((entry) => entry.id === id);
+          return (
+            grant && {
+              active: grant.active,
+              read: grant.read,
+              authNonce: [...fake.ledger.values()][0]?.authNonce ?? 0n,
+            }
+          );
+        },
+      },
+      chain: {
+        ...fake.chain,
+        /** @param {import('../packages/account/dist/ports/index.js').CallRequest} request */
+        call: async (request) => {
+          if (
+            request.circuit !== 'revoke_all_grants_with_p256' &&
+            request.circuit !== 'revoke_grant_with_p256'
+          )
+            return fake.chain.call(request);
+          const ledger = fake.ledger.get(request.address);
+          assert.ok(ledger);
+          const pk = await fake.authoriser.devicePublicKey();
+          const self = { bytes: Buffer.from(request.address, 'hex') };
+          const counter = Array.from({ length: 64 }, (_, n) => BigInt(n)).find((n) =>
+            ledger.entries.has(
+              hex(
+                pure.derive_device_entry_with_p256(
+                  self,
+                  { ...pk, identity: false },
+                  FAKE_POLICY,
+                  ledger.deviceEpoch,
+                  n,
+                ),
+              ),
+            ),
+          );
+          assert.ok(counter !== undefined);
+          ledger.entries.delete(
             hex(
               pure.derive_device_entry_with_p256(
                 self,
                 { ...pk, identity: false },
                 FAKE_POLICY,
                 ledger.deviceEpoch,
-                n,
+                counter,
               ),
             ),
-          ),
-        );
-        assert.ok(counter !== undefined);
-        ledger.entries.delete(
-          hex(
-            pure.derive_device_entry_with_p256(
-              self,
-              { ...pk, identity: false },
-              FAKE_POLICY,
-              ledger.deviceEpoch,
-              counter,
+          );
+          ledger.entries.add(
+            hex(
+              pure.derive_device_entry_with_p256(
+                self,
+                { ...pk, identity: false },
+                FAKE_POLICY,
+                ledger.deviceEpoch,
+                counter + 1n,
+              ),
             ),
-          ),
-        );
-        ledger.entries.add(
-          hex(
-            pure.derive_device_entry_with_p256(
-              self,
-              { ...pk, identity: false },
-              FAKE_POLICY,
-              ledger.deviceEpoch,
-              counter + 1n,
-            ),
-          ),
-        );
-        ledger.authNonce++;
-        generation++;
-        entries = [];
-        return { txHash: 'revoke-all' };
+          );
+          ledger.authNonce++;
+          if (request.circuit === 'revoke_all_grants_with_p256') {
+            generation++;
+            entries = [];
+          } else {
+            assert.equal(hex(/** @type {Uint8Array} */ (request.args[0])), grantId);
+            entries = [
+              { id: grantId, active: false, read: true },
+              { id: survivorId, active: true, read: true },
+            ];
+          }
+          return { txHash: 'revoke' };
+        },
       },
-    },
-  };
-  const account = await createPassportAccounts(ports).createAccount({
-    userName: 'read-revoke-all',
-    retireAuthority: true,
+    };
+    const account = await createPassportAccounts(ports).createAccount({
+      userName: 'read-revoke-all',
+      retireAuthority: true,
+    });
+    const ledger = fake.ledger.get(account.address);
+    assert.ok(ledger);
+    ledger.specVersion = 3;
+    const previousKey = ledger.encKey.slice();
+    if (mode === 'one-unsealed') {
+      if (!account.revokeGrant) throw new Error('Selective revoke is unavailable.');
+      await assert.rejects(account.revokeGrant(grantId), { code: 'GrantRosterUnsettled' });
+      assert.deepEqual(ledger.encKey, previousKey);
+      return;
+    }
+    const result =
+      mode === 'all' ? await account.revokeAllGrants?.() : await account.revokeGrant?.(grantId);
+    assert.equal(result?.status, mode === 'all' ? 'cleared' : 'revoked');
+    if (result?.status === 'cleared') assert.equal(result.generation, 8n);
+    else if (result?.status === 'revoked') assert.equal(result.grantId, grantId);
+    assert.ok(result.rotation);
+    assert.deepEqual(
+      result.rotation.sealedReadGrants.map(({ grantId: id }) => id),
+      mode === 'all' ? [] : [survivorId],
+    );
+    assert.notDeepEqual(ledger.encKey, previousKey);
   });
-  const ledger = fake.ledger.get(account.address);
-  assert.ok(ledger);
-  ledger.specVersion = 3;
-  const previousKey = ledger.encKey.slice();
-  const result = await account.revokeAllGrants?.();
-  assert.equal(result?.status, 'cleared');
-  assert.equal(result.generation, 8n);
-  assert.ok(result.rotation);
-  assert.deepEqual(result.rotation.sealedReadGrants, []);
-  assert.notDeepEqual(ledger.encKey, previousKey);
-});
 
 test('P-256 owner delivers a sealed key before enrolling a new live device', async () => {
   const fake = createFakePorts();

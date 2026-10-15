@@ -5,6 +5,7 @@ import {
   type P256DeviceReader,
   type DeviceEnrollmentResult,
   type DeviceRemovalResult,
+  type PassportGrantRevokeResult,
   type ViewingKeyRotationResult,
   type PassportAccount,
   type PassportConnectorAPI,
@@ -12,6 +13,7 @@ import {
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { grantRosterFingerprint } from './grant-roster.js';
+import { validGrantId } from './grant-publication-state.js';
 import { readVerifiedHoldings } from './holdings.js';
 import { createJubjubAccounts } from './jubjub-connector.js';
 import { resolveRegisteredReaders } from './jubjub-readers.js';
@@ -665,7 +667,8 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     record: P256Hint,
     options: FlowOptions = {},
     removal?: string,
-    exceptAll = false,
+    excludedGrant?: string | 'all',
+    onRotated?: (state: { readonly encKey: Uint8Array; readonly authNonce: bigint }) => void,
   ) =>
     run(options, async (flow): Promise<ViewingKeyRotationResult | DeviceRemovalResult> => {
       const keyring = viewingKey;
@@ -867,11 +870,29 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
               networkId,
               keyring: { account: record.address, encKey: keys.encKey, envelopes: keys.envelopes },
               authNonce: view.authNonce,
-              ...(exceptAll && { exceptAll: true }),
+              ...(excludedGrant === 'all' && { exceptAll: true }),
+              ...(excludedGrant && excludedGrant !== 'all' && { exceptGrantId: excludedGrant }),
               ...flow.ports,
             },
             { targets: ports.readGrants!, viewingKey: keyring, random },
           );
+          if (
+            excludedGrant &&
+            excludedGrant !== 'all' &&
+            !deliveries.targets.some(({ grantId }) => grantId === excludedGrant)
+          )
+            throw new PassportConnectorError(
+              'GrantRosterUnsettled',
+              'The read grant disappeared before key rotation.',
+            );
+          if (
+            (target || (excludedGrant && excludedGrant !== 'all')) &&
+            deliveries.unsealedGrantIds.length
+          )
+            throw new PassportConnectorError(
+              'GrantRosterUnsettled',
+              'A surviving read grantee cannot receive the fresh key.',
+            );
           if (
             removedReader &&
             deliveries.targets.some(
@@ -1015,6 +1036,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           );
           for (const entry of reencrypted)
             rotatedView = await appendP256(flow, record, entry!, rotatedView);
+          onRotated?.({ encKey: keys.encKey, authNonce: rotatedView.authNonce });
           const rotation = {
             ...tx,
             droppedDeviceEntries: [],
@@ -1239,6 +1261,164 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           ...flow.ports,
         });
       }),
+    revokeGrant: (grantId, options = {}) =>
+      run(options, async (flow): Promise<PassportGrantRevokeResult> => {
+        const pure = (await binding()).pureCircuits;
+        if (
+          network.bindingId !== 'acc-s3r1.1' ||
+          !ports.grantDetails ||
+          !pure.challenge_revoke_grant_with_p256
+        )
+          throw new PassportConnectorError(
+            'BindingUnsupported',
+            'P-256 revoke needs the pinned grant binding and live grant details.',
+          );
+        if (!validGrantId(grantId))
+          throw new PassportConnectorError(
+            'GrantScopeInvalid',
+            'The grant id must be 32-byte hex.',
+          );
+        let grant = await flow.step('grant.roster', () =>
+          ports.grantDetails!.readGrant(record.address, grantId),
+        );
+        if (!grant) throw new PassportConnectorError('GrantNotFound', 'The grant is missing.');
+        if (!grant.active)
+          throw new PassportConnectorError('GrantRevoked', 'The grant is already revoked.');
+        let view = await readView(flow, record);
+        if (!view.booted || record.status !== 'active' || view.specVersion !== 3)
+          throw new PassportConnectorError('AccountNotFound', 'The active spec-3 ACC is missing.');
+        if (grant.authNonce !== view.authNonce)
+          throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster is stale.');
+        let rotation: ViewingKeyRotationResult | undefined;
+        let rotated: { readonly encKey: Uint8Array; readonly authNonce: bigint } | undefined;
+        if (grant.read) {
+          if (!isSealedP256(record) || !ports.holdings || !ports.readGrants)
+            throw new PassportConnectorError(
+              'BindingUnsupported',
+              'Read-grant revoke needs sealed keys, verified holdings and live read targets.',
+            );
+          const targets = await flow.step('grant.roster', () =>
+            ports.readGrants!.readActiveReadGrantTargets(record.address),
+          );
+          if (
+            targets.authNonce !== view.authNonce ||
+            !targets.targets.some(({ grantId: id }) => id === grantId)
+          )
+            throw new PassportConnectorError(
+              'GrantRosterUnsettled',
+              'The read grant is absent from the live targets.',
+            );
+          rotation = (await rotateP256ViewingKey(record, options, undefined, grantId, (state) => {
+            rotated = state;
+          })) as ViewingKeyRotationResult;
+          view = await readView(flow, record);
+          if (
+            !rotated ||
+            view.authNonce !== rotated.authNonce ||
+            !view.encKey ||
+            !equalBytes(view.encKey, rotated.encKey)
+          )
+            throw new PassportConnectorError(
+              'GrantRosterUnsettled',
+              'The ACC key changed after read-grant rotation.',
+            );
+          grant = await flow.step('grant.roster', () =>
+            ports.grantDetails!.readGrant(record.address, grantId),
+          );
+          if (!grant?.active || !grant.read || grant.authNonce !== view.authNonce)
+            throw new PassportConnectorError(
+              'GrantRosterUnsettled',
+              'The read grant changed during viewing-key rotation.',
+            );
+        }
+        const counter = await findCounter(flow, record, view);
+        if (counter === undefined) throw notHeld(record);
+        const selected = await authoriser.devicePublicKey();
+        if (selected.x !== record.publicKey.x || selected.y !== record.publicKey.y)
+          throw new PassportConnectorError(
+            'NotAuthorised',
+            'The selected passkey does not own this ACC.',
+          );
+        const circuit = 'revoke_grant_with_p256';
+        const id = fromHex(grantId);
+        const signed = await flow.step('passkey.sign', () =>
+          authoriser.authorise({
+            account: record.address,
+            circuit,
+            args: [id],
+            witnessValues: [],
+            authNonce: view.authNonce,
+            useCounter: counter,
+            challenge: pure.challenge_revoke_grant_with_p256!(
+              { bytes: fromHex(record.address) },
+              p256(record.publicKey),
+              id,
+              view.authNonce,
+            ),
+            credentialId: record.credentialId,
+          }),
+        );
+        if (
+          signed.scheme !== 'p256-webauthn' ||
+          signed.useCounter !== counter ||
+          signed.pk.x !== record.publicKey.x ||
+          signed.pk.y !== record.publicKey.y
+        )
+          throw new PassportConnectorError('NotAuthorised', 'The signature names another device.');
+        const latest = await flow.step('grant.roster', () =>
+          ports.grantDetails!.readGrant(record.address, grantId),
+        );
+        const current = await readView(flow, record);
+        if (
+          !latest?.active ||
+          latest.read !== grant.read ||
+          latest.authNonce !== view.authNonce ||
+          current.authNonce !== view.authNonce ||
+          current.deviceEpoch !== view.deviceEpoch ||
+          (rotated && (!current.encKey || !equalBytes(current.encKey, rotated.encKey)))
+        )
+          throw new PassportConnectorError(
+            'GrantRosterUnsettled',
+            'The grant changed before submission.',
+          );
+        flow.checkpoint();
+        const tx = await (
+          await chain()
+        ).call({
+          address: record.address,
+          circuit,
+          args: [
+            id,
+            {
+              pk: p256(record.publicKey),
+              policy: record.policy,
+              authenticator_data: signed.authenticatorData,
+              sig: signed.sig,
+              use_counter: counter,
+            },
+          ],
+          ...flow.ports,
+        });
+        for (let attempt = 0; attempt < 30; attempt++) {
+          flow.checkpoint();
+          const settled = await flow.step('grant.roster', () =>
+            ports.grantDetails!.readGrant(record.address, grantId),
+          );
+          if (settled && !settled.active && settled.authNonce > view.authNonce)
+            return {
+              ...tx,
+              grantId,
+              status: 'revoked',
+              nextUseCounter: counter + 1n,
+              ...(rotation && { rotation }),
+            };
+          if (attempt < 29) await sleep(1000);
+        }
+        throw new PassportConnectorError(
+          'GrantRosterUnsettled',
+          'The submitted grant revocation did not settle.',
+        );
+      }),
     revokeAllGrants: (options = {}) =>
       run(options, async (flow) => {
         if (network.bindingId !== 'acc-s3r1.1' || !ports.grantRoster)
@@ -1255,6 +1435,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           .map(({ id }) => id)
           .sort();
         let rotation: ViewingKeyRotationResult | undefined;
+        let rotated: { readonly encKey: Uint8Array; readonly authNonce: bigint } | undefined;
         if (activeReadIds.length) {
           if (!isSealedP256(record) || !ports.readGrants || !ports.holdings)
             throw new PassportConnectorError(
@@ -1273,12 +1454,9 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
               'GrantRosterUnsettled',
               'The active read-grant targets differ from the ACC grant map.',
             );
-          rotation = (await rotateP256ViewingKey(
-            record,
-            options,
-            undefined,
-            true,
-          )) as ViewingKeyRotationResult;
+          rotation = (await rotateP256ViewingKey(record, options, undefined, 'all', (state) => {
+            rotated = state;
+          })) as ViewingKeyRotationResult;
           const advanced = await flow.step('grant.roster', () =>
             ports.grantRoster!.readGrantRoster(record.address),
           );
@@ -1298,6 +1476,16 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
         if (view.authNonce !== roster.authNonce)
           throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster is stale.');
+        if (
+          rotated &&
+          (view.authNonce !== rotated.authNonce ||
+            !view.encKey ||
+            !equalBytes(view.encKey, rotated.encKey))
+        )
+          throw new PassportConnectorError(
+            'GrantRosterUnsettled',
+            'The ACC key changed after read-grant rotation.',
+          );
         const counter = await findCounter(flow, record, view);
         if (counter === undefined) throw notHeld(record);
         const publicKey = await authoriser.devicePublicKey();
@@ -1344,6 +1532,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         if (
           latest.authNonce !== view.authNonce ||
           current.authNonce !== view.authNonce ||
+          (rotated && (!current.encKey || !equalBytes(current.encKey, rotated.encKey))) ||
           latest.generation !== roster.generation ||
           grantRosterFingerprint(latest) !== baseline
         )

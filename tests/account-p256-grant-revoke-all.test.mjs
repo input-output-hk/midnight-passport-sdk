@@ -8,7 +8,7 @@ const credentialId = Uint8Array.of(1, 2, 3);
 const publicKey = { x: 11n, y: 13n, identity: false };
 const policy = { rp_id_hash: new Uint8Array(32), origin: new Uint8Array(134) };
 
-function world({ read = false, stale = false, changeAfterSign = false } = {}) {
+function world({ read = false, stale = false, changeAfterSign = false, revokeOne = false } = {}) {
   let nonce = 4n;
   let generation = 7n;
   let counter = 2n;
@@ -31,6 +31,8 @@ function world({ read = false, stale = false, changeAfterSign = false } = {}) {
       Uint8Array.of(Number(useCounter)),
     challenge_rotate_enc_key_with_p256: () => new Uint8Array(32),
     challenge_revoke_all_grants_with_p256: (_self, _pk, authNonce) =>
+      Uint8Array.of(Number(authNonce)),
+    challenge_revoke_grant_with_p256: (_self, _pk, _id, authNonce) =>
       Uint8Array.of(Number(authNonce)),
   };
   /** @type {import('../packages/account/dist/ports/index.js').PassportPorts} */
@@ -55,7 +57,10 @@ function world({ read = false, stale = false, changeAfterSign = false } = {}) {
       deviceBinding: async () => ({ credentialId, policy }),
       authorise: async (request) => {
         signed++;
-        assert.equal(request.circuit, 'revoke_all_grants_with_p256');
+        assert.equal(
+          request.circuit,
+          revokeOne ? 'revoke_grant_with_p256' : 'revoke_all_grants_with_p256',
+        );
         assert.deepEqual(request.challenge, Uint8Array.of(Number(nonce)));
         assert.deepEqual(request.credentialId, credentialId);
         if (changeAfterSign) entries = [{ id: 'ef'.repeat(32), active: true, read: false }];
@@ -82,15 +87,20 @@ function world({ read = false, stale = false, changeAfterSign = false } = {}) {
       call: async (request) => {
         const { circuit, args } = request;
         calls++;
-        assert.equal(circuit, 'revoke_all_grants_with_p256');
-        assert.equal(args.length, 1);
-        const auth = /** @type {{ use_counter: bigint; policy: typeof policy }} */ (args[0]);
+        assert.equal(circuit, revokeOne ? 'revoke_grant_with_p256' : 'revoke_all_grants_with_p256');
+        assert.equal(args.length, revokeOne ? 2 : 1);
+        const auth = /** @type {{ use_counter: bigint; policy: typeof policy }} */ (
+          args[revokeOne ? 1 : 0]
+        );
         assert.equal(auth.use_counter, counter);
         assert.deepEqual(auth.policy, policy);
         counter++;
         nonce++;
-        generation++;
-        entries = [];
+        if (revokeOne) entries = [{ id: grantId, active: false, read }];
+        else {
+          generation++;
+          entries = [];
+        }
         return { txHash: 'tx-1' };
       },
     },
@@ -100,6 +110,14 @@ function world({ read = false, stale = false, changeAfterSign = false } = {}) {
         generation,
         entries: [...entries],
       }),
+    },
+    grantDetails: {
+      readGrant: async (_account, id) => {
+        const grant = entries.find((entry) => entry.id === id);
+        return (
+          grant && { active: grant.active, read: grant.read, authNonce: stale ? nonce - 1n : nonce }
+        );
+      },
     },
     directory: { get: async () => hint, put: async () => {} },
     deployer: {
@@ -121,6 +139,18 @@ test('P-256 owner clears spend grants with the pinned challenge and confirms gen
   assert.equal(result.generation, 8n);
   assert.equal(result.nextUseCounter, 3n);
   assert.equal(result.txHash, 'tx-1');
+  assert.equal(w.signed(), 1);
+  assert.equal(w.calls(), 1);
+});
+
+test('P-256 owner revokes one spend grant without rotating its viewing key', async () => {
+  const w = world({ revokeOne: true });
+  const account = await w.accounts.openAccount();
+  const result = await account.revokeGrant?.(grantId);
+  assert.equal(result?.status, 'revoked');
+  assert.equal(result.grantId, grantId);
+  assert.equal(result.rotation, undefined);
+  assert.equal(result.nextUseCounter, 3n);
   assert.equal(w.signed(), 1);
   assert.equal(w.calls(), 1);
 });

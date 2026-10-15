@@ -197,7 +197,8 @@ and `assertionMaterial`.
   - _Grant revocation._ The reusable package rotates before revoking a read grant or clearing every grant; revoke-all seals the new secret to devices only. The demo page has no grant controls yet.
     Read issue and revoke-all rotate inside their owner key session; the page does not exercise Lace's hosted signer.
     The sealed P-256 package flow can also rotate away from live read grantees before clearing the
-    grant map; the browser demo does not configure its verified holding and read-target sources.
+    grant map or selectively revoking one read grant; the browser demo does not configure its
+    verified holding and read-target sources.
   - _Read-grant delivery._ The reusable package can prepare sealed records for active read grantees; this demo does not yet run grant-aware rotation or publish those records.
 - **Manifest pin (R18).** The dapp bakes `PASSPORT_MANIFEST_SHA256` in when Vite starts and checks
   the service's `/v1/config` against it, refusing a mismatch (`ArtefactIntegrity`). It is never read

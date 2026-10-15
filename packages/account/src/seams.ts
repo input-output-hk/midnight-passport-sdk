@@ -185,6 +185,12 @@ export interface AccPureCircuits {
     pk: P256PublicKey,
     nonce: bigint,
   ): Uint8Array;
+  challenge_revoke_grant_with_p256?(
+    self: ContractAddressArg,
+    pk: P256PublicKey,
+    grantId: Uint8Array,
+    nonce: bigint,
+  ): Uint8Array;
 }
 
 export interface PassportSeams {
