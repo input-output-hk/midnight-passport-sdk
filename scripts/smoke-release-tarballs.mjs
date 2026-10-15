@@ -105,8 +105,8 @@ try {
      /** @type {import('@input-output-hk/mn-passport-account/ports').AccountViewingKey} */
      const viewing = laceViewingKey();
      /** @type {import('@input-output-hk/mn-passport-account/ports').Authoriser} */
-     // @ts-expect-error: Lace has no rotate-encryption-key consent kind yet
      const directAuthoriser = laceAuthoriser();
+     // Structural assignment does not validate Lace's consent kinds; the hosted adapter does.
      /** @param {import('@input-output-hk/mn-passport-protocol').PassportAccount} account */
      const read = (account) => account.readShieldedHoldings?.();
      void [sponsor, viewing, directAuthoriser, read];\n`,

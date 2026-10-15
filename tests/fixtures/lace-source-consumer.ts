@@ -75,9 +75,9 @@ const hostedAuthoriser: Authoriser = hostedJubjubAuthoriser(laceAuthoriser, {
   },
 });
 
-// These differences are intentional and need real host adapters.
-// @ts-expect-error Lace's branded request and key-session descriptor differ from the SDK port.
-const directAuthoriser: Authoriser = laceAuthoriser;
+// Structural assignment compiles; runtime branding and consent still need the hosted adapter.
+const structuralAuthoriser: Authoriser = laceAuthoriser;
+// This difference needs a transaction pipeline adapter.
 // @ts-expect-error Lace proves a circuit preimage; the SDK proves a transaction.
 const directProver: Prover = laceProver;
 
@@ -88,6 +88,6 @@ void [
   grantBookkeeping,
   network,
   hostedAuthoriser,
-  directAuthoriser,
+  structuralAuthoriser,
   directProver,
 ];

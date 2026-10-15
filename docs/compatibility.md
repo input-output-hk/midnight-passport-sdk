@@ -76,6 +76,15 @@ nine entry points, compiled the Lace-shaped host fixture, built a scratch Vite
 browser app, and restored and hash-verified the pinned `deposit_unshielded`
 key. This `dev.2` pack was local validation, not a registry release.
 
+On 2026/10/15, SDK commit `9e31aeeaeb90f9f355162e368a90c6fce4238bd8`
+was packed locally as nine `0.1.0-dev.3` tarballs. The release consumer smoke
+loaded the packages, compiled the Lace-shaped host fixture, built a browser
+bundle, and hash-verified a restored `deposit_unshielded` key. The exact Lace
+source check passed against PR #2845 at the pinned head above. These are
+local checks, not a registry release or a Lace module runtime test. TypeScript
+accepts direct structural assignment of Lace's authoriser; the hosted adapter
+still handles runtime branding and rejects unsupported consent descriptors.
+
 The scratch browser build emitted ledger v8 and v9 WASM assets. Dependency
 inspection found one `@midnightntwrk/ledger-v8@8.1.2` and one
 `@midnightntwrk/ledger-v9@1.0.0-rc.5` in the SDK adapter path: upstream
