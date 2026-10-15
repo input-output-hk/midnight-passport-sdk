@@ -170,6 +170,9 @@ importers:
       '@midnightntwrk/ledger-v9':
         specifier: 1.0.0-rc.5
         version: 1.0.0-rc.5
+      '@noble/curves':
+        specifier: 2.2.0
+        version: 2.2.0
 
   packages/adapter-midnight-js:
     dependencies:

@@ -56,6 +56,7 @@ try {
        import * as binding from '@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1';
        import * as account from '@input-output-hk/mn-passport-account';
        import * as browser from '@input-output-hk/mn-passport-adapter-browser';
+       import * as hosted from '@input-output-hk/mn-passport-adapter-browser/hosted-jubjub';
        import * as midnight from '@input-output-hk/mn-passport-adapter-midnight-js';
        import * as service from '@input-output-hk/mn-passport-service';
        if (contract.BINDING_VERSION !== 'acc-s3r1.1' ||
@@ -71,6 +72,7 @@ try {
            typeof account.sealActiveReadGrants !== 'function' ||
            typeof midnight.createMidnightGrantSource !== 'function' ||
            typeof browser.createBrowserPassport !== 'function' ||
+           typeof hosted.hostedJubjubAuthoriser !== 'function' ||
            typeof service.createServer !== 'function' ||
            typeof service.chainRoute !== 'function' ||
            typeof service.zkRoute !== 'function' ||
@@ -140,8 +142,9 @@ try {
      import { Contract } from '@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1';
      import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
      import { createBrowserPassport } from '@input-output-hk/mn-passport-adapter-browser';
+     import { hostedJubjubAuthoriser } from '@input-output-hk/mn-passport-adapter-browser/hosted-jubjub';
      document.querySelector('#app').textContent =
-       [BINDING_VERSION, Contract.name, createPassportAccounts.name, createBrowserPassport.name].join(' ');\n`,
+       [BINDING_VERSION, Contract.name, createPassportAccounts.name, createBrowserPassport.name, hostedJubjubAuthoriser.name].join(' ');\n`,
   );
   execFileSync('pnpm', ['exec', 'vite', 'build'], { cwd: scratch, stdio: 'inherit' });
   if (!existsSync(join(scratch, 'dist/index.html'))) throw new Error('scratch Vite build missing');

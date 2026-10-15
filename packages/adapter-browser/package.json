@@ -11,6 +11,10 @@
     "./prototype": {
       "types": "./dist/prototype.d.ts",
       "default": "./dist/prototype.js"
+    },
+    "./hosted-jubjub": {
+      "types": "./dist/hosted-jubjub-authoriser.d.ts",
+      "default": "./dist/hosted-jubjub-authoriser.js"
     }
   },
   "files": [
@@ -30,7 +34,8 @@
     "@input-output-hk/mn-passport-contract": "workspace:*",
     "@input-output-hk/mn-passport-keys": "workspace:*",
     "@input-output-hk/mn-passport-protocol": "workspace:*",
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.5"
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
+    "@noble/curves": "2.2.0"
   },
   "license": "Apache-2.0",
   "repository": {
