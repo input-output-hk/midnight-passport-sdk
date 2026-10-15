@@ -530,6 +530,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     enrollment?: EnrollmentContext,
     existingFlow?: Flow,
     revocation?: string,
+    revokeAll = false,
   ) => {
     const body = async (flow: Flow) => {
       const holdings = ports.holdings;
@@ -559,7 +560,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       const target = removal === undefined ? undefined : fromHex(removal.toLowerCase());
       const initial =
         enrollment?.initial ??
-        (target || revocation
+        (target || revocation || revokeAll
           ? await flow.step('chain.read', () => read(record, true))
           : undefined);
       if (initial) {
@@ -662,7 +663,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               'InternalError',
               'The ledger device set is inconsistent.',
             );
-          if (target || enrollment || revocation) {
+          if (target || enrollment || revocation || revokeAll) {
             if (
               view.authNonce !== initial!.authNonce ||
               view.deviceEpoch !== initial!.deviceEpoch ||
@@ -796,6 +797,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               },
               authNonce: view.authNonce,
               ...(revocation && { exceptGrantId: revocation }),
+              ...(revokeAll && { exceptAll: true }),
               ...flow.ports,
             },
             { targets: ports.readGrants!, viewingKey, random: fresh },
@@ -1142,15 +1144,22 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
                 reader: enrollment.reader,
                 devices: enrollment.initial.deviceEntries!.map(toHex),
               }
-            : revocation
+            : revokeAll
               ? {
-                  kind: 'revoke-grant',
+                  kind: 'revoke-all-grants',
                   account: record.address,
-                  grantId: revocation,
                   read: true,
                   devices: initial!.deviceEntries!.map(toHex),
                 }
-              : { kind: 'rotate-encryption-key' },
+              : revocation
+                ? {
+                    kind: 'revoke-grant',
+                    account: record.address,
+                    grantId: revocation,
+                    read: true,
+                    devices: initial!.deviceEntries!.map(toHex),
+                  }
+                : { kind: 'rotate-encryption-key' },
       );
     };
     return existingFlow ? body(existingFlow) : run(options, body);
@@ -1274,6 +1283,22 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           authoriser,
           records: ports.records,
           random: fresh,
+          ...(ports.holdings &&
+            ports.readGrants &&
+            viewingKey.reencryptInbox &&
+            viewingKey.decodeDevicePublicKey &&
+            viewingKey.sealView && {
+              rotateBeforeRevokeAll: () =>
+                rotateViewingKey(
+                  record,
+                  options,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  true,
+                ) as Promise<ViewingKeyRotationResult>,
+            }),
         },
       );
     },

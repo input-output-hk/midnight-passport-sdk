@@ -17,6 +17,7 @@ function fixture() {
   /** @type {string[]} */
   const calls = [];
   let nonce = 5n;
+  let counter = 0n;
   let generation = 2n;
   let settle = true;
   /** @type {{id:string,active:boolean,read:boolean}[]} */
@@ -57,7 +58,7 @@ function fixture() {
       readAccount: async () => ({
         booted: true,
         specVersion: 3,
-        authNonce: 5n,
+        authNonce: nonce,
         deviceEpoch: 0n,
         entryCount: 1,
         hasEntry: (entry) =>
@@ -67,7 +68,7 @@ function fixture() {
                 { bytes: Buffer.from(address, 'hex') },
                 owner,
                 0n,
-                0n,
+                counter,
               ),
             ),
           ),
@@ -76,11 +77,12 @@ function fixture() {
         calls.push('call');
         assert.equal(request.circuit, 'revoke_all_grants_with_jubjub');
         assert.equal(request.args.length, 5);
-        assert.equal(request.args[1], 0n);
+        assert.equal(request.args[1], counter);
         if (settle) {
           entries = [];
           generation++;
           nonce++;
+          counter++;
         }
         return { txHash: 'clear-tx' };
       },
@@ -90,13 +92,17 @@ function fixture() {
       devicePublicKey: async () => owner,
       withKeySession: async (operation, flow) => {
         calls.push('session');
-        assert.deepEqual(flow, { kind: 'revoke-all-grants', account: address });
+        assert.deepEqual(flow, {
+          kind: 'revoke-all-grants',
+          account: address,
+          ...(entries.some(({ active, read }) => active && read) && { read: true, devices: [] }),
+        });
         return operation();
       },
       authorise: async (request) => {
         calls.push('sign');
         assert.equal(request.circuit, 'revoke_all_grants_with_jubjub');
-        assert.equal(request.useCounter, 0n);
+        assert.equal(request.useCounter, counter);
         if (typeof request.challenge !== 'function') throw new Error('missing challenge');
         assert.deepEqual(
           request.challenge(owner, 3n),
@@ -104,14 +110,14 @@ function fixture() {
             { bytes: Buffer.from(address, 'hex') },
             owner,
             owner,
-            5n,
+            nonce,
             3n,
           ),
         );
         return {
           scheme: 'jubjub-schnorr',
           pk: owner,
-          useCounter: 0n,
+          useCounter: counter,
           sigR: owner,
           sigS: 8n,
           grindNonce: 3n,
@@ -126,6 +132,11 @@ function fixture() {
     setEntries: (/** @type {typeof entries} */ value) => (entries = value),
     setGeneration: (/** @type {bigint} */ value) => (generation = value),
     preventSettlement: () => (settle = false),
+    advanceRotation: () => {
+      calls.push('rotation');
+      nonce++;
+      counter++;
+    },
   };
 }
 
@@ -147,6 +158,56 @@ test('a live read grant is refused before consent or submission', async () => {
   setEntries([{ id: '01'.repeat(32), active: true, read: true }]);
   await assert.rejects(revokeAllJubjubGrants({ hint }, ports), { code: 'BindingUnsupported' });
   assert.deepEqual(calls, ['roster']);
+});
+
+test('read revoke-all rotates before clearing and confirms the new generation', async () => {
+  const { ports, calls, setEntries, advanceRotation } = fixture();
+  setEntries([{ id: '01'.repeat(32), active: true, read: true }]);
+  const result = await revokeAllJubjubGrants(
+    { hint },
+    {
+      ...ports,
+      rotateBeforeRevokeAll: async () => {
+        advanceRotation();
+        return {
+          txHash: 'rotation-tx',
+          droppedDeviceEntries: [],
+          sealedReadGrants: [],
+          unsealedGrantIds: [],
+        };
+      },
+    },
+  );
+  assert.equal(result.status, 'cleared');
+  assert.equal(result.rotation?.txHash, 'rotation-tx');
+  assert.deepEqual(result.rotation?.sealedReadGrants, []);
+  assert.ok(calls.indexOf('rotation') < calls.indexOf('call'));
+  assert.equal(result.nextUseCounter, 2n);
+});
+
+test('read revoke-all refuses a grant-map change after rotation', async () => {
+  const { ports, calls, setEntries, advanceRotation } = fixture();
+  setEntries([{ id: '01'.repeat(32), active: true, read: true }]);
+  await assert.rejects(
+    revokeAllJubjubGrants(
+      { hint },
+      {
+        ...ports,
+        rotateBeforeRevokeAll: async () => {
+          advanceRotation();
+          setEntries([{ id: '03'.repeat(32), active: true, read: true }]);
+          return {
+            txHash: 'rotation-tx',
+            droppedDeviceEntries: [],
+            sealedReadGrants: [],
+            unsealedGrantIds: [],
+          };
+        },
+      },
+    ),
+    { code: 'GrantRosterUnsettled' },
+  );
+  assert.ok(!calls.includes('call'));
 });
 
 test('a changed grant generation before submission is refused', async () => {

@@ -1,8 +1,9 @@
 import type {
   FlowOptions,
   PassportGrantRevokeAllResult,
+  ViewingKeyRotationResult,
 } from '@input-output-hk/mn-passport-protocol';
-import { fromHex } from './codec.js';
+import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow } from './flow.js';
 import { validGrantId } from './grant-publication-state.js';
@@ -40,6 +41,10 @@ export interface RevokeAllJubjubGrantsPorts {
   readonly random?: (length: number) => Uint8Array;
   readonly sleep?: (milliseconds: number) => Promise<void>;
   readonly attempts?: number;
+  /** Rotates without sealing any read grantee, inside the revoke-all key session. */
+  readonly rotateBeforeRevokeAll?: (
+    input: RevokeAllJubjubGrantsInput,
+  ) => Promise<ViewingKeyRotationResult>;
 }
 
 export interface RevokeAllJubjubGrantsInput extends FlowOptions {
@@ -81,7 +86,7 @@ function fingerprint(roster: GrantRoster): string {
     .join('|');
 }
 
-/** Clear a roster without live read grants and confirm the ACC generation advanced. */
+/** Rotate away from live readers when needed, then clear and confirm the grant map. */
 export async function revokeAllJubjubGrants(
   input: RevokeAllJubjubGrantsInput,
   ports: RevokeAllJubjubGrantsPorts,
@@ -98,24 +103,25 @@ export async function revokeAllJubjubGrants(
       throw new PassportConnectorError('AccountNotFound', 'No local account record exists.');
     if (ports.authoriser.scheme !== 'jubjub-schnorr' || !ports.authoriser.withKeySession)
       throw new PassportConnectorError('BindingUnsupported', 'A JubJub key session is required.');
-    const roster = await flow.step('grant.roster', () =>
-      ports.grants.readGrantRoster(hint.address),
-    );
+    let roster = await flow.step('grant.roster', () => ports.grants.readGrantRoster(hint.address));
     const baseline = fingerprint(roster);
-    if (roster.entries.some(({ active, read }) => active && read))
+    const originalGeneration = roster.generation;
+    const hasRead = roster.entries.some(({ active, read }) => active && read);
+    if (hasRead && !ports.rotateBeforeRevokeAll)
       throw new PassportConnectorError(
         'BindingUnsupported',
         'Live read grants require viewing-secret rotation before revoke-all.',
       );
-    const view = await flow.step('chain.read', () =>
+    const initialView = await flow.step('chain.read', () =>
       ports.chain.readAccount(hint.address, { includeDevices: true }),
     );
-    if (!view?.booted)
+    if (!initialView?.booted)
       throw new PassportConnectorError('AccountNotFound', 'The active ACC is missing.');
-    if (view.specVersion !== 3)
+    if (initialView.specVersion !== 3)
       throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
-    if (view.authNonce !== roster.authNonce)
+    if (initialView.authNonce !== roster.authNonce)
       throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster is stale.');
+    let view = initialView;
     const self = { bytes: fromHex(hint.address) };
     const credentialId = hint.credentialId;
     return await ports.authoriser.withKeySession(
@@ -138,6 +144,28 @@ export async function revokeAllJubjubGrants(
             'NotAuthorised',
             'The selected device does not own this ACC.',
           );
+        let rotation: ViewingKeyRotationResult | undefined;
+        if (hasRead) {
+          rotation = await ports.rotateBeforeRevokeAll!(input);
+          const rotatedView = await flow.step('chain.read', () =>
+            ports.chain.readAccount(hint.address, { includeDevices: true }),
+          );
+          if (!rotatedView?.booted || rotatedView.specVersion !== 3)
+            throw new PassportConnectorError('AccountNotFound', 'The rotated ACC is missing.');
+          view = rotatedView;
+          roster = await flow.step('grant.roster', () =>
+            ports.grants.readGrantRoster(hint.address),
+          );
+          if (
+            roster.authNonce !== view.authNonce ||
+            roster.generation !== originalGeneration ||
+            fingerprint(roster) !== baseline
+          )
+            throw new PassportConnectorError(
+              'GrantRosterUnsettled',
+              'The grant roster changed during rotation.',
+            );
+        }
         const counter = await flow.step('counter.scan', async () => {
           for (let value = 0n; value < JUBJUB_READER_SCAN_LIMIT; value++) {
             if (
@@ -221,9 +249,14 @@ export async function revokeAllJubjubGrants(
           status: 'cleared' as const,
           generation,
           nextUseCounter,
+          ...(rotation && { rotation }),
         };
       },
-      { kind: 'revoke-all-grants', account: hint.address },
+      {
+        kind: 'revoke-all-grants',
+        account: hint.address,
+        ...(hasRead && { read: true, devices: view.deviceEntries?.map(toHex) ?? [] }),
+      },
     );
   } catch (error) {
     throw flow.fail(error);

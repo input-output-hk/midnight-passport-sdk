@@ -141,6 +141,8 @@ export interface PassportGrantRevokeAllResult extends PassportTxResult {
   readonly status: 'cleared';
   readonly generation: bigint;
   readonly nextUseCounter: bigint;
+  /** Present when live read grants required rotation away from every grantee. */
+  readonly rotation?: ViewingKeyRotationResult;
 }
 
 export interface PassportGrantRecoveryResult {

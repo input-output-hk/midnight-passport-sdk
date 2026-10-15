@@ -1015,6 +1015,64 @@ test('read grant revocation can retry after the key switch lands but the revoke 
   survivingReader.secretKey.fill(0);
 });
 
+test('revoke-all rotates away from every live read grantee without resealing them', async () => {
+  const w = world();
+  await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const grantId = 'ac'.repeat(32);
+  const reader = x25519.keygen();
+  w.activeGrantIds.push(grantId);
+  w.setReadGrantTargets([{ grantId, readPublicKey: hex(reader.publicKey) }]);
+  /** @type {import('../packages/account/dist/ports/index.js').AccountRecord} */
+  let local = {
+    address,
+    bindingId: 'acc-s3r1.1',
+    scheme: 'jubjub-schnorr',
+    credentialId,
+    localUseCounter: 2n,
+  };
+  let sealCalls = 0;
+  const sealView = w.ports.viewingKey.sealView;
+  assert.ok(sealView);
+  const account = await createPassportAccounts({
+    ...w.ports,
+    viewingKey: {
+      ...w.ports.viewingKey,
+      sealView: async (...args) => {
+        sealCalls++;
+        return sealView(...args);
+      },
+    },
+    records: {
+      exists: async () => true,
+      read: async () => local,
+      write: async (next) => {
+        local = next;
+      },
+    },
+    grantRoster: {
+      readGrantRoster: async () => ({
+        authNonce: w.grantNonce(),
+        generation: w.grantGeneration(),
+        entries: w.activeGrantIds.map((id) => ({ id, active: true, read: true })),
+      }),
+    },
+  }).openAccount();
+  assert.ok(account.revokeAllGrants);
+  const before = hex(w.encKey());
+  const result = await account.revokeAllGrants();
+  assert.equal(result.status, 'cleared');
+  assert.notEqual(hex(w.encKey()), before);
+  assert.deepEqual(result.rotation?.sealedReadGrants, []);
+  assert.equal(sealCalls, 0);
+  assert.deepEqual(w.activeGrantIds, []);
+  assert.ok(
+    w.calls.indexOf('rotate_enc_key_with_jubjub') <
+      w.calls.indexOf('revoke_all_grants_with_jubjub'),
+  );
+  assert.equal(local.localUseCounter, result.nextUseCounter);
+  reader.secretKey.fill(0);
+});
+
 test('JubJub removal can resume after the key switch lands but the removal call fails', async () => {
   const w = world();
   const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });

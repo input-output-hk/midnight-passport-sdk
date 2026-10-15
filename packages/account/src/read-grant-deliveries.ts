@@ -23,6 +23,8 @@ export interface SealActiveReadGrantsInput extends FlowOptions {
   readonly authNonce: bigint;
   /** A newly issued or revoked grant to omit from resealing. */
   readonly exceptGrantId?: string;
+  /** Revoke-all rotates away from every read grantee before clearing the ACC map. */
+  readonly exceptAll?: boolean;
 }
 
 export interface SealActiveReadGrantsPorts {
@@ -59,7 +61,7 @@ export async function sealActiveReadGrants(
 ): Promise<PreparedReadGrantDeliveries> {
   const flow = startFlow(input, ports.random ?? random);
   try {
-    const { keyring, networkId, exceptGrantId } = input;
+    const { keyring, networkId, exceptGrantId, exceptAll } = input;
     if (
       !networkId ||
       !hex32(keyring.account) ||
@@ -98,7 +100,7 @@ export async function sealActiveReadGrants(
     const sealedEncKey = toHex(keyring.encKey);
     for (const target of targets) {
       flow.checkpoint();
-      if (target.grantId === exceptGrantId) continue;
+      if (exceptAll || target.grantId === exceptGrantId) continue;
       if (!target.readPublicKey) {
         unsealedGrantIds.push(target.grantId);
         continue;

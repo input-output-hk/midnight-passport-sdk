@@ -72,6 +72,18 @@ test('seals only chain-confirmed remaining readers and reports unknown keys', as
   grantee.secretKey.fill(0);
 });
 
+test('revoke-all validates the live read roster without sealing any grantee', async () => {
+  const { ports, keyring, targets, grantee } = await fixture();
+  const result = await sealActiveReadGrants(
+    { networkId, keyring, authNonce: 5n, exceptAll: true },
+    ports,
+  );
+  assert.deepEqual(result.targets, targets);
+  assert.deepEqual(result.sealed, []);
+  assert.deepEqual(result.unsealedGrantIds, []);
+  grantee.secretKey.fill(0);
+});
+
 test('malformed or duplicated active targets are refused before sealing', async () => {
   const { ports, keyring, targets, grantee } = await fixture();
   targets.push({ grantId: first });
