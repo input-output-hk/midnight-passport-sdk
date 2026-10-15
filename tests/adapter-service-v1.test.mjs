@@ -143,3 +143,69 @@ test('v1 clients propagate service job failures and abort before submission', as
     { code: 'ProverUnavailable' },
   );
 });
+
+test('v1 prove retries an interrupted poll with the same cursor and never resubmits', async () => {
+  /** @type {[string, string][]} */
+  const calls = [];
+  /** @type {import('../packages/protocol/dist/index.js').PassportEvent[]} */
+  const events = [];
+  /** @type {import('../packages/account/dist/ports/index.js').FetchLike} */
+  const fetch = async (url, init) => {
+    calls.push([url, init?.method ?? 'GET']);
+    if (init?.method === 'POST')
+      return { ok: true, status: 202, json: async () => ({ jobId: 'job-1' }) };
+    if (calls.length === 2) throw new Error('read ECONNRESET');
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        state: 'done',
+        cursor: '1',
+        events: [
+          { id: 'proof', flowId: 'flow', step: 'prove', phase: 'end', at: 1, clock: 'service' },
+        ],
+        result: { tx: '02' },
+      }),
+    };
+  };
+  const proved = await remoteV1Prover('http://service', {
+    fetch,
+    pollIntervalMs: 0,
+    timeoutMs: 10_000,
+  }).proveTx(Uint8Array.of(1), {
+    networkId: 'undeployed',
+    bindingId: 'acc-s3r1.1',
+    circuits: [],
+    onEvent: (event) => events.push(event),
+  });
+  assert.deepEqual(proved.tx, Uint8Array.of(2));
+  assert.deepEqual(calls, [
+    ['http://service/v1/prove-tx', 'POST'],
+    ['http://service/v1/jobs/job-1?after=0', 'GET'],
+    ['http://service/v1/jobs/job-1?after=0', 'GET'],
+  ]);
+  assert.equal(events.length, 1);
+});
+
+test('v1 polling stops after a bounded run of unreachable responses', async () => {
+  let submissions = 0;
+  let polls = 0;
+  /** @type {import('../packages/account/dist/ports/index.js').FetchLike} */
+  const fetch = async (_url, init) => {
+    if (init?.method === 'POST') {
+      submissions++;
+      return { ok: true, status: 202, json: async () => ({ jobId: 'job-1' }) };
+    }
+    polls++;
+    throw new Error('read ECONNRESET');
+  };
+  await assert.rejects(
+    remoteV1Prover('http://service', { fetch, pollIntervalMs: 0, timeoutMs: 10_000 }).proveTx(
+      Uint8Array.of(1),
+      { networkId: 'undeployed', bindingId: 'acc-s3r1.1', circuits: [] },
+    ),
+    { code: 'ProverUnavailable', message: '/v1/prove-tx: service unreachable' },
+  );
+  assert.equal(submissions, 1);
+  assert.equal(polls, 4);
+});

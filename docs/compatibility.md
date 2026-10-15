@@ -189,6 +189,18 @@ bridge and enrollment circuit. It does not exercise the account API's sealed
 key delivery, active read-grant rotation, or Lace's WebAuthn and transaction
 host; those remain release validation work.
 
+The [current account API probe](../experiments/acc-0.35/sdk-p256-sealed-device-node.mjs)
+then exercised `createPassportAccounts` over the service-backed prover and sponsor
+on the same pinned localnet. It created a sealed P-256 ACC, published its two
+creation entries, delivered two sealed entries to a second P-256 device, enrolled
+that device, and opened the account independently with the joining device's
+PRF-derived reader key. The [evidence](../experiments/acc-0.35/results/sdk-p256-sealed-device-node.json)
+records the six account calls and the live roster change. The chain-backed grant
+adapter observed an empty read-grant roster; this run does not validate rotation
+with an active grant or Lace's own hosted runtime. A transient reset while polling
+a proof job exposed an adapter gap: the v1 service client now retries that GET
+with the same cursor, without submitting another proof or replaying events.
+
 | Lace seam | SDK port | Current result |
 | --- | --- | --- |
 | `FeeSponsor.balanceAndSign` | `FeeSponsor` | Direct structural assignment |
