@@ -22,8 +22,16 @@ Compact runtime.
 | --- | --- | --- |
 | `0.1.0-rc1` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 
-The local demo service is not a published SDK package. The service API constant
-names the versioned client wire types; the demo still uses its prototype routes.
+The local demo service was not a published SDK package in RC1. The service API
+constant names the versioned client wire types; the current prototype browser
+uses the `/v1` config, deployment, proving, sponsorship and directory routes.
+
+On 2026/10/15 the prototype browser created a JubJub account against the pinned
+`acc-s3r1.1` binding on an isolated localnet, activated its first device, then
+reopened the same account after a page reload with the development mock passkey.
+The reference ACC `test:auth-coinless` also passed with both enrolment directions
+and an on-node JubJub-authorized gated call. This validates the local SDK
+composition; it does not establish interoperability inside Lace's hosted module.
 
 ## Lace consumer seam check
 
