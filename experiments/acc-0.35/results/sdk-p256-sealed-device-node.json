@@ -1,0 +1,41 @@
+{
+  "verdict": "PASS",
+  "bindingId": "acc-s3r1.1",
+  "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "contractSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
+  "account": "62f97850a5ad9f5262c0b256e27ee0b9ec1aa08a9d18db445432319bb347ad00",
+  "networkId": "undeployed",
+  "ownerScheme": "p256-webauthn",
+  "joinedScheme": "p256-webauthn",
+  "enrollmentCommitment": "86a752b996a60457b7ff74b202cf59f6f0bf741eb08f6cb773ce4158b8437a4a",
+  "authNonceBeforeEnrollment": "2",
+  "authNonceAfterEnrollment": "5",
+  "transactions": [
+    {
+      "circuit": "activate_initial_device_with_p256",
+      "txHash": "1d6ce90eb8e9532df25f5aed86d2baa420e2a84319b1a811e059a6910aa52f78"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "8dc6588006bc303dfd5867afe294d881582d156f9e879188f108ba2b32b6c5a5"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "3caada2c4ae81939efecc8ecca996357e0418c8ac4bd4a1a4d18e0e6366e7631"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "d789d9ba8fe8a355d54deb404c7810e71de32ebd9647c5cc2828fd5f00f54219"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "22884784508aa8fe5ecf7df0ed110a38e83c4e42a0f41adf4d0f3b39e27b3f0d"
+    },
+    {
+      "circuit": "add_device_with_p256",
+      "txHash": "883f91e3142751897224f468f1372a095a095c997c8995cdb0bd826630f2a450"
+    }
+  ],
+  "joinerOpenedByAddress": true,
+  "scope": "current account API sealed P-256 enrollment with an empty live read-grant roster"
+}

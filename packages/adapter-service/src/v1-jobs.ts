@@ -172,12 +172,28 @@ export async function requestV1Job(
     throw new PassportConnectorError('InternalError', `${path} answered an invalid job id`);
 
   let cursor = '0';
+  let transientPollFailures = 0;
   while (true) {
     const pollPath = `/v1/jobs/${jobId}?after=${encodeURIComponent(cursor)}`;
-    const response = await requestOnce(
-      `${trimBase(base)}${pollPath}`,
-      signal ? { signal } : undefined,
-    );
+    let response;
+    try {
+      response = await requestOnce(`${trimBase(base)}${pollPath}`, signal ? { signal } : undefined);
+      transientPollFailures = 0;
+    } catch (error) {
+      // The job remains owned by the service. Retrying this GET with the same cursor is safe:
+      // no events have been consumed yet, and a submitted prove/deploy must never be replayed.
+      if (
+        !(error instanceof PassportConnectorError) ||
+        error.message !== `${path}: service unreachable` ||
+        ++transientPollFailures > 3
+      )
+        throw error;
+      await pause(
+        Math.min(250 * 2 ** (transientPollFailures - 1), Math.max(0, deadline - Date.now())),
+        signal,
+      );
+      continue;
+    }
     const answer = response.body;
     if (response.status !== 200) throw serviceFailure(role, response.status, answer, pollPath);
     const job = record(answer, pollPath);
