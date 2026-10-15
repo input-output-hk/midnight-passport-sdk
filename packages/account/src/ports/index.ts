@@ -358,6 +358,15 @@ export interface VerifiedHoldingSource {
   ): Promise<readonly number[]>;
 }
 
+/** A received-output source that also resolves the output's Merkle position for `held_coin`. */
+export interface QualifiedHoldingSource extends VerifiedHoldingSource {
+  selectQualifiedHeldCoins(
+    account: string,
+    entries: readonly Uint8Array[],
+    opened: readonly (OpenedInboxEntry | null)[],
+  ): Promise<readonly { readonly inboxIndex: number; readonly coin: QualifiedShieldedCoin }[]>;
+}
+
 export interface CallRequest extends FlowOptions {
   readonly address: string;
   readonly circuit: string;

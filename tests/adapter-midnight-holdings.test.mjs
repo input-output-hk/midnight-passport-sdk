@@ -59,3 +59,37 @@ test('holding source checks alignment and avoids history queries for no opened c
   assert.equal(queries, 0);
   await assert.rejects(source.selectHeldEntries(account, [], [null]), /does not match/);
 });
+
+test('qualified holding retains the chain output index and refuses an ambiguous position', async () => {
+  const entry = Uint8Array.of(1);
+  const opened = [{ kind: /** @type {const} */ ('coin'), coin }];
+  const source = createMidnightHoldingSource({
+    enumerateContractActions: async () => [{ txHash: 'tx-a' }],
+    queryShieldedOutputs: async () => [
+      { contractAddress: account, commitment: commitment(coin), index: 11n },
+    ],
+  });
+  assert.deepEqual(await source.selectQualifiedHeldCoins(account, [entry], opened), [
+    { inboxIndex: 0, coin: { ...coin, mt_index: 11n } },
+  ]);
+  const noIndex = createMidnightHoldingSource({
+    enumerateContractActions: async () => [{ txHash: 'tx-a' }],
+    queryShieldedOutputs: async () => [{ contractAddress: account, commitment: commitment(coin) }],
+  });
+  assert.deepEqual(await noIndex.selectHeldEntries(account, [entry], opened), [0]);
+  await assert.rejects(
+    noIndex.selectQualifiedHeldCoins(account, [entry], opened),
+    /no unique verified Merkle index/,
+  );
+  const ambiguous = createMidnightHoldingSource({
+    enumerateContractActions: async () => [{ txHash: 'tx-a' }],
+    queryShieldedOutputs: async () => [
+      { contractAddress: account, commitment: commitment(coin), index: 11n },
+      { contractAddress: account, commitment: commitment(coin), index: 12n },
+    ],
+  });
+  await assert.rejects(
+    ambiguous.selectQualifiedHeldCoins(account, [entry], opened),
+    /no unique verified Merkle index/,
+  );
+});
