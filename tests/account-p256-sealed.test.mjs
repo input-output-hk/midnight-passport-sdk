@@ -96,6 +96,78 @@ test('P-256 sealed accounts read only chain-confirmed shielded holdings', async 
   await assert.rejects(wrongPasskey.readShieldedHoldings(), { code: 'NotAuthorised' });
 });
 
+test('P-256 rotation reseals verified holdings and preserves the live reader', async () => {
+  const fake = createFakePorts();
+  /** @type {number[]} */
+  let held = [];
+  const ports = {
+    ...fake,
+    viewingKey: viewingKey(),
+    authoriser: {
+      ...fake.authoriser,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    holdings: { selectHeldEntries: async () => held },
+    readGrants: {
+      readActiveReadGrantTargets: async () => ({
+        authNonce: [...fake.ledger.values()][0]?.authNonce ?? 0n,
+        targets: [],
+      }),
+    },
+  };
+  const account = await createPassportAccounts(ports).createAccount({
+    userName: 'rotation',
+    retireAuthority: true,
+  });
+  const ledger = fake.ledger.get(account.address);
+  assert.ok(ledger);
+  ledger.specVersion = 3;
+  const originalKey = ledger.encKey.slice();
+  const coin = { nonce: new Uint8Array(32).fill(4), color: new Uint8Array(32).fill(5), value: 7n };
+  ledger.inboxEntries.push(await sealInboxCoin(originalKey, coin));
+  held = [2];
+  assert.ok(account.rotateViewingKey);
+  const result = await account.rotateViewingKey();
+  assert.notDeepEqual(ledger.encKey, originalKey);
+  assert.deepEqual(result.droppedDeviceEntries, []);
+  assert.deepEqual(result.unsealedGrantIds, []);
+  assert.equal(ledger.inboxEntries.at(-2)?.[0], 0xd1);
+  held = [ledger.inboxEntries.length - 1];
+  assert.deepEqual(await account.readShieldedHoldings?.(), [{ inboxIndex: held[0], coin }]);
+  assert.deepEqual((await createPassportAccounts(ports).openAccount()).address, account.address);
+});
+
+test('P-256 rotation refuses a live device without a unique reader registration', async () => {
+  const fake = createFakePorts();
+  const ports = {
+    ...fake,
+    viewingKey: viewingKey(),
+    authoriser: {
+      ...fake.authoriser,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    holdings: { selectHeldEntries: async () => [] },
+    readGrants: {
+      readActiveReadGrantTargets: async () => ({
+        authNonce: [...fake.ledger.values()][0]?.authNonce ?? 0n,
+        targets: [],
+      }),
+    },
+  };
+  const account = await createPassportAccounts(ports).createAccount({
+    userName: 'unregistered',
+    retireAuthority: true,
+  });
+  const ledger = fake.ledger.get(account.address);
+  assert.ok(ledger);
+  ledger.specVersion = 3;
+  ledger.entries.add('ab'.repeat(32));
+  const nonce = ledger.authNonce;
+  if (!account.rotateViewingKey) throw new Error('Rotation is unavailable.');
+  await assert.rejects(account.rotateViewingKey(), { code: 'DeviceRosterInvalid' });
+  assert.equal(ledger.authNonce, nonce);
+});
+
 test('P-256 owner delivers a sealed key before enrolling a new live device', async () => {
   const fake = createFakePorts();
   const ports = {
@@ -105,6 +177,7 @@ test('P-256 owner delivers a sealed key before enrolling a new live device', asy
       ...fake.authoriser,
       withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
     },
+    holdings: { selectHeldEntries: async () => [] },
     readGrants: {
       readActiveReadGrantTargets: async () => ({
         authNonce: /** @type {bigint} */ ([...fake.ledger.values()][0]?.authNonce ?? 0n),
@@ -136,6 +209,21 @@ test('P-256 owner delivers a sealed key before enrolling a new live device', asy
   assert.ok(ledger.entries.has(result.commitmentHex));
   assert.equal(result.nextUseCounter, 5n);
   await assert.rejects(account.addDevice(reader), { code: 'DeviceRosterInvalid' });
+  const previousKey = ledger.encKey.slice();
+  await account.rotateViewingKey?.();
+  assert.notDeepEqual(ledger.encKey, previousKey);
+  const joiningPorts = {
+    ...ports,
+    authoriser: {
+      ...joining,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    credentials: fakeCredentials({ authoriser: joining }),
+    viewingKey: viewingKey(7),
+  };
+  const joiningApi = createPassportAccounts(joiningPorts);
+  if (!joiningApi.openAccountAt) throw new Error('Address-based open is unavailable.');
+  assert.equal((await joiningApi.openAccountAt(account.address)).address, account.address);
 });
 
 test('an enrolled P-256 passkey opens its ACC by address without a directory hint', async () => {

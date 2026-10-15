@@ -164,8 +164,9 @@ and `assertionMaterial`.
 - **The ACC secret is random and sealed.** The passkey PRF root derives a network-specific X25519
   reader key under `lace-passport:reader:v1`, while the ACC's random viewing secret determines
   `enc_key`. The browser publishes a type `0xd1` device envelope and P-256 type `0xd5`
-  registration with the passkey's WebAuthn policy. The wallet seed remains independent. Rotation is hidden until the page has
-  verified surviving readers, holdings and read-grant targets. See
+  registration with the passkey's WebAuthn policy. The wallet seed remains independent. The account
+  API can rotate this secret with live-reader, chain-backed holding and grant-target checks. The
+  page hides rotation until it supplies those host sources. See
   [`docs/prototype/keys.md`](../docs/prototype/keys.md).
 - **P-256 holdings reads need a chain-backed source.** The account API can open sealed coin
   descriptions with the live passkey and returns only outputs verified as held by the ACC. The
