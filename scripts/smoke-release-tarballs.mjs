@@ -97,7 +97,7 @@ try {
   copyFileSync(join(root, 'tests/fixtures/lace-seams.mjs'), join(scratch, 'src/lace-seams.mjs'));
   writeFileSync(
     join(scratch, 'src/lace-consumer.mjs'),
-    `// Lace PR #2845 at 05e1e3d641a329d20c8272f6405e54ea499d86a1.
+    `// Lace PR #2845 at cdfa9cfd81a0adcc0a7224aa624f18e52494f602.
      // Check the installed tarball types, not workspace paths.
      import { laceAuthoriser, laceFeeSponsor, laceViewingKey } from './lace-seams.mjs';
      /** @type {import('@input-output-hk/mn-passport-account/ports').FeeSponsor} */

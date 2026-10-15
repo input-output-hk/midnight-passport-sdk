@@ -47,7 +47,7 @@ second device remain open.
 
 The fixture in `tests/fixtures/lace-seams.mjs` tracks
 [lace-platform PR #2845](https://github.com/input-output-hk/lace-platform/pull/2845)
-at head `05e1e3d641a329d20c8272f6405e54ea499d86a1` (2026/10/15), from
+at head `cdfa9cfd81a0adcc0a7224aa624f18e52494f602` (2026/10/15), from
 `packages/contract/passport/src/types.ts`. `tests/account-ports.test.mjs` checks
 the structural TypeScript assignments. A second local check now compiles the
 **actual contract seam sources** from that exact Lace commit against all nine
@@ -59,19 +59,18 @@ Lace PR checkout and a fresh `release-tarballs/` pack:
 
 ```sh
 LACE_CHECKOUT=/path/to/lace-platform \
-  RELEASE_VERSION=0.1.0-dev.1 \
+  RELEASE_VERSION=0.1.0-dev.4 \
   nix develop -c node scripts/smoke-lace-source-consumer.mjs
 ```
 
-Lace PR #2845 has since advanced to `cdfa9cfd81a0adcc0a7224aa624f18e52494f602`.
-Its newer grant flow validates stored openings against the live ACC object commitment and
-read-key hash before reusing them. The SDK's chain-backed grant adapter exposes those
-commitments through `GrantCommitmentSource`; both JubJub and P-256 publication now verify
-the staged opening against the live commitment and auth nonce before appending sealed
-bookkeeping. The exact-source test above remains pinned to the earlier head until that
-check is updated and rerun; this alone does not establish Lace-hosted runtime compatibility.
+At this Lace head, the grant scope no longer accepts rolling windows, matching
+the pinned ACC binding. Lace also validates stored openings against the live
+ACC object commitment and read-key hash before reusing them. The SDK's
+chain-backed `GrantCommitmentSource` supplies those values; both JubJub and
+P-256 publication verify the staged opening and auth nonce before appending
+sealed bookkeeping. This does not establish Lace-hosted runtime compatibility.
 
-The check pins Lace HEAD to `05e1e3d641a329d20c8272f6405e54ea499d86a1`
+The check pins Lace HEAD to `cdfa9cfd81a0adcc0a7224aa624f18e52494f602`
 and rejects local edits to its contract seam. The Lace source dependencies
 `type-fest@4.41.0` and `ts-custom-error@3.3.1` match its lockfile. The result
 is a source-level compile check, not a build of Lace's module or a live
@@ -87,9 +86,17 @@ compiles that adapter with Lace's current `PassportAuthoriser`. The
 circuit-level prover still needs a transaction pipeline adapter. Network
 config additionally needs the ACC binding and manifest pins.
 
+On 2026/10/15, SDK commit `adae47a39fe2baf9e6a55719a615f6cdae3479e0`
+was packed locally as nine `0.1.0-dev.4` tarballs. The exact Lace source
+check passed against PR #2845 at `cdfa9cfd81a0adcc0a7224aa624f18e52494f602`.
+The release consumer smoke loaded all nine packages, checked Lace-shaped
+host types, built a scratch browser app, and restored and hash-verified the
+pinned `deposit_unshielded` key. These are local checks, not a registry
+release or a Lace module runtime test.
+
 On 2026/10/15, SDK commit `8905dbcb29d48959075768c34a85682ab8ccd6be`
 was packed locally as nine `0.1.0-dev.2` tarballs. The exact Lace source check
-above passed against those tarballs. The release consumer smoke also loaded all
+passed against PR #2845 at its earlier `05e1e3d` head. The release consumer smoke also loaded all
 nine entry points, compiled the Lace-shaped host fixture, built a scratch Vite
 browser app, and restored and hash-verified the pinned `deposit_unshielded`
 key. This `dev.2` pack was local validation, not a registry release.
@@ -98,7 +105,7 @@ On 2026/10/15, SDK commit `9e31aeeaeb90f9f355162e368a90c6fce4238bd8`
 was packed locally as nine `0.1.0-dev.3` tarballs. The release consumer smoke
 loaded the packages, compiled the Lace-shaped host fixture, built a browser
 bundle, and hash-verified a restored `deposit_unshielded` key. The exact Lace
-source check passed against PR #2845 at the pinned head above. These are
+source check passed against PR #2845 at its earlier `05e1e3d` head. These are
 local checks, not a registry release or a Lace module runtime test. TypeScript
 accepts direct structural assignment of Lace's authoriser; the hosted adapter
 still handles runtime branding and rejects unsupported consent descriptors.

@@ -3,7 +3,7 @@
 // (account-testing.test.mjs), as lace-platform's own adapters would.
 
 /**
- * lace-platform PR #2845 at 05e1e3d641a329d20c8272f6405e54ea499d86a1
+ * lace-platform PR #2845 at cdfa9cfd81a0adcc0a7224aa624f18e52494f602
  * (`@lace-contract/passport` types.ts), copied as fixtures:
  * property syntax and tagged parameter types, as Lace declares them. `storageKey` resolves a
  * `CryptoKey`, which these types do not declare; `unknown` stands in.

@@ -14,7 +14,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-const laceHead = '05e1e3d641a329d20c8272f6405e54ea499d86a1';
+const laceHead = 'cdfa9cfd81a0adcc0a7224aa624f18e52494f602';
 const laceCheckout = process.env.LACE_CHECKOUT;
 if (!laceCheckout) throw new Error('set LACE_CHECKOUT to the checkout of Lace PR #2845');
 const actualHead = execFileSync('git', ['-C', laceCheckout, 'rev-parse', 'HEAD'], {
