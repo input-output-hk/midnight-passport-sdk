@@ -37,7 +37,10 @@ large. The image accepts `PASSPORT_KEY_DIR`, `PASSPORT_KEY_HOST` and
 
 For a browser consumer such as Lace, set `PASSPORT_KEY_CORS_ORIGINS` to a
 comma-separated list of exact `http://` or `https://` origins and set the
-consumer's `artefactUrl` to `https://<key-host>/zk/acc`. Browser reads and
+consumer's `artefactUrl` to `https://<key-host>/v1/zk/acc-s3r1.1`. Set the same
+exact URL as `PASSPORT_PUBLIC_ZK_BASE_URL` on the Passport service; the browser
+connector must pin it independently (the demo uses `VITE_PASSPORT_ARTEFACT_URL`).
+The existing `/zk/acc` route remains for the legacy and proof-server clients. Browser reads and
 single-range downloads receive CORS headers only for those origins. The
 default list is empty. Keep the service behind a private or controlled ingress.
 
@@ -58,6 +61,7 @@ these variables.
 | `GET /zk/acc/zkir/<circuit>.{zkir,bzkir}` | Verified bundled ZKIR. |
 | `GET /zk/acc/keys/<circuit>.verifier` | Verified bundled verifier key. |
 | `GET /zk/acc/keys/<circuit>.prover` | Streamed, restored prover key. |
+| `GET /v1/zk/acc-s3r1.1/{compiler,zkir,keys}/...` | Binding-specific alias for the same pinned bytes. |
 
 `GET` and `HEAD` accept single `Range: bytes=...` requests so a proof server can
 resume large key downloads. Clients must pin the manifest hash independently:

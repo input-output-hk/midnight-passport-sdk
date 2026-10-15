@@ -48,7 +48,12 @@ test('bundle is checked against its independent manifest pin and every served in
 
 test('server streams pinned keys with ranges and rejects unknown paths', async () => {
   const loaded = loadBundle(bundlePath, bundle.bindingId, hash(manifestBytes));
-  const server = createKeyServer({ ...loaded, keyManifestBytes: Buffer.from('{}'), keyDir: dir });
+  const server = createKeyServer({
+    bindingId: bundle.bindingId,
+    ...loaded,
+    keyManifestBytes: Buffer.from('{}'),
+    keyDir: dir,
+  });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   after(() => server.close());
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -59,6 +64,21 @@ test('server streams pinned keys with ranges and rejects unknown paths', async (
   assert.equal(part.status, 206);
   assert.equal(part.headers.get('content-range'), 'bytes 2-5/10');
   assert.equal(await part.text(), 'over');
+  const pinned = `${base}/v1/zk/${bundle.bindingId}`;
+  assert.equal(
+    await (await fetch(`${pinned}/compiler/contract-manifest.json`)).text(),
+    manifestBytes.toString(),
+  );
+  assert.equal(await (await fetch(`${pinned}/zkir/c.zkir`)).text(), 'circuit');
+  assert.equal(await (await fetch(`${pinned}/keys/c.verifier`)).text(), 'verify');
+  const pinnedRange = await fetch(`${pinned}/keys/c.prover`, {
+    method: 'HEAD',
+    headers: { range: 'bytes=2-5' },
+  });
+  assert.equal(pinnedRange.status, 206);
+  assert.equal(pinnedRange.headers.get('content-range'), 'bytes 2-5/10');
+  assert.equal((await fetch(`${base}/v1/zk/wrong/keys/c.prover`)).status, 404);
+  assert.equal((await fetch(`${pinned}/keys/other.prover`)).status, 404);
   assert.equal((await fetch(`${base}/zk/acc/keys/other.prover`)).status, 404);
   assert.equal((await fetch(`${base}/zk/acc/%2e%2e/secret`)).status, 404);
   assert.equal(
@@ -76,6 +96,7 @@ test('a selected circuit profile refuses other circuits and reports its coverage
   const loaded = loadBundle(bundlePath, bundle.bindingId, hash(manifestBytes));
   const profile = { name: 'test', circuits: [] };
   const server = createKeyServer({
+    bindingId: bundle.bindingId,
     ...loaded,
     keyManifestBytes: Buffer.from('{}'),
     keyDir: dir,
@@ -86,6 +107,7 @@ test('a selected circuit profile refuses other circuits and reports its coverage
   const base = `http://127.0.0.1:${server.address().port}`;
   assert.deepEqual(await (await fetch(`${base}/v1/profile`)).json(), profile);
   assert.equal((await fetch(`${base}/zk/acc/keys/c.prover`)).status, 404);
+  assert.equal((await fetch(`${base}/v1/zk/${bundle.bindingId}/keys/c.prover`)).status, 404);
   assert.equal((await fetch(`${base}/zk/acc/zkir/c.zkir`)).status, 404);
   assert.equal((await fetch(`${base}/zk/acc/compiler/contract-manifest.json`)).status, 200);
 });
@@ -93,6 +115,7 @@ test('a selected circuit profile refuses other circuits and reports its coverage
 test('browser origins are allowed explicitly and can read ranged prover responses', async () => {
   const loaded = loadBundle(bundlePath, bundle.bindingId, hash(manifestBytes));
   const server = createKeyServer({
+    bindingId: bundle.bindingId,
     ...loaded,
     keyManifestBytes: Buffer.from('{}'),
     keyDir: dir,

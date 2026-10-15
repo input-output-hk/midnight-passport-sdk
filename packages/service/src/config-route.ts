@@ -8,13 +8,36 @@ import { json, type Route } from './http.js';
 export type PublicServiceConfig = Omit<
   ServiceWire.Config,
   'zkBaseUrl' | 'coinPublicKey' | 'encryptionPublicKey' | 'apiVersions'
-> & { readonly port: number; readonly publicBaseUrl?: string };
+> & {
+  readonly port: number;
+  readonly publicBaseUrl?: string;
+  /** Browser-reachable, independently pinned key service; defaults to this service. */
+  readonly publicZkBaseUrl?: string;
+};
 
 /** Legacy /config and v1 discovery, both derived from the same pinned network configuration. */
 export function serviceConfigRoute(
   config: PublicServiceConfig,
   extra: () => Record<string, unknown>,
 ): Route {
+  if (config.publicZkBaseUrl !== undefined) {
+    let url: URL;
+    try {
+      url = new URL(config.publicZkBaseUrl);
+    } catch {
+      throw new Error('publicZkBaseUrl must be an exact pinned /v1/zk/<bindingId> HTTP URL');
+    }
+    if (
+      !['http:', 'https:'].includes(url.protocol) ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      url.pathname !== `/v1/zk/${config.bindingId}` ||
+      url.href !== config.publicZkBaseUrl
+    )
+      throw new Error('publicZkBaseUrl must be an exact pinned /v1/zk/<bindingId> HTTP URL');
+  }
   return async (req, res, url) => {
     if (req.method !== 'GET' || (url.pathname !== '/config' && url.pathname !== '/v1/config'))
       return false;
@@ -39,7 +62,7 @@ export function serviceConfigRoute(
       throw new Error('v1 config requires sponsor public keys');
     const answer: ServiceWire.Config = {
       ...shared,
-      zkBaseUrl: `${base}/v1/zk/${config.bindingId}`,
+      zkBaseUrl: config.publicZkBaseUrl ?? `${base}/v1/zk/${config.bindingId}`,
       coinPublicKey: values.coinPublicKey,
       encryptionPublicKey: values.encryptionPublicKey,
       apiVersions: [PASSPORT_SERVICE_API_VERSION],

@@ -78,6 +78,7 @@ function rangeFor(header, size) {
 }
 
 export function createKeyServer({
+  bindingId,
   files,
   manifestBytes,
   keyManifestBytes,
@@ -86,6 +87,7 @@ export function createKeyServer({
   profile = { name: 'all', circuits: [...provers.keys()].map((name) => name.slice(0, -7)) },
   corsOrigins = [],
 }) {
+  if (!/^[a-z0-9][a-z0-9.-]*$/.test(bindingId)) throw new Error('invalid binding ID');
   const available = new Set(profile.circuits);
   return createServer((req, res) => {
     const origin = req.headers.origin;
@@ -120,8 +122,15 @@ export function createKeyServer({
       res.end(req.method === 'HEAD' ? undefined : JSON.stringify(profile));
       return;
     }
-    const circuitPath =
-      /^\/zk\/acc\/(?:zkir|keys)\/([a-z][a-z0-9_]*)\.(?:zkir|bzkir|verifier|prover)$/.exec(path);
+    const prefix = path.startsWith(`/v1/zk/${bindingId}/`)
+      ? `/v1/zk/${bindingId}/`
+      : path.startsWith('/zk/acc/')
+        ? '/zk/acc/'
+        : undefined;
+    const name = prefix && path.slice(prefix.length);
+    const circuitPath = /^(?:zkir|keys)\/([a-z][a-z0-9_]*)\.(?:zkir|bzkir|verifier|prover)$/.exec(
+      name ?? '',
+    );
     if (circuitPath && !available.has(circuitPath[1])) {
       res.writeHead(404).end();
       return;
@@ -130,9 +139,8 @@ export function createKeyServer({
     let diskPath;
     let size;
     if (path === '/v1/manifest') bytes = keyManifestBytes;
-    else if (path === '/zk/acc/compiler/contract-manifest.json') bytes = manifestBytes;
-    else if (path.startsWith('/zk/acc/')) {
-      const name = path.slice('/zk/acc/'.length);
+    else if (name === 'compiler/contract-manifest.json') bytes = manifestBytes;
+    else if (name) {
       bytes = files.get(name);
       if (!bytes && name.startsWith('keys/') && name.endsWith('.prover')) {
         const circuit = name.slice('keys/'.length, -'.prover'.length);

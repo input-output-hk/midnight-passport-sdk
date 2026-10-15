@@ -50,6 +50,7 @@ if (restored.status !== 0) throw new Error(`key restoration failed (${restored.s
 
 const keyManifestBytes = readFileSync(join(contract, `resources/${bindingId}.key-manifest.json`));
 const server = createKeyServer({
+  bindingId,
   files,
   manifestBytes,
   keyManifestBytes,

@@ -25,6 +25,10 @@ export const NETWORK_ID = __PASSPORT_NETWORK_ID__;
 export const RP_ID = 'localhost';
 /** The grants ACC binding this page deploys: the artefact build the manifest pin above names. */
 export const BINDING_ID = 'acc-s3r1.1';
+/** The host pins this separately from the service's discovery answer. */
+const ARTEFACT_URL =
+  import.meta.env.VITE_PASSPORT_ARTEFACT_URL ??
+  `${SERVICE_URL.replace(/\/+$/, '')}/v1/zk/${BINDING_ID}`;
 const configuredArm = import.meta.env.VITE_PASSPORT_ARM ?? 'p256';
 if (configuredArm !== 'p256' && configuredArm !== 'jubjub')
   throw new Error('VITE_PASSPORT_ARM must be p256 or jubjub');
@@ -51,7 +55,7 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
     networkId,
     bindingId: BINDING_ID,
     manifestSha256: MANIFEST_SHA256,
-    artefactUrl: `${SERVICE_URL.replace(/\/+$/, '')}/v1/zk/${BINDING_ID}`,
+    artefactUrl: ARTEFACT_URL,
   });
   const network: NetworkConfig = {
     networkId,

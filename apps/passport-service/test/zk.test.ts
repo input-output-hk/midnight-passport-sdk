@@ -77,6 +77,43 @@ test('/v1/config points at verified binding-specific artefacts', async (t) => {
   assert.equal((await fetch(`${base}/v1/zk/wrong/keys/c.verifier`)).status, 404);
 });
 
+test('/v1/config can advertise an independently pinned key service', async (t) => {
+  const keyBase = 'https://keys.example/v1/zk/acc-test';
+  const config = testConfig({ publicZkBaseUrl: keyBase });
+  const server = createServer(config, [
+    configRoute(config, () => ({ coinPublicKey: 'aa', encryptionPublicKey: 'bb' })),
+  ]);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const v1 = (await (await fetch(`${base}/v1/config`)).json()) as Record<string, string>;
+  assert.equal(v1.zkBaseUrl, keyBase);
+  const legacy = (await (await fetch(`${base}/config`)).json()) as Record<string, string>;
+  assert.equal(legacy.zkBaseUrl, `${base}/zk/acc`);
+  assert.equal(
+    loadConfig({
+      PASSPORT_CONTRACT_DIR: '/c',
+      PASSPORT_MANIFEST_SHA256: 'ab',
+      PASSPORT_PUBLIC_ZK_BASE_URL: keyBase,
+    }).publicZkBaseUrl,
+    keyBase,
+  );
+});
+
+test('external key service URL must match the active binding exactly', () => {
+  for (const bad of [
+    '',
+    'https://keys.example/zk/acc',
+    'https://keys.example/v1/zk/other',
+    'https://keys.example/v1/zk/acc-test?redirect=1',
+    'https://user:password@keys.example/v1/zk/acc-test',
+    'file:///v1/zk/acc-test',
+  ]) {
+    const config = testConfig({ publicZkBaseUrl: bad });
+    assert.throws(() => configRoute(config, () => ({})), /publicZkBaseUrl/, bad);
+  }
+});
+
 test('the v1 artefact route refuses an unpinned or corrupt tree at startup', () => {
   const config = testConfig();
   assert.throws(() => pinnedZkRoute({ ...config, manifestSha256: '00'.repeat(32) }), /manifest/);

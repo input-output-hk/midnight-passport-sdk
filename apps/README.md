@@ -51,6 +51,8 @@ pnpm install && pnpm build
 | `PASSPORT_PUBLIC_INDEXER_URL` | `MN_INDEXER_URL` | Browser-reachable indexer GraphQL URL advertised by the service. |
 | `PASSPORT_PUBLIC_INDEXER_WS_URL` | `MN_INDEXER_WS_URL` | Browser-reachable indexer subscription URL advertised by the service. |
 | `PASSPORT_PUBLIC_PROOF_SERVER_URL` | `MN_PROOF_SERVER_URL` | Proof server URL advertised by the service. |
+| `PASSPORT_PUBLIC_ZK_BASE_URL` | Service's own `/v1/zk/<bindingId>` | Optional dedicated key service URL. Must be the exact pinned `/v1/zk/<bindingId>` URL; the app independently pins it as `artefactUrl`. |
+| `VITE_PASSPORT_ARTEFACT_URL` | Service's own `/v1/zk/<bindingId>` | Demo build-time pin when the dedicated key service supplies browser artefacts. |
 | `MN_NODE_PORT`, `MN_INDEXER_PORT`, `MN_PROOF_PORT` | 19944, 18088, 16300 | The localnet's host ports (`infra/localnet/ports.env`); only the defaults of the URLs above.                |
 | `PASSPORT_NETWORK_ID`      | `undeployed`                   | Build-time pin of the dapp (read by `vite build`/`dev`) and the e2e: the network the page is bound to. `prototype:up` sets it from `MN_NETWORK_ID`. A service on another network is refused (`NetworkMismatch`). |
 | `VITE_PASSPORT_ARM`        | `p256`                         | Browser ACC authoriser arm, `p256` or `jubjub`. `pnpm demo up --arm jubjub` sets it for the dev page. Both modes expose create/open; the rotate button is hidden. |

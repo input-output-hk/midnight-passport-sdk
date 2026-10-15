@@ -29,6 +29,8 @@ export interface ServiceConfig extends MidnightStack {
   /** contracts/managed/account inside contractDir. */
   readonly artefactDir: string;
   readonly manifestSha256: string;
+  /** Optional dedicated key service URL advertised by /v1/config. */
+  readonly publicZkBaseUrl?: string;
   readonly registryFile: string;
   /** Hex wallet seed of the fee sponsor; never sent to a client. */
   readonly sponsorSeed: string;
@@ -175,6 +177,9 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServiceConfig {
     contractDir,
     artefactDir: `${contractDir}/contracts/managed/account`,
     manifestSha256: need(env, 'PASSPORT_MANIFEST_SHA256'),
+    ...(env.PASSPORT_PUBLIC_ZK_BASE_URL !== undefined
+      ? { publicZkBaseUrl: env.PASSPORT_PUBLIC_ZK_BASE_URL }
+      : {}),
     // Kept outside the repository and the contract tree, so accounts survive a rebuild or a fresh
     // export: ~/.midnight-passport/registry.json unless PASSPORT_REGISTRY_FILE says otherwise.
     registryFile:
