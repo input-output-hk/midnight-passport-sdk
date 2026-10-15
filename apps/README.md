@@ -54,7 +54,7 @@ pnpm install && pnpm build
 | `PASSPORT_SERVICE_PORT`    | `8787`                         | Service port. The dapp expects 8787 unless `VITE_PASSPORT_SERVICE_URL` says otherwise.                                   |
 | `PASSPORT_MAX_DEPLOYS`     | `20`                           | Deploy cap per service process.                                                                                          |
 | `PASSPORT_REGISTRY_FILE`   | `~/.midnight-passport/registry.json` | The passkey-to-account registry; the deployed set sits beside it as `registry.deployments.json`, and the v1 hint store is `registry.json.v1`. Kept outside the repository so accounts can be reopened later. Delete all three when you reset the chain. |
-| `PASSPORT_SPONSOR_SEED`    | the localnet genesis dev seed, on `undeployed` only | The sponsor wallet's seed. The default is public knowledge and funded on the localnet only, so the service refuses to start on any other network unless this is set. |
+| `PASSPORT_SPONSOR_SEED`    | the localnet genesis dev seed, on `undeployed` only | The sponsor wallet's seed. The default is public knowledge and funded on the localnet only; another network requires this or `PASSPORT_SPONSOR_SEED_FILE`. |
 | `PASSPORT_SPONSOR_SEED_FILE` | unset | Path to a file containing the sponsor wallet's 32-byte lowercase hex seed. Preferred for the service image; mutually exclusive with `PASSPORT_SPONSOR_SEED`. |
 
 The service validates the `MN_*` values at start-up (a bad URL or scheme refuses to start) and
@@ -71,7 +71,7 @@ not ready to run: it needs hosted artefacts, a reachable proof server and a real
 (LW-15635). Select a stack with `MIDNIGHT_STACK=<name> pnpm prototype:up` (default `undeployed`).
 The script sources the file, starts the Docker localnet only for `undeployed`, and exports
 `PASSPORT_NETWORK_ID` for the dapp. The sponsor seed default is localnet-only: any other stack
-needs `PASSPORT_SPONSOR_SEED`, or the service refuses to start.
+needs `PASSPORT_SPONSOR_SEED_FILE` or `PASSPORT_SPONSOR_SEED`, or the service refuses to start.
 
 The reference client must read the same stack. `experiments/acc-0.35/patch-endpoints.sh <dir>`
 (run by `fetch-acc.sh`) rewrites `CONFIG.local` in its `wallet.ts` and the indexer fallback in
