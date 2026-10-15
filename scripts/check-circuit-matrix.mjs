@@ -90,7 +90,13 @@ function policy(name, isPure) {
 /** @param {string} name @param {boolean} isPure @returns {[string, string]} */
 function evidence(name, isPure) {
   if (/^(issue_grant_with_jubjub|challenge_issue_grant_with_jubjub)$/.test(name))
-    return ['call helper', 'tests/account-jubjub-grant-issue.test.mjs'];
+    return ['typed flow', 'tests/account-jubjub.test.mjs'];
+  if (/^(revoke_grant_with_jubjub|challenge_revoke_grant_with_jubjub)$/.test(name))
+    return ['typed flow', 'tests/account-jubjub-grant-revoke.test.mjs'];
+  if (/^(revoke_all_grants_with_jubjub|challenge_revoke_all_grants_with_jubjub)$/.test(name))
+    return ['typed flow', 'tests/account-jubjub-grant-revoke-all.test.mjs'];
+  if (/^(remove_device_with_jubjub|challenge_remove_device_with_jubjub)$/.test(name))
+    return ['typed flow', 'tests/account-jubjub.test.mjs'];
   if (
     /^(derive_grant_id_with_jubjub|derive_grant_object_commit|derive_grant_scope_digest)$/.test(
       name,

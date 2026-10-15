@@ -6,7 +6,8 @@ revocation through its UI yet. A host must supply those openings and the same-ne
 The package's grant issue helper requires an auth-nonce-pinned roster snapshot and rotates before issuing read access;
 the demo still has no grant issue UI.
 The SDK's key-session descriptors carry the context Lace's hosted signer asks to display, but the
-demo uses a local signer; a packed Lace consumer flow has not yet been validated.
+demo uses a local signer; a packed Lace consumer flow has not yet been validated. Read issue and
+revoke-all rotate inside their outer owner session without requesting a second rotation consent.
 
 This is a prototype for the standalone network. Each item below says what the prototype does and
 what production needs. Two items have fork issues:

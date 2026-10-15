@@ -94,16 +94,18 @@ own module bundle and hosted transaction path remain to be measured.
 | `PassportProver.prove/check` | transaction `Prover.proveTx` | Different abstraction: Lace proves a circuit preimage; a transaction pipeline must wrap it |
 
 The current Lace `KeySessionFlow.kind` omits `rotate-encryption-key`, which the
-SDK's owner flow requests. The test adapter rejects this operation until Lace and
-the SDK agree on its consent descriptor. The SDK's JubJub rotation now prepares
+SDK's standalone rotation flow requests. The test adapter rejects that direct
+operation until Lace and the SDK agree on its consent descriptor. Read-grant issue
+and revoke-all now run rotation within their approved owner session, so they do
+not request a second, unsupported rotation descriptor. The SDK's JubJub rotation prepares
 read-grant seals before switching the ACC key, but Lace must supply a chain-backed
 grant target adapter with the exact auth nonce and its own consent path. The SDK's
 JubJub account read uses Lace's `read-holdings` descriptor and a host-injected
 chain-backed holding source. JubJub removal uses Lace's `remove-device` descriptor and rotates
 the viewing and roster keys before the pinned removal circuit; it refuses a surviving reader
 that shares a key with the removed device. These owner flows have binding-focused tests but have
-not run in Lace's hosted module, so they are not yet verified Lace flow replacements. Full
-durable interrupted-rotation recovery remains. The SDK's `issueGrant`, `revokeGrant`, and
+not run in Lace's hosted module, so they are not yet verified Lace flow replacements.
+Durable interrupted-rotation recovery remains. The SDK's `issueGrant`, `revokeGrant`, and
 `revokeAllGrants` expose settled owner calls; read issue rotates before the issue circuit and
 publishes the new grantee seal after settlement, while read revoke rotates and excludes that
 grantee. Revoke-all rotates away from every read grantee before clearing the map. Issue pins the origin in the host and stages durable grant

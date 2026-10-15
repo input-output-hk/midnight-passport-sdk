@@ -207,6 +207,7 @@ and `assertionMaterial`.
     selects P-256; the JubJub account flow is a separate release gate.
   - _Grant publication._ The reusable JubJub account package can settle a staged grant and publish its bookkeeping and read seal through host ports; this demo page does not yet call that flow.
   - _Grant revocation._ The reusable package rotates before revoking a read grant or clearing every grant; revoke-all seals the new secret to devices only. The demo page has no grant controls yet.
+    Read issue and revoke-all rotate inside their owner key session; the page does not exercise Lace's hosted signer.
   - _Read-grant delivery._ The reusable package can prepare sealed records for active read grantees; this demo does not yet run grant-aware rotation or publish those records.
 - **Manifest pin (R18).** The dapp bakes `PASSPORT_MANIFEST_SHA256` in when Vite starts and checks
   the service's `/v1/config` against it, refusing a mismatch (`ArtefactIntegrity`). It is never read

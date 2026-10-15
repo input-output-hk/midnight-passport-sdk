@@ -531,6 +531,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     existingFlow?: Flow,
     revocation?: string,
     revokeAll = false,
+    inOwnerSession = false,
   ) => {
     const body = async (flow: Flow) => {
       const holdings = ports.holdings;
@@ -607,7 +608,10 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             throw new PassportConnectorError('GrantRosterUnsettled', 'The read grant is absent.');
         }
       }
-      return authoriser.withKeySession!(
+      const withSession: NonNullable<Authoriser['withKeySession']> = inOwnerSession
+        ? (operation) => operation()
+        : (operation, descriptor) => authoriser.withKeySession!(operation, descriptor);
+      return withSession(
         async () => {
           let view = await flow.step('chain.read', () => read(record, true));
           if (!view.booted || record.status !== 'active')
@@ -1227,7 +1231,16 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           random: fresh,
           ...(scope.read && {
             rotateBeforeIssue: () =>
-              rotateViewingKey(record, options) as Promise<ViewingKeyRotationResult>,
+              rotateViewingKey(
+                record,
+                options,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                false,
+                true,
+              ) as Promise<ViewingKeyRotationResult>,
           }),
         },
       );
@@ -1296,6 +1309,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
                   undefined,
                   undefined,
                   undefined,
+                  true,
                   true,
                 ) as Promise<ViewingKeyRotationResult>,
             }),

@@ -509,6 +509,7 @@ test('JubJub read grant rotates before issue and publishes the new grantee seal'
     jubjub.Point.fromAffine(pureCircuits.compute_public_point_with_jubjub(11n)).toBytes(),
   );
   const before = hex(w.encKey());
+  const sessionsBeforeIssue = w.sessionFlows.length;
   const result = await account.issueGrant({
     grantee: { scheme: 'jubjub-schnorr', publicKey: grantee },
     operations: ['withdraw-unshielded'],
@@ -534,6 +535,11 @@ test('JubJub read grant rotates before issue and publishes the new grantee seal'
     w.calls.indexOf('rotate_enc_key_with_jubjub') < w.calls.indexOf('issue_grant_with_jubjub'),
   );
   assert.equal(w.sessionFlows.find((flow) => flow?.kind === 'issue-grant')?.read, true);
+  assert.ok(
+    !w.sessionFlows
+      .slice(sessionsBeforeIssue)
+      .some((flow) => flow?.kind === 'rotate-encryption-key'),
+  );
   assert.ok(staged);
   const firstScope = staged.scope;
   w.setReadGrantTargets([{ grantId: result.grantId, readPublicKey: hex(reader.publicKey) }]);
@@ -1059,11 +1065,16 @@ test('revoke-all rotates away from every live read grantee without resealing the
   }).openAccount();
   assert.ok(account.revokeAllGrants);
   const before = hex(w.encKey());
+  const sessionsBeforeRevokeAll = w.sessionFlows.length;
   const result = await account.revokeAllGrants();
   assert.equal(result.status, 'cleared');
   assert.notEqual(hex(w.encKey()), before);
   assert.deepEqual(result.rotation?.sealedReadGrants, []);
   assert.equal(sealCalls, 0);
+  assert.deepEqual(
+    w.sessionFlows.slice(sessionsBeforeRevokeAll).map((flow) => flow?.kind),
+    ['revoke-all-grants'],
+  );
   assert.deepEqual(w.activeGrantIds, []);
   assert.ok(
     w.calls.indexOf('rotate_enc_key_with_jubjub') <
