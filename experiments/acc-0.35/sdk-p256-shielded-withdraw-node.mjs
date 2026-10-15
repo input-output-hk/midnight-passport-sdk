@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Proof-backed P-256 SDK probe: create, fund, discover and fully spend one ACC coin.
 // Run beside `pnpm demo up --contract-dir ... --no-key-service` in the pinned Nix shell.
+// Set PASSPORT_CONTRACT_DIR to that compiled export and WALLET_SEED to the public localnet
+// genesis seed; run with the export's node_modules/.bin/tsx as in sdk-shielded-deposit-node.mjs.
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -8,7 +10,12 @@ import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createPassportAccounts } from '../../packages/account/dist/index.js';
-import { createMidnightChain, createMidnightGrantSource, createMidnightHoldingSource } from '../../packages/adapter-midnight-js/dist/index.js';
+import {
+  createMidnightChain,
+  createMidnightGrantSource,
+  createMidnightHoldingSource,
+  createMidnightWalletPorts,
+} from '../../packages/adapter-midnight-js/dist/index.js';
 import {
   fetchCheckedV1Config,
   remoteDirectory,
@@ -34,7 +41,7 @@ const root = resolve(import.meta.dirname, '../..');
 const contractDir = process.env.PASSPORT_CONTRACT_DIR;
 if (!contractDir) throw new Error('set PASSPORT_CONTRACT_DIR to the pinned compiled ACC export');
 const contractRequire = createRequire(join(resolve(contractDir), 'package.json'));
-const { Event, Transaction } = await import(
+const { Event } = await import(
   pathToFileURL(contractRequire.resolve('@midnightntwrk/ledger-v9')).href
 );
 if ((process.env.MN_NETWORK_ID ?? 'undeployed') !== 'undeployed')
@@ -181,27 +188,7 @@ valueBearingChain = createMidnightChain({
   network,
   binding,
   prover: remoteV1Prover(service),
-  sponsorKeys: {
-    coinPublicKey: walletProvider.getCoinPublicKey(),
-    encryptionPublicKey: walletProvider.getEncryptionPublicKey(),
-  },
-  sponsor: {
-    async balanceAndSign(bytes) {
-      const result = await walletProvider.balanceTx({
-        version: 'v9',
-        tx: Transaction.deserialize('signature', 'proof', 'pre-binding', bytes),
-      });
-      assert.equal(result.version, 'v9');
-      return result.tx.serialize();
-    },
-  },
-  submitter: {
-    submit: (bytes) =>
-      midnightProvider.submitTx({
-        version: 'v9',
-        tx: Transaction.deserialize('signature', 'proof', 'binding', bytes),
-      }),
-  },
+  ...createMidnightWalletPorts(walletProvider, midnightProvider),
 });
 const faucet = await deployFaucet(wallet.walletCtx);
 const minted = await mintToUser(wallet, faucet, '0'.repeat(62) + '31', 25n);

@@ -69,6 +69,7 @@ export function remoteV1Sponsor(
 ): FeeSponsor & Submitter {
   const fetchFn = options.fetch ?? defaultFetch;
   return {
+    supportsShieldedOffers: false,
     async balanceAndSign(unbalancedTx) {
       const answer = await postService(
         fetchFn,

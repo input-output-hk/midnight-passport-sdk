@@ -527,6 +527,8 @@ export interface Prover {
 }
 /** lace-platform's `FeeSponsor`. */
 export interface FeeSponsor {
+  /** A known fee-only provider can reject shielded offers before expensive proving. */
+  readonly supportsShieldedOffers?: boolean;
   balanceAndSign(unbalancedTx: Uint8Array): Promise<Uint8Array>;
 }
 export interface Submitter {
