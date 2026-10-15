@@ -79,10 +79,10 @@ function isJubjubHint(hint: AccountHint): hint is JubjubHint {
     hint.keyEntries.length === 2 &&
     hint.keyEntries[0]?.length === 192 &&
     hint.keyEntries[0][0] === 0xd1 &&
-    hint.keyEntries[0][1] === 1 &&
+    (hint.keyEntries[0][1] === 1 || hint.keyEntries[0][1] === 2) &&
     hint.keyEntries[1]?.length === 192 &&
     hint.keyEntries[1][0] === 0xd2 &&
-    hint.keyEntries[1][1] === 1
+    hint.keyEntries[1][1] === hint.keyEntries[0][1]
   );
 }
 
@@ -767,7 +767,8 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             holdingEntries.push(oldEntries[index]!);
           }
           const registrations = oldEntries.filter(
-            (entry) => entry.length === 192 && entry[0] === 0xd2 && entry[1] === 1,
+            (entry) =>
+              entry.length === 192 && entry[0] === 0xd2 && (entry[1] === 1 || entry[1] === 2),
           );
           const removedReader = target ? roster.outside[0] : undefined;
           const keys = await viewingKey.createKeys(networkId, {

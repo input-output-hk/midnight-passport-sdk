@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { sha256 } from '@noble/hashes/sha2.js';
 import { openGrantRecord, sealGrantRecord } from '../packages/keys/dist/grant-record.js';
 
 const account = 'aa'.repeat(32);
@@ -36,10 +35,10 @@ test('all grant record kinds match Lace layout and open for the reader on this a
   for (const part of parts) {
     const entry = await sealGrantRecord(reader, account, part);
     assert.equal(entry.length, 192);
-    assert.deepEqual([...entry.subarray(0, 2)], [0xd3, 1]);
+    assert.deepEqual([...entry.subarray(0, 2)], [0xd3, 2]);
     assert.deepEqual(await openGrantRecord(reader, account, entry), part);
 
-    // Verify the recipient tag from independent MIP-0015-style HKDF bits and SHA-256.
+    // Verify Lace suite 2's recipient tag from independent HKDF bits and HMAC-SHA-256.
     const material = await crypto.subtle.importKey('raw', reader, 'HKDF', false, [
       'deriveBits',
       'deriveKey',
@@ -55,9 +54,22 @@ test('all grant record kinds match Lace layout and open for the reader on this a
         256,
       ),
     );
+    const hmac = await crypto.subtle.importKey(
+      'raw',
+      tagKey,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign'],
+    );
     assert.deepEqual(
       entry.subarray(2, 34),
-      sha256(Buffer.concat([tagKey, entry.subarray(34, 46)])),
+      new Uint8Array(
+        await crypto.subtle.sign(
+          'HMAC',
+          hmac,
+          Buffer.concat([entry.subarray(0, 2), entry.subarray(34)]),
+        ),
+      ),
     );
     const recordKey = await crypto.subtle.deriveKey(
       {
@@ -76,7 +88,11 @@ test('all grant record kinds match Lace layout and open for the reader on this a
     );
     const plain = new Uint8Array(
       await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: entry.subarray(34, 46), additionalData: entry.subarray(0, 46) },
+        {
+          name: 'AES-GCM',
+          iv: entry.subarray(34, 46),
+          additionalData: Buffer.concat([entry.subarray(0, 2), entry.subarray(34, 46)]),
+        },
         recordKey,
         Buffer.concat([entry.subarray(62), entry.subarray(46, 62)]),
       ),
@@ -113,4 +129,19 @@ test('grant records reject wrong account, reader, tampering and invalid fields',
     }),
     /uint128/,
   );
+});
+
+test('a suite 1 grant record from the earlier SDK remains readable', async () => {
+  const entry = Buffer.from(
+    'd3016499e6ba7647af66e4e1e583ddb6f4a4f03294941b18a302ae6004fa4f1faca1c14e847c87a76ae193647f5f9ae39e68ced0260442ed8fc3066a03fe825cefea473eb12161bac89c4e1f9b3120694a40597b6199b26288e984a4a6ec4d9cb227a1c0d4b34e663a8d467e1192e7775802b7534041a0231bdaa5e338fea8ccfe104227c768cf7f4f434369779da7d5072d5d56796265514ce48b39d5a0d1bb1823db07494f2f350006d802d9750e39221f9282b51a8bf24b43c08301ddc87b',
+    'hex',
+  );
+  assert.deepEqual(await openGrantRecord(new Uint8Array(32).fill(0x33), account, entry), {
+    part: 'grant',
+    grantId: 'ab'.repeat(32),
+    slot: 7,
+    scopeSalt: 'cd'.repeat(32),
+    granteePublicKey: 'ef'.repeat(32),
+    readPublicKey: '12'.repeat(32),
+  });
 });

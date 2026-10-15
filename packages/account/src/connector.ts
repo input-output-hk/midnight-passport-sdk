@@ -100,10 +100,10 @@ const validSealedEntries = (entries: readonly Uint8Array[] | undefined): boolean
   entries?.length === 2 &&
   entries[0]?.length === 192 &&
   entries[0][0] === 0xd1 &&
-  entries[0][1] === 1 &&
+  (entries[0][1] === 1 || entries[0][1] === 2) &&
   entries[1]?.length === 192 &&
   (entries[1][0] === 0xd4 || entries[1][0] === 0xd5) &&
-  entries[1][1] === 1;
+  entries[1][1] === entries[0][1];
 const isSealedP256 = (hint: P256Hint): hint is SealedP256Hint =>
   validSealedEntries(hint.keyEntries) || (hint.status === 'active' && hint.sealed === true);
 /** The circuits' P-256 key; a point that already is one passes as is, so the same key reaches the chain. */
@@ -874,7 +874,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           const registrations = oldEntries.filter(
             (entry) =>
               entry.length === 192 &&
-              entry[1] === 1 &&
+              (entry[1] === 1 || entry[1] === 2) &&
               (entry[0] === 0xd2 || entry[0] === 0xd4 || entry[0] === 0xd5),
           );
           const keys = await keyring.createKeys(networkId, {

@@ -9,7 +9,8 @@ const KEY_LENGTH = 32;
 const NONCE_LENGTH = 12;
 const TAG_LENGTH = 16;
 const TYPE = 0xd3;
-const SUITE = 1;
+const SUITE = 2;
+const LEGACY_SUITE = 1;
 const RECORD_INFO = new TextEncoder().encode('lace:passport:grant-record:v1');
 const TAG_INFO = new TextEncoder().encode('lace:passport:grant-record-tag:v1');
 const RECIPIENT_KIND = {
@@ -97,6 +98,25 @@ const recordKeys = async (
     tagKey: await hkdf(readerSecret, concat(TAG_INFO, accountBytes), KEY_LENGTH),
   };
 };
+
+const recordTag = async (tagKey: Uint8Array, entry: Uint8Array): Promise<Uint8Array> => {
+  if (entry[1] === LEGACY_SUITE) return sha256(concat(tagKey, entry.subarray(34, 46)));
+  const key = await crypto.subtle.importKey(
+    'raw',
+    tagKey as Uint8Array<ArrayBuffer>,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  return new Uint8Array(
+    await crypto.subtle.sign('HMAC', key, concat(entry.subarray(0, 2), entry.subarray(34))),
+  );
+};
+
+const associatedData = (entry: Uint8Array): Uint8Array<ArrayBuffer> =>
+  entry[1] === SUITE
+    ? concat(entry.subarray(0, 2), entry.subarray(34, 46))
+    : (entry.slice(0, 46) as Uint8Array<ArrayBuffer>);
 
 const encodePart = (part: GrantRecordPart): Uint8Array => {
   const plain = new Uint8Array(BODY_LENGTH);
@@ -192,16 +212,16 @@ export async function sealGrantRecord(
     const nonce = crypto.getRandomValues(new Uint8Array(NONCE_LENGTH));
     entry.set(nonce, 34);
     plain = encodePart(part);
-    entry.set(sha256(concat(tagKey, nonce)), 2);
     const sealed = new Uint8Array(
       await crypto.subtle.encrypt(
-        { name: 'AES-GCM', iv: nonce, additionalData: entry.slice(0, 46), tagLength: 128 },
+        { name: 'AES-GCM', iv: nonce, additionalData: associatedData(entry), tagLength: 128 },
         key,
         plain as Uint8Array<ArrayBuffer>,
       ),
     );
     entry.set(sealed.subarray(BODY_LENGTH), 46);
     entry.set(sealed.subarray(0, BODY_LENGTH), 62);
+    entry.set(await recordTag(tagKey, entry), 2);
     return entry;
   } finally {
     tagKey.fill(0);
@@ -215,10 +235,15 @@ export async function openGrantRecord(
   account: string,
   entry: Uint8Array,
 ): Promise<GrantRecordPart | null> {
-  if (entry.length !== ENTRY_LENGTH || entry[0] !== TYPE || entry[1] !== SUITE) return null;
+  if (
+    entry.length !== ENTRY_LENGTH ||
+    entry[0] !== TYPE ||
+    (entry[1] !== SUITE && entry[1] !== LEGACY_SUITE)
+  )
+    return null;
   const { key, tagKey } = await recordKeys(readerSecret, account);
   try {
-    if (!equal(entry.subarray(2, 34), sha256(concat(tagKey, entry.subarray(34, 46))))) return null;
+    if (!equal(entry.subarray(2, 34), await recordTag(tagKey, entry))) return null;
   } finally {
     tagKey.fill(0);
   }
@@ -228,7 +253,7 @@ export async function openGrantRecord(
         {
           name: 'AES-GCM',
           iv: entry.slice(34, 46),
-          additionalData: entry.slice(0, 46),
+          additionalData: associatedData(entry),
           tagLength: TAG_LENGTH * 8,
         },
         key,

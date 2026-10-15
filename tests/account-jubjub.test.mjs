@@ -627,7 +627,7 @@ test('JubJub open refuses a directory key mismatch and a missing valid envelope'
   w.setHint({ ...good, publicKey: { x: 1n, y: 2n } });
   await assert.rejects(w.accounts.openAccount(), { code: 'AccountNotFound' });
   const badEnvelope = new Uint8Array(192);
-  badEnvelope.set([0xd1, 1]);
+  badEnvelope.set([0xd1, 2]);
   const registration = good.keyEntries?.[1];
   assert.ok(registration);
   w.setHint({ ...good, keyEntries: [badEnvelope, registration] });

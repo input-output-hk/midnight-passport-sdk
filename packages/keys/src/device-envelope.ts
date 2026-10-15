@@ -13,12 +13,14 @@ const ENVELOPE_TYPE = 0xd1;
 const REGISTRATION_TYPE = 0xd2;
 const P256_REGISTRATION_TYPE = 0xd4;
 const P256_POLICY_REGISTRATION_TYPE = 0xd5;
-const SUITE = 1;
+const SUITE = 2;
+const LEGACY_SUITE = 1;
 const ENVELOPE_EPHEMERAL_OFFSET = 34;
 const ENVELOPE_NONCE_OFFSET = 66;
 const REGISTRATION_NONCE_OFFSET = 2;
 const utf8 = (value: string): Uint8Array => new TextEncoder().encode(value);
-const ENVELOPE_TAG_DOMAIN = utf8('lace:passport:envelope-tag:v1');
+const ENVELOPE_TAG_DOMAIN = utf8('lace:passport:envelope-tag:v2');
+const LEGACY_ENVELOPE_TAG_DOMAIN = utf8('lace:passport:envelope-tag:v1');
 const ENVELOPE_KEY_INFO = utf8('lace:passport:device-envelope:v1');
 const REGISTRATION_KEY_INFO = utf8('lace:passport:device-registration:v1');
 const P256_REGISTRATION_KEY_INFO = utf8('mn-passport:device-registration:p256:v1');
@@ -55,7 +57,9 @@ const hex = (bytes: Uint8Array): string =>
 const equal = (left: Uint8Array, right: Uint8Array): boolean =>
   left.length === right.length && left.every((byte, index) => byte === right[index]);
 const recordOf = (entry: Uint8Array, type: number): boolean =>
-  entry.length === ENTRY_LENGTH && entry[0] === type && entry[1] === SUITE;
+  entry.length === ENTRY_LENGTH &&
+  entry[0] === type &&
+  (entry[1] === SUITE || entry[1] === LEGACY_SUITE);
 const require32 = (bytes: Uint8Array, name: string): void => {
   if (bytes.length !== KEY_LENGTH) throw new Error(`${name} must be 32 bytes`);
 };
@@ -82,11 +86,21 @@ const aeadKey = async (material: Uint8Array, info: Uint8Array): Promise<CryptoKe
   );
 };
 
+const associatedData = (
+  entry: Uint8Array,
+  tagOffset: number,
+  tagged: boolean,
+): Uint8Array<ArrayBuffer> =>
+  tagged && entry[1] === SUITE
+    ? concat(entry.subarray(0, 2), entry.subarray(34, tagOffset))
+    : (entry.slice(0, tagOffset) as Uint8Array<ArrayBuffer>);
+
 const sealInto = async (
   entry: Uint8Array,
   nonceOffset: number,
   plaintext: Uint8Array,
   key: CryptoKey,
+  tagged = false,
 ): Promise<void> => {
   const tagOffset = nonceOffset + NONCE_LENGTH;
   const sealed = new Uint8Array(
@@ -94,7 +108,7 @@ const sealInto = async (
       {
         name: 'AES-GCM',
         iv: entry.slice(nonceOffset, tagOffset),
-        additionalData: entry.slice(0, tagOffset),
+        additionalData: associatedData(entry, tagOffset, tagged),
         tagLength: TAG_LENGTH * 8,
       },
       key,
@@ -110,6 +124,7 @@ const openFrom = async (
   nonceOffset: number,
   plaintextLength: number,
   key: CryptoKey,
+  tagged = false,
 ): Promise<Uint8Array | null> => {
   const tagOffset = nonceOffset + NONCE_LENGTH;
   const ciphertextOffset = tagOffset + TAG_LENGTH;
@@ -120,7 +135,7 @@ const openFrom = async (
         {
           name: 'AES-GCM',
           iv: entry.slice(nonceOffset, tagOffset),
-          additionalData: entry.slice(0, tagOffset),
+          additionalData: associatedData(entry, tagOffset, tagged),
           tagLength: TAG_LENGTH * 8,
         },
         key,
@@ -135,13 +150,14 @@ const openFrom = async (
   }
 };
 
-const recipientTag = (reader: Uint8Array, ephemeral: Uint8Array): Uint8Array =>
-  sha256(concat(ENVELOPE_TAG_DOMAIN, reader, ephemeral));
+const recipientTag = (reader: Uint8Array, entry: Uint8Array): Uint8Array =>
+  entry[1] === SUITE
+    ? sha256(concat(ENVELOPE_TAG_DOMAIN, entry.subarray(0, 2), reader, entry.subarray(34)))
+    : sha256(concat(LEGACY_ENVELOPE_TAG_DOMAIN, reader, entry.subarray(34, 66)));
 
 /** A public tag check; a matching tag alone does not authenticate an envelope. */
 export const isAddressedTo = (entry: Uint8Array, reader: Uint8Array): boolean =>
-  recordOf(entry, ENVELOPE_TYPE) &&
-  equal(entry.subarray(2, 34), recipientTag(reader, entry.subarray(34, 66)));
+  recordOf(entry, ENVELOPE_TYPE) && equal(entry.subarray(2, 34), recipientTag(reader, entry));
 
 /** Seals the 32-byte account secret and roster key to a device's X25519 reader key. */
 export async function sealDeviceEnvelope(
@@ -156,7 +172,6 @@ export async function sealDeviceEnvelope(
   const entry = new Uint8Array(ENTRY_LENGTH);
   entry[0] = ENVELOPE_TYPE;
   entry[1] = SUITE;
-  entry.set(recipientTag(reader, ephemeral.publicKey), 2);
   entry.set(ephemeral.publicKey, ENVELOPE_EPHEMERAL_OFFSET);
   entry.set(crypto.getRandomValues(new Uint8Array(NONCE_LENGTH)), ENVELOPE_NONCE_OFFSET);
   try {
@@ -167,7 +182,8 @@ export async function sealDeviceEnvelope(
     } finally {
       shared.fill(0);
     }
-    await sealInto(entry, ENVELOPE_NONCE_OFFSET, plaintext, key);
+    await sealInto(entry, ENVELOPE_NONCE_OFFSET, plaintext, key, true);
+    entry.set(recipientTag(reader, entry), 2);
     return entry;
   } finally {
     ephemeral.secretKey.fill(0);
@@ -193,7 +209,7 @@ export async function openDeviceEnvelope(
   } catch {
     return null;
   }
-  const plaintext = await openFrom(entry, ENVELOPE_NONCE_OFFSET, 64, key);
+  const plaintext = await openFrom(entry, ENVELOPE_NONCE_OFFSET, 64, key, true);
   if (!plaintext) return null;
   try {
     return { secret: plaintext.slice(0, 32), rosterKey: plaintext.slice(32) };

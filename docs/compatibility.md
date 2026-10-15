@@ -49,7 +49,20 @@ test a real authenticator, grants, recovery, or Lace-hosted transaction paths.
 
 ## Lace consumer seam check
 
-The SDK keyring accepts Lace's JubJub device registration type `0xd2` and adds
+The SDK keyring writes Lace's current suite `0x02` envelope (`0xd1`), JubJub
+device registration (`0xd2`) and grant record (`0xd3`) formats. Exact known-answer
+bytes from PR #2845 at the pinned head below pass in both directions: the SDK
+opens Lace's records and writes the same bytes with fixed randomness. The SDK
+also opens its earlier suite `0x01` records. This is wire compatibility, not
+a cross-product live account test.
+
+The local `0.1.0-dev.9` pack of all nine packages passed the tarball consumer
+smoke, including a scratch browser build and a hash-verified key restore. The
+exact-source Lace consumer type check also passed against PR #2845 at
+`cdfa9cfd81a0adcc0a7224aa624f18e52494f602`. These are local pre-tag gates;
+the `dev.9` packages were not published.
+
+The SDK adds
 type `0xd5` for a compressed 33-byte P-256 authoriser key and its WebAuthn
 policy under a distinct encryption domain. The earlier `0xd4` key-only record
 can still open, but lacks the policy needed to resolve another live P-256
