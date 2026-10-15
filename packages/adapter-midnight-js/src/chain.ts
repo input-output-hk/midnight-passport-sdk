@@ -21,6 +21,7 @@ import type {
   FeeSponsor,
   NetworkConfig,
   Prover,
+  QualifiedShieldedCoin,
   Submitter,
 } from '@input-output-hk/mn-passport-account/ports';
 import type { PassportEvent, PassportStep } from '@input-output-hk/mn-passport-protocol';
@@ -70,6 +71,53 @@ export interface MidnightBinding {
   readonly pureCircuits: AccPureCircuits & Partial<JubjubPureCircuits>;
 }
 
+const U128_MAX = (1n << 128n) - 1n;
+const U64_MAX = (1n << 64n) - 1n;
+const sameBytes = (left: Uint8Array, right: Uint8Array): boolean =>
+  left.length === right.length && left.every((byte, index) => byte === right[index]);
+
+/** Freeze the private witness value to one call and refuse a different requested color. */
+export function createHeldCoinWitness(heldCoin?: QualifiedShieldedCoin) {
+  if (
+    heldCoin &&
+    (!(heldCoin.nonce instanceof Uint8Array) ||
+      heldCoin.nonce.length !== 32 ||
+      !(heldCoin.color instanceof Uint8Array) ||
+      heldCoin.color.length !== 32 ||
+      typeof heldCoin.value !== 'bigint' ||
+      heldCoin.value < 0n ||
+      heldCoin.value > U128_MAX ||
+      typeof heldCoin.mt_index !== 'bigint' ||
+      heldCoin.mt_index < 0n ||
+      heldCoin.mt_index > U64_MAX)
+  )
+    throw new PassportConnectorError('TransferInvalid', 'Invalid qualified shielded coin.');
+  const pinned = heldCoin && {
+    nonce: heldCoin.nonce.slice(),
+    color: heldCoin.color.slice(),
+    value: heldCoin.value,
+    mt_index: heldCoin.mt_index,
+  };
+  return {
+    held_coin(context: { readonly privateState: unknown }, color: Uint8Array) {
+      if (!pinned)
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'A shielded ACC call needs its private held_coin witness.',
+        );
+      if (!(color instanceof Uint8Array) || !sameBytes(color, pinned.color))
+        throw new PassportConnectorError(
+          'TransferInvalid',
+          'The held coin has a different asset color.',
+        );
+      return [
+        context.privateState,
+        { ...pinned, nonce: pinned.nonce.slice(), color: pinned.color.slice() },
+      ] as const;
+    },
+  };
+}
+
 /** Injects the heavy Midnight call pipeline behind the account core's Chain port. */
 export function createMidnightChain(opts: {
   network: NetworkConfig;
@@ -91,13 +139,11 @@ export function createMidnightChain(opts: {
       'The binding manifest pin must be SHA-256.',
     );
   }
-  const compiledContract = CompiledContract.make('account', binding.Contract as never).pipe(
-    CompiledContract.withWitnesses({
-      held_coin: () => {
-        throw new Error('held_coin is not available in the Passport binding');
-      },
-    } as never),
-  );
+  const compileWithWitness = (coin?: QualifiedShieldedCoin) =>
+    CompiledContract.make('account', binding.Contract as never).pipe(
+      CompiledContract.withWitnesses(createHeldCoinWitness(coin) as never),
+    );
+  const unshieldedContract = compileWithWitness();
   const publicDataProvider =
     opts.publicDataProvider ??
     indexerPublicDataProvider({
@@ -127,8 +173,17 @@ export function createMidnightChain(opts: {
         hasEntry: (entry) => ledger.devices.member(entry),
       };
     },
-    async call({ address, circuit, args, onEvent, ...flowOptions }) {
+    async call({ address, circuit, args, heldCoin, onEvent, ...flowOptions }) {
       setNetworkId(network.networkId);
+      const shieldedSpend = circuit.startsWith('withdraw_shielded');
+      if (shieldedSpend !== (heldCoin !== undefined))
+        throw new PassportConnectorError(
+          shieldedSpend ? 'BindingUnsupported' : 'TransferInvalid',
+          shieldedSpend
+            ? 'A shielded ACC withdrawal needs a qualified held coin.'
+            : 'A held coin may only be supplied to a shielded ACC withdrawal.',
+        );
+      const compiledContract = heldCoin ? compileWithWitness(heldCoin) : unshieldedContract;
       // Progress listeners are observers: a host's UI error must not interrupt a chain call.
       const emit = (event: PassportEvent) => {
         try {

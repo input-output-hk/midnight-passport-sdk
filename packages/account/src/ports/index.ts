@@ -272,6 +272,10 @@ export interface ShieldedCoin {
   readonly color: Uint8Array;
   readonly value: bigint;
 }
+/** Private `held_coin` input, qualified by the output's Merkle tree index. */
+export interface QualifiedShieldedCoin extends ShieldedCoin {
+  readonly mt_index: bigint;
+}
 export interface GrantBookkeeping {
   readonly grantId: string;
   /** ACC grant map position, an unsigned 8-bit integer. */
@@ -358,6 +362,8 @@ export interface CallRequest extends FlowOptions {
   readonly address: string;
   readonly circuit: string;
   readonly args: readonly unknown[];
+  /** Per-call private input for ACC shielded spends; omitted from proof-service metadata. */
+  readonly heldCoin?: QualifiedShieldedCoin;
 }
 export type TxResult = PassportTxResult;
 export interface Chain {

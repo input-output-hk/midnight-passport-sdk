@@ -608,6 +608,9 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
   const { unbound, bound } = await finalizedTx();
   /** @type {string[]} */
   const calls = [];
+  let expectedCircuit = 'rotate_enc_key_with_p256';
+  /** @type {unknown[]} */
+  const compiledContracts = [];
   /** @type {import('../packages/protocol/dist/index.js').PassportEvent[]} */
   const events = [];
   const chain = midnight.createMidnightChain({
@@ -631,7 +634,8 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
         assert.deepEqual(bytes, unproven.serialize());
         assert.equal(context.networkId, 'undeployed');
         assert.equal(context.bindingId, 'acc-45721e1');
-        assert.deepEqual(context.circuits, ['rotate_enc_key_with_p256']);
+        assert.deepEqual(context.circuits, [expectedCircuit]);
+        assert.equal('heldCoin' in context, false, 'private witness is not proof metadata');
         return { tx: unbound.serialize(), provenance: 'remote' };
       },
     },
@@ -652,7 +656,9 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
     publicDataProvider: { queryContractState: async () => ({ data: 'state-data' }) },
     submit: async (
       /** @type {{proofProvider: {proveTx(tx: unknown): Promise<unknown>}; walletProvider: {getCoinPublicKey(): Promise<string>; getEncryptionPublicKey(): Promise<string>; balanceTx(tx: unknown): Promise<unknown>}; midnightProvider: {submitTx(tx: unknown): Promise<string>}}} */ providers,
+      /** @type {{compiledContract: unknown}} */ options,
     ) => {
+      compiledContracts.push(options.compiledContract);
       assert.equal(await providers.walletProvider.getCoinPublicKey(), 'cpk');
       assert.equal(await providers.walletProvider.getEncryptionPublicKey(), 'epk');
       const proven = await providers.proofProvider.proveTx({ version: 'v9', tx: unproven });
@@ -672,6 +678,27 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
     { txHash: 'hash', blockHeight: 7 },
   );
   assert.deepEqual(calls, ['prove', 'balance', 'submit']);
+  expectedCircuit = 'withdraw_shielded_with_p256';
+  const heldCoin = {
+    nonce: new Uint8Array(32).fill(3),
+    color: new Uint8Array(32).fill(7),
+    value: 9n,
+    mt_index: 4n,
+  };
+  assert.deepEqual(
+    await chain.call({ address: 'addr', circuit: expectedCircuit, args: [], heldCoin }),
+    { txHash: 'hash', blockHeight: 7 },
+  );
+  assert.notEqual(compiledContracts[0], compiledContracts[1], 'shielded witness is per-call');
+  expectedCircuit = 'rotate_enc_key_with_p256';
+  await assert.rejects(
+    chain.call({ address: 'addr', circuit: expectedCircuit, args: [], heldCoin }),
+    { code: 'TransferInvalid' },
+  );
+  await assert.rejects(
+    chain.call({ address: 'addr', circuit: 'withdraw_shielded_with_p256', args: [] }),
+    { code: 'BindingUnsupported' },
+  );
   assert.deepEqual(
     events.map((event) => `${event.step}:${event.phase}`),
     ['prove', 'sponsor.balance', 'sponsor.submit', 'chain.finality'].flatMap((step) => [
