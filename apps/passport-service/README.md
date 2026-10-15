@@ -11,8 +11,9 @@ rate limits at the gateway, and set `PASSPORT_MAX_DEPLOYS` to an operator-approv
 
 The [image workflow](../../.github/workflows/publish-service-image.yml) builds and smoke-tests
 `ghcr.io/input-output-hk/midnight-passport-service:<version>` from a signed `service-v<version>`
-tag on `passport-acc-prototype`, or an authorized workflow dispatch. It also publishes a
-commit-SHA tag. Pin the resulting digest when deploying. The image contains the SDK application;
+tag on `passport-acc-prototype`, or an authorized workflow dispatch. Release `0.1.0-rc2` and its
+`sha-965a822d98ed` tag share immutable digest
+`sha256:f66431befe3c226a8689ef4f624b854dfeaef9f545bd861a15714cea26bc9cd1`. Pin that digest when deploying. The image contains the SDK application;
 it contains no proving keys, compiled ACC export, sponsor seed, or account registry.
 
 Prepare the pinned Passport revision `6458ed5` export **on Linux** with Compact 0.35.0 and its
@@ -31,8 +32,16 @@ setting, not an authentication mechanism.
 
 For a local Docker Desktop demonstration with a Linux-prepared export, run the image on the same
 network as the localnet or use the host-published ports. The four `MN_*_URL` values must match
-the export's patched reference client configuration. Replace `<digest>` with the digest from the
-successful publish run:
+the export's patched reference client configuration. `PASSPORT_PUBLIC_*_URL` values are the
+browser-reachable endpoints returned by `/v1/config`; set them whenever the service connects
+through container-only hostnames or a private network. The browser needs direct access to the
+node and indexer endpoints. Build this revision for the corrected browser configuration:
+
+```sh
+docker build -f apps/passport-service/Dockerfile -t midnight-passport-service:build .
+```
+
+Then run it:
 
 ```sh
 docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" \
@@ -45,7 +54,11 @@ docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" \
   -e MN_INDEXER_URL=http://host.docker.internal:18088/api/v4/graphql \
   -e MN_INDEXER_WS_URL=ws://host.docker.internal:18088/api/v4/graphql/ws \
   -e MN_PROOF_SERVER_URL=http://host.docker.internal:16300 \
-  ghcr.io/input-output-hk/midnight-passport-service@sha256:<digest>
+  -e PASSPORT_PUBLIC_NODE_URL=http://localhost:19944 \
+  -e PASSPORT_PUBLIC_INDEXER_URL=http://localhost:18088/api/v4/graphql \
+  -e PASSPORT_PUBLIC_INDEXER_WS_URL=ws://localhost:18088/api/v4/graphql/ws \
+  -e PASSPORT_PUBLIC_PROOF_SERVER_URL=http://localhost:16300 \
+  midnight-passport-service:build
 ```
 
 The Docker build smoke checks the non-root user, missing-export refusal, non-standalone

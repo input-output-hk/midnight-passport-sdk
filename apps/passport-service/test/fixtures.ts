@@ -33,7 +33,7 @@ export function fakeArtefacts(): { dir: string; manifestSha256: string } {
 
 export function testConfig(over: Partial<ServiceConfig> = {}): ServiceConfig {
   const { dir, manifestSha256 } = fakeArtefacts();
-  return {
+  const config = {
     port: 0,
     host: '127.0.0.1',
     corsOrigin: 'http://localhost:5173',
@@ -50,6 +50,16 @@ export function testConfig(over: Partial<ServiceConfig> = {}): ServiceConfig {
     sponsorSeed: '00'.repeat(32),
     maxDeploys: 20,
     ...over,
+  };
+  return {
+    ...config,
+    publicStack: over.publicStack ?? {
+      networkId: config.networkId,
+      nodeUri: config.nodeUri,
+      indexerUri: config.indexerUri,
+      indexerWsUri: config.indexerWsUri,
+      proofServerUri: config.proofServerUri,
+    },
   };
 }
 

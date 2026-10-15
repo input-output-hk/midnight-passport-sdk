@@ -6,7 +6,13 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { LOCALNET_ID, loadConfig, loadStack, localnetStack } from '../src/config.ts';
+import {
+  LOCALNET_ID,
+  loadConfig,
+  loadPublicStack,
+  loadStack,
+  localnetStack,
+} from '../src/config.ts';
 
 const BASE = { PASSPORT_CONTRACT_DIR: '/contracts', PASSPORT_MANIFEST_SHA256: 'ab'.repeat(32) };
 
@@ -179,6 +185,32 @@ test('each stack URL error names its variable and the accepted schemes', () => {
   );
   assert.throws(() => loadStack({ MN_INDEXER_URL: 'javascript:alert(1)' }), /MN_INDEXER_URL/);
   assert.throws(() => loadStack({ MN_INDEXER_URL: 'file:///etc/passwd' }), /MN_INDEXER_URL/);
+});
+
+test('public URLs are advertised separately from the service connection URLs', () => {
+  const env = {
+    ...BASE,
+    MN_NODE_URL: 'http://host.docker.internal:19944',
+    MN_INDEXER_URL: 'http://host.docker.internal:18088/api/v4/graphql',
+    MN_INDEXER_WS_URL: 'ws://host.docker.internal:18088/api/v4/graphql/ws',
+    MN_PROOF_SERVER_URL: 'http://host.docker.internal:16300',
+    PASSPORT_PUBLIC_NODE_URL: 'http://localhost:19944',
+    PASSPORT_PUBLIC_INDEXER_URL: 'http://localhost:18088/api/v4/graphql',
+    PASSPORT_PUBLIC_INDEXER_WS_URL: 'ws://localhost:18088/api/v4/graphql/ws',
+    PASSPORT_PUBLIC_PROOF_SERVER_URL: 'http://localhost:16300',
+  };
+  const config = loadConfig(env);
+  assert.equal(config.indexerUri, env.MN_INDEXER_URL);
+  assert.equal(config.publicStack.indexerUri, env.PASSPORT_PUBLIC_INDEXER_URL);
+  assert.equal(config.publicStack.indexerWsUri, env.PASSPORT_PUBLIC_INDEXER_WS_URL);
+  assert.equal(config.publicStack.nodeUri, env.PASSPORT_PUBLIC_NODE_URL);
+  assert.equal(config.publicStack.proofServerUri, env.PASSPORT_PUBLIC_PROOF_SERVER_URL);
+  assert.equal(config.publicStack.networkId, config.networkId);
+  assert.deepEqual(loadPublicStack({}, loadStack({})), loadStack({}));
+  assert.throws(
+    () => loadConfig({ ...env, PASSPORT_PUBLIC_INDEXER_WS_URL: 'https://localhost:18088' }),
+    /PASSPORT_PUBLIC_INDEXER_WS_URL must be a ws or wss URL/,
+  );
 });
 
 test('the refusal of the default sponsor seed names the network and the variable', () => {

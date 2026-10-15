@@ -14,6 +14,8 @@ export interface MidnightStack {
 }
 
 export interface ServiceConfig extends MidnightStack {
+  /** Browser-reachable endpoints advertised by /config and /v1/config. */
+  readonly publicStack: MidnightStack;
   readonly port: number;
   /**
    * The interface the server binds. Loopback by default: the service spends the sponsor's funds
@@ -124,6 +126,20 @@ export function loadStack(env: NodeJS.ProcessEnv): MidnightStack {
   };
 }
 
+/** Container/network endpoints can differ from the URLs a browser can reach. */
+export function loadPublicStack(env: NodeJS.ProcessEnv, internal: MidnightStack): MidnightStack {
+  const url = (key: string, value: string, protocols: readonly string[]) =>
+    parseUrl(key, env[key] ?? value, protocols);
+  const http = ['http:', 'https:'];
+  return {
+    networkId: internal.networkId,
+    nodeUri: url('PASSPORT_PUBLIC_NODE_URL', internal.nodeUri, http),
+    indexerUri: url('PASSPORT_PUBLIC_INDEXER_URL', internal.indexerUri, http),
+    indexerWsUri: url('PASSPORT_PUBLIC_INDEXER_WS_URL', internal.indexerWsUri, ['ws:', 'wss:']),
+    proofServerUri: url('PASSPORT_PUBLIC_PROOF_SERVER_URL', internal.proofServerUri, http),
+  };
+}
+
 /** The genesis-funded dev seed of the standalone network; worthless anywhere else. */
 const LOCALNET_SPONSOR_SEED = '0000000000000000000000000000000000000000000000000000000000000001';
 const SEED = /^[0-9a-f]{64}$/;
@@ -154,6 +170,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): ServiceConfig {
     host: env.PASSPORT_SERVICE_HOST || '127.0.0.1',
     corsOrigin: env.PASSPORT_DAPP_ORIGIN ?? 'http://localhost:5173',
     ...stack,
+    publicStack: loadPublicStack(env, stack),
     bindingId: env.PASSPORT_BINDING_ID ?? 'acc-s3r1.1',
     contractDir,
     artefactDir: `${contractDir}/contracts/managed/account`,

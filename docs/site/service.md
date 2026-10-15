@@ -7,6 +7,10 @@ permalink: /service/
 The prototype service runs on `127.0.0.1:8787` by default. It is a development composition, not an authenticated public API. Its wire types are in [`packages/protocol/src/service.ts`](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/protocol/src/service.ts). The reusable Node HTTP host and versioned proving, sponsorship, submission, deployment, directory, and funding handlers are in [`packages/service/src`](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/packages/service/src); the demo supplies its chain backend and mounts all except funding.
 
 The [service image guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-service/README.md) covers the separate container, mounted ACC export, sponsor seed, and ingress controls.
+When container-only `MN_*_URL` endpoints differ from the addresses a browser can reach, set
+`PASSPORT_PUBLIC_NODE_URL`, `PASSPORT_PUBLIC_INDEXER_URL`,
+`PASSPORT_PUBLIC_INDEXER_WS_URL`, and `PASSPORT_PUBLIC_PROOF_SERVER_URL` on the host. Both config
+routes advertise those public addresses while the backend continues using `MN_*_URL`.
 
 The [problem statement]({{ '/problems/' | relative_url }}) separates three server responsibilities: serving pinned proving artefacts, sponsoring eligible ACC calls, and transferring wallet-held assets into an ACC. `mn-passport-service` exports `createServer(config, routes)`, `v1ChainRoute`, `directoryRoute`, `fundingRoute`, `verifyArtefacts`, and `pinnedZkRoute`. An application injects its own wallet, proving provider, policy, network configuration, directory, and funding backend. Verify the pinned tree before listening. The package does not ship the demo's reference-client loader or sponsor seed.
 

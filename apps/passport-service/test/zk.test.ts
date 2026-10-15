@@ -43,7 +43,15 @@ test('/zk serves artefact files as octet-stream with CORS and cache headers', as
 });
 
 test('/v1/config points at verified binding-specific artefacts', async (t) => {
-  const config = testConfig();
+  const config = testConfig({
+    publicStack: {
+      networkId: 'undeployed',
+      nodeUri: 'http://localhost:19944',
+      indexerUri: 'http://localhost:18088/api/v4/graphql',
+      indexerWsUri: 'ws://localhost:18088/api/v4/graphql/ws',
+      proofServerUri: 'http://localhost:16300',
+    },
+  });
   const server = createServer(config, [
     configRoute(config, () => ({ coinPublicKey: 'aa', encryptionPublicKey: 'bb' })),
     pinnedZkRoute(config),
@@ -58,6 +66,11 @@ test('/v1/config points at verified binding-specific artefacts', async (t) => {
   assert.equal(body.manifestSha256, config.manifestSha256);
   assert.deepEqual(body.apiVersions, ['1.0.0-pre.0']);
   assert.equal(body.zkBaseUrl, `${base}/v1/zk/${config.bindingId}`);
+  assert.equal(body.indexerUri, config.publicStack.indexerUri);
+  assert.equal(body.indexerWsUri, config.publicStack.indexerWsUri);
+  assert.equal(body.nodeUri, config.publicStack.nodeUri);
+  assert.equal(body.proofServerUri, config.publicStack.proofServerUri);
+  assert.notEqual(body.indexerUri, config.indexerUri);
   const key = await fetch(`${body.zkBaseUrl}/keys/c.verifier`);
   assert.equal(key.status, 200);
   assert.deepEqual(new Uint8Array(await key.arrayBuffer()), Uint8Array.of(3));
