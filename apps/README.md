@@ -47,6 +47,10 @@ pnpm install && pnpm build
 | `MN_INDEXER_URL`           | `http://localhost:$MN_INDEXER_PORT/api/v4/graphql` (18088) | Indexer GraphQL, `http` or `https`.                                                    |
 | `MN_INDEXER_WS_URL`        | `ws://localhost:$MN_INDEXER_PORT/api/v4/graphql/ws` | Indexer subscriptions, `ws` or `wss`.                                                             |
 | `MN_PROOF_SERVER_URL`      | `http://127.0.0.1:$MN_PROOF_PORT` (16300) | Proof server, `http` or `https`.                                                                               |
+| `PASSPORT_PUBLIC_NODE_URL` | `MN_NODE_URL` | Browser-reachable node URL advertised by the service. Set when its own `MN_NODE_URL` uses a container-only address. |
+| `PASSPORT_PUBLIC_INDEXER_URL` | `MN_INDEXER_URL` | Browser-reachable indexer GraphQL URL advertised by the service. |
+| `PASSPORT_PUBLIC_INDEXER_WS_URL` | `MN_INDEXER_WS_URL` | Browser-reachable indexer subscription URL advertised by the service. |
+| `PASSPORT_PUBLIC_PROOF_SERVER_URL` | `MN_PROOF_SERVER_URL` | Proof server URL advertised by the service. |
 | `MN_NODE_PORT`, `MN_INDEXER_PORT`, `MN_PROOF_PORT` | 19944, 18088, 16300 | The localnet's host ports (`infra/localnet/ports.env`); only the defaults of the URLs above.                |
 | `PASSPORT_NETWORK_ID`      | `undeployed`                   | Build-time pin of the dapp (read by `vite build`/`dev`) and the e2e: the network the page is bound to. `prototype:up` sets it from `MN_NETWORK_ID`. A service on another network is refused (`NetworkMismatch`). |
 | `VITE_PASSPORT_ARM`        | `p256`                         | Browser ACC authoriser arm, `p256` or `jubjub`. `pnpm demo up --arm jubjub` sets it for the dev page. JubJub mode currently exposes create/open; the rotate button is hidden. |
@@ -57,9 +61,10 @@ pnpm install && pnpm build
 | `PASSPORT_SPONSOR_SEED`    | the localnet genesis dev seed, on `undeployed` only | The sponsor wallet's seed. The default is public knowledge and funded on the localnet only; another network requires this or `PASSPORT_SPONSOR_SEED_FILE`. |
 | `PASSPORT_SPONSOR_SEED_FILE` | unset | Path to a file containing the sponsor wallet's 32-byte lowercase hex seed. Preferred for the service image; mutually exclusive with `PASSPORT_SPONSOR_SEED`. |
 
-The service validates the `MN_*` values at start-up (a bad URL or scheme refuses to start) and
-compares them with the reference client's `CONFIG`; `GET /config` advertises exactly this stack
-(`networkId`, `nodeUri`, `indexerUri`, `indexerWsUri`, `proofServerUri`).
+The service validates its `MN_*` URLs at start-up and compares them with the reference client's
+`CONFIG`. `GET /config` and `GET /v1/config` advertise the corresponding `PASSPORT_PUBLIC_*`
+URLs when set, or the `MN_*` URLs otherwise. The browser must be able to reach the advertised
+node and indexer URLs directly.
 
 ### The Midnight stack
 

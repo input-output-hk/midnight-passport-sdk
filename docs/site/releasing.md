@@ -14,8 +14,16 @@ Container images use separate signed tags and workflows. The [key image](https:/
 
 The [proving and sponsorship service image](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-service/README.md) was published as `ghcr.io/input-output-hk/midnight-passport-service:0.1.0-rc2` by its [signed-tag workflow](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/38675830505). The version and `sha-965a822d98ed` tags share digest `sha256:f66431befe3c226a8689ef4f624b854dfeaef9f545bd861a15714cea26bc9cd1`. It requires a Linux-prepared pinned ACC export mounted read-only, a persistent registry and wallet state volume, and a dedicated sponsor seed file outside localnet. Its startup smoke test checks missing-export, missing-seed, and wrong-manifest refusal. A network-backed mounted-tree run and immutable digest must be recorded before treating a new tag as release evidence. The service has no built-in caller authentication; deploy it behind a controlled ingress.
 RC2's `/v1/config` advertises the service's own network URLs, which can be Docker-only hostnames;
-browser clients need the separate public URL configuration introduced after RC2. Use the next
-signed service image release for a container-backed browser demo.
+browser clients need the separate public URL configuration introduced in RC3.
+
+The corrected [RC3 service image workflow](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/38679372524)
+passed signed-tag and DCO verification, Linux build, smoke test, and GHCR publication. Tags
+`0.1.0-rc3` and `sha-aef4a15bd0e4` share digest
+`sha256:169104ecfd166b85c51343629c42bab0184483d8cf9cde10915f8c493e3f5f99`. Its
+browser-reachable endpoint overrides passed a mounted-tree localnet run with JubJub create,
+first-device activation, chain read, and open after reload. Use this digest for container-backed
+browser deployments. A separate pull of the published digest passed startup smoke, mounted-tree
+manifest verification, `/healthz`, browser-reachable `/v1/config`, and a browser open of that account.
 
 Consumers add a scoped registry rule and supply a token outside source control:
 
