@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const tarballs = join(root, 'release-tarballs');
+const tarballs = resolve(process.env.RELEASE_TARBALL_DIR ?? join(root, 'release-tarballs'));
 /** @type {{version: string, files: Array<{name: string, file: string}>}} */
 const manifest = JSON.parse(readFileSync(join(tarballs, 'manifest.json'), 'utf8'));
 if (manifest.version !== process.env.RELEASE_VERSION || manifest.files?.length !== 9)

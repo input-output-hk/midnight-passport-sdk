@@ -64,17 +64,21 @@ The fixture in `tests/fixtures/lace-seams.mjs` tracks
 at head `cdfa9cfd81a0adcc0a7224aa624f18e52494f602` (2026/10/15), from
 `packages/contract/passport/src/types.ts`. `tests/account-ports.test.mjs` checks
 the structural TypeScript assignments. A second local check now compiles the
-**actual contract seam sources** from that exact Lace commit against all nine
+**actual contract seam sources**, generated ACC ledger declaration, and gated-call handle type from that exact Lace commit against all nine
 packed SDK tarballs. It checks the tarball SHA-256 values in the release
 manifest, then compiles Lace's `PassportAuthoriser`, `PassportEncryptionKey`,
 `FeeSponsor`, `PassportProver`, network config, account store record, grant record,
-grant scope and bookkeeping
+grant scope, bookkeeping, ledger, and transaction-handle
 types with `tests/fixtures/lace-source-consumer.ts`. To reproduce with an exact
-Lace PR checkout and a fresh `release-tarballs/` pack:
+Lace PR checkout and a fresh nine-package pack:
 
 ```sh
+RELEASE_VERSION=0.1.0-dev.7 DIST_TAG=dev \
+  RELEASE_TARBALL_DIR=/path/to/empty-pack-dir \
+  nix develop -c node scripts/release-packages.mjs pack
 LACE_CHECKOUT=/path/to/lace-platform \
-  RELEASE_VERSION=0.1.0-dev.5 \
+  RELEASE_VERSION=0.1.0-dev.7 \
+  RELEASE_TARBALL_DIR=/path/to/empty-pack-dir \
   nix develop -c node scripts/smoke-lace-source-consumer.mjs
 ```
 
@@ -83,15 +87,18 @@ the pinned ACC binding. Lace also validates stored openings against the live
 ACC object commitment and read-key hash before reusing them. The SDK's
 chain-backed `GrantCommitmentSource` supplies those values; both JubJub and
 P-256 publication verify the staged opening and auth nonce before appending
-sealed bookkeeping. This does not establish Lace-hosted runtime compatibility.
+sealed bookkeeping. The packed source check also compiles `createHostedAccChain`
+with Lace's exact generated ledger and gated-call handle types. This does not
+establish Lace-hosted runtime compatibility.
 
 The check pins Lace HEAD to `cdfa9cfd81a0adcc0a7224aa624f18e52494f602`
-and rejects local edits to its contract seam. The Lace source dependencies
+and rejects local edits to its contract seam, ledger declaration, and gated-call
+handle. The Lace source dependencies
 `type-fest@4.41.0`, `ts-custom-error@3.3.1`, `@reduxjs/toolkit@2.11.2`, and
 `immer@10.2.0` match its lockfile. The result
 is a source-level compile check, not a build of Lace's module or a live
 transaction. It establishes direct structural compatibility for the sponsor,
-viewing key, grant scope and bookkeeping. The browser package now exports
+viewing key, grant scope, bookkeeping, and the hosted ACC reader/call bridge. The browser package now exports
 `./hosted-jubjub` with `hostedJubjubAuthoriser`: it converts tagged account/epoch/counter inputs,
 compresses and validates the device key, and carries the signing request to
 Lace's hosted signer without forwarding the SDK-only challenge. The host
@@ -99,7 +106,8 @@ supplies Lace's tagged constructors and a consent-flow converter. The adapter
 rejects absent key sessions, non-JubJub circuits, unsupported rotation, and
 any converter output that changes a consent field. The exact-source fixture
 compiles that adapter with Lace's current `PassportAuthoriser`. The
-circuit-level prover still needs a transaction pipeline adapter. Network
+circuit-level prover can run through Lace's existing transaction handle via
+`createHostedAccChain`; its real hosted runtime still needs validation. Network
 config additionally needs the ACC binding and manifest pins.
 
 Lace's `PassportAccountInfo` records address, binding version, network and
@@ -156,7 +164,7 @@ own module bundle and hosted transaction path remain to be measured.
 | `readGrants` active IDs for issue | `ActiveGrantSnapshotSource` | The same adapter returns IDs and auth nonce from one ledger snapshot; the SDK checks them against its signing view and rechecks before staging. Lace still owns the consent and durable grant journal. |
 | `PassportNetworkConfig` | `NetworkConfig` | Lace network fields fit; the SDK caller must supply its additional ACC binding and manifest pins |
 | `PassportAuthoriser` | `Authoriser` | `hostedJubjubAuthoriser` supplies the boundary for branded account/counter/epoch values and request encoding. The host supplies tagged constructors and a lossless consent converter. Its packed type check and focused runtime tests pass; no Lace-hosted transaction has been proven yet. |
-| `PassportProver.prove/check` | transaction `Prover.proveTx` | Different abstraction: Lace proves a circuit preimage; a transaction pipeline must wrap it |
+| `PassportProver.prove/check` | transaction `Prover.proveTx` | Different abstraction. `createHostedAccChain` accepts Lace's existing decoded ledger reader and ACC transaction handle, so a host can keep its own circuit prover and transaction pipeline. The adapter validates the ACC binding and finalized result; a Lace-hosted runtime transaction still needs to be exercised. |
 
 The current Lace `KeySessionFlow.kind` omits `rotate-encryption-key`, which the
 SDK's standalone rotation flow requests. The test adapter rejects that direct

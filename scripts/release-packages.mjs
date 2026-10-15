@@ -11,7 +11,7 @@ const mode = process.argv[2];
 const version = process.env.RELEASE_VERSION;
 const tag = process.env.DIST_TAG;
 const root = resolve(import.meta.dirname, '..');
-const output = join(root, 'release-tarballs');
+const output = resolve(process.env.RELEASE_TARBALL_DIR ?? join(root, 'release-tarballs'));
 const registry = 'https://npm.pkg.github.com';
 const expectedPublishable = new Set([
   'account',

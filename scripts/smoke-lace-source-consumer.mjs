@@ -13,6 +13,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import ts from 'typescript';
 
 const laceHead = 'cdfa9cfd81a0adcc0a7224aa624f18e52494f602';
 const laceCheckout = process.env.LACE_CHECKOUT;
@@ -30,6 +31,16 @@ execFileSync('git', [
   'HEAD',
   '--',
   'packages/contract/passport/src',
+]);
+execFileSync('git', [
+  '-C',
+  laceCheckout,
+  'diff',
+  '--quiet',
+  'HEAD',
+  '--',
+  'packages/module/passport-account/src/acc/gated-call.ts',
+  'packages/module/passport-account/src/acc/generated/index.d.ts',
 ]);
 const root = resolve(import.meta.dirname, '..');
 const tarballs = resolve(process.env.RELEASE_TARBALL_DIR ?? join(root, 'release-tarballs'));
@@ -56,6 +67,26 @@ try {
   mkdirSync(join(laceSource, 'store'));
   cpSync(join(source, 'store/slice.ts'), join(laceSource, 'store/slice.ts'));
   cpSync(join(root, 'tests/fixtures/lace-source-consumer.ts'), join(scratch, 'consumer.ts'));
+  cpSync(
+    join(laceCheckout, 'packages/module/passport-account/src/acc/generated/index.d.ts'),
+    join(scratch, 'lace-acc-generated.d.ts'),
+  );
+  const handleSource = readFileSync(
+    join(laceCheckout, 'packages/module/passport-account/src/acc/gated-call.ts'),
+    'utf8',
+  );
+  const handleFile = ts.createSourceFile(
+    'gated-call.ts',
+    handleSource,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const handleAlias = handleFile.statements.find(
+    (statement) =>
+      ts.isTypeAliasDeclaration(statement) && statement.name.text === 'GatedContractHandle',
+  );
+  if (!handleAlias) throw new Error('Lace GatedContractHandle declaration is missing');
+  writeFileSync(join(scratch, 'lace-gated-handle.ts'), `${handleAlias.getText(handleFile)}\n`);
   writeFileSync(
     join(scratch, 'package.json'),
     JSON.stringify({
@@ -68,6 +99,7 @@ try {
         immer: '10.2.0',
         'ts-custom-error': '3.3.1',
         'type-fest': '4.41.0',
+        '@midnight-ntwrk/compact-runtime': '0.20.0',
       },
       devDependencies: { typescript: '6.0.3' },
       pnpm: { overrides: dependencies },
@@ -86,7 +118,12 @@ try {
         skipLibCheck: true,
         types: [],
       },
-      include: ['consumer.ts', 'lace-contract/**/*.ts'],
+      include: [
+        'consumer.ts',
+        'lace-contract/**/*.ts',
+        'lace-gated-handle.ts',
+        'lace-acc-generated.d.ts',
+      ],
     }),
   );
   execFileSync('pnpm', ['install', '--ignore-scripts', '--no-frozen-lockfile'], {

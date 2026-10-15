@@ -20,6 +20,14 @@ import {
 import type { GrantScopeInput as LaceGrantScopeInput } from './lace-contract/grants';
 import type { GrantScopeInput as SDKGrantScopeInput } from '@input-output-hk/mn-passport-account';
 import { hostedJubjubAuthoriser } from '@input-output-hk/mn-passport-adapter-browser/hosted-jubjub';
+import { createHostedAccChain } from '@input-output-hk/mn-passport-adapter-midnight-js';
+import { resolveBinding } from '@input-output-hk/mn-passport-contract';
+import type {
+  HostedAccHandle,
+  HostedAccLedger,
+} from '@input-output-hk/mn-passport-adapter-midnight-js';
+import type { Ledger as LaceAccLedger } from './lace-acc-generated';
+import type { GatedContractHandle as LaceGatedContractHandle } from './lace-gated-handle';
 import type {
   AccountViewingKey,
   AccountRecord,
@@ -51,6 +59,18 @@ const network: NetworkConfig = {
   bindingId: 'acc-s3r1.1',
   manifestSha256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
 };
+
+declare const laceLedger: LaceAccLedger;
+declare const laceHandle: LaceGatedContractHandle;
+const hostedLedger: HostedAccLedger = laceLedger;
+const hostedHandle: HostedAccHandle = laceHandle;
+const hostedChain = createHostedAccChain({
+  network,
+  binding: { id: network.bindingId, ...resolveBinding(network.bindingId) },
+  readLedger: async () => hostedLedger,
+  connectHandle: async () => hostedHandle,
+});
+void hostedChain;
 
 // Lace's persisted account has a network and status; this device's SDK record also needs its
 // authoriser arm and local counter. The host validates the network and binding before mapping it.
