@@ -4,6 +4,8 @@ import type {
   AccountViewingKey,
   Authoriser,
   Chain,
+  QualifiedHoldingSource,
+  QualifiedShieldedCoin,
   ShieldedCoin,
   VerifiedHoldingSource,
 } from './ports/index.js';
@@ -12,6 +14,81 @@ export interface VerifiedHolding {
   /** Index of the ACC inbox entry that described this chain-confirmed coin. */
   readonly inboxIndex: number;
   readonly coin: ShieldedCoin;
+}
+
+/** Select one chain-matched qualified coin inside the caller's owner key session. */
+export async function readQualifiedHolding(
+  input: ReadVerifiedHoldingsInput & { readonly inboxIndex: number; readonly color: Uint8Array },
+  ports: {
+    readonly networkId: string;
+    readonly chain: {
+      readAccount(
+        address: string,
+        options: { readonly includeInbox: true },
+      ): Promise<
+        { readonly encKey?: Uint8Array; readonly inboxEntries?: readonly Uint8Array[] } | undefined
+      >;
+    };
+    readonly viewingKey: Pick<AccountViewingKey, 'openInbox'>;
+    readonly holdings: QualifiedHoldingSource;
+  },
+): Promise<QualifiedShieldedCoin> {
+  const { account, keyring, inboxIndex, color } = input;
+  if (keyring.account !== account)
+    throw new PassportConnectorError('NotAuthorised', 'The keyring belongs to another account.');
+  if (!Number.isSafeInteger(inboxIndex) || inboxIndex < 0)
+    throw new PassportConnectorError('TransferInvalid', 'Invalid shielded inbox index.');
+  const ledger = await ports.chain.readAccount(account, { includeInbox: true });
+  if (!ledger) throw new PassportConnectorError('AccountNotFound', `No ACC at ${account}.`);
+  if (!ledger.encKey || !ledger.inboxEntries)
+    throw new PassportConnectorError('BindingUnsupported', 'The chain port omits ACC inbox data.');
+  if (!same(ledger.encKey, keyring.encKey))
+    throw new PassportConnectorError('EncryptionKeyMismatch', 'The keyring is stale for this ACC.');
+  const entries = ledger.inboxEntries;
+  if (inboxIndex >= entries.length)
+    throw new PassportConnectorError('TransferInvalid', 'The selected inbox entry is missing.');
+  const opened = await ports.viewingKey.openInbox(ports.networkId, keyring, entries);
+  if (opened.length !== entries.length)
+    throw new PassportConnectorError(
+      'InternalError',
+      'The viewing key returned an incomplete inbox.',
+    );
+  const candidates = await ports.holdings.selectQualifiedHeldCoins(account, entries, opened);
+  const selected = candidates.filter((candidate) => candidate.inboxIndex === inboxIndex);
+  if (selected.length !== 1)
+    throw new PassportConnectorError(
+      'TransferInvalid',
+      'The selected coin is not a unique ACC output.',
+    );
+  const openedCoin = opened[inboxIndex];
+  const coin = selected[0]!.coin;
+  if (
+    openedCoin?.kind !== 'coin' ||
+    !same(openedCoin.coin.nonce, coin.nonce) ||
+    !same(openedCoin.coin.color, coin.color) ||
+    openedCoin.coin.value !== coin.value ||
+    !same(color, coin.color)
+  )
+    throw new PassportConnectorError(
+      'TransferInvalid',
+      'The selected coin does not match the transfer.',
+    );
+  if (
+    coin.nonce.length !== 32 ||
+    coin.color.length !== 32 ||
+    coin.value < 0n ||
+    coin.value >= 1n << 128n ||
+    typeof coin.mt_index !== 'bigint' ||
+    coin.mt_index < 0n ||
+    coin.mt_index >= 1n << 64n
+  )
+    throw new PassportConnectorError('TransferInvalid', 'The qualified coin is malformed.');
+  return {
+    nonce: coin.nonce.slice(),
+    color: coin.color.slice(),
+    value: coin.value,
+    mt_index: coin.mt_index,
+  };
 }
 
 export interface ReadVerifiedHoldingsInput {
