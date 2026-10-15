@@ -1,0 +1,12 @@
+{
+  "bindingId": "acc-s3r1.1",
+  "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "contractSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
+  "networkId": "undeployed",
+  "account": "6de125630e60d5024694c07f8b982e4a85e1ffb0ec29cf9ce55e6b0f33e526d3",
+  "txId": "0025656c3aea813d9ff63a35a75bd47c1ae4a96ed62e35920639ca2f0d9ae32056",
+  "inboxIndex": 0,
+  "color": "a52244cdb5c1636f4c84b96291345fea702142a4e8cf57a27c63c39a7da46451",
+  "amount": "25",
+  "entryOpenedByUpstreamReader": true
+}

@@ -10,5 +10,9 @@
     "checkJs": true,
     "types": ["node"]
   },
-  "include": ["tests/**/*.mjs", "scripts/**/*.mjs"]
+  "include": [
+    "tests/**/*.mjs",
+    "scripts/**/*.mjs",
+    "experiments/acc-0.35/sdk-shielded-deposit-node.mjs"
+  ]
 }
