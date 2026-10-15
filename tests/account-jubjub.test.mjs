@@ -32,6 +32,7 @@ function world() {
   let failActivation = false;
   let failSecondAppend = false;
   let failRemoval = false;
+  let failEnrollment = false;
   let tamperKeyAfterNextAppend = false;
   let addInboxAfterNextAppend = false;
   let changeReadGrantsAfterNextAppend = false;
@@ -147,6 +148,10 @@ function world() {
         counter++;
         nonce++;
       } else if (request.circuit === 'add_device_with_jubjub') {
+        if (failEnrollment) {
+          failEnrollment = false;
+          throw new Error('enrollment was interrupted after key rotation');
+        }
         assert.equal(request.args[2], counter);
         const target = /** @type {Uint8Array} */ (request.args[0]);
         assert.ok(!remoteEntries.some((entry) => hex(entry) === hex(target)));
@@ -272,6 +277,7 @@ function world() {
     interruptActivation: () => (failActivation = true),
     interruptSecondAppend: () => (failSecondAppend = true),
     interruptRemoval: () => (failRemoval = true),
+    interruptEnrollment: () => (failEnrollment = true),
     tamperKeyAfterNextAppend: () => (tamperKeyAfterNextAppend = true),
     addInboxAfterNextAppend: () => (addInboxAfterNextAppend = true),
     changeReadGrantsAfterNextAppend: () => (changeReadGrantsAfterNextAppend = true),
@@ -416,19 +422,102 @@ test('JubJub enrollment refuses a reader key already registered to another devic
   assert.equal((await account.state()).entryCount, 2);
 });
 
-test('JubJub enrollment refuses a live read grant and a grant that appears during delivery', async () => {
+test('JubJub enrollment rotates keys before delivering to a joiner while a read grant is live', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const { entry, reader, remoteViewingKey } = await w.joiningDevice();
+  const grantee = x25519.keygen();
+  const grantId = 'ac'.repeat(32);
+  const before = hex(w.encKey());
+  const own = hex(await w.ownEntry());
+  w.setReadGrantTargets([{ grantId, readPublicKey: hex(grantee.publicKey) }]);
+  assert.ok(account.addDevice);
+  const result = await account.addDevice(reader);
+  assert.equal(result.commitmentHex, hex(entry));
+  assert.equal(result.rotationTxHash, 'tx-7');
+  assert.equal(result.txHash, 'tx-10');
+  assert.equal(result.sealedReadGrants?.[0]?.grantId, grantId);
+  assert.notEqual(hex(w.encKey()), before);
+  assert.deepEqual(w.calls.slice(3), [
+    'append_inbox_with_jubjub',
+    'append_inbox_with_jubjub',
+    'append_inbox_with_jubjub',
+    'rotate_enc_key_with_jubjub',
+    'append_inbox_with_jubjub',
+    'append_inbox_with_jubjub',
+    'add_device_with_jubjub',
+  ]);
+  assert.deepEqual(w.sessionFlows.at(-1), {
+    kind: 'add-device',
+    account: address,
+    commitmentHex: hex(entry),
+    reader,
+    devices: [own],
+  });
+  const opened = await remoteViewingKey.openInbox(
+    'undeployed',
+    { account: address, encKey: w.encKey(), envelopes: [...w.inbox].reverse() },
+    w.inbox,
+  );
+  assert.ok(opened.some((item) => item?.kind === 'device'));
+  assert.equal((await account.state()).entryCount, 2);
+  grantee.secretKey.fill(0);
+});
+
+test('JubJub enrollment refuses an unsealable read grant and a grant added during delivery', async () => {
   const w = world();
   const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
   const { reader } = await w.joiningDevice();
   assert.ok(account.addDevice);
   w.setReadGrantTargets([{ grantId: 'ac'.repeat(32) }]);
-  await assert.rejects(account.addDevice(reader), { code: 'BindingUnsupported' });
+  await assert.rejects(account.addDevice(reader), { code: 'GrantRosterUnsettled' });
   assert.equal(w.calls.length, 3);
   w.setReadGrantTargets([]);
   w.changeReadGrantsAfterNextAppend();
   await assert.rejects(account.addDevice(reader), { code: 'GrantRosterUnsettled' });
   assert.deepEqual(w.calls.slice(3), ['append_inbox_with_jubjub', 'append_inbox_with_jubjub']);
   assert.equal((await account.state()).entryCount, 1);
+});
+
+test('JubJub grant-aware enrollment can retry after rotation lands but enrollment fails', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const { entry, reader, remoteViewingKey } = await w.joiningDevice();
+  const grantee = x25519.keygen();
+  w.setReadGrantTargets([{ grantId: 'ad'.repeat(32), readPublicKey: hex(grantee.publicKey) }]);
+  const before = hex(w.encKey());
+  w.interruptEnrollment();
+  assert.ok(account.addDevice);
+  await assert.rejects(account.addDevice(reader), { code: 'InternalError' });
+  assert.notEqual(hex(w.encKey()), before);
+  assert.equal((await account.state()).entryCount, 1);
+  const reopened = await w.accounts.openAccount();
+  assert.ok(reopened.addDevice);
+  const result = await reopened.addDevice(reader);
+  assert.equal(result.commitmentHex, hex(entry));
+  assert.equal((await reopened.state()).entryCount, 2);
+  const opened = await remoteViewingKey.openInbox(
+    'undeployed',
+    { account: address, encKey: w.encKey(), envelopes: [...w.inbox].reverse() },
+    w.inbox,
+  );
+  assert.ok(opened.some((item) => item?.kind === 'device'));
+  grantee.secretKey.fill(0);
+});
+
+test('JubJub grant-aware enrollment refuses an unregistered surviving device', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const { reader } = await w.joiningDevice();
+  const grantee = x25519.keygen();
+  w.setReadGrantTargets([{ grantId: 'ad'.repeat(32), readPublicKey: hex(grantee.publicKey) }]);
+  w.addUnregisteredDevice();
+  const before = hex(w.encKey());
+  assert.ok(account.addDevice);
+  await assert.rejects(account.addDevice(reader), { code: 'DeviceRosterInvalid' });
+  assert.equal(hex(w.encKey()), before);
+  assert.equal(w.calls.length, 3);
+  grantee.secretKey.fill(0);
 });
 
 test('JubJub removal rotates the roster key before revoking a remote device', async () => {

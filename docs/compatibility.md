@@ -104,10 +104,11 @@ the viewing and roster keys before the pinned removal circuit; it refuses a surv
 that shares a key with the removed device. These owner flows have binding-focused tests but have
 not run in Lace's hosted module, so they are not yet verified Lace flow replacements. Full
 read-grant issue/revoke composition remains. The SDK's `addDevice` uses Lace's `add-device`
-descriptor with a reader and delivers keys before enrollment when the chain-backed source reports
-no live read grants. Lace also rotates keys before enrollment when a read grant is live; the SDK
-currently refuses that case. Its lower-level `addJubjubAuthorisingDevice` remains authorisation
-only.
+descriptor with a reader and delivers keys before enrollment. If a read grant is live it rotates
+the viewing and roster keys first, re-encrypts verified holdings, and reseals each active grant
+inside the same key session. The binding-focused tests cover success, unsafe roster and grant
+refusal, and retry after an interrupted enrollment; Lace's hosted module has not run this flow.
+Its lower-level `addJubjubAuthorisingDevice` remains authorisation only.
 
 The older SDK `EncryptionKeySource.publicKey` port is a prototype key source;
 Lace's `PassportEncryptionKey` matches the newer `AccountViewingKey` instead.

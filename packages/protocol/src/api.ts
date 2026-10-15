@@ -72,6 +72,9 @@ export interface JubjubDeviceReader {
 export interface DeviceEnrollmentResult extends PassportTxResult {
   readonly commitmentHex: string;
   readonly nextUseCounter: bigint;
+  /** Present when live read grants required a viewing and roster key rotation. */
+  readonly rotationTxHash?: string;
+  readonly sealedReadGrants?: ViewingKeyRotationResult['sealedReadGrants'];
 }
 
 export interface PassportShieldedHolding {
@@ -98,7 +101,7 @@ export interface PassportAccount {
   rotateViewingKey?(options?: FlowOptions): Promise<ViewingKeyRotationResult>;
   /** JubJub owner operation; refuses self-removal and a target absent from the live ACC. */
   removeDevice?(commitmentHex: string, options?: FlowOptions): Promise<DeviceRemovalResult>;
-  /** JubJub owner operation; delivers keys before enrolling a reader when no read grant is live. */
+  /** JubJub owner operation; rotates first when live read grants require a fresh account key. */
   addDevice?(reader: JubjubDeviceReader, options?: FlowOptions): Promise<DeviceEnrollmentResult>;
   /** JubJub accounts can read only chain-confirmed shielded holdings through their viewing key. */
   readShieldedHoldings?(options?: FlowOptions): Promise<readonly PassportShieldedHolding[]>;
