@@ -20,6 +20,12 @@ import type { GrantScopeInput } from '../grant-scope.js';
 export interface ActiveGrantSource {
   readActiveGrantIds(account: string): Promise<readonly string[]>;
 }
+/** Issue uses one grant-map snapshot whose nonce must match its ACC signing view. */
+export interface ActiveGrantSnapshotSource extends ActiveGrantSource {
+  readActiveGrantSnapshot(
+    account: string,
+  ): Promise<{ readonly authNonce: bigint; readonly ids: readonly string[] }>;
+}
 
 /** The host reads the record and nonce from one live ACC grant-map snapshot. */
 export interface GrantDetailSource {

@@ -12,7 +12,7 @@ import { JUBJUB_READER_SCAN_LIMIT } from './jubjub-readers.js';
 import type {
   AccountHint,
   AccountRecordStore,
-  ActiveGrantSource,
+  ActiveGrantSnapshotSource,
   Authoriser,
   Chain,
   CurvePoint,
@@ -33,7 +33,7 @@ export interface IssueJubjubGrantPure
   ): Uint8Array;
 }
 
-export type { ActiveGrantSource } from './ports/index.js';
+export type { ActiveGrantSource, ActiveGrantSnapshotSource } from './ports/index.js';
 
 export interface StagedJubjubGrant {
   readonly account: string;
@@ -63,7 +63,7 @@ export interface IssueJubjubGrantCallPorts {
   readonly chain: Chain;
   readonly authoriser: Authoriser;
   readonly records: AccountRecordStore;
-  readonly grants: ActiveGrantSource;
+  readonly grants: ActiveGrantSnapshotSource;
   readonly journal: GrantIssueJournal;
   readonly random?: (length: number) => Uint8Array;
   readonly nowSeconds?: () => number;
@@ -150,9 +150,12 @@ export async function issueJubjubGrantCall(
       throw new PassportConnectorError('AccountNotFound', 'The active ACC is missing.');
     if (view.specVersion !== 3)
       throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
-    const activeGrantIds = await flow.step('grant.roster', () =>
-      ports.grants.readActiveGrantIds(hint.address),
+    const roster = await flow.step('grant.roster', () =>
+      ports.grants.readActiveGrantSnapshot(hint.address),
     );
+    if (roster.authNonce !== view.authNonce)
+      throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster is stale.');
+    const activeGrantIds = [...roster.ids];
     const prepared = prepareJubjubGrant(
       {
         account: hint.address,
@@ -228,6 +231,17 @@ export async function issueJubjubGrantCall(
           !samePoint(signed.pk, publicKey)
         )
           throw new PassportConnectorError('NotAuthorised', 'The signature names another device.');
+        const latest = await flow.step('grant.roster', () =>
+          ports.grants.readActiveGrantSnapshot(hint.address),
+        );
+        const expectedIds = [...activeGrantIds].sort();
+        const currentIds = [...latest.ids].sort();
+        if (
+          latest.authNonce !== view.authNonce ||
+          currentIds.length !== expectedIds.length ||
+          currentIds.some((id, index) => id !== expectedIds[index])
+        )
+          throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster changed.');
         await flow.step('grant.stage', () =>
           ports.journal.stage(bookkeeping(hint.address, input.origin, input.scope, prepared)),
         );

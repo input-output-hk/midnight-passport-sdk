@@ -41,6 +41,9 @@ const input = { hint, origin: 'example.org', scope };
 function fixture() {
   /** @type {string[]} */
   const calls = [];
+  let grantNonce = 5n;
+  /** @type {string[]} */
+  let activeIds = [];
   /** @type {import('../packages/account/dist/jubjub-grant-issue.js').StagedJubjubGrant[]} */
   const staged = [];
   /** @type {import('../packages/account/dist/jubjub-grant-issue.js').IssueJubjubGrantCallPorts} */
@@ -65,9 +68,13 @@ function fixture() {
     },
     grants: {
       readActiveGrantIds: async (address) => {
+        assert.equal(address, account);
+        return activeIds;
+      },
+      readActiveGrantSnapshot: async (address) => {
         calls.push('roster');
         assert.equal(address, account);
-        return [];
+        return { authNonce: grantNonce, ids: activeIds };
       },
     },
     journal: {
@@ -156,7 +163,13 @@ function fixture() {
       },
     },
   };
-  return { ports, calls, staged };
+  return {
+    ports,
+    calls,
+    staged,
+    setGrantNonce: (/** @type {bigint} */ value) => (grantNonce = value),
+    setActiveIds: (/** @type {string[]} */ value) => (activeIds = value),
+  };
 }
 
 test('issue call stages the grant opening before submission and advances the owner counter', async () => {
@@ -172,10 +185,43 @@ test('issue call stages the grant opening before submission and advances the own
     'session',
     'record-read',
     'sign',
+    'roster',
     'stage',
     'call',
     'record',
   ]);
+});
+
+test('an indexer roster nonce behind the signing view is refused before consent', async () => {
+  const { ports, calls, setGrantNonce } = fixture();
+  setGrantNonce(4n);
+  await assert.rejects(issueJubjubGrantCall(input, ports), { code: 'GrantRosterUnsettled' });
+  assert.deepEqual(calls, ['presence', 'ledger', 'roster']);
+});
+
+test('a grant roster changed while signing is refused before staging or submission', async () => {
+  const { ports, calls, setGrantNonce } = fixture();
+  const sign = ports.authoriser.authorise;
+  ports.authoriser.authorise = async (request) => {
+    const result = await sign(request);
+    setGrantNonce(6n);
+    return result;
+  };
+  await assert.rejects(issueJubjubGrantCall(input, ports), { code: 'GrantRosterUnsettled' });
+  assert.ok(!calls.includes('stage'));
+  assert.ok(!calls.includes('call'));
+});
+
+test('a changed active ID set at the same nonce is refused before staging', async () => {
+  const { ports, calls, setActiveIds } = fixture();
+  const sign = ports.authoriser.authorise;
+  ports.authoriser.authorise = async (request) => {
+    const result = await sign(request);
+    setActiveIds(['ef'.repeat(32)]);
+    return result;
+  };
+  await assert.rejects(issueJubjubGrantCall(input, ports), { code: 'GrantRosterUnsettled' });
+  assert.ok(!calls.includes('stage'));
 });
 
 test('a journal failure stops the proof call, leaving the counter unchanged', async () => {

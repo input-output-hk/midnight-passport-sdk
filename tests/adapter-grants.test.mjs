@@ -74,6 +74,10 @@ function fixture() {
 test('one ledger snapshot supplies active grants and authenticates only live read openings', async () => {
   const { source, queries, openings, setNonce } = fixture();
   assert.deepEqual(await source.readActiveGrantIds(account), [readId, missingId, spendId]);
+  assert.deepEqual(await source.readActiveGrantSnapshot(account), {
+    authNonce: 7n,
+    ids: [readId, missingId, spendId],
+  });
   assert.deepEqual(await source.readGrant(account, spendId), {
     active: true,
     read: false,
@@ -90,7 +94,7 @@ test('one ledger snapshot supplies active grants and authenticates only live rea
     targets: [{ grantId: readId, readPublicKey: readKey }, { grantId: missingId }],
   });
   assert.deepEqual(openings, [readId, missingId]);
-  assert.deepEqual(queries, Array(5).fill(account));
+  assert.deepEqual(queries, Array(6).fill(account));
   setNonce(8n);
   assert.equal((await source.readActiveReadGrantTargets(account)).authNonce, 8n);
 });

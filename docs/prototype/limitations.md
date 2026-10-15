@@ -3,6 +3,8 @@
 The package grant adapter can verify the pinned ACC roster and read-key hashes, but the standalone
 demo has no durable read-grant opening store. It therefore cannot offer read-grant rotation or
 revocation through its UI yet. A host must supply those openings and the same-network ACC indexer.
+The package's unshielded grant issue helper now requires an auth-nonce-pinned roster snapshot;
+the demo still has no grant issue UI.
 The SDK's key-session descriptors carry the context Lace's hosted signer asks to display, but the
 demo uses a local signer; a packed Lace consumer flow has not yet been validated.
 

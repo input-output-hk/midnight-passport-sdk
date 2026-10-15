@@ -3,7 +3,7 @@ import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
 import type {
-  ActiveGrantSource,
+  ActiveGrantSnapshotSource,
   ActiveReadGrantTargetSource,
   GrantDetailSource,
   NetworkConfig,
@@ -51,7 +51,7 @@ const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
 /** One checked ACC grant-map snapshot shared by the issue, revoke and rotation owner ports. */
 export function createMidnightGrantSource(
   options: MidnightGrantSourceOptions,
-): ActiveGrantSource & GrantDetailSource & ActiveReadGrantTargetSource {
+): ActiveGrantSnapshotSource & GrantDetailSource & ActiveReadGrantTargetSource {
   const { network, binding, openings } = options;
   if (network.bindingId !== 'acc-s3r1.1')
     throw new PassportConnectorError('BindingUnsupported', 'Unsupported ACC grant binding.');
@@ -112,6 +112,10 @@ export function createMidnightGrantSource(
     async readActiveGrantIds(account) {
       const { grants } = await snapshot(account);
       return grants.filter((grant) => grant.active).map((grant) => grant.id);
+    },
+    async readActiveGrantSnapshot(account) {
+      const { authNonce, grants } = await snapshot(account);
+      return { authNonce, ids: grants.filter((grant) => grant.active).map((grant) => grant.id) };
     },
     async readGrant(account, grantId) {
       if (!bytes32(grantId)) return undefined;

@@ -228,6 +228,8 @@ The packaged JubJub grant source is `createMidnightGrantSource` in
 `mn-passport-adapter-midnight-js`. A host supplies the pinned ACC binding, same-network public-data
 provider, and durable read-key openings. It reads the live grant map and checks opening hashes for
 viewing-key rotation; the standalone demo does not yet wire a grant opening store or grant UI.
+Grant issue also reads the roster's auth nonce and refuses a change after signing, before it
+stages an opening or submits the circuit.
 The owner flow now names the creation lock choice and full grant context in its key-session
 descriptor for hosted signers; the demo's local passkey authoriser ignores that display metadata.
 
