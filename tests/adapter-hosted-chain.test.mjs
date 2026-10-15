@@ -117,6 +117,16 @@ test('hosted chain rejects an unpinned call or finalized failure before reportin
     }),
   });
   await assert.rejects(
+    chain.call({
+      address,
+      circuit: 'deposit_shielded',
+      args: [],
+      heldCoin: { nonce: new Uint8Array(32), color: new Uint8Array(32), value: 1n, mt_index: 0n },
+    }),
+    { code: 'BindingUnsupported' },
+  );
+  assert.equal(calls, 0);
+  await assert.rejects(
     chain.call({ address, circuit: 'unknown_circuit', args: [] }),
     /absent from the pinned binding/,
   );

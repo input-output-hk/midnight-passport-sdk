@@ -1,3 +1,4 @@
+import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
 import type { Chain, NetworkConfig } from '@input-output-hk/mn-passport-account/ports';
 import type { FlowOptions } from '@input-output-hk/mn-passport-protocol';
 
@@ -88,7 +89,12 @@ export function createHostedAccChain(options: HostedAccChainOptions): Chain {
         hasEntry: (entry: Uint8Array) => ledger.devices.member(entry),
       };
     },
-    async call({ address, circuit, args, signal, onEvent }) {
+    async call({ address, circuit, args, heldCoin, signal, onEvent }) {
+      if (heldCoin)
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'The hosted ACC handle has no per-call held_coin witness port.',
+        );
       const pin = binding.circuits[circuit];
       if (!pin?.proof) throw new Error(`ACC circuit ${circuit} is absent from the pinned binding`);
       if (signal?.aborted) throw new Error('ACC call was aborted before submission');
