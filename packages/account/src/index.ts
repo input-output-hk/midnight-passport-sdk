@@ -1,6 +1,7 @@
 export * from './codec.js';
 export * from './errors.js';
 export * from './holdings.js';
+export * from './shielded-deposit.js';
 export * from './grant-scope.js';
 export * from './grant-opening-check.js';
 export * from './jubjub-grant-issue.js';

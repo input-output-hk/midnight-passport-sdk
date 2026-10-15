@@ -106,6 +106,12 @@ The same package exports `sponsorPolicy`, `viewOfLedgerTx`, and `guardedBalance`
 
 The separate `mn-passport-adapter-service/faucet` subpath exports `remoteFaucet` for `POST /v1/faucet/fund`. A caller supplies a stable UUID, pinned network/binding/manifest, ACC address, allowlisted asset color and decimal amount, plus a callback for fresh authorization headers. The result includes the transaction ID and confirmed credited ACC balance. `apps/passport-funding-service` composes the route with a dedicated wallet and durable reservations; the demo CLI can start it with `--funding`. Only the recorded non-native unshielded asset path is advertised, pending node-backed tests for other assets.
 
+### Shielded deposit sender boundary
+
+`depositShielded(request, ports)` from `mn-passport-account` prepares the pinned ACC `deposit_shielded` inputs and confirms the new encrypted coin description in the live inbox. The request contains the ACC address, stable UUID `requestId`, 32-byte asset color, positive 128-bit amount, and a stable 32-byte coin nonce. The host supplies `chain.readAccount`, `sealCoin` (for example `sealInboxCoin` from `mn-passport-keys`), `sender.depositShielded`, and `sleep`. The sender owns the value-bearing wallet, proof, fees, submission, and durable request-ID deduplication. It must prove and submit `deposit_shielded(coin, entry)` with the supplied coin and 192-byte entry. The account package cannot fund a deposit on its own.
+
+The flow checks the live ACC `enc_key` before sealing and again before submission, then returns the transaction ID and inbox index after observing the exact entry on chain. If confirmation expires after submission, the error includes the transaction ID: reconcile the sender transaction and ACC inbox before retrying. A key rotation between the second check and on-chain execution can still invalidate the envelope; the sender or contract adapter must handle that race. This boundary has a sealed coin roundtrip and confirmation unit test, but no node-backed shielded deposit or funding-service HTTP endpoint yet.
+
 A deployed JubJub `AccountHint` may carry up to 16 sealed 192-byte `keyEntries` until they have been appended to the ACC inbox. They contain no raw viewing secret. A directory response is an untrusted pointer: the owner flow must match its credential and device key to the selected passkey, check the on-chain device entry, and open an envelope against the ledger's `enc_key` before completing or accepting it.
 
 ### JubJub viewing-key port

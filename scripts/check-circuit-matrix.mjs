@@ -78,6 +78,7 @@ function scheme(name) {
 /** @param {string} name @param {boolean} isPure @returns {[string, string, string]} */
 function policy(name, isPure) {
   if (isPure && !name.startsWith('challenge_')) return ['local helper', 'none', 'contract'];
+  if (name === 'deposit_shielded') return ['sender wallet', 'sender', 'account/sender'];
   if (name.startsWith('deposit_')) return ['sender wallet', 'sender', 'funding service'];
   if (/^recover_submit$|^recover_finalise$|^challenge_recover_submit$/.test(name))
     return ['recovery proof', 'recovery provider', 'account/recovery'];
@@ -89,6 +90,8 @@ function policy(name, isPure) {
 }
 /** @param {string} name @param {boolean} isPure @returns {[string, string]} */
 function evidence(name, isPure) {
+  if (name === 'deposit_shielded')
+    return ['sender port', 'tests/account-shielded-deposit.test.mjs'];
   if (/^(issue_grant_with_jubjub|challenge_issue_grant_with_jubjub)$/.test(name))
     return ['typed flow', 'tests/account-jubjub.test.mjs'];
   if (/^(revoke_grant_with_jubjub|challenge_revoke_grant_with_jubjub)$/.test(name))
@@ -177,7 +180,7 @@ permalink: /circuits/
 
 Generated from the pinned \`${binding}\` binding (manifest SHA-256 \`${manifest.compilerManifestSha256}\`). The generated TypeScript declarations supply the exact argument names and types. Every one of the ${pinned.length} proof circuits and ${pure.size} pure helpers appears below. The \`held_coin\` witness is required by shielded withdrawal paths; other circuit inputs are shown directly in the generated signature.
 
-**Status:** \`typed flow\` means the account package has a tested typed call path for this circuit; \`service flow\` means the standalone funding service has a tested call path; \`key helper\` means the portable key recipe tests the pure helper. \`artifact only\` and \`binding only\` mean the bytes or callable generated helper are packaged, with no typed account flow yet. The funding service also completed a local node-backed non-native deposit; the account paths have unit tests but need Lace consumer interoperability. These labels are release limits, not claims that all 52 circuits are ready for applications. The key service's \`all\` profile serves every proof circuit; \`jubjub-owner-v1\` serves the marked subset.
+**Status:** \`typed flow\` means the account package has a tested typed call path for this circuit; \`service flow\` means the standalone funding service has a tested call path; \`sender port\` means the account package seals and confirms a deposit but the host must supply a value-bearing sender wallet that proves and submits it; \`key helper\` means the portable key recipe tests the pure helper. \`artifact only\` and \`binding only\` mean the bytes or callable generated helper are packaged, with no typed account flow yet. The funding service also completed a local node-backed non-native unshielded deposit; shielded deposit has no node-backed test yet. These labels are release limits, not claims that all 52 circuits are ready for applications. The key service's \`all\` profile serves every proof circuit; \`jubjub-owner-v1\` serves the marked subset.
 
 ${rows.join('\n')}
 `;

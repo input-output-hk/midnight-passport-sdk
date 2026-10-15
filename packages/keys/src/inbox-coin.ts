@@ -1,5 +1,5 @@
-// The Lace/Midnight 192-byte coin-description inbox format, kept internal until the full viewing
-// key port is assembled. A sender needs only the public ACC enc_key; a reader needs its secret.
+// The Lace/Midnight 192-byte coin-description inbox format. A sender needs only the public ACC
+// enc_key; a reader needs its secret. Only the sealing function is exported from the package root.
 import { x25519 } from '@noble/curves/ed25519.js';
 import type { ShieldedCoin } from '@input-output-hk/mn-passport-account/ports';
 
