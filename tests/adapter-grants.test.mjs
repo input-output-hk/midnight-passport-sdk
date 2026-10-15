@@ -19,6 +19,7 @@ const record = (active, read, readHash = Buffer.alloc(32)) => ({
 
 function fixture() {
   let nonce = 7n;
+  let generation = 2n;
   /** @type {Array<[Uint8Array, ReturnType<typeof record>]>} */
   let entries = [
     [Buffer.from(readId, 'hex'), record(true, true, hash(readKey))],
@@ -41,6 +42,7 @@ function fixture() {
     binding: {
       ledger: () => ({
         auth_nonce: nonce,
+        grant_generation: generation,
         grants: {
           size: () => BigInt(entries.length),
           [Symbol.iterator]: () => entries[Symbol.iterator](),
@@ -66,6 +68,7 @@ function fixture() {
     queries,
     openings,
     setNonce: (/** @type {bigint} */ value) => (nonce = value),
+    setGeneration: (/** @type {bigint} */ value) => (generation = value),
     setEntries: (/** @type {typeof entries} */ value) => (entries = value),
     setPresent: (/** @type {boolean} */ value) => (present = value),
   };
@@ -77,6 +80,16 @@ test('one ledger snapshot supplies active grants and authenticates only live rea
   assert.deepEqual(await source.readActiveGrantSnapshot(account), {
     authNonce: 7n,
     ids: [readId, missingId, spendId],
+  });
+  assert.deepEqual(await source.readGrantRoster(account), {
+    authNonce: 7n,
+    generation: 2n,
+    entries: [
+      { id: readId, active: true, read: true },
+      { id: missingId, active: true, read: true },
+      { id: spendId, active: true, read: false },
+      { id: revokedId, active: false, read: true },
+    ],
   });
   assert.deepEqual(await source.readGrant(account, spendId), {
     active: true,
@@ -94,13 +107,13 @@ test('one ledger snapshot supplies active grants and authenticates only live rea
     targets: [{ grantId: readId, readPublicKey: readKey }, { grantId: missingId }],
   });
   assert.deepEqual(openings, [readId, missingId]);
-  assert.deepEqual(queries, Array(6).fill(account));
+  assert.deepEqual(queries, Array(7).fill(account));
   setNonce(8n);
   assert.equal((await source.readActiveReadGrantTargets(account)).authNonce, 8n);
 });
 
 test('missing accounts and malformed grant maps fail closed', async () => {
-  const { source, setEntries, setPresent } = fixture();
+  const { source, setEntries, setPresent, setGeneration } = fixture();
   setPresent(false);
   await assert.rejects(source.readActiveGrantIds(account), { code: 'AccountNotFound' });
   setPresent(true);
@@ -111,4 +124,6 @@ test('missing accounts and malformed grant maps fail closed', async () => {
     [Buffer.from(readId, 'hex'), record(true, true)],
   ]);
   await assert.rejects(source.readActiveGrantIds(account), { code: 'BindingUnsupported' });
+  setGeneration(1n << 32n);
+  await assert.rejects(source.readGrantRoster(account), { code: 'BindingUnsupported' });
 });

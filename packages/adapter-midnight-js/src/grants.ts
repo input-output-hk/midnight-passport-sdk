@@ -6,6 +6,7 @@ import type {
   ActiveGrantSnapshotSource,
   ActiveReadGrantTargetSource,
   GrantDetailSource,
+  GrantRosterSource,
   NetworkConfig,
 } from '@input-output-hk/mn-passport-account/ports';
 
@@ -15,6 +16,7 @@ type Grant = {
 };
 type GrantLedger = {
   readonly auth_nonce: bigint;
+  readonly grant_generation: bigint;
   readonly grants: {
     size(): bigint;
     [Symbol.iterator](): Iterator<[Uint8Array, Grant]>;
@@ -51,7 +53,7 @@ const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
 /** One checked ACC grant-map snapshot shared by the issue, revoke and rotation owner ports. */
 export function createMidnightGrantSource(
   options: MidnightGrantSourceOptions,
-): ActiveGrantSnapshotSource & GrantDetailSource & ActiveReadGrantTargetSource {
+): ActiveGrantSnapshotSource & GrantDetailSource & ActiveReadGrantTargetSource & GrantRosterSource {
   const { network, binding, openings } = options;
   if (network.bindingId !== 'acc-s3r1.1')
     throw new PassportConnectorError('BindingUnsupported', 'Unsupported ACC grant binding.');
@@ -71,6 +73,9 @@ export function createMidnightGrantSource(
     if (
       typeof ledger?.auth_nonce !== 'bigint' ||
       ledger.auth_nonce < 0n ||
+      typeof ledger.grant_generation !== 'bigint' ||
+      ledger.grant_generation < 0n ||
+      ledger.grant_generation >= 1n << 32n ||
       !ledger.grants ||
       typeof ledger.grants.size !== 'function' ||
       typeof ledger.grants[Symbol.iterator] !== 'function' ||
@@ -106,9 +111,17 @@ export function createMidnightGrantSource(
         'BindingUnsupported',
         'The ACC grant count is inconsistent.',
       );
-    return { authNonce: ledger.auth_nonce, grants };
+    return { authNonce: ledger.auth_nonce, generation: ledger.grant_generation, grants };
   };
   return {
+    async readGrantRoster(account) {
+      const { authNonce, generation, grants } = await snapshot(account);
+      return {
+        authNonce,
+        generation,
+        entries: grants.map(({ id, active, read }) => ({ id, active, read })),
+      };
+    },
     async readActiveGrantIds(account) {
       const { grants } = await snapshot(account);
       return grants.filter((grant) => grant.active).map((grant) => grant.id);

@@ -22,6 +22,7 @@ function world() {
   const inbox = /** @type {Uint8Array[]} */ ([]);
   let booted = false;
   let nonce = 0n;
+  let grantGeneration = 0n;
   let specVersion = 3;
   let counter = 0n;
   /** @type {Uint8Array[]} */
@@ -151,6 +152,12 @@ function world() {
         activeGrantIds.splice(index, 1);
         counter++;
         nonce++;
+      } else if (request.circuit === 'revoke_all_grants_with_jubjub') {
+        assert.equal(request.args[1], counter);
+        activeGrantIds.length = 0;
+        grantGeneration = (grantGeneration + 1n) & ((1n << 32n) - 1n);
+        counter++;
+        nonce++;
       } else if (request.circuit === 'remove_device_with_jubjub') {
         if (failRemoval) {
           failRemoval = false;
@@ -252,6 +259,7 @@ function world() {
     ports,
     activeGrantIds,
     grantNonce: () => nonce,
+    grantGeneration: () => grantGeneration,
     calls,
     sessionFlows,
     writes,
@@ -390,6 +398,13 @@ test('JubJub account issueGrant pins the host origin and returns after sealed pu
         authNonce: w.grantNonce(),
       }),
     },
+    grantRoster: {
+      readGrantRoster: async () => ({
+        authNonce: w.grantNonce(),
+        generation: w.grantGeneration(),
+        entries: w.activeGrantIds.map((id) => ({ id, active: true, read: false })),
+      }),
+    },
     grantJournal: {
       stage: async (opening) => {
         staged = opening;
@@ -433,6 +448,11 @@ test('JubJub account issueGrant pins the host origin and returns after sealed pu
   assert.equal(revoked.grantId, result.grantId);
   assert.equal(local.localUseCounter, 6n);
   assert.ok(!w.activeGrantIds.includes(result.grantId));
+  assert.ok(account.revokeAllGrants);
+  const cleared = await account.revokeAllGrants();
+  assert.equal(cleared.status, 'cleared');
+  assert.equal(cleared.generation, 1n);
+  assert.equal(local.localUseCounter, 7n);
 });
 
 test('JubJub open resumes activation and sealed entries after an interrupted create', async () => {

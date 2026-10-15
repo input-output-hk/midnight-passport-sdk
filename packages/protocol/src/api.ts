@@ -130,6 +130,13 @@ export interface PassportGrantRevokeResult extends PassportTxResult {
   readonly nextUseCounter: bigint;
 }
 
+/** All grants and tombstones cleared in the next ACC grant generation. */
+export interface PassportGrantRevokeAllResult extends PassportTxResult {
+  readonly status: 'cleared';
+  readonly generation: bigint;
+  readonly nextUseCounter: bigint;
+}
+
 export interface PassportGrantRecoveryResult {
   readonly published: readonly {
     readonly grantId: string;
@@ -162,6 +169,8 @@ export interface PassportAccount {
   issueGrant?(scope: GrantScopeInput, options?: FlowOptions): Promise<PassportGrantIssueResult>;
   /** JubJub owner revoke for a grant without read access; confirms the inactive tombstone. */
   revokeGrant?(grantId: string, options?: FlowOptions): Promise<PassportGrantRevokeResult>;
+  /** JubJub owner revoke-all when no read grants are live; confirms the new generation. */
+  revokeAllGrants?(options?: FlowOptions): Promise<PassportGrantRevokeAllResult>;
   /** Resume durable grant publication without submitting another issue call. */
   recoverPendingGrants?(options?: FlowOptions): Promise<PassportGrantRecoveryResult>;
 }

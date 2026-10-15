@@ -36,6 +36,19 @@ export interface GrantDetailSource {
   ): Promise<{ active: boolean; read: boolean; authNonce: bigint } | undefined>;
 }
 
+/** Complete live ACC grant map, including tombstones, for revoke-all generation checks. */
+export interface GrantRosterSource {
+  readGrantRoster(account: string): Promise<{
+    readonly authNonce: bigint;
+    readonly generation: bigint;
+    readonly entries: readonly {
+      readonly id: string;
+      readonly active: boolean;
+      readonly read: boolean;
+    }[];
+  }>;
+}
+
 export interface ActiveReadGrantTarget {
   readonly grantId: string;
   /** Absent when this device lacks an opening for an otherwise active read grant. */
@@ -95,7 +108,8 @@ export interface FlowDescriptor {
     | 'remove-device'
     | 'read-holdings'
     | 'issue-grant'
-    | 'revoke-grant';
+    | 'revoke-grant'
+    | 'revoke-all-grants';
   /** The device entry a device flow targets. */
   readonly commitmentHex?: string;
   /** The ACC whose owner operation the signer is approving. */
@@ -430,6 +444,7 @@ export interface PassportPorts {
   readonly grants?: ActiveGrantSnapshotSource;
   /** Live individual grant detail and inactive tombstones for settled revocation. */
   readonly grantDetails?: GrantDetailSource;
+  readonly grantRoster?: GrantRosterSource;
   /** Must outlive crashes between issue submission and sealed bookkeeping publication. */
   readonly grantJournal?: GrantPublicationJournal;
   /** Trusted relying party id; never taken from a DApp's grant request. */

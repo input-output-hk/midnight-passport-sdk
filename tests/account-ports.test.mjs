@@ -31,13 +31,16 @@ import { laceAuthoriser, laceFeeSponsor, laceViewingKey } from './fixtures/lace-
  * @typedef {import('./fixtures/lace-seams.mjs').AccAddress} LaceAccAddress
  * @typedef {import('./fixtures/lace-seams.mjs').UseCounter} LaceUseCounter
  * @typedef {import('./fixtures/lace-seams.mjs').DeviceEpoch} LaceDeviceEpoch
+ * @typedef {import('./fixtures/lace-seams.mjs').LaceKeySessionFlow} LaceKeySessionFlow
  */
 
 test('current Lace seams fit the SDK ports with an explicit key-session flow guard', async () => {
   const lace = laceAuthoriser();
   /** @type {Authoriser} */
-  // @ts-expect-error: current Lace KeySessionFlow does not include the SDK prototype's rotate-encryption-key kind
   const directAuthoriser = lace;
+  /** @type {LaceKeySessionFlow} */
+  // @ts-expect-error: Lace still has no rotate-encryption-key consent descriptor
+  const directRotation = { kind: 'rotate-encryption-key' };
   /** @type {Authoriser} */
   const authoriser = {
     scheme: lace.scheme,
@@ -126,6 +129,7 @@ test('current Lace seams fit the SDK ports with an explicit key-session flow gua
   assert.equal(await prf.withSession(async () => 'one prompt'), 'one prompt');
   assert.equal(network.bindingId, 'acc-test');
   assert.ok(directAuthoriser);
+  assert.equal(directRotation.kind, 'rotate-encryption-key');
   if (!authoriser.withKeySession) throw new Error('test adapter has no key session');
   assert.throws(
     () => authoriser.withKeySession?.(async () => 1, { kind: 'rotate-encryption-key' }),

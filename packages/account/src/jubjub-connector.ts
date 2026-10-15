@@ -18,6 +18,8 @@ import { recoverPendingJubjubGrants } from './jubjub-grant-publication.js';
 import type { GrantRecoveryJournal } from './jubjub-grant-publication.js';
 import { revokeAndConfirmJubjubGrant } from './jubjub-grant-revoke.js';
 import type { RevokeJubjubGrantPure } from './jubjub-grant-revoke.js';
+import { revokeAllJubjubGrants } from './jubjub-grant-revoke-all.js';
+import type { RevokeAllJubjubGrantPure } from './jubjub-grant-revoke-all.js';
 import { JUBJUB_READER_SCAN_LIMIT, resolveJubjubReaders } from './jubjub-readers.js';
 import { sealActiveReadGrants } from './read-grant-deliveries.js';
 import type {
@@ -119,6 +121,16 @@ function requireRevokePure(value: unknown): RevokeJubjubGrantPure {
       'ACC binding lacks challenge_revoke_grant_with_jubjub.',
     );
   return pure as RevokeJubjubGrantPure;
+}
+
+function requireRevokeAllPure(value: unknown): RevokeAllJubjubGrantPure {
+  const pure = requirePure(value) as Partial<RevokeAllJubjubGrantPure>;
+  if (typeof pure.challenge_revoke_all_grants_with_jubjub !== 'function')
+    throw new PassportConnectorError(
+      'BindingUnsupported',
+      'ACC binding lacks challenge_revoke_all_grants_with_jubjub.',
+    );
+  return pure as RevokeAllJubjubGrantPure;
 }
 
 /** The JubJub owner path over the same account API. All key material stays behind viewingKey. */
@@ -1065,6 +1077,28 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           authoriser,
           records: ports.records,
           grants: ports.grantDetails,
+          random: fresh,
+        },
+      );
+    },
+    revokeAllGrants: async (options = {}) => {
+      if (!ports.records || !ports.grantRoster)
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'Grant revoke-all needs local records and the complete live grant roster.',
+        );
+      if (network.bindingId !== 'acc-s3r1.1')
+        throw new PassportConnectorError('BindingUnsupported', 'Unsupported ACC grant binding.');
+      const pure = requireRevokeAllPure((await readBinding()).pureCircuits);
+      return revokeAllJubjubGrants(
+        { hint: record, ...options },
+        {
+          bindingId: 'acc-s3r1.1',
+          pure,
+          chain: await readChain(),
+          grants: ports.grantRoster,
+          authoriser,
+          records: ports.records,
           random: fresh,
         },
       );
