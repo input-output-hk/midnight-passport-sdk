@@ -123,7 +123,8 @@ export interface FlowDescriptor {
     | 'issue-grant'
     | 'revoke-grant'
     | 'revoke-all-grants'
-    | 'withdraw-unshielded';
+    | 'withdraw-unshielded'
+    | 'withdraw-shielded';
   /** The device entry a device flow targets. */
   readonly commitmentHex?: string;
   /** The ACC whose owner operation the signer is approving. */
@@ -144,6 +145,8 @@ export interface FlowDescriptor {
   readonly color?: string;
   readonly amount?: string;
   readonly recipient?: string;
+  /** Selected inbox coin entry for a shielded withdrawal. */
+  readonly inboxIndex?: number;
 }
 /** JubJub's challenge, built per attempt from the announcement and the grind nonce. */
 export type ChallengeBuilder = (sigR: CurvePoint, grindNonce: bigint) => Uint8Array;

@@ -17,11 +17,11 @@ import { validGrantId } from './grant-publication-state.js';
 import { issueAndPublishP256Grant, type IssueP256GrantPure } from './p256-grant-issue.js';
 import { recoverPendingP256Grants } from './p256-grant-publication.js';
 import type { GrantRecoveryJournal } from './jubjub-grant-publication.js';
-import { readVerifiedHoldings } from './holdings.js';
+import { readQualifiedHolding, readVerifiedHoldings } from './holdings.js';
 import { createJubjubAccounts } from './jubjub-connector.js';
 import { resolveRegisteredReaders } from './jubjub-readers.js';
 import { sealActiveReadGrants } from './read-grant-deliveries.js';
-import { prepareUnshieldedWithdrawal } from './unshielded-withdrawal.js';
+import { prepareShieldedWithdrawal, prepareUnshieldedWithdrawal } from './unshielded-withdrawal.js';
 import { startFlow, type Flow } from './flow.js';
 import type {
   AccLedgerView,
@@ -31,6 +31,7 @@ import type {
   Lazy,
   P256PublicKey,
   PassportPorts,
+  QualifiedHoldingSource,
   WebAuthnPolicy,
 } from './ports/index.js';
 
@@ -1390,6 +1391,129 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             color: request.color,
             amount: request.amount,
             recipient: request.recipient,
+          },
+        );
+      }),
+    withdrawShielded: (request, options = {}) =>
+      run(options, async (flow) => {
+        const transfer = prepareShieldedWithdrawal(request);
+        const qualified = ports.holdings as QualifiedHoldingSource | undefined;
+        const pure = (await binding()).pureCircuits;
+        if (
+          network.bindingId !== 'acc-s3r1.1' ||
+          !pure.challenge_withdraw_shielded_with_p256 ||
+          !isSealedP256(record) ||
+          !viewingKey ||
+          !qualified?.selectQualifiedHeldCoins ||
+          !authoriser.withKeySession ||
+          !authoriser.deviceBinding
+        )
+          throw new PassportConnectorError(
+            'BindingUnsupported',
+            'P-256 shielded withdrawal needs sealed keys, qualified holdings and a key session.',
+          );
+        if (record.status !== 'active')
+          throw new PassportConnectorError('AccountNotFound', 'The P-256 ACC is not active.');
+        return authoriser.withKeySession(
+          async () => {
+            const selected = await authoriser.devicePublicKey();
+            const selectedBinding = await authoriser.deviceBinding!();
+            if (
+              selected.x !== record.publicKey.x ||
+              selected.y !== record.publicKey.y ||
+              !equalBytes(selectedBinding.credentialId, record.credentialId) ||
+              !equalBytes(selectedBinding.policy.rp_id_hash, record.policy.rp_id_hash) ||
+              !equalBytes(selectedBinding.policy.origin, record.policy.origin)
+            )
+              throw new PassportConnectorError(
+                'NotAuthorised',
+                'The selected passkey does not own this ACC.',
+              );
+            const view = await readView(flow, record);
+            if (!view.booted || view.specVersion !== 3)
+              throw new PassportConnectorError('AccountNotFound', 'The P-256 ACC is not active.');
+            const counter = await findCounter(flow, record, view);
+            if (counter === undefined) throw notHeld(record);
+            await sealedKeyring(record, view, false, true);
+            const chainPort = await chain();
+            const coin = await readQualifiedHolding(
+              {
+                account: record.address,
+                keyring: {
+                  account: record.address,
+                  encKey: view.encKey!,
+                  envelopes: [...view.inboxEntries!].reverse(),
+                },
+                inboxIndex: transfer.inboxIndex,
+                color: transfer.color,
+              },
+              { networkId, chain: chainPort, viewingKey, holdings: qualified },
+            );
+            if (transfer.amount > coin.value)
+              throw new PassportConnectorError(
+                'TransferInvalid',
+                'The selected coin is smaller than the transfer.',
+              );
+            const circuit = 'withdraw_shielded_with_p256';
+            const challenge = pure.challenge_withdraw_shielded_with_p256!(
+              { bytes: fromHex(record.address) },
+              p256(record.publicKey),
+              transfer.recipient,
+              transfer.color,
+              transfer.amount,
+              coin,
+              view.authNonce,
+            );
+            const signed = await flow.step('passkey.sign', () =>
+              authoriser.authorise({
+                account: record.address,
+                circuit,
+                args: [transfer.recipient, transfer.color, transfer.amount],
+                witnessValues: [coin],
+                authNonce: view.authNonce,
+                useCounter: counter,
+                challenge,
+                credentialId: record.credentialId,
+              }),
+            );
+            if (
+              signed.scheme !== 'p256-webauthn' ||
+              signed.useCounter !== counter ||
+              signed.pk.x !== record.publicKey.x ||
+              signed.pk.y !== record.publicKey.y
+            )
+              throw new PassportConnectorError(
+                'NotAuthorised',
+                'The signature names another device.',
+              );
+            flow.checkpoint();
+            const tx = await chainPort.call({
+              address: record.address,
+              circuit,
+              args: [
+                transfer.recipient,
+                transfer.color,
+                transfer.amount,
+                {
+                  pk: p256(record.publicKey),
+                  use_counter: counter,
+                  policy: record.policy,
+                  authenticator_data: signed.authenticatorData,
+                  sig: signed.sig,
+                },
+              ],
+              heldCoin: coin,
+              ...flow.ports,
+            });
+            return { ...tx, nextUseCounter: counter + 1n };
+          },
+          {
+            kind: 'withdraw-shielded',
+            account: record.address,
+            color: request.color,
+            amount: request.amount,
+            recipient: request.recipient,
+            inboxIndex: request.inboxIndex,
           },
         );
       }),

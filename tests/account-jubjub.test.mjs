@@ -38,6 +38,13 @@ function world() {
   /** @type {string[]} */
   const writes = [];
   const inbox = /** @type {Uint8Array[]} */ ([]);
+  const shieldedMarker = new Uint8Array(192);
+  shieldedMarker[0] = 1;
+  shieldedMarker[1] = 1;
+  /** @type {import('../packages/account/dist/ports/index.js').QualifiedShieldedCoin | undefined} */
+  let qualifiedCoin;
+  /** @type {import('../packages/account/dist/ports/index.js').CallRequest[]} */
+  const shieldedCalls = [];
   let booted = false;
   let nonce = 0n;
   let grantGeneration = 0n;
@@ -80,13 +87,17 @@ function world() {
   const sessionFlows = [];
   /** @type {import('../packages/account/dist/ports/index.js').AuthorisationRequest[]} */
   const signedRequests = [];
+  /** @type {import('../packages/account/dist/ports/index.js').Authorisation[]} */
+  const signedResponses = [];
   const authoriser = {
     ...recipe,
     authorise: async (
       /** @type {import('../packages/account/dist/ports/index.js').AuthorisationRequest} */ request,
     ) => {
       signedRequests.push(request);
-      return recipe.authorise(request);
+      const signed = await recipe.authorise(request);
+      signedResponses.push(signed);
+      return signed;
     },
     withKeySession: (
       /** @type {() => Promise<any>} */ operation,
@@ -123,7 +134,9 @@ function world() {
           devices.some((held) => hex(candidate) === hex(held)),
       };
     },
-    async call(/** @type {{circuit: string,args: readonly unknown[]}} */ request) {
+    async call(
+      /** @type {import('../packages/account/dist/ports/index.js').CallRequest} */ request,
+    ) {
       calls.push(request.circuit);
       if (request.circuit === 'activate_initial_device_with_jubjub') {
         if (failActivation) {
@@ -216,6 +229,11 @@ function world() {
         assert.equal(request.args[4], counter);
         counter++;
         nonce++;
+      } else if (request.circuit === 'withdraw_shielded_with_jubjub') {
+        assert.equal(request.args[4], counter);
+        shieldedCalls.push(request);
+        counter++;
+        nonce++;
       } else throw new Error(`unexpected circuit ${request.circuit}`);
       return { txHash: `tx-${calls.length}` };
     },
@@ -245,8 +263,27 @@ function world() {
     },
     authoriser,
     encryptionKey: { publicKey: async () => new Uint8Array(32) },
-    viewingKey: recipeDeviceKeyring(source),
-    holdings: { selectHeldEntries: async () => selectedHoldings },
+    viewingKey: (() => {
+      const base = recipeDeviceKeyring(source);
+      return {
+        ...base,
+        openInbox: async (
+          /** @type {string} */ networkId,
+          /** @type {import('../packages/account/dist/ports/index.js').AccountKeyring} */ keyring,
+          /** @type {readonly Uint8Array[]} */ entries,
+        ) =>
+          (await base.openInbox(networkId, keyring, entries)).map((opened, index) =>
+            entries[index] === shieldedMarker && qualifiedCoin
+              ? { kind: /** @type {const} */ ('coin'), coin: qualifiedCoin }
+              : opened,
+          ),
+      };
+    })(),
+    holdings: {
+      selectHeldEntries: async () => selectedHoldings,
+      selectQualifiedHeldCoins: async () =>
+        qualifiedCoin ? [{ inboxIndex: inbox.indexOf(shieldedMarker), coin: qualifiedCoin }] : [],
+    },
     readGrants: {
       readActiveReadGrantTargets: async () => ({ authNonce: nonce, targets: activeReadGrants }),
     },
@@ -296,10 +333,19 @@ function world() {
     grantNonce: () => nonce,
     grantGeneration: () => grantGeneration,
     calls,
+    shieldedCalls,
     sessionFlows,
     signedRequests,
+    signedResponses,
     writes,
     inbox,
+    setQualifiedCoin: (
+      /** @type {import('../packages/account/dist/ports/index.js').QualifiedShieldedCoin} */ coin,
+    ) => {
+      qualifiedCoin = coin;
+      inbox.push(shieldedMarker);
+      return inbox.length - 1;
+    },
     hint: () => hint,
     setHint: (/** @type {typeof hint} */ value) => (hint = value),
     setCounter: (/** @type {bigint} */ value) => (counter = value),
@@ -411,6 +457,56 @@ test('JubJub owner withdrawal binds amount and recipient to consent and the sign
     account: address,
     ...request,
   });
+});
+
+test('JubJub shielded spend binds the qualified coin to the signature and witness', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'shielded', retireAuthority: true });
+  const coin = {
+    nonce: new Uint8Array(32).fill(5),
+    color: new Uint8Array(32).fill(7),
+    value: 12n,
+    mt_index: 9n,
+  };
+  const inboxIndex = w.setQualifiedCoin(coin);
+  const request = { inboxIndex, color: hex(coin.color), amount: '7', recipient: '02'.repeat(32) };
+  const authNonce = w.grantNonce();
+  assert.ok(account.withdrawShielded);
+  const tx = await account.withdrawShielded(request);
+  assert.ok(tx.txHash);
+  assert.deepEqual(w.sessionFlows.at(-1), {
+    kind: 'withdraw-shielded',
+    account: address,
+    ...request,
+  });
+  const signed = w.signedResponses.at(-1);
+  const signedRequest = w.signedRequests.at(-1);
+  assert.ok(signed && signedRequest && signed.scheme === 'jubjub-schnorr');
+  assert.ok(typeof signedRequest.challenge === 'function');
+  assert.deepEqual(signedRequest.witnessValues, [coin]);
+  const challenge = signedRequest.challenge(signed.sigR, signed.grindNonce);
+  const expected = pureCircuits.challenge_withdraw_shielded_with_jubjub(
+    { bytes: Buffer.from(address, 'hex') },
+    signed.sigR,
+    signed.pk,
+    { bytes: Buffer.from(request.recipient, 'hex') },
+    coin.color,
+    7n,
+    coin,
+    authNonce,
+    signed.grindNonce,
+  );
+  assert.deepEqual(challenge, expected);
+  assert.deepEqual(w.shieldedCalls[0]?.heldCoin, coin);
+  const signatures = w.signedRequests.length;
+  await assert.rejects(account.withdrawShielded({ ...request, amount: '13' }), {
+    code: 'TransferInvalid',
+  });
+  await assert.rejects(account.withdrawShielded({ ...request, inboxIndex: 999 }), {
+    code: 'TransferInvalid',
+  });
+  assert.equal(w.signedRequests.length, signatures);
+  assert.equal(w.shieldedCalls.length, 1);
 });
 
 test('an enrolled JubJub device recovers by address and saves a checked directory hint', async () => {

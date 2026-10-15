@@ -105,6 +105,14 @@ export interface PassportUnshieldedWithdrawal {
   readonly recipient: string;
 }
 
+/** Spend one chain-matched ACC shielded output to a user's Zswap coin key. */
+export interface PassportShieldedWithdrawal extends PassportUnshieldedWithdrawal {
+  /** Inbox entry returned by `readShieldedHoldings`; selects one qualified output. */
+  readonly inboxIndex: number;
+  /** Lowercase 32-byte Zswap coin public key of the recipient. */
+  readonly recipient: string;
+}
+
 export interface PassportOwnerTransferResult extends PassportTxResult {
   /** Counter held by the owner after the confirmed circuit call. */
   readonly nextUseCounter: bigint;
@@ -199,6 +207,11 @@ export interface PassportAccount {
   /** Spend a confirmed unshielded ACC balance to a Midnight user address as its owner. */
   withdrawUnshielded?(
     request: PassportUnshieldedWithdrawal,
+    options?: FlowOptions,
+  ): Promise<PassportOwnerTransferResult>;
+  /** Spend one qualified shielded coin with a witness bound to the owner signature. */
+  withdrawShielded?(
+    request: PassportShieldedWithdrawal,
     options?: FlowOptions,
   ): Promise<PassportOwnerTransferResult>;
   /** JubJub owner issue; the host pins the origin and supplies durable grant bookkeeping. */

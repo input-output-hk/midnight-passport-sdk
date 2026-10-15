@@ -278,6 +278,14 @@ current `KeySessionFlow` has no withdrawal descriptor, so its hosted JubJub
 authoriser rejects that flow until the host adds explicit amount and recipient
 consent.
 
+The owner shielded withdrawal flow now binds one chain-matched qualified coin,
+including its Merkle index, to the P-256 or JubJub challenge and per-call
+`held_coin` witness. The SDK's transaction chain adapter can carry that
+witness; Lace PR #2845's hosted handle and key-session flow do not yet expose
+the required witness and withdrawal consent, so the hosted JubJub adapter
+rejects this operation. A proof-backed localnet withdrawal and spent-output
+reconciliation remain release validation work.
+
 ## Axes and releases
 
 Added 2026/10/08 ([ADR 0006](./adr/0006-publish-on-github-packages.md),
