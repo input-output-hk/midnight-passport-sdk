@@ -4,6 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { LOCALNET_ID, loadConfig, loadStack, localnetStack } from '../src/config.ts';
 
 const BASE = { PASSPORT_CONTRACT_DIR: '/contracts', PASSPORT_MANIFEST_SHA256: 'ab'.repeat(32) };
@@ -198,4 +200,23 @@ test('the localnet default seed is a 32-byte hex value, and an explicit seed is 
     loadConfig({ ...BASE, PASSPORT_SPONSOR_SEED: 'ab'.repeat(32) }).sponsorSeed,
     'ab'.repeat(32),
   );
+});
+
+test('the sponsor can read a dedicated seed file without putting its value in the environment', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'passport-sponsor-seed-'));
+  try {
+    const file = join(directory, 'seed');
+    writeFileSync(file, `${'ab'.repeat(32)}\n`, { mode: 0o600 });
+    const env = { ...BASE, MN_NETWORK_ID: 'preprod', PASSPORT_SPONSOR_SEED_FILE: file };
+    assert.equal(loadConfig(env).sponsorSeed, 'ab'.repeat(32));
+    assert.equal('PASSPORT_SPONSOR_SEED' in env, false);
+    assert.throws(
+      () => loadConfig({ ...env, PASSPORT_SPONSOR_SEED: 'cd'.repeat(32) }),
+      /only one sponsor seed source/,
+    );
+    writeFileSync(file, 'invalid\n');
+    assert.throws(() => loadConfig(env), /sponsor seed must be 32-byte lowercase hex/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

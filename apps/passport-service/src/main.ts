@@ -1,5 +1,6 @@
 import type { AddressInfo } from 'node:net';
 import { bindingCircuits } from './artefacts.ts';
+import { assertPinnedBinding } from './binding-pin.ts';
 import { loadConfig } from './config.ts';
 import { loadReferenceBackend } from './reference-backend.ts';
 import { chainRoute } from './routes/chain.ts';
@@ -12,12 +13,14 @@ import {
   createMemoryJobStore,
   createFileDirectoryStore,
   directoryRoute,
+  json,
   jobsRoute,
   serial,
   v1ChainRoute,
 } from '@input-output-hk/mn-passport-service';
 
 const config = loadConfig(process.env);
+assertPinnedBinding(config);
 const artefactRoute = pinnedZkRoute(config);
 console.log(
   `passport-service: artefacts verified (${config.bindingId}, manifest ${config.manifestSha256.slice(0, 12)}…)`,
@@ -28,6 +31,16 @@ const deploymentBudget = createDeploymentBudget(config.maxDeploys);
 const jobs = createMemoryJobStore();
 const directory = createFileDirectoryStore(directoryFile(config.registryFile));
 const server = createServer(config, [
+  async (request, response, url) => {
+    if (request.method !== 'GET' || url.pathname !== '/healthz') return false;
+    json(response, 200, {
+      status: 'ready',
+      networkId: config.networkId,
+      bindingId: config.bindingId,
+      manifestSha256: config.manifestSha256,
+    });
+    return true;
+  },
   configRoute(config, () => backend.sponsorKeys()),
   artefactRoute,
   registryRoute(config),

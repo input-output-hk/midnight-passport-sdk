@@ -1,0 +1,76 @@
+name: Publish Passport service image
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Image version, for example 0.1.0-rc2
+        required: true
+        type: string
+  push:
+    tags: ['service-v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: passport-service-image
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'input-output-hk/midnight-passport-sdk' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/passport-acc-prototype') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/service-v')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Select and validate version
+        id: release
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            git fetch --no-tags origin passport-acc-prototype
+            git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD || {
+              echo 'Service image tag must point to passport-acc-prototype history.' >&2
+              exit 1
+            }
+            version="${GITHUB_REF_NAME#service-v}"
+          else
+            version="$INPUT_VERSION"
+          fi
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9.-]+)?$ ]] || {
+            echo 'Version must be semver, for example 0.1.0-rc2.' >&2
+            exit 1
+          }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Verify signed release tag and DCO commit
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$GITHUB_REF_NAME" --jq '.object.sha')
+          gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_sha" \
+            --jq ".verification.verified and .object.sha == \"$GITHUB_SHA\"" | grep -qx true
+          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA" \
+            --jq '.commit.verification.verified and (.commit.message | test("(?m)^Signed-off-by: .+ <[^>]+>$"))' | grep -qx true
+      - name: Build and smoke-test Linux image
+        run: |
+          docker build -f apps/passport-service/Dockerfile -t midnight-passport-service:build .
+          bash scripts/smoke-service-image.sh midnight-passport-service:build
+      - name: Publish to GitHub Container Registry
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          image="ghcr.io/input-output-hk/midnight-passport-service"
+          docker tag midnight-passport-service:build "$image:$IMAGE_VERSION"
+          docker tag midnight-passport-service:build "$image:sha-${GITHUB_SHA:0:12}"
+          docker push "$image:$IMAGE_VERSION"
+          docker push "$image:sha-${GITHUB_SHA:0:12}"
+          echo "Published $image:$IMAGE_VERSION and $image:sha-${GITHUB_SHA:0:12}" >> "$GITHUB_STEP_SUMMARY"

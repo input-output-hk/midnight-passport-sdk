@@ -55,6 +55,7 @@ pnpm install && pnpm build
 | `PASSPORT_MAX_DEPLOYS`     | `20`                           | Deploy cap per service process.                                                                                          |
 | `PASSPORT_REGISTRY_FILE`   | `~/.midnight-passport/registry.json` | The passkey-to-account registry; the deployed set sits beside it as `registry.deployments.json`, and the v1 hint store is `registry.json.v1`. Kept outside the repository so accounts can be reopened later. Delete all three when you reset the chain. |
 | `PASSPORT_SPONSOR_SEED`    | the localnet genesis dev seed, on `undeployed` only | The sponsor wallet's seed. The default is public knowledge and funded on the localnet only, so the service refuses to start on any other network unless this is set. |
+| `PASSPORT_SPONSOR_SEED_FILE` | unset | Path to a file containing the sponsor wallet's 32-byte lowercase hex seed. Preferred for the service image; mutually exclusive with `PASSPORT_SPONSOR_SEED`. |
 
 The service validates the `MN_*` values at start-up (a bad URL or scheme refuses to start) and
 compares them with the reference client's `CONFIG`; `GET /config` advertises exactly this stack

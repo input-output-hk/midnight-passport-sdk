@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 /**
@@ -125,16 +126,24 @@ export function loadStack(env: NodeJS.ProcessEnv): MidnightStack {
 
 /** The genesis-funded dev seed of the standalone network; worthless anywhere else. */
 const LOCALNET_SPONSOR_SEED = '0000000000000000000000000000000000000000000000000000000000000001';
+const SEED = /^[0-9a-f]{64}$/;
 
 /** The sponsor seed: a built-in default on the localnet only; any other network must set it. */
 const sponsorSeedFor = (env: NodeJS.ProcessEnv, networkId: string): string => {
-  const seed = env.PASSPORT_SPONSOR_SEED;
-  if (seed) return seed;
-  if (networkId === LOCALNET_ID) return LOCALNET_SPONSOR_SEED;
-  throw new Error(
-    `passport-service: set PASSPORT_SPONSOR_SEED: the default sponsor seed is the localnet's public ` +
-      `genesis seed, and the network is "${networkId}"`,
-  );
+  if (env.PASSPORT_SPONSOR_SEED_FILE && env.PASSPORT_SPONSOR_SEED)
+    throw new Error('passport-service: set only one sponsor seed source');
+  const seed = env.PASSPORT_SPONSOR_SEED_FILE
+    ? readFileSync(env.PASSPORT_SPONSOR_SEED_FILE, 'utf8').trim()
+    : (env.PASSPORT_SPONSOR_SEED ??
+      (networkId === LOCALNET_ID ? LOCALNET_SPONSOR_SEED : undefined));
+  if (!seed)
+    throw new Error(
+      `passport-service: set PASSPORT_SPONSOR_SEED_FILE or PASSPORT_SPONSOR_SEED: the default ` +
+        `sponsor seed is the localnet's public genesis seed, and the network is "${networkId}"`,
+    );
+  if (!SEED.test(seed))
+    throw new Error('passport-service: sponsor seed must be 32-byte lowercase hex');
+  return seed;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv): ServiceConfig {
