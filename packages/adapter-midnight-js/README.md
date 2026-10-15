@@ -6,6 +6,13 @@ and `Submitter` ports. Hosts may provide their own implementations or use the HT
 `adapter-service`. The sponsor's public coin and encryption keys are required because midnight-js
 asks its wallet provider for them while assembling a call.
 
+The Passport service's remote sponsor is fee-only. Its policy rejects shielded offers, including
+an ACC withdrawal that sends a shielded coin to a user. For `withdrawShielded`, supply a
+value-capable wallet implementation of `FeeSponsor.balanceAndSign` and `Submitter.submit`, with
+that wallet's public coin and encryption keys. The same `createMidnightChain` adapter and remote
+prover can be used; the wallet must balance and submit the resulting transaction. The
+`experiments/acc-0.35/sdk-p256-shielded-withdraw-node.mjs` localnet probe shows this composition.
+
 Load this package after the lightweight account core:
 
 ```ts
