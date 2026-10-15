@@ -122,7 +122,8 @@ export interface FlowDescriptor {
     | 'read-holdings'
     | 'issue-grant'
     | 'revoke-grant'
-    | 'revoke-all-grants';
+    | 'revoke-all-grants'
+    | 'withdraw-unshielded';
   /** The device entry a device flow targets. */
   readonly commitmentHex?: string;
   /** The ACC whose owner operation the signer is approving. */
@@ -139,6 +140,10 @@ export interface FlowDescriptor {
   readonly reader?: DeviceReader;
   /** Creation can permanently retire the ACC's maintenance authority. */
   readonly lockAccount?: boolean;
+  /** Public amount and recipient shown before a value-bearing owner transfer. */
+  readonly color?: string;
+  readonly amount?: string;
+  readonly recipient?: string;
 }
 /** JubJub's challenge, built per attempt from the announcement and the grind nonce. */
 export type ChallengeBuilder = (sigR: CurvePoint, grindNonce: bigint) => Uint8Array;

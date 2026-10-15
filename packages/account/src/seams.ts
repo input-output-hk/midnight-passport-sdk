@@ -139,6 +139,16 @@ export interface JubjubPureCircuits {
     nonce: bigint,
     grindNonce: bigint,
   ): Uint8Array;
+  challenge_withdraw_unshielded_with_jubjub?(
+    self: ContractAddressArg,
+    sigR: { x: bigint; y: bigint },
+    pk: { x: bigint; y: bigint },
+    color: Uint8Array,
+    amount: bigint,
+    recipient: ContractAddressArg,
+    nonce: bigint,
+    grindNonce: bigint,
+  ): Uint8Array;
 }
 /** The P-256 subset used by the existing prototype flow. */
 export interface AccPureCircuits {
@@ -189,6 +199,14 @@ export interface AccPureCircuits {
     self: ContractAddressArg,
     pk: P256PublicKey,
     grantId: Uint8Array,
+    nonce: bigint,
+  ): Uint8Array;
+  challenge_withdraw_unshielded_with_p256?(
+    self: ContractAddressArg,
+    pk: P256PublicKey,
+    color: Uint8Array,
+    amount: bigint,
+    recipient: ContractAddressArg,
     nonce: bigint,
   ): Uint8Array;
 }

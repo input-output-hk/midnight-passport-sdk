@@ -26,6 +26,7 @@ const TABLE = {
   DeviceRosterInvalid: row(false, 'device-roster-invalid'),
   BindingUnsupported: row(false),
   GrantScopeInvalid: row(false, 'grant-scope-invalid'),
+  TransferInvalid: row(false),
   GrantLimitReached: row(false, 'grant-limit-reached'),
   GrantNotFound: row(false, 'grant-not-found'),
   GrantRevoked: row(false, 'grant-revoked'),

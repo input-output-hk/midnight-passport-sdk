@@ -25,6 +25,7 @@ import { revokeAllJubjubGrants } from './jubjub-grant-revoke-all.js';
 import type { RevokeAllJubjubGrantPure } from './jubjub-grant-revoke-all.js';
 import { JUBJUB_READER_SCAN_LIMIT, resolveJubjubReaders } from './jubjub-readers.js';
 import { sealActiveReadGrants } from './read-grant-deliveries.js';
+import { prepareUnshieldedWithdrawal } from './unshielded-withdrawal.js';
 import type {
   AccLedgerView,
   AccountHint,
@@ -1186,6 +1187,96 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     bindingId: network.bindingId,
     scheme: 'jubjub-schnorr',
     credentialId: record.credentialId.slice(),
+    withdrawUnshielded: (request, options = {}) =>
+      run(options, async (flow) => {
+        const transfer = prepareUnshieldedWithdrawal(request);
+        const pure = requirePure((await readBinding()).pureCircuits);
+        if (network.bindingId !== 'acc-s3r1.1' || !pure.challenge_withdraw_unshielded_with_jubjub)
+          throw new PassportConnectorError(
+            'BindingUnsupported',
+            'JubJub withdrawal needs the pinned challenge circuit.',
+          );
+        if (record.status !== 'active')
+          throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
+        recordPure.set(record, pure);
+        return authoriser.withKeySession!(
+          async () => {
+            const pk = await authoriser.devicePublicKey();
+            if (!samePoint(pk, record.publicKey))
+              throw new PassportConnectorError(
+                'NotAuthorised',
+                'The selected device does not own this ACC.',
+              );
+            const view = await flow.step('chain.read', () => read(record));
+            if (!view.booted || view.specVersion !== 3)
+              throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
+            const counter = await flow.step('counter.scan', async () => findCounter(record, view));
+            if (counter === undefined)
+              throw new PassportConnectorError(
+                'NotAuthorised',
+                'This device has no live ACC entry.',
+              );
+            const self = { bytes: fromHex(record.address) };
+            const circuit = 'withdraw_unshielded_with_jubjub';
+            const signed = await flow.step('passkey.sign', () =>
+              authoriser.authorise({
+                account: record.address,
+                circuit,
+                args: [transfer.color, transfer.amount, transfer.recipient],
+                witnessValues: [],
+                authNonce: view.authNonce,
+                useCounter: counter,
+                challenge: (sigR, grindNonce) =>
+                  pure.challenge_withdraw_unshielded_with_jubjub!(
+                    self,
+                    sigR,
+                    record.publicKey,
+                    transfer.color,
+                    transfer.amount,
+                    transfer.recipient,
+                    view.authNonce,
+                    grindNonce,
+                  ),
+              }),
+            );
+            if (
+              signed.scheme !== 'jubjub-schnorr' ||
+              signed.useCounter !== counter ||
+              !samePoint(signed.pk, record.publicKey)
+            )
+              throw new PassportConnectorError(
+                'NotAuthorised',
+                'The signature names another device.',
+              );
+            flow.checkpoint();
+            const tx = await (
+              await readChain()
+            ).call({
+              address: record.address,
+              circuit,
+              args: [
+                transfer.color,
+                transfer.amount,
+                transfer.recipient,
+                record.publicKey,
+                counter,
+                signed.sigR,
+                signed.sigS,
+                signed.grindNonce,
+              ],
+              ...flow.ports,
+            });
+            return { ...tx, nextUseCounter: counter + 1n };
+          },
+          {
+            kind: 'withdraw-unshielded',
+            account: record.address,
+            color: request.color,
+            amount: request.amount,
+            recipient: request.recipient,
+          },
+        );
+      }),
     async state() {
       const view = await read(record);
       return {

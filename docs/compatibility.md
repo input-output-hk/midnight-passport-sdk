@@ -269,6 +269,15 @@ types, but neither check builds Lace's own module.
 The next release still needs Lace-hosted flow interoperability and the required
 owner/circuit flows before claiming full Lace compatibility.
 
+The nine development packages were packed as `0.1.0-dev.10` and passed the
+scratch Vite/key-restore release smoke test and an exact-source consumer type
+check against Lace PR #2845 head `cdfa9cfd`. This validates the package
+boundary and generated binding types, but not a Lace-hosted transaction. The
+owner unshielded withdrawal API is available for P-256 and JubJub; Lace's
+current `KeySessionFlow` has no withdrawal descriptor, so its hosted JubJub
+authoriser rejects that flow until the host adds explicit amount and recipient
+consent.
+
 ## Axes and releases
 
 Added 2026/10/08 ([ADR 0006](./adr/0006-publish-on-github-packages.md),

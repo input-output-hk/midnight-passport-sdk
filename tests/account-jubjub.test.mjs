@@ -78,8 +78,16 @@ function world() {
   const recipe = recipeJubjubAuthoriser(source, pureCircuits);
   /** @type {Array<import('../packages/account/dist/ports/index.js').FlowDescriptor|undefined>} */
   const sessionFlows = [];
+  /** @type {import('../packages/account/dist/ports/index.js').AuthorisationRequest[]} */
+  const signedRequests = [];
   const authoriser = {
     ...recipe,
+    authorise: async (
+      /** @type {import('../packages/account/dist/ports/index.js').AuthorisationRequest} */ request,
+    ) => {
+      signedRequests.push(request);
+      return recipe.authorise(request);
+    },
     withKeySession: (
       /** @type {() => Promise<any>} */ operation,
       /** @type {import('../packages/account/dist/ports/index.js').FlowDescriptor|undefined} */ flow,
@@ -204,6 +212,10 @@ function world() {
         remoteEntries.push(target);
         counter++;
         nonce++;
+      } else if (request.circuit === 'withdraw_unshielded_with_jubjub') {
+        assert.equal(request.args[4], counter);
+        counter++;
+        nonce++;
       } else throw new Error(`unexpected circuit ${request.circuit}`);
       return { txHash: `tx-${calls.length}` };
     },
@@ -285,6 +297,7 @@ function world() {
     grantGeneration: () => grantGeneration,
     calls,
     sessionFlows,
+    signedRequests,
     writes,
     inbox,
     hint: () => hint,
@@ -364,6 +377,40 @@ test('JubJub creation appends sealed keys, then opens from the live inbox', asyn
   assert.equal((await w.accounts.openAccount()).address, address);
   assert.deepEqual(w.sessionFlows.at(-1), { kind: 'sign-in' });
   assert.equal(w.calls.length, 3, 'open did not repeat completed calls');
+});
+
+test('JubJub owner withdrawal binds amount and recipient to consent and the signed circuit', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'withdraw', retireAuthority: true });
+  const request = { color: '01'.repeat(32), amount: '7', recipient: '02'.repeat(32) };
+  const callsBefore = w.calls.length;
+  assert.ok(account.withdrawUnshielded);
+  const tx = await account.withdrawUnshielded(request);
+  assert.equal(tx.nextUseCounter, 3n);
+  assert.deepEqual(w.calls.slice(callsBefore), ['withdraw_unshielded_with_jubjub']);
+  assert.deepEqual(w.sessionFlows.at(-1), {
+    kind: 'withdraw-unshielded',
+    account: address,
+    ...request,
+  });
+  const signed = w.signedRequests.at(-1);
+  assert.ok(signed);
+  assert.equal(signed.circuit, 'withdraw_unshielded_with_jubjub');
+  assert.deepEqual(signed.args, [
+    Uint8Array.from(Buffer.from(request.color, 'hex')),
+    7n,
+    { bytes: Uint8Array.from(Buffer.from(request.recipient, 'hex')) },
+  ]);
+  assert.equal(signed.authNonce, 2n);
+  assert.equal(signed.useCounter, 2n);
+  const invalid = { ...request, amount: '0' };
+  await assert.rejects(account.withdrawUnshielded(invalid), { code: 'TransferInvalid' });
+  assert.equal(w.calls.length, callsBefore + 1);
+  assert.deepEqual(w.sessionFlows.at(-1), {
+    kind: 'withdraw-unshielded',
+    account: address,
+    ...request,
+  });
 });
 
 test('an enrolled JubJub device recovers by address and saves a checked directory hint', async () => {

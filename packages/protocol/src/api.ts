@@ -95,6 +95,21 @@ export interface PassportShieldedHolding {
   };
 }
 
+/** Public arguments of an owner-authorised ACC unshielded withdrawal. */
+export interface PassportUnshieldedWithdrawal {
+  /** Lowercase 32-byte asset color. */
+  readonly color: string;
+  /** Positive decimal integer within the ACC's unsigned 128-bit range. */
+  readonly amount: string;
+  /** Lowercase 32-byte Midnight user address. */
+  readonly recipient: string;
+}
+
+export interface PassportOwnerTransferResult extends PassportTxResult {
+  /** Counter held by the owner after the confirmed circuit call. */
+  readonly nextUseCounter: bigint;
+}
+
 export type GrantOperation =
   'withdraw-unshielded' | 'withdraw-shielded' | 'withdraw-shielded-to-contract';
 export type GrantRecipient =
@@ -181,6 +196,11 @@ export interface PassportAccount {
   addDevice?(reader: PassportDeviceReader, options?: FlowOptions): Promise<DeviceEnrollmentResult>;
   /** Sealed JubJub and P-256 accounts read only chain-confirmed holdings through their viewing key. */
   readShieldedHoldings?(options?: FlowOptions): Promise<readonly PassportShieldedHolding[]>;
+  /** Spend a confirmed unshielded ACC balance to a Midnight user address as its owner. */
+  withdrawUnshielded?(
+    request: PassportUnshieldedWithdrawal,
+    options?: FlowOptions,
+  ): Promise<PassportOwnerTransferResult>;
   /** JubJub owner issue; the host pins the origin and supplies durable grant bookkeeping. */
   issueGrant?(scope: GrantScopeInput, options?: FlowOptions): Promise<PassportGrantIssueResult>;
   /** JubJub owner revoke for a grant without read access; confirms the inactive tombstone. */
