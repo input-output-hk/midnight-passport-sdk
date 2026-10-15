@@ -4,6 +4,8 @@ import type {
   DeviceReader,
   JubjubPureCircuits,
   LiveDeviceReader,
+  P256PublicKey,
+  AccPureCircuits,
 } from './ports/index.js';
 
 /** Lace PR #2845 scans these counters for each registered JubJub device. */
@@ -34,6 +36,11 @@ export interface ResolveJubjubReaders {
   readonly decodeDevicePublicKey: (compressedHex: string) => CurvePoint | undefined;
 }
 
+export interface ResolveRegisteredReaders extends ResolveJubjubReaders {
+  readonly p256Pure: Pick<AccPureCircuits, 'derive_device_entry_with_p256'>;
+  readonly decodeP256DevicePublicKey: (compressedHex: string) => P256PublicKey | undefined;
+}
+
 /** Resolve sealed roster claims against actual ACC device entries before delivering a new key. */
 export function resolveJubjubReaders({
   account,
@@ -44,6 +51,35 @@ export function resolveJubjubReaders({
   pure,
   decodeDevicePublicKey,
 }: ResolveJubjubReaders): ReaderResolution {
+  return resolveReaders({
+    account,
+    epoch,
+    registered,
+    liveEntries,
+    allowedEntries,
+    pure,
+    decodeDevicePublicKey,
+  });
+}
+
+/** Match both registration schemes against the ACC's live entries; key-only P-256 records are unverifiable. */
+export function resolveRegisteredReaders(input: ResolveRegisteredReaders): ReaderResolution {
+  return resolveReaders(input);
+}
+
+function resolveReaders({
+  account,
+  epoch,
+  registered,
+  liveEntries,
+  allowedEntries = liveEntries,
+  pure,
+  decodeDevicePublicKey,
+  ...p256Support
+}: ResolveJubjubReaders &
+  Partial<
+    Pick<ResolveRegisteredReaders, 'p256Pure' | 'decodeP256DevicePublicKey'>
+  >): ReaderResolution {
   if (registered.length > MAX_REGISTRATIONS) throw new Error('too many device registrations');
   if (liveEntries.length > MAX_LIVE_DEVICES) throw new Error('too many live device entries');
   const live = new Set<string>();
@@ -67,11 +103,41 @@ export function resolveJubjubReaders({
   const outside: LiveDeviceReader[] = [];
   for (const registration of registered) {
     if (!/^[0-9a-f]{64}$/.test(registration.readerPublicKey)) continue;
-    const point = decodeDevicePublicKey(registration.devicePublicKey);
-    if (!point) continue;
+    if (
+      registration.scheme &&
+      registration.scheme !== 'p256-webauthn' &&
+      registration.scheme !== 'jubjub-schnorr'
+    )
+      continue;
+    const isP256 = registration.scheme === 'p256-webauthn';
+    if (
+      isP256 &&
+      (!registration.policy ||
+        !(registration.policy.rp_id_hash instanceof Uint8Array) ||
+        registration.policy.rp_id_hash.length !== 32 ||
+        !(registration.policy.origin instanceof Uint8Array) ||
+        registration.policy.origin.length !== 21 ||
+        !p256Support.p256Pure ||
+        !p256Support.decodeP256DevicePublicKey)
+    )
+      continue;
+    const point = isP256
+      ? p256Support.decodeP256DevicePublicKey!(registration.devicePublicKey)
+      : decodeDevicePublicKey(registration.devicePublicKey);
+    if (!point || (!isP256 && registration.policy)) continue;
     let found: { entry: string; counter: bigint } | undefined;
     for (let counter = 0n; counter < JUBJUB_READER_SCAN_LIMIT; counter++) {
-      const candidate = key(pure.derive_device_entry_with_jubjub(self, point, epoch, counter));
+      const candidate = key(
+        isP256
+          ? p256Support.p256Pure!.derive_device_entry_with_p256(
+              self,
+              point as P256PublicKey,
+              registration.policy!,
+              epoch,
+              counter,
+            )
+          : pure.derive_device_entry_with_jubjub(self, point, epoch, counter),
+      );
       if (live.has(candidate)) {
         found = { entry: candidate, counter };
         break;

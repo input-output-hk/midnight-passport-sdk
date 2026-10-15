@@ -12,6 +12,7 @@ import type {
   AccLedgerView,
   AccPureCircuits,
   JubjubPureCircuits,
+  P256PublicKey,
   WebAuthnPolicy,
 } from '../seams.js';
 import type { GrantScopeInput } from '../grant-scope.js';
@@ -297,6 +298,8 @@ export type OpenedInboxEntry =
 export interface AccountViewingKey {
   /** Decode a roster's compressed JubJub device key; malformed points return undefined. */
   decodeDevicePublicKey?(compressedHex: string): CurvePoint | undefined;
+  /** Decode a canonical compressed P-256 authoriser key for live roster matching. */
+  decodeP256DevicePublicKey?(compressedHex: string): P256PublicKey | undefined;
   readerPublicKey(networkId: string): Promise<Uint8Array>;
   createKeys(networkId: string, request: CreateAccountKeys): Promise<AccountKeys>;
   sealToDevice(

@@ -70,6 +70,16 @@ const decodeDevicePublicKey = (compressedHex: string): CurvePoint | undefined =>
     return undefined;
   }
 };
+const decodeP256DevicePublicKey = (compressedHex: string) => {
+  try {
+    if (!/^(02|03)[0-9a-f]{64}$/.test(compressedHex)) return undefined;
+    const point = p256.Point.fromHex(compressedHex);
+    if (hex(point.toBytes(true)) !== compressedHex) return undefined;
+    return { ...point.toAffine(), identity: false as const };
+  } catch {
+    return undefined;
+  }
+};
 
 /** Full viewing-key port plus focused coin methods for callers that need only coin entries. */
 export interface DeviceKeyring extends AccountViewingKey {
@@ -365,6 +375,7 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
 
   return {
     decodeDevicePublicKey,
+    decodeP256DevicePublicKey,
     readerPublicKey: (networkId) => onNetwork(networkId, async (_secret, publicKey) => publicKey),
     createKeys,
     sealToDevice,
