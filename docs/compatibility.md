@@ -110,6 +110,15 @@ circuit-level prover can run through Lace's existing transaction handle via
 `createHostedAccChain`; its real hosted runtime still needs validation. Network
 config additionally needs the ACC binding and manifest pins.
 
+A separate [localnet probe](../experiments/acc-0.35/sdk-shielded-deposit-node.mjs) now submits
+`deposit_shielded` through `createHostedAccChain` and the pinned reference ACC's actual
+`callTx` handle, then confirms and opens the inbox entry. The [run record](../experiments/acc-0.35/results/sdk-shielded-deposit-node.json)
+pins the transaction, contract source and manifest. At Lace head above, its vendored
+`acc/generated/index.js` is byte-identical to the SDK's `acc-s3r1.1` generated module.
+This exercises the hosted handle adapter on a real node; it does not run Lace's
+authoriser, storage, consent or full module composition. Those remain the runtime
+acceptance gate for #81.
+
 Lace's `PassportAccountInfo` records address, binding version, network and
 readiness; the SDK's device-local `AccountRecord` additionally needs the active
 authoriser arm and local use counter. The consumer fixture checks a mapping

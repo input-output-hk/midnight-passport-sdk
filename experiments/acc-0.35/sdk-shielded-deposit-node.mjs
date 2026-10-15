@@ -48,8 +48,10 @@ await runScenario('sdk-shielded-deposit-node', async () => {
       binding: { id: bindingId, ...pinned },
       readLedger: async (address) =>
         address === setup.account.address ? setup.account.ledgerState() : undefined,
-      connectHandle: async () => {
-        throw new Error('this deposit probe needs only the hosted ledger reader');
+      // The pinned reference account and Lace both expose the generated ACC callTx handle.
+      connectHandle: async (address) => {
+        assert.equal(address, setup.account.address);
+        return { callTx: setup.account.callTx };
       },
     });
     const result = await depositShielded(
@@ -64,7 +66,15 @@ await runScenario('sdk-shielded-deposit-node', async () => {
         chain,
         sealCoin: sealInboxCoin,
         sender: {
-          depositShielded: ({ coin, entry }) => setup.account.depositShielded(coin, entry),
+          // This single-use probe supplies no durable request-ID journal; a service must do so.
+          depositShielded: async ({ account, coin, entry }) => {
+            const submitted = await chain.call({
+              address: account,
+              circuit: 'deposit_shielded',
+              args: [coin, entry],
+            });
+            return { txId: submitted.txHash };
+          },
         },
         sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
         pollMs: 3_000,
@@ -91,6 +101,7 @@ await runScenario('sdk-shielded-deposit-node', async () => {
       color: Buffer.from(minted.color).toString('hex'),
       amount: minted.value.toString(),
       entryOpenedByUpstreamReader: true,
+      hostedCallTxExecuted: true,
     };
     writeFileSync(
       join(root, 'experiments/acc-0.35/results/sdk-shielded-deposit-node.json'),

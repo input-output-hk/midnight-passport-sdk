@@ -3,10 +3,11 @@
   "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
   "contractSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
   "networkId": "undeployed",
-  "account": "6de125630e60d5024694c07f8b982e4a85e1ffb0ec29cf9ce55e6b0f33e526d3",
-  "txId": "0025656c3aea813d9ff63a35a75bd47c1ae4a96ed62e35920639ca2f0d9ae32056",
+  "account": "be207a61317a12f0132a8c3187b82e6d73559c290d4bd41ef4b2f6708967e0af",
+  "txId": "796eb8973626e87b7672d0174a7b91ac3872ce321e5a038e310f27c44d45c4b6",
   "inboxIndex": 0,
-  "color": "a52244cdb5c1636f4c84b96291345fea702142a4e8cf57a27c63c39a7da46451",
+  "color": "6e7e1e8b144677c7b1df5148c933dbac7657c7b38d86ce34bd1fb955ec579cb7",
   "amount": "25",
-  "entryOpenedByUpstreamReader": true
+  "entryOpenedByUpstreamReader": true,
+  "hostedCallTxExecuted": true
 }
