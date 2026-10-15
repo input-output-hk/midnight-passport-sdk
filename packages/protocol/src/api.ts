@@ -57,6 +57,12 @@ export interface ViewingKeyRotationResult extends PassportTxResult {
   readonly unsealedGrantIds: readonly string[];
 }
 
+/** A device removal rotates the viewing and roster keys before revoking its ACC entry. */
+export interface DeviceRemovalResult extends ViewingKeyRotationResult {
+  readonly removedCommitmentHex: string;
+  readonly rotationTxHash: string;
+}
+
 export interface PassportShieldedHolding {
   /** ACC inbox index of the sealed description confirmed against a chain-created output. */
   readonly inboxIndex: number;
@@ -79,6 +85,8 @@ export interface PassportAccount {
   rotateEncryptionKey(newKey: Uint8Array, options?: FlowOptions): Promise<PassportTxResult>;
   /** JubJub accounts rotate a random sealed viewing secret; requires a verified holding source. */
   rotateViewingKey?(options?: FlowOptions): Promise<ViewingKeyRotationResult>;
+  /** JubJub owner operation; refuses self-removal and a target absent from the live ACC. */
+  removeDevice?(commitmentHex: string, options?: FlowOptions): Promise<DeviceRemovalResult>;
   /** JubJub accounts can read only chain-confirmed shielded holdings through their viewing key. */
   readShieldedHoldings?(options?: FlowOptions): Promise<readonly PassportShieldedHolding[]>;
 }

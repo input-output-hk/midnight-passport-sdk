@@ -85,8 +85,11 @@ the SDK agree on its consent descriptor. The SDK's JubJub rotation now prepares
 read-grant seals before switching the ACC key, but Lace must supply a chain-backed
 grant target adapter with the exact auth nonce and its own consent path. The SDK's
 JubJub account read uses Lace's `read-holdings` descriptor and a host-injected
-chain-backed holding source. Neither flow has run in Lace's module, so neither
-is yet a verified Lace flow replacement. Full read-grant issue/revoke composition remains.
+chain-backed holding source. JubJub removal uses Lace's `remove-device` descriptor and rotates
+the viewing and roster keys before the pinned removal circuit; it refuses a surviving reader
+that shares a key with the removed device. These owner flows have binding-focused tests but have
+not run in Lace's hosted module, so they are not yet verified Lace flow replacements. Full
+read-grant issue/revoke composition remains.
 
 The older SDK `EncryptionKeySource.publicKey` port is a prototype key source;
 Lace's `PassportEncryptionKey` matches the newer `AccountViewingKey` instead.

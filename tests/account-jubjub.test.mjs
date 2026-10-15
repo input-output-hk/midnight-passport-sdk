@@ -21,13 +21,17 @@ function world() {
   const inbox = /** @type {Uint8Array[]} */ ([]);
   let booted = false;
   let nonce = 0n;
+  let specVersion = 3;
   let counter = 0n;
+  /** @type {Uint8Array[]} */
+  const remoteEntries = [];
   /** @type {Uint8Array} */
   let encKey = new Uint8Array(32);
   /** @type {Uint8Array} */
   let boot = new Uint8Array(32);
   let failActivation = false;
   let failSecondAppend = false;
+  let failRemoval = false;
   let tamperKeyAfterNextAppend = false;
   let addInboxAfterNextAppend = false;
   let changeReadGrantsAfterNextAppend = false;
@@ -73,16 +77,18 @@ function world() {
         0n,
         counter,
       );
+      const devices = booted ? [entry, ...remoteEntries] : [];
       return {
         booted,
         authNonce: nonce,
         deviceEpoch: 0n,
-        entryCount: booted ? 1 : 0,
-        specVersion: 3,
+        entryCount: devices.length,
+        specVersion,
         encKey,
         ...(options.includeInbox && { inboxEntries: [...inbox] }),
-        ...(options.includeDevices && { deviceEntries: booted ? [entry] : [] }),
-        hasEntry: (/** @type {Uint8Array} */ candidate) => booted && hex(candidate) === hex(entry),
+        ...(options.includeDevices && { deviceEntries: devices }),
+        hasEntry: (/** @type {Uint8Array} */ candidate) =>
+          devices.some((held) => hex(candidate) === hex(held)),
       };
     },
     async call(/** @type {{circuit: string,args: readonly unknown[]}} */ request) {
@@ -126,6 +132,18 @@ function world() {
       } else if (request.circuit === 'rotate_enc_key_with_jubjub') {
         assert.equal(request.args[2], counter);
         encKey = /** @type {Uint8Array} */ (request.args[0]);
+        counter++;
+        nonce++;
+      } else if (request.circuit === 'remove_device_with_jubjub') {
+        if (failRemoval) {
+          failRemoval = false;
+          throw new Error('removal was interrupted after key rotation');
+        }
+        assert.equal(request.args[2], counter);
+        const target = /** @type {Uint8Array} */ (request.args[0]);
+        const index = remoteEntries.findIndex((entry) => hex(entry) === hex(target));
+        assert.ok(index >= 0, 'the target is a live remote entry');
+        remoteEntries.splice(index, 1);
         counter++;
         nonce++;
       } else throw new Error(`unexpected circuit ${request.circuit}`);
@@ -185,11 +203,53 @@ function world() {
     hint: () => hint,
     setHint: (/** @type {typeof hint} */ value) => (hint = value),
     setCounter: (/** @type {bigint} */ value) => (counter = value),
+    setSpecVersion: (/** @type {number} */ value) => (specVersion = value),
     setHeldIndices: (/** @type {number[]} */ value) => (selectedHoldings = value),
     setReadGrantTargets: (/** @type {typeof activeReadGrants} */ value) =>
       (activeReadGrants = value),
     encKey: () => encKey,
     viewingKey: ports.viewingKey,
+    ownEntry: async () =>
+      pureCircuits.derive_device_entry_with_jubjub(
+        { bytes: Buffer.from(address, 'hex') },
+        await authoriser.devicePublicKey(),
+        0n,
+        counter,
+      ),
+    addRemoteDevice: async (seed = 11, readerSeed = seed) => {
+      /** @type {import('../packages/account/dist/ports/index.js').PrfKeySource} */
+      const remoteSource = {
+        withSession: async (operation) => operation(),
+        deviceSecret: async () => new Uint8Array(32).fill(seed),
+        deriveSecret: async (params) =>
+          sha256(
+            new TextEncoder().encode(`remote-${readerSeed}|${params.domain}|${params.context}`),
+          ).slice(0, params.length ?? 32),
+      };
+      const remoteAuthoriser = recipeJubjubAuthoriser(remoteSource, pureCircuits);
+      const remoteViewingKey = recipeDeviceKeyring(remoteSource);
+      const publicKey = await remoteAuthoriser.devicePublicKey();
+      const entry = pureCircuits.derive_device_entry_with_jubjub(
+        { bytes: Buffer.from(address, 'hex') },
+        publicKey,
+        0n,
+        0n,
+      );
+      const delivery = await ports.viewingKey.sealToDevice(
+        'undeployed',
+        { account: address, encKey, envelopes: [...inbox].reverse() },
+        {
+          readerPublicKey: hex(await remoteViewingKey.readerPublicKey('undeployed')),
+          devicePublicKey: await remoteAuthoriser.devicePublicKeyHex(),
+          epoch: 0n,
+          counter: 0n,
+        },
+      );
+      inbox.push(delivery.envelope, delivery.registration);
+      remoteEntries.push(entry);
+      return { entry, remoteViewingKey };
+    },
+    addUnregisteredDevice: (entry = new Uint8Array(32).fill(99)) => remoteEntries.push(entry),
     withoutHoldings: () => {
       const { holdings: _holdings, ...without } = ports;
       return createPassportAccounts(without);
@@ -200,6 +260,7 @@ function world() {
     },
     interruptActivation: () => (failActivation = true),
     interruptSecondAppend: () => (failSecondAppend = true),
+    interruptRemoval: () => (failRemoval = true),
     tamperKeyAfterNextAppend: () => (tamperKeyAfterNextAppend = true),
     addInboxAfterNextAppend: () => (addInboxAfterNextAppend = true),
     changeReadGrantsAfterNextAppend: () => (changeReadGrantsAfterNextAppend = true),
@@ -285,6 +346,136 @@ test('JubJub rotation seals a fresh key before updating the ACC and stays reopen
   assert.notEqual(hex(w.encKey()), before);
   assert.deepEqual(w.calls.slice(3), ['append_inbox_with_jubjub', 'rotate_enc_key_with_jubjub']);
   assert.equal((await w.accounts.openAccount()).address, address);
+});
+
+test('JubJub removal rotates the roster key before revoking a remote device', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const { entry, remoteViewingKey } = await w.addRemoteDevice();
+  const own = await w.ownEntry();
+  const before = hex(w.encKey());
+  assert.ok(account.removeDevice);
+  const result = await account.removeDevice(hex(entry));
+  assert.equal(result.removedCommitmentHex, hex(entry));
+  assert.equal(result.rotationTxHash, 'tx-6');
+  assert.equal(result.txHash, 'tx-7');
+  assert.deepEqual(result.droppedDeviceEntries, []);
+  assert.notEqual(hex(w.encKey()), before);
+  assert.deepEqual(w.calls.slice(3), [
+    'append_inbox_with_jubjub',
+    'append_inbox_with_jubjub',
+    'rotate_enc_key_with_jubjub',
+    'remove_device_with_jubjub',
+  ]);
+  assert.deepEqual(w.sessionFlows.at(-1), {
+    kind: 'remove-device',
+    account: address,
+    commitmentHex: hex(entry),
+    devices: [hex(own)],
+  });
+  assert.equal((await account.state()).entryCount, 1);
+  assert.equal((await w.accounts.openAccount()).address, address);
+  await assert.rejects(
+    remoteViewingKey.openInbox(
+      'undeployed',
+      { account: address, encKey: w.encKey(), envelopes: [...w.inbox].reverse() },
+      w.inbox.slice(-2),
+    ),
+  );
+});
+
+test('JubJub removal refuses self and stale targets before rotating any key', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  assert.ok(account.removeDevice);
+  const before = hex(w.encKey());
+  const sessions = w.sessionFlows.length;
+  await assert.rejects(account.removeDevice(hex(await w.ownEntry())), { code: 'LastDevice' });
+  await assert.rejects(account.removeDevice('ff'.repeat(32)), {
+    code: 'RemovalTargetNotFound',
+  });
+  await assert.rejects(account.removeDevice('bad'), { code: 'RemovalTargetNotFound' });
+  assert.equal(w.sessionFlows.length, sessions);
+  assert.equal(w.calls.length, 3);
+  assert.equal(hex(w.encKey()), before);
+  w.setSpecVersion(2);
+  await assert.rejects(account.removeDevice('ff'.repeat(32)), { code: 'BindingUnsupported' });
+});
+
+test('JubJub removal retains a surviving reader and refuses an unregistered survivor', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const removed = await w.addRemoteDevice(11);
+  const surviving = await w.addRemoteDevice(12);
+  assert.ok(account.removeDevice);
+  const result = await account.removeDevice(hex(removed.entry));
+  assert.deepEqual(result.droppedDeviceEntries, []);
+  assert.equal((await account.state()).entryCount, 2);
+  const opened = await surviving.remoteViewingKey.openInbox(
+    'undeployed',
+    { account: address, encKey: w.encKey(), envelopes: [...w.inbox].reverse() },
+    w.inbox.slice(-2),
+  );
+  assert.ok(opened.some((entry) => entry?.kind === 'device'));
+
+  const other = world();
+  const anotherAccount = await other.accounts.createAccount({
+    userName: 'alice',
+    retireAuthority: true,
+  });
+  const target = await other.addRemoteDevice();
+  other.addUnregisteredDevice();
+  const prior = hex(other.encKey());
+  assert.ok(anotherAccount.removeDevice);
+  await assert.rejects(anotherAccount.removeDevice(hex(target.entry)), {
+    code: 'DeviceRosterInvalid',
+  });
+  assert.equal(hex(other.encKey()), prior);
+  assert.equal(other.calls.length, 3);
+});
+
+test('JubJub removal refuses a survivor sharing the removed reader key', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const target = await w.addRemoteDevice(11, 11);
+  await w.addRemoteDevice(12, 11);
+  const before = hex(w.encKey());
+  assert.ok(account.removeDevice);
+  await assert.rejects(account.removeDevice(hex(target.entry)), { code: 'DeviceRosterInvalid' });
+  assert.equal(hex(w.encKey()), before);
+  assert.equal(w.calls.length, 3);
+});
+
+test('JubJub removal seals a fresh viewing secret to an active read grantee', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const { entry } = await w.addRemoteDevice();
+  const grantee = x25519.keygen();
+  const grantId = 'ac'.repeat(32);
+  w.setReadGrantTargets([{ grantId, readPublicKey: hex(grantee.publicKey) }]);
+  assert.ok(account.removeDevice);
+  const result = await account.removeDevice(hex(entry));
+  assert.equal(result.sealedReadGrants[0]?.grantId, grantId);
+  assert.equal(result.unsealedGrantIds.length, 0);
+  assert.equal(w.calls.at(-1), 'remove_device_with_jubjub');
+  grantee.secretKey.fill(0);
+});
+
+test('JubJub removal can resume after the key switch lands but the removal call fails', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const { entry } = await w.addRemoteDevice();
+  const before = hex(w.encKey());
+  w.interruptRemoval();
+  assert.ok(account.removeDevice);
+  await assert.rejects(account.removeDevice(hex(entry)), { code: 'InternalError' });
+  assert.notEqual(hex(w.encKey()), before);
+  assert.equal((await account.state()).entryCount, 2);
+  const reopened = await w.accounts.openAccount();
+  assert.ok(reopened.removeDevice);
+  const result = await reopened.removeDevice(hex(entry));
+  assert.equal(result.removedCommitmentHex, hex(entry));
+  assert.equal((await reopened.state()).entryCount, 1);
 });
 
 test('JubJub rotation refuses unverified holdings and a missing custody port before calls', async () => {

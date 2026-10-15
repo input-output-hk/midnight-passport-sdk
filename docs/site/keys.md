@@ -13,6 +13,11 @@ In Lace's JubJub Passport flow, a fresh random 32-byte account viewing secret de
 If one enrolled device is lost, another enrolled device can open its own envelope and rotate the account secret while excluding the lost reader. A synced passkey may also be usable on a replacement device if its provider restores the same credential and PRF outputs. If all enrolled authorising devices and their recoverable passkeys are lost, the envelopes alone do not provide an account recovery path. The P-256 prototype still derives its ACC encryption key directly from the passkey under `lace-passport:acc-enc:v1`; this is a different model and is not interchangeable with Lace's random viewing secret.
 
 Before a JubJub rotation delivers a new account secret, `resolveJubjubReaders` matches each opened registration to a live on-chain device commitment at its current epoch and use counter. It excludes removed devices and drops conflicting reader/device claims. A registration in the inbox does not by itself grant access to the new secret. `rotateViewingKey` also requires a host to identify verified, distinct holdings from chain outputs; it refuses grant records until those readers can receive a fresh seal. The current package flow has focused binding tests, but no standalone demo or Lace consumer run yet.
+`removeDevice` uses a fresh roster key as well as a fresh viewing secret, excludes the target
+reader before sealing, and refuses a surviving reader that shares a key with the target. It then
+calls `remove_device_with_jubjub` and confirms the target left the live ACC set. The operation
+spans several chain transactions; an interruption may require the owner to resume from its new
+sealed keyring before trying removal again.
 
 These proving artefacts belong to `mn-passport-contract`. The separate `mn-passport-keys` package derives ACC secret material from a host-provided key source; it is not a package of prover keys. See [Problems and package boundaries]({{ '/problems/' | relative_url }}) for the distribution and serving responsibilities.
 

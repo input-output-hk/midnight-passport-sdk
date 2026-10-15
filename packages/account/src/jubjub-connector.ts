@@ -1,6 +1,7 @@
 import {
   PASSPORT_API_VERSION,
   type FlowOptions,
+  type DeviceRemovalResult,
   type PassportAccount,
   type PassportConnectorAPI,
 } from '@input-output-hk/mn-passport-protocol';
@@ -65,6 +66,7 @@ function requirePure(value: unknown): JubjubPureCircuits {
     'derive_device_entry_with_jubjub',
     'challenge_append_inbox_with_jubjub',
     'challenge_rotate_enc_key_with_jubjub',
+    'challenge_remove_device_with_jubjub',
   ] as const) {
     if (typeof pure[name] !== 'function')
       throw new PassportConnectorError('BindingUnsupported', `ACC binding lacks ${name}.`);
@@ -258,7 +260,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       await flow.step('directory.write', () => directory.put(networkId, active), 'always');
     return account(active);
   };
-  const rotateViewingKey = (record: JubjubHint, options: FlowOptions = {}) =>
+  const rotateViewingKey = (record: JubjubHint, options: FlowOptions = {}, removal?: string) =>
     run(options, async (flow) => {
       const holdings = ports.holdings;
       const reencrypt = viewingKey.reencryptInbox;
@@ -268,13 +270,47 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           'BindingUnsupported',
           'JubJub rotation needs verified holdings, an active read-grant source and the full viewing-key port.',
         );
+      const pure = requirePure((await readBinding()).pureCircuits);
+      recordPure.set(record, pure);
+      if (removal !== undefined && !/^[0-9a-f]{64}$/i.test(removal))
+        throw new PassportConnectorError(
+          'RemovalTargetNotFound',
+          'The target must be a 32-byte device commitment.',
+        );
+      const target = removal === undefined ? undefined : fromHex(removal.toLowerCase());
+      const initial = target ? await flow.step('chain.read', () => read(record, true)) : undefined;
+      if (initial) {
+        if (!initial.booted || record.status !== 'active')
+          throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
+        if (initial.specVersion !== 3)
+          throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
+        const ownCounter = findCounter(record, initial);
+        if (ownCounter === undefined)
+          throw new PassportConnectorError('NotAuthorised', 'This device has no live ACC entry.');
+        const ownEntry = pure.derive_device_entry_with_jubjub(
+          { bytes: fromHex(record.address) },
+          record.publicKey,
+          initial.deviceEpoch,
+          ownCounter,
+        );
+        if (equal(target!, ownEntry))
+          throw new PassportConnectorError('LastDevice', 'A device cannot remove itself.');
+        if (!initial.deviceEntries!.some((entry) => equal(entry, target!)))
+          throw new PassportConnectorError(
+            'RemovalTargetNotFound',
+            'The target is absent from the live ACC device set.',
+          );
+      }
       return authoriser.withKeySession!(
         async () => {
-          const pure = requirePure((await readBinding()).pureCircuits);
-          recordPure.set(record, pure);
           let view = await flow.step('chain.read', () => read(record, true));
           if (!view.booted || record.status !== 'active')
             throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
+          if (view.specVersion !== 3)
+            throw new PassportConnectorError(
+              'BindingUnsupported',
+              'The ACC spec version is not 3.',
+            );
           const ownCounter = findCounter(record, view);
           if (ownCounter === undefined)
             throw new PassportConnectorError(
@@ -307,6 +343,18 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               'InternalError',
               'The ledger device set is inconsistent.',
             );
+          if (target) {
+            if (view.authNonce !== initial!.authNonce)
+              throw new PassportConnectorError(
+                'DeviceRosterInvalid',
+                'The ACC changed after the removal was approved.',
+              );
+            if (!liveEntries.some((entry) => equal(entry, target)))
+              throw new PassportConnectorError(
+                'RemovalTargetNotFound',
+                'The target is absent from the live ACC device set.',
+              );
+          }
           const reader = toHex(await viewingKey.readerPublicKey(networkId));
           const device = await authoriser.devicePublicKeyHex!();
           const roster = resolveJubjubReaders({
@@ -314,9 +362,29 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             epoch: view.deviceEpoch,
             registered: opened.flatMap((entry) => (entry?.kind === 'device' ? [entry.device] : [])),
             liveEntries,
+            ...(target && { allowedEntries: liveEntries.filter((entry) => !equal(entry, target)) }),
             pure,
             decodeDevicePublicKey: decode,
           });
+          if (target && roster.dropped.some((entry) => !equal(entry, ownEntry)))
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'A surviving device has no unique, usable reader registration.',
+            );
+          if (
+            target &&
+            roster.outside.some((removed) =>
+              roster.readers.some(
+                (survivor) =>
+                  survivor.readerPublicKey === removed.readerPublicKey ||
+                  survivor.devicePublicKey === removed.devicePublicKey,
+              ),
+            )
+          )
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The removed device shares a reader or signing key with a survivor.',
+            );
           const held = await holdings.selectHeldEntries(record.address, oldEntries, opened);
           const seen = new Set<number>();
           const holdingEntries: Uint8Array[] = [];
@@ -335,11 +403,20 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           const registrations = oldEntries.filter(
             (entry) => entry.length === 192 && entry[0] === 0xd2 && entry[1] === 1,
           );
+          const removedReader = target ? roster.outside[0] : undefined;
           const keys = await viewingKey.createKeys(networkId, {
             devicePublicKey: device,
             keyring: oldKeyring,
             registrations,
             readers: roster.readers.filter((item) => item.readerPublicKey !== reader),
+            ...(target && { rotateRoster: true }),
+            ...(removedReader && {
+              removed: {
+                devicePublicKey: removedReader.devicePublicKey,
+                epoch: removedReader.epoch,
+                counter: removedReader.counter,
+              },
+            }),
           });
           const reencrypted = await reencrypt(
             networkId,
@@ -479,7 +556,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               'The rotated ACC key did not land.',
             );
           for (const entry of reencrypted) view = await append(flow, record, entry!, view);
-          return {
+          const rotation = {
             ...tx,
             droppedDeviceEntries: roster.dropped
               .filter((entry) => !equal(entry, ownEntry))
@@ -494,8 +571,84 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             ),
             unsealedGrantIds: deliveries.unsealedGrantIds,
           };
+          if (!target) return rotation;
+          view = await read(record, true);
+          if (!view.deviceEntries!.some((entry) => equal(entry, target)))
+            throw new PassportConnectorError(
+              'RemovalTargetNotFound',
+              'The target disappeared before the removal call.',
+            );
+          const removeCounter = findCounter(record, view);
+          if (removeCounter === undefined)
+            throw new PassportConnectorError('NotAuthorised', 'This device is no longer live.');
+          const removeNonce = view.authNonce;
+          const removeCircuit = 'remove_device_with_jubjub';
+          const removeSignature = await flow.step('passkey.sign', () =>
+            authoriser.authorise({
+              account: record.address,
+              circuit: removeCircuit,
+              args: [target],
+              witnessValues: [],
+              authNonce: removeNonce,
+              useCounter: removeCounter,
+              challenge: (sigR, grindNonce) =>
+                pure.challenge_remove_device_with_jubjub(
+                  self,
+                  sigR,
+                  record.publicKey,
+                  target,
+                  removeNonce,
+                  grindNonce,
+                ),
+            }),
+          );
+          if (
+            removeSignature.scheme !== 'jubjub-schnorr' ||
+            removeSignature.useCounter !== removeCounter ||
+            !samePoint(removeSignature.pk, record.publicKey)
+          )
+            throw new PassportConnectorError(
+              'NotAuthorised',
+              'The signature names another device.',
+            );
+          flow.checkpoint();
+          const removed = await (
+            await readChain()
+          ).call({
+            address: record.address,
+            circuit: removeCircuit,
+            args: [
+              target,
+              record.publicKey,
+              removeCounter,
+              removeSignature.sigR,
+              removeSignature.sigS,
+              removeSignature.grindNonce,
+            ],
+            ...flow.ports,
+          });
+          await advanced(record, removeNonce);
+          const settled = await read(record, true);
+          if (settled.deviceEntries!.some((entry) => equal(entry, target)))
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The device removal did not land.',
+            );
+          return {
+            ...rotation,
+            ...removed,
+            removedCommitmentHex: toHex(target),
+            rotationTxHash: tx.txHash,
+          } satisfies DeviceRemovalResult;
         },
-        { kind: 'rotate-encryption-key' },
+        target
+          ? {
+              kind: 'remove-device',
+              account: record.address,
+              commitmentHex: toHex(target),
+              devices: initial!.deviceEntries!.filter((entry) => !equal(entry, target)).map(toHex),
+            }
+          : { kind: 'rotate-encryption-key' },
       );
     });
   const account = (record: JubjubHint): PassportAccount => ({
@@ -521,6 +674,8 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       );
     },
     rotateViewingKey: (options) => rotateViewingKey(record, options),
+    removeDevice: (commitmentHex, options) =>
+      rotateViewingKey(record, options, commitmentHex) as Promise<DeviceRemovalResult>,
     readShieldedHoldings: (options = {}) =>
       run(options, async (flow) => {
         if (!ports.holdings)
