@@ -11,6 +11,7 @@ on:
       - 'pnpm-lock.yaml'
       - '.github/workflows/check-funding-image.yml'
       - '.github/workflows/publish-funding-image.yml'
+      - 'scripts/smoke-funding-image.sh'
 
 permissions:
   contents: read
@@ -22,12 +23,5 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build Linux image
         run: docker build -f apps/passport-funding-service/Dockerfile -t midnight-passport-funding:check .
-      - name: Check user and missing-volume refusal
-        run: |
-          test "$(docker image inspect midnight-passport-funding:check --format '{{.Config.User}}')" = '10001:10001'
-          docker run --rm --entrypoint node midnight-passport-funding:check --version
-          if docker run --rm midnight-passport-funding:check > /tmp/funding-image-smoke.log 2>&1; then
-            echo 'Funding image started without its pinned contract mount.' >&2
-            exit 1
-          fi
-          grep -q 'mount a Linux-prepared pinned ACC export' /tmp/funding-image-smoke.log
+      - name: Check image startup refusal
+        run: bash scripts/smoke-funding-image.sh midnight-passport-funding:check

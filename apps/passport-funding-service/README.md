@@ -76,6 +76,9 @@ signed `funding-v<version>` tag or an authorized workflow dispatch. Release `0.1
 `sha256:5b1aebaba4944c0beccd8d70047b51b9d779f30a8839461af20c5a10f26ca9e5`. The
 published GHCR package is currently public. Pin the digest when deploying.
 The image contains the SDK application, not the 11 GiB proving tree, any wallet seed, or tokens.
+Both image workflows run `scripts/smoke-funding-image.sh`: it checks the non-root user, refusal
+without the pinned contract mount, and startup refusal on a non-standalone network without a
+dedicated seed or asset policy. The production secret files remain outside the image.
 Its entrypoint requires a **Linux-prepared** pinned `6458ed5` export at `/data/contract`, including
 compiled `contracts/managed/account` artefacts and that export's `node_modules`. The service
 verifies the complete pinned key tree and manifest before readiness. Mount persistent writable

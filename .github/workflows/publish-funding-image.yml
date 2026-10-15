@@ -61,13 +61,7 @@ jobs:
       - name: Build and smoke-test Linux image
         run: |
           docker build -f apps/passport-funding-service/Dockerfile -t midnight-passport-funding:build .
-          test "$(docker image inspect midnight-passport-funding:build --format '{{.Config.User}}')" = '10001:10001'
-          docker run --rm --entrypoint node midnight-passport-funding:build --version
-          if docker run --rm midnight-passport-funding:build > /tmp/funding-image-smoke.log 2>&1; then
-            echo 'Funding image started without its pinned contract mount.' >&2
-            exit 1
-          fi
-          grep -q 'mount a Linux-prepared pinned ACC export' /tmp/funding-image-smoke.log
+          bash scripts/smoke-funding-image.sh midnight-passport-funding:build
       - name: Publish to GitHub Container Registry
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
