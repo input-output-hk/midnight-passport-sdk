@@ -68,6 +68,14 @@ export interface JubjubDeviceReader {
   readonly readerPublicKey: string;
   readonly devicePublicKey: string;
 }
+/** P-256 needs its WebAuthn policy to derive the joining ACC device commitment. */
+export interface P256DeviceReader {
+  readonly readerPublicKey: string;
+  readonly devicePublicKey: string;
+  readonly scheme: 'p256-webauthn';
+  readonly policy: { readonly rp_id_hash: Uint8Array; readonly origin: Uint8Array };
+}
+export type PassportDeviceReader = JubjubDeviceReader | P256DeviceReader;
 
 export interface DeviceEnrollmentResult extends PassportTxResult {
   readonly commitmentHex: string;
@@ -169,8 +177,8 @@ export interface PassportAccount {
   rotateViewingKey?(options?: FlowOptions): Promise<ViewingKeyRotationResult>;
   /** JubJub owner operation; refuses self-removal and a target absent from the live ACC. */
   removeDevice?(commitmentHex: string, options?: FlowOptions): Promise<DeviceRemovalResult>;
-  /** JubJub owner operation; rotates first when live read grants require a fresh account key. */
-  addDevice?(reader: JubjubDeviceReader, options?: FlowOptions): Promise<DeviceEnrollmentResult>;
+  /** Owner enrollment; JubJub rotates first when live read grants require a fresh account key. */
+  addDevice?(reader: PassportDeviceReader, options?: FlowOptions): Promise<DeviceEnrollmentResult>;
   /** Sealed JubJub and P-256 accounts read only chain-confirmed holdings through their viewing key. */
   readShieldedHoldings?(options?: FlowOptions): Promise<readonly PassportShieldedHolding[]>;
   /** JubJub owner issue; the host pins the origin and supplies durable grant bookkeeping. */

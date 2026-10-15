@@ -96,6 +96,8 @@ export const fakeBinding = (): P.AccBinding => ({
       fakeDigest(`rotate|${hex(self.bytes)}|${point(pk)}|${hex(key)}|${nonce}`),
     challenge_append_inbox_with_p256: (self, pk, entry, nonce) =>
       fakeDigest(`p256-append|${hex(self.bytes)}|${point(pk)}|${hex(entry)}|${nonce}`),
+    challenge_add_device_with_p256: (self, pk, entry, nonce) =>
+      fakeDigest(`p256-add|${hex(self.bytes)}|${point(pk)}|${hex(entry)}|${nonce}`),
   },
 });
 
@@ -302,25 +304,36 @@ export function fakeChain(
         account.entries.add(entry(self, pk, policy, epoch, 0n));
       };
     }
-    if (circuit !== 'rotate_enc_key_with_p256' && circuit !== 'append_inbox_with_p256')
+    if (
+      circuit !== 'rotate_enc_key_with_p256' &&
+      circuit !== 'append_inbox_with_p256' &&
+      circuit !== 'add_device_with_p256'
+    )
       throw refused(`no circuit ${circuit}`);
     const [newKey, auth] = args as [Uint8Array, Auth];
     const live = entry(self, auth.pk, auth.policy, epoch, auth.use_counter);
     const pk = p256(auth.pk);
     const challenge =
-      circuit === 'append_inbox_with_p256'
-        ? circuits.challenge_append_inbox_with_p256!(
+      circuit === 'add_device_with_p256'
+        ? circuits.challenge_add_device_with_p256!(
             { bytes: unhex(self) },
             pk,
             newKey,
             account.authNonce,
           )
-        : circuits.challenge_rotate_enc_key_with_p256(
-            { bytes: unhex(self) },
-            pk,
-            newKey,
-            account.authNonce,
-          );
+        : circuit === 'append_inbox_with_p256'
+          ? circuits.challenge_append_inbox_with_p256!(
+              { bytes: unhex(self) },
+              pk,
+              newKey,
+              account.authNonce,
+            )
+          : circuits.challenge_rotate_enc_key_with_p256(
+              { bytes: unhex(self) },
+              pk,
+              newKey,
+              account.authNonce,
+            );
     const signed = { pk, authenticatorData: auth.authenticator_data, sig: auth.sig };
     if (!account.entries.has(live) || !(await verifyP256(signed, challenge, auth.policy))) {
       throw refused('no live entry signed this challenge');
@@ -330,6 +343,7 @@ export function fakeChain(
       account.entries.add(entry(self, pk, auth.policy, epoch, auth.use_counter + 1n));
       account.authNonce += 1n;
       if (circuit === 'append_inbox_with_p256') account.inboxEntries.push(newKey);
+      else if (circuit === 'add_device_with_p256') account.entries.add(hex(newKey));
       else account.encKey = newKey;
     };
   }
@@ -358,10 +372,11 @@ export function fakeChain(
       const account = ledger.get(address);
       if (!account) return undefined;
       const { entries, boot: _boot, authorityRetired: _retired, inboxEntries, ...view } = account;
-      const held = new Set(entries);
+      const held = new Set<string>(entries);
       return {
         ...view,
         ...(options.includeInbox && { inboxEntries: [...inboxEntries] }),
+        ...(options.includeDevices && { deviceEntries: [...held].map(unhex) }),
         entryCount: held.size,
         hasEntry: (e: Uint8Array) => held.has(hex(e)),
       };

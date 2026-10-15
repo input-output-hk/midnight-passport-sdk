@@ -7,9 +7,10 @@ is the live `enc_key`; the secret is sealed in a type `0xd1` ACC inbox envelope 
 derived from the passkey PRF under `lace-passport:reader:v1` and the network id. P-256 publishes
 a separate type `0xd5` registration with its compressed WebAuthn public key and policy. On reload,
 `openAccount` checks the passkey's live device entry and opens the envelope against the ledger's
-`enc_key`. The wallet seed and P-256 signing key remain separate. A second enrolled reader could
-recover the secret after one device is lost, but P-256 enrollment and roster-safe rotation are
-still open; the demo hides rotation. The new browser composition explicitly refuses older
+`enc_key`. The wallet seed and P-256 signing key remain separate. The account API can enroll a
+second P-256 device by sealing the key before adding its live entry when no read grants are active.
+The joining device still needs account discovery and an open flow; roster-safe rotation remains
+open and the demo hides it. The new browser composition explicitly refuses older
 deterministic-key P-256 accounts until migrated. See [ZK keys and recovery](../site/keys.md).
 The account API can read shielded holdings through this sealed P-256 keyring when a host provides
 chain-backed holding verification; the browser demo does not currently provide that source.

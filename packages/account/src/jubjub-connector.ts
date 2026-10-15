@@ -4,6 +4,7 @@ import {
   type FlowOptions,
   type DeviceRemovalResult,
   type JubjubDeviceReader,
+  type PassportDeviceReader,
   type PassportAccount,
   type PassportConnectorAPI,
   type PassportGrantRevokeResult,
@@ -452,8 +453,13 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       throw new PassportConnectorError('DeviceRosterInvalid', 'The enrollment did not land.');
     return { ...tx, commitmentHex: toHex(entry), nextUseCounter: counter + 1n };
   };
-  const addDevice = (record: JubjubHint, input: JubjubDeviceReader, options: FlowOptions = {}) =>
+  const addDevice = (record: JubjubHint, input: PassportDeviceReader, options: FlowOptions = {}) =>
     run(options, async (flow): Promise<DeviceEnrollmentResult> => {
+      if ('scheme' in input && input.scheme === 'p256-webauthn')
+        throw new PassportConnectorError(
+          'DeviceRosterInvalid',
+          'A JubJub owner cannot enroll a P-256 reader through this flow.',
+        );
       const decode = viewingKey.decodeDevicePublicKey;
       if (!decode || !ports.readGrants)
         throw new PassportConnectorError(

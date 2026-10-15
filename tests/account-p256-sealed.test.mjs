@@ -5,6 +5,8 @@ import { createFakePorts } from '../packages/account/dist/testing/index.js';
 import { recipeDeviceKeyring } from '../packages/keys/dist/index.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 import { sealInboxCoin } from '../packages/keys/dist/inbox-coin.js';
+import { x25519 } from '@noble/curves/ed25519.js';
+import { fakeAuthoriser, FAKE_POLICY } from '../packages/account/dist/testing/index.js';
 
 const viewingKey = () =>
   recipeDeviceKeyring({
@@ -12,6 +14,7 @@ const viewingKey = () =>
     deriveSecret: async () => new Uint8Array(32).fill(9),
     deviceSecret: async () => new Uint8Array(32).fill(9),
   });
+const hex = (/** @type {Uint8Array} */ bytes) => Buffer.from(bytes).toString('hex');
 
 test('P-256 create publishes sealed key entries and reload opens the ledger key', async () => {
   const fake = createFakePorts({ binding: { pureCircuits } });
@@ -87,6 +90,135 @@ test('P-256 sealed accounts read only chain-confirmed shielded holdings', async 
   }).openAccount();
   assert.ok(wrongPasskey.readShieldedHoldings);
   await assert.rejects(wrongPasskey.readShieldedHoldings(), { code: 'NotAuthorised' });
+});
+
+test('P-256 owner delivers a sealed key before enrolling a new live device', async () => {
+  const fake = createFakePorts();
+  const ports = {
+    ...fake,
+    viewingKey: viewingKey(),
+    authoriser: {
+      ...fake.authoriser,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    readGrants: {
+      readActiveReadGrantTargets: async () => ({
+        authNonce: /** @type {bigint} */ ([...fake.ledger.values()][0]?.authNonce ?? 0n),
+        targets: [],
+      }),
+    },
+  };
+  const account = await createPassportAccounts(ports).createAccount({
+    userName: 'owner',
+    retireAuthority: true,
+  });
+  const ledger = fake.ledger.get(account.address);
+  assert.ok(ledger);
+  ledger.specVersion = 3;
+  assert.ok(account.addDevice);
+  const joining = fakeAuthoriser({ device: 1 });
+  const reader = {
+    scheme: /** @type {const} */ ('p256-webauthn'),
+    readerPublicKey: hex(x25519.getPublicKey(new Uint8Array(32).fill(7))),
+    devicePublicKey: await joining.devicePublicKeyHex(),
+    policy: FAKE_POLICY,
+  };
+  const result = await account.addDevice(reader);
+  assert.equal(ledger.inboxEntries.length, 4);
+  assert.deepEqual(
+    ledger.inboxEntries.slice(2).map((entry) => entry[0]),
+    [0xd1, 0xd5],
+  );
+  assert.ok(ledger.entries.has(result.commitmentHex));
+  assert.equal(result.nextUseCounter, 5n);
+  await assert.rejects(account.addDevice(reader), { code: 'DeviceRosterInvalid' });
+});
+
+test('P-256 enrollment refuses active read grants before key delivery', async () => {
+  const fake = createFakePorts();
+  const ports = {
+    ...fake,
+    viewingKey: viewingKey(),
+    authoriser: {
+      ...fake.authoriser,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    readGrants: {
+      readActiveReadGrantTargets: async () => ({
+        authNonce: /** @type {bigint} */ ([...fake.ledger.values()][0]?.authNonce ?? 0n),
+        targets: [{ grantId: 'aa'.repeat(32), readPublicKey: 'bb'.repeat(32) }],
+      }),
+    },
+  };
+  const account = await createPassportAccounts(ports).createAccount({
+    userName: 'owner',
+    retireAuthority: true,
+  });
+  const ledger = fake.ledger.get(account.address);
+  assert.ok(ledger);
+  ledger.specVersion = 3;
+  assert.ok(account.addDevice);
+  const joining = fakeAuthoriser({ device: 1 });
+  const reader = {
+    scheme: /** @type {const} */ ('p256-webauthn'),
+    readerPublicKey: hex(x25519.getPublicKey(new Uint8Array(32).fill(7))),
+    devicePublicKey: await joining.devicePublicKeyHex(),
+    policy: FAKE_POLICY,
+  };
+  await assert.rejects(account.addDevice(reader), { code: 'BindingUnsupported' });
+  assert.equal(ledger.inboxEntries.length, 2);
+});
+
+test('P-256 enrollment can retry after one sealed entry was published', async () => {
+  const fake = createFakePorts();
+  let interrupt = false;
+  let deliveries = 0;
+  const chain = {
+    ...fake.chain,
+    async call(
+      /** @type {import('../packages/account/dist/ports/index.js').CallRequest} */ request,
+    ) {
+      if (interrupt && request.circuit === 'append_inbox_with_p256' && ++deliveries === 2)
+        throw new Error('interrupted second delivery');
+      return fake.chain.call(request);
+    },
+  };
+  const ports = {
+    ...fake,
+    chain,
+    viewingKey: viewingKey(),
+    authoriser: {
+      ...fake.authoriser,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    readGrants: {
+      readActiveReadGrantTargets: async () => ({
+        authNonce: [...fake.ledger.values()][0]?.authNonce ?? 0n,
+        targets: [],
+      }),
+    },
+  };
+  const account = await createPassportAccounts(ports).createAccount({
+    userName: 'owner',
+    retireAuthority: true,
+  });
+  const ledger = fake.ledger.get(account.address);
+  assert.ok(ledger);
+  ledger.specVersion = 3;
+  assert.ok(account.addDevice);
+  const joining = fakeAuthoriser({ device: 1 });
+  const reader = {
+    scheme: /** @type {const} */ ('p256-webauthn'),
+    readerPublicKey: hex(x25519.getPublicKey(new Uint8Array(32).fill(7))),
+    devicePublicKey: await joining.devicePublicKeyHex(),
+    policy: FAKE_POLICY,
+  };
+  interrupt = true;
+  await assert.rejects(account.addDevice(reader), /interrupted second delivery/);
+  assert.equal(ledger.inboxEntries.length, 3);
+  interrupt = false;
+  const result = await account.addDevice(reader);
+  assert.ok(ledger.entries.has(result.commitmentHex));
 });
 
 test('P-256 open resumes an interrupted sealed-entry publication', async () => {

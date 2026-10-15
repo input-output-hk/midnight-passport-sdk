@@ -2,6 +2,8 @@ import {
   PASSPORT_API_VERSION,
   type CreateAccountStep,
   type FlowOptions,
+  type P256DeviceReader,
+  type DeviceEnrollmentResult,
   type PassportAccount,
   type PassportConnectorAPI,
 } from '@input-output-hk/mn-passport-protocol';
@@ -301,6 +303,64 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     );
   };
 
+  const appendP256 = async (
+    flow: Flow,
+    record: SealedP256Hint,
+    entry: Uint8Array,
+    view: AccLedgerView,
+  ): Promise<AccLedgerView> => {
+    const pure = (await binding()).pureCircuits;
+    if (!pure.challenge_append_inbox_with_p256)
+      throw new PassportConnectorError('BindingUnsupported', 'ACC lacks P-256 inbox signing.');
+    const counter = await findCounter(flow, record, view);
+    if (counter === undefined) throw notHeld(record);
+    const circuit = 'append_inbox_with_p256';
+    const challenge = pure.challenge_append_inbox_with_p256(
+      { bytes: fromHex(record.address) },
+      p256(record.publicKey),
+      entry,
+      view.authNonce,
+    );
+    const signed = await flow.step('passkey.sign', () =>
+      authoriser.authorise({
+        account: record.address,
+        circuit,
+        args: [entry],
+        witnessValues: [],
+        authNonce: view.authNonce,
+        useCounter: counter,
+        challenge,
+        credentialId: record.credentialId,
+      }),
+    );
+    if (
+      signed.scheme !== 'p256-webauthn' ||
+      signed.useCounter !== counter ||
+      signed.pk.x !== record.publicKey.x ||
+      signed.pk.y !== record.publicKey.y
+    )
+      throw new PassportConnectorError('NotAuthorised', 'The signature names another device.');
+    flow.checkpoint();
+    await (
+      await chain()
+    ).call({
+      address: record.address,
+      circuit,
+      args: [
+        entry,
+        {
+          pk: p256(record.publicKey),
+          policy: record.policy,
+          authenticator_data: signed.authenticatorData,
+          sig: signed.sig,
+          use_counter: counter,
+        },
+      ],
+      ...flow.ports,
+    });
+    return awaitSealedView(record, (candidate) => candidate.authNonce > view.authNonce);
+  };
+
   const finishSealed = async (flow: Flow, record: SealedP256Hint): Promise<P256Hint> => {
     let view = await awaitSealedView(record, (candidate) =>
       Boolean(candidate.encKey && candidate.inboxEntries),
@@ -314,59 +374,9 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     }
     if ((await findCounter(flow, record, view)) === undefined) throw notHeld(record);
     if (pending) {
-      const pure = (await binding()).pureCircuits;
-      if (!pure.challenge_append_inbox_with_p256)
-        throw new PassportConnectorError('BindingUnsupported', 'ACC lacks P-256 inbox signing.');
       for (const entry of record.keyEntries) {
         if (view.inboxEntries?.some((held) => equalBytes(held, entry))) continue;
-        const counter = await findCounter(flow, record, view);
-        if (counter === undefined) throw notHeld(record);
-        const circuit = 'append_inbox_with_p256';
-        const challenge = pure.challenge_append_inbox_with_p256(
-          { bytes: fromHex(record.address) },
-          p256(record.publicKey),
-          entry,
-          view.authNonce,
-        );
-        const signed = await flow.step('passkey.sign', () =>
-          authoriser.authorise({
-            account: record.address,
-            circuit,
-            args: [entry],
-            witnessValues: [],
-            authNonce: view.authNonce,
-            useCounter: counter,
-            challenge,
-            credentialId: record.credentialId,
-          }),
-        );
-        if (
-          signed.scheme !== 'p256-webauthn' ||
-          signed.useCounter !== counter ||
-          signed.pk.x !== record.publicKey.x ||
-          signed.pk.y !== record.publicKey.y
-        )
-          throw new PassportConnectorError('NotAuthorised', 'The signature names another device.');
-        flow.checkpoint();
-        await (
-          await chain()
-        ).call({
-          address: record.address,
-          circuit,
-          args: [
-            entry,
-            {
-              pk: p256(record.publicKey),
-              policy: record.policy,
-              authenticator_data: signed.authenticatorData,
-              sig: signed.sig,
-              use_counter: counter,
-            },
-          ],
-          ...flow.ports,
-        });
-        const nonce = view.authNonce;
-        view = await awaitSealedView(record, (candidate) => candidate.authNonce > nonce);
+        view = await appendP256(flow, record, entry, view);
       }
     }
     await sealedKeyring(record, view, false);
@@ -375,6 +385,270 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     return active;
   };
 
+  const addP256Device = (record: P256Hint, reader: P256DeviceReader, options: FlowOptions = {}) =>
+    run(options, async (flow): Promise<DeviceEnrollmentResult> => {
+      const keyring = viewingKey;
+      const decode = keyring?.decodeP256DevicePublicKey;
+      const pure = (await binding()).pureCircuits;
+      if (
+        !isSealedP256(record) ||
+        !keyring ||
+        !decode ||
+        !pure.challenge_add_device_with_p256 ||
+        !ports.readGrants ||
+        !authoriser.withKeySession
+      )
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'P-256 enrollment needs a sealed keyring, P-256 decoder, key session and live read-grant source.',
+        );
+      if (
+        !/^[0-9a-f]{64}$/.test(reader.readerPublicKey) ||
+        !reader.policy ||
+        !(reader.policy.rp_id_hash instanceof Uint8Array) ||
+        reader.policy.rp_id_hash.length !== 32 ||
+        !(reader.policy.origin instanceof Uint8Array) ||
+        reader.policy.origin.length !== 21
+      )
+        throw new PassportConnectorError(
+          'DeviceRosterInvalid',
+          'The joining reader or WebAuthn policy is malformed.',
+        );
+      const point = decode(reader.devicePublicKey);
+      if (!point || (point.x === record.publicKey.x && point.y === record.publicKey.y))
+        throw new PassportConnectorError(
+          'DeviceRosterInvalid',
+          'The joining key must identify another valid P-256 device.',
+        );
+      const read = async () => {
+        const view = await flow.step('chain.read', async () =>
+          (await chain()).readAccount(record.address, { includeInbox: true, includeDevices: true }),
+        );
+        if (!view) throw new PassportConnectorError('AccountNotFound', 'The ACC is absent.');
+        if (!view.encKey || !view.inboxEntries || !view.deviceEntries)
+          throw new PassportConnectorError(
+            'BindingUnsupported',
+            'The chain port omits ACC roster or inbox data.',
+          );
+        return view as AccLedgerView & {
+          readonly encKey: Uint8Array;
+          readonly inboxEntries: readonly Uint8Array[];
+          readonly deviceEntries: readonly Uint8Array[];
+        };
+      };
+      const initial = await read();
+      if (!initial.booted || record.status !== 'active')
+        throw new PassportConnectorError('AccountNotFound', 'The P-256 ACC is not active.');
+      if (initial.specVersion !== 3)
+        throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
+      const initialCounter = await findCounter(flow, record, initial);
+      if (initialCounter === undefined) throw notHeld(record);
+      const self = { bytes: fromHex(record.address) };
+      const ownerEntry = (counter: bigint) =>
+        pure.derive_device_entry_with_p256(
+          self,
+          p256(record.publicKey),
+          record.policy,
+          initial.deviceEpoch,
+          counter,
+        );
+      const otherEntries = (entries: readonly Uint8Array[], own: Uint8Array) =>
+        entries
+          .filter((entry) => !equalBytes(entry, own))
+          .map(toHex)
+          .sort();
+      const baseline = otherEntries(initial.deviceEntries, ownerEntry(initialCounter));
+      const target = pure.derive_device_entry_with_p256(
+        { bytes: fromHex(record.address) },
+        point,
+        reader.policy,
+        initial.deviceEpoch,
+        0n,
+      );
+      if (initial.deviceEntries.some((held) => equalBytes(held, target)))
+        throw new PassportConnectorError(
+          'DeviceRosterInvalid',
+          'The joining device is already live.',
+        );
+      const grants = await flow.step('grant.roster', () =>
+        ports.readGrants!.readActiveReadGrantTargets(record.address),
+      );
+      if (grants.authNonce !== initial.authNonce)
+        throw new PassportConnectorError('GrantRosterUnsettled', 'The read-grant roster is stale.');
+      if (grants.targets.length)
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'P-256 enrollment with active read grants needs viewing-secret rotation first.',
+        );
+      return authoriser.withKeySession(
+        async () => {
+          const selected = await authoriser.devicePublicKey();
+          const selectedBinding = await authoriser.deviceBinding!();
+          if (
+            selected.x !== record.publicKey.x ||
+            selected.y !== record.publicKey.y ||
+            !equalBytes(selectedBinding.credentialId, record.credentialId) ||
+            !equalBytes(selectedBinding.policy.rp_id_hash, record.policy.rp_id_hash) ||
+            !equalBytes(selectedBinding.policy.origin, record.policy.origin)
+          )
+            throw new PassportConnectorError(
+              'NotAuthorised',
+              'The selected passkey does not own this ACC.',
+            );
+          if (reader.readerPublicKey === toHex(await keyring.readerPublicKey(networkId)))
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The joining reader is the owner.',
+            );
+          let view = await read();
+          if (
+            view.authNonce !== initial.authNonce ||
+            view.deviceEpoch !== initial.deviceEpoch ||
+            !equalBytes(view.encKey!, initial.encKey!)
+          )
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The ACC changed before enrollment.',
+            );
+          await sealedKeyring(record, view, false);
+          const oldKeyring = {
+            account: record.address,
+            encKey: view.encKey!,
+            envelopes: [...view.inboxEntries!].reverse(),
+          };
+          const opened = await keyring.openInbox(networkId, oldKeyring, view.inboxEntries!);
+          if (opened.length !== view.inboxEntries!.length)
+            throw new PassportConnectorError(
+              'InternalError',
+              'The keyring returned an incomplete inbox.',
+            );
+          if (
+            opened.some(
+              (item) =>
+                item?.kind === 'device' &&
+                (item.device.readerPublicKey === reader.readerPublicKey ||
+                  item.device.devicePublicKey === reader.devicePublicKey) &&
+                (item.device.readerPublicKey !== reader.readerPublicKey ||
+                  item.device.devicePublicKey !== reader.devicePublicKey ||
+                  !item.device.policy ||
+                  !equalBytes(item.device.policy.rp_id_hash, reader.policy.rp_id_hash) ||
+                  !equalBytes(item.device.policy.origin, reader.policy.origin)),
+            )
+          )
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The joining reader or signing key conflicts with the roster.',
+            );
+          const delivery = await keyring.sealToDevice(networkId, oldKeyring, {
+            ...reader,
+            epoch: view.deviceEpoch,
+            counter: 0n,
+          });
+          await appendP256(flow, record, delivery.envelope, view);
+          view = await read();
+          await appendP256(flow, record, delivery.registration, view);
+          view = await read();
+          if (
+            view.deviceEpoch !== initial.deviceEpoch ||
+            !equalBytes(view.encKey!, initial.encKey!) ||
+            ![delivery.envelope, delivery.registration].every((sealed) =>
+              view.inboxEntries!.some((held) => equalBytes(held, sealed)),
+            )
+          )
+            throw new PassportConnectorError(
+              'EncryptionKeyMismatch',
+              'The key delivery did not settle.',
+            );
+          if (view.deviceEntries!.some((held) => equalBytes(held, target)))
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The joining device became live.',
+            );
+          const latestGrants = await flow.step('grant.roster', () =>
+            ports.readGrants!.readActiveReadGrantTargets(record.address),
+          );
+          if (latestGrants.authNonce !== view.authNonce || latestGrants.targets.length)
+            throw new PassportConnectorError(
+              'GrantRosterUnsettled',
+              'The read-grant roster changed.',
+            );
+          const counter = await findCounter(flow, record, view);
+          if (counter === undefined) throw notHeld(record);
+          const current = otherEntries(view.deviceEntries!, ownerEntry(counter));
+          if (
+            current.length !== baseline.length ||
+            current.some((entry, index) => entry !== baseline[index])
+          )
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The live device roster changed during delivery.',
+            );
+          const circuit = 'add_device_with_p256';
+          const challenge = pure.challenge_add_device_with_p256!(
+            { bytes: fromHex(record.address) },
+            p256(record.publicKey),
+            target,
+            view.authNonce,
+          );
+          const signed = await flow.step('passkey.sign', () =>
+            authoriser.authorise({
+              account: record.address,
+              circuit,
+              args: [target],
+              witnessValues: [],
+              authNonce: view.authNonce,
+              useCounter: counter,
+              challenge,
+              credentialId: record.credentialId,
+            }),
+          );
+          if (
+            signed.scheme !== 'p256-webauthn' ||
+            signed.useCounter !== counter ||
+            signed.pk.x !== record.publicKey.x ||
+            signed.pk.y !== record.publicKey.y
+          )
+            throw new PassportConnectorError(
+              'NotAuthorised',
+              'The signature names another device.',
+            );
+          flow.checkpoint();
+          const tx = await (
+            await chain()
+          ).call({
+            address: record.address,
+            circuit,
+            args: [
+              target,
+              {
+                pk: p256(record.publicKey),
+                policy: record.policy,
+                authenticator_data: signed.authenticatorData,
+                sig: signed.sig,
+                use_counter: counter,
+              },
+            ],
+            ...flow.ports,
+          });
+          for (let attempt = 0; attempt < 30; attempt++) {
+            flow.checkpoint();
+            const settled = await read();
+            if (
+              settled.authNonce > view.authNonce &&
+              settled.deviceEntries.some((held) => equalBytes(held, target))
+            )
+              return { ...tx, commitmentHex: toHex(target), nextUseCounter: counter + 1n };
+            if (attempt < 29) await sleep(1000);
+          }
+          throw new PassportConnectorError(
+            'DeviceRosterInvalid',
+            'The enrollment did not appear in the live ACC set.',
+          );
+        },
+        { kind: 'add-device', account: record.address, commitmentHex: toHex(target), reader },
+      );
+    });
+
   const account = (record: P256Hint): PassportAccount => ({
     address: record.address,
     networkId,
@@ -382,6 +656,14 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     scheme: record.scheme,
     // A copy: the caller may not alter the id the account's own ceremonies are pinned to.
     credentialId: record.credentialId.slice(),
+    addDevice: (reader, options) => {
+      if (!('scheme' in reader) || reader.scheme !== 'p256-webauthn')
+        throw new PassportConnectorError(
+          'DeviceRosterInvalid',
+          'P-256 enrollment needs a P-256 key and WebAuthn policy.',
+        );
+      return addP256Device(record, reader, options);
+    },
     async state() {
       const view = await readAccount(record);
       return {

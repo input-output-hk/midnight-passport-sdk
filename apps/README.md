@@ -170,6 +170,9 @@ and `assertionMaterial`.
 - **P-256 holdings reads need a chain-backed source.** The account API can open sealed coin
   descriptions with the live passkey and returns only outputs verified as held by the ACC. The
   browser demo does not configure `VerifiedHoldingSource`, so this method refuses reads there.
+- **P-256 enrollment needs host discovery.** The account API can deliver a sealed key and add a
+  second live P-256 device when no read grants are active. The demo does not yet register that
+  credential for account discovery or expose an address-based open flow.
 - **The service binds loopback** (`127.0.0.1`). CORS lets only the dapp origin read its answers,
   which on its own does not stop a cross-site page from sending a request. So the service also
   answers `415` to any POST or PUT whose `content-type` is not `application/json` (that forces a
