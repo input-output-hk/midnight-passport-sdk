@@ -1449,10 +1449,10 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
               },
               { networkId, chain: chainPort, viewingKey, holdings: qualified },
             );
-            if (transfer.amount > coin.value)
+            if (transfer.amount !== coin.value)
               throw new PassportConnectorError(
                 'TransferInvalid',
-                'The selected coin is smaller than the transfer.',
+                'A shielded owner withdrawal must spend the selected coin exactly until change settlement is available.',
               );
             const circuit = 'withdraw_shielded_with_p256';
             const challenge = pure.challenge_withdraw_shielded_with_p256!(

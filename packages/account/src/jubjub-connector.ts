@@ -1326,10 +1326,10 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               },
               { networkId, chain: chainPort, viewingKey, holdings: qualified },
             );
-            if (transfer.amount > coin.value)
+            if (transfer.amount !== coin.value)
               throw new PassportConnectorError(
                 'TransferInvalid',
-                'The selected coin is smaller than the transfer.',
+                'A shielded owner withdrawal must spend the selected coin exactly until change settlement is available.',
               );
             const self = { bytes: fromHex(record.address) };
             const circuit = 'withdraw_shielded_with_jubjub';

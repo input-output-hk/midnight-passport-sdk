@@ -465,7 +465,7 @@ test('JubJub shielded spend binds the qualified coin to the signature and witnes
   const coin = {
     nonce: new Uint8Array(32).fill(5),
     color: new Uint8Array(32).fill(7),
-    value: 12n,
+    value: 7n,
     mt_index: 9n,
   };
   const inboxIndex = w.setQualifiedCoin(coin);
@@ -500,6 +500,9 @@ test('JubJub shielded spend binds the qualified coin to the signature and witnes
   assert.deepEqual(w.shieldedCalls[0]?.heldCoin, coin);
   const signatures = w.signedRequests.length;
   await assert.rejects(account.withdrawShielded({ ...request, amount: '13' }), {
+    code: 'TransferInvalid',
+  });
+  await assert.rejects(account.withdrawShielded({ ...request, amount: '6' }), {
     code: 'TransferInvalid',
   });
   await assert.rejects(account.withdrawShielded({ ...request, inboxIndex: 999 }), {

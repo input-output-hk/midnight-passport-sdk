@@ -13,7 +13,7 @@ test('P-256 shielded spend signs the qualified coin and sends the same private w
   const coin = {
     nonce: new Uint8Array(32).fill(5),
     color: new Uint8Array(32).fill(7),
-    value: 12n,
+    value: 7n,
     mt_index: 9n,
   };
   const keyring = recipeDeviceKeyring({
@@ -120,11 +120,16 @@ test('P-256 shielded spend signs the qualified coin and sends the same private w
     ),
   );
   assert.equal(call.args[2], 7n);
+  const signatureCount = signatures.length;
   await assert.rejects(account.withdrawShielded({ ...request, amount: '13' }), {
+    code: 'TransferInvalid',
+  });
+  await assert.rejects(account.withdrawShielded({ ...request, amount: '6' }), {
     code: 'TransferInvalid',
   });
   await assert.rejects(account.withdrawShielded({ ...request, inboxIndex: 999 }), {
     code: 'TransferInvalid',
   });
   assert.equal(transfers.length, 1);
+  assert.equal(signatures.length, signatureCount);
 });

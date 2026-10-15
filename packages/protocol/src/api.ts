@@ -105,7 +105,7 @@ export interface PassportUnshieldedWithdrawal {
   readonly recipient: string;
 }
 
-/** Spend one chain-matched ACC shielded output to a user's Zswap coin key. */
+/** Spend one chain-matched ACC shielded output in full to a user's Zswap coin key. */
 export interface PassportShieldedWithdrawal extends PassportUnshieldedWithdrawal {
   /** Inbox entry returned by `readShieldedHoldings`; selects one qualified output. */
   readonly inboxIndex: number;
