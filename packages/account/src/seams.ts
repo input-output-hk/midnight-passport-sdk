@@ -160,6 +160,12 @@ export interface AccPureCircuits {
     key: Uint8Array,
     nonce: bigint,
   ): Uint8Array;
+  /** Present in the scoped-grants ACC binding, absent from older prototype bindings. */
+  challenge_revoke_all_grants_with_p256?(
+    self: ContractAddressArg,
+    pk: P256PublicKey,
+    nonce: bigint,
+  ): Uint8Array;
 }
 
 export interface PassportSeams {

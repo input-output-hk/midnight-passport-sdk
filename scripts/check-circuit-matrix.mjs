@@ -95,6 +95,8 @@ function evidence(name, isPure) {
     return ['typed flow', 'tests/account-jubjub-grant-revoke.test.mjs'];
   if (/^(revoke_all_grants_with_jubjub|challenge_revoke_all_grants_with_jubjub)$/.test(name))
     return ['typed flow', 'tests/account-jubjub-grant-revoke-all.test.mjs'];
+  if (/^(revoke_all_grants_with_p256|challenge_revoke_all_grants_with_p256)$/.test(name))
+    return ['typed flow', 'tests/account-p256-grant-revoke-all.test.mjs'];
   if (/^(remove_device_with_jubjub|challenge_remove_device_with_jubjub)$/.test(name))
     return ['typed flow', 'tests/account-jubjub.test.mjs'];
   if (

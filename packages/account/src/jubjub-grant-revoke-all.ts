@@ -6,7 +6,7 @@ import type {
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow } from './flow.js';
-import { validGrantId } from './grant-publication-state.js';
+import { grantRosterFingerprint } from './grant-roster.js';
 import { JUBJUB_READER_SCAN_LIMIT } from './jubjub-readers.js';
 import type {
   AccountHint,
@@ -65,27 +65,6 @@ const sleep = (milliseconds: number): Promise<void> =>
 const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
   a.length === b.length && a.every((value, index) => value === b[index]);
 const samePoint = (a: CurvePoint, b: CurvePoint): boolean => a.x === b.x && a.y === b.y;
-type GrantRoster = Awaited<ReturnType<GrantRosterSource['readGrantRoster']>>;
-
-function fingerprint(roster: GrantRoster): string {
-  if (
-    roster.authNonce < 0n ||
-    roster.generation < 0n ||
-    roster.generation >= 1n << 32n ||
-    roster.entries.length > 4096 ||
-    roster.entries.some(
-      ({ id, active, read }) =>
-        !validGrantId(id) || typeof active !== 'boolean' || typeof read !== 'boolean',
-    ) ||
-    new Set(roster.entries.map(({ id }) => id)).size !== roster.entries.length
-  )
-    throw new PassportConnectorError('BindingUnsupported', 'Invalid live ACC grant roster.');
-  return roster.entries
-    .map(({ id, active, read }) => `${id}:${Number(active)}:${Number(read)}`)
-    .sort()
-    .join('|');
-}
-
 /** Rotate away from live readers when needed, then clear and confirm the grant map. */
 export async function revokeAllJubjubGrants(
   input: RevokeAllJubjubGrantsInput,
@@ -104,7 +83,7 @@ export async function revokeAllJubjubGrants(
     if (ports.authoriser.scheme !== 'jubjub-schnorr' || !ports.authoriser.withKeySession)
       throw new PassportConnectorError('BindingUnsupported', 'A JubJub key session is required.');
     let roster = await flow.step('grant.roster', () => ports.grants.readGrantRoster(hint.address));
-    const baseline = fingerprint(roster);
+    const baseline = grantRosterFingerprint(roster);
     const originalGeneration = roster.generation;
     const hasRead = roster.entries.some(({ active, read }) => active && read);
     if (hasRead && !ports.rotateBeforeRevokeAll)
@@ -159,7 +138,7 @@ export async function revokeAllJubjubGrants(
           if (
             roster.authNonce !== view.authNonce ||
             roster.generation !== originalGeneration ||
-            fingerprint(roster) !== baseline
+            grantRosterFingerprint(roster) !== baseline
           )
             throw new PassportConnectorError(
               'GrantRosterUnsettled',
@@ -213,7 +192,7 @@ export async function revokeAllJubjubGrants(
         if (
           latest.authNonce !== view.authNonce ||
           latest.generation !== roster.generation ||
-          fingerprint(latest) !== baseline
+          grantRosterFingerprint(latest) !== baseline
         )
           throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster changed.');
         flow.checkpoint();
@@ -230,7 +209,7 @@ export async function revokeAllJubjubGrants(
           for (let attempt = 0; attempt < attempts; attempt++) {
             flow.checkpoint();
             const current = await ports.grants.readGrantRoster(hint.address);
-            fingerprint(current);
+            grantRosterFingerprint(current);
             if (
               current.authNonce > view.authNonce &&
               current.generation === generation &&

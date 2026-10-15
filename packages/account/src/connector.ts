@@ -7,6 +7,7 @@ import {
 } from '@input-output-hk/mn-passport-protocol';
 import { fromHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
+import { grantRosterFingerprint } from './grant-roster.js';
 import { createJubjubAccounts } from './jubjub-connector.js';
 import { startFlow, type Flow } from './flow.js';
 import type {
@@ -282,6 +283,115 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           args: [newKey, auth],
           ...flow.ports,
         });
+      }),
+    revokeAllGrants: (options = {}) =>
+      run(options, async (flow) => {
+        if (network.bindingId !== 'acc-s3r1.1' || !ports.grantRoster)
+          throw new PassportConnectorError(
+            'BindingUnsupported',
+            'P-256 revoke-all needs the pinned grants binding and a complete live grant roster.',
+          );
+        const roster = await flow.step('grant.roster', () =>
+          ports.grantRoster!.readGrantRoster(record.address),
+        );
+        const baseline = grantRosterFingerprint(roster);
+        if (roster.entries.some(({ active, read }) => active && read))
+          throw new PassportConnectorError(
+            'BindingUnsupported',
+            'Live read grants require viewing-secret rotation before revoke-all.',
+          );
+        const view = await readView(flow, record);
+        if (!view.booted || view.specVersion !== 3)
+          throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
+        if (view.authNonce !== roster.authNonce)
+          throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster is stale.');
+        const counter = await findCounter(flow, record, view);
+        if (counter === undefined) throw notHeld(record);
+        const publicKey = await authoriser.devicePublicKey();
+        if (publicKey.x !== record.publicKey.x || publicKey.y !== record.publicKey.y)
+          throw new PassportConnectorError(
+            'NotAuthorised',
+            'The selected device does not own this ACC.',
+          );
+        const circuit = 'revoke_all_grants_with_p256';
+        const pure = (await binding()).pureCircuits;
+        if (!pure.challenge_revoke_all_grants_with_p256)
+          throw new PassportConnectorError(
+            'BindingUnsupported',
+            'The binding lacks P-256 grant challenges.',
+          );
+        const challenge = pure.challenge_revoke_all_grants_with_p256(
+          { bytes: fromHex(record.address) },
+          p256(record.publicKey),
+          view.authNonce,
+        );
+        const signed = await flow.step('passkey.sign', () =>
+          authoriser.authorise({
+            account: record.address,
+            circuit,
+            args: [],
+            witnessValues: [],
+            authNonce: view.authNonce,
+            useCounter: counter,
+            challenge,
+            credentialId: record.credentialId,
+          }),
+        );
+        if (
+          signed.scheme !== 'p256-webauthn' ||
+          signed.useCounter !== counter ||
+          signed.pk.x !== record.publicKey.x ||
+          signed.pk.y !== record.publicKey.y
+        )
+          throw new PassportConnectorError('NotAuthorised', 'The signature names another device.');
+        const latest = await flow.step('grant.roster', () =>
+          ports.grantRoster!.readGrantRoster(record.address),
+        );
+        const current = await readView(flow, record);
+        if (
+          latest.authNonce !== view.authNonce ||
+          current.authNonce !== view.authNonce ||
+          latest.generation !== roster.generation ||
+          grantRosterFingerprint(latest) !== baseline
+        )
+          throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster changed.');
+        flow.checkpoint();
+        const tx = await (
+          await chain()
+        ).call({
+          address: record.address,
+          circuit,
+          args: [
+            {
+              pk: p256(record.publicKey),
+              policy: record.policy,
+              authenticator_data: signed.authenticatorData,
+              sig: signed.sig,
+              use_counter: counter,
+            },
+          ],
+          ...flow.ports,
+        });
+        const generation = (roster.generation + 1n) & ((1n << 32n) - 1n);
+        await flow.step('grant.roster', async () => {
+          for (let attempt = 0; attempt < 30; attempt++) {
+            flow.checkpoint();
+            const settled = await ports.grantRoster!.readGrantRoster(record.address);
+            grantRosterFingerprint(settled);
+            if (
+              settled.authNonce > view.authNonce &&
+              settled.generation === generation &&
+              settled.entries.length === 0
+            )
+              return;
+            if (attempt < 29) await sleep(1000);
+          }
+          throw new PassportConnectorError(
+            'GrantRosterUnsettled',
+            'The submitted revoke-all did not clear the live ACC grant map.',
+          );
+        });
+        return { ...tx, status: 'cleared' as const, generation, nextUseCounter: counter + 1n };
       }),
   });
 
