@@ -163,8 +163,8 @@ and `assertionMaterial`.
   migration path exists. For disposable localnet accounts, create a fresh passkey and account.
 - **The ACC secret is random and sealed.** The passkey PRF root derives a network-specific X25519
   reader key under `lace-passport:reader:v1`, while the ACC's random viewing secret determines
-  `enc_key`. The browser publishes a type `0xd1` device envelope and P-256 type `0xd4`
-  registration. The wallet seed remains independent. Rotation is hidden until the page has
+  `enc_key`. The browser publishes a type `0xd1` device envelope and P-256 type `0xd5`
+  registration with the passkey's WebAuthn policy. The wallet seed remains independent. Rotation is hidden until the page has
   verified surviving readers, holdings and read-grant targets. See
   [`docs/prototype/keys.md`](../docs/prototype/keys.md).
 - **The service binds loopback** (`127.0.0.1`). CORS lets only the dapp origin read its answers,

@@ -116,3 +116,31 @@ test('P-256 registration uses a distinct authenticated type and canonical compre
     sealDeviceRegistration(rosterKey, { ...reader, devicePublicKey: '02' + 'ff'.repeat(32) }),
   );
 });
+
+test('policy-bearing P-256 registration authenticates the policy needed for live entry lookup', async () => {
+  const rosterKey = new Uint8Array(32).fill(13);
+  const reader = {
+    readerPublicKey: 'ab'.repeat(32),
+    scheme: /** @type {const} */ ('p256-webauthn'),
+    devicePublicKey: hex(p256.Point.BASE.toBytes(true)),
+    policy: {
+      rp_id_hash: new Uint8Array(32).fill(6),
+      origin: new Uint8Array(21).fill(7),
+    },
+  };
+  const entry = await sealDeviceRegistration(rosterKey, reader);
+  assert.equal(entry.length, 192);
+  assert.deepEqual([...entry.subarray(0, 2)], [0xd5, 1]);
+  assert.ok(entry.subarray(148).every((byte) => byte === 0));
+  assert.deepEqual(await openDeviceRegistration(rosterKey, entry), reader);
+  const oldType = entry.slice();
+  oldType[0] = 0xd4;
+  assert.equal(await openDeviceRegistration(rosterKey, oldType), null);
+  await assert.rejects(
+    sealDeviceRegistration(rosterKey, {
+      ...reader,
+      policy: { ...reader.policy, origin: new Uint8Array(20) },
+    }),
+    /21-byte origin/,
+  );
+});

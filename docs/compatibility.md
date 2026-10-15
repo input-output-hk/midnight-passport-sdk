@@ -36,8 +36,10 @@ composition; it does not establish interoperability inside Lace's hosted module.
 ## Lace consumer seam check
 
 The SDK keyring accepts Lace's JubJub device registration type `0xd2` and adds
-type `0xd4` for a compressed 33-byte P-256 authoriser key under a distinct
-encryption domain. The browser's P-256 create/open flow now uses a random,
+type `0xd5` for a compressed 33-byte P-256 authoriser key and its WebAuthn
+policy under a distinct encryption domain. The earlier `0xd4` key-only record
+can still open, but lacks the policy needed to resolve another live P-256
+device. The browser's P-256 create/open flow uses a random,
 sealed viewing secret and publishes its entries on chain. Lace PR #2845 reads
 only the JubJub registration. The P-256 record is therefore an SDK extension,
 not evidence of Lace runtime compatibility. P-256 rotation and recovery with a

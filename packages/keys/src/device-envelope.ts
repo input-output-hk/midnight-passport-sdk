@@ -12,6 +12,7 @@ const TAG_LENGTH = 16;
 const ENVELOPE_TYPE = 0xd1;
 const REGISTRATION_TYPE = 0xd2;
 const P256_REGISTRATION_TYPE = 0xd4;
+const P256_POLICY_REGISTRATION_TYPE = 0xd5;
 const SUITE = 1;
 const ENVELOPE_EPHEMERAL_OFFSET = 34;
 const ENVELOPE_NONCE_OFFSET = 66;
@@ -21,6 +22,7 @@ const ENVELOPE_TAG_DOMAIN = utf8('lace:passport:envelope-tag:v1');
 const ENVELOPE_KEY_INFO = utf8('lace:passport:device-envelope:v1');
 const REGISTRATION_KEY_INFO = utf8('lace:passport:device-registration:v1');
 const P256_REGISTRATION_KEY_INFO = utf8('mn-passport:device-registration:p256:v1');
+const P256_POLICY_REGISTRATION_KEY_INFO = utf8('mn-passport:device-registration:p256-policy:v1');
 
 export interface AccountSecrets {
   readonly secret: Uint8Array;
@@ -209,12 +211,27 @@ export async function sealDeviceRegistration(
   if (reader.scheme && reader.scheme !== 'jubjub-schnorr' && reader.scheme !== 'p256-webauthn')
     throw new Error('unsupported device registration scheme');
   const isP256 = reader.scheme === 'p256-webauthn';
+  if (!isP256 && reader.policy) throw new Error('JubJub registration cannot carry P-256 policy');
+  if (
+    reader.policy &&
+    (!(reader.policy.rp_id_hash instanceof Uint8Array) ||
+      reader.policy.rp_id_hash.length !== 32 ||
+      !(reader.policy.origin instanceof Uint8Array) ||
+      reader.policy.origin.length !== 21)
+  )
+    throw new Error('P-256 registration policy must be 32-byte RP hash and 21-byte origin');
+  const hasPolicy = isP256 && reader.policy !== undefined;
   const plaintext = concat(
     hexBytes(reader.readerPublicKey),
     isP256 ? p256Bytes(reader.devicePublicKey) : hexBytes(reader.devicePublicKey),
+    ...(hasPolicy ? [reader.policy!.rp_id_hash, reader.policy!.origin] : []),
   );
   const entry = new Uint8Array(ENTRY_LENGTH);
-  entry[0] = isP256 ? P256_REGISTRATION_TYPE : REGISTRATION_TYPE;
+  entry[0] = hasPolicy
+    ? P256_POLICY_REGISTRATION_TYPE
+    : isP256
+      ? P256_REGISTRATION_TYPE
+      : REGISTRATION_TYPE;
   entry[1] = SUITE;
   entry.set(crypto.getRandomValues(new Uint8Array(NONCE_LENGTH)), REGISTRATION_NONCE_OFFSET);
   try {
@@ -222,7 +239,14 @@ export async function sealDeviceRegistration(
       entry,
       REGISTRATION_NONCE_OFFSET,
       plaintext,
-      await aeadKey(rosterKey, isP256 ? P256_REGISTRATION_KEY_INFO : REGISTRATION_KEY_INFO),
+      await aeadKey(
+        rosterKey,
+        hasPolicy
+          ? P256_POLICY_REGISTRATION_KEY_INFO
+          : isP256
+            ? P256_REGISTRATION_KEY_INFO
+            : REGISTRATION_KEY_INFO,
+      ),
     );
     return entry;
   } finally {
@@ -236,17 +260,25 @@ export async function openDeviceRegistration(
   entry: Uint8Array,
 ): Promise<DeviceReader | null> {
   require32(rosterKey, 'roster key');
-  const isP256 = recordOf(entry, P256_REGISTRATION_TYPE);
+  const hasPolicy = recordOf(entry, P256_POLICY_REGISTRATION_TYPE);
+  const isP256 = hasPolicy || recordOf(entry, P256_REGISTRATION_TYPE);
   if (!isP256 && !recordOf(entry, REGISTRATION_TYPE)) return null;
   const plaintext = await openFrom(
     entry,
     REGISTRATION_NONCE_OFFSET,
-    isP256 ? 65 : 64,
-    await aeadKey(rosterKey, isP256 ? P256_REGISTRATION_KEY_INFO : REGISTRATION_KEY_INFO),
+    hasPolicy ? 118 : isP256 ? 65 : 64,
+    await aeadKey(
+      rosterKey,
+      hasPolicy
+        ? P256_POLICY_REGISTRATION_KEY_INFO
+        : isP256
+          ? P256_REGISTRATION_KEY_INFO
+          : REGISTRATION_KEY_INFO,
+    ),
   );
   if (!plaintext) return null;
   try {
-    const devicePublicKey = hex(plaintext.subarray(32));
+    const devicePublicKey = hex(plaintext.subarray(32, isP256 ? 65 : 64));
     if (isP256) {
       try {
         p256Bytes(devicePublicKey);
@@ -258,6 +290,12 @@ export async function openDeviceRegistration(
       readerPublicKey: hex(plaintext.subarray(0, 32)),
       devicePublicKey,
       ...(isP256 && { scheme: 'p256-webauthn' as const }),
+      ...(hasPolicy && {
+        policy: {
+          rp_id_hash: plaintext.slice(65, 97),
+          origin: plaintext.slice(97, 118),
+        },
+      }),
     };
   } finally {
     plaintext.fill(0);

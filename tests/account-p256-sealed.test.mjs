@@ -23,7 +23,7 @@ test('P-256 create publishes sealed key entries and reload opens the ledger key'
   assert.ok(ledger);
   assert.deepEqual(
     ledger.inboxEntries.map((entry) => entry[0]),
-    [0xd1, 0xd4],
+    [0xd1, 0xd5],
   );
   assert.equal(ledger.authNonce, 2n);
   assert.notDeepEqual(ledger.encKey, await fake.encryptionKey.publicKey('undeployed'));

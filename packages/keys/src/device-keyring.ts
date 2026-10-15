@@ -47,6 +47,8 @@ const validReader = (reader: DeviceReader): void => {
   const readKey = fromHex(reader.readerPublicKey);
   if (reader.scheme && reader.scheme !== 'jubjub-schnorr' && reader.scheme !== 'p256-webauthn')
     throw new Error('unsupported device registration scheme');
+  if (reader.policy && reader.scheme !== 'p256-webauthn')
+    throw new Error('only P-256 registrations carry WebAuthn policy');
   if (reader.scheme === 'p256-webauthn') {
     if (!/^(02|03)[0-9a-f]{64}$/.test(reader.devicePublicKey))
       throw new Error('P-256 device key must be canonical compressed SEC1 hex');
@@ -185,6 +187,7 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
     {
       devicePublicKey,
       scheme,
+      policy,
       keyring,
       registrations = [],
       readers = [],
@@ -197,6 +200,7 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
         readerPublicKey: hex(readerPublicKey),
         devicePublicKey,
         ...(scheme && { scheme }),
+        ...(policy && { policy }),
       };
       validReader(self);
       if (!keyring) {

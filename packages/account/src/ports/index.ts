@@ -212,6 +212,8 @@ export interface DeviceReader {
   /** Omitted for Lace's v1 compressed JubJub registration. */
   readonly scheme?: 'jubjub-schnorr' | 'p256-webauthn';
   readonly devicePublicKey: string;
+  /** P-256 policy carried by the versioned registration so its ACC entry can be resolved. */
+  readonly policy?: WebAuthnPolicy;
 }
 export interface LiveDeviceReader extends DeviceReader {
   readonly epoch: bigint;
@@ -227,6 +229,7 @@ export interface CreateAccountKeys {
   readonly devicePublicKey: string;
   /** Omitted for Lace's v1 compressed JubJub registration. */
   readonly scheme?: DeviceReader['scheme'];
+  readonly policy?: WebAuthnPolicy;
   readonly keyring?: AccountKeyring;
   readonly registrations?: readonly Uint8Array[];
   readonly readers?: readonly LiveDeviceReader[];

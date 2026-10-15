@@ -5,7 +5,7 @@
 Both browser authoriser arms now use a random 32-byte ACC viewing secret. Its X25519 public key
 is the live `enc_key`; the secret is sealed in a type `0xd1` ACC inbox envelope to a reader key
 derived from the passkey PRF under `lace-passport:reader:v1` and the network id. P-256 publishes
-a separate type `0xd4` registration with its compressed WebAuthn public key. On reload,
+a separate type `0xd5` registration with its compressed WebAuthn public key and policy. On reload,
 `openAccount` checks the passkey's live device entry and opens the envelope against the ledger's
 `enc_key`. The wallet seed and P-256 signing key remain separate. A second enrolled reader could
 recover the secret after one device is lost, but P-256 enrollment and roster-safe rotation are

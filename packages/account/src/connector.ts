@@ -59,7 +59,7 @@ const validSealedEntries = (entries: readonly Uint8Array[] | undefined): boolean
   entries[0][0] === 0xd1 &&
   entries[0][1] === 1 &&
   entries[1]?.length === 192 &&
-  entries[1][0] === 0xd4 &&
+  (entries[1][0] === 0xd4 || entries[1][0] === 0xd5) &&
   entries[1][1] === 1;
 const isSealedP256 = (hint: P256Hint): hint is SealedP256Hint =>
   validSealedEntries(hint.keyEntries);
@@ -264,7 +264,10 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           device?.kind !== 'device' ||
           device.device.scheme !== 'p256-webauthn' ||
           device.device.readerPublicKey !== toHex(reader) ||
-          device.device.devicePublicKey !== deviceKey
+          device.device.devicePublicKey !== deviceKey ||
+          (device.device.policy !== undefined &&
+            (!equalBytes(device.device.policy.rp_id_hash, record.policy.rp_id_hash) ||
+              !equalBytes(device.device.policy.origin, record.policy.origin)))
         )
           throw new Error('the sealed registration does not name this device');
       }
@@ -584,6 +587,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
                 viewingKey.createKeys(networkId, {
                   scheme: 'p256-webauthn',
                   devicePublicKey: await authoriser.devicePublicKeyHex!(),
+                  policy: device.policy,
                 }),
               )
             : undefined;
@@ -591,7 +595,11 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             ? keys.encKey
             : await flow.step('passkey.prf', () => encryptionKey.publicKey(networkId));
           const salt = random(32);
-          if (keys && !validSealedEntries([...keys.envelopes, ...keys.registrations]))
+          if (
+            keys &&
+            (!validSealedEntries([...keys.envelopes, ...keys.registrations]) ||
+              keys.registrations[0]?.[0] !== 0xd5)
+          )
             throw new PassportConnectorError(
               'InternalError',
               'P-256 keyring did not provide one envelope and one registration.',
