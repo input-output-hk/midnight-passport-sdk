@@ -30,6 +30,62 @@ export interface GrantPublicationJournal extends GrantIssueJournal {
   load(account: string, grantId: string): Promise<StagedJubjubGrant | undefined>;
   /** Called only after both sealed parts are observed in the live ACC inbox. */
   markPublished(account: string, grantId: string): Promise<void>;
+  /** Optional until the host offers crash recovery through `recoverPendingGrants`. */
+  pending?(account: string): Promise<readonly string[]>;
+}
+
+/** Enumeration lets an owner recover submitted issues after losing its in-memory grant ID. */
+export interface GrantRecoveryJournal extends GrantPublicationJournal {
+  pending(account: string): Promise<readonly string[]>;
+}
+
+export interface RecoverPendingJubjubGrantsPorts extends Omit<PublishJubjubGrantPorts, 'journal'> {
+  readonly journal: GrantRecoveryJournal;
+}
+
+export interface RecoveredJubjubGrants {
+  readonly published: readonly PublishedJubjubGrant[];
+  /** Staged openings absent from the current active roster; no new issue is submitted. */
+  readonly unsettledGrantIds: readonly string[];
+}
+
+/** Publish staged grants present on chain; retain absent openings for later reconciliation. */
+export async function recoverPendingJubjubGrants(
+  input: { readonly hint: AccountHint } & FlowOptions,
+  ports: RecoverPendingJubjubGrantsPorts,
+): Promise<RecoveredJubjubGrants> {
+  const flow = startFlow(input, ports.random ?? random);
+  try {
+    const ids = await flow.step('grant.stage', () => ports.journal.pending(input.hint.address));
+    if (ids.length > 256 || ids.some((id) => !validGrantId(id)) || new Set(ids).size !== ids.length)
+      throw new PassportConnectorError('GrantScopeInvalid', 'Invalid pending grant journal.');
+    const active = new Set(
+      await flow.step('grant.roster', () => ports.grants.readActiveGrantIds(input.hint.address)),
+    );
+    const published: PublishedJubjubGrant[] = [];
+    const unsettledGrantIds: string[] = [];
+    for (const grantId of ids) {
+      flow.checkpoint();
+      if (!active.has(grantId)) {
+        unsettledGrantIds.push(grantId);
+        continue;
+      }
+      published.push(
+        await publishJubjubGrantBookkeeping(
+          {
+            hint: input.hint,
+            grantId,
+            ...(input.signal && { signal: input.signal }),
+            ...(input.onEvent && { onEvent: input.onEvent }),
+          },
+          ports,
+        ),
+      );
+    }
+    return { published, unsettledGrantIds };
+  } catch (error) {
+    throw flow.fail(error);
+  }
 }
 
 export interface PublishJubjubGrantInput extends FlowOptions {

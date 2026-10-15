@@ -4,6 +4,8 @@ import { jubjub } from '@noble/curves/misc.js';
 import {
   issueAndPublishJubjubGrant,
   issueJubjubGrantCall,
+  publishJubjubGrantBookkeeping,
+  SubmittedGrantSettlementError,
 } from '../packages/account/dist/index.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 
@@ -257,7 +259,7 @@ test('read and shielded grants are refused before a key ceremony', async () => {
   }
 });
 
-test('settled issue returns active only after both sealed grant parts are confirmed', async () => {
+test('interrupted settlement exposes the submitted grant ID and resumes without another issue', async () => {
   const { ports, staged, setActiveIds } = fixture();
   /** @type {Uint8Array[]} */
   const inbox = [];
@@ -266,6 +268,7 @@ test('settled issue returns active only after both sealed grant parts are confir
   let current = record;
   let nonce = 5n;
   let published = false;
+  let failMark = true;
   const opening = () => {
     const value = staged[0];
     assert.ok(value);
@@ -292,6 +295,10 @@ test('settled issue returns active only after both sealed grant parts are confir
       load: async () => opening(),
       markPublished: async () => {
         assert.equal(inbox.length, 2);
+        if (failMark) {
+          failMark = false;
+          throw new Error('durable journal temporarily unavailable');
+        }
         published = true;
       },
     },
@@ -375,10 +382,21 @@ test('settled issue returns active only after both sealed grant parts are confir
         }),
     },
   };
-  const result = await issueAndPublishJubjubGrant(input, settled);
-  assert.equal(result.status, 'active');
-  assert.equal(result.txHash, 'tx');
-  assert.deepEqual(result.appendTxHashes, ['append-1', 'append-2']);
-  assert.equal(result.nextUseCounter, 3n);
+  /** @type {SubmittedGrantSettlementError | undefined} */
+  let failure;
+  try {
+    await issueAndPublishJubjubGrant(input, settled);
+  } catch (error) {
+    assert.ok(error instanceof SubmittedGrantSettlementError);
+    failure = error;
+  }
+  assert.ok(failure);
+  assert.equal(failure.txHash, 'tx');
+  assert.equal(failure.grantId, opening().bookkeeping.grantId);
+  assert.equal(published, false);
+  const resumed = await publishJubjubGrantBookkeeping({ hint, grantId: failure.grantId }, settled);
+  assert.equal(resumed.status, 'active');
+  assert.deepEqual(resumed.appendTxHashes, []);
+  assert.equal(resumed.nextUseCounter, 3n);
   assert.equal(published, true);
 });

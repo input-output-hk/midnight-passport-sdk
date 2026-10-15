@@ -398,6 +398,7 @@ test('JubJub account issueGrant pins the host origin and returns after sealed pu
       markPublished: async () => {
         published = true;
       },
+      pending: async () => (staged && !published ? [staged.bookkeeping.grantId] : []),
     },
   });
   const account = await accounts.openAccount();
@@ -421,6 +422,11 @@ test('JubJub account issueGrant pins the host origin and returns after sealed pu
   assert.equal(result.appendTxHashes.length, 2);
   assert.equal(local.localUseCounter, 5n);
   assert.equal(published, true);
+  assert.ok(account.recoverPendingGrants);
+  assert.deepEqual(await account.recoverPendingGrants(), {
+    published: [],
+    unsettledGrantIds: [],
+  });
   assert.ok(account.revokeGrant);
   const revoked = await account.revokeGrant(result.grantId);
   assert.equal(revoked.status, 'revoked');

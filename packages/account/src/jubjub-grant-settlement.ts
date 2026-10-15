@@ -1,8 +1,10 @@
 import type { PassportGrantIssueResult } from '@input-output-hk/mn-passport-protocol';
+import { PassportConnectorError, toPassportError } from './errors.js';
 import {
   issueJubjubGrantCall,
   type IssueJubjubGrantCallInput,
   type IssueJubjubGrantCallPorts,
+  type SubmittedJubjubGrantCall,
 } from './jubjub-grant-issue.js';
 import {
   publishJubjubGrantBookkeeping,
@@ -12,6 +14,23 @@ import {
 export type IssueAndPublishJubjubGrantPorts = IssueJubjubGrantCallPorts & PublishJubjubGrantPorts;
 
 export type ActiveJubjubGrantResult = PassportGrantIssueResult;
+
+/** An accepted issue whose publication did not finish; the caller can resume by grant ID. */
+export class SubmittedGrantSettlementError extends PassportConnectorError {
+  readonly grantId: string;
+  readonly txHash: string;
+
+  constructor(error: unknown, submitted: SubmittedJubjubGrantCall) {
+    const cause = toPassportError(error);
+    super(cause.code, cause.message, {
+      cause,
+      retryable: cause.retryable,
+      ...(cause.step !== undefined && { step: cause.step }),
+    });
+    this.grantId = submitted.grantId;
+    this.txHash = submitted.txHash;
+  }
+}
 
 /**
  * Issue an unshielded spend grant and publish its sealed bookkeeping before returning it as active.
@@ -23,15 +42,20 @@ export async function issueAndPublishJubjubGrant(
   ports: IssueAndPublishJubjubGrantPorts,
 ): Promise<ActiveJubjubGrantResult> {
   const submitted = await issueJubjubGrantCall(input, ports);
-  const published = await publishJubjubGrantBookkeeping(
-    {
-      hint: input.hint,
-      grantId: submitted.grantId,
-      ...(input.signal && { signal: input.signal }),
-      ...(input.onEvent && { onEvent: input.onEvent }),
-    },
-    ports,
-  );
+  let published;
+  try {
+    published = await publishJubjubGrantBookkeeping(
+      {
+        hint: input.hint,
+        grantId: submitted.grantId,
+        ...(input.signal && { signal: input.signal }),
+        ...(input.onEvent && { onEvent: input.onEvent }),
+      },
+      ports,
+    );
+  } catch (error) {
+    throw new SubmittedGrantSettlementError(error, submitted);
+  }
   return {
     txHash: submitted.txHash,
     ...(submitted.blockHeight !== undefined && { blockHeight: submitted.blockHeight }),

@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { publishJubjubGrantBookkeeping } from '../packages/account/dist/index.js';
+import {
+  publishJubjubGrantBookkeeping,
+  recoverPendingJubjubGrants,
+} from '../packages/account/dist/index.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 
 /** @param {Uint8Array} bytes */
@@ -269,4 +272,41 @@ test('revocation during publication leaves the journal staged', async () => {
   });
   assert.equal(published(), false);
   assert.ok(!calls.includes('published'));
+});
+
+test('recovery publishes active pending grants and leaves absent submissions staged', async () => {
+  const active = fixture();
+  const recovered = await recoverPendingJubjubGrants(
+    { hint },
+    {
+      ...active.ports,
+      journal: { ...active.ports.journal, pending: async () => [grantId] },
+    },
+  );
+  assert.deepEqual(recovered.unsettledGrantIds, []);
+  assert.deepEqual(
+    recovered.published.map((value) => value.grantId),
+    [grantId],
+  );
+  assert.equal(active.published(), true);
+  const absent = fixture();
+  absent.revoke();
+  const deferred = await recoverPendingJubjubGrants(
+    { hint },
+    { ...absent.ports, journal: { ...absent.ports.journal, pending: async () => [grantId] } },
+  );
+  assert.deepEqual(deferred, { published: [], unsettledGrantIds: [grantId] });
+  assert.ok(!absent.calls.includes('session'));
+});
+
+test('recovery rejects duplicate pending IDs before opening a key session', async () => {
+  const { ports, calls } = fixture();
+  await assert.rejects(
+    recoverPendingJubjubGrants(
+      { hint },
+      { ...ports, journal: { ...ports.journal, pending: async () => [grantId, grantId] } },
+    ),
+    { code: 'GrantScopeInvalid' },
+  );
+  assert.ok(!calls.includes('session'));
 });

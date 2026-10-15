@@ -130,6 +130,16 @@ export interface PassportGrantRevokeResult extends PassportTxResult {
   readonly nextUseCounter: bigint;
 }
 
+export interface PassportGrantRecoveryResult {
+  readonly published: readonly {
+    readonly grantId: string;
+    readonly status: 'active';
+    readonly appendTxHashes: readonly string[];
+    readonly nextUseCounter: bigint;
+  }[];
+  readonly unsettledGrantIds: readonly string[];
+}
+
 export interface PassportAccount {
   readonly address: string;
   readonly networkId: string;
@@ -152,6 +162,8 @@ export interface PassportAccount {
   issueGrant?(scope: GrantScopeInput, options?: FlowOptions): Promise<PassportGrantIssueResult>;
   /** JubJub owner revoke for a grant without read access; confirms the inactive tombstone. */
   revokeGrant?(grantId: string, options?: FlowOptions): Promise<PassportGrantRevokeResult>;
+  /** Resume durable grant publication without submitting another issue call. */
+  recoverPendingGrants?(options?: FlowOptions): Promise<PassportGrantRecoveryResult>;
 }
 
 export interface PassportConnectorAPI {

@@ -14,6 +14,8 @@ import { startFlow, type Flow } from './flow.js';
 import { readVerifiedHoldings } from './holdings.js';
 import { issueAndPublishJubjubGrant } from './jubjub-grant-settlement.js';
 import type { IssueJubjubGrantPure } from './jubjub-grant-issue.js';
+import { recoverPendingJubjubGrants } from './jubjub-grant-publication.js';
+import type { GrantRecoveryJournal } from './jubjub-grant-publication.js';
 import { revokeAndConfirmJubjubGrant } from './jubjub-grant-revoke.js';
 import type { RevokeJubjubGrantPure } from './jubjub-grant-revoke.js';
 import { JUBJUB_READER_SCAN_LIMIT, resolveJubjubReaders } from './jubjub-readers.js';
@@ -1063,6 +1065,36 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           authoriser,
           records: ports.records,
           grants: ports.grantDetails,
+          random: fresh,
+        },
+      );
+    },
+    recoverPendingGrants: async (options = {}) => {
+      if (
+        !ports.records ||
+        !ports.grants ||
+        !ports.grantJournal ||
+        typeof (ports.grantJournal as Partial<GrantRecoveryJournal>).pending !== 'function'
+      )
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'Grant recovery needs local records, a live roster and pending journal enumeration.',
+        );
+      if (network.bindingId !== 'acc-s3r1.1')
+        throw new PassportConnectorError('BindingUnsupported', 'Unsupported ACC grant binding.');
+      const pure = requirePure((await readBinding()).pureCircuits);
+      return recoverPendingJubjubGrants(
+        { hint: record, ...options },
+        {
+          bindingId: 'acc-s3r1.1',
+          networkId,
+          pure,
+          chain: await readChain(),
+          grants: ports.grants,
+          journal: ports.grantJournal as GrantRecoveryJournal,
+          viewingKey,
+          authoriser,
+          records: ports.records,
           random: fresh,
         },
       );
