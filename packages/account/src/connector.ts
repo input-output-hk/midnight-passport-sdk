@@ -2,7 +2,7 @@ import {
   PASSPORT_API_VERSION,
   type CreateAccountStep,
   type FlowOptions,
-  type P256DeviceReader,
+  type PassportDeviceReader,
   type DeviceEnrollmentResult,
   type DeviceRemovalResult,
   type PassportGrantRevokeResult,
@@ -444,40 +444,57 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     return active;
   };
 
-  const addP256Device = (record: P256Hint, reader: P256DeviceReader, options: FlowOptions = {}) =>
+  const addP256Device = (
+    record: P256Hint,
+    reader: PassportDeviceReader,
+    options: FlowOptions = {},
+  ) =>
     run(options, async (flow): Promise<DeviceEnrollmentResult> => {
       const keyring = viewingKey;
-      const decode = keyring?.decodeP256DevicePublicKey;
+      const joiningP256 = 'scheme' in reader && reader.scheme === 'p256-webauthn';
+      const decodeP256 = keyring?.decodeP256DevicePublicKey;
+      const decodeJubjub = keyring?.decodeDevicePublicKey;
       const pure = (await binding()).pureCircuits;
       if (
         !isSealedP256(record) ||
         !keyring ||
-        !decode ||
+        !decodeP256 ||
+        !decodeJubjub ||
         !pure.challenge_add_device_with_p256 ||
+        !pure.derive_device_entry_with_jubjub ||
         !ports.readGrants ||
         !authoriser.withKeySession
       )
         throw new PassportConnectorError(
           'BindingUnsupported',
-          'P-256 enrollment needs a sealed keyring, P-256 decoder, key session and live read-grant source.',
+          'P-256 enrollment needs a sealed keyring, joining-device decoder, key session and live read-grant source.',
         );
       if (
         !/^[0-9a-f]{64}$/.test(reader.readerPublicKey) ||
-        !reader.policy ||
-        !(reader.policy.rp_id_hash instanceof Uint8Array) ||
-        reader.policy.rp_id_hash.length !== 32 ||
-        !(reader.policy.origin instanceof Uint8Array) ||
-        reader.policy.origin.length !== 21
+        (!joiningP256 && 'scheme' in reader) ||
+        (joiningP256 &&
+          (!reader.policy ||
+            !(reader.policy.rp_id_hash instanceof Uint8Array) ||
+            reader.policy.rp_id_hash.length !== 32 ||
+            !(reader.policy.origin instanceof Uint8Array) ||
+            reader.policy.origin.length !== 21)) ||
+        (!joiningP256 && 'policy' in reader)
       )
         throw new PassportConnectorError(
           'DeviceRosterInvalid',
-          'The joining reader or WebAuthn policy is malformed.',
+          'The joining reader or authoriser policy is malformed.',
         );
-      const point = decode(reader.devicePublicKey);
-      if (!point || (point.x === record.publicKey.x && point.y === record.publicKey.y))
+      const p256Point = joiningP256 ? decodeP256(reader.devicePublicKey) : undefined;
+      const jubjubPoint = joiningP256 ? undefined : decodeJubjub(reader.devicePublicKey);
+      if (
+        (joiningP256 &&
+          (!p256Point ||
+            (p256Point.x === record.publicKey.x && p256Point.y === record.publicKey.y))) ||
+        (!joiningP256 && !jubjubPoint)
+      )
         throw new PassportConnectorError(
           'DeviceRosterInvalid',
-          'The joining key must identify another valid P-256 device.',
+          'The joining key must identify another valid device.',
         );
       const read = async () => {
         const view = await flow.step('chain.read', async () =>
@@ -517,13 +534,15 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           .map(toHex)
           .sort();
       let baseline = otherEntries(initial.deviceEntries, ownerEntry(initialCounter));
-      const target = pure.derive_device_entry_with_p256(
-        { bytes: fromHex(record.address) },
-        point,
-        reader.policy,
-        initial.deviceEpoch,
-        0n,
-      );
+      const target = joiningP256
+        ? pure.derive_device_entry_with_p256(
+            self,
+            p256Point!,
+            reader.policy,
+            initial.deviceEpoch,
+            0n,
+          )
+        : pure.derive_device_entry_with_jubjub(self, jubjubPoint!, initial.deviceEpoch, 0n);
       if (initial.deviceEntries.some((held) => equalBytes(held, target)))
         throw new PassportConnectorError(
           'DeviceRosterInvalid',
@@ -658,9 +677,12 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
                   item.device.devicePublicKey === reader.devicePublicKey) &&
                 (item.device.readerPublicKey !== reader.readerPublicKey ||
                   item.device.devicePublicKey !== reader.devicePublicKey ||
-                  !item.device.policy ||
-                  !equalBytes(item.device.policy.rp_id_hash, reader.policy.rp_id_hash) ||
-                  !equalBytes(item.device.policy.origin, reader.policy.origin)),
+                  (joiningP256
+                    ? item.device.scheme !== 'p256-webauthn' ||
+                      !item.device.policy ||
+                      !equalBytes(item.device.policy.rp_id_hash, reader.policy.rp_id_hash) ||
+                      !equalBytes(item.device.policy.origin, reader.policy.origin)
+                    : item.device.scheme === 'p256-webauthn' || Boolean(item.device.policy))),
             )
           )
             throw new PassportConnectorError(
@@ -1277,11 +1299,6 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     // A copy: the caller may not alter the id the account's own ceremonies are pinned to.
     credentialId: record.credentialId.slice(),
     addDevice: (reader, options) => {
-      if (!('scheme' in reader) || reader.scheme !== 'p256-webauthn')
-        throw new PassportConnectorError(
-          'DeviceRosterInvalid',
-          'P-256 enrollment needs a P-256 key and WebAuthn policy.',
-        );
       return addP256Device(record, reader, options);
     },
     async state() {

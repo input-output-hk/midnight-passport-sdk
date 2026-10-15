@@ -69,8 +69,9 @@ can still open, but lacks the policy needed to resolve another live P-256
 device. The browser's P-256 create/open flow uses a random,
 sealed viewing secret and publishes its entries on chain. Lace PR #2845 reads
 only the JubJub registration. The P-256 record is therefore an SDK extension,
-not evidence of Lace runtime compatibility. P-256 rotation and recovery with a
-second device remain open.
+not evidence of Lace runtime compatibility. SDK-side P-256 rotation and
+second-device recovery have since passed on the pinned localnet; Lace-hosted
+runtime validation remains open.
 
 The fixture in `tests/fixtures/lace-seams.mjs` tracks
 [lace-platform PR #2845](https://github.com/input-output-hk/lace-platform/pull/2845)
@@ -212,6 +213,17 @@ records the 15 transaction IDs and the asserted grant and ACC state. The probe's
 opening journal lives only for that run; production hosts still need durable
 grant openings and a chain-backed holding source. This validates the SDK
 composition on its own service, not Lace's hosted runtime or real WebAuthn.
+
+A [mixed-device probe](../experiments/acc-0.35/sdk-mixed-device-recovery-node.mjs)
+then enrolled a JubJub reader from a sealed P-256 owner account on the same
+pinned localnet. The owner published a type `0xd2` registration and signed
+`add_device_with_p256`; the joiner verified its live JubJub entry and current
+registration, opened the ledger-matched sealed viewing key by address, saved
+its hint, and reopened through `openAccount()`. The [evidence](../experiments/acc-0.35/results/sdk-mixed-device-recovery-node.json)
+records six proof-backed account transactions. This covers a surviving
+JubJub device without a preexisting directory hint, using software passkeys
+and an empty read-grant roster. Mixed-device rotation with active grants and
+Lace's hosted runtime remain separate validation gates.
 
 | Lace seam | SDK port | Current result |
 | --- | --- | --- |
