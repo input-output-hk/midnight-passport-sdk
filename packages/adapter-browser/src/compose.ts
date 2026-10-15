@@ -2,6 +2,7 @@ import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
 import type {
   AccountDirectory,
   AccountRecordStore,
+  ActiveGrantSnapshotSource,
   ActiveReadGrantTargetSource,
   Authoriser,
   Deployer,
@@ -13,6 +14,7 @@ import type {
   Submitter,
   VerifiedHoldingSource,
 } from '@input-output-hk/mn-passport-account/ports';
+import type { GrantPublicationJournal } from '@input-output-hk/mn-passport-account';
 import { webauthnPasskey } from '@input-output-hk/mn-passport-adapter-webauthn';
 import {
   recipeDeviceKeyring,
@@ -41,6 +43,8 @@ export interface BrowserPassportConfig {
   readonly directory: AccountDirectory;
   readonly holdings?: VerifiedHoldingSource;
   readonly readGrants?: ActiveReadGrantTargetSource;
+  readonly grants?: ActiveGrantSnapshotSource;
+  readonly grantJournal?: GrantPublicationJournal;
   readonly records?: AccountRecordStore;
   readonly random?: (length: number) => Uint8Array;
 }
@@ -98,6 +102,9 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
     directory: config.directory,
     ...(config.holdings && { holdings: config.holdings }),
     ...(config.readGrants && { readGrants: config.readGrants }),
+    ...(config.grants && { grants: config.grants }),
+    ...(config.grantJournal && { grantJournal: config.grantJournal }),
+    grantOrigin: config.passkey.rpId,
     ...(config.records && { records: config.records }),
     ...(config.random && { random: config.random }),
   });

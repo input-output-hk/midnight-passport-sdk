@@ -15,6 +15,7 @@ import type {
   WebAuthnPolicy,
 } from '../seams.js';
 import type { GrantScopeInput } from '../grant-scope.js';
+import type { GrantPublicationJournal } from '../jubjub-grant-publication.js';
 
 /** The host reads these ids from the live ACC grants map, not local bookkeeping. */
 export interface ActiveGrantSource {
@@ -425,6 +426,12 @@ export interface PassportPorts {
   readonly viewingKey?: AccountViewingKey;
   readonly holdings?: VerifiedHoldingSource;
   readonly readGrants?: ActiveReadGrantTargetSource;
+  /** Live ACC grant map, used to pin issue consent and confirm settlement. */
+  readonly grants?: ActiveGrantSnapshotSource;
+  /** Must outlive crashes between issue submission and sealed bookkeeping publication. */
+  readonly grantJournal?: GrantPublicationJournal;
+  /** Trusted relying party id; never taken from a DApp's grant request. */
+  readonly grantOrigin?: string;
   readonly chain: Lazy<Chain>;
   readonly deployer: Deployer;
   readonly directory?: AccountDirectory;

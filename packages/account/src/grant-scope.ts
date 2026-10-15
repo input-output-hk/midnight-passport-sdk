@@ -1,35 +1,16 @@
 import { jubjub } from '@noble/curves/misc.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { utf8ToBytes } from '@noble/hashes/utils.js';
+import type { GrantScopeInput } from '@input-output-hk/mn-passport-protocol';
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import type { CurvePoint } from './ports/index.js';
 
-export type GrantOperation =
-  'withdraw-unshielded' | 'withdraw-shielded' | 'withdraw-shielded-to-contract';
-export type GrantRecipient =
-  | { readonly kind: 'any' }
-  | {
-      readonly kind: 'user-address' | 'coin-public-key' | 'contract-address';
-      readonly value: string;
-    };
-
-/** Lace PR #2845's owner request shape, with decimal strings for unsigned 128-bit amounts. */
-export interface GrantScopeInput {
-  readonly grantee: { readonly scheme: 'jubjub-schnorr'; readonly publicKey: string };
-  readonly operations: readonly GrantOperation[];
-  readonly color: string;
-  readonly recipient: GrantRecipient;
-  readonly maxCoinValue: string;
-  readonly perCallCap: string;
-  readonly cap: string;
-  readonly expiresAt: number | null;
-  readonly window?: { readonly lengthSeconds: number; readonly cap: string };
-  readonly read?: boolean;
-  readonly readPublicKey?: string;
-  readonly caller?: string;
-  readonly rpId?: string;
-}
+export type {
+  GrantOperation,
+  GrantRecipient,
+  GrantScopeInput,
+} from '@input-output-hk/mn-passport-protocol';
 
 export type GrantScopeArgs = readonly [
   boolean,

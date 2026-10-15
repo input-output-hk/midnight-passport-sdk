@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { x25519 } from '@noble/curves/ed25519.js';
+import { jubjub } from '@noble/curves/misc.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 import { createPassportAccounts } from '../packages/account/dist/index.js';
 import { recipeDeviceKeyring, recipeJubjubAuthoriser } from '../packages/keys/dist/index.js';
@@ -40,6 +41,8 @@ function world() {
   let selectedHoldings = [];
   /** @type {import('../packages/account/dist/ports/index.js').ActiveReadGrantTarget[]} */
   let activeReadGrants = [];
+  /** @type {string[]} */
+  const activeGrantIds = [];
   /** @type {import('../packages/account/dist/ports/index.js').PrfKeySource} */
   const source = {
     withSession: async (operation) => operation(),
@@ -133,6 +136,11 @@ function world() {
       } else if (request.circuit === 'rotate_enc_key_with_jubjub') {
         assert.equal(request.args[2], counter);
         encKey = /** @type {Uint8Array} */ (request.args[0]);
+        counter++;
+        nonce++;
+      } else if (request.circuit === 'issue_grant_with_jubjub') {
+        assert.equal(request.args[19], counter);
+        activeGrantIds.push(hex(/** @type {Uint8Array} */ (request.args[0])));
         counter++;
         nonce++;
       } else if (request.circuit === 'remove_device_with_jubjub') {
@@ -233,6 +241,9 @@ function world() {
   };
   return {
     accounts: createPassportAccounts(ports),
+    ports,
+    activeGrantIds,
+    grantNonce: () => nonce,
     calls,
     sessionFlows,
     writes,
@@ -310,6 +321,91 @@ test('JubJub creation appends sealed keys, then opens from the live inbox', asyn
   assert.equal((await w.accounts.openAccount()).address, address);
   assert.deepEqual(w.sessionFlows.at(-1), { kind: 'sign-in' });
   assert.equal(w.calls.length, 3, 'open did not repeat completed calls');
+});
+
+test('JubJub grant issue refuses a host without live grants and a durable journal', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  assert.ok(account.issueGrant);
+  const calls = w.calls.length;
+  await assert.rejects(
+    account.issueGrant({
+      grantee: { scheme: 'jubjub-schnorr', publicKey: '00'.repeat(32) },
+      operations: ['withdraw-unshielded'],
+      color: '00'.repeat(32),
+      recipient: { kind: 'any' },
+      maxCoinValue: '10',
+      perCallCap: '1',
+      cap: '10',
+      expiresAt: null,
+    }),
+    { code: 'BindingUnsupported' },
+  );
+  assert.equal(w.calls.length, calls);
+});
+
+test('JubJub account issueGrant pins the host origin and returns after sealed publication', async () => {
+  const w = world();
+  await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  /** @type {import('../packages/account/dist/ports/index.js').AccountRecord} */
+  let local = {
+    address,
+    bindingId: 'acc-s3r1.1',
+    scheme: 'jubjub-schnorr',
+    credentialId,
+    localUseCounter: 2n,
+  };
+  /** @type {import('../packages/account/dist/jubjub-grant-issue.js').StagedJubjubGrant | undefined} */
+  let staged;
+  let published = false;
+  const accounts = createPassportAccounts({
+    ...w.ports,
+    grantOrigin: 'trusted.example',
+    records: {
+      exists: async () => true,
+      read: async () => local,
+      write: async (next) => {
+        local = next;
+      },
+    },
+    grants: {
+      readActiveGrantIds: async () => [...w.activeGrantIds],
+      readActiveGrantSnapshot: async () => ({
+        authNonce: w.grantNonce(),
+        ids: [...w.activeGrantIds],
+      }),
+    },
+    grantJournal: {
+      stage: async (opening) => {
+        staged = opening;
+      },
+      load: async () => staged,
+      markPublished: async () => {
+        published = true;
+      },
+    },
+  });
+  const account = await accounts.openAccount();
+  assert.ok(account.issueGrant);
+  const grantee = hex(
+    jubjub.Point.fromAffine(pureCircuits.compute_public_point_with_jubjub(11n)).toBytes(),
+  );
+  const result = await account.issueGrant({
+    grantee: { scheme: 'jubjub-schnorr', publicKey: grantee },
+    operations: ['withdraw-unshielded'],
+    color: '34'.repeat(32),
+    recipient: { kind: 'any' },
+    maxCoinValue: '100',
+    perCallCap: '10',
+    cap: '100',
+    expiresAt: null,
+  });
+  assert.equal(result.status, 'active');
+  assert.equal(staged?.origin, 'trusted.example');
+  assert.equal(result.grantId, staged?.bookkeeping.grantId);
+  assert.equal(result.appendTxHashes.length, 2);
+  assert.equal(local.localUseCounter, 5n);
+  assert.equal(published, true);
 });
 
 test('JubJub open resumes activation and sealed entries after an interrupted create', async () => {

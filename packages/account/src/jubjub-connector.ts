@@ -12,6 +12,8 @@ import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow, type Flow } from './flow.js';
 import { readVerifiedHoldings } from './holdings.js';
+import { issueAndPublishJubjubGrant } from './jubjub-grant-settlement.js';
+import type { IssueJubjubGrantPure } from './jubjub-grant-issue.js';
 import { JUBJUB_READER_SCAN_LIMIT, resolveJubjubReaders } from './jubjub-readers.js';
 import { sealActiveReadGrants } from './read-grant-deliveries.js';
 import type {
@@ -89,6 +91,20 @@ function requirePure(value: unknown): JubjubPureCircuits {
       throw new PassportConnectorError('BindingUnsupported', `ACC binding lacks ${name}.`);
   }
   return pure as JubjubPureCircuits;
+}
+
+function requireGrantPure(value: unknown): IssueJubjubGrantPure & JubjubPureCircuits {
+  const pure = requirePure(value) as Partial<IssueJubjubGrantPure>;
+  for (const name of [
+    'derive_grant_id_with_jubjub',
+    'derive_grant_object_commit',
+    'derive_grant_scope_digest',
+    'challenge_issue_grant_with_jubjub',
+  ] as const) {
+    if (typeof pure[name] !== 'function')
+      throw new PassportConnectorError('BindingUnsupported', `ACC binding lacks ${name}.`);
+  }
+  return pure as IssueJubjubGrantPure & JubjubPureCircuits;
 }
 
 /** The JubJub owner path over the same account API. All key material stays behind viewingKey. */
@@ -992,6 +1008,31 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     removeDevice: (commitmentHex, options) =>
       rotateViewingKey(record, options, commitmentHex) as Promise<DeviceRemovalResult>,
     addDevice: (reader, options) => addDevice(record, reader, options),
+    issueGrant: async (scope, options = {}) => {
+      if (!ports.records || !ports.grants || !ports.grantJournal || !ports.grantOrigin)
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'Grant issue needs local records, a live grant source, durable journal and host origin.',
+        );
+      if (network.bindingId !== 'acc-s3r1.1')
+        throw new PassportConnectorError('BindingUnsupported', 'Unsupported ACC grant binding.');
+      const pure = requireGrantPure((await readBinding()).pureCircuits);
+      return issueAndPublishJubjubGrant(
+        { hint: record, origin: ports.grantOrigin, scope, ...options },
+        {
+          bindingId: 'acc-s3r1.1',
+          networkId,
+          pure,
+          chain: await readChain(),
+          authoriser,
+          records: ports.records,
+          grants: ports.grants,
+          journal: ports.grantJournal,
+          viewingKey,
+          random: fresh,
+        },
+      );
+    },
     readShieldedHoldings: (options = {}) =>
       run(options, async (flow) => {
         if (!ports.holdings)

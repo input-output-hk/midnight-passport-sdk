@@ -87,6 +87,42 @@ export interface PassportShieldedHolding {
   };
 }
 
+export type GrantOperation =
+  'withdraw-unshielded' | 'withdraw-shielded' | 'withdraw-shielded-to-contract';
+export type GrantRecipient =
+  | { readonly kind: 'any' }
+  | {
+      readonly kind: 'user-address' | 'coin-public-key' | 'contract-address';
+      readonly value: string;
+    };
+
+/** Owner request shape aligned with Lace; amounts are decimal unsigned 128-bit strings. */
+export interface GrantScopeInput {
+  readonly grantee: { readonly scheme: 'jubjub-schnorr'; readonly publicKey: string };
+  readonly operations: readonly GrantOperation[];
+  readonly color: string;
+  readonly recipient: GrantRecipient;
+  readonly maxCoinValue: string;
+  readonly perCallCap: string;
+  readonly cap: string;
+  readonly expiresAt: number | null;
+  readonly window?: { readonly lengthSeconds: number; readonly cap: string };
+  readonly read?: boolean;
+  readonly readPublicKey?: string;
+  readonly caller?: string;
+  readonly rpId?: string;
+}
+
+/** Settled unshielded spend grant; both sealed bookkeeping parts are live in the ACC inbox. */
+export interface PassportGrantIssueResult extends PassportTxResult {
+  readonly grantId: string;
+  readonly slot: number;
+  readonly scopeDigest: string;
+  readonly status: 'active';
+  readonly appendTxHashes: readonly string[];
+  readonly nextUseCounter: bigint;
+}
+
 export interface PassportAccount {
   readonly address: string;
   readonly networkId: string;
@@ -105,6 +141,8 @@ export interface PassportAccount {
   addDevice?(reader: JubjubDeviceReader, options?: FlowOptions): Promise<DeviceEnrollmentResult>;
   /** JubJub accounts can read only chain-confirmed shielded holdings through their viewing key. */
   readShieldedHoldings?(options?: FlowOptions): Promise<readonly PassportShieldedHolding[]>;
+  /** JubJub owner issue; the host pins the origin and supplies durable grant bookkeeping. */
+  issueGrant?(scope: GrantScopeInput, options?: FlowOptions): Promise<PassportGrantIssueResult>;
 }
 
 export interface PassportConnectorAPI {

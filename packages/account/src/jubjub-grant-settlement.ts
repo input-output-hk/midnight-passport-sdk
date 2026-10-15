@@ -1,4 +1,4 @@
-import type { PassportTxResult } from '@input-output-hk/mn-passport-protocol';
+import type { PassportGrantIssueResult } from '@input-output-hk/mn-passport-protocol';
 import {
   issueJubjubGrantCall,
   type IssueJubjubGrantCallInput,
@@ -11,14 +11,7 @@ import {
 
 export type IssueAndPublishJubjubGrantPorts = IssueJubjubGrantCallPorts & PublishJubjubGrantPorts;
 
-export interface ActiveJubjubGrantResult extends PassportTxResult {
-  readonly grantId: string;
-  readonly slot: number;
-  readonly scopeDigest: string;
-  readonly status: 'active';
-  readonly appendTxHashes: readonly string[];
-  readonly nextUseCounter: bigint;
-}
+export type ActiveJubjubGrantResult = PassportGrantIssueResult;
 
 /**
  * Issue an unshielded spend grant and publish its sealed bookkeeping before returning it as active.
