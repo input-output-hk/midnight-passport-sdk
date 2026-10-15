@@ -35,6 +35,13 @@ composition; it does not establish interoperability inside Lace's hosted module.
 
 ## Lace consumer seam check
 
+The SDK keyring accepts Lace's JubJub device registration type `0xd2` and adds
+type `0xd4` for a compressed 33-byte P-256 authoriser key under a distinct
+encryption domain. Lace PR #2845 reads only the JubJub registration. The new
+P-256 record is therefore an SDK extension, not evidence of Lace runtime
+compatibility. The P-256 account flow still uses a deterministic encryption
+key and has not adopted sealed random viewing secrets.
+
 The fixture in `tests/fixtures/lace-seams.mjs` tracks
 [lace-platform PR #2845](https://github.com/input-output-hk/lace-platform/pull/2845)
 at head `05e1e3d641a329d20c8272f6405e54ea499d86a1` (2026/10/15), from

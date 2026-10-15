@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { x25519 } from '@noble/curves/ed25519.js';
 import { jubjub } from '@noble/curves/misc.js';
+import { p256 } from '@noble/curves/nist.js';
 import { recipeDeviceKeyring } from '../packages/keys/dist/index.js';
 import {
   openDeviceEnvelope,
@@ -149,4 +150,70 @@ test('keyring refuses a ledger key mismatch and an unregistered rotation reader'
     /fresh roster key/,
   );
   fake.secretKey.fill(0);
+});
+
+test('P-256 owner and JubJub device can open a mixed-roster rotation', async () => {
+  /** @type {import('../packages/account/dist/ports/index.js').PrfKeySource} */
+  const source = {
+    withSession: (operation) => operation(),
+    deriveSecret: async () => new Uint8Array(32).fill(9),
+    async deviceSecret() {
+      throw new Error('unused');
+    },
+  };
+  const keyring = recipeDeviceKeyring(source);
+  const p256Key = hex(p256.Point.BASE.toBytes(true));
+  const created = await keyring.createKeys('undeployed', {
+    scheme: 'p256-webauthn',
+    devicePublicKey: p256Key,
+  });
+  const ownRegistration = created.registrations[0];
+  assert.ok(ownRegistration);
+  const ownerReader = new Uint8Array(32).fill(9);
+  const originalEnvelope = created.envelopes[0];
+  assert.ok(originalEnvelope);
+  const original = await openDeviceEnvelope(ownerReader, originalEnvelope);
+  assert.ok(original);
+  assert.deepEqual(await openDeviceRegistration(original.rosterKey, ownRegistration), {
+    readerPublicKey: hex(x25519.getPublicKey(ownerReader)),
+    scheme: 'p256-webauthn',
+    devicePublicKey: p256Key,
+  });
+  const remote = x25519.keygen();
+  const joining = {
+    readerPublicKey: hex(remote.publicKey),
+    devicePublicKey: hex(jubjub.Point.BASE.multiply(3n).toBytes()),
+    epoch: 0n,
+    counter: 0n,
+  };
+  const account = {
+    account: 'ab'.repeat(32),
+    encKey: created.encKey,
+    envelopes: created.envelopes,
+  };
+  const delivered = await keyring.sealToDevice('undeployed', account, joining);
+  const rotated = await keyring.createKeys('undeployed', {
+    scheme: 'p256-webauthn',
+    devicePublicKey: p256Key,
+    keyring: account,
+    registrations: [ownRegistration, delivered.registration],
+    readers: [joining],
+    rotateRoster: true,
+  });
+  assert.equal(rotated.envelopes.length, 2);
+  assert.equal(rotated.registrations.length, 2);
+  const ownerEnvelope = rotated.envelopes[0];
+  const remoteEnvelope = rotated.envelopes[1];
+  assert.ok(ownerEnvelope && remoteEnvelope);
+  const ownerRotated = await openDeviceEnvelope(ownerReader, ownerEnvelope);
+  const remoteRotated = await openDeviceEnvelope(remote.secretKey, remoteEnvelope);
+  assert.ok(ownerRotated && remoteRotated);
+  assert.deepEqual(ownerRotated.secret, remoteRotated.secret);
+  assert.deepEqual(x25519.getPublicKey(ownerRotated.secret), rotated.encKey);
+  for (const opened of [original, ownerRotated, remoteRotated]) {
+    opened.secret.fill(0);
+    opened.rosterKey.fill(0);
+  }
+  ownerReader.fill(0);
+  remote.secretKey.fill(0);
 });

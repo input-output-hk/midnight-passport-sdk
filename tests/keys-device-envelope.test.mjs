@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { x25519 } from '@noble/curves/ed25519.js';
+import { p256 } from '@noble/curves/nist.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import {
   isAddressedTo,
@@ -88,4 +89,30 @@ test('device registration authenticates the reader/device pairing under the rost
   assert.equal(await openDeviceRegistration(rosterKey, changed), null);
   assert.equal(await openDeviceRegistration(rosterKey, entry.subarray(0, 191)), null);
   assert.equal(hex(entry.subarray(0, 2)), 'd201');
+});
+
+test('P-256 registration uses a distinct authenticated type and canonical compressed key', async () => {
+  const rosterKey = new Uint8Array(32).fill(4);
+  /** @type {import('../packages/account/dist/ports/index.js').DeviceReader} */
+  const reader = {
+    readerPublicKey: 'ab'.repeat(32),
+    scheme: 'p256-webauthn',
+    devicePublicKey: hex(p256.Point.BASE.toBytes(true)),
+  };
+  const entry = await sealDeviceRegistration(rosterKey, reader);
+  assert.equal(entry.length, 192);
+  assert.deepEqual([...entry.subarray(0, 2)], [0xd4, 1]);
+  assert.ok(entry.subarray(95).every((byte) => byte === 0));
+  assert.deepEqual(await openDeviceRegistration(rosterKey, entry), reader);
+  assert.equal(await openDeviceRegistration(new Uint8Array(32).fill(5), entry), null);
+  const asJubjub = entry.slice();
+  asJubjub[0] = 0xd2;
+  assert.equal(await openDeviceRegistration(rosterKey, asJubjub), null);
+  await assert.rejects(
+    sealDeviceRegistration(rosterKey, { ...reader, devicePublicKey: 'ab'.repeat(32) }),
+    /canonical compressed SEC1/,
+  );
+  await assert.rejects(
+    sealDeviceRegistration(rosterKey, { ...reader, devicePublicKey: '02' + 'ff'.repeat(32) }),
+  );
 });

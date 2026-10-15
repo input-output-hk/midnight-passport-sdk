@@ -1,6 +1,7 @@
 // Lace Passport's 192-byte device envelope and registration wire format. This module is internal:
 // callers of the public key port never receive the raw account or roster secrets it opens.
 import { x25519 } from '@noble/curves/ed25519.js';
+import { p256 } from '@noble/curves/nist.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import type { DeviceReader } from '@input-output-hk/mn-passport-account/ports';
 
@@ -10,6 +11,7 @@ const NONCE_LENGTH = 12;
 const TAG_LENGTH = 16;
 const ENVELOPE_TYPE = 0xd1;
 const REGISTRATION_TYPE = 0xd2;
+const P256_REGISTRATION_TYPE = 0xd4;
 const SUITE = 1;
 const ENVELOPE_EPHEMERAL_OFFSET = 34;
 const ENVELOPE_NONCE_OFFSET = 66;
@@ -18,6 +20,7 @@ const utf8 = (value: string): Uint8Array => new TextEncoder().encode(value);
 const ENVELOPE_TAG_DOMAIN = utf8('lace:passport:envelope-tag:v1');
 const ENVELOPE_KEY_INFO = utf8('lace:passport:device-envelope:v1');
 const REGISTRATION_KEY_INFO = utf8('lace:passport:device-registration:v1');
+const P256_REGISTRATION_KEY_INFO = utf8('mn-passport:device-registration:p256:v1');
 
 export interface AccountSecrets {
   readonly secret: Uint8Array;
@@ -37,6 +40,13 @@ const concat = (...parts: readonly Uint8Array[]): Uint8Array<ArrayBuffer> => {
 const hexBytes = (hex: string): Uint8Array => {
   if (!/^[0-9a-f]{64}$/.test(hex)) throw new Error('device keys must be 32-byte lowercase hex');
   return Uint8Array.from(hex.match(/.{2}/g)!, (pair) => Number.parseInt(pair, 16));
+};
+const p256Bytes = (value: string): Uint8Array => {
+  if (!/^(02|03)[0-9a-f]{64}$/.test(value))
+    throw new Error('P-256 device key must be canonical compressed SEC1 hex');
+  const bytes = p256.Point.fromHex(value).toBytes(true);
+  if (hex(bytes) !== value) throw new Error('P-256 device key is not canonical');
+  return bytes;
 };
 const hex = (bytes: Uint8Array): string =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -196,9 +206,15 @@ export async function sealDeviceRegistration(
   reader: DeviceReader,
 ): Promise<Uint8Array> {
   require32(rosterKey, 'roster key');
-  const plaintext = concat(hexBytes(reader.readerPublicKey), hexBytes(reader.devicePublicKey));
+  if (reader.scheme && reader.scheme !== 'jubjub-schnorr' && reader.scheme !== 'p256-webauthn')
+    throw new Error('unsupported device registration scheme');
+  const isP256 = reader.scheme === 'p256-webauthn';
+  const plaintext = concat(
+    hexBytes(reader.readerPublicKey),
+    isP256 ? p256Bytes(reader.devicePublicKey) : hexBytes(reader.devicePublicKey),
+  );
   const entry = new Uint8Array(ENTRY_LENGTH);
-  entry[0] = REGISTRATION_TYPE;
+  entry[0] = isP256 ? P256_REGISTRATION_TYPE : REGISTRATION_TYPE;
   entry[1] = SUITE;
   entry.set(crypto.getRandomValues(new Uint8Array(NONCE_LENGTH)), REGISTRATION_NONCE_OFFSET);
   try {
@@ -206,7 +222,7 @@ export async function sealDeviceRegistration(
       entry,
       REGISTRATION_NONCE_OFFSET,
       plaintext,
-      await aeadKey(rosterKey, REGISTRATION_KEY_INFO),
+      await aeadKey(rosterKey, isP256 ? P256_REGISTRATION_KEY_INFO : REGISTRATION_KEY_INFO),
     );
     return entry;
   } finally {
@@ -220,18 +236,28 @@ export async function openDeviceRegistration(
   entry: Uint8Array,
 ): Promise<DeviceReader | null> {
   require32(rosterKey, 'roster key');
-  if (!recordOf(entry, REGISTRATION_TYPE)) return null;
+  const isP256 = recordOf(entry, P256_REGISTRATION_TYPE);
+  if (!isP256 && !recordOf(entry, REGISTRATION_TYPE)) return null;
   const plaintext = await openFrom(
     entry,
     REGISTRATION_NONCE_OFFSET,
-    64,
-    await aeadKey(rosterKey, REGISTRATION_KEY_INFO),
+    isP256 ? 65 : 64,
+    await aeadKey(rosterKey, isP256 ? P256_REGISTRATION_KEY_INFO : REGISTRATION_KEY_INFO),
   );
   if (!plaintext) return null;
   try {
+    const devicePublicKey = hex(plaintext.subarray(32));
+    if (isP256) {
+      try {
+        p256Bytes(devicePublicKey);
+      } catch {
+        return null;
+      }
+    }
     return {
       readerPublicKey: hex(plaintext.subarray(0, 32)),
-      devicePublicKey: hex(plaintext.subarray(32)),
+      devicePublicKey,
+      ...(isP256 && { scheme: 'p256-webauthn' as const }),
     };
   } finally {
     plaintext.fill(0);

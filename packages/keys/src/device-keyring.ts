@@ -1,5 +1,6 @@
 import { x25519 } from '@noble/curves/ed25519.js';
 import { jubjub } from '@noble/curves/misc.js';
+import { p256 } from '@noble/curves/nist.js';
 import type {
   AccountKeyring,
   AccountKeys,
@@ -44,8 +45,17 @@ const zero = ({ secret, rosterKey }: AccountSecrets): void => {
 /** Reject malformed keys before sealing an account secret to a joining device. */
 const validReader = (reader: DeviceReader): void => {
   const readKey = fromHex(reader.readerPublicKey);
-  const deviceKey = fromHex(reader.devicePublicKey);
-  jubjub.Point.fromBytes(deviceKey);
+  if (reader.scheme && reader.scheme !== 'jubjub-schnorr' && reader.scheme !== 'p256-webauthn')
+    throw new Error('unsupported device registration scheme');
+  if (reader.scheme === 'p256-webauthn') {
+    if (!/^(02|03)[0-9a-f]{64}$/.test(reader.devicePublicKey))
+      throw new Error('P-256 device key must be canonical compressed SEC1 hex');
+    if (hex(p256.Point.fromHex(reader.devicePublicKey).toBytes(true)) !== reader.devicePublicKey)
+      throw new Error('P-256 device key is not canonical');
+  } else {
+    const deviceKey = fromHex(reader.devicePublicKey);
+    jubjub.Point.fromBytes(deviceKey);
+  }
   // noble refuses small-order X25519 public keys rather than agreeing an all-zero shared secret.
   x25519.getSharedSecret(new Uint8Array(KEY_LENGTH).fill(1), readKey);
 };
@@ -174,6 +184,7 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
     networkId: string,
     {
       devicePublicKey,
+      scheme,
       keyring,
       registrations = [],
       readers = [],
@@ -185,6 +196,7 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
       const self: DeviceReader = {
         readerPublicKey: hex(readerPublicKey),
         devicePublicKey,
+        ...(scheme && { scheme }),
       };
       validReader(self);
       if (!keyring) {

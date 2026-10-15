@@ -206,9 +206,11 @@ export interface EncryptionKeySource {
   publicKey(networkId: string): Promise<Uint8Array>;
 }
 
-/** One enrolled device's X25519 reader key paired with its compressed JubJub device key. */
+/** One enrolled device's X25519 reader key paired with its compressed authoriser key. */
 export interface DeviceReader {
   readonly readerPublicKey: string;
+  /** Omitted for Lace's v1 compressed JubJub registration. */
+  readonly scheme?: 'jubjub-schnorr' | 'p256-webauthn';
   readonly devicePublicKey: string;
 }
 export interface LiveDeviceReader extends DeviceReader {
@@ -223,6 +225,8 @@ export interface AccountKeyring {
 }
 export interface CreateAccountKeys {
   readonly devicePublicKey: string;
+  /** Omitted for Lace's v1 compressed JubJub registration. */
+  readonly scheme?: DeviceReader['scheme'];
   readonly keyring?: AccountKeyring;
   readonly registrations?: readonly Uint8Array[];
   readonly readers?: readonly LiveDeviceReader[];
