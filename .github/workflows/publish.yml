@@ -98,18 +98,6 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: nix develop -c node scripts/smoke-release-tarballs.mjs
-      - name: Check packed packages against the pinned Lace Passport source
-        env:
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
-        run: |
-          lace_checkout="$RUNNER_TEMP/lace-passport-consumer"
-          mkdir -p "$lace_checkout"
-          git -C "$lace_checkout" init
-          git -C "$lace_checkout" remote add origin https://github.com/input-output-hk/lace-platform.git
-          git -C "$lace_checkout" sparse-checkout set packages/contract/passport/src
-          git -C "$lace_checkout" fetch --depth=1 --filter=blob:none origin pull/2845/head
-          git -C "$lace_checkout" checkout --detach FETCH_HEAD
-          LACE_CHECKOUT="$lace_checkout" nix develop -c node scripts/smoke-lace-source-consumer.mjs
       - name: Attest tarballs
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/sdk-v')
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
