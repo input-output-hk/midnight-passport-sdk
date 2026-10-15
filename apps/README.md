@@ -228,6 +228,8 @@ The packaged JubJub grant source is `createMidnightGrantSource` in
 `mn-passport-adapter-midnight-js`. A host supplies the pinned ACC binding, same-network public-data
 provider, and durable read-key openings. It reads the live grant map and checks opening hashes for
 viewing-key rotation; the standalone demo does not yet wire a grant opening store or grant UI.
+The owner flow now names the creation lock choice and full grant context in its key-session
+descriptor for hosted signers; the demo's local passkey authoriser ignores that display metadata.
 
 - **A port is taken.** The preflight names the container or process. The Passport localnet
   publishes the node, indexer and proof server on host ports 19944, 18088 and 16300

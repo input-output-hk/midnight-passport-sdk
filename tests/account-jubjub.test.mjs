@@ -47,7 +47,19 @@ function world() {
         params.length ?? 32,
       ),
   };
-  const authoriser = recipeJubjubAuthoriser(source, pureCircuits);
+  const recipe = recipeJubjubAuthoriser(source, pureCircuits);
+  /** @type {Array<import('../packages/account/dist/ports/index.js').FlowDescriptor|undefined>} */
+  const sessionFlows = [];
+  const authoriser = {
+    ...recipe,
+    withKeySession: (
+      /** @type {() => Promise<any>} */ operation,
+      /** @type {import('../packages/account/dist/ports/index.js').FlowDescriptor|undefined} */ flow,
+    ) => {
+      sessionFlows.push(flow);
+      return recipe.withKeySession(operation, flow);
+    },
+  };
   const chain = {
     async readAccount(
       /** @type {string} */ at,
@@ -167,6 +179,7 @@ function world() {
   return {
     accounts: createPassportAccounts(ports),
     calls,
+    sessionFlows,
     writes,
     inbox,
     hint: () => hint,
@@ -206,7 +219,9 @@ test('JubJub creation appends sealed keys, then opens from the live inbox', asyn
   assert.deepEqual(w.writes, ['deployed', 'active']);
   assert.equal(w.inbox.length, 2);
   assert.equal((await account.state()).authNonce, 2n);
+  assert.deepEqual(w.sessionFlows[0], { kind: 'create-account', lockAccount: true });
   assert.equal((await w.accounts.openAccount()).address, address);
+  assert.deepEqual(w.sessionFlows.at(-1), { kind: 'sign-in' });
   assert.equal(w.calls.length, 3, 'open did not repeat completed calls');
 });
 

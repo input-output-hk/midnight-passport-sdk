@@ -82,7 +82,7 @@ function fixture() {
       devicePublicKey: async () => owner,
       withKeySession: async (operation, flow) => {
         calls.push('session');
-        assert.deepEqual(flow, { kind: 'revoke-grant', grantId });
+        assert.deepEqual(flow, { kind: 'revoke-grant', account, grantId });
         return operation();
       },
       authorise: async (request) => {

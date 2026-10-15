@@ -167,7 +167,7 @@ export async function addJubjubAuthorisingDevice(
         await ports.records.write({ ...record, localUseCounter: nextUseCounter });
         return { ...tx, commitmentHex, nextUseCounter };
       },
-      { kind: 'add-device', commitmentHex },
+      { kind: 'add-device', account: hint.address, commitmentHex },
     );
   } catch (error) {
     throw flow.fail(error);

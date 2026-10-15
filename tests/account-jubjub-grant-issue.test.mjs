@@ -116,6 +116,9 @@ function fixture() {
       withKeySession: async (operation, flow) => {
         calls.push('session');
         assert.equal(flow?.kind, 'issue-grant');
+        assert.equal(flow?.account, account);
+        assert.equal(flow?.scopeSalt, '09'.repeat(32));
+        assert.equal(flow?.slot, 0);
         assert.equal(flow?.scope, scope);
         assert.equal(flow?.scopeDigest?.length, 64);
         return operation();

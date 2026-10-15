@@ -3,6 +3,8 @@
 The package grant adapter can verify the pinned ACC roster and read-key hashes, but the standalone
 demo has no durable read-grant opening store. It therefore cannot offer read-grant rotation or
 revocation through its UI yet. A host must supply those openings and the same-network ACC indexer.
+The SDK's key-session descriptors carry the context Lace's hosted signer asks to display, but the
+demo uses a local signer; a packed Lace consumer flow has not yet been validated.
 
 This is a prototype for the standalone network. Each item below says what the prototype does and
 what production needs. Two items have fork issues:

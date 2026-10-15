@@ -71,6 +71,16 @@ type InboxSnapshot = AccLedgerView & {
 const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
   a.length === b.length && a.every((value, index) => value === b[index]);
 const samePoint = (a: CurvePoint, b: CurvePoint): boolean => a.x === b.x && a.y === b.y;
+const canonicalScope = (value: unknown): string => {
+  if (Array.isArray(value)) return `[${value.map(canonicalScope).join(',')}]`;
+  if (value !== null && typeof value === 'object')
+    return `{${Object.entries(value)
+      .filter(([, item]) => item !== undefined)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalScope(item)}`)
+      .join(',')}}`;
+  return JSON.stringify(value) ?? 'null';
+};
 const random = (length: number): Uint8Array =>
   (
     globalThis as unknown as { crypto: { getRandomValues(bytes: Uint8Array): Uint8Array } }
@@ -142,6 +152,18 @@ export async function publishJubjubGrantBookkeeping(
       if (!(await ports.grants.readActiveGrantIds(hint.address)).includes(grantId))
         throw new PassportConnectorError('GrantRevoked', 'The grant is no longer active.');
     };
+    const opening = await flow.step('grant.stage', () => ports.journal.load(hint.address, grantId));
+    if (!isPublishableUnshieldedGrant(opening, hint.address, grantId))
+      throw new PassportConnectorError(
+        'GrantScopeInvalid',
+        'No supported staged grant opening exists.',
+      );
+    const approved = {
+      scope: JSON.parse(JSON.stringify(opening.scope)) as typeof opening.scope,
+      scopeDigest: opening.scopeDigest,
+      scopeSalt: opening.bookkeeping.scopeSalt,
+      slot: opening.bookkeeping.slot,
+    };
     return await ports.authoriser.withKeySession(
       async () => {
         const record = await ports.records.read();
@@ -161,6 +183,16 @@ export async function publishJubjubGrantBookkeeping(
           throw new PassportConnectorError(
             'GrantScopeInvalid',
             'No supported staged grant opening exists.',
+          );
+        if (
+          staged.scopeDigest !== approved.scopeDigest ||
+          staged.bookkeeping.scopeSalt !== approved.scopeSalt ||
+          staged.bookkeeping.slot !== approved.slot ||
+          canonicalScope(staged.scope) !== canonicalScope(approved.scope)
+        )
+          throw new PassportConnectorError(
+            'GrantScopeInvalid',
+            'The staged grant changed after consent.',
           );
         const publicKey = await ports.authoriser.devicePublicKey();
         if (!samePoint(publicKey, hint.publicKey))
@@ -320,7 +352,15 @@ export async function publishJubjubGrantBookkeeping(
           nextUseCounter: current.localUseCounter,
         };
       },
-      { kind: 'issue-grant', grantId },
+      {
+        kind: 'issue-grant',
+        account: hint.address,
+        grantId,
+        scope: approved.scope,
+        slot: approved.slot,
+        scopeSalt: approved.scopeSalt,
+        scopeDigest: approved.scopeDigest,
+      },
     );
   } catch (error) {
     throw flow.fail(error);

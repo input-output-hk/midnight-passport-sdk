@@ -161,6 +161,12 @@ function fixture(initialInbox = []) {
       withKeySession: async (operation, flow) => {
         calls.push('session');
         assert.equal(flow?.kind, 'issue-grant');
+        assert.equal(flow.account, account);
+        assert.equal(flow.grantId, grantId);
+        assert.deepEqual(flow.scope, staged.scope);
+        assert.equal(flow.slot, book.slot);
+        assert.equal(flow.scopeSalt, book.scopeSalt);
+        assert.equal(flow.scopeDigest, staged.scopeDigest);
         return operation();
       },
       authorise: async (request) => {
@@ -221,6 +227,22 @@ test('unrelated seals are rejected before an ACC append', async () => {
   await assert.rejects(publishJubjubGrantBookkeeping({ hint, grantId }, ports), {
     code: 'InternalError',
   });
+  assert.ok(!calls.includes('append'));
+});
+
+test('a staged scope changed after signer consent is refused before append', async () => {
+  const { ports, calls } = fixture();
+  const load = ports.journal.load;
+  let reads = 0;
+  ports.journal.load = async (address, id) => {
+    const value = await load(address, id);
+    reads++;
+    return reads === 2 && value ? { ...value, scope: { ...value.scope, cap: '101' } } : value;
+  };
+  await assert.rejects(publishJubjubGrantBookkeeping({ hint, grantId }, ports), {
+    code: 'GrantScopeInvalid',
+  });
+  assert.ok(calls.includes('session'));
   assert.ok(!calls.includes('append'));
 });
 

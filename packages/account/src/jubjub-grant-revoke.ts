@@ -186,7 +186,7 @@ export async function revokeJubjubGrantCall(
         await ports.records.write({ ...record, localUseCounter: nextUseCounter });
         return { ...tx, grantId, status: 'submitted' as const, nextUseCounter };
       },
-      { kind: 'revoke-grant', grantId },
+      { kind: 'revoke-grant', account: hint.address, grantId },
     );
   } catch (error) {
     throw flow.fail(error);

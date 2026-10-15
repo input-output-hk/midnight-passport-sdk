@@ -81,7 +81,11 @@ function fixture() {
       },
       withKeySession: async (operation, flow) => {
         calls.push('session');
-        assert.deepEqual(flow, { kind: 'add-device', commitmentHex: '05'.repeat(32) });
+        assert.deepEqual(flow, {
+          kind: 'add-device',
+          account,
+          commitmentHex: '05'.repeat(32),
+        });
         return operation();
       },
     },

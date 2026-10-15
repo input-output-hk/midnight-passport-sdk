@@ -260,8 +260,10 @@ export async function issueJubjubGrantCall(
       },
       {
         kind: 'issue-grant',
+        account: hint.address,
         grantId: prepared.grantId,
         scope: input.scope,
+        scopeSalt: toHex(prepared.scopeSalt),
         scopeDigest: toHex(prepared.scopeDigest),
         slot: prepared.slot,
       },

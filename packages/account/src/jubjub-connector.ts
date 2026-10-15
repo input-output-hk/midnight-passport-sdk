@@ -634,7 +634,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               const view = await awaitDeployed(record);
               return finish(flow, record, view);
             },
-            { kind: 'create-account' },
+            { kind: 'create-account', lockAccount: retireAuthority },
           );
         },
         onProgress,

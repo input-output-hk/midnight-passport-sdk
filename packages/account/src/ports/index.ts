@@ -91,11 +91,20 @@ export interface FlowDescriptor {
     | 'revoke-grant';
   /** The device entry a device flow targets. */
   readonly commitmentHex?: string;
+  /** The ACC whose owner operation the signer is approving. */
+  readonly account?: string;
   /** Scope context shown before an owner signs a grant issue call. */
   readonly grantId?: string;
   readonly scope?: GrantScopeInput;
+  readonly scopeSalt?: string;
   readonly scopeDigest?: string;
   readonly slot?: number;
+  /** A read revocation requires rotation; the surviving device set is shown by the signer. */
+  readonly read?: boolean;
+  readonly devices?: readonly string[];
+  readonly reader?: DeviceReader;
+  /** Creation can permanently retire the ACC's maintenance authority. */
+  readonly lockAccount?: boolean;
 }
 /** JubJub's challenge, built per attempt from the announcement and the grind nonce. */
 export type ChallengeBuilder = (sigR: CurvePoint, grindNonce: bigint) => Uint8Array;
