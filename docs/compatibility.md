@@ -63,6 +63,13 @@ LACE_CHECKOUT=/path/to/lace-platform \
   nix develop -c node scripts/smoke-lace-source-consumer.mjs
 ```
 
+Lace PR #2845 has since advanced to `cdfa9cfd81a0adcc0a7224aa624f18e52494f602`.
+Its newer grant flow validates stored openings against the live ACC object commitment and
+read-key hash before reusing them. The SDK's chain-backed grant adapter now exposes those
+commitments through `GrantCommitmentSource`; publication must enforce the match before the
+newer Lace head can be considered compatible. The exact-source test above remains pinned to
+the earlier head until that check is updated and rerun.
+
 The check pins Lace HEAD to `05e1e3d641a329d20c8272f6405e54ea499d86a1`
 and rejects local edits to its contract seam. The Lace source dependencies
 `type-fest@4.41.0` and `ts-custom-error@3.3.1` match its lockfile. The result

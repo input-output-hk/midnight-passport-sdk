@@ -37,6 +37,23 @@ export interface GrantDetailSource {
   ): Promise<{ active: boolean; read: boolean; authNonce: bigint } | undefined>;
 }
 
+/** Live ACC commitments used to authenticate a staged grant opening before inbox publication. */
+export interface GrantCommitmentSource {
+  readGrantCommitment(
+    account: string,
+    grantId: string,
+  ): Promise<
+    | {
+        readonly active: boolean;
+        readonly read: boolean;
+        readonly authNonce: bigint;
+        readonly objectCommit: Uint8Array;
+        readonly readPkHash: Uint8Array;
+      }
+    | undefined
+  >;
+}
+
 /** Complete live ACC grant map, including tombstones, for revoke-all generation checks. */
 export interface GrantRosterSource {
   readGrantRoster(account: string): Promise<{

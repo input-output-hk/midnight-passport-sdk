@@ -6,13 +6,18 @@ import type {
   ActiveGrantSnapshotSource,
   ActiveReadGrantTargetSource,
   GrantDetailSource,
+  GrantCommitmentSource,
   GrantRosterSource,
   NetworkConfig,
 } from '@input-output-hk/mn-passport-account/ports';
 
 type Grant = {
   readonly active: boolean;
-  readonly scope: { readonly read: boolean; readonly read_pk_hash: Uint8Array };
+  readonly scope: {
+    readonly read: boolean;
+    readonly read_pk_hash: Uint8Array;
+    readonly object_commit: Uint8Array;
+  };
 };
 type GrantLedger = {
   readonly auth_nonce: bigint;
@@ -27,6 +32,7 @@ type ListedGrant = {
   readonly active: boolean;
   readonly read: boolean;
   readonly readHash: Uint8Array;
+  readonly objectCommit: Uint8Array;
 };
 
 /** Durable local openings; an inbox-only claim is not trusted until its key hashes to the ledger. */
@@ -53,7 +59,11 @@ const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
 /** One checked ACC grant-map snapshot shared by the issue, revoke and rotation owner ports. */
 export function createMidnightGrantSource(
   options: MidnightGrantSourceOptions,
-): ActiveGrantSnapshotSource & GrantDetailSource & ActiveReadGrantTargetSource & GrantRosterSource {
+): ActiveGrantSnapshotSource &
+  GrantDetailSource &
+  GrantCommitmentSource &
+  ActiveReadGrantTargetSource &
+  GrantRosterSource {
   const { network, binding, openings } = options;
   if (network.bindingId !== 'acc-s3r1.1')
     throw new PassportConnectorError('BindingUnsupported', 'Unsupported ACC grant binding.');
@@ -92,7 +102,9 @@ export function createMidnightGrantSource(
         typeof record?.active !== 'boolean' ||
         typeof record.scope?.read !== 'boolean' ||
         !(record.scope?.read_pk_hash instanceof Uint8Array) ||
-        record.scope.read_pk_hash.length !== 32
+        record.scope.read_pk_hash.length !== 32 ||
+        !(record.scope?.object_commit instanceof Uint8Array) ||
+        record.scope.object_commit.length !== 32
       )
         throw new PassportConnectorError('BindingUnsupported', 'Malformed ACC grant record.');
       const id = hex(rawId);
@@ -104,6 +116,7 @@ export function createMidnightGrantSource(
         active: record.active,
         read: record.scope.read,
         readHash: record.scope.read_pk_hash.slice(),
+        objectCommit: record.scope.object_commit.slice(),
       });
     }
     if (grants.length !== Number(ledger.grants.size()))
@@ -135,6 +148,20 @@ export function createMidnightGrantSource(
       const { authNonce, grants } = await snapshot(account);
       const grant = grants.find(({ id }) => id === grantId);
       return grant && { active: grant.active, read: grant.read, authNonce };
+    },
+    async readGrantCommitment(account, grantId) {
+      if (!bytes32(grantId)) return undefined;
+      const { authNonce, grants } = await snapshot(account);
+      const grant = grants.find(({ id }) => id === grantId);
+      return (
+        grant && {
+          active: grant.active,
+          read: grant.read,
+          authNonce,
+          objectCommit: grant.objectCommit,
+          readPkHash: grant.readHash,
+        }
+      );
     },
     async readActiveReadGrantTargets(account) {
       const { authNonce, grants } = await snapshot(account);

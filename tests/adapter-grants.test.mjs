@@ -14,7 +14,7 @@ const hash = (/** @type {string} */ value) =>
 /** @param {boolean} active @param {boolean} read @param {Uint8Array} [readHash] */
 const record = (active, read, readHash = Buffer.alloc(32)) => ({
   active,
-  scope: { read, read_pk_hash: readHash },
+  scope: { read, read_pk_hash: readHash, object_commit: Buffer.alloc(32, 9) },
 });
 
 function fixture() {
@@ -96,6 +96,14 @@ test('one ledger snapshot supplies active grants and authenticates only live rea
     read: false,
     authNonce: 7n,
   });
+  assert.deepEqual(await source.readGrantCommitment(account, spendId), {
+    active: true,
+    read: false,
+    authNonce: 7n,
+    objectCommit: Buffer.alloc(32, 9),
+    readPkHash: Buffer.alloc(32),
+  });
+  assert.equal(await source.readGrantCommitment(account, 'ff'.repeat(32)), undefined);
   assert.deepEqual(await source.readGrant(account, revokedId), {
     active: false,
     read: true,
@@ -107,7 +115,7 @@ test('one ledger snapshot supplies active grants and authenticates only live rea
     targets: [{ grantId: readId, readPublicKey: readKey }, { grantId: missingId }],
   });
   assert.deepEqual(openings, [readId, missingId]);
-  assert.deepEqual(queries, Array(7).fill(account));
+  assert.deepEqual(queries, Array(9).fill(account));
   setNonce(8n);
   assert.equal((await source.readActiveReadGrantTargets(account)).authNonce, 8n);
 });
@@ -119,6 +127,16 @@ test('missing accounts and malformed grant maps fail closed', async () => {
   setPresent(true);
   setEntries([[Buffer.alloc(31), record(true, true)]]);
   await assert.rejects(source.readActiveGrantIds(account), { code: 'BindingUnsupported' });
+  setEntries([
+    [
+      Buffer.from(readId, 'hex'),
+      {
+        active: true,
+        scope: { read: true, read_pk_hash: Buffer.alloc(32), object_commit: Buffer.alloc(31) },
+      },
+    ],
+  ]);
+  await assert.rejects(source.readGrantCommitment(account, readId), { code: 'BindingUnsupported' });
   setEntries([
     [Buffer.from(readId, 'hex'), record(true, true)],
     [Buffer.from(readId, 'hex'), record(true, true)],
