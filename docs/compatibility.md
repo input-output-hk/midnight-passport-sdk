@@ -38,7 +38,7 @@ types, not a packed-package Lace build or live transaction test.
 | --- | --- | --- |
 | `FeeSponsor.balanceAndSign` | `FeeSponsor` | Direct structural assignment |
 | `PassportEncryptionKey` | `AccountViewingKey` | Direct structural assignment for reader, keyring, inbox, and grant operations |
-| `readGrants` plus stored grant openings | `ActiveReadGrantTargetSource` | Host adapter must return the complete active read roster at the ACC auth nonce and verify each available read key against the on-chain hash; no direct structural assignment |
+| `readGrants` plus stored grant openings | `ActiveReadGrantTargetSource` | `createMidnightGrantSource` reads the complete pinned ACC roster at one auth nonce and verifies each available read key against the on-chain hash; Lace still supplies its durable opening store and a same-network provider |
 | `PassportNetworkConfig` | `NetworkConfig` | Lace network fields fit; the SDK caller must supply its additional ACC binding and manifest pins |
 | `PassportAuthoriser` | `Authoriser` | Needs a boundary adapter for branded account/counter/epoch values and key-session flows |
 | `PassportProver.prove/check` | transaction `Prover.proveTx` | Different abstraction: Lace proves a circuit preimage; a transaction pipeline must wrap it |

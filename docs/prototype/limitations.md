@@ -1,5 +1,9 @@
 # Limitations and production requirements
 
+The package grant adapter can verify the pinned ACC roster and read-key hashes, but the standalone
+demo has no durable read-grant opening store. It therefore cannot offer read-grant rotation or
+revocation through its UI yet. A host must supply those openings and the same-network ACC indexer.
+
 This is a prototype for the standalone network. Each item below says what the prototype does and
 what production needs. Two items have fork issues:
 

@@ -224,6 +224,11 @@ compromised service could fake the ledger that `openAccount`'s checks read.
 
 ## Troubleshooting
 
+The packaged JubJub grant source is `createMidnightGrantSource` in
+`mn-passport-adapter-midnight-js`. A host supplies the pinned ACC binding, same-network public-data
+provider, and durable read-key openings. It reads the live grant map and checks opening hashes for
+viewing-key rotation; the standalone demo does not yet wire a grant opening store or grant UI.
+
 - **A port is taken.** The preflight names the container or process. The Passport localnet
   publishes the node, indexer and proof server on host ports 19944, 18088 and 16300
   (`infra/localnet/ports.env`), so it runs beside another localnet on the Midnight defaults

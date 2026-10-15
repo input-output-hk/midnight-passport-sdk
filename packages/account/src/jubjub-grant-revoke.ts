@@ -10,6 +10,7 @@ import type {
   Authoriser,
   Chain,
   CurvePoint,
+  GrantDetailSource,
   JubjubPureCircuits,
 } from './ports/index.js';
 
@@ -27,13 +28,7 @@ export interface RevokeJubjubGrantPure extends Pick<
   ): Uint8Array;
 }
 
-/** The host must derive this state from the live ACC grant map, including its read flag. */
-export interface GrantDetailSource {
-  readGrant(
-    account: string,
-    grantId: string,
-  ): Promise<{ active: boolean; read: boolean } | undefined>;
-}
+export type { GrantDetailSource } from './ports/index.js';
 
 export interface RevokeJubjubGrantInput extends FlowOptions {
   readonly hint: AccountHint;
@@ -100,6 +95,8 @@ export async function revokeJubjubGrantCall(
       throw new PassportConnectorError('AccountNotFound', 'The active ACC is missing.');
     if (view.specVersion !== 3)
       throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
+    if (grant.authNonce !== view.authNonce)
+      throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster is stale.');
     const self = { bytes: fromHex(hint.address) };
     const id = fromHex(grantId);
     return await ports.authoriser.withKeySession(
@@ -176,6 +173,8 @@ export async function revokeJubjubGrantCall(
             'BindingUnsupported',
             'The grant now requires key rotation.',
           );
+        if (latest.authNonce !== view.authNonce)
+          throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster changed.');
         flow.checkpoint();
         const tx = await ports.chain.call({
           address: hint.address,

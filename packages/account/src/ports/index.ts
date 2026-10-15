@@ -16,6 +16,19 @@ import type {
 } from '../seams.js';
 import type { GrantScopeInput } from '../grant-scope.js';
 
+/** The host reads these ids from the live ACC grants map, not local bookkeeping. */
+export interface ActiveGrantSource {
+  readActiveGrantIds(account: string): Promise<readonly string[]>;
+}
+
+/** The host reads the record and nonce from one live ACC grant-map snapshot. */
+export interface GrantDetailSource {
+  readGrant(
+    account: string,
+    grantId: string,
+  ): Promise<{ active: boolean; read: boolean; authNonce: bigint } | undefined>;
+}
+
 export interface ActiveReadGrantTarget {
   readonly grantId: string;
   /** Absent when this device lacks an opening for an otherwise active read grant. */

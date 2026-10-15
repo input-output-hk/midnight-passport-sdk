@@ -56,6 +56,7 @@ try {
        import * as binding from '@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1';
        import * as account from '@input-output-hk/mn-passport-account';
        import * as browser from '@input-output-hk/mn-passport-adapter-browser';
+       import * as midnight from '@input-output-hk/mn-passport-adapter-midnight-js';
        import * as service from '@input-output-hk/mn-passport-service';
        if (contract.BINDING_VERSION !== 'acc-s3r1.1' ||
            contract.SUPPORTED_BINDINGS.length !== 1 ||
@@ -68,6 +69,7 @@ try {
            typeof account.publishJubjubGrantBookkeeping !== 'function' ||
            typeof account.revokeJubjubGrantCall !== 'function' ||
            typeof account.sealActiveReadGrants !== 'function' ||
+           typeof midnight.createMidnightGrantSource !== 'function' ||
            typeof browser.createBrowserPassport !== 'function' ||
            typeof service.createServer !== 'function' ||
            typeof service.chainRoute !== 'function' ||

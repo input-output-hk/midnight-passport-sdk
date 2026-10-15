@@ -12,6 +12,7 @@ import { JUBJUB_READER_SCAN_LIMIT } from './jubjub-readers.js';
 import type {
   AccountHint,
   AccountRecordStore,
+  ActiveGrantSource,
   Authoriser,
   Chain,
   CurvePoint,
@@ -32,10 +33,7 @@ export interface IssueJubjubGrantPure
   ): Uint8Array;
 }
 
-/** A host must read these ids from the live ACC grants map, not from local bookkeeping. */
-export interface ActiveGrantSource {
-  readActiveGrantIds(account: string): Promise<readonly string[]>;
-}
+export type { ActiveGrantSource } from './ports/index.js';
 
 export interface StagedJubjubGrant {
   readonly account: string;

@@ -17,8 +17,8 @@ const hint = {
 function fixture() {
   /** @type {string[]} */
   const calls = [];
-  /** @type {{active:boolean,read:boolean}|undefined} */
-  let grant = { active: true, read: false };
+  /** @type {{active:boolean,read:boolean,authNonce:bigint}|undefined} */
+  let grant = { active: true, read: false, authNonce: 5n };
   /** @type {import('../packages/account/dist/jubjub-grant-revoke.js').RevokeJubjubGrantPorts} */
   const ports = {
     bindingId: 'acc-s3r1.1',
@@ -114,7 +114,7 @@ function fixture() {
   return {
     ports,
     calls,
-    /** @param {{active:boolean,read:boolean}|undefined} value */
+    /** @param {{active:boolean,read:boolean,authNonce:bigint}|undefined} value */
     setGrant: (value) => (grant = value),
   };
 }
@@ -132,11 +132,11 @@ test('owner submits pinned revoke call and advances its local counter', async ()
 });
 
 test('missing, revoked and read grants never enter a key session', async () => {
-  /** @type {Array<[{active:boolean,read:boolean}|undefined,string]>} */
+  /** @type {Array<[{active:boolean,read:boolean,authNonce:bigint}|undefined,string]>} */
   const cases = [
     [undefined, 'GrantNotFound'],
-    [{ active: false, read: false }, 'GrantRevoked'],
-    [{ active: true, read: true }, 'BindingUnsupported'],
+    [{ active: false, read: false, authNonce: 5n }, 'GrantRevoked'],
+    [{ active: true, read: true, authNonce: 5n }, 'BindingUnsupported'],
   ];
   for (const [value, code] of cases) {
     const { ports, calls, setGrant } = fixture();
@@ -151,11 +151,26 @@ test('a grant changed to read access before submission is refused', async () => 
   const sign = ports.authoriser.authorise;
   ports.authoriser.authorise = async (request) => {
     const result = await sign(request);
-    setGrant({ active: true, read: true });
+    setGrant({ active: true, read: true, authNonce: 5n });
     return result;
   };
   await assert.rejects(revokeJubjubGrantCall({ hint, grantId }, ports), {
     code: 'BindingUnsupported',
+  });
+  assert.ok(!calls.includes('call'));
+  assert.ok(!calls.includes('record'));
+});
+
+test('a changed grant roster nonce after signing prevents submission', async () => {
+  const { ports, calls, setGrant } = fixture();
+  const sign = ports.authoriser.authorise;
+  ports.authoriser.authorise = async (request) => {
+    const result = await sign(request);
+    setGrant({ active: true, read: false, authNonce: 6n });
+    return result;
+  };
+  await assert.rejects(revokeJubjubGrantCall({ hint, grantId }, ports), {
+    code: 'GrantRosterUnsettled',
   });
   assert.ok(!calls.includes('call'));
   assert.ok(!calls.includes('record'));
