@@ -8,8 +8,9 @@ the demo still has no grant issue UI.
 The SDK's key-session descriptors carry the context Lace's hosted signer asks to display, but the
 demo uses a local signer; a packed Lace consumer flow has not yet been validated. Read issue and
 revoke-all rotate inside their outer owner session without requesting a second rotation consent.
-The P-256 package flow can clear spend grants and tombstones with the pinned scoped-grants
-binding; it refuses live read grants until P-256 viewing-secret rotation is implemented.
+The sealed P-256 package flow can rotate away from live read grantees before clearing the pinned
+ACC grant map. The browser demo has no chain-backed holding or read-target source for this flow,
+and P-256 read-grant issue and selective revoke remain package work.
 
 This is a prototype for the standalone network. Each item below says what the prototype does and
 what production needs. Two items have fork issues:

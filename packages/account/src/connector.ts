@@ -661,7 +661,12 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
       );
     });
 
-  const rotateP256ViewingKey = (record: P256Hint, options: FlowOptions = {}, removal?: string) =>
+  const rotateP256ViewingKey = (
+    record: P256Hint,
+    options: FlowOptions = {},
+    removal?: string,
+    exceptAll = false,
+  ) =>
     run(options, async (flow): Promise<ViewingKeyRotationResult | DeviceRemovalResult> => {
       const keyring = viewingKey;
       const reencrypt = keyring?.reencryptInbox;
@@ -862,6 +867,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
               networkId,
               keyring: { account: record.address, encKey: keys.encKey, envelopes: keys.envelopes },
               authNonce: view.authNonce,
+              ...(exceptAll && { exceptAll: true }),
               ...flow.ports,
             },
             { targets: ports.readGrants!, viewingKey: keyring, random },
@@ -1240,15 +1246,53 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             'BindingUnsupported',
             'P-256 revoke-all needs the pinned grants binding and a complete live grant roster.',
           );
-        const roster = await flow.step('grant.roster', () =>
+        let roster = await flow.step('grant.roster', () =>
           ports.grantRoster!.readGrantRoster(record.address),
         );
         const baseline = grantRosterFingerprint(roster);
-        if (roster.entries.some(({ active, read }) => active && read))
-          throw new PassportConnectorError(
-            'BindingUnsupported',
-            'Live read grants require viewing-secret rotation before revoke-all.',
+        const activeReadIds = roster.entries
+          .filter(({ active, read }) => active && read)
+          .map(({ id }) => id)
+          .sort();
+        let rotation: ViewingKeyRotationResult | undefined;
+        if (activeReadIds.length) {
+          if (!isSealedP256(record) || !ports.readGrants || !ports.holdings)
+            throw new PassportConnectorError(
+              'BindingUnsupported',
+              'Read-grant revoke-all needs sealed keys, verified holdings and live read targets.',
+            );
+          const targets = await flow.step('grant.roster', () =>
+            ports.readGrants!.readActiveReadGrantTargets(record.address),
           );
+          if (
+            targets.authNonce !== roster.authNonce ||
+            JSON.stringify(targets.targets.map(({ grantId }) => grantId).sort()) !==
+              JSON.stringify(activeReadIds)
+          )
+            throw new PassportConnectorError(
+              'GrantRosterUnsettled',
+              'The active read-grant targets differ from the ACC grant map.',
+            );
+          rotation = (await rotateP256ViewingKey(
+            record,
+            options,
+            undefined,
+            true,
+          )) as ViewingKeyRotationResult;
+          const advanced = await flow.step('grant.roster', () =>
+            ports.grantRoster!.readGrantRoster(record.address),
+          );
+          if (
+            advanced.authNonce <= roster.authNonce ||
+            advanced.generation !== roster.generation ||
+            grantRosterFingerprint(advanced) !== baseline
+          )
+            throw new PassportConnectorError(
+              'GrantRosterUnsettled',
+              'The grant map changed during viewing-key rotation.',
+            );
+          roster = advanced;
+        }
         const view = await readView(flow, record);
         if (!view.booted || view.specVersion !== 3)
           throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
@@ -1340,7 +1384,13 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             'The submitted revoke-all did not clear the live ACC grant map.',
           );
         });
-        return { ...tx, status: 'cleared' as const, generation, nextUseCounter: counter + 1n };
+        return {
+          ...tx,
+          status: 'cleared' as const,
+          generation,
+          nextUseCounter: counter + 1n,
+          ...(rotation && { rotation }),
+        };
       }),
   });
 
