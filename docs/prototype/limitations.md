@@ -121,6 +121,7 @@ time, and a deployment pipeline for the artefacts.
   See fork issue [#17](https://github.com/input-output-hk/midnight-passport-sdk/issues/17).
 - **Beyond the first device.** There is no second device, grant, recovery or withdrawal. Only the
   passkey that created the account can sign for it.
+  The reusable account package has a staged unshielded JubJub grant publication flow, but the prototype page does not expose it.
 - **A wallet of its own.** The built-in wallet is a read-only stand-in. It proves and pays nothing.
   lace-sdk is expected to replace it.
 - **Browsers.** Real-passkey runs used Chrome on macOS only.

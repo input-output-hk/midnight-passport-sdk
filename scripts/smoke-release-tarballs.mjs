@@ -65,6 +65,7 @@ try {
            typeof account.addJubjubAuthorisingDevice !== 'function' ||
            typeof account.prepareJubjubGrant !== 'function' ||
            typeof account.issueJubjubGrantCall !== 'function' ||
+           typeof account.publishJubjubGrantBookkeeping !== 'function' ||
            typeof browser.createBrowserPassport !== 'function' ||
            typeof service.createServer !== 'function' ||
            typeof service.chainRoute !== 'function' ||

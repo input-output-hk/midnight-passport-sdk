@@ -3,6 +3,7 @@ export * from './errors.js';
 export * from './holdings.js';
 export * from './grant-scope.js';
 export * from './jubjub-grant-issue.js';
+export * from './jubjub-grant-publication.js';
 export type * from './seams.js';
 export * from './connector.js';
 export * from './jubjub-readers.js';

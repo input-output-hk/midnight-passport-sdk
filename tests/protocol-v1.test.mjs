@@ -32,6 +32,9 @@ const TABLE = {
   BindingUnsupported: { retryable: false, lace: [] },
   GrantScopeInvalid: { retryable: false, lace: ['grant-scope-invalid'] },
   GrantLimitReached: { retryable: false, lace: ['grant-limit-reached'] },
+  GrantRevoked: { retryable: false, lace: ['grant-revoked'] },
+  GrantRosterUnsettled: { retryable: true, lace: ['grant-roster-unsettled'] },
+  GrantBookkeepingUnsettled: { retryable: false, lace: [] },
   ArtefactIntegrity: { retryable: false, lace: ['artefact-integrity'] },
   ProverUnavailable: { retryable: true, lace: ['proof-server'] },
   SponsorRejected: { retryable: 'maybe', lace: ['sponsor-exhausted'] },
@@ -51,7 +54,13 @@ test('the error-code table is the design §3.3 table, frozen', () => {
 
 test('isRetryable follows the table; "maybe" and unknown codes are not retryable', () => {
   const retryable = Object.keys(TABLE).filter((code) => p.isRetryable(code));
-  assert.deepEqual(retryable, ['UserCancelled', 'WrongPasskey', 'ProverUnavailable', 'Aborted']);
+  assert.deepEqual(retryable, [
+    'UserCancelled',
+    'WrongPasskey',
+    'GrantRosterUnsettled',
+    'ProverUnavailable',
+    'Aborted',
+  ]);
   assert.equal(p.isRetryable('SponsorRejected'), false);
   assert.equal(p.isRetryable('SomeFutureCode'), false);
 });

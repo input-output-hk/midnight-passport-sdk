@@ -198,6 +198,7 @@ and `assertionMaterial`.
   - _First arm._ `/deploy` accepts `firstArm: "p256" | "jubjub"` and installs that arm's verifier keys
     first. Omitted `firstArm` retains the prototype's P-256 behavior. The SDK connector currently
     selects P-256; the JubJub account flow is a separate release gate.
+  - _Grant publication._ The reusable JubJub account package can settle and publish a staged unshielded grant through host ports; this demo page does not yet call that flow.
 - **Manifest pin (R18).** The dapp bakes `PASSPORT_MANIFEST_SHA256` in when Vite starts and checks
   the service's `/v1/config` against it, refusing a mismatch (`ArtefactIntegrity`). It is never read
   from the service, which could otherwise vouch for its own tampered artefacts. The service
