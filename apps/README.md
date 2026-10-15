@@ -193,7 +193,7 @@ and `assertionMaterial`.
   - _First arm._ `/deploy` accepts `firstArm: "p256" | "jubjub"` and installs that arm's verifier keys
     first. Omitted `firstArm` retains the prototype's P-256 behavior. The SDK connector currently
     selects P-256; the JubJub account flow is a separate release gate.
-  - _Grant publication._ The reusable JubJub account package can settle a staged grant and publish its bookkeeping and read seal through host ports; this demo page does not yet call that flow.
+  - _Grant publication._ The reusable JubJub account package can settle a staged grant and publish its bookkeeping and read seal through host ports. The account package also has a lower-level P-256 publisher for an already active, durably staged grant; its issue and recovery entry points are pending. This demo page does not yet call either flow.
   - _Grant revocation._ The reusable package rotates before revoking a read grant or clearing every grant; revoke-all seals the new secret to devices only. The demo page has no grant controls yet.
     Read issue and revoke-all rotate inside their owner key session; the page does not exercise Lace's hosted signer.
     The sealed P-256 package flow can also rotate away from live read grantees before clearing the
