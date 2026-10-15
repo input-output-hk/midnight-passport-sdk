@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { revokeJubjubGrantCall } from '../packages/account/dist/index.js';
+import {
+  revokeAndConfirmJubjubGrant,
+  revokeJubjubGrantCall,
+} from '../packages/account/dist/index.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 
 const account = 'ab'.repeat(32);
@@ -174,4 +177,37 @@ test('a changed grant roster nonce after signing prevents submission', async () 
   });
   assert.ok(!calls.includes('call'));
   assert.ok(!calls.includes('record'));
+});
+
+test('settled revocation waits for the inactive ACC tombstone', async () => {
+  const { ports, setGrant, calls } = fixture();
+  const call = ports.chain.call;
+  ports.chain.call = async (request) => {
+    const tx = await call(request);
+    setGrant({ active: false, read: false, authNonce: 6n });
+    return tx;
+  };
+  const result = await revokeAndConfirmJubjubGrant({ hint, grantId }, ports);
+  assert.equal(result.status, 'revoked');
+  assert.equal(result.txHash, 'revoke-tx');
+  assert.equal(calls.at(-1), 'roster');
+});
+
+test('submitted revoke stays unsettled while the live ACC still reports an active grant', async () => {
+  const { ports } = fixture();
+  await assert.rejects(
+    revokeAndConfirmJubjubGrant(
+      { hint, grantId },
+      { ...ports, attempts: 2, sleep: async () => {} },
+    ),
+    { code: 'GrantRosterUnsettled' },
+  );
+});
+
+test('invalid settlement bounds are refused before a revoke call', async () => {
+  const { ports, calls } = fixture();
+  await assert.rejects(revokeAndConfirmJubjubGrant({ hint, grantId }, { ...ports, attempts: 0 }), {
+    code: 'InternalError',
+  });
+  assert.deepEqual(calls, []);
 });

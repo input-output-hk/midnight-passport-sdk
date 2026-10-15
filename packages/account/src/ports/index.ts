@@ -428,6 +428,8 @@ export interface PassportPorts {
   readonly readGrants?: ActiveReadGrantTargetSource;
   /** Live ACC grant map, used to pin issue consent and confirm settlement. */
   readonly grants?: ActiveGrantSnapshotSource;
+  /** Live individual grant detail and inactive tombstones for settled revocation. */
+  readonly grantDetails?: GrantDetailSource;
   /** Must outlive crashes between issue submission and sealed bookkeeping publication. */
   readonly grantJournal?: GrantPublicationJournal;
   /** Trusted relying party id; never taken from a DApp's grant request. */

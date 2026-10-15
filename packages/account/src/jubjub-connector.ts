@@ -14,6 +14,8 @@ import { startFlow, type Flow } from './flow.js';
 import { readVerifiedHoldings } from './holdings.js';
 import { issueAndPublishJubjubGrant } from './jubjub-grant-settlement.js';
 import type { IssueJubjubGrantPure } from './jubjub-grant-issue.js';
+import { revokeAndConfirmJubjubGrant } from './jubjub-grant-revoke.js';
+import type { RevokeJubjubGrantPure } from './jubjub-grant-revoke.js';
 import { JUBJUB_READER_SCAN_LIMIT, resolveJubjubReaders } from './jubjub-readers.js';
 import { sealActiveReadGrants } from './read-grant-deliveries.js';
 import type {
@@ -105,6 +107,16 @@ function requireGrantPure(value: unknown): IssueJubjubGrantPure & JubjubPureCirc
       throw new PassportConnectorError('BindingUnsupported', `ACC binding lacks ${name}.`);
   }
   return pure as IssueJubjubGrantPure & JubjubPureCircuits;
+}
+
+function requireRevokePure(value: unknown): RevokeJubjubGrantPure {
+  const pure = requirePure(value) as Partial<RevokeJubjubGrantPure>;
+  if (typeof pure.challenge_revoke_grant_with_jubjub !== 'function')
+    throw new PassportConnectorError(
+      'BindingUnsupported',
+      'ACC binding lacks challenge_revoke_grant_with_jubjub.',
+    );
+  return pure as RevokeJubjubGrantPure;
 }
 
 /** The JubJub owner path over the same account API. All key material stays behind viewingKey. */
@@ -1029,6 +1041,28 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           grants: ports.grants,
           journal: ports.grantJournal,
           viewingKey,
+          random: fresh,
+        },
+      );
+    },
+    revokeGrant: async (grantId, options = {}) => {
+      if (!ports.records || !ports.grantDetails)
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'Grant revocation needs local records and live grant details.',
+        );
+      if (network.bindingId !== 'acc-s3r1.1')
+        throw new PassportConnectorError('BindingUnsupported', 'Unsupported ACC grant binding.');
+      const pure = requireRevokePure((await readBinding()).pureCircuits);
+      return revokeAndConfirmJubjubGrant(
+        { hint: record, grantId, ...options },
+        {
+          bindingId: 'acc-s3r1.1',
+          pure,
+          chain: await readChain(),
+          authoriser,
+          records: ports.records,
+          grants: ports.grantDetails,
           random: fresh,
         },
       );

@@ -3,6 +3,7 @@ import type {
   AccountDirectory,
   AccountRecordStore,
   ActiveGrantSnapshotSource,
+  GrantDetailSource,
   ActiveReadGrantTargetSource,
   Authoriser,
   Deployer,
@@ -44,6 +45,7 @@ export interface BrowserPassportConfig {
   readonly holdings?: VerifiedHoldingSource;
   readonly readGrants?: ActiveReadGrantTargetSource;
   readonly grants?: ActiveGrantSnapshotSource;
+  readonly grantDetails?: GrantDetailSource;
   readonly grantJournal?: GrantPublicationJournal;
   readonly records?: AccountRecordStore;
   readonly random?: (length: number) => Uint8Array;
@@ -103,6 +105,7 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
     ...(config.holdings && { holdings: config.holdings }),
     ...(config.readGrants && { readGrants: config.readGrants }),
     ...(config.grants && { grants: config.grants }),
+    ...(config.grantDetails && { grantDetails: config.grantDetails }),
     ...(config.grantJournal && { grantJournal: config.grantJournal }),
     grantOrigin: config.passkey.rpId,
     ...(config.records && { records: config.records }),

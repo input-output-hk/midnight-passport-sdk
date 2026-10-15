@@ -143,6 +143,14 @@ function world() {
         activeGrantIds.push(hex(/** @type {Uint8Array} */ (request.args[0])));
         counter++;
         nonce++;
+      } else if (request.circuit === 'revoke_grant_with_jubjub') {
+        assert.equal(request.args[2], counter);
+        const id = hex(/** @type {Uint8Array} */ (request.args[0]));
+        const index = activeGrantIds.indexOf(id);
+        assert.ok(index >= 0);
+        activeGrantIds.splice(index, 1);
+        counter++;
+        nonce++;
       } else if (request.circuit === 'remove_device_with_jubjub') {
         if (failRemoval) {
           failRemoval = false;
@@ -375,6 +383,13 @@ test('JubJub account issueGrant pins the host origin and returns after sealed pu
         ids: [...w.activeGrantIds],
       }),
     },
+    grantDetails: {
+      readGrant: async (_account, grantId) => ({
+        active: w.activeGrantIds.includes(grantId),
+        read: false,
+        authNonce: w.grantNonce(),
+      }),
+    },
     grantJournal: {
       stage: async (opening) => {
         staged = opening;
@@ -406,6 +421,12 @@ test('JubJub account issueGrant pins the host origin and returns after sealed pu
   assert.equal(result.appendTxHashes.length, 2);
   assert.equal(local.localUseCounter, 5n);
   assert.equal(published, true);
+  assert.ok(account.revokeGrant);
+  const revoked = await account.revokeGrant(result.grantId);
+  assert.equal(revoked.status, 'revoked');
+  assert.equal(revoked.grantId, result.grantId);
+  assert.equal(local.localUseCounter, 6n);
+  assert.ok(!w.activeGrantIds.includes(result.grantId));
 });
 
 test('JubJub open resumes activation and sealed entries after an interrupted create', async () => {

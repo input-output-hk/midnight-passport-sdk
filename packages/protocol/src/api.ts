@@ -123,6 +123,13 @@ export interface PassportGrantIssueResult extends PassportTxResult {
   readonly nextUseCounter: bigint;
 }
 
+/** A grant confirmed inactive in the live ACC grant map. */
+export interface PassportGrantRevokeResult extends PassportTxResult {
+  readonly grantId: string;
+  readonly status: 'revoked';
+  readonly nextUseCounter: bigint;
+}
+
 export interface PassportAccount {
   readonly address: string;
   readonly networkId: string;
@@ -143,6 +150,8 @@ export interface PassportAccount {
   readShieldedHoldings?(options?: FlowOptions): Promise<readonly PassportShieldedHolding[]>;
   /** JubJub owner issue; the host pins the origin and supplies durable grant bookkeeping. */
   issueGrant?(scope: GrantScopeInput, options?: FlowOptions): Promise<PassportGrantIssueResult>;
+  /** JubJub owner revoke for a grant without read access; confirms the inactive tombstone. */
+  revokeGrant?(grantId: string, options?: FlowOptions): Promise<PassportGrantRevokeResult>;
 }
 
 export interface PassportConnectorAPI {

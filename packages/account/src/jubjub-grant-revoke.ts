@@ -1,4 +1,8 @@
-import type { FlowOptions, PassportTxResult } from '@input-output-hk/mn-passport-protocol';
+import type {
+  FlowOptions,
+  PassportGrantRevokeResult,
+  PassportTxResult,
+} from '@input-output-hk/mn-passport-protocol';
 import { fromHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow } from './flow.js';
@@ -50,6 +54,54 @@ export interface SubmittedJubjubGrantRevoke extends PassportTxResult {
   readonly grantId: string;
   readonly status: 'submitted';
   readonly nextUseCounter: bigint;
+}
+
+export interface ConfirmJubjubGrantRevokePorts extends RevokeJubjubGrantPorts {
+  readonly sleep?: (milliseconds: number) => Promise<void>;
+  readonly attempts?: number;
+}
+
+const sleep = (milliseconds: number): Promise<void> =>
+  new Promise((done) =>
+    (globalThis as unknown as { setTimeout(run: () => void, ms: number): unknown }).setTimeout(
+      done,
+      milliseconds,
+    ),
+  );
+
+/** Return revoked only when the submitted grant has an inactive live ACC tombstone. */
+export async function revokeAndConfirmJubjubGrant(
+  input: RevokeJubjubGrantInput,
+  ports: ConfirmJubjubGrantRevokePorts,
+): Promise<PassportGrantRevokeResult> {
+  const attempts = ports.attempts ?? 30;
+  if (!Number.isSafeInteger(attempts) || attempts < 1 || attempts > 120)
+    throw new PassportConnectorError('InternalError', 'Invalid grant settlement polling bound.');
+  const submitted = await revokeJubjubGrantCall(input, ports);
+  const flow = startFlow(input, ports.random ?? random);
+  try {
+    await flow.step('grant.roster', async () => {
+      for (let attempt = 0; attempt < attempts; attempt++) {
+        flow.checkpoint();
+        const grant = await ports.grants.readGrant(input.hint.address, input.grantId);
+        if (grant && !grant.active) return;
+        if (attempt + 1 < attempts) await (ports.sleep ?? sleep)(1000);
+      }
+      throw new PassportConnectorError(
+        'GrantRosterUnsettled',
+        'The submitted grant revocation did not appear on chain.',
+      );
+    });
+    return {
+      txHash: submitted.txHash,
+      ...(submitted.blockHeight !== undefined && { blockHeight: submitted.blockHeight }),
+      grantId: submitted.grantId,
+      status: 'revoked',
+      nextUseCounter: submitted.nextUseCounter,
+    };
+  } catch (error) {
+    throw flow.fail(error);
+  }
 }
 
 const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
