@@ -206,7 +206,7 @@ and `assertionMaterial`.
     first. Omitted `firstArm` retains the prototype's P-256 behavior. The SDK connector currently
     selects P-256; the JubJub account flow is a separate release gate.
   - _Grant publication._ The reusable JubJub account package can settle and publish a staged unshielded grant through host ports; this demo page does not yet call that flow.
-  - _Grant revocation._ The reusable package can submit an unshielded grant revoke call; the demo page has no grant controls yet.
+  - _Grant revocation._ The reusable package confirms unshielded revocation and rotates the viewing secret before revoking a read grant, excluding that grantee from new seals. The demo page has no grant controls yet.
   - _Read-grant delivery._ The reusable package can prepare sealed records for active read grantees; this demo does not yet run grant-aware rotation or publish those records.
 - **Manifest pin (R18).** The dapp bakes `PASSPORT_MANIFEST_SHA256` in when Vite starts and checks
   the service's `/v1/config` against it, refusing a mismatch (`ArtefactIntegrity`). It is never read

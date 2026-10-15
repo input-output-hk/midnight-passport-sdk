@@ -130,7 +130,7 @@ time, and a deployment pipeline for the artefacts.
 - **Beyond the first device.** There is no second device, grant, recovery or withdrawal. Only the
   passkey that created the account can sign for it.
   The reusable account package has a staged unshielded JubJub grant publication flow, but the prototype page does not expose it.
-  It can also submit an unshielded grant revoke call; read-grant revocation requires viewing-secret rotation.
+  It can also confirm an unshielded grant revoke call. Read-grant revocation rotates the viewing secret and seals it to surviving readers before the revoke call; the prototype page does not expose this flow.
   A reusable helper prepares read-grant seals, but the prototype page does not deliver them.
 - **A wallet of its own.** The built-in wallet is a read-only stand-in. It proves and pays nothing.
   lace-sdk is expected to replace it.

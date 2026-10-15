@@ -128,6 +128,8 @@ export interface PassportGrantRevokeResult extends PassportTxResult {
   readonly grantId: string;
   readonly status: 'revoked';
   readonly nextUseCounter: bigint;
+  /** Present for read grants: key rotation and fresh seals for surviving readers. */
+  readonly rotation?: ViewingKeyRotationResult;
 }
 
 /** All grants and tombstones cleared in the next ACC grant generation. */

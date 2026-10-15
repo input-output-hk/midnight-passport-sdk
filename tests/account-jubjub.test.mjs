@@ -34,6 +34,7 @@ function world() {
   let failActivation = false;
   let failSecondAppend = false;
   let failRemoval = false;
+  let failGrantRevoke = false;
   let failEnrollment = false;
   let tamperKeyAfterNextAppend = false;
   let addInboxAfterNextAppend = false;
@@ -145,6 +146,10 @@ function world() {
         counter++;
         nonce++;
       } else if (request.circuit === 'revoke_grant_with_jubjub') {
+        if (failGrantRevoke) {
+          failGrantRevoke = false;
+          throw new Error('revocation interrupted after key rotation');
+        }
         assert.equal(request.args[2], counter);
         const id = hex(/** @type {Uint8Array} */ (request.args[0]));
         const index = activeGrantIds.indexOf(id);
@@ -313,6 +318,7 @@ function world() {
     interruptActivation: () => (failActivation = true),
     interruptSecondAppend: () => (failSecondAppend = true),
     interruptRemoval: () => (failRemoval = true),
+    interruptGrantRevoke: () => (failGrantRevoke = true),
     interruptEnrollment: () => (failEnrollment = true),
     tamperKeyAfterNextAppend: () => (tamperKeyAfterNextAppend = true),
     addInboxAfterNextAppend: () => (addInboxAfterNextAppend = true),
@@ -799,6 +805,117 @@ test('JubJub removal seals a fresh viewing secret to an active read grantee', as
   assert.equal(result.unsealedGrantIds.length, 0);
   assert.equal(w.calls.at(-1), 'remove_device_with_jubjub');
   grantee.secretKey.fill(0);
+});
+
+async function readRevokeWorld() {
+  const w = world();
+  await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const revokedId = 'ac'.repeat(32);
+  const survivingId = 'bd'.repeat(32);
+  const revokedReader = x25519.keygen();
+  const survivingReader = x25519.keygen();
+  w.activeGrantIds.push(revokedId, survivingId);
+  w.setReadGrantTargets([
+    { grantId: revokedId, readPublicKey: hex(revokedReader.publicKey) },
+    { grantId: survivingId, readPublicKey: hex(survivingReader.publicKey) },
+  ]);
+  /** @type {import('../packages/account/dist/ports/index.js').AccountRecord} */
+  let local = {
+    address,
+    bindingId: 'acc-s3r1.1',
+    scheme: 'jubjub-schnorr',
+    credentialId,
+    localUseCounter: 2n,
+  };
+  const account = await createPassportAccounts({
+    ...w.ports,
+    records: {
+      exists: async () => true,
+      read: async () => local,
+      write: async (next) => {
+        local = next;
+      },
+    },
+    grantDetails: {
+      readGrant: async (_account, grantId) => ({
+        active: w.activeGrantIds.includes(grantId),
+        read: true,
+        authNonce: w.grantNonce(),
+      }),
+    },
+  }).openAccount();
+  return {
+    w,
+    account,
+    revokedId,
+    survivingId,
+    revokedReader,
+    survivingReader,
+    local: () => local,
+    setLocal: (
+      /** @type {import('../packages/account/dist/ports/index.js').AccountRecord} */ next,
+    ) => {
+      local = next;
+    },
+  };
+}
+
+test('read grant revocation refuses a mismatched local record before changing the key', async () => {
+  const { w, account, revokedId, revokedReader, survivingReader, local, setLocal } =
+    await readRevokeWorld();
+  assert.ok(account.revokeGrant);
+  const before = hex(w.encKey());
+  setLocal({ ...local(), credentialId: new Uint8Array([99]) });
+  await assert.rejects(account.revokeGrant(revokedId), { code: 'NotAuthorised' });
+  assert.equal(hex(w.encKey()), before);
+  assert.ok(!w.calls.includes('rotate_enc_key_with_jubjub'));
+  revokedReader.secretKey.fill(0);
+  survivingReader.secretKey.fill(0);
+});
+
+test('read grant revocation rotates first and excludes the revoked reader from new seals', async () => {
+  const { w, account, revokedId, survivingId, revokedReader, survivingReader, local } =
+    await readRevokeWorld();
+  assert.ok(account.revokeGrant);
+  const before = hex(w.encKey());
+  const result = await account.revokeGrant(revokedId);
+  assert.equal(result.status, 'revoked');
+  assert.ok(result.rotation);
+  assert.notEqual(hex(w.encKey()), before);
+  assert.ok(!result.rotation.sealedReadGrants.some(({ grantId }) => grantId === revokedId));
+  assert.deepEqual(
+    result.rotation.sealedReadGrants.map(({ grantId }) => grantId),
+    [survivingId],
+  );
+  assert.ok(!w.activeGrantIds.includes(revokedId));
+  assert.ok(w.activeGrantIds.includes(survivingId));
+  assert.equal(local().localUseCounter, result.nextUseCounter);
+  assert.equal(w.calls.at(-1), 'revoke_grant_with_jubjub');
+  assert.equal(w.sessionFlows.at(-1)?.kind, 'revoke-grant');
+  assert.equal(w.sessionFlows.at(-1)?.read, true);
+  revokedReader.secretKey.fill(0);
+  survivingReader.secretKey.fill(0);
+});
+
+test('read grant revocation can retry after the key switch lands but the revoke call fails', async () => {
+  const { w, account, revokedId, survivingId, revokedReader, survivingReader } =
+    await readRevokeWorld();
+  assert.ok(account.revokeGrant);
+  const before = hex(w.encKey());
+  w.interruptGrantRevoke();
+  await assert.rejects(account.revokeGrant(revokedId), { code: 'InternalError' });
+  assert.notEqual(hex(w.encKey()), before);
+  assert.ok(w.activeGrantIds.includes(revokedId));
+  const retried = await account.revokeGrant(revokedId);
+  assert.equal(retried.status, 'revoked');
+  assert.ok(retried.rotation);
+  assert.ok(!retried.rotation.sealedReadGrants.some(({ grantId }) => grantId === revokedId));
+  assert.deepEqual(
+    retried.rotation.sealedReadGrants.map(({ grantId }) => grantId),
+    [survivingId],
+  );
+  revokedReader.secretKey.fill(0);
+  survivingReader.secretKey.fill(0);
 });
 
 test('JubJub removal can resume after the key switch lands but the removal call fails', async () => {
