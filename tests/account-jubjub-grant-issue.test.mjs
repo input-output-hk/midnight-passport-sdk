@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { jubjub } from '@noble/curves/misc.js';
-import { issueJubjubGrantCall } from '../packages/account/dist/index.js';
+import {
+  issueAndPublishJubjubGrant,
+  issueJubjubGrantCall,
+} from '../packages/account/dist/index.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 
 /** @param {Uint8Array} bytes */
@@ -252,4 +255,130 @@ test('read and shielded grants are refused before a key ceremony', async () => {
     });
     assert.deepEqual(calls, []);
   }
+});
+
+test('settled issue returns active only after both sealed grant parts are confirmed', async () => {
+  const { ports, staged, setActiveIds } = fixture();
+  /** @type {Uint8Array[]} */
+  const inbox = [];
+  const sealed = [new Uint8Array(192).fill(0xa1), new Uint8Array(192).fill(0xa2)];
+  /** @type {import('../packages/account/dist/ports/index.js').AccountRecord} */
+  let current = record;
+  let nonce = 5n;
+  let published = false;
+  const opening = () => {
+    const value = staged[0];
+    assert.ok(value);
+    return value;
+  };
+  const issueCall = ports.chain.call;
+  const issueSign = ports.authoriser.authorise;
+  /** @type {import('../packages/account/dist/jubjub-grant-settlement.js').IssueAndPublishJubjubGrantPorts} */
+  const settled = {
+    ...ports,
+    pure: pureCircuits,
+    networkId: 'undeployed',
+    attempts: 2,
+    sleep: async () => {},
+    records: {
+      exists: async () => true,
+      read: async () => current,
+      write: async (next) => {
+        current = next;
+      },
+    },
+    journal: {
+      stage: ports.journal.stage,
+      load: async () => opening(),
+      markPublished: async () => {
+        assert.equal(inbox.length, 2);
+        published = true;
+      },
+    },
+    chain: {
+      readAccount: async () => ({
+        booted: true,
+        specVersion: 3,
+        authNonce: nonce,
+        deviceEpoch: 0n,
+        entryCount: 1,
+        encKey: new Uint8Array(32).fill(8),
+        inboxEntries: inbox,
+        hasEntry: (entry) =>
+          hex(entry) ===
+          hex(
+            pureCircuits.derive_device_entry_with_jubjub(
+              { bytes: Buffer.from(account, 'hex') },
+              owner,
+              0n,
+              current.localUseCounter,
+            ),
+          ),
+      }),
+      call: async (request) => {
+        if (request.circuit === 'issue_grant_with_jubjub') {
+          const tx = await issueCall(request);
+          setActiveIds([opening().bookkeeping.grantId]);
+          nonce++;
+          return tx;
+        }
+        assert.equal(request.circuit, 'append_inbox_with_jubjub');
+        assert.ok(request.args[0] instanceof Uint8Array);
+        inbox.push(request.args[0]);
+        nonce++;
+        return { txHash: `append-${inbox.length}` };
+      },
+    },
+    authoriser: {
+      ...ports.authoriser,
+      withKeySession: async (operation) => operation(),
+      authorise: (request) =>
+        request.circuit === 'issue_grant_with_jubjub'
+          ? issueSign(request)
+          : Promise.resolve({
+              scheme: 'jubjub-schnorr',
+              pk: owner,
+              useCounter: request.useCounter,
+              sigR: owner,
+              sigS: 8n,
+              grindNonce: 3n,
+            }),
+    },
+    viewingKey: {
+      readerPublicKey: async () => new Uint8Array(32),
+      createKeys: async () => ({ encKey: new Uint8Array(32), envelopes: [], registrations: [] }),
+      sealToDevice: async () => ({ envelope: new Uint8Array(), registration: new Uint8Array() }),
+      sealGrant: async () => sealed,
+      openInbox: async (_networkId, _keyring, entries) =>
+        entries.map((entry) => {
+          if (entry === sealed[0])
+            return {
+              kind: 'grant',
+              record: {
+                part: 'grant',
+                grantId: opening().bookkeeping.grantId,
+                slot: opening().bookkeeping.slot,
+                scopeSalt: opening().bookkeeping.scopeSalt,
+                granteePublicKey: opening().bookkeeping.granteePublicKey,
+              },
+            };
+          if (entry === sealed[1])
+            return {
+              kind: 'grant',
+              record: {
+                part: 'object',
+                grantId: opening().bookkeeping.grantId,
+                object: opening().bookkeeping.object,
+              },
+            };
+          return null;
+        }),
+    },
+  };
+  const result = await issueAndPublishJubjubGrant(input, settled);
+  assert.equal(result.status, 'active');
+  assert.equal(result.txHash, 'tx');
+  assert.deepEqual(result.appendTxHashes, ['append-1', 'append-2']);
+  assert.equal(result.nextUseCounter, 3n);
+  assert.equal(published, true);
 });
