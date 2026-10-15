@@ -167,6 +167,9 @@ and `assertionMaterial`.
   registration with the passkey's WebAuthn policy. The wallet seed remains independent. Rotation is hidden until the page has
   verified surviving readers, holdings and read-grant targets. See
   [`docs/prototype/keys.md`](../docs/prototype/keys.md).
+- **P-256 holdings reads need a chain-backed source.** The account API can open sealed coin
+  descriptions with the live passkey and returns only outputs verified as held by the ACC. The
+  browser demo does not configure `VerifiedHoldingSource`, so this method refuses reads there.
 - **The service binds loopback** (`127.0.0.1`). CORS lets only the dapp origin read its answers,
   which on its own does not stop a cross-site page from sending a request. So the service also
   answers `415` to any POST or PUT whose `content-type` is not `application/json` (that forces a

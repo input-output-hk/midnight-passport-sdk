@@ -11,6 +11,8 @@ a separate type `0xd5` registration with its compressed WebAuthn public key and 
 recover the secret after one device is lost, but P-256 enrollment and roster-safe rotation are
 still open; the demo hides rotation. The new browser composition explicitly refuses older
 deterministic-key P-256 accounts until migrated. See [ZK keys and recovery](../site/keys.md).
+The account API can read shielded holdings through this sealed P-256 keyring when a host provides
+chain-backed holding verification; the browser demo does not currently provide that source.
 
 ## Historical deterministic-key P-256 prototype
 

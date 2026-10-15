@@ -171,7 +171,7 @@ export interface PassportAccount {
   removeDevice?(commitmentHex: string, options?: FlowOptions): Promise<DeviceRemovalResult>;
   /** JubJub owner operation; rotates first when live read grants require a fresh account key. */
   addDevice?(reader: JubjubDeviceReader, options?: FlowOptions): Promise<DeviceEnrollmentResult>;
-  /** JubJub accounts can read only chain-confirmed shielded holdings through their viewing key. */
+  /** Sealed JubJub and P-256 accounts read only chain-confirmed holdings through their viewing key. */
   readShieldedHoldings?(options?: FlowOptions): Promise<readonly PassportShieldedHolding[]>;
   /** JubJub owner issue; the host pins the origin and supplies durable grant bookkeeping. */
   issueGrant?(scope: GrantScopeInput, options?: FlowOptions): Promise<PassportGrantIssueResult>;

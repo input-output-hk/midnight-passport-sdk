@@ -8,6 +8,7 @@ import {
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { grantRosterFingerprint } from './grant-roster.js';
+import { readVerifiedHoldings } from './holdings.js';
 import { createJubjubAccounts } from './jubjub-connector.js';
 import { startFlow, type Flow } from './flow.js';
 import type {
@@ -391,6 +392,57 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         specVersion: view.specVersion,
       };
     },
+    readShieldedHoldings: (options = {}) =>
+      run(options, async (flow) => {
+        if (!isSealedP256(record) || !viewingKey || !ports.holdings || !authoriser.withKeySession)
+          throw new PassportConnectorError(
+            'BindingUnsupported',
+            'P-256 holdings need a sealed keyring, key session and chain-backed holding source.',
+          );
+        const view = await readView(flow, record);
+        if (!view.booted || record.status !== 'active')
+          throw new PassportConnectorError('AccountNotFound', 'The P-256 ACC is not active.');
+        if (view.specVersion !== 3)
+          throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
+        const counter = await findCounter(flow, record, view);
+        if (counter === undefined) throw notHeld(record);
+        return authoriser.withKeySession(
+          async () => {
+            const selected = await authoriser.devicePublicKey();
+            const binding = await authoriser.deviceBinding!();
+            if (
+              selected.x !== record.publicKey.x ||
+              selected.y !== record.publicKey.y ||
+              !equalBytes(binding.credentialId, record.credentialId) ||
+              !equalBytes(binding.policy.rp_id_hash, record.policy.rp_id_hash) ||
+              !equalBytes(binding.policy.origin, record.policy.origin)
+            )
+              throw new PassportConnectorError(
+                'NotAuthorised',
+                'The selected passkey does not own this ACC.',
+              );
+            await sealedKeyring(record, view, false);
+            return readVerifiedHoldings(
+              {
+                account: record.address,
+                keyring: {
+                  account: record.address,
+                  encKey: view.encKey!,
+                  envelopes: [...view.inboxEntries!].reverse(),
+                },
+              },
+              {
+                networkId,
+                chain: await chain(),
+                authoriser,
+                viewingKey,
+                holdings: ports.holdings!,
+              },
+            );
+          },
+          { kind: 'read-holdings', account: record.address },
+        );
+      }),
     rotateEncryptionKey: (newKey, options = {}) =>
       run(options, async (flow) => {
         if (isSealedP256(record))

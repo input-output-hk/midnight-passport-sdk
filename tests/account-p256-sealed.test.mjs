@@ -4,6 +4,7 @@ import { createPassportAccounts } from '../packages/account/dist/index.js';
 import { createFakePorts } from '../packages/account/dist/testing/index.js';
 import { recipeDeviceKeyring } from '../packages/keys/dist/index.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
+import { sealInboxCoin } from '../packages/keys/dist/inbox-coin.js';
 
 const viewingKey = () =>
   recipeDeviceKeyring({
@@ -40,6 +41,52 @@ test('P-256 create publishes sealed key entries and reload opens the ledger key'
   await assert.rejects(createPassportAccounts(ports).openAccount(), {
     code: 'EncryptionKeyMismatch',
   });
+});
+
+test('P-256 sealed accounts read only chain-confirmed shielded holdings', async () => {
+  const fake = createFakePorts({ binding: { pureCircuits } });
+  /** @type {number[]} */
+  let held = [];
+  const ports = {
+    ...fake,
+    viewingKey: viewingKey(),
+    authoriser: {
+      ...fake.authoriser,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    holdings: { selectHeldEntries: async () => held },
+  };
+  const account = await createPassportAccounts(ports).createAccount({
+    userName: 'holdings',
+    retireAuthority: true,
+  });
+  assert.ok(account.readShieldedHoldings);
+  const ledger = fake.ledger.get(account.address);
+  assert.ok(ledger);
+  ledger.specVersion = 3;
+  assert.deepEqual(await account.readShieldedHoldings(), []);
+  const coin = { nonce: new Uint8Array(32).fill(4), color: new Uint8Array(32).fill(5), value: 7n };
+  ledger.inboxEntries.push(await sealInboxCoin(ledger.encKey, coin));
+  held = [2];
+  assert.deepEqual(await account.readShieldedHoldings(), [{ inboxIndex: 2, coin }]);
+  held = [1];
+  await assert.rejects(account.readShieldedHoldings(), { code: 'InternalError' });
+  const { holdings: _holdings, ...withoutHoldingPorts } = ports;
+  const withoutVerification = await createPassportAccounts(withoutHoldingPorts).openAccount();
+  assert.ok(withoutVerification.readShieldedHoldings);
+  await assert.rejects(withoutVerification.readShieldedHoldings(), {
+    code: 'BindingUnsupported',
+  });
+  const selected = await ports.authoriser.devicePublicKey();
+  const wrongPasskey = await createPassportAccounts({
+    ...ports,
+    authoriser: {
+      ...ports.authoriser,
+      devicePublicKey: async () => ({ x: selected.x + 1n, y: selected.y }),
+    },
+  }).openAccount();
+  assert.ok(wrongPasskey.readShieldedHoldings);
+  await assert.rejects(wrongPasskey.readShieldedHoldings(), { code: 'NotAuthorised' });
 });
 
 test('P-256 open resumes an interrupted sealed-entry publication', async () => {
