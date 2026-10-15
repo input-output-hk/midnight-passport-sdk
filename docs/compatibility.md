@@ -178,6 +178,17 @@ inspection found one `@midnightntwrk/ledger-v8@8.1.2` and one
 two different protocol runtimes, not duplicate copies of one version. Lace's
 own module bundle and hosted transaction path remain to be measured.
 
+On 2026/10/15, the pinned `6458ed5` ACC was deployed on the Passport localnet
+with a software P-256 passkey. The SDK's `createHostedAccChain` submitted
+`add_device_with_p256` through the reference client's funded transaction handle.
+The live ledger contained the new device entry and advanced `auth_nonce` from 0
+to 1. The [probe](../experiments/acc-0.35/sdk-p256-hosted-enroll-node.mjs) and
+[evidence](../experiments/acc-0.35/results/sdk-p256-hosted-enroll-node.json)
+pin the compiler manifest and transaction. This validates the hosted chain
+bridge and enrollment circuit. It does not exercise the account API's sealed
+key delivery, active read-grant rotation, or Lace's WebAuthn and transaction
+host; those remain release validation work.
+
 | Lace seam | SDK port | Current result |
 | --- | --- | --- |
 | `FeeSponsor.balanceAndSign` | `FeeSponsor` | Direct structural assignment |
