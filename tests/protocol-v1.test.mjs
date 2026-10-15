@@ -34,6 +34,7 @@ const TABLE = {
   DeviceRosterInvalid: { retryable: false, lace: ['device-roster-invalid'] },
   BindingUnsupported: { retryable: false, lace: [] },
   GrantScopeInvalid: { retryable: false, lace: ['grant-scope-invalid'] },
+  TransferInvalid: { retryable: false, lace: [] },
   GrantLimitReached: { retryable: false, lace: ['grant-limit-reached'] },
   GrantNotFound: { retryable: false, lace: ['grant-not-found'] },
   GrantRevoked: { retryable: false, lace: ['grant-revoked'] },

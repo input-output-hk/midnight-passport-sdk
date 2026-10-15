@@ -74,9 +74,8 @@ const sameConsent = (left: unknown, right: unknown): boolean => {
  * Bridges a hosted JubJub signer to the account port without importing Lace.
  * The host's flow converter may brand or validate values but must preserve
  * every consent field; this adapter checks its output before opening a session.
- * This adapter refuses rotation because Lace PR #2845 has
- * no rotation consent kind; passing it through as another kind would mislead
- * the user about what they approve.
+ * This adapter refuses operations without a Lace PR #2845 consent kind;
+ * passing them through as another kind would mislead the user.
  */
 export function hostedJubjubAuthoriser<
   Account extends string,
@@ -137,8 +136,11 @@ export function hostedJubjubAuthoriser<
         });
     },
     withKeySession: (operation, descriptor) => {
-      if (descriptor?.kind === 'rotate-encryption-key')
-        throw new Error('the hosted signer has no rotation consent descriptor');
+      if (
+        descriptor?.kind === 'rotate-encryption-key' ||
+        descriptor?.kind === 'withdraw-unshielded'
+      )
+        throw new Error(`the hosted signer has no ${descriptor.kind} consent descriptor`);
       const flow = descriptor === undefined ? undefined : convert.flow(descriptor);
       if (descriptor !== undefined && !sameConsent(descriptor, flow))
         throw new Error('the hosted signer consent descriptor changed during branding');

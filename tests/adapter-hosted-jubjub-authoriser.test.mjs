@@ -82,7 +82,7 @@ test('hosted authoriser preserves circuit inputs and converts branded values', a
   );
 });
 
-test('hosted key session carries consent context and refuses unsupported rotation', async () => {
+test('hosted key session carries consent context and refuses unsupported owner flows', async () => {
   const { adapter, calls, source, convert } = make();
   const scope = {
     grantee: { scheme: /** @type {const} */ ('jubjub-schnorr'), publicKey: 'ab'.repeat(32) },
@@ -109,7 +109,18 @@ test('hosted key session carries consent context and refuses unsupported rotatio
   assert.deepEqual(calls[0], ['session', descriptor]);
   assert.throws(
     () => adapter.withKeySession(async () => 0, { kind: 'rotate-encryption-key' }),
-    /no rotation consent descriptor/,
+    /no rotate-encryption-key consent descriptor/,
+  );
+  assert.throws(
+    () =>
+      adapter.withKeySession(async () => 0, {
+        kind: 'withdraw-unshielded',
+        account: 'ab'.repeat(32),
+        color: '01'.repeat(32),
+        amount: '7',
+        recipient: '02'.repeat(32),
+      }),
+    /no withdraw-unshielded consent descriptor/,
   );
   assert.equal(calls.length, 1);
   const lossy = hostedJubjubAuthoriser(source, {

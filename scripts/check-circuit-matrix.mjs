@@ -90,6 +90,10 @@ function policy(name, isPure) {
 }
 /** @param {string} name @param {boolean} isPure @returns {[string, string]} */
 function evidence(name, isPure) {
+  if (/^(withdraw_unshielded_with_p256|challenge_withdraw_unshielded_with_p256)$/.test(name))
+    return ['typed flow', 'tests/account-unshielded-withdrawal.test.mjs'];
+  if (/^(withdraw_unshielded_with_jubjub|challenge_withdraw_unshielded_with_jubjub)$/.test(name))
+    return ['typed flow', 'tests/account-jubjub.test.mjs'];
   if (name === 'deposit_shielded')
     return ['sender port', 'tests/account-shielded-deposit.test.mjs'];
   if (/^(issue_grant_with_jubjub|challenge_issue_grant_with_jubjub)$/.test(name))

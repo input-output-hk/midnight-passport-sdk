@@ -21,6 +21,7 @@ import { readVerifiedHoldings } from './holdings.js';
 import { createJubjubAccounts } from './jubjub-connector.js';
 import { resolveRegisteredReaders } from './jubjub-readers.js';
 import { sealActiveReadGrants } from './read-grant-deliveries.js';
+import { prepareUnshieldedWithdrawal } from './unshielded-withdrawal.js';
 import { startFlow, type Flow } from './flow.js';
 import type {
   AccLedgerView,
@@ -1298,6 +1299,100 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     scheme: record.scheme,
     // A copy: the caller may not alter the id the account's own ceremonies are pinned to.
     credentialId: record.credentialId.slice(),
+    withdrawUnshielded: (request, options = {}) =>
+      run(options, async (flow) => {
+        const transfer = prepareUnshieldedWithdrawal(request);
+        const pure = (await binding()).pureCircuits;
+        if (
+          network.bindingId !== 'acc-s3r1.1' ||
+          !pure.challenge_withdraw_unshielded_with_p256 ||
+          !authoriser.withKeySession ||
+          !authoriser.deviceBinding
+        )
+          throw new PassportConnectorError(
+            'BindingUnsupported',
+            'P-256 withdrawal needs the pinned challenge, key session and device binding.',
+          );
+        if (record.status !== 'active')
+          throw new PassportConnectorError('AccountNotFound', 'The P-256 ACC is not active.');
+        return authoriser.withKeySession(
+          async () => {
+            const selected = await authoriser.devicePublicKey();
+            const selectedBinding = await authoriser.deviceBinding!();
+            if (
+              selected.x !== record.publicKey.x ||
+              selected.y !== record.publicKey.y ||
+              !equalBytes(selectedBinding.credentialId, record.credentialId) ||
+              !equalBytes(selectedBinding.policy.rp_id_hash, record.policy.rp_id_hash) ||
+              !equalBytes(selectedBinding.policy.origin, record.policy.origin)
+            )
+              throw new PassportConnectorError(
+                'NotAuthorised',
+                'The selected passkey does not own this ACC.',
+              );
+            const { counter, authNonce } = await useCounter(flow, record);
+            const circuit = 'withdraw_unshielded_with_p256';
+            const challenge = pure.challenge_withdraw_unshielded_with_p256!(
+              { bytes: fromHex(record.address) },
+              p256(record.publicKey),
+              transfer.color,
+              transfer.amount,
+              transfer.recipient,
+              authNonce,
+            );
+            const signed = await flow.step('passkey.sign', () =>
+              authoriser.authorise({
+                account: record.address,
+                circuit,
+                args: [transfer.color, transfer.amount, transfer.recipient],
+                witnessValues: [],
+                authNonce,
+                useCounter: counter,
+                challenge,
+                credentialId: record.credentialId,
+              }),
+            );
+            if (
+              signed.scheme !== 'p256-webauthn' ||
+              signed.useCounter !== counter ||
+              signed.pk.x !== record.publicKey.x ||
+              signed.pk.y !== record.publicKey.y
+            )
+              throw new PassportConnectorError(
+                'NotAuthorised',
+                'The signature names another device.',
+              );
+            flow.checkpoint();
+            const tx = await (
+              await chain()
+            ).call({
+              address: record.address,
+              circuit,
+              args: [
+                transfer.color,
+                transfer.amount,
+                transfer.recipient,
+                {
+                  pk: p256(record.publicKey),
+                  use_counter: counter,
+                  policy: record.policy,
+                  authenticator_data: signed.authenticatorData,
+                  sig: signed.sig,
+                },
+              ],
+              ...flow.ports,
+            });
+            return { ...tx, nextUseCounter: counter + 1n };
+          },
+          {
+            kind: 'withdraw-unshielded',
+            account: record.address,
+            color: request.color,
+            amount: request.amount,
+            recipient: request.recipient,
+          },
+        );
+      }),
     addDevice: (reader, options) => {
       return addP256Device(record, reader, options);
     },
