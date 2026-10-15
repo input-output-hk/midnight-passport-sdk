@@ -67,13 +67,14 @@ the structural TypeScript assignments. A second local check now compiles the
 **actual contract seam sources** from that exact Lace commit against all nine
 packed SDK tarballs. It checks the tarball SHA-256 values in the release
 manifest, then compiles Lace's `PassportAuthoriser`, `PassportEncryptionKey`,
-`FeeSponsor`, `PassportProver`, network config, grant scope and bookkeeping
+`FeeSponsor`, `PassportProver`, network config, account store record, grant record,
+grant scope and bookkeeping
 types with `tests/fixtures/lace-source-consumer.ts`. To reproduce with an exact
 Lace PR checkout and a fresh `release-tarballs/` pack:
 
 ```sh
 LACE_CHECKOUT=/path/to/lace-platform \
-  RELEASE_VERSION=0.1.0-dev.4 \
+  RELEASE_VERSION=0.1.0-dev.5 \
   nix develop -c node scripts/smoke-lace-source-consumer.mjs
 ```
 
@@ -86,7 +87,8 @@ sealed bookkeeping. This does not establish Lace-hosted runtime compatibility.
 
 The check pins Lace HEAD to `cdfa9cfd81a0adcc0a7224aa624f18e52494f602`
 and rejects local edits to its contract seam. The Lace source dependencies
-`type-fest@4.41.0` and `ts-custom-error@3.3.1` match its lockfile. The result
+`type-fest@4.41.0`, `ts-custom-error@3.3.1`, `@reduxjs/toolkit@2.11.2`, and
+`immer@10.2.0` match its lockfile. The result
 is a source-level compile check, not a build of Lace's module or a live
 transaction. It establishes direct structural compatibility for the sponsor,
 viewing key, grant scope and bookkeeping. The browser package now exports
@@ -99,6 +101,21 @@ any converter output that changes a consent field. The exact-source fixture
 compiles that adapter with Lace's current `PassportAuthoriser`. The
 circuit-level prover still needs a transaction pipeline adapter. Network
 config additionally needs the ACC binding and manifest pins.
+
+Lace's `PassportAccountInfo` records address, binding version, network and
+readiness; the SDK's device-local `AccountRecord` additionally needs the active
+authoriser arm and local use counter. The consumer fixture checks a mapping
+that validates network, binding and readiness before setting those device-local
+fields. Lace's `GrantRecord` has `active` and `scope.read`, but an SDK
+`GrantDetailSource` also needs `authNonce` from the same live ACC snapshot;
+stored grant data alone cannot supply it.
+
+On 2026/10/15, SDK commit `df5b550b46222bf797af1dec732c8b5633e53f55`
+was packed locally as nine `0.1.0-dev.5` tarballs. The expanded exact-source
+check passed against Lace PR #2845 at the pinned head above. The release
+consumer smoke loaded the tarballs, built a scratch browser app, and restored
+and hash-verified `deposit_unshielded`. This is local validation, not a registry
+release or a Lace-hosted runtime test.
 
 On 2026/10/15, SDK commit `adae47a39fe2baf9e6a55719a615f6cdae3479e0`
 was packed locally as nine `0.1.0-dev.4` tarballs. The exact Lace source

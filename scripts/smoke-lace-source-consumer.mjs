@@ -53,6 +53,8 @@ try {
   for (const name of ['types.ts', 'grants.ts', 'errors.ts'])
     cpSync(join(source, name), join(laceSource, name), { recursive: true, force: true });
   cpSync(join(source, 'value-objects'), join(laceSource, 'value-objects'), { recursive: true });
+  mkdirSync(join(laceSource, 'store'));
+  cpSync(join(source, 'store/slice.ts'), join(laceSource, 'store/slice.ts'));
   cpSync(join(root, 'tests/fixtures/lace-source-consumer.ts'), join(scratch, 'consumer.ts'));
   writeFileSync(
     join(scratch, 'package.json'),
@@ -60,7 +62,13 @@ try {
       name: 'mn-passport-lace-source-consumer',
       private: true,
       type: 'module',
-      dependencies: { ...dependencies, 'ts-custom-error': '3.3.1', 'type-fest': '4.41.0' },
+      dependencies: {
+        ...dependencies,
+        '@reduxjs/toolkit': '2.11.2',
+        immer: '10.2.0',
+        'ts-custom-error': '3.3.1',
+        'type-fest': '4.41.0',
+      },
       devDependencies: { typescript: '6.0.3' },
       pnpm: { overrides: dependencies },
     }),

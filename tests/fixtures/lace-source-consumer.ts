@@ -6,6 +6,8 @@ import type {
   PassportNetworkConfig,
   PassportProver,
 } from './lace-contract/types';
+import type { PassportAccountInfo } from './lace-contract/store/slice';
+import type { GrantRecord as LaceGrantRecord } from './lace-contract/grants';
 import {
   AccAddress,
   DeviceEpoch,
@@ -20,9 +22,11 @@ import type { GrantScopeInput as SDKGrantScopeInput } from '@input-output-hk/mn-
 import { hostedJubjubAuthoriser } from '@input-output-hk/mn-passport-adapter-browser/hosted-jubjub';
 import type {
   AccountViewingKey,
+  AccountRecord,
   Authoriser,
   FeeSponsor,
   GrantBookkeeping,
+  GrantDetailSource,
   NetworkConfig,
   Prover,
 } from '@input-output-hk/mn-passport-account/ports';
@@ -34,6 +38,9 @@ declare const laceAuthoriser: PassportAuthoriser;
 declare const laceProver: PassportProver;
 declare const laceGrantScope: LaceGrantScopeInput;
 declare const laceGrantBookkeeping: LaceGrantBookkeeping;
+declare const laceAccountInfo: PassportAccountInfo;
+declare const laceGrantRecord: LaceGrantRecord;
+declare const laceSnapshotNonce: bigint;
 
 const sponsor: FeeSponsor = laceSponsor;
 const viewing: AccountViewingKey = laceViewing;
@@ -43,6 +50,38 @@ const network: NetworkConfig = {
   ...laceNetwork,
   bindingId: 'acc-s3r1.1',
   manifestSha256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
+};
+
+// Lace's persisted account has a network and status; this device's SDK record also needs its
+// authoriser arm and local counter. The host validates the network and binding before mapping it.
+function recordForDevice(
+  info: PassportAccountInfo,
+  expectedNetwork: string,
+  expectedBinding: string,
+  counter: bigint,
+): AccountRecord {
+  if (
+    info.networkId !== expectedNetwork ||
+    info.bindingVersion !== expectedBinding ||
+    info.status !== 'ready'
+  )
+    throw new Error('Lace account does not match this device and binding');
+  return {
+    address: info.address,
+    bindingId: expectedBinding,
+    scheme: 'jubjub-schnorr',
+    localUseCounter: counter,
+  };
+}
+const deviceRecord = recordForDevice(laceAccountInfo, network.networkId, network.bindingId, 0n);
+
+// A stored Lace grant record lacks a same-snapshot auth nonce. The host obtains that nonce from
+// the live ACC grant map before it can implement GrantDetailSource.
+type SDKGrantDetail = NonNullable<Awaited<ReturnType<GrantDetailSource['readGrant']>>>;
+const grantDetail: SDKGrantDetail = {
+  active: laceGrantRecord.active,
+  read: laceGrantRecord.scope.read,
+  authNonce: laceSnapshotNonce,
 };
 
 const hostedAuthoriser: Authoriser = hostedJubjubAuthoriser(laceAuthoriser, {
@@ -90,4 +129,6 @@ void [
   hostedAuthoriser,
   structuralAuthoriser,
   directProver,
+  deviceRecord,
+  grantDetail,
 ];
