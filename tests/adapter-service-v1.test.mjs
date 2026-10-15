@@ -62,6 +62,7 @@ test('v1 clients consume the reference service jobs, progress and sponsor result
   });
   assert.deepEqual(deployed, { address: 'ab'.repeat(32), txIds: ['wave-1'] });
   const sponsor = remoteV1Sponsor(base, options);
+  assert.equal(sponsor.supportsShieldedOffers, false);
   assert.deepEqual(await sponsor.balanceAndSign(Uint8Array.of(3)), Uint8Array.of(5));
   assert.equal(await sponsor.submit(Uint8Array.of(5)), 'submitted');
 });

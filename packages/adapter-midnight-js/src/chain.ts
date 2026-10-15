@@ -183,6 +183,11 @@ export function createMidnightChain(opts: {
             ? 'A shielded ACC withdrawal needs a qualified held coin.'
             : 'A held coin may only be supplied to a shielded ACC withdrawal.',
         );
+      if (shieldedSpend && sponsor.supportsShieldedOffers === false)
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'The configured fee-only sponsor cannot balance a shielded ACC withdrawal; use a value-capable wallet.',
+        );
       const compiledContract = heldCoin ? compileWithWitness(heldCoin) : unshieldedContract;
       // Progress listeners are observers: a host's UI error must not interrupt a chain call.
       const emit = (event: PassportEvent) => {

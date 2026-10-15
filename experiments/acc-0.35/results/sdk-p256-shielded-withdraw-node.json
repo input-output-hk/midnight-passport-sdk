@@ -3,29 +3,29 @@
   "bindingId": "acc-s3r1.1",
   "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
   "contractSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
-  "account": "ae5f2a3507af98b85c83948a1c5e085eb36966ef3ced1f89598692fe2fb51198",
+  "account": "baced2614cecd8d50ec455fe24308ae078630456de2ebb019287be52963c59a7",
   "networkId": "undeployed",
   "ownerScheme": "p256-webauthn",
-  "depositTx": "0027743a3c744411e2c7e557f53f0250e092aecc58c609d0f384d8e010fdc7478b",
-  "withdrawTx": "72c3a789c4616eea58334c6d0e43aae5af6d15f60905edb6c1328aa5973c60a4",
+  "depositTx": "00ac6228e11838ce406813b3717d66daf97258e6993f5f5647846698cafe50838a",
+  "withdrawTx": "390d196af4ee4eda44d71fa7a03da4d20aef5ecca8c9701b0dce0465214ae034",
   "inboxIndex": 2,
-  "outputIndex": "39",
+  "outputIndex": "42",
   "transactions": [
     {
       "circuit": "activate_initial_device_with_p256",
-      "txHash": "be3a980a26adef9b7c86c4b15c5e333f5d4c674a2ccfa6f4290e1f883e70f63a"
+      "txHash": "9ae8f5433cab7d93831b3c1d9a043fb199ec9b0601796c24d27d6f04385a2679"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "3e688d0bd43409d14762db9e0b3843237460890e908ef6d1b5d353dbf071c966"
+      "txHash": "03bc55b6c7f9595e612ee1214cd1627cd24982ecba13c469e54fe5cbf1778618"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "8b5b7a24ed62f78856650b7a57ed541436cba3e7ad01c5293b566d0d6db7fb86"
+      "txHash": "551847a95b46fc281c025a4bf88bf68f2840d3483fdd61df8b78f40635f26e24"
     },
     {
       "circuit": "withdraw_shielded_with_p256",
-      "txHash": "72c3a789c4616eea58334c6d0e43aae5af6d15f60905edb6c1328aa5973c60a4"
+      "txHash": "390d196af4ee4eda44d71fa7a03da4d20aef5ecca8c9701b0dce0465214ae034"
     }
   ],
   "scope": "proof-backed exact P-256 owner shielded withdrawal"

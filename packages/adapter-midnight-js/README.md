@@ -7,11 +7,11 @@ and `Submitter` ports. Hosts may provide their own implementations or use the HT
 asks its wallet provider for them while assembling a call.
 
 The Passport service's remote sponsor is fee-only. Its policy rejects shielded offers, including
-an ACC withdrawal that sends a shielded coin to a user. For `withdrawShielded`, supply a
-value-capable wallet implementation of `FeeSponsor.balanceAndSign` and `Submitter.submit`, with
-that wallet's public coin and encryption keys. The same `createMidnightChain` adapter and remote
-prover can be used; the wallet must balance and submit the resulting transaction. The
-`experiments/acc-0.35/sdk-p256-shielded-withdraw-node.mjs` localnet probe shows this composition.
+an ACC withdrawal that sends a shielded coin to a user. For `withdrawShielded`, use a value-capable
+midnight-js wallet and submitter. `createMidnightWalletPorts(walletProvider, midnightProvider)`
+returns the `sponsor`, `submitter` and `sponsorKeys` needed by `createMidnightChain`. The remote
+prover can still prove the call. See the
+`experiments/acc-0.35/sdk-p256-shielded-withdraw-node.mjs` localnet probe for this composition.
 
 Load this package after the lightweight account core:
 
@@ -26,6 +26,23 @@ const chain = createMidnightChain({
   submitter,
 });
 ```
+
+For a shielded withdrawal, construct a separate chain with the host wallet's providers:
+
+```ts
+const { createMidnightChain, createMidnightWalletPorts } = await import(
+  '@input-output-hk/mn-passport-adapter-midnight-js'
+);
+const chain = createMidnightChain({
+  network,
+  binding,
+  prover,
+  ...createMidnightWalletPorts(walletProvider, midnightProvider),
+});
+```
+
+The wallet and submitter must both support ledger v9. This adapter does not grant access to a
+wallet: the host supplies providers under its own consent and network policy.
 
 The adapter sets midnight-js's network id before each ledger read and call. A host that operates
 multiple Midnight networks in one JavaScript process must serialize operations across networks,
