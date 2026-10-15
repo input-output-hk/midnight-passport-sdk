@@ -5,6 +5,7 @@ import { createFakePorts } from '../packages/account/dist/testing/index.js';
 import { recipeDeviceKeyring } from '../packages/keys/dist/index.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 import { sealInboxCoin } from '../packages/keys/dist/inbox-coin.js';
+import { isAddressedTo, openDeviceEnvelope } from '../packages/keys/dist/device-envelope.js';
 import { x25519 } from '@noble/curves/ed25519.js';
 import {
   fakeAuthoriser,
@@ -454,19 +455,26 @@ test('an enrolled P-256 passkey opens its ACC by address without a directory hin
   });
 });
 
-test('P-256 enrollment refuses active read grants before key delivery', async () => {
+test('P-256 enrollment rotates first, preserves read grants, then delivers only fresh keys', async () => {
   const fake = createFakePorts();
+  const grantId = 'aa'.repeat(32);
+  const readPublicKey = hex(x25519.getPublicKey(new Uint8Array(32).fill(8)));
+  let sessions = 0;
   const ports = {
     ...fake,
     viewingKey: viewingKey(),
     authoriser: {
       ...fake.authoriser,
-      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => {
+        sessions++;
+        return operation();
+      },
     },
+    holdings: { selectHeldEntries: async () => [] },
     readGrants: {
       readActiveReadGrantTargets: async () => ({
         authNonce: /** @type {bigint} */ ([...fake.ledger.values()][0]?.authNonce ?? 0n),
-        targets: [{ grantId: 'aa'.repeat(32), readPublicKey: 'bb'.repeat(32) }],
+        targets: [{ grantId, readPublicKey }],
       }),
     },
   };
@@ -478,6 +486,7 @@ test('P-256 enrollment refuses active read grants before key delivery', async ()
   assert.ok(ledger);
   ledger.specVersion = 3;
   assert.ok(account.addDevice);
+  sessions = 0;
   const joining = fakeAuthoriser({ device: 1 });
   const reader = {
     scheme: /** @type {const} */ ('p256-webauthn'),
@@ -485,8 +494,193 @@ test('P-256 enrollment refuses active read grants before key delivery', async ()
     devicePublicKey: await joining.devicePublicKeyHex(),
     policy: FAKE_POLICY,
   };
-  await assert.rejects(account.addDevice(reader), { code: 'BindingUnsupported' });
+  const oldKey = ledger.encKey.slice();
+  const ownerReaderSecret = new Uint8Array(32).fill(9);
+  const oldEntry = ledger.inboxEntries[0];
+  assert.ok(oldEntry);
+  const oldEnvelope = await openDeviceEnvelope(ownerReaderSecret, oldEntry);
+  assert.ok(oldEnvelope);
+  const result = await account.addDevice(reader);
+  assert.equal(sessions, 1);
+  assert.ok(result.rotationTxHash);
+  assert.deepEqual(
+    result.sealedReadGrants?.map(({ grantId }) => grantId),
+    [grantId],
+  );
+  assert.notDeepEqual(ledger.encKey, oldKey);
+  assert.equal(ledger.inboxEntries.filter((entry) => entry[0] === 0xd3).length, 1);
+  const ownerEnvelopes = ledger.inboxEntries.filter(
+    (entry) => entry[0] === 0xd1 && isAddressedTo(entry, x25519.getPublicKey(ownerReaderSecret)),
+  );
+  const freshEntry = ownerEnvelopes.at(-1);
+  assert.ok(freshEntry);
+  const freshEnvelope = await openDeviceEnvelope(ownerReaderSecret, freshEntry);
+  assert.ok(freshEnvelope);
+  assert.notDeepEqual(freshEnvelope.rosterKey, oldEnvelope.rosterKey);
+  const joiningApi = createPassportAccounts({
+    ...ports,
+    authoriser: {
+      ...joining,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    credentials: fakeCredentials({ authoriser: joining }),
+    viewingKey: viewingKey(7),
+  });
+  assert.ok(joiningApi.openAccountAt);
+  assert.equal((await joiningApi.openAccountAt(account.address)).address, account.address);
+});
+
+test('P-256 enrollment refuses an unsealable read grantee before changing the ACC', async () => {
+  const fake = createFakePorts();
+  const ports = {
+    ...fake,
+    viewingKey: viewingKey(),
+    authoriser: {
+      ...fake.authoriser,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    holdings: { selectHeldEntries: async () => [] },
+    readGrants: {
+      readActiveReadGrantTargets: async () => ({
+        authNonce: /** @type {bigint} */ ([...fake.ledger.values()][0]?.authNonce ?? 0n),
+        targets: [{ grantId: 'aa'.repeat(32) }],
+      }),
+    },
+  };
+  const account = await createPassportAccounts(ports).createAccount({
+    userName: 'owner',
+    retireAuthority: true,
+  });
+  const ledger = fake.ledger.get(account.address);
+  assert.ok(ledger);
+  ledger.specVersion = 3;
+  const joining = fakeAuthoriser({ device: 1 });
+  const reader = {
+    scheme: /** @type {const} */ ('p256-webauthn'),
+    readerPublicKey: hex(x25519.getPublicKey(new Uint8Array(32).fill(7))),
+    devicePublicKey: await joining.devicePublicKeyHex(),
+    policy: FAKE_POLICY,
+  };
+  const oldKey = ledger.encKey.slice();
+  const oldNonce = ledger.authNonce;
+  assert.ok(account.addDevice);
+  await assert.rejects(account.addDevice(reader), { code: 'GrantRosterUnsettled' });
+  assert.deepEqual(ledger.encKey, oldKey);
+  assert.equal(ledger.authNonce, oldNonce);
   assert.equal(ledger.inboxEntries.length, 2);
+});
+
+test('P-256 enrollment refuses a changed read-grant roster before rotating', async () => {
+  const fake = createFakePorts();
+  let reads = 0;
+  const ports = {
+    ...fake,
+    viewingKey: viewingKey(),
+    authoriser: {
+      ...fake.authoriser,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    holdings: { selectHeldEntries: async () => [] },
+    readGrants: {
+      readActiveReadGrantTargets: async () => ({
+        authNonce: /** @type {bigint} */ ([...fake.ledger.values()][0]?.authNonce ?? 0n),
+        targets: [
+          {
+            grantId: 'aa'.repeat(32),
+            readPublicKey: hex(x25519.getPublicKey(new Uint8Array(32).fill(++reads === 1 ? 8 : 6))),
+          },
+        ],
+      }),
+    },
+  };
+  const account = await createPassportAccounts(ports).createAccount({
+    userName: 'owner',
+    retireAuthority: true,
+  });
+  const ledger = fake.ledger.get(account.address);
+  assert.ok(ledger);
+  ledger.specVersion = 3;
+  const joining = fakeAuthoriser({ device: 1 });
+  const reader = {
+    scheme: /** @type {const} */ ('p256-webauthn'),
+    readerPublicKey: hex(x25519.getPublicKey(new Uint8Array(32).fill(7))),
+    devicePublicKey: await joining.devicePublicKeyHex(),
+    policy: FAKE_POLICY,
+  };
+  const oldKey = ledger.encKey.slice();
+  const oldNonce = ledger.authNonce;
+  assert.ok(account.addDevice);
+  await assert.rejects(account.addDevice(reader), { code: 'GrantRosterUnsettled' });
+  assert.deepEqual(ledger.encKey, oldKey);
+  assert.equal(ledger.authNonce, oldNonce);
+  assert.equal(ledger.inboxEntries.length, 2);
+});
+
+test('P-256 enrollment can retry after rotation succeeds but enrollment fails', async () => {
+  const fake = createFakePorts();
+  let failEnrollment = true;
+  const ports = {
+    ...fake,
+    chain: {
+      ...fake.chain,
+      call: async (/** @type {Parameters<typeof fake.chain.call>[0]} */ request) => {
+        if (request.circuit === 'add_device_with_p256' && failEnrollment) {
+          failEnrollment = false;
+          throw new Error('interrupted after viewing-key rotation');
+        }
+        return fake.chain.call(request);
+      },
+    },
+    viewingKey: viewingKey(),
+    authoriser: {
+      ...fake.authoriser,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    holdings: { selectHeldEntries: async () => [] },
+    readGrants: {
+      readActiveReadGrantTargets: async () => ({
+        authNonce: /** @type {bigint} */ ([...fake.ledger.values()][0]?.authNonce ?? 0n),
+        targets: [
+          {
+            grantId: 'aa'.repeat(32),
+            readPublicKey: hex(x25519.getPublicKey(new Uint8Array(32).fill(8))),
+          },
+        ],
+      }),
+    },
+  };
+  const account = await createPassportAccounts(ports).createAccount({
+    userName: 'owner',
+    retireAuthority: true,
+  });
+  const ledger = fake.ledger.get(account.address);
+  assert.ok(ledger);
+  ledger.specVersion = 3;
+  const joining = fakeAuthoriser({ device: 1 });
+  const reader = {
+    scheme: /** @type {const} */ ('p256-webauthn'),
+    readerPublicKey: hex(x25519.getPublicKey(new Uint8Array(32).fill(7))),
+    devicePublicKey: await joining.devicePublicKeyHex(),
+    policy: FAKE_POLICY,
+  };
+  const oldKey = ledger.encKey.slice();
+  assert.ok(account.addDevice);
+  await assert.rejects(account.addDevice(reader), /interrupted after viewing-key rotation/);
+  assert.notDeepEqual(ledger.encKey, oldKey);
+  const result = await account.addDevice(reader);
+  assert.ok(result.rotationTxHash);
+  assert.equal(ledger.entries.has(result.commitmentHex), true);
+  const joiningApi = createPassportAccounts({
+    ...ports,
+    authoriser: {
+      ...joining,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    credentials: fakeCredentials({ authoriser: joining }),
+    viewingKey: viewingKey(7),
+  });
+  assert.ok(joiningApi.openAccountAt);
+  assert.equal((await joiningApi.openAccountAt(account.address)).address, account.address);
 });
 
 test('P-256 enrollment can retry after one sealed entry was published', async () => {

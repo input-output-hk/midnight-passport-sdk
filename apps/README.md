@@ -175,7 +175,9 @@ and `assertionMaterial`.
   descriptions with the live passkey and returns only outputs verified as held by the ACC. The
   browser demo does not configure `VerifiedHoldingSource`, so this method refuses reads there.
 - **P-256 enrollment needs host discovery.** The account API can deliver a sealed key and add a
-  second live P-256 device when no read grants are active. The joining host can call
+  second live P-256 device. If read grants are active, the host must supply verified holdings and
+  complete grant targets so the account rotates its viewing and roster keys and reseals every
+  grantee before giving the joiner a fresh key. The joining host can call
   `openAccountAt(address)` with its passkey; the demo does not yet expose that address-based flow.
 - **The service binds loopback** (`127.0.0.1`). CORS lets only the dapp origin read its answers,
   which on its own does not stop a cross-site page from sending a request. So the service also

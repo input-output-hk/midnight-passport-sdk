@@ -8,7 +8,9 @@ derived from the passkey PRF under `lace-passport:reader:v1` and the network id.
 a separate type `0xd5` registration with its compressed WebAuthn public key and policy. On reload,
 `openAccount` checks the passkey's live device entry and opens the envelope against the ledger's
 `enc_key`. The wallet seed and P-256 signing key remain separate. The account API can enroll a
-second P-256 device by sealing the key before adding its live entry when no read grants are active.
+second P-256 device by sealing the key before adding its live entry. With active read grants it
+first rotates the viewing and roster keys, reseals every grantee and then gives the joiner only
+the fresh keys; this requires chain-backed holdings and complete grant targets from the host.
 The joining device can use `openAccountAt(address)` with its own passkey and reader key when it
 knows the ACC address; this checks its live entry and opens the ledger-matched envelope without
 a directory hint. The demo does not expose that address-based flow yet. The account API can

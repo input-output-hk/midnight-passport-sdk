@@ -283,7 +283,12 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     return active;
   };
 
-  const sealedKeyring = async (record: SealedP256Hint, view: AccLedgerView, pending: boolean) => {
+  const sealedKeyring = async (
+    record: SealedP256Hint,
+    view: AccLedgerView,
+    pending: boolean,
+    inOwnerSession = false,
+  ) => {
     const keyring = viewingKey;
     const devicePublicKeyHex = authoriser.devicePublicKeyHex?.bind(authoriser);
     const { encKey, inboxEntries } = view;
@@ -321,7 +326,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
       }
     };
     try {
-      if (authoriser.withKeySession)
+      if (authoriser.withKeySession && !inOwnerSession)
         await authoriser.withKeySession(check, { kind: 'sign-in', account: record.address });
       else await check();
     } catch (cause) {
@@ -490,12 +495,12 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           readonly deviceEntries: readonly Uint8Array[];
         };
       };
-      const initial = await read();
+      let initial = await read();
       if (!initial.booted || record.status !== 'active')
         throw new PassportConnectorError('AccountNotFound', 'The P-256 ACC is not active.');
       if (initial.specVersion !== 3)
         throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
-      const initialCounter = await findCounter(flow, record, initial);
+      let initialCounter = await findCounter(flow, record, initial);
       if (initialCounter === undefined) throw notHeld(record);
       const self = { bytes: fromHex(record.address) };
       const ownerEntry = (counter: bigint) =>
@@ -511,7 +516,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           .filter((entry) => !equalBytes(entry, own))
           .map(toHex)
           .sort();
-      const baseline = otherEntries(initial.deviceEntries, ownerEntry(initialCounter));
+      let baseline = otherEntries(initial.deviceEntries, ownerEntry(initialCounter));
       const target = pure.derive_device_entry_with_p256(
         { bytes: fromHex(record.address) },
         point,
@@ -524,16 +529,13 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           'DeviceRosterInvalid',
           'The joining device is already live.',
         );
-      const grants = await flow.step('grant.roster', () =>
+      let grants = await flow.step('grant.roster', () =>
         ports.readGrants!.readActiveReadGrantTargets(record.address),
       );
       if (grants.authNonce !== initial.authNonce)
         throw new PassportConnectorError('GrantRosterUnsettled', 'The read-grant roster is stale.');
-      if (grants.targets.length)
-        throw new PassportConnectorError(
-          'BindingUnsupported',
-          'P-256 enrollment with active read grants needs viewing-secret rotation first.',
-        );
+      const grantFingerprint = (targets: typeof grants.targets) =>
+        targets.map(({ grantId, readPublicKey }) => `${grantId}:${readPublicKey ?? ''}`).sort();
       return authoriser.withKeySession(
         async () => {
           const selected = await authoriser.devicePublicKey();
@@ -554,6 +556,78 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
               'DeviceRosterInvalid',
               'The joining reader is the owner.',
             );
+          let rotation: ViewingKeyRotationResult | DeviceRemovalResult | undefined;
+          if (grants.targets.length) {
+            const beforeRotation = await read();
+            const beforeRoster = otherEntries(
+              beforeRotation.deviceEntries,
+              ownerEntry(initialCounter!),
+            );
+            const approvedGrants = await flow.step('grant.roster', () =>
+              ports.readGrants!.readActiveReadGrantTargets(record.address),
+            );
+            if (
+              beforeRotation.authNonce !== initial.authNonce ||
+              beforeRotation.deviceEpoch !== initial.deviceEpoch ||
+              !equalBytes(beforeRotation.encKey, initial.encKey) ||
+              beforeRoster.length !== baseline.length ||
+              beforeRoster.some((entry, index) => entry !== baseline[index]) ||
+              beforeRotation.deviceEntries.some((held) => equalBytes(held, target)) ||
+              approvedGrants.authNonce !== initial.authNonce ||
+              JSON.stringify(grantFingerprint(approvedGrants.targets)) !==
+                JSON.stringify(grantFingerprint(grants.targets))
+            )
+              throw new PassportConnectorError(
+                'GrantRosterUnsettled',
+                'The ACC or read-grant roster changed before enrollment rotation.',
+              );
+            // The joiner must never receive the old viewing or roster keys while a read grant is
+            // live. Rotate under the add-device consent session, preserve every grantee, then
+            // deliver only the fresh keys to the joiner before enrolling it.
+            rotation = await rotateP256ViewingKey(
+              record,
+              options,
+              undefined,
+              undefined,
+              undefined,
+              { requireAllGrants: true, inOwnerSession: true, rotateRosterForEnrollment: true },
+            );
+            initial = await read();
+            if (
+              initial.deviceEpoch !== beforeRotation.deviceEpoch ||
+              initial.authNonce <= beforeRotation.authNonce ||
+              equalBytes(initial.encKey, beforeRotation.encKey)
+            )
+              throw new PassportConnectorError(
+                'DeviceRosterInvalid',
+                'The ACC did not settle the expected enrollment rotation.',
+              );
+            initialCounter = await findCounter(flow, record, initial);
+            if (initialCounter === undefined) throw notHeld(record);
+            const rotatedRoster = otherEntries(initial.deviceEntries, ownerEntry(initialCounter));
+            if (
+              rotatedRoster.length !== baseline.length ||
+              rotatedRoster.some((entry, index) => entry !== baseline[index])
+            )
+              throw new PassportConnectorError(
+                'DeviceRosterInvalid',
+                'The live device roster changed during enrollment rotation.',
+              );
+            baseline = rotatedRoster;
+            const latest = await flow.step('grant.roster', () =>
+              ports.readGrants!.readActiveReadGrantTargets(record.address),
+            );
+            if (
+              latest.authNonce !== initial.authNonce ||
+              JSON.stringify(grantFingerprint(latest.targets)) !==
+                JSON.stringify(grantFingerprint(grants.targets))
+            )
+              throw new PassportConnectorError(
+                'GrantRosterUnsettled',
+                'The read-grant roster changed during enrollment rotation.',
+              );
+            grants = latest;
+          }
           let view = await read();
           if (
             view.authNonce !== initial.authNonce ||
@@ -564,7 +638,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
               'DeviceRosterInvalid',
               'The ACC changed before enrollment.',
             );
-          await sealedKeyring(record, view, false);
+          await sealedKeyring(record, view, false, true);
           const oldKeyring = {
             account: record.address,
             encKey: view.encKey!,
@@ -621,7 +695,11 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           const latestGrants = await flow.step('grant.roster', () =>
             ports.readGrants!.readActiveReadGrantTargets(record.address),
           );
-          if (latestGrants.authNonce !== view.authNonce || latestGrants.targets.length)
+          if (
+            latestGrants.authNonce !== view.authNonce ||
+            JSON.stringify(grantFingerprint(latestGrants.targets)) !==
+              JSON.stringify(grantFingerprint(grants.targets))
+          )
             throw new PassportConnectorError(
               'GrantRosterUnsettled',
               'The read-grant roster changed.',
@@ -691,7 +769,15 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
               settled.authNonce > view.authNonce &&
               settled.deviceEntries.some((held) => equalBytes(held, target))
             )
-              return { ...tx, commitmentHex: toHex(target), nextUseCounter: counter + 1n };
+              return {
+                ...tx,
+                commitmentHex: toHex(target),
+                nextUseCounter: counter + 1n,
+                ...(rotation && {
+                  rotationTxHash: rotation.txHash,
+                  sealedReadGrants: rotation.sealedReadGrants,
+                }),
+              };
             if (attempt < 29) await sleep(1000);
           }
           throw new PassportConnectorError(
@@ -709,7 +795,11 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     removal?: string,
     excludedGrant?: string | 'all',
     onRotated?: (state: { readonly encKey: Uint8Array; readonly authNonce: bigint }) => void,
-    requireAllGrants = false,
+    controls: {
+      readonly requireAllGrants?: boolean;
+      readonly inOwnerSession?: boolean;
+      readonly rotateRosterForEnrollment?: boolean;
+    } = {},
   ) =>
     run(options, async (flow): Promise<ViewingKeyRotationResult | DeviceRemovalResult> => {
       const keyring = viewingKey;
@@ -758,7 +848,10 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           readonly deviceEntries: readonly Uint8Array[];
         };
       };
-      return authoriser.withKeySession(
+      const withSession: NonNullable<typeof authoriser.withKeySession> = controls.inOwnerSession
+        ? (operation) => operation()
+        : (operation, descriptor) => authoriser.withKeySession!(operation, descriptor);
+      return withSession(
         async () => {
           const selected = await authoriser.devicePublicKey();
           const selectedBinding = await authoriser.deviceBinding!();
@@ -796,7 +889,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             if (!view.deviceEntries.some((entry) => equalBytes(entry, target)))
               throw new PassportConnectorError('RemovalTargetNotFound', 'The target is not live.');
           }
-          await sealedKeyring(record, view, false);
+          await sealedKeyring(record, view, false, true);
           const oldEntries = [...view.inboxEntries];
           const oldKeyring = {
             account: record.address,
@@ -884,7 +977,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             keyring: oldKeyring,
             registrations,
             readers: roster.readers.filter((reader) => reader.readerPublicKey !== ownerReader),
-            ...(target && { rotateRoster: true }),
+            ...((target || controls.rotateRosterForEnrollment) && { rotateRoster: true }),
             ...(removedReader && {
               removed: {
                 devicePublicKey: removedReader.devicePublicKey,
@@ -927,7 +1020,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
               'The read grant disappeared before key rotation.',
             );
           if (
-            (target || (excludedGrant && excludedGrant !== 'all') || requireAllGrants) &&
+            (target || (excludedGrant && excludedGrant !== 'all') || controls.requireAllGrants) &&
             deliveries.unsealedGrantIds.length
           )
             throw new PassportConnectorError(
@@ -1343,14 +1436,9 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           random,
           ...(scope.read && {
             rotateBeforeIssue: () =>
-              rotateP256ViewingKey(
-                record,
-                options,
-                undefined,
-                undefined,
-                undefined,
-                true,
-              ) as Promise<ViewingKeyRotationResult>,
+              rotateP256ViewingKey(record, options, undefined, undefined, undefined, {
+                requireAllGrants: true,
+              }) as Promise<ViewingKeyRotationResult>,
           }),
         },
       );
