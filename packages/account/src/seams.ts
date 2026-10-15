@@ -131,6 +131,14 @@ export interface JubjubPureCircuits {
     nonce: bigint,
     grindNonce: bigint,
   ): Uint8Array;
+  challenge_add_device_with_jubjub(
+    self: ContractAddressArg,
+    sigR: { x: bigint; y: bigint },
+    pk: { x: bigint; y: bigint },
+    entry: Uint8Array,
+    nonce: bigint,
+    grindNonce: bigint,
+  ): Uint8Array;
 }
 /** The P-256 subset used by the existing prototype flow. */
 export interface AccPureCircuits {

@@ -146,6 +146,13 @@ function world() {
         remoteEntries.splice(index, 1);
         counter++;
         nonce++;
+      } else if (request.circuit === 'add_device_with_jubjub') {
+        assert.equal(request.args[2], counter);
+        const target = /** @type {Uint8Array} */ (request.args[0]);
+        assert.ok(!remoteEntries.some((entry) => hex(entry) === hex(target)));
+        remoteEntries.push(target);
+        counter++;
+        nonce++;
       } else throw new Error(`unexpected circuit ${request.circuit}`);
       return { txHash: `tx-${calls.length}` };
     },
@@ -194,6 +201,31 @@ function world() {
     directory,
     random: (/** @type {number} */ length) => new Uint8Array(length).fill(3),
   };
+  const joiningDevice = async (seed = 11, readerSeed = seed) => {
+    /** @type {import('../packages/account/dist/ports/index.js').PrfKeySource} */
+    const remoteSource = {
+      withSession: async (operation) => operation(),
+      deviceSecret: async () => new Uint8Array(32).fill(seed),
+      deriveSecret: async (params) =>
+        sha256(
+          new TextEncoder().encode(`remote-${readerSeed}|${params.domain}|${params.context}`),
+        ).slice(0, params.length ?? 32),
+    };
+    const remoteAuthoriser = recipeJubjubAuthoriser(remoteSource, pureCircuits);
+    const remoteViewingKey = recipeDeviceKeyring(remoteSource);
+    const publicKey = await remoteAuthoriser.devicePublicKey();
+    const entry = pureCircuits.derive_device_entry_with_jubjub(
+      { bytes: Buffer.from(address, 'hex') },
+      publicKey,
+      0n,
+      0n,
+    );
+    const reader = {
+      readerPublicKey: hex(await remoteViewingKey.readerPublicKey('undeployed')),
+      devicePublicKey: await remoteAuthoriser.devicePublicKeyHex(),
+    };
+    return { entry, reader, remoteViewingKey };
+  };
   return {
     accounts: createPassportAccounts(ports),
     calls,
@@ -209,6 +241,7 @@ function world() {
       (activeReadGrants = value),
     encKey: () => encKey,
     viewingKey: ports.viewingKey,
+    joiningDevice,
     ownEntry: async () =>
       pureCircuits.derive_device_entry_with_jubjub(
         { bytes: Buffer.from(address, 'hex') },
@@ -217,33 +250,11 @@ function world() {
         counter,
       ),
     addRemoteDevice: async (seed = 11, readerSeed = seed) => {
-      /** @type {import('../packages/account/dist/ports/index.js').PrfKeySource} */
-      const remoteSource = {
-        withSession: async (operation) => operation(),
-        deviceSecret: async () => new Uint8Array(32).fill(seed),
-        deriveSecret: async (params) =>
-          sha256(
-            new TextEncoder().encode(`remote-${readerSeed}|${params.domain}|${params.context}`),
-          ).slice(0, params.length ?? 32),
-      };
-      const remoteAuthoriser = recipeJubjubAuthoriser(remoteSource, pureCircuits);
-      const remoteViewingKey = recipeDeviceKeyring(remoteSource);
-      const publicKey = await remoteAuthoriser.devicePublicKey();
-      const entry = pureCircuits.derive_device_entry_with_jubjub(
-        { bytes: Buffer.from(address, 'hex') },
-        publicKey,
-        0n,
-        0n,
-      );
+      const { entry, reader, remoteViewingKey } = await joiningDevice(seed, readerSeed);
       const delivery = await ports.viewingKey.sealToDevice(
         'undeployed',
         { account: address, encKey, envelopes: [...inbox].reverse() },
-        {
-          readerPublicKey: hex(await remoteViewingKey.readerPublicKey('undeployed')),
-          devicePublicKey: await remoteAuthoriser.devicePublicKeyHex(),
-          epoch: 0n,
-          counter: 0n,
-        },
+        { ...reader, epoch: 0n, counter: 0n },
       );
       inbox.push(delivery.envelope, delivery.registration);
       remoteEntries.push(entry);
@@ -346,6 +357,78 @@ test('JubJub rotation seals a fresh key before updating the ACC and stays reopen
   assert.notEqual(hex(w.encKey()), before);
   assert.deepEqual(w.calls.slice(3), ['append_inbox_with_jubjub', 'rotate_enc_key_with_jubjub']);
   assert.equal((await w.accounts.openAccount()).address, address);
+});
+
+test('JubJub enrollment delivers the current account keys before the joining entry becomes live', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const { entry, reader, remoteViewingKey } = await w.joiningDevice();
+  assert.ok(account.addDevice);
+  const result = await account.addDevice(reader);
+  assert.equal(result.commitmentHex, hex(entry));
+  assert.equal(result.nextUseCounter, 5n);
+  assert.equal(result.txHash, 'tx-6');
+  assert.deepEqual(w.calls.slice(3), [
+    'append_inbox_with_jubjub',
+    'append_inbox_with_jubjub',
+    'add_device_with_jubjub',
+  ]);
+  assert.deepEqual(w.sessionFlows.at(-1), {
+    kind: 'add-device',
+    account: address,
+    commitmentHex: hex(entry),
+    reader,
+  });
+  const opened = await remoteViewingKey.openInbox(
+    'undeployed',
+    { account: address, encKey: w.encKey(), envelopes: [...w.inbox].reverse() },
+    w.inbox,
+  );
+  assert.ok(opened.some((item) => item?.kind === 'device'));
+  assert.equal((await account.state()).entryCount, 2);
+  assert.equal((await w.accounts.openAccount()).address, address);
+});
+
+test('JubJub enrollment rejects bad or already live readers before changing the account', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const { reader } = await w.joiningDevice();
+  assert.ok(account.addDevice);
+  const sessions = w.sessionFlows.length;
+  await assert.rejects(account.addDevice({ ...reader, devicePublicKey: 'bad' }), {
+    code: 'DeviceRosterInvalid',
+  });
+  assert.equal(w.sessionFlows.length, sessions);
+  assert.equal(w.calls.length, 3);
+  await account.addDevice(reader);
+  await assert.rejects(account.addDevice(reader), { code: 'DeviceRosterInvalid' });
+  assert.equal(w.calls.length, 6);
+});
+
+test('JubJub enrollment refuses a reader key already registered to another device', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  await w.addRemoteDevice(11, 11);
+  const { reader } = await w.joiningDevice(12, 11);
+  assert.ok(account.addDevice);
+  await assert.rejects(account.addDevice(reader), { code: 'DeviceRosterInvalid' });
+  assert.equal(w.calls.length, 3);
+  assert.equal((await account.state()).entryCount, 2);
+});
+
+test('JubJub enrollment refuses a live read grant and a grant that appears during delivery', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const { reader } = await w.joiningDevice();
+  assert.ok(account.addDevice);
+  w.setReadGrantTargets([{ grantId: 'ac'.repeat(32) }]);
+  await assert.rejects(account.addDevice(reader), { code: 'BindingUnsupported' });
+  assert.equal(w.calls.length, 3);
+  w.setReadGrantTargets([]);
+  w.changeReadGrantsAfterNextAppend();
+  await assert.rejects(account.addDevice(reader), { code: 'GrantRosterUnsettled' });
+  assert.deepEqual(w.calls.slice(3), ['append_inbox_with_jubjub', 'append_inbox_with_jubjub']);
+  assert.equal((await account.state()).entryCount, 1);
 });
 
 test('JubJub removal rotates the roster key before revoking a remote device', async () => {

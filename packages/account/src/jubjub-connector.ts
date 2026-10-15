@@ -1,7 +1,9 @@
 import {
   PASSPORT_API_VERSION,
+  type DeviceEnrollmentResult,
   type FlowOptions,
   type DeviceRemovalResult,
+  type JubjubDeviceReader,
   type PassportAccount,
   type PassportConnectorAPI,
 } from '@input-output-hk/mn-passport-protocol';
@@ -67,6 +69,7 @@ function requirePure(value: unknown): JubjubPureCircuits {
     'challenge_append_inbox_with_jubjub',
     'challenge_rotate_enc_key_with_jubjub',
     'challenge_remove_device_with_jubjub',
+    'challenge_add_device_with_jubjub',
   ] as const) {
     if (typeof pure[name] !== 'function')
       throw new PassportConnectorError('BindingUnsupported', `ACC binding lacks ${name}.`);
@@ -214,8 +217,12 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           ),
       }),
     );
-    if (signed.scheme !== 'jubjub-schnorr')
-      throw new PassportConnectorError('InternalError', 'The authoriser returned another arm.');
+    if (
+      signed.scheme !== 'jubjub-schnorr' ||
+      signed.useCounter !== counter ||
+      !samePoint(signed.pk, record.publicKey)
+    )
+      throw new PassportConnectorError('NotAuthorised', 'The signature names another device.');
     flow.checkpoint();
     await (
       await readChain()
@@ -260,6 +267,180 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       await flow.step('directory.write', () => directory.put(networkId, active), 'always');
     return account(active);
   };
+  const addDevice = (record: JubjubHint, input: JubjubDeviceReader, options: FlowOptions = {}) =>
+    run(options, async (flow): Promise<DeviceEnrollmentResult> => {
+      const decode = viewingKey.decodeDevicePublicKey;
+      if (!decode || !ports.readGrants)
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'JubJub enrollment needs a reader decoder and a complete chain-backed read-grant source.',
+        );
+      const reader = { ...input };
+      if (
+        !/^[0-9a-f]{64}$/.test(reader.readerPublicKey) ||
+        !/^[0-9a-f]{64}$/.test(reader.devicePublicKey)
+      )
+        throw new PassportConnectorError('DeviceRosterInvalid', 'The joining keys are malformed.');
+      const joiningKey = decode(reader.devicePublicKey);
+      if (!joiningKey || samePoint(joiningKey, record.publicKey))
+        throw new PassportConnectorError(
+          'DeviceRosterInvalid',
+          'The joining key must identify another valid device.',
+        );
+      const pure = requirePure((await readBinding()).pureCircuits);
+      recordPure.set(record, pure);
+      const initial = await flow.step('chain.read', () => read(record, true));
+      if (!initial.booted || record.status !== 'active')
+        throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
+      if (initial.specVersion !== 3)
+        throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
+      if (findCounter(record, initial) === undefined)
+        throw new PassportConnectorError('NotAuthorised', 'This device has no live ACC entry.');
+      const self = { bytes: fromHex(record.address) };
+      const entry = pure.derive_device_entry_with_jubjub(self, joiningKey, initial.deviceEpoch, 0n);
+      if (entry.length !== 32)
+        throw new PassportConnectorError('InternalError', 'The binding returned an invalid entry.');
+      if (initial.deviceEntries!.some((held) => equal(held, entry)))
+        throw new PassportConnectorError(
+          'DeviceRosterInvalid',
+          'The joining device is already live.',
+        );
+      const grants = await flow.step('grant.roster', () =>
+        ports.readGrants!.readActiveReadGrantTargets(record.address),
+      );
+      if (grants.authNonce !== initial.authNonce)
+        throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster is stale.');
+      if (grants.targets.length)
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'Enrollment with live read grants needs a fresh viewing and roster key before delivery.',
+        );
+      return authoriser.withKeySession!(
+        async () => {
+          let view = await flow.step('chain.read', () => read(record, true));
+          if (view.authNonce !== initial.authNonce || view.deviceEpoch !== initial.deviceEpoch)
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The ACC changed before enrollment.',
+            );
+          if (!equal(view.encKey!, initial.encKey!))
+            throw new PassportConnectorError('EncryptionKeyMismatch', 'The ACC key changed.');
+          if (view.deviceEntries!.some((held) => equal(held, entry)))
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The joining device is already live.',
+            );
+          const ownerKey = await authoriser.devicePublicKey();
+          if (!samePoint(ownerKey, record.publicKey) || findCounter(record, view) === undefined)
+            throw new PassportConnectorError(
+              'NotAuthorised',
+              'This device no longer owns the ACC.',
+            );
+          if (reader.readerPublicKey === toHex(await viewingKey.readerPublicKey(networkId)))
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The joining reader is the owner.',
+            );
+          await keyring(record, view, false);
+          const currentKeyring = {
+            account: record.address,
+            encKey: view.encKey!,
+            envelopes: [...view.inboxEntries!].reverse(),
+          };
+          const opened = await viewingKey.openInbox(networkId, currentKeyring, view.inboxEntries!);
+          if (
+            opened.some(
+              (item) =>
+                item?.kind === 'device' &&
+                (item.device.readerPublicKey === reader.readerPublicKey ||
+                  item.device.devicePublicKey === reader.devicePublicKey),
+            )
+          )
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The joining reader or signing key already has a roster registration.',
+            );
+          const delivery = await viewingKey.sealToDevice(networkId, currentKeyring, {
+            ...reader,
+            epoch: view.deviceEpoch,
+            counter: 0n,
+          });
+          view = await append(flow, record, delivery.envelope, view);
+          view = await append(flow, record, delivery.registration, view);
+          view = await read(record, true);
+          if (
+            !equal(view.encKey!, initial.encKey!) ||
+            view.deviceEpoch !== initial.deviceEpoch ||
+            ![delivery.envelope, delivery.registration].every((sealed) =>
+              view.inboxEntries!.some((held) => equal(held, sealed)),
+            )
+          )
+            throw new PassportConnectorError(
+              'EncryptionKeyMismatch',
+              'The key delivery did not settle.',
+            );
+          if (view.deviceEntries!.some((held) => equal(held, entry)))
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The joining device became live.',
+            );
+          const latestGrants = await flow.step('grant.roster', () =>
+            ports.readGrants!.readActiveReadGrantTargets(record.address),
+          );
+          if (latestGrants.authNonce !== view.authNonce || latestGrants.targets.length)
+            throw new PassportConnectorError(
+              'GrantRosterUnsettled',
+              'The read-grant roster changed.',
+            );
+          const counter = findCounter(record, view);
+          if (counter === undefined)
+            throw new PassportConnectorError('NotAuthorised', 'This device is no longer live.');
+          const signed = await flow.step('passkey.sign', () =>
+            authoriser.authorise({
+              account: record.address,
+              circuit: 'add_device_with_jubjub',
+              args: [entry],
+              witnessValues: [],
+              authNonce: view.authNonce,
+              useCounter: counter,
+              challenge: (sigR, grindNonce) =>
+                pure.challenge_add_device_with_jubjub(
+                  self,
+                  sigR,
+                  record.publicKey,
+                  entry,
+                  view.authNonce,
+                  grindNonce,
+                ),
+            }),
+          );
+          if (
+            signed.scheme !== 'jubjub-schnorr' ||
+            signed.useCounter !== counter ||
+            !samePoint(signed.pk, record.publicKey)
+          )
+            throw new PassportConnectorError(
+              'NotAuthorised',
+              'The signature names another device.',
+            );
+          flow.checkpoint();
+          const tx = await (
+            await readChain()
+          ).call({
+            address: record.address,
+            circuit: 'add_device_with_jubjub',
+            args: [entry, record.publicKey, counter, signed.sigR, signed.sigS, signed.grindNonce],
+            ...flow.ports,
+          });
+          await advanced(record, view.authNonce);
+          const settled = await read(record, true);
+          if (!settled.deviceEntries!.some((held) => equal(held, entry)))
+            throw new PassportConnectorError('DeviceRosterInvalid', 'The enrollment did not land.');
+          return { ...tx, commitmentHex: toHex(entry), nextUseCounter: counter + 1n };
+        },
+        { kind: 'add-device', account: record.address, commitmentHex: toHex(entry), reader },
+      );
+    });
   const rotateViewingKey = (record: JubjubHint, options: FlowOptions = {}, removal?: string) =>
     run(options, async (flow) => {
       const holdings = ports.holdings;
@@ -676,6 +857,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     rotateViewingKey: (options) => rotateViewingKey(record, options),
     removeDevice: (commitmentHex, options) =>
       rotateViewingKey(record, options, commitmentHex) as Promise<DeviceRemovalResult>,
+    addDevice: (reader, options) => addDevice(record, reader, options),
     readShieldedHoldings: (options = {}) =>
       run(options, async (flow) => {
         if (!ports.holdings)

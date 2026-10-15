@@ -63,6 +63,17 @@ export interface DeviceRemovalResult extends ViewingKeyRotationResult {
   readonly rotationTxHash: string;
 }
 
+/** Public joining keys; the compressed device key must derive the enrolled ACC commitment. */
+export interface JubjubDeviceReader {
+  readonly readerPublicKey: string;
+  readonly devicePublicKey: string;
+}
+
+export interface DeviceEnrollmentResult extends PassportTxResult {
+  readonly commitmentHex: string;
+  readonly nextUseCounter: bigint;
+}
+
 export interface PassportShieldedHolding {
   /** ACC inbox index of the sealed description confirmed against a chain-created output. */
   readonly inboxIndex: number;
@@ -87,6 +98,8 @@ export interface PassportAccount {
   rotateViewingKey?(options?: FlowOptions): Promise<ViewingKeyRotationResult>;
   /** JubJub owner operation; refuses self-removal and a target absent from the live ACC. */
   removeDevice?(commitmentHex: string, options?: FlowOptions): Promise<DeviceRemovalResult>;
+  /** JubJub owner operation; delivers keys before enrolling a reader when no read grant is live. */
+  addDevice?(reader: JubjubDeviceReader, options?: FlowOptions): Promise<DeviceEnrollmentResult>;
   /** JubJub accounts can read only chain-confirmed shielded holdings through their viewing key. */
   readShieldedHoldings?(options?: FlowOptions): Promise<readonly PassportShieldedHolding[]>;
 }
