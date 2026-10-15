@@ -57,7 +57,7 @@ test('stages already left read as done and full, and the stage in progress as in
   const v = s.view(5_000);
   assert.deepEqual(states(v), ['done', 'indeterminate', 'pending', 'pending', 'pending']);
   assert.deepEqual(widths(v), [100, 100, 0, 0, 0]);
-  assert.equal(v.label, 'Step 2 of 5: Derive the encryption key (PRF)');
+  assert.equal(v.label, 'Step 2 of 5: Prepare account keys (PRF)');
 });
 
 test('the deployment fills against its 3-minute estimate and names the elapsed and expected time', () => {

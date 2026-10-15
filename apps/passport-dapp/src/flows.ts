@@ -56,7 +56,7 @@ export const FLOWS: Record<ActionId, FlowDef> = {
     summary: `Creates a passkey, deploys a Passport account for it (about ${DEPLOY_ESTIMATE_S / 60} min, fees sponsored) and installs the passkey as its first device.`,
     stages: [
       { id: 'passkey', label: 'Create and verify the passkey' },
-      { id: 'prf', label: 'Derive the encryption key (PRF)' },
+      { id: 'prf', label: 'Prepare account keys (PRF)' },
       {
         id: 'deploy',
         label: 'Deploy the account (10 waves)',

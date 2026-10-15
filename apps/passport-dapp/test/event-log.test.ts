@@ -308,7 +308,7 @@ test('the evidence rows carry the run, its timing, its error and each step with 
         },
         {
           step: 'prf',
-          label: 'Derive the encryption key (PRF)',
+          label: 'Prepare account keys (PRF)',
           result: 'done',
           startedAt: iso(1_000),
           endedAt: iso(4_000),
