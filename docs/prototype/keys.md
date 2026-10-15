@@ -12,8 +12,9 @@ second P-256 device by sealing the key before adding its live entry when no read
 The joining device can use `openAccountAt(address)` with its own passkey and reader key when it
 knows the ACC address; this checks its live entry and opens the ledger-matched envelope without
 a directory hint. The demo does not expose that address-based flow yet. The account API can
-rotate the P-256 viewing secret after verifying the live reader roster, chain-backed holdings
-and active read-grant targets; the demo lacks these host sources and hides rotation. The new
+rotate the P-256 viewing secret or remove an enrolled device after verifying the live reader
+roster, chain-backed holdings and active read-grant targets; the demo lacks these host sources
+and hides rotation. The new
 browser composition explicitly refuses older
 deterministic-key P-256 accounts until migrated. See [ZK keys and recovery](../site/keys.md).
 The account API can read shielded holdings through this sealed P-256 keyring when a host provides

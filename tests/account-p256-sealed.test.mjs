@@ -170,6 +170,8 @@ test('P-256 rotation refuses a live device without a unique reader registration'
 
 test('P-256 owner delivers a sealed key before enrolling a new live device', async () => {
   const fake = createFakePorts();
+  /** @type {{grantId: string; readPublicKey: string}[]} */
+  let targets = [];
   const ports = {
     ...fake,
     viewingKey: viewingKey(),
@@ -181,7 +183,7 @@ test('P-256 owner delivers a sealed key before enrolling a new live device', asy
     readGrants: {
       readActiveReadGrantTargets: async () => ({
         authNonce: /** @type {bigint} */ ([...fake.ledger.values()][0]?.authNonce ?? 0n),
-        targets: [],
+        targets,
       }),
     },
   };
@@ -224,6 +226,24 @@ test('P-256 owner delivers a sealed key before enrolling a new live device', asy
   const joiningApi = createPassportAccounts(joiningPorts);
   if (!joiningApi.openAccountAt) throw new Error('Address-based open is unavailable.');
   assert.equal((await joiningApi.openAccountAt(account.address)).address, account.address);
+  const ownerCommitment = [...ledger.entries].find((entry) => entry !== result.commitmentHex);
+  assert.ok(ownerCommitment);
+  if (!account.removeDevice) throw new Error('P-256 removal is unavailable.');
+  await assert.rejects(account.removeDevice(ownerCommitment), { code: 'LastDevice' });
+  await assert.rejects(account.removeDevice('ef'.repeat(32)), { code: 'RemovalTargetNotFound' });
+  targets = [{ grantId: 'aa'.repeat(32), readPublicKey: reader.readerPublicKey }];
+  const beforeBlocked = ledger.encKey.slice();
+  await assert.rejects(account.removeDevice(result.commitmentHex), { code: 'DeviceRosterInvalid' });
+  assert.deepEqual(ledger.encKey, beforeBlocked);
+  targets = [];
+  const beforeRemoval = ledger.encKey.slice();
+  const removed = await account.removeDevice(result.commitmentHex);
+  assert.equal(removed.removedCommitmentHex, result.commitmentHex);
+  assert.ok(removed.rotationTxHash);
+  assert.notDeepEqual(ledger.encKey, beforeRemoval);
+  assert.equal(ledger.entries.has(result.commitmentHex), false);
+  await assert.rejects(joiningApi.openAccountAt(account.address), { code: 'AccountNotFound' });
+  assert.equal((await createPassportAccounts(ports).openAccount()).address, account.address);
 });
 
 test('an enrolled P-256 passkey opens its ACC by address without a directory hint', async () => {

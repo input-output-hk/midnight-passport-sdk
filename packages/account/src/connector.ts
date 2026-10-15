@@ -4,6 +4,7 @@ import {
   type FlowOptions,
   type P256DeviceReader,
   type DeviceEnrollmentResult,
+  type DeviceRemovalResult,
   type ViewingKeyRotationResult,
   type PassportAccount,
   type PassportConnectorAPI,
@@ -660,8 +661,8 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
       );
     });
 
-  const rotateP256ViewingKey = (record: P256Hint, options: FlowOptions = {}) =>
-    run(options, async (flow): Promise<ViewingKeyRotationResult> => {
+  const rotateP256ViewingKey = (record: P256Hint, options: FlowOptions = {}, removal?: string) =>
+    run(options, async (flow): Promise<ViewingKeyRotationResult | DeviceRemovalResult> => {
       const keyring = viewingKey;
       const reencrypt = keyring?.reencryptInbox;
       const decodeJubjub = keyring?.decodeDevicePublicKey;
@@ -675,15 +676,23 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         !decodeP256 ||
         !pure.derive_device_entry_with_jubjub ||
         !pure.challenge_append_inbox_with_p256 ||
+        (removal !== undefined && !pure.challenge_remove_device_with_p256) ||
         !ports.holdings ||
         !ports.readGrants ||
         !authoriser.withKeySession ||
+        !authoriser.deviceBinding ||
         !authoriser.devicePublicKeyHex
       )
         throw new PassportConnectorError(
           'BindingUnsupported',
           'P-256 rotation needs sealed keys, both device decoders, verified holdings and a complete read-grant source.',
         );
+      if (removal !== undefined && !/^[0-9a-f]{64}$/i.test(removal))
+        throw new PassportConnectorError(
+          'RemovalTargetNotFound',
+          'The target must be a 32-byte device commitment.',
+        );
+      const target = removal === undefined ? undefined : fromHex(removal.toLowerCase());
       const read = async () => {
         const view = await flow.step('chain.read', async () =>
           (await chain()).readAccount(record.address, { includeInbox: true, includeDevices: true }),
@@ -725,6 +734,19 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             );
           const initialCounter = await findCounter(flow, record, view);
           if (initialCounter === undefined) throw notHeld(record);
+          if (target) {
+            const own = pure.derive_device_entry_with_p256(
+              { bytes: fromHex(record.address) },
+              p256(record.publicKey),
+              record.policy,
+              view.deviceEpoch,
+              initialCounter,
+            );
+            if (equalBytes(target, own))
+              throw new PassportConnectorError('LastDevice', 'A device cannot remove itself.');
+            if (!view.deviceEntries.some((entry) => equalBytes(entry, target)))
+              throw new PassportConnectorError('RemovalTargetNotFound', 'The target is not live.');
+          }
           await sealedKeyring(record, view, false);
           const oldEntries = [...view.inboxEntries];
           const oldKeyring = {
@@ -745,6 +767,9 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             epoch: view.deviceEpoch,
             registered: opened.flatMap((item) => (item?.kind === 'device' ? [item.device] : [])),
             liveEntries: view.deviceEntries,
+            ...(target && {
+              allowedEntries: view.deviceEntries.filter((entry) => !equalBytes(entry, target)),
+            }),
             pure: { derive_device_entry_with_jubjub: pure.derive_device_entry_with_jubjub! },
             p256Pure: pure,
             decodeDevicePublicKey: decodeJubjub,
@@ -765,6 +790,21 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             throw new PassportConnectorError(
               'DeviceRosterInvalid',
               'Every live device needs one unique registered reader before rotation.',
+            );
+          const removedReader = target ? roster.outside[0] : undefined;
+          if (
+            target &&
+            (roster.outside.length !== 1 ||
+              !removedReader ||
+              roster.readers.some(
+                (survivor) =>
+                  survivor.readerPublicKey === removedReader.readerPublicKey ||
+                  survivor.devicePublicKey === removedReader.devicePublicKey,
+              ))
+          )
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The removed device needs one distinct registered reader.',
             );
           const initial = view;
           const held = await ports.holdings!.selectHeldEntries(record.address, oldEntries, opened);
@@ -795,6 +835,14 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             keyring: oldKeyring,
             registrations,
             readers: roster.readers.filter((reader) => reader.readerPublicKey !== ownerReader),
+            ...(target && { rotateRoster: true }),
+            ...(removedReader && {
+              removed: {
+                devicePublicKey: removedReader.devicePublicKey,
+                epoch: removedReader.epoch,
+                counter: removedReader.counter,
+              },
+            }),
           });
           const reencrypted = await reencrypt(
             networkId,
@@ -818,6 +866,16 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             },
             { targets: ports.readGrants!, viewingKey: keyring, random },
           );
+          if (
+            removedReader &&
+            deliveries.targets.some(
+              ({ readPublicKey }) => readPublicKey === removedReader.readerPublicKey,
+            )
+          )
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'An active read grant would return the fresh key to the removed reader.',
+            );
           const appended = [
             ...keys.envelopes,
             ...keys.registrations,
@@ -951,7 +1009,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           );
           for (const entry of reencrypted)
             rotatedView = await appendP256(flow, record, entry!, rotatedView);
-          return {
+          const rotation = {
             ...tx,
             droppedDeviceEntries: [],
             sealedReadGrants: deliveries.sealed.map(
@@ -964,8 +1022,88 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             ),
             unsealedGrantIds: deliveries.unsealedGrantIds,
           };
+          if (!target) return rotation;
+          const beforeRemoval = await read();
+          if (
+            !beforeRemoval.deviceEntries.some((entry) => equalBytes(entry, target)) ||
+            !equalBytes(beforeRemoval.encKey, keys.encKey)
+          )
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The removal target or ACC key changed.',
+            );
+          const removeCounter = await findCounter(flow, record, beforeRemoval);
+          if (removeCounter === undefined) throw notHeld(record);
+          const removeCircuit = 'remove_device_with_p256';
+          const removeChallenge = pure.challenge_remove_device_with_p256!(
+            { bytes: fromHex(record.address) },
+            p256(record.publicKey),
+            target,
+            beforeRemoval.authNonce,
+          );
+          const removeSignature = await flow.step('passkey.sign', () =>
+            authoriser.authorise({
+              account: record.address,
+              circuit: removeCircuit,
+              args: [target],
+              witnessValues: [],
+              authNonce: beforeRemoval.authNonce,
+              useCounter: removeCounter,
+              challenge: removeChallenge,
+              credentialId: record.credentialId,
+            }),
+          );
+          if (
+            removeSignature.scheme !== 'p256-webauthn' ||
+            removeSignature.useCounter !== removeCounter ||
+            removeSignature.pk.x !== record.publicKey.x ||
+            removeSignature.pk.y !== record.publicKey.y
+          )
+            throw new PassportConnectorError(
+              'NotAuthorised',
+              'The signature names another device.',
+            );
+          flow.checkpoint();
+          const removed = await (
+            await chain()
+          ).call({
+            address: record.address,
+            circuit: removeCircuit,
+            args: [
+              target,
+              {
+                pk: p256(record.publicKey),
+                policy: record.policy,
+                authenticator_data: removeSignature.authenticatorData,
+                sig: removeSignature.sig,
+                use_counter: removeCounter,
+              },
+            ],
+            ...flow.ports,
+          });
+          for (let attempt = 0; attempt < 30; attempt++) {
+            flow.checkpoint();
+            const settled = await read();
+            if (
+              settled.authNonce > beforeRemoval.authNonce &&
+              !settled.deviceEntries.some((entry) => equalBytes(entry, target))
+            )
+              return {
+                ...rotation,
+                ...removed,
+                removedCommitmentHex: toHex(target),
+                rotationTxHash: tx.txHash,
+              };
+            if (attempt < 29) await sleep(1000);
+          }
+          throw new PassportConnectorError(
+            'DeviceRosterInvalid',
+            'The removed device is still in the live ACC set.',
+          );
         },
-        { kind: 'rotate-encryption-key', account: record.address },
+        target
+          ? { kind: 'remove-device', account: record.address, commitmentHex: toHex(target) }
+          : { kind: 'rotate-encryption-key', account: record.address },
       );
     });
 
@@ -1046,6 +1184,8 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         );
       }),
     rotateViewingKey: (options) => rotateP256ViewingKey(record, options),
+    removeDevice: (commitmentHex, options) =>
+      rotateP256ViewingKey(record, options, commitmentHex) as Promise<DeviceRemovalResult>,
     rotateEncryptionKey: (newKey, options = {}) =>
       run(options, async (flow) => {
         if (isSealedP256(record))

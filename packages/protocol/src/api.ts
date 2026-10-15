@@ -173,9 +173,9 @@ export interface PassportAccount {
   readonly credentialId?: Uint8Array;
   state(): Promise<PassportAccountState>;
   rotateEncryptionKey(newKey: Uint8Array, options?: FlowOptions): Promise<PassportTxResult>;
-  /** JubJub accounts rotate a random sealed viewing secret; requires a verified holding source. */
+  /** Sealed accounts rotate a random viewing secret; requires verified holdings and grant targets. */
   rotateViewingKey?(options?: FlowOptions): Promise<ViewingKeyRotationResult>;
-  /** JubJub owner operation; refuses self-removal and a target absent from the live ACC. */
+  /** Sealed owner operation; refuses self-removal and a target absent from the live ACC. */
   removeDevice?(commitmentHex: string, options?: FlowOptions): Promise<DeviceRemovalResult>;
   /** Owner enrollment; JubJub rotates first when live read grants require a fresh account key. */
   addDevice?(reader: PassportDeviceReader, options?: FlowOptions): Promise<DeviceEnrollmentResult>;

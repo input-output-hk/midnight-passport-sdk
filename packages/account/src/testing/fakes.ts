@@ -98,6 +98,8 @@ export const fakeBinding = (): P.AccBinding => ({
       fakeDigest(`p256-append|${hex(self.bytes)}|${point(pk)}|${hex(entry)}|${nonce}`),
     challenge_add_device_with_p256: (self, pk, entry, nonce) =>
       fakeDigest(`p256-add|${hex(self.bytes)}|${point(pk)}|${hex(entry)}|${nonce}`),
+    challenge_remove_device_with_p256: (self, pk, entry, nonce) =>
+      fakeDigest(`p256-remove|${hex(self.bytes)}|${point(pk)}|${hex(entry)}|${nonce}`),
   },
 });
 
@@ -307,7 +309,8 @@ export function fakeChain(
     if (
       circuit !== 'rotate_enc_key_with_p256' &&
       circuit !== 'append_inbox_with_p256' &&
-      circuit !== 'add_device_with_p256'
+      circuit !== 'add_device_with_p256' &&
+      circuit !== 'remove_device_with_p256'
     )
       throw refused(`no circuit ${circuit}`);
     const [newKey, auth] = args as [Uint8Array, Auth];
@@ -321,29 +324,42 @@ export function fakeChain(
             newKey,
             account.authNonce,
           )
-        : circuit === 'append_inbox_with_p256'
-          ? circuits.challenge_append_inbox_with_p256!(
+        : circuit === 'remove_device_with_p256'
+          ? circuits.challenge_remove_device_with_p256!(
               { bytes: unhex(self) },
               pk,
               newKey,
               account.authNonce,
             )
-          : circuits.challenge_rotate_enc_key_with_p256(
-              { bytes: unhex(self) },
-              pk,
-              newKey,
-              account.authNonce,
-            );
+          : circuit === 'append_inbox_with_p256'
+            ? circuits.challenge_append_inbox_with_p256!(
+                { bytes: unhex(self) },
+                pk,
+                newKey,
+                account.authNonce,
+              )
+            : circuits.challenge_rotate_enc_key_with_p256(
+                { bytes: unhex(self) },
+                pk,
+                newKey,
+                account.authNonce,
+              );
     const signed = { pk, authenticatorData: auth.authenticator_data, sig: auth.sig };
     if (!account.entries.has(live) || !(await verifyP256(signed, challenge, auth.policy))) {
       throw refused('no live entry signed this challenge');
     }
+    if (
+      circuit === 'remove_device_with_p256' &&
+      (!account.entries.has(hex(newKey)) || hex(newKey) === live)
+    )
+      throw refused('the removal target is absent or is the signer');
     return () => {
       account.entries.delete(live);
       account.entries.add(entry(self, pk, auth.policy, epoch, auth.use_counter + 1n));
       account.authNonce += 1n;
       if (circuit === 'append_inbox_with_p256') account.inboxEntries.push(newKey);
       else if (circuit === 'add_device_with_p256') account.entries.add(hex(newKey));
+      else if (circuit === 'remove_device_with_p256') account.entries.delete(hex(newKey));
       else account.encKey = newKey;
     };
   }
