@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { p256 } from '@noble/curves/nist.js';
-import { publishP256GrantBookkeeping } from '../packages/account/dist/index.js';
+import {
+  publishP256GrantBookkeeping,
+  recoverPendingP256Grants,
+} from '../packages/account/dist/index.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 
 /** @param {Uint8Array} bytes */
@@ -209,4 +212,25 @@ test('P-256 read grant resumes its missing view seal', async () => {
   assert.deepEqual(result.appendTxHashes, ['tx-3']);
   assert.deepEqual(result.sealedReadGrant?.seal, viewSeal);
   assert.equal(pending.published(), true);
+});
+
+test('P-256 recovery publishes active pending grants and keeps absent issues staged', async () => {
+  const world = fixture();
+  const journal = { ...world.ports.journal, pending: async () => [grantId, 'ef'.repeat(32)] };
+  const recovered = await recoverPendingP256Grants({ hint }, { ...world.ports, journal });
+  assert.deepEqual(
+    recovered.published.map((grant) => grant.grantId),
+    [grantId],
+  );
+  assert.deepEqual(recovered.unsettledGrantIds, ['ef'.repeat(32)]);
+  assert.equal(world.published(), true);
+});
+
+test('P-256 recovery refuses duplicate pending IDs before publication', async () => {
+  const world = fixture();
+  const journal = { ...world.ports.journal, pending: async () => [grantId, grantId] };
+  await assert.rejects(recoverPendingP256Grants({ hint }, { ...world.ports, journal }), {
+    code: 'GrantScopeInvalid',
+  });
+  assert.equal(world.inbox.length, 0);
 });

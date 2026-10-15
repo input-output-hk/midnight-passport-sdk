@@ -14,6 +14,9 @@ import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { grantRosterFingerprint } from './grant-roster.js';
 import { validGrantId } from './grant-publication-state.js';
+import { issueAndPublishP256Grant, type IssueP256GrantPure } from './p256-grant-issue.js';
+import { recoverPendingP256Grants } from './p256-grant-publication.js';
+import type { GrantRecoveryJournal } from './jubjub-grant-publication.js';
 import { readVerifiedHoldings } from './holdings.js';
 import { createJubjubAccounts } from './jubjub-connector.js';
 import { resolveRegisteredReaders } from './jubjub-readers.js';
@@ -21,6 +24,7 @@ import { sealActiveReadGrants } from './read-grant-deliveries.js';
 import { startFlow, type Flow } from './flow.js';
 import type {
   AccLedgerView,
+  AccPureCircuits,
   AccountHint,
   CurvePoint,
   Lazy,
@@ -31,6 +35,33 @@ import type {
 
 const equalBytes = (a: Uint8Array, b: Uint8Array): boolean =>
   a.length === b.length && a.every((v, i) => v === b[i]);
+
+const requireP256GrantPure = (
+  value: unknown,
+): IssueP256GrantPure &
+  AccPureCircuits & {
+    challenge_append_inbox_with_p256: NonNullable<
+      AccPureCircuits['challenge_append_inbox_with_p256']
+    >;
+  } => {
+  const pure = value as Partial<IssueP256GrantPure & AccPureCircuits>;
+  for (const name of [
+    'derive_grant_id_with_jubjub',
+    'derive_grant_object_commit',
+    'derive_grant_scope_digest',
+    'derive_device_entry_with_p256',
+    'challenge_issue_grant_with_p256',
+    'challenge_append_inbox_with_p256',
+  ] as const)
+    if (typeof pure[name] !== 'function')
+      throw new PassportConnectorError('BindingUnsupported', `ACC binding lacks ${name}.`);
+  return pure as IssueP256GrantPure &
+    AccPureCircuits & {
+      challenge_append_inbox_with_p256: NonNullable<
+        AccPureCircuits['challenge_append_inbox_with_p256']
+      >;
+    };
+};
 
 /**
  * The rescan probes use counters 0..RESCAN_LIMIT-1 (MIP-0013 S11). The prototype always starts at 0,
@@ -396,6 +427,15 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     await sealedKeyring(record, view, false);
     const active: P256Hint = { ...record, status: 'active' };
     if (pending) await put(flow, active);
+    const counter = await findCounter(flow, active, view);
+    if (counter === undefined) throw notHeld(active);
+    await ports.records?.write({
+      address: active.address,
+      bindingId: network.bindingId,
+      scheme: 'p256-webauthn',
+      credentialId: active.credentialId.slice(),
+      localUseCounter: counter,
+    });
     return active;
   };
 
@@ -669,6 +709,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     removal?: string,
     excludedGrant?: string | 'all',
     onRotated?: (state: { readonly encKey: Uint8Array; readonly authNonce: bigint }) => void,
+    requireAllGrants = false,
   ) =>
     run(options, async (flow): Promise<ViewingKeyRotationResult | DeviceRemovalResult> => {
       const keyring = viewingKey;
@@ -886,7 +927,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
               'The read grant disappeared before key rotation.',
             );
           if (
-            (target || (excludedGrant && excludedGrant !== 'all')) &&
+            (target || (excludedGrant && excludedGrant !== 'all') || requireAllGrants) &&
             deliveries.unsealedGrantIds.length
           )
             throw new PassportConnectorError(
@@ -1261,6 +1302,89 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           ...flow.ports,
         });
       }),
+    issueGrant: async (scope, options = {}) => {
+      if (
+        !isSealedP256(record) ||
+        !viewingKey ||
+        !ports.records ||
+        !ports.grants ||
+        !ports.grantJournal ||
+        !ports.grantOrigin
+      )
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'P-256 grant issue needs sealed keys, local records, live grants, durable journal and host origin.',
+        );
+      if (
+        scope.read &&
+        (!ports.holdings || !ports.readGrants || !viewingKey.reencryptInbox || !viewingKey.sealView)
+      )
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'Read grants need verified holdings, live read grants and a full viewing-key port.',
+        );
+      if (network.bindingId !== 'acc-s3r1.1')
+        throw new PassportConnectorError('BindingUnsupported', 'Unsupported ACC grant binding.');
+      const pure = requireP256GrantPure((await binding()).pureCircuits);
+      return issueAndPublishP256Grant(
+        { hint: record, origin: ports.grantOrigin, scope, ...options },
+        {
+          bindingId: 'acc-s3r1.1',
+          networkId,
+          pure,
+          chain: await chain(),
+          authoriser,
+          records: ports.records,
+          grants: ports.grants,
+          journal: ports.grantJournal,
+          viewingKey,
+          random,
+          ...(scope.read && {
+            rotateBeforeIssue: () =>
+              rotateP256ViewingKey(
+                record,
+                options,
+                undefined,
+                undefined,
+                undefined,
+                true,
+              ) as Promise<ViewingKeyRotationResult>,
+          }),
+        },
+      );
+    },
+    recoverPendingGrants: async (options = {}) => {
+      if (
+        !isSealedP256(record) ||
+        !viewingKey ||
+        !ports.records ||
+        !ports.grants ||
+        !ports.grantJournal ||
+        typeof (ports.grantJournal as Partial<GrantRecoveryJournal>).pending !== 'function'
+      )
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'P-256 grant recovery needs sealed keys, local records, live grants and pending journal enumeration.',
+        );
+      if (network.bindingId !== 'acc-s3r1.1')
+        throw new PassportConnectorError('BindingUnsupported', 'Unsupported ACC grant binding.');
+      const pure = requireP256GrantPure((await binding()).pureCircuits);
+      return recoverPendingP256Grants(
+        { hint: record, ...options },
+        {
+          bindingId: 'acc-s3r1.1',
+          networkId,
+          pure,
+          chain: await chain(),
+          grants: ports.grants,
+          journal: ports.grantJournal as GrantRecoveryJournal,
+          viewingKey,
+          authoriser,
+          records: ports.records,
+          random,
+        },
+      );
+    },
     revokeGrant: (grantId, options = {}) =>
       run(options, async (flow): Promise<PassportGrantRevokeResult> => {
         const pure = (await binding()).pureCircuits;
@@ -1712,8 +1836,16 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             'AccountNotFound',
             'The selected ACC is not an active spec-3 account.',
           );
-        if ((await findCounter(flow, record, view)) === undefined) throw notHeld(record);
+        const counter = await findCounter(flow, record, view);
+        if (counter === undefined) throw notHeld(record);
         await sealedKeyring(record, view, false);
+        await ports.records?.write({
+          address,
+          bindingId: network.bindingId,
+          scheme: 'p256-webauthn',
+          credentialId: record.credentialId.slice(),
+          localUseCounter: counter,
+        });
         return account(record);
       }),
     openAccount: (options = {}) =>

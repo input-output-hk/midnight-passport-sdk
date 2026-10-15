@@ -10,7 +10,7 @@ demo uses a local signer; a packed Lace consumer flow has not yet been validated
 revoke-all rotate inside their outer owner session without requesting a second rotation consent.
 The sealed P-256 package flow can rotate away from live read grantees before clearing the pinned
 ACC grant map. The browser demo has no chain-backed holding or read-target source for this flow,
-and P-256 read-grant issue remains connector work. The account package can submit and publish a P-256 issue through lower-level host ports, but the connector and recovery entry points are not connected yet. Selective revoke rotates the sealed secret away
+and P-256 read-grant issue remains a demo integration gap. The account connector can submit and publish a P-256 issue through host ports and recover pending publications, but the demo has not configured those ports. Selective revoke rotates the sealed secret away
 from the revoked grantee and returns new seals for surviving readers.
 
 This is a prototype for the standalone network. Each item below says what the prototype does and

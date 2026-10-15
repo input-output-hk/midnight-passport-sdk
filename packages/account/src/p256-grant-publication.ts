@@ -10,7 +10,7 @@ import {
   publishedGrantView,
   validGrantId,
 } from './grant-publication-state.js';
-import type { GrantPublicationJournal } from './jubjub-grant-publication.js';
+import type { GrantPublicationJournal, GrantRecoveryJournal } from './jubjub-grant-publication.js';
 import type {
   AccLedgerView,
   AccPureCircuits,
@@ -53,6 +53,52 @@ export interface PublishedP256Grant {
     readonly seal: Uint8Array;
     readonly sealedEncKey: string;
   };
+}
+
+export interface RecoverPendingP256GrantsPorts extends Omit<PublishP256GrantPorts, 'journal'> {
+  readonly journal: GrantRecoveryJournal;
+}
+
+/** Publish only staged P-256 issues already confirmed in the live ACC grant map. */
+export async function recoverPendingP256Grants(
+  input: { readonly hint: AccountHint } & FlowOptions,
+  ports: RecoverPendingP256GrantsPorts,
+): Promise<{
+  readonly published: readonly PublishedP256Grant[];
+  readonly unsettledGrantIds: readonly string[];
+}> {
+  const flow = startFlow(input, ports.random ?? randomDefault);
+  try {
+    const ids = await flow.step('grant.stage', () => ports.journal.pending(input.hint.address));
+    if (ids.length > 256 || ids.some((id) => !validGrantId(id)) || new Set(ids).size !== ids.length)
+      throw new PassportConnectorError('GrantScopeInvalid', 'Invalid pending grant journal.');
+    const active = new Set(
+      await flow.step('grant.roster', () => ports.grants.readActiveGrantIds(input.hint.address)),
+    );
+    const published: PublishedP256Grant[] = [];
+    const unsettledGrantIds: string[] = [];
+    for (const grantId of ids) {
+      flow.checkpoint();
+      if (!active.has(grantId)) {
+        unsettledGrantIds.push(grantId);
+        continue;
+      }
+      published.push(
+        await publishP256GrantBookkeeping(
+          {
+            hint: input.hint,
+            grantId,
+            ...(input.signal && { signal: input.signal }),
+            ...(input.onEvent && { onEvent: input.onEvent }),
+          },
+          ports,
+        ),
+      );
+    }
+    return { published, unsettledGrantIds };
+  } catch (error) {
+    throw flow.fail(error);
+  }
 }
 
 const same = (a: Uint8Array, b: Uint8Array): boolean =>
