@@ -21,10 +21,11 @@ adapters. The later, accepted [package decision](https://github.com/input-output
 put account-owner flows and ports in `account`, split the prototype's large browser adapter by
 responsibility, reserved `core` and `connect` for later work, and retired three empty adapters.
 
-The table names each released package. “Active” means it exports implementation used by the RC1
-browser account path; it does not mean every feature in the original vision is finished.
+The table names each package in the source tree. “Active” means it exports an implementation;
+it does not mean every feature in the original vision is finished. Only the nine active packages
+are packed for RC4.
 
-| Package (`@input-output-hk/mn-passport-*`) | Purpose and place in the vision | RC1 state |
+| Package (`@input-output-hk/mn-passport-*`) | Purpose and place in the vision | Current implementation |
 | --- | --- | --- |
 | `protocol` | Shared, versioned account API, events, errors, and service wire types. This is the dependency-light contract between hosts and adapters. | Active; types, constants, and pure helpers. |
 | `contract` | Versioned ACC binding and artefacts shared by account and chain callers. | Active; `acc-s3r1.1` generated module, registry, integrity manifest, ZKIR/verifier bundle, and key restore CLI. No prover keys in npm. |
@@ -52,13 +53,13 @@ nine implemented packages. Existing RC1 package records remain historical artifa
 
 ## What an integrator installs
 
-The 13 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their
-`0.1.0-rc1` release uses the `next` distribution tag and requires package read access. Install the
+The nine RC4 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their
+`0.1.0-rc4` release uses the `next` distribution tag and requires package read access. Install the
 entrypoints your code imports; their declared dependencies bring in the supporting packages. A
 browser host using the account API and packaged binding can start with:
 
 ```sh
-npm install @input-output-hk/mn-passport-account@0.1.0-rc1 @input-output-hk/mn-passport-adapter-browser@0.1.0-rc1 @input-output-hk/mn-passport-contract@0.1.0-rc1
+npm install @input-output-hk/mn-passport-account@0.1.0-rc4 @input-output-hk/mn-passport-adapter-browser@0.1.0-rc4 @input-output-hk/mn-passport-contract@0.1.0-rc4
 ```
 
 ## Dependency direction

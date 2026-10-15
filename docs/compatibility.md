@@ -1,6 +1,6 @@
 # Compatibility matrix
 
-> **Status:** live · updated 2026/10/15. Releases are lockstep across the
+> **Status:** preview RC4 · updated 2026/10/16. Releases are lockstep across the
 > `@input-output-hk/mn-passport-*` packages. The binding data is pinned in
 > `packages/contract/acc-binding-v2.generated.json` and the generated registry.
 
@@ -9,6 +9,7 @@
 | SDK | ACC binding | Passport source | Compiler | Language | Runtime (`@midnight-ntwrk/compact-runtime`) | Compiler manifest SHA-256 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `0.1.0-rc1` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
+| `0.1.0-rc4` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 
 The package registry supports only `acc-s3r1.1`. The older provisional
 `0.0.0-prototype.1` binding is retired. The separate `acc-45721e1` key bundle
@@ -21,6 +22,7 @@ Compact runtime.
 | SDK | Account API (`PASSPORT_API_VERSION`) | Service API (`PASSPORT_SERVICE_API_VERSION`) |
 | --- | --- | --- |
 | `0.1.0-rc1` | `1.0.0-pre.0` | `1.0.0-pre.0` |
+| `0.1.0-rc4` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 
 The local demo service was not a published SDK package in RC1. The service API
 constant names the versioned client wire types; the current prototype browser
@@ -288,7 +290,10 @@ The Passport service's fee-only sponsor rejects shielded offers and cannot submi
 this call. Lace PR #2845's hosted handle and key-session flow do not yet expose
 the required witness and withdrawal consent, so the hosted JubJub adapter
 rejects this operation. Partial change settlement, spent-output reconciliation
-and a JubJub live proof remain release validation work.
+and a JubJub live proof are deferred to the next RC. The exact-value guard
+remains enabled: callers must not offer a larger coin and assume change is
+captured. The v9 wallet route passed a live P-256 proof, but Lace's hosted
+route, consent, witness delivery, and a JubJub live proof remain unverified.
 
 ## Axes and releases
 
@@ -318,7 +323,10 @@ The account API and the service wire types are versioned separately.
 | SDK | API version | Service API version | Supported bindings | Binding for new accounts | Compact runtime | Midnight package set |
 |---|---|---|---|---|---|---|
 | `0.1.0-rc1` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
+| `0.1.0-rc4` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 
-The release row records the RC1 package API and pinned grants binding. The
-service library and JubJub authoriser were not part of RC1; development toward
-the next release is tracked separately from this published release row.
+RC1 had eight implementations and five empty scaffolds. RC4 contains nine
+implemented packages, adding the service library and excluding the scaffolds.
+The RC4 row describes this preview release's binding and wire compatibility;
+it does not establish full Lace runtime compatibility or complete support for
+all pinned ACC circuits. See the [RC4 release notes](site/release-notes-rc4.md).
