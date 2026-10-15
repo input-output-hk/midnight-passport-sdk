@@ -275,7 +275,7 @@ function world() {
       readerPublicKey: hex(await remoteViewingKey.readerPublicKey('undeployed')),
       devicePublicKey: await remoteAuthoriser.devicePublicKeyHex(),
     };
-    return { entry, reader, remoteViewingKey, publicKey };
+    return { entry, reader, remoteViewingKey, remoteAuthoriser, publicKey };
   };
   return {
     accounts: createPassportAccounts(ports),
@@ -305,7 +305,10 @@ function world() {
         counter,
       ),
     addRemoteDevice: async (seed = 11, readerSeed = seed, useCounter = 0n) => {
-      const { entry, reader, remoteViewingKey, publicKey } = await joiningDevice(seed, readerSeed);
+      const { entry, reader, remoteViewingKey, remoteAuthoriser, publicKey } = await joiningDevice(
+        seed,
+        readerSeed,
+      );
       const liveEntry =
         useCounter === 0n
           ? entry
@@ -322,7 +325,7 @@ function world() {
       );
       inbox.push(delivery.envelope, delivery.registration);
       remoteEntries.push(liveEntry);
-      return { entry: liveEntry, remoteViewingKey };
+      return { entry: liveEntry, remoteViewingKey, remoteAuthoriser };
     },
     addUnregisteredDevice: (entry = new Uint8Array(32).fill(99)) => remoteEntries.push(entry),
     withoutHoldings: () => {
@@ -361,6 +364,73 @@ test('JubJub creation appends sealed keys, then opens from the live inbox', asyn
   assert.equal((await w.accounts.openAccount()).address, address);
   assert.deepEqual(w.sessionFlows.at(-1), { kind: 'sign-in' });
   assert.equal(w.calls.length, 3, 'open did not repeat completed calls');
+});
+
+test('an enrolled JubJub device recovers by address and saves a checked directory hint', async () => {
+  const w = world();
+  await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const { remoteViewingKey, remoteAuthoriser } = await w.addRemoteDevice();
+  const remoteCredentialId = Uint8Array.of(8, 9, 10);
+  /** @type {import('../packages/account/dist/ports/index.js').AccountHint | undefined} */
+  let recoveredHint;
+  /** @type {import('../packages/account/dist/ports/index.js').AccountRecord | undefined} */
+  let localRecord;
+  const remote = createPassportAccounts({
+    ...w.ports,
+    credentials: {
+      ...w.ports.credentials,
+      identify: async () => ({ credentialId: remoteCredentialId, owns: () => false }),
+    },
+    authoriser: remoteAuthoriser,
+    viewingKey: remoteViewingKey,
+    records: {
+      read: async () => localRecord,
+      write: async (value) => {
+        localRecord = value;
+      },
+      exists: async () => localRecord !== undefined,
+    },
+    directory: {
+      get: async () => recoveredHint,
+      put: async (_network, value) => {
+        recoveredHint = value;
+      },
+    },
+  });
+  assert.ok(remote.openAccountAt);
+  const account = await remote.openAccountAt(address);
+  assert.equal(account.address, address);
+  assert.equal(account.scheme, 'jubjub-schnorr');
+  assert.equal(recoveredHint?.status, 'active');
+  assert.equal(recoveredHint?.salt, undefined);
+  assert.equal(recoveredHint?.keyEntries, undefined);
+  assert.deepEqual(recoveredHint?.credentialId, remoteCredentialId);
+  assert.equal(localRecord?.address, address);
+  assert.equal(localRecord?.scheme, 'jubjub-schnorr');
+  assert.equal(localRecord?.localUseCounter, 0n);
+  assert.equal((await remote.openAccount()).address, address);
+});
+
+test('JubJub address recovery refuses a missing registration before writing the hint', async () => {
+  const w = world();
+  await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const { remoteViewingKey, remoteAuthoriser } = await w.addRemoteDevice();
+  w.inbox.pop();
+  let writes = 0;
+  const remote = createPassportAccounts({
+    ...w.ports,
+    authoriser: remoteAuthoriser,
+    viewingKey: remoteViewingKey,
+    directory: {
+      get: async () => undefined,
+      put: async () => {
+        writes++;
+      },
+    },
+  });
+  assert.ok(remote.openAccountAt);
+  await assert.rejects(remote.openAccountAt(address), { code: 'EncryptionKeyMismatch' });
+  assert.equal(writes, 0);
 });
 
 test('JubJub grant issue refuses a host without live grants and a durable journal', async () => {

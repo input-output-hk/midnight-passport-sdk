@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createPassportAccounts } from '../packages/account/dist/index.js';
 import { createFakePorts } from '../packages/account/dist/testing/index.js';
-import { recipeDeviceKeyring } from '../packages/keys/dist/index.js';
+import { recipeDeviceKeyring, recipeJubjubAuthoriser } from '../packages/keys/dist/index.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 import { sealInboxCoin } from '../packages/keys/dist/inbox-coin.js';
 import { isAddressedTo, openDeviceEnvelope } from '../packages/keys/dist/device-envelope.js';
@@ -20,6 +20,54 @@ const viewingKey = (value = 9) =>
     deviceSecret: async () => new Uint8Array(32).fill(value),
   });
 const hex = (/** @type {Uint8Array} */ bytes) => Buffer.from(bytes).toString('hex');
+
+test('P-256 owner enrolls a JubJub reader with a mixed-roster registration', async () => {
+  const fake = createFakePorts({ binding: { pureCircuits } });
+  const ports = {
+    ...fake,
+    viewingKey: viewingKey(),
+    authoriser: {
+      ...fake.authoriser,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    readGrants: {
+      readActiveReadGrantTargets: async () => ({
+        authNonce: /** @type {bigint} */ ([...fake.ledger.values()][0]?.authNonce ?? 0n),
+        targets: [],
+      }),
+    },
+  };
+  const account = await createPassportAccounts(ports).createAccount({
+    userName: 'mixed-owner',
+    retireAuthority: true,
+  });
+  const ledger = fake.ledger.get(account.address);
+  assert.ok(ledger);
+  ledger.specVersion = 3;
+  const joiner = recipeJubjubAuthoriser(
+    {
+      withSession: (operation) => operation(),
+      deviceSecret: async () => new Uint8Array(32).fill(11),
+      deriveSecret: async () => new Uint8Array(32).fill(7),
+    },
+    pureCircuits,
+  );
+  const reader = {
+    readerPublicKey: hex(await viewingKey(7).readerPublicKey('undeployed')),
+    devicePublicKey: await joiner.devicePublicKeyHex(),
+  };
+  assert.ok(account.addDevice);
+  const result = await account.addDevice(reader);
+  assert.equal(ledger.entries.size, 2);
+  assert.deepEqual(
+    ledger.inboxEntries.slice(-2).map((entry) => entry[0]),
+    [0xd1, 0xd2],
+  );
+  assert.equal(ledger.entries.has(result.commitmentHex), true);
+  await assert.rejects(account.addDevice({ ...reader, scheme: 'p256-webauthn' }), {
+    code: 'DeviceRosterInvalid',
+  });
+});
 
 test('P-256 create publishes sealed key entries and reload opens the ledger key', async () => {
   const fake = createFakePorts({ binding: { pureCircuits } });

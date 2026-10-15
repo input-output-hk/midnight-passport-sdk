@@ -59,8 +59,6 @@ const sleep = (ms: number) =>
 type JubjubHint = AccountHint & {
   readonly scheme: 'jubjub-schnorr';
   readonly credentialId: Uint8Array;
-  readonly salt: Uint8Array;
-  readonly keyEntries: readonly Uint8Array[];
 };
 
 type EnrollmentContext = {
@@ -71,18 +69,22 @@ type EnrollmentContext = {
 };
 
 function isJubjubHint(hint: AccountHint): hint is JubjubHint {
+  const entries = hint.keyEntries;
+  const validEntries =
+    Array.isArray(entries) &&
+    entries.length === 2 &&
+    entries[0]?.length === 192 &&
+    entries[0][0] === 0xd1 &&
+    (entries[0][1] === 1 || entries[0][1] === 2) &&
+    entries[1]?.length === 192 &&
+    entries[1][0] === 0xd2 &&
+    entries[1][1] === entries[0][1];
   return (
     hint.scheme === 'jubjub-schnorr' &&
     hint.credentialId instanceof Uint8Array &&
-    hint.salt?.length === 32 &&
-    Array.isArray(hint.keyEntries) &&
-    hint.keyEntries.length === 2 &&
-    hint.keyEntries[0]?.length === 192 &&
-    hint.keyEntries[0][0] === 0xd1 &&
-    (hint.keyEntries[0][1] === 1 || hint.keyEntries[0][1] === 2) &&
-    hint.keyEntries[1]?.length === 192 &&
-    hint.keyEntries[1][0] === 0xd2 &&
-    hint.keyEntries[1][1] === hint.keyEntries[0][1]
+    (hint.salt === undefined || hint.salt.length === 32) &&
+    (entries === undefined || validEntries) &&
+    (hint.status !== 'deployed' || (hint.salt?.length === 32 && validEntries))
   );
 }
 
@@ -205,14 +207,15 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     const reader = await viewingKey.readerPublicKey(networkId);
     if (reader.length !== 32)
       throw new PassportConnectorError('InternalError', 'Invalid reader key.');
-    const entries = pending
-      ? [...view.inboxEntries!, ...record.keyEntries]
-      : [...view.inboxEntries!];
+    const pendingEntries = record.keyEntries ?? [];
+    if (pending && pendingEntries.length !== 2)
+      throw new PassportConnectorError('AccountNotFound', 'The pending key entries are missing.');
+    const entries = pending ? [...view.inboxEntries!, ...pendingEntries] : [...view.inboxEntries!];
     try {
       const opened = await viewingKey.openInbox(
         networkId,
         { account: record.address, encKey: view.encKey!, envelopes: entries.reverse() },
-        pending ? record.keyEntries : [],
+        pending ? pendingEntries : [],
       );
       if (pending) {
         const device = opened[1];
@@ -301,6 +304,8 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     if (!view.booted) {
       if (!pending)
         throw new PassportConnectorError('AccountNotFound', 'The active ACC is not booted.');
+      if (record.salt?.length !== 32)
+        throw new PassportConnectorError('AccountNotFound', 'The pending boot salt is missing.');
       await flow.step('activate', async () =>
         (await readChain()).call({
           address: record.address,
@@ -314,7 +319,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     if (findCounter(record, view) === undefined)
       throw new PassportConnectorError('AccountNotFound', 'This passkey has no live ACC entry.');
     if (pending) {
-      for (const entry of record.keyEntries) {
+      for (const entry of record.keyEntries ?? []) {
         if (view.inboxEntries!.some((held) => equal(held, entry))) continue;
         view = await append(flow, record, entry, view);
       }
@@ -1421,6 +1426,75 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     apiVersion: PASSPORT_API_VERSION,
     networkId,
     bindingId: network.bindingId,
+    openAccountAt: (address, options = {}) =>
+      run(options, async (flow) => {
+        if (!/^[0-9a-f]{64}$/.test(address))
+          throw new PassportConnectorError(
+            'AccountNotFound',
+            'ACC address must be 32-byte lowercase hex.',
+          );
+        const identity = await flow.step('passkey.identify', () => credentials.identify());
+        return authoriser.withKeySession!(
+          async () => {
+            const publicKey = await authoriser.devicePublicKey();
+            const devicePublicKey = await authoriser.devicePublicKeyHex!();
+            const record: JubjubHint = {
+              address,
+              scheme: 'jubjub-schnorr',
+              credentialId: identity.credentialId.slice(),
+              publicKey,
+              status: 'active',
+            };
+            const view = await flow.step('chain.read', () => read(record, true));
+            if (!view.booted || view.specVersion !== 3)
+              throw new PassportConnectorError(
+                'AccountNotFound',
+                'The selected ACC is not an active spec-3 account.',
+              );
+            const pure = requirePure((await readBinding()).pureCircuits);
+            recordPure.set(record, pure);
+            const counter = findCounter(record, view);
+            if (counter === undefined)
+              throw new PassportConnectorError(
+                'NotAuthorised',
+                'This device has no live ACC entry.',
+              );
+            await keyring(record, view, false);
+            const readerPublicKey = toHex(await viewingKey.readerPublicKey(networkId));
+            const opened = await viewingKey.openInbox(
+              networkId,
+              {
+                account: address,
+                encKey: view.encKey!,
+                envelopes: [...view.inboxEntries!].reverse(),
+              },
+              view.inboxEntries!,
+            );
+            const matching = opened.filter(
+              (entry) =>
+                entry?.kind === 'device' &&
+                entry.device.scheme !== 'p256-webauthn' &&
+                entry.device.readerPublicKey === readerPublicKey &&
+                entry.device.devicePublicKey === devicePublicKey,
+            );
+            if (matching.length !== 1)
+              throw new PassportConnectorError(
+                'EncryptionKeyMismatch',
+                'The live ACC inbox has no unique registration for this device.',
+              );
+            await flow.step('directory.write', () => directory.put(networkId, record), 'always');
+            await ports.records?.write({
+              address,
+              bindingId: network.bindingId,
+              scheme: 'jubjub-schnorr',
+              credentialId: record.credentialId.slice(),
+              localUseCounter: counter,
+            });
+            return account(record);
+          },
+          { kind: 'sign-in' },
+        );
+      }),
     createAccount: ({ userName, retireAuthority, onProgress, ...options }) =>
       run(
         options,
