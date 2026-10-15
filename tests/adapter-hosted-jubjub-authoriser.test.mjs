@@ -122,6 +122,18 @@ test('hosted key session carries consent context and refuses unsupported owner f
       }),
     /no withdraw-unshielded consent descriptor/,
   );
+  assert.throws(
+    () =>
+      adapter.withKeySession(async () => 0, {
+        kind: 'withdraw-shielded',
+        account: 'ab'.repeat(32),
+        color: '01'.repeat(32),
+        amount: '7',
+        recipient: '02'.repeat(32),
+        inboxIndex: 3,
+      }),
+    /no withdraw-shielded consent descriptor/,
+  );
   assert.equal(calls.length, 1);
   const lossy = hostedJubjubAuthoriser(source, {
     ...convert,

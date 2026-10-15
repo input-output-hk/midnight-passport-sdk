@@ -1,0 +1,32 @@
+{
+  "verdict": "PASS",
+  "bindingId": "acc-s3r1.1",
+  "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "contractSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
+  "account": "ae5f2a3507af98b85c83948a1c5e085eb36966ef3ced1f89598692fe2fb51198",
+  "networkId": "undeployed",
+  "ownerScheme": "p256-webauthn",
+  "depositTx": "0027743a3c744411e2c7e557f53f0250e092aecc58c609d0f384d8e010fdc7478b",
+  "withdrawTx": "72c3a789c4616eea58334c6d0e43aae5af6d15f60905edb6c1328aa5973c60a4",
+  "inboxIndex": 2,
+  "outputIndex": "39",
+  "transactions": [
+    {
+      "circuit": "activate_initial_device_with_p256",
+      "txHash": "be3a980a26adef9b7c86c4b15c5e333f5d4c674a2ccfa6f4290e1f883e70f63a"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "3e688d0bd43409d14762db9e0b3843237460890e908ef6d1b5d353dbf071c966"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "8b5b7a24ed62f78856650b7a57ed541436cba3e7ad01c5293b566d0d6db7fb86"
+    },
+    {
+      "circuit": "withdraw_shielded_with_p256",
+      "txHash": "72c3a789c4616eea58334c6d0e43aae5af6d15f60905edb6c1328aa5973c60a4"
+    }
+  ],
+  "scope": "proof-backed exact P-256 owner shielded withdrawal"
+}

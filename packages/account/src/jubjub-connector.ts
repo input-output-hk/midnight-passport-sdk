@@ -13,7 +13,7 @@ import {
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow, type Flow } from './flow.js';
-import { readVerifiedHoldings } from './holdings.js';
+import { readQualifiedHolding, readVerifiedHoldings } from './holdings.js';
 import { validGrantId } from './grant-publication-state.js';
 import { issueAndPublishJubjubGrant } from './jubjub-grant-settlement.js';
 import type { IssueJubjubGrantPure } from './jubjub-grant-issue.js';
@@ -25,7 +25,7 @@ import { revokeAllJubjubGrants } from './jubjub-grant-revoke-all.js';
 import type { RevokeAllJubjubGrantPure } from './jubjub-grant-revoke-all.js';
 import { JUBJUB_READER_SCAN_LIMIT, resolveJubjubReaders } from './jubjub-readers.js';
 import { sealActiveReadGrants } from './read-grant-deliveries.js';
-import { prepareUnshieldedWithdrawal } from './unshielded-withdrawal.js';
+import { prepareShieldedWithdrawal, prepareUnshieldedWithdrawal } from './unshielded-withdrawal.js';
 import type {
   AccLedgerView,
   AccountHint,
@@ -34,6 +34,7 @@ import type {
   CurvePoint,
   JubjubPureCircuits,
   PassportPorts,
+  QualifiedHoldingSource,
 } from './ports/index.js';
 
 const RETRIES = 30;
@@ -1274,6 +1275,121 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             color: request.color,
             amount: request.amount,
             recipient: request.recipient,
+          },
+        );
+      }),
+    withdrawShielded: (request, options = {}) =>
+      run(options, async (flow) => {
+        const transfer = prepareShieldedWithdrawal(request);
+        const qualified = ports.holdings as QualifiedHoldingSource | undefined;
+        const pure = requirePure((await readBinding()).pureCircuits);
+        if (
+          network.bindingId !== 'acc-s3r1.1' ||
+          !pure.challenge_withdraw_shielded_with_jubjub ||
+          !qualified?.selectQualifiedHeldCoins
+        )
+          throw new PassportConnectorError(
+            'BindingUnsupported',
+            'JubJub shielded withdrawal needs the pinned challenge and qualified holdings.',
+          );
+        if (record.status !== 'active')
+          throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
+        recordPure.set(record, pure);
+        return authoriser.withKeySession!(
+          async () => {
+            const pk = await authoriser.devicePublicKey();
+            if (!samePoint(pk, record.publicKey))
+              throw new PassportConnectorError(
+                'NotAuthorised',
+                'The selected device does not own this ACC.',
+              );
+            const view = await flow.step('chain.read', () => read(record));
+            if (!view.booted || view.specVersion !== 3)
+              throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
+            const counter = await flow.step('counter.scan', async () => findCounter(record, view));
+            if (counter === undefined)
+              throw new PassportConnectorError(
+                'NotAuthorised',
+                'This device has no live ACC entry.',
+              );
+            const chainPort = await readChain();
+            const coin = await readQualifiedHolding(
+              {
+                account: record.address,
+                keyring: {
+                  account: record.address,
+                  encKey: view.encKey!,
+                  envelopes: [...view.inboxEntries!].reverse(),
+                },
+                inboxIndex: transfer.inboxIndex,
+                color: transfer.color,
+              },
+              { networkId, chain: chainPort, viewingKey, holdings: qualified },
+            );
+            if (transfer.amount !== coin.value)
+              throw new PassportConnectorError(
+                'TransferInvalid',
+                'A shielded owner withdrawal must spend the selected coin exactly until change settlement is available.',
+              );
+            const self = { bytes: fromHex(record.address) };
+            const circuit = 'withdraw_shielded_with_jubjub';
+            const signed = await flow.step('passkey.sign', () =>
+              authoriser.authorise({
+                account: record.address,
+                circuit,
+                args: [transfer.recipient, transfer.color, transfer.amount],
+                witnessValues: [coin],
+                authNonce: view.authNonce,
+                useCounter: counter,
+                challenge: (sigR, grindNonce) =>
+                  pure.challenge_withdraw_shielded_with_jubjub!(
+                    self,
+                    sigR,
+                    record.publicKey,
+                    transfer.recipient,
+                    transfer.color,
+                    transfer.amount,
+                    coin,
+                    view.authNonce,
+                    grindNonce,
+                  ),
+              }),
+            );
+            if (
+              signed.scheme !== 'jubjub-schnorr' ||
+              signed.useCounter !== counter ||
+              !samePoint(signed.pk, record.publicKey)
+            )
+              throw new PassportConnectorError(
+                'NotAuthorised',
+                'The signature names another device.',
+              );
+            flow.checkpoint();
+            const tx = await chainPort.call({
+              address: record.address,
+              circuit,
+              args: [
+                transfer.recipient,
+                transfer.color,
+                transfer.amount,
+                record.publicKey,
+                counter,
+                signed.sigR,
+                signed.sigS,
+                signed.grindNonce,
+              ],
+              heldCoin: coin,
+              ...flow.ports,
+            });
+            return { ...tx, nextUseCounter: counter + 1n };
+          },
+          {
+            kind: 'withdraw-shielded',
+            account: record.address,
+            color: request.color,
+            amount: request.amount,
+            recipient: request.recipient,
+            inboxIndex: request.inboxIndex,
           },
         );
       }),

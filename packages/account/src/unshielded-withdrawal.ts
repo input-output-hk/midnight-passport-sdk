@@ -1,4 +1,7 @@
-import type { PassportUnshieldedWithdrawal } from '@input-output-hk/mn-passport-protocol';
+import type {
+  PassportShieldedWithdrawal,
+  PassportUnshieldedWithdrawal,
+} from '@input-output-hk/mn-passport-protocol';
 import { fromHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 
@@ -23,7 +26,7 @@ export function prepareUnshieldedWithdrawal(request: PassportUnshieldedWithdrawa
   )
     throw new PassportConnectorError(
       'TransferInvalid',
-      'A transfer needs a 32-byte color and user address plus a positive decimal amount.',
+      'A transfer needs a 32-byte color and recipient plus a positive decimal amount.',
     );
   const amount = BigInt(request.amount);
   if (amount > U128_MAX)
@@ -33,4 +36,11 @@ export function prepareUnshieldedWithdrawal(request: PassportUnshieldedWithdrawa
     amount,
     recipient: { bytes: fromHex(request.recipient) },
   };
+}
+
+export function prepareShieldedWithdrawal(request: PassportShieldedWithdrawal) {
+  const fields = prepareUnshieldedWithdrawal(request);
+  if (!Number.isSafeInteger(request.inboxIndex) || request.inboxIndex < 0)
+    throw new PassportConnectorError('TransferInvalid', 'Invalid shielded inbox index.');
+  return { ...fields, inboxIndex: request.inboxIndex };
 }

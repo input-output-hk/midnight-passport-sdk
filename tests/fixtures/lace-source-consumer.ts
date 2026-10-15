@@ -109,7 +109,11 @@ const hostedAuthoriser: Authoriser = hostedJubjubAuthoriser(laceAuthoriser, {
   epoch: DeviceEpoch,
   counter: UseCounter,
   flow: (descriptor) => {
-    if (descriptor.kind === 'rotate-encryption-key' || descriptor.kind === 'withdraw-unshielded')
+    if (
+      descriptor.kind === 'rotate-encryption-key' ||
+      descriptor.kind === 'withdraw-unshielded' ||
+      descriptor.kind === 'withdraw-shielded'
+    )
       throw new Error(`Lace has no ${descriptor.kind} consent descriptor`);
     return {
       kind: descriptor.kind,
