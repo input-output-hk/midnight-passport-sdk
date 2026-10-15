@@ -124,6 +124,8 @@ The JubJub authoriser also supplies `devicePublicKeyHex()`, a validated compress
 
 Both browser authoriser arms use `AccountViewingKey` to create a random account secret, seal it to the passkey-derived reader, and validate it against the live ACC encryption key. They persist sealed entries before activation so `openAccount` can resume an interrupted create. Both rotation flows send new device envelopes and active read-grant seals before switching the ledger key, and refuse concurrent key, device-roster or read-grant-roster changes. Both read-grant issue paths require host supplied chain-backed holdings and read-target sources; the browser composition does not provide them by default. The `encryptionKey` port is retained only for explicit legacy P-256 hosts; the browser composition refuses their old account hints until migrated. See [key roles and recovery]({{ '/keys/#account-viewing-secrets-and-recovery' | relative_url }}).
 
+`openGrantView(readSecret, { grantId, account, seal, expectedEncKey })` from `mn-passport-keys` lets a read grantee open the 94-byte seal returned by grant issue or viewing-key rotation. Supply the `expectedEncKey` from the live ACC ledger; the function returns `null` if the opened secret does not match it, or for a wrong reader, altered seal, account or grant ID. Clear the returned 32-byte viewing secret after use. The seal carries no proof that its grant is still active; verify the live grant map before using read access.
+
 ### Lace integration status
 
 The current SDK demo was also exercised on a live `undeployed` localnet at SDK

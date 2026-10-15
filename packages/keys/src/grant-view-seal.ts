@@ -19,6 +19,8 @@ const concat = (...parts: readonly Uint8Array[]): Uint8Array<ArrayBuffer> => {
   }
   return result;
 };
+const same = (left: Uint8Array, right: Uint8Array): boolean =>
+  left.length === right.length && left.every((value, index) => value === right[index]);
 const wrappingKey = async (shared: Uint8Array, grantId: Uint8Array): Promise<CryptoKey> => {
   try {
     const material = await crypto.subtle.importKey(
@@ -38,7 +40,7 @@ const wrappingKey = async (shared: Uint8Array, grantId: Uint8Array): Promise<Cry
       material,
       { name: 'AES-GCM', length: 256 },
       false,
-      ['encrypt'],
+      ['encrypt', 'decrypt'],
     );
   } finally {
     shared.fill(0);
@@ -80,5 +82,57 @@ export async function sealGrantView(
     return seal;
   } finally {
     ephemeral.secretKey.fill(0);
+  }
+}
+
+/**
+ * Open a grant's current ACC viewing secret. The grant id and account are authenticated by AES-GCM;
+ * the secret's public key must match the live ACC enc_key supplied by the caller. A wrong reader,
+ * stale key, changed context or malformed seal returns null. The caller owns and must clear the
+ * returned secret after use.
+ */
+export async function openGrantView(
+  readSecret: Uint8Array,
+  request: {
+    readonly grantId: string;
+    readonly account: string;
+    readonly seal: Uint8Array;
+    readonly expectedEncKey: Uint8Array;
+  },
+): Promise<Uint8Array | null> {
+  if (readSecret.length !== KEY_LENGTH) throw new Error('read secret must be 32 bytes');
+  if (request.expectedEncKey.length !== KEY_LENGTH)
+    throw new Error('live ACC enc_key must be 32 bytes');
+  const grantId = bytes(request.grantId);
+  const account = bytes(request.account);
+  const seal = request.seal.slice();
+  const expectedEncKey = request.expectedEncKey.slice();
+  if (seal.length !== GRANT_VIEW_SEAL_LENGTH || seal[0] !== 1 || seal[1] !== 1) return null;
+  let opened: Uint8Array | undefined;
+  try {
+    const key = await wrappingKey(
+      x25519.getSharedSecret(readSecret, seal.subarray(2, 34)),
+      grantId,
+    );
+    opened = new Uint8Array(
+      await crypto.subtle.decrypt(
+        {
+          name: 'AES-GCM',
+          iv: seal.subarray(34, 46),
+          additionalData: concat(seal.subarray(0, 34), grantId, account),
+          tagLength: 128,
+        },
+        key,
+        concat(seal.subarray(62, 94), seal.subarray(46, 62)),
+      ),
+    );
+    if (opened.length !== KEY_LENGTH || !same(x25519.getPublicKey(opened), expectedEncKey)) {
+      opened.fill(0);
+      return null;
+    }
+    return opened;
+  } catch {
+    opened?.fill(0);
+    return null;
   }
 }
