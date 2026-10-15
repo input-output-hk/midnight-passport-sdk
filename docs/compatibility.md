@@ -103,9 +103,10 @@ chain-backed holding source. JubJub removal uses Lace's `remove-device` descript
 the viewing and roster keys before the pinned removal circuit; it refuses a surviving reader
 that shares a key with the removed device. These owner flows have binding-focused tests but have
 not run in Lace's hosted module, so they are not yet verified Lace flow replacements. Full
-read-grant issue and revoke-all composition remains. The SDK's `issueGrant`, `revokeGrant`, and
-`revokeAllGrants` expose settled owner calls; read revoke rotates the viewing secret while
-excluding the revoked grantee, and revoke-all still refuses live read grants. Issue pins the origin in the host and stages durable grant
+revoke-all with live read grants remains. The SDK's `issueGrant`, `revokeGrant`, and
+`revokeAllGrants` expose settled owner calls; read issue rotates before the issue circuit and
+publishes the new grantee seal after settlement, while read revoke rotates and excludes that
+grantee. Revoke-all still refuses live read grants. Issue pins the origin in the host and stages durable grant
 bookkeeping. Lace still needs hosted runtime validation before adopting these flows. The SDK's
 `addDevice` uses Lace's `add-device`
 descriptor with a reader and delivers keys before enrollment. If a read grant is live it rotates

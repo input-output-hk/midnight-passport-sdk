@@ -1188,6 +1188,18 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           'BindingUnsupported',
           'Grant issue needs local records, a live grant source, durable journal and host origin.',
         );
+      if (
+        scope.read &&
+        (!ports.holdings ||
+          !ports.readGrants ||
+          !viewingKey.reencryptInbox ||
+          !viewingKey.decodeDevicePublicKey ||
+          !viewingKey.sealView)
+      )
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'Read grants need verified holdings, live read grants and a full viewing-key port.',
+        );
       if (network.bindingId !== 'acc-s3r1.1')
         throw new PassportConnectorError('BindingUnsupported', 'Unsupported ACC grant binding.');
       const pure = requireGrantPure((await readBinding()).pureCircuits);
@@ -1204,6 +1216,10 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           journal: ports.grantJournal,
           viewingKey,
           random: fresh,
+          ...(scope.read && {
+            rotateBeforeIssue: () =>
+              rotateViewingKey(record, options) as Promise<ViewingKeyRotationResult>,
+          }),
         },
       );
     },

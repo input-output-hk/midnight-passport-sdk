@@ -1,4 +1,8 @@
-import type { FlowOptions, PassportTxResult } from '@input-output-hk/mn-passport-protocol';
+import type {
+  FlowOptions,
+  PassportTxResult,
+  ViewingKeyRotationResult,
+} from '@input-output-hk/mn-passport-protocol';
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow } from './flow.js';
@@ -67,6 +71,10 @@ export interface IssueJubjubGrantCallPorts {
   readonly journal: GrantIssueJournal;
   readonly random?: (length: number) => Uint8Array;
   readonly nowSeconds?: () => number;
+  /** Runs inside the owner's issue key session before a read grant is submitted. */
+  readonly rotateBeforeIssue?: (
+    input: IssueJubjubGrantCallInput,
+  ) => Promise<ViewingKeyRotationResult>;
 }
 
 /** A submitted issue call. The grant remains pending until a chain-backed roster confirms it. */
@@ -76,6 +84,7 @@ export interface SubmittedJubjubGrantCall extends PassportTxResult {
   readonly scopeDigest: string;
   readonly nextUseCounter: bigint;
   readonly status: 'submitted';
+  readonly rotation?: ViewingKeyRotationResult;
 }
 
 const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
@@ -111,11 +120,11 @@ const bookkeeping = (
 });
 
 /**
- * Submit the owner-authorised `issue_grant_with_jubjub` call for an unshielded spend scope.
+ * Submit the owner-authorised `issue_grant_with_jubjub` call.
  * The journal stores its opening before chain submission. This lower-level call does not claim
  * settlement or publish sealed bookkeeping; a later owner flow must reconcile and finish those
- * steps before presenting the grant as active. Read grants need viewing-secret rotation and are
- * deliberately rejected until that full flow exists.
+ * steps before presenting the grant as active. A read grant rotates the viewing secret in the
+ * same key session before this issue call; its new seal is published after the grant is active.
  */
 export async function issueJubjubGrantCall(
   input: IssueJubjubGrantCallInput,
@@ -124,13 +133,19 @@ export async function issueJubjubGrantCall(
   const flow = startFlow(input, ports.random ?? random);
   try {
     if (
-      input.scope.read ||
-      input.scope.operations.length !== 1 ||
-      input.scope.operations[0] !== 'withdraw-unshielded'
+      !input.scope.read &&
+      (input.scope.operations.length !== 1 || input.scope.operations[0] !== 'withdraw-unshielded')
     )
       throw new PassportConnectorError(
         'BindingUnsupported',
-        'This call supports only an unshielded spend grant without read access.',
+        'A grant without read access supports only unshielded withdrawal.',
+      );
+    if (input.scope.read && !ports.rotateBeforeIssue)
+      throw new PassportConnectorError('BindingUnsupported', 'Read-grant rotation is unavailable.');
+    if (input.scope.read && input.scope.rpId !== input.origin)
+      throw new PassportConnectorError(
+        'GrantScopeInvalid',
+        'The read grant rp id must match the host origin.',
       );
     const { hint } = input;
     if (hint.scheme !== 'jubjub-schnorr' || hint.status !== 'active' || !hint.credentialId)
@@ -143,13 +158,14 @@ export async function issueJubjubGrantCall(
       );
     if (ports.authoriser.scheme !== 'jubjub-schnorr' || !ports.authoriser.withKeySession)
       throw new PassportConnectorError('BindingUnsupported', 'A JubJub key session is required.');
-    const view = await flow.step('chain.read', () =>
+    const initialView = await flow.step('chain.read', () =>
       ports.chain.readAccount(hint.address, { includeDevices: true }),
     );
-    if (!view || !view.booted)
+    if (!initialView || !initialView.booted)
       throw new PassportConnectorError('AccountNotFound', 'The active ACC is missing.');
-    if (view.specVersion !== 3)
+    if (initialView.specVersion !== 3)
       throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
+    let view = initialView;
     const roster = await flow.step('grant.roster', () =>
       ports.grants.readActiveGrantSnapshot(hint.address),
     );
@@ -189,6 +205,30 @@ export async function issueJubjubGrantCall(
             'NotAuthorised',
             'The selected device does not own this ACC.',
           );
+        let rotation: ViewingKeyRotationResult | undefined;
+        if (input.scope.read) {
+          rotation = await ports.rotateBeforeIssue!(input);
+          const rotatedView = await flow.step('chain.read', () =>
+            ports.chain.readAccount(hint.address, { includeDevices: true }),
+          );
+          if (!rotatedView?.booted || rotatedView.specVersion !== 3)
+            throw new PassportConnectorError('AccountNotFound', 'The rotated ACC is missing.');
+          view = rotatedView;
+          const rotatedRoster = await flow.step('grant.roster', () =>
+            ports.grants.readActiveGrantSnapshot(hint.address),
+          );
+          const expectedIds = [...activeGrantIds].sort();
+          const currentIds = [...rotatedRoster.ids].sort();
+          if (
+            rotatedRoster.authNonce !== view.authNonce ||
+            currentIds.length !== expectedIds.length ||
+            currentIds.some((id, index) => id !== expectedIds[index])
+          )
+            throw new PassportConnectorError(
+              'GrantRosterUnsettled',
+              'The grant roster changed during rotation.',
+            );
+        }
         const counter = await flow.step('counter.scan', async () => {
           for (let value = 0n; value < JUBJUB_READER_SCAN_LIMIT; value++) {
             const own = ports.pure.derive_device_entry_with_jubjub(
@@ -270,6 +310,7 @@ export async function issueJubjubGrantCall(
           scopeDigest: toHex(prepared.scopeDigest),
           nextUseCounter,
           status: 'submitted' as const,
+          ...(rotation && { rotation }),
         };
       },
       {
@@ -280,6 +321,10 @@ export async function issueJubjubGrantCall(
         scopeSalt: toHex(prepared.scopeSalt),
         scopeDigest: toHex(prepared.scopeDigest),
         slot: prepared.slot,
+        ...(input.scope.read && {
+          read: true,
+          devices: view.deviceEntries?.map(toHex) ?? [],
+        }),
       },
     );
   } catch (error) {

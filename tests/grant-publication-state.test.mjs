@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   isPublishableUnshieldedGrant,
+  isPublishableReadGrant,
   publishedGrantParts,
+  publishedGrantView,
 } from '../packages/account/dist/grant-publication-state.js';
 
 const account = 'ab'.repeat(32);
@@ -92,4 +94,32 @@ test('publication refuses a corrupted or read-capable staged opening', () => {
     ),
     false,
   );
+});
+
+test('read publication binds its stored read key and current ACC key prefix', () => {
+  const readPublicKey = '77'.repeat(32);
+  const read = {
+    ...staged,
+    scope: { ...staged.scope, read: true, rpId: staged.origin, readPublicKey },
+    bookkeeping: { ...bookkeeping, readPublicKey },
+  };
+  assert.equal(isPublishableReadGrant(read, account, grantId), true);
+  assert.equal(isPublishableReadGrant({ ...read, bookkeeping }, account, grantId), false);
+  /** @type {import('../packages/account/dist/ports/index.js').OpenedInboxEntry[]} */
+  const opened = [
+    {
+      kind: 'grant',
+      record: {
+        part: 'view',
+        grantId,
+        encKeyPrefix: 'abcdef',
+        seal: '42'.repeat(94),
+      },
+    },
+  ];
+  assert.equal(
+    publishedGrantView(opened, grantId, 'abcdef' + '00'.repeat(29))?.seal,
+    '42'.repeat(94),
+  );
+  assert.equal(publishedGrantView(opened, grantId, '123456' + '00'.repeat(29)), undefined);
 });

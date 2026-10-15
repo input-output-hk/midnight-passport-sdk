@@ -461,6 +461,103 @@ test('JubJub account issueGrant pins the host origin and returns after sealed pu
   assert.equal(local.localUseCounter, 7n);
 });
 
+test('JubJub read grant rotates before issue and publishes the new grantee seal', async () => {
+  const w = world();
+  await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  /** @type {import('../packages/account/dist/ports/index.js').AccountRecord} */
+  let local = {
+    address,
+    bindingId: 'acc-s3r1.1',
+    scheme: 'jubjub-schnorr',
+    credentialId,
+    localUseCounter: 2n,
+  };
+  /** @type {import('../packages/account/dist/jubjub-grant-issue.js').StagedJubjubGrant | undefined} */
+  let staged;
+  let published = false;
+  const account = await createPassportAccounts({
+    ...w.ports,
+    grantOrigin: 'trusted.example',
+    records: {
+      exists: async () => true,
+      read: async () => local,
+      write: async (next) => {
+        local = next;
+      },
+    },
+    grants: {
+      readActiveGrantIds: async () => [...w.activeGrantIds],
+      readActiveGrantSnapshot: async () => ({
+        authNonce: w.grantNonce(),
+        ids: [...w.activeGrantIds],
+      }),
+    },
+    grantJournal: {
+      stage: async (opening) => {
+        staged = opening;
+      },
+      load: async () => staged,
+      markPublished: async () => {
+        published = true;
+      },
+      pending: async () => (staged && !published ? [staged.bookkeeping.grantId] : []),
+    },
+  }).openAccount();
+  assert.ok(account.issueGrant);
+  const reader = x25519.keygen();
+  const grantee = hex(
+    jubjub.Point.fromAffine(pureCircuits.compute_public_point_with_jubjub(11n)).toBytes(),
+  );
+  const before = hex(w.encKey());
+  const result = await account.issueGrant({
+    grantee: { scheme: 'jubjub-schnorr', publicKey: grantee },
+    operations: ['withdraw-unshielded'],
+    color: '34'.repeat(32),
+    recipient: { kind: 'any' },
+    maxCoinValue: '100',
+    perCallCap: '10',
+    cap: '100',
+    expiresAt: null,
+    read: true,
+    rpId: 'trusted.example',
+    readPublicKey: hex(reader.publicKey),
+  });
+  assert.equal(result.status, 'active');
+  assert.notEqual(hex(w.encKey()), before);
+  assert.equal(result.rotation?.unsealedGrantIds.length, 0);
+  assert.equal(result.sealedReadGrant?.grantId, result.grantId);
+  assert.equal(result.sealedReadGrant?.readPublicKey, hex(reader.publicKey));
+  assert.equal(result.sealedReadGrant?.sealedEncKey, hex(w.encKey()));
+  assert.equal(staged?.bookkeeping.readPublicKey, hex(reader.publicKey));
+  assert.equal(published, true);
+  assert.ok(
+    w.calls.indexOf('rotate_enc_key_with_jubjub') < w.calls.indexOf('issue_grant_with_jubjub'),
+  );
+  assert.equal(w.sessionFlows.find((flow) => flow?.kind === 'issue-grant')?.read, true);
+  assert.ok(staged);
+  const firstScope = staged.scope;
+  w.setReadGrantTargets([{ grantId: result.grantId, readPublicKey: hex(reader.publicKey) }]);
+  const secondReader = x25519.keygen();
+  const shielded = await account.issueGrant({
+    ...firstScope,
+    operations: ['withdraw-shielded'],
+    readPublicKey: hex(secondReader.publicKey),
+  });
+  assert.equal(shielded.status, 'active');
+  assert.deepEqual(
+    shielded.rotation?.sealedReadGrants.map(({ grantId }) => grantId),
+    [result.grantId],
+  );
+  assert.equal(shielded.sealedReadGrant?.grantId, shielded.grantId);
+  const settledKey = hex(w.encKey());
+  await assert.rejects(account.issueGrant({ ...staged.scope, rpId: 'other.example' }), {
+    code: 'GrantScopeInvalid',
+  });
+  assert.equal(hex(w.encKey()), settledKey);
+  reader.secretKey.fill(0);
+  secondReader.secretKey.fill(0);
+});
+
 test('JubJub open resumes activation and sealed entries after an interrupted create', async () => {
   const w = world();
   w.interruptActivation();

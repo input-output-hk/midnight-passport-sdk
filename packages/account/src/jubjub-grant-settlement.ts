@@ -33,7 +33,7 @@ export class SubmittedGrantSettlementError extends PassportConnectorError {
 }
 
 /**
- * Issue an unshielded spend grant and publish its sealed bookkeeping before returning it as active.
+ * Issue a grant and publish its sealed bookkeeping and any read seal before returning it as active.
  * If settlement is interrupted after submission, the durable journal retains the opening. Resume
  * with `publishJubjubGrantBookkeeping` using the staged grant ID after checking the live ACC roster.
  */
@@ -65,5 +65,7 @@ export async function issueAndPublishJubjubGrant(
     status: published.status,
     appendTxHashes: published.appendTxHashes,
     nextUseCounter: published.nextUseCounter,
+    ...(submitted.rotation && { rotation: submitted.rotation }),
+    ...(published.sealedReadGrant && { sealedReadGrant: published.sealedReadGrant }),
   };
 }

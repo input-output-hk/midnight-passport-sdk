@@ -113,7 +113,7 @@ export interface GrantScopeInput {
   readonly rpId?: string;
 }
 
-/** Settled unshielded spend grant; both sealed bookkeeping parts are live in the ACC inbox. */
+/** Settled grant; bookkeeping and any read seal are live in the ACC inbox. */
 export interface PassportGrantIssueResult extends PassportTxResult {
   readonly grantId: string;
   readonly slot: number;
@@ -121,6 +121,10 @@ export interface PassportGrantIssueResult extends PassportTxResult {
   readonly status: 'active';
   readonly appendTxHashes: readonly string[];
   readonly nextUseCounter: bigint;
+  /** Present for a read grant: pre-issue viewing-secret rotation and surviving reader seals. */
+  readonly rotation?: ViewingKeyRotationResult;
+  /** The new grantee's seal after the read grant became active. */
+  readonly sealedReadGrant?: ViewingKeyRotationResult['sealedReadGrants'][number];
 }
 
 /** A grant confirmed inactive in the live ACC grant map. */

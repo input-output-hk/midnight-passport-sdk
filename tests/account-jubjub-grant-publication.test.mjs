@@ -14,6 +14,9 @@ const owner = pureCircuits.compute_public_point_with_jubjub(7n);
 const encKey = new Uint8Array(32).fill(8);
 const header = new Uint8Array(192).fill(0xa1);
 const object = new Uint8Array(192).fill(0xa2);
+const viewEntry = new Uint8Array(192).fill(0xa3);
+const viewSeal = new Uint8Array(94).fill(0x42);
+const readPublicKey = '77'.repeat(32);
 /** @type {import('../packages/account/dist/ports/index.js').GrantBookkeeping} */
 const book = {
   grantId,
@@ -47,8 +50,15 @@ const hint = {
   status: /** @type {const} */ ('active'),
 };
 
-/** @param {Uint8Array[]} [initialInbox] */
-function fixture(initialInbox = []) {
+/** @param {Uint8Array[]} [initialInbox] @param {boolean} [read] */
+function fixture(initialInbox = [], read = false) {
+  const opening = read
+    ? {
+        ...staged,
+        scope: { ...staged.scope, read: true, rpId: staged.origin, readPublicKey },
+        bookkeeping: { ...staged.bookkeeping, readPublicKey },
+      }
+    : staged;
   /** @type {string[]} */
   const calls = [];
   /** @type {Uint8Array[]} */
@@ -83,7 +93,7 @@ function fixture(initialInbox = []) {
       stage: async () => {},
       load: async () => {
         calls.push('load');
-        return staged;
+        return opening;
       },
       markPublished: async () => {
         calls.push('published');
@@ -107,6 +117,10 @@ function fixture(initialInbox = []) {
         calls.push('seal');
         return [header, object];
       },
+      sealView: async () => {
+        calls.push('view-seal');
+        return { entry: viewEntry, seal: viewSeal };
+      },
       openInbox: async (_networkId, keyring, entries) => {
         assert.deepEqual(keyring.encKey, encKey);
         return entries.map((entry) => {
@@ -123,6 +137,16 @@ function fixture(initialInbox = []) {
             };
           if (hex(entry) === hex(object))
             return { kind: 'grant', record: { part: 'object', grantId, object: book.object } };
+          if (hex(entry) === hex(viewEntry))
+            return {
+              kind: 'grant',
+              record: {
+                part: 'view',
+                grantId,
+                encKeyPrefix: hex(encKey).slice(0, 6),
+                seal: hex(viewSeal),
+              },
+            };
           return null;
         });
       },
@@ -166,7 +190,7 @@ function fixture(initialInbox = []) {
         assert.equal(flow?.kind, 'issue-grant');
         assert.equal(flow.account, account);
         assert.equal(flow.grantId, grantId);
-        assert.deepEqual(flow.scope, staged.scope);
+        assert.deepEqual(flow.scope, opening.scope);
         assert.equal(flow.slot, book.slot);
         assert.equal(flow.scopeSalt, book.scopeSalt);
         assert.equal(flow.scopeDigest, staged.scopeDigest);
@@ -209,6 +233,40 @@ test('confirmed grant publishes two sealed parts and marks its journal complete'
   assert.deepEqual(inbox, [header, object]);
   assert.equal(published(), true);
   assert.ok(calls.indexOf('published') > calls.lastIndexOf('append'));
+});
+
+test('read grant publication confirms the view seal and resumes a missing seal', async () => {
+  const first = fixture([], true);
+  const published = await publishJubjubGrantBookkeeping({ hint, grantId }, first.ports);
+  assert.equal(published.status, 'active');
+  assert.deepEqual(published.appendTxHashes, ['tx-1', 'tx-2', 'tx-3']);
+  assert.deepEqual(first.inbox, [header, object, viewEntry]);
+  assert.equal(published.sealedReadGrant?.readPublicKey, readPublicKey);
+  assert.deepEqual(published.sealedReadGrant?.seal, viewSeal);
+  assert.equal(first.published(), true);
+
+  const partial = fixture([header, object], true);
+  const resumed = await publishJubjubGrantBookkeeping({ hint, grantId }, partial.ports);
+  assert.deepEqual(resumed.appendTxHashes, ['tx-3']);
+  assert.deepEqual(partial.inbox, [header, object, viewEntry]);
+  assert.ok(!partial.calls.includes('seal'));
+  assert.equal(partial.published(), true);
+
+  const complete = fixture([header, object, viewEntry], true);
+  const repeated = await publishJubjubGrantBookkeeping({ hint, grantId }, complete.ports);
+  assert.deepEqual(repeated.appendTxHashes, []);
+  assert.ok(!complete.calls.includes('view-seal'));
+  assert.deepEqual(repeated.sealedReadGrant?.seal, viewSeal);
+});
+
+test('read grant publication keeps the journal pending if view sealing fails', async () => {
+  const { ports, published, inbox } = fixture([header, object], true);
+  ports.viewingKey.sealView = async () => {
+    throw new Error('key source unavailable');
+  };
+  await assert.rejects(publishJubjubGrantBookkeeping({ hint, grantId }, ports));
+  assert.deepEqual(inbox, [header, object]);
+  assert.equal(published(), false);
 });
 
 test('retry appends only the missing object; a fully published inbox is a no-op', async () => {
