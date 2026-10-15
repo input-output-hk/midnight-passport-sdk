@@ -8,7 +8,7 @@ shell.
 
 - A person creates a Midnight Passport account with only a passkey: no tokens, no recovery phrase.
 - The service deploys the account contract (ACC), proves every transaction, and pays the fees.
-- The page then makes a passkey-signed transaction and reopens the account after a reload.
+- The page publishes sealed ACC viewing keys and reopens the account after a reload.
 - A read-only wallet, seeded from the same passkey, stands behind the Midnight DApp Connector API.
 - The page drives the Passport account API (which the prototype called the "DApp Connector API")
   and draws its progress from the account API's progress events.
@@ -108,9 +108,8 @@ contract's WebAuthn profile are bound to that origin.
 
 | Step                                                     | Passkey prompts                                          | Takes                                                                    |
 | -------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **Create account**                                       | 2, or 3 if your provider returns PRF only after creation | about 4 min: 10 deploy waves (about 180 s), then activation (about 25 s) |
-| **Rotate encryption key** (a passkey-signed transaction) | 1                                                        | about 1 min                                                              |
-| Reload the page, then **Open with passkey**              | 1, or 2 before the first rotation (the key check)        | under a second                                                           |
+| **Create account**                                       | Provider-dependent; includes PRF and two signed inbox publications | 10 deploy waves, activation, then two signed sealed-key publications |
+| Reload the page, then **Open with passkey**              | Provider-dependent picker and PRF ceremony               | Reads the live ACC key and opens the sealed envelope |
 | **Connect built-in wallet**                              | 1 with an account open, otherwise 2                      | seconds                                                                  |
 | **Copy evidence**                                        | none                                                     | copies the event log as JSON, with no secrets                            |
 
@@ -130,9 +129,10 @@ With `prototype:up` running, open a second shell with the same two variables set
 nix develop -c pnpm prototype:e2e
 ```
 
-It drives the real connector with a software passkey through these steps: create, rotate, reopen,
-rotate again. It writes `experiments/acc-0.35/results/x8-dapp-e2e.json` and should end with
-`MVP e2e: PASS` after about 5½ minutes.
+This historical deterministic-key test drives the legacy seam composition with a software
+passkey through create, rotate, reopen and rotate again. It writes
+`experiments/acc-0.35/results/x8-dapp-e2e.json` and should end with `MVP e2e: PASS`.
+It does not validate the current browser's sealed P-256 flow.
 
 ## 6. Where state lives, and how to reset it
 

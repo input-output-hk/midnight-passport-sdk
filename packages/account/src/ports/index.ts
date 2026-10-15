@@ -171,7 +171,7 @@ export type Authorisation = P256Authorisation | JubjubAuthorisation;
 export interface Authoriser {
   readonly scheme: AuthScheme;
   devicePublicKey(): Promise<CurvePoint>;
-  /** JubJub registration's validated compressed 32-byte point, as lowercase hex. */
+  /** Canonical compressed authoriser point, as lowercase hex (32 bytes JubJub; 33 P-256). */
   devicePublicKeyHex?(): Promise<string>;
   /** The P-256 arm's WebAuthn binding: the policy and the credential the key lives in. */
   deviceBinding?(): Promise<{ readonly policy: WebAuthnPolicy; readonly credentialId: Uint8Array }>;
@@ -440,7 +440,7 @@ export interface PassportPorts {
   readonly credentials: CredentialPort;
   readonly authoriser: Authoriser;
   readonly encryptionKey: EncryptionKeySource;
-  /** Random ACC viewing secret behind sealed device envelopes, required by the JubJub arm. */
+  /** Random ACC viewing secret behind sealed device envelopes. */
   readonly viewingKey?: AccountViewingKey;
   readonly holdings?: VerifiedHoldingSource;
   readonly readGrants?: ActiveReadGrantTargetSource;

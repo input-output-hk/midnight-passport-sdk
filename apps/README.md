@@ -8,7 +8,7 @@ lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](.
 | `passport-service` | Serves the ACC's ZK artefacts (`/zk/acc`), proves with server-side keys (`/prove`), deploys in waves (`/deploy`), sponsors fees (`/sponsor/*`) and keeps the passkey-to-account registry (`/accounts`). It also serves versioned config, binding-pinned artefacts, account hints, job-based prove/deploy and fee routes under `/v1`. It holds the only funded key. Binds `127.0.0.1:8787`. |
 | `passport-key-service` | Standalone Node container for restoring, verifying and HTTP-serving the pinned ACC keys. It has no sponsor wallet; see its [image and operations guide](passport-key-service/README.md). |
 | `passport-funding-service` | Separate wallet-backed process for an authenticated, allowlisted unshielded deposit into a deployed ACC. See its [operations guide](passport-funding-service/README.md). |
-| `passport-dapp`    | The harness at `http://localhost:5173`: create and reopen a Passport account with a passkey. P-256 also exposes the prototype encryption-key rotation. The JubJub preview has create/open only until the page supplies chain-backed holdings and read-grant sources. The built-in wallet is separate from the ACC. |
+| `passport-dapp`    | The harness at `http://localhost:5173`: create and reopen a Passport account with a passkey. Both arms seal a random ACC viewing secret; the page offers create/open while roster-safe rotation still needs chain-backed sources. The built-in wallet is separate from the ACC. |
 
 ## Documentation
 
@@ -53,7 +53,7 @@ pnpm install && pnpm build
 | `PASSPORT_PUBLIC_PROOF_SERVER_URL` | `MN_PROOF_SERVER_URL` | Proof server URL advertised by the service. |
 | `MN_NODE_PORT`, `MN_INDEXER_PORT`, `MN_PROOF_PORT` | 19944, 18088, 16300 | The localnet's host ports (`infra/localnet/ports.env`); only the defaults of the URLs above.                |
 | `PASSPORT_NETWORK_ID`      | `undeployed`                   | Build-time pin of the dapp (read by `vite build`/`dev`) and the e2e: the network the page is bound to. `prototype:up` sets it from `MN_NETWORK_ID`. A service on another network is refused (`NetworkMismatch`). |
-| `VITE_PASSPORT_ARM`        | `p256`                         | Browser ACC authoriser arm, `p256` or `jubjub`. `pnpm demo up --arm jubjub` sets it for the dev page. JubJub mode currently exposes create/open; the rotate button is hidden. |
+| `VITE_PASSPORT_ARM`        | `p256`                         | Browser ACC authoriser arm, `p256` or `jubjub`. `pnpm demo up --arm jubjub` sets it for the dev page. Both modes expose create/open; the rotate button is hidden. |
 | `PASSPORT_SERVICE_HOST`    | `127.0.0.1`                    | Service bind address. A non-loopback host exposes the sponsor to whoever can reach it.                                   |
 | `PASSPORT_SERVICE_PORT`    | `8787`                         | Service port. The dapp expects 8787 unless `VITE_PASSPORT_SERVICE_URL` says otherwise.                                   |
 | `PASSPORT_MAX_DEPLOYS`     | `20`                           | Deploy cap per service process.                                                                                          |
@@ -145,48 +145,28 @@ and `assertionMaterial`.
   security keys. Create asks for PRF and refuses, right after the first prompt and before
   anything is deployed, any provider that does not confirm it (`UnsupportedAuthenticator`, "choose
   a PRF-capable provider").
-- **How many times the passkey is asked for.** Every prompt after create or open is pinned to the
-  account's own passkey (`allowCredentials`), so the browser offers no other passkey for
-  `localhost`; if another one answers, the error says "This is not the passkey this account was
-  created with; choose that passkey". Only "Open with passkey", and the wallet with no account
-  open, show the passkey picker.
-
-  | Action                                                                                                         | Prompts | Which                                                                         |
-  | -------------------------------------------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------- |
-  | Create, provider returns PRF results at create (the mock; Google Password Manager expected, not yet confirmed) | 2       | create; enrolment probe (the encryption key uses the create-time PRF outputs) |
-  | Create, provider returns only `prf.enabled` (`?mockPasskey=noprf-results`)                                     | 3       | create; enrolment probe; PRF ceremony for the encryption key                  |
-  | Create, provider without PRF                                                                                   | 1       | create, then refused; nothing is deployed                                     |
-  | Open with passkey                                                                                              | 1       | the passkey picker (discoverable)                                             |
-  | Rotate the encryption key                                                                                      | 1       | a signature, pinned to the account's passkey                                  |
-  | Built-in wallet, account open                                                                                  | 1       | the PRF ceremony, pinned to the account's passkey                             |
-  | Built-in wallet, no account open                                                                               | 2       | the passkey picker; then the PRF ceremony, pinned to the passkey picked       |
-
-  The enrolment probe is a throwaway assertion that proves the authenticator produces the exact
-  WebAuthn material the ACC verifies. PRF output adds extension data that this material forbids,
-  so PRF can never share the probe or a signature. PRF outputs returned at create are held in
-  memory only, used once for the encryption key, then zeroed (60 s at most if unused); they are
-  never stored, logged or written into the evidence.
+- **Passkey prompts vary by provider and account state.** Create first makes a credential and
+  checks its signing profile, then obtains a PRF reader key and publishes two sealed entries with
+  P-256 signatures. Open starts with a discoverable passkey picker, then uses the PRF to open the
+  live ACC envelope. A resumed create may need more signing prompts to publish missing entries.
+  Subsequent prompts are pinned to the account credential (`allowCredentials`). The enrolment
+  probe checks the `wa-json134` material; PRF cannot share that assertion because its extension
+  data would change the signed profile. PRF outputs remain in memory only and are zeroed after use.
 - **No PRF at a later prompt.** If the wallet's PRF ceremony gets no output, the error says the
   passkey has no PRF, or is a different passkey from the account's: choose the account's own
   passkey, saved in Google Password Manager or iCloud Keychain.
 - **Reopening checks the directory.** The directory is only a hint. `openAccount` uses a record only
   when the passkey you picked owns the record's key, a contract exists at its address, and that
   contract holds the passkey as a device. Anything else is `AccountNotFound`, which after a chain
-  reset usually means a stale directory (see Troubleshooting). The demo reads the old registry
-  when the v1 directory has no entry, so existing demo accounts can still reopen.
-- **Keys follow the Lace recipe v1** (lace-platform main, LW-15585 / LW-15584 / LW-15635;
-  `packages/keys/src/lace-recipe.ts`). One PRF ceremony evaluates
-  `SHA-256('lace-passport/prf/authoriser/v1')` and `SHA-256('lace/prf/root/v1')`. The root
-  (output #2) gives the wallet entropy (HKDF, info `lace/hkdf/wallet-entropy/v1`), 24 BIP-39
-  words (HKDF, salt `lace`, info `wallet-seed`) and the 64-byte BIP-39 seed. The account's
-  `enc_key` is the X25519 public key of MIP-0015 v1 `deriveSymmetricSecret(seed,
-  'lace-passport:acc-enc:v1', '<networkId>/0')`: bound to the network and reproducible from the
-  passkey. The tests reproduce Lace's own vectors.
-  - _Rotation keys are random._ Lace has no rotation recipe yet, so `rotateEncryptionKey` takes
-    a random key and keeps no copy: a prototype extension.
-  - _Divergence from Lace._ Lace's ACC authoriser is a JubJub key from PRF output #1. This
-    prototype uses the ACC's P-256 WebAuthn arm, where the passkey signs each call, so output #1
-    is evaluated but unused.
+  reset usually means a stale directory (see Troubleshooting). The demo can discover an old
+  deterministic-key hint, but the current sealed-key browser composition refuses it until a
+  migration path exists. For disposable localnet accounts, create a fresh passkey and account.
+- **The ACC secret is random and sealed.** The passkey PRF root derives a network-specific X25519
+  reader key under `lace-passport:reader:v1`, while the ACC's random viewing secret determines
+  `enc_key`. The browser publishes a type `0xd1` device envelope and P-256 type `0xd4`
+  registration. The wallet seed remains independent. Rotation is hidden until the page has
+  verified surviving readers, holdings and read-grant targets. See
+  [`docs/prototype/keys.md`](../docs/prototype/keys.md).
 - **The service binds loopback** (`127.0.0.1`). CORS lets only the dapp origin read its answers,
   which on its own does not stop a cross-site page from sending a request. So the service also
   answers `415` to any POST or PUT whose `content-type` is not `application/json` (that forces a

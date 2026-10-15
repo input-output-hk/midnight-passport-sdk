@@ -80,7 +80,7 @@ function hintOf(value: unknown, key: string): ServiceWire.AccountHintBody {
   let keyEntries: readonly string[] | undefined;
   if (value.keyEntries !== undefined) {
     if (
-      scheme !== 'jubjub-schnorr' ||
+      (scheme !== 'jubjub-schnorr' && scheme !== 'p256-webauthn') ||
       !Array.isArray(value.keyEntries) ||
       value.keyEntries.length > 16 ||
       !value.keyEntries.every((entry) => typeof entry === 'string' && /^[0-9a-f]{384}$/.test(entry))

@@ -182,6 +182,10 @@ test('the WebAuthn adapter supplies credential, PRF and P-256 authoriser ports',
   assert.deepEqual(ref.credentialId, ID);
   const binding = await adapter.p256.deviceBinding();
   assert.deepEqual(binding?.credentialId, ID);
+  assert.equal(
+    await adapter.p256.devicePublicKeyHex(),
+    hex(p256.Point.fromHex(hex(auth.pub)).toBytes(true)),
+  );
   assert.equal(auth.gets.length, 1, 'create ran only the enrolment probe');
   const key = await b.recipeEncryptionKey(adapter.prf).publicKey('undeployed');
   assert.equal(key.length, 32);

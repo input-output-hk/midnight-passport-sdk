@@ -7,7 +7,7 @@ import type {
   PassportTxResult,
 } from '@input-output-hk/mn-passport-protocol';
 import { ARM, MANIFEST_SHA256, NETWORK_ID, RP_ID, SERVICE_URL, installShim } from './connector.js';
-import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS, ROTATION_ESTIMATE_S } from './flows.js';
+import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS } from './flows.js';
 import { createUi } from './ui.js';
 import type { DevWallet } from './wallet/dev-wallet.js';
 import { walletSeed } from './wallet/seed.js';
@@ -27,7 +27,7 @@ const ui = createUi(
     note:
       ARM === 'jubjub'
         ? 'JubJub preview: the ACC viewing secret is random and sealed to the passkey-derived reader. Create/open are available; rotation needs chain-backed holding and grant sources.'
-        : "Prototype: the account's first encryption key derives from the passkey's PRF (Lace recipe v1, MIP-0015); rotated keys are random and not retained.",
+        : 'P-256 preview: the ACC viewing secret is random and sealed to the passkey-derived reader. Create/open are available; rotation needs a chain-verified device roster.',
     passkey: mockPasskey
       ? 'MOCK (dev only, software key in localStorage)'
       : 'browser authenticator',
@@ -80,7 +80,7 @@ ui.on('create', async () => {
   status(
     ARM === 'jubjub'
       ? `Creating a JubJub account… confirm the passkey ceremonies, then wait for deployment (about ${DEPLOY_ESTIMATE_S / 60} minutes).`
-      : `Creating… the passkey prompt appears twice: create it, then verify the authenticator. A third prompt derives the encryption key (PRF) if the provider did not return it at creation. Then the account deploys (about ${DEPLOY_ESTIMATE_S / 60} minutes).`,
+      : `Creating… confirm the passkey and its reader key, then wait for deployment (about ${DEPLOY_ESTIMATE_S / 60} minutes) and two sealed-key publications.`,
   );
   const a = await (
     await connector()
@@ -102,23 +102,12 @@ ui.on('open', async () => {
   status(
     ARM === 'jubjub'
       ? 'Opening… choose your passkey and unlock its sealed ACC viewing secret.'
-      : 'Opening… choose your passkey. Until the encryption key is rotated, a second prompt checks it against the chain.',
+      : 'Opening… choose your passkey, then unlock its sealed ACC viewing secret.',
   );
   await opened(await (await connector()).openAccount({ onEvent }), 'reopened');
 });
 ui.on('rotate', async () => {
-  if (ARM === 'jubjub')
-    throw new Error('JubJub rotation is not wired to demo holding/grant sources');
-  if (!account) throw new Error('open or create an account first');
-  status(
-    `Confirm with your passkey; proving on the service then takes about ${ROTATION_ESTIMATE_S} s…`,
-  );
-  // Lace has no rotation recipe yet: a random target key is this prototype's extension.
-  const r = await account.rotateEncryptionKey(crypto.getRandomValues(new Uint8Array(32)), {
-    onEvent,
-  });
-  await opened(account, 'rotated', r);
-  status(`Rotated in transaction ${r.txHash.slice(0, 16)}…`);
+  throw new Error('Viewing-key rotation needs chain-backed roster and grant sources.');
 });
 ui.on('wallet', connectBuiltInWallet);
 async function connectBuiltInWallet(): Promise<void> {

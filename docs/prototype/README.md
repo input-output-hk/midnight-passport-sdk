@@ -8,10 +8,10 @@ account owner's, so it is now the account API v1 (ADR 0007, D-8), and the dApp-f
 the later grant ceremony. It serves Lace epic LW-15579 (the Passport smart account as the Lace account model)
 and unblocks LW-15635 (a passkey Passport account) **on the standalone network**.
 
-A new user creates a passkey. The prototype deploys a Passport account (the ACC) for it, pays the
-fees, installs the passkey as the first device and confirms one transaction signed by the passkey.
-After a page reload the same passkey reopens the same account. A built-in wallet, derived from the
-same passkey, is connected through the Midnight DApp Connector API.
+A new user creates a passkey. The browser deploys a Passport account (the ACC), pays the fees,
+installs the passkey as the first device and publishes a random viewing secret sealed to that
+device's PRF-derived reader. After a page reload the same passkey can reopen its envelope against
+the live ACC key. The built-in Midnight wallet is derived separately from the passkey.
 
 The account API v1 is versioned in `mn-passport-protocol` (`1.0.0-pre.0`); the prototype's
 `0.1.0-prototype` shapes remain as deprecated `…Prototype` types behind `createPassportConnector`. The design is in
@@ -19,13 +19,12 @@ The account API v1 is versioned in `mn-passport-protocol` (`1.0.0-pre.0`); the p
 This folder describes what the code does today.
 
 The CLI can start the browser with `pnpm demo up --arm jubjub --mock-passkey`.
-That preview selects the packaged JubJub create/open account path and its random
-viewing secret sealed to the passkey-derived reader. The P-256 flow remains the
-default. JubJub rotation is hidden in the demo because the page does not yet
-inject verified holdings and active read-grant sources; this preview does not
-claim the historical P-256 run results below for JubJub.
+P-256 remains the default. Both browser arms now create a random viewing secret and sealed
+reader envelope. The page hides rotation until it can supply the required chain-backed roster,
+holding and read-grant sources. The old localnet run results below used the deterministic-key
+P-256 prototype and are historical evidence, not a validation of this sealed P-256 flow.
 
-## What works today
+## Historical deterministic-key localnet runs
 
 Everything below ran on the Passport localnet, network id `undeployed`, against the pinned
 artefacts (binding `acc-45721e1`).

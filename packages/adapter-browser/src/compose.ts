@@ -87,7 +87,7 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
     credentials: passkey.credentials,
     authoriser,
     encryptionKey: recipeEncryptionKey(passkey.prf),
-    ...(config.arm === 'jubjub' && { viewingKey: recipeDeviceKeyring(passkey.prf) }),
+    viewingKey: recipeDeviceKeyring(passkey.prf),
     chain: async () => {
       const [{ createMidnightChain }, module] = await Promise.all([
         import('@input-output-hk/mn-passport-adapter-midnight-js'),

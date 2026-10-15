@@ -31,7 +31,7 @@ if (configuredArm !== 'p256' && configuredArm !== 'jubjub')
 export const ARM: 'p256' | 'jubjub' = configuredArm;
 const ORIGIN = 'http://localhost:5173';
 
-/** Existing demo accounts remain readable while new hints are written to the v1 directory. */
+/** Legacy hints remain discoverable; the sealed P-256 connector refuses them until migrated. */
 function demoDirectory(): AccountDirectory {
   const directory = remoteDirectory(SERVICE_URL);
   const legacy = createRegistryClient(SERVICE_URL, defaultFetch);

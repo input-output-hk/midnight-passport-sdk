@@ -5,7 +5,7 @@ import {
   type PassportAccount,
   type PassportConnectorAPI,
 } from '@input-output-hk/mn-passport-protocol';
-import { fromHex } from './codec.js';
+import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { grantRosterFingerprint } from './grant-roster.js';
 import { createJubjubAccounts } from './jubjub-connector.js';
@@ -52,6 +52,17 @@ type P256Hint = AccountHint & {
 };
 const isP256 = (hint: AccountHint): hint is P256Hint =>
   hint.scheme === 'p256-webauthn' && hint.credentialId !== undefined && hint.policy !== undefined;
+type SealedP256Hint = P256Hint & { readonly keyEntries: readonly Uint8Array[] };
+const validSealedEntries = (entries: readonly Uint8Array[] | undefined): boolean =>
+  entries?.length === 2 &&
+  entries[0]?.length === 192 &&
+  entries[0][0] === 0xd1 &&
+  entries[0][1] === 1 &&
+  entries[1]?.length === 192 &&
+  entries[1][0] === 0xd4 &&
+  entries[1][1] === 1;
+const isSealedP256 = (hint: P256Hint): hint is SealedP256Hint =>
+  validSealedEntries(hint.keyEntries);
 /** The circuits' P-256 key; a point that already is one passes as is, so the same key reaches the chain. */
 const p256 = (point: CurvePoint): P256PublicKey =>
   (point as Partial<P256PublicKey>).identity === false
@@ -87,7 +98,7 @@ function once<T>(value: Lazy<T>): () => Promise<T> {
 /** The account API over the ports (design §1.3, §2.1). */
 export function createPassportAccounts(ports: PassportPorts): PassportConnectorAPI {
   if (ports.authoriser.scheme === 'jubjub-schnorr') return createJubjubAccounts(ports);
-  const { authoriser, credentials, directory, encryptionKey, network } = ports;
+  const { authoriser, credentials, directory, encryptionKey, network, viewingKey } = ports;
   const { networkId } = network;
   if (authoriser.scheme !== 'p256-webauthn' || !authoriser.deviceBinding) {
     throw new PassportConnectorError(
@@ -155,7 +166,11 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     );
 
   const readAccount = async (record: P256Hint): Promise<AccLedgerView> => {
-    const view = await (await chain()).readAccount(record.address);
+    const view = await (
+      await chain()
+    ).readAccount(record.address, {
+      includeInbox: viewingKey !== undefined,
+    });
     if (!view)
       throw new PassportConnectorError('AccountNotFound', `No contract at ${record.address}.`);
     return view;
@@ -225,6 +240,137 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     return active;
   };
 
+  const sealedKeyring = async (record: SealedP256Hint, view: AccLedgerView, pending: boolean) => {
+    const keyring = viewingKey;
+    const devicePublicKeyHex = authoriser.devicePublicKeyHex?.bind(authoriser);
+    const { encKey, inboxEntries } = view;
+    if (!keyring || !devicePublicKeyHex || !encKey || !inboxEntries)
+      throw new PassportConnectorError(
+        'BindingUnsupported',
+        'P-256 sealed accounts need an inbox reader, keyring and compressed device key.',
+      );
+    const entries = pending ? [...inboxEntries, ...record.keyEntries] : [...inboxEntries];
+    const check = async () => {
+      const opened = await keyring.openInbox(
+        networkId,
+        { account: record.address, encKey, envelopes: entries.reverse() },
+        pending ? record.keyEntries : [],
+      );
+      if (pending) {
+        const device = opened[1];
+        const reader = await keyring.readerPublicKey(networkId);
+        const deviceKey = await devicePublicKeyHex();
+        if (
+          device?.kind !== 'device' ||
+          device.device.scheme !== 'p256-webauthn' ||
+          device.device.readerPublicKey !== toHex(reader) ||
+          device.device.devicePublicKey !== deviceKey
+        )
+          throw new Error('the sealed registration does not name this device');
+      }
+    };
+    try {
+      if (authoriser.withKeySession)
+        await authoriser.withKeySession(check, { kind: 'sign-in', account: record.address });
+      else await check();
+    } catch (cause) {
+      throw new PassportConnectorError(
+        'EncryptionKeyMismatch',
+        'No sealed envelope for this passkey opens the ACC encryption key.',
+        { cause },
+      );
+    }
+  };
+
+  const awaitSealedView = async (
+    record: SealedP256Hint,
+    ready: (view: AccLedgerView) => boolean,
+  ): Promise<AccLedgerView> => {
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const view = await (await chain()).readAccount(record.address, { includeInbox: true });
+      if (view && ready(view)) return view;
+      await sleep(1000);
+    }
+    throw new PassportConnectorError(
+      'InternalError',
+      'The sealed ACC call did not appear on chain.',
+    );
+  };
+
+  const finishSealed = async (flow: Flow, record: SealedP256Hint): Promise<P256Hint> => {
+    let view = await awaitSealedView(record, (candidate) =>
+      Boolean(candidate.encKey && candidate.inboxEntries),
+    );
+    const pending = record.status === 'deployed';
+    await sealedKeyring(record, view, pending);
+    if (!view.booted) {
+      if (!pending) throw new PassportConnectorError('AccountNotFound', 'The ACC is not booted.');
+      await submitActivation(flow, record);
+      view = await awaitSealedView(record, (candidate) => candidate.booted);
+    }
+    if ((await findCounter(flow, record, view)) === undefined) throw notHeld(record);
+    if (pending) {
+      const pure = (await binding()).pureCircuits;
+      if (!pure.challenge_append_inbox_with_p256)
+        throw new PassportConnectorError('BindingUnsupported', 'ACC lacks P-256 inbox signing.');
+      for (const entry of record.keyEntries) {
+        if (view.inboxEntries?.some((held) => equalBytes(held, entry))) continue;
+        const counter = await findCounter(flow, record, view);
+        if (counter === undefined) throw notHeld(record);
+        const circuit = 'append_inbox_with_p256';
+        const challenge = pure.challenge_append_inbox_with_p256(
+          { bytes: fromHex(record.address) },
+          p256(record.publicKey),
+          entry,
+          view.authNonce,
+        );
+        const signed = await flow.step('passkey.sign', () =>
+          authoriser.authorise({
+            account: record.address,
+            circuit,
+            args: [entry],
+            witnessValues: [],
+            authNonce: view.authNonce,
+            useCounter: counter,
+            challenge,
+            credentialId: record.credentialId,
+          }),
+        );
+        if (
+          signed.scheme !== 'p256-webauthn' ||
+          signed.useCounter !== counter ||
+          signed.pk.x !== record.publicKey.x ||
+          signed.pk.y !== record.publicKey.y
+        )
+          throw new PassportConnectorError('NotAuthorised', 'The signature names another device.');
+        flow.checkpoint();
+        await (
+          await chain()
+        ).call({
+          address: record.address,
+          circuit,
+          args: [
+            entry,
+            {
+              pk: p256(record.publicKey),
+              policy: record.policy,
+              authenticator_data: signed.authenticatorData,
+              sig: signed.sig,
+              use_counter: counter,
+            },
+          ],
+          ...flow.ports,
+        });
+        const nonce = view.authNonce;
+        view = await awaitSealedView(record, (candidate) => candidate.authNonce > nonce);
+      }
+    }
+    await sealedKeyring(record, view, false);
+    const active: P256Hint = { ...record, status: 'active' };
+    if (pending) await put(flow, active);
+    return active;
+  };
+
   const account = (record: P256Hint): PassportAccount => ({
     address: record.address,
     networkId,
@@ -244,6 +390,11 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     },
     rotateEncryptionKey: (newKey, options = {}) =>
       run(options, async (flow) => {
+        if (isSealedP256(record))
+          throw new PassportConnectorError(
+            'BindingUnsupported',
+            'Sealed P-256 accounts require roster-safe viewing-key rotation.',
+          );
         const { counter, authNonce } = await useCounter(flow, record);
         const self = { bytes: fromHex(record.address) };
         const circuit = 'rotate_enc_key_with_p256';
@@ -417,9 +568,34 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             },
           );
           // Before the deploy: a passkey without PRF fails here, with nothing on chain.
-          const encKey = await flow.step('passkey.prf', () => encryptionKey.publicKey(networkId));
-          const salt = random(32);
+          if (viewingKey && !authoriser.devicePublicKeyHex)
+            throw new PassportConnectorError(
+              'BindingUnsupported',
+              'P-256 sealed accounts need a compressed device public key.',
+            );
           const { pureCircuits } = await binding();
+          if (viewingKey && !pureCircuits.challenge_append_inbox_with_p256)
+            throw new PassportConnectorError(
+              'BindingUnsupported',
+              'ACC lacks P-256 inbox signing.',
+            );
+          const keys = viewingKey
+            ? await flow.step('passkey.prf', async () =>
+                viewingKey.createKeys(networkId, {
+                  scheme: 'p256-webauthn',
+                  devicePublicKey: await authoriser.devicePublicKeyHex!(),
+                }),
+              )
+            : undefined;
+          const encKey = keys
+            ? keys.encKey
+            : await flow.step('passkey.prf', () => encryptionKey.publicKey(networkId));
+          const salt = random(32);
+          if (keys && !validSealedEntries([...keys.envelopes, ...keys.registrations]))
+            throw new PassportConnectorError(
+              'InternalError',
+              'P-256 keyring did not provide one envelope and one registration.',
+            );
           const boot = pureCircuits.derive_boot_commitment_with_p256(
             salt,
             p256(publicKey),
@@ -443,11 +619,16 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             policy: device.policy,
             address,
             salt,
+            ...(keys && { keyEntries: [...keys.envelopes, ...keys.registrations] }),
             status: 'deployed',
           };
           // Recorded before activation: the salt is the only way to activate (Review Focus 2).
           await recordDeployed(flow, deployed);
-          return account(await activate(flow, deployed));
+          return account(
+            viewingKey && isSealedP256(deployed)
+              ? await finishSealed(flow, deployed)
+              : await activate(flow, deployed),
+          );
         },
         onProgress,
       ),
@@ -483,6 +664,14 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           (await findCounter(flow, hint, view)) === undefined
         )
           throw notHeld(hint);
+        if (viewingKey) {
+          if (!isSealedP256(hint))
+            throw new PassportConnectorError(
+              'BindingUnsupported',
+              'This P-256 account has no sealed viewing key; use the legacy adapter or migrate it.',
+            );
+          return account(await finishSealed(flow, hint));
+        }
         if (encKeyComparable(view)) {
           const derived = await flow.step('passkey.prf', () => encryptionKey.publicKey(networkId));
           if (!equalBytes(derived, view.encKey)) {

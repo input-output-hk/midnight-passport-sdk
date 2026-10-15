@@ -1,10 +1,40 @@
 # Flows
 
-One sequence diagram for each flow, with the endpoints, circuits and seams involved. The code is the
-reference: `packages/account/src/connector.ts` holds the flows of the account API (which the
-prototype called the "DApp Connector API"), `packages/adapter-browser/src/compose.ts` the browser
-composition, `packages/adapter-midnight-js/src/chain.ts` the call pipeline, and
-`apps/passport-service/src` the service.
+The current browser composition is in `packages/adapter-browser/src/compose.ts`, with the
+P-256 account flow in `packages/account/src/connector.ts`. The older diagrams below document
+the **historical deterministic-key P-256 prototype** and its recorded X8/X9 runs. The current
+sealed-key flow is described first so those older prompt counts and rotation steps are not
+mistaken for the current demo.
+
+## Current P-256 create and open
+
+```mermaid
+sequenceDiagram
+  actor U as User
+  participant P as Browser account API
+  participant K as Passkey and keyring
+  participant C as ACC ledger
+  U->>P: Create account
+  P->>K: Create WebAuthn credential and obtain reader key from PRF
+  K-->>P: Public P-256 key, random ACC enc_key, sealed envelope and registration
+  P->>C: Deploy and activate P-256 device
+  P->>C: append_inbox_with_p256 (envelope)
+  P->>C: append_inbox_with_p256 (registration)
+  P-->>U: Active account
+  U->>P: Open with passkey
+  P->>C: Read live device entry, enc_key and inbox
+  P->>K: Open sealed envelope using reader key
+  K-->>P: Key match or refusal, never raw account secret
+```
+
+The directory persists the boot salt and two sealed entries before activation. `openAccount`
+can resume missing activation or inbox publication. It validates the selected passkey and its
+live ACC device entry, then checks that the envelope opens the live `enc_key`. A legacy
+deterministic-key account without sealed entries is refused by this browser composition until
+migrated. The standalone page hides rotation because its P-256 flow does not yet have
+chain-verified surviving readers, holdings and read-grant targets.
+
+## Historical deterministic-key P-256 flow
 
 Terms used below:
 

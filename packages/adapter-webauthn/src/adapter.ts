@@ -6,6 +6,7 @@ import type {
   PrfKeySource,
 } from '@input-output-hk/mn-passport-account/ports';
 import { deriveSymmetricSecret, seedFromRoot } from '@input-output-hk/mn-passport-keys';
+import { p256 as p256Curve } from '@noble/curves/nist.js';
 import { browserPasskey } from './passkey.js';
 import { passkeyPrf, type PasskeyPrfOutputs } from './prf.js';
 
@@ -111,6 +112,11 @@ export function webauthnPasskey(opts: {
   const p256: Authoriser = {
     scheme: 'p256-webauthn',
     devicePublicKey: async () => selected().publicKey,
+    devicePublicKeyHex: async () =>
+      Array.from(p256Curve.Point.fromAffine(selected().publicKey).toBytes(true), (byte) =>
+        byte.toString(16).padStart(2, '0'),
+      ).join(''),
+    withKeySession: (operation) => prf.withSession(operation),
     deviceBinding: async () => {
       const credential = selected();
       return { policy: credential.policy, credentialId: credential.credentialId };

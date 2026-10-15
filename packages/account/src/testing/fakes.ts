@@ -94,6 +94,8 @@ export const fakeBinding = (): P.AccBinding => ({
       fakeDigest(`entry|${hex(self.bytes)}|${point(pk)}|${policyText(policy)}|${epoch}|${k}`),
     challenge_rotate_enc_key_with_p256: (self, pk, key, nonce) =>
       fakeDigest(`rotate|${hex(self.bytes)}|${point(pk)}|${hex(key)}|${nonce}`),
+    challenge_append_inbox_with_p256: (self, pk, entry, nonce) =>
+      fakeDigest(`p256-append|${hex(self.bytes)}|${point(pk)}|${hex(entry)}|${nonce}`),
   },
 });
 
@@ -116,6 +118,8 @@ export function fakeAuthoriser(options: FakeAuthoriserOptions = {}) {
   return {
     scheme: 'p256-webauthn',
     devicePublicKey: async () => ({ x: key.x, y: key.y }),
+    devicePublicKeyHex: async () =>
+      `${key.y & 1n ? '03' : '02'}${key.x.toString(16).padStart(64, '0')}`,
     deviceBinding: async () => ({ policy, credentialId }),
     async authorise({ circuit, credentialId: pinned, useCounter, challenge }) {
       context.hit('authoriser.authorise', circuit, pinned, useCounter);
@@ -172,6 +176,7 @@ export function fakeEncryptionKey({ context = fakeContext() }: With<'context'> =
 const newAccount = (boot: Uint8Array, encKey: Uint8Array, authorityRetired: boolean) => ({
   ...{ boot, encKey, authorityRetired, booted: false, authNonce: 0n, deviceEpoch: 0n },
   specVersion: 2,
+  inboxEntries: [] as Uint8Array[],
   /** Device entries, in hex. */
   entries: new Set<string>(),
 });
@@ -297,16 +302,25 @@ export function fakeChain(
         account.entries.add(entry(self, pk, policy, epoch, 0n));
       };
     }
-    if (circuit !== 'rotate_enc_key_with_p256') throw refused(`no circuit ${circuit}`);
+    if (circuit !== 'rotate_enc_key_with_p256' && circuit !== 'append_inbox_with_p256')
+      throw refused(`no circuit ${circuit}`);
     const [newKey, auth] = args as [Uint8Array, Auth];
     const live = entry(self, auth.pk, auth.policy, epoch, auth.use_counter);
     const pk = p256(auth.pk);
-    const challenge = circuits.challenge_rotate_enc_key_with_p256(
-      { bytes: unhex(self) },
-      pk,
-      newKey,
-      account.authNonce,
-    );
+    const challenge =
+      circuit === 'append_inbox_with_p256'
+        ? circuits.challenge_append_inbox_with_p256!(
+            { bytes: unhex(self) },
+            pk,
+            newKey,
+            account.authNonce,
+          )
+        : circuits.challenge_rotate_enc_key_with_p256(
+            { bytes: unhex(self) },
+            pk,
+            newKey,
+            account.authNonce,
+          );
     const signed = { pk, authenticatorData: auth.authenticator_data, sig: auth.sig };
     if (!account.entries.has(live) || !(await verifyP256(signed, challenge, auth.policy))) {
       throw refused('no live entry signed this challenge');
@@ -315,7 +329,8 @@ export function fakeChain(
       account.entries.delete(live);
       account.entries.add(entry(self, pk, auth.policy, epoch, auth.use_counter + 1n));
       account.authNonce += 1n;
-      account.encKey = newKey;
+      if (circuit === 'append_inbox_with_p256') account.inboxEntries.push(newKey);
+      else account.encKey = newKey;
     };
   }
 
@@ -338,20 +353,29 @@ export function fakeChain(
       );
       return { txHash };
     },
-    async readAccount(address) {
+    async readAccount(address, options = {}) {
       context.hit('chain.readAccount', address);
       const account = ledger.get(address);
       if (!account) return undefined;
-      const { entries, boot: _boot, authorityRetired: _retired, ...view } = account;
+      const { entries, boot: _boot, authorityRetired: _retired, inboxEntries, ...view } = account;
       const held = new Set(entries);
-      return { ...view, entryCount: held.size, hasEntry: (e) => held.has(hex(e)) };
+      return {
+        ...view,
+        ...(options.includeInbox && { inboxEntries: [...inboxEntries] }),
+        entryCount: held.size,
+        hasEntry: (e: Uint8Array) => held.has(hex(e)),
+      };
     },
   };
 }
 
 const fixedPart = (h: P.AccountHint) =>
   [h.address, h.scheme, hex(h.credentialId ?? new Uint8Array()), point(h.publicKey)]
-    .concat(h.policy ? policyText(h.policy) : '', hex(h.salt ?? new Uint8Array()))
+    .concat(
+      h.policy ? policyText(h.policy) : '',
+      hex(h.salt ?? new Uint8Array()),
+      ...(h.keyEntries?.map(hex) ?? []),
+    )
     .join('|');
 /** Write-once: a hint never changes but in status, from `deployed` to `active`. */
 export function fakeDirectory({ context = fakeContext() }: With<'context'> = {}) {

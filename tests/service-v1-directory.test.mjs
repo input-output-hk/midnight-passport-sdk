@@ -18,10 +18,11 @@ const hint = {
   publicKey: { x: 2n, y: 3n },
   policy: { rp_id_hash: new Uint8Array(32).fill(4), origin: new Uint8Array(21).fill(5) },
   salt: new Uint8Array(32).fill(6),
+  keyEntries: [new Uint8Array(192).fill(7), new Uint8Array(192).fill(8)],
   status: /** @type {const} */ ('deployed'),
 };
 
-test('v1 directory stores P-256 and sealed JubJub hints with write-once status transitions', async (t) => {
+test('v1 directory stores sealed P-256 and JubJub hints with write-once status transitions', async (t) => {
   const file = join(mkdtempSync(join(tmpdir(), 'passport-dir-')), 'directory.json');
   const store = createFileDirectoryStore(file);
   const server = createServer({ host: '127.0.0.1', corsOrigin: 'http://localhost:5173' }, [

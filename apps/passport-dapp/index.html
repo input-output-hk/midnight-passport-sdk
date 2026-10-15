@@ -167,10 +167,9 @@
         <h2 id="notes-title">Prototype limits</h2>
         <ul>
           <li id="key-note">
-            <strong>Rotated keys are random and not retained.</strong> The first encryption key
-            derives from your passkey (Lace recipe v1, MIP-0015), so it is bound to this network and
-            reproducible. Rotating replaces it with a random key the page does not keep: data
-            encrypted to a rotated key cannot be recovered.
+            <strong>The ACC viewing secret is random.</strong> It is sealed to this passkey's
+            network-specific reader key in the ACC inbox. Create and open are available here;
+            viewing-key rotation needs a verified device and grant roster.
           </li>
           <li>
             <strong>Mock mode is for development only.</strong> With <code>?mockPasskey</code> under
