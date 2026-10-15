@@ -118,6 +118,13 @@ Both browser authoriser arms use `AccountViewingKey` to create a random account 
 
 ### Lace integration status
 
+The current SDK demo was also exercised on a live `undeployed` localnet at SDK
+commit `9ec6c005a9568731f8bf2eee9cb9c4d778203532`: both P-256 and JubJub
+mock-passkey accounts deployed, activated, and reopened after a page reload.
+The P-256 built-in wallet connected, and the standalone key server served a
+ranged prover response. This validates the local SDK composition only; the
+Lace-hosted module still needs transaction tests.
+
 The nine packed SDK packages compile against the actual Passport contract seam source at [Lace PR #2845](https://github.com/input-output-hk/lace-platform/pull/2845), commit `cdfa9cfd81a0adcc0a7224aa624f18e52494f602`. The smoke check verifies each package tarball hash before compiling; a local `0.1.0-dev.4` pack passed against this Lace head on 2026/10/15. Lace's `FeeSponsor`, `PassportEncryptionKey`, grant scope and grant bookkeeping assign directly to the corresponding SDK ports. Its network fields fit after the host adds the pinned ACC binding ID and manifest hash. On the prototype branch, `adapter-browser/hosted-jubjub` bridges Lace's hosted signer: the host supplies tagged constructors and a consent-flow converter, and the adapter checks that the converter preserves every field. It refuses standalone rotation's unsupported consent kind; read issue and revoke-all rotate within their outer owner session. Lace's `PassportProver` proves circuit preimages while the SDK's prover handles whole transactions. This is a contract-seam type check with focused adapter tests; the hosted adapter is candidate work for the next prerelease, not part of `0.1.0-rc1`. A Lace module build and live create, sign-in and grant/device transaction tests are still required before claiming runtime interoperability. See the [compatibility matrix](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/compatibility.md) for the exact reproduction command and remaining boundaries.
 
 ## Events and cancellation

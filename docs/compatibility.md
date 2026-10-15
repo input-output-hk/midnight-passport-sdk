@@ -33,6 +33,20 @@ The reference ACC `test:auth-coinless` also passed with both enrolment direction
 and an on-node JubJub-authorized gated call. This validates the local SDK
 composition; it does not establish interoperability inside Lace's hosted module.
 
+On 2026/10/15, SDK commit `9ec6c005a9568731f8bf2eee9cb9c4d778203532`
+was run through the one-command demo on the `undeployed` localnet with the pinned
+`6458ed5` ACC export and manifest above. The full 52-key cache verified before
+startup. With `--mock-passkey`, the P-256 arm completed ten deploy waves,
+activated its first device, and reopened account
+`b814ed4f4e8bfe5b8f9ee3df5921f48a364d899d5389c3f4f70813f1fd40497a`
+after a page reload; its built-in read-only wallet also connected and synced.
+The separate `--arm jubjub` run deployed, activated, and reopened account
+`535a22b14932ca454c7abefd1c7471c8f3b58d6d81dc8a9a233af02c73800800`.
+Both reopened ACCs showed one live device and auth nonce 2. The standalone key
+server advertised the `all` profile and returned HTTP 206 for a 32-byte range
+of the pinned `deposit_unshielded.prover`. These local mock-passkey runs do not
+test a real authenticator, grants, recovery, or Lace-hosted transaction paths.
+
 ## Lace consumer seam check
 
 The SDK keyring accepts Lace's JubJub device registration type `0xd2` and adds
