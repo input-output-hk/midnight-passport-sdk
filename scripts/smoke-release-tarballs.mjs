@@ -67,6 +67,7 @@ try {
            typeof account.issueJubjubGrantCall !== 'function' ||
            typeof account.publishJubjubGrantBookkeeping !== 'function' ||
            typeof account.revokeJubjubGrantCall !== 'function' ||
+           typeof account.sealActiveReadGrants !== 'function' ||
            typeof browser.createBrowserPassport !== 'function' ||
            typeof service.createServer !== 'function' ||
            typeof service.chainRoute !== 'function' ||

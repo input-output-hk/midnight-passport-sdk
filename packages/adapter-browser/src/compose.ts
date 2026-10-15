@@ -2,6 +2,7 @@ import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
 import type {
   AccountDirectory,
   AccountRecordStore,
+  ActiveReadGrantTargetSource,
   Authoriser,
   Deployer,
   FeeSponsor,
@@ -39,6 +40,7 @@ export interface BrowserPassportConfig {
   readonly deployer: Deployer;
   readonly directory: AccountDirectory;
   readonly holdings?: VerifiedHoldingSource;
+  readonly readGrants?: ActiveReadGrantTargetSource;
   readonly records?: AccountRecordStore;
   readonly random?: (length: number) => Uint8Array;
 }
@@ -95,6 +97,7 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
     deployer: config.deployer,
     directory: config.directory,
     ...(config.holdings && { holdings: config.holdings }),
+    ...(config.readGrants && { readGrants: config.readGrants }),
     ...(config.records && { records: config.records }),
     ...(config.random && { random: config.random }),
   });

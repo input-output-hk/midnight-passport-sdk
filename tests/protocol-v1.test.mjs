@@ -107,6 +107,7 @@ test('the progress steps and phases are the design §3.4 lists, frozen', () => {
     'chain.read',
     'counter.scan',
     'grant.roster',
+    'grant.seal',
     'grant.stage',
     'directory.read',
     'directory.write',

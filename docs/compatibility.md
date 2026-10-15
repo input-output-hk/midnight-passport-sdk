@@ -38,17 +38,19 @@ types, not a packed-package Lace build or live transaction test.
 | --- | --- | --- |
 | `FeeSponsor.balanceAndSign` | `FeeSponsor` | Direct structural assignment |
 | `PassportEncryptionKey` | `AccountViewingKey` | Direct structural assignment for reader, keyring, inbox, and grant operations |
+| `readGrants` plus stored grant openings | `ActiveReadGrantTargetSource` | Host adapter must return the complete active read roster at the ACC auth nonce and verify each available read key against the on-chain hash; no direct structural assignment |
 | `PassportNetworkConfig` | `NetworkConfig` | Lace network fields fit; the SDK caller must supply its additional ACC binding and manifest pins |
 | `PassportAuthoriser` | `Authoriser` | Needs a boundary adapter for branded account/counter/epoch values and key-session flows |
 | `PassportProver.prove/check` | transaction `Prover.proveTx` | Different abstraction: Lace proves a circuit preimage; a transaction pipeline must wrap it |
 
 The current Lace `KeySessionFlow.kind` omits `rotate-encryption-key`, which the
 SDK's owner flow requests. The test adapter rejects this operation until Lace and
-the SDK agree on its consent descriptor. Lace also has grant flows that the SDK
-has not implemented. The SDK's JubJub account read uses Lace's `read-holdings`
-descriptor and a host-injected chain-backed holding source. It has not run in
-Lace's module, so it is not yet a verified Lace flow replacement. Rotation still
-needs an explicit consent path.
+the SDK agree on its consent descriptor. The SDK's JubJub rotation now prepares
+read-grant seals before switching the ACC key, but Lace must supply a chain-backed
+grant target adapter with the exact auth nonce and its own consent path. The SDK's
+JubJub account read uses Lace's `read-holdings` descriptor and a host-injected
+chain-backed holding source. Neither flow has run in Lace's module, so neither
+is yet a verified Lace flow replacement. Full read-grant issue/revoke composition remains.
 
 The older SDK `EncryptionKeySource.publicKey` port is a prototype key source;
 Lace's `PassportEncryptionKey` matches the newer `AccountViewingKey` instead.

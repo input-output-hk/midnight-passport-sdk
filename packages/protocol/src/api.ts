@@ -46,6 +46,15 @@ export interface PassportAccountState {
 export interface ViewingKeyRotationResult extends PassportTxResult {
   /** Live device commitments that lacked a unique, usable reader registration. */
   readonly droppedDeviceEntries: readonly string[];
+  /** Confirmed view seals for the host's grant record and agent policy export. */
+  readonly sealedReadGrants: readonly {
+    readonly grantId: string;
+    readonly readPublicKey: string;
+    readonly seal: Uint8Array;
+    readonly sealedEncKey: string;
+  }[];
+  /** Active read grants without a usable read-key opening or seal; these cannot read future holdings. */
+  readonly unsealedGrantIds: readonly string[];
 }
 
 export interface PassportShieldedHolding {

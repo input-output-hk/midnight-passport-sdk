@@ -5,6 +5,7 @@ export * from './grant-scope.js';
 export * from './jubjub-grant-issue.js';
 export * from './jubjub-grant-publication.js';
 export * from './jubjub-grant-revoke.js';
+export * from './read-grant-deliveries.js';
 export type * from './seams.js';
 export * from './connector.js';
 export * from './jubjub-readers.js';

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { sha256 } from '@noble/hashes/sha2.js';
+import { x25519 } from '@noble/curves/ed25519.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 import { createPassportAccounts } from '../packages/account/dist/index.js';
 import { recipeDeviceKeyring, recipeJubjubAuthoriser } from '../packages/keys/dist/index.js';
@@ -29,8 +30,11 @@ function world() {
   let failSecondAppend = false;
   let tamperKeyAfterNextAppend = false;
   let addInboxAfterNextAppend = false;
+  let changeReadGrantsAfterNextAppend = false;
   /** @type {number[]} */
   let selectedHoldings = [];
+  /** @type {import('../packages/account/dist/ports/index.js').ActiveReadGrantTarget[]} */
+  let activeReadGrants = [];
   /** @type {import('../packages/account/dist/ports/index.js').PrfKeySource} */
   const source = {
     withSession: async (operation) => operation(),
@@ -103,6 +107,10 @@ function world() {
           addInboxAfterNextAppend = false;
           inbox.push(new Uint8Array(192).fill(8));
         }
+        if (changeReadGrantsAfterNextAppend) {
+          changeReadGrantsAfterNextAppend = false;
+          activeReadGrants = [{ grantId: 'fe'.repeat(32) }];
+        }
       } else if (request.circuit === 'rotate_enc_key_with_jubjub') {
         assert.equal(request.args[2], counter);
         encKey = /** @type {Uint8Array} */ (request.args[0]);
@@ -139,6 +147,9 @@ function world() {
     encryptionKey: { publicKey: async () => new Uint8Array(32) },
     viewingKey: recipeDeviceKeyring(source),
     holdings: { selectHeldEntries: async () => selectedHoldings },
+    readGrants: {
+      readActiveReadGrantTargets: async () => ({ authNonce: nonce, targets: activeReadGrants }),
+    },
     chain,
     deployer: {
       async deploy(
@@ -162,16 +173,23 @@ function world() {
     setHint: (/** @type {typeof hint} */ value) => (hint = value),
     setCounter: (/** @type {bigint} */ value) => (counter = value),
     setHeldIndices: (/** @type {number[]} */ value) => (selectedHoldings = value),
+    setReadGrantTargets: (/** @type {typeof activeReadGrants} */ value) =>
+      (activeReadGrants = value),
     encKey: () => encKey,
     viewingKey: ports.viewingKey,
     withoutHoldings: () => {
       const { holdings: _holdings, ...without } = ports;
       return createPassportAccounts(without);
     },
+    withoutReadGrants: () => {
+      const { readGrants: _readGrants, ...without } = ports;
+      return createPassportAccounts(without);
+    },
     interruptActivation: () => (failActivation = true),
     interruptSecondAppend: () => (failSecondAppend = true),
     tamperKeyAfterNextAppend: () => (tamperKeyAfterNextAppend = true),
     addInboxAfterNextAppend: () => (addInboxAfterNextAppend = true),
+    changeReadGrantsAfterNextAppend: () => (changeReadGrantsAfterNextAppend = true),
   };
 }
 
@@ -247,6 +265,8 @@ test('JubJub rotation seals a fresh key before updating the ACC and stays reopen
   const result = await account.rotateViewingKey();
   assert.equal(result.txHash, 'tx-5');
   assert.deepEqual(result.droppedDeviceEntries, []);
+  assert.deepEqual(result.sealedReadGrants, []);
+  assert.deepEqual(result.unsealedGrantIds, []);
   assert.notEqual(hex(w.encKey()), before);
   assert.deepEqual(w.calls.slice(3), ['append_inbox_with_jubjub', 'rotate_enc_key_with_jubjub']);
   assert.equal((await w.accounts.openAccount()).address, address);
@@ -327,7 +347,7 @@ test('JubJub rotation refuses an inbox entry that lands while new keys are deliv
   assert.equal(w.calls.at(-1), 'append_inbox_with_jubjub');
 });
 
-test('JubJub rotation refuses grant records until grantee resealing is supported', async () => {
+test('JubJub rotation preserves unshielded grant records', async () => {
   const w = world();
   const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
   const records = await w.viewingKey.sealGrant('undeployed', address, {
@@ -339,6 +359,59 @@ test('JubJub rotation refuses grant records until grantee resealing is supported
   });
   w.inbox.push(...records);
   assert.ok(account.rotateViewingKey);
+  const result = await account.rotateViewingKey();
+  assert.deepEqual(result.unsealedGrantIds, []);
+  assert.equal(w.calls.at(-1), 'rotate_enc_key_with_jubjub');
+});
+
+test('JubJub rotation seals the new secret to an active read grantee before the key switch', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const grantee = x25519.keygen();
+  const grantId = 'dc'.repeat(32);
+  w.setReadGrantTargets([
+    { grantId, readPublicKey: hex(grantee.publicKey) },
+    { grantId: 'dd'.repeat(32) },
+  ]);
+  assert.ok(account.rotateViewingKey);
+  const result = await account.rotateViewingKey();
+  assert.deepEqual(result.unsealedGrantIds, ['dd'.repeat(32)]);
+  assert.equal(result.sealedReadGrants[0]?.grantId, grantId);
+  assert.deepEqual(w.calls.slice(3), [
+    'append_inbox_with_jubjub',
+    'append_inbox_with_jubjub',
+    'rotate_enc_key_with_jubjub',
+  ]);
+  const entry = w.inbox.at(-1);
+  assert.ok(entry);
+  const [opened] = await w.viewingKey.openInbox(
+    'undeployed',
+    { account: address, encKey: w.encKey(), envelopes: [...w.inbox].reverse() },
+    [entry],
+  );
+  assert.equal(opened?.kind, 'grant');
+  assert.equal(opened.record.part, 'view');
+  assert.equal(opened.record.grantId, grantId);
+  assert.equal(hex(result.sealedReadGrants[0].seal), opened.record.seal);
+  grantee.secretKey.fill(0);
+});
+
+test('JubJub rotation requires a complete chain-backed read-grant source', async () => {
+  const w = world();
+  await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const account = await w.withoutReadGrants().openAccount();
+  assert.ok(account.rotateViewingKey);
   await assert.rejects(account.rotateViewingKey(), { code: 'BindingUnsupported' });
   assert.equal(w.calls.length, 3);
+});
+
+test('JubJub rotation refuses a read grant added while envelopes land', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const oldKey = hex(w.encKey());
+  w.changeReadGrantsAfterNextAppend();
+  assert.ok(account.rotateViewingKey);
+  await assert.rejects(account.rotateViewingKey(), { code: 'GrantRosterUnsettled' });
+  assert.equal(hex(w.encKey()), oldKey);
+  assert.equal(w.calls.at(-1), 'append_inbox_with_jubjub');
 });

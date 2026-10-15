@@ -9,6 +9,7 @@ import { PassportConnectorError } from './errors.js';
 import { startFlow, type Flow } from './flow.js';
 import { readVerifiedHoldings } from './holdings.js';
 import { JUBJUB_READER_SCAN_LIMIT, resolveJubjubReaders } from './jubjub-readers.js';
+import { sealActiveReadGrants } from './read-grant-deliveries.js';
 import type {
   AccLedgerView,
   AccountHint,
@@ -262,10 +263,10 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       const holdings = ports.holdings;
       const reencrypt = viewingKey.reencryptInbox;
       const decode = viewingKey.decodeDevicePublicKey;
-      if (!holdings || !reencrypt || !decode)
+      if (!holdings || !reencrypt || !decode || !ports.readGrants)
         throw new PassportConnectorError(
           'BindingUnsupported',
-          'JubJub rotation needs verified holdings and the full viewing-key port.',
+          'JubJub rotation needs verified holdings, an active read-grant source and the full viewing-key port.',
         );
       return authoriser.withKeySession!(
         async () => {
@@ -292,12 +293,6 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             throw new PassportConnectorError(
               'InternalError',
               'The viewing key skipped inbox entries.',
-            );
-          // A read grantee needs a fresh seal too. The grant-aware flow will handle this later.
-          if (opened.some((entry) => entry?.kind === 'grant'))
-            throw new PassportConnectorError(
-              'BindingUnsupported',
-              'An ACC with read grants needs grant-aware rotation.',
             );
           const liveEntries = view.deviceEntries!;
           const self = { bytes: fromHex(record.address) };
@@ -359,7 +354,17 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               'InternalError',
               'A verified holding could not be sealed.',
             );
-          for (const entry of [...keys.envelopes, ...keys.registrations])
+          const deliveries = await sealActiveReadGrants(
+            {
+              networkId,
+              keyring: { account: record.address, encKey: keys.encKey, envelopes: keys.envelopes },
+              authNonce: view.authNonce,
+              ...flow.ports,
+            },
+            { targets: ports.readGrants!, viewingKey, random: fresh },
+          );
+          const deliveryEntries = deliveries.sealed.map(({ entry }) => entry);
+          for (const entry of [...keys.envelopes, ...keys.registrations, ...deliveryEntries])
             view = await append(flow, record, entry, view);
           view = await read(record, true);
           if (!equal(view.encKey!, oldKeyring.encKey))
@@ -387,7 +392,12 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           if (baseline.length !== current.length || baseline.some((item, i) => item !== current[i]))
             throw new PassportConnectorError('InternalError', 'The live device roster changed.');
           const expected = new Map<string, number>();
-          for (const entry of [...oldEntries, ...keys.envelopes, ...keys.registrations]) {
+          for (const entry of [
+            ...oldEntries,
+            ...keys.envelopes,
+            ...keys.registrations,
+            ...deliveryEntries,
+          ]) {
             const value = toHex(entry);
             expected.set(value, (expected.get(value) ?? 0) + 1);
           }
@@ -405,6 +415,20 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             throw new PassportConnectorError(
               'InternalError',
               'The ACC inbox lost an expected entry.',
+            );
+          const latestGrants = await flow.step('grant.roster', () =>
+            ports.readGrants!.readActiveReadGrantTargets(record.address),
+          );
+          const ordered = (items: typeof latestGrants.targets) =>
+            items.map(({ grantId, readPublicKey }) => `${grantId}:${readPublicKey ?? ''}`).sort();
+          if (
+            latestGrants.authNonce !== view.authNonce ||
+            JSON.stringify(ordered(deliveries.targets)) !==
+              JSON.stringify(ordered(latestGrants.targets))
+          )
+            throw new PassportConnectorError(
+              'GrantRosterUnsettled',
+              'The active read-grant roster changed during rotation.',
             );
           const nonce = view.authNonce;
           const circuit = 'rotate_enc_key_with_jubjub';
@@ -460,6 +484,15 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             droppedDeviceEntries: roster.dropped
               .filter((entry) => !equal(entry, ownEntry))
               .map(toHex),
+            sealedReadGrants: deliveries.sealed.map(
+              ({ grantId, readPublicKey, seal, sealedEncKey }) => ({
+                grantId,
+                readPublicKey,
+                seal,
+                sealedEncKey,
+              }),
+            ),
+            unsealedGrantIds: deliveries.unsealedGrantIds,
           };
         },
         { kind: 'rotate-encryption-key' },

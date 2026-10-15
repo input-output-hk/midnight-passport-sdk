@@ -16,6 +16,20 @@ import type {
 } from '../seams.js';
 import type { GrantScopeInput } from '../grant-scope.js';
 
+export interface ActiveReadGrantTarget {
+  readonly grantId: string;
+  /** Absent when this device lacks an opening for an otherwise active read grant. */
+  readonly readPublicKey?: string;
+}
+export interface ActiveReadGrantSnapshot {
+  readonly authNonce: bigint;
+  readonly targets: readonly ActiveReadGrantTarget[];
+}
+/** The host must verify every active read grant and each known key's on-chain hash. */
+export interface ActiveReadGrantTargetSource {
+  readActiveReadGrantTargets(account: string): Promise<ActiveReadGrantSnapshot>;
+}
+
 export type { AuthScheme } from '@input-output-hk/mn-passport-protocol';
 // Defined beside the prototype's seams until T5 to T9 retire them; this is their public home.
 export type {
@@ -382,6 +396,7 @@ export interface PassportPorts {
   /** Random ACC viewing secret behind sealed device envelopes, required by the JubJub arm. */
   readonly viewingKey?: AccountViewingKey;
   readonly holdings?: VerifiedHoldingSource;
+  readonly readGrants?: ActiveReadGrantTargetSource;
   readonly chain: Lazy<Chain>;
   readonly deployer: Deployer;
   readonly directory?: AccountDirectory;

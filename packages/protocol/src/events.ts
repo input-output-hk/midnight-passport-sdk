@@ -20,6 +20,7 @@ export const PASSPORT_STEPS = Object.freeze([
   'chain.read',
   'counter.scan',
   'grant.roster',
+  'grant.seal',
   'grant.stage',
   'directory.read',
   'directory.write',
