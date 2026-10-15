@@ -31,8 +31,29 @@ The fixture in `tests/fixtures/lace-seams.mjs` tracks
 [lace-platform PR #2845](https://github.com/input-output-hk/lace-platform/pull/2845)
 at head `05e1e3d641a329d20c8272f6405e54ea499d86a1` (2026/10/15), from
 `packages/contract/passport/src/types.ts`. `tests/account-ports.test.mjs` checks
-the structural TypeScript assignments. This is a seam check against the PR's
-types, not a packed-package Lace build or live transaction test.
+the structural TypeScript assignments. A second local check now compiles the
+**actual contract seam sources** from that exact Lace commit against all nine
+packed SDK tarballs. It checks the tarball SHA-256 values in the release
+manifest, then compiles Lace's `PassportAuthoriser`, `PassportEncryptionKey`,
+`FeeSponsor`, `PassportProver`, network config, grant scope and bookkeeping
+types with `tests/fixtures/lace-source-consumer.ts`. To reproduce with an exact
+Lace PR checkout and a fresh `release-tarballs/` pack:
+
+```sh
+LACE_CHECKOUT=/path/to/lace-platform \
+  RELEASE_VERSION=0.1.0-dev.1 \
+  nix develop -c node scripts/smoke-lace-source-consumer.mjs
+```
+
+The check pins Lace HEAD to `05e1e3d641a329d20c8272f6405e54ea499d86a1`
+and rejects local edits to its contract seam. The Lace source dependencies
+`type-fest@4.41.0` and `ts-custom-error@3.3.1` match its lockfile. The result
+is a source-level compile check, not a build of Lace's module or a live
+transaction. It establishes direct structural compatibility for the sponsor,
+viewing key, grant scope and bookkeeping. The authoriser needs branded-value
+and consent-flow translation; the circuit-level prover needs a transaction
+pipeline adapter. Network config additionally needs the ACC binding and
+manifest pins.
 
 | Lace seam | SDK port | Current result |
 | --- | --- | --- |
@@ -58,7 +79,8 @@ Lace's `PassportEncryptionKey` matches the newer `AccountViewingKey` instead.
 The release preflight now installs the packed SDK tarballs in a scratch host,
 compiles these Lace-shaped seams against the installed account-port types,
 loads the entry points, and builds a browser bundle. This checks packaging and
-type resolution, but uses a copied seam fixture rather than Lace's own build.
+type resolution. The separate exact-source check above uses Lace's contract
+types, but neither check builds Lace's own module.
 The next release still needs Lace-hosted flow interoperability and the required
 owner/circuit flows before claiming full Lace compatibility.
 
