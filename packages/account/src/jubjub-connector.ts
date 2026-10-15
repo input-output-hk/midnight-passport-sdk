@@ -308,6 +308,33 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
         'DeviceRosterInvalid',
         'The joining reader or signing key already has a roster registration.',
       );
+    if (
+      opened.some(
+        (item) =>
+          item?.kind === 'device' &&
+          item.device.readerPublicKey === reader.readerPublicKey &&
+          item.device.devicePublicKey === reader.devicePublicKey,
+      )
+    ) {
+      const point = viewingKey.decodeDevicePublicKey?.(reader.devicePublicKey);
+      if (!point)
+        throw new PassportConnectorError(
+          'DeviceRosterInvalid',
+          'The joining device key is invalid.',
+        );
+      const self = { bytes: fromHex(record.address) };
+      for (let counter = 0n; counter < JUBJUB_READER_SCAN_LIMIT; counter++) {
+        if (
+          view.hasEntry(
+            pure.derive_device_entry_with_jubjub(self, point, view.deviceEpoch, counter),
+          )
+        )
+          throw new PassportConnectorError(
+            'DeviceRosterInvalid',
+            'The joining device already has a live entry.',
+          );
+      }
+    }
     const epoch = view.deviceEpoch;
     const delivery = await viewingKey.sealToDevice(networkId, currentKeyring, {
       ...reader,
@@ -586,6 +613,18 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             throw new PassportConnectorError(
               'DeviceRosterInvalid',
               'The joining reader or signing key already has a roster registration.',
+            );
+          if (
+            enrollment &&
+            roster.readers.some(
+              (item) =>
+                item.readerPublicKey === enrollment.reader.readerPublicKey &&
+                item.devicePublicKey === enrollment.reader.devicePublicKey,
+            )
+          )
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'The joining device already has a live entry.',
             );
           if (enrollment && roster.dropped.some((entry) => !equal(entry, ownEntry)))
             throw new PassportConnectorError(

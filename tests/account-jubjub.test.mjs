@@ -229,7 +229,7 @@ function world() {
       readerPublicKey: hex(await remoteViewingKey.readerPublicKey('undeployed')),
       devicePublicKey: await remoteAuthoriser.devicePublicKeyHex(),
     };
-    return { entry, reader, remoteViewingKey };
+    return { entry, reader, remoteViewingKey, publicKey };
   };
   return {
     accounts: createPassportAccounts(ports),
@@ -254,16 +254,25 @@ function world() {
         0n,
         counter,
       ),
-    addRemoteDevice: async (seed = 11, readerSeed = seed) => {
-      const { entry, reader, remoteViewingKey } = await joiningDevice(seed, readerSeed);
+    addRemoteDevice: async (seed = 11, readerSeed = seed, useCounter = 0n) => {
+      const { entry, reader, remoteViewingKey, publicKey } = await joiningDevice(seed, readerSeed);
+      const liveEntry =
+        useCounter === 0n
+          ? entry
+          : pureCircuits.derive_device_entry_with_jubjub(
+              { bytes: Buffer.from(address, 'hex') },
+              publicKey,
+              0n,
+              useCounter,
+            );
       const delivery = await ports.viewingKey.sealToDevice(
         'undeployed',
         { account: address, encKey, envelopes: [...inbox].reverse() },
-        { ...reader, epoch: 0n, counter: 0n },
+        { ...reader, epoch: 0n, counter: useCounter },
       );
       inbox.push(delivery.envelope, delivery.registration);
-      remoteEntries.push(entry);
-      return { entry, remoteViewingKey };
+      remoteEntries.push(liveEntry);
+      return { entry: liveEntry, remoteViewingKey };
     },
     addUnregisteredDevice: (entry = new Uint8Array(32).fill(99)) => remoteEntries.push(entry),
     withoutHoldings: () => {
@@ -420,6 +429,22 @@ test('JubJub enrollment refuses a reader key already registered to another devic
   await assert.rejects(account.addDevice(reader), { code: 'DeviceRosterInvalid' });
   assert.equal(w.calls.length, 3);
   assert.equal((await account.state()).entryCount, 2);
+});
+
+test('JubJub enrollment refuses an existing signer at a later use counter', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  await w.addRemoteDevice(11, 11, 1n);
+  const { reader } = await w.joiningDevice(11, 11);
+  assert.ok(account.addDevice);
+  await assert.rejects(account.addDevice(reader), { code: 'DeviceRosterInvalid' });
+  const before = hex(w.encKey());
+  const grantee = x25519.keygen();
+  w.setReadGrantTargets([{ grantId: 'ac'.repeat(32), readPublicKey: hex(grantee.publicKey) }]);
+  await assert.rejects(account.addDevice(reader), { code: 'DeviceRosterInvalid' });
+  assert.equal(hex(w.encKey()), before);
+  assert.equal(w.calls.length, 3);
+  grantee.secretKey.fill(0);
 });
 
 test('JubJub enrollment rotates keys before delivering to a joiner while a read grant is live', async () => {
