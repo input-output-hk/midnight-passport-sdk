@@ -8,7 +8,7 @@ lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](.
 | `passport-service` | Serves the ACC's ZK artefacts (`/zk/acc`), proves with server-side keys (`/prove`), deploys in waves (`/deploy`), sponsors fees (`/sponsor/*`) and keeps the passkey-to-account registry (`/accounts`). It also serves versioned config, binding-pinned artefacts, account hints, job-based prove/deploy and fee routes under `/v1`. It holds the only funded key. Binds `127.0.0.1:8787`. |
 | `passport-key-service` | Standalone Node container for restoring, verifying and HTTP-serving the pinned ACC keys. It has no sponsor wallet; see its [image and operations guide](passport-key-service/README.md). |
 | `passport-funding-service` | Separate wallet-backed process for an authenticated, allowlisted unshielded deposit into a deployed ACC. See its [operations guide](passport-funding-service/README.md). |
-| `passport-dapp`    | The harness at `http://localhost:5173`: create a Passport account with a passkey, open it after a reload, rotate its encryption key (a passkey-signed, server-proved call) and connect the built-in wallet.                                           |
+| `passport-dapp`    | The harness at `http://localhost:5173`: create and reopen a Passport account with a passkey. P-256 also exposes the prototype encryption-key rotation. The JubJub preview has create/open only until the page supplies chain-backed holdings and read-grant sources. The built-in wallet is separate from the ACC. |
 
 ## Documentation
 
@@ -49,6 +49,7 @@ pnpm install && pnpm build
 | `MN_PROOF_SERVER_URL`      | `http://127.0.0.1:$MN_PROOF_PORT` (16300) | Proof server, `http` or `https`.                                                                               |
 | `MN_NODE_PORT`, `MN_INDEXER_PORT`, `MN_PROOF_PORT` | 19944, 18088, 16300 | The localnet's host ports (`infra/localnet/ports.env`); only the defaults of the URLs above.                |
 | `PASSPORT_NETWORK_ID`      | `undeployed`                   | Build-time pin of the dapp (read by `vite build`/`dev`) and the e2e: the network the page is bound to. `prototype:up` sets it from `MN_NETWORK_ID`. A service on another network is refused (`NetworkMismatch`). |
+| `VITE_PASSPORT_ARM`        | `p256`                         | Browser ACC authoriser arm, `p256` or `jubjub`. `pnpm demo up --arm jubjub` sets it for the dev page. JubJub mode currently exposes create/open; the rotate button is hidden. |
 | `PASSPORT_SERVICE_HOST`    | `127.0.0.1`                    | Service bind address. A non-loopback host exposes the sponsor to whoever can reach it.                                   |
 | `PASSPORT_SERVICE_PORT`    | `8787`                         | Service port. The dapp expects 8787 unless `VITE_PASSPORT_SERVICE_URL` says otherwise.                                   |
 | `PASSPORT_MAX_DEPLOYS`     | `20`                           | Deploy cap per service process.                                                                                          |

@@ -17,7 +17,7 @@ const manifestPin = binding.manifestSha256;
 const keyPort = 8788;
 const fundingPort = 8789;
 
-/** @typedef {{ command: string, keyService: boolean, funding: boolean, open: boolean, mockPasskey: boolean, passportRepo?: string, contractDir?: string, account?: string, color?: string, amount?: string, requestId?: string, help?: boolean }} DemoOptions */
+/** @typedef {{ command: string, arm: 'p256' | 'jubjub', keyService: boolean, funding: boolean, open: boolean, mockPasskey: boolean, passportRepo?: string, contractDir?: string, account?: string, color?: string, amount?: string, requestId?: string, help?: boolean }} DemoOptions */
 
 /** @param {string[]} argv @returns {DemoOptions} */
 export function parseArgs(argv) {
@@ -27,7 +27,14 @@ export function parseArgs(argv) {
   if (!['up', 'setup', 'check', 'fund'].includes(command))
     throw new Error(`unknown command: ${command}`);
   /** @type {DemoOptions} */
-  const options = { command, keyService: true, funding: false, open: false, mockPasskey: false };
+  const options = {
+    command,
+    arm: 'p256',
+    keyService: true,
+    funding: false,
+    open: false,
+    mockPasskey: false,
+  };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--passport-repo' || arg === '--contract-dir') {
@@ -46,6 +53,10 @@ export function parseArgs(argv) {
       else if (arg === '--color') options.color = value;
       else if (arg === '--amount') options.amount = value;
       else options.requestId = value;
+    } else if (arg === '--arm') {
+      const value = args[++i];
+      if (value !== 'p256' && value !== 'jubjub') throw new Error('--arm needs p256 or jubjub');
+      options.arm = value;
     } else if (arg === '--no-key-service') options.keyService = false;
     else if (arg === '--funding') options.funding = true;
     else if (arg === '--open') options.open = true;
@@ -70,6 +81,7 @@ const usage = `Usage: nix develop -c node scripts/demo.mjs [up|setup|check|fund]
   --no-key-service   Skip the optional standalone key server on port 8788.
   --funding          Start the separate funding service on port 8789 (localnet).
   --mock-passkey     Use the dev-only mock-passkey URL.
+  --arm X            Browser account arm: p256 (default) or jubjub (create/open preview).
   --open             Open the demo URL in the default browser.
   --account HEX      Fund command: deployed ACC address (32 bytes).
   --color HEX        Fund command: allowlisted asset color (32 bytes).
@@ -336,6 +348,7 @@ async function up(options) {
     ...process.env,
     PASSPORT_CONTRACT_DIR: contractDir,
     PASSPORT_MANIFEST_SHA256: manifestPin,
+    VITE_PASSPORT_ARM: options.arm,
   };
   /** @type {import('node:child_process').ChildProcess | undefined} */
   let keys;

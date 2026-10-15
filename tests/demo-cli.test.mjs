@@ -11,6 +11,7 @@ import binding from '../packages/contract/acc-binding-v2.generated.json' with { 
 test('demo CLI chooses up by default and parses explicit setup options', () => {
   assert.deepEqual(parseArgs([]), {
     command: 'up',
+    arm: 'p256',
     keyService: true,
     funding: false,
     open: false,
@@ -22,6 +23,8 @@ test('demo CLI chooses up by default and parses explicit setup options', () => {
   assert.equal(parsed.passportRepo, process.cwd());
   assert.equal(parsed.keyService, false);
   assert.equal(parseArgs(['up', '--funding']).funding, true);
+  assert.equal(parseArgs(['up', '--arm', 'jubjub']).arm, 'jubjub');
+  assert.throws(() => parseArgs(['up', '--arm', 'k256']), /--arm needs/);
   assert.deepEqual(args, ['setup', '--passport-repo', '.', '--no-key-service']);
   assert.throws(() => parseArgs(['up', '--contract-dir']), /needs a directory/);
   assert.equal(parseArgs(['-h']).help, true);

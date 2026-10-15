@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_PASSPORT_SERVICE_URL?: string;
+  readonly VITE_PASSPORT_ARM?: string;
 }
 interface ImportMeta {
   readonly env: ImportMetaEnv;

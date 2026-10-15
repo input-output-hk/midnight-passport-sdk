@@ -346,6 +346,10 @@ code {
   min-width: 0;
 }
 
+.action[hidden] {
+  display: none;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

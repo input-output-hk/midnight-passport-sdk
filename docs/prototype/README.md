@@ -1,6 +1,6 @@
 # Midnight Passport DApp prototype
 
-The standalone service also exposes `POST /v1/prove-tx` and `POST /v1/deploy` as request-and-poll jobs (`GET /v1/jobs/{id}`), plus `/v1/sponsor/balance`, `/v1/sponsor/submit`, `/v1/config`, and verified `/v1/zk/{bindingId}` artefacts. The browser flow shown below still uses the legacy routes. Both route sets share the same serial proof/deploy queue and deployment cap.
+The standalone service exposes `POST /v1/prove-tx` and `POST /v1/deploy` as request-and-poll jobs (`GET /v1/jobs/{id}`), plus `/v1/sponsor/balance`, `/v1/sponsor/submit`, `/v1/config`, and verified `/v1/zk/{bindingId}` artefacts. The browser uses these versioned routes. The legacy routes remain for older clients; both route sets share the same serial proof/deploy queue and deployment cap.
 
 This is a working prototype of the Passport **account API** and the web app that carries its heavy
 lifting. The prototype called the account API the "DApp Connector API"; every operation in it is the
@@ -17,6 +17,13 @@ The account API v1 is versioned in `mn-passport-protocol` (`1.0.0-pre.0`); the p
 `0.1.0-prototype` shapes remain as deprecated `…Prototype` types behind `createPassportConnector`. The design is in
 [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](../superpowers/specs/2026-10-06-passport-dapp-design.md).
 This folder describes what the code does today.
+
+The CLI can start the browser with `pnpm demo up --arm jubjub --mock-passkey`.
+That preview selects the packaged JubJub create/open account path and its random
+viewing secret sealed to the passkey-derived reader. The P-256 flow remains the
+default. JubJub rotation is hidden in the demo because the page does not yet
+inject verified holdings and active read-grant sources; this preview does not
+claim the historical P-256 run results below for JubJub.
 
 ## What works today
 

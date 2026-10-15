@@ -74,7 +74,7 @@ export const shorten = (value: string, head = 8, tail = 6): string =>
 
 const formatAmount = (v: bigint) => v.toLocaleString('en-GB');
 
-export function createUi(header: EvidenceHeader) {
+export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256') {
   const log = new EventLog();
   const buttons = Object.fromEntries(ACTIONS.map((a) => [a, byId<HTMLButtonElement>(a)])) as Record<
     ActionId,
@@ -96,9 +96,19 @@ export function createUi(header: EvidenceHeader) {
 
   // The action cards: prompt counts and summaries come from flows.ts only.
   for (const action of ACTIONS) byId(`${action}-desc`).textContent = FLOWS[action].summary;
+  if (arm === 'jubjub') {
+    byId('create-desc').textContent =
+      'Creates a passkey, deploys a JubJub Passport account, and seals a random viewing secret to this device.';
+    byId('open-desc').textContent =
+      'Reopens the JubJub account with its passkey and checks its sealed viewing secret against the live ACC.';
+    buttons.rotate.closest('li')?.toggleAttribute('hidden', true);
+  }
   const renderPrompts = () => {
     for (const action of ACTIONS) {
-      byId(`${action}-prompts`).textContent = promptLabel(promptsFor(action, !!account));
+      byId(`${action}-prompts`).textContent =
+        arm === 'jubjub' && (action === 'create' || action === 'open')
+          ? 'Passkey prompts vary by provider and account state.'
+          : promptLabel(promptsFor(action, !!account));
     }
   };
 
@@ -118,15 +128,15 @@ export function createUi(header: EvidenceHeader) {
     const busy = log.current !== undefined;
     buttons.create.disabled = busy || !ready;
     buttons.open.disabled = busy || !ready;
-    buttons.rotate.disabled = busy || !account;
+    buttons.rotate.disabled = arm === 'jubjub' || busy || !account;
     buttons.wallet.disabled = busy;
     copyButton.disabled = busy || log.runs.length === 0;
     // With an account open, rotating is the next thing to show; before that, creating is.
     buttons.create.classList.toggle('btn-primary', !account);
     buttons.create.classList.toggle('btn-secondary', !!account);
-    buttons.rotate.classList.toggle('btn-primary', !!account);
-    buttons.rotate.classList.toggle('btn-secondary', !account);
-    byId('rotate-needs').hidden = !!account;
+    buttons.rotate.classList.toggle('btn-primary', arm === 'p256' && !!account);
+    buttons.rotate.classList.toggle('btn-secondary', arm === 'jubjub' || !account);
+    byId('rotate-needs').hidden = arm === 'jubjub' || !!account;
     renderPrompts();
     document.body.toggleAttribute('data-busy', busy);
   };

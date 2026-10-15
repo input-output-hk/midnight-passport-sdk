@@ -25,6 +25,10 @@ export const NETWORK_ID = __PASSPORT_NETWORK_ID__;
 export const RP_ID = 'localhost';
 /** The grants ACC binding this page deploys: the artefact build the manifest pin above names. */
 export const BINDING_ID = 'acc-s3r1.1';
+const configuredArm = import.meta.env.VITE_PASSPORT_ARM ?? 'p256';
+if (configuredArm !== 'p256' && configuredArm !== 'jubjub')
+  throw new Error('VITE_PASSPORT_ARM must be p256 or jubjub');
+export const ARM: 'p256' | 'jubjub' = configuredArm;
 const ORIGIN = 'http://localhost:5173';
 
 /** Existing demo accounts remain readable while new hints are written to the v1 directory. */
@@ -60,6 +64,7 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
   };
   const sponsor = remoteV1Sponsor(SERVICE_URL);
   return createBrowserPassport({
+    arm: ARM,
     network,
     binding: async () => (await import('./acc-module.js')).accModule,
     passkey: { rpId: RP_ID, origin: ORIGIN },
