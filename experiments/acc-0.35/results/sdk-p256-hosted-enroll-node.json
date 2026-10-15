@@ -1,0 +1,17 @@
+{
+  "bindingId": "acc-s3r1.1",
+  "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "contractSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
+  "networkId": "undeployed",
+  "account": "e8a95c87058cb1ebd074e377d1ade6d09c573e315472e2c787cb7568fb4bab2e",
+  "txId": "a7caa6116c432afb0a61f5ec646c7001e904b3d9607d0414f42877c7ea0fbd1d",
+  "circuit": "add_device_with_p256",
+  "ownerArm": "p256",
+  "joiningArm": "p256",
+  "entry": "435d9a1c258a4adab350d94f427fc5644d3140db250d59911a4ece867a30947c",
+  "authNonceBefore": "0",
+  "authNonceAfter": "1",
+  "hostedCallTxExecuted": true,
+  "entryConfirmedOnChain": true,
+  "scope": "hosted chain bridge and pinned P-256 enrollment circuit"
+}
