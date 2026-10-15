@@ -32,6 +32,7 @@ const TABLE = {
   BindingUnsupported: { retryable: false, lace: [] },
   GrantScopeInvalid: { retryable: false, lace: ['grant-scope-invalid'] },
   GrantLimitReached: { retryable: false, lace: ['grant-limit-reached'] },
+  GrantNotFound: { retryable: false, lace: ['grant-not-found'] },
   GrantRevoked: { retryable: false, lace: ['grant-revoked'] },
   GrantRosterUnsettled: { retryable: true, lace: ['grant-roster-unsettled'] },
   GrantBookkeepingUnsettled: { retryable: false, lace: [] },

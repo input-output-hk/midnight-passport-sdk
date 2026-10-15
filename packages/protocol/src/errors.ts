@@ -24,6 +24,7 @@ const TABLE = {
   BindingUnsupported: row(false),
   GrantScopeInvalid: row(false, 'grant-scope-invalid'),
   GrantLimitReached: row(false, 'grant-limit-reached'),
+  GrantNotFound: row(false, 'grant-not-found'),
   GrantRevoked: row(false, 'grant-revoked'),
   GrantRosterUnsettled: row(true, 'grant-roster-unsettled'),
   GrantBookkeepingUnsettled: row(false),

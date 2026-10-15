@@ -60,7 +60,8 @@ export interface FlowDescriptor {
     | 'add-device'
     | 'remove-device'
     | 'read-holdings'
-    | 'issue-grant';
+    | 'issue-grant'
+    | 'revoke-grant';
   /** The device entry a device flow targets. */
   readonly commitmentHex?: string;
   /** Scope context shown before an owner signs a grant issue call. */
