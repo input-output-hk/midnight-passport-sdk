@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { jubjub } from '@noble/curves/misc.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 import {
+  grantOriginHash,
   publishJubjubGrantBookkeeping,
   recoverPendingJubjubGrants,
 } from '../packages/account/dist/index.js';
@@ -9,7 +12,15 @@ import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js
 /** @param {Uint8Array} bytes */
 const hex = (bytes) => Buffer.from(bytes).toString('hex');
 const account = 'ab'.repeat(32);
-const grantId = 'cd'.repeat(32);
+const grantee = jubjub.Point.BASE;
+const grantId = hex(
+  pureCircuits.derive_grant_id_with_jubjub(
+    { bytes: Buffer.from(account, 'hex') },
+    grantee.toAffine(),
+    grantOriginHash('example.org'),
+    0n,
+  ),
+);
 const owner = pureCircuits.compute_public_point_with_jubjub(7n);
 const encKey = new Uint8Array(32).fill(8);
 const header = new Uint8Array(192).fill(0xa1);
@@ -22,7 +33,7 @@ const book = {
   grantId,
   slot: 0,
   scopeSalt: '09'.repeat(32),
-  granteePublicKey: '10'.repeat(32),
+  granteePublicKey: hex(grantee.toBytes()),
   object: { color: '34'.repeat(32), recipient: { kind: 'any' }, maxCoinValue: '100' },
 };
 /** @type {import('../packages/account/dist/jubjub-grant-issue.js').StagedJubjubGrant} */
@@ -67,6 +78,7 @@ function fixture(initialInbox = [], read = false) {
   let counter = BigInt(initialInbox.length ? 2 : 1);
   let published = false;
   let active = true;
+  let wrongCommitment = false;
   /** @type {import('../packages/account/dist/ports/index.js').AccountRecord} */
   let record = {
     address: account,
@@ -88,6 +100,23 @@ function fixture(initialInbox = [], read = false) {
         calls.push('roster');
         return active ? [grantId] : [];
       },
+    },
+    commitments: {
+      readGrantCommitment: async () => ({
+        active,
+        read: opening.scope.read === true,
+        authNonce: nonce,
+        objectCommit: wrongCommitment
+          ? new Uint8Array(32)
+          : pureCircuits.derive_grant_object_commit(
+              Buffer.from(book.scopeSalt, 'hex'),
+              Buffer.from(book.object.color, 'hex'),
+              0n,
+              new Uint8Array(32),
+              100n,
+            ),
+        readPkHash: read ? sha256(Buffer.from(readPublicKey, 'hex')) : new Uint8Array(32),
+      }),
     },
     journal: {
       stage: async () => {},
@@ -221,7 +250,14 @@ function fixture(initialInbox = [], read = false) {
       },
     },
   };
-  return { ports, calls, inbox, published: () => published, revoke: () => (active = false) };
+  return {
+    ports,
+    calls,
+    inbox,
+    published: () => published,
+    revoke: () => (active = false),
+    corrupt: () => (wrongCommitment = true),
+  };
 }
 
 test('confirmed grant publishes two sealed parts and marks its journal complete', async () => {
@@ -233,6 +269,17 @@ test('confirmed grant publishes two sealed parts and marks its journal complete'
   assert.deepEqual(inbox, [header, object]);
   assert.equal(published(), true);
   assert.ok(calls.indexOf('published') > calls.lastIndexOf('append'));
+});
+
+test('a replaced live grant commitment leaves staged bookkeeping unpublished', async () => {
+  const { ports, calls, inbox, published, corrupt } = fixture();
+  corrupt();
+  await assert.rejects(publishJubjubGrantBookkeeping({ hint, grantId }, ports), {
+    code: 'GrantScopeInvalid',
+  });
+  assert.deepEqual(inbox, []);
+  assert.equal(published(), false);
+  assert.ok(!calls.includes('append'));
 });
 
 test('read grant publication confirms the view seal and resumes a missing seal', async () => {

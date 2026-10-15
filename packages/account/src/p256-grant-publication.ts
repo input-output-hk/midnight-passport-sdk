@@ -2,6 +2,8 @@ import type { FlowOptions } from '@input-output-hk/mn-passport-protocol';
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow } from './flow.js';
+import { verifyStagedGrantCommitment } from './grant-opening-check.js';
+import type { GrantScopePure } from './grant-scope.js';
 import {
   grantObjectMatches,
   isPublishableReadGrant,
@@ -18,6 +20,7 @@ import type {
   AccountRecordStore,
   AccountViewingKey,
   ActiveGrantSource,
+  GrantCommitmentSource,
   Authoriser,
   Chain,
   P256PublicKey,
@@ -26,13 +29,15 @@ import type {
 export interface PublishP256GrantPorts {
   readonly networkId: string;
   readonly bindingId: 'acc-s3r1.1';
-  readonly pure: AccPureCircuits & {
-    challenge_append_inbox_with_p256: NonNullable<
-      AccPureCircuits['challenge_append_inbox_with_p256']
-    >;
-  };
+  readonly pure: AccPureCircuits &
+    GrantScopePure & {
+      challenge_append_inbox_with_p256: NonNullable<
+        AccPureCircuits['challenge_append_inbox_with_p256']
+      >;
+    };
   readonly chain: Chain;
   readonly grants: ActiveGrantSource;
+  readonly commitments: GrantCommitmentSource;
   readonly journal: GrantPublicationJournal;
   readonly records: AccountRecordStore;
   readonly viewingKey: AccountViewingKey;
@@ -194,10 +199,16 @@ export async function publishP256GrantBookkeeping(
     const oldKey = view.encKey.slice();
     const self = { bytes: fromHex(hint.address) };
     const appendTxHashes: string[] = [];
+    let currentOpening = opening;
     const active = async () => {
-      if (!(await ports.grants.readActiveGrantIds(hint.address)).includes(grantId))
-        throw new PassportConnectorError('GrantRevoked', 'The grant is no longer active.');
+      const live = await flow.step('grant.roster', () =>
+        ports.commitments.readGrantCommitment(hint.address, grantId),
+      );
+      verifyStagedGrantCommitment(currentOpening, live, ports.pure);
+      if (live!.authNonce !== view.authNonce)
+        throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster is stale.');
     };
+    await active();
     return await ports.authoriser.withKeySession(
       async () => {
         const record = await ports.records.read();
@@ -225,6 +236,8 @@ export async function publishP256GrantBookkeeping(
           canonical(staged) !== approved
         )
           throw new PassportConnectorError('GrantScopeInvalid', 'The staged opening changed.');
+        currentOpening = staged;
+        await active();
         const keyring = () => ({
           account: hint.address,
           encKey: view.encKey,

@@ -281,6 +281,21 @@ test('interrupted settlement exposes the submitted grant ID and resumes without 
     ...ports,
     pure: pureCircuits,
     networkId: 'undeployed',
+    commitments: {
+      readGrantCommitment: async () => ({
+        active: true,
+        read: false,
+        authNonce: nonce,
+        objectCommit: pureCircuits.derive_grant_object_commit(
+          Buffer.from(opening().bookkeeping.scopeSalt, 'hex'),
+          Buffer.from(opening().bookkeeping.object.color, 'hex'),
+          0n,
+          new Uint8Array(32),
+          100n,
+        ),
+        readPkHash: new Uint8Array(32),
+      }),
+    },
     attempts: 2,
     sleep: async () => {},
     records: {

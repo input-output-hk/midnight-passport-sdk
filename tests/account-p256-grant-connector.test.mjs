@@ -18,6 +18,8 @@ test('P-256 account issue publishes sealed bookkeeping and recovery skips comple
   const active = [];
   /** @type {string[]} */
   const pending = [];
+  /** @type {Map<string, {active: boolean, read: boolean, objectCommit: Uint8Array, readPkHash: Uint8Array}>} */
+  const commitments = new Map();
   const ports = {
     ...fake,
     network: { ...fake.network, bindingId: 'acc-s3r1.1' },
@@ -44,6 +46,12 @@ test('P-256 account issue publishes sealed bookkeeping and recovery skips comple
         authNonce: [...fake.ledger.values()][0]?.authNonce ?? 0n,
         ids: active,
       }),
+    },
+    grantCommitments: {
+      readGrantCommitment: async (/** @type {string} */ _account, /** @type {string} */ id) => {
+        const held = commitments.get(id);
+        return held && { ...held, authNonce: [...fake.ledger.values()][0]?.authNonce ?? 0n };
+      },
     },
     grantJournal: {
       stage: async (
@@ -94,6 +102,18 @@ test('P-256 account issue publishes sealed bookkeeping and recovery skips comple
         ledger.entries.add(newEntry);
         ledger.authNonce++;
         active.push(grantId);
+        commitments.set(grantId, {
+          active: true,
+          read: /** @type {boolean} */ (request.args[4]),
+          objectCommit: pureCircuits.derive_grant_object_commit(
+            /** @type {Uint8Array} */ (request.args[17]),
+            /** @type {Uint8Array} */ (request.args[5]),
+            /** @type {bigint} */ (request.args[6]),
+            /** @type {Uint8Array} */ (request.args[7]),
+            /** @type {bigint} */ (request.args[8]),
+          ),
+          readPkHash: /** @type {Uint8Array} */ (request.args[13]),
+        });
         return { txHash: 'issue-tx' };
       },
     },

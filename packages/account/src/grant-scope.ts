@@ -119,7 +119,7 @@ const readKey = (value: string): Uint8Array => {
     invalid('read public key is not a sealable X25519 point');
   return bytes;
 };
-const granteePoint = (value: string): CurvePoint => {
+export const granteePoint = (value: string): CurvePoint => {
   let point: ReturnType<typeof jubjub.Point.fromBytes>;
   try {
     point = jubjub.Point.fromBytes(bytes32('grantee public key', value));
@@ -131,6 +131,18 @@ const granteePoint = (value: string): CurvePoint => {
 };
 const same = (a: Uint8Array, b: Uint8Array): boolean =>
   a.length === b.length && a.every((value, index) => value === b[index]);
+
+/** The relying-party hash used to derive an ACC grant id. */
+export function grantOriginHash(origin: string): Uint8Array {
+  if (!origin || origin.trim() !== origin) invalid('origin must be a nonempty rp id');
+  const tag = new Uint8Array(32);
+  tag.set(ORIGIN_TAG);
+  const originBytes = utf8ToBytes(origin);
+  const preimage = new Uint8Array(tag.length + originBytes.length);
+  preimage.set(tag);
+  preimage.set(originBytes, tag.length);
+  return sha256(preimage);
+}
 
 /** Validate Lace's request rules and the pinned contract's issue assertions before any ceremony. */
 function scopeArgs(
@@ -224,8 +236,7 @@ export function prepareJubjubGrant(
     ).crypto.getRandomValues(new Uint8Array(length)),
 ): PreparedJubjubGrant {
   const account = bytes32('account', input.account);
-  if (!input.origin || input.origin.trim() !== input.origin)
-    invalid('origin must be a nonempty rp id');
+  const originHash = grantOriginHash(input.origin);
   if (!Number.isSafeInteger(input.nowSeconds) || input.nowSeconds < 0)
     invalid('nowSeconds must be whole seconds');
   const active = new Set(input.activeGrantIds.map((id) => toHex(bytes32('active grant id', id))));
@@ -235,13 +246,6 @@ export function prepareJubjubGrant(
       'Account has the maximum 16 active grants.',
     );
   const { args, grantee } = scopeArgs(input.scope, input.nowSeconds);
-  const tag = new Uint8Array(32);
-  tag.set(ORIGIN_TAG);
-  const originBytes = utf8ToBytes(input.origin);
-  const preimage = new Uint8Array(tag.length + originBytes.length);
-  preimage.set(tag);
-  preimage.set(originBytes, tag.length);
-  const originHash = sha256(preimage);
   let slot = -1;
   let grantId: Uint8Array | undefined;
   for (let candidate = 0; candidate < 256; candidate++) {

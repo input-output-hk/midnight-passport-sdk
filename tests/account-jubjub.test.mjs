@@ -12,6 +12,24 @@ const address = 'ab'.repeat(32);
 const credentialId = Uint8Array.of(1, 2, 3);
 const hex = (/** @type {Uint8Array} */ bytes) => Buffer.from(bytes).toString('hex');
 
+/** @param {import('../packages/account/dist/jubjub-grant-issue.js').StagedJubjubGrant | undefined} staged @param {bigint} authNonce */
+const grantCommitment = (staged, authNonce) =>
+  staged && {
+    active: true,
+    read: staged.scope.read === true,
+    authNonce,
+    objectCommit: pureCircuits.derive_grant_object_commit(
+      Buffer.from(staged.bookkeeping.scopeSalt, 'hex'),
+      Buffer.from(staged.bookkeeping.object.color, 'hex'),
+      0n,
+      new Uint8Array(32),
+      BigInt(staged.bookkeeping.object.maxCoinValue),
+    ),
+    readPkHash: staged.bookkeeping.readPublicKey
+      ? sha256(Buffer.from(staged.bookkeeping.readPublicKey, 'hex'))
+      : new Uint8Array(32),
+  };
+
 function world() {
   /** @type {import('../packages/account/dist/ports/index.js').AccountHint | undefined} */
   let hint;
@@ -397,6 +415,9 @@ test('JubJub account issueGrant pins the host origin and returns after sealed pu
         ids: [...w.activeGrantIds],
       }),
     },
+    grantCommitments: {
+      readGrantCommitment: async () => grantCommitment(staged, w.grantNonce()),
+    },
     grantDetails: {
       readGrant: async (_account, grantId) => ({
         active: w.activeGrantIds.includes(grantId),
@@ -491,6 +512,9 @@ test('JubJub read grant rotates before issue and publishes the new grantee seal'
         authNonce: w.grantNonce(),
         ids: [...w.activeGrantIds],
       }),
+    },
+    grantCommitments: {
+      readGrantCommitment: async () => grantCommitment(staged, w.grantNonce()),
     },
     grantJournal: {
       stage: async (opening) => {

@@ -2,6 +2,8 @@ import type { FlowOptions } from '@input-output-hk/mn-passport-protocol';
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow } from './flow.js';
+import { verifyStagedGrantCommitment } from './grant-opening-check.js';
+import type { GrantScopePure } from './grant-scope.js';
 import {
   grantObjectMatches,
   isPublishableReadGrant,
@@ -25,6 +27,7 @@ import type {
   Authoriser,
   Chain,
   CurvePoint,
+  GrantCommitmentSource,
   JubjubPureCircuits,
 } from './ports/index.js';
 
@@ -98,12 +101,14 @@ export interface PublishJubjubGrantInput extends FlowOptions {
 export interface PublishJubjubGrantPorts {
   readonly bindingId: 'acc-s3r1.1';
   readonly networkId: string;
-  readonly pure: Pick<
-    JubjubPureCircuits,
-    'derive_device_entry_with_jubjub' | 'challenge_append_inbox_with_jubjub'
-  >;
+  readonly pure: GrantScopePure &
+    Pick<
+      JubjubPureCircuits,
+      'derive_device_entry_with_jubjub' | 'challenge_append_inbox_with_jubjub'
+    >;
   readonly chain: Chain;
   readonly grants: ActiveGrantSource;
+  readonly commitments: GrantCommitmentSource;
   readonly journal: GrantPublicationJournal;
   readonly viewingKey: AccountViewingKey;
   readonly authoriser: Authoriser;
@@ -213,10 +218,6 @@ export async function publishJubjubGrantBookkeeping(
     let view = requireSnapshot(await flow.step('chain.read', read));
     const self = { bytes: fromHex(hint.address) };
     const appendTxHashes: string[] = [];
-    const requireActiveGrant = async () => {
-      if (!(await ports.grants.readActiveGrantIds(hint.address)).includes(grantId))
-        throw new PassportConnectorError('GrantRevoked', 'The grant is no longer active.');
-    };
     const opening = await flow.step('grant.stage', () => ports.journal.load(hint.address, grantId));
     if (
       !isPublishableUnshieldedGrant(opening, hint.address, grantId) &&
@@ -226,6 +227,16 @@ export async function publishJubjubGrantBookkeeping(
         'GrantScopeInvalid',
         'No supported staged grant opening exists.',
       );
+    let currentOpening = opening;
+    const requireActiveGrant = async () => {
+      const live = await flow.step('grant.roster', () =>
+        ports.commitments.readGrantCommitment(hint.address, grantId),
+      );
+      verifyStagedGrantCommitment(currentOpening, live, ports.pure);
+      if (live!.authNonce !== view.authNonce)
+        throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster is stale.');
+    };
+    await requireActiveGrant();
     const approved = {
       scope: JSON.parse(JSON.stringify(opening.scope)) as typeof opening.scope,
       scopeDigest: opening.scopeDigest,
@@ -265,6 +276,8 @@ export async function publishJubjubGrantBookkeeping(
             'GrantScopeInvalid',
             'The staged grant changed after consent.',
           );
+        currentOpening = staged;
+        await requireActiveGrant();
         const publicKey = await ports.authoriser.devicePublicKey();
         if (!samePoint(publicKey, hint.publicKey))
           throw new PassportConnectorError(

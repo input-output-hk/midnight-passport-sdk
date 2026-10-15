@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { p256 } from '@noble/curves/nist.js';
+import { jubjub } from '@noble/curves/misc.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 import {
+  grantOriginHash,
   publishP256GrantBookkeeping,
   recoverPendingP256Grants,
 } from '../packages/account/dist/index.js';
@@ -10,7 +13,15 @@ import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js
 /** @param {Uint8Array} bytes */
 const hex = (bytes) => Buffer.from(bytes).toString('hex');
 const account = 'ab'.repeat(32);
-const grantId = 'cd'.repeat(32);
+const grantee = jubjub.Point.BASE;
+const grantId = hex(
+  pureCircuits.derive_grant_id_with_jubjub(
+    { bytes: Buffer.from(account, 'hex') },
+    grantee.toAffine(),
+    grantOriginHash('example.org'),
+    0n,
+  ),
+);
 const key = { ...p256.Point.BASE.toAffine(), identity: false };
 const policy = {
   rp_id_hash: new Uint8Array(32).fill(9),
@@ -25,7 +36,7 @@ const book = {
   grantId,
   slot: 0,
   scopeSalt: '09'.repeat(32),
-  granteePublicKey: '10'.repeat(32),
+  granteePublicKey: hex(grantee.toBytes()),
   object: { color: '34'.repeat(32), recipient: { kind: 'any' }, maxCoinValue: '100' },
 };
 /** @type {import('../packages/account/dist/ports/index.js').AccountHint} */
@@ -64,6 +75,7 @@ function fixture(initial = [], read = false) {
   let nonce = 1n;
   let counter = 1n + BigInt(initial.length);
   let published = false;
+  let wrongCommitment = false;
   /** @type {import('../packages/account/dist/ports/index.js').AccountRecord} */
   let record = {
     address: account,
@@ -90,6 +102,23 @@ function fixture(initial = [], read = false) {
     sleep: async () => {},
     attempts: 2,
     grants: { readActiveGrantIds: async () => [grantId] },
+    commitments: {
+      readGrantCommitment: async () => ({
+        active: true,
+        read,
+        authNonce: nonce,
+        objectCommit: wrongCommitment
+          ? new Uint8Array(32)
+          : pureCircuits.derive_grant_object_commit(
+              Buffer.from(book.scopeSalt, 'hex'),
+              Buffer.from(book.object.color, 'hex'),
+              0n,
+              new Uint8Array(32),
+              100n,
+            ),
+        readPkHash: read ? sha256(Buffer.from('77'.repeat(32), 'hex')) : new Uint8Array(32),
+      }),
+    },
     journal: {
       stage: async () => {},
       load: async () => opening,
@@ -189,7 +218,13 @@ function fixture(initial = [], read = false) {
       },
     },
   };
-  return { ports, calls, inbox, published: () => published };
+  return {
+    ports,
+    calls,
+    inbox,
+    published: () => published,
+    corrupt: () => (wrongCommitment = true),
+  };
 }
 
 test('P-256 grant publication appends two seals and resumes without duplicate appends', async () => {
@@ -204,6 +239,17 @@ test('P-256 grant publication appends two seals and resumes without duplicate ap
     [],
   );
   assert.ok(!resumed.calls.includes('seal'));
+});
+
+test('P-256 publication refuses a stale opening before sealing or append', async () => {
+  const { ports, calls, inbox, published, corrupt } = fixture();
+  corrupt();
+  await assert.rejects(publishP256GrantBookkeeping({ hint, grantId }, ports), {
+    code: 'GrantScopeInvalid',
+  });
+  assert.deepEqual(inbox, []);
+  assert.equal(published(), false);
+  assert.ok(!calls.includes('seal'));
 });
 
 test('P-256 read grant resumes its missing view seal', async () => {

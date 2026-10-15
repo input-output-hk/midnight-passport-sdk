@@ -38,20 +38,15 @@ export interface GrantDetailSource {
 }
 
 /** Live ACC commitments used to authenticate a staged grant opening before inbox publication. */
+export interface LiveGrantCommitment {
+  readonly active: boolean;
+  readonly read: boolean;
+  readonly authNonce: bigint;
+  readonly objectCommit: Uint8Array;
+  readonly readPkHash: Uint8Array;
+}
 export interface GrantCommitmentSource {
-  readGrantCommitment(
-    account: string,
-    grantId: string,
-  ): Promise<
-    | {
-        readonly active: boolean;
-        readonly read: boolean;
-        readonly authNonce: bigint;
-        readonly objectCommit: Uint8Array;
-        readonly readPkHash: Uint8Array;
-      }
-    | undefined
-  >;
+  readGrantCommitment(account: string, grantId: string): Promise<LiveGrantCommitment | undefined>;
 }
 
 /** Complete live ACC grant map, including tombstones, for revoke-all generation checks. */
@@ -469,6 +464,8 @@ export interface PassportPorts {
   readonly readGrants?: ActiveReadGrantTargetSource;
   /** Live ACC grant map, used to pin issue consent and confirm settlement. */
   readonly grants?: ActiveGrantSnapshotSource;
+  /** Chain-backed commitments that authenticate staged openings before publication. */
+  readonly grantCommitments?: GrantCommitmentSource;
   /** Live individual grant detail and inactive tombstones for settled revocation. */
   readonly grantDetails?: GrantDetailSource;
   readonly grantRoster?: GrantRosterSource;

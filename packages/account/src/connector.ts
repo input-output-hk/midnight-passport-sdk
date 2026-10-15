@@ -1308,6 +1308,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         !viewingKey ||
         !ports.records ||
         !ports.grants ||
+        !ports.grantCommitments ||
         !ports.grantJournal ||
         !ports.grantOrigin
       )
@@ -1336,6 +1337,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           authoriser,
           records: ports.records,
           grants: ports.grants,
+          commitments: ports.grantCommitments,
           journal: ports.grantJournal,
           viewingKey,
           random,
@@ -1359,6 +1361,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         !viewingKey ||
         !ports.records ||
         !ports.grants ||
+        !ports.grantCommitments ||
         !ports.grantJournal ||
         typeof (ports.grantJournal as Partial<GrantRecoveryJournal>).pending !== 'function'
       )
@@ -1377,6 +1380,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           pure,
           chain: await chain(),
           grants: ports.grants,
+          commitments: ports.grantCommitments,
           journal: ports.grantJournal as GrantRecoveryJournal,
           viewingKey,
           authoriser,

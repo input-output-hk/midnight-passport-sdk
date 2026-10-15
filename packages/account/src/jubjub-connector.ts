@@ -1202,7 +1202,13 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       rotateViewingKey(record, options, commitmentHex) as Promise<DeviceRemovalResult>,
     addDevice: (reader, options) => addDevice(record, reader, options),
     issueGrant: async (scope, options = {}) => {
-      if (!ports.records || !ports.grants || !ports.grantJournal || !ports.grantOrigin)
+      if (
+        !ports.records ||
+        !ports.grants ||
+        !ports.grantCommitments ||
+        !ports.grantJournal ||
+        !ports.grantOrigin
+      )
         throw new PassportConnectorError(
           'BindingUnsupported',
           'Grant issue needs local records, a live grant source, durable journal and host origin.',
@@ -1232,6 +1238,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           authoriser,
           records: ports.records,
           grants: ports.grants,
+          commitments: ports.grantCommitments,
           journal: ports.grantJournal,
           viewingKey,
           random: fresh,
@@ -1326,6 +1333,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       if (
         !ports.records ||
         !ports.grants ||
+        !ports.grantCommitments ||
         !ports.grantJournal ||
         typeof (ports.grantJournal as Partial<GrantRecoveryJournal>).pending !== 'function'
       )
@@ -1335,7 +1343,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
         );
       if (network.bindingId !== 'acc-s3r1.1')
         throw new PassportConnectorError('BindingUnsupported', 'Unsupported ACC grant binding.');
-      const pure = requirePure((await readBinding()).pureCircuits);
+      const pure = requireGrantPure((await readBinding()).pureCircuits);
       return recoverPendingJubjubGrants(
         { hint: record, ...options },
         {
@@ -1344,6 +1352,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           pure,
           chain: await readChain(),
           grants: ports.grants,
+          commitments: ports.grantCommitments,
           journal: ports.grantJournal as GrantRecoveryJournal,
           viewingKey,
           authoriser,

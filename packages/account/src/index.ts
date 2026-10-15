@@ -2,6 +2,7 @@ export * from './codec.js';
 export * from './errors.js';
 export * from './holdings.js';
 export * from './grant-scope.js';
+export * from './grant-opening-check.js';
 export * from './jubjub-grant-issue.js';
 export * from './jubjub-grant-publication.js';
 export * from './p256-grant-publication.js';

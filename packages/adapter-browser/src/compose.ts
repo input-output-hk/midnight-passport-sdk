@@ -3,6 +3,7 @@ import type {
   AccountDirectory,
   AccountRecordStore,
   ActiveGrantSnapshotSource,
+  GrantCommitmentSource,
   GrantDetailSource,
   GrantRosterSource,
   ActiveReadGrantTargetSource,
@@ -46,6 +47,7 @@ export interface BrowserPassportConfig {
   readonly holdings?: VerifiedHoldingSource;
   readonly readGrants?: ActiveReadGrantTargetSource;
   readonly grants?: ActiveGrantSnapshotSource;
+  readonly grantCommitments?: GrantCommitmentSource;
   readonly grantDetails?: GrantDetailSource;
   readonly grantRoster?: GrantRosterSource;
   readonly grantJournal?: GrantPublicationJournal;
@@ -107,6 +109,7 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
     ...(config.holdings && { holdings: config.holdings }),
     ...(config.readGrants && { readGrants: config.readGrants }),
     ...(config.grants && { grants: config.grants }),
+    ...(config.grantCommitments && { grantCommitments: config.grantCommitments }),
     ...(config.grantDetails && { grantDetails: config.grantDetails }),
     ...(config.grantRoster && { grantRoster: config.grantRoster }),
     ...(config.grantJournal && { grantJournal: config.grantJournal }),
