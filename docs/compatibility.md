@@ -69,6 +69,20 @@ compiles that adapter with Lace's current `PassportAuthoriser`. The
 circuit-level prover still needs a transaction pipeline adapter. Network
 config additionally needs the ACC binding and manifest pins.
 
+On 2026/10/15, SDK commit `8905dbcb29d48959075768c34a85682ab8ccd6be`
+was packed locally as nine `0.1.0-dev.2` tarballs. The exact Lace source check
+above passed against those tarballs. The release consumer smoke also loaded all
+nine entry points, compiled the Lace-shaped host fixture, built a scratch Vite
+browser app, and restored and hash-verified the pinned `deposit_unshielded`
+key. This `dev.2` pack was local validation, not a registry release.
+
+The scratch browser build emitted ledger v8 and v9 WASM assets. Dependency
+inspection found one `@midnightntwrk/ledger-v8@8.1.2` and one
+`@midnightntwrk/ledger-v9@1.0.0-rc.5` in the SDK adapter path: upstream
+`midnight-js-protocol@5.0.0-rc.2` supports both ledger generations. These are
+two different protocol runtimes, not duplicate copies of one version. Lace's
+own module bundle and hosted transaction path remain to be measured.
+
 | Lace seam | SDK port | Current result |
 | --- | --- | --- |
 | `FeeSponsor.balanceAndSign` | `FeeSponsor` | Direct structural assignment |
