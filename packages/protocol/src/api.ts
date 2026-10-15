@@ -199,6 +199,8 @@ export interface PassportConnectorAPI {
   readonly bindingId: string;
   createAccount(options: CreateAccountOptions): Promise<PassportAccount>;
   openAccount(options?: FlowOptions): Promise<PassportAccount>;
+  /** Open a live ACC by its address when this passkey has no directory hint yet. */
+  openAccountAt?(address: string, options?: FlowOptions): Promise<PassportAccount>;
 }
 
 export interface ConnectOptions {

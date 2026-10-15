@@ -6,13 +6,17 @@ import { recipeDeviceKeyring } from '../packages/keys/dist/index.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 import { sealInboxCoin } from '../packages/keys/dist/inbox-coin.js';
 import { x25519 } from '@noble/curves/ed25519.js';
-import { fakeAuthoriser, FAKE_POLICY } from '../packages/account/dist/testing/index.js';
+import {
+  fakeAuthoriser,
+  fakeCredentials,
+  FAKE_POLICY,
+} from '../packages/account/dist/testing/index.js';
 
-const viewingKey = () =>
+const viewingKey = (value = 9) =>
   recipeDeviceKeyring({
     withSession: (operation) => operation(),
-    deriveSecret: async () => new Uint8Array(32).fill(9),
-    deviceSecret: async () => new Uint8Array(32).fill(9),
+    deriveSecret: async () => new Uint8Array(32).fill(value),
+    deviceSecret: async () => new Uint8Array(32).fill(value),
   });
 const hex = (/** @type {Uint8Array} */ bytes) => Buffer.from(bytes).toString('hex');
 
@@ -132,6 +136,62 @@ test('P-256 owner delivers a sealed key before enrolling a new live device', asy
   assert.ok(ledger.entries.has(result.commitmentHex));
   assert.equal(result.nextUseCounter, 5n);
   await assert.rejects(account.addDevice(reader), { code: 'DeviceRosterInvalid' });
+});
+
+test('an enrolled P-256 passkey opens its ACC by address without a directory hint', async () => {
+  const fake = createFakePorts();
+  const owner = {
+    ...fake,
+    viewingKey: viewingKey(),
+    authoriser: {
+      ...fake.authoriser,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    readGrants: {
+      readActiveReadGrantTargets: async () => ({
+        authNonce: [...fake.ledger.values()][0]?.authNonce ?? 0n,
+        targets: [],
+      }),
+    },
+  };
+  const account = await createPassportAccounts(owner).createAccount({
+    userName: 'owner',
+    retireAuthority: true,
+  });
+  const ledger = fake.ledger.get(account.address);
+  assert.ok(ledger);
+  ledger.specVersion = 3;
+  assert.ok(account.addDevice);
+  const joining = fakeAuthoriser({ device: 1 });
+  const reader = {
+    scheme: /** @type {const} */ ('p256-webauthn'),
+    readerPublicKey: hex(x25519.getPublicKey(new Uint8Array(32).fill(7))),
+    devicePublicKey: await joining.devicePublicKeyHex(),
+    policy: FAKE_POLICY,
+  };
+  await account.addDevice(reader);
+  const joiningPorts = {
+    ...owner,
+    authoriser: {
+      ...joining,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    credentials: fakeCredentials({ authoriser: joining }),
+    viewingKey: viewingKey(7),
+  };
+  const api = createPassportAccounts(joiningPorts);
+  await assert.rejects(api.openAccount(), { code: 'AccountNotFound' });
+  assert.ok(api.openAccountAt);
+  await assert.rejects(api.openAccountAt('bad-address'), { code: 'AccountNotFound' });
+  await assert.rejects(api.openAccountAt('cc'.repeat(32)), { code: 'AccountNotFound' });
+  const recovered = await api.openAccountAt(account.address);
+  assert.equal(recovered.address, account.address);
+  assert.equal((await recovered.state()).entryCount, 2);
+  const wrongReader = createPassportAccounts({ ...joiningPorts, viewingKey: viewingKey(8) });
+  assert.ok(wrongReader.openAccountAt);
+  await assert.rejects(wrongReader.openAccountAt(account.address), {
+    code: 'EncryptionKeyMismatch',
+  });
 });
 
 test('P-256 enrollment refuses active read grants before key delivery', async () => {

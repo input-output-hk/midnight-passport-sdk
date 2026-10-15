@@ -52,10 +52,13 @@ const webRandom = (length: number) =>
 type P256Hint = AccountHint & {
   readonly credentialId: Uint8Array;
   readonly policy: WebAuthnPolicy;
+  /** Active address-based recovery has no local creation entries, but validates the ledger envelope. */
+  readonly sealed?: true;
 };
 const isP256 = (hint: AccountHint): hint is P256Hint =>
   hint.scheme === 'p256-webauthn' && hint.credentialId !== undefined && hint.policy !== undefined;
-type SealedP256Hint = P256Hint & { readonly keyEntries: readonly Uint8Array[] };
+type SealedP256Hint = P256Hint &
+  ({ readonly keyEntries: readonly Uint8Array[] } | { readonly sealed: true });
 const validSealedEntries = (entries: readonly Uint8Array[] | undefined): boolean =>
   entries?.length === 2 &&
   entries[0]?.length === 192 &&
@@ -65,7 +68,7 @@ const validSealedEntries = (entries: readonly Uint8Array[] | undefined): boolean
   (entries[1][0] === 0xd4 || entries[1][0] === 0xd5) &&
   entries[1][1] === 1;
 const isSealedP256 = (hint: P256Hint): hint is SealedP256Hint =>
-  validSealedEntries(hint.keyEntries);
+  validSealedEntries(hint.keyEntries) || (hint.status === 'active' && hint.sealed === true);
 /** The circuits' P-256 key; a point that already is one passes as is, so the same key reaches the chain. */
 const p256 = (point: CurvePoint): P256PublicKey =>
   (point as Partial<P256PublicKey>).identity === false
@@ -252,12 +255,17 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         'BindingUnsupported',
         'P-256 sealed accounts need an inbox reader, keyring and compressed device key.',
       );
-    const entries = pending ? [...inboxEntries, ...record.keyEntries] : [...inboxEntries];
+    if (pending && !validSealedEntries(record.keyEntries))
+      throw new PassportConnectorError(
+        'BindingUnsupported',
+        'The pending ACC has no sealed creation entries.',
+      );
+    const entries = pending ? [...inboxEntries, ...record.keyEntries!] : [...inboxEntries];
     const check = async () => {
       const opened = await keyring.openInbox(
         networkId,
         { account: record.address, encKey, envelopes: entries.reverse() },
-        pending ? record.keyEntries : [],
+        pending ? record.keyEntries! : [],
       );
       if (pending) {
         const device = opened[1];
@@ -374,7 +382,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     }
     if ((await findCounter(flow, record, view)) === undefined) throw notHeld(record);
     if (pending) {
-      for (const entry of record.keyEntries) {
+      for (const entry of record.keyEntries!) {
         if (view.inboxEntries?.some((held) => equalBytes(held, entry))) continue;
         view = await appendP256(flow, record, entry, view);
       }
@@ -974,6 +982,48 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         },
         onProgress,
       ),
+    openAccountAt: (address, options = {}) =>
+      run(options, async (flow) => {
+        if (!/^[0-9a-f]{64}$/.test(address))
+          throw new PassportConnectorError(
+            'AccountNotFound',
+            'ACC address must be 32-byte lowercase hex.',
+          );
+        if (!viewingKey || !authoriser.devicePublicKeyHex)
+          throw new PassportConnectorError(
+            'BindingUnsupported',
+            'Address recovery needs a sealed P-256 keyring.',
+          );
+        const identity = await flow.step('passkey.identify', () => credentials.identify());
+        const publicKey = await authoriser.devicePublicKey();
+        const device = await authoriser.deviceBinding!();
+        if (
+          !equalBytes(identity.credentialId, device.credentialId) ||
+          !identity.owns(publicKey, device.policy)
+        )
+          throw new PassportConnectorError(
+            'NotAuthorised',
+            'The selected passkey does not match its device binding.',
+          );
+        const record: SealedP256Hint = {
+          address,
+          scheme: 'p256-webauthn',
+          credentialId: identity.credentialId.slice(),
+          publicKey,
+          policy: device.policy,
+          status: 'active',
+          sealed: true,
+        };
+        const view = await readView(flow, record);
+        if (!view.booted || view.specVersion !== 3)
+          throw new PassportConnectorError(
+            'AccountNotFound',
+            'The selected ACC is not an active spec-3 account.',
+          );
+        if ((await findCounter(flow, record, view)) === undefined) throw notHeld(record);
+        await sealedKeyring(record, view, false);
+        return account(record);
+      }),
     openAccount: (options = {}) =>
       run(options, async (flow) => {
         const identity = await flow.step('passkey.identify', () => credentials.identify());
