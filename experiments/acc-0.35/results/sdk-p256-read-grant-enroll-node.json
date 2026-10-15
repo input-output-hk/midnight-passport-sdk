@@ -1,0 +1,90 @@
+{
+  "verdict": "PASS",
+  "bindingId": "acc-s3r1.1",
+  "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "contractSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
+  "account": "31620182079b6f290c8b2935cd438c289891a9f11a9560c6a0da38ef62c45b34",
+  "networkId": "undeployed",
+  "ownerScheme": "p256-webauthn",
+  "joinedScheme": "p256-webauthn",
+  "grantId": "cbb70c58d52fd4eeeb5c4f164e2f43bae2de09abfdb80a270043cb42f760b111",
+  "readPublicKey": "13be4feaeaf204c7fd3358fc9c00721881d174278128227ec674f37f7fe97b6d",
+  "readGrantIssueTxHash": "0b15535594c9a0cd68335a0cb6514cf2264be2f0e49bc5d3ffe1aef2cb09457c",
+  "enrollmentRotationTxHash": "e55ed161773c9d2c389e3a4c92654c30dc5774d8c4d509cc26bdafd60b8e8ba1",
+  "readGrantPreserved": true,
+  "viewingKeyChangedDuringEnrollment": true,
+  "granteeOpenedInitialSeal": true,
+  "granteeOpenedRotatedSeal": true,
+  "initialSealRejectedAfterRotation": true,
+  "enrollmentCommitment": "46ea9344ddd468970e511e3b89e43876fd229b3ef4dd056d961428d2b0ca89d0",
+  "authNonceBeforeEnrollment": "8",
+  "authNonceAfterEnrollment": "15",
+  "transactions": [
+    {
+      "circuit": "activate_initial_device_with_p256",
+      "txHash": "0cc9dc336afbd2fc13a6c2c96753eb20eba18e18c2ef42b8c79b78458dd433c8"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "6ac577cefe69faed1a69b58940ddeaf1758914cc14a815c848dc7b6b4cbd3ad1"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "42ec92aa80e60578301c1b4a2e52500fba7c9dae0535f932c68830fd826f6f13"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "80fe691d00d4552c78839c1c5a83766107995686393bd6ac3074ce90fe9b7d80"
+    },
+    {
+      "circuit": "rotate_enc_key_with_p256",
+      "txHash": "e62e89021ead359bf91d7adce86908c40bbbb2c4dd9729ec7a8c7b1ed01d8028"
+    },
+    {
+      "circuit": "issue_grant_with_p256",
+      "txHash": "0b15535594c9a0cd68335a0cb6514cf2264be2f0e49bc5d3ffe1aef2cb09457c"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "d49961effd9fe29838bd05b63eb8c25ed75065147b88a83ed07ca8a9ace33355"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "e1b8c64657cec4f473ea2cb4f63df6147e16bd589df081da0d53083776f0284b"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "d34468fd964203d4efa5b46a6a8ec4f58ab9dbd3273e3b65b55a0588e9fa5349"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "0063d044b4f311ab72e7a4168f62f02f8e8460a36a768672eddcd64f96ed58d4"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "524916f42133d44896a853410387ec95ccf6e0d3cf4d37c43e51b42229e293a9"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "f73111f39b05793aabaad6305d9ff05ded2bfb32417cf34a3cde320e1bedc93a"
+    },
+    {
+      "circuit": "rotate_enc_key_with_p256",
+      "txHash": "e55ed161773c9d2c389e3a4c92654c30dc5774d8c4d509cc26bdafd60b8e8ba1"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "5f10af078935aba5699619444a039cedc7c6ea38d7e004e7b4fa26ce47fe5aa8"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "076e08ef629561f082729b7f170a1ec6add7127e84bd9a477e4faf8826af45be"
+    },
+    {
+      "circuit": "add_device_with_p256",
+      "txHash": "86bde569d5ef9118ca193bea1b49567d4a5bebfd257d00c6a20d823e89f082c9"
+    }
+  ],
+  "joinerOpenedByAddress": true,
+  "scope": "current account API read-grant issue and grant-preserving P-256 enrollment on pinned localnet"
+}

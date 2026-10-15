@@ -196,10 +196,22 @@ creation entries, delivered two sealed entries to a second P-256 device, enrolle
 that device, and opened the account independently with the joining device's
 PRF-derived reader key. The [evidence](../experiments/acc-0.35/results/sdk-p256-sealed-device-node.json)
 records the six account calls and the live roster change. The chain-backed grant
-adapter observed an empty read-grant roster; this run does not validate rotation
-with an active grant or Lace's own hosted runtime. A transient reset while polling
+adapter observed an empty read-grant roster. A transient reset while polling
 a proof job exposed an adapter gap: the v1 service client now retries that GET
 with the same cursor, without submitting another proof or replaying events.
+
+A second [account API probe](../experiments/acc-0.35/sdk-p256-read-grant-enroll-node.mjs)
+issued an active read grant through the P-256 owner API, checked its read public
+key against the live ACC grant hash, then enrolled a second P-256 device. The
+owner flow rotated the viewing key, published a fresh seal for that grant,
+preserved the grant-map entry, and delivered the new key to the joiner before
+enrollment. The read grantee opened the initial and replacement seals against
+their respective live ACC encryption keys; the initial seal was rejected after
+rotation. The joiner opened the account by address. The [localnet evidence](../experiments/acc-0.35/results/sdk-p256-read-grant-enroll-node.json)
+records the 15 transaction IDs and the asserted grant and ACC state. The probe's
+opening journal lives only for that run; production hosts still need durable
+grant openings and a chain-backed holding source. This validates the SDK
+composition on its own service, not Lace's hosted runtime or real WebAuthn.
 
 | Lace seam | SDK port | Current result |
 | --- | --- | --- |
