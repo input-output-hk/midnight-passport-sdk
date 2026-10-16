@@ -23,6 +23,7 @@ import {
 } from '@input-output-hk/mn-passport-protocol';
 import { tracedFetch } from './operation-trace.js';
 import { browserAccountRecords, browserGrantJournal } from './grant-journal.js';
+import { demoValueCall } from './value-call.js';
 
 export const SERVICE_URL = import.meta.env.VITE_PASSPORT_SERVICE_URL ?? 'http://localhost:8787';
 /** The artefact manifest hash this build pins (R18); the service's /v1/config is checked against it. */
@@ -131,6 +132,7 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
     sponsor,
     sponsorKeys: config,
     submitter: sponsor,
+    valueCalls: { call: (request) => demoValueCall(SERVICE_URL, request) },
     deployer: remoteV1Deployer(SERVICE_URL, { fetch: tracedFetch }),
     directory: demoDirectory(),
     holdings: holdingPort,

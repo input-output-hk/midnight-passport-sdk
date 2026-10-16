@@ -8,6 +8,7 @@ import type {
   GrantRosterSource,
   ActiveReadGrantTargetSource,
   Authoriser,
+  Chain,
   Deployer,
   FeeSponsor,
   Lazy,
@@ -43,6 +44,8 @@ export interface BrowserPassportConfig {
   readonly sponsor: FeeSponsor;
   readonly sponsorKeys: { readonly coinPublicKey: string; readonly encryptionPublicKey: string };
   readonly submitter: Submitter;
+  /** Host-owned value-capable call path for ACC withdrawals; the fee sponsor cannot move value. */
+  readonly valueCalls?: Pick<Chain, 'call'>;
   readonly deployer: Deployer;
   readonly directory: AccountDirectory;
   readonly holdings?: VerifiedHoldingSource;
@@ -99,7 +102,7 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
         import('@input-output-hk/mn-passport-adapter-midnight-js'),
         binding(),
       ]);
-      return createMidnightChain({
+      const chain = createMidnightChain({
         network: config.network,
         binding: module,
         prover: config.prover,
@@ -107,6 +110,14 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
         sponsorKeys: config.sponsorKeys,
         submitter: config.submitter,
       });
+      if (!config.valueCalls) return chain;
+      return {
+        readAccount: chain.readAccount,
+        call: (request) =>
+          request.circuit.startsWith('withdraw_unshielded')
+            ? config.valueCalls!.call(request)
+            : chain.call(request),
+      };
     },
     deployer: config.deployer,
     directory: config.directory,
