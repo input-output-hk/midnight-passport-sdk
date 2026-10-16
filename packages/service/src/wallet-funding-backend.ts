@@ -52,7 +52,7 @@ export function createWalletFundingBackend(
 
   return {
     eligible: async (address) => (await accountFor(address)) !== undefined,
-    fund: (request: ServiceWire.FundAccRequest) =>
+    fund: (request: ServiceWire.FundAccRequest, recordProgress) =>
       runExclusive(async () => {
         const account = await accountFor(request.accountAddress);
         if (!account) throw new Error('ACC is not an eligible deployed binding');
@@ -62,9 +62,12 @@ export function createWalletFundingBackend(
         const amount = BigInt(request.amount);
         if (amount > (1n << 128n) - 1n) throw new Error('deposit exceeds Uint128');
         const before = await balance(account, color);
+        await recordProgress?.({ stage: 'balance-observed', balanceBefore: before.toString() });
         const preparationTxId = await options.prepareDeposit?.(color, amount);
+        if (preparationTxId) await recordProgress?.({ stage: 'prepared', preparationTxId });
         const { txId } = await account.depositUnshielded(color, amount);
         if (!txId) throw new Error('deposit returned no transaction ID');
+        await recordProgress?.({ stage: 'submitted', txId });
         const deadline = now() + confirmationMs;
         for (;;) {
           const credited = await balance(account, color);

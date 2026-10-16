@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "../../experiments/acc-0.35/guard.sh && tsx src/main.ts",
+    "inspect": "../../experiments/acc-0.35/guard.sh && tsx src/inspect.ts",
     "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {

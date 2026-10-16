@@ -1,10 +1,19 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createServer, fundingRoute } from '../packages/service/dist/index.js';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import {
+  createFileFundingStore,
+  createServer,
+  fundingRoute,
+  inspectFileFundingStore,
+} from '../packages/service/dist/index.js';
 
 /** @typedef {import('../packages/protocol/dist/index.js').ServiceWire.FundAccRequest} FundAccRequest */
 /** @typedef {import('../packages/protocol/dist/index.js').ServiceWire.FundAccResponse} FundAccResponse */
 /** @typedef {import('../packages/service/dist/index.js').FundingStore} FundingStore */
+/** @typedef {import('../packages/service/dist/index.js').FundingProgress} FundingProgress */
 
 const address = 'ab'.repeat(32);
 const color = 'cd'.repeat(32);
@@ -44,11 +53,12 @@ function memoryStore() {
       assert.ok(old);
       old.result = result;
     },
+    async recordProgress() {},
   };
 }
 
 /**
- * @param {{authorize?: (request: import('node:http').IncomingMessage) => Promise<boolean>, eligible?: (address: string) => Promise<boolean>, fund?: (request: FundAccRequest) => Promise<FundAccResponse>, store?: FundingStore}} [options]
+ * @param {{authorize?: (request: import('node:http').IncomingMessage) => Promise<boolean>, eligible?: (address: string) => Promise<boolean>, fund?: (request: FundAccRequest, recordProgress?: (progress: import('../packages/service/dist/index.js').FundingProgress) => Promise<void>) => Promise<FundAccResponse>, store?: FundingStore}} [options]
  */
 async function serve({
   authorize = async () => true,
@@ -59,10 +69,10 @@ async function serve({
   /** @type {FundAccRequest[]} */
   const calls = [];
   const backend = {
-    /** @param {FundAccRequest} input */
-    async fund(input) {
+    /** @param {FundAccRequest} input @param {((progress: FundingProgress) => Promise<void>) | undefined} recordProgress */
+    async fund(input, recordProgress) {
       calls.push(input);
-      if (fund) return fund(input);
+      if (fund) return fund(input, recordProgress);
       return { requestId: input.requestId, txId: 'tx-1', creditedBalance: input.amount };
     },
   };
@@ -156,6 +166,27 @@ test('a failed wallet call leaves a pending reservation and cannot pay twice', a
   assert.equal((await svc.post()).status, 502);
   assert.equal((await svc.post()).status, 409);
   assert.equal(svc.calls.length, 1);
+});
+
+test('a submitted but unconfirmed deposit leaves durable progress for inspection', async (t) => {
+  const path = join(mkdtempSync(join(tmpdir(), 'passport-funding-route-')), 'reservations.json');
+  const svc = await serve({
+    store: createFileFundingStore(path),
+    fund: async (_input, recordProgress) => {
+      if (!recordProgress) throw new Error('route did not provide progress journaling');
+      await recordProgress({ stage: 'balance-observed', balanceBefore: '2' });
+      await recordProgress({ stage: 'submitted', txId: 'ab'.repeat(32) });
+      throw new Error('confirmation timed out');
+    },
+  });
+  t.after(svc.close);
+  assert.equal((await svc.post()).status, 502);
+  assert.equal((await svc.post()).status, 409);
+  assert.equal(svc.calls.length, 1);
+  assert.deepEqual(inspectFileFundingStore(path).entries[0]?.progress, {
+    balanceBefore: '2',
+    depositTxId: 'ab'.repeat(32),
+  });
 });
 
 test('concurrent requests with one ID invoke the wallet once', async (t) => {

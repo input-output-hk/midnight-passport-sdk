@@ -18,6 +18,12 @@ export type FundingReservation =
   | { readonly state: 'complete'; readonly result: ServiceWire.FundAccResponse }
   | { readonly state: 'pending' | 'conflict' | 'daily-limit' };
 
+/** Durable milestones for diagnosing an uncertain wallet outcome. */
+export type FundingProgress =
+  | { readonly stage: 'balance-observed'; readonly balanceBefore: string }
+  | { readonly stage: 'prepared'; readonly preparationTxId: string }
+  | { readonly stage: 'submitted'; readonly txId: string };
+
 /** Reserve the request ID and daily spend atomically, durably, before any wallet call. */
 export interface FundingStore {
   reserve(
@@ -27,11 +33,16 @@ export interface FundingStore {
   ): Promise<FundingReservation>;
   /** A failed completion must leave the reservation pending for operator reconciliation. */
   complete(requestId: string, result: ServiceWire.FundAccResponse): Promise<void>;
+  /** Persist each wallet milestone before the next spending step. */
+  recordProgress(requestId: string, progress: FundingProgress): Promise<void>;
 }
 
 /** Must submit through a dedicated wallet, wait for inclusion, and read the credited ACC balance. */
 export interface FundingBackend {
-  fund(request: ServiceWire.FundAccRequest): Promise<ServiceWire.FundAccResponse>;
+  fund(
+    request: ServiceWire.FundAccRequest,
+    recordProgress?: (progress: FundingProgress) => Promise<void>,
+  ): Promise<ServiceWire.FundAccResponse>;
 }
 
 export interface FundingRouteOptions {
@@ -136,7 +147,9 @@ export function fundingRoute(options: FundingRouteOptions): Route {
     if (reservation.state === 'daily-limit')
       throw new HttpError(429, 'daily funding limit reached');
     try {
-      const result = await options.backend.fund(request);
+      const result = await options.backend.fund(request, (progress) =>
+        options.store.recordProgress(request.requestId, progress),
+      );
       if (
         result.requestId !== request.requestId ||
         !result.txId ||

@@ -13,11 +13,18 @@ import {
 import { randomUUID } from 'node:crypto';
 import { dirname } from 'node:path';
 import type { ServiceWire } from '@input-output-hk/mn-passport-protocol';
-import type { FundingStore } from './funding-route.js';
+import type { FundingProgress, FundingStore } from './funding-route.js';
+
+interface ProgressRecord {
+  readonly balanceBefore: string;
+  readonly preparationTxId?: string;
+  readonly depositTxId?: string;
+}
 
 interface Entry {
   readonly request: ServiceWire.FundAccRequest;
   readonly day: string;
+  readonly progress?: ProgressRecord;
   readonly result?: ServiceWire.FundAccResponse;
 }
 interface FileState {
@@ -27,6 +34,10 @@ interface FileState {
 
 const ADDRESS = /^[0-9a-f]{64}$/;
 const DECIMAL = /^[1-9][0-9]*$/;
+const NONNEGATIVE_DECIMAL = /^(?:0|[1-9][0-9]*)$/;
+// The pinned wallet and node own the identifier format; the service treats IDs as opaque.
+const validTxId = (value: unknown): value is string =>
+  typeof value === 'string' && value.length > 0 && value.length <= 256;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const MAX_AMOUNT = (1n << 128n) - 1n;
@@ -57,12 +68,28 @@ function validEntry(id: string, value: unknown): value is Entry {
     BigInt(String(request.amount)) > MAX_AMOUNT
   )
     return false;
+  if (value.progress !== undefined) {
+    if (
+      !record(value.progress) ||
+      typeof value.progress.balanceBefore !== 'string' ||
+      !NONNEGATIVE_DECIMAL.test(value.progress.balanceBefore) ||
+      BigInt(value.progress.balanceBefore) > MAX_AMOUNT ||
+      (value.progress.preparationTxId !== undefined &&
+        !validTxId(value.progress.preparationTxId)) ||
+      (value.progress.depositTxId !== undefined && !validTxId(value.progress.depositTxId))
+    )
+      return false;
+  }
   if (value.result === undefined) return true;
   return (
     record(value.result) &&
     value.result.requestId === id &&
     typeof value.result.txId === 'string' &&
     value.result.txId.length > 0 &&
+    (value.progress?.depositTxId === undefined ||
+      value.progress.depositTxId === value.result.txId) &&
+    (value.progress?.preparationTxId === undefined ||
+      value.progress.preparationTxId === value.result.preparationTxId) &&
     (value.result.preparationTxId === undefined ||
       (typeof value.result.preparationTxId === 'string' &&
         value.result.preparationTxId.length > 0)) &&
@@ -83,6 +110,33 @@ function load(file: string): FileState {
   )
     throw new Error('funding reservation file is invalid');
   return parsed as unknown as FileState;
+}
+
+export interface FundingInspection {
+  readonly lockPresent: boolean;
+  readonly entries: readonly {
+    readonly request: ServiceWire.FundAccRequest;
+    readonly day: string;
+    readonly state: 'pending' | 'complete';
+    readonly progress?: ProgressRecord;
+    readonly result?: ServiceWire.FundAccResponse;
+  }[];
+}
+
+/** Read-only, schema-validated view; never removes a lock or changes a reservation. */
+export function inspectFileFundingStore(file: string): FundingInspection {
+  if (!existsSync(file)) throw new Error('funding reservation file does not exist');
+  const state = load(file);
+  return {
+    lockPresent: existsSync(`${file}.lock`),
+    entries: Object.values(state.requests).map((entry) => ({
+      request: entry.request,
+      day: entry.day,
+      state: entry.result ? 'complete' : 'pending',
+      ...(entry.progress && { progress: entry.progress }),
+      ...(entry.result && { result: entry.result }),
+    })),
+  };
 }
 
 function save(file: string, state: FileState): void {
@@ -158,6 +212,15 @@ export function createFileFundingStore(file: string): FundingStore {
         const old = state.requests[requestId];
         if (!old || result.requestId !== requestId)
           throw new Error('funding reservation does not match the result');
+        if (
+          (old.progress?.depositTxId && old.progress.depositTxId !== result.txId) ||
+          (old.progress?.preparationTxId &&
+            old.progress.preparationTxId !== result.preparationTxId) ||
+          (old.progress &&
+            BigInt(result.creditedBalance) <
+              BigInt(old.progress.balanceBefore) + BigInt(old.request.amount))
+        )
+          throw new Error('funding result differs from the recorded wallet progress');
         if (old.result) {
           if (
             old.result.requestId !== result.requestId ||
@@ -168,6 +231,38 @@ export function createFileFundingStore(file: string): FundingStore {
           return;
         }
         state.requests[requestId] = { ...old, result };
+        save(file, state);
+      });
+    },
+    async recordProgress(requestId, progress: FundingProgress) {
+      withLock(() => {
+        const state = load(file);
+        const old = state.requests[requestId];
+        if (!old || old.result) throw new Error('funding reservation is not pending');
+        const previous = old.progress;
+        let next: ProgressRecord;
+        if (progress.stage === 'balance-observed') {
+          if (
+            !NONNEGATIVE_DECIMAL.test(progress.balanceBefore) ||
+            BigInt(progress.balanceBefore) > MAX_AMOUNT ||
+            (previous && previous.balanceBefore !== progress.balanceBefore)
+          )
+            throw new Error('funding initial balance is invalid or changed');
+          next = previous ?? { balanceBefore: progress.balanceBefore };
+        } else if (progress.stage === 'prepared') {
+          if (!previous || previous.depositTxId || !validTxId(progress.preparationTxId))
+            throw new Error('funding preparation milestone is out of order');
+          if (previous.preparationTxId && previous.preparationTxId !== progress.preparationTxId)
+            throw new Error('funding preparation transaction changed');
+          next = { ...previous, preparationTxId: progress.preparationTxId };
+        } else {
+          if (!previous || !validTxId(progress.txId))
+            throw new Error('funding submission milestone is out of order');
+          if (previous.depositTxId && previous.depositTxId !== progress.txId)
+            throw new Error('funding deposit transaction changed');
+          next = { ...previous, depositTxId: progress.txId };
+        }
+        state.requests[requestId] = { ...old, progress: next };
         save(file, state);
       });
     },

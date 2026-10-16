@@ -77,8 +77,24 @@ or when the Passport service is bound beyond loopback. The operator CLI remains 
 The reference reservation store is safe for one host sharing one file. It creates
 `<reservations-file>.lock` during updates. If the process dies with the lock present, inspect
 pending requests, wallet transactions and ACC balances before removing it. Use a transactional
-database for replicas. The source has focused policy and backend tests. On the local `undeployed`
-network, this process deposited 10 units of a faucet-minted non-native unshielded asset into a
+database for replicas. New requests journal the pre-deposit ACC balance, the optional NIGHT
+preparation transaction ID and the deposit transaction ID as each milestone is reached. Inspect
+the file without modifying it:
+
+```sh
+nix develop -c pnpm --filter passport-funding-service inspect --file \
+  "$HOME/.midnight-passport/funding-reservations.json"
+# Add --request-id <UUID> for one request, or --all to include completed requests.
+```
+
+The inspector validates the file, lists pending requests and reports whether a lock directory is
+present. It does not read the wallet seed or bearer token. A request created before progress
+journaling has no transaction IDs in its reservation. Even a new request can stop between node
+submission and recording the transaction ID, so missing progress does **not** prove that no value
+moved. Reconcile wallet and ledger evidence before any manual state change; this tranche provides
+no command to release or complete a pending reservation.
+
+The source has focused policy and backend tests. On the local `undeployed` network, this process deposited 10 units of a faucet-minted non-native unshielded asset into a
 live `spec_version = 3` ACC and observed the credited balance. Repeating the same request ID
 returned the same transaction ID and balance. The `0.1.0-rc2` container image passed its release
 build and mounted-tree smoke test and is published to GHCR.

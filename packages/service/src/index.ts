@@ -30,11 +30,16 @@ export {
   fundingRoute,
   type FundingAssetPolicy,
   type FundingReservation,
+  type FundingProgress,
   type FundingStore,
   type FundingBackend,
   type FundingRouteOptions,
 } from './funding-route.js';
-export { createFileFundingStore } from './file-funding-store.js';
+export {
+  createFileFundingStore,
+  inspectFileFundingStore,
+  type FundingInspection,
+} from './file-funding-store.js';
 export {
   createWalletFundingBackend,
   type FundingAccount,

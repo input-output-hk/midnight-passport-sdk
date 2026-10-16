@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createWalletFundingBackend } from '../packages/service/dist/index.js';
 
+/** @typedef {import('../packages/service/dist/index.js').FundingProgress} FundingProgress */
+
 const address = 'ab'.repeat(32);
 const colorHex = 'cd'.repeat(32);
 const request = {
@@ -48,14 +50,26 @@ test('wallet backend submits a permissionless deposit and waits for the ACC cred
     pollMs: 1,
   });
   assert.equal(await backend.eligible(address), true);
-  assert.deepEqual(await backend.fund(request), {
-    requestId: request.requestId,
-    txId: 'tx-1',
-    preparationTxId: 'preparation-tx',
-    creditedBalance: '10',
-  });
+  /** @type {FundingProgress[]} */
+  const progress = [];
+  assert.deepEqual(
+    await backend.fund(request, async (event) => {
+      progress.push(event);
+    }),
+    {
+      requestId: request.requestId,
+      txId: 'tx-1',
+      preparationTxId: 'preparation-tx',
+      creditedBalance: '10',
+    },
+  );
   assert.deepEqual(deposits, [{ color: colorHex, amount: 10n }]);
   assert.equal(readsAfterSubmit, 2);
+  assert.deepEqual(progress, [
+    { stage: 'balance-observed', balanceBefore: '0' },
+    { stage: 'prepared', preparationTxId: 'preparation-tx' },
+    { stage: 'submitted', txId: 'tx-1' },
+  ]);
 });
 
 test('wallet backend rejects unlisted and wrong-version contracts before spending', async () => {
