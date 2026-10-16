@@ -10,6 +10,8 @@ export type ActionId =
   | 'holdings'
   | 'prepareJoiner'
   | 'roster'
+  | 'grantRoster'
+  | 'recoverGrants'
   | 'enrollDevice'
   | 'rotate'
   | 'wallet'
@@ -35,6 +37,8 @@ export const PASSKEY_PROMPTS = {
   holdings: 1,
   prepareJoiner: 2,
   roster: 0,
+  grantRoster: 0,
+  recoverGrants: 1,
   enrollDevice: 1,
   rotate: 1,
   fund: 0,
@@ -124,6 +128,17 @@ export const FLOWS: Record<ActionId, FlowDef> = {
     summary: 'Read live ACC device commitments and epoch from the chain.',
     stages: [read],
   },
+  grantRoster: {
+    title: 'Read grant roster',
+    summary: 'Read live ACC grant IDs, status, read access and generation from the chain.',
+    stages: [read],
+  },
+  recoverGrants: {
+    title: 'Recover pending grants',
+    summary:
+      'Resume publication of this browser’s encrypted staged grant openings after checking the live ACC.',
+    stages: [{ id: 'recover', label: 'Check live grants and publish staged openings' }, read],
+  },
   enrollDevice: {
     title: 'Enroll joining device',
     summary:
@@ -193,6 +208,8 @@ export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep
   holdings: {},
   prepareJoiner: {},
   roster: {},
+  grantRoster: {},
+  recoverGrants: {},
   enrollDevice: {},
   rotate: {},
   wallet: {},

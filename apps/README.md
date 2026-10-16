@@ -136,6 +136,10 @@ the account card. A localnet shielded deposit is needed to populate the panel; t
 deposits unshielded assets. The panel clears after a later account action and requires a fresh read.
 **Refresh ACC state** rereads live account counters and, with funding enabled, unshielded ACC
 balances without another passkey prompt.
+**Read grant roster** shows the live grant generation, nonce, public IDs and active/revoked status
+from one ACC chain snapshot. **Recover pending grants** checks encrypted openings staged in this
+browser against live commitments and resumes their sealed publication; unsettled IDs remain in
+the operation log. These actions do not create a grant or authorize a grantee spend.
 
 To add a second sealed device, open the demo in another browser profile at the same `localhost`
 origin. Put the owner ACC address in **Open by ACC address** and select **Prepare joining device**.
@@ -246,7 +250,7 @@ and `assertionMaterial`.
   - _First arm._ `/deploy` accepts `firstArm: "p256" | "jubjub"` and installs that arm's verifier keys
     first. Omitted `firstArm` retains the prototype's P-256 behavior. The SDK connector currently
     selects P-256; the JubJub account flow is a separate release gate.
-  - _Grant publication._ Both account arms can issue and recover staged grants through host ports, settling sealed bookkeeping and read seals. The demo now supplies a browser-local encrypted journal and live grant commitment readers; publication compares the staged opening with the ACC object and read-key commitments at the signing nonce. The page does not expose grant controls yet. The journal is local to one browser profile and has no backup or cross-device synchronization.
+  - _Grant publication._ Both account arms can issue and recover staged grants through host ports, settling sealed bookkeeping and read seals. The demo now supplies a browser-local encrypted journal and live grant commitment readers; publication compares the staged opening with the ACC object and read-key commitments at the signing nonce. The page exposes roster read and recovery, but not grant issue or grantee spend. The journal is local to one browser profile and has no backup or cross-device synchronization.
   - _Grant revocation._ The reusable package rotates before revoking a read grant or clearing every grant; revoke-all seals the new secret to devices only. The demo page has no grant controls yet.
     Read issue and revoke-all rotate inside their owner key session; the page does not exercise Lace's hosted signer.
     The sealed P-256 package flow can also rotate away from live read grantees before clearing the

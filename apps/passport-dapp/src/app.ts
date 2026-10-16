@@ -292,6 +292,50 @@ ui.on('roster', async () => {
     `Read ${roster.commitments.length} live ACC device entries at epoch ${roster.deviceEpoch}.`,
   );
 });
+ui.on('grantRoster', async () => {
+  const current = account;
+  if (!current?.grantRoster) throw new Error('Open an ACC with a live grant source first.');
+  const roster = await current.grantRoster();
+  ui.showGrantRoster(current.address, roster);
+  const publicRoster = {
+    accountAddress: current.address,
+    authNonce: roster.authNonce.toString(),
+    generation: roster.generation.toString(),
+    entries: roster.entries,
+  };
+  record('grantRoster', publicRoster);
+  traceOperation('account.grants.roster', publicRoster);
+  status(
+    `Read ${roster.entries.filter((entry) => entry.active).length} active grants from the ACC.`,
+  );
+});
+ui.on('recoverGrants', async () => {
+  const current = account;
+  if (!current?.recoverPendingGrants || !current.grantRoster)
+    throw new Error('Open a supported Passport account before recovering grants.');
+  stage('recover');
+  status('Checking staged openings against the live ACC and resuming publication…');
+  const result = await current.recoverPendingGrants({ onEvent });
+  stage('read');
+  const roster = await current.grantRoster();
+  ui.showGrantRoster(current.address, roster);
+  const publicResult = {
+    accountAddress: current.address,
+    published: result.published.map((grant) => ({
+      grantId: grant.grantId,
+      status: grant.status,
+      appendTxHashes: grant.appendTxHashes,
+      nextUseCounter: grant.nextUseCounter.toString(),
+    })),
+    unsettledGrantIds: result.unsettledGrantIds,
+    generation: roster.generation.toString(),
+  };
+  record('grantRecovery', publicResult);
+  traceOperation('account.grants.recovered', publicResult);
+  status(
+    `Published ${result.published.length} pending grants; ${result.unsettledGrantIds.length} remain unsettled.`,
+  );
+});
 ui.on('enrollDevice', async () => {
   const current = account;
   const readRoster = current?.deviceRoster;

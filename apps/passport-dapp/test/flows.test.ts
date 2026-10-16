@@ -31,6 +31,8 @@ const ACTIONS: readonly ActionId[] = [
   'holdings',
   'prepareJoiner',
   'roster',
+  'grantRoster',
+  'recoverGrants',
   'enrollDevice',
   'rotate',
   'wallet',
@@ -53,6 +55,8 @@ test('prompts per action, with and without an account open', () => {
   assert.equal(promptsFor('holdings', true), 1);
   assert.equal(promptsFor('prepareJoiner', false), 2);
   assert.equal(promptsFor('roster', true), 0);
+  assert.equal(promptsFor('grantRoster', true), 0);
+  assert.equal(promptsFor('recoverGrants', true), 1);
   assert.equal(promptsFor('enrollDevice', true), 1);
   assert.equal(promptsFor('rotate', false), 1);
   assert.equal(promptsFor('rotate', true), 1);
@@ -67,10 +71,12 @@ test('the prompt table has an entry for each action and nothing the actions do n
     'create',
     'enrollDevice',
     'fund',
+    'grantRoster',
     'holdings',
     'open',
     'openAt',
     'prepareJoiner',
+    'recoverGrants',
     'refresh',
     'roster',
     'rotate',
@@ -84,7 +90,13 @@ test('the prompt table has an entry for each action and nothing the actions do n
       const [min, max] = typeof n === 'number' ? [n, n] : n;
       assert.ok(
         Number.isInteger(min) &&
-          min >= (action === 'fund' || action === 'refresh' || action === 'roster' ? 0 : 1) &&
+          min >=
+            (action === 'fund' ||
+            action === 'refresh' ||
+            action === 'roster' ||
+            action === 'grantRoster'
+              ? 0
+              : 1) &&
           max >= min,
         `${action} ${open}`,
       );

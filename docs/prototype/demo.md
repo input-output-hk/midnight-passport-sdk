@@ -129,9 +129,19 @@ If the owner sees an interrupted publication, reread the roster and try opening 
 profile. A confirmed ACC entry plus successful sealed-key opening establishes enrollment. If the
 entry is absent, use the same public handoff for a reviewed retry. If the entry exists but the
 joiner cannot open, stop and inspect the ACC inbox and event log; another enrollment may create an
-ambiguous state. Active read grants without their durable public-key openings block this flow.
+ambiguous state. The owner browser retains openings for grants it issued in an encrypted journal
+bound to its passkey; active read grants without an opening in that profile block this flow.
 Removal is withheld until the host can verify all live reader registrations, holdings and active
 read-grant targets for the required key rotation.
+
+## Read and recover grants
+
+With an ACC open, choose **Read grant roster** to see its chain-confirmed grant generation, nonce,
+IDs, active status and read flag. **Recover pending grants** resumes sealed publication of a grant
+already staged in this browser's encrypted journal, after checking live ACC commitments. The
+operation log lists published and unsettled IDs. This does not create a grant or let a grantee
+spend. The journal is profile-local; clearing browser storage loses its openings, and a grant
+created on another device cannot be recovered here.
 
 For a colleague-facing run, expand **Operation trace (requests and responses)** while using the
 page. **Copy full log** exports one JSON document with the action stages, all Passport connector

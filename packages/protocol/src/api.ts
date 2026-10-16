@@ -193,6 +193,17 @@ export interface PassportGrantRecoveryResult {
   readonly unsettledGrantIds: readonly string[];
 }
 
+/** Public grant map read from one live ACC snapshot, including revoked tombstones. */
+export interface PassportGrantRoster {
+  readonly authNonce: bigint;
+  readonly generation: bigint;
+  readonly entries: readonly {
+    readonly id: string;
+    readonly active: boolean;
+    readonly read: boolean;
+  }[];
+}
+
 export interface PassportAccount {
   readonly address: string;
   readonly networkId: string;
@@ -203,6 +214,7 @@ export interface PassportAccount {
   readonly credentialId?: Uint8Array;
   state(): Promise<PassportAccountState>;
   deviceRoster?(): Promise<PassportDeviceRoster>;
+  grantRoster?(): Promise<PassportGrantRoster>;
   rotateEncryptionKey(newKey: Uint8Array, options?: FlowOptions): Promise<PassportTxResult>;
   /** Sealed accounts rotate a random viewing secret; requires verified holdings and grant targets. */
   rotateViewingKey?(options?: FlowOptions): Promise<ViewingKeyRotationResult>;

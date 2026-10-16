@@ -4,6 +4,7 @@
 import type {
   PassportAccountState,
   PassportEvent,
+  PassportGrantRoster,
   PassportTxResult,
 } from '@input-output-hk/mn-passport-protocol';
 import { EventLog, type LogRun, type LogStep } from './event-log.js';
@@ -54,6 +55,8 @@ const ACTIONS: readonly ActionId[] = [
   'refresh',
   'holdings',
   'roster',
+  'grantRoster',
+  'recoverGrants',
   'prepareJoiner',
   'enrollDevice',
   'rotate',
@@ -127,6 +130,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   let deviceRoster:
     | { address: string; deviceEpoch: bigint; authNonce: bigint; commitments: readonly string[] }
     | undefined;
+  let grantRoster: { address: string; roster: PassportGrantRoster } | undefined;
   let ticker: ReturnType<typeof setInterval> | undefined;
 
   // The action cards: prompt counts and summaries come from flows.ts only.
@@ -168,6 +172,8 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     buttons.refresh.disabled = busy || !account;
     buttons.holdings.disabled = busy || !account;
     buttons.roster.disabled = busy || !account;
+    buttons.grantRoster.disabled = busy || !account;
+    buttons.recoverGrants.disabled = busy || !account;
     buttons.prepareJoiner.disabled =
       busy || !ready || !/^[0-9a-f]{64}$/.test(knownAddress.value.trim());
     buttons.enrollDevice.disabled = busy || !account || !handoffInput.value.trim();
@@ -488,6 +494,30 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     ]);
   };
 
+  const renderGrantRoster = () => {
+    const current =
+      account && grantRoster?.address === account.address ? grantRoster.roster : undefined;
+    const list = byId('grant-roster-facts');
+    const empty = byId('grant-roster-empty');
+    list.hidden = !current;
+    empty.hidden = !!current;
+    if (!current) return;
+    renderFacts(list, [
+      { label: 'Generation', value: current.generation.toString() },
+      { label: 'Auth nonce', value: current.authNonce.toString() },
+      {
+        label: 'Active grants',
+        value: String(current.entries.filter((entry) => entry.active).length),
+      },
+      ...current.entries.map((entry, index) => ({
+        label: `Grant ${index + 1}`,
+        value: `${shorten(entry.id, 10, 8)} · ${entry.active ? 'active' : 'revoked'}${entry.read ? ' · read' : ''}`,
+        full: entry.id,
+        copy: entry.id,
+      })),
+    ]);
+  };
+
   const renderWallet = () => {
     const connected = Object.keys(wallet).length > 0;
     byId('wallet-empty').hidden = connected;
@@ -561,6 +591,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   renderAccount();
   renderHoldings();
   renderRoster();
+  renderGrantRoster();
   renderWallet();
   renderEvidence();
 
@@ -583,6 +614,11 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       if (account?.address !== address) return;
       deviceRoster = { address, ...roster };
       renderRoster();
+    },
+    showGrantRoster(address: string, roster: PassportGrantRoster) {
+      if (account?.address !== address) return;
+      grantRoster = { address, roster };
+      renderGrantRoster();
     },
     /** Ends the running stage and starts `id`. */
     stage: (id: string) => log.stage(id),
@@ -637,6 +673,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       // A later account action may spend a coin; require a fresh chain check.
       shieldedHoldings = undefined;
       deviceRoster = undefined;
+      grantRoster = undefined;
       if (accountBalances?.address !== view.address)
         accountBalances = fundingAsset
           ? { address: view.address, color: fundingAsset.color }
@@ -644,6 +681,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       renderAccount();
       renderHoldings();
       renderRoster();
+      renderGrantRoster();
       renderButtons();
       renderEvidence();
     },

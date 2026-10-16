@@ -1416,6 +1416,14 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
         commitments: view.deviceEntries.map(toHex).sort(),
       };
     },
+    async grantRoster() {
+      if (!ports.grantRoster)
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'A live ACC grant roster is required.',
+        );
+      return ports.grantRoster.readGrantRoster(record.address);
+    },
     async rotateEncryptionKey() {
       throw new PassportConnectorError(
         'BindingUnsupported',

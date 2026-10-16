@@ -1543,6 +1543,14 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         commitments: view.deviceEntries.map(toHex).sort(),
       };
     },
+    async grantRoster() {
+      if (!ports.grantRoster)
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'A live ACC grant roster is required.',
+        );
+      return ports.grantRoster.readGrantRoster(record.address);
+    },
     readShieldedHoldings: (options = {}) =>
       run(options, async (flow) => {
         if (!isSealedP256(record) || !viewingKey || !ports.holdings || !authoriser.withKeySession)

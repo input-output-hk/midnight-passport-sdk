@@ -158,6 +158,32 @@
             </p>
           </li>
           <li class="action">
+            <button
+              id="grantRoster"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="grantRoster-prompts grantRoster-desc"
+              disabled
+            >
+              Read grant roster
+            </button>
+            <p class="prompts" id="grantRoster-prompts"></p>
+            <p class="action-desc" id="grantRoster-desc"></p>
+          </li>
+          <li class="action">
+            <button
+              id="recoverGrants"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="recoverGrants-prompts recoverGrants-desc"
+              disabled
+            >
+              Recover pending grants
+            </button>
+            <p class="prompts" id="recoverGrants-prompts"></p>
+            <p class="action-desc" id="recoverGrants-desc"></p>
+          </li>
+          <li class="action">
             <label for="handoff-input">Joining device public handoff JSON</label>
             <textarea
               id="handoff-input"
@@ -310,6 +336,9 @@
           <h3>Live device roster</h3>
           <p class="empty" id="roster-empty">Open an account, then read its device roster.</p>
           <dl class="facts" id="roster-facts" hidden></dl>
+          <h3>Live grant roster</h3>
+          <p class="empty" id="grant-roster-empty">Open an account, then read its grant roster.</p>
+          <dl class="facts" id="grant-roster-facts" hidden></dl>
           <h3>Chain-verified shielded coins</h3>
           <p class="empty" id="holdings-empty">Open an account, then read its shielded holdings.</p>
           <dl class="facts" id="holdings-facts" hidden></dl>
