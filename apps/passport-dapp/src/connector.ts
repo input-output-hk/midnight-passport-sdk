@@ -24,6 +24,7 @@ import {
 import { tracedFetch } from './operation-trace.js';
 import { browserAccountRecords, browserGrantJournal } from './grant-journal.js';
 import { demoValueCall } from './value-call.js';
+import { grantHandoffFromOpening, type GrantHandoff } from './grant-handoff.js';
 
 export const SERVICE_URL = import.meta.env.VITE_PASSPORT_SERVICE_URL ?? 'http://localhost:8787';
 /** The artefact manifest hash this build pins (R18); the service's /v1/config is checked against it. */
@@ -42,6 +43,16 @@ if (configuredArm !== 'p256' && configuredArm !== 'jubjub')
   throw new Error('VITE_PASSPORT_ARM must be p256 or jubjub');
 export const ARM: 'p256' | 'jubjub' = configuredArm;
 export const ORIGIN = 'http://localhost:5173';
+let exportOpening: ((account: string, grantId: string) => Promise<GrantHandoff>) | undefined;
+
+/** Owner-only handoff from the selected passkey's encrypted local journal. */
+export async function exportDemoGrantOpening(
+  account: string,
+  grantId: string,
+): Promise<GrantHandoff> {
+  if (!exportOpening) throw new Error('Connect and open the owner account first.');
+  return exportOpening(account, grantId);
+}
 
 /** Legacy hints remain discoverable; the sealed P-256 connector refuses them until migrated. */
 function demoDirectory(): AccountDirectory {
@@ -122,6 +133,25 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
   const readGrants: ActiveReadGrantTargetSource = {
     readActiveReadGrantTargets: async (account) =>
       (await grants()).readActiveReadGrantTargets(account),
+  };
+  exportOpening = async (account, grantId) => {
+    if (!journal) throw new Error('The owner grant journal is unavailable.');
+    const staged = await journal.load(account, grantId);
+    if (!staged) throw new Error('This browser has no sealed opening for the grant.');
+    const source = await grants();
+    const [live, context] = await Promise.all([
+      source.readGrantCommitment(account, grantId),
+      source.readGrantSpendContext(account, grantId),
+    ]);
+    return grantHandoffFromOpening(
+      staged,
+      live,
+      context,
+      networkId,
+      (await import('./acc-module.js')).accModule.pureCircuits as unknown as Parameters<
+        typeof grantHandoffFromOpening
+      >[4],
+    );
   };
   return createBrowserPassport({
     arm: ARM,

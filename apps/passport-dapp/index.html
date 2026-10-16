@@ -250,6 +250,78 @@
             <p class="action-desc" id="issueGrant-desc"></p>
           </li>
           <li class="action">
+            <label for="export-grant-id">Active grant ID to hand off</label>
+            <input
+              id="export-grant-id"
+              class="action-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="64 lowercase hex characters from the live roster"
+              aria-describedby="exportGrant-desc"
+            />
+            <button
+              id="exportGrant"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="exportGrant-prompts exportGrant-desc"
+              disabled
+            >
+              Export grant opening
+            </button>
+            <p class="prompts" id="exportGrant-prompts"></p>
+            <p class="action-desc" id="exportGrant-desc"></p>
+            <label for="grant-opening-output">Opening JSON for the grantee</label>
+            <textarea
+              id="grant-opening-output"
+              rows="8"
+              readonly
+              hidden
+              aria-label="Grant opening JSON for the grantee"
+            ></textarea>
+          </li>
+          <li class="action">
+            <label for="grant-opening-input">Grant opening JSON from the owner</label>
+            <textarea
+              id="grant-opening-input"
+              rows="8"
+              spellcheck="false"
+              aria-describedby="spendGrant-desc"
+            ></textarea>
+            <label for="grant-spend-amount">Amount to withdraw (smallest units)</label>
+            <input
+              id="grant-spend-amount"
+              class="action-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              value="1"
+              aria-describedby="spendGrant-desc"
+            />
+            <label for="grant-spent-prev">Total already spent through this grant</label>
+            <input
+              id="grant-spent-prev"
+              class="action-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              value="0"
+              aria-describedby="spendGrant-desc"
+            />
+            <button
+              id="spendGrant"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="spendGrant-prompts spendGrant-desc"
+              disabled
+            >
+              Spend scoped grant
+            </button>
+            <p class="prompts" id="spendGrant-prompts"></p>
+            <p class="action-desc" id="spendGrant-desc"></p>
+          </li>
+          <li class="action">
             <label for="revoke-grant-id">Grant ID to revoke</label>
             <input
               id="revoke-grant-id"

@@ -15,11 +15,16 @@ import {
   RP_ID,
   SERVICE_URL,
   installShim,
+  exportDemoGrantOpening,
 } from './connector.js';
 import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS, knownAccAddress } from './flows.js';
 import { withdrawalRequest } from './withdrawal.js';
 import { fixedUnshieldedGrant } from './grant-input.js';
 import { prepareGranteePasskey } from './grantee-passkey.js';
+import { spendDemoGrant } from './grant-holder-demo.js';
+import { parseGrantHandoff } from './grant-handoff.js';
+import { MidnightBech32m, UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
+import { Buffer } from 'buffer';
 import { parseDeviceHandoff, prepareDeviceHandoff } from './device-handoff.js';
 import { setOperationTraceSink, tracedFetch, traceOperation } from './operation-trace.js';
 import { createUi } from './ui.js';
@@ -363,6 +368,71 @@ ui.on('issueGrant', async () => {
   traceOperation('account.grants.issued', publicResult);
   status(`Grant ${result.grantId.slice(0, 12)}… is active for the fixed recipient.`);
 });
+ui.on('exportGrant', async () => {
+  const current = account;
+  if (!current?.grantRoster) throw new Error('Open the owner ACC before exporting a grant.');
+  const grantId = ui.exportGrantId();
+  if (!/^[0-9a-f]{64}$/.test(grantId)) throw new Error('Enter a valid grant ID.');
+  stage('review');
+  const roster = await current.grantRoster();
+  if (!roster.entries.some((entry) => entry.id === grantId && entry.active))
+    throw new Error('The grant is not active in the live ACC.');
+  const approved = window.confirm(
+    `Unlock the opening for active grant ${grantId}?\n\n` +
+      'Give the JSON only to the named grantee. It includes the scope opening needed to use the grant.',
+  );
+  if (!approved) {
+    status('Grant opening export cancelled.');
+    return;
+  }
+  stage('export');
+  const handoff = await exportDemoGrantOpening(current.address, grantId);
+  ui.showGrantHandoff(handoff);
+  record('grantOpeningExported', { accountAddress: current.address, grantId });
+  traceOperation('account.grants.openingExported', { accountAddress: current.address, grantId });
+  status('Opening ready. Transfer its JSON directly to the named grantee browser.');
+});
+ui.on('spendGrant', async () => {
+  const input = ui.grantSpendInput();
+  const handoff = parseGrantHandoff(input.handoff, network);
+  stage('read');
+  status('Checking the live ACC grant and selected grantee passkey…');
+  const result = await spendDemoGrant(
+    input.handoff,
+    network,
+    input.amount,
+    input.spentPrev,
+    async (fields) => {
+      stage('review');
+      const address = MidnightBech32m.encode(
+        network,
+        new UnshieldedAddress(Buffer.from(fields.recipient, 'hex')),
+      ).asString();
+      const approved = window.confirm(
+        `Spend this scoped grant?\n\nACC: ${fields.account}\nGrant: ${fields.grantId}\n` +
+          `Asset color: ${fields.color}\nAmount: ${fields.amount} smallest units\n` +
+          `Remaining cap: ${fields.remainingCap}\nFixed recipient: ${address}\n\n` +
+          'Confirm before the grantee passkey prompt.',
+      );
+      if (approved) stage('submit');
+      return approved;
+    },
+  );
+  ui.showGrantSpentTotal(result.spentTotal);
+  const publicResult = {
+    accountAddress: handoff.account,
+    grantId: result.grantId,
+    color: handoff.color,
+    amount: input.amount,
+    recipient: handoff.recipient,
+    spentTotal: result.spentTotal.toString(),
+    grantNonce: result.grantNonce.toString(),
+    txHash: result.txHash,
+  };
+  record('grantSpent', publicResult);
+  traceOperation('grant.holder.spent', publicResult);
+  status(`Grant spend ${result.txHash.slice(0, 12)}… confirmed on the ACC.`);
+});
 ui.on('revokeGrant', async () => {
   const current = account;
   if (!current?.revokeGrant || !current.grantRoster)
@@ -389,6 +459,7 @@ ui.on('revokeGrant', async () => {
   if (!after.entries.some((entry) => entry.id === grantId && !entry.active))
     throw new Error('The grant revocation did not appear in the live roster.');
   ui.showGrantRoster(current.address, after);
+  ui.clearGrantHandoff();
   const publicResult = {
     accountAddress: current.address,
     grantId,

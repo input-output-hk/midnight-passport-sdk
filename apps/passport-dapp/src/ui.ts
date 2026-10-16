@@ -58,6 +58,8 @@ const ACTIONS: readonly ActionId[] = [
   'grantRoster',
   'prepareGrantee',
   'issueGrant',
+  'exportGrant',
+  'spendGrant',
   'revokeGrant',
   'recoverGrants',
   'prepareJoiner',
@@ -131,6 +133,10 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   const grantPerCall = byId<HTMLInputElement>('grant-per-call');
   const grantCap = byId<HTMLInputElement>('grant-cap');
   const revokeGrantId = byId<HTMLInputElement>('revoke-grant-id');
+  const exportGrantId = byId<HTMLInputElement>('export-grant-id');
+  const grantOpeningInput = byId<HTMLTextAreaElement>('grant-opening-input');
+  const grantSpendAmount = byId<HTMLInputElement>('grant-spend-amount');
+  const grantSpentPrev = byId<HTMLInputElement>('grant-spent-prev');
   const knownAddress = byId<HTMLInputElement>('open-address');
   let accountBalances:
     | { address: string; color: string; night?: string; fundedAsset?: string; error?: string }
@@ -200,6 +206,13 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     grantPerCall.disabled = busy || !account;
     grantCap.disabled = busy || !account;
     revokeGrantId.disabled = busy || !account;
+    buttons.exportGrant.disabled =
+      busy || !account || !/^[0-9a-f]{64}$/.test(exportGrantId.value.trim());
+    exportGrantId.disabled = busy || !account;
+    buttons.spendGrant.disabled = busy || !ready || !grantOpeningInput.value.trim();
+    grantOpeningInput.disabled = busy;
+    grantSpendAmount.disabled = busy;
+    grantSpentPrev.disabled = busy;
     buttons.recoverGrants.disabled = busy || !account;
     buttons.prepareJoiner.disabled =
       busy || !ready || !/^[0-9a-f]{64}$/.test(knownAddress.value.trim());
@@ -616,6 +629,8 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   knownAddress.addEventListener('input', renderButtons);
   grantGrantee.addEventListener('input', renderButtons);
   revokeGrantId.addEventListener('input', renderButtons);
+  exportGrantId.addEventListener('input', renderButtons);
+  grantOpeningInput.addEventListener('input', renderButtons);
   handoffInput.addEventListener('input', renderButtons);
   removalInput.addEventListener('input', renderButtons);
 
@@ -641,6 +656,25 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       cap: grantCap.value.trim(),
     }),
     revokeGrantId: () => revokeGrantId.value.trim(),
+    exportGrantId: () => exportGrantId.value.trim(),
+    grantSpendInput: () => ({
+      handoff: grantOpeningInput.value,
+      amount: grantSpendAmount.value.trim(),
+      spentPrev: grantSpentPrev.value.trim(),
+    }),
+    showGrantSpentTotal(value: bigint) {
+      grantSpentPrev.value = value.toString();
+    },
+    showGrantHandoff(handoff: unknown) {
+      const output = byId<HTMLTextAreaElement>('grant-opening-output');
+      output.value = JSON.stringify(handoff, null, 2);
+      output.hidden = false;
+    },
+    clearGrantHandoff() {
+      const output = byId<HTMLTextAreaElement>('grant-opening-output');
+      output.value = '';
+      output.hidden = true;
+    },
     showGranteePublicKey(publicKey: string) {
       const output = byId<HTMLInputElement>('grantee-output');
       output.value = publicKey;
@@ -714,6 +748,11 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       renderButtons();
     },
     showAccount(view: AccountView) {
+      if (account?.address !== view.address) {
+        const output = byId<HTMLTextAreaElement>('grant-opening-output');
+        output.value = '';
+        output.hidden = true;
+      }
       // The last transaction carries over only while the same account stays open.
       const keep = account?.address === view.address ? account.lastTx : undefined;
       const lastTx = view.lastTx ?? keep;

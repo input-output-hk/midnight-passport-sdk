@@ -34,6 +34,8 @@ const ACTIONS: readonly ActionId[] = [
   'grantRoster',
   'prepareGrantee',
   'issueGrant',
+  'exportGrant',
+  'spendGrant',
   'revokeGrant',
   'recoverGrants',
   'enrollDevice',
@@ -62,6 +64,8 @@ test('prompts per action, with and without an account open', () => {
   assert.equal(promptsFor('grantRoster', true), 0);
   assert.equal(promptsFor('prepareGrantee', false), 2);
   assert.equal(promptsFor('issueGrant', true), 1);
+  assert.equal(promptsFor('exportGrant', true), 1);
+  assert.equal(promptsFor('spendGrant', false), 2);
   assert.equal(promptsFor('revokeGrant', true), 1);
   assert.equal(promptsFor('recoverGrants', true), 1);
   assert.equal(promptsFor('enrollDevice', true), 1);
@@ -78,6 +82,7 @@ test('the prompt table has an entry for each action and nothing the actions do n
   assert.deepEqual(Object.keys(PASSKEY_PROMPTS).sort(), [
     'create',
     'enrollDevice',
+    'exportGrant',
     'fund',
     'grantRoster',
     'holdings',
@@ -92,6 +97,7 @@ test('the prompt table has an entry for each action and nothing the actions do n
     'revokeGrant',
     'roster',
     'rotate',
+    'spendGrant',
     'walletWithAccount',
     'walletWithoutAccount',
     'withdraw',

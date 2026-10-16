@@ -13,6 +13,8 @@ export type ActionId =
   | 'grantRoster'
   | 'prepareGrantee'
   | 'issueGrant'
+  | 'exportGrant'
+  | 'spendGrant'
   | 'revokeGrant'
   | 'recoverGrants'
   | 'enrollDevice'
@@ -44,6 +46,8 @@ export const PASSKEY_PROMPTS = {
   grantRoster: 0,
   prepareGrantee: 2,
   issueGrant: 1,
+  exportGrant: 1,
+  spendGrant: 2,
   revokeGrant: 1,
   recoverGrants: 1,
   enrollDevice: 1,
@@ -157,6 +161,25 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       read,
     ],
   },
+  exportGrant: {
+    title: 'Export grant opening',
+    summary:
+      'Unlock the owner journal, verify the active grant against the chain, and hand its opening directly to the named grantee.',
+    stages: [
+      { id: 'review', label: 'Verify active grant and owner journal' },
+      { id: 'export', label: 'Unlock the sealed opening with the owner passkey' },
+    ],
+  },
+  spendGrant: {
+    title: 'Spend scoped grant',
+    summary:
+      'In the holder browser, import the opening, verify its live ACC scope and spend counter, then sign with the grantee passkey.',
+    stages: [
+      { id: 'read', label: 'Check the live scoped grant' },
+      { id: 'review', label: 'Review fixed recipient, amount and remaining cap' },
+      { id: 'submit', label: 'Sign, prove and confirm the ACC spend' },
+    ],
+  },
   revokeGrant: {
     title: 'Revoke scoped grant',
     summary: 'Revoke one active grant ID and verify its inactive tombstone on chain.',
@@ -254,6 +277,8 @@ export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep
   grantRoster: {},
   prepareGrantee: {},
   issueGrant: {},
+  exportGrant: {},
+  spendGrant: {},
   revokeGrant: {},
   recoverGrants: {},
   enrollDevice: {},
