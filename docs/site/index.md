@@ -6,7 +6,7 @@ permalink: /
 
 Midnight Passport gives an application a passkey controlled Account Custody Contract (ACC). The account API creates an account, opens it again with its registered passkey, reads its state and makes a signed call. The browser adapter supplies WebAuthn and the local prototype service supplies deployment, proving and fee sponsorship.
 
-> **Current state:** These pages describe the `passport-acc-prototype` branch and the private `0.1.0-rc1` packages on GitHub Packages. The packaged release binding is `acc-s3r1.1` from Passport revision `6458ed5`; the demo page and service select `acc-s3r1.1`. The prototype runs sealed P-256 create/open and JubJub create/open on the localnet. The account API can read chain-confirmed holdings for either arm when a host supplies a holding source. JubJub create/open was verified with a mock passkey and a page reload on 2026-10-15; rotation still needs chain-backed holdings and read-grant sources in the browser host. The published RC1 packages predate this prototype work. See [Packages]({{ '/packages/' | relative_url }}) for authenticated installation and [the packaging tracker](https://github.com/input-output-hk/midnight-passport-sdk/issues/31) for remaining work.
+> **Preview RC4:** These pages describe the nine implemented packages at `0.1.0-rc4` on `passport-acc-prototype`. The release pins ACC binding `acc-s3r1.1` from Passport revision `6458ed5`. Shielded withdrawal accepts only an exact-value coin and needs a value-capable v9 wallet; partial spends are rejected. Lace's hosted module has not been validated end to end. See [release notes]({{ '/release-notes-rc4/' | relative_url }}) and [Packages]({{ '/packages/' | relative_url }}) before integrating.
 
 ## Start here
 
@@ -17,5 +17,6 @@ Midnight Passport gives an application a passkey controlled Account Custody Cont
 5. [Service API]({{ '/service/' | relative_url }}) describes the local prototype endpoints and trust boundary.
 6. [ZK keys]({{ '/keys/' | relative_url }}) explains the artefact integrity pin and prover-key distribution decision.
 7. [Releasing]({{ '/releasing/' | relative_url }}) explains the guarded GitHub Packages workflow.
+8. [Preview RC4 release notes]({{ '/release-notes-rc4/' | relative_url }}) list validated behavior and deferred work.
 
 For a local run, follow the [demo guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/AGENTS.md). The current service needs a compiled ACC and its own funded localnet; installing the TypeScript workspace alone is not enough to create an account.

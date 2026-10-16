@@ -71,6 +71,7 @@ try {
            typeof account.revokeJubjubGrantCall !== 'function' ||
            typeof account.sealActiveReadGrants !== 'function' ||
            typeof midnight.createMidnightGrantSource !== 'function' ||
+           typeof midnight.createMidnightWalletPorts !== 'function' ||
            typeof browser.createBrowserPassport !== 'function' ||
            typeof hosted.hostedJubjubAuthoriser !== 'function' ||
            typeof service.createServer !== 'function' ||
