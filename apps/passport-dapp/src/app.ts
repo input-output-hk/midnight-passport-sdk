@@ -7,7 +7,7 @@ import type {
   PassportTxResult,
 } from '@input-output-hk/mn-passport-protocol';
 import { ARM, MANIFEST_SHA256, NETWORK_ID, RP_ID, SERVICE_URL, installShim } from './connector.js';
-import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS } from './flows.js';
+import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS, knownAccAddress } from './flows.js';
 import { setOperationTraceSink, tracedFetch, traceOperation } from './operation-trace.js';
 import { createUi } from './ui.js';
 import type { DevWallet } from './wallet/dev-wallet.js';
@@ -176,6 +176,48 @@ ui.on('open', async () => {
       : 'Opening… choose your passkey, then unlock its sealed ACC viewing secret.',
   );
   await opened(await (await connector()).openAccount({ onEvent }), 'reopened');
+});
+ui.on('openAt', async () => {
+  const requestedAddress = knownAccAddress(ui.knownAddress());
+  traceOperation('account.openByAddress.requested', { accountAddress: requestedAddress });
+  status('Opening the known ACC… choose an enrolled passkey and unlock its sealed viewing key.');
+  const accountApi = await connector();
+  if (!accountApi.openAccountAt) throw new Error('This Passport connector cannot open by address.');
+  const restored = await accountApi.openAccountAt(requestedAddress, { onEvent });
+  if (restored.address !== requestedAddress)
+    throw new Error('The connector returned a different ACC address.');
+  await opened(restored, 'opened by address');
+  traceOperation('account.openByAddress.verified', { accountAddress: restored.address });
+});
+ui.on('refresh', async () => {
+  if (!account) throw new Error('Open a Passport account before refreshing it.');
+  const current = account;
+  const state = await current.state();
+  ui.showAccount({
+    address: current.address,
+    networkId: current.networkId,
+    bindingId: current.bindingId,
+    state,
+  });
+  record('refreshed', { accountAddress: current.address, state });
+  traceOperation('account.state.refreshed', {
+    accountAddress: current.address,
+    authNonce: state.authNonce.toString(),
+    deviceEpoch: state.deviceEpoch.toString(),
+    entryCount: state.entryCount,
+    specVersion: state.specVersion,
+  });
+  const balancesRead = balanceAssetColor
+    ? await ui.attempt('balances', async () => {
+        await refreshAccountBalances(current.address);
+        return true;
+      })
+    : undefined;
+  status(
+    balanceAssetColor && !balancesRead
+      ? `ACC ${current.address.slice(0, 12)}… state refreshed; balances unavailable (see event log).`
+      : `ACC ${current.address.slice(0, 12)}… state refreshed from the chain.`,
+  );
 });
 ui.on('rotate', async () => {
   throw new Error('Viewing-key rotation needs chain-backed roster and grant sources.');

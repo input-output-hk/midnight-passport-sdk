@@ -47,7 +47,15 @@ export interface WalletView {
   readonly balanceError?: string;
 }
 
-const ACTIONS: readonly ActionId[] = ['create', 'open', 'rotate', 'wallet', 'fund'];
+const ACTIONS: readonly ActionId[] = [
+  'create',
+  'open',
+  'openAt',
+  'refresh',
+  'rotate',
+  'wallet',
+  'fund',
+];
 
 const byId = <T extends HTMLElement = HTMLElement>(id: string): T => {
   const element = document.getElementById(id);
@@ -99,6 +107,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   let fundingAsset: { color: string; amount: string } | undefined;
   let assetsByColor = new Map<string, { color: string; amount: string }>();
   const fundingSelect = byId<HTMLSelectElement>('fund-asset');
+  const knownAddress = byId<HTMLInputElement>('open-address');
   let accountBalances:
     | { address: string; color: string; night?: string; fundedAsset?: string; error?: string }
     | undefined;
@@ -116,7 +125,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   const renderPrompts = () => {
     for (const action of ACTIONS) {
       byId(`${action}-prompts`).textContent =
-        action === 'create' || action === 'open'
+        action === 'create' || action === 'open' || action === 'openAt'
           ? 'Passkey prompts vary by provider and account state.'
           : promptLabel(promptsFor(action, !!account));
     }
@@ -138,6 +147,9 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     const busy = log.current !== undefined;
     buttons.create.disabled = busy || !ready;
     buttons.open.disabled = busy || !ready;
+    buttons.openAt.disabled = busy || !ready || !/^[0-9a-f]{64}$/.test(knownAddress.value.trim());
+    knownAddress.disabled = busy;
+    buttons.refresh.disabled = busy || !account;
     buttons.rotate.disabled = true;
     buttons.wallet.disabled = busy;
     buttons.fund.disabled = busy || !account;
@@ -356,7 +368,10 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     renderFacts(list, [
       { label: 'Address', value: shorten(address, 10, 8), full: address, copy: address },
       { label: 'Network', value: networkId },
+      { label: 'Spec version', value: String(state.specVersion) },
+      { label: 'Activated', value: state.booted ? 'Yes' : 'No' },
       { label: 'Auth nonce', value: state.authNonce.toString() },
+      { label: 'Device epoch', value: state.deviceEpoch.toString() },
       {
         label: 'Device entries',
         value: String(state.entryCount),
@@ -463,6 +478,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       })
       .catch(() => status('Copy failed: the browser refused clipboard access.'));
   });
+  knownAddress.addEventListener('input', renderButtons);
 
   renderButtons();
   renderProgress();
@@ -472,6 +488,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
 
   return {
     status,
+    knownAddress: () => knownAddress.value,
     /** Ends the running stage and starts `id`. */
     stage: (id: string) => log.stage(id),
     note: (text: string) => log.note(text),

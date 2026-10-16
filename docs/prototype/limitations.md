@@ -132,8 +132,10 @@ time, and a deployment pipeline for the artefacts.
 
 - **Progress.** The connector reports five coarse steps, and nothing inside the 180-second deploy.
   See fork issue [#17](https://github.com/input-output-hk/midnight-passport-sdk/issues/17).
-- **Beyond the first device.** There is no second device, grant, recovery or withdrawal. Only the
-  passkey that created the account can sign for it.
+- **Beyond the first device.** There is no second-device demo, grant demo, recovery of a lost
+  passkey, or withdrawal. Only an already-enrolled passkey can sign for the ACC.
+  The demo can open a known ACC address with an already-enrolled passkey even without a directory
+  hint. It cannot recover an ACC when all enrolled passkeys are lost.
   The reusable account package has staged JubJub and P-256 grant publication flows that verify each opening against live ACC commitments, but the prototype page does not expose them.
   It can also confirm grant revocation. Read-grant revocation rotates the viewing secret and seals it to surviving readers; revoke-all rotates without resealing any grantee. The prototype page does not expose these flows.
   A reusable helper prepares read-grant seals, but the prototype page does not deliver them.

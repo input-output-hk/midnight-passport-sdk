@@ -14,6 +14,7 @@ import {
   ROTATION_ESTIMATE_S,
   formatClock,
   formatDuration,
+  knownAccAddress,
   plainError,
   promptCountText,
   promptLabel,
@@ -22,7 +23,15 @@ import {
 } from '../src/flows.ts';
 import { shorten } from '../src/ui.ts';
 
-const ACTIONS: readonly ActionId[] = ['create', 'open', 'rotate', 'wallet', 'fund'];
+const ACTIONS: readonly ActionId[] = [
+  'create',
+  'open',
+  'openAt',
+  'refresh',
+  'rotate',
+  'wallet',
+  'fund',
+];
 
 test('prompts per action, with and without an account open', () => {
   assert.deepEqual(promptsFor('create', false), [2, 3]);
@@ -34,6 +43,8 @@ test('prompts per action, with and without an account open', () => {
   // The second prompt checks the encryption key, until it is rotated.
   assert.deepEqual(promptsFor('open', false), [1, 2]);
   assert.deepEqual(promptsFor('open', true), [1, 2]);
+  assert.deepEqual(promptsFor('openAt', false), [1, 2]);
+  assert.equal(promptsFor('refresh', true), 0);
   assert.equal(promptsFor('rotate', false), 1);
   assert.equal(promptsFor('rotate', true), 1);
   assert.equal(promptsFor('wallet', true), 1, 'pinned to the open account: one PRF prompt');
@@ -46,6 +57,8 @@ test('the prompt table has an entry for each action and nothing the actions do n
     'create',
     'fund',
     'open',
+    'openAt',
+    'refresh',
     'rotate',
     'walletWithAccount',
     'walletWithoutAccount',
@@ -55,7 +68,9 @@ test('the prompt table has an entry for each action and nothing the actions do n
       const n = promptsFor(action, open);
       const [min, max] = typeof n === 'number' ? [n, n] : n;
       assert.ok(
-        Number.isInteger(min) && min >= (action === 'fund' ? 0 : 1) && max >= min,
+        Number.isInteger(min) &&
+          min >= (action === 'fund' || action === 'refresh' ? 0 : 1) &&
+          max >= min,
         `${action} ${open}`,
       );
     }
@@ -116,8 +131,16 @@ test('the summaries quote the estimates the progress bar uses', () => {
 });
 
 test('the account is read at the end of create, open and rotate', () => {
-  for (const action of ['create', 'open', 'rotate'] as const) {
+  for (const action of ['create', 'open', 'openAt', 'rotate'] as const) {
     assert.equal(FLOWS[action].stages.at(-1)?.id, 'read', action);
+  }
+});
+
+test('known ACC address validation happens before a passkey prompt', () => {
+  const address = 'ab'.repeat(32);
+  assert.equal(knownAccAddress(` ${address}\n`), address);
+  for (const invalid of ['', 'ab'.repeat(31), 'AB'.repeat(32), `${address}0`, 'g'.repeat(64)]) {
+    assert.throws(() => knownAccAddress(invalid), { name: 'InvalidAccountAddress' });
   }
 });
 

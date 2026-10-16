@@ -44,8 +44,8 @@
       <section class="intro" aria-label="About this demo">
         <p>
           Create a Passport smart account with a passkey, reopen it after a reload, and connect a
-          wallet seeded from the same passkey. P-256 mode also demonstrates passkey-signed
-          encryption-key rotation. The service proves and sponsors every transaction on the Midnight
+          wallet seeded from the same passkey. You can also open a known ACC by address with an
+          enrolled passkey. The service proves and sponsors every transaction on the Midnight
           network this build is pinned to.
         </p>
       </section>
@@ -76,6 +76,44 @@
             </button>
             <p class="prompts" id="open-prompts"></p>
             <p class="action-desc" id="open-desc"></p>
+          </li>
+          <li class="action">
+            <label for="open-address">Known Passport ACC address</label>
+            <input
+              id="open-address"
+              class="action-input"
+              type="text"
+              inputmode="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="64 lowercase hex characters"
+              aria-describedby="openAt-desc"
+            />
+            <button
+              id="openAt"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="openAt-prompts openAt-desc"
+              disabled
+            >
+              Open by ACC address
+            </button>
+            <p class="prompts" id="openAt-prompts"></p>
+            <p class="action-desc" id="openAt-desc"></p>
+          </li>
+          <li class="action">
+            <button
+              id="refresh"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="refresh-prompts refresh-desc"
+              disabled
+            >
+              Refresh ACC state
+            </button>
+            <p class="prompts" id="refresh-prompts"></p>
+            <p class="action-desc" id="refresh-desc"></p>
           </li>
           <li class="action">
             <button

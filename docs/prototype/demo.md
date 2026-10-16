@@ -29,6 +29,18 @@ Set up the stack as [`apps/README.md`](../../apps/README.md) describes: Nix, Doc
 If the chain was reset since the last run, delete `~/.midnight-passport/registry.json` and
 `registry.deployments.json` first.
 
+## Open a known ACC by address
+
+To demonstrate opening without a directory hint, copy the ACC address from the account card or
+evidence JSON, reload the page, paste it into **Known Passport ACC address**, and choose **Open by
+ACC address**. Select a passkey already enrolled in that ACC. The flow checks its live device entry
+and sealed viewing key against the chain, then reads the ACC state and balances. The address alone
+does not grant access, and this action cannot find an unknown address or recover a lost passkey.
+The operation trace records the requested and verified public addresses. The underlying SDK flow
+does not read a directory hint; its account-package tests cover opening when that hint is absent.
+After either open action, **Refresh ACC state** rereads the live ACC counters and, when the
+funding process is available, the unshielded balances. It does not ask for a passkey.
+
 ## Optional ACC funding demonstration
 
 To run the separate funding wallet with the demo, prepare the private token and asset policy as

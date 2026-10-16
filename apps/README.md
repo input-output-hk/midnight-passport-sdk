@@ -117,6 +117,13 @@ open an ACC before clicking it. The Passport service forwards a fixed deposit of
 units of the selected asset while keeping its bearer token out of the browser.
 The account card reads unshielded NIGHT and test-token balances separately. The button shows the
 confirmed balance and keeps a separate request ID per asset across retries.
+The page also has **Open by ACC address**: paste the public 64-character lowercase ACC address and
+choose an already-enrolled passkey. This verifies its live device entry and sealed viewing key
+without relying on the local directory hint. It cannot discover an unknown address or recover a
+lost passkey. The requested and verified addresses appear in the operation trace.
+**Refresh ACC state** rereads live account counters and, with funding enabled, unshielded ACC
+balances without another passkey prompt.
+
 Expand **Operation trace (requests and responses)** to inspect the chronological public-field
 trace. **Copy full log** includes that trace, Passport events (including deploy waves), account
 state and built-in wallet addresses and balances; raw transaction bodies and secret material are

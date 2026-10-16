@@ -2,7 +2,7 @@
 // through. Data only, no DOM: ui.ts renders it and event-log.ts times it from the connector's events.
 import type { PassportStep } from '@input-output-hk/mn-passport-protocol';
 
-export type ActionId = 'create' | 'open' | 'rotate' | 'wallet' | 'fund';
+export type ActionId = 'create' | 'open' | 'openAt' | 'refresh' | 'rotate' | 'wallet' | 'fund';
 
 /** A prompt count, or a range when it depends on the passkey provider. */
 export type PromptCount = number | readonly [min: number, max: number];
@@ -18,6 +18,8 @@ export type PromptCount = number | readonly [min: number, max: number];
 export const PASSKEY_PROMPTS = {
   create: [2, 3],
   open: [1, 2],
+  openAt: [1, 2],
+  refresh: 0,
   rotate: 1,
   fund: 0,
   walletWithAccount: 1,
@@ -77,6 +79,17 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       "Reopens this passkey's account and checks its sealed viewing secret against the live ACC key.",
     stages: [{ id: 'identify', label: 'Choose the passkey and check it against the chain' }, read],
   },
+  openAt: {
+    title: 'Open by ACC address',
+    summary:
+      'Opens a known ACC with an enrolled passkey and checks its sealed viewing key against the live contract. The address alone grants no access.',
+    stages: [{ id: 'identify', label: 'Verify this passkey in the known ACC' }, read],
+  },
+  refresh: {
+    title: 'Refresh ACC state',
+    summary: 'Reads the live ACC counters and, when funding is enabled, its unshielded balances.',
+    stages: [{ id: 'read', label: 'Read live ACC state and balances' }],
+  },
   rotate: {
     title: 'Rotate encryption key',
     summary: `A passkey-signed call, proved on the service (about ${ROTATION_ESTIMATE_S} s) and sponsored.`,
@@ -120,6 +133,8 @@ export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep
     activate: 'activate',
   },
   open: {},
+  openAt: {},
+  refresh: {},
   rotate: {},
   wallet: {},
   fund: {},
@@ -147,6 +162,7 @@ const HINTS: Readonly<Record<string, string>> = {
     'This passkey cannot derive keys (no PRF support). Use a passkey saved in Google Password Manager or iCloud Keychain.',
   AccountNotFound:
     'No Passport account for this passkey on this network. After a chain reset the directory may be stale.',
+  InvalidAccountAddress: 'Enter a 64-character lowercase hexadecimal Passport ACC address.',
   ArtefactIntegrity:
     "The service's contract artefacts do not match the ones this page was built for. Restart both with the same manifest.",
   ProverUnavailable:
@@ -157,6 +173,17 @@ const HINTS: Readonly<Record<string, string>> = {
   NetworkMismatch: 'The service is on a different network from this page.',
   InternalError: 'Something went wrong inside the connector.',
 };
+
+/** Reject malformed addresses before opening a passkey ceremony. */
+export function knownAccAddress(value: string): string {
+  const address = value.trim();
+  if (!/^[0-9a-f]{64}$/.test(address)) {
+    const error = new Error('ACC address must be 32-byte lowercase hex.');
+    error.name = 'InvalidAccountAddress';
+    throw error;
+  }
+  return address;
+}
 
 /** Turns anything thrown into a code, the raw message and a plain-language hint. */
 export function plainError(e: unknown, serviceUrl: string): PlainError {
