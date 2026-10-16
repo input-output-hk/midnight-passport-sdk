@@ -1,0 +1,57 @@
+{
+  "verdict": "PASS",
+  "bindingId": "acc-s3r1.1",
+  "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "contractSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
+  "account": "5f8ad982a66dcbb992649cfbde32e4796282e8cf6891d909af41f1ccc7555f75",
+  "networkId": "undeployed",
+  "ownerScheme": "p256-webauthn",
+  "preparationTx": "002debd2a9beedbf8d471df47efb7ed89f5135de7ef93f374ff987108acb310d36",
+  "depositTx": "00f30711e4a7f9e0c87f6a5bb3b4b7e228d229f764d5a61619f4c568f59ef2b481",
+  "issueTx": "b18cb1b34a9c6e5d73d48a1f9dd49cc7dad2590ca7ad61c8d0494ad18823183a",
+  "grantId": "c64d01488cd5045842c63a1a1f1fb584389940235fef88ceb81bb3ad9d5c2533",
+  "grantSlot": 0,
+  "grantSpendTx": "aa1b98e7b7083e792f75b2300bd1b856d3a9ba7d5bf6acfc0296773591cba0cc",
+  "revokeTx": "0f2d7ae536ca69a42e0b9633c0efaaa6d58a3b2e12a1e8e7b9495575a9976aef",
+  "postRevokeUseRefused": true,
+  "color": "0000000000000000000000000000000000000000000000000000000000000000",
+  "depositAmount": "10",
+  "withdrawAmount": "4",
+  "balanceAfter": "6",
+  "recipient": "bc610dd07c52f59012a88c2f9f1c5f34cbacc75b868202975d6f19beaf37284b",
+  "transactions": [
+    {
+      "circuit": "activate_initial_device_with_p256",
+      "txHash": "fd75d9091706715877d0a4854af5d9afd403539a4ba43b7297190fd24217c8e0"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "4ea454f6038a0ed6315939985be5197422e0ffd19b0c446646d359eda11e2f08"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "633956caad9bf0cb6aedc67bf1a8dac43e6946ecbc19bab4ec9f51588293e7e2"
+    },
+    {
+      "circuit": "issue_grant_with_p256",
+      "txHash": "b18cb1b34a9c6e5d73d48a1f9dd49cc7dad2590ca7ad61c8d0494ad18823183a"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "dec592ec67e27ddcb6f873465f40a35b034e4c43a0846ff78c77f1b95ac9ef4a"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "dde52d17fc9a39b3782127d7e844deb952a301b42574d872f0ecadaf770f4d2c"
+    },
+    {
+      "circuit": "withdraw_unshielded_with_grant_jubjub",
+      "txHash": "aa1b98e7b7083e792f75b2300bd1b856d3a9ba7d5bf6acfc0296773591cba0cc"
+    },
+    {
+      "circuit": "revoke_grant_with_p256",
+      "txHash": "0f2d7ae536ca69a42e0b9633c0efaaa6d58a3b2e12a1e8e7b9495575a9976aef"
+    }
+  ],
+  "scope": "proof-backed P-256 owner issues fixed-recipient JubJub grant; independent grantee spends four NIGHT units; owner revokes and further use is refused"
+}

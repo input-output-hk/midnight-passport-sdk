@@ -41,8 +41,9 @@ The second-device demo uses a public JSON handoff. A joining browser creates a p
 Keep the funding token, asset policy, reservation file, wallet state, and deployment log outside the repository. The default single-host reservation file is `~/.midnight-passport/funding-reservations.json`. A successful request ID returns its recorded result on replay. An uncertain request stays **pending** and returns HTTP 409 on replay. The funding process journals the initial ACC balance and any returned preparation/deposit transaction IDs before it attempts the next step. Use the read-only [reservation inspector](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md) to see those milestones and a stale lock. A durable `noSubmit` marker permits an audited release only when preflight failed before any wallet preparation or deposit. A journaled deposit ID can be reconciled against the localnet indexer's ACC action history only when its successful `deposit_unshielded` action changes the target balance by exactly the reserved amount. The operator command records a verified result for the original request ID. Missing IDs do not prove a transaction was never submitted, and ambiguous cases remain pending. Do not switch to a new UUID merely to bypass a pending result. A stale `.lock` directory also requires inspection before removal. Multiple replicas need a transactional store.
 
 The grant demo now reads the public grant map from one chain snapshot and can recover publication
-of openings staged in its encrypted, passkey-bound browser journal. It does not issue a capability
-or exercise one as a grantee. The journal has no backup or cross-profile synchronization; a lost
+of openings staged in its encrypted, passkey-bound browser journal. A [node-backed localnet run](../../experiments/acc-0.35/results/sdk-p256-grant-holder-node.json)
+confirms fixed-recipient issue, independent JubJub grantee spend, owner revoke and post-revoke
+refusal. The browser page does not yet issue a capability or exercise one as a grantee. The journal has no backup or cross-profile synchronization; a lost
 opening can block read-grant rotation, and the owner must not assume recovery succeeded until the
 chain-backed roster and publication result are shown.
 

@@ -1,7 +1,8 @@
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { grantOriginHash, granteePoint, type GrantScopePure } from './grant-scope.js';
-import type { CurvePoint } from './ports/index.js';
+import type { Authoriser, Chain, CurvePoint } from './ports/index.js';
+import type { FlowOptions, PassportTxResult } from '@input-output-hk/mn-passport-protocol';
 
 /** The first holder flow accepts only a recipient-pinned unshielded spend. */
 export interface UnshieldedGrantIntent {
@@ -36,6 +37,63 @@ export interface UnshieldedGrantPure extends Pick<
   'derive_grant_id_with_jubjub' | 'derive_grant_object_commit'
 > {
   derive_grant_spent_commit(salt: Uint8Array, spent: bigint): Uint8Array;
+}
+
+export interface UnshieldedGrantCallPure extends UnshieldedGrantPure {
+  challenge_withdraw_unshielded_with_grant_jubjub(
+    account: { readonly bytes: Uint8Array },
+    sigR: CurvePoint,
+    grantee: CurvePoint,
+    grantId: Uint8Array,
+    issuedAt: bigint,
+    color: Uint8Array,
+    amount: bigint,
+    recipient: { readonly bytes: Uint8Array },
+    grantNonce: bigint,
+    grindNonce: bigint,
+  ): Uint8Array;
+}
+
+export interface UnshieldedGrantSpendPorts {
+  readonly pure: UnshieldedGrantCallPure;
+  readonly source: {
+    readGrantSpendContext(
+      account: string,
+      grantId: string,
+    ): Promise<UnshieldedGrantContext | undefined>;
+  };
+  /** Must be value-capable: the fee-only Passport sponsor cannot balance this withdrawal. */
+  readonly chain: Chain;
+  readonly grantee: Authoriser;
+  /** The host must show and approve these exact public fields before a grantee signs. */
+  readonly review: (intent: {
+    readonly account: string;
+    readonly grantId: string;
+    readonly color: string;
+    readonly amount: string;
+    readonly recipient: string;
+    readonly remainingCap: string;
+  }) => Promise<boolean>;
+  readonly nowSeconds?: () => number;
+  readonly sleep?: (milliseconds: number) => Promise<void>;
+  readonly attempts?: number;
+}
+
+export interface UnshieldedGrantSpendResult extends PassportTxResult {
+  readonly grantId: string;
+  readonly spentTotal: bigint;
+  readonly grantNonce: bigint;
+}
+
+/** A submitted call with uncertain publication; the caller must reconcile this exact hash. */
+export class SubmittedGrantSpendError extends PassportConnectorError {
+  constructor(readonly txHash: string) {
+    super(
+      'GrantRosterUnsettled',
+      `Grant spend ${txHash} was submitted but did not settle in the live grant map. Inspect this transaction before retrying.`,
+      { retryable: false },
+    );
+  }
 }
 
 const U128 = (1n << 128n) - 1n;
@@ -129,4 +187,133 @@ export function checkUnshieldedGrant(
     issuedAt: live.issuedAt,
     nonce: live.nonce,
   };
+}
+
+/** Sign one grant-holder spend and confirm its live nonce and spent commitment. */
+export async function spendUnshieldedWithGrant(
+  intent: UnshieldedGrantIntent,
+  ports: UnshieldedGrantSpendPorts,
+  options: FlowOptions = {},
+): Promise<UnshieldedGrantSpendResult> {
+  const { grantee, pure, source, chain } = ports;
+  if (grantee.scheme !== 'jubjub-schnorr' || !grantee.withKeySession)
+    throw new PassportConnectorError(
+      'BindingUnsupported',
+      'A JubJub grantee key session is required.',
+    );
+  const attempts = ports.attempts ?? 30;
+  if (!Number.isSafeInteger(attempts) || attempts < 1 || attempts > 120)
+    invalid('Invalid settlement polling bound.');
+  const sleep =
+    ports.sleep ??
+    ((milliseconds: number) =>
+      new Promise<void>((resolve) =>
+        (globalThis as unknown as { setTimeout(run: () => void, ms: number): unknown }).setTimeout(
+          resolve,
+          milliseconds,
+        ),
+      ));
+  return grantee.withKeySession(async () => {
+    if (options.signal?.aborted)
+      throw new PassportConnectorError('Aborted', 'Grant spend cancelled.');
+    const read = () => source.readGrantSpendContext(intent.account, intent.grantId);
+    const live = await read();
+    const checked = checkUnshieldedGrant(
+      intent,
+      live,
+      pure,
+      (ports.nowSeconds ?? (() => Math.floor(Date.now() / 1000)))(),
+    );
+    const selected = await grantee.devicePublicKey();
+    if (selected.x !== checked.grantee.x || selected.y !== checked.grantee.y)
+      throw new PassportConnectorError(
+        'NotAuthorised',
+        'The selected grantee key differs from the grant.',
+      );
+    const approved = await ports.review({
+      account: intent.account,
+      grantId: intent.grantId,
+      color: intent.color,
+      amount: intent.amount,
+      recipient: intent.recipient,
+      remainingCap: (live!.cap - checked.spentPrev).toString(),
+    });
+    if (!approved) throw new PassportConnectorError('UserCancelled', 'Grant spend was declined.');
+    const circuit = 'withdraw_unshielded_with_grant_jubjub';
+    const signature = await grantee.authorise({
+      account: intent.account,
+      circuit,
+      args: [checked.color, checked.amount, { bytes: checked.recipient }],
+      witnessValues: [],
+      authNonce: 0n,
+      useCounter: 0n,
+      challenge: (sigR, grindNonce) =>
+        pure.challenge_withdraw_unshielded_with_grant_jubjub(
+          { bytes: checked.account },
+          sigR,
+          checked.grantee,
+          checked.grantId,
+          checked.issuedAt,
+          checked.color,
+          checked.amount,
+          { bytes: checked.recipient },
+          checked.nonce,
+          grindNonce,
+        ),
+    });
+    if (
+      signature.scheme !== 'jubjub-schnorr' ||
+      signature.pk.x !== checked.grantee.x ||
+      signature.pk.y !== checked.grantee.y
+    )
+      throw new PassportConnectorError('NotAuthorised', 'The signature names another grantee.');
+    const latest = await read();
+    if (
+      !latest?.active ||
+      latest.issuedAt !== checked.issuedAt ||
+      latest.nonce !== checked.nonce ||
+      latest.withdrawUnshielded !== live!.withdrawUnshielded ||
+      latest.perCallCap !== live!.perCallCap ||
+      latest.cap !== live!.cap ||
+      latest.expiresAt !== live!.expiresAt ||
+      !same(latest.objectCommit, live!.objectCommit) ||
+      !same(latest.spentCommit, live!.spentCommit)
+    )
+      throw new PassportConnectorError(
+        'GrantRosterUnsettled',
+        'The grant changed before submission.',
+      );
+    if (options.signal?.aborted)
+      throw new PassportConnectorError('Aborted', 'Grant spend cancelled.');
+    const tx = await chain.call({
+      address: intent.account,
+      circuit,
+      args: [
+        checked.color,
+        checked.amount,
+        { bytes: checked.recipient },
+        signature.pk,
+        checked.originHash,
+        checked.slot,
+        checked.scopeSalt,
+        1n,
+        checked.recipient,
+        checked.maxCoinValue,
+        checked.spentPrev,
+        signature.sigR,
+        signature.sigS,
+        signature.grindNonce,
+      ],
+      ...options,
+    });
+    const spentTotal = checked.spentPrev + checked.amount;
+    const expected = pure.derive_grant_spent_commit(checked.scopeSalt, spentTotal);
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      const settled = await read();
+      if (settled?.nonce === checked.nonce + 1n && same(settled.spentCommit, expected))
+        return { ...tx, grantId: intent.grantId, spentTotal, grantNonce: settled.nonce };
+      if (attempt + 1 < attempts) await sleep(1000);
+    }
+    throw new SubmittedGrantSpendError(tx.txHash);
+  });
 }
