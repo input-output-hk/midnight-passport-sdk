@@ -94,6 +94,9 @@ to one smallest unit, reads a fresh ACC balance, rejects an amount above it, and
 ACC, asset color, amount and destination in a confirmation dialog before passkey consent. The SDK
 owner flow signs and submits the pinned withdrawal circuit. The page then shows its transaction ID
 and rereads the ACC balance. It does not construct a transfer transaction itself.
+A [node-backed P-256 probe](../../experiments/acc-0.35/results/sdk-p256-unshielded-withdraw-node.json)
+used a fresh localnet ACC, deposited ten smallest NIGHT units, withdrew four to the public genesis
+wallet and verified that six remained. The browser confirmation still needs a manual passkey run.
 
 For a controlled round trip, use an unshielded address from a wallet you control and inspect that
 wallet's balance after confirmation. The demo's passkey-derived built-in wallet can show its address
