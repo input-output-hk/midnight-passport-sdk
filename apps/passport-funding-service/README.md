@@ -105,8 +105,25 @@ reservation file, records the operator, timestamp and reason in the request tomb
 its daily quota. The original request ID remains unusable; a *new* ID is appropriate only after
 the original was released. Do not use the command for a request with no marker, after NIGHT
 preparation, after deposit submission, or after an uncertain crash. Those cases remain pending.
-Inspect the wallet transaction, indexer receipt and live ACC balance before any manual repair; no
-confirmed-credit resolver is available yet. Never delete a pending entry to retry. If a stale
+For a request whose deposit transaction ID was durably journaled, the localnet operator can check
+the indexer's complete ACC action history and complete the original request only when that
+transaction contains exactly one successful `deposit_unshielded` call whose balance change is
+exactly the reserved amount:
+
+```sh
+nix develop -c pnpm --filter passport-funding-service reconcile --file \
+  "$HOME/.midnight-passport/funding-reservations.json" \
+  --request-id '<original UUID>' --operator '<your-id>' --confirm-credit yes
+```
+
+The resolver defaults to the local indexer on port 18088; `--indexer-url` and `--indexer-ws-url`
+can select another loopback endpoint. It is qualified only for the `undeployed` network. It
+refuses missing transaction IDs, failed or partial transactions, a different circuit, duplicate
+matching actions, an incomplete history, and any balance delta other than the reserved amount.
+Success records the original result plus transaction hash, before/after balances, operator and
+timestamp, after a private backup. Replaying the same request ID returns that result. Review the
+wallet transaction and ACC ledger too; a pending request that fails these checks stays pending.
+Never delete a pending entry to retry. If a stale
 `.lock` directory remains after a crash, stop all funding processes, copy the reservation file to a
 private backup, reconcile every pending request against wallet and chain evidence, then remove the
 lock directory manually. The `FundingStore` interface defines atomic reserve, milestone, complete,

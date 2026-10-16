@@ -1,5 +1,6 @@
 import type { IncomingMessage } from 'node:http';
 import type { ServiceWire } from '@input-output-hk/mn-passport-protocol';
+import type { FundingCreditEvidence } from './funding-reconciliation.js';
 import { HttpError, json, readJson, type Route } from './http.js';
 
 const ADDRESS = /^[0-9a-f]{64}$/;
@@ -39,6 +40,13 @@ export interface FundingStore {
   recordProgress(requestId: string, progress: FundingProgress): Promise<void>;
   /** Atomically tombstone a request proved to have stopped before any wallet submission. */
   releaseNoSubmit(requestId: string, actor: string): Promise<void>;
+  /** Atomically persist independently verified deposit evidence and the original result. */
+  completeReconciled(
+    requestId: string,
+    actor: string,
+    result: ServiceWire.FundAccResponse,
+    evidence: FundingCreditEvidence,
+  ): Promise<void>;
 }
 
 /** Must submit through a dedicated wallet, wait for inclusion, and read the credited ACC balance. */

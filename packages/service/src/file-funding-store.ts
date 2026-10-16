@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto';
 import { dirname } from 'node:path';
 import type { ServiceWire } from '@input-output-hk/mn-passport-protocol';
 import type { FundingProgress, FundingStore } from './funding-route.js';
+import type { FundingCreditEvidence } from './funding-reconciliation.js';
 
 interface ProgressRecord {
   readonly balanceBefore: string;
@@ -34,6 +35,7 @@ interface Entry {
     readonly at: string;
     readonly reason: 'preflight-failed';
   };
+  readonly reconciliation?: FundingCreditEvidence & { readonly actor: string; readonly at: string };
 }
 interface FileState {
   readonly version: 1;
@@ -47,6 +49,7 @@ const NONNEGATIVE_DECIMAL = /^(?:0|[1-9][0-9]*)$/;
 const validTxId = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0 && value.length <= 256;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const ACTOR = /^[a-zA-Z0-9._@-]{1,80}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const MAX_AMOUNT = (1n << 128n) - 1n;
 const fields = [
@@ -95,12 +98,34 @@ function validEntry(id: string, value: unknown): value is Entry {
     if (
       !record(value.release) ||
       typeof value.release.actor !== 'string' ||
-      !/^[a-zA-Z0-9._@-]{1,80}$/.test(value.release.actor) ||
+      !ACTOR.test(value.release.actor) ||
       typeof value.release.at !== 'string' ||
       !Number.isFinite(Date.parse(value.release.at)) ||
       value.release.reason !== 'preflight-failed' ||
       !value.noSubmit ||
       value.result !== undefined
+    )
+      return false;
+  }
+  if (value.reconciliation !== undefined) {
+    if (
+      !record(value.reconciliation) ||
+      typeof value.reconciliation.actor !== 'string' ||
+      !ACTOR.test(value.reconciliation.actor) ||
+      typeof value.reconciliation.at !== 'string' ||
+      !Number.isFinite(Date.parse(value.reconciliation.at)) ||
+      !validTxId(value.reconciliation.txHash) ||
+      typeof value.reconciliation.previousBalance !== 'string' ||
+      !NONNEGATIVE_DECIMAL.test(value.reconciliation.previousBalance) ||
+      typeof value.reconciliation.creditedBalance !== 'string' ||
+      !NONNEGATIVE_DECIMAL.test(value.reconciliation.creditedBalance) ||
+      !record(value.result) ||
+      value.result.creditedBalance !== value.reconciliation.creditedBalance ||
+      !record(value.progress) ||
+      value.progress.depositTxId !== value.result.txId ||
+      BigInt(value.reconciliation.creditedBalance) -
+        BigInt(value.reconciliation.previousBalance) !==
+        BigInt(String(request.amount))
     )
       return false;
   }
@@ -147,6 +172,7 @@ export interface FundingInspection {
     readonly result?: ServiceWire.FundAccResponse;
     readonly noSubmit?: true;
     readonly release?: Entry['release'];
+    readonly reconciliation?: Entry['reconciliation'];
   }[];
 }
 
@@ -164,6 +190,7 @@ export function inspectFileFundingStore(file: string): FundingInspection {
       ...(entry.result && { result: entry.result }),
       ...(entry.noSubmit && { noSubmit: entry.noSubmit }),
       ...(entry.release && { release: entry.release }),
+      ...(entry.reconciliation && { reconciliation: entry.reconciliation }),
     })),
   };
 }
@@ -328,7 +355,7 @@ export function createFileFundingStore(file: string): FundingStore {
     },
     async releaseNoSubmit(requestId, actor) {
       withLock(() => {
-        if (!/^[a-zA-Z0-9._@-]{1,80}$/.test(actor)) throw new Error('operator identity is invalid');
+        if (!ACTOR.test(actor)) throw new Error('operator identity is invalid');
         const state = load(file);
         const old = state.requests[requestId];
         if (!old || old.result || old.release || !old.noSubmit)
@@ -339,6 +366,39 @@ export function createFileFundingStore(file: string): FundingStore {
         state.requests[requestId] = {
           ...old,
           release: { actor, at: new Date().toISOString(), reason: 'preflight-failed' },
+        };
+        save(file, state);
+      });
+    },
+    async completeReconciled(requestId, actor, result, evidence) {
+      withLock(() => {
+        if (!ACTOR.test(actor)) throw new Error('operator identity is invalid');
+        const state = load(file);
+        const old = state.requests[requestId];
+        const progress = old?.progress;
+        if (
+          !old ||
+          old.result ||
+          old.release ||
+          old.noSubmit ||
+          !progress?.depositTxId ||
+          result.requestId !== requestId ||
+          result.txId !== progress.depositTxId ||
+          result.preparationTxId !== progress.preparationTxId ||
+          !validTxId(evidence.txHash) ||
+          !NONNEGATIVE_DECIMAL.test(evidence.previousBalance) ||
+          !NONNEGATIVE_DECIMAL.test(evidence.creditedBalance) ||
+          result.creditedBalance !== evidence.creditedBalance ||
+          BigInt(evidence.previousBalance) < BigInt(progress.balanceBefore) ||
+          BigInt(evidence.creditedBalance) - BigInt(evidence.previousBalance) !==
+            BigInt(old.request.amount)
+        )
+          throw new Error('reconciliation evidence differs from the pending reservation');
+        backup(file);
+        state.requests[requestId] = {
+          ...old,
+          result,
+          reconciliation: { ...evidence, actor, at: new Date().toISOString() },
         };
         save(file, state);
       });

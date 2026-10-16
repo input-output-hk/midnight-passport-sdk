@@ -55,6 +55,7 @@ function memoryStore() {
     },
     async recordProgress() {},
     async releaseNoSubmit() {},
+    async completeReconciled() {},
   };
 }
 

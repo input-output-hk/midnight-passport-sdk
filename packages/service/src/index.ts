@@ -41,6 +41,12 @@ export {
   type FundingInspection,
 } from './file-funding-store.js';
 export {
+  verifyFundingCredit,
+  type FundingContractAction,
+  type FundingCreditEvidence,
+  type FundingPendingRecord,
+} from './funding-reconciliation.js';
+export {
   createWalletFundingBackend,
   type FundingAccount,
   type WalletFundingOptions,
