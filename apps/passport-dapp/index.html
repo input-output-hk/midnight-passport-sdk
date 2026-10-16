@@ -172,6 +172,109 @@
           </li>
           <li class="action">
             <button
+              id="prepareGrantee"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="prepareGrantee-prompts prepareGrantee-desc"
+              disabled
+            >
+              Prepare grant holder
+            </button>
+            <p class="prompts" id="prepareGrantee-prompts"></p>
+            <p class="action-desc" id="prepareGrantee-desc"></p>
+            <label for="grantee-output">Public grantee JubJub key</label>
+            <input
+              id="grantee-output"
+              class="action-input"
+              type="text"
+              readonly
+              hidden
+              aria-label="Public grantee JubJub key"
+            />
+          </li>
+          <li class="action" hidden>
+            <label for="grant-grantee">JubJub grantee public key (64 hex characters)</label>
+            <input
+              id="grant-grantee"
+              class="action-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="Public key from the grantee browser"
+              aria-describedby="issueGrant-desc"
+            />
+            <label for="grant-asset">Asset this grant can withdraw</label>
+            <select id="grant-asset" aria-describedby="issueGrant-desc"></select>
+            <label for="grant-recipient">Fixed recipient unshielded Midnight address</label>
+            <input
+              id="grant-recipient"
+              class="action-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="mn_addr_…"
+              aria-describedby="issueGrant-desc"
+            />
+            <label for="grant-per-call">Maximum per withdrawal (smallest units)</label>
+            <input
+              id="grant-per-call"
+              class="action-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              value="1"
+              aria-describedby="issueGrant-desc"
+            />
+            <label for="grant-cap">Total grant cap (smallest units)</label>
+            <input
+              id="grant-cap"
+              class="action-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              value="1"
+              aria-describedby="issueGrant-desc"
+            />
+            <button
+              id="issueGrant"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="issueGrant-prompts issueGrant-desc"
+              disabled
+            >
+              Issue scoped grant
+            </button>
+            <p class="prompts" id="issueGrant-prompts"></p>
+            <p class="action-desc" id="issueGrant-desc"></p>
+          </li>
+          <li class="action">
+            <label for="revoke-grant-id">Grant ID to revoke</label>
+            <input
+              id="revoke-grant-id"
+              class="action-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="64 lowercase hex characters from the live roster"
+              aria-describedby="revokeGrant-desc"
+            />
+            <button
+              id="revokeGrant"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="revokeGrant-prompts revokeGrant-desc"
+              disabled
+            >
+              Revoke scoped grant
+            </button>
+            <p class="prompts" id="revokeGrant-prompts"></p>
+            <p class="action-desc" id="revokeGrant-desc"></p>
+          </li>
+          <li class="action">
+            <button
               id="recoverGrants"
               class="btn btn-secondary"
               type="button"

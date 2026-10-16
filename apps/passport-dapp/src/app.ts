@@ -18,6 +18,8 @@ import {
 } from './connector.js';
 import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS, knownAccAddress } from './flows.js';
 import { withdrawalRequest } from './withdrawal.js';
+import { fixedUnshieldedGrant } from './grant-input.js';
+import { prepareGranteePasskey } from './grantee-passkey.js';
 import { parseDeviceHandoff, prepareDeviceHandoff } from './device-handoff.js';
 import { setOperationTraceSink, tracedFetch, traceOperation } from './operation-trace.js';
 import { createUi } from './ui.js';
@@ -308,6 +310,95 @@ ui.on('grantRoster', async () => {
   status(
     `Read ${roster.entries.filter((entry) => entry.active).length} active grants from the ACC.`,
   );
+});
+ui.on('prepareGrantee', async () => {
+  const target = knownAccAddress(ui.knownAddress());
+  stage('passkey');
+  status('Creating a separate grant-holder passkey and deriving its public JubJub key…');
+  const publicKey = await prepareGranteePasskey({ rpId: RP_ID, origin: ORIGIN });
+  ui.showGranteePublicKey(publicKey);
+  record('granteePublicKey', { accountAddress: target, publicKey });
+  traceOperation('grant.holder.prepared', { accountAddress: target, publicKey });
+  status('Public grantee key ready. Copy it to the ACC owner browser for the scoped grant.');
+});
+ui.on('issueGrant', async () => {
+  const current = account;
+  if (!current?.issueGrant || !current.grantRoster)
+    throw new Error('Open a supported Passport account before issuing a grant.');
+  const scope = fixedUnshieldedGrant(network, ui.grantInput());
+  stage('review');
+  const before = await current.grantRoster();
+  ui.showGrantRoster(current.address, before);
+  const approved = window.confirm(
+    `Issue a scoped ACC withdrawal grant?\n\nACC: ${current.address}\nNetwork: ${network}\n` +
+      `Grantee JubJub key: ${scope.grantee.publicKey}\nAsset color: ${scope.color}\n` +
+      `Fixed recipient: ${ui.grantInput().recipient}\nPer-call cap: ${scope.perCallCap}\n` +
+      `Total cap: ${scope.cap}\nExpiry: none\n\nThe grant can move ACC funds to this recipient until revoked.`,
+  );
+  if (!approved) {
+    status('Grant issue cancelled before signing.');
+    return;
+  }
+  stage('submit');
+  const result = await current.issueGrant(scope, { onEvent });
+  stage('read');
+  const after = await current.grantRoster();
+  if (!after.entries.some((entry) => entry.id === result.grantId && entry.active))
+    throw new Error('The issued grant is not active in the live roster.');
+  ui.showGrantRoster(current.address, after);
+  const publicResult = {
+    accountAddress: current.address,
+    grantId: result.grantId,
+    slot: result.slot,
+    scopeDigest: result.scopeDigest,
+    txHash: result.txHash,
+    generation: after.generation.toString(),
+    granteePublicKey: scope.grantee.publicKey,
+    color: scope.color,
+    recipient: scope.recipient,
+    perCallCap: scope.perCallCap,
+    cap: scope.cap,
+  };
+  record('grantIssued', publicResult);
+  traceOperation('account.grants.issued', publicResult);
+  status(`Grant ${result.grantId.slice(0, 12)}… is active for the fixed recipient.`);
+});
+ui.on('revokeGrant', async () => {
+  const current = account;
+  if (!current?.revokeGrant || !current.grantRoster)
+    throw new Error('Open a supported Passport account before revoking a grant.');
+  const grantId = ui.revokeGrantId();
+  if (!/^[0-9a-f]{64}$/.test(grantId)) throw new Error('Enter a valid grant ID.');
+  stage('review');
+  const before = await current.grantRoster();
+  if (!before.entries.some((entry) => entry.id === grantId && entry.active))
+    throw new Error('This grant is not active in the live ACC.');
+  ui.showGrantRoster(current.address, before);
+  const approved = window.confirm(
+    `Revoke this ACC grant?\n\nACC: ${current.address}\nNetwork: ${network}\n` +
+      `Grant ID: ${grantId}\nGeneration: ${before.generation}\n\nConfirm before the passkey prompt.`,
+  );
+  if (!approved) {
+    status('Grant revocation cancelled before signing.');
+    return;
+  }
+  stage('submit');
+  const result = await current.revokeGrant(grantId, { onEvent });
+  stage('read');
+  const after = await current.grantRoster();
+  if (!after.entries.some((entry) => entry.id === grantId && !entry.active))
+    throw new Error('The grant revocation did not appear in the live roster.');
+  ui.showGrantRoster(current.address, after);
+  const publicResult = {
+    accountAddress: current.address,
+    grantId,
+    txHash: result.txHash,
+    status: result.status,
+    generation: after.generation.toString(),
+  };
+  record('grantRevoked', publicResult);
+  traceOperation('account.grants.revoked', publicResult);
+  status(`Grant ${grantId.slice(0, 12)}… is revoked on chain.`);
 });
 ui.on('recoverGrants', async () => {
   const current = account;

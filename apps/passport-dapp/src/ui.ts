@@ -56,6 +56,9 @@ const ACTIONS: readonly ActionId[] = [
   'holdings',
   'roster',
   'grantRoster',
+  'prepareGrantee',
+  'issueGrant',
+  'revokeGrant',
   'recoverGrants',
   'prepareJoiner',
   'enrollDevice',
@@ -122,6 +125,12 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   const withdrawalSelect = byId<HTMLSelectElement>('withdraw-asset');
   const withdrawalAmount = byId<HTMLInputElement>('withdraw-amount');
   const withdrawalRecipient = byId<HTMLInputElement>('withdraw-recipient');
+  const grantGrantee = byId<HTMLInputElement>('grant-grantee');
+  const grantAsset = byId<HTMLSelectElement>('grant-asset');
+  const grantRecipient = byId<HTMLInputElement>('grant-recipient');
+  const grantPerCall = byId<HTMLInputElement>('grant-per-call');
+  const grantCap = byId<HTMLInputElement>('grant-cap');
+  const revokeGrantId = byId<HTMLInputElement>('revoke-grant-id');
   const knownAddress = byId<HTMLInputElement>('open-address');
   let accountBalances:
     | { address: string; color: string; night?: string; fundedAsset?: string; error?: string }
@@ -175,6 +184,22 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     buttons.holdings.disabled = busy || !account;
     buttons.roster.disabled = busy || !account;
     buttons.grantRoster.disabled = busy || !account;
+    buttons.prepareGrantee.disabled =
+      busy || !ready || !/^[0-9a-f]{64}$/.test(knownAddress.value.trim());
+    buttons.issueGrant.disabled =
+      busy ||
+      !account ||
+      assetsByColor.size === 0 ||
+      !/^[0-9a-f]{64}$/.test(grantGrantee.value.trim());
+    buttons.issueGrant.closest('li')?.toggleAttribute('hidden', assetsByColor.size === 0);
+    buttons.revokeGrant.disabled =
+      busy || !account || !/^[0-9a-f]{64}$/.test(revokeGrantId.value.trim());
+    grantGrantee.disabled = busy || !account;
+    grantAsset.disabled = busy || !account;
+    grantRecipient.disabled = busy || !account;
+    grantPerCall.disabled = busy || !account;
+    grantCap.disabled = busy || !account;
+    revokeGrantId.disabled = busy || !account;
     buttons.recoverGrants.disabled = busy || !account;
     buttons.prepareJoiner.disabled =
       busy || !ready || !/^[0-9a-f]{64}$/.test(knownAddress.value.trim());
@@ -589,6 +614,8 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       .catch(() => status('Copy failed: the browser refused clipboard access.'));
   });
   knownAddress.addEventListener('input', renderButtons);
+  grantGrantee.addEventListener('input', renderButtons);
+  revokeGrantId.addEventListener('input', renderButtons);
   handoffInput.addEventListener('input', renderButtons);
   removalInput.addEventListener('input', renderButtons);
 
@@ -605,6 +632,20 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     status,
     knownAddress: () => knownAddress.value,
     handoffJson: () => handoffInput.value,
+    grantInput: () => ({
+      grantee: grantGrantee.value.trim(),
+      color: grantAsset.value,
+      maxDemoCall: assetsByColor.get(grantAsset.value)?.amount ?? '0',
+      recipient: grantRecipient.value.trim(),
+      perCallCap: grantPerCall.value.trim(),
+      cap: grantCap.value.trim(),
+    }),
+    revokeGrantId: () => revokeGrantId.value.trim(),
+    showGranteePublicKey(publicKey: string) {
+      const output = byId<HTMLInputElement>('grantee-output');
+      output.value = publicKey;
+      output.hidden = false;
+    },
     removalCommitment: () => removalInput.value.trim(),
     showHandoff(handoff: { fingerprint: string }) {
       handoffOutput.value = JSON.stringify(handoff, null, 2);
@@ -717,6 +758,19 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
         }),
       );
       withdrawalSelect.replaceChildren(
+        ...assets.map((asset) => {
+          const option = el(
+            'option',
+            undefined,
+            asset.color === '00'.repeat(32)
+              ? 'NIGHT (smallest units)'
+              : `Test token ${shorten(asset.color, 6, 4)} (smallest units)`,
+          );
+          option.value = asset.color;
+          return option;
+        }),
+      );
+      grantAsset.replaceChildren(
         ...assets.map((asset) => {
           const option = el(
             'option',

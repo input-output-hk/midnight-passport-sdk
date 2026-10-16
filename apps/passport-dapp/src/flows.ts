@@ -11,6 +11,9 @@ export type ActionId =
   | 'prepareJoiner'
   | 'roster'
   | 'grantRoster'
+  | 'prepareGrantee'
+  | 'issueGrant'
+  | 'revokeGrant'
   | 'recoverGrants'
   | 'enrollDevice'
   | 'removeDevice'
@@ -39,6 +42,9 @@ export const PASSKEY_PROMPTS = {
   prepareJoiner: 2,
   roster: 0,
   grantRoster: 0,
+  prepareGrantee: 2,
+  issueGrant: 1,
+  revokeGrant: 1,
   recoverGrants: 1,
   enrollDevice: 1,
   removeDevice: 1,
@@ -135,6 +141,31 @@ export const FLOWS: Record<ActionId, FlowDef> = {
     summary: 'Read live ACC grant IDs, status, read access and generation from the chain.',
     stages: [read],
   },
+  prepareGrantee: {
+    title: 'Prepare grant holder',
+    summary:
+      'In a separate browser, create a grant-holder passkey and copy its public JubJub key to the ACC owner.',
+    stages: [{ id: 'passkey', label: 'Create grantee passkey and derive its public key' }],
+  },
+  issueGrant: {
+    title: 'Issue scoped grant',
+    summary:
+      'Let a named JubJub grantee withdraw one localnet asset to one fixed Midnight address, within explicit per-call and total caps.',
+    stages: [
+      { id: 'review', label: 'Check the live grant roster and review the scope' },
+      { id: 'submit', label: 'Sign, prove and publish the grant' },
+      read,
+    ],
+  },
+  revokeGrant: {
+    title: 'Revoke scoped grant',
+    summary: 'Revoke one active grant ID and verify its inactive tombstone on chain.',
+    stages: [
+      { id: 'review', label: 'Check the live grant roster and review the ID' },
+      { id: 'submit', label: 'Sign and confirm the revocation' },
+      read,
+    ],
+  },
   recoverGrants: {
     title: 'Recover pending grants',
     summary:
@@ -221,6 +252,9 @@ export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep
   prepareJoiner: {},
   roster: {},
   grantRoster: {},
+  prepareGrantee: {},
+  issueGrant: {},
+  revokeGrant: {},
   recoverGrants: {},
   enrollDevice: {},
   removeDevice: {},

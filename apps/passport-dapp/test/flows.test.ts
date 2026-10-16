@@ -32,6 +32,9 @@ const ACTIONS: readonly ActionId[] = [
   'prepareJoiner',
   'roster',
   'grantRoster',
+  'prepareGrantee',
+  'issueGrant',
+  'revokeGrant',
   'recoverGrants',
   'enrollDevice',
   'removeDevice',
@@ -57,6 +60,9 @@ test('prompts per action, with and without an account open', () => {
   assert.equal(promptsFor('prepareJoiner', false), 2);
   assert.equal(promptsFor('roster', true), 0);
   assert.equal(promptsFor('grantRoster', true), 0);
+  assert.equal(promptsFor('prepareGrantee', false), 2);
+  assert.equal(promptsFor('issueGrant', true), 1);
+  assert.equal(promptsFor('revokeGrant', true), 1);
   assert.equal(promptsFor('recoverGrants', true), 1);
   assert.equal(promptsFor('enrollDevice', true), 1);
   assert.equal(promptsFor('removeDevice', true), 1);
@@ -75,12 +81,15 @@ test('the prompt table has an entry for each action and nothing the actions do n
     'fund',
     'grantRoster',
     'holdings',
+    'issueGrant',
     'open',
     'openAt',
+    'prepareGrantee',
     'prepareJoiner',
     'recoverGrants',
     'refresh',
     'removeDevice',
+    'revokeGrant',
     'roster',
     'rotate',
     'walletWithAccount',
