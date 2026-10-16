@@ -101,6 +101,18 @@ and balances but is read-only; it cannot send a received asset from this page. A
 submission does not establish that funds stayed in the ACC. Check the ACC, transaction and recipient
 on the live chain before submitting again.
 
+## Shielded holdings inspection
+
+After a shielded deposit into the ACC, choose **Read shielded holdings**. The page unlocks the
+sealed viewing key with the enrolled passkey, opens inbox coin descriptions, and checks each coin
+against the indexer's successful ACC output event and exact Merkle index. It also checks the
+successful ACC input events for the coin's spend nullifier. Only coins that pass these checks appear with their
+color, smallest-unit value and inbox position. A forged inbox entry, an output for another ACC,
+or an already-spent coin does not appear. If the indexer cannot prove a unique output position or
+cannot supply current spend state, the read fails. Reopen or refresh the ACC to clear a displayed
+snapshot and read again. The funding button deposits **unshielded** assets and will not populate
+this panel. The page and evidence omit viewing secrets, coin nonces and PRF values.
+
 For a colleague-facing run, expand **Operation trace (requests and responses)** while using the
 page. **Copy full log** exports one JSON document with the action stages, all Passport connector
 events (including deployment waves and activation), the HTTP request/response timeline, the open

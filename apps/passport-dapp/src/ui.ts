@@ -52,6 +52,7 @@ const ACTIONS: readonly ActionId[] = [
   'open',
   'openAt',
   'refresh',
+  'holdings',
   'rotate',
   'wallet',
   'fund',
@@ -115,6 +116,9 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   let accountBalances:
     | { address: string; color: string; night?: string; fundedAsset?: string; error?: string }
     | undefined;
+  let shieldedHoldings:
+    | { address: string; coins: readonly { inboxIndex: number; color: string; value: string }[] }
+    | undefined;
   let ticker: ReturnType<typeof setInterval> | undefined;
 
   // The action cards: prompt counts and summaries come from flows.ts only.
@@ -154,6 +158,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     buttons.openAt.disabled = busy || !ready || !/^[0-9a-f]{64}$/.test(knownAddress.value.trim());
     knownAddress.disabled = busy;
     buttons.refresh.disabled = busy || !account;
+    buttons.holdings.disabled = busy || !account;
     buttons.rotate.disabled = true;
     buttons.wallet.disabled = busy;
     buttons.fund.disabled = busy || !account;
@@ -422,6 +427,34 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     ]);
   };
 
+  const renderHoldings = () => {
+    const current =
+      account && shieldedHoldings?.address === account.address ? shieldedHoldings : undefined;
+    const list = byId('holdings-facts');
+    const empty = byId('holdings-empty');
+    list.hidden = !current || current.coins.length === 0;
+    empty.hidden = !!current && current.coins.length > 0;
+    if (!current) {
+      empty.textContent = 'Open an account, then read its shielded holdings.';
+      return;
+    }
+    if (current.coins.length === 0) {
+      empty.textContent = 'No chain-verified shielded coins found.';
+      return;
+    }
+    renderFacts(
+      list,
+      current.coins.flatMap((coin) => [
+        {
+          label: `Inbox #${coin.inboxIndex}`,
+          value: `${coin.value} smallest units`,
+          hint: 'Chain-verified shielded coin.',
+        },
+        { label: 'Color', value: shorten(coin.color, 8, 6), full: coin.color, copy: coin.color },
+      ]),
+    );
+  };
+
   const renderWallet = () => {
     const connected = Object.keys(wallet).length > 0;
     byId('wallet-empty').hidden = connected;
@@ -492,6 +525,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   renderButtons();
   renderProgress();
   renderAccount();
+  renderHoldings();
   renderWallet();
   renderEvidence();
 
@@ -548,12 +582,24 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       const keep = account?.address === view.address ? account.lastTx : undefined;
       const lastTx = view.lastTx ?? keep;
       account = { ...view, ...(lastTx && { lastTx }) };
+      // A later account action may spend a coin; require a fresh chain check.
+      shieldedHoldings = undefined;
       if (accountBalances?.address !== view.address)
         accountBalances = fundingAsset
           ? { address: view.address, color: fundingAsset.color }
           : undefined;
       renderAccount();
+      renderHoldings();
       renderButtons();
+      renderEvidence();
+    },
+    showShieldedHoldings(
+      address: string,
+      coins: readonly { inboxIndex: number; color: string; value: string }[],
+    ) {
+      if (account?.address !== address) return;
+      shieldedHoldings = { address, coins };
+      renderHoldings();
       renderEvidence();
     },
     enableFunding(assets: readonly { color: string; amount: string }[]) {

@@ -223,6 +223,31 @@ ui.on('refresh', async () => {
       : `ACC ${current.address.slice(0, 12)}… state refreshed from the chain.`,
   );
 });
+ui.on('holdings', async () => {
+  if (!account?.readShieldedHoldings)
+    throw new Error('Open a sealed Passport account before reading its shielded holdings.');
+  const current = account;
+  const read = current.readShieldedHoldings;
+  if (!read) throw new Error('This Passport account cannot read shielded holdings.');
+  status('Opening the sealed ACC inbox and checking coin commitments against the chain…');
+  stage('verify');
+  const verified = await read({ onEvent });
+  const coins = verified.map((holding) => ({
+    inboxIndex: holding.inboxIndex,
+    color: Array.from(holding.coin.color, (byte) => byte.toString(16).padStart(2, '0')).join(''),
+    value: holding.coin.value.toString(),
+  }));
+  ui.showShieldedHoldings(current.address, coins);
+  record('shieldedHoldings', { accountAddress: current.address, coins });
+  traceOperation('account.shieldedHoldings.verified', {
+    accountAddress: current.address,
+    count: coins.length,
+    coins,
+  });
+  status(
+    `Verified ${coins.length} shielded ${coins.length === 1 ? 'coin' : 'coins'} held by ACC ${current.address.slice(0, 12)}….`,
+  );
+});
 ui.on('rotate', async () => {
   throw new Error('Viewing-key rotation needs chain-backed roster and grant sources.');
 });

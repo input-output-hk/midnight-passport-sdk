@@ -117,6 +117,19 @@
           </li>
           <li class="action">
             <button
+              id="holdings"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="holdings-prompts holdings-desc"
+              disabled
+            >
+              Read shielded holdings
+            </button>
+            <p class="prompts" id="holdings-prompts"></p>
+            <p class="action-desc" id="holdings-desc"></p>
+          </li>
+          <li class="action">
+            <button
               id="rotate"
               class="btn btn-secondary"
               type="button"
@@ -233,6 +246,9 @@
             No account open. Create one, or open an existing one with your passkey.
           </p>
           <dl class="facts" id="account-facts" hidden></dl>
+          <h3>Chain-verified shielded coins</h3>
+          <p class="empty" id="holdings-empty">Open an account, then read its shielded holdings.</p>
+          <dl class="facts" id="holdings-facts" hidden></dl>
         </section>
         <section class="panel" aria-labelledby="wallet-title">
           <h2 id="wallet-title">Built-in wallet</h2>

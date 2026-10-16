@@ -3,7 +3,7 @@
 import type { PassportStep } from '@input-output-hk/mn-passport-protocol';
 
 export type ActionId =
-  'create' | 'open' | 'openAt' | 'refresh' | 'rotate' | 'wallet' | 'fund' | 'withdraw';
+  'create' | 'open' | 'openAt' | 'refresh' | 'holdings' | 'rotate' | 'wallet' | 'fund' | 'withdraw';
 
 /** A prompt count, or a range when it depends on the passkey provider. */
 export type PromptCount = number | readonly [min: number, max: number];
@@ -21,6 +21,7 @@ export const PASSKEY_PROMPTS = {
   open: [1, 2],
   openAt: [1, 2],
   refresh: 0,
+  holdings: 1,
   rotate: 1,
   fund: 0,
   withdraw: 1,
@@ -92,6 +93,12 @@ export const FLOWS: Record<ActionId, FlowDef> = {
     summary: 'Reads the live ACC counters and, when funding is enabled, its unshielded balances.',
     stages: [{ id: 'read', label: 'Read live ACC state and balances' }],
   },
+  holdings: {
+    title: 'Read shielded holdings',
+    summary:
+      'Open the sealed ACC inbox with this passkey and display only coins whose commitments match chain outputs held by the ACC.',
+    stages: [{ id: 'verify', label: 'Open inbox and verify held outputs against the indexer' }],
+  },
   rotate: {
     title: 'Rotate encryption key',
     summary: `A passkey-signed call, proved on the service (about ${ROTATION_ESTIMATE_S} s) and sponsored.`,
@@ -148,6 +155,7 @@ export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep
   open: {},
   openAt: {},
   refresh: {},
+  holdings: {},
   rotate: {},
   wallet: {},
   fund: {},

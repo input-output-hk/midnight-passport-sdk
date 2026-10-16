@@ -12,6 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { createPassportAccounts } from '../../packages/account/dist/index.js';
 import {
   createMidnightChain,
+  createGraphqlHoldingIndexer,
   createMidnightGrantSource,
   createMidnightHoldingSource,
   createMidnightWalletPorts,
@@ -176,6 +177,7 @@ const account = await createPassportAccounts(owner.ports).createAccount({
   userName: 'shielded-withdraw-node-probe',
   retireAuthority: true,
 });
+console.log(`  test ACC: ${account.address}`);
 const fromContract = (path) => import(pathToFileURL(join(contractDir, path)).href);
 const [{ setupWallet, deployFaucet, connectAccount }, { mintToUser, userCoinPublicKey }] = await Promise.all([
   fromContract('src/node/setup.ts'),
@@ -217,16 +219,20 @@ const outputs = (transaction.zswapLedgerEvents ?? []).flatMap(({ raw }) => {
   }] : [];
 });
 assert.ok(outputs.some((output) => output.contractAddress === account.address));
-liveHoldings = createMidnightHoldingSource({
-  enumerateContractActions: async () => [{ txHash: transaction.hash }],
-  queryShieldedOutputs: async (txHash) => {
-    assert.equal(txHash, transaction.hash);
-    return outputs;
-  },
-});
+liveHoldings = createMidnightHoldingSource(
+  createGraphqlHoldingIndexer({
+    networkId: network.networkId,
+    url: network.indexerUrl,
+    wsUrl: network.indexerWsUrl,
+  }),
+);
 const found = await account.readShieldedHoldings();
 assert.equal(found.length, 1);
 assert.equal(found[0].coin.value, minted.value);
+const reopened = await createPassportAccounts(owner.ports).openAccountAt(account.address);
+const reopenedFound = await reopened.readShieldedHoldings();
+assert.equal(reopenedFound.length, 1, 'the chain-qualified coin survives reopening by address');
+assert.equal(reopenedFound[0].coin.value, minted.value);
 const recipient = hex(await userCoinPublicKey(wallet));
 const spent = await account.withdrawShielded({
   inboxIndex: found[0].inboxIndex,
@@ -237,6 +243,8 @@ const spent = await account.withdrawShielded({
 assert.ok(spent.txHash);
 // Account creation publishes two owner-signed sealed-key entries before this spend.
 assert.equal(spent.nextUseCounter, 3n);
+const afterSpend = await account.readShieldedHoldings();
+assert.deepEqual(afterSpend, [], 'spent coin must leave the holdings panel');
 const evidence = {
   verdict: 'PASS',
   bindingId: 'acc-s3r1.1',
@@ -249,8 +257,10 @@ const evidence = {
   withdrawTx: spent.txHash,
   inboxIndex: found[0].inboxIndex,
   outputIndex: outputs.find((output) => output.contractAddress === account.address)?.index.toString(),
+  reopenedHeldCoin: reopenedFound.length === 1,
+  afterSpendHeldCoins: afterSpend.length,
   transactions,
-  scope: 'proof-backed exact P-256 owner shielded withdrawal',
+  scope: 'proof-backed P-256 held coin read, reopen, exact withdrawal, and spent exclusion',
 };
 writeFileSync(join(root, 'experiments/acc-0.35/results/sdk-p256-shielded-withdraw-node.json'),
   JSON.stringify(evidence, null, 2) + '\n');

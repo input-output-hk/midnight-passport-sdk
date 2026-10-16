@@ -1,4 +1,8 @@
-import type { AccountDirectory, NetworkConfig } from '@input-output-hk/mn-passport-account/ports';
+import type {
+  AccountDirectory,
+  NetworkConfig,
+  QualifiedHoldingSource,
+} from '@input-output-hk/mn-passport-account/ports';
 import {
   createBrowserPassport,
   injectPassportConnector,
@@ -71,6 +75,24 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
     artefactUrl: config.zkBaseUrl,
   };
   const sponsor = remoteV1Sponsor(SERVICE_URL, { fetch: tracedFetch });
+  let holdingSource: Promise<QualifiedHoldingSource> | undefined;
+  const holdings = (): Promise<QualifiedHoldingSource> =>
+    (holdingSource ??= import('@input-output-hk/mn-passport-adapter-midnight-js').then(
+      ({ createGraphqlHoldingIndexer, createMidnightHoldingSource }) =>
+        createMidnightHoldingSource(
+          createGraphqlHoldingIndexer({
+            networkId,
+            url: config.indexerUri,
+            wsUrl: config.indexerWsUri,
+          }),
+        ),
+    ));
+  const holdingPort: QualifiedHoldingSource = {
+    selectHeldEntries: async (account, entries, opened) =>
+      (await holdings()).selectHeldEntries(account, entries, opened),
+    selectQualifiedHeldCoins: async (account, entries, opened) =>
+      (await holdings()).selectQualifiedHeldCoins(account, entries, opened),
+  };
   return createBrowserPassport({
     arm: ARM,
     network,
@@ -82,6 +104,7 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
     submitter: sponsor,
     deployer: remoteV1Deployer(SERVICE_URL, { fetch: tracedFetch }),
     directory: demoDirectory(),
+    holdings: holdingPort,
     random: (length) => crypto.getRandomValues(new Uint8Array(length)),
   });
 }

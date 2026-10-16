@@ -16,6 +16,11 @@ export interface HoldingIndexer {
       readonly index?: bigint;
     }[]
   >;
+  queryShieldedInputs(
+    txHash: string,
+  ): Promise<readonly { readonly contractAddress?: string | null; readonly nullifier: string }[]>;
+  /** Derive the ACC input nullifier using the qualified coin and current tree. */
+  coinNullifier(account: string, coin: ShieldedCoin, index: bigint): Promise<string>;
 }
 
 const hex = (value: Uint8Array): string =>
@@ -43,7 +48,6 @@ export function createMidnightHoldingSource(indexer: HoldingIndexer): QualifiedH
     account: string,
     entries: readonly Uint8Array[],
     opened: readonly (OpenedInboxEntry | null)[],
-    qualified: boolean,
   ) => {
     if (entries.length !== opened.length)
       throw new Error('the opened inbox does not match its entries');
@@ -59,46 +63,57 @@ export function createMidnightHoldingSource(indexer: HoldingIndexer): QualifiedH
     const actions = await indexer.enumerateContractActions(account);
     const hashes = [...new Set(actions.map((action) => action.txHash))];
     const received = new Map<string, { indices: Set<bigint>; missing: boolean }>();
+    const spent = new Set<string>();
     // Bound concurrent indexer queries without changing which output is accepted.
     for (let offset = 0; offset < hashes.length; offset += 8) {
       const batch = await Promise.all(
-        hashes.slice(offset, offset + 8).map((hash) => indexer.queryShieldedOutputs(hash)),
+        hashes
+          .slice(offset, offset + 8)
+          .map(async (hash) =>
+            Promise.all([indexer.queryShieldedOutputs(hash), indexer.queryShieldedInputs(hash)]),
+          ),
       );
-      for (const output of batch.flat()) {
-        if (output.contractAddress?.toLowerCase() !== account.toLowerCase()) continue;
-        const commitment = output.commitment.toLowerCase();
-        const found = received.get(commitment) ?? { indices: new Set<bigint>(), missing: false };
-        if (typeof output.index === 'bigint' && output.index >= 0n && output.index < 1n << 64n)
-          found.indices.add(output.index);
-        else found.missing = true;
-        received.set(commitment, found);
+      for (const [outputs, inputs] of batch) {
+        for (const output of outputs) {
+          if (output.contractAddress?.toLowerCase() !== account.toLowerCase()) continue;
+          const commitment = output.commitment.toLowerCase();
+          const found = received.get(commitment) ?? { indices: new Set<bigint>(), missing: false };
+          if (typeof output.index === 'bigint' && output.index >= 0n && output.index < 1n << 64n)
+            found.indices.add(output.index);
+          else found.missing = true;
+          received.set(commitment, found);
+        }
+        for (const input of inputs) {
+          spent.add(input.nullifier.toLowerCase());
+        }
       }
     }
-    const selected: { index: number; coin: ShieldedCoin; mtIndex?: bigint }[] = [];
+    const selected: { index: number; coin: ShieldedCoin; mtIndex: bigint }[] = [];
     const seen = new Set<string>();
     for (const { index, commitment, coin } of candidates) {
       const found = received.get(commitment);
       if (!found || seen.has(commitment)) continue;
-      seen.add(commitment);
-      if (qualified && (found.missing || found.indices.size !== 1))
+      if (found.missing || found.indices.size !== 1)
         throw new Error('the ACC holding has no unique verified Merkle index');
-      const mtIndex = [...found.indices][0];
-      selected.push({ index, coin, ...(mtIndex !== undefined && { mtIndex }) });
+      const mtIndex = [...found.indices][0]!;
+      if (spent.has((await indexer.coinNullifier(account, coin, mtIndex)).toLowerCase())) continue;
+      seen.add(commitment);
+      selected.push({ index, coin, mtIndex });
     }
     return selected;
   };
   return {
     async selectHeldEntries(account, entries, opened) {
-      return (await verified(account, entries, opened, false)).map(({ index }) => index);
+      return (await verified(account, entries, opened)).map(({ index }) => index);
     },
     async selectQualifiedHeldCoins(account, entries, opened) {
-      return (await verified(account, entries, opened, true)).map(({ index, coin, mtIndex }) => ({
+      return (await verified(account, entries, opened)).map(({ index, coin, mtIndex }) => ({
         inboxIndex: index,
         coin: {
           nonce: coin.nonce.slice(),
           color: coin.color.slice(),
           value: coin.value,
-          mt_index: mtIndex!,
+          mt_index: mtIndex,
         },
       }));
     },

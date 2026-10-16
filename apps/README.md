@@ -128,6 +128,12 @@ The page also has **Open by ACC address**: paste the public 64-character lowerca
 choose an already-enrolled passkey. This verifies its live device entry and sealed viewing key
 without relying on the local directory hint. It cannot discover an unknown address or recover a
 lost passkey. The requested and verified addresses appear in the operation trace.
+**Read shielded holdings** opens the ACC's sealed inbox with the current passkey and compares each
+coin with the indexer's successful output event, exact Merkle index, and recorded ACC spend events.
+Only still-unspent coins appear with public color, value and inbox position; the page and exported
+log omit the viewing secret and coin nonce. This is separate from the unshielded balance shown in
+the account card. A localnet shielded deposit is needed to populate the panel; the funding button
+deposits unshielded assets. The panel clears after a later account action and requires a fresh read.
 **Refresh ACC state** rereads live account counters and, with funding enabled, unshielded ACC
 balances without another passkey prompt.
 
@@ -199,9 +205,9 @@ and `assertionMaterial`.
   and grant-target checks. The
   page hides rotation until it supplies those host sources. See
   [`docs/prototype/keys.md`](../docs/prototype/keys.md).
-- **P-256 holdings reads need a chain-backed source.** The account API can open sealed coin
-  descriptions with the live passkey and returns only outputs verified as held by the ACC. The
-  browser demo does not configure `VerifiedHoldingSource`, so this method refuses reads there.
+- **Shielded holdings reads use a chain-backed source.** The browser checks the ACC output event,
+  exact Merkle index and successful ACC input nullifiers before displaying an opened coin. If the
+  indexer cannot provide any of these, the read fails closed. An already-spent output is omitted.
 - **P-256 enrollment needs host discovery.** The account API can deliver a sealed key and add a
   second live P-256 device. If read grants are active, the host must supply verified holdings and
   complete grant targets so the account rotates its viewing and roster keys and reseals every

@@ -28,6 +28,7 @@ const ACTIONS: readonly ActionId[] = [
   'open',
   'openAt',
   'refresh',
+  'holdings',
   'rotate',
   'wallet',
   'fund',
@@ -46,6 +47,7 @@ test('prompts per action, with and without an account open', () => {
   assert.deepEqual(promptsFor('open', true), [1, 2]);
   assert.deepEqual(promptsFor('openAt', false), [1, 2]);
   assert.equal(promptsFor('refresh', true), 0);
+  assert.equal(promptsFor('holdings', true), 1);
   assert.equal(promptsFor('rotate', false), 1);
   assert.equal(promptsFor('rotate', true), 1);
   assert.equal(promptsFor('wallet', true), 1, 'pinned to the open account: one PRF prompt');
@@ -58,6 +60,7 @@ test('the prompt table has an entry for each action and nothing the actions do n
   assert.deepEqual(Object.keys(PASSKEY_PROMPTS).sort(), [
     'create',
     'fund',
+    'holdings',
     'open',
     'openAt',
     'refresh',

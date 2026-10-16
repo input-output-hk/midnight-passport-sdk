@@ -35,6 +35,9 @@ importers:
       '@input-output-hk/mn-passport-adapter-browser':
         specifier: workspace:*
         version: link:../../packages/adapter-browser
+      '@input-output-hk/mn-passport-adapter-midnight-js':
+        specifier: workspace:*
+        version: link:../../packages/adapter-midnight-js
       '@input-output-hk/mn-passport-adapter-service':
         specifier: workspace:*
         version: link:../../packages/adapter-service
