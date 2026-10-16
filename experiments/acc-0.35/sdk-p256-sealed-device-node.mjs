@@ -163,6 +163,9 @@ const before = await observedChain.readAccount(account.address, { includeInbox: 
 assert.ok(before?.booted);
 assert.equal(before.specVersion, 3);
 assert.equal(before.entryCount, 1);
+const ownerRosterBefore = await account.deviceRoster();
+assert.equal(ownerRosterBefore.commitments.length, 1);
+assert.equal(ownerRosterBefore.deviceEpoch, before.deviceEpoch);
 assert.deepEqual(before.inboxEntries.map((entry) => entry[0]), [0xd1, 0xd5]);
 const reader = {
   scheme: 'p256-webauthn',
@@ -174,11 +177,17 @@ const enrolled = await account.addDevice(reader);
 const after = await observedChain.readAccount(account.address, { includeInbox: true, includeDevices: true });
 assert.ok(after);
 assert.equal(after.entryCount, 2);
+const ownerRosterAfter = await account.deviceRoster();
+assert.equal(ownerRosterAfter.commitments.length, 2);
+assert.ok(ownerRosterAfter.commitments.includes(enrolled.commitmentHex));
 assert.equal(after.hasEntry(Buffer.from(enrolled.commitmentHex, 'hex')), true);
 assert.deepEqual(after.inboxEntries.slice(-2).map((entry) => entry[0]), [0xd1, 0xd5]);
 const reopened = await createPassportAccounts(joiner.ports).openAccountAt(account.address);
 assert.equal(reopened.address, account.address);
 assert.equal((await reopened.state()).entryCount, 2);
+assert.deepEqual(await reopened.deviceRoster(), ownerRosterAfter);
+assert.deepEqual(await account.readShieldedHoldings(), []);
+assert.deepEqual(await reopened.readShieldedHoldings(), []);
 const evidence = {
   verdict: 'PASS',
   bindingId: 'acc-s3r1.1',
@@ -193,7 +202,9 @@ const evidence = {
   authNonceAfterEnrollment: after.authNonce.toString(),
   transactions,
   joinerOpenedByAddress: true,
-  scope: 'current account API sealed P-256 enrollment with an empty live read-grant roster',
+  ownerAndJoinerUnlockedViewingKey: true,
+  rosterCommitmentsAfterEnrollment: ownerRosterAfter.commitments,
+  scope: 'sealed P-256 enrollment, both live roster reads and both viewing-key openings with an empty read-grant roster',
 };
 writeFileSync(join(root, 'experiments/acc-0.35/results/sdk-p256-sealed-device-node.json'),
   JSON.stringify(evidence, null, 2) + '\n');

@@ -3,7 +3,18 @@
 import type { PassportStep } from '@input-output-hk/mn-passport-protocol';
 
 export type ActionId =
-  'create' | 'open' | 'openAt' | 'refresh' | 'holdings' | 'rotate' | 'wallet' | 'fund' | 'withdraw';
+  | 'create'
+  | 'open'
+  | 'openAt'
+  | 'refresh'
+  | 'holdings'
+  | 'prepareJoiner'
+  | 'roster'
+  | 'enrollDevice'
+  | 'rotate'
+  | 'wallet'
+  | 'fund'
+  | 'withdraw';
 
 /** A prompt count, or a range when it depends on the passkey provider. */
 export type PromptCount = number | readonly [min: number, max: number];
@@ -22,6 +33,9 @@ export const PASSKEY_PROMPTS = {
   openAt: [1, 2],
   refresh: 0,
   holdings: 1,
+  prepareJoiner: 2,
+  roster: 0,
+  enrollDevice: 1,
   rotate: 1,
   fund: 0,
   withdraw: 1,
@@ -99,6 +113,27 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       'Open the sealed ACC inbox with this passkey and display only coins whose commitments match chain outputs held by the ACC.',
     stages: [{ id: 'verify', label: 'Open inbox and verify held outputs against the indexer' }],
   },
+  prepareJoiner: {
+    title: 'Prepare joining device',
+    summary:
+      'On a second browser, create a passkey and export only its public reader and authoriser keys.',
+    stages: [{ id: 'passkey', label: 'Create joiner passkey and derive public keys' }],
+  },
+  roster: {
+    title: 'Read device roster',
+    summary: 'Read live ACC device commitments and epoch from the chain.',
+    stages: [read],
+  },
+  enrollDevice: {
+    title: 'Enroll joining device',
+    summary:
+      'Review the joiner fingerprint, then sign and confirm its ACC entry and sealed key delivery.',
+    stages: [
+      { id: 'review', label: 'Validate handoff and read live roster' },
+      { id: 'submit', label: 'Sign with owner passkey and enroll' },
+      read,
+    ],
+  },
   rotate: {
     title: 'Rotate encryption key',
     summary: `A passkey-signed call, proved on the service (about ${ROTATION_ESTIMATE_S} s) and sponsored.`,
@@ -156,6 +191,9 @@ export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep
   openAt: {},
   refresh: {},
   holdings: {},
+  prepareJoiner: {},
+  roster: {},
+  enrollDevice: {},
   rotate: {},
   wallet: {},
   fund: {},

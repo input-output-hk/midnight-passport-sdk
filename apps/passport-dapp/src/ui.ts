@@ -53,6 +53,9 @@ const ACTIONS: readonly ActionId[] = [
   'openAt',
   'refresh',
   'holdings',
+  'roster',
+  'prepareJoiner',
+  'enrollDevice',
   'rotate',
   'wallet',
   'fund',
@@ -92,6 +95,8 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     HTMLButtonElement
   >;
   const copyButton = byId<HTMLButtonElement>('copy');
+  const handoffInput = byId<HTMLTextAreaElement>('handoff-input');
+  const handoffOutput = byId<HTMLTextAreaElement>('handoff-output');
   const statusEl = byId('status');
   const announceEl = byId('announce');
   const progressEl = byId('progress');
@@ -118,6 +123,9 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     | undefined;
   let shieldedHoldings:
     | { address: string; coins: readonly { inboxIndex: number; color: string; value: string }[] }
+    | undefined;
+  let deviceRoster:
+    | { address: string; deviceEpoch: bigint; authNonce: bigint; commitments: readonly string[] }
     | undefined;
   let ticker: ReturnType<typeof setInterval> | undefined;
 
@@ -159,6 +167,11 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     knownAddress.disabled = busy;
     buttons.refresh.disabled = busy || !account;
     buttons.holdings.disabled = busy || !account;
+    buttons.roster.disabled = busy || !account;
+    buttons.prepareJoiner.disabled =
+      busy || !ready || !/^[0-9a-f]{64}$/.test(knownAddress.value.trim());
+    buttons.enrollDevice.disabled = busy || !account || !handoffInput.value.trim();
+    handoffInput.disabled = busy;
     buttons.rotate.disabled = true;
     buttons.wallet.disabled = busy;
     buttons.fund.disabled = busy || !account;
@@ -455,6 +468,26 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     );
   };
 
+  const renderRoster = () => {
+    const current = account && deviceRoster?.address === account.address ? deviceRoster : undefined;
+    const list = byId('roster-facts');
+    const empty = byId('roster-empty');
+    list.hidden = !current;
+    empty.hidden = !!current;
+    if (!current) return;
+    renderFacts(list, [
+      { label: 'Device epoch', value: current.deviceEpoch.toString() },
+      { label: 'Auth nonce', value: current.authNonce.toString() },
+      { label: 'Live entries', value: String(current.commitments.length) },
+      ...current.commitments.map((commitment, index) => ({
+        label: `Entry ${index + 1}`,
+        value: shorten(commitment, 10, 8),
+        full: commitment,
+        copy: commitment,
+      })),
+    ]);
+  };
+
   const renderWallet = () => {
     const connected = Object.keys(wallet).length > 0;
     byId('wallet-empty').hidden = connected;
@@ -521,17 +554,36 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       .catch(() => status('Copy failed: the browser refused clipboard access.'));
   });
   knownAddress.addEventListener('input', renderButtons);
+  handoffInput.addEventListener('input', renderButtons);
 
   renderButtons();
   renderProgress();
   renderAccount();
   renderHoldings();
+  renderRoster();
   renderWallet();
   renderEvidence();
 
   return {
     status,
     knownAddress: () => knownAddress.value,
+    handoffJson: () => handoffInput.value,
+    showHandoff(handoff: { fingerprint: string }) {
+      handoffOutput.value = JSON.stringify(handoff, null, 2);
+      handoffOutput.hidden = false;
+      byId('handoff-empty').hidden = true;
+      const value = byId('handoff-fingerprint');
+      value.textContent = `Compare this SHA-256 fingerprint on the owner browser: ${handoff.fingerprint}`;
+      value.hidden = false;
+    },
+    showRoster(
+      address: string,
+      roster: { deviceEpoch: bigint; authNonce: bigint; commitments: readonly string[] },
+    ) {
+      if (account?.address !== address) return;
+      deviceRoster = { address, ...roster };
+      renderRoster();
+    },
     /** Ends the running stage and starts `id`. */
     stage: (id: string) => log.stage(id),
     note: (text: string) => log.note(text),
@@ -584,12 +636,14 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       account = { ...view, ...(lastTx && { lastTx }) };
       // A later account action may spend a coin; require a fresh chain check.
       shieldedHoldings = undefined;
+      deviceRoster = undefined;
       if (accountBalances?.address !== view.address)
         accountBalances = fundingAsset
           ? { address: view.address, color: fundingAsset.color }
           : undefined;
       renderAccount();
       renderHoldings();
+      renderRoster();
       renderButtons();
       renderEvidence();
     },

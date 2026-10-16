@@ -6,9 +6,19 @@ import type {
   PassportConnectorDescriptor,
   PassportTxResult,
 } from '@input-output-hk/mn-passport-protocol';
-import { ARM, MANIFEST_SHA256, NETWORK_ID, RP_ID, SERVICE_URL, installShim } from './connector.js';
+import {
+  ARM,
+  BINDING_ID,
+  MANIFEST_SHA256,
+  NETWORK_ID,
+  ORIGIN,
+  RP_ID,
+  SERVICE_URL,
+  installShim,
+} from './connector.js';
 import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS, knownAccAddress } from './flows.js';
 import { withdrawalRequest } from './withdrawal.js';
+import { parseDeviceHandoff, prepareDeviceHandoff } from './device-handoff.js';
 import { setOperationTraceSink, tracedFetch, traceOperation } from './operation-trace.js';
 import { createUi } from './ui.js';
 import type { DevWallet } from './wallet/dev-wallet.js';
@@ -44,7 +54,7 @@ if (ARM === 'jubjub') {
   const note = document.getElementById('key-note');
   if (note)
     note.textContent =
-      'The ACC viewing secret is random and sealed to the passkey-derived reader. This preview supports create/open. Viewing-key rotation requires chain-backed holdings and read-grant sources.';
+      'The ACC viewing secret is random and sealed to the passkey-derived reader. This preview supports create/open and reviewed device enrollment. Removal requires complete reader and read-grant openings.';
 }
 const { status, stage, record, event: onEvent } = ui;
 setOperationTraceSink(ui.trace);
@@ -247,6 +257,96 @@ ui.on('holdings', async () => {
   status(
     `Verified ${coins.length} shielded ${coins.length === 1 ? 'coin' : 'coins'} held by ACC ${current.address.slice(0, 12)}….`,
   );
+});
+ui.on('prepareJoiner', async () => {
+  const address = knownAccAddress(ui.knownAddress());
+  stage('passkey');
+  const handoff = await prepareDeviceHandoff(address, network, ARM, {
+    bindingId: BINDING_ID,
+    rpId: RP_ID,
+    origin: ORIGIN,
+  });
+  ui.showHandoff(handoff);
+  record('joiningDevicePublicHandoff', {
+    accountAddress: address,
+    scheme: handoff.scheme,
+    fingerprint: handoff.fingerprint,
+    readerPublicKey: handoff.readerPublicKey,
+    devicePublicKey: handoff.devicePublicKey,
+  });
+  status('Public handoff ready. Copy the JSON to the owner browser and compare its fingerprint.');
+});
+ui.on('roster', async () => {
+  const current = account;
+  const readRoster = current?.deviceRoster;
+  if (!current || !readRoster) throw new Error('Open an ACC before reading its device roster.');
+  const roster = await readRoster();
+  ui.showRoster(current.address, roster);
+  record('deviceRoster', {
+    accountAddress: current.address,
+    epoch: roster.deviceEpoch.toString(),
+    authNonce: roster.authNonce.toString(),
+    commitments: roster.commitments,
+  });
+  status(
+    `Read ${roster.commitments.length} live ACC device entries at epoch ${roster.deviceEpoch}.`,
+  );
+});
+ui.on('enrollDevice', async () => {
+  const current = account;
+  const readRoster = current?.deviceRoster;
+  const addDevice = current?.addDevice;
+  if (!current || !readRoster || !addDevice)
+    throw new Error('Open a sealed ACC before enrolling a device.');
+  stage('review');
+  const { handoff, reader } = await parseDeviceHandoff(ui.handoffJson(), {
+    accountAddress: current.address,
+    networkId: network,
+    arm: ARM,
+    bindingId: BINDING_ID,
+    rpId: RP_ID,
+    origin: ORIGIN,
+  });
+  const [before, state] = await Promise.all([readRoster(), current.state()]);
+  if (before.deviceEpoch !== state.deviceEpoch || before.authNonce !== state.authNonce)
+    throw new Error('The ACC roster changed while preparing enrollment. Refresh and review again.');
+  ui.showRoster(current.address, before);
+  const approved = window.confirm(
+    `Enroll a second ${ARM === 'p256' ? 'P-256' : 'JubJub'} device for ACC ${current.address}?\n\n` +
+      `Network: ${network}\nEpoch: ${before.deviceEpoch}\nLive entries: ${before.commitments.length}\n` +
+      `Joiner fingerprint: ${handoff.fingerprint}\n\n` +
+      'Compare the fingerprint with the joining browser before consenting.',
+  );
+  if (!approved) throw new Error('Device enrollment was cancelled before signing.');
+  stage('submit');
+  const enrolled = await addDevice(reader, { onEvent });
+  stage('read');
+  const [after, nextState] = await Promise.all([readRoster(), current.state()]);
+  if (!after.commitments.includes(enrolled.commitmentHex))
+    throw new Error('The joining device entry is absent from the confirmed ACC roster.');
+  ui.showAccount({
+    address: current.address,
+    networkId: current.networkId,
+    bindingId: current.bindingId,
+    state: nextState,
+    lastTx: enrolled,
+  });
+  ui.showRoster(current.address, after);
+  record('deviceEnrolled', {
+    accountAddress: current.address,
+    fingerprint: handoff.fingerprint,
+    commitment: enrolled.commitmentHex,
+    txHash: enrolled.txHash,
+    deviceEpoch: after.deviceEpoch.toString(),
+    liveEntries: after.commitments.length,
+  });
+  traceOperation('account.device.enrolled', {
+    accountAddress: current.address,
+    fingerprint: handoff.fingerprint,
+    commitment: enrolled.commitmentHex,
+    txHash: enrolled.txHash,
+  });
+  status('Joining device confirmed in the ACC roster. Open by ACC address on that browser.');
 });
 ui.on('rotate', async () => {
   throw new Error('Viewing-key rotation needs chain-backed roster and grant sources.');

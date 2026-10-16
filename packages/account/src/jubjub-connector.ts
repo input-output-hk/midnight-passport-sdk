@@ -1403,6 +1403,19 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
         specVersion: view.specVersion,
       };
     },
+    async deviceRoster() {
+      const view = await (await readChain()).readAccount(record.address, { includeDevices: true });
+      if (!view?.booted || !view.deviceEntries || view.deviceEntries.length !== view.entryCount)
+        throw new PassportConnectorError(
+          'DeviceRosterInvalid',
+          'The live ACC roster is unavailable.',
+        );
+      return {
+        deviceEpoch: view.deviceEpoch,
+        authNonce: view.authNonce,
+        commitments: view.deviceEntries.map(toHex).sort(),
+      };
+    },
     async rotateEncryptionKey() {
       throw new PassportConnectorError(
         'BindingUnsupported',

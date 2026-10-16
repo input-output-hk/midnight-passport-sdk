@@ -29,6 +29,9 @@ const ACTIONS: readonly ActionId[] = [
   'openAt',
   'refresh',
   'holdings',
+  'prepareJoiner',
+  'roster',
+  'enrollDevice',
   'rotate',
   'wallet',
   'fund',
@@ -48,6 +51,9 @@ test('prompts per action, with and without an account open', () => {
   assert.deepEqual(promptsFor('openAt', false), [1, 2]);
   assert.equal(promptsFor('refresh', true), 0);
   assert.equal(promptsFor('holdings', true), 1);
+  assert.equal(promptsFor('prepareJoiner', false), 2);
+  assert.equal(promptsFor('roster', true), 0);
+  assert.equal(promptsFor('enrollDevice', true), 1);
   assert.equal(promptsFor('rotate', false), 1);
   assert.equal(promptsFor('rotate', true), 1);
   assert.equal(promptsFor('wallet', true), 1, 'pinned to the open account: one PRF prompt');
@@ -59,11 +65,14 @@ test('prompts per action, with and without an account open', () => {
 test('the prompt table has an entry for each action and nothing the actions do not use', () => {
   assert.deepEqual(Object.keys(PASSKEY_PROMPTS).sort(), [
     'create',
+    'enrollDevice',
     'fund',
     'holdings',
     'open',
     'openAt',
+    'prepareJoiner',
     'refresh',
+    'roster',
     'rotate',
     'walletWithAccount',
     'walletWithoutAccount',
@@ -75,7 +84,7 @@ test('the prompt table has an entry for each action and nothing the actions do n
       const [min, max] = typeof n === 'number' ? [n, n] : n;
       assert.ok(
         Number.isInteger(min) &&
-          min >= (action === 'fund' || action === 'refresh' ? 0 : 1) &&
+          min >= (action === 'fund' || action === 'refresh' || action === 'roster' ? 0 : 1) &&
           max >= min,
         `${action} ${open}`,
       );

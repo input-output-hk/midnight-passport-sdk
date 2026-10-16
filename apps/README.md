@@ -137,6 +137,20 @@ deposits unshielded assets. The panel clears after a later account action and re
 **Refresh ACC state** rereads live account counters and, with funding enabled, unshielded ACC
 balances without another passkey prompt.
 
+To add a second sealed device, open the demo in another browser profile at the same `localhost`
+origin. Put the owner ACC address in **Open by ACC address** and select **Prepare joining device**.
+That browser creates a new passkey and displays public handoff JSON plus its SHA-256 fingerprint.
+Copy the JSON to **Joining device public handoff JSON** on the owner browser. Select **Read device
+roster**, then **Enroll joining device**. Compare the fingerprint on both screens before consenting
+with the owner passkey. The page confirms the enrollment transaction and checks the new commitment
+in the live ACC roster. On the joining browser, use **Open by ACC address** with its new passkey.
+The handoff contains only ACC address, network, binding, public reader/authoriser keys and the P-256
+WebAuthn policy. If delivery is interrupted, reread the roster and reopen with the joiner; a
+confirmed entry is authoritative. Retry enrollment only if the entry is absent, using the same
+joiner public handoff. An active read grant without a durable opening blocks enrollment; device
+removal remains unavailable in this browser until every live reader and read-grant target can be
+verified and resealed.
+
 Expand **Operation trace (requests and responses)** to inspect the chronological public-field
 trace. **Copy full log** includes that trace, Passport events (including deploy waves), account
 state and built-in wallet addresses and balances; raw transaction bodies and secret material are

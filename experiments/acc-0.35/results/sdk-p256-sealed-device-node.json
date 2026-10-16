@@ -3,39 +3,44 @@
   "bindingId": "acc-s3r1.1",
   "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
   "contractSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
-  "account": "62f97850a5ad9f5262c0b256e27ee0b9ec1aa08a9d18db445432319bb347ad00",
+  "account": "42f305ac2420f6cbd67260b6ed9c50acc8274ffe1244b7f52e85a6106f057554",
   "networkId": "undeployed",
   "ownerScheme": "p256-webauthn",
   "joinedScheme": "p256-webauthn",
-  "enrollmentCommitment": "86a752b996a60457b7ff74b202cf59f6f0bf741eb08f6cb773ce4158b8437a4a",
+  "enrollmentCommitment": "41296a2ca47a524dd831619d213f59abb436fdd0f38ed6298a313c59828f31f3",
   "authNonceBeforeEnrollment": "2",
   "authNonceAfterEnrollment": "5",
   "transactions": [
     {
       "circuit": "activate_initial_device_with_p256",
-      "txHash": "1d6ce90eb8e9532df25f5aed86d2baa420e2a84319b1a811e059a6910aa52f78"
+      "txHash": "4f1bcc961dcc88edfeb1b79ed5aea2df206123776011baa3ae5a87651a7b2cae"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "8dc6588006bc303dfd5867afe294d881582d156f9e879188f108ba2b32b6c5a5"
+      "txHash": "b1c94dd67c71533439bd2c6206339195072e0c93a7d43b0e49aa51393cb36680"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "3caada2c4ae81939efecc8ecca996357e0418c8ac4bd4a1a4d18e0e6366e7631"
+      "txHash": "d286f6f72f6945618c466be2e420d9475cb416e5d5015d81764c6ad1a82f62ee"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "d789d9ba8fe8a355d54deb404c7810e71de32ebd9647c5cc2828fd5f00f54219"
+      "txHash": "0b3d6af3d19887844642619a26853efa64106adfbe0e906220866d10c1da6a94"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "22884784508aa8fe5ecf7df0ed110a38e83c4e42a0f41adf4d0f3b39e27b3f0d"
+      "txHash": "f519ce6a3032d68d48ff893b082dbfed01070a9ad643b0e805efd20f0d891a0e"
     },
     {
       "circuit": "add_device_with_p256",
-      "txHash": "883f91e3142751897224f468f1372a095a095c997c8995cdb0bd826630f2a450"
+      "txHash": "eb337e6f97d6e315e3170f55f275f8c3ed66d5fd6eac7db29ae7c2f260ef048b"
     }
   ],
   "joinerOpenedByAddress": true,
-  "scope": "current account API sealed P-256 enrollment with an empty live read-grant roster"
+  "ownerAndJoinerUnlockedViewingKey": true,
+  "rosterCommitmentsAfterEnrollment": [
+    "41296a2ca47a524dd831619d213f59abb436fdd0f38ed6298a313c59828f31f3",
+    "93c47a9f35f14094bcbb9d832ff307788f520d0f5f6675e22da0290914f09c4a"
+  ],
+  "scope": "sealed P-256 enrollment, both live roster reads and both viewing-key openings with an empty read-grant roster"
 }

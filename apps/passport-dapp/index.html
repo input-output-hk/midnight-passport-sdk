@@ -130,6 +130,55 @@
           </li>
           <li class="action">
             <button
+              id="roster"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="roster-prompts roster-desc"
+              disabled
+            >
+              Read device roster
+            </button>
+            <p class="prompts" id="roster-prompts"></p>
+            <p class="action-desc" id="roster-desc"></p>
+          </li>
+          <li class="action">
+            <button
+              id="prepareJoiner"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="prepareJoiner-prompts prepareJoiner-desc"
+              disabled
+            >
+              Prepare joining device
+            </button>
+            <p class="prompts" id="prepareJoiner-prompts"></p>
+            <p class="action-desc" id="prepareJoiner-desc"></p>
+            <p class="action-needs">
+              Enter the ACC address in “Open by ACC address” on the joining browser first.
+            </p>
+          </li>
+          <li class="action">
+            <label for="handoff-input">Joining device public handoff JSON</label>
+            <textarea
+              id="handoff-input"
+              rows="5"
+              spellcheck="false"
+              aria-describedby="enrollDevice-desc"
+            ></textarea>
+            <button
+              id="enrollDevice"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="enrollDevice-prompts enrollDevice-desc"
+              disabled
+            >
+              Enroll joining device
+            </button>
+            <p class="prompts" id="enrollDevice-prompts"></p>
+            <p class="action-desc" id="enrollDevice-desc"></p>
+          </li>
+          <li class="action">
+            <button
               id="rotate"
               class="btn btn-secondary"
               type="button"
@@ -246,6 +295,21 @@
             No account open. Create one, or open an existing one with your passkey.
           </p>
           <dl class="facts" id="account-facts" hidden></dl>
+          <h3>Joining device handoff</h3>
+          <p class="empty" id="handoff-empty">
+            Prepare a new passkey in a second browser to get a public handoff.
+          </p>
+          <p id="handoff-fingerprint" hidden></p>
+          <textarea
+            id="handoff-output"
+            rows="5"
+            readonly
+            hidden
+            aria-label="Public joining device handoff JSON"
+          ></textarea>
+          <h3>Live device roster</h3>
+          <p class="empty" id="roster-empty">Open an account, then read its device roster.</p>
+          <dl class="facts" id="roster-facts" hidden></dl>
           <h3>Chain-verified shielded coins</h3>
           <p class="empty" id="holdings-empty">Open an account, then read its shielded holdings.</p>
           <dl class="facts" id="holdings-facts" hidden></dl>

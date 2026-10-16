@@ -1530,6 +1530,19 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         specVersion: view.specVersion,
       };
     },
+    async deviceRoster() {
+      const view = await (await chain()).readAccount(record.address, { includeDevices: true });
+      if (!view?.booted || !view.deviceEntries || view.deviceEntries.length !== view.entryCount)
+        throw new PassportConnectorError(
+          'DeviceRosterInvalid',
+          'The live ACC roster is unavailable.',
+        );
+      return {
+        deviceEpoch: view.deviceEpoch,
+        authNonce: view.authNonce,
+        commitments: view.deviceEntries.map(toHex).sort(),
+      };
+    },
     readShieldedHoldings: (options = {}) =>
       run(options, async (flow) => {
         if (!isSealedP256(record) || !viewingKey || !ports.holdings || !authoriser.withKeySession)

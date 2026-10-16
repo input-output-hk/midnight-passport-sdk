@@ -1,5 +1,6 @@
 import type {
   AccountDirectory,
+  ActiveReadGrantTargetSource,
   NetworkConfig,
   QualifiedHoldingSource,
 } from '@input-output-hk/mn-passport-account/ports';
@@ -37,7 +38,7 @@ const configuredArm = import.meta.env.VITE_PASSPORT_ARM ?? 'p256';
 if (configuredArm !== 'p256' && configuredArm !== 'jubjub')
   throw new Error('VITE_PASSPORT_ARM must be p256 or jubjub');
 export const ARM: 'p256' | 'jubjub' = configuredArm;
-const ORIGIN = 'http://localhost:5173';
+export const ORIGIN = 'http://localhost:5173';
 
 /** Legacy hints remain discoverable; the sealed P-256 connector refuses them until migrated. */
 function demoDirectory(): AccountDirectory {
@@ -93,6 +94,23 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
     selectQualifiedHeldCoins: async (account, entries, opened) =>
       (await holdings()).selectQualifiedHeldCoins(account, entries, opened),
   };
+  let grantSource: Promise<ActiveReadGrantTargetSource> | undefined;
+  const readGrants: ActiveReadGrantTargetSource = {
+    readActiveReadGrantTargets: async (account) => {
+      grantSource ??= Promise.all([
+        import('@input-output-hk/mn-passport-adapter-midnight-js'),
+        import('./acc-module.js'),
+      ]).then(([{ createMidnightGrantSource }, { accModule }]) =>
+        createMidnightGrantSource({
+          network,
+          binding: accModule,
+          // A read grant without a durable public-key opening remains ineligible for rotation.
+          openings: { readReadPublicKey: async () => undefined },
+        }),
+      );
+      return (await grantSource).readActiveReadGrantTargets(account);
+    },
+  };
   return createBrowserPassport({
     arm: ARM,
     network,
@@ -105,6 +123,7 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
     deployer: remoteV1Deployer(SERVICE_URL, { fetch: tracedFetch }),
     directory: demoDirectory(),
     holdings: holdingPort,
+    readGrants,
     random: (length) => crypto.getRandomValues(new Uint8Array(length)),
   });
 }

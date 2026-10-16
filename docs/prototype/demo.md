@@ -113,6 +113,26 @@ cannot supply current spend state, the read fails. Reopen or refresh the ACC to 
 snapshot and read again. The funding button deposits **unshielded** assets and will not populate
 this panel. The page and evidence omit viewing secrets, coin nonces and PRF values.
 
+## Add a second sealed device
+
+Use two browser profiles at `http://localhost:5173`. In the joining profile, paste the existing
+ACC address into **Open by ACC address** and choose **Prepare joining device**. It creates a new
+passkey and displays a public handoff JSON document and fingerprint. Copy that document into the
+owner profile's **Joining device public handoff JSON** field. Read the live device roster, choose
+**Enroll joining device**, and compare the fingerprint on both screens before owner passkey
+consent. The demo checks the network, binding, ACC, authoriser arm and P-256 policy before signing.
+It reports the enrollment transaction and confirms the new commitment in the ACC roster. The
+joining profile can then use **Open by ACC address** with its newly created passkey. The handoff
+never contains a private passkey, PRF output, viewing secret or wallet seed.
+
+If the owner sees an interrupted publication, reread the roster and try opening from the joining
+profile. A confirmed ACC entry plus successful sealed-key opening establishes enrollment. If the
+entry is absent, use the same public handoff for a reviewed retry. If the entry exists but the
+joiner cannot open, stop and inspect the ACC inbox and event log; another enrollment may create an
+ambiguous state. Active read grants without their durable public-key openings block this flow.
+Removal is withheld until the host can verify all live reader registrations, holdings and active
+read-grant targets for the required key rotation.
+
 For a colleague-facing run, expand **Operation trace (requests and responses)** while using the
 page. **Copy full log** exports one JSON document with the action stages, all Passport connector
 events (including deployment waves and activation), the HTTP request/response timeline, the open

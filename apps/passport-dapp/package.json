@@ -17,6 +17,7 @@
     "@input-output-hk/mn-passport-adapter-browser": "workspace:*",
     "@input-output-hk/mn-passport-adapter-midnight-js": "workspace:*",
     "@input-output-hk/mn-passport-contract": "workspace:*",
+    "@input-output-hk/mn-passport-keys": "workspace:*",
     "@input-output-hk/mn-passport-adapter-service": "workspace:*",
     "@input-output-hk/mn-passport-adapter-webauthn": "workspace:*",
     "@input-output-hk/mn-passport-protocol": "workspace:*",
