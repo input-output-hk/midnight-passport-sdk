@@ -469,11 +469,21 @@ test('the evidence keeps the connector events of a run, and none for a run witho
   log.finish();
   const [rotate, open] = log.toJSON() as Record<string, unknown>[];
   assert.deepEqual(rotate?.events, [
-    { step: 'passkey.sign', phase: 'start', at: iso(100) },
     {
+      id: 'passkey.sign-1',
+      flowId: 'f',
+      step: 'passkey.sign',
+      phase: 'start',
+      at: iso(100),
+      clock: 'client',
+    },
+    {
+      id: 'passkey.sign-1',
+      flowId: 'f',
       step: 'passkey.sign',
       phase: 'error',
       at: iso(200),
+      clock: 'client',
       durationMs: 100,
       error: { code: 'UserCancelled', message: 'closed' },
     },

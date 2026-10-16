@@ -3,6 +3,7 @@
 // public values go in: the account and wallet views hold addresses, counters and balances, and
 // the runs are `EventLog.toJSON()`; nothing here ever receives a seed, a key or a PRF output.
 import type { AccountView, EvidenceHeader, WalletView } from './ui.js';
+import type { OperationTraceEntry } from './operation-trace.js';
 
 export interface EvidenceParts {
   readonly header: EvidenceHeader;
@@ -12,9 +13,11 @@ export interface EvidenceParts {
   readonly wallet: WalletView;
   /** `EventLog.toJSON()`. */
   readonly runs: unknown[];
+  /** Chronological public-field action and HTTP request/response entries. */
+  readonly trace: readonly OperationTraceEntry[];
 }
 
-export const buildEvidence = ({ header, page, account, wallet, runs }: EvidenceParts) => ({
+export const buildEvidence = ({ header, page, account, wallet, runs, trace }: EvidenceParts) => ({
   ...header,
   page,
   account: account && {
@@ -26,6 +29,7 @@ export const buildEvidence = ({ header, page, account, wallet, runs }: EvidenceP
   },
   wallet: Object.keys(wallet).length > 0 ? wallet : undefined,
   runs,
+  trace,
 });
 
 const jsonReplacer = (_k: string, v: unknown) => (typeof v === 'bigint' ? v.toString() : v);

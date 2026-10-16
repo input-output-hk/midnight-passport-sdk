@@ -5,7 +5,6 @@ import {
 } from '@input-output-hk/mn-passport-adapter-browser';
 import {
   createRegistryClient,
-  defaultFetch,
   fetchCheckedV1Config,
   remoteDirectory,
   remoteV1Deployer,
@@ -16,6 +15,7 @@ import {
   PASSPORT_API_VERSION,
   type PassportConnectorAPI,
 } from '@input-output-hk/mn-passport-protocol';
+import { tracedFetch } from './operation-trace.js';
 
 export const SERVICE_URL = import.meta.env.VITE_PASSPORT_SERVICE_URL ?? 'http://localhost:8787';
 /** The artefact manifest hash this build pins (R18); the service's /v1/config is checked against it. */
@@ -37,8 +37,8 @@ const ORIGIN = 'http://localhost:5173';
 
 /** Legacy hints remain discoverable; the sealed P-256 connector refuses them until migrated. */
 function demoDirectory(): AccountDirectory {
-  const directory = remoteDirectory(SERVICE_URL);
-  const legacy = createRegistryClient(SERVICE_URL, defaultFetch);
+  const directory = remoteDirectory(SERVICE_URL, { fetch: tracedFetch });
+  const legacy = createRegistryClient(SERVICE_URL, tracedFetch);
   return {
     async get(networkId, key) {
       const hint = await directory.get(networkId, key);
@@ -51,12 +51,16 @@ function demoDirectory(): AccountDirectory {
 }
 
 export async function connect(networkId: string): Promise<PassportConnectorAPI> {
-  const config = await fetchCheckedV1Config(SERVICE_URL, {
-    networkId,
-    bindingId: BINDING_ID,
-    manifestSha256: MANIFEST_SHA256,
-    artefactUrl: ARTEFACT_URL,
-  });
+  const config = await fetchCheckedV1Config(
+    SERVICE_URL,
+    {
+      networkId,
+      bindingId: BINDING_ID,
+      manifestSha256: MANIFEST_SHA256,
+      artefactUrl: ARTEFACT_URL,
+    },
+    { fetch: tracedFetch },
+  );
   const network: NetworkConfig = {
     networkId,
     bindingId: BINDING_ID,
@@ -66,17 +70,17 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
     nodeUrl: config.nodeUri,
     artefactUrl: config.zkBaseUrl,
   };
-  const sponsor = remoteV1Sponsor(SERVICE_URL);
+  const sponsor = remoteV1Sponsor(SERVICE_URL, { fetch: tracedFetch });
   return createBrowserPassport({
     arm: ARM,
     network,
     binding: async () => (await import('./acc-module.js')).accModule,
     passkey: { rpId: RP_ID, origin: ORIGIN },
-    prover: remoteV1Prover(SERVICE_URL),
+    prover: remoteV1Prover(SERVICE_URL, { fetch: tracedFetch }),
     sponsor,
     sponsorKeys: config,
     submitter: sponsor,
-    deployer: remoteV1Deployer(SERVICE_URL),
+    deployer: remoteV1Deployer(SERVICE_URL, { fetch: tracedFetch }),
     directory: demoDirectory(),
     random: (length) => crypto.getRandomValues(new Uint8Array(length)),
   });

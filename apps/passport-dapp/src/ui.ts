@@ -18,6 +18,7 @@ import {
 } from './flows.js';
 import { evidenceJson } from './evidence.js';
 import { progressView, segmentGrow } from './progress.js';
+import type { OperationTraceEntry } from './operation-trace.js';
 
 export interface EvidenceHeader {
   readonly note: string;
@@ -46,7 +47,7 @@ export interface WalletView {
   readonly balanceError?: string;
 }
 
-const ACTIONS: readonly ActionId[] = ['create', 'open', 'rotate', 'wallet'];
+const ACTIONS: readonly ActionId[] = ['create', 'open', 'rotate', 'wallet', 'fund'];
 
 const byId = <T extends HTMLElement = HTMLElement>(id: string): T => {
   const element = document.getElementById(id);
@@ -89,9 +90,14 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   const logEl = byId('log');
   const logEmpty = byId('log-empty');
   const evidenceEl = byId('evidence');
+  const traceEl = byId('trace');
+  const evidenceDetails = evidenceEl.closest('details');
+  const traceDetails = traceEl.closest('details');
   let ready = true;
   let account: AccountView | undefined;
   let wallet: WalletView = {};
+  let fundingAsset: { color: string; amount: string } | undefined;
+  let fundedBalance: { address: string; color: string; balance: string } | undefined;
   let ticker: ReturnType<typeof setInterval> | undefined;
 
   // The action cards: prompt counts and summaries come from flows.ts only.
@@ -130,7 +136,9 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     buttons.open.disabled = busy || !ready;
     buttons.rotate.disabled = true;
     buttons.wallet.disabled = busy;
-    copyButton.disabled = busy || log.runs.length === 0;
+    buttons.fund.disabled = busy || !account;
+    buttons.fund.closest('li')?.toggleAttribute('hidden', !fundingAsset);
+    copyButton.disabled = busy || (log.runs.length === 0 && log.traceEntries.length === 0);
     // With an account open, rotating is the next thing to show; before that, creating is.
     buttons.create.classList.toggle('btn-primary', !account);
     buttons.create.classList.toggle('btn-secondary', !!account);
@@ -279,15 +287,21 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   };
 
   // --- evidence ----------------------------------------------------------------------------
-  const renderEvidence = () => {
-    evidenceEl.textContent = evidenceJson({
+  const fullLog = () =>
+    evidenceJson({
       header,
       page: location.origin,
       account,
       wallet,
       runs: log.toJSON(),
+      trace: log.traceJSON(),
     });
+  const renderEvidence = () => {
+    if (evidenceDetails?.open) evidenceEl.textContent = fullLog();
+    if (traceDetails?.open) traceEl.textContent = JSON.stringify(log.traceJSON(), null, 2);
   };
+  evidenceDetails?.addEventListener('toggle', renderEvidence);
+  traceDetails?.addEventListener('toggle', renderEvidence);
 
   // --- account and wallet cards --------------------------------------------------------------
   const copyTo = async (button: HTMLButtonElement, value: string, what: string) => {
@@ -344,6 +358,14 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
         hint: 'Entries in the device set, not a device count (erratum 8).',
       },
       { label: 'Binding', value: bindingId },
+      ...(fundedBalance?.address === address
+        ? [
+            {
+              label: `Funded token ${shorten(fundedBalance.color, 6, 4)}`,
+              value: fundedBalance.balance,
+            },
+          ]
+        : []),
       lastTx
         ? {
             label: 'Last transaction',
@@ -417,9 +439,11 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   copyButton.addEventListener('click', () => {
     renderEvidence();
     void navigator.clipboard
-      .writeText(evidenceEl.textContent ?? '')
+      .writeText(fullLog())
       .then(() => {
-        status('Evidence copied: the event log, the account and the wallet, with no secrets.');
+        status(
+          'Full operation log copied with public request and response fields, and no secrets.',
+        );
       })
       .catch(() => status('Copy failed: the browser refused clipboard access.'));
   });
@@ -439,6 +463,8 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     event: (e: PassportEvent) => log.event(e),
     /** Public values to keep with the running step and the evidence. */
     record: (name: string, data: Record<string, unknown> = {}) => log.attach({ [name]: data }),
+    /** Add a public-field operation or HTTP request/response to the shareable trace. */
+    trace: (entry: OperationTraceEntry) => log.trace(entry),
     /**
      * Runs `fn` as stage `id`; a failure marks the step failed but does not end the action
      * (for reads that can time out while the rest has worked).
@@ -480,8 +506,20 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       const keep = account?.address === view.address ? account.lastTx : undefined;
       const lastTx = view.lastTx ?? keep;
       account = { ...view, ...(lastTx && { lastTx }) };
+      if (fundedBalance?.address !== view.address) fundedBalance = undefined;
       renderAccount();
       renderButtons();
+      renderEvidence();
+    },
+    enableFunding(asset: { color: string; amount: string }) {
+      fundingAsset = asset;
+      byId('fund-desc').textContent =
+        `Deposit ${asset.amount} localnet test units from the demo funding wallet into this account. Asset ${shorten(asset.color, 8, 6)}.`;
+      renderButtons();
+    },
+    showFunding(address: string, color: string, balance: string) {
+      fundedBalance = { address, color, balance };
+      renderAccount();
       renderEvidence();
     },
     showWallet(view: WalletView) {

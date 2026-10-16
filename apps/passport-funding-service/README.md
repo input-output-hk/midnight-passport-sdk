@@ -58,6 +58,13 @@ default. `PASSPORT_FUNDING_HOST` and `PASSPORT_FUNDING_PORT` change its bind add
 same `requestId` for retries. The response contains the transaction ID and the ACC balance after
 the deposit is observed. The route does not expose the token or wallet seed.
 
+On the standalone localnet, `demo up --funding` enables a **Fund Passport account** button in the
+browser page. The Passport service reads this token file and forwards a fixed deposit of up to 10
+units of the first allowlisted asset to this separate process. The browser receives only the asset
+color, amount, transaction ID and confirmed ACC balance. This route is refused on other networks
+or when the Passport service is bound beyond loopback. The operator CLI remains available as
+`demo fund`.
+
 The reference reservation store is safe for one host sharing one file. It creates
 `<reservations-file>.lock` during updates. If the process dies with the lock present, inspect
 pending requests, wallet transactions and ACC balances before removing it. Use a transactional

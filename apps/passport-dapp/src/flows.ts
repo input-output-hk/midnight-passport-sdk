@@ -2,7 +2,7 @@
 // through. Data only, no DOM: ui.ts renders it and event-log.ts times it from the connector's events.
 import type { PassportStep } from '@input-output-hk/mn-passport-protocol';
 
-export type ActionId = 'create' | 'open' | 'rotate' | 'wallet';
+export type ActionId = 'create' | 'open' | 'rotate' | 'wallet' | 'fund';
 
 /** A prompt count, or a range when it depends on the passkey provider. */
 export type PromptCount = number | readonly [min: number, max: number];
@@ -19,6 +19,7 @@ export const PASSKEY_PROMPTS = {
   create: [2, 3],
   open: [1, 2],
   rotate: 1,
+  fund: 0,
   walletWithAccount: 1,
   walletWithoutAccount: 2,
 } as const satisfies Record<string, PromptCount>;
@@ -99,6 +100,12 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       { id: 'balances', label: 'Wait for sync and read balances' },
     ],
   },
+  fund: {
+    title: 'Fund Passport account',
+    summary:
+      'Deposits 10 localnet test tokens from the demo funding wallet into the open Passport account.',
+    stages: [{ id: 'deposit', label: 'Deposit and confirm the ACC balance' }],
+  },
 };
 
 /**
@@ -115,6 +122,7 @@ export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep
   open: {},
   rotate: {},
   wallet: {},
+  fund: {},
 };
 
 export const promptCountText = (n: PromptCount): string =>
@@ -144,6 +152,8 @@ const HINTS: Readonly<Record<string, string>> = {
   ProverUnavailable:
     'The proving service did not answer in time. It may be busy with a deployment; wait, then retry.',
   SponsorRejected: 'The service refused to sponsor the transaction.',
+  FundingRejected:
+    'The funding service refused or could not confirm this deposit. Retry with the same request ID; see the event log.',
   NetworkMismatch: 'The service is on a different network from this page.',
   InternalError: 'Something went wrong inside the connector.',
 };

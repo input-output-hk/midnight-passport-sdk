@@ -4,6 +4,7 @@
 // copied evidence is `toJSON()`, so the two always hold the same rows. Only public values go in:
 // never a seed, a key or a PRF output (an event carries none).
 import type { PassportEvent } from '@input-output-hk/mn-passport-protocol';
+import type { OperationTraceEntry } from './operation-trace.js';
 import {
   type ActionId,
   EVENT_STAGES,
@@ -41,6 +42,7 @@ export interface LogRun {
 
 export class EventLog {
   readonly runs: LogRun[] = [];
+  readonly traceEntries: OperationTraceEntry[] = [];
   private readonly listeners = new Set<() => void>();
 
   constructor(private readonly now: () => number = Date.now) {}
@@ -81,8 +83,20 @@ export class EventLog {
       events: [],
     };
     this.runs.push(run);
+    this.traceEntries.push({
+      at: new Date(run.startedAt).toISOString(),
+      kind: 'action.start',
+      details: { action },
+    });
     const first = FLOWS[action].stages[0];
-    if (first) this.openStep(run, first.id);
+    if (first) {
+      this.openStep(run, first.id);
+      this.traceEntries.push({
+        at: new Date(run.startedAt).toISOString(),
+        kind: 'action.stage',
+        details: { id: first.id },
+      });
+    }
     this.emit();
     return run;
   }
@@ -96,6 +110,11 @@ export class EventLog {
     if (!run || this.runningStep()?.id === id) return;
     this.closeStep(run, 'done');
     this.openStep(run, id);
+    this.traceEntries.push({
+      at: new Date(this.now()).toISOString(),
+      kind: 'action.stage',
+      details: { id },
+    });
     this.emit();
   }
 
@@ -107,6 +126,20 @@ export class EventLog {
     const run = this.current;
     if (!run) return;
     run.events.push(event);
+    this.traceEntries.push({
+      at: new Date(event.at).toISOString(),
+      kind: 'passport.event',
+      details: {
+        id: event.id,
+        flowId: event.flowId,
+        step: event.step,
+        phase: event.phase,
+        clock: event.clock,
+        ...(event.durationMs !== undefined && { durationMs: event.durationMs }),
+        ...(event.detail && { detail: event.detail }),
+        ...(event.error && { error: event.error }),
+      },
+    });
     const stage = EVENT_STAGES[run.action][event.step];
     if (event.phase === 'start' && stage !== undefined && this.runningStep()?.id !== stage) {
       this.closeStep(run, 'done', undefined, event.at);
@@ -154,6 +187,11 @@ export class EventLog {
     run.state = 'failed';
     run.error = error;
     run.endedAt = this.now();
+    this.traceEntries.push({
+      at: new Date(run.endedAt).toISOString(),
+      kind: 'action.error',
+      details: { action: run.action, code: error.code },
+    });
     this.emit();
   }
 
@@ -164,6 +202,11 @@ export class EventLog {
     this.closeStep(run, 'done');
     run.state = 'done';
     run.endedAt = this.now();
+    this.traceEntries.push({
+      at: new Date(run.endedAt).toISOString(),
+      kind: 'action.end',
+      details: { action: run.action, durationMs: run.endedAt - run.startedAt },
+    });
     this.emit();
   }
 
@@ -193,15 +236,28 @@ export class EventLog {
       })),
       ...(run.events.length > 0 && {
         events: run.events.map((e) => ({
+          id: e.id,
+          flowId: e.flowId,
           step: e.step,
           phase: e.phase,
           at: iso(e.at),
+          clock: e.clock,
           ...(e.durationMs !== undefined && { durationMs: e.durationMs }),
           ...(e.detail && { detail: e.detail }),
           ...(e.error && { error: { ...e.error } }),
         })),
       }),
     }));
+  }
+
+  /** A chronological public-field request/response and operation trace. */
+  traceJSON(): readonly OperationTraceEntry[] {
+    return this.traceEntries;
+  }
+
+  trace(entry: OperationTraceEntry): void {
+    this.traceEntries.push(entry);
+    this.emit();
   }
 
   private runningStep(): LogStep | undefined {

@@ -5,6 +5,7 @@ import { loadConfig } from './config.ts';
 import { loadReferenceBackend } from './reference-backend.ts';
 import { chainRoute } from './routes/chain.ts';
 import { registryRoute } from './routes/registry.ts';
+import { demoFundingRoute } from './routes/demo-funding.ts';
 import { configRoute, pinnedZkRoute } from './routes/zk.ts';
 import { createServer } from './server.ts';
 import { directoryFile } from './deployments.ts';
@@ -30,6 +31,7 @@ const runExclusive = serial(8);
 const deploymentBudget = createDeploymentBudget(config.maxDeploys);
 const jobs = createMemoryJobStore();
 const directory = createFileDirectoryStore(directoryFile(config.registryFile));
+const demoFunding = demoFundingRoute(config, process.env);
 const server = createServer(config, [
   async (request, response, url) => {
     if (request.method !== 'GET' || url.pathname !== '/healthz') return false;
@@ -42,6 +44,7 @@ const server = createServer(config, [
     return true;
   },
   configRoute(config, () => backend.sponsorKeys()),
+  ...(demoFunding ? [demoFunding] : []),
   artefactRoute,
   registryRoute(config),
   directoryRoute({ networkId: config.networkId, store: directory }),

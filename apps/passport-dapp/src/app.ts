@@ -1,5 +1,5 @@
 import { PassportConnectorError } from '@input-output-hk/mn-passport-account';
-import { defaultFetch, fetchServiceConfig } from '@input-output-hk/mn-passport-adapter-service';
+import { fetchServiceConfig } from '@input-output-hk/mn-passport-adapter-service';
 import type {
   PassportAccount,
   PassportConnectorAPI,
@@ -8,6 +8,7 @@ import type {
 } from '@input-output-hk/mn-passport-protocol';
 import { ARM, MANIFEST_SHA256, NETWORK_ID, RP_ID, SERVICE_URL, installShim } from './connector.js';
 import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS } from './flows.js';
+import { setOperationTraceSink, tracedFetch, traceOperation } from './operation-trace.js';
 import { createUi } from './ui.js';
 import type { DevWallet } from './wallet/dev-wallet.js';
 import { walletSeed } from './wallet/seed.js';
@@ -45,10 +46,30 @@ if (ARM === 'jubjub') {
       'The ACC viewing secret is random and sealed to the passkey-derived reader. This preview supports create/open. Viewing-key rotation requires chain-backed holdings and read-grant sources.';
 }
 const { status, stage, record, event: onEvent } = ui;
+setOperationTraceSink(ui.trace);
 
 let api: PassportConnectorAPI | undefined;
 let devWallet: DevWallet | undefined;
 let account: PassportAccount | undefined;
+let fundingAsset: { color: string; amount: string } | undefined;
+const fundingUrl = new URL('/v1/demo/funding', SERVICE_URL);
+void tracedFetch(fundingUrl.toString())
+  .then(async (response) => {
+    if (!response.ok) return;
+    const data = (await response.json()) as { asset?: { color?: unknown; amount?: unknown } };
+    if (
+      typeof data.asset?.color === 'string' &&
+      /^[0-9a-f]{64}$/.test(data.asset.color) &&
+      typeof data.asset.amount === 'string' &&
+      /^[1-9][0-9]*$/.test(data.asset.amount)
+    ) {
+      fundingAsset = { color: data.asset.color, amount: data.asset.amount };
+      ui.enableFunding(fundingAsset);
+    }
+  })
+  .catch(() => {
+    // Funding is an optional localnet service; the rest of the demo remains usable.
+  });
 const connector = async () => {
   const descriptor = injected();
   if (!descriptor) throw new Error('window.midnight.passport is not injected');
@@ -65,6 +86,14 @@ const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult
     bindingId: a.bindingId,
     state,
     ...(lastTx && { lastTx }),
+  });
+  traceOperation('account.opened', {
+    how,
+    address: a.address,
+    networkId: a.networkId,
+    bindingId: a.bindingId,
+    authNonce: state.authNonce.toString(),
+    entryCount: state.entryCount,
   });
   status(`Account ${a.address.slice(0, 12)}… is ${how}.`);
 };
@@ -109,10 +138,76 @@ ui.on('open', async () => {
 ui.on('rotate', async () => {
   throw new Error('Viewing-key rotation needs chain-backed roster and grant sources.');
 });
+ui.on('fund', async () => {
+  if (!account || !fundingAsset) throw new Error('Open a Passport account before funding it.');
+  const target = account.address;
+  const asset = fundingAsset;
+  const key = `passport-demo:fund:${network}:${target}`;
+  let requestId = localStorage.getItem(key);
+  if (!requestId) {
+    requestId = crypto.randomUUID();
+    localStorage.setItem(key, requestId);
+  }
+  stage('deposit');
+  traceOperation('funding.intent', {
+    requestId,
+    accountAddress: target,
+    networkId: network,
+    color: asset.color,
+    amount: asset.amount,
+  });
+  status(`Funding account ${target.slice(0, 12)}… with ${asset.amount} test units…`);
+  const response = await tracedFetch(fundingUrl.toString(), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ accountAddress: target, requestId }),
+  });
+  const result = (await response.json()) as Record<string, unknown>;
+  if (!response.ok) {
+    const error = new Error(
+      typeof result.error === 'string' ? result.error : 'Funding was refused',
+    );
+    error.name = 'FundingRejected';
+    throw error;
+  }
+  if (
+    result.requestId !== requestId ||
+    result.accountAddress !== target ||
+    result.color !== asset.color ||
+    result.amount !== asset.amount ||
+    typeof result.txId !== 'string' ||
+    !/^[0-9a-f]{64}$/.test(result.txId) ||
+    typeof result.creditedBalance !== 'string' ||
+    !/^\d+$/.test(result.creditedBalance)
+  ) {
+    throw new Error('Funding service returned an invalid confirmation');
+  }
+  record('funding', {
+    requestId,
+    accountAddress: target,
+    color: asset.color,
+    amount: asset.amount,
+    txId: result.txId,
+    creditedBalance: result.creditedBalance,
+  });
+  ui.showFunding(target, asset.color, result.creditedBalance);
+  traceOperation('funding.confirmed', {
+    requestId,
+    accountAddress: target,
+    color: asset.color,
+    amount: asset.amount,
+    txId: result.txId,
+    creditedBalance: result.creditedBalance,
+  });
+  localStorage.removeItem(key);
+  status(
+    `Passport account credited to ${result.creditedBalance} test units. Transaction ${result.txId.slice(0, 12)}…`,
+  );
+});
 ui.on('wallet', connectBuiltInWallet);
 async function connectBuiltInWallet(): Promise<void> {
   status('Reading the service configuration…');
-  const config = await fetchServiceConfig(SERVICE_URL, defaultFetch, network);
+  const config = await fetchServiceConfig(SERVICE_URL, tracedFetch, network);
   if (config.networkId !== network) {
     throw new PassportConnectorError(
       'NetworkMismatch',
@@ -129,6 +224,10 @@ async function connectBuiltInWallet(): Promise<void> {
       : 'Choose your passkey, then confirm again to derive the wallet seed (PRF)…',
   );
   const seed = await walletSeed({ rpId: RP_ID, accountCredentialId: account?.credentialId });
+  traceOperation('wallet.seed.derived', {
+    source: 'passkey PRF (Lace recipe v1)',
+    accountPinned: !!account,
+  });
   stage('sync');
   status('Syncing the built-in wallet…');
   try {
@@ -137,6 +236,7 @@ async function connectBuiltInWallet(): Promise<void> {
     await devWallet?.stop();
     devWallet = undefined;
     devWallet = await createDevWallet(seed, config);
+    traceOperation('wallet.facade.started', { networkId: network });
   } finally {
     seed.fill(0);
   }
@@ -151,6 +251,12 @@ async function connectBuiltInWallet(): Promise<void> {
     unshielded,
     dust,
   });
+  traceOperation('wallet.connected', {
+    seedSource: 'passkey PRF (Lace recipe v1)',
+    networkId: network,
+    unshieldedAddress: unshielded.unshieldedAddress,
+    dustAddress: dust.dustAddress,
+  });
   ui.showWallet({ unshieldedAddress: unshielded.unshieldedAddress, dustAddress: dust.dustAddress });
   status('Built-in wallet connected; waiting for it to sync to read the balances…');
   // Reads that can time out while the wallet itself works: a failure marks only this step.
@@ -162,6 +268,15 @@ async function connectBuiltInWallet(): Promise<void> {
       w.getDustBalance(),
     ]);
     record('balances', { shielded, unshieldedBalances, dust: dustBalance });
+    traceOperation('wallet.sync.completed', { networkId: network });
+    traceOperation('wallet.balances', {
+      shieldedAddress: shielded.shieldedAddress,
+      unshieldedBalances: Object.fromEntries(
+        Object.entries(unshieldedBalances).map(([color, value]) => [color, value.toString()]),
+      ),
+      dustBalance: dustBalance.balance.toString(),
+      dustCap: dustBalance.cap.toString(),
+    });
     return { unshieldedBalances, dust: dustBalance };
   });
   if (balances) {

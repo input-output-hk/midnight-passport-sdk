@@ -349,6 +349,7 @@ async function up(options) {
     PASSPORT_CONTRACT_DIR: contractDir,
     PASSPORT_MANIFEST_SHA256: manifestPin,
     VITE_PASSPORT_ARM: options.arm,
+    ...(options.funding ? { PASSPORT_DEMO_FUNDING_ENABLED: '1' } : {}),
   };
   /** @type {import('node:child_process').ChildProcess | undefined} */
   let keys;

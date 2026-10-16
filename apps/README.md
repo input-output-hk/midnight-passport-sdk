@@ -8,7 +8,7 @@ lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](.
 | `passport-service` | Serves the ACC's ZK artefacts (`/zk/acc`), proves with server-side keys (`/prove`), deploys in waves (`/deploy`), sponsors fees (`/sponsor/*`) and keeps the passkey-to-account registry (`/accounts`). It also serves versioned config, binding-pinned artefacts, account hints, job-based prove/deploy and fee routes under `/v1`. It holds the only funded key. Binds `127.0.0.1:8787`. |
 | `passport-key-service` | Standalone Node container for restoring, verifying and HTTP-serving the pinned ACC keys. It has no sponsor wallet; see its [image and operations guide](passport-key-service/README.md). |
 | `passport-funding-service` | Separate wallet-backed process for an authenticated, allowlisted unshielded deposit into a deployed ACC. See its [operations guide](passport-funding-service/README.md). |
-| `passport-dapp`    | The harness at `http://localhost:5173`: create and reopen a Passport account with a passkey. Both arms seal a random ACC viewing secret; the page offers create/open while roster-safe rotation still needs chain-backed sources. The built-in wallet is separate from the ACC. |
+| `passport-dapp`    | The harness at `http://localhost:5173`: create and reopen a Passport account with a passkey, and fund the open ACC when launched with `demo up --funding`. Both arms seal a random ACC viewing secret; roster-safe rotation still needs chain-backed sources. The built-in wallet is separate from the ACC. |
 
 ## Documentation
 
@@ -62,6 +62,7 @@ pnpm install && pnpm build
 | `PASSPORT_REGISTRY_FILE`   | `~/.midnight-passport/registry.json` | The passkey-to-account registry; the deployed set sits beside it as `registry.deployments.json`, and the v1 hint store is `registry.json.v1`. Kept outside the repository so accounts can be reopened later. Delete all three when you reset the chain. |
 | `PASSPORT_SPONSOR_SEED`    | the localnet genesis dev seed, on `undeployed` only | The sponsor wallet's seed. The default is public knowledge and funded on the localnet only; another network requires this or `PASSPORT_SPONSOR_SEED_FILE`. |
 | `PASSPORT_SPONSOR_SEED_FILE` | unset | Path to a file containing the sponsor wallet's 32-byte lowercase hex seed. Preferred for the service image; mutually exclusive with `PASSPORT_SPONSOR_SEED`. |
+| `PASSPORT_DEMO_FUNDING_ENABLED` | unset | Set to `1` by `demo up --funding`. Enables the localnet-only browser funding route on the Passport service; requires the token and asset policy files described in the funding service guide. |
 
 The service validates its `MN_*` URLs at start-up and compares them with the reference client's
 `CONFIG`. `GET /config` and `GET /v1/config` advertise the corresponding `PASSPORT_PUBLIC_*`
@@ -107,6 +108,18 @@ Pass `--contract-dir` to reuse a prepared export, `--no-key-service` to skip tha
 the whole key cache before it reports ready, so even a rerun may pause there. The CLI refuses busy
 ports without stopping their occupants. See [AGENTS.md](../AGENTS.md) for prerequisites and the
 manual setup path.
+
+`demo up --funding` also starts the separate funding wallet. Supply
+`PASSPORT_FUNDING_TOKEN_FILE` and `PASSPORT_FUNDING_ASSETS_FILE` as in the
+[funding service guide](passport-funding-service/README.md), with a non-NIGHT unshielded asset
+already held by that wallet. The page then shows **Fund Passport account** after it discovers the
+localnet-only route; open an ACC before clicking it. The Passport service forwards a fixed deposit
+of up to 10 test units to the funding process while keeping its bearer token out of the browser.
+The button shows the confirmed ACC balance and keeps the same request ID across retries.
+Expand **Operation trace (requests and responses)** to inspect the chronological public-field
+trace. **Copy full log** includes that trace, Passport events (including deploy waves), account
+state and built-in wallet addresses and balances; raw transaction bodies and secret material are
+excluded. Start a fresh page session before create/open if you need the complete sequence.
 
 The standalone key service defaults to all 52 circuits. For a smaller JubJub owner cache, set
 `PASSPORT_KEY_PROFILE=jubjub-owner-v1`; its `/v1/profile` endpoint lists the ten available circuits.

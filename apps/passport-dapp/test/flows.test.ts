@@ -22,7 +22,7 @@ import {
 } from '../src/flows.ts';
 import { shorten } from '../src/ui.ts';
 
-const ACTIONS: readonly ActionId[] = ['create', 'open', 'rotate', 'wallet'];
+const ACTIONS: readonly ActionId[] = ['create', 'open', 'rotate', 'wallet', 'fund'];
 
 test('prompts per action, with and without an account open', () => {
   assert.deepEqual(promptsFor('create', false), [2, 3]);
@@ -38,11 +38,13 @@ test('prompts per action, with and without an account open', () => {
   assert.equal(promptsFor('rotate', true), 1);
   assert.equal(promptsFor('wallet', true), 1, 'pinned to the open account: one PRF prompt');
   assert.equal(promptsFor('wallet', false), 2, 'no account: the picker, then the PRF prompt');
+  assert.equal(promptsFor('fund', true), 0, 'funding needs no passkey prompt');
 });
 
 test('the prompt table has an entry for each action and nothing the actions do not use', () => {
   assert.deepEqual(Object.keys(PASSKEY_PROMPTS).sort(), [
     'create',
+    'fund',
     'open',
     'rotate',
     'walletWithAccount',
@@ -52,7 +54,10 @@ test('the prompt table has an entry for each action and nothing the actions do n
     for (const open of [true, false]) {
       const n = promptsFor(action, open);
       const [min, max] = typeof n === 'number' ? [n, n] : n;
-      assert.ok(Number.isInteger(min) && min >= 1 && max >= min, `${action} ${open}`);
+      assert.ok(
+        Number.isInteger(min) && min >= (action === 'fund' ? 0 : 1) && max >= min,
+        `${action} ${open}`,
+      );
     }
   }
 });

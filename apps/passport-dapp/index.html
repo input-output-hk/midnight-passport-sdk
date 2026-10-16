@@ -103,6 +103,19 @@
             <p class="prompts" id="wallet-prompts"></p>
             <p class="action-desc" id="wallet-desc"></p>
           </li>
+          <li class="action" hidden>
+            <button
+              id="fund"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="fund-prompts fund-desc"
+              disabled
+            >
+              Fund Passport account
+            </button>
+            <p class="prompts" id="fund-prompts"></p>
+            <p class="action-desc" id="fund-desc"></p>
+          </li>
         </ul>
       </section>
 
@@ -124,7 +137,7 @@
 
         <div class="panel-head log-head">
           <h2 id="log-title">Event log</h2>
-          <button id="copy" class="btn btn-ghost" type="button" disabled>Copy evidence</button>
+          <button id="copy" class="btn btn-ghost" type="button" disabled>Copy full log</button>
         </div>
         <p class="empty" id="log-empty">No actions yet. Each step will appear here, timed.</p>
         <ol
@@ -155,10 +168,20 @@
       </div>
 
       <details class="panel evidence">
-        <summary>Evidence (JSON)</summary>
+        <summary>Operation trace (requests and responses)</summary>
         <p class="hint">
-          What “Copy evidence” copies: the same rows as the event log, plus the account and the
-          wallet. Public values only, no seeds or keys.
+          Chronological setup, deployment, wallet and funding events. Large transaction and proof
+          bodies are shown by size; passkey data, PRF output, seeds, viewing secrets and bearer
+          tokens are excluded.
+        </p>
+        <pre id="trace"></pre>
+      </details>
+
+      <details class="panel evidence">
+        <summary>Full operation log (JSON)</summary>
+        <p class="hint">
+          What “Copy full log” copies: the event log, the operation trace, the account and the
+          wallet. Public values only, no seeds or private keys.
         </p>
         <pre id="evidence"></pre>
       </details>

@@ -36,9 +36,18 @@ export PASSPORT_FUNDING_ASSETS_FILE=$HOME/.midnight-passport/funding-assets.json
 nix develop -c node scripts/demo.mjs up --funding
 ```
 
-After creating an ACC in the page, run this command in another terminal, using the account
-address from the evidence panel and the color from the asset policy. Keep the same UUID when
-retrying a request so the service returns its recorded result without paying twice.
+After creating or opening an ACC in the page, use **Fund Passport account** in Actions. The button
+deposits up to 10 units of the first allowlisted non-NIGHT asset from the separate localnet funding
+wallet. It appears only when the demo was started with `--funding` and is enabled only while an ACC
+is open. The confirmed ACC balance and transaction appear in the page. The browser never receives
+the funding wallet seed or bearer token. An uncertain result keeps the same request ID in this
+browser; retry the button with that ID, and have an operator reconcile a pending request before
+starting a different one. The button is localnet-only and does not fund the read-only built-in HD
+wallet.
+
+The operator CLI remains available. Use the account address from the evidence panel and the color
+from the asset policy. Keep the same UUID when retrying a request so the service returns its
+recorded result without paying twice.
 
 ```sh
 nix develop -c node scripts/demo.mjs fund \
@@ -49,8 +58,19 @@ nix develop -c node scripts/demo.mjs fund \
 ```
 
 The command prints the transaction ID and confirmed ACC balance. The funding service listens on
-`127.0.0.1:8789` and stops with the demo. This operator command keeps the bearer token out of
-the browser; the page has no funding button yet.
+`127.0.0.1:8789` and stops with the demo. The Passport service owns a localnet-only browser route
+at `/v1/demo/funding`; it reads the token file on the server and forwards a fixed-size deposit to
+the separate funding service.
+
+For a colleague-facing run, expand **Operation trace (requests and responses)** while using the
+page. **Copy full log** exports one JSON document with the action stages, all Passport connector
+events (including deployment waves and activation), the HTTP request/response timeline, the open
+ACC, and built-in wallet addresses and balances. The trace shows public request and response
+fields and byte counts for transaction, boot and encryption-key payloads. It never copies raw
+transaction bodies, passkey results, PRF output, wallet seeds, viewing secrets or bearer tokens.
+The trace starts when the page loads; replay create/open, connect the wallet and fund the ACC in
+one session to capture the whole lifecycle. A prior account creation cannot be reconstructed from
+a later page load.
 
 ## What to know before you start
 

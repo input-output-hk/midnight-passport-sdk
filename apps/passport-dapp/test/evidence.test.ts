@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { EventLog } from '../src/event-log.ts';
 import { buildEvidence, evidenceJson, type EvidenceParts } from '../src/evidence.ts';
 import type { AccountView, EvidenceHeader, WalletView } from '../src/ui.ts';
+import { publicFields } from '../src/operation-trace.ts';
 
 const header: EvidenceHeader = {
   note: 'Prototype',
@@ -33,6 +34,7 @@ function parts(over: Partial<EvidenceParts> = {}): EvidenceParts {
     account,
     wallet: {},
     runs: log.toJSON(),
+    trace: log.traceJSON(),
     ...over,
   };
 }
@@ -51,6 +53,7 @@ test('the evidence is the header, the page, the account, the wallet and the runs
     'pinnedManifestSha256',
     'runs',
     'serviceUrl',
+    'trace',
     'wallet',
   ]);
   assert.equal(evidence.page, 'http://localhost:5173');
@@ -127,6 +130,29 @@ test('the text is indented JSON that round-trips, so it pastes into an issue as 
   const text = evidenceJson(parts());
   assert.match(text, /^\{\n {2}"note"/);
   assert.doesNotThrow(() => JSON.parse(text));
+});
+
+test('operation trace copies public request fields and sizes, never secrets or raw transactions', () => {
+  const request = publicFields({
+    accountAddress: 'ab'.repeat(32),
+    amount: '10',
+    tx: '12'.repeat(12),
+    seed: 'private-seed',
+    token: 'private-token',
+    prfOutput: 'private-prf',
+  });
+  assert.deepEqual(request, { accountAddress: 'ab'.repeat(32), amount: '10', txBytes: 12 });
+  assert.deepEqual(
+    publicFields({ asset: { color: 'ef'.repeat(32), amount: '10', token: 'private-token' } }),
+    {
+      asset: { color: 'ef'.repeat(32), amount: '10' },
+    },
+  );
+  const trace = [{ at: '2026-10-16T10:00:00.000Z', kind: 'http.request', details: request }];
+  const text = evidenceJson(parts({ trace }));
+  assert.ok(text.includes('http.request'));
+  assert.ok(!text.includes('private-'));
+  assert.ok(!text.includes('12'.repeat(12)));
 });
 
 test('a wallet view carries addresses and balances: no seed field exists to be copied', () => {
