@@ -16,13 +16,15 @@ export interface FundingAssetPolicy {
 export type FundingReservation =
   | { readonly state: 'reserved' }
   | { readonly state: 'complete'; readonly result: ServiceWire.FundAccResponse }
-  | { readonly state: 'pending' | 'conflict' | 'daily-limit' };
+  | { readonly state: 'pending' | 'released' | 'conflict' | 'daily-limit' };
 
 /** Durable milestones for diagnosing an uncertain wallet outcome. */
 export type FundingProgress =
   | { readonly stage: 'balance-observed'; readonly balanceBefore: string }
   | { readonly stage: 'prepared'; readonly preparationTxId: string }
-  | { readonly stage: 'submitted'; readonly txId: string };
+  | { readonly stage: 'submitted'; readonly txId: string }
+  /** Backend guarantees it has not entered a wallet operation capable of submitting value. */
+  | { readonly stage: 'no-submit' };
 
 /** Reserve the request ID and daily spend atomically, durably, before any wallet call. */
 export interface FundingStore {
@@ -35,6 +37,8 @@ export interface FundingStore {
   complete(requestId: string, result: ServiceWire.FundAccResponse): Promise<void>;
   /** Persist each wallet milestone before the next spending step. */
   recordProgress(requestId: string, progress: FundingProgress): Promise<void>;
+  /** Atomically tombstone a request proved to have stopped before any wallet submission. */
+  releaseNoSubmit(requestId: string, actor: string): Promise<void>;
 }
 
 /** Must submit through a dedicated wallet, wait for inclusion, and read the credited ACC balance. */
@@ -143,6 +147,8 @@ export function fundingRoute(options: FundingRouteOptions): Route {
       return true;
     }
     if (reservation.state === 'pending') throw new HttpError(409, 'funding request is pending');
+    if (reservation.state === 'released')
+      throw new HttpError(409, 'funding request was released; use a new request ID');
     if (reservation.state === 'conflict') throw new HttpError(409, 'funding request ID was reused');
     if (reservation.state === 'daily-limit')
       throw new HttpError(429, 'daily funding limit reached');

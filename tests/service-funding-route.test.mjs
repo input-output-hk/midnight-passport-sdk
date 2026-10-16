@@ -54,6 +54,7 @@ function memoryStore() {
       old.result = result;
     },
     async recordProgress() {},
+    async releaseNoSubmit() {},
   };
 }
 

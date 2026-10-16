@@ -91,8 +91,27 @@ The inspector validates the file, lists pending requests and reports whether a l
 present. It does not read the wallet seed or bearer token. A request created before progress
 journaling has no transaction IDs in its reservation. Even a new request can stop between node
 submission and recording the transaction ID, so missing progress does **not** prove that no value
-moved. Reconcile wallet and ledger evidence before any manual state change; this tranche provides
-no command to release or complete a pending reservation.
+moved. The backend records `noSubmit` only if a preflight read or validation failed before it
+entered wallet preparation or the ACC deposit. An operator may release that one proved case:
+
+```sh
+nix develop -c pnpm --filter passport-funding-service reconcile --file \
+  "$HOME/.midnight-passport/funding-reservations.json" \
+  --request-id '<original UUID>' --operator '<your-id>' --release-no-submit yes
+```
+
+The command rechecks the marker under the store lock, makes a mode-600, fsynced backup beside the
+reservation file, records the operator, timestamp and reason in the request tombstone, then frees
+its daily quota. The original request ID remains unusable; a *new* ID is appropriate only after
+the original was released. Do not use the command for a request with no marker, after NIGHT
+preparation, after deposit submission, or after an uncertain crash. Those cases remain pending.
+Inspect the wallet transaction, indexer receipt and live ACC balance before any manual repair; no
+confirmed-credit resolver is available yet. Never delete a pending entry to retry. If a stale
+`.lock` directory remains after a crash, stop all funding processes, copy the reservation file to a
+private backup, reconcile every pending request against wallet and chain evidence, then remove the
+lock directory manually. The `FundingStore` interface defines atomic reserve, milestone, complete,
+and release operations for a future transactional database; do not run replicas against separate
+files or a shared filesystem lock without a transactional implementation.
 
 The source has focused policy and backend tests. On the local `undeployed` network, this process deposited 10 units of a faucet-minted non-native unshielded asset into a
 live `spec_version = 3` ACC and observed the credited balance. Repeating the same request ID

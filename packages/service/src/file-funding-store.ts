@@ -1,5 +1,7 @@
 import {
   closeSync,
+  copyFileSync,
+  constants,
   existsSync,
   fsyncSync,
   mkdirSync,
@@ -26,6 +28,12 @@ interface Entry {
   readonly day: string;
   readonly progress?: ProgressRecord;
   readonly result?: ServiceWire.FundAccResponse;
+  readonly noSubmit?: true;
+  readonly release?: {
+    readonly actor: string;
+    readonly at: string;
+    readonly reason: 'preflight-failed';
+  };
 }
 interface FileState {
   readonly version: 1;
@@ -80,6 +88,23 @@ function validEntry(id: string, value: unknown): value is Entry {
     )
       return false;
   }
+  if (value.noSubmit !== undefined && value.noSubmit !== true) return false;
+  if (value.noSubmit && (value.progress?.preparationTxId || value.progress?.depositTxId))
+    return false;
+  if (value.release !== undefined) {
+    if (
+      !record(value.release) ||
+      typeof value.release.actor !== 'string' ||
+      !/^[a-zA-Z0-9._@-]{1,80}$/.test(value.release.actor) ||
+      typeof value.release.at !== 'string' ||
+      !Number.isFinite(Date.parse(value.release.at)) ||
+      value.release.reason !== 'preflight-failed' ||
+      !value.noSubmit ||
+      value.result !== undefined
+    )
+      return false;
+  }
+  if (value.noSubmit && value.result !== undefined) return false;
   if (value.result === undefined) return true;
   return (
     record(value.result) &&
@@ -117,9 +142,11 @@ export interface FundingInspection {
   readonly entries: readonly {
     readonly request: ServiceWire.FundAccRequest;
     readonly day: string;
-    readonly state: 'pending' | 'complete';
+    readonly state: 'pending' | 'complete' | 'released';
     readonly progress?: ProgressRecord;
     readonly result?: ServiceWire.FundAccResponse;
+    readonly noSubmit?: true;
+    readonly release?: Entry['release'];
   }[];
 }
 
@@ -132,9 +159,11 @@ export function inspectFileFundingStore(file: string): FundingInspection {
     entries: Object.values(state.requests).map((entry) => ({
       request: entry.request,
       day: entry.day,
-      state: entry.result ? 'complete' : 'pending',
+      state: entry.result ? 'complete' : entry.release ? 'released' : 'pending',
       ...(entry.progress && { progress: entry.progress }),
       ...(entry.result && { result: entry.result }),
+      ...(entry.noSubmit && { noSubmit: entry.noSubmit }),
+      ...(entry.release && { release: entry.release }),
     })),
   };
 }
@@ -159,6 +188,24 @@ function save(file: string, state: FileState): void {
   } finally {
     if (existsSync(temp)) unlinkSync(temp);
   }
+}
+
+function backup(file: string): string {
+  const path = `${file}.backup-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID()}`;
+  copyFileSync(file, path, constants.COPYFILE_EXCL);
+  const descriptor = openSync(path, 'r');
+  try {
+    fsyncSync(descriptor);
+  } finally {
+    closeSync(descriptor);
+  }
+  const directory = openSync(dirname(file), 'r');
+  try {
+    fsyncSync(directory);
+  } finally {
+    closeSync(directory);
+  }
+  return path;
 }
 
 const sameRequest = (a: ServiceWire.FundAccRequest, b: ServiceWire.FundAccRequest): boolean =>
@@ -194,11 +241,15 @@ export function createFileFundingStore(file: string): FundingStore {
         const old = state.requests[request.requestId];
         if (old) {
           if (!sameRequest(old.request, request)) return { state: 'conflict' };
-          return old.result ? { state: 'complete', result: old.result } : { state: 'pending' };
+          if (old.result) return { state: 'complete', result: old.result };
+          return { state: old.release ? 'released' : 'pending' };
         }
         const amount = BigInt(request.amount);
         const spent = Object.values(state.requests)
-          .filter((entry) => entry.day === utcDay && entry.request.color === request.color)
+          .filter(
+            (entry) =>
+              entry.day === utcDay && entry.request.color === request.color && !entry.release,
+          )
           .reduce((sum, entry) => sum + BigInt(entry.request.amount), 0n);
         if (spent + amount > policy.maxPerUtcDay) return { state: 'daily-limit' };
         state.requests[request.requestId] = { request, day: utcDay };
@@ -210,7 +261,7 @@ export function createFileFundingStore(file: string): FundingStore {
       withLock(() => {
         const state = load(file);
         const old = state.requests[requestId];
-        if (!old || result.requestId !== requestId)
+        if (!old || old.release || old.noSubmit || result.requestId !== requestId)
           throw new Error('funding reservation does not match the result');
         if (
           (old.progress?.depositTxId && old.progress.depositTxId !== result.txId) ||
@@ -238,8 +289,17 @@ export function createFileFundingStore(file: string): FundingStore {
       withLock(() => {
         const state = load(file);
         const old = state.requests[requestId];
-        if (!old || old.result) throw new Error('funding reservation is not pending');
+        if (!old || old.result || old.release)
+          throw new Error('funding reservation is not pending');
         const previous = old.progress;
+        if (progress.stage === 'no-submit') {
+          if (previous?.preparationTxId || previous?.depositTxId)
+            throw new Error('wallet submission may have started');
+          state.requests[requestId] = { ...old, noSubmit: true };
+          save(file, state);
+          return;
+        }
+        if (old.noSubmit) throw new Error('funding request is marked no-submit');
         let next: ProgressRecord;
         if (progress.stage === 'balance-observed') {
           if (
@@ -263,6 +323,23 @@ export function createFileFundingStore(file: string): FundingStore {
           next = { ...previous, depositTxId: progress.txId };
         }
         state.requests[requestId] = { ...old, progress: next };
+        save(file, state);
+      });
+    },
+    async releaseNoSubmit(requestId, actor) {
+      withLock(() => {
+        if (!/^[a-zA-Z0-9._@-]{1,80}$/.test(actor)) throw new Error('operator identity is invalid');
+        const state = load(file);
+        const old = state.requests[requestId];
+        if (!old || old.result || old.release || !old.noSubmit)
+          throw new Error('only a proved no-submit reservation may be released');
+        if (old.progress?.preparationTxId || old.progress?.depositTxId)
+          throw new Error('wallet submission may have started');
+        backup(file);
+        state.requests[requestId] = {
+          ...old,
+          release: { actor, at: new Date().toISOString(), reason: 'preflight-failed' },
+        };
         save(file, state);
       });
     },
