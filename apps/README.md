@@ -153,8 +153,12 @@ WebAuthn policy. If delivery is interrupted, reread the roster and reopen with t
 confirmed entry is authoritative. Retry enrollment only if the entry is absent, using the same
 joiner public handoff. This browser retains openings for grants it issued in an encrypted local
 journal bound to its passkey PRF. An active read grant whose opening is absent in this browser
-blocks enrollment; device removal remains unavailable until every live reader and read-grant
-target can be verified and resealed. Clearing browser storage loses the local openings.
+blocks enrollment. For removal, copy the full target commitment from **Read device roster** into
+**Device commitment to remove**, compare the displayed epoch and roster in the confirmation, then
+sign. The SDK verifies and reseals every surviving reader and active read grantee before it removes
+the target. If any opening or holding cannot be verified, removal stops. The operation spans
+multiple transactions; after an uncertain result, inspect the live roster and inbox before
+retrying. Clearing browser storage loses the local grant openings.
 
 Expand **Operation trace (requests and responses)** to inspect the chronological public-field
 trace. **Copy full log** includes that trace, Passport events (including deploy waves), account

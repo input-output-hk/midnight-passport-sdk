@@ -3,44 +3,67 @@
   "bindingId": "acc-s3r1.1",
   "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
   "contractSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
-  "account": "42f305ac2420f6cbd67260b6ed9c50acc8274ffe1244b7f52e85a6106f057554",
+  "account": "10235799dc2755e9a9a90dbfd21d7e0c3bfaa24e173bef4073d56c2a29aa2f87",
   "networkId": "undeployed",
   "ownerScheme": "p256-webauthn",
   "joinedScheme": "p256-webauthn",
-  "enrollmentCommitment": "41296a2ca47a524dd831619d213f59abb436fdd0f38ed6298a313c59828f31f3",
+  "enrollmentCommitment": "15f04134eb84911aa3b98b77c800763eb50978fd55bf35c51c6441e52de72df2",
+  "removalTx": "a6dc0266c9129746725a044c8d497830b23ef1bb63a96c2160906c0f4ffcd8fb",
+  "rotationTx": "825daff2c57e7edf81d558cd32d3c4eb18e4547f29aacd70f902a257a951a9bd",
   "authNonceBeforeEnrollment": "2",
   "authNonceAfterEnrollment": "5",
   "transactions": [
     {
       "circuit": "activate_initial_device_with_p256",
-      "txHash": "4f1bcc961dcc88edfeb1b79ed5aea2df206123776011baa3ae5a87651a7b2cae"
+      "txHash": "cd11bcfbb23b59bee205bbfe46c30ec4ee7c879fddb1e1e6b413d3f9c3abbf4c"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "b1c94dd67c71533439bd2c6206339195072e0c93a7d43b0e49aa51393cb36680"
+      "txHash": "7ff12ae7b00bc323291f013ddf44714ce1ef518ae52e0121ec93db73ec99f658"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "d286f6f72f6945618c466be2e420d9475cb416e5d5015d81764c6ad1a82f62ee"
+      "txHash": "318f3d5a442a3b2806442474afea5ad191f8e5ddcb949b797d4b0ffc42b6c937"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "0b3d6af3d19887844642619a26853efa64106adfbe0e906220866d10c1da6a94"
+      "txHash": "c6636e0349b14c50410e305665f028999b56d4c81055801bc60309f69c799cac"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "f519ce6a3032d68d48ff893b082dbfed01070a9ad643b0e805efd20f0d891a0e"
+      "txHash": "4cc108bc0b8b6a7679c2e0b56523690b9400507d310029805a2b9c69ef910b25"
     },
     {
       "circuit": "add_device_with_p256",
-      "txHash": "eb337e6f97d6e315e3170f55f275f8c3ed66d5fd6eac7db29ae7c2f260ef048b"
+      "txHash": "35a03e824eb4b770d7013e7c1652884f380898689e3cdae11761ca474b5ee463"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "0243a953f3d5e0fa80e3c79157a2e332d8dec9f7fe63c194cebb4a180417a5fb"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "3caf92a7413826f3b3aabccf95bb554cbf5435d7ccdb243e5289345819256ab2"
+    },
+    {
+      "circuit": "rotate_enc_key_with_p256",
+      "txHash": "825daff2c57e7edf81d558cd32d3c4eb18e4547f29aacd70f902a257a951a9bd"
+    },
+    {
+      "circuit": "remove_device_with_p256",
+      "txHash": "a6dc0266c9129746725a044c8d497830b23ef1bb63a96c2160906c0f4ffcd8fb"
     }
   ],
   "joinerOpenedByAddress": true,
   "ownerAndJoinerUnlockedViewingKey": true,
   "rosterCommitmentsAfterEnrollment": [
-    "41296a2ca47a524dd831619d213f59abb436fdd0f38ed6298a313c59828f31f3",
-    "93c47a9f35f14094bcbb9d832ff307788f520d0f5f6675e22da0290914f09c4a"
+    "15f04134eb84911aa3b98b77c800763eb50978fd55bf35c51c6441e52de72df2",
+    "bce69327952de4b71234186b6c723744d6061c4f4e6d47d6d10ac9c9d0e13a25"
   ],
-  "scope": "sealed P-256 enrollment, both live roster reads and both viewing-key openings with an empty read-grant roster"
+  "rosterCommitmentsAfterRemoval": [
+    "e30ba16453227ae705854eda1e6676dbf5ab25d6765ba0860d9153f6f78545d5"
+  ],
+  "removedPasskeyRefused": true,
+  "ownerUnlockedRotatedViewingKey": true,
+  "scope": "sealed P-256 enrollment, both viewing-key openings, key rotation and device removal with an empty read-grant roster"
 }

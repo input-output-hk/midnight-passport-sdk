@@ -34,6 +34,7 @@ const ACTIONS: readonly ActionId[] = [
   'grantRoster',
   'recoverGrants',
   'enrollDevice',
+  'removeDevice',
   'rotate',
   'wallet',
   'fund',
@@ -58,6 +59,7 @@ test('prompts per action, with and without an account open', () => {
   assert.equal(promptsFor('grantRoster', true), 0);
   assert.equal(promptsFor('recoverGrants', true), 1);
   assert.equal(promptsFor('enrollDevice', true), 1);
+  assert.equal(promptsFor('removeDevice', true), 1);
   assert.equal(promptsFor('rotate', false), 1);
   assert.equal(promptsFor('rotate', true), 1);
   assert.equal(promptsFor('wallet', true), 1, 'pinned to the open account: one PRF prompt');
@@ -78,6 +80,7 @@ test('the prompt table has an entry for each action and nothing the actions do n
     'prepareJoiner',
     'recoverGrants',
     'refresh',
+    'removeDevice',
     'roster',
     'rotate',
     'walletWithAccount',

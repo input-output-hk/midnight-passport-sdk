@@ -134,8 +134,14 @@ entry is absent, use the same public handoff for a reviewed retry. If the entry 
 joiner cannot open, stop and inspect the ACC inbox and event log; another enrollment may create an
 ambiguous state. The owner browser retains openings for grants it issued in an encrypted journal
 bound to its passkey; active read grants without an opening in that profile block this flow.
-Removal is withheld until the host can verify all live reader registrations, holdings and active
-read-grant targets for the required key rotation.
+To remove the joining device, read the live roster again, copy its complete commitment into
+**Device commitment to remove**, and review the network, ACC, epoch, target and entry count in the
+confirmation before consenting with the owner passkey. The SDK verifies every surviving reader,
+held coin and active read-grant target before rotating the viewing and roster keys, then removes
+the target. An absent or ambiguous target, a missing grant opening, or an unverifiable holding
+stops the operation. It spans multiple transactions: if it is interrupted after key rotation,
+inspect the live roster and inbox before attempting another removal. The removed passkey should
+no longer open the ACC; confirm the owner can still open it.
 
 ## Read and recover grants
 

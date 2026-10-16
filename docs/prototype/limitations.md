@@ -132,13 +132,13 @@ time, and a deployment pipeline for the artefacts.
 
 - **Progress.** The connector reports five coarse steps, and nothing inside the 180-second deploy.
   See fork issue [#17](https://github.com/input-output-hk/midnight-passport-sdk/issues/17).
-- **Beyond the first device.** There is no second-device demo, grant demo, recovery of a lost
-  passkey, or withdrawal. Only an already-enrolled passkey can sign for the ACC.
-  The demo can open a known ACC address with an already-enrolled passkey even without a directory
-  hint. It cannot recover an ACC when all enrolled passkeys are lost.
-  The reusable account package has staged JubJub and P-256 grant publication flows that verify each opening against live ACC commitments, but the prototype page does not expose them.
-  It can also confirm grant revocation. Read-grant revocation rotates the viewing secret and seals it to surviving readers; revoke-all rotates without resealing any grantee. The prototype page does not expose these flows.
-  A reusable helper prepares read-grant seals, but the prototype page does not deliver them.
+- **Lost passkeys and grant-holder use.** The demo can enroll and remove a second sealed device,
+  open by a known ACC address, withdraw unshielded assets, read shielded holdings, inspect the
+  live grant roster and recover locally staged grant publication. It cannot recover an ACC after
+  all enrolled passkeys are lost. It does not yet issue a scoped grant or let a separate grantee
+  exercise and revoke one through the page. Grant openings in the browser journal have no backup
+  or cross-profile synchronization. The reusable account package includes owner grant issue and
+  revocation flows, but the demo has not validated their full grantee lifecycle.
 - **A wallet of its own.** The built-in wallet is a read-only stand-in. It proves and pays nothing.
   lace-sdk is expected to replace it.
 - **Browsers.** Real-passkey runs used Chrome on macOS only.

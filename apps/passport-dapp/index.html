@@ -204,6 +204,30 @@
             <p class="action-desc" id="enrollDevice-desc"></p>
           </li>
           <li class="action">
+            <label for="remove-commitment">Device commitment to remove</label>
+            <input
+              id="remove-commitment"
+              class="action-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="64 lowercase hex characters from the live roster"
+              aria-describedby="removeDevice-desc"
+            />
+            <button
+              id="removeDevice"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="removeDevice-prompts removeDevice-desc"
+              disabled
+            >
+              Remove enrolled device
+            </button>
+            <p class="prompts" id="removeDevice-prompts"></p>
+            <p class="action-desc" id="removeDevice-desc"></p>
+          </li>
+          <li class="action">
             <button
               id="rotate"
               class="btn btn-secondary"

@@ -13,6 +13,7 @@ export type ActionId =
   | 'grantRoster'
   | 'recoverGrants'
   | 'enrollDevice'
+  | 'removeDevice'
   | 'rotate'
   | 'wallet'
   | 'fund'
@@ -40,6 +41,7 @@ export const PASSKEY_PROMPTS = {
   grantRoster: 0,
   recoverGrants: 1,
   enrollDevice: 1,
+  removeDevice: 1,
   rotate: 1,
   fund: 0,
   withdraw: 1,
@@ -149,6 +151,16 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       read,
     ],
   },
+  removeDevice: {
+    title: 'Remove enrolled device',
+    summary:
+      'Review a live device commitment, rotate the sealed account keys, and confirm that entry is absent from the ACC.',
+    stages: [
+      { id: 'review', label: 'Read and review the live device roster' },
+      { id: 'submit', label: 'Rotate keys and remove the selected entry' },
+      read,
+    ],
+  },
   rotate: {
     title: 'Rotate encryption key',
     summary: `A passkey-signed call, proved on the service (about ${ROTATION_ESTIMATE_S} s) and sponsored.`,
@@ -211,6 +223,7 @@ export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep
   grantRoster: {},
   recoverGrants: {},
   enrollDevice: {},
+  removeDevice: {},
   rotate: {},
   wallet: {},
   fund: {},

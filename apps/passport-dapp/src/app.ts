@@ -392,6 +392,64 @@ ui.on('enrollDevice', async () => {
   });
   status('Joining device confirmed in the ACC roster. Open by ACC address on that browser.');
 });
+ui.on('removeDevice', async () => {
+  const current = account;
+  if (!current?.deviceRoster || !current.removeDevice)
+    throw new Error('Open a sealed Passport account before removing a device.');
+  const target = ui.removalCommitment();
+  if (!/^[0-9a-f]{64}$/.test(target))
+    throw new Error('Enter one full lowercase commitment from the live device roster.');
+  stage('review');
+  const [before, state] = await Promise.all([current.deviceRoster(), current.state()]);
+  if (before.authNonce !== state.authNonce || before.deviceEpoch !== state.deviceEpoch)
+    throw new Error('The device roster changed. Refresh and review it again.');
+  ui.showRoster(current.address, before);
+  if (before.commitments.length < 2) throw new Error('The ACC has no second device to remove.');
+  if (!before.commitments.includes(target))
+    throw new Error('That commitment is absent from the live ACC device roster.');
+  const approved = window.confirm(
+    `Remove this enrolled device from Passport ACC?\n\nNetwork: ${network}\nACC: ${current.address}\n` +
+      `Device commitment: ${target}\nDevice epoch: ${before.deviceEpoch}\n` +
+      `Live entries: ${before.commitments.length}\n\n` +
+      'The SDK rotates the viewing and roster keys before removal. The removed passkey will lose access. Confirm the full commitment against the live roster.',
+  );
+  if (!approved) {
+    status('Device removal cancelled before signing.');
+    traceOperation('account.device.removalCancelled', { accountAddress: current.address, target });
+    return;
+  }
+  stage('submit');
+  status(
+    'Rotating sealed keys and removing the selected device; this takes multiple transactions…',
+  );
+  const removed = await current.removeDevice(target, { onEvent });
+  stage('read');
+  const [after, nextState] = await Promise.all([current.deviceRoster(), current.state()]);
+  if (
+    after.commitments.includes(target) ||
+    after.commitments.length !== before.commitments.length - 1
+  )
+    throw new Error('The selected device was not removed from the confirmed ACC roster.');
+  ui.showAccount({
+    address: current.address,
+    networkId: current.networkId,
+    bindingId: current.bindingId,
+    state: nextState,
+    lastTx: removed,
+  });
+  ui.showRoster(current.address, after);
+  const result = {
+    accountAddress: current.address,
+    removedCommitment: target,
+    rotationTxHash: removed.rotationTxHash,
+    removalTxHash: removed.txHash,
+    deviceEpoch: after.deviceEpoch.toString(),
+    liveEntries: after.commitments.length,
+  };
+  record('deviceRemoved', result);
+  traceOperation('account.device.removed', result);
+  status('The selected device is absent from the live ACC roster.');
+});
 ui.on('rotate', async () => {
   throw new Error('Viewing-key rotation needs chain-backed roster and grant sources.');
 });

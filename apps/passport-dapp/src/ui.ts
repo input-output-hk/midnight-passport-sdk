@@ -59,6 +59,7 @@ const ACTIONS: readonly ActionId[] = [
   'recoverGrants',
   'prepareJoiner',
   'enrollDevice',
+  'removeDevice',
   'rotate',
   'wallet',
   'fund',
@@ -99,6 +100,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   >;
   const copyButton = byId<HTMLButtonElement>('copy');
   const handoffInput = byId<HTMLTextAreaElement>('handoff-input');
+  const removalInput = byId<HTMLInputElement>('remove-commitment');
   const handoffOutput = byId<HTMLTextAreaElement>('handoff-output');
   const statusEl = byId('status');
   const announceEl = byId('announce');
@@ -177,6 +179,9 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     buttons.prepareJoiner.disabled =
       busy || !ready || !/^[0-9a-f]{64}$/.test(knownAddress.value.trim());
     buttons.enrollDevice.disabled = busy || !account || !handoffInput.value.trim();
+    buttons.removeDevice.disabled =
+      busy || !account || !/^[0-9a-f]{64}$/.test(removalInput.value.trim());
+    removalInput.disabled = busy || !account;
     handoffInput.disabled = busy;
     buttons.rotate.disabled = true;
     buttons.wallet.disabled = busy;
@@ -585,6 +590,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   });
   knownAddress.addEventListener('input', renderButtons);
   handoffInput.addEventListener('input', renderButtons);
+  removalInput.addEventListener('input', renderButtons);
 
   renderButtons();
   renderProgress();
@@ -599,6 +605,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     status,
     knownAddress: () => knownAddress.value,
     handoffJson: () => handoffInput.value,
+    removalCommitment: () => removalInput.value.trim(),
     showHandoff(handoff: { fingerprint: string }) {
       handoffOutput.value = JSON.stringify(handoff, null, 2);
       handoffOutput.hidden = false;
