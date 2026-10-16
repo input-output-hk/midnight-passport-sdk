@@ -143,14 +143,26 @@ stops the operation. It spans multiple transactions: if it is interrupted after 
 inspect the live roster and inbox before attempting another removal. The removed passkey should
 no longer open the ACC; confirm the owner can still open it.
 
-## Read and recover grants
+## Scoped grant demonstration
 
 With an ACC open, choose **Read grant roster** to see its chain-confirmed grant generation, nonce,
-IDs, active status and read flag. **Recover pending grants** resumes sealed publication of a grant
-already staged in this browser's encrypted journal, after checking live ACC commitments. The
-operation log lists published and unsettled IDs. This does not create a grant or let a grantee
-spend. The journal is profile-local; clearing browser storage loses its openings, and a grant
-created on another device cannot be recovered here.
+IDs, active status and read flag. In a separate browser profile, use **Prepare grant holder** to
+create a different passkey and copy only its public JubJub key to the owner. The owner chooses one
+asset, a fixed unshielded recipient, a per-call limit and a total cap, then chooses **Issue scoped
+grant**. After the live roster confirms its ID, the owner uses **Export grant opening** to unlock
+the encrypted journal and verify the opening against the active on-chain commitment. Send that JSON
+directly to the grantee; it includes the scope salt and is deliberately absent from the copied
+operation trace.
+
+The grantee pastes the opening into **Grant opening JSON from the owner**, enters the amount and
+previous spent total, and chooses **Spend scoped grant**. The page checks the live grant and fixed
+recipient before grantee passkey consent, then confirms the updated commitment. The owner can use
+**Revoke scoped grant** on an active ID and verify its inactive tombstone. **Recover pending grants**
+resumes publication of openings already staged in this browser's encrypted journal after checking
+live ACC commitments. The journal is profile-local; clearing browser storage loses its openings,
+and a grant created on another device cannot be recovered here. A node-backed package run covers
+issue, independent holder spend, revoke and post-revoke refusal; the two-browser passkey ceremony
+still needs a manual localnet run.
 
 For a colleague-facing run, expand **Operation trace (requests and responses)** while using the
 page. **Copy full log** exports one JSON document with the action stages, all Passport connector
