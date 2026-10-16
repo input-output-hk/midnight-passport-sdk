@@ -14,7 +14,18 @@ const hash = (/** @type {string} */ value) =>
 /** @param {boolean} active @param {boolean} read @param {Uint8Array} [readHash] */
 const record = (active, read, readHash = Buffer.alloc(32)) => ({
   active,
-  scope: { read, read_pk_hash: readHash, object_commit: Buffer.alloc(32, 9) },
+  issued_at: 123n,
+  nonce: 2n,
+  spent_commit: Buffer.alloc(32, 8),
+  scope: {
+    read,
+    read_pk_hash: readHash,
+    object_commit: Buffer.alloc(32, 9),
+    op_withdraw_unshielded: true,
+    per_call_cap: 5n,
+    cap: 20n,
+    expires_at: 0n,
+  },
 });
 
 function fixture() {
@@ -103,6 +114,18 @@ test('one ledger snapshot supplies active grants and authenticates only live rea
     objectCommit: Buffer.alloc(32, 9),
     readPkHash: Buffer.alloc(32),
   });
+  assert.deepEqual(await source.readGrantSpendContext(account, spendId), {
+    active: true,
+    issuedAt: 123n,
+    nonce: 2n,
+    spentCommit: Buffer.alloc(32, 8),
+    objectCommit: Buffer.alloc(32, 9),
+    withdrawUnshielded: true,
+    perCallCap: 5n,
+    cap: 20n,
+    expiresAt: 0n,
+  });
+  assert.equal(await source.readGrantSpendContext(account, 'ff'.repeat(32)), undefined);
   assert.equal(await source.readGrantCommitment(account, 'ff'.repeat(32)), undefined);
   assert.deepEqual(await source.readGrant(account, revokedId), {
     active: false,
@@ -115,7 +138,7 @@ test('one ledger snapshot supplies active grants and authenticates only live rea
     targets: [{ grantId: readId, readPublicKey: readKey }, { grantId: missingId }],
   });
   assert.deepEqual(openings, [readId, missingId]);
-  assert.deepEqual(queries, Array(9).fill(account));
+  assert.deepEqual(queries, Array(11).fill(account));
   setNonce(8n);
   assert.equal((await source.readActiveReadGrantTargets(account)).authNonce, 8n);
 });
@@ -131,8 +154,8 @@ test('missing accounts and malformed grant maps fail closed', async () => {
     [
       Buffer.from(readId, 'hex'),
       {
-        active: true,
-        scope: { read: true, read_pk_hash: Buffer.alloc(32), object_commit: Buffer.alloc(31) },
+        ...record(true, true),
+        scope: { ...record(true, true).scope, object_commit: Buffer.alloc(31) },
       },
     ],
   ]);
@@ -144,4 +167,20 @@ test('missing accounts and malformed grant maps fail closed', async () => {
   await assert.rejects(source.readActiveGrantIds(account), { code: 'BindingUnsupported' });
   setGeneration(1n << 32n);
   await assert.rejects(source.readGrantRoster(account), { code: 'BindingUnsupported' });
+});
+
+test('a malformed spend context cannot be used as signing input', async () => {
+  const { source, setEntries } = fixture();
+  setEntries([
+    [
+      Buffer.from(spendId, 'hex'),
+      {
+        ...record(true, false),
+        spent_commit: Buffer.alloc(31),
+      },
+    ],
+  ]);
+  await assert.rejects(source.readGrantSpendContext(account, spendId), {
+    code: 'BindingUnsupported',
+  });
 });
