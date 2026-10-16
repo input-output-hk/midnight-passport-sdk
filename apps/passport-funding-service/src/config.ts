@@ -71,7 +71,6 @@ function assets(file: string): FundingAssetPolicy[] {
     if (
       typeof item.color !== 'string' ||
       !ADDRESS.test(item.color) ||
-      item.color === '00'.repeat(32) ||
       typeof item.maxPerRequest !== 'string' ||
       !DECIMAL.test(item.maxPerRequest) ||
       typeof item.maxPerUtcDay !== 'string' ||
@@ -117,6 +116,9 @@ export function loadFundingConfig(env: NodeJS.ProcessEnv): FundingConfig {
       ? `${registry.replace(/\.json$/, '')}.deployments.json`
       : required(env, 'PASSPORT_FUNDING_DEPLOYMENTS_FILE'));
   const indexerPort = env.MN_INDEXER_PORT ?? '18088';
+  const allowedAssets = assets(required(env, 'PASSPORT_FUNDING_ASSETS_FILE'));
+  if (networkId !== 'undeployed' && allowedAssets.some((asset) => asset.color === '00'.repeat(32)))
+    throw new Error('passport-funding-service: NIGHT requires a node-backed network qualification');
   return {
     host: env.PASSPORT_FUNDING_HOST ?? '127.0.0.1',
     port: port(env.PASSPORT_FUNDING_PORT ?? '8789'),
@@ -148,7 +150,7 @@ export function loadFundingConfig(env: NodeJS.ProcessEnv): FundingConfig {
     manifestSha256: binding.manifestSha256,
     walletSeed,
     token,
-    assets: assets(required(env, 'PASSPORT_FUNDING_ASSETS_FILE')),
+    assets: allowedAssets,
     reservationsFile:
       env.PASSPORT_FUNDING_RESERVATIONS_FILE ?? join(home, 'funding-reservations.json'),
     deploymentsFile,

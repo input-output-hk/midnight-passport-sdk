@@ -13,23 +13,33 @@ interface DemoAsset {
   readonly amount: string;
 }
 
-function demoAsset(file: string): DemoAsset {
+function demoAssets(file: string): { assets: DemoAsset[]; balanceAssetColor: string } {
   const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
-  const first = Array.isArray(parsed)
-    ? (parsed[0] as Record<string, unknown> | undefined)
-    : undefined;
-  if (
-    !first ||
-    typeof first.color !== 'string' ||
-    !ADDRESS.test(first.color) ||
-    first.color === '00'.repeat(32) ||
-    typeof first.maxPerRequest !== 'string' ||
-    !DECIMAL.test(first.maxPerRequest)
-  ) {
-    throw new Error('demo funding needs a valid non-NIGHT asset policy');
-  }
-  const limit = BigInt(first.maxPerRequest);
-  return { color: first.color, amount: (limit < 10n ? limit : 10n).toString() };
+  if (!Array.isArray(parsed) || parsed.length === 0)
+    throw new Error('demo funding needs a valid asset policy');
+  const assets = parsed.map((raw: unknown): DemoAsset => {
+    const item = raw as Record<string, unknown>;
+    if (
+      !item ||
+      typeof item !== 'object' ||
+      Array.isArray(item) ||
+      typeof item.color !== 'string' ||
+      !ADDRESS.test(item.color) ||
+      typeof item.maxPerRequest !== 'string' ||
+      !DECIMAL.test(item.maxPerRequest)
+    )
+      throw new Error('demo funding needs a valid asset policy');
+    const limit = BigInt(item.maxPerRequest);
+    return { color: item.color, amount: (limit < 10n ? limit : 10n).toString() };
+  });
+  if (new Set(assets.map((asset) => asset.color)).size !== assets.length)
+    throw new Error('demo funding needs distinct asset colors');
+  assets.sort((a, b) => Number(b.color === '00'.repeat(32)) - Number(a.color === '00'.repeat(32)));
+  return {
+    assets,
+    balanceAssetColor:
+      assets.find((asset) => asset.color !== '00'.repeat(32))?.color ?? '00'.repeat(32),
+  };
 }
 
 /** A localnet-only browser seam. The funding wallet and bearer token stay in their own process. */
@@ -50,7 +60,7 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
   if (!tokenFile || !assetsFile) throw new Error('demo funding needs token and asset policy files');
   const token = readFileSync(tokenFile, 'utf8').trim();
   if (token.length < 32) throw new Error('demo funding token is invalid');
-  const asset = demoAsset(assetsFile);
+  const { assets, balanceAssetColor } = demoAssets(assetsFile);
   const deployments = new DeploymentLog(config);
 
   const checkedBackend = async (): Promise<void> => {
@@ -84,7 +94,7 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
         const body = (await response.json()) as Record<string, unknown>;
         if (
           body.accountAddress !== address ||
-          body.color !== asset.color ||
+          body.color !== balanceAssetColor ||
           typeof body.night !== 'string' ||
           !/^\d+$/.test(body.night) ||
           typeof body.fundedAsset !== 'string' ||
@@ -93,13 +103,14 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
           throw new HttpError(502, 'funding service returned invalid ACC balances');
         }
         json(res, 200, {
-          asset,
+          assets,
+          balanceAssetColor,
           accountAddress: address,
           balances: { night: body.night, fundedAsset: body.fundedAsset },
         });
         return true;
       }
-      json(res, 200, { asset });
+      json(res, 200, { assets, balanceAssetColor });
       return true;
     }
     if (req.method !== 'POST') {
@@ -113,11 +124,13 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
       throw new HttpError(400, 'invalid funding request');
     const fields = body as Record<string, unknown>;
     if (
-      Object.keys(fields).sort().join(',') !== 'accountAddress,requestId' ||
+      Object.keys(fields).sort().join(',') !== 'accountAddress,color,requestId' ||
       typeof fields.accountAddress !== 'string' ||
       !ADDRESS.test(fields.accountAddress) ||
       typeof fields.requestId !== 'string' ||
-      !REQUEST_ID.test(fields.requestId)
+      !REQUEST_ID.test(fields.requestId) ||
+      typeof fields.color !== 'string' ||
+      !assets.some((asset) => asset.color === fields.color)
     ) {
       throw new HttpError(400, 'invalid funding request');
     }
@@ -125,6 +138,7 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
       throw new HttpError(403, 'account is not registered and deployed by this demo');
 
     await checkedBackend();
+    const asset = assets.find((candidate) => candidate.color === fields.color)!;
     const response = await fetch(new URL('/v1/faucet/fund', url), {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
@@ -148,6 +162,8 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
       result.requestId !== fields.requestId ||
       typeof result.txId !== 'string' ||
       !TX_ID.test(result.txId) ||
+      (result.preparationTxId !== undefined &&
+        (typeof result.preparationTxId !== 'string' || !TX_ID.test(result.preparationTxId))) ||
       typeof result.creditedBalance !== 'string' ||
       !/^\d+$/.test(result.creditedBalance)
     ) {
@@ -159,6 +175,7 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
       color: asset.color,
       amount: asset.amount,
       txId: result.txId,
+      ...(result.preparationTxId && { preparationTxId: result.preparationTxId }),
       creditedBalance: result.creditedBalance,
     });
     return true;

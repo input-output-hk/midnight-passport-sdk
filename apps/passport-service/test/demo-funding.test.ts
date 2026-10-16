@@ -23,7 +23,13 @@ writeFileSync(
   JSON.stringify({ undeployed: [accountAddress] }),
 );
 writeFileSync(tokenFile, token);
-writeFileSync(assetsFile, JSON.stringify([{ color, maxPerRequest: '20', maxPerUtcDay: '100' }]));
+writeFileSync(
+  assetsFile,
+  JSON.stringify([
+    { color, maxPerRequest: '20', maxPerUtcDay: '100' },
+    { color: '00'.repeat(32), maxPerRequest: '10', maxPerUtcDay: '100' },
+  ]),
+);
 
 const config = {
   networkId: 'undeployed',
@@ -95,7 +101,14 @@ test('browser seam keeps token server-side and funds only a registered deployed 
     assert.equal(body.amount, '10');
     forwarded++;
     res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ requestId, txId: `00${'d'.repeat(64)}`, creditedBalance: '20' }));
+    res.end(
+      JSON.stringify({
+        requestId,
+        txId: `00${'d'.repeat(64)}`,
+        preparationTxId: `00${'e'.repeat(64)}`,
+        creditedBalance: '20',
+      }),
+    );
   });
   const backendPort = await listen(backend);
   const route = demoFundingRoute(config, {
@@ -110,10 +123,20 @@ test('browser seam keeps token server-side and funds only a registered deployed 
   const url = `http://127.0.0.1:${port}/v1/demo/funding`;
   try {
     const discovery = await fetch(url);
-    assert.deepEqual(await discovery.json(), { asset: { color, amount: '10' } });
+    assert.deepEqual(await discovery.json(), {
+      assets: [
+        { color: '00'.repeat(32), amount: '10' },
+        { color, amount: '10' },
+      ],
+      balanceAssetColor: color,
+    });
     const balances = await fetch(`${url}?accountAddress=${accountAddress}`);
     assert.deepEqual(await balances.json(), {
-      asset: { color, amount: '10' },
+      assets: [
+        { color: '00'.repeat(32), amount: '10' },
+        { color, amount: '10' },
+      ],
+      balanceAssetColor: color,
       accountAddress,
       balances: { night: '0', fundedAsset: '20' },
     });
@@ -121,7 +144,7 @@ test('browser seam keeps token server-side and funds only a registered deployed 
       fetch(url, {
         method: 'POST',
         headers: { 'content-type': 'application/json', origin },
-        body: JSON.stringify({ accountAddress: address, requestId }),
+        body: JSON.stringify({ accountAddress: address, requestId, color }),
       });
     assert.equal((await post(accountAddress, 'https://other.example')).status, 403);
     assert.equal((await post('e'.repeat(64), config.corsOrigin)).status, 403);
@@ -134,6 +157,7 @@ test('browser seam keeps token server-side and funds only a registered deployed 
       color,
       amount: '10',
       txId: `00${'d'.repeat(64)}`,
+      preparationTxId: `00${'e'.repeat(64)}`,
       creditedBalance: '20',
     });
     assert.equal(forwarded, 1);

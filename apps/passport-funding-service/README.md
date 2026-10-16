@@ -24,18 +24,21 @@ chmod 600 ~/.midnight-passport/funding-token
 cat > ~/.midnight-passport/funding-assets.json <<'JSON'
 [
   {
-    "color": "<32-byte non-NIGHT asset color as lowercase hex>",
-    "maxPerRequest": "100",
-    "maxPerUtcDay": "1000"
+    "color": "0000000000000000000000000000000000000000000000000000000000000000",
+    "maxPerRequest": "10",
+    "maxPerUtcDay": "100"
   }
 ]
 JSON
 ```
 
-Replace the example color with an asset already held by the funding wallet. The upstream
+This example enables NIGHT on the standalone localnet. Add another entry for a non-native asset
+only after that asset is held by the funding wallet. The upstream
 [funding experiment](https://github.com/midnightntwrk/passport/blob/main/contract/evidence/grants-e4-funding-grants-unshielded-funding.json)
 confirmed a non-native unshielded deposit; its NIGHT deposit was refused by the node fee budget.
-The config rejects NIGHT until a node-backed test establishes support.
+On the pinned localnet, an exact-value NIGHT UTXO avoids that fee shape. The service makes a
+self-transfer of the requested amount before `deposit_unshielded`; a live 10-unit run confirmed
+ACC credit. NIGHT remains disabled on other networks pending separate node-backed qualification.
 
 ```sh
 export PASSPORT_CONTRACT_DIR=/path/to/pinned/contract
@@ -55,15 +58,18 @@ default. `PASSPORT_FUNDING_HOST` and `PASSPORT_FUNDING_PORT` change its bind add
 `GET /healthz` answers only after the manifest, wallet and backend are initialized.
 `POST /v1/faucet/fund` requires `Authorization: Bearer <token>` and the typed
 `FundAccRequest` body. Use `remoteFaucet` from `mn-passport-adapter-service/faucet` and reuse the
-same `requestId` for retries. The response contains the transaction ID and the ACC balance after
-the deposit is observed. The route does not expose the token or wallet seed.
+same `requestId` when checking an uncertain outcome. Completed IDs replay the recorded result;
+pending IDs return HTTP 409 until an operator reconciles the ledger and reservation. The response
+contains the deposit transaction ID and the ACC balance
+after confirmation; a localnet NIGHT deposit also returns the preparation self-transfer transaction
+ID. The route does not expose the token or wallet seed.
 `GET /v1/faucet/balances?accountAddress=<hex>` also requires the bearer token and a deployed ACC.
-It reads the ACC ledger's unshielded NIGHT and first allowlisted test-token balances; it does not
+It reads the ACC ledger's unshielded NIGHT and first allowlisted non-NIGHT balances; it does not
 read the built-in HD wallet.
 
 On the standalone localnet, `demo up --funding` enables a **Fund Passport account** button in the
 browser page. The Passport service reads this token file and forwards a fixed deposit of up to 10
-units of the first allowlisted asset to this separate process. The browser receives only the asset
+smallest units of the selected allowlisted asset to this separate process. The browser receives only the asset
 color, amount, transaction ID and confirmed ACC balances for NIGHT and the test token. This route is refused on other networks
 or when the Passport service is bound beyond loopback. The operator CLI remains available as
 `demo fund`.
@@ -84,7 +90,8 @@ The [funding image workflow](../../.github/workflows/publish-funding-image.yml) 
 signed `funding-v<version>` tag or an authorized workflow dispatch. Release `0.1.0-rc2` also has
 `sha-2f7f2b1974f2`; its immutable digest is
 `sha256:5b1aebaba4944c0beccd8d70047b51b9d779f30a8839461af20c5a10f26ca9e5`. The
-published GHCR package is currently public. Pin the digest when deploying.
+published GHCR package is currently public. Pin the digest when deploying. The `0.1.0-rc2` image
+predates localnet NIGHT funding; build this source or use a later image release for that flow.
 The image contains the SDK application, not the 11 GiB proving tree, any wallet seed, or tokens.
 Both image workflows run `scripts/smoke-funding-image.sh`: it checks the non-root user, refusal
 without the pinned contract mount, and startup refusal on a non-standalone network without a

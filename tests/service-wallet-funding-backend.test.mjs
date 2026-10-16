@@ -38,6 +38,12 @@ test('wallet backend submits a permissionless deposit and waits for the ACC cred
   const backend = createWalletFundingBackend({
     deployed: (a) => a === address,
     connect: async () => account,
+    prepareDeposit: async (color, amount) => {
+      assert.equal(Buffer.from(color).toString('hex'), colorHex);
+      assert.equal(amount, 10n);
+      assert.equal(deposits.length, 0, 'wallet preparation precedes ACC submission');
+      return 'preparation-tx';
+    },
     sleep: async () => {},
     pollMs: 1,
   });
@@ -45,6 +51,7 @@ test('wallet backend submits a permissionless deposit and waits for the ACC cred
   assert.deepEqual(await backend.fund(request), {
     requestId: request.requestId,
     txId: 'tx-1',
+    preparationTxId: 'preparation-tx',
     creditedBalance: '10',
   });
   assert.deepEqual(deposits, [{ color: colorHex, amount: 10n }]);
