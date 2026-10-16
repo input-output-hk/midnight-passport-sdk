@@ -147,9 +147,10 @@ in the live ACC roster. On the joining browser, use **Open by ACC address** with
 The handoff contains only ACC address, network, binding, public reader/authoriser keys and the P-256
 WebAuthn policy. If delivery is interrupted, reread the roster and reopen with the joiner; a
 confirmed entry is authoritative. Retry enrollment only if the entry is absent, using the same
-joiner public handoff. An active read grant without a durable opening blocks enrollment; device
-removal remains unavailable in this browser until every live reader and read-grant target can be
-verified and resealed.
+joiner public handoff. This browser retains openings for grants it issued in an encrypted local
+journal bound to its passkey PRF. An active read grant whose opening is absent in this browser
+blocks enrollment; device removal remains unavailable until every live reader and read-grant
+target can be verified and resealed. Clearing browser storage loses the local openings.
 
 Expand **Operation trace (requests and responses)** to inspect the chronological public-field
 trace. **Copy full log** includes that trace, Passport events (including deploy waves), account
@@ -245,7 +246,7 @@ and `assertionMaterial`.
   - _First arm._ `/deploy` accepts `firstArm: "p256" | "jubjub"` and installs that arm's verifier keys
     first. Omitted `firstArm` retains the prototype's P-256 behavior. The SDK connector currently
     selects P-256; the JubJub account flow is a separate release gate.
-  - _Grant publication._ Both account arms can issue and recover staged grants through host ports, settling sealed bookkeeping and read seals. The host must provide a live `grantCommitments` source; publication compares the staged opening with the ACC object and read-key commitments at the signing nonce. This demo page does not configure a grant journal or expose grant controls yet.
+  - _Grant publication._ Both account arms can issue and recover staged grants through host ports, settling sealed bookkeeping and read seals. The demo now supplies a browser-local encrypted journal and live grant commitment readers; publication compares the staged opening with the ACC object and read-key commitments at the signing nonce. The page does not expose grant controls yet. The journal is local to one browser profile and has no backup or cross-device synchronization.
   - _Grant revocation._ The reusable package rotates before revoking a read grant or clearing every grant; revoke-all seals the new secret to devices only. The demo page has no grant controls yet.
     Read issue and revoke-all rotate inside their owner key session; the page does not exercise Lace's hosted signer.
     The sealed P-256 package flow can also rotate away from live read grantees before clearing the
@@ -278,7 +279,8 @@ compromised service could fake the ledger that `openAccount`'s checks read.
 The packaged JubJub grant source is `createMidnightGrantSource` in
 `mn-passport-adapter-midnight-js`. A host supplies the pinned ACC binding, same-network public-data
 provider, and durable read-key openings. It reads the live grant map and checks opening hashes for
-viewing-key rotation; the standalone demo does not yet wire a grant opening store or grant UI.
+viewing-key rotation; the standalone demo wires a browser-local encrypted opening store, but does
+not yet expose grant controls. An opening created elsewhere remains unavailable here.
 Grant issue also reads the roster's auth nonce and refuses a change after signing, before it
 stages an opening or submits the circuit.
 The owner flow now names the creation lock choice and full grant context in its key-session

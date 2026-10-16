@@ -14,6 +14,7 @@ import type {
   JubjubPureCircuits,
   NetworkConfig,
   Prover,
+  PrfKeySource,
   Submitter,
   VerifiedHoldingSource,
 } from '@input-output-hk/mn-passport-account/ports';
@@ -51,6 +52,8 @@ export interface BrowserPassportConfig {
   readonly grantDetails?: GrantDetailSource;
   readonly grantRoster?: GrantRosterSource;
   readonly grantJournal?: GrantPublicationJournal;
+  /** Share the selected passkey PRF with a host's encrypted publication journal. */
+  readonly grantJournalFactory?: (prf: PrfKeySource) => GrantPublicationJournal;
   readonly records?: AccountRecordStore;
   readonly random?: (length: number) => Uint8Array;
 }
@@ -58,6 +61,7 @@ export interface BrowserPassportConfig {
 /** Assemble a Passport account API without loading midnight-js until the first chain operation. */
 export function createBrowserPassport(config: BrowserPassportConfig): PassportConnectorAPI {
   const passkey = webauthnPasskey(config.passkey);
+  const grantJournal = config.grantJournal ?? config.grantJournalFactory?.(passkey.prf);
   const binding = async (): Promise<MidnightBinding> =>
     typeof config.binding === 'function' ? config.binding() : config.binding;
   const jubjub = async () => {
@@ -112,7 +116,7 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
     ...(config.grantCommitments && { grantCommitments: config.grantCommitments }),
     ...(config.grantDetails && { grantDetails: config.grantDetails }),
     ...(config.grantRoster && { grantRoster: config.grantRoster }),
-    ...(config.grantJournal && { grantJournal: config.grantJournal }),
+    ...(grantJournal && { grantJournal }),
     grantOrigin: config.passkey.rpId,
     ...(config.records && { records: config.records }),
     ...(config.random && { random: config.random }),
