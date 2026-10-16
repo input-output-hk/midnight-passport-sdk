@@ -12,6 +12,7 @@ import {
 } from '@input-output-hk/mn-passport-service';
 import { loadFundingConfig } from './config.ts';
 import { deployedAddresses } from './deployments.ts';
+import { prepareLocalnetNight, type NightWallet } from './night-preparation.ts';
 
 const config = loadFundingConfig(process.env);
 verifyArtefacts(config.artefactDir, config.manifestSha256);
@@ -43,6 +44,7 @@ const referenceNetwork = (await import(pathToFileURL(root('src/node/wallet.ts'))
     indexerWS: string;
     proofServer: string;
   };
+  userAddressBytes(context: unknown): Uint8Array;
 };
 const expected = {
   networkId: config.networkId,
@@ -55,10 +57,27 @@ for (const [key, value] of Object.entries(expected)) {
   if (referenceNetwork.CONFIG?.[key as keyof typeof expected] !== value)
     throw new Error(`reference wallet ${key} differs from the funding service network`);
 }
-const wallet = await setup.setupWallet(config.walletSeed);
+const wallet = (await setup.setupWallet(config.walletSeed)) as {
+  walletCtx: {
+    wallet: NightWallet;
+    unshieldedKeystore: { signDataAsync(payload: Uint8Array): Promise<unknown> };
+  };
+};
 const backend = createWalletFundingBackend({
   deployed: (address) => deployedAddresses(config.deploymentsFile, config.networkId).has(address),
   connect: (address) => setup.connectAccount(wallet, address),
+  ...(config.networkId === 'undeployed'
+    ? {
+        prepareDeposit: (color: Uint8Array, amount: bigint): Promise<string | undefined> =>
+          prepareLocalnetNight(
+            wallet.walletCtx.wallet,
+            referenceNetwork.userAddressBytes(wallet.walletCtx),
+            (payload) => wallet.walletCtx.unshieldedKeystore.signDataAsync(payload),
+            color,
+            amount,
+          ),
+      }
+    : {}),
 });
 const token = Buffer.from(config.token, 'utf8');
 const authorized = (header: string | undefined): boolean => {
@@ -104,7 +123,8 @@ const server = createServer(config, [
         ? ledger.unshielded_balances.lookup(bytes).toString()
         : '0';
     };
-    const color = config.assets[0]!.color;
+    const color =
+      config.assets.find((asset) => asset.color !== '00'.repeat(32))?.color ?? '00'.repeat(32);
     json(response, 200, {
       accountAddress: address,
       color,

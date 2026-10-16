@@ -103,7 +103,7 @@ export const FLOWS: Record<ActionId, FlowDef> = {
   fund: {
     title: 'Fund Passport account',
     summary:
-      'Deposits 10 localnet test tokens from the demo funding wallet into the open Passport account.',
+      'Deposits the selected localnet asset (NIGHT or a test token) from the demo funding wallet into the open Passport account.',
     stages: [{ id: 'deposit', label: 'Deposit and confirm the ACC balance' }],
   },
 };

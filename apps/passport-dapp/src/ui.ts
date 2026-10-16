@@ -97,6 +97,8 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   let account: AccountView | undefined;
   let wallet: WalletView = {};
   let fundingAsset: { color: string; amount: string } | undefined;
+  let assetsByColor = new Map<string, { color: string; amount: string }>();
+  const fundingSelect = byId<HTMLSelectElement>('fund-asset');
   let accountBalances:
     | { address: string; color: string; night?: string; fundedAsset?: string; error?: string }
     | undefined;
@@ -139,6 +141,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     buttons.rotate.disabled = true;
     buttons.wallet.disabled = busy;
     buttons.fund.disabled = busy || !account;
+    fundingSelect.disabled = busy || !account;
     buttons.fund.closest('li')?.toggleAttribute('hidden', !fundingAsset);
     copyButton.disabled = busy || (log.runs.length === 0 && log.traceEntries.length === 0);
     // With an account open, rotating is the next thing to show; before that, creating is.
@@ -365,13 +368,17 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
             {
               label: 'NIGHT (Passport ACC)',
               value: accountBalances.night ?? accountBalances.error ?? 'Reading…',
-              hint: 'Unshielded balance in smallest units; this demo funds a separate test token.',
-            },
-            {
-              label: `Test token ${shorten(accountBalances.color, 6, 4)}`,
-              value: accountBalances.fundedAsset ?? accountBalances.error ?? 'Reading…',
               hint: 'Unshielded balance in smallest units.',
             },
+            ...(accountBalances.color === '00'.repeat(32)
+              ? []
+              : [
+                  {
+                    label: `Test token ${shorten(accountBalances.color, 6, 4)}`,
+                    value: accountBalances.fundedAsset ?? accountBalances.error ?? 'Reading…',
+                    hint: 'Unshielded balance in smallest units.',
+                  },
+                ]),
           ]
         : []),
       lastTx
@@ -523,20 +530,47 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       renderButtons();
       renderEvidence();
     },
-    enableFunding(asset: { color: string; amount: string }) {
-      fundingAsset = asset;
+    enableFunding(assets: readonly { color: string; amount: string }[]) {
+      assetsByColor = new Map(assets.map((asset) => [asset.color, asset]));
+      fundingSelect.replaceChildren(
+        ...assets.map((asset) => {
+          const option = el(
+            'option',
+            undefined,
+            asset.color === '00'.repeat(32)
+              ? `NIGHT (${asset.amount} smallest units)`
+              : `Test token ${shorten(asset.color, 6, 4)} (${asset.amount} units)`,
+          );
+          option.value = asset.color;
+          return option;
+        }),
+      );
+      fundingAsset = assets.find((asset) => asset.color !== '00'.repeat(32)) ?? assets[0];
       if (account && accountBalances?.address !== account.address)
-        accountBalances = { address: account.address, color: asset.color };
+        accountBalances = {
+          address: account.address,
+          color: assets.find((asset) => asset.color !== '00'.repeat(32))?.color ?? '00'.repeat(32),
+        };
       byId('fund-desc').textContent =
-        `Deposit ${asset.amount} localnet test units from the demo funding wallet into this account. Asset ${shorten(asset.color, 8, 6)}.`;
+        'Deposit the selected asset from the demo funding wallet into this account.';
       renderButtons();
+    },
+    selectedFundingAsset() {
+      return assetsByColor.get(fundingSelect.value);
     },
     showFunding(address: string, color: string, balance: string) {
       accountBalances = {
         address,
-        color,
-        ...(accountBalances?.address === address && { night: accountBalances.night }),
-        fundedAsset: balance,
+        color: accountBalances?.color ?? color,
+        ...(color === '00'.repeat(32)
+          ? {
+              night: balance,
+              ...(accountBalances?.fundedAsset && { fundedAsset: accountBalances.fundedAsset }),
+            }
+          : {
+              ...(accountBalances?.night && { night: accountBalances.night }),
+              fundedAsset: balance,
+            }),
       };
       renderAccount();
       renderEvidence();

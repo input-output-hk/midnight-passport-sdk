@@ -51,10 +51,10 @@ setOperationTraceSink(ui.trace);
 let api: PassportConnectorAPI | undefined;
 let devWallet: DevWallet | undefined;
 let account: PassportAccount | undefined;
-let fundingAsset: { color: string; amount: string } | undefined;
+let balanceAssetColor: string | undefined;
 const fundingUrl = new URL('/v1/demo/funding', SERVICE_URL);
 async function refreshAccountBalances(address: string): Promise<void> {
-  if (!fundingAsset) return;
+  if (!balanceAssetColor) return;
   const url = new URL(fundingUrl);
   url.searchParams.set('accountAddress', address);
   const response = await tracedFetch(url.toString());
@@ -70,26 +70,35 @@ async function refreshAccountBalances(address: string): Promise<void> {
   ) {
     throw new Error('ACC balance response is invalid');
   }
-  ui.showAccountBalances(address, fundingAsset.color, balances.night, balances.fundedAsset);
+  ui.showAccountBalances(address, balanceAssetColor, balances.night, balances.fundedAsset);
   traceOperation('account.balances', {
     accountAddress: address,
     night: balances.night,
-    color: fundingAsset.color,
+    color: balanceAssetColor,
     fundedAsset: balances.fundedAsset,
   });
 }
 void tracedFetch(fundingUrl.toString())
   .then(async (response) => {
     if (!response.ok) return;
-    const data = (await response.json()) as { asset?: { color?: unknown; amount?: unknown } };
+    const data = (await response.json()) as { assets?: unknown; balanceAssetColor?: unknown };
     if (
-      typeof data.asset?.color === 'string' &&
-      /^[0-9a-f]{64}$/.test(data.asset.color) &&
-      typeof data.asset.amount === 'string' &&
-      /^[1-9][0-9]*$/.test(data.asset.amount)
+      Array.isArray(data.assets) &&
+      data.assets.length > 0 &&
+      data.assets.every(
+        (asset: unknown) =>
+          typeof asset === 'object' &&
+          asset !== null &&
+          typeof (asset as Record<string, unknown>).color === 'string' &&
+          /^[0-9a-f]{64}$/.test(String((asset as Record<string, unknown>).color)) &&
+          typeof (asset as Record<string, unknown>).amount === 'string' &&
+          /^[1-9][0-9]*$/.test(String((asset as Record<string, unknown>).amount)),
+      ) &&
+      typeof data.balanceAssetColor === 'string' &&
+      data.assets.some((asset: { color: string }) => asset.color === data.balanceAssetColor)
     ) {
-      fundingAsset = { color: data.asset.color, amount: data.asset.amount };
-      ui.enableFunding(fundingAsset);
+      balanceAssetColor = data.balanceAssetColor;
+      ui.enableFunding(data.assets as { color: string; amount: string }[]);
       if (account) {
         const address = account.address;
         void refreshAccountBalances(address).catch(() => ui.showAccountBalanceError(address));
@@ -172,11 +181,17 @@ ui.on('rotate', async () => {
   throw new Error('Viewing-key rotation needs chain-backed roster and grant sources.');
 });
 ui.on('fund', async () => {
-  if (!account || !fundingAsset) throw new Error('Open a Passport account before funding it.');
+  if (!account || !ui.selectedFundingAsset())
+    throw new Error('Open a Passport account before funding it.');
   const target = account.address;
-  const asset = fundingAsset;
-  const key = `passport-demo:fund:${network}:${target}`;
+  const asset = ui.selectedFundingAsset()!;
+  const key = `passport-demo:fund:${network}:${target}:${asset.color}`;
+  const legacyKey = `passport-demo:fund:${network}:${target}`;
   let requestId = localStorage.getItem(key);
+  if (!requestId && asset.color !== '00'.repeat(32)) {
+    requestId = localStorage.getItem(legacyKey);
+    if (requestId) localStorage.setItem(key, requestId);
+  }
   if (!requestId) {
     requestId = crypto.randomUUID();
     localStorage.setItem(key, requestId);
@@ -189,11 +204,13 @@ ui.on('fund', async () => {
     color: asset.color,
     amount: asset.amount,
   });
-  status(`Funding account ${target.slice(0, 12)}… with ${asset.amount} test units…`);
+  status(
+    `Funding account ${target.slice(0, 12)}… with ${asset.amount} ${asset.color === '00'.repeat(32) ? 'NIGHT' : 'test units'}…`,
+  );
   const response = await tracedFetch(fundingUrl.toString(), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ accountAddress: target, requestId }),
+    body: JSON.stringify({ accountAddress: target, requestId, color: asset.color }),
   });
   const result = (await response.json()) as Record<string, unknown>;
   if (!response.ok) {
@@ -210,6 +227,9 @@ ui.on('fund', async () => {
     result.amount !== asset.amount ||
     typeof result.txId !== 'string' ||
     !/^(?:[0-9a-f]{64}|[0-9a-f]{66})$/.test(result.txId) ||
+    (result.preparationTxId !== undefined &&
+      (typeof result.preparationTxId !== 'string' ||
+        !/^(?:[0-9a-f]{64}|[0-9a-f]{66})$/.test(result.preparationTxId))) ||
     typeof result.creditedBalance !== 'string' ||
     !/^\d+$/.test(result.creditedBalance)
   ) {
@@ -221,6 +241,7 @@ ui.on('fund', async () => {
     color: asset.color,
     amount: asset.amount,
     txId: result.txId,
+    ...(result.preparationTxId && { preparationTxId: result.preparationTxId }),
     creditedBalance: result.creditedBalance,
   });
   ui.showFunding(target, asset.color, result.creditedBalance);
@@ -234,11 +255,13 @@ ui.on('fund', async () => {
     color: asset.color,
     amount: asset.amount,
     txId: result.txId,
+    ...(result.preparationTxId && { preparationTxId: result.preparationTxId }),
     creditedBalance: result.creditedBalance,
   });
   localStorage.removeItem(key);
+  if (asset.color !== '00'.repeat(32)) localStorage.removeItem(legacyKey);
   status(
-    `Passport account credited to ${result.creditedBalance} test units. Transaction ${result.txId.slice(0, 12)}…`,
+    `Passport account credited to ${result.creditedBalance} ${asset.color === '00'.repeat(32) ? 'NIGHT' : 'test units'}. Transaction ${result.txId.slice(0, 12)}…`,
   );
 });
 ui.on('wallet', connectBuiltInWallet);

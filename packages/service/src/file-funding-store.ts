@@ -63,6 +63,9 @@ function validEntry(id: string, value: unknown): value is Entry {
     value.result.requestId === id &&
     typeof value.result.txId === 'string' &&
     value.result.txId.length > 0 &&
+    (value.result.preparationTxId === undefined ||
+      (typeof value.result.preparationTxId === 'string' &&
+        value.result.preparationTxId.length > 0)) &&
     typeof value.result.creditedBalance === 'string' &&
     DECIMAL.test(value.result.creditedBalance) &&
     BigInt(value.result.creditedBalance) <= MAX_AMOUNT

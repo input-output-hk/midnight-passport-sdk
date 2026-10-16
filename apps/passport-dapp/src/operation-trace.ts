@@ -45,6 +45,7 @@ export function publicFields(value: unknown): Record<string, unknown> {
     'jobId',
     'cursor',
     'txId',
+    'preparationTxId',
   ]) {
     const field = value[key];
     if (typeof field === 'string' || typeof field === 'number' || typeof field === 'boolean')

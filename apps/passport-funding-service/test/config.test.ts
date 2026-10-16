@@ -66,7 +66,7 @@ test('non-standalone needs an explicit funded wallet and deployment list', () =>
   assert.equal(config.deploymentsFile, deploymentsFile);
 });
 
-test('startup refuses a changed binding, manifest, weak token and NIGHT policy', () => {
+test('startup refuses a changed binding, manifest, weak token and NIGHT outside localnet', () => {
   assert.throws(() => loadFundingConfig({ ...base, PASSPORT_BINDING_ID: 'other' }), /package pin/);
   assert.throws(
     () => loadFundingConfig({ ...base, PASSPORT_MANIFEST_SHA256: '00'.repeat(32) }),
@@ -83,9 +83,20 @@ test('startup refuses a changed binding, manifest, weak token and NIGHT policy',
     night,
     JSON.stringify([{ color: '00'.repeat(32), maxPerRequest: '1', maxPerUtcDay: '2' }]),
   );
+  assert.equal(
+    loadFundingConfig({ ...base, PASSPORT_FUNDING_ASSETS_FILE: night }).assets[0]?.color,
+    '00'.repeat(32),
+  );
   assert.throws(
-    () => loadFundingConfig({ ...base, PASSPORT_FUNDING_ASSETS_FILE: night }),
-    /invalid asset policy/,
+    () =>
+      loadFundingConfig({
+        ...base,
+        MN_NETWORK_ID: 'testnet',
+        PASSPORT_FUNDING_SEED_FILE: seedFile,
+        PASSPORT_FUNDING_DEPLOYMENTS_FILE: deploymentsFile,
+        PASSPORT_FUNDING_ASSETS_FILE: night,
+      }),
+    /NIGHT requires/,
   );
 });
 

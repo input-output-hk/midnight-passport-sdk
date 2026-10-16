@@ -28,7 +28,8 @@ If the chain was reset since the last run, delete `~/.midnight-passport/registry
 
 To run the separate funding wallet with the demo, prepare the private token and asset policy as
 described in the [funding service guide](../../apps/passport-funding-service/README.md). The
-wallet must already hold the allowlisted non-native unshielded asset. Start the local demo with:
+wallet must already hold each allowlisted asset. The localnet genesis wallet holds NIGHT; a
+separate test token must be minted to it before it can be offered. Start the local demo with:
 
 ```sh
 export PASSPORT_FUNDING_TOKEN_FILE=$HOME/.midnight-passport/funding-token
@@ -37,12 +38,16 @@ nix develop -c node scripts/demo.mjs up --funding
 ```
 
 After creating or opening an ACC in the page, use **Fund Passport account** in Actions. The button
-deposits up to 10 units of the first allowlisted non-NIGHT asset from the separate localnet funding
-wallet. It appears only when the demo was started with `--funding` and is enabled only while an ACC
+deposits up to 10 smallest units of the selected allowlisted asset from the separate localnet funding
+wallet. A NIGHT deposit first splits an exact-value UTXO in the funding wallet, then calls the ACC's
+`deposit_unshielded` circuit; this transaction shape passed the pinned localnet's cost check and a
+live 10-unit deposit increased the ACC NIGHT balance from 0 to 10. It appears only when the demo was
+started with `--funding` and is enabled only while an ACC
 is open. The account card reads the ACC's unshielded NIGHT and test-token balances separately, and
-shows the confirmed transaction. The browser never receives
+shows the confirmed transaction. For NIGHT, the response and copied operation log also include
+the wallet self-transfer transaction ID. The browser never receives
 the funding wallet seed or bearer token. An uncertain result keeps the same request ID in this
-browser; retry the button with that ID, and have an operator reconcile a pending request before
+browser for each asset; retry the button with that ID, and have an operator reconcile a pending request before
 starting a different one. The button is localnet-only and does not fund the read-only built-in HD
 wallet.
 

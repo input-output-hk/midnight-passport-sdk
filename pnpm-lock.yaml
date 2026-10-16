@@ -99,6 +99,9 @@ importers:
       '@input-output-hk/mn-passport-service':
         specifier: workspace:*
         version: link:../../packages/service
+      '@midnightntwrk/wallet-sdk-address-format':
+        specifier: 4.0.0-rc.0
+        version: 4.0.0-rc.0
     devDependencies:
       tsx:
         specifier: 4.23.15
