@@ -97,7 +97,9 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   let account: AccountView | undefined;
   let wallet: WalletView = {};
   let fundingAsset: { color: string; amount: string } | undefined;
-  let fundedBalance: { address: string; color: string; balance: string } | undefined;
+  let accountBalances:
+    | { address: string; color: string; night?: string; fundedAsset?: string; error?: string }
+    | undefined;
   let ticker: ReturnType<typeof setInterval> | undefined;
 
   // The action cards: prompt counts and summaries come from flows.ts only.
@@ -358,11 +360,17 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
         hint: 'Entries in the device set, not a device count (erratum 8).',
       },
       { label: 'Binding', value: bindingId },
-      ...(fundedBalance?.address === address
+      ...(accountBalances?.address === address
         ? [
             {
-              label: `Funded token ${shorten(fundedBalance.color, 6, 4)}`,
-              value: fundedBalance.balance,
+              label: 'NIGHT (Passport ACC)',
+              value: accountBalances.night ?? accountBalances.error ?? 'Reading…',
+              hint: 'Unshielded balance in smallest units; this demo funds a separate test token.',
+            },
+            {
+              label: `Test token ${shorten(accountBalances.color, 6, 4)}`,
+              value: accountBalances.fundedAsset ?? accountBalances.error ?? 'Reading…',
+              hint: 'Unshielded balance in smallest units.',
             },
           ]
         : []),
@@ -398,10 +406,11 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     address('Dust address', wallet.dustAddress);
     if (wallet.unshieldedBalances) {
       const entries = Object.entries(wallet.unshieldedBalances);
-      if (entries.length === 0) facts.push({ label: 'Unshielded balance', value: '0' });
+      if (!entries.some(([token]) => /^0+$/.test(token)))
+        facts.push({ label: 'NIGHT (built-in wallet)', value: '0', hint: 'Smallest unit.' });
       for (const [token, amount] of entries) {
         facts.push({
-          label: /^0+$/.test(token) ? 'NIGHT' : `Token ${shorten(token, 6, 4)}`,
+          label: /^0+$/.test(token) ? 'NIGHT (built-in wallet)' : `Token ${shorten(token, 6, 4)}`,
           value: formatAmount(amount),
           full: token,
           hint: 'Smallest unit.',
@@ -506,21 +515,42 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       const keep = account?.address === view.address ? account.lastTx : undefined;
       const lastTx = view.lastTx ?? keep;
       account = { ...view, ...(lastTx && { lastTx }) };
-      if (fundedBalance?.address !== view.address) fundedBalance = undefined;
+      if (accountBalances?.address !== view.address)
+        accountBalances = fundingAsset
+          ? { address: view.address, color: fundingAsset.color }
+          : undefined;
       renderAccount();
       renderButtons();
       renderEvidence();
     },
     enableFunding(asset: { color: string; amount: string }) {
       fundingAsset = asset;
+      if (account && accountBalances?.address !== account.address)
+        accountBalances = { address: account.address, color: asset.color };
       byId('fund-desc').textContent =
         `Deposit ${asset.amount} localnet test units from the demo funding wallet into this account. Asset ${shorten(asset.color, 8, 6)}.`;
       renderButtons();
     },
     showFunding(address: string, color: string, balance: string) {
-      fundedBalance = { address, color, balance };
+      accountBalances = {
+        address,
+        color,
+        ...(accountBalances?.address === address && { night: accountBalances.night }),
+        fundedAsset: balance,
+      };
       renderAccount();
       renderEvidence();
+    },
+    showAccountBalances(address: string, color: string, night: string, fundedAsset: string) {
+      if (account?.address !== address) return;
+      accountBalances = { address, color, night, fundedAsset };
+      renderAccount();
+      renderEvidence();
+    },
+    showAccountBalanceError(address: string) {
+      if (account?.address !== address || !accountBalances) return;
+      accountBalances = { ...accountBalances, error: 'Unavailable' };
+      renderAccount();
     },
     showWallet(view: WalletView) {
       wallet = { ...wallet, ...view };

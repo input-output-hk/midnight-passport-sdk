@@ -53,6 +53,31 @@ let devWallet: DevWallet | undefined;
 let account: PassportAccount | undefined;
 let fundingAsset: { color: string; amount: string } | undefined;
 const fundingUrl = new URL('/v1/demo/funding', SERVICE_URL);
+async function refreshAccountBalances(address: string): Promise<void> {
+  if (!fundingAsset) return;
+  const url = new URL(fundingUrl);
+  url.searchParams.set('accountAddress', address);
+  const response = await tracedFetch(url.toString());
+  if (!response.ok) throw new Error('ACC balance read unavailable');
+  const body = (await response.json()) as Record<string, unknown>;
+  const balances = body.balances as Record<string, unknown> | undefined;
+  if (
+    body.accountAddress !== address ||
+    typeof balances?.night !== 'string' ||
+    !/^\d+$/.test(balances.night) ||
+    typeof balances.fundedAsset !== 'string' ||
+    !/^\d+$/.test(balances.fundedAsset)
+  ) {
+    throw new Error('ACC balance response is invalid');
+  }
+  ui.showAccountBalances(address, fundingAsset.color, balances.night, balances.fundedAsset);
+  traceOperation('account.balances', {
+    accountAddress: address,
+    night: balances.night,
+    color: fundingAsset.color,
+    fundedAsset: balances.fundedAsset,
+  });
+}
 void tracedFetch(fundingUrl.toString())
   .then(async (response) => {
     if (!response.ok) return;
@@ -65,6 +90,10 @@ void tracedFetch(fundingUrl.toString())
     ) {
       fundingAsset = { color: data.asset.color, amount: data.asset.amount };
       ui.enableFunding(fundingAsset);
+      if (account) {
+        const address = account.address;
+        void refreshAccountBalances(address).catch(() => ui.showAccountBalanceError(address));
+      }
     }
   })
   .catch(() => {
@@ -86,6 +115,10 @@ const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult
     bindingId: a.bindingId,
     state,
     ...(lastTx && { lastTx }),
+  });
+  void refreshAccountBalances(a.address).catch(() => {
+    ui.showAccountBalanceError(a.address);
+    traceOperation('account.balances.unavailable', { accountAddress: a.address });
   });
   traceOperation('account.opened', {
     how,
@@ -176,7 +209,7 @@ ui.on('fund', async () => {
     result.color !== asset.color ||
     result.amount !== asset.amount ||
     typeof result.txId !== 'string' ||
-    !/^[0-9a-f]{64}$/.test(result.txId) ||
+    !/^(?:[0-9a-f]{64}|[0-9a-f]{66})$/.test(result.txId) ||
     typeof result.creditedBalance !== 'string' ||
     !/^\d+$/.test(result.creditedBalance)
   ) {
@@ -191,6 +224,10 @@ ui.on('fund', async () => {
     creditedBalance: result.creditedBalance,
   });
   ui.showFunding(target, asset.color, result.creditedBalance);
+  void refreshAccountBalances(target).catch(() => {
+    ui.showAccountBalanceError(target);
+    traceOperation('account.balances.unavailable', { accountAddress: target });
+  });
   traceOperation('funding.confirmed', {
     requestId,
     accountAddress: target,

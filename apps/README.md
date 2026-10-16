@@ -115,7 +115,8 @@ manual setup path.
 already held by that wallet. The page then shows **Fund Passport account** after it discovers the
 localnet-only route; open an ACC before clicking it. The Passport service forwards a fixed deposit
 of up to 10 test units to the funding process while keeping its bearer token out of the browser.
-The button shows the confirmed ACC balance and keeps the same request ID across retries.
+The account card reads unshielded NIGHT and test-token balances separately. The button shows the
+confirmed test-token balance and keeps the same request ID across retries.
 Expand **Operation trace (requests and responses)** to inspect the chronological public-field
 trace. **Copy full log** includes that trace, Passport events (including deploy waves), account
 state and built-in wallet addresses and balances; raw transaction bodies and secret material are

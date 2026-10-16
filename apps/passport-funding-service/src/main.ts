@@ -61,6 +61,11 @@ const backend = createWalletFundingBackend({
   connect: (address) => setup.connectAccount(wallet, address),
 });
 const token = Buffer.from(config.token, 'utf8');
+const authorized = (header: string | undefined): boolean => {
+  if (!header?.startsWith('Bearer ')) return false;
+  const candidate = Buffer.from(header.slice(7), 'utf8');
+  return candidate.length === token.length && timingSafeEqual(candidate, token);
+};
 const server = createServer(config, [
   async (request, response, url) => {
     if (request.method !== 'GET' || url.pathname !== '/healthz') return false;
@@ -72,17 +77,48 @@ const server = createServer(config, [
     });
     return true;
   },
+  async (request, response, url) => {
+    if (request.method !== 'GET' || url.pathname !== '/v1/faucet/balances') return false;
+    if (!authorized(request.headers.authorization)) {
+      json(response, 403, { error: 'funding caller refused' });
+      return true;
+    }
+    const address = url.searchParams.get('accountAddress');
+    if (!address || !/^[0-9a-f]{64}$/.test(address)) {
+      json(response, 400, { error: 'invalid account address' });
+      return true;
+    }
+    if (!deployedAddresses(config.deploymentsFile, config.networkId).has(address)) {
+      json(response, 403, { error: 'funding account is not eligible' });
+      return true;
+    }
+    const account = await setup.connectAccount(wallet, address);
+    const ledger = await account.ledgerState();
+    if (ledger.spec_version !== 3n) {
+      json(response, 409, { error: 'ACC binding changed' });
+      return true;
+    }
+    const balance = (color: string): string => {
+      const bytes = Uint8Array.from(Buffer.from(color, 'hex'));
+      return ledger.unshielded_balances.member(bytes)
+        ? ledger.unshielded_balances.lookup(bytes).toString()
+        : '0';
+    };
+    const color = config.assets[0]!.color;
+    json(response, 200, {
+      accountAddress: address,
+      color,
+      night: balance('00'.repeat(32)),
+      fundedAsset: balance(color),
+    });
+    return true;
+  },
   fundingRoute({
     networkId: config.networkId,
     bindingId: config.bindingId,
     manifestSha256: config.manifestSha256,
     assets: config.assets,
-    authorize: async (request) => {
-      const header = request.headers.authorization;
-      if (!header?.startsWith('Bearer ')) return false;
-      const candidate = Buffer.from(header.slice(7), 'utf8');
-      return candidate.length === token.length && timingSafeEqual(candidate, token);
-    },
+    authorize: async (request) => authorized(request.headers.authorization),
     eligible: backend.eligible,
     backend,
     store: createFileFundingStore(config.reservationsFile),

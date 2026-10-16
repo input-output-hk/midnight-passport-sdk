@@ -75,6 +75,16 @@ test('browser seam keeps token server-side and funds only a registered deployed 
       );
       return;
     }
+    if (req.url?.startsWith('/v1/faucet/balances?')) {
+      assert.equal(req.headers.authorization, `Bearer ${token}`);
+      assert.equal(
+        new URL(req.url, 'http://localhost').searchParams.get('accountAddress'),
+        accountAddress,
+      );
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ accountAddress, color, night: '0', fundedAsset: '20' }));
+      return;
+    }
     assert.equal(req.url, '/v1/faucet/fund');
     assert.equal(req.headers.authorization, `Bearer ${token}`);
     const chunks: Buffer[] = [];
@@ -85,7 +95,7 @@ test('browser seam keeps token server-side and funds only a registered deployed 
     assert.equal(body.amount, '10');
     forwarded++;
     res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ requestId, txId: 'd'.repeat(64), creditedBalance: '10' }));
+    res.end(JSON.stringify({ requestId, txId: `00${'d'.repeat(64)}`, creditedBalance: '20' }));
   });
   const backendPort = await listen(backend);
   const route = demoFundingRoute(config, {
@@ -101,6 +111,12 @@ test('browser seam keeps token server-side and funds only a registered deployed 
   try {
     const discovery = await fetch(url);
     assert.deepEqual(await discovery.json(), { asset: { color, amount: '10' } });
+    const balances = await fetch(`${url}?accountAddress=${accountAddress}`);
+    assert.deepEqual(await balances.json(), {
+      asset: { color, amount: '10' },
+      accountAddress,
+      balances: { night: '0', fundedAsset: '20' },
+    });
     const post = (address: string, origin: string) =>
       fetch(url, {
         method: 'POST',
@@ -117,8 +133,8 @@ test('browser seam keeps token server-side and funds only a registered deployed 
       accountAddress,
       color,
       amount: '10',
-      txId: 'd'.repeat(64),
-      creditedBalance: '10',
+      txId: `00${'d'.repeat(64)}`,
+      creditedBalance: '20',
     });
     assert.equal(forwarded, 1);
     wrongManifest = true;

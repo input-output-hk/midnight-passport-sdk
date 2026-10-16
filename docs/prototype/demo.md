@@ -39,7 +39,8 @@ nix develop -c node scripts/demo.mjs up --funding
 After creating or opening an ACC in the page, use **Fund Passport account** in Actions. The button
 deposits up to 10 units of the first allowlisted non-NIGHT asset from the separate localnet funding
 wallet. It appears only when the demo was started with `--funding` and is enabled only while an ACC
-is open. The confirmed ACC balance and transaction appear in the page. The browser never receives
+is open. The account card reads the ACC's unshielded NIGHT and test-token balances separately, and
+shows the confirmed transaction. The browser never receives
 the funding wallet seed or bearer token. An uncertain result keeps the same request ID in this
 browser; retry the button with that ID, and have an operator reconcile a pending request before
 starting a different one. The button is localnet-only and does not fund the read-only built-in HD

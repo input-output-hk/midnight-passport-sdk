@@ -57,11 +57,14 @@ default. `PASSPORT_FUNDING_HOST` and `PASSPORT_FUNDING_PORT` change its bind add
 `FundAccRequest` body. Use `remoteFaucet` from `mn-passport-adapter-service/faucet` and reuse the
 same `requestId` for retries. The response contains the transaction ID and the ACC balance after
 the deposit is observed. The route does not expose the token or wallet seed.
+`GET /v1/faucet/balances?accountAddress=<hex>` also requires the bearer token and a deployed ACC.
+It reads the ACC ledger's unshielded NIGHT and first allowlisted test-token balances; it does not
+read the built-in HD wallet.
 
 On the standalone localnet, `demo up --funding` enables a **Fund Passport account** button in the
 browser page. The Passport service reads this token file and forwards a fixed deposit of up to 10
 units of the first allowlisted asset to this separate process. The browser receives only the asset
-color, amount, transaction ID and confirmed ACC balance. This route is refused on other networks
+color, amount, transaction ID and confirmed ACC balances for NIGHT and the test token. This route is refused on other networks
 or when the Passport service is bound beyond loopback. The operator CLI remains available as
 `demo fund`.
 

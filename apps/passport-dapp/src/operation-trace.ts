@@ -40,6 +40,8 @@ export function publicFields(value: unknown): Record<string, unknown> {
     'color',
     'amount',
     'creditedBalance',
+    'night',
+    'fundedAsset',
     'jobId',
     'cursor',
     'txId',
@@ -58,6 +60,7 @@ export function publicFields(value: unknown): Record<string, unknown> {
   }
   if (isRecord(value.result)) out.result = publicFields(value.result);
   if (isRecord(value.asset)) out.asset = publicFields(value.asset);
+  if (isRecord(value.balances)) out.balances = publicFields(value.balances);
   if (isRecord(value.error) && typeof value.error.code === 'string')
     out.errorCode = value.error.code;
   return out;

@@ -148,6 +148,9 @@ test('operation trace copies public request fields and sizes, never secrets or r
       asset: { color: 'ef'.repeat(32), amount: '10' },
     },
   );
+  assert.deepEqual(publicFields({ balances: { night: '0', fundedAsset: '20', seed: 'secret' } }), {
+    balances: { night: '0', fundedAsset: '20' },
+  });
   const trace = [{ at: '2026-10-16T10:00:00.000Z', kind: 'http.request', details: request }];
   const text = evidenceJson(parts({ trace }));
   assert.ok(text.includes('http.request'));

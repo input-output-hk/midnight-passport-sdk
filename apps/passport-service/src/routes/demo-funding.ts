@@ -6,6 +6,7 @@ import { HttpError, json, readJson, type Route } from '../http.ts';
 const ADDRESS = /^[0-9a-f]{64}$/;
 const REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const DECIMAL = /^[1-9][0-9]*$/;
+const TX_ID = /^(?:[0-9a-f]{64}|[0-9a-f]{66})$/;
 
 interface DemoAsset {
   readonly color: string;
@@ -52,9 +53,52 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
   const asset = demoAsset(assetsFile);
   const deployments = new DeploymentLog(config);
 
+  const checkedBackend = async (): Promise<void> => {
+    const health = await fetch(new URL('/healthz', url), { signal: AbortSignal.timeout(5000) });
+    if (!health.ok) throw new HttpError(503, 'funding service is unavailable');
+    const identity = (await health.json()) as Record<string, unknown>;
+    if (
+      identity.networkId !== config.networkId ||
+      identity.bindingId !== config.bindingId ||
+      identity.manifestSha256 !== config.manifestSha256
+    ) {
+      throw new HttpError(503, 'funding service binding differs from the demo');
+    }
+  };
+
   return async (req, res, requestUrl) => {
     if (requestUrl.pathname !== '/v1/demo/funding') return false;
     if (req.method === 'GET') {
+      const address = requestUrl.searchParams.get('accountAddress');
+      if (address !== null) {
+        if (!ADDRESS.test(address) || !sponsoredAddresses(config, deployments).has(address))
+          throw new HttpError(403, 'account is not registered and deployed by this demo');
+        await checkedBackend();
+        const balanceUrl = new URL('/v1/faucet/balances', url);
+        balanceUrl.searchParams.set('accountAddress', address);
+        const response = await fetch(balanceUrl, {
+          headers: { authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(30_000),
+        });
+        if (!response.ok) throw new HttpError(503, 'ACC balance read unavailable');
+        const body = (await response.json()) as Record<string, unknown>;
+        if (
+          body.accountAddress !== address ||
+          body.color !== asset.color ||
+          typeof body.night !== 'string' ||
+          !/^\d+$/.test(body.night) ||
+          typeof body.fundedAsset !== 'string' ||
+          !/^\d+$/.test(body.fundedAsset)
+        ) {
+          throw new HttpError(502, 'funding service returned invalid ACC balances');
+        }
+        json(res, 200, {
+          asset,
+          accountAddress: address,
+          balances: { night: body.night, fundedAsset: body.fundedAsset },
+        });
+        return true;
+      }
       json(res, 200, { asset });
       return true;
     }
@@ -80,16 +124,7 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
     if (!sponsoredAddresses(config, deployments).has(fields.accountAddress))
       throw new HttpError(403, 'account is not registered and deployed by this demo');
 
-    const health = await fetch(new URL('/healthz', url), { signal: AbortSignal.timeout(5000) });
-    if (!health.ok) throw new HttpError(503, 'funding service is unavailable');
-    const identity = (await health.json()) as Record<string, unknown>;
-    if (
-      identity.networkId !== config.networkId ||
-      identity.bindingId !== config.bindingId ||
-      identity.manifestSha256 !== config.manifestSha256
-    ) {
-      throw new HttpError(503, 'funding service binding differs from the demo');
-    }
+    await checkedBackend();
     const response = await fetch(new URL('/v1/faucet/fund', url), {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
@@ -112,7 +147,7 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
     if (
       result.requestId !== fields.requestId ||
       typeof result.txId !== 'string' ||
-      !ADDRESS.test(result.txId) ||
+      !TX_ID.test(result.txId) ||
       typeof result.creditedBalance !== 'string' ||
       !/^\d+$/.test(result.creditedBalance)
     ) {
