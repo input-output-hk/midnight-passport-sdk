@@ -1,5 +1,10 @@
 # Demo script
 
+> **Historical walkthrough:** The click-through and prompt counts below describe an earlier
+> deterministic-key P-256 UI. The current browser hides rotation until it has the required
+> chain-backed sources. For the current stack, NIGHT funding, and verified handover status,
+> use the [engineering handover](../site/handover.md) and [AGENTS.md](../../AGENTS.md).
+
 A script for presenting the Passport DApp prototype. It describes the page by its actions, because
 the layout may change. The actions are **Create Passport account**, **Open with passkey**,
 **Rotate encryption key**, **Connect built-in wallet** and **Copy evidence**.
@@ -46,9 +51,9 @@ started with `--funding` and is enabled only while an ACC
 is open. The account card reads the ACC's unshielded NIGHT and test-token balances separately, and
 shows the confirmed transaction. For NIGHT, the response and copied operation log also include
 the wallet self-transfer transaction ID. The browser never receives
-the funding wallet seed or bearer token. An uncertain result keeps the same request ID in this
-browser for each asset; retry the button with that ID, and have an operator reconcile a pending request before
-starting a different one. The button is localnet-only and does not fund the read-only built-in HD
+the funding wallet seed or bearer token. The browser keeps the same request ID for each asset after
+an uncertain result. A completed request replays its recorded result; a pending request returns 409
+and needs operator reconciliation before any new attempt. The button is localnet-only and does not fund the read-only built-in HD
 wallet.
 
 The operator CLI remains available. Use the account address from the evidence panel and the color

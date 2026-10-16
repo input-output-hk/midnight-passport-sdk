@@ -58,7 +58,9 @@ default. `PASSPORT_FUNDING_HOST` and `PASSPORT_FUNDING_PORT` change its bind add
 `GET /healthz` answers only after the manifest, wallet and backend are initialized.
 `POST /v1/faucet/fund` requires `Authorization: Bearer <token>` and the typed
 `FundAccRequest` body. Use `remoteFaucet` from `mn-passport-adapter-service/faucet` and reuse the
-same `requestId` for retries. The response contains the deposit transaction ID and the ACC balance
+same `requestId` when checking an uncertain outcome. Completed IDs replay the recorded result;
+pending IDs return HTTP 409 until an operator reconciles the ledger and reservation. The response
+contains the deposit transaction ID and the ACC balance
 after confirmation; a localnet NIGHT deposit also returns the preparation self-transfer transaction
 ID. The route does not expose the token or wallet seed.
 `GET /v1/faucet/balances?accountAddress=<hex>` also requires the bearer token and a deployed ACC.

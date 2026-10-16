@@ -261,7 +261,7 @@ ui.on('fund', async () => {
   localStorage.removeItem(key);
   if (asset.color !== '00'.repeat(32)) localStorage.removeItem(legacyKey);
   status(
-    `Passport account credited to ${result.creditedBalance} ${asset.color === '00'.repeat(32) ? 'NIGHT' : 'test units'}. Transaction ${result.txId.slice(0, 12)}…`,
+    `Passport account balance: ${result.creditedBalance} ${asset.color === '00'.repeat(32) ? 'NIGHT smallest units' : 'test token units'}. Transaction ${result.txId.slice(0, 12)}…`,
   );
 });
 ui.on('wallet', connectBuiltInWallet);

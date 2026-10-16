@@ -153,7 +153,7 @@ const HINTS: Readonly<Record<string, string>> = {
     'The proving service did not answer in time. It may be busy with a deployment; wait, then retry.',
   SponsorRejected: 'The service refused to sponsor the transaction.',
   FundingRejected:
-    'The funding service refused or could not confirm this deposit. Retry with the same request ID; see the event log.',
+    'The funding service refused or could not confirm this deposit. Check the operation log; a pending request needs operator reconciliation before another attempt.',
   NetworkMismatch: 'The service is on a different network from this page.',
   InternalError: 'Something went wrong inside the connector.',
 };

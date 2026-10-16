@@ -545,7 +545,8 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
           return option;
         }),
       );
-      fundingAsset = assets.find((asset) => asset.color !== '00'.repeat(32)) ?? assets[0];
+      fundingAsset = assets.find((asset) => asset.color === '00'.repeat(32)) ?? assets[0];
+      if (fundingAsset) fundingSelect.value = fundingAsset.color;
       if (account && accountBalances?.address !== account.address)
         accountBalances = {
           address: account.address,
