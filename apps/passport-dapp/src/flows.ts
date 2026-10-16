@@ -2,7 +2,8 @@
 // through. Data only, no DOM: ui.ts renders it and event-log.ts times it from the connector's events.
 import type { PassportStep } from '@input-output-hk/mn-passport-protocol';
 
-export type ActionId = 'create' | 'open' | 'openAt' | 'refresh' | 'rotate' | 'wallet' | 'fund';
+export type ActionId =
+  'create' | 'open' | 'openAt' | 'refresh' | 'rotate' | 'wallet' | 'fund' | 'withdraw';
 
 /** A prompt count, or a range when it depends on the passkey provider. */
 export type PromptCount = number | readonly [min: number, max: number];
@@ -22,6 +23,7 @@ export const PASSKEY_PROMPTS = {
   refresh: 0,
   rotate: 1,
   fund: 0,
+  withdraw: 1,
   walletWithAccount: 1,
   walletWithoutAccount: 2,
 } as const satisfies Record<string, PromptCount>;
@@ -119,6 +121,17 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       'Deposits the selected localnet asset (NIGHT or a test token) from the demo funding wallet into the open Passport account.',
     stages: [{ id: 'deposit', label: 'Deposit and confirm the ACC balance' }],
   },
+  withdraw: {
+    title: 'Withdraw from Passport account',
+    summary:
+      'Move an unshielded ACC asset to an explicit Midnight user address. Review the network, destination, asset and amount before passkey consent.',
+    stages: [
+      { id: 'balance', label: 'Read fresh ACC balance' },
+      { id: 'review', label: 'Review and confirm transfer details' },
+      { id: 'submit', label: 'Sign with passkey, prove and submit' },
+      { id: 'read', label: 'Read confirmed ACC state and balance' },
+    ],
+  },
 };
 
 /**
@@ -138,6 +151,7 @@ export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep
   rotate: {},
   wallet: {},
   fund: {},
+  withdraw: {},
 };
 
 export const promptCountText = (n: PromptCount): string =>
@@ -194,9 +208,12 @@ export function plainError(e: unknown, serviceUrl: string): PlainError {
   const message = typeof err.message === 'string' && err.message ? err.message : String(e);
   // An unreachable service reads as an internal error from the connector: say what it is.
   const unreachable = /unreachable|failed to fetch|networkerror|load failed/i.test(message);
-  const hint = unreachable
-    ? `Could not reach the Passport service at ${serviceUrl}. Is it running, and is this page at http://localhost:5173?`
-    : (HINTS[code] ?? 'Unexpected error; see the message below.');
+  const hint =
+    code === 'TransferInvalid'
+      ? message
+      : unreachable
+        ? `Could not reach the Passport service at ${serviceUrl}. Is it running, and is this page at http://localhost:5173?`
+        : (HINTS[code] ?? 'Unexpected error; see the message below.');
   return { code, message, hint };
 }
 

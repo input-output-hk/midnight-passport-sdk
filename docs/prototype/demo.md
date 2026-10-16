@@ -85,6 +85,22 @@ The command prints the transaction ID and confirmed ACC balance. The funding ser
 at `/v1/demo/funding`; it reads the token file on the server and forwards a fixed-size deposit to
 the separate funding service.
 
+## Optional owner withdrawal demonstration
+
+After the ACC holds an unshielded asset, enter an explicit destination in **Recipient unshielded
+Midnight address** and choose **Withdraw from Passport account**. Use a full `mn_addr_…` address on
+the demo's network; a raw hex key or an address from another network is refused. The page defaults
+to one smallest unit, reads a fresh ACC balance, rejects an amount above it, and shows the network,
+ACC, asset color, amount and destination in a confirmation dialog before passkey consent. The SDK
+owner flow signs and submits the pinned withdrawal circuit. The page then shows its transaction ID
+and rereads the ACC balance. It does not construct a transfer transaction itself.
+
+For a controlled round trip, use an unshielded address from a wallet you control and inspect that
+wallet's balance after confirmation. The demo's passkey-derived built-in wallet can show its address
+and balances but is read-only; it cannot send a received asset from this page. A failed or uncertain
+submission does not establish that funds stayed in the ACC. Check the ACC, transaction and recipient
+on the live chain before submitting again.
+
 For a colleague-facing run, expand **Operation trace (requests and responses)** while using the
 page. **Copy full log** exports one JSON document with the action stages, all Passport connector
 events (including deployment waves and activation), the HTTP request/response timeline, the open

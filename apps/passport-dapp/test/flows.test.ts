@@ -31,6 +31,7 @@ const ACTIONS: readonly ActionId[] = [
   'rotate',
   'wallet',
   'fund',
+  'withdraw',
 ];
 
 test('prompts per action, with and without an account open', () => {
@@ -50,6 +51,7 @@ test('prompts per action, with and without an account open', () => {
   assert.equal(promptsFor('wallet', true), 1, 'pinned to the open account: one PRF prompt');
   assert.equal(promptsFor('wallet', false), 2, 'no account: the picker, then the PRF prompt');
   assert.equal(promptsFor('fund', true), 0, 'funding needs no passkey prompt');
+  assert.equal(promptsFor('withdraw', true), 1, 'owner withdrawal needs passkey consent');
 });
 
 test('the prompt table has an entry for each action and nothing the actions do not use', () => {
@@ -62,6 +64,7 @@ test('the prompt table has an entry for each action and nothing the actions do n
     'rotate',
     'walletWithAccount',
     'walletWithoutAccount',
+    'withdraw',
   ]);
   for (const action of ACTIONS) {
     for (const open of [true, false]) {

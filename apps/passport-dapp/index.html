@@ -156,6 +156,42 @@
             <p class="prompts" id="fund-prompts"></p>
             <p class="action-desc" id="fund-desc"></p>
           </li>
+          <li class="action" hidden>
+            <label for="withdraw-asset">Asset to withdraw</label>
+            <select id="withdraw-asset" aria-describedby="withdraw-desc"></select>
+            <label for="withdraw-amount">Amount in smallest units</label>
+            <input
+              id="withdraw-amount"
+              class="action-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              value="1"
+              aria-describedby="withdraw-desc"
+            />
+            <label for="withdraw-recipient">Recipient unshielded Midnight address</label>
+            <input
+              id="withdraw-recipient"
+              class="action-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="mn_addr_…"
+              aria-describedby="withdraw-desc"
+            />
+            <button
+              id="withdraw"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="withdraw-prompts withdraw-desc"
+              disabled
+            >
+              Withdraw from Passport account
+            </button>
+            <p class="prompts" id="withdraw-prompts"></p>
+            <p class="action-desc" id="withdraw-desc"></p>
+          </li>
         </ul>
       </section>
 

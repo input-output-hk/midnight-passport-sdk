@@ -8,6 +8,7 @@ import type {
 } from '@input-output-hk/mn-passport-protocol';
 import { ARM, MANIFEST_SHA256, NETWORK_ID, RP_ID, SERVICE_URL, installShim } from './connector.js';
 import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS, knownAccAddress } from './flows.js';
+import { withdrawalRequest } from './withdrawal.js';
 import { setOperationTraceSink, tracedFetch, traceOperation } from './operation-trace.js';
 import { createUi } from './ui.js';
 import type { DevWallet } from './wallet/dev-wallet.js';
@@ -53,7 +54,9 @@ let devWallet: DevWallet | undefined;
 let account: PassportAccount | undefined;
 let balanceAssetColor: string | undefined;
 const fundingUrl = new URL('/v1/demo/funding', SERVICE_URL);
-async function refreshAccountBalances(address: string): Promise<void> {
+async function refreshAccountBalances(
+  address: string,
+): Promise<{ night: string; fundedAsset: string } | undefined> {
   if (!balanceAssetColor) return;
   const url = new URL(fundingUrl);
   url.searchParams.set('accountAddress', address);
@@ -77,6 +80,7 @@ async function refreshAccountBalances(address: string): Promise<void> {
     color: balanceAssetColor,
     fundedAsset: balances.fundedAsset,
   });
+  return { night: balances.night, fundedAsset: balances.fundedAsset };
 }
 void tracedFetch(fundingUrl.toString())
   .then(async (response) => {
@@ -304,6 +308,86 @@ ui.on('fund', async () => {
   if (asset.color !== '00'.repeat(32)) localStorage.removeItem(legacyKey);
   status(
     `Passport account balance: ${result.creditedBalance} ${asset.color === '00'.repeat(32) ? 'NIGHT smallest units' : 'test token units'}. Transaction ${result.txId.slice(0, 12)}…`,
+  );
+});
+ui.on('withdraw', async () => {
+  if (!account?.withdrawUnshielded || !balanceAssetColor)
+    throw new Error('Open a supported Passport account and enable localnet balances first.');
+  const current = account;
+  const withdrawUnshielded = current.withdrawUnshielded;
+  if (!withdrawUnshielded) throw new Error('This Passport account cannot withdraw assets.');
+  const input = ui.withdrawalInput();
+  stage('balance');
+  status('Reading the live ACC balance before withdrawal…');
+  const balances = await refreshAccountBalances(current.address);
+  if (!balances) throw new Error('Fresh ACC balances are unavailable.');
+  const freshBalance =
+    input.color === '00'.repeat(32)
+      ? balances.night
+      : input.color === balanceAssetColor
+        ? balances.fundedAsset
+        : undefined;
+  if (freshBalance === undefined) throw new Error('The selected asset has no verified balance.');
+  const transfer = withdrawalRequest(
+    network,
+    input.color,
+    input.amount,
+    input.recipient,
+    freshBalance,
+  );
+  stage('review');
+  traceOperation('withdrawal.intent', {
+    accountAddress: current.address,
+    networkId: network,
+    color: transfer.color,
+    amount: transfer.amount,
+    recipient: input.recipient.trim(),
+    recipientHex: transfer.recipient,
+    freshBalance,
+  });
+  const confirmed = window.confirm(
+    `Withdraw from Passport ACC?\n\nNetwork: ${network}\nACC: ${current.address}\nAsset color: ${transfer.color}\nAmount: ${transfer.amount} smallest units\nFresh ACC balance: ${freshBalance}\nRecipient: ${input.recipient.trim()}\n\nConfirm this destination and amount before the passkey prompt.`,
+  );
+  if (!confirmed) {
+    status('Withdrawal cancelled before signing.');
+    traceOperation('withdrawal.cancelled', { accountAddress: current.address });
+    return;
+  }
+  stage('submit');
+  status('Confirm the owner withdrawal with your passkey; proving and submission may take time…');
+  const result = await withdrawUnshielded(transfer, { onEvent });
+  record('withdrawal', {
+    accountAddress: current.address,
+    networkId: network,
+    ...transfer,
+    recipientAddress: input.recipient.trim(),
+    balanceBefore: freshBalance,
+    txHash: result.txHash,
+    nextUseCounter: result.nextUseCounter,
+  });
+  traceOperation('withdrawal.confirmed', {
+    accountAddress: current.address,
+    networkId: network,
+    ...transfer,
+    recipientAddress: input.recipient.trim(),
+    txHash: result.txHash,
+    nextUseCounter: result.nextUseCounter.toString(),
+  });
+  const after = await ui.attempt('read', async () => {
+    const state = await current.state();
+    ui.showAccount({
+      address: current.address,
+      networkId: current.networkId,
+      bindingId: current.bindingId,
+      state,
+      lastTx: result,
+    });
+    return refreshAccountBalances(current.address);
+  });
+  status(
+    after
+      ? `Withdrawal confirmed: ${result.txHash.slice(0, 12)}… ACC balance is ${input.color === '00'.repeat(32) ? after.night : after.fundedAsset} smallest units.`
+      : `Withdrawal confirmed: ${result.txHash.slice(0, 12)}… Refresh ACC state to check its balance.`,
   );
 });
 ui.on('wallet', connectBuiltInWallet);

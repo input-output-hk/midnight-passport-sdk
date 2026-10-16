@@ -117,6 +117,13 @@ open an ACC before clicking it. The Passport service forwards a fixed deposit of
 units of the selected asset while keeping its bearer token out of the browser.
 The account card reads unshielded NIGHT and test-token balances separately. The button shows the
 confirmed balance and keeps a separate request ID per asset across retries.
+With funding enabled, **Withdraw from Passport account** uses the account SDK's owner-authorised
+unshielded flow. Enter a positive smallest-unit amount and a full `mn_addr_…` user address for the
+current network. The page fetches the live ACC balance, rejects an amount above it, then displays
+the network, ACC, asset, amount and destination for explicit confirmation before asking for passkey
+consent. It logs the confirmed transaction and rereads the ACC balance. The built-in wallet only
+reads addresses and balances; receiving an asset there does not give this demo wallet a send button.
+After an indeterminate submit error, inspect the live ACC and recipient before trying again.
 The page also has **Open by ACC address**: paste the public 64-character lowercase ACC address and
 choose an already-enrolled passkey. This verifies its live device entry and sealed viewing key
 without relying on the local directory hint. It cannot discover an unknown address or recover a

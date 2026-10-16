@@ -55,6 +55,7 @@ const ACTIONS: readonly ActionId[] = [
   'rotate',
   'wallet',
   'fund',
+  'withdraw',
 ];
 
 const byId = <T extends HTMLElement = HTMLElement>(id: string): T => {
@@ -107,6 +108,9 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   let fundingAsset: { color: string; amount: string } | undefined;
   let assetsByColor = new Map<string, { color: string; amount: string }>();
   const fundingSelect = byId<HTMLSelectElement>('fund-asset');
+  const withdrawalSelect = byId<HTMLSelectElement>('withdraw-asset');
+  const withdrawalAmount = byId<HTMLInputElement>('withdraw-amount');
+  const withdrawalRecipient = byId<HTMLInputElement>('withdraw-recipient');
   const knownAddress = byId<HTMLInputElement>('open-address');
   let accountBalances:
     | { address: string; color: string; night?: string; fundedAsset?: string; error?: string }
@@ -155,6 +159,11 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     buttons.fund.disabled = busy || !account;
     fundingSelect.disabled = busy || !account;
     buttons.fund.closest('li')?.toggleAttribute('hidden', !fundingAsset);
+    buttons.withdraw.disabled = busy || !account || assetsByColor.size === 0;
+    withdrawalSelect.disabled = busy || !account;
+    withdrawalAmount.disabled = busy || !account;
+    withdrawalRecipient.disabled = busy || !account;
+    buttons.withdraw.closest('li')?.toggleAttribute('hidden', assetsByColor.size === 0);
     copyButton.disabled = busy || (log.runs.length === 0 && log.traceEntries.length === 0);
     // With an account open, rotating is the next thing to show; before that, creating is.
     buttons.create.classList.toggle('btn-primary', !account);
@@ -562,6 +571,19 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
           return option;
         }),
       );
+      withdrawalSelect.replaceChildren(
+        ...assets.map((asset) => {
+          const option = el(
+            'option',
+            undefined,
+            asset.color === '00'.repeat(32)
+              ? 'NIGHT (smallest units)'
+              : `Test token ${shorten(asset.color, 6, 4)} (smallest units)`,
+          );
+          option.value = asset.color;
+          return option;
+        }),
+      );
       fundingAsset = assets.find((asset) => asset.color === '00'.repeat(32)) ?? assets[0];
       if (fundingAsset) fundingSelect.value = fundingAsset.color;
       if (account && accountBalances?.address !== account.address)
@@ -575,6 +597,13 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     },
     selectedFundingAsset() {
       return assetsByColor.get(fundingSelect.value);
+    },
+    withdrawalInput() {
+      return {
+        color: withdrawalSelect.value,
+        amount: withdrawalAmount.value,
+        recipient: withdrawalRecipient.value,
+      };
     },
     showFunding(address: string, color: string, balance: string) {
       accountBalances = {
