@@ -1,0 +1,146 @@
+{
+  "account": "e4e3c7759a6736949f41f2c412c7e9980c0a2f0f1a1745ffcda72167adc73dbb",
+  "laceHead": "502b0794cc7bcfc76342230193fef4ebb63cae1c",
+  "sdkVersion": "0.1.0-dev.12",
+  "bindingId": "acc-s3r1.1",
+  "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "networkId": "undeployed",
+  "consentKinds": [
+    "flow-open"
+  ],
+  "status": "passed",
+  "laceCreated": {
+    "account": {
+      "address": "e4e3c7759a6736949f41f2c412c7e9980c0a2f0f1a1745ffcda72167adc73dbb",
+      "bindingVersion": "0.1.0-lace.2",
+      "status": "ready",
+      "networkId": "undeployed"
+    },
+    "devices": [
+      {
+        "commitmentHex": "bd92316f8dacded49d23112bd9203260c4d99ceec8425f8091ea09cc65b37fb4",
+        "isLocal": true
+      }
+    ],
+    "localUseCounter": "2",
+    "grants": [],
+    "encKey": "32768ef2548ea5f2d08695c18c0912782631462ad2bfeccf6378595cea6d5c2c"
+  },
+  "signerSourceModified": false,
+  "sdkCreateUsed": false,
+  "sdkDirectoryHintInitiallyPresent": false,
+  "keyOriginForSdkOpen": "unmodified Lace local passkey authoriser/encryption ports over same synthetic test PRF",
+  "sponsor": "public genesis wallet in isolated localnet-only worker; serialized transaction boundary",
+  "prover": "unmodified Lace circuit HTTP prover against local proof server; SDK key HTTP layout",
+  "transactions": [
+    {
+      "__typename": "ContractDeploy",
+      "transaction": {
+        "hash": "16f6e3b021f59009864ce6d330c3f03643f5ad1f1a79c7a5dadcc24575832902",
+        "block": {
+          "height": 71875
+        }
+      }
+    },
+    {
+      "__typename": "ContractUpdate",
+      "transaction": {
+        "hash": "b34ecfc1d541f5f38242a5ce5175efdbf6adc9b2875ee13529e7c901c0ed7208",
+        "block": {
+          "height": 71878
+        }
+      }
+    },
+    {
+      "__typename": "ContractUpdate",
+      "transaction": {
+        "hash": "6c6480b3e2e712529555457850bcf7fb63e05f10aa77578a0ad44f7b96036ea7",
+        "block": {
+          "height": 71881
+        }
+      }
+    },
+    {
+      "__typename": "ContractCall",
+      "entryPoint": "activate_initial_device_with_jubjub",
+      "transaction": {
+        "hash": "c5e73876a5a9749e51debdfcfb3475a15ff81501381df88e09f35229073e2be1",
+        "block": {
+          "height": 71884
+        }
+      }
+    },
+    {
+      "__typename": "ContractCall",
+      "entryPoint": "append_inbox_with_jubjub",
+      "transaction": {
+        "hash": "d1e6e7e554e01d5380d7397a4e8efc529bf4e57de92d65fbde520041da988ebd",
+        "block": {
+          "height": 71888
+        }
+      }
+    },
+    {
+      "__typename": "ContractCall",
+      "entryPoint": "append_inbox_with_jubjub",
+      "transaction": {
+        "hash": "3671e496d8a2a3c1bdeb10dce5a3b6c24ef36163292c18dea0cbf0c3ddb6f8c0",
+        "block": {
+          "height": 71892
+        }
+      }
+    }
+  ],
+  "tarballs": [
+    {
+      "name": "@input-output-hk/mn-passport-protocol",
+      "file": "input-output-hk-mn-passport-protocol-0.1.0-dev.12.tgz",
+      "sha256": "9582732cd6eb18da25bde0c727643a0918a9edabd7441d68439785d165967f5f"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-account",
+      "file": "input-output-hk-mn-passport-account-0.1.0-dev.12.tgz",
+      "sha256": "9f2cd4fc22c437358c6cebc1c6e699f3cb3b14630265b1e159146de339bb33b6"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-midnight-js",
+      "file": "input-output-hk-mn-passport-adapter-midnight-js-0.1.0-dev.12.tgz",
+      "sha256": "e34f024525b33da14e42eec7d0643ebe4e4d9b63f80b4bfa92d0288e3fec2024"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-keys",
+      "file": "input-output-hk-mn-passport-keys-0.1.0-dev.12.tgz",
+      "sha256": "9076ab1720cd2f710c281984007da149dde41d83ba83f85b5f4b0937aba0de9d"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-webauthn",
+      "file": "input-output-hk-mn-passport-adapter-webauthn-0.1.0-dev.12.tgz",
+      "sha256": "d53a55b740b7274b387ca7373ecb0b0a015de2ca4ac735738a59cc93b662cbb1"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-service",
+      "file": "input-output-hk-mn-passport-adapter-service-0.1.0-dev.12.tgz",
+      "sha256": "13087c0d8cdbf38b42c8184621addf90365e5fc02438bbfb42e71006593a05e5"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-contract",
+      "file": "input-output-hk-mn-passport-contract-0.1.0-dev.12.tgz",
+      "sha256": "7f1d709c2bee34ded047a712168f1077389708e7d25f578e4951b6e24caf2a7b"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-browser",
+      "file": "input-output-hk-mn-passport-adapter-browser-0.1.0-dev.12.tgz",
+      "sha256": "3a47ee6d9a1e1488f285cca4111f5c55c73cc8beba1b2da468d7d9364eafaa33"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-service",
+      "file": "input-output-hk-mn-passport-service-0.1.0-dev.12.tgz",
+      "sha256": "62a1d127c4b28b0e6e1046e193feeff1c81405435553bdcf585e1cc34cd29eb8"
+    }
+  ],
+  "limitations": [
+    "simulated window transport and synthetic test WebAuthn PRF",
+    "SDK opening uses local key-origin ports; hosted sign-in intentionally hides registrations",
+    "Lace installs its supported JubJub circuit set, not every SDK authoriser arm"
+  ]
+}

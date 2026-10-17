@@ -157,3 +157,35 @@ passed with 523 tests passing and 5 skipped in the root suite, plus app checks. 
 published. The remaining cross-product direction is a Lace-created JubJub ACC opening through
 SDK flows; generic SDK hosted creation and sealed enrollment remain the consent limitations
 listed earlier. Do not claim full Lace compatibility.
+
+
+## Reverse recognition: Lace-created ACC opened by packed SDK
+
+The unmodified Lace `createAccount` flow completed hosted creation of ACC
+`e4e3c7759a6736949f41f2c412c7e9980c0a2f0f1a1745ffcda72167adc73dbb` on `undeployed`.
+Its native circuit prover downloaded and verified artifacts through the SDK service's key HTTP
+layout. A directly configured public-genesis wallet sponsored deployment/maintenance through
+a localnet-only diagnostic worker; the service's call-only sponsor policy was unchanged.
+Serialized bytes cross the wallet process boundary, keeping its ledger objects separate.
+
+The packed `0.1.0-dev.12` SDK then opened that address with no prior SDK directory hint, using
+Lace's local key-origin ports over the same synthetic test credential. It validated the live
+entry and sealed registration and reported one device. This proves the reverse-recognition
+criterion of #79, alongside the SDK-created → Lace hosted sign-in result above. It does not
+make the generic SDK create flow compatible with Lace's hosted creation scope.
+
+[The evidence record](../experiments/lace-consumer/results/2026-10-17-lace-created-sdk-open.json)
+contains all six indexed deployment, maintenance, activation and publication transactions and
+the installed package hashes. Lace installs its supported JubJub circuit set in three waves;
+the SDK demo's broader verifier set uses ten waves. The contract/compiler pin is the same.
+The fixture `experiments/lace-consumer/lace-native-sdk-open.localnet.test.ts` runs in the pinned
+Lace test directory with the same Nx setup described above; additionally set `PASSPORT_SDK_ROOT`
+to this checkout for its `localnet-sponsor-worker.mjs`. That worker accepts only serialized
+balancing requests against fixed localhost endpoints and the public standalone genesis wallet.
+It is diagnostic infrastructure, not a deployable sponsor API. It requires the pinned compiled
+reference checkout's installed `tsx` and wallet dependencies.
+
+Both recognition directions and the authorising-only hosted device operation now have passing
+localnet evidence. Generic SDK hosted creation, sealed reader enrollment and hosted address
+recovery remain the explicitly documented consent limitations. No real-provider browser or
+production deployment compatibility claim follows from these synthetic-credential tests.
