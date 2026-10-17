@@ -139,6 +139,8 @@ if (mode === 'pack') {
       if (statSync(file).size >= 256_000_000)
         fail(`${item.directory} exceeds the GitHub Packages tarball limit`);
       const entries = execFileSync('tar', ['-tzf', file], { encoding: 'utf8' }).trim().split('\n');
+      if (entries.some((entry) => entry.endsWith('.tsbuildinfo')))
+        fail(`${item.directory} contains a TypeScript build cache`);
       if (entries.some((entry) => entry.endsWith('.prover')))
         fail(`${item.directory} contains a prover key; inspect artefact packaging`);
       for (const entry of entries.filter((name) => name.endsWith('.zkir.json.gz'))) {
