@@ -53,12 +53,14 @@
     }
   ],
   "checks": {
-    "fullRepositoryGate": "passed",
+    "fullRepositoryGate": "passed; /tmp/mn-passport-rc5-final-gate.log",
     "ninePackageInstallTypesBrowserBuildKeyRestoration": "passed",
     "twoCleanBuildReproducibility": "passed",
     "githubCi": "not-run-unpublished-branches",
     "registryBytesAndVisibility": "requires-approved-publication",
-    "deployedPages": "requires-approved-publication"
+    "deployedPages": "requires-approved-publication",
+    "pulledRegistryImageDigests": "requires-approved-publication",
+    "mountedLinuxServiceNetworkSmoke": "pending; startup refusal checks only"
   },
   "localImages": {
     "service": {
@@ -70,19 +72,30 @@
     },
     "funding": {
       "tag": "midnight-passport-funding:rc5-local",
-      "status": "building-dependency-download",
-      "registryDigest": null
+      "status": "built",
+      "registryDigest": null,
+      "localImageId": "sha256:1fd4d861b5385715ad073decb5a157a03edd15ca19f18fc00d5f65bcf28230a2",
+      "architecture": "amd64",
+      "user": "10001:10001",
+      "startupRefusalSmoke": "passed"
     },
     "keys": {
       "tag": "midnight-passport-keys:rc5-local",
-      "status": "building-with-native-arm-nix-for-x86-linux",
-      "registryDigest": null
+      "status": "built",
+      "registryDigest": null,
+      "localImageId": "sha256:ff7c1b3237a144957d5f4f1a69ed008a95a50a928d66a73e7cdb2762298ab7b6",
+      "architecture": "amd64",
+      "user": "10001:10001",
+      "httpSmoke": "passed: cached jubjub-owner-v1 ten-circuit verification, health/profile, CORS, prover/verifier SHA256, out-of-profile 404",
+      "archiveSha256": "78bcb6454e8d4c1193e1ab6edce36a63ac1ad8914ab429735357dfb8367c8927"
     }
   },
   "pages": {
-    "status": "awaiting-official-jekyll-image-download",
+    "status": "official-jekyll-render-passed",
     "source": "docs/site",
-    "proposedRoute": "/midnight-passport-sdk/release-notes-rc5/"
+    "proposedRoute": "/midnight-passport-sdk/release-notes-rc5/",
+    "internalLinksChecked": 127,
+    "brokenInternalLinks": 0
   },
   "localImageIdNote": "Local image IDs are not verified registry manifest digests. Published digest/access checks remain release gates.",
   "logs": {
@@ -93,6 +106,10 @@
     "serviceSmoke": "/tmp/mn-passport-rc5-service-smoke.log",
     "fundingBuild": "/tmp/mn-passport-rc5-funding-build.log",
     "keysBuild": "/tmp/mn-passport-rc5-keys-native-build.log",
-    "pagesImagePull": "/tmp/mn-passport-rc5-jekyll-pull.log"
+    "pagesImagePull": "/tmp/mn-passport-rc5-jekyll-pull.log",
+    "fundingSmoke": "/tmp/mn-passport-rc5-funding-smoke.log",
+    "keyHttp": "/tmp/mn-passport-rc5-keys-http-smoke.log",
+    "keyHttpAssertions": "/tmp/mn-passport-rc5-keys-http-assertions.log",
+    "pagesBuild": "/tmp/mn-passport-rc5-pages-build.log"
   }
 }
