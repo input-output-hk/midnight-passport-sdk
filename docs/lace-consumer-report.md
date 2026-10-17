@@ -77,6 +77,9 @@ as an upstream change. No production compatibility claim follows from the patche
 Lace's default signer session is five minutes; this experiment explicitly allowed 25 minutes.
 A production host must decide how long an approved proving session may remain open.
 
+The proposed [host-flow decision](adr/0010-lace-hosted-flow-boundaries.md) records the
+recommended integration, alternatives and exact remaining acceptance evidence.
+
 ### Next acceptance work
 
 Issues #79 and #81 remain incomplete. Before their runtime criteria can pass, define a host
