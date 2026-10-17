@@ -219,10 +219,13 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       throw new PassportConnectorError('AccountNotFound', 'The pending key entries are missing.');
     const entries = pending ? [...view.inboxEntries!, ...pendingEntries] : [...view.inboxEntries!];
     try {
+      if (!entries.length) throw new Error('the ACC inbox has no sealed key entries');
       const opened = await viewingKey.openInbox(
         networkId,
-        { account: record.address, encKey: view.encKey!, envelopes: entries.reverse() },
-        pending ? pendingEntries : [],
+        { account: record.address, encKey: view.encKey!, envelopes: [...entries].reverse() },
+        // Hosted adapters may return immediately for an empty batch. A nonempty opening
+        // forces the key origin to authenticate the envelope against the live enc_key.
+        pending ? pendingEntries : entries.slice(0, 1),
       );
       if (pending) {
         const device = opened[1];

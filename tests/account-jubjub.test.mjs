@@ -1502,3 +1502,15 @@ test('JubJub rotation refuses a read grant added while envelopes land', async ()
   assert.equal(hex(w.encKey()), oldKey);
   assert.equal(w.calls.at(-1), 'append_inbox_with_jubjub');
 });
+
+test('JubJub sign-in authenticates a real inbox batch when the host skips empty batches', async () => {
+  const w = world();
+  const keyring = w.ports.viewingKey;
+  const open = keyring.openInbox.bind(keyring);
+  keyring.openInbox = async (network, held, entries) =>
+    entries.length ? open(network, held, entries) : [];
+  await w.accounts.createAccount({ userName: 'batched-host', retireAuthority: true });
+  assert.equal((await w.accounts.openAccount()).address, address);
+  w.encKey().fill(0);
+  await assert.rejects(w.accounts.openAccount(), { code: 'EncryptionKeyMismatch' });
+});

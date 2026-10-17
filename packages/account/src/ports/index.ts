@@ -331,6 +331,8 @@ export interface AccountViewingKey {
     keyring: AccountKeyring,
     reader: LiveDeviceReader,
   ): Promise<DeviceDelivery>;
+  /** A nonempty request authenticates the live keyring even if every opened item is null.
+   * Empty batches may be a transport no-op; callers must not use them to validate ownership. */
   openInbox(
     networkId: string,
     keyring: AccountKeyring,

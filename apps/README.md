@@ -253,15 +253,25 @@ and `assertionMaterial`.
   - _Deploy cap._ At most `PASSPORT_MAX_DEPLOYS` requests through `/deploy` and `/v1/deploy`
     combined per service process, failures counted, then `429`. The count resets on restart.
   - _First arm._ `/deploy` accepts `firstArm: "p256" | "jubjub"` and installs that arm's verifier keys
-    first. Omitted `firstArm` retains the prototype's P-256 behavior. The SDK connector currently
-    selects P-256; the JubJub account flow is a separate release gate.
-  - _Grant publication._ Both account arms can issue and recover staged grants through host ports, settling sealed bookkeeping and read seals. The demo now supplies a browser-local encrypted journal and live grant commitment readers; publication compares the staged opening with the ACC object and read-key commitments at the signing nonce. The page exposes roster read and recovery, but not grant issue or grantee spend. The journal is local to one browser profile and has no backup or cross-device synchronization.
-  - _Grant revocation._ The reusable package rotates before revoking a read grant or clearing every grant; revoke-all seals the new secret to devices only. The demo page has no grant controls yet.
-    Read issue and revoke-all rotate inside their owner key session; the page does not exercise Lace's hosted signer.
-    The sealed P-256 package flow can also rotate away from live read grantees before clearing the
-    grant map or selectively revoking one read grant; the browser demo does not configure its
-    verified holding and read-target sources.
-  - _Read-grant delivery._ The reusable package can prepare sealed records for active read grantees; this demo does not yet run grant-aware rotation or publish those records.
+    first. Omitted `firstArm` retains the prototype's P-256 behavior. The browser selects P-256
+    by default or JubJub through the CLI's `--arm jubjub` option.
+  - _Grant publication._ Both account arms can issue and recover staged grants through host ports,
+    settling sealed bookkeeping and read seals. The demo supplies a browser-local encrypted
+    journal and live commitment readers. It exposes reviewed fixed-recipient unshielded spend
+    grants, opening export/import, grantee spending, roster reads and recovery. The journal has
+    no backup or cross-device synchronization; exported openings contain grant capability data
+    and must be shared only with the intended holder.
+  - _Grant revocation._ The page exposes selective revocation and revoke-all, with live roster
+    confirmation. Read grants require rotation and complete surviving reader/grantee openings;
+    unavailable openings refuse the operation. The page does not exercise Lace's hosted signer.
+  - _Viewing-key rotation._ **Rotate sealed viewing key** reviews the live device count, verified
+    holdings and active read grants before confirmation. The connector supplies chain-backed
+    holding and grant sources and checks settlement. An empty inbox batch cannot validate the
+    viewing key, so account opening requests an actual sealed entry.
+  - _Read-grant delivery._ The reusable package can issue read grants and reseal their viewing
+    capability during rotation. The demo's grant-issue form creates spend-only grants. Existing
+    read grants can be preserved only when their complete openings are available to the host;
+    otherwise rotation refuses before submission.
 - **Manifest pin (R18).** The dapp bakes `PASSPORT_MANIFEST_SHA256` in when Vite starts and checks
   the service's `/v1/config` against it, refusing a mismatch (`ArtefactIntegrity`). It is never read
   from the service, which could otherwise vouch for its own tampered artefacts. The service

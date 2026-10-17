@@ -24,8 +24,8 @@ This folder describes what the code does today.
 
 The CLI can start the browser with `pnpm demo up --arm jubjub --mock-passkey`.
 P-256 remains the default. Both browser arms now create a random viewing secret and sealed
-reader envelope. The page hides rotation until it can supply the required chain-backed roster,
-holding and read-grant sources. The old localnet run results below used the deterministic-key
+reader envelope. The page offers reviewed sealed-key rotation using chain-backed devices,
+holdings and read-grant targets; it refuses an incomplete reader/grantee roster. The old localnet run results below used the deterministic-key
 P-256 prototype and are historical evidence, not a validation of this sealed P-256 flow.
 
 ## Historical deterministic-key localnet runs

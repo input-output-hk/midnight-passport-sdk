@@ -152,6 +152,15 @@ try {
     cwd: scratch,
     stdio: 'inherit',
   });
+  execFileSync(
+    'node',
+    [
+      join(root, 'scripts/check-midnight-runtime-identity.mjs'),
+      scratch,
+      ...manifest.files.map(({ name }) => name),
+    ],
+    { stdio: 'inherit' },
+  );
   execFileSync('pnpm', ['exec', 'tsc', '-p', 'tsconfig.json'], { cwd: scratch, stdio: 'inherit' });
   console.log(
     `Lace PR #2845 ${laceHead}: packed SDK ${manifest.version} types passed; ` +

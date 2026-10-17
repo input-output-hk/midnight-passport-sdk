@@ -349,3 +349,14 @@ implemented packages, adding the service library and excluding the scaffolds.
 The RC4 row describes this preview release's binding and wire compatibility;
 it does not establish full Lace runtime compatibility or complete support for
 all pinned ACC circuits. See the [RC4 release notes](site/release-notes-rc4.md).
+
+
+### Hosted signer runtime findings (2026-10-17)
+
+The [consumer report](lace-consumer-report.md#runtime-findings-and-acceptance-still-open)
+records actual Lace protocol tests: creation and non-rotating enrollment do not admit the
+SDK's inbox validation/roster requests, and sign-in intentionally hides device registrations.
+An empty inbox batch is a transport no-op; SDK P-256 and JubJub opening now request a real
+entry before accepting the viewing key. Both packed-consumer checks reject separate physical
+copies of the current Compact/ledger modules, even when their versions match. These checks
+improve integration diagnostics; #79/#81's cross-product runtime criteria remain open.
