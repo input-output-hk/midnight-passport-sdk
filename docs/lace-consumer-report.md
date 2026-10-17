@@ -121,3 +121,39 @@ used the older label `0.1.0-lace.1`; the cryptographic compiler manifest was ind
 to `acc-s3r1.1`. The repeatable fixture uses the current Lace record label `0.1.0-lace.2`.
 The protocol test uses synthetic credentials and does not exercise a real signer browser page.
 Lace-created → SDK recognition and one hosted grant/device mutation still remain open.
+
+
+## Authorising-only device scope correction
+
+A live `0.1.0-dev.11` test reached hosted add-device consent but was refused because the SDK
+requested `device-public-key` inside an authorising-only session. That scope admits signing
+and commitment operations, not public-key disclosure. The SDK helper now uses the pinned
+account hint to derive the challenge and locate the live owner entry, then verifies the signed
+response's public key and counter before submission. It does not change the signer scope.
+Regressions reject a signature from another owner and allow a host that refuses public-key
+requests. The updated packed candidate is `0.1.0-dev.12`; live validation passed as recorded below.
+The operation intentionally adds spend authority only, without delivering a viewing secret.
+
+
+### Hosted authorising-device result
+
+The updated `0.1.0-dev.12` packed candidate passed the live test with unmodified Lace signer
+handlers. ACC `3c58c204e3bc0f2183985027145d014f51dd11ff9529926ea06cccc4163c6925`
+accepted `add_device_with_jubjub` transaction
+`17d58884f813e8fe4b14c8950efac070325574b69b53031b7a007a5c35433631`.
+The test verified the joining commitment in the live device set, device count 2 and nonce 3;
+a subsequent Lace hosted sign-in recovered both devices and owner use counter `3`.
+
+[The run record](../experiments/lace-consumer/results/2026-10-17-hosted-authorising-device.json)
+includes activation/publication transactions, exact package hashes and limitations. The fixture
+is `experiments/lace-consumer/sdk-hosted-authorising-device.localnet.test.ts`; run it like the
+cross-sign-in fixture above. It uses an explicit authorising-only API and therefore delivers no
+viewing secret or sealed reader registration. That operation requires spend-authority consent,
+even though this test transfers no funds. It is not evidence for full reader enrollment.
+
+The nine candidate tarballs also passed install, type/entrypoint, physical runtime identity,
+browser build and hash-verified prover restoration checks. The full local repository gate
+passed with 523 tests passing and 5 skipped in the root suite, plus app checks. Nothing was
+published. The remaining cross-product direction is a Lace-created JubJub ACC opening through
+SDK flows; generic SDK hosted creation and sealed enrollment remain the consent limitations
+listed earlier. Do not claim full Lace compatibility.

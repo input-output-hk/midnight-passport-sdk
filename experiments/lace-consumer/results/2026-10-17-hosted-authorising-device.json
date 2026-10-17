@@ -1,0 +1,104 @@
+{
+  "laceHead": "502b0794cc7bcfc76342230193fef4ebb63cae1c",
+  "sdkVersion": "0.1.0-dev.12",
+  "bindingId": "acc-s3r1.1",
+  "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "networkId": "undeployed",
+  "account": "3c58c204e3bc0f2183985027145d014f51dd11ff9529926ea06cccc4163c6925",
+  "transactions": [
+    {
+      "circuit": "activate_initial_device_with_jubjub",
+      "txHash": "269898a0f9729888bc21ac535822b928f7f3ae5fff50f945ed92ad78ec1cc096"
+    },
+    {
+      "circuit": "append_inbox_with_jubjub",
+      "txHash": "ad8dcd63e11ef651903b9baeb2b3facf8f5379e0693231d98707e8e60fb416b3"
+    },
+    {
+      "circuit": "append_inbox_with_jubjub",
+      "txHash": "84013335637d7162053901a04cd6414a5da9f33bef2a2ab4d26127a3fb5c31a4"
+    },
+    {
+      "circuit": "add_device_with_jubjub",
+      "txHash": "17d58884f813e8fe4b14c8950efac070325574b69b53031b7a007a5c35433631"
+    }
+  ],
+  "consentKinds": [
+    "flow-open",
+    "flow-open",
+    "flow-open",
+    "flow-open"
+  ],
+  "scope": "SDK create with Lace local key ports, then Lace hosted sign-in; hosted authorising-only device addition; no sealed reader enrollment or hosted creation claim",
+  "deviceResult": {
+    "account": "3c58c204e3bc0f2183985027145d014f51dd11ff9529926ea06cccc4163c6925",
+    "commitmentHex": "c05772c5f0c97378d8ec58a082fcbd5971a67b9d50dff03fa535e5836cb39621",
+    "txHash": "17d58884f813e8fe4b14c8950efac070325574b69b53031b7a007a5c35433631",
+    "nextUseCounter": "3",
+    "viewingKeyDelivered": false
+  },
+  "status": "passed",
+  "signerSourceModified": false,
+  "tarballs": [
+    {
+      "name": "@input-output-hk/mn-passport-protocol",
+      "file": "input-output-hk-mn-passport-protocol-0.1.0-dev.12.tgz",
+      "sha256": "9582732cd6eb18da25bde0c727643a0918a9edabd7441d68439785d165967f5f"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-account",
+      "file": "input-output-hk-mn-passport-account-0.1.0-dev.12.tgz",
+      "sha256": "9f2cd4fc22c437358c6cebc1c6e699f3cb3b14630265b1e159146de339bb33b6"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-midnight-js",
+      "file": "input-output-hk-mn-passport-adapter-midnight-js-0.1.0-dev.12.tgz",
+      "sha256": "e34f024525b33da14e42eec7d0643ebe4e4d9b63f80b4bfa92d0288e3fec2024"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-keys",
+      "file": "input-output-hk-mn-passport-keys-0.1.0-dev.12.tgz",
+      "sha256": "9076ab1720cd2f710c281984007da149dde41d83ba83f85b5f4b0937aba0de9d"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-webauthn",
+      "file": "input-output-hk-mn-passport-adapter-webauthn-0.1.0-dev.12.tgz",
+      "sha256": "d53a55b740b7274b387ca7373ecb0b0a015de2ca4ac735738a59cc93b662cbb1"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-service",
+      "file": "input-output-hk-mn-passport-adapter-service-0.1.0-dev.12.tgz",
+      "sha256": "13087c0d8cdbf38b42c8184621addf90365e5fc02438bbfb42e71006593a05e5"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-contract",
+      "file": "input-output-hk-mn-passport-contract-0.1.0-dev.12.tgz",
+      "sha256": "7f1d709c2bee34ded047a712168f1077389708e7d25f578e4951b6e24caf2a7b"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-browser",
+      "file": "input-output-hk-mn-passport-adapter-browser-0.1.0-dev.12.tgz",
+      "sha256": "3a47ee6d9a1e1488f285cca4111f5c55c73cc8beba1b2da468d7d9364eafaa33"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-service",
+      "file": "input-output-hk-mn-passport-service-0.1.0-dev.12.tgz",
+      "sha256": "62a1d127c4b28b0e6e1046e193feeff1c81405435553bdcf585e1cc34cd29eb8"
+    }
+  ],
+  "transport": "actual Lace request client/server with simulated windows and synthetic test PRF",
+  "assertions": [
+    "SDK-created ACC recognised by Lace hosted sign-in",
+    "SDK reopen through Lace local key-origin ports",
+    "hosted add-device signs and submits through packed SDK path",
+    "live entryCount is 2",
+    "joining commitment is live",
+    "authNonce and owner counter equal 3",
+    "Lace hosted sign-in recognises two devices and counter 3"
+  ],
+  "limitations": [
+    "authorising-only entry, no viewing-key delivery",
+    "no hosted creation claim",
+    "no Lace-created to SDK recognition yet"
+  ]
+}

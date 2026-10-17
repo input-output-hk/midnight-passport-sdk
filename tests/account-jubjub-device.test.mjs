@@ -151,17 +151,21 @@ test('a failed chain call does not advance the stored use counter', async () => 
   assert.deepEqual(writes, []);
 });
 
-test('a key session for another owner cannot authorise enrollment', async () => {
+test('a signature from another owner is refused before submission', async () => {
   const { ports, calls, writes } = fixture();
-  const wrongOwner = {
-    ...ports,
-    authoriser: { ...ports.authoriser, devicePublicKey: async () => joining },
+  const sign = ports.authoriser.authorise;
+  ports.authoriser.authorise = async (request) => ({ ...(await sign(request)), pk: joining });
+  await assert.rejects(addJubjubAuthorisingDevice(input, ports), { code: 'NotAuthorised' });
+  assert.deepEqual(calls, ['session', 'sign', 'challenge']);
+  assert.equal(writes.length, 0);
+});
+
+test('authorising-only enrollment needs no public-key disclosure from the host', async () => {
+  const { ports } = fixture();
+  ports.authoriser.devicePublicKey = async () => {
+    throw new Error('outside approved scope');
   };
-  await assert.rejects(addJubjubAuthorisingDevice(input, wrongOwner), {
-    code: 'NotAuthorised',
-  });
-  assert.deepEqual(calls, ['session']);
-  assert.deepEqual(writes, []);
+  assert.equal((await addJubjubAuthorisingDevice(input, ports)).txHash, 'tx');
 });
 
 test('the packaged ACC pure helpers derive and challenge an actual JubJub enrollment', async () => {
