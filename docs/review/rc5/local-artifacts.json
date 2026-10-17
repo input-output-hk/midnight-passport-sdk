@@ -1,0 +1,98 @@
+{
+  "candidate": "0.1.0-rc5",
+  "distTag": "next",
+  "published": false,
+  "date": "2026-10-18",
+  "implementationCommit": "6c6e3c7af6e6b08de0f8cae44f3c117d2c982e35",
+  "packageDirectory": "/tmp/mn-passport-rc5-artifacts/packages",
+  "packages": [
+    {
+      "name": "@input-output-hk/mn-passport-protocol",
+      "file": "input-output-hk-mn-passport-protocol-0.1.0-rc5.tgz",
+      "sha256": "85be9fef704ef9e705210062b7dcb997cff3ad76e4b18bdcdde929e500b818e9"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-account",
+      "file": "input-output-hk-mn-passport-account-0.1.0-rc5.tgz",
+      "sha256": "5dfbcf1e81dd2047b16546fe7ff723bbbb05268f87183d64a6899a3561d8fa68"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-midnight-js",
+      "file": "input-output-hk-mn-passport-adapter-midnight-js-0.1.0-rc5.tgz",
+      "sha256": "3337aabb46725cd9b080fd3a601352eb0b851919a195aa2f06d8f27ea03e169f"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-keys",
+      "file": "input-output-hk-mn-passport-keys-0.1.0-rc5.tgz",
+      "sha256": "787c3a4c6a54231f1f8e5d346c972140c72f5737b44f218d1ed06470c9472634"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-webauthn",
+      "file": "input-output-hk-mn-passport-adapter-webauthn-0.1.0-rc5.tgz",
+      "sha256": "046a92a3ab91376f6946185a41fa5f14d840c34ebe2173c07c976206b8cee022"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-service",
+      "file": "input-output-hk-mn-passport-adapter-service-0.1.0-rc5.tgz",
+      "sha256": "1a743bcbb48beedb27e64f938eb201e34d972e3980482129afe3667beb98c385"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-contract",
+      "file": "input-output-hk-mn-passport-contract-0.1.0-rc5.tgz",
+      "sha256": "094e6f9bfaa21ded71c2370308cbb382ea0e8f8eedf7da4820e0519f59641f02"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-browser",
+      "file": "input-output-hk-mn-passport-adapter-browser-0.1.0-rc5.tgz",
+      "sha256": "02254b19543cecc528d46ba17d2a756afbcc1377d083e683625496d852df1e11"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-service",
+      "file": "input-output-hk-mn-passport-service-0.1.0-rc5.tgz",
+      "sha256": "6a057df8065422f6de958898070ad16bbb838fa38442c192bd418fdf6b2c43c5"
+    }
+  ],
+  "checks": {
+    "fullRepositoryGate": "passed",
+    "ninePackageInstallTypesBrowserBuildKeyRestoration": "passed",
+    "twoCleanBuildReproducibility": "passed",
+    "githubCi": "not-run-unpublished-branches",
+    "registryBytesAndVisibility": "requires-approved-publication",
+    "deployedPages": "requires-approved-publication"
+  },
+  "localImages": {
+    "service": {
+      "tag": "midnight-passport-service:rc5-local",
+      "localImageId": "sha256:f00ee0558c6fd2a770a50b4f0122e582a318ba64e58674b225e6db4113e08c18",
+      "architecture": "amd64",
+      "startupRefusalSmoke": "passed",
+      "registryDigest": null
+    },
+    "funding": {
+      "tag": "midnight-passport-funding:rc5-local",
+      "status": "building-dependency-download",
+      "registryDigest": null
+    },
+    "keys": {
+      "tag": "midnight-passport-keys:rc5-local",
+      "status": "building-with-native-arm-nix-for-x86-linux",
+      "registryDigest": null
+    }
+  },
+  "pages": {
+    "status": "awaiting-official-jekyll-image-download",
+    "source": "docs/site",
+    "proposedRoute": "/midnight-passport-sdk/release-notes-rc5/"
+  },
+  "localImageIdNote": "Local image IDs are not verified registry manifest digests. Published digest/access checks remain release gates.",
+  "logs": {
+    "packages": "/tmp/mn-passport-rc5-package-smoke.log",
+    "reproducibility": "/tmp/mn-passport-rc5-repro.log",
+    "repositoryGate": "/tmp/mn-passport-rc5-preparation-gate.log",
+    "serviceBuild": "/tmp/mn-passport-rc5-service-build.log",
+    "serviceSmoke": "/tmp/mn-passport-rc5-service-smoke.log",
+    "fundingBuild": "/tmp/mn-passport-rc5-funding-build.log",
+    "keysBuild": "/tmp/mn-passport-rc5-keys-native-build.log",
+    "pagesImagePull": "/tmp/mn-passport-rc5-jekyll-pull.log"
+  }
+}

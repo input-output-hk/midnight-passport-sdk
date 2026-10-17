@@ -44,3 +44,18 @@ GitHub Packages requires authentication to install these packages. A local consu
 The first live publish from the public source repository created public package records, which were deleted. A restricted personal-token probe created an internal package and was also deleted. All current RC1 package records were created by the private publisher and checked through the Packages API for private visibility. This is why the source repository retains its live-release guard.
 
 The [packaging tracker](https://github.com/input-output-hk/midnight-passport-sdk/issues/31) is the release checklist.
+
+
+## Next candidate: RC5 (local preparation only)
+
+`0.1.0-rc5` is the proposed next preview, not a published version. See the
+[candidate notes]({{ '/release-notes-rc5/' | relative_url }}) and source
+`docs/review/rc5/`. Keep existing RC4 installation examples until publication is verified.
+Review/merge the stack, run CI on each final head, then use signed tags at the same reviewed
+prototype commit for packages and each image. Do not push any release tags as part of local
+preparation: those tags trigger workflows and the private package publisher.
+
+Before declaring RC5 published, verify all nine installed registry tarballs against the private
+publisher's signed attestation, inspect actual package visibility/access, record each GHCR
+manifest digest, pull and smoke the published images, run mounted-tree network checks and
+verify the deployed Pages/API links. A local Docker image ID is not a registry manifest digest.
