@@ -89,9 +89,35 @@ split SDK flow phases into appropriately scoped sessions. Neither approach may s
 consent, expose the viewing secret, or report success without validating the live envelope.
 Lace owns any integration or signer API changes; this SDK branch does not change Lace.
 
-Then run both cross-product directions on the same binding/network: a Lace-created JubJub ACC
-opening through SDK flows, and an SDK-created ACC signing in through Lace, followed by one
-grant/device call through the hosted signer. Record exact source/package hashes, ACC address,
+The SDK-created → Lace recognition direction has now passed as recorded below. Still run a
+Lace-created JubJub ACC opening through SDK flows, followed by one grant/device call through
+the hosted signer on the same binding/network. Record exact source/package hashes, ACC address,
 transactions and consent outcomes. Keep the exact-value guard on shielded withdrawals.
 A lost passkey cannot be reconstructed from the ACC address; a surviving enrolled device can
 use its sealed envelope.
+
+
+## Cross-product recognition: SDK-created ACC to Lace hosted sign-in
+
+A subsequent unmodified-source run passed on `undeployed` using the nine hash-verified
+`0.1.0-dev.11` tarballs. SDK account creation used Lace's **local** passkey authoriser and
+viewing-key ports, with synthetic test PRF outputs. The resulting ACC
+`544ca45c8b320cf234b62c1d3bc8cce023ff7782ec91a452720a72ca5221f15b` was then recognised by
+Lace's real `signIn` flow through its hosted signer request client/server and handlers over
+simulated windows. The SDK subsequently reopened the same account through the local key ports.
+Neither the signer source nor its consent scopes was changed for this run.
+
+[The run record](../experiments/lace-consumer/results/2026-10-17-cross-signin.json) pins all
+three activation/publication transactions and the package hashes. The diagnostic fixture is
+`experiments/lace-consumer/sdk-cross-signin.localnet.test.ts`, intended to be copied into the
+pinned Lace checkout's `packages/module/passport-account/test/remote/` directory. It requires
+installed hash-verified SDK tarballs, the current physical runtime identity checks, an operating
+Passport localnet/service, `PASSPORT_LACE_HOSTED_E2E=1` and `PASSPORT_CONTRACT_DIR`. Run it with
+Lace's root Nx test target and `--skip-nx-cache`; its explicit timeout is 30 minutes. As with the
+other diagnostic, the sparse-checkout run disabled optional Nx plugins and coverage.
+
+This proves the SDK-created → Lace recognition direction only. The stored record in the run
+used the older label `0.1.0-lace.1`; the cryptographic compiler manifest was independently pinned
+to `acc-s3r1.1`. The repeatable fixture uses the current Lace record label `0.1.0-lace.2`.
+The protocol test uses synthetic credentials and does not exercise a real signer browser page.
+Lace-created → SDK recognition and one hosted grant/device mutation still remain open.
