@@ -1037,6 +1037,17 @@ test('JubJub grant-aware enrollment refuses an unregistered surviving device', a
   grantee.secretKey.fill(0);
 });
 
+test('JubJub direct rotation refuses an unregistered live device before the key switch', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  w.addUnregisteredDevice();
+  const before = hex(w.encKey());
+  assert.ok(account.rotateViewingKey);
+  await assert.rejects(account.rotateViewingKey(), { code: 'DeviceRosterInvalid' });
+  assert.equal(hex(w.encKey()), before);
+  assert.equal(w.calls.length, 3);
+});
+
 test('JubJub removal rotates the roster key before revoking a remote device', async () => {
   const w = world();
   const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
@@ -1438,13 +1449,10 @@ test('JubJub rotation seals the new secret to an active read grantee before the 
   const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
   const grantee = x25519.keygen();
   const grantId = 'dc'.repeat(32);
-  w.setReadGrantTargets([
-    { grantId, readPublicKey: hex(grantee.publicKey) },
-    { grantId: 'dd'.repeat(32) },
-  ]);
+  w.setReadGrantTargets([{ grantId, readPublicKey: hex(grantee.publicKey) }]);
   assert.ok(account.rotateViewingKey);
   const result = await account.rotateViewingKey();
-  assert.deepEqual(result.unsealedGrantIds, ['dd'.repeat(32)]);
+  assert.deepEqual(result.unsealedGrantIds, []);
   assert.equal(result.sealedReadGrants[0]?.grantId, grantId);
   assert.deepEqual(w.calls.slice(3), [
     'append_inbox_with_jubjub',
@@ -1463,6 +1471,16 @@ test('JubJub rotation seals the new secret to an active read grantee before the 
   assert.equal(opened.record.grantId, grantId);
   assert.equal(hex(result.sealedReadGrants[0].seal), opened.record.seal);
   grantee.secretKey.fill(0);
+});
+
+test('JubJub rotation refuses a read grant without a usable reader before key switch', async () => {
+  const w = world();
+  const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  w.setReadGrantTargets([{ grantId: 'dd'.repeat(32) }]);
+  assert.ok(account.rotateViewingKey);
+  const callsBefore = w.calls.length;
+  await assert.rejects(account.rotateViewingKey(), { code: 'GrantRosterUnsettled' });
+  assert.equal(w.calls.length, callsBefore);
 });
 
 test('JubJub rotation requires a complete chain-backed read-grant source', async () => {

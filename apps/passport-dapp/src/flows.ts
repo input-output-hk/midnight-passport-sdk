@@ -216,12 +216,14 @@ export const FLOWS: Record<ActionId, FlowDef> = {
     ],
   },
   rotate: {
-    title: 'Rotate encryption key',
-    summary: `A passkey-signed call, proved on the service (about ${ROTATION_ESTIMATE_S} s) and sponsored.`,
+    title: 'Rotate sealed viewing key',
+    summary:
+      'Review live devices, holdings and read grants, then seal a new viewing secret to every surviving reader.',
     stages: [
+      { id: 'review', label: 'Read live devices, holdings and grants' },
       {
-        id: 'prove',
-        label: 'Sign with the passkey, prove and submit',
+        id: 'submit',
+        label: 'Seal fresh keys, sign and submit',
         estimateMs: ROTATION_ESTIMATE_S * 1000,
       },
       read,
@@ -346,9 +348,11 @@ export function plainError(e: unknown, serviceUrl: string): PlainError {
   const hint =
     code === 'TransferInvalid'
       ? message
-      : unreachable
-        ? `Could not reach the Passport service at ${serviceUrl}. Is it running, and is this page at http://localhost:5173?`
-        : (HINTS[code] ?? 'Unexpected error; see the message below.');
+      : code === 'AccountNotFound' && /not the passkey this account was created with/i.test(message)
+        ? message
+        : unreachable
+          ? `Could not reach the Passport service at ${serviceUrl}. Is it running, and is this page at http://localhost:5173?`
+          : (HINTS[code] ?? 'Unexpected error; see the message below.');
   return { code, message, hint };
 }
 

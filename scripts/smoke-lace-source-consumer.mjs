@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import ts from 'typescript';
 
-const laceHead = 'cdfa9cfd81a0adcc0a7224aa624f18e52494f602';
+const laceHead = '502b0794cc7bcfc76342230193fef4ebb63cae1c';
 const laceCheckout = process.env.LACE_CHECKOUT;
 if (!laceCheckout) throw new Error('set LACE_CHECKOUT to the checkout of Lace PR #2845');
 const actualHead = execFileSync('git', ['-C', laceCheckout, 'rev-parse', 'HEAD'], {
@@ -23,6 +23,28 @@ const actualHead = execFileSync('git', ['-C', laceCheckout, 'rev-parse', 'HEAD']
 }).trim();
 if (actualHead !== laceHead) throw new Error(`Lace HEAD ${actualHead} differs from ${laceHead}`);
 const source = join(laceCheckout, 'packages/contract/passport/src');
+const laceDependencies = JSON.parse(
+  readFileSync(join(laceCheckout, 'packages/module/passport-account/package.json'), 'utf8'),
+).dependencies;
+/** @type {Record<string, string>} */
+const matchedRuntimeVersions = {};
+for (const sdkPackage of ['adapter-browser', 'adapter-midnight-js', 'contract']) {
+  const sdkManifest = JSON.parse(
+    readFileSync(join(import.meta.dirname, '..', 'packages', sdkPackage, 'package.json'), 'utf8'),
+  );
+  const sdkDependencies = { ...sdkManifest.dependencies, ...sdkManifest.peerDependencies };
+  for (const [name, version] of Object.entries(sdkDependencies)) {
+    if (!name.startsWith('@midnight') || laceDependencies[name] === undefined) continue;
+    if (laceDependencies[name] !== version)
+      throw new Error(`Lace ${name}@${laceDependencies[name]} differs from SDK ${version}`);
+    matchedRuntimeVersions[name] = version;
+  }
+}
+if (
+  !matchedRuntimeVersions['@midnight-ntwrk/compact-runtime'] ||
+  !matchedRuntimeVersions['@midnightntwrk/ledger-v9']
+)
+  throw new Error('Lace and SDK runtime comparison is incomplete');
 execFileSync('git', [
   '-C',
   laceCheckout,
@@ -131,7 +153,10 @@ try {
     stdio: 'inherit',
   });
   execFileSync('pnpm', ['exec', 'tsc', '-p', 'tsconfig.json'], { cwd: scratch, stdio: 'inherit' });
-  console.log(`Lace PR #2845 ${laceHead}: packed SDK ${manifest.version} types passed`);
+  console.log(
+    `Lace PR #2845 ${laceHead}: packed SDK ${manifest.version} types passed; ` +
+      `${Object.keys(matchedRuntimeVersions).length} direct Midnight runtime versions match`,
+  );
 } finally {
   rmSync(scratch, { recursive: true, force: true });
 }

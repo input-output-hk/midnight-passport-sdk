@@ -69,6 +69,7 @@ function softwareAuthenticator({
   ]);
   /** @type {Behaviour} */
   const behaviour = { flags: 5, extensionData: false, rp: RP, wrongChallenge: false };
+  const grease = { remaining: 0 };
   const authenticatorData = () =>
     new Uint8Array([
       ...sha256(new TextEncoder().encode(behaviour.rp)),
@@ -94,6 +95,7 @@ function softwareAuthenticator({
     gets,
     creates,
     behaviour,
+    grease,
     container: {
       /** @param {{ publicKey: CreateOptions }} options */
       async create({ publicKey }) {
@@ -125,10 +127,17 @@ function softwareAuthenticator({
         }
         const authData = authenticatorData();
         const asked = new Uint8Array(publicKey.challenge);
-        const clientData = b.clientDataJSON(
+        let clientData = b.clientDataJSON(
           behaviour.wrongChallenge ? asked.map((v) => v ^ 1) : asked,
           new TextEncoder().encode(ORIGIN),
         );
+        if (grease.remaining > 0) {
+          grease.remaining--;
+          clientData = new TextEncoder().encode(
+            new TextDecoder().decode(clientData).slice(0, -1) +
+              ',"other_keys_can_be_added_here":"do not compare clientDataJSON against a template. See https://goo.gl/yabPex"}',
+          );
+        }
         const message = new Uint8Array([...authData, ...sha256(clientData)]);
         let signature = p256.sign(message, sk, { format: 'der', prehash: true });
         if (highS) {
@@ -206,6 +215,21 @@ test('the WebAuthn adapter supplies credential, PRF and P-256 authoriser ports',
   assert.equal(signed.authenticatorData.length, 37);
   const picked = await adapter.credentials.identify();
   assert.equal(picked.owns(await adapter.p256.devicePublicKey(), binding?.policy), true);
+});
+
+test('the strict ACC profile retries Chromium GREASE without changing signed bytes', async () => {
+  const auth = softwareAuthenticator();
+  const seam = seamFor(auth);
+  auth.grease.remaining = 1;
+  const credential = await seam.create('alice');
+  assert.equal(auth.gets.length, 2, 'the creation probe retried a GREASE assertion');
+  auth.grease.remaining = 1;
+  await seam.sign(credential, new Uint8Array(32).fill(9));
+  assert.equal(auth.gets.length, 4, 'signing retried a GREASE assertion');
+  auth.grease.remaining = 1;
+  const identified = await seam.identify();
+  assert.ok(identified.owns(credential.publicKey, credential.policy));
+  assert.equal(auth.gets.length, 6, 'discovery retried a GREASE assertion');
 });
 
 test('a discoverable passkey can derive its PRF key before a P-256 binding is selected', async () => {

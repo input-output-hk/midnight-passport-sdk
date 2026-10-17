@@ -9,18 +9,19 @@
     "dev": "../../experiments/acc-0.35/guard.sh && vite",
     "build": "../../experiments/acc-0.35/guard.sh && vite build",
     "test": "node --import tsx --test test/*.test.ts && node --import tsx e2e/seed-policy.e2e.ts && node --import tsx e2e/network-pin.e2e.ts && node --import tsx e2e/mock-passkey.e2e.ts && node --import tsx e2e/runtime-identity.e2e.ts",
-    "e2e": "../../experiments/acc-0.35/guard.sh && node --import tsx e2e/mvp.e2e.ts"
+    "e2e": "../../experiments/acc-0.35/guard.sh && node --import tsx e2e/mvp.e2e.ts",
+    "virtual-authenticator": "../../experiments/acc-0.35/guard.sh && node --import tsx e2e/virtual-authenticator.e2e.ts"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.20.0",
     "@input-output-hk/mn-passport-account": "workspace:*",
     "@input-output-hk/mn-passport-adapter-browser": "workspace:*",
     "@input-output-hk/mn-passport-adapter-midnight-js": "workspace:*",
-    "@input-output-hk/mn-passport-contract": "workspace:*",
-    "@input-output-hk/mn-passport-keys": "workspace:*",
     "@input-output-hk/mn-passport-adapter-service": "workspace:*",
     "@input-output-hk/mn-passport-adapter-webauthn": "workspace:*",
+    "@input-output-hk/mn-passport-contract": "workspace:*",
+    "@input-output-hk/mn-passport-keys": "workspace:*",
     "@input-output-hk/mn-passport-protocol": "workspace:*",
+    "@midnight-ntwrk/compact-runtime": "0.20.0",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
     "@midnightntwrk/wallet-sdk-abstractions": "3.0.0-rc.0",
     "@midnightntwrk/wallet-sdk-address-format": "4.0.0-rc.0",
@@ -33,6 +34,7 @@
     "rxjs": "7.8.2"
   },
   "devDependencies": {
+    "playwright-core": "1.63.0",
     "tsx": "4.23.15",
     "vite": "8.3.1",
     "vite-plugin-wasm": "3.6.0"

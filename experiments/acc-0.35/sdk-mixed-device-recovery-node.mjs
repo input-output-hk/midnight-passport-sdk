@@ -180,6 +180,18 @@ const reopened = await createPassportAccounts(joiner.ports).openAccountAt(accoun
 assert.equal(reopened.address, account.address);
 assert.equal((await reopened.state()).entryCount, 2);
 assert.equal((await createPassportAccounts(joiner.ports).openAccount()).address, account.address);
+assert.ok(reopened.rotateViewingKey);
+const rotation = await reopened.rotateViewingKey();
+assert.deepEqual(rotation.droppedDeviceEntries, []);
+assert.deepEqual(rotation.unsealedGrantIds, []);
+const rotatedView = await observedChain.readAccount(account.address, { includeInbox: true, includeDevices: true });
+assert.ok(rotatedView);
+assert.notDeepEqual(rotatedView.encKey, after.encKey);
+assert.equal(rotatedView.entryCount, 2);
+assert.deepEqual(await account.readShieldedHoldings(), []);
+assert.deepEqual(await reopened.readShieldedHoldings(), []);
+assert.equal((await createPassportAccounts(owner.ports).openAccountAt(account.address)).address, account.address);
+assert.equal((await createPassportAccounts(joiner.ports).openAccountAt(account.address)).address, account.address);
 const evidence = {
   verdict: 'PASS',
   bindingId: 'acc-s3r1.1',
@@ -195,7 +207,9 @@ const evidence = {
   transactions,
   joinerOpenedByAddress: true,
   joinerReopenedFromDirectory: true,
-  scope: 'current account API sealed P-256 to JubJub enrollment and recovery with an empty live read-grant roster',
+  mixedRosterRotationTxHash: rotation.txHash,
+  bothReadersOpenedAfterJubjubRotation: true,
+  scope: 'current account API sealed P-256 to JubJub enrollment, recovery and JubJub-initiated mixed-roster rotation with an empty live read-grant roster',
 };
 writeFileSync(join(root, 'experiments/acc-0.35/results/sdk-mixed-device-recovery-node.json'),
   JSON.stringify(evidence, null, 2) + '\n');

@@ -113,6 +113,9 @@ test('P-256 registration uses a distinct authenticated type and canonical compre
   const asJubjub = entry.slice();
   asJubjub[0] = 0xd2;
   assert.equal(await openDeviceRegistration(rosterKey, asJubjub), null);
+  const unissuedSuite = entry.slice();
+  unissuedSuite[1] = 1;
+  assert.equal(await openDeviceRegistration(rosterKey, unissuedSuite), null);
   await assert.rejects(
     sealDeviceRegistration(rosterKey, { ...reader, devicePublicKey: 'ab'.repeat(32) }),
     /canonical compressed SEC1/,
@@ -141,6 +144,9 @@ test('policy-bearing P-256 registration authenticates the policy needed for live
   const oldType = entry.slice();
   oldType[0] = 0xd4;
   assert.equal(await openDeviceRegistration(rosterKey, oldType), null);
+  const unissuedSuite = entry.slice();
+  unissuedSuite[1] = 1;
+  assert.equal(await openDeviceRegistration(rosterKey, unissuedSuite), null);
   await assert.rejects(
     sealDeviceRegistration(rosterKey, {
       ...reader,

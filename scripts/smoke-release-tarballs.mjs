@@ -7,6 +7,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -47,6 +48,40 @@ try {
     cwd: scratch,
     stdio: 'inherit',
   });
+  const installed = readdirSync(join(scratch, 'node_modules/.pnpm'));
+  const compactVersions = new Set(
+    installed
+      .filter((name) => name.startsWith('@midnight-ntwrk+compact-runtime@'))
+      .map((name) => name.split('@').at(-1)?.split('_')[0]),
+  );
+  if (
+    compactVersions.size !== 2 ||
+    !compactVersions.has('0.20.0') ||
+    !compactVersions.has('0.16.0')
+  )
+    throw new Error('the scratch consumer has an unexpected Compact runtime inventory');
+  const compactJsFolder = installed.find((name) =>
+    name.startsWith('@midnight-ntwrk+compact-js@3.0.0-rc.3'),
+  );
+  if (!compactJsFolder) throw new Error('the pinned compact-js package is absent');
+  const compactJs = JSON.parse(
+    readFileSync(
+      join(
+        scratch,
+        'node_modules/.pnpm',
+        compactJsFolder,
+        'node_modules/@midnight-ntwrk/compact-js/package.json',
+      ),
+      'utf8',
+    ),
+  );
+  if (
+    compactJs.dependencies?.['@midnight-ntwrk/compact-runtime'] !== '0.20.0' ||
+    compactJs.dependencies?.['compact-runtime-ledger8'] !==
+      'npm:@midnight-ntwrk/compact-runtime@0.16.0'
+  )
+    throw new Error('the two Compact runtimes are not the pinned Ledger 9 and Ledger 8 paths');
+  console.log('Compact runtime inventory: 0.20.0 plus the intentional Ledger 8 alias 0.16.0');
   execFileSync(
     'node',
     [
@@ -98,7 +133,7 @@ try {
   copyFileSync(join(root, 'tests/fixtures/lace-seams.mjs'), join(scratch, 'src/lace-seams.mjs'));
   writeFileSync(
     join(scratch, 'src/lace-consumer.mjs'),
-    `// Lace PR #2845 at cdfa9cfd81a0adcc0a7224aa624f18e52494f602.
+    `// Lace PR #2845 at 502b0794cc7bcfc76342230193fef4ebb63cae1c.
      // Check the installed tarball types, not workspace paths.
      import { laceAuthoriser, laceFeeSponsor, laceViewingKey } from './lace-seams.mjs';
      /** @type {import('@input-output-hk/mn-passport-account/ports').FeeSponsor} */

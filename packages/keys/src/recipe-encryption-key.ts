@@ -2,7 +2,7 @@ import { x25519 } from '@noble/curves/ed25519.js';
 import type { EncryptionKeySource, PrfKeySource } from '@input-output-hk/mn-passport-account/ports';
 import { ACC_ENC_DOMAIN } from './lace-recipe.js';
 
-/** Derive the ACC's public encryption key inside a key-source session. Secret bytes never leave it. */
+/** @deprecated Deterministic-key prototype port. Current sealed ACCs use `recipeDeviceKeyring`. */
 export function recipeEncryptionKey(source: PrfKeySource): EncryptionKeySource {
   return {
     publicKey: (networkId) =>

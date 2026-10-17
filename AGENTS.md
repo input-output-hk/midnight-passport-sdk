@@ -111,6 +111,7 @@ contract's WebAuthn profile are bound to that origin.
 | **Create account**                                       | Provider-dependent; includes PRF and two signed inbox publications | 10 deploy waves, activation, then two signed sealed-key publications |
 | Reload the page, then **Open with passkey**              | Provider-dependent picker and PRF ceremony               | Reads the live ACC key and opens the sealed envelope |
 | **Open by ACC address** with an already-enrolled passkey | Provider-dependent picker and PRF ceremony               | Opens the known ACC without a local directory hint; does not recover a lost passkey |
+| **Rotate sealed viewing key**                             | Provider-dependent owner signature ceremonies             | Reviews live devices, holdings and read grants, then reseals a fresh secret before the ACC key switch |
 | **Connect built-in wallet**                              | 1 with an account open, otherwise 2                      | seconds                                                                  |
 | **Copy evidence**                                        | none                                                     | copies the event log as JSON, with no secrets                            |
 
@@ -134,6 +135,21 @@ This historical deterministic-key test drives the legacy seam composition with a
 passkey through create, rotate, reopen and rotate again. It writes
 `experiments/acc-0.35/results/x8-dapp-e2e.json` and should end with `MVP e2e: PASS`.
 It does not validate the current browser's sealed P-256 flow.
+
+For the current browser's real WebAuthn path, install Chrome and run the CDP virtual-authenticator
+check while the demo is up. The default is quick and checks no-PRF and cancellation before any
+deployment. The opt-in full run creates an ACC, rotates its sealed viewing key, reloads, reopens,
+checks an unrelated credential is refused for the pinned wallet, connects that wallet, and rotates
+again. It can take several minutes and uses only virtual credentials, never your real passkeys.
+
+```sh
+nix develop -c pnpm --filter passport-dapp virtual-authenticator
+PASSPORT_VIRTUAL_E2E_FULL=1 nix develop -c pnpm --filter passport-dapp virtual-authenticator
+```
+
+Chrome may append a GREASE member to `clientDataJSON`. The adapter retries that exact known
+variant up to five times without changing signed data; an unknown format is still refused. The
+ACC's strict `wa-json134` profile remains a compatibility limit for real passkey providers.
 
 ## 6. Where state lives, and how to reset it
 

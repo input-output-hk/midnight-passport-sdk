@@ -47,9 +47,9 @@ export const lacePrfSalts = (): AuthenticationExtensionsPRFValues => ({
 
 /** Both PRF outputs of the Lace recipe v1. The caller zeroes them. */
 export interface PasskeyPrfOutputs {
-  /** Output #1, Lace's ACC authoriser. Unused here: this prototype's authoriser is P-256. */
+  /** Output #1, Lace's JubJub ACC authoriser. P-256 uses its passkey key instead. */
   readonly authoriser: Uint8Array;
-  /** Output #2, the root of the wallet seed and the ACC's encryption key. */
+  /** Output #2, the root of the wallet seed and this device's reader key. */
   readonly root: Uint8Array;
 }
 
@@ -128,9 +128,8 @@ export async function passkeySeed(opts: PasskeyPrfOptions): Promise<Uint8Array> 
 }
 
 /**
- * The ACC's `enc_key` for this passkey on `networkId` (MIP-0015 v1, domain
- * `lace-passport:acc-enc:v1`, context `<networkId>/0`), from one PRF ceremony, or from the
- * create-time outputs when `created` carries them.
+ * @deprecated Earlier deterministic-key prototype ACC derivation. Current sealed ACCs use a
+ * random viewing secret and passkey-derived reader envelopes in `recipeDeviceKeyring`.
  */
 export async function accEncryptionKeyFromPasskey(
   opts: PasskeyPrfOptions & { networkId: string },
