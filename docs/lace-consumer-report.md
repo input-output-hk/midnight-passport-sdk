@@ -5,7 +5,7 @@ Status: local integration candidate, 2026-10-17. This report tracks SDK issue #8
 | Pin | Value |
 | --- | --- |
 | Lace Passport | merged PR [#2845](https://github.com/input-output-hk/lace-platform/pull/2845), `502b0794cc7bcfc76342230193fef4ebb63cae1c` |
-| SDK package candidate | nine packed `0.1.0-dev.11` tarballs, local only |
+| SDK package candidate | nine packed `0.1.0-dev.12` tarballs, local only |
 | ACC | `acc-s3r1.1`, Passport source `6458ed5fe6a4843912328bbf11112b97e33abf45` |
 | Compiler manifest SHA-256 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 | Localnet | `undeployed` |
@@ -32,7 +32,7 @@ Status: local integration candidate, 2026-10-17. This report tracks SDK issue #8
 The [local diagnostic evidence](../experiments/lace-consumer/results/2026-10-17-hosted-signer.json)
 records candidate tarball hashes and labels the patched run separately.
 
-## Runtime findings and acceptance still open
+## Hosted scope findings and integration boundaries
 
 The actual Lace hosted signer was exercised through its real request client, server,
 authoriser, encryption-key port and handlers in a disposable checkout. WebAuthn was replaced
@@ -80,19 +80,20 @@ A production host must decide how long an approved proving session may remain op
 The proposed [host-flow decision](adr/0010-lace-hosted-flow-boundaries.md) records the
 recommended integration, alternatives and exact remaining acceptance evidence.
 
-### Next acceptance work
+### Host integration decision
 
-Issues #79 and #81 remain incomplete. Before their runtime criteria can pass, define a host
-contract for sealed-key validation and roster access that preserves Lace's consent boundaries.
+The generic SDK hosted creation and sealed enrollment paths need a host contract for
+sealed-key validation and roster access that preserves Lace's consent boundaries. The local
+integration below instead retains native Lace orchestration and verifies both recognition
+directions plus an authorising-only hosted mutation.
 Consider an explicit validation operation returning only the required proof of ownership, or
 split SDK flow phases into appropriately scoped sessions. Neither approach may silently widen
 consent, expose the viewing secret, or report success without validating the live envelope.
 Lace owns any integration or signer API changes; this SDK branch does not change Lace.
 
-The SDK-created → Lace recognition direction has now passed as recorded below. Still run a
-Lace-created JubJub ACC opening through SDK flows, followed by one grant/device call through
-the hosted signer on the same binding/network. Record exact source/package hashes, ACC address,
-transactions and consent outcomes. Keep the exact-value guard on shielded withdrawals.
+Both recognition directions and a hosted authorising-device call passed as recorded below.
+Keep exact source/package hashes, ACC addresses, transaction records and consent outcomes
+with that evidence. Keep the exact-value guard on shielded withdrawals.
 A lost passkey cannot be reconstructed from the ACC address; a surviving enrolled device can
 use its sealed envelope.
 
@@ -154,9 +155,8 @@ even though this test transfers no funds. It is not evidence for full reader enr
 The nine candidate tarballs also passed install, type/entrypoint, physical runtime identity,
 browser build and hash-verified prover restoration checks. The full local repository gate
 passed with 523 tests passing and 5 skipped in the root suite, plus app checks. Nothing was
-published. The remaining cross-product direction is a Lace-created JubJub ACC opening through
-SDK flows; generic SDK hosted creation and sealed enrollment remain the consent limitations
-listed earlier. Do not claim full Lace compatibility.
+published. The reverse direction subsequently passed as recorded below; generic SDK hosted creation
+and sealed enrollment remain the consent limitations listed earlier. Do not claim full Lace compatibility.
 
 
 ## Reverse recognition: Lace-created ACC opened by packed SDK
