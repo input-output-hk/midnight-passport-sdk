@@ -189,3 +189,20 @@ Both recognition directions and the authorising-only hosted device operation now
 localnet evidence. Generic SDK hosted creation, sealed reader enrollment and hosted address
 recovery remain the explicitly documented consent limitations. No real-provider browser or
 production deployment compatibility claim follows from these synthetic-credential tests.
+
+
+## Sealed P-256 read-grant revocation acceptance
+
+The final localnet probe passed on ACC
+`072b07567c9ab7eb57ca536249ec5b789f65e05485de5d8a45be88e0e761a75d`.
+It issued a read grant, enrolled a second P-256 device while preserving the grantee's access,
+then rotated the viewing key and revoked the grant in transaction
+`668371a715dd7c20f2f10988fad053507841710fa2012a818f218a2558de5e1c`.
+The live grant was inactive, the previously valid grantee seal was refused against the current
+ACC key, and both enrolled devices reopened after revocation. No token transfer was involved.
+
+[The result](../experiments/acc-0.35/results/sdk-p256-read-grant-revoke-node.json) records every
+transaction and the contract/compiler pins; the reusable probe is adjacent to the other SDK
+localnet scripts. This closes the missing local revocation evidence in #161. The full
+[five-issue acceptance audit](local-backlog-acceptance.md) identifies each requirement and its
+evidence, with the exact supported integration paths and remaining compatibility limits.

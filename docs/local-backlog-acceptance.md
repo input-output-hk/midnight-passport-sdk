@@ -14,8 +14,8 @@ This audit covers issues #25, #205, #79, #161 and #81. It does not authorise a p
 | #79 recovery limits | `docs/site/keys.md`, `docs/prototype/keys.md`, consumer report: surviving enrolled devices can open their envelopes; ACC address does not recreate a lost passkey. | Documented; localnet P-256 and mixed-device evidence recorded. |
 | #161 versioned registration | ADR 0009 and key tests: authenticated `0xd5` P-256 policy registration, canonical compressed SEC1 encoding, suite/size/padding/downgrade checks, legacy JubJub support. | Implemented and tested. |
 | #161 P-256 and mixed recovery/rotation | `sdk-p256-sealed-device-node.json` and `sdk-mixed-device-recovery-node.json`: live membership, sealed openings, surviving device recovery, removal/refusal and mixed-roster rotation. Deterministic-key legacy accounts explicitly refused. | Passed locally. |
-| #161 read-grant issue and preservation | `sdk-p256-read-grant-enroll-node.json`: issue read grant, open seal, rotate during enrollment, open new seal, refuse old seal against new key and open from joining device. Unit tests cover incomplete roster/opening refusals and revoke/revoke-all. | Passed; additional live read-grant revocation below remains pending. |
-| #161 read-grant revocation on localnet | `sdk-p256-read-grant-revoke-node.mjs` extends the issue/enrollment flow with rotation/revoke, inactive live grant, old seal refusal and both surviving device openings. | Running; not yet accepted. |
+| #161 read-grant issue and preservation | `sdk-p256-read-grant-enroll-node.json`: issue read grant, open seal, rotate during enrollment, open new seal, refuse old seal against new key and open from joining device. Unit tests cover incomplete roster/opening refusals and revoke/revoke-all. | Passed, including the additional live read-grant revocation below. |
+| #161 read-grant revocation on localnet | `sdk-p256-read-grant-revoke-node.json` records the issue/enrollment flow followed by rotation/revoke, inactive live grant, old seal refusal and both surviving device openings. ACC `072b07567c9ab7eb57ca536249ec5b789f65e05485de5d8a45be88e0e761a75d`; revoke transaction `668371a715dd7c20f2f10988fad053507841710fa2012a818f218a2558de5e1c`. | Passed locally. |
 | #81 exact source types and package installation | `smoke-lace-source-consumer.mjs` pins merged Lace `502b0794cc7bcfc76342230193fef4ebb63cae1c`; dev.12 types pass with seven direct Midnight versions matched. `smoke-release-tarballs.mjs` passes nine entrypoints, types, browser build, physical runtime identities and manifest-verified prover restoration. | Passed locally. |
 | #81 runtime flow and report | Native Lace hosted creation, hosted sign-in and SDK authorising-only device addition have confirmed localnet results in the consumer report. The device test checks live commitment, two devices, nonce and subsequent healed sign-in. | Passed for those exact flows; no full compatibility claim. |
 | Signed local delivery | GPG signatures, DCO sign-offs and `Assisted-by: AI` trailers on commits; full repository gate before each commit. | Preserved; no push/PR/publication. |
@@ -33,3 +33,10 @@ The circuit HTTP prover and transaction prover are different interfaces. The dir
 sponsor in the native Lace test is diagnostic infrastructure; no service sponsorship policy was
 relaxed. The exact-value shielded-spend guard remains in place. Browser chunk warnings and a
 successful Vite build do not establish every SDK flow in a deployed browser signer page.
+
+## Outcome
+
+All five issues meet their local acceptance requirements for the exact supported paths above.
+The goal does not include publication or a claim of full Lace compatibility. The documented
+hosted scope limits remain integration boundaries, with passing evidence obtained through
+Lace-owned orchestration and the supported SDK ports. No push or PR was created.

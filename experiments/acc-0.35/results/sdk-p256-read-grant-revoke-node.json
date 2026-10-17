@@ -1,0 +1,110 @@
+{
+  "verdict": "PASS",
+  "bindingId": "acc-s3r1.1",
+  "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "contractSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
+  "account": "072b07567c9ab7eb57ca536249ec5b789f65e05485de5d8a45be88e0e761a75d",
+  "networkId": "undeployed",
+  "ownerScheme": "p256-webauthn",
+  "joinedScheme": "p256-webauthn",
+  "grantId": "f0e117ff0c7d62c18faa31618b6e72abbc8019de16d5d23be52fb7d362631d3d",
+  "readPublicKey": "13be4feaeaf204c7fd3358fc9c00721881d174278128227ec674f37f7fe97b6d",
+  "readGrantIssueTxHash": "ee6f77ed725399b1e1c27996a2ce9d3577ecb224b49d43d85e2079a27e205832",
+  "enrollmentRotationTxHash": "f7ec87299bbbc02d3b0f15c80279e55c524ee9e466ed7967fe67f2ade7eb1c0e",
+  "readGrantPreservedDuringEnrollment": true,
+  "readGrantRevoked": true,
+  "revokeTxHash": "668371a715dd7c20f2f10988fad053507841710fa2012a818f218a2558de5e1c",
+  "revokedGranteeSealRejected": true,
+  "bothDevicesOpenedAfterRevocation": true,
+  "viewingKeyChangedDuringEnrollment": true,
+  "granteeOpenedInitialSeal": true,
+  "granteeOpenedRotatedSeal": true,
+  "initialSealRejectedAfterRotation": true,
+  "enrollmentCommitment": "3bf53f86cfade9717fb8780eaaa1cbe0888bf602283b8667f896e9960cce2c26",
+  "authNonceBeforeEnrollment": "8",
+  "authNonceAfterEnrollment": "15",
+  "transactions": [
+    {
+      "circuit": "activate_initial_device_with_p256",
+      "txHash": "757aee5921905d4f82f79e82370788667c8a603715c21706d250531e8a240a00"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "a1d0c1557c4444e33bf7d2180b1f5d708781bf4ce8a9c5b9f4cfe00d8ae5f96f"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "4d6d848836ec291da7f36751793799926f3f0b92ce78b1e748e3ef72250a874a"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "ae7d4991ba7da16a9b5dc3779707d7134ea81b131806081817acaae2b8e107ba"
+    },
+    {
+      "circuit": "rotate_enc_key_with_p256",
+      "txHash": "04e60e5e2aa58096a7962d04c3e7e0d220fe66deabb1dc166450b3ab8bc2d378"
+    },
+    {
+      "circuit": "issue_grant_with_p256",
+      "txHash": "ee6f77ed725399b1e1c27996a2ce9d3577ecb224b49d43d85e2079a27e205832"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "9771a93f47876e95706ed34aa9e5f14e22b72be15b2bfd0825ce1d2fd9d4efd1"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "9d12ca402d7665154f2ec70f63c40b1ef5221565988a54f7fd330a403a7d34c8"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "e82974ff241bc7f96bd4fee06eb1323eb29bf32d75d3bde4e4ca150f4d1ef870"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "3b6171bedce912304e19f957c85b16a409f5a425d826834ff375469a4642bd0e"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "b953f0f1c21459627f16b6eaafa26eb012aea88f7dc7b374c9ef0d790aa845bd"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "be183ba7dc75acd9f3e3978d7692da129aaf0bfc5987ea9af685ec8e6bbf76ff"
+    },
+    {
+      "circuit": "rotate_enc_key_with_p256",
+      "txHash": "f7ec87299bbbc02d3b0f15c80279e55c524ee9e466ed7967fe67f2ade7eb1c0e"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "e351d098c6e78ef76fd67fa6153f522838b41b180deef50533b6daad5528804f"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "affab2a1b6c140df2266183a784ab157c60c6d1e3ee4dd0efad817ba431139bb"
+    },
+    {
+      "circuit": "add_device_with_p256",
+      "txHash": "6d3f4c4129270a682d493392d7fec76f662ba3b7f29f771ed10a6e5d5d65a52c"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "b91cc61c3a25437996489b84bf188e07140383d61a09a49d73cb0107ea5a4f47"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "dae512f8e47ab329ed84c4a67964b7676821e0281e236838cbb12ffae3f0e73f"
+    },
+    {
+      "circuit": "rotate_enc_key_with_p256",
+      "txHash": "e7f03846ffb5c6cd59b3c656be28d7335686ead93f1c8b9af6ed63039cd2c4cd"
+    },
+    {
+      "circuit": "revoke_grant_with_p256",
+      "txHash": "668371a715dd7c20f2f10988fad053507841710fa2012a818f218a2558de5e1c"
+    }
+  ],
+  "joinerOpenedByAddress": true,
+  "scope": "sealed P-256 read-grant issue, enrollment preserving the grant, rotation on revocation, grantee seal refusal and surviving-device recovery"
+}
