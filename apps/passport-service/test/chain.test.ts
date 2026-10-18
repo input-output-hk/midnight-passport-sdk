@@ -189,21 +189,48 @@ test('a proof queued behind a failing one still runs', async (t) => {
   assert.deepEqual([a.status, b.status].sort(), [200, 502]);
 });
 
-test('jobs beyond the queue depth are refused with 503, the rest still run', async (t) => {
-  const f = fakeBackend(150);
-  const { base } = await start(t, f.backend, { maxQueued: 2 });
-  const statuses: number[] = [];
-  for (let i = 0; i < 5; i++) {
-    // Staggered so each reaches the queue in order; the first is running before the rest arrive.
-    void post(`${base}/prove`, { preimage: '01', keyLocation: CIRCUIT }).then((r) =>
-      statuses.push(r.status),
-    );
-    await new Promise((r) => setTimeout(r, 20));
-  }
-  await new Promise((r) => setTimeout(r, 700));
-  assert.deepEqual(statuses.sort(), [200, 200, 200, 503, 503]);
-  assert.equal(f.calls.prove, 3);
-});
+test(
+  'jobs beyond the queue depth are refused with 503, the rest still run',
+  { timeout: 10_000 },
+  async (t) => {
+    const f = fakeBackend();
+    let release!: () => void;
+    let started!: () => void;
+    let overflow!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const running = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const refused = new Promise<void>((resolve) => {
+      overflow = resolve;
+    });
+    t.after(() => release());
+    const prove = f.backend.prove.bind(f.backend);
+    f.backend.prove = async (...args) => {
+      started();
+      await held;
+      return prove(...args);
+    };
+    const { base } = await start(t, f.backend, { maxQueued: 2 });
+    const first = post(`${base}/prove`, { preimage: '01', keyLocation: CIRCUIT });
+    await running;
+    let rejections = 0;
+    const remaining = Array.from({ length: 4 }, async () => {
+      const result = await post(`${base}/prove`, { preimage: '01', keyLocation: CIRCUIT });
+      if (result.status === 503 && ++rejections === 2) overflow();
+      return result;
+    });
+    // Keep the running job blocked until both excess requests have actually been refused.
+    // Event-loop/HTTP scheduling under load cannot let a job finish and free a slot early.
+    await refused;
+    release();
+    const results = await Promise.all([first, ...remaining]);
+    assert.deepEqual(results.map((result) => result.status).sort(), [200, 200, 200, 503, 503]);
+    assert.equal(f.calls.prove, 3);
+  },
+);
 
 test('/sponsor/balance and /sponsor/submit round-trip hex transactions', async (t) => {
   const f = fakeBackend();
