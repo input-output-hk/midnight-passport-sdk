@@ -22,7 +22,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/.tsbuildinfo"
   ],
   "dependencies": {
     "@input-output-hk/mn-passport-protocol": "workspace:*",
