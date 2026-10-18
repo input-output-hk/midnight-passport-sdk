@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "@input-output-hk/mn-passport-contract": "workspace:*",
-    "@input-output-hk/mn-passport-service": "workspace:*"
+    "@input-output-hk/mn-passport-service": "workspace:*",
+    "@midnightntwrk/wallet-sdk-address-format": "4.0.0-rc.0"
   },
   "devDependencies": {
     "tsx": "4.23.15"

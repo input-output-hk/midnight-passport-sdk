@@ -19,6 +19,8 @@ export interface WalletFundingOptions {
   readonly deployed: (address: string) => boolean;
   /** Connect through the pinned ACC compiled contract using the dedicated funding wallet. */
   readonly connect: (address: string) => Promise<FundingAccount>;
+  /** Optional wallet preparation, e.g. creating an exact-value NIGHT UTXO on localnet. */
+  readonly prepareDeposit?: (color: Uint8Array, amount: bigint) => Promise<string | undefined>;
   readonly pollMs?: number;
   readonly confirmationMs?: number;
   readonly now?: () => number;
@@ -60,13 +62,19 @@ export function createWalletFundingBackend(
         const amount = BigInt(request.amount);
         if (amount > (1n << 128n) - 1n) throw new Error('deposit exceeds Uint128');
         const before = await balance(account, color);
+        const preparationTxId = await options.prepareDeposit?.(color, amount);
         const { txId } = await account.depositUnshielded(color, amount);
         if (!txId) throw new Error('deposit returned no transaction ID');
         const deadline = now() + confirmationMs;
         for (;;) {
           const credited = await balance(account, color);
           if (credited >= before + amount)
-            return { requestId: request.requestId, txId, creditedBalance: credited.toString() };
+            return {
+              requestId: request.requestId,
+              txId,
+              ...(preparationTxId && { preparationTxId }),
+              creditedBalance: credited.toString(),
+            };
           if (now() >= deadline) throw new Error('ACC credit was not confirmed in time');
           await sleep(pollMs);
         }

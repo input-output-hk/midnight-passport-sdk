@@ -145,6 +145,8 @@ export interface FundAccRequest {
 export interface FundAccResponse {
   readonly requestId: string;
   readonly txId: string;
+  /** Localnet NIGHT funding only: the wallet's exact-value self-transfer before the ACC call. */
+  readonly preparationTxId?: string;
   /** Decimal Uint128 balance observed on the ACC after confirmation. */
   readonly creditedBalance: string;
 }

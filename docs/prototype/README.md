@@ -1,5 +1,9 @@
 # Midnight Passport DApp prototype
 
+For the current `acc-s3r1.1` setup, funding flow, audit status and operator handover, see the
+[engineering handover](../site/handover.md). The run evidence below is historical and names the
+older `acc-45721e1` binding.
+
 The standalone service exposes `POST /v1/prove-tx` and `POST /v1/deploy` as request-and-poll jobs (`GET /v1/jobs/{id}`), plus `/v1/sponsor/balance`, `/v1/sponsor/submit`, `/v1/config`, and verified `/v1/zk/{bindingId}` artefacts. The browser uses these versioned routes. The legacy routes remain for older clients; both route sets share the same serial proof/deploy queue and deployment cap.
 
 This is a working prototype of the Passport **account API** and the web app that carries its heavy
