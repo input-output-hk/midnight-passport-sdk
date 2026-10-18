@@ -1,0 +1,3 @@
+Compiling circuit "/tmp/restored/.restore-3xKYl7/deposit_unshielded.zkir" (k=9, rows=331)
+deposit_unshielded: restored and verified
+restore-acc-keys: 1 circuit(s) verified

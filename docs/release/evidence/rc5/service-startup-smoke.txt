@@ -1,0 +1,3 @@
+WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+v22.23.2
+service image refuses a missing export, missing dedicated sponsor, and wrong manifest pin

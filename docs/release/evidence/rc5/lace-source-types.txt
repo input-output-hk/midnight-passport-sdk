@@ -1,0 +1,35 @@
+warning: Git tree '<workspace>' is dirty
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +94
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 99, reused 94, downloaded 0, added 58
+Progress: resolved 99, reused 94, downloaded 0, added 90
+Progress: resolved 99, reused 94, downloaded 0, added 93
+Progress: resolved 99, reused 94, downloaded 0, added 94, done
+
+dependencies:
++ @input-output-hk/mn-passport-account 0.1.0-rc5
++ @input-output-hk/mn-passport-adapter-browser 0.1.0-rc5
++ @input-output-hk/mn-passport-adapter-midnight-js 0.1.0-rc5
++ @input-output-hk/mn-passport-adapter-service 0.1.0-rc5
++ @input-output-hk/mn-passport-adapter-webauthn 0.1.0-rc5
++ @input-output-hk/mn-passport-contract 0.1.0-rc5
++ @input-output-hk/mn-passport-keys 0.1.0-rc5
++ @input-output-hk/mn-passport-protocol 0.1.0-rc5
++ @input-output-hk/mn-passport-service 0.1.0-rc5
++ @midnight-ntwrk/compact-runtime 0.20.0
++ @reduxjs/toolkit 2.11.2 (2.13.0 is available)
++ immer 10.2.0 (11.1.21 is available)
++ ts-custom-error 3.3.1
++ type-fest 4.41.0 (5.10.0 is available)
+
+devDependencies:
++ typescript 6.0.3 (7.0.2 is available)
+
+Done in 3.4s using pnpm v10.34.5
+{
+  "@midnight-ntwrk/compact-js": "<temporary-consumer-path>",
+  "@midnight-ntwrk/compact-runtime": "<temporary-consumer-path>",
+  "@midnightntwrk/ledger-v9": "<temporary-consumer-path>"
+}
+Lace PR #2845 502b0794cc7bcfc76342230193fef4ebb63cae1c: packed SDK 0.1.0-rc5 types passed; 7 direct Midnight runtime versions match

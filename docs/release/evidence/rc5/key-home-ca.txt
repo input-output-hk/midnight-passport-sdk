@@ -1,0 +1,1 @@
+non-root writable compiler home and CA bundle passed

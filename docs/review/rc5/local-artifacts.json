@@ -111,5 +111,7 @@
     "keyHttp": "/tmp/mn-passport-rc5-keys-http-smoke.log",
     "keyHttpAssertions": "/tmp/mn-passport-rc5-keys-http-assertions.log",
     "pagesBuild": "/tmp/mn-passport-rc5-pages-build.log"
-  }
+  },
+  "status": "superseded historical preparation snapshot",
+  "supersededBy": "../../release/rc5-local-receipt.json"
 }

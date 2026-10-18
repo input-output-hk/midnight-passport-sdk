@@ -1,0 +1,17 @@
+Full local gate run before review follow-ups: lint, format, build, package/app tests and type checks completed with exit 0.
+# tests 528
+# pass 523
+# fail 0
+# skipped 5
+apps/passport-dapp test: # tests 89
+apps/passport-dapp test: # pass 89
+apps/passport-dapp test: # fail 0
+apps/passport-dapp test: # skipped 0
+apps/passport-funding-service test: # tests 7
+apps/passport-funding-service test: # pass 7
+apps/passport-funding-service test: # fail 0
+apps/passport-funding-service test: # skipped 0
+apps/passport-service test: # tests 154
+apps/passport-service test: # pass 152
+apps/passport-service test: # fail 0
+apps/passport-service test: # skipped 2

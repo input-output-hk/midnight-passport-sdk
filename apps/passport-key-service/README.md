@@ -71,3 +71,17 @@ place before readiness.
 
 The image serves keys and manifests only. It does not fund ACCs, sponsor fees,
 prove transactions, or expose the demo backend's registry and deployment routes.
+
+## Compiler home, cache and TLS
+
+The image sets `HOME=/data/keys` and `XDG_CACHE_HOME=/data/keys/.cache`, and includes a pinned
+CA bundle through `SSL_CERT_FILE` / `SSL_CERT_DIR`. Fresh regeneration needs a writable home/cache
+and outbound HTTPS for the compiler's data fetcher; a fully populated verified key cache can be
+served without regeneration. Keep the key volume writable for a restoring instance. With a
+read-only root, also provide a writable `/tmp` (for example `--tmpfs /tmp`). If overriding the
+home/cache locations, give UID/GID `10001:10001` access. Cache files are not exposed as arbitrary
+HTTP paths: only pinned bundle inputs and known circuit keys are served.
+
+RC5 local qualification regenerates `deposit_unshielded` from packaged ZKIR in the Linux image
+and checks both output hashes. It separately verifies/serves all 52 cached circuits. It does
+not claim a fresh generation of every circuit in the container during the handover run.
