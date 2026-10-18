@@ -186,6 +186,40 @@ test('P-256 rotation reseals verified holdings and preserves the live reader', a
   assert.deepEqual((await createPassportAccounts(ports).openAccount()).address, account.address);
 });
 
+test('P-256 direct rotation refuses an active read grant with no usable reader', async () => {
+  const fake = createFakePorts();
+  const ports = {
+    ...fake,
+    viewingKey: viewingKey(),
+    authoriser: {
+      ...fake.authoriser,
+      withKeySession: async (/** @type {() => Promise<any>} */ operation) => operation(),
+    },
+    holdings: { selectHeldEntries: async () => [] },
+    readGrants: {
+      readActiveReadGrantTargets: async () => ({
+        authNonce: [...fake.ledger.values()][0]?.authNonce ?? 0n,
+        targets: [{ grantId: 'dd'.repeat(32) }],
+      }),
+    },
+  };
+  const account = await createPassportAccounts(ports).createAccount({
+    userName: 'unsealed-read-grant',
+    retireAuthority: true,
+  });
+  const ledger = fake.ledger.get(account.address);
+  assert.ok(ledger);
+  ledger.specVersion = 3;
+  const before = ledger.authNonce;
+  assert.ok(account.rotateViewingKey);
+  await assert.rejects(account.rotateViewingKey(), { code: 'GrantRosterUnsettled' });
+  assert.equal(
+    ledger.authNonce,
+    before,
+    'the ACC key cannot change before every grant is resealed',
+  );
+});
+
 test('P-256 rotation refuses a live device without a unique reader registration', async () => {
   const fake = createFakePorts();
   const ports = {
@@ -850,4 +884,19 @@ test('sealed P-256 adapter refuses a deterministic-key prototype account explici
       message: /legacy adapter or migrate/,
     },
   );
+});
+
+test('P-256 sign-in authenticates a real inbox batch when the host skips empty batches', async () => {
+  const fake = createFakePorts({ binding: { pureCircuits } });
+  const keyring = viewingKey();
+  const open = keyring.openInbox.bind(keyring);
+  keyring.openInbox = async (network, held, entries) =>
+    entries.length ? open(network, held, entries) : [];
+  const accounts = createPassportAccounts({ ...fake, viewingKey: keyring });
+  const account = await accounts.createAccount({ userName: 'batched-host', retireAuthority: true });
+  assert.equal((await accounts.openAccount()).address, account.address);
+  const state = fake.ledger.get(account.address);
+  assert.ok(state?.encKey);
+  state.encKey.fill(0);
+  await assert.rejects(accounts.openAccount(), { code: 'EncryptionKeyMismatch' });
 });

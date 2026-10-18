@@ -1,0 +1,86 @@
+{
+  "laceHead": "502b0794cc7bcfc76342230193fef4ebb63cae1c",
+  "sdkVersion": "0.1.0-dev.11",
+  "bindingId": "acc-s3r1.1",
+  "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "networkId": "undeployed",
+  "account": "544ca45c8b320cf234b62c1d3bc8cce023ff7782ec91a452720a72ca5221f15b",
+  "transactions": [
+    {
+      "circuit": "activate_initial_device_with_jubjub",
+      "txHash": "6c0790232250b939c27a305188e5dbe5464098ba0eab5ce9ea1b70a71d1a5c37"
+    },
+    {
+      "circuit": "append_inbox_with_jubjub",
+      "txHash": "79f1cb1bf2a42e268dba449c56a4c53919dca7a032b7c4ab5046efe43b10e986"
+    },
+    {
+      "circuit": "append_inbox_with_jubjub",
+      "txHash": "978db4a1ff89c8f63574fee53ae96c636444ac60cd61c488ab3dc0321768539c"
+    }
+  ],
+  "consentKinds": [
+    "flow-open",
+    "flow-open"
+  ],
+  "status": "passed",
+  "scope": "SDK creation with unmodified Lace local key ports; unmodified Lace hosted sign-in; SDK reopening with local key ports",
+  "excluded": [
+    "Lace-created account opened through SDK",
+    "hosted creation",
+    "hosted grant/device mutation",
+    "real WebAuthn provider or deployed browser signer"
+  ],
+  "signerSourceModified": false,
+  "transport": "real Lace request client/server over simulated windows",
+  "credentialSource": "synthetic random test PRF outputs",
+  "storedBindingVersion": "0.1.0-lace.1",
+  "note": "The record binding label was supplied by the test; compiler manifest pin establishes the actual ACC binding. The reusable fixture uses the current Lace label .2.",
+  "tarballs": [
+    {
+      "name": "@input-output-hk/mn-passport-protocol",
+      "file": "input-output-hk-mn-passport-protocol-0.1.0-dev.11.tgz",
+      "sha256": "15267f34bbd02eb84a03a701da495890b3bceebbb9a975b88a840df618f68120"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-account",
+      "file": "input-output-hk-mn-passport-account-0.1.0-dev.11.tgz",
+      "sha256": "6aa37effba4e7539286371b62a4400506260d0d665e15e64753b37610472d426"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-midnight-js",
+      "file": "input-output-hk-mn-passport-adapter-midnight-js-0.1.0-dev.11.tgz",
+      "sha256": "3857e8105c02c4fd2e746217f7659a709980f62451522c2d3c1569eb0b58851d"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-keys",
+      "file": "input-output-hk-mn-passport-keys-0.1.0-dev.11.tgz",
+      "sha256": "6dd2a56114d146b66bc157c201d59c392a0983a34b55c1f9a05aeda3a9059186"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-webauthn",
+      "file": "input-output-hk-mn-passport-adapter-webauthn-0.1.0-dev.11.tgz",
+      "sha256": "a080eddd7d08ca129d3945ed6cf124d5600b82ce8fa91a2b38830606829f5960"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-service",
+      "file": "input-output-hk-mn-passport-adapter-service-0.1.0-dev.11.tgz",
+      "sha256": "1679e9585f6565501210d3b7a85bb3027d1bee32ddefa41a0e792839c31573e9"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-contract",
+      "file": "input-output-hk-mn-passport-contract-0.1.0-dev.11.tgz",
+      "sha256": "a24c274649efc321062516d388c8d1dd3fe61e70e55b83dbc96db82cb3570b45"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-browser",
+      "file": "input-output-hk-mn-passport-adapter-browser-0.1.0-dev.11.tgz",
+      "sha256": "629278654e4f868ac0a7a932a7316066d85b0c9ddca02b6ecbd8e1d92119d0ff"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-service",
+      "file": "input-output-hk-mn-passport-service-0.1.0-dev.11.tgz",
+      "sha256": "1f38c700a4f92376f626fe2d33fbdee05a3cc01697df9bb35ced84e0ea5a4609"
+    }
+  ]
+}

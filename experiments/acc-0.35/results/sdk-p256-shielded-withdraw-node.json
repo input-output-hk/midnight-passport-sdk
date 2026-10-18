@@ -3,30 +3,32 @@
   "bindingId": "acc-s3r1.1",
   "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
   "contractSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
-  "account": "baced2614cecd8d50ec455fe24308ae078630456de2ebb019287be52963c59a7",
+  "account": "f05f7847dc414cdd6a3855c7af1d51d7e083b078eb9976cb5d94e4ea27af44a9",
   "networkId": "undeployed",
   "ownerScheme": "p256-webauthn",
-  "depositTx": "00ac6228e11838ce406813b3717d66daf97258e6993f5f5647846698cafe50838a",
-  "withdrawTx": "390d196af4ee4eda44d71fa7a03da4d20aef5ecca8c9701b0dce0465214ae034",
+  "depositTx": "000fcef163f8227a98241ea320ceee3e62ed2d6bb3064b67533c99edd6fbeb3301",
+  "withdrawTx": "13fb16c67f1079c8a42e426afe25865492ad9c17cd09db8d3c8d299370f54153",
   "inboxIndex": 2,
-  "outputIndex": "42",
+  "outputIndex": "47",
+  "reopenedHeldCoin": true,
+  "afterSpendHeldCoins": 0,
   "transactions": [
     {
       "circuit": "activate_initial_device_with_p256",
-      "txHash": "9ae8f5433cab7d93831b3c1d9a043fb199ec9b0601796c24d27d6f04385a2679"
+      "txHash": "0b6cd0f873fa52f59ededfcedc02722c6ce49b293908fe22989713de22c39473"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "03bc55b6c7f9595e612ee1214cd1627cd24982ecba13c469e54fe5cbf1778618"
+      "txHash": "4a1705dbf45b46d3d451ca86e63edd9f8d425a19da7e92e536c87205b5fedf0a"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "551847a95b46fc281c025a4bf88bf68f2840d3483fdd61df8b78f40635f26e24"
+      "txHash": "80c65f730fed7c64e7821c799b3cc77e8d1b188b7b880185654e1f5af09ec3ae"
     },
     {
       "circuit": "withdraw_shielded_with_p256",
-      "txHash": "390d196af4ee4eda44d71fa7a03da4d20aef5ecca8c9701b0dce0465214ae034"
+      "txHash": "13fb16c67f1079c8a42e426afe25865492ad9c17cd09db8d3c8d299370f54153"
     }
   ],
-  "scope": "proof-backed exact P-256 owner shielded withdrawal"
+  "scope": "proof-backed P-256 held coin read, reopen, exact withdrawal, and spent exclusion"
 }

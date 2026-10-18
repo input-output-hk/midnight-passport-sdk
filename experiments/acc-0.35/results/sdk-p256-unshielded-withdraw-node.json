@@ -1,0 +1,36 @@
+{
+  "verdict": "PASS",
+  "bindingId": "acc-s3r1.1",
+  "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "contractSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
+  "account": "a9cffb6cc54ac710ee81a6ecd5234a379d3a99b2a58ab18e772b36a9593e1c76",
+  "networkId": "undeployed",
+  "ownerScheme": "p256-webauthn",
+  "preparationTx": "0011868e3df4ff0e84761d690b7709005fd4d63a08c1940dc3c15cdd203e53b093",
+  "depositTx": "00535f20796204afcd813e85fe5ca6c6cdf1519dc4bc09cc936834018b96fab43f",
+  "withdrawTx": "4985f97bd21765b616fa7cbb763c1556c34778d09c4ee51c33b6af149864c3f6",
+  "color": "0000000000000000000000000000000000000000000000000000000000000000",
+  "depositAmount": "10",
+  "withdrawAmount": "4",
+  "balanceAfter": "6",
+  "recipient": "bc610dd07c52f59012a88c2f9f1c5f34cbacc75b868202975d6f19beaf37284b",
+  "transactions": [
+    {
+      "circuit": "activate_initial_device_with_p256",
+      "txHash": "d27e4ad6772b8ca3aeaf83d001ac916d5e91461461784278518805fdb30e67cf"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "dddbac15930735245e40641c9d362ac1081dd0ad63e9673b654afdcbe6d31372"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "txHash": "11ecd2b62540084493cc9eb2c5462291dd491f8c1e967553cb20b533089a6428"
+    },
+    {
+      "circuit": "withdraw_unshielded_with_p256",
+      "txHash": "4985f97bd21765b616fa7cbb763c1556c34778d09c4ee51c33b6af149864c3f6"
+    }
+  ],
+  "scope": "proof-backed P-256 unshielded deposit and exact owner withdrawal to public localnet genesis wallet"
+}

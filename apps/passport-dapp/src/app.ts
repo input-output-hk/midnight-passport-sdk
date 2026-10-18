@@ -6,8 +6,26 @@ import type {
   PassportConnectorDescriptor,
   PassportTxResult,
 } from '@input-output-hk/mn-passport-protocol';
-import { ARM, MANIFEST_SHA256, NETWORK_ID, RP_ID, SERVICE_URL, installShim } from './connector.js';
-import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS } from './flows.js';
+import {
+  ARM,
+  BINDING_ID,
+  MANIFEST_SHA256,
+  NETWORK_ID,
+  ORIGIN,
+  RP_ID,
+  SERVICE_URL,
+  installShim,
+  exportDemoGrantOpening,
+} from './connector.js';
+import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS, knownAccAddress } from './flows.js';
+import { withdrawalRequest } from './withdrawal.js';
+import { fixedUnshieldedGrant } from './grant-input.js';
+import { prepareGranteePasskey } from './grantee-passkey.js';
+import { spendDemoGrant } from './grant-holder-demo.js';
+import { parseGrantHandoff } from './grant-handoff.js';
+import { MidnightBech32m, UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
+import { Buffer } from 'buffer';
+import { parseDeviceHandoff, prepareDeviceHandoff } from './device-handoff.js';
 import { setOperationTraceSink, tracedFetch, traceOperation } from './operation-trace.js';
 import { createUi } from './ui.js';
 import type { DevWallet } from './wallet/dev-wallet.js';
@@ -27,8 +45,8 @@ const ui = createUi(
   {
     note:
       ARM === 'jubjub'
-        ? 'JubJub preview: the ACC viewing secret is random and sealed to the passkey-derived reader. Create/open are available; rotation needs chain-backed holding and grant sources.'
-        : 'P-256 preview: the ACC viewing secret is random and sealed to the passkey-derived reader. Create/open are available; rotation needs a chain-verified device roster.',
+        ? 'JubJub preview: the ACC viewing secret is random and sealed to the passkey-derived reader. Rotation checks live devices, holdings and read grants.'
+        : 'P-256 preview: the ACC viewing secret is random and sealed to the passkey-derived reader. Rotation checks live devices, holdings and read grants.',
     passkey: mockPasskey
       ? 'MOCK (dev only, software key in localStorage)'
       : 'browser authenticator',
@@ -43,7 +61,7 @@ if (ARM === 'jubjub') {
   const note = document.getElementById('key-note');
   if (note)
     note.textContent =
-      'The ACC viewing secret is random and sealed to the passkey-derived reader. This preview supports create/open. Viewing-key rotation requires chain-backed holdings and read-grant sources.';
+      'The ACC viewing secret is random and sealed to the passkey-derived reader. Rotation and device changes require complete live reader and read-grant openings.';
 }
 const { status, stage, record, event: onEvent } = ui;
 setOperationTraceSink(ui.trace);
@@ -53,7 +71,9 @@ let devWallet: DevWallet | undefined;
 let account: PassportAccount | undefined;
 let balanceAssetColor: string | undefined;
 const fundingUrl = new URL('/v1/demo/funding', SERVICE_URL);
-async function refreshAccountBalances(address: string): Promise<void> {
+async function refreshAccountBalances(
+  address: string,
+): Promise<{ night: string; fundedAsset: string } | undefined> {
   if (!balanceAssetColor) return;
   const url = new URL(fundingUrl);
   url.searchParams.set('accountAddress', address);
@@ -77,6 +97,7 @@ async function refreshAccountBalances(address: string): Promise<void> {
     color: balanceAssetColor,
     fundedAsset: balances.fundedAsset,
   });
+  return { night: balances.night, fundedAsset: balances.fundedAsset };
 }
 void tracedFetch(fundingUrl.toString())
   .then(async (response) => {
@@ -177,8 +198,479 @@ ui.on('open', async () => {
   );
   await opened(await (await connector()).openAccount({ onEvent }), 'reopened');
 });
+ui.on('openAt', async () => {
+  const requestedAddress = knownAccAddress(ui.knownAddress());
+  traceOperation('account.openByAddress.requested', { accountAddress: requestedAddress });
+  status('Opening the known ACC… choose an enrolled passkey and unlock its sealed viewing key.');
+  const accountApi = await connector();
+  if (!accountApi.openAccountAt) throw new Error('This Passport connector cannot open by address.');
+  const restored = await accountApi.openAccountAt(requestedAddress, { onEvent });
+  if (restored.address !== requestedAddress)
+    throw new Error('The connector returned a different ACC address.');
+  await opened(restored, 'opened by address');
+  traceOperation('account.openByAddress.verified', { accountAddress: restored.address });
+});
+ui.on('refresh', async () => {
+  if (!account) throw new Error('Open a Passport account before refreshing it.');
+  const current = account;
+  const state = await current.state();
+  ui.showAccount({
+    address: current.address,
+    networkId: current.networkId,
+    bindingId: current.bindingId,
+    state,
+  });
+  record('refreshed', { accountAddress: current.address, state });
+  traceOperation('account.state.refreshed', {
+    accountAddress: current.address,
+    authNonce: state.authNonce.toString(),
+    deviceEpoch: state.deviceEpoch.toString(),
+    entryCount: state.entryCount,
+    specVersion: state.specVersion,
+  });
+  const balancesRead = balanceAssetColor
+    ? await ui.attempt('balances', async () => {
+        await refreshAccountBalances(current.address);
+        return true;
+      })
+    : undefined;
+  status(
+    balanceAssetColor && !balancesRead
+      ? `ACC ${current.address.slice(0, 12)}… state refreshed; balances unavailable (see event log).`
+      : `ACC ${current.address.slice(0, 12)}… state refreshed from the chain.`,
+  );
+});
+ui.on('holdings', async () => {
+  if (!account?.readShieldedHoldings)
+    throw new Error('Open a sealed Passport account before reading its shielded holdings.');
+  const current = account;
+  const read = current.readShieldedHoldings;
+  if (!read) throw new Error('This Passport account cannot read shielded holdings.');
+  status('Opening the sealed ACC inbox and checking coin commitments against the chain…');
+  stage('verify');
+  const verified = await read({ onEvent });
+  const coins = verified.map((holding) => ({
+    inboxIndex: holding.inboxIndex,
+    color: Array.from(holding.coin.color, (byte) => byte.toString(16).padStart(2, '0')).join(''),
+    value: holding.coin.value.toString(),
+  }));
+  ui.showShieldedHoldings(current.address, coins);
+  record('shieldedHoldings', { accountAddress: current.address, coins });
+  traceOperation('account.shieldedHoldings.verified', {
+    accountAddress: current.address,
+    count: coins.length,
+    coins,
+  });
+  status(
+    `Verified ${coins.length} shielded ${coins.length === 1 ? 'coin' : 'coins'} held by ACC ${current.address.slice(0, 12)}….`,
+  );
+});
+ui.on('prepareJoiner', async () => {
+  const address = knownAccAddress(ui.knownAddress());
+  stage('passkey');
+  const handoff = await prepareDeviceHandoff(address, network, ARM, {
+    bindingId: BINDING_ID,
+    rpId: RP_ID,
+    origin: ORIGIN,
+  });
+  ui.showHandoff(handoff);
+  record('joiningDevicePublicHandoff', {
+    accountAddress: address,
+    scheme: handoff.scheme,
+    fingerprint: handoff.fingerprint,
+    readerPublicKey: handoff.readerPublicKey,
+    devicePublicKey: handoff.devicePublicKey,
+  });
+  status('Public handoff ready. Copy the JSON to the owner browser and compare its fingerprint.');
+});
+ui.on('roster', async () => {
+  const current = account;
+  const readRoster = current?.deviceRoster;
+  if (!current || !readRoster) throw new Error('Open an ACC before reading its device roster.');
+  const roster = await readRoster();
+  ui.showRoster(current.address, roster);
+  record('deviceRoster', {
+    accountAddress: current.address,
+    epoch: roster.deviceEpoch.toString(),
+    authNonce: roster.authNonce.toString(),
+    commitments: roster.commitments,
+  });
+  status(
+    `Read ${roster.commitments.length} live ACC device entries at epoch ${roster.deviceEpoch}.`,
+  );
+});
+ui.on('grantRoster', async () => {
+  const current = account;
+  if (!current?.grantRoster) throw new Error('Open an ACC with a live grant source first.');
+  const roster = await current.grantRoster();
+  ui.showGrantRoster(current.address, roster);
+  const publicRoster = {
+    accountAddress: current.address,
+    authNonce: roster.authNonce.toString(),
+    generation: roster.generation.toString(),
+    entries: roster.entries,
+  };
+  record('grantRoster', publicRoster);
+  traceOperation('account.grants.roster', publicRoster);
+  status(
+    `Read ${roster.entries.filter((entry) => entry.active).length} active grants from the ACC.`,
+  );
+});
+ui.on('prepareGrantee', async () => {
+  const target = knownAccAddress(ui.knownAddress());
+  stage('passkey');
+  status('Creating a separate grant-holder passkey and deriving its public JubJub key…');
+  const publicKey = await prepareGranteePasskey({ rpId: RP_ID, origin: ORIGIN });
+  ui.showGranteePublicKey(publicKey);
+  record('granteePublicKey', { accountAddress: target, publicKey });
+  traceOperation('grant.holder.prepared', { accountAddress: target, publicKey });
+  status('Public grantee key ready. Copy it to the ACC owner browser for the scoped grant.');
+});
+ui.on('issueGrant', async () => {
+  const current = account;
+  if (!current?.issueGrant || !current.grantRoster)
+    throw new Error('Open a supported Passport account before issuing a grant.');
+  const scope = fixedUnshieldedGrant(network, ui.grantInput());
+  stage('review');
+  const before = await current.grantRoster();
+  ui.showGrantRoster(current.address, before);
+  const approved = window.confirm(
+    `Issue a scoped ACC withdrawal grant?\n\nACC: ${current.address}\nNetwork: ${network}\n` +
+      `Grantee JubJub key: ${scope.grantee.publicKey}\nAsset color: ${scope.color}\n` +
+      `Fixed recipient: ${ui.grantInput().recipient}\nPer-call cap: ${scope.perCallCap}\n` +
+      `Total cap: ${scope.cap}\nExpiry: none\n\nThe grant can move ACC funds to this recipient until revoked.`,
+  );
+  if (!approved) {
+    status('Grant issue cancelled before signing.');
+    return;
+  }
+  stage('submit');
+  const result = await current.issueGrant(scope, { onEvent });
+  stage('read');
+  const after = await current.grantRoster();
+  if (!after.entries.some((entry) => entry.id === result.grantId && entry.active))
+    throw new Error('The issued grant is not active in the live roster.');
+  ui.showGrantRoster(current.address, after);
+  const publicResult = {
+    accountAddress: current.address,
+    grantId: result.grantId,
+    slot: result.slot,
+    scopeDigest: result.scopeDigest,
+    txHash: result.txHash,
+    generation: after.generation.toString(),
+    granteePublicKey: scope.grantee.publicKey,
+    color: scope.color,
+    recipient: scope.recipient,
+    perCallCap: scope.perCallCap,
+    cap: scope.cap,
+  };
+  record('grantIssued', publicResult);
+  traceOperation('account.grants.issued', publicResult);
+  status(`Grant ${result.grantId.slice(0, 12)}… is active for the fixed recipient.`);
+});
+ui.on('exportGrant', async () => {
+  const current = account;
+  if (!current?.grantRoster) throw new Error('Open the owner ACC before exporting a grant.');
+  const grantId = ui.exportGrantId();
+  if (!/^[0-9a-f]{64}$/.test(grantId)) throw new Error('Enter a valid grant ID.');
+  stage('review');
+  const roster = await current.grantRoster();
+  if (!roster.entries.some((entry) => entry.id === grantId && entry.active))
+    throw new Error('The grant is not active in the live ACC.');
+  const approved = window.confirm(
+    `Unlock the opening for active grant ${grantId}?\n\n` +
+      'Give the JSON only to the named grantee. It includes the scope opening needed to use the grant.',
+  );
+  if (!approved) {
+    status('Grant opening export cancelled.');
+    return;
+  }
+  stage('export');
+  const handoff = await exportDemoGrantOpening(current.address, grantId);
+  ui.showGrantHandoff(handoff);
+  record('grantOpeningExported', { accountAddress: current.address, grantId });
+  traceOperation('account.grants.openingExported', { accountAddress: current.address, grantId });
+  status('Opening ready. Transfer its JSON directly to the named grantee browser.');
+});
+ui.on('spendGrant', async () => {
+  const input = ui.grantSpendInput();
+  const handoff = parseGrantHandoff(input.handoff, network);
+  stage('read');
+  status('Checking the live ACC grant and selected grantee passkey…');
+  const result = await spendDemoGrant(
+    input.handoff,
+    network,
+    input.amount,
+    input.spentPrev,
+    async (fields) => {
+      stage('review');
+      const address = MidnightBech32m.encode(
+        network,
+        new UnshieldedAddress(Buffer.from(fields.recipient, 'hex')),
+      ).asString();
+      const approved = window.confirm(
+        `Spend this scoped grant?\n\nACC: ${fields.account}\nGrant: ${fields.grantId}\n` +
+          `Asset color: ${fields.color}\nAmount: ${fields.amount} smallest units\n` +
+          `Remaining cap: ${fields.remainingCap}\nFixed recipient: ${address}\n\n` +
+          'Confirm before the grantee passkey prompt.',
+      );
+      if (approved) stage('submit');
+      return approved;
+    },
+  );
+  ui.showGrantSpentTotal(result.spentTotal);
+  const publicResult = {
+    accountAddress: handoff.account,
+    grantId: result.grantId,
+    color: handoff.color,
+    amount: input.amount,
+    recipient: handoff.recipient,
+    spentTotal: result.spentTotal.toString(),
+    grantNonce: result.grantNonce.toString(),
+    txHash: result.txHash,
+  };
+  record('grantSpent', publicResult);
+  traceOperation('grant.holder.spent', publicResult);
+  status(`Grant spend ${result.txHash.slice(0, 12)}… confirmed on the ACC.`);
+});
+ui.on('revokeGrant', async () => {
+  const current = account;
+  if (!current?.revokeGrant || !current.grantRoster)
+    throw new Error('Open a supported Passport account before revoking a grant.');
+  const grantId = ui.revokeGrantId();
+  if (!/^[0-9a-f]{64}$/.test(grantId)) throw new Error('Enter a valid grant ID.');
+  stage('review');
+  const before = await current.grantRoster();
+  if (!before.entries.some((entry) => entry.id === grantId && entry.active))
+    throw new Error('This grant is not active in the live ACC.');
+  ui.showGrantRoster(current.address, before);
+  const approved = window.confirm(
+    `Revoke this ACC grant?\n\nACC: ${current.address}\nNetwork: ${network}\n` +
+      `Grant ID: ${grantId}\nGeneration: ${before.generation}\n\nConfirm before the passkey prompt.`,
+  );
+  if (!approved) {
+    status('Grant revocation cancelled before signing.');
+    return;
+  }
+  stage('submit');
+  const result = await current.revokeGrant(grantId, { onEvent });
+  stage('read');
+  const after = await current.grantRoster();
+  if (!after.entries.some((entry) => entry.id === grantId && !entry.active))
+    throw new Error('The grant revocation did not appear in the live roster.');
+  ui.showGrantRoster(current.address, after);
+  ui.clearGrantHandoff();
+  const publicResult = {
+    accountAddress: current.address,
+    grantId,
+    txHash: result.txHash,
+    status: result.status,
+    generation: after.generation.toString(),
+  };
+  record('grantRevoked', publicResult);
+  traceOperation('account.grants.revoked', publicResult);
+  status(`Grant ${grantId.slice(0, 12)}… is revoked on chain.`);
+});
+ui.on('recoverGrants', async () => {
+  const current = account;
+  if (!current?.recoverPendingGrants || !current.grantRoster)
+    throw new Error('Open a supported Passport account before recovering grants.');
+  stage('recover');
+  status('Checking staged openings against the live ACC and resuming publication…');
+  const result = await current.recoverPendingGrants({ onEvent });
+  stage('read');
+  const roster = await current.grantRoster();
+  ui.showGrantRoster(current.address, roster);
+  const publicResult = {
+    accountAddress: current.address,
+    published: result.published.map((grant) => ({
+      grantId: grant.grantId,
+      status: grant.status,
+      appendTxHashes: grant.appendTxHashes,
+      nextUseCounter: grant.nextUseCounter.toString(),
+    })),
+    unsettledGrantIds: result.unsettledGrantIds,
+    generation: roster.generation.toString(),
+  };
+  record('grantRecovery', publicResult);
+  traceOperation('account.grants.recovered', publicResult);
+  status(
+    `Published ${result.published.length} pending grants; ${result.unsettledGrantIds.length} remain unsettled.`,
+  );
+});
+ui.on('enrollDevice', async () => {
+  const current = account;
+  const readRoster = current?.deviceRoster;
+  const addDevice = current?.addDevice;
+  if (!current || !readRoster || !addDevice)
+    throw new Error('Open a sealed ACC before enrolling a device.');
+  stage('review');
+  const { handoff, reader } = await parseDeviceHandoff(ui.handoffJson(), {
+    accountAddress: current.address,
+    networkId: network,
+    arm: ARM,
+    bindingId: BINDING_ID,
+    rpId: RP_ID,
+    origin: ORIGIN,
+  });
+  const [before, state] = await Promise.all([readRoster(), current.state()]);
+  if (before.deviceEpoch !== state.deviceEpoch || before.authNonce !== state.authNonce)
+    throw new Error('The ACC roster changed while preparing enrollment. Refresh and review again.');
+  ui.showRoster(current.address, before);
+  const approved = window.confirm(
+    `Enroll a second ${ARM === 'p256' ? 'P-256' : 'JubJub'} device for ACC ${current.address}?\n\n` +
+      `Network: ${network}\nEpoch: ${before.deviceEpoch}\nLive entries: ${before.commitments.length}\n` +
+      `Joiner fingerprint: ${handoff.fingerprint}\n\n` +
+      'Compare the fingerprint with the joining browser before consenting.',
+  );
+  if (!approved) throw new Error('Device enrollment was cancelled before signing.');
+  stage('submit');
+  const enrolled = await addDevice(reader, { onEvent });
+  stage('read');
+  const [after, nextState] = await Promise.all([readRoster(), current.state()]);
+  if (!after.commitments.includes(enrolled.commitmentHex))
+    throw new Error('The joining device entry is absent from the confirmed ACC roster.');
+  ui.showAccount({
+    address: current.address,
+    networkId: current.networkId,
+    bindingId: current.bindingId,
+    state: nextState,
+    lastTx: enrolled,
+  });
+  ui.showRoster(current.address, after);
+  record('deviceEnrolled', {
+    accountAddress: current.address,
+    fingerprint: handoff.fingerprint,
+    commitment: enrolled.commitmentHex,
+    txHash: enrolled.txHash,
+    deviceEpoch: after.deviceEpoch.toString(),
+    liveEntries: after.commitments.length,
+  });
+  traceOperation('account.device.enrolled', {
+    accountAddress: current.address,
+    fingerprint: handoff.fingerprint,
+    commitment: enrolled.commitmentHex,
+    txHash: enrolled.txHash,
+  });
+  status('Joining device confirmed in the ACC roster. Open by ACC address on that browser.');
+});
+ui.on('removeDevice', async () => {
+  const current = account;
+  if (!current?.deviceRoster || !current.removeDevice)
+    throw new Error('Open a sealed Passport account before removing a device.');
+  const target = ui.removalCommitment();
+  if (!/^[0-9a-f]{64}$/.test(target))
+    throw new Error('Enter one full lowercase commitment from the live device roster.');
+  stage('review');
+  const [before, state] = await Promise.all([current.deviceRoster(), current.state()]);
+  if (before.authNonce !== state.authNonce || before.deviceEpoch !== state.deviceEpoch)
+    throw new Error('The device roster changed. Refresh and review it again.');
+  ui.showRoster(current.address, before);
+  if (before.commitments.length < 2) throw new Error('The ACC has no second device to remove.');
+  if (!before.commitments.includes(target))
+    throw new Error('That commitment is absent from the live ACC device roster.');
+  const approved = window.confirm(
+    `Remove this enrolled device from Passport ACC?\n\nNetwork: ${network}\nACC: ${current.address}\n` +
+      `Device commitment: ${target}\nDevice epoch: ${before.deviceEpoch}\n` +
+      `Live entries: ${before.commitments.length}\n\n` +
+      'The SDK rotates the viewing and roster keys before removal. The removed passkey will lose access. Confirm the full commitment against the live roster.',
+  );
+  if (!approved) {
+    status('Device removal cancelled before signing.');
+    traceOperation('account.device.removalCancelled', { accountAddress: current.address, target });
+    return;
+  }
+  stage('submit');
+  status(
+    'Rotating sealed keys and removing the selected device; this takes multiple transactions…',
+  );
+  const removed = await current.removeDevice(target, { onEvent });
+  stage('read');
+  const [after, nextState] = await Promise.all([current.deviceRoster(), current.state()]);
+  if (
+    after.commitments.includes(target) ||
+    after.commitments.length !== before.commitments.length - 1
+  )
+    throw new Error('The selected device was not removed from the confirmed ACC roster.');
+  ui.showAccount({
+    address: current.address,
+    networkId: current.networkId,
+    bindingId: current.bindingId,
+    state: nextState,
+    lastTx: removed,
+  });
+  ui.showRoster(current.address, after);
+  const result = {
+    accountAddress: current.address,
+    removedCommitment: target,
+    rotationTxHash: removed.rotationTxHash,
+    removalTxHash: removed.txHash,
+    deviceEpoch: after.deviceEpoch.toString(),
+    liveEntries: after.commitments.length,
+  };
+  record('deviceRemoved', result);
+  traceOperation('account.device.removed', result);
+  status('The selected device is absent from the live ACC roster.');
+});
 ui.on('rotate', async () => {
-  throw new Error('Viewing-key rotation needs chain-backed roster and grant sources.');
+  const current = account;
+  if (
+    !current?.rotateViewingKey ||
+    !current.deviceRoster ||
+    !current.grantRoster ||
+    !current.readShieldedHoldings
+  )
+    throw new Error('Open a sealed Passport account with complete chain-backed sources first.');
+  stage('review');
+  const [before, devices, grants, holdings] = await Promise.all([
+    current.state(),
+    current.deviceRoster(),
+    current.grantRoster(),
+    current.readShieldedHoldings({ onEvent }),
+  ]);
+  if (before.authNonce !== devices.authNonce || before.authNonce !== grants.authNonce)
+    throw new Error('The ACC changed while its readers were reviewed. Refresh and try again.');
+  const activeReadGrants = grants.entries.filter((entry) => entry.active && entry.read).length;
+  const approved = window.confirm(
+    `Rotate this Passport ACC's viewing secret?\n\nNetwork: ${network}\nACC: ${current.address}\n` +
+      `Live devices: ${devices.commitments.length}\nShielded holdings: ${holdings.length}\n` +
+      `Active read grants: ${activeReadGrants}\n\n` +
+      'Every live device, holding and read grantee must receive a fresh seal. The SDK refuses an incomplete roster before changing the ACC.',
+  );
+  if (!approved) {
+    status('Viewing-key rotation cancelled before signing.');
+    traceOperation('account.viewingKey.rotationCancelled', { accountAddress: current.address });
+    return;
+  }
+  stage('submit');
+  status('Sealing a new viewing secret to verified readers, then signing and confirming rotation…');
+  const rotated = await current.rotateViewingKey({ onEvent });
+  if (rotated.droppedDeviceEntries.length || rotated.unsealedGrantIds.length)
+    throw new Error('Rotation reported an incomplete reader delivery; inspect the event log.');
+  stage('read');
+  const after = await current.state();
+  if (after.authNonce <= before.authNonce)
+    throw new Error('The ACC did not confirm a newer authorisation nonce.');
+  ui.showAccount({
+    address: current.address,
+    networkId: current.networkId,
+    bindingId: current.bindingId,
+    state: after,
+    lastTx: rotated,
+  });
+  const result = {
+    accountAddress: current.address,
+    txHash: rotated.txHash,
+    authNonceBefore: before.authNonce.toString(),
+    authNonceAfter: after.authNonce.toString(),
+    deviceCount: devices.commitments.length,
+    holdingCount: holdings.length,
+    activeReadGrants,
+    sealedReadGrants: rotated.sealedReadGrants.map(({ grantId }) => grantId),
+  };
+  record('viewingKeyRotated', result);
+  traceOperation('account.viewingKey.rotated', result);
+  status('The ACC confirmed its new sealed viewing secret.');
 });
 ui.on('fund', async () => {
   if (!account || !ui.selectedFundingAsset())
@@ -262,6 +754,86 @@ ui.on('fund', async () => {
   if (asset.color !== '00'.repeat(32)) localStorage.removeItem(legacyKey);
   status(
     `Passport account balance: ${result.creditedBalance} ${asset.color === '00'.repeat(32) ? 'NIGHT smallest units' : 'test token units'}. Transaction ${result.txId.slice(0, 12)}…`,
+  );
+});
+ui.on('withdraw', async () => {
+  if (!account?.withdrawUnshielded || !balanceAssetColor)
+    throw new Error('Open a supported Passport account and enable localnet balances first.');
+  const current = account;
+  const withdrawUnshielded = current.withdrawUnshielded;
+  if (!withdrawUnshielded) throw new Error('This Passport account cannot withdraw assets.');
+  const input = ui.withdrawalInput();
+  stage('balance');
+  status('Reading the live ACC balance before withdrawal…');
+  const balances = await refreshAccountBalances(current.address);
+  if (!balances) throw new Error('Fresh ACC balances are unavailable.');
+  const freshBalance =
+    input.color === '00'.repeat(32)
+      ? balances.night
+      : input.color === balanceAssetColor
+        ? balances.fundedAsset
+        : undefined;
+  if (freshBalance === undefined) throw new Error('The selected asset has no verified balance.');
+  const transfer = withdrawalRequest(
+    network,
+    input.color,
+    input.amount,
+    input.recipient,
+    freshBalance,
+  );
+  stage('review');
+  traceOperation('withdrawal.intent', {
+    accountAddress: current.address,
+    networkId: network,
+    color: transfer.color,
+    amount: transfer.amount,
+    recipient: input.recipient.trim(),
+    recipientHex: transfer.recipient,
+    freshBalance,
+  });
+  const confirmed = window.confirm(
+    `Withdraw from Passport ACC?\n\nNetwork: ${network}\nACC: ${current.address}\nAsset color: ${transfer.color}\nAmount: ${transfer.amount} smallest units\nFresh ACC balance: ${freshBalance}\nRecipient: ${input.recipient.trim()}\n\nConfirm this destination and amount before the passkey prompt.`,
+  );
+  if (!confirmed) {
+    status('Withdrawal cancelled before signing.');
+    traceOperation('withdrawal.cancelled', { accountAddress: current.address });
+    return;
+  }
+  stage('submit');
+  status('Confirm the owner withdrawal with your passkey; proving and submission may take time…');
+  const result = await withdrawUnshielded(transfer, { onEvent });
+  record('withdrawal', {
+    accountAddress: current.address,
+    networkId: network,
+    ...transfer,
+    recipientAddress: input.recipient.trim(),
+    balanceBefore: freshBalance,
+    txHash: result.txHash,
+    nextUseCounter: result.nextUseCounter,
+  });
+  traceOperation('withdrawal.confirmed', {
+    accountAddress: current.address,
+    networkId: network,
+    ...transfer,
+    recipientAddress: input.recipient.trim(),
+    txHash: result.txHash,
+    nextUseCounter: result.nextUseCounter.toString(),
+  });
+  const after = await ui.attempt('read', async () => {
+    const state = await current.state();
+    ui.showAccount({
+      address: current.address,
+      networkId: current.networkId,
+      bindingId: current.bindingId,
+      state,
+      lastTx: result,
+    });
+    return refreshAccountBalances(current.address);
+  });
+  status(
+    after
+      ? `Withdrawal confirmed: ${result.txHash.slice(0, 12)}… ACC balance is ${input.color === '00'.repeat(32) ? after.night : after.fundedAsset} smallest units.`
+      : `Withdrawal confirmed: ${result.txHash.slice(0, 12)}… Refresh ACC state to check its balance.`,
   );
 });
 ui.on('wallet', connectBuiltInWallet);

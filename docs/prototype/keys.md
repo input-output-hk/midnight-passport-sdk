@@ -13,14 +13,17 @@ first rotates the viewing and roster keys, reseals every grantee and then gives 
 the fresh keys; this requires chain-backed holdings and complete grant targets from the host.
 The joining device can use `openAccountAt(address)` with its own passkey and reader key when it
 knows the ACC address; this checks its live entry and opens the ledger-matched envelope without
-a directory hint. The demo does not expose that address-based flow yet. The account API can
-rotate the P-256 viewing secret or remove an enrolled device after verifying the live reader
-roster, chain-backed holdings and active read-grant targets; the demo lacks these host sources
-and hides rotation. The new
+a directory hint. The demo exposes **Open by ACC address** for an already-enrolled passkey; this
+is a recovery from a missing hint, not recovery from loss of every enrolled passkey. The account
+API can rotate the P-256 viewing secret or remove an enrolled device after verifying the live reader
+roster, chain-backed holdings and active read-grant targets. The demo supplies these sources and
+exposes reviewed sealed-key rotation; unavailable openings cause a refusal. The new
 browser composition explicitly refuses older
 deterministic-key P-256 accounts until migrated. See [ZK keys and recovery](../site/keys.md).
 The account API can read shielded holdings through this sealed P-256 keyring when a host provides
-chain-backed holding verification; the browser demo does not currently provide that source.
+chain-backed holding verification; the browser demo supplies that source through the indexer.
+Both authoriser arms validate the viewing key with a nonempty sealed-entry request; empty
+batches may do no work in a hosted encryption port.
 
 ## Historical deterministic-key P-256 prototype
 

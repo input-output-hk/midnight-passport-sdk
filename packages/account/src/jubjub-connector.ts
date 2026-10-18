@@ -23,7 +23,11 @@ import { revokeAndConfirmJubjubGrant } from './jubjub-grant-revoke.js';
 import type { RevokeJubjubGrantPure } from './jubjub-grant-revoke.js';
 import { revokeAllJubjubGrants } from './jubjub-grant-revoke-all.js';
 import type { RevokeAllJubjubGrantPure } from './jubjub-grant-revoke-all.js';
-import { JUBJUB_READER_SCAN_LIMIT, resolveJubjubReaders } from './jubjub-readers.js';
+import {
+  JUBJUB_READER_SCAN_LIMIT,
+  resolveJubjubReaders,
+  resolveRegisteredReaders,
+} from './jubjub-readers.js';
 import { sealActiveReadGrants } from './read-grant-deliveries.js';
 import { prepareShieldedWithdrawal, prepareUnshieldedWithdrawal } from './unshielded-withdrawal.js';
 import type {
@@ -32,6 +36,7 @@ import type {
   ActiveReadGrantTarget,
   Authoriser,
   CurvePoint,
+  DeviceReader,
   JubjubPureCircuits,
   PassportPorts,
   QualifiedHoldingSource,
@@ -41,7 +46,7 @@ const RETRIES = 30;
 const equal = (a: Uint8Array, b: Uint8Array): boolean =>
   a.length === b.length && a.every((byte, index) => byte === b[index]);
 const samePoint = (a: CurvePoint, b: CurvePoint): boolean => a.x === b.x && a.y === b.y;
-const conflictsWithReader = (registered: JubjubDeviceReader, joining: JubjubDeviceReader) =>
+const conflictsWithReader = (registered: DeviceReader, joining: JubjubDeviceReader) =>
   (registered.readerPublicKey === joining.readerPublicKey ||
     registered.devicePublicKey === joining.devicePublicKey) &&
   (registered.readerPublicKey !== joining.readerPublicKey ||
@@ -214,10 +219,13 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       throw new PassportConnectorError('AccountNotFound', 'The pending key entries are missing.');
     const entries = pending ? [...view.inboxEntries!, ...pendingEntries] : [...view.inboxEntries!];
     try {
+      if (!entries.length) throw new Error('the ACC inbox has no sealed key entries');
       const opened = await viewingKey.openInbox(
         networkId,
-        { account: record.address, encKey: view.encKey!, envelopes: entries.reverse() },
-        pending ? pendingEntries : [],
+        { account: record.address, encKey: view.encKey!, envelopes: [...entries].reverse() },
+        // Hosted adapters may return immediately for an empty batch. A nonempty opening
+        // forces the key origin to authenticate the envelope against the live enc_key.
+        pending ? pendingEntries : entries.slice(0, 1),
       );
       if (pending) {
         const device = opened[1];
@@ -564,7 +572,8 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
         );
       if (revocation && !(await ports.records!.exists()))
         throw new PassportConnectorError('AccountNotFound', 'No local account record exists.');
-      const pure = requirePure((await readBinding()).pureCircuits);
+      const resolvedBinding = await readBinding();
+      const pure = requirePure(resolvedBinding.pureCircuits);
       recordPure.set(record, pure);
       if (removal !== undefined && !/^[0-9a-f]{64}$/i.test(removal))
         throw new PassportConnectorError(
@@ -700,17 +709,33 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             throw new PassportConnectorError('DeviceRosterInvalid', 'The joining device is live.');
           const reader = toHex(await viewingKey.readerPublicKey(networkId));
           const device = await authoriser.devicePublicKeyHex!();
-          const roster = resolveJubjubReaders({
+          const registered = opened.flatMap((entry) =>
+            entry?.kind === 'device' ? [entry.device] : [],
+          );
+          const rosterInput = {
             account: record.address,
             epoch: view.deviceEpoch,
-            registered: opened.flatMap((entry) => (entry?.kind === 'device' ? [entry.device] : [])),
+            registered,
             liveEntries,
             ...(target && {
               allowedEntries: liveEntries.filter((entry) => !equal(entry, target)),
             }),
             pure,
             decodeDevicePublicKey: decode,
-          });
+          };
+          const decodeP256 = viewingKey.decodeP256DevicePublicKey;
+          if (registered.some((entry) => entry.scheme === 'p256-webauthn') && !decodeP256)
+            throw new PassportConnectorError(
+              'BindingUnsupported',
+              'A mixed roster needs a P-256 registration decoder.',
+            );
+          const roster = decodeP256
+            ? resolveRegisteredReaders({
+                ...rosterInput,
+                p256Pure: resolvedBinding.pureCircuits,
+                decodeP256DevicePublicKey: decodeP256,
+              })
+            : resolveJubjubReaders(rosterInput);
           if (
             enrollment &&
             opened.some(
@@ -734,15 +759,10 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               'DeviceRosterInvalid',
               'The joining device already has a live entry.',
             );
-          if (enrollment && roster.dropped.some((entry) => !equal(entry, ownEntry)))
+          if (roster.dropped.some((entry) => !equal(entry, ownEntry) || (!target && !enrollment)))
             throw new PassportConnectorError(
               'DeviceRosterInvalid',
               'A live device has no unique, usable reader registration.',
-            );
-          if (target && roster.dropped.some((entry) => !equal(entry, ownEntry)))
-            throw new PassportConnectorError(
-              'DeviceRosterInvalid',
-              'A surviving device has no unique, usable reader registration.',
             );
           if (
             target &&
@@ -775,7 +795,9 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           }
           const registrations = oldEntries.filter(
             (entry) =>
-              entry.length === 192 && entry[0] === 0xd2 && (entry[1] === 1 || entry[1] === 2),
+              entry.length === 192 &&
+              (entry[1] === 1 || entry[1] === 2) &&
+              (entry[0] === 0xd2 || entry[0] === 0xd4 || entry[0] === 0xd5),
           );
           const removedReader = target ? roster.outside[0] : undefined;
           const keys = await viewingKey.createKeys(networkId, {
@@ -820,6 +842,11 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             },
             { targets: ports.readGrants!, viewingKey, random: fresh },
           );
+          if (deliveries.unsealedGrantIds.length)
+            throw new PassportConnectorError(
+              'GrantRosterUnsettled',
+              'Every surviving read grantee must receive the fresh viewing secret.',
+            );
           if (revocation && !deliveries.targets.some(({ grantId }) => grantId === revocation))
             throw new PassportConnectorError('GrantRosterUnsettled', 'The read grant disappeared.');
           if (enrollment) {
@@ -1402,6 +1429,27 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
         entryCount: view.entryCount,
         specVersion: view.specVersion,
       };
+    },
+    async deviceRoster() {
+      const view = await (await readChain()).readAccount(record.address, { includeDevices: true });
+      if (!view?.booted || !view.deviceEntries || view.deviceEntries.length !== view.entryCount)
+        throw new PassportConnectorError(
+          'DeviceRosterInvalid',
+          'The live ACC roster is unavailable.',
+        );
+      return {
+        deviceEpoch: view.deviceEpoch,
+        authNonce: view.authNonce,
+        commitments: view.deviceEntries.map(toHex).sort(),
+      };
+    },
+    async grantRoster() {
+      if (!ports.grantRoster)
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'A live ACC grant roster is required.',
+        );
+      return ports.grantRoster.readGrantRoster(record.address);
     },
     async rotateEncryptionKey() {
       throw new PassportConnectorError(

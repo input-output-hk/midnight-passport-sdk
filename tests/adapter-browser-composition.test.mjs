@@ -5,6 +5,7 @@ import { createBrowserPassport } from '../packages/adapter-browser/dist/index.js
 for (const arm of /** @type {const} */ (['p256', 'jubjub']))
   test(`${arm} browser composition is lazy`, () => {
     let bindingLoads = 0;
+    let journalFactories = 0;
     const unused = () => Promise.reject(new Error('unused port'));
     const api = createBrowserPassport({
       arm,
@@ -28,8 +29,17 @@ for (const arm of /** @type {const} */ (['p256', 'jubjub']))
       submitter: { submit: unused },
       deployer: { deploy: unused },
       directory: { get: async () => undefined, put: async () => {} },
+      grantJournalFactory: () => {
+        journalFactories++;
+        return {
+          stage: async () => {},
+          load: async () => undefined,
+          markPublished: async () => {},
+        };
+      },
     });
     assert.equal(api.networkId, 'undeployed');
     assert.equal(api.bindingId, 'acc-test');
     assert.equal(bindingLoads, 0);
+    assert.equal(journalFactories, 1);
   });

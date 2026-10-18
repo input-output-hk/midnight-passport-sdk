@@ -8,6 +8,13 @@ The `0.1.0-rc4` preview packs nine implemented packages, including the Node `ser
 
 The source repository's [release-check workflow](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/.github/workflows/publish.yml) builds, tests, packs, smoke tests, and attests a signed release tag. The [exact-source Lace consumer check](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/compatibility.md#lace-consumer-seam-check) checks the pinned PR source against local tarballs; it is a type-level seam check, not a claim of Lace runtime interoperability. The [private publisher](https://github.com/input-output-hk/midnight-passport-sdk-publisher) checks for a passing release every 15 minutes, verifies the signed source tag and commit, then independently runs the build and packaging checks. Its clean consumer test imports the account and browser entrypoints, builds a scratch Vite app using the packaged grants binding, and restores a circuit from the packaged ZKIR. The pack manifest records each tarball's SHA-256 digest; the private publisher checks it before publishing and verifies the release version and **private** visibility after each package. The workflow can resume after a partial run. It uses only the private repository's `GITHUB_TOKEN` and publishes only to GitHub Packages.
 
+For the next release, the packer excludes `dist/.tsbuildinfo` from all nine tarballs and refuses
+any build-cache entry that slips through. The source workflow also builds and packs the tracked
+source twice in distinct temporary directories, then compares every tarball SHA-256 value.
+Locally, run `nix develop -c node scripts/check-release-reproducibility.mjs` after staging the
+source to repeat that check. The private publisher must still compare the exact registry bytes
+against its signed attestation; a matching local build alone does not verify a published package.
+
 A signed `sdk-check-v<semver>` tag pointing to `passport-acc-prototype` history runs a dry run in the source repository. To publish, push a GPG-signed annotated `sdk-v<semver>` tag pointing to a signed, DCO-signed commit in that branch's history. Once the source release check passes, the private publisher picks it up automatically. Its [workflow](https://github.com/input-output-hk/midnight-passport-sdk-publisher/actions/workflows/publish.yml) can also be started manually with the tag to avoid waiting for the next scheduled run.
 
 Container images use separate signed tags and workflows. The [key image](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-key-service/README.md) is published as `ghcr.io/input-output-hk/midnight-passport-keys:<version>` from `keys-v<version>`. The [funding image](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md) was published as `ghcr.io/input-output-hk/midnight-passport-funding:0.1.0-rc2` from the verified signed `funding-v0.1.0-rc2` tag after its local Linux build, mounted-tree startup, real non-native deposit, and release workflow passed. Its digest is `sha256:5b1aebaba4944c0beccd8d70047b51b9d779f30a8839461af20c5a10f26ca9e5`; use that digest in deployments. The funding image needs a Linux-prepared pinned ACC tree, a separate wallet seed outside localnet, private token and asset policy files, and persistent reservation/wallet state. The funding GHCR package is currently public; visibility and consumer access can be changed in its package settings.
@@ -37,3 +44,18 @@ GitHub Packages requires authentication to install these packages. A local consu
 The first live publish from the public source repository created public package records, which were deleted. A restricted personal-token probe created an internal package and was also deleted. All current RC1 package records were created by the private publisher and checked through the Packages API for private visibility. This is why the source repository retains its live-release guard.
 
 The [packaging tracker](https://github.com/input-output-hk/midnight-passport-sdk/issues/31) is the release checklist.
+
+
+## Next candidate: RC5 (local preparation only)
+
+`0.1.0-rc5` is the proposed next preview, not a published version. See the
+[candidate notes]({{ '/release-notes-rc5/' | relative_url }}) and source
+`docs/review/rc5/`. Keep existing RC4 installation examples until publication is verified.
+Review/merge the stack, run CI on each final head, then use signed tags at the same reviewed
+prototype commit for packages and each image. Do not push any release tags as part of local
+preparation: those tags trigger workflows and the private package publisher.
+
+Before declaring RC5 published, verify all nine installed registry tarballs against the private
+publisher's signed attestation, inspect actual package visibility/access, record each GHCR
+manifest digest, pull and smoke the published images, run mounted-tree network checks and
+verify the deployed Pages/API links. A local Docker image ID is not a registry manifest digest.

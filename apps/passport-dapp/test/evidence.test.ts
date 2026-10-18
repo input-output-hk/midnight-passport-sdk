@@ -140,6 +140,8 @@ test('operation trace copies public request fields and sizes, never secrets or r
     seed: 'private-seed',
     token: 'private-token',
     prfOutput: 'private-prf',
+    args: [{ $bytes: 'd1'.repeat(32) }],
+    scopeSalt: 'secret-opening',
   });
   assert.deepEqual(request, { accountAddress: 'ab'.repeat(32), amount: '10', txBytes: 12 });
   assert.deepEqual(
@@ -156,6 +158,8 @@ test('operation trace copies public request fields and sizes, never secrets or r
   assert.ok(text.includes('http.request'));
   assert.ok(!text.includes('private-'));
   assert.ok(!text.includes('12'.repeat(12)));
+  assert.ok(!text.includes('secret-opening'));
+  assert.ok(!text.includes('d1'.repeat(32)));
 });
 
 test('a wallet view carries addresses and balances: no seed field exists to be copied', () => {

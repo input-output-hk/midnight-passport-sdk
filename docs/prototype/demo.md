@@ -1,16 +1,15 @@
 # Demo script
 
-> **Historical walkthrough:** The click-through and prompt counts below describe an earlier
-> deterministic-key P-256 UI. The current browser hides rotation until it has the required
-> chain-backed sources. For the current stack, NIGHT funding, and verified handover status,
-> use the [engineering handover](../site/handover.md) and [AGENTS.md](../../AGENTS.md).
+> The current sealed-account flow is described below. For environment setup, NIGHT funding and
+> verified handover status, use the [engineering handover](../site/handover.md) and
+> [AGENTS.md](../../AGENTS.md).
 
 A script for presenting the Passport DApp prototype. It describes the page by its actions, because
-the layout may change. The actions are **Create Passport account**, **Open with passkey**,
-**Rotate encryption key**, **Connect built-in wallet** and **Copy evidence**.
+the layout may change. The actions are **Create account**, **Open with passkey**,
+**Rotate sealed viewing key**, **Connect built-in wallet** and **Copy evidence**.
 
-Allow about 10 minutes. Most of that is two waits: the deploy (about 3 minutes) and the rotations
-(about 1 minute each).
+Allow time for ten deployment waves, activation, sealed-key publication and any rotations;
+localnet proof time varies by host.
 
 ## Prerequisites
 
@@ -28,6 +27,18 @@ Set up the stack as [`apps/README.md`](../../apps/README.md) describes: Nix, Doc
 
 If the chain was reset since the last run, delete `~/.midnight-passport/registry.json` and
 `registry.deployments.json` first.
+
+## Open a known ACC by address
+
+To demonstrate opening without a directory hint, copy the ACC address from the account card or
+evidence JSON, reload the page, paste it into **Known Passport ACC address**, and choose **Open by
+ACC address**. Select a passkey already enrolled in that ACC. The flow checks its live device entry
+and sealed viewing key against the chain, then reads the ACC state and balances. The address alone
+does not grant access, and this action cannot find an unknown address or recover a lost passkey.
+The operation trace records the requested and verified public addresses. The underlying SDK flow
+does not read a directory hint; its account-package tests cover opening when that hint is absent.
+After either open action, **Refresh ACC state** rereads the live ACC counters and, when the
+funding process is available, the unshielded balances. It does not ask for a passkey.
 
 ## Optional ACC funding demonstration
 
@@ -73,6 +84,87 @@ The command prints the transaction ID and confirmed ACC balance. The funding ser
 at `/v1/demo/funding`; it reads the token file on the server and forwards a fixed-size deposit to
 the separate funding service.
 
+## Optional owner withdrawal demonstration
+
+After the ACC holds an unshielded asset, enter an explicit destination in **Recipient unshielded
+Midnight address** and choose **Withdraw from Passport account**. Use a full `mn_addr_…` address on
+the demo's network; a raw hex key or an address from another network is refused. The page defaults
+to one smallest unit, reads a fresh ACC balance, rejects an amount above it, and shows the network,
+ACC, asset color, amount and destination in a confirmation dialog before passkey consent. The SDK
+owner flow signs and submits the pinned withdrawal circuit. The page then shows its transaction ID
+and rereads the ACC balance. It does not construct a transfer transaction itself.
+A [node-backed P-256 probe](../../experiments/acc-0.35/results/sdk-p256-unshielded-withdraw-node.json)
+used a fresh localnet ACC, deposited ten smallest NIGHT units, withdrew four to the public genesis
+wallet and verified that six remained. The browser confirmation still needs a manual passkey run.
+
+For a controlled round trip, use an unshielded address from a wallet you control and inspect that
+wallet's balance after confirmation. The demo's passkey-derived built-in wallet can show its address
+and balances but is read-only; it cannot send a received asset from this page. A failed or uncertain
+submission does not establish that funds stayed in the ACC. Check the ACC, transaction and recipient
+on the live chain before submitting again.
+
+## Shielded holdings inspection
+
+After a shielded deposit into the ACC, choose **Read shielded holdings**. The page unlocks the
+sealed viewing key with the enrolled passkey, opens inbox coin descriptions, and checks each coin
+against the indexer's successful ACC output event and exact Merkle index. It also checks the
+successful ACC input events for the coin's spend nullifier. Only coins that pass these checks appear with their
+color, smallest-unit value and inbox position. A forged inbox entry, an output for another ACC,
+or an already-spent coin does not appear. If the indexer cannot prove a unique output position or
+cannot supply current spend state, the read fails. Reopen or refresh the ACC to clear a displayed
+snapshot and read again. The funding button deposits **unshielded** assets and will not populate
+this panel. The page and evidence omit viewing secrets, coin nonces and PRF values.
+
+## Add a second sealed device
+
+Use two browser profiles at `http://localhost:5173`. In the joining profile, paste the existing
+ACC address into **Open by ACC address** and choose **Prepare joining device**. It creates a new
+passkey and displays a public handoff JSON document and fingerprint. Copy that document into the
+owner profile's **Joining device public handoff JSON** field. Read the live device roster, choose
+**Enroll joining device**, and compare the fingerprint on both screens before owner passkey
+consent. The demo checks the network, binding, ACC, authoriser arm and P-256 policy before signing.
+It reports the enrollment transaction and confirms the new commitment in the ACC roster. The
+joining profile can then use **Open by ACC address** with its newly created passkey. The handoff
+never contains a private passkey, PRF output, viewing secret or wallet seed.
+
+If the owner sees an interrupted publication, reread the roster and try opening from the joining
+profile. A confirmed ACC entry plus successful sealed-key opening establishes enrollment. If the
+entry is absent, use the same public handoff for a reviewed retry. If the entry exists but the
+joiner cannot open, stop and inspect the ACC inbox and event log; another enrollment may create an
+ambiguous state. The owner browser retains openings for grants it issued in an encrypted journal
+bound to its passkey; active read grants without an opening in that profile block this flow.
+To remove the joining device, read the live roster again, copy its complete commitment into
+**Device commitment to remove**, and review the network, ACC, epoch, target and entry count in the
+confirmation before consenting with the owner passkey. The SDK verifies every surviving reader,
+held coin and active read-grant target before rotating the viewing and roster keys, then removes
+the target. An absent or ambiguous target, a missing grant opening, or an unverifiable holding
+stops the operation. It spans multiple transactions: if it is interrupted after key rotation,
+inspect the live roster and inbox before attempting another removal. The removed passkey should
+no longer open the ACC; confirm the owner can still open it.
+
+## Scoped grant demonstration
+
+With an ACC open, choose **Read grant roster** to see its chain-confirmed grant generation, nonce,
+IDs, active status and read flag. In a separate browser profile, use **Prepare grant holder** to
+create a different passkey and copy only its public JubJub key to the owner. The owner chooses one
+asset, a fixed unshielded recipient, a per-call limit and a total cap, then chooses **Issue scoped
+grant**. After the live roster confirms its ID, the owner uses **Export grant opening** to unlock
+the encrypted journal and verify the opening against the active on-chain commitment. Send that JSON
+directly to the grantee; it includes the scope salt and is deliberately absent from the copied
+operation trace.
+
+The grantee pastes the opening into **Grant opening JSON from the owner**, enters the amount and
+previous spent total, and chooses **Spend scoped grant**. The page checks the live grant and fixed
+recipient before grantee passkey consent, then confirms the updated commitment. The owner can use
+**Revoke scoped grant** on an active ID and verify its inactive tombstone. **Recover pending grants**
+resumes publication of openings already staged in this browser's encrypted journal after checking
+live ACC commitments. New journal records authenticate their pending/published status. Legacy
+records remain readable, but are always rechecked during recovery and upgraded when publication
+is confirmed; their older status cannot hide an opening. The journal is profile-local; clearing browser storage loses its openings,
+and a grant created on another device cannot be recovered here. A node-backed package run covers
+issue, independent holder spend, revoke and post-revoke refusal; the two-browser passkey ceremony
+still needs a manual localnet run.
+
 For a colleague-facing run, expand **Operation trace (requests and responses)** while using the
 page. **Copy full log** exports one JSON document with the action stages, all Passport connector
 events (including deployment waves and activation), the HTTP request/response timeline, the open
@@ -85,161 +177,65 @@ a later page load.
 
 ## What to know before you start
 
-- **The passkey prompts.** Every prompt after create or open is pinned to the account's own
-  passkey, so the browser offers no other one. Only **Open with passkey**, and the wallet with no
-  account open, show a passkey picker.
+A current sealed ACC uses a random viewing secret. The browser derives only this device's reader
+key and the separate wallet seed from its passkey. Creation, opening and rotation can require
+several passkey prompts; the provider decides whether PRF output is available at creation.
+Chromium sometimes adds a signed GREASE field to an assertion. The adapter retries that exact
+known variant up to five times, so prompt counts are not fixed. The event log records each
+operation and the progress bar follows the SDK flow events.
 
-  | Action                                                  | Prompts | Which                                                                   |
-  | ------------------------------------------------------- | ------- | ----------------------------------------------------------------------- |
-  | Create, provider returns PRF results at creation        | 2       | create; enrolment probe                                                 |
-  | Create, provider returns only `prf.enabled` at creation | 3       | create; enrolment probe; PRF ceremony for the encryption key            |
-  | Create, provider without PRF                            | 1       | create, then refused. Nothing is deployed.                              |
-  | Open with passkey, after a rotation                     | 1       | the passkey picker                                                      |
-  | Open with passkey, before the first rotation            | 2       | the passkey picker; then a PRF ceremony that checks the encryption key  |
-  | Rotate encryption key                                   | 1       | a signature, pinned to the account's passkey                            |
-  | Connect built-in wallet, account open                   | 1       | the PRF ceremony, pinned to the account's passkey                       |
-  | Connect built-in wallet, no account open                | 2       | the passkey picker; then the PRF ceremony, pinned to the passkey chosen |
-
-  Whether Google Password Manager returns PRF results at creation (two prompts) is expected but not
-  confirmed by a recorded run. Be ready for three. The page's own hint text may still say three.
-
-- **The durations.** Deploy: about 180 seconds. Activation: about 25 seconds. Each rotation: about
-  1 minute. The page shows no progress bar during the deploy. See [Narrating the wait](#narrating-the-wait).
-- **The page forgets on reload.** The open account and the evidence panel are in memory. That is
-  the point of the reopen step.
+The account and operation log are in page memory. Reloading clears the page state, then
+**Open with passkey** checks the directory hint against the live ACC and opens this device's
+sealed envelope. A device with no live ACC entry cannot open it.
 
 ## The click-through
 
-### 1. The page
+### 1. Create the ACC
 
-**Say.** "This is a DApp page. It is not a wallet. The Passport connector is injected at
-`window.midnight.passport`, the way a wallet would inject itself, and the page discovers it like
-any DApp would."
+**Do.** Open exactly `http://localhost:5173/` and click **Create account**. Save the passkey with a
+PRF-capable provider when prompted. The browser makes a profile probe before deploying. The
+service then deploys the ACC in ten waves, activates the first device and publishes its sealed
+key envelope and registration. This can take several minutes. The page reports the full ACC
+address and confirmed ledger state; no seed phrase is shown.
 
-**Expect.** The status line reads "Not connected." **Rotate encryption key** is disabled. The
-evidence panel holds one step, `page-loaded`, with the connector's `apiVersion`
-(`0.1.0-prototype`).
+**Show.** In the event log, identify the passkey creation, PRF preparation, deploy waves, activation
+and sealed-key publications. The account viewing secret stays inside the keyring. The service
+pays for deployment and the passkey authorises the account calls.
 
-### 2. Create Passport account
+### 2. Rotate the sealed viewing key
 
-**Do.** Click **Create Passport account**.
+**Do.** Click **Rotate sealed viewing key**. The page reads the live device roster, verified
+shielded holdings and active read grants, then shows their counts for review. Confirm only when
+those match the intended account. The SDK refuses missing device readers or unsealable surviving
+read grants before it changes the ACC key. A successful run reports its transaction hash and a
+higher authorisation nonce without putting the secret or grant seals in the shareable log.
 
-**Say.** "I am creating a passkey. The browser asks where to save it. I choose Google Password
-Manager (or iCloud Keychain), because the account needs the PRF extension. A provider without PRF
-is refused right here, before anything is deployed."
+### 3. Reload and reopen
 
-**Expect.**
+**Do.** Reload the page, click **Open with passkey**, and choose the enrolled passkey. Confirm that
+the ACC address is unchanged and the rotated key opens. **Open by ACC address** is available to a
+second enrolled device that knows the address; it does not reconstruct a lost passkey.
 
-1. The passkey prompt appears. Create the passkey. The status line shows `passkey-created`.
-2. A second prompt, the **enrolment probe**. It is a throwaway signature that proves this
-   authenticator produces the exact WebAuthn bytes the contract verifies. Confirm it.
-3. A third prompt only if the provider did not return PRF results at creation. It derives the
-   account's encryption key. Confirm it.
-4. The status line shows `deploying`. **This takes about 180 seconds.** Nothing is asked of the
-   user.
-5. The status line shows `deployed`, then `activating`. Activation takes about 25 seconds.
-6. The status line shows `active`, then "Account `<12 hex characters>…` is created."
-   **Rotate encryption key** is now enabled.
+### 4. Connect the built-in wallet
 
-**Say, during the wait** (see [Narrating the wait](#narrating-the-wait)). "The user holds no tokens.
-The service deploys the account in 10 waves, because it does not fit in one block, and pays every
-fee. In the last wave it retires its own maintenance authority, so this account can never be
-upgraded. The only authority left is the passkey."
+**Do.** Click **Connect built-in wallet**. With an ACC open, the PRF ceremony is pinned to that
+account's credential. The wallet derives its own HD seed from the passkey and shows read-only
+addresses and balances. The sponsor wallet is separate. If the browser selects another credential,
+the pinned wallet ceremony is refused.
 
-**Evidence.** A `create:passkey-created`, `create:deploying`, `create:deployed`,
-`create:activating`, `create:active` run, each with a timestamp, then a `created` step with the
-account address, the binding (`acc-s3r1.1`) and the ledger state: booted, authorisation nonce 0,
-device epoch 0, one device entry, spec version 3. The gap between `create:deploying` and
-`create:deployed` is the deploy time. The gap to `create:active` is the activation.
+### 5. Copy the evidence
 
-### 3. Rotate encryption key
-
-**Do.** Click **Rotate encryption key**.
-
-**Say.** "Now the passkey authorises a transaction. The page computes a challenge from the
-contract's own pure circuit, the passkey signs it, the service proves the transaction, and the
-service's sponsor pays the fee. The passkey's key never leaves the authenticator. The new
-encryption key is random. Lace has no rotation recipe yet, so the prototype keeps no copy."
-
-**Expect.** One passkey prompt. The status line reads "Proving on the service (≈ 30 s)…". The
-whole step takes about **1 minute**: the P-256 proof is about 20 to 30 seconds, and the rest is
-balancing, submission and waiting for the block. Then "Rotated in transaction `<16 hex>…`."
-
-**Evidence.** A `rotate` step with `txHash`, `blockHeight` and the new state. The authorisation
-nonce goes from 0 to 1. The entry count stays 1.
-
-### 4. Reload, then Open with passkey
-
-**Do.** Reload the page. Note that **Rotate encryption key** is disabled and the evidence holds only
-`page-loaded` again. Click **Open with passkey**.
-
-**Say.** "The page has forgotten everything. The passkey is the only thing it needs. The browser
-shows a picker of passkeys for this site. I choose mine. The page asks the service's registry which
-account that passkey owns. It does not trust the answer. It checks three things against the chain."
-
-**Expect.** One prompt, the passkey picker. Then "Account `<12 hex>…` is reopened." in well under a
-second.
-
-**Say.** "The three checks: the passkey I picked owns the key in the registry record. A contract
-exists at that address. And the contract's device list holds this passkey's entry."
-
-**Evidence.** A `reopened` step with the same address and state as before, authorisation nonce 1.
-
-### 5. Rotate again
-
-**Do.** Click **Rotate encryption key**.
-
-**Say.** "This is a fresh page, so it has no memory of the previous call. It rescans the contract's
-use counter to find this passkey's live entry. That is why it works after a reload."
-
-**Expect.** One prompt, about 1 minute. A `rotate` step. The authorisation nonce is now 2.
-
-### 6. Connect built-in wallet
-
-**Do.** Click **Connect built-in wallet**.
-
-**Say.** "This part is separate from the account. It shows that a Midnight wallet can come from the
-same passkey. The browser asks the passkey for two PRF outputs. The root output goes through the
-Lace recipe to a 24-word seed, and the wallet is built from that seed. Nothing is stored. It is a
-standard DApp Connector API 4.1.0 wallet, read-only: it never proves or pays, because the service
-sponsors."
-
-**Expect.** One prompt with an account open, two with none (the picker, then the PRF prompt). The
-status line steps through "Reading the service configuration…", a PRF prompt message, "Syncing the
-built-in wallet…" and "Built-in wallet connected through the DApp Connector API." The sync runs from
-the page against the localnet indexer.
-
-**Evidence.** A `wallet` step: `seedSource: "passkey PRF (Lace recipe v1)"`, the wallet's
-configuration (indexer, node, network `undeployed`), an unshielded address (`mn_addr_undeployed1…`)
-and a Dust address (`mn_dust_undeployed1…`). The wallet is new, so it holds no funds. The same
-passkey always gives the same addresses.
-
-To show the two-prompt path, reload first and click **Connect built-in wallet** with no account
-open.
-
-### 7. Copy evidence
-
-**Do.** Click **Copy evidence**. The status line reads "Evidence copied."
-
-**Say.** "This is the record of the run. It names the network, the pinned manifest hash, every
-step with a timestamp, the account address, and every transaction hash. It holds no secret: no
-key, no seed, no PRF output. We keep these under `experiments/acc-0.35/results/`."
-
-If the browser refuses clipboard access, the status line reads "Copy failed: the browser refused
-clipboard access." Select the evidence text by hand instead.
+**Do.** Click **Copy evidence**. The JSON contains public requests, responses, account state,
+transaction hashes and timing. It excludes passkey private keys, PRF outputs, the wallet seed,
+account viewing secrets and sponsor credentials. If clipboard access fails, open the evidence
+panel and copy its text.
 
 ## Narrating the wait
 
-The status line shows `deploying` for about three minutes, and the page has no progress bar
-(fork issue [#17](https://github.com/input-output-hk/midnight-passport-sdk/issues/17) tracks it).
-In a real run the owner could not tell whether creation had finished. Use the time:
-
-- Explain the 10 waves and why the service pays: a new user has no tokens, and there is no wallet
-  to hold them yet.
-- Explain the prompt count: two or three prompts to create, none for the deploy.
-- Point at the evidence panel. It updates as each step lands, so `create:deployed` appears the
-  moment the deploy finishes.
-- Show the service's terminal if you wish. Expect little output while it works.
+The ten deploy waves dominate a fresh run. The status line, progress bar and event log show what
+has completed; proof and finality can add time after the final wave. The browser test in
+[AGENTS.md](../../AGENTS.md#5-run-the-automated-end-to-end-test) automates the WebAuthn path with
+virtual credentials, while a real Google or iCloud provider run remains a separate manual check.
 
 ## Mock mode
 
@@ -277,8 +273,9 @@ The account and the built-in wallet need the WebAuthn **PRF** extension.
   the wallet with no account open) list every passkey for the site. An old passkey without PRF, or
   from a chain that has since been reset, makes the demo fail in front of people. In Chrome, passkeys
   are listed at `chrome://password-manager/passkeys`. For iCloud Keychain, use the Passwords app.
-- A passkey from another browser profile or machine opens an account only if the registry on this
-  machine knows it.
+- A passkey in another profile or machine can open a known ACC address after it has been enrolled
+  in that account and can recover its sealed reader key. The local directory is needed only for
+  **Open with passkey**, which discovers the address.
 
 ## Troubleshooting
 
@@ -293,7 +290,7 @@ When a step fails, the status line reads `Failed: <code> — <message>`, and the
 > security keys have no PRF). Then create the account again.
 
 It appears right after the first prompt. Nothing is deployed. **Fix:** delete the passkey that was
-just saved (it exists in the provider that refused it), click **Create Passport account** again, and
+just saved (it exists in the provider that refused it), click **Create account** again, and
 choose a PRF-capable provider.
 
 A provider that does not say whether it supports PRF is not refused here. If it then returns no PRF
@@ -326,15 +323,14 @@ account.
 
 > The authenticator does not match the wa-json134 profile: `<detail>`
 
-The code is `UnsupportedAuthenticator`. It appears at create, at the enrolment probe, before any
-deploy. The detail names what differed, for example "unsupported or mismatched clientDataJSON
-(wa-json134)", "WebAuthn authenticatorData length or RP mismatch", "WebAuthn requires UP+UV, no
-extensions, valid backup flags" or "invalid WebAuthn ES256 signature". The contract accepts one
-exact shape of assertion, and this authenticator produced another.
+The code is `UnsupportedAuthenticator`. The detail names what differed, for example mismatched
+`clientDataJSON`, authenticator data, RP hash, flags or ES256 signature. The contract accepts one
+exact assertion shape. Chromium's known signed GREASE field is retried up to five times without
+changing the signed bytes; a different format is refused.
 
-**Fix:** delete the passkey and retry once. If it repeats, retry with another provider. No run so
-far has hit this with a real authenticator, so no remedy beyond that is recorded. At a later
-signature the same details appear without the prefix, with the code `InternalError`.
+**Fix:** retry once, then try another PRF-capable provider if the profile error repeats. If the
+five bounded GREASE attempts are exhausted, retry the operation. An unknown assertion layout
+requires a contract/profile update before it can authorise an ACC call.
 
 Related: "Passkey enrolment origin mismatch: the page is `<origin>`, the policy is
 `http://localhost:5173`." The page was opened at another origin, such as `127.0.0.1`. Open

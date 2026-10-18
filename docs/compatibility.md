@@ -49,7 +49,21 @@ server advertised the `all` profile and returned HTTP 206 for a 32-byte range
 of the pinned `deposit_unshielded.prover`. These local mock-passkey runs do not
 test a real authenticator, grants, recovery, or Lace-hosted transaction paths.
 
+The Chrome CDP virtual authenticator exposed a strict-profile browser mismatch
+on 2026/10/17: [Chromium sometimes adds its signed GREASE member](https://chromium.googlesource.com/chromium/src/+/f207f132b656e084dc8ae12c7b4f0f54043aefdd/content/browser/webauth/client_data_json.cc#160) to
+`clientDataJSON`, while the pinned `wa-json134` ACC accepts one exact byte
+layout. The WebAuthn adapter now retries only that known variant, up to five
+times, without rewriting signed bytes. Unknown layouts still fail closed. A
+virtual-authenticator localnet run and manual Google/iCloud provider runs are
+separate evidence gates; this retry does not change the on-chain format. The full
+Chrome CDP run passed on `undeployed` on 2026/10/17: create, two rotations,
+reload/open, wrong-credential refusal and wallet connection used 19 WebAuthn
+assertions against ACC `3ae05ff57a8ad4fd76a9e8e3cef3041200882c1b06d6d058c4f4a3cc5c26469a`.
+
 ## Lace consumer seam check
+
+The [Lace consumer report](lace-consumer-report.md) maps each SDK package to the
+merged Lace module, its required adapters and the still-open runtime gates.
 
 The SDK keyring writes Lace's current suite `0x02` envelope (`0xd1`), JubJub
 device registration (`0xd2`) and grant record (`0xd3`) formats. Exact known-answer
@@ -58,11 +72,16 @@ opens Lace's records and writes the same bytes with fixed randomness. The SDK
 also opens its earlier suite `0x01` records. This is wire compatibility, not
 a cross-product live account test.
 
-The local `0.1.0-dev.9` pack of all nine packages passed the tarball consumer
+The local `0.1.0-dev.10` pack of all nine packages passed the tarball consumer
 smoke, including a scratch browser build and a hash-verified key restore. The
-exact-source Lace consumer type check also passed against PR #2845 at
-`cdfa9cfd81a0adcc0a7224aa624f18e52494f602`. These are local pre-tag gates;
-the `dev.9` packages were not published.
+exact-source Lace consumer type check passed against merged PR #2845 at
+`502b0794cc7bcfc76342230193fef4ebb63cae1c`; seven direct Midnight runtime
+dependencies have the same versions in both modules. These are local pre-tag gates;
+the `dev.10` packages were not published. The scratch browser bundle includes runtime
+0.20.0 for the pinned ACC and runtime 0.16.0 through `compact-js@3.0.0-rc.3`'s
+explicit `compact-runtime-ledger8` alias. That alias is the upstream Ledger 8 path,
+not a second copy of the Ledger 9 runtime. The current Lace/SDK host still needs a
+full module runtime and bundle audit before claiming complete hosted compatibility.
 
 The SDK adds
 type `0xd5` for a compressed 33-byte P-256 authoriser key and its WebAuthn
@@ -75,9 +94,9 @@ not evidence of Lace runtime compatibility. SDK-side P-256 rotation and
 second-device recovery have since passed on the pinned localnet; Lace-hosted
 runtime validation remains open.
 
-The fixture in `tests/fixtures/lace-seams.mjs` tracks
+The structural fixture in `tests/fixtures/lace-seams.mjs` was copied from
 [lace-platform PR #2845](https://github.com/input-output-hk/lace-platform/pull/2845)
-at head `cdfa9cfd81a0adcc0a7224aa624f18e52494f602` (2026/10/15), from
+at `cdfa9cfd81a0adcc0a7224aa624f18e52494f602` (2026/10/15), from
 `packages/contract/passport/src/types.ts`. `tests/account-ports.test.mjs` checks
 the structural TypeScript assignments. A second local check now compiles the
 **actual contract seam sources**, generated ACC ledger declaration, and gated-call handle type from that exact Lace commit against all nine
@@ -107,7 +126,7 @@ sealed bookkeeping. The packed source check also compiles `createHostedAccChain`
 with Lace's exact generated ledger and gated-call handle types. This does not
 establish Lace-hosted runtime compatibility.
 
-The check pins Lace HEAD to `cdfa9cfd81a0adcc0a7224aa624f18e52494f602`
+The check pins Lace HEAD to `502b0794cc7bcfc76342230193fef4ebb63cae1c`
 and rejects local edits to its contract seam, ledger declaration, and gated-call
 handle. The Lace source dependencies
 `type-fest@4.41.0`, `ts-custom-error@3.3.1`, `@reduxjs/toolkit@2.11.2`, and
@@ -330,3 +349,14 @@ implemented packages, adding the service library and excluding the scaffolds.
 The RC4 row describes this preview release's binding and wire compatibility;
 it does not establish full Lace runtime compatibility or complete support for
 all pinned ACC circuits. See the [RC4 release notes](site/release-notes-rc4.md).
+
+
+### Hosted signer runtime findings (2026-10-17)
+
+The [consumer report](lace-consumer-report.md#runtime-findings-and-acceptance-still-open)
+records actual Lace protocol tests: creation and non-rotating enrollment do not admit the
+SDK's inbox validation/roster requests, and sign-in intentionally hides device registrations.
+An empty inbox batch is a transport no-op; SDK P-256 and JubJub opening now request a real
+entry before accepting the viewing key. Both packed-consumer checks reject separate physical
+copies of the current Compact/ledger modules, even when their versions match. These checks
+improve integration diagnostics; #79/#81's cross-product runtime criteria remain open.

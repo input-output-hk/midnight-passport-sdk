@@ -4,9 +4,13 @@
   "type": "module",
   "scripts": {
     "start": "../../experiments/acc-0.35/guard.sh && tsx src/main.ts",
+    "inspect": "../../experiments/acc-0.35/guard.sh && tsx src/inspect.ts",
+    "reconcile": "../../experiments/acc-0.35/guard.sh && tsx src/reconcile.ts",
     "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {
+    "@input-output-hk/mn-passport-adapter-midnight-js": "workspace:*",
+    "@input-output-hk/mn-passport-adapter-service": "workspace:*",
     "@input-output-hk/mn-passport-contract": "workspace:*",
     "@input-output-hk/mn-passport-service": "workspace:*",
     "@midnightntwrk/wallet-sdk-address-format": "4.0.0-rc.0"

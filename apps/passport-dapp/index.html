@@ -44,8 +44,8 @@
       <section class="intro" aria-label="About this demo">
         <p>
           Create a Passport smart account with a passkey, reopen it after a reload, and connect a
-          wallet seeded from the same passkey. P-256 mode also demonstrates passkey-signed
-          encryption-key rotation. The service proves and sponsors every transaction on the Midnight
+          wallet seeded from the same passkey. You can also open a known ACC by address with an
+          enrolled passkey. The service proves and sponsors every transaction on the Midnight
           network this build is pinned to.
         </p>
       </section>
@@ -78,6 +78,331 @@
             <p class="action-desc" id="open-desc"></p>
           </li>
           <li class="action">
+            <label for="open-address">Known Passport ACC address</label>
+            <input
+              id="open-address"
+              class="action-input"
+              type="text"
+              inputmode="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="64 lowercase hex characters"
+              aria-describedby="openAt-desc"
+            />
+            <button
+              id="openAt"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="openAt-prompts openAt-desc"
+              disabled
+            >
+              Open by ACC address
+            </button>
+            <p class="prompts" id="openAt-prompts"></p>
+            <p class="action-desc" id="openAt-desc"></p>
+          </li>
+          <li class="action">
+            <button
+              id="refresh"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="refresh-prompts refresh-desc"
+              disabled
+            >
+              Refresh ACC state
+            </button>
+            <p class="prompts" id="refresh-prompts"></p>
+            <p class="action-desc" id="refresh-desc"></p>
+          </li>
+          <li class="action">
+            <button
+              id="holdings"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="holdings-prompts holdings-desc"
+              disabled
+            >
+              Read shielded holdings
+            </button>
+            <p class="prompts" id="holdings-prompts"></p>
+            <p class="action-desc" id="holdings-desc"></p>
+          </li>
+          <li class="action">
+            <button
+              id="roster"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="roster-prompts roster-desc"
+              disabled
+            >
+              Read device roster
+            </button>
+            <p class="prompts" id="roster-prompts"></p>
+            <p class="action-desc" id="roster-desc"></p>
+          </li>
+          <li class="action">
+            <button
+              id="prepareJoiner"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="prepareJoiner-prompts prepareJoiner-desc"
+              disabled
+            >
+              Prepare joining device
+            </button>
+            <p class="prompts" id="prepareJoiner-prompts"></p>
+            <p class="action-desc" id="prepareJoiner-desc"></p>
+            <p class="action-needs">
+              Enter the ACC address in “Open by ACC address” on the joining browser first.
+            </p>
+          </li>
+          <li class="action">
+            <button
+              id="grantRoster"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="grantRoster-prompts grantRoster-desc"
+              disabled
+            >
+              Read grant roster
+            </button>
+            <p class="prompts" id="grantRoster-prompts"></p>
+            <p class="action-desc" id="grantRoster-desc"></p>
+          </li>
+          <li class="action">
+            <button
+              id="prepareGrantee"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="prepareGrantee-prompts prepareGrantee-desc"
+              disabled
+            >
+              Prepare grant holder
+            </button>
+            <p class="prompts" id="prepareGrantee-prompts"></p>
+            <p class="action-desc" id="prepareGrantee-desc"></p>
+            <label for="grantee-output">Public grantee JubJub key</label>
+            <input
+              id="grantee-output"
+              class="action-input"
+              type="text"
+              readonly
+              hidden
+              aria-label="Public grantee JubJub key"
+            />
+          </li>
+          <li class="action" hidden>
+            <label for="grant-grantee">JubJub grantee public key (64 hex characters)</label>
+            <input
+              id="grant-grantee"
+              class="action-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="Public key from the grantee browser"
+              aria-describedby="issueGrant-desc"
+            />
+            <label for="grant-asset">Asset this grant can withdraw</label>
+            <select id="grant-asset" aria-describedby="issueGrant-desc"></select>
+            <label for="grant-recipient">Fixed recipient unshielded Midnight address</label>
+            <input
+              id="grant-recipient"
+              class="action-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="mn_addr_…"
+              aria-describedby="issueGrant-desc"
+            />
+            <label for="grant-per-call">Maximum per withdrawal (smallest units)</label>
+            <input
+              id="grant-per-call"
+              class="action-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              value="1"
+              aria-describedby="issueGrant-desc"
+            />
+            <label for="grant-cap">Total grant cap (smallest units)</label>
+            <input
+              id="grant-cap"
+              class="action-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              value="1"
+              aria-describedby="issueGrant-desc"
+            />
+            <button
+              id="issueGrant"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="issueGrant-prompts issueGrant-desc"
+              disabled
+            >
+              Issue scoped grant
+            </button>
+            <p class="prompts" id="issueGrant-prompts"></p>
+            <p class="action-desc" id="issueGrant-desc"></p>
+          </li>
+          <li class="action">
+            <label for="export-grant-id">Active grant ID to hand off</label>
+            <input
+              id="export-grant-id"
+              class="action-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="64 lowercase hex characters from the live roster"
+              aria-describedby="exportGrant-desc"
+            />
+            <button
+              id="exportGrant"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="exportGrant-prompts exportGrant-desc"
+              disabled
+            >
+              Export grant opening
+            </button>
+            <p class="prompts" id="exportGrant-prompts"></p>
+            <p class="action-desc" id="exportGrant-desc"></p>
+            <label for="grant-opening-output">Opening JSON for the grantee</label>
+            <textarea
+              id="grant-opening-output"
+              rows="8"
+              readonly
+              hidden
+              aria-label="Grant opening JSON for the grantee"
+            ></textarea>
+          </li>
+          <li class="action">
+            <label for="grant-opening-input">Grant opening JSON from the owner</label>
+            <textarea
+              id="grant-opening-input"
+              rows="8"
+              spellcheck="false"
+              aria-describedby="spendGrant-desc"
+            ></textarea>
+            <label for="grant-spend-amount">Amount to withdraw (smallest units)</label>
+            <input
+              id="grant-spend-amount"
+              class="action-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              value="1"
+              aria-describedby="spendGrant-desc"
+            />
+            <label for="grant-spent-prev">Total already spent through this grant</label>
+            <input
+              id="grant-spent-prev"
+              class="action-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              value="0"
+              aria-describedby="spendGrant-desc"
+            />
+            <button
+              id="spendGrant"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="spendGrant-prompts spendGrant-desc"
+              disabled
+            >
+              Spend scoped grant
+            </button>
+            <p class="prompts" id="spendGrant-prompts"></p>
+            <p class="action-desc" id="spendGrant-desc"></p>
+          </li>
+          <li class="action">
+            <label for="revoke-grant-id">Grant ID to revoke</label>
+            <input
+              id="revoke-grant-id"
+              class="action-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="64 lowercase hex characters from the live roster"
+              aria-describedby="revokeGrant-desc"
+            />
+            <button
+              id="revokeGrant"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="revokeGrant-prompts revokeGrant-desc"
+              disabled
+            >
+              Revoke scoped grant
+            </button>
+            <p class="prompts" id="revokeGrant-prompts"></p>
+            <p class="action-desc" id="revokeGrant-desc"></p>
+          </li>
+          <li class="action">
+            <button
+              id="recoverGrants"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="recoverGrants-prompts recoverGrants-desc"
+              disabled
+            >
+              Recover pending grants
+            </button>
+            <p class="prompts" id="recoverGrants-prompts"></p>
+            <p class="action-desc" id="recoverGrants-desc"></p>
+          </li>
+          <li class="action">
+            <label for="handoff-input">Joining device public handoff JSON</label>
+            <textarea
+              id="handoff-input"
+              rows="5"
+              spellcheck="false"
+              aria-describedby="enrollDevice-desc"
+            ></textarea>
+            <button
+              id="enrollDevice"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="enrollDevice-prompts enrollDevice-desc"
+              disabled
+            >
+              Enroll joining device
+            </button>
+            <p class="prompts" id="enrollDevice-prompts"></p>
+            <p class="action-desc" id="enrollDevice-desc"></p>
+          </li>
+          <li class="action">
+            <label for="remove-commitment">Device commitment to remove</label>
+            <input
+              id="remove-commitment"
+              class="action-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="64 lowercase hex characters from the live roster"
+              aria-describedby="removeDevice-desc"
+            />
+            <button
+              id="removeDevice"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="removeDevice-prompts removeDevice-desc"
+              disabled
+            >
+              Remove enrolled device
+            </button>
+            <p class="prompts" id="removeDevice-prompts"></p>
+            <p class="action-desc" id="removeDevice-desc"></p>
+          </li>
+          <li class="action">
             <button
               id="rotate"
               class="btn btn-secondary"
@@ -85,7 +410,7 @@
               aria-describedby="rotate-prompts rotate-desc rotate-needs"
               disabled
             >
-              Rotate encryption key
+              Rotate sealed viewing key
             </button>
             <p class="prompts" id="rotate-prompts"></p>
             <p class="action-desc" id="rotate-desc"></p>
@@ -117,6 +442,42 @@
             </button>
             <p class="prompts" id="fund-prompts"></p>
             <p class="action-desc" id="fund-desc"></p>
+          </li>
+          <li class="action" hidden>
+            <label for="withdraw-asset">Asset to withdraw</label>
+            <select id="withdraw-asset" aria-describedby="withdraw-desc"></select>
+            <label for="withdraw-amount">Amount in smallest units</label>
+            <input
+              id="withdraw-amount"
+              class="action-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              value="1"
+              aria-describedby="withdraw-desc"
+            />
+            <label for="withdraw-recipient">Recipient unshielded Midnight address</label>
+            <input
+              id="withdraw-recipient"
+              class="action-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="mn_addr_…"
+              aria-describedby="withdraw-desc"
+            />
+            <button
+              id="withdraw"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="withdraw-prompts withdraw-desc"
+              disabled
+            >
+              Withdraw from Passport account
+            </button>
+            <p class="prompts" id="withdraw-prompts"></p>
+            <p class="action-desc" id="withdraw-desc"></p>
           </li>
         </ul>
       </section>
@@ -159,6 +520,27 @@
             No account open. Create one, or open an existing one with your passkey.
           </p>
           <dl class="facts" id="account-facts" hidden></dl>
+          <h3>Joining device handoff</h3>
+          <p class="empty" id="handoff-empty">
+            Prepare a new passkey in a second browser to get a public handoff.
+          </p>
+          <p id="handoff-fingerprint" hidden></p>
+          <textarea
+            id="handoff-output"
+            rows="5"
+            readonly
+            hidden
+            aria-label="Public joining device handoff JSON"
+          ></textarea>
+          <h3>Live device roster</h3>
+          <p class="empty" id="roster-empty">Open an account, then read its device roster.</p>
+          <dl class="facts" id="roster-facts" hidden></dl>
+          <h3>Live grant roster</h3>
+          <p class="empty" id="grant-roster-empty">Open an account, then read its grant roster.</p>
+          <dl class="facts" id="grant-roster-facts" hidden></dl>
+          <h3>Chain-verified shielded coins</h3>
+          <p class="empty" id="holdings-empty">Open an account, then read its shielded holdings.</p>
+          <dl class="facts" id="holdings-facts" hidden></dl>
         </section>
         <section class="panel" aria-labelledby="wallet-title">
           <h2 id="wallet-title">Built-in wallet</h2>

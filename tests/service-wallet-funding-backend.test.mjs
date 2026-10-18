@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createWalletFundingBackend } from '../packages/service/dist/index.js';
 
+/** @typedef {import('../packages/service/dist/index.js').FundingProgress} FundingProgress */
+
 const address = 'ab'.repeat(32);
 const colorHex = 'cd'.repeat(32);
 const request = {
@@ -48,14 +50,26 @@ test('wallet backend submits a permissionless deposit and waits for the ACC cred
     pollMs: 1,
   });
   assert.equal(await backend.eligible(address), true);
-  assert.deepEqual(await backend.fund(request), {
-    requestId: request.requestId,
-    txId: 'tx-1',
-    preparationTxId: 'preparation-tx',
-    creditedBalance: '10',
-  });
+  /** @type {FundingProgress[]} */
+  const progress = [];
+  assert.deepEqual(
+    await backend.fund(request, async (event) => {
+      progress.push(event);
+    }),
+    {
+      requestId: request.requestId,
+      txId: 'tx-1',
+      preparationTxId: 'preparation-tx',
+      creditedBalance: '10',
+    },
+  );
   assert.deepEqual(deposits, [{ color: colorHex, amount: 10n }]);
   assert.equal(readsAfterSubmit, 2);
+  assert.deepEqual(progress, [
+    { stage: 'balance-observed', balanceBefore: '0' },
+    { stage: 'prepared', preparationTxId: 'preparation-tx' },
+    { stage: 'submitted', txId: 'tx-1' },
+  ]);
 });
 
 test('wallet backend rejects unlisted and wrong-version contracts before spending', async () => {
@@ -80,8 +94,43 @@ test('wallet backend rejects unlisted and wrong-version contracts before spendin
   assert.equal(await backend.eligible('00'.repeat(32)), false);
   assert.equal(connected, 0);
   assert.equal(await backend.eligible(address), false);
-  await assert.rejects(backend.fund(request), /eligible deployed binding/);
+  /** @type {FundingProgress[]} */
+  const progress = [];
+  await assert.rejects(
+    backend.fund(request, async (event) => {
+      progress.push(event);
+    }),
+    /eligible deployed binding/,
+  );
+  assert.deepEqual(progress, [{ stage: 'no-submit' }]);
   assert.equal(deposited, 0);
+});
+
+test('a failed preparation remains ambiguous even when it returns no transaction ID', async () => {
+  /** @type {FundingProgress[]} */
+  const progress = [];
+  const backend = createWalletFundingBackend({
+    deployed: () => true,
+    connect: async () => ({
+      ledgerState: async () => ({
+        spec_version: 3n,
+        unshielded_balances: { member: () => false, lookup: () => 0n },
+      }),
+      depositUnshielded: async () => {
+        throw new Error('must not run');
+      },
+    }),
+    prepareDeposit: async () => {
+      throw new Error('uncertain preparation');
+    },
+  });
+  await assert.rejects(
+    backend.fund(request, async (event) => {
+      progress.push(event);
+    }),
+    /uncertain preparation/,
+  );
+  assert.deepEqual(progress, [{ stage: 'balance-observed', balanceBefore: '0' }]);
 });
 
 test('an unconfirmed credit fails while the route keeps its reservation pending', async () => {
