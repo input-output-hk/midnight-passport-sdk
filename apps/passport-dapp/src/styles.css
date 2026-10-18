@@ -350,6 +350,21 @@ code {
   display: none;
 }
 
+.action-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55rem 0.7rem;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: 0.88rem var(--font-mono);
+}
+
+.action-input:disabled {
+  opacity: 0.6;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

@@ -2,7 +2,27 @@
 // through. Data only, no DOM: ui.ts renders it and event-log.ts times it from the connector's events.
 import type { PassportStep } from '@input-output-hk/mn-passport-protocol';
 
-export type ActionId = 'create' | 'open' | 'rotate' | 'wallet' | 'fund';
+export type ActionId =
+  | 'create'
+  | 'open'
+  | 'openAt'
+  | 'refresh'
+  | 'holdings'
+  | 'prepareJoiner'
+  | 'roster'
+  | 'grantRoster'
+  | 'prepareGrantee'
+  | 'issueGrant'
+  | 'exportGrant'
+  | 'spendGrant'
+  | 'revokeGrant'
+  | 'recoverGrants'
+  | 'enrollDevice'
+  | 'removeDevice'
+  | 'rotate'
+  | 'wallet'
+  | 'fund'
+  | 'withdraw';
 
 /** A prompt count, or a range when it depends on the passkey provider. */
 export type PromptCount = number | readonly [min: number, max: number];
@@ -18,8 +38,23 @@ export type PromptCount = number | readonly [min: number, max: number];
 export const PASSKEY_PROMPTS = {
   create: [2, 3],
   open: [1, 2],
+  openAt: [1, 2],
+  refresh: 0,
+  holdings: 1,
+  prepareJoiner: 2,
+  roster: 0,
+  grantRoster: 0,
+  prepareGrantee: 2,
+  issueGrant: 1,
+  exportGrant: 1,
+  spendGrant: 2,
+  revokeGrant: 1,
+  recoverGrants: 1,
+  enrollDevice: 1,
+  removeDevice: 1,
   rotate: 1,
   fund: 0,
+  withdraw: 1,
   walletWithAccount: 1,
   walletWithoutAccount: 2,
 } as const satisfies Record<string, PromptCount>;
@@ -77,6 +112,109 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       "Reopens this passkey's account and checks its sealed viewing secret against the live ACC key.",
     stages: [{ id: 'identify', label: 'Choose the passkey and check it against the chain' }, read],
   },
+  openAt: {
+    title: 'Open by ACC address',
+    summary:
+      'Opens a known ACC with an enrolled passkey and checks its sealed viewing key against the live contract. The address alone grants no access.',
+    stages: [{ id: 'identify', label: 'Verify this passkey in the known ACC' }, read],
+  },
+  refresh: {
+    title: 'Refresh ACC state',
+    summary: 'Reads the live ACC counters and, when funding is enabled, its unshielded balances.',
+    stages: [{ id: 'read', label: 'Read live ACC state and balances' }],
+  },
+  holdings: {
+    title: 'Read shielded holdings',
+    summary:
+      'Open the sealed ACC inbox with this passkey and display only coins whose commitments match chain outputs held by the ACC.',
+    stages: [{ id: 'verify', label: 'Open inbox and verify held outputs against the indexer' }],
+  },
+  prepareJoiner: {
+    title: 'Prepare joining device',
+    summary:
+      'On a second browser, create a passkey and export only its public reader and authoriser keys.',
+    stages: [{ id: 'passkey', label: 'Create joiner passkey and derive public keys' }],
+  },
+  roster: {
+    title: 'Read device roster',
+    summary: 'Read live ACC device commitments and epoch from the chain.',
+    stages: [read],
+  },
+  grantRoster: {
+    title: 'Read grant roster',
+    summary: 'Read live ACC grant IDs, status, read access and generation from the chain.',
+    stages: [read],
+  },
+  prepareGrantee: {
+    title: 'Prepare grant holder',
+    summary:
+      'In a separate browser, create a grant-holder passkey and copy its public JubJub key to the ACC owner.',
+    stages: [{ id: 'passkey', label: 'Create grantee passkey and derive its public key' }],
+  },
+  issueGrant: {
+    title: 'Issue scoped grant',
+    summary:
+      'Let a named JubJub grantee withdraw one localnet asset to one fixed Midnight address, within explicit per-call and total caps.',
+    stages: [
+      { id: 'review', label: 'Check the live grant roster and review the scope' },
+      { id: 'submit', label: 'Sign, prove and publish the grant' },
+      read,
+    ],
+  },
+  exportGrant: {
+    title: 'Export grant opening',
+    summary:
+      'Unlock the owner journal, verify the active grant against the chain, and hand its opening directly to the named grantee.',
+    stages: [
+      { id: 'review', label: 'Verify active grant and owner journal' },
+      { id: 'export', label: 'Unlock the sealed opening with the owner passkey' },
+    ],
+  },
+  spendGrant: {
+    title: 'Spend scoped grant',
+    summary:
+      'In the holder browser, import the opening, verify its live ACC scope and spend counter, then sign with the grantee passkey.',
+    stages: [
+      { id: 'read', label: 'Check the live scoped grant' },
+      { id: 'review', label: 'Review fixed recipient, amount and remaining cap' },
+      { id: 'submit', label: 'Sign, prove and confirm the ACC spend' },
+    ],
+  },
+  revokeGrant: {
+    title: 'Revoke scoped grant',
+    summary: 'Revoke one active grant ID and verify its inactive tombstone on chain.',
+    stages: [
+      { id: 'review', label: 'Check the live grant roster and review the ID' },
+      { id: 'submit', label: 'Sign and confirm the revocation' },
+      read,
+    ],
+  },
+  recoverGrants: {
+    title: 'Recover pending grants',
+    summary:
+      'Resume publication of this browser’s encrypted staged grant openings after checking the live ACC.',
+    stages: [{ id: 'recover', label: 'Check live grants and publish staged openings' }, read],
+  },
+  enrollDevice: {
+    title: 'Enroll joining device',
+    summary:
+      'Review the joiner fingerprint, then sign and confirm its ACC entry and sealed key delivery.',
+    stages: [
+      { id: 'review', label: 'Validate handoff and read live roster' },
+      { id: 'submit', label: 'Sign with owner passkey and enroll' },
+      read,
+    ],
+  },
+  removeDevice: {
+    title: 'Remove enrolled device',
+    summary:
+      'Review a live device commitment, rotate the sealed account keys, and confirm that entry is absent from the ACC.',
+    stages: [
+      { id: 'review', label: 'Read and review the live device roster' },
+      { id: 'submit', label: 'Rotate keys and remove the selected entry' },
+      read,
+    ],
+  },
   rotate: {
     title: 'Rotate encryption key',
     summary: `A passkey-signed call, proved on the service (about ${ROTATION_ESTIMATE_S} s) and sponsored.`,
@@ -106,6 +244,17 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       'Deposits the selected localnet asset (NIGHT or a test token) from the demo funding wallet into the open Passport account.',
     stages: [{ id: 'deposit', label: 'Deposit and confirm the ACC balance' }],
   },
+  withdraw: {
+    title: 'Withdraw from Passport account',
+    summary:
+      'Move an unshielded ACC asset to an explicit Midnight user address. Review the network, destination, asset and amount before passkey consent.',
+    stages: [
+      { id: 'balance', label: 'Read fresh ACC balance' },
+      { id: 'review', label: 'Review and confirm transfer details' },
+      { id: 'submit', label: 'Sign with passkey, prove and submit' },
+      { id: 'read', label: 'Read confirmed ACC state and balance' },
+    ],
+  },
 };
 
 /**
@@ -120,9 +269,24 @@ export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep
     activate: 'activate',
   },
   open: {},
+  openAt: {},
+  refresh: {},
+  holdings: {},
+  prepareJoiner: {},
+  roster: {},
+  grantRoster: {},
+  prepareGrantee: {},
+  issueGrant: {},
+  exportGrant: {},
+  spendGrant: {},
+  revokeGrant: {},
+  recoverGrants: {},
+  enrollDevice: {},
+  removeDevice: {},
   rotate: {},
   wallet: {},
   fund: {},
+  withdraw: {},
 };
 
 export const promptCountText = (n: PromptCount): string =>
@@ -147,6 +311,7 @@ const HINTS: Readonly<Record<string, string>> = {
     'This passkey cannot derive keys (no PRF support). Use a passkey saved in Google Password Manager or iCloud Keychain.',
   AccountNotFound:
     'No Passport account for this passkey on this network. After a chain reset the directory may be stale.',
+  InvalidAccountAddress: 'Enter a 64-character lowercase hexadecimal Passport ACC address.',
   ArtefactIntegrity:
     "The service's contract artefacts do not match the ones this page was built for. Restart both with the same manifest.",
   ProverUnavailable:
@@ -158,6 +323,17 @@ const HINTS: Readonly<Record<string, string>> = {
   InternalError: 'Something went wrong inside the connector.',
 };
 
+/** Reject malformed addresses before opening a passkey ceremony. */
+export function knownAccAddress(value: string): string {
+  const address = value.trim();
+  if (!/^[0-9a-f]{64}$/.test(address)) {
+    const error = new Error('ACC address must be 32-byte lowercase hex.');
+    error.name = 'InvalidAccountAddress';
+    throw error;
+  }
+  return address;
+}
+
 /** Turns anything thrown into a code, the raw message and a plain-language hint. */
 export function plainError(e: unknown, serviceUrl: string): PlainError {
   // A thrown null or undefined is a value too: narrow it to an empty object.
@@ -167,9 +343,12 @@ export function plainError(e: unknown, serviceUrl: string): PlainError {
   const message = typeof err.message === 'string' && err.message ? err.message : String(e);
   // An unreachable service reads as an internal error from the connector: say what it is.
   const unreachable = /unreachable|failed to fetch|networkerror|load failed/i.test(message);
-  const hint = unreachable
-    ? `Could not reach the Passport service at ${serviceUrl}. Is it running, and is this page at http://localhost:5173?`
-    : (HINTS[code] ?? 'Unexpected error; see the message below.');
+  const hint =
+    code === 'TransferInvalid'
+      ? message
+      : unreachable
+        ? `Could not reach the Passport service at ${serviceUrl}. Is it running, and is this page at http://localhost:5173?`
+        : (HINTS[code] ?? 'Unexpected error; see the message below.');
   return { code, message, hint };
 }
 

@@ -29,6 +29,18 @@ Set up the stack as [`apps/README.md`](../../apps/README.md) describes: Nix, Doc
 If the chain was reset since the last run, delete `~/.midnight-passport/registry.json` and
 `registry.deployments.json` first.
 
+## Open a known ACC by address
+
+To demonstrate opening without a directory hint, copy the ACC address from the account card or
+evidence JSON, reload the page, paste it into **Known Passport ACC address**, and choose **Open by
+ACC address**. Select a passkey already enrolled in that ACC. The flow checks its live device entry
+and sealed viewing key against the chain, then reads the ACC state and balances. The address alone
+does not grant access, and this action cannot find an unknown address or recover a lost passkey.
+The operation trace records the requested and verified public addresses. The underlying SDK flow
+does not read a directory hint; its account-package tests cover opening when that hint is absent.
+After either open action, **Refresh ACC state** rereads the live ACC counters and, when the
+funding process is available, the unshielded balances. It does not ask for a passkey.
+
 ## Optional ACC funding demonstration
 
 To run the separate funding wallet with the demo, prepare the private token and asset policy as
@@ -72,6 +84,85 @@ The command prints the transaction ID and confirmed ACC balance. The funding ser
 `127.0.0.1:8789` and stops with the demo. The Passport service owns a localnet-only browser route
 at `/v1/demo/funding`; it reads the token file on the server and forwards a fixed-size deposit to
 the separate funding service.
+
+## Optional owner withdrawal demonstration
+
+After the ACC holds an unshielded asset, enter an explicit destination in **Recipient unshielded
+Midnight address** and choose **Withdraw from Passport account**. Use a full `mn_addr_…` address on
+the demo's network; a raw hex key or an address from another network is refused. The page defaults
+to one smallest unit, reads a fresh ACC balance, rejects an amount above it, and shows the network,
+ACC, asset color, amount and destination in a confirmation dialog before passkey consent. The SDK
+owner flow signs and submits the pinned withdrawal circuit. The page then shows its transaction ID
+and rereads the ACC balance. It does not construct a transfer transaction itself.
+A [node-backed P-256 probe](../../experiments/acc-0.35/results/sdk-p256-unshielded-withdraw-node.json)
+used a fresh localnet ACC, deposited ten smallest NIGHT units, withdrew four to the public genesis
+wallet and verified that six remained. The browser confirmation still needs a manual passkey run.
+
+For a controlled round trip, use an unshielded address from a wallet you control and inspect that
+wallet's balance after confirmation. The demo's passkey-derived built-in wallet can show its address
+and balances but is read-only; it cannot send a received asset from this page. A failed or uncertain
+submission does not establish that funds stayed in the ACC. Check the ACC, transaction and recipient
+on the live chain before submitting again.
+
+## Shielded holdings inspection
+
+After a shielded deposit into the ACC, choose **Read shielded holdings**. The page unlocks the
+sealed viewing key with the enrolled passkey, opens inbox coin descriptions, and checks each coin
+against the indexer's successful ACC output event and exact Merkle index. It also checks the
+successful ACC input events for the coin's spend nullifier. Only coins that pass these checks appear with their
+color, smallest-unit value and inbox position. A forged inbox entry, an output for another ACC,
+or an already-spent coin does not appear. If the indexer cannot prove a unique output position or
+cannot supply current spend state, the read fails. Reopen or refresh the ACC to clear a displayed
+snapshot and read again. The funding button deposits **unshielded** assets and will not populate
+this panel. The page and evidence omit viewing secrets, coin nonces and PRF values.
+
+## Add a second sealed device
+
+Use two browser profiles at `http://localhost:5173`. In the joining profile, paste the existing
+ACC address into **Open by ACC address** and choose **Prepare joining device**. It creates a new
+passkey and displays a public handoff JSON document and fingerprint. Copy that document into the
+owner profile's **Joining device public handoff JSON** field. Read the live device roster, choose
+**Enroll joining device**, and compare the fingerprint on both screens before owner passkey
+consent. The demo checks the network, binding, ACC, authoriser arm and P-256 policy before signing.
+It reports the enrollment transaction and confirms the new commitment in the ACC roster. The
+joining profile can then use **Open by ACC address** with its newly created passkey. The handoff
+never contains a private passkey, PRF output, viewing secret or wallet seed.
+
+If the owner sees an interrupted publication, reread the roster and try opening from the joining
+profile. A confirmed ACC entry plus successful sealed-key opening establishes enrollment. If the
+entry is absent, use the same public handoff for a reviewed retry. If the entry exists but the
+joiner cannot open, stop and inspect the ACC inbox and event log; another enrollment may create an
+ambiguous state. The owner browser retains openings for grants it issued in an encrypted journal
+bound to its passkey; active read grants without an opening in that profile block this flow.
+To remove the joining device, read the live roster again, copy its complete commitment into
+**Device commitment to remove**, and review the network, ACC, epoch, target and entry count in the
+confirmation before consenting with the owner passkey. The SDK verifies every surviving reader,
+held coin and active read-grant target before rotating the viewing and roster keys, then removes
+the target. An absent or ambiguous target, a missing grant opening, or an unverifiable holding
+stops the operation. It spans multiple transactions: if it is interrupted after key rotation,
+inspect the live roster and inbox before attempting another removal. The removed passkey should
+no longer open the ACC; confirm the owner can still open it.
+
+## Scoped grant demonstration
+
+With an ACC open, choose **Read grant roster** to see its chain-confirmed grant generation, nonce,
+IDs, active status and read flag. In a separate browser profile, use **Prepare grant holder** to
+create a different passkey and copy only its public JubJub key to the owner. The owner chooses one
+asset, a fixed unshielded recipient, a per-call limit and a total cap, then chooses **Issue scoped
+grant**. After the live roster confirms its ID, the owner uses **Export grant opening** to unlock
+the encrypted journal and verify the opening against the active on-chain commitment. Send that JSON
+directly to the grantee; it includes the scope salt and is deliberately absent from the copied
+operation trace.
+
+The grantee pastes the opening into **Grant opening JSON from the owner**, enters the amount and
+previous spent total, and chooses **Spend scoped grant**. The page checks the live grant and fixed
+recipient before grantee passkey consent, then confirms the updated commitment. The owner can use
+**Revoke scoped grant** on an active ID and verify its inactive tombstone. **Recover pending grants**
+resumes publication of openings already staged in this browser's encrypted journal after checking
+live ACC commitments. The journal is profile-local; clearing browser storage loses its openings,
+and a grant created on another device cannot be recovered here. A node-backed package run covers
+issue, independent holder spend, revoke and post-revoke refusal; the two-browser passkey ceremony
+still needs a manual localnet run.
 
 For a colleague-facing run, expand **Operation trace (requests and responses)** while using the
 page. **Copy full log** exports one JSON document with the action stages, all Passport connector

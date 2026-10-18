@@ -110,6 +110,7 @@ contract's WebAuthn profile are bound to that origin.
 | -------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------ |
 | **Create account**                                       | Provider-dependent; includes PRF and two signed inbox publications | 10 deploy waves, activation, then two signed sealed-key publications |
 | Reload the page, then **Open with passkey**              | Provider-dependent picker and PRF ceremony               | Reads the live ACC key and opens the sealed envelope |
+| **Open by ACC address** with an already-enrolled passkey | Provider-dependent picker and PRF ceremony               | Opens the known ACC without a local directory hint; does not recover a lost passkey |
 | **Connect built-in wallet**                              | 1 with an account open, otherwise 2                      | seconds                                                                  |
 | **Copy evidence**                                        | none                                                     | copies the event log as JSON, with no secrets                            |
 

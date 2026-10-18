@@ -77,8 +77,60 @@ or when the Passport service is bound beyond loopback. The operator CLI remains 
 The reference reservation store is safe for one host sharing one file. It creates
 `<reservations-file>.lock` during updates. If the process dies with the lock present, inspect
 pending requests, wallet transactions and ACC balances before removing it. Use a transactional
-database for replicas. The source has focused policy and backend tests. On the local `undeployed`
-network, this process deposited 10 units of a faucet-minted non-native unshielded asset into a
+database for replicas. New requests journal the pre-deposit ACC balance, the optional NIGHT
+preparation transaction ID and the deposit transaction ID as each milestone is reached. Inspect
+the file without modifying it:
+
+```sh
+nix develop -c pnpm --filter passport-funding-service inspect --file \
+  "$HOME/.midnight-passport/funding-reservations.json"
+# Add --request-id <UUID> for one request, or --all to include completed requests.
+```
+
+The inspector validates the file, lists pending requests and reports whether a lock directory is
+present. It does not read the wallet seed or bearer token. A request created before progress
+journaling has no transaction IDs in its reservation. Even a new request can stop between node
+submission and recording the transaction ID, so missing progress does **not** prove that no value
+moved. The backend records `noSubmit` only if a preflight read or validation failed before it
+entered wallet preparation or the ACC deposit. An operator may release that one proved case:
+
+```sh
+nix develop -c pnpm --filter passport-funding-service reconcile --file \
+  "$HOME/.midnight-passport/funding-reservations.json" \
+  --request-id '<original UUID>' --operator '<your-id>' --release-no-submit yes
+```
+
+The command rechecks the marker under the store lock, makes a mode-600, fsynced backup beside the
+reservation file, records the operator, timestamp and reason in the request tombstone, then frees
+its daily quota. The original request ID remains unusable; a *new* ID is appropriate only after
+the original was released. Do not use the command for a request with no marker, after NIGHT
+preparation, after deposit submission, or after an uncertain crash. Those cases remain pending.
+For a request whose deposit transaction ID was durably journaled, the localnet operator can check
+the indexer's complete ACC action history and complete the original request only when that
+transaction contains exactly one successful `deposit_unshielded` call whose balance change is
+exactly the reserved amount:
+
+```sh
+nix develop -c pnpm --filter passport-funding-service reconcile --file \
+  "$HOME/.midnight-passport/funding-reservations.json" \
+  --request-id '<original UUID>' --operator '<your-id>' --confirm-credit yes
+```
+
+The resolver defaults to the local indexer on port 18088; `--indexer-url` and `--indexer-ws-url`
+can select another loopback endpoint. It is qualified only for the `undeployed` network. It
+refuses missing transaction IDs, failed or partial transactions, a different circuit, duplicate
+matching actions, an incomplete history, and any balance delta other than the reserved amount.
+Success records the original result plus transaction hash, before/after balances, operator and
+timestamp, after a private backup. Replaying the same request ID returns that result. Review the
+wallet transaction and ACC ledger too; a pending request that fails these checks stays pending.
+Never delete a pending entry to retry. If a stale
+`.lock` directory remains after a crash, stop all funding processes, copy the reservation file to a
+private backup, reconcile every pending request against wallet and chain evidence, then remove the
+lock directory manually. The `FundingStore` interface defines atomic reserve, milestone, complete,
+and release operations for a future transactional database; do not run replicas against separate
+files or a shared filesystem lock without a transactional implementation.
+
+The source has focused policy and backend tests. On the local `undeployed` network, this process deposited 10 units of a faucet-minted non-native unshielded asset into a
 live `spec_version = 3` ACC and observed the credited balance. Repeating the same request ID
 returned the same transaction ID and balance. The `0.1.0-rc2` container image passed its release
 build and mounted-tree smoke test and is published to GHCR.

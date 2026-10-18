@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Live current-account-API probe: create a sealed P-256 ACC, add a second device, open with it.
+// Live current-account-API probe: create a sealed P-256 ACC, enroll, open and remove a second device.
 // Run beside `pnpm demo up --contract-dir ... --no-key-service` in the pinned Nix shell.
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
@@ -163,6 +163,9 @@ const before = await observedChain.readAccount(account.address, { includeInbox: 
 assert.ok(before?.booted);
 assert.equal(before.specVersion, 3);
 assert.equal(before.entryCount, 1);
+const ownerRosterBefore = await account.deviceRoster();
+assert.equal(ownerRosterBefore.commitments.length, 1);
+assert.equal(ownerRosterBefore.deviceEpoch, before.deviceEpoch);
 assert.deepEqual(before.inboxEntries.map((entry) => entry[0]), [0xd1, 0xd5]);
 const reader = {
   scheme: 'p256-webauthn',
@@ -174,11 +177,29 @@ const enrolled = await account.addDevice(reader);
 const after = await observedChain.readAccount(account.address, { includeInbox: true, includeDevices: true });
 assert.ok(after);
 assert.equal(after.entryCount, 2);
+const ownerRosterAfter = await account.deviceRoster();
+assert.equal(ownerRosterAfter.commitments.length, 2);
+assert.ok(ownerRosterAfter.commitments.includes(enrolled.commitmentHex));
 assert.equal(after.hasEntry(Buffer.from(enrolled.commitmentHex, 'hex')), true);
 assert.deepEqual(after.inboxEntries.slice(-2).map((entry) => entry[0]), [0xd1, 0xd5]);
 const reopened = await createPassportAccounts(joiner.ports).openAccountAt(account.address);
 assert.equal(reopened.address, account.address);
 assert.equal((await reopened.state()).entryCount, 2);
+assert.deepEqual(await reopened.deviceRoster(), ownerRosterAfter);
+assert.deepEqual(await account.readShieldedHoldings(), []);
+assert.deepEqual(await reopened.readShieldedHoldings(), []);
+const removed = await account.removeDevice(enrolled.commitmentHex);
+assert.equal(removed.removedCommitmentHex, enrolled.commitmentHex);
+assert.ok(removed.rotationTxHash);
+assert.ok(removed.txHash);
+const ownerRosterAfterRemoval = await account.deviceRoster();
+assert.equal(ownerRosterAfterRemoval.commitments.length, 1);
+assert.ok(!ownerRosterAfterRemoval.commitments.includes(enrolled.commitmentHex));
+assert.deepEqual(await account.readShieldedHoldings(), [], 'owner must open the rotated viewing key');
+await assert.rejects(
+  createPassportAccounts(joiner.ports).openAccountAt(account.address),
+  'the removed passkey must not reopen the rotated ACC',
+);
 const evidence = {
   verdict: 'PASS',
   bindingId: 'acc-s3r1.1',
@@ -189,12 +210,19 @@ const evidence = {
   ownerScheme: 'p256-webauthn',
   joinedScheme: 'p256-webauthn',
   enrollmentCommitment: enrolled.commitmentHex,
+  removalTx: removed.txHash,
+  rotationTx: removed.rotationTxHash,
   authNonceBeforeEnrollment: before.authNonce.toString(),
   authNonceAfterEnrollment: after.authNonce.toString(),
   transactions,
   joinerOpenedByAddress: true,
-  scope: 'current account API sealed P-256 enrollment with an empty live read-grant roster',
+  ownerAndJoinerUnlockedViewingKey: true,
+  rosterCommitmentsAfterEnrollment: ownerRosterAfter.commitments,
+  rosterCommitmentsAfterRemoval: ownerRosterAfterRemoval.commitments,
+  removedPasskeyRefused: true,
+  ownerUnlockedRotatedViewingKey: true,
+  scope: 'sealed P-256 enrollment, both viewing-key openings, key rotation and device removal with an empty read-grant roster',
 };
 writeFileSync(join(root, 'experiments/acc-0.35/results/sdk-p256-sealed-device-node.json'),
   JSON.stringify(evidence, null, 2) + '\n');
-console.log(`SDK sealed P-256 device enrollment: PASS (${account.address})`);
+console.log(`SDK sealed P-256 device lifecycle: PASS (${account.address})`);

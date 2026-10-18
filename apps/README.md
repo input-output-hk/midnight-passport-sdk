@@ -117,6 +117,49 @@ open an ACC before clicking it. The Passport service forwards a fixed deposit of
 units of the selected asset while keeping its bearer token out of the browser.
 The account card reads unshielded NIGHT and test-token balances separately. The button shows the
 confirmed balance and keeps a separate request ID per asset across retries.
+With funding enabled, **Withdraw from Passport account** uses the account SDK's owner-authorised
+unshielded flow. Enter a positive smallest-unit amount and a full `mn_addr_…` user address for the
+current network. The page fetches the live ACC balance, rejects an amount above it, then displays
+the network, ACC, asset, amount and destination for explicit confirmation before asking for passkey
+consent. It logs the confirmed transaction and rereads the ACC balance. The built-in wallet only
+reads addresses and balances; receiving an asset there does not give this demo wallet a send button.
+After an indeterminate submit error, inspect the live ACC and recipient before trying again.
+The page also has **Open by ACC address**: paste the public 64-character lowercase ACC address and
+choose an already-enrolled passkey. This verifies its live device entry and sealed viewing key
+without relying on the local directory hint. It cannot discover an unknown address or recover a
+lost passkey. The requested and verified addresses appear in the operation trace.
+**Read shielded holdings** opens the ACC's sealed inbox with the current passkey and compares each
+coin with the indexer's successful output event, exact Merkle index, and recorded ACC spend events.
+Only still-unspent coins appear with public color, value and inbox position; the page and exported
+log omit the viewing secret and coin nonce. This is separate from the unshielded balance shown in
+the account card. A localnet shielded deposit is needed to populate the panel; the funding button
+deposits unshielded assets. The panel clears after a later account action and requires a fresh read.
+**Refresh ACC state** rereads live account counters and, with funding enabled, unshielded ACC
+balances without another passkey prompt.
+**Read grant roster** shows the live grant generation, nonce, public IDs and active/revoked status
+from one ACC chain snapshot. **Recover pending grants** checks encrypted openings staged in this
+browser against live commitments and resumes their sealed publication; unsettled IDs remain in
+the operation log. These actions do not create a grant or authorize a grantee spend.
+
+To add a second sealed device, open the demo in another browser profile at the same `localhost`
+origin. Put the owner ACC address in **Open by ACC address** and select **Prepare joining device**.
+That browser creates a new passkey and displays public handoff JSON plus its SHA-256 fingerprint.
+Copy the JSON to **Joining device public handoff JSON** on the owner browser. Select **Read device
+roster**, then **Enroll joining device**. Compare the fingerprint on both screens before consenting
+with the owner passkey. The page confirms the enrollment transaction and checks the new commitment
+in the live ACC roster. On the joining browser, use **Open by ACC address** with its new passkey.
+The handoff contains only ACC address, network, binding, public reader/authoriser keys and the P-256
+WebAuthn policy. If delivery is interrupted, reread the roster and reopen with the joiner; a
+confirmed entry is authoritative. Retry enrollment only if the entry is absent, using the same
+joiner public handoff. This browser retains openings for grants it issued in an encrypted local
+journal bound to its passkey PRF. An active read grant whose opening is absent in this browser
+blocks enrollment. For removal, copy the full target commitment from **Read device roster** into
+**Device commitment to remove**, compare the displayed epoch and roster in the confirmation, then
+sign. The SDK verifies and reseals every surviving reader and active read grantee before it removes
+the target. If any opening or holding cannot be verified, removal stops. The operation spans
+multiple transactions; after an uncertain result, inspect the live roster and inbox before
+retrying. Clearing browser storage loses the local grant openings.
+
 Expand **Operation trace (requests and responses)** to inspect the chronological public-field
 trace. **Copy full log** includes that trace, Passport events (including deploy waves), account
 state and built-in wallet addresses and balances; raw transaction bodies and secret material are
@@ -185,9 +228,9 @@ and `assertionMaterial`.
   and grant-target checks. The
   page hides rotation until it supplies those host sources. See
   [`docs/prototype/keys.md`](../docs/prototype/keys.md).
-- **P-256 holdings reads need a chain-backed source.** The account API can open sealed coin
-  descriptions with the live passkey and returns only outputs verified as held by the ACC. The
-  browser demo does not configure `VerifiedHoldingSource`, so this method refuses reads there.
+- **Shielded holdings reads use a chain-backed source.** The browser checks the ACC output event,
+  exact Merkle index and successful ACC input nullifiers before displaying an opened coin. If the
+  indexer cannot provide any of these, the read fails closed. An already-spent output is omitted.
 - **P-256 enrollment needs host discovery.** The account API can deliver a sealed key and add a
   second live P-256 device. If read grants are active, the host must supply verified holdings and
   complete grant targets so the account rotates its viewing and roster keys and reseals every
@@ -211,7 +254,7 @@ and `assertionMaterial`.
   - _First arm._ `/deploy` accepts `firstArm: "p256" | "jubjub"` and installs that arm's verifier keys
     first. Omitted `firstArm` retains the prototype's P-256 behavior. The SDK connector currently
     selects P-256; the JubJub account flow is a separate release gate.
-  - _Grant publication._ Both account arms can issue and recover staged grants through host ports, settling sealed bookkeeping and read seals. The host must provide a live `grantCommitments` source; publication compares the staged opening with the ACC object and read-key commitments at the signing nonce. This demo page does not configure a grant journal or expose grant controls yet.
+  - _Grant publication._ Both account arms can issue and recover staged grants through host ports, settling sealed bookkeeping and read seals. The demo now supplies a browser-local encrypted journal and live grant commitment readers; publication compares the staged opening with the ACC object and read-key commitments at the signing nonce. The page exposes roster read and recovery, but not grant issue or grantee spend. The journal is local to one browser profile and has no backup or cross-device synchronization.
   - _Grant revocation._ The reusable package rotates before revoking a read grant or clearing every grant; revoke-all seals the new secret to devices only. The demo page has no grant controls yet.
     Read issue and revoke-all rotate inside their owner key session; the page does not exercise Lace's hosted signer.
     The sealed P-256 package flow can also rotate away from live read grantees before clearing the
@@ -244,7 +287,8 @@ compromised service could fake the ledger that `openAccount`'s checks read.
 The packaged JubJub grant source is `createMidnightGrantSource` in
 `mn-passport-adapter-midnight-js`. A host supplies the pinned ACC binding, same-network public-data
 provider, and durable read-key openings. It reads the live grant map and checks opening hashes for
-viewing-key rotation; the standalone demo does not yet wire a grant opening store or grant UI.
+viewing-key rotation; the standalone demo wires a browser-local encrypted opening store, but does
+not yet expose grant controls. An opening created elsewhere remains unavailable here.
 Grant issue also reads the roster's auth nonce and refuses a change after signing, before it
 stages an opening or submits the circuit.
 The owner flow now names the creation lock choice and full grant context in its key-session

@@ -52,19 +52,34 @@ export function createWalletFundingBackend(
 
   return {
     eligible: async (address) => (await accountFor(address)) !== undefined,
-    fund: (request: ServiceWire.FundAccRequest) =>
+    fund: (request: ServiceWire.FundAccRequest, recordProgress) =>
       runExclusive(async () => {
-        const account = await accountFor(request.accountAddress);
-        if (!account) throw new Error('ACC is not an eligible deployed binding');
-        if (!/^[0-9a-f]{64}$/.test(request.color) || !/^[1-9][0-9]*$/.test(request.amount))
-          throw new Error('invalid unshielded deposit');
-        const color = Uint8Array.from(Buffer.from(request.color, 'hex'));
-        const amount = BigInt(request.amount);
-        if (amount > (1n << 128n) - 1n) throw new Error('deposit exceeds Uint128');
-        const before = await balance(account, color);
+        let account: FundingAccount;
+        let color: Uint8Array;
+        let amount: bigint;
+        let before: bigint;
+        try {
+          const connected = await accountFor(request.accountAddress);
+          if (!connected) throw new Error('ACC is not an eligible deployed binding');
+          account = connected;
+          if (!/^[0-9a-f]{64}$/.test(request.color) || !/^[1-9][0-9]*$/.test(request.amount))
+            throw new Error('invalid unshielded deposit');
+          color = Uint8Array.from(Buffer.from(request.color, 'hex'));
+          amount = BigInt(request.amount);
+          if (amount > (1n << 128n) - 1n) throw new Error('deposit exceeds Uint128');
+          before = await balance(account, color);
+          await recordProgress?.({ stage: 'balance-observed', balanceBefore: before.toString() });
+        } catch (error) {
+          // No wallet operation capable of moving value has begun. The marker is durable before
+          // the route returns failure; if writing it fails, the reservation remains ambiguous.
+          await recordProgress?.({ stage: 'no-submit' });
+          throw error;
+        }
         const preparationTxId = await options.prepareDeposit?.(color, amount);
+        if (preparationTxId) await recordProgress?.({ stage: 'prepared', preparationTxId });
         const { txId } = await account.depositUnshielded(color, amount);
         if (!txId) throw new Error('deposit returned no transaction ID');
+        await recordProgress?.({ stage: 'submitted', txId });
         const deadline = now() + confirmationMs;
         for (;;) {
           const credited = await balance(account, color);

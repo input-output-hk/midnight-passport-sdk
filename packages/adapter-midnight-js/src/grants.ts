@@ -13,10 +13,17 @@ import type {
 
 type Grant = {
   readonly active: boolean;
+  readonly issued_at?: bigint;
+  readonly nonce?: bigint;
+  readonly spent_commit?: Uint8Array;
   readonly scope: {
     readonly read: boolean;
     readonly read_pk_hash: Uint8Array;
     readonly object_commit: Uint8Array;
+    readonly op_withdraw_unshielded?: boolean;
+    readonly per_call_cap?: bigint;
+    readonly cap?: bigint;
+    readonly expires_at?: bigint;
   };
 };
 type GrantLedger = {
@@ -33,7 +40,21 @@ type ListedGrant = {
   readonly read: boolean;
   readonly readHash: Uint8Array;
   readonly objectCommit: Uint8Array;
+  readonly record: Grant;
 };
+
+/** Public fields required to authenticate one grant-holder spend before signing. */
+export interface LiveGrantSpendContext {
+  readonly active: boolean;
+  readonly issuedAt: bigint;
+  readonly nonce: bigint;
+  readonly spentCommit: Uint8Array;
+  readonly objectCommit: Uint8Array;
+  readonly withdrawUnshielded: boolean;
+  readonly perCallCap: bigint;
+  readonly cap: bigint;
+  readonly expiresAt: bigint;
+}
 
 /** Durable local openings; an inbox-only claim is not trusted until its key hashes to the ledger. */
 export interface ReadGrantOpeningSource {
@@ -63,7 +84,12 @@ export function createMidnightGrantSource(
   GrantDetailSource &
   GrantCommitmentSource &
   ActiveReadGrantTargetSource &
-  GrantRosterSource {
+  GrantRosterSource & {
+    readGrantSpendContext(
+      account: string,
+      grantId: string,
+    ): Promise<LiveGrantSpendContext | undefined>;
+  } {
   const { network, binding, openings } = options;
   if (network.bindingId !== 'acc-s3r1.1')
     throw new PassportConnectorError('BindingUnsupported', 'Unsupported ACC grant binding.');
@@ -117,6 +143,7 @@ export function createMidnightGrantSource(
         read: record.scope.read,
         readHash: record.scope.read_pk_hash.slice(),
         objectCommit: record.scope.object_commit.slice(),
+        record,
       });
     }
     if (grants.length !== Number(ledger.grants.size()))
@@ -162,6 +189,44 @@ export function createMidnightGrantSource(
           readPkHash: grant.readHash,
         }
       );
+    },
+    async readGrantSpendContext(account, grantId) {
+      if (!bytes32(grantId)) return undefined;
+      const { grants } = await snapshot(account);
+      const grant = grants.find(({ id }) => id === grantId);
+      if (!grant) return undefined;
+      const { record } = grant;
+      const scope = record.scope;
+      if (
+        typeof record.issued_at !== 'bigint' ||
+        record.issued_at < 0n ||
+        typeof record.nonce !== 'bigint' ||
+        record.nonce < 0n ||
+        !(record.spent_commit instanceof Uint8Array) ||
+        record.spent_commit.length !== 32 ||
+        typeof scope.op_withdraw_unshielded !== 'boolean' ||
+        typeof scope.per_call_cap !== 'bigint' ||
+        scope.per_call_cap < 0n ||
+        typeof scope.cap !== 'bigint' ||
+        scope.cap < 0n ||
+        typeof scope.expires_at !== 'bigint' ||
+        scope.expires_at < 0n
+      )
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'Malformed ACC grant spend context.',
+        );
+      return {
+        active: grant.active,
+        issuedAt: record.issued_at,
+        nonce: record.nonce,
+        spentCommit: record.spent_commit.slice(),
+        objectCommit: grant.objectCommit.slice(),
+        withdrawUnshielded: scope.op_withdraw_unshielded,
+        perCallCap: scope.per_call_cap,
+        cap: scope.cap,
+        expiresAt: scope.expires_at,
+      };
     },
     async readActiveReadGrantTargets(account) {
       const { authNonce, grants } = await snapshot(account);

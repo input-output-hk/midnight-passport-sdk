@@ -1,4 +1,10 @@
-import type { AccountDirectory, NetworkConfig } from '@input-output-hk/mn-passport-account/ports';
+import type {
+  AccountDirectory,
+  ActiveReadGrantTargetSource,
+  NetworkConfig,
+  QualifiedHoldingSource,
+} from '@input-output-hk/mn-passport-account/ports';
+import type { PrfKeySource } from '@input-output-hk/mn-passport-account/ports';
 import {
   createBrowserPassport,
   injectPassportConnector,
@@ -16,6 +22,9 @@ import {
   type PassportConnectorAPI,
 } from '@input-output-hk/mn-passport-protocol';
 import { tracedFetch } from './operation-trace.js';
+import { browserAccountRecords, browserGrantJournal } from './grant-journal.js';
+import { demoValueCall } from './value-call.js';
+import { grantHandoffFromOpening, type GrantHandoff } from './grant-handoff.js';
 
 export const SERVICE_URL = import.meta.env.VITE_PASSPORT_SERVICE_URL ?? 'http://localhost:8787';
 /** The artefact manifest hash this build pins (R18); the service's /v1/config is checked against it. */
@@ -33,7 +42,17 @@ const configuredArm = import.meta.env.VITE_PASSPORT_ARM ?? 'p256';
 if (configuredArm !== 'p256' && configuredArm !== 'jubjub')
   throw new Error('VITE_PASSPORT_ARM must be p256 or jubjub');
 export const ARM: 'p256' | 'jubjub' = configuredArm;
-const ORIGIN = 'http://localhost:5173';
+export const ORIGIN = 'http://localhost:5173';
+let exportOpening: ((account: string, grantId: string) => Promise<GrantHandoff>) | undefined;
+
+/** Owner-only handoff from the selected passkey's encrypted local journal. */
+export async function exportDemoGrantOpening(
+  account: string,
+  grantId: string,
+): Promise<GrantHandoff> {
+  if (!exportOpening) throw new Error('Connect and open the owner account first.');
+  return exportOpening(account, grantId);
+}
 
 /** Legacy hints remain discoverable; the sealed P-256 connector refuses them until migrated. */
 function demoDirectory(): AccountDirectory {
@@ -71,6 +90,69 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
     artefactUrl: config.zkBaseUrl,
   };
   const sponsor = remoteV1Sponsor(SERVICE_URL, { fetch: tracedFetch });
+  let holdingSource: Promise<QualifiedHoldingSource> | undefined;
+  const holdings = (): Promise<QualifiedHoldingSource> =>
+    (holdingSource ??= import('@input-output-hk/mn-passport-adapter-midnight-js').then(
+      ({ createGraphqlHoldingIndexer, createMidnightHoldingSource }) =>
+        createMidnightHoldingSource(
+          createGraphqlHoldingIndexer({
+            networkId,
+            url: config.indexerUri,
+            wsUrl: config.indexerWsUri,
+          }),
+        ),
+    ));
+  const holdingPort: QualifiedHoldingSource = {
+    selectHeldEntries: async (account, entries, opened) =>
+      (await holdings()).selectHeldEntries(account, entries, opened),
+    selectQualifiedHeldCoins: async (account, entries, opened) =>
+      (await holdings()).selectQualifiedHeldCoins(account, entries, opened),
+  };
+  let journal: ReturnType<typeof browserGrantJournal> | undefined;
+  let grantSource:
+    | Promise<
+        ReturnType<
+          typeof import('@input-output-hk/mn-passport-adapter-midnight-js').createMidnightGrantSource
+        >
+      >
+    | undefined;
+  const grants = () =>
+    (grantSource ??= Promise.all([
+      import('@input-output-hk/mn-passport-adapter-midnight-js'),
+      import('./acc-module.js'),
+    ]).then(([{ createMidnightGrantSource }, { accModule }]) =>
+      createMidnightGrantSource({
+        network,
+        binding: accModule,
+        openings: {
+          readReadPublicKey: async (account, grantId) =>
+            journal?.readReadPublicKey(account, grantId),
+        },
+      }),
+    ));
+  const readGrants: ActiveReadGrantTargetSource = {
+    readActiveReadGrantTargets: async (account) =>
+      (await grants()).readActiveReadGrantTargets(account),
+  };
+  exportOpening = async (account, grantId) => {
+    if (!journal) throw new Error('The owner grant journal is unavailable.');
+    const staged = await journal.load(account, grantId);
+    if (!staged) throw new Error('This browser has no sealed opening for the grant.');
+    const source = await grants();
+    const [live, context] = await Promise.all([
+      source.readGrantCommitment(account, grantId),
+      source.readGrantSpendContext(account, grantId),
+    ]);
+    return grantHandoffFromOpening(
+      staged,
+      live,
+      context,
+      networkId,
+      (await import('./acc-module.js')).accModule.pureCircuits as unknown as Parameters<
+        typeof grantHandoffFromOpening
+      >[4],
+    );
+  };
   return createBrowserPassport({
     arm: ARM,
     network,
@@ -80,8 +162,25 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
     sponsor,
     sponsorKeys: config,
     submitter: sponsor,
+    valueCalls: { call: (request) => demoValueCall(SERVICE_URL, request) },
     deployer: remoteV1Deployer(SERVICE_URL, { fetch: tracedFetch }),
     directory: demoDirectory(),
+    holdings: holdingPort,
+    readGrants,
+    grants: {
+      readActiveGrantSnapshot: async (account) => (await grants()).readActiveGrantSnapshot(account),
+      readActiveGrantIds: async (account) => (await grants()).readActiveGrantIds(account),
+    },
+    grantCommitments: {
+      readGrantCommitment: async (account, grantId) =>
+        (await grants()).readGrantCommitment(account, grantId),
+    },
+    grantDetails: {
+      readGrant: async (account, grantId) => (await grants()).readGrant(account, grantId),
+    },
+    grantRoster: { readGrantRoster: async (account) => (await grants()).readGrantRoster(account) },
+    grantJournalFactory: (prf: PrfKeySource) => (journal = browserGrantJournal(networkId, prf)),
+    records: browserAccountRecords(networkId),
     random: (length) => crypto.getRandomValues(new Uint8Array(length)),
   });
 }

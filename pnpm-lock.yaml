@@ -35,6 +35,9 @@ importers:
       '@input-output-hk/mn-passport-adapter-browser':
         specifier: workspace:*
         version: link:../../packages/adapter-browser
+      '@input-output-hk/mn-passport-adapter-midnight-js':
+        specifier: workspace:*
+        version: link:../../packages/adapter-midnight-js
       '@input-output-hk/mn-passport-adapter-service':
         specifier: workspace:*
         version: link:../../packages/adapter-service
@@ -44,6 +47,9 @@ importers:
       '@input-output-hk/mn-passport-contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@input-output-hk/mn-passport-keys':
+        specifier: workspace:*
+        version: link:../../packages/keys
       '@input-output-hk/mn-passport-protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -93,6 +99,12 @@ importers:
 
   apps/passport-funding-service:
     dependencies:
+      '@input-output-hk/mn-passport-adapter-midnight-js':
+        specifier: workspace:*
+        version: link:../../packages/adapter-midnight-js
+      '@input-output-hk/mn-passport-adapter-service':
+        specifier: workspace:*
+        version: link:../../packages/adapter-service
       '@input-output-hk/mn-passport-contract':
         specifier: workspace:*
         version: link:../../packages/contract

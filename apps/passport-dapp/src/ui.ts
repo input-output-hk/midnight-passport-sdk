@@ -4,6 +4,7 @@
 import type {
   PassportAccountState,
   PassportEvent,
+  PassportGrantRoster,
   PassportTxResult,
 } from '@input-output-hk/mn-passport-protocol';
 import { EventLog, type LogRun, type LogStep } from './event-log.js';
@@ -47,7 +48,28 @@ export interface WalletView {
   readonly balanceError?: string;
 }
 
-const ACTIONS: readonly ActionId[] = ['create', 'open', 'rotate', 'wallet', 'fund'];
+const ACTIONS: readonly ActionId[] = [
+  'create',
+  'open',
+  'openAt',
+  'refresh',
+  'holdings',
+  'roster',
+  'grantRoster',
+  'prepareGrantee',
+  'issueGrant',
+  'exportGrant',
+  'spendGrant',
+  'revokeGrant',
+  'recoverGrants',
+  'prepareJoiner',
+  'enrollDevice',
+  'removeDevice',
+  'rotate',
+  'wallet',
+  'fund',
+  'withdraw',
+];
 
 const byId = <T extends HTMLElement = HTMLElement>(id: string): T => {
   const element = document.getElementById(id);
@@ -82,6 +104,9 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     HTMLButtonElement
   >;
   const copyButton = byId<HTMLButtonElement>('copy');
+  const handoffInput = byId<HTMLTextAreaElement>('handoff-input');
+  const removalInput = byId<HTMLInputElement>('remove-commitment');
+  const handoffOutput = byId<HTMLTextAreaElement>('handoff-output');
   const statusEl = byId('status');
   const announceEl = byId('announce');
   const progressEl = byId('progress');
@@ -99,9 +124,30 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   let fundingAsset: { color: string; amount: string } | undefined;
   let assetsByColor = new Map<string, { color: string; amount: string }>();
   const fundingSelect = byId<HTMLSelectElement>('fund-asset');
+  const withdrawalSelect = byId<HTMLSelectElement>('withdraw-asset');
+  const withdrawalAmount = byId<HTMLInputElement>('withdraw-amount');
+  const withdrawalRecipient = byId<HTMLInputElement>('withdraw-recipient');
+  const grantGrantee = byId<HTMLInputElement>('grant-grantee');
+  const grantAsset = byId<HTMLSelectElement>('grant-asset');
+  const grantRecipient = byId<HTMLInputElement>('grant-recipient');
+  const grantPerCall = byId<HTMLInputElement>('grant-per-call');
+  const grantCap = byId<HTMLInputElement>('grant-cap');
+  const revokeGrantId = byId<HTMLInputElement>('revoke-grant-id');
+  const exportGrantId = byId<HTMLInputElement>('export-grant-id');
+  const grantOpeningInput = byId<HTMLTextAreaElement>('grant-opening-input');
+  const grantSpendAmount = byId<HTMLInputElement>('grant-spend-amount');
+  const grantSpentPrev = byId<HTMLInputElement>('grant-spent-prev');
+  const knownAddress = byId<HTMLInputElement>('open-address');
   let accountBalances:
     | { address: string; color: string; night?: string; fundedAsset?: string; error?: string }
     | undefined;
+  let shieldedHoldings:
+    | { address: string; coins: readonly { inboxIndex: number; color: string; value: string }[] }
+    | undefined;
+  let deviceRoster:
+    | { address: string; deviceEpoch: bigint; authNonce: bigint; commitments: readonly string[] }
+    | undefined;
+  let grantRoster: { address: string; roster: PassportGrantRoster } | undefined;
   let ticker: ReturnType<typeof setInterval> | undefined;
 
   // The action cards: prompt counts and summaries come from flows.ts only.
@@ -116,7 +162,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   const renderPrompts = () => {
     for (const action of ACTIONS) {
       byId(`${action}-prompts`).textContent =
-        action === 'create' || action === 'open'
+        action === 'create' || action === 'open' || action === 'openAt'
           ? 'Passkey prompts vary by provider and account state.'
           : promptLabel(promptsFor(action, !!account));
     }
@@ -138,11 +184,53 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     const busy = log.current !== undefined;
     buttons.create.disabled = busy || !ready;
     buttons.open.disabled = busy || !ready;
+    buttons.openAt.disabled = busy || !ready || !/^[0-9a-f]{64}$/.test(knownAddress.value.trim());
+    knownAddress.disabled = busy;
+    buttons.refresh.disabled = busy || !account;
+    buttons.holdings.disabled = busy || !account;
+    buttons.roster.disabled = busy || !account;
+    buttons.grantRoster.disabled = busy || !account;
+    buttons.prepareGrantee.disabled =
+      busy || !ready || !/^[0-9a-f]{64}$/.test(knownAddress.value.trim());
+    buttons.issueGrant.disabled =
+      busy ||
+      !account ||
+      assetsByColor.size === 0 ||
+      !/^[0-9a-f]{64}$/.test(grantGrantee.value.trim());
+    buttons.issueGrant.closest('li')?.toggleAttribute('hidden', assetsByColor.size === 0);
+    buttons.revokeGrant.disabled =
+      busy || !account || !/^[0-9a-f]{64}$/.test(revokeGrantId.value.trim());
+    grantGrantee.disabled = busy || !account;
+    grantAsset.disabled = busy || !account;
+    grantRecipient.disabled = busy || !account;
+    grantPerCall.disabled = busy || !account;
+    grantCap.disabled = busy || !account;
+    revokeGrantId.disabled = busy || !account;
+    buttons.exportGrant.disabled =
+      busy || !account || !/^[0-9a-f]{64}$/.test(exportGrantId.value.trim());
+    exportGrantId.disabled = busy || !account;
+    buttons.spendGrant.disabled = busy || !ready || !grantOpeningInput.value.trim();
+    grantOpeningInput.disabled = busy;
+    grantSpendAmount.disabled = busy;
+    grantSpentPrev.disabled = busy;
+    buttons.recoverGrants.disabled = busy || !account;
+    buttons.prepareJoiner.disabled =
+      busy || !ready || !/^[0-9a-f]{64}$/.test(knownAddress.value.trim());
+    buttons.enrollDevice.disabled = busy || !account || !handoffInput.value.trim();
+    buttons.removeDevice.disabled =
+      busy || !account || !/^[0-9a-f]{64}$/.test(removalInput.value.trim());
+    removalInput.disabled = busy || !account;
+    handoffInput.disabled = busy;
     buttons.rotate.disabled = true;
     buttons.wallet.disabled = busy;
     buttons.fund.disabled = busy || !account;
     fundingSelect.disabled = busy || !account;
     buttons.fund.closest('li')?.toggleAttribute('hidden', !fundingAsset);
+    buttons.withdraw.disabled = busy || !account || assetsByColor.size === 0;
+    withdrawalSelect.disabled = busy || !account;
+    withdrawalAmount.disabled = busy || !account;
+    withdrawalRecipient.disabled = busy || !account;
+    buttons.withdraw.closest('li')?.toggleAttribute('hidden', assetsByColor.size === 0);
     copyButton.disabled = busy || (log.runs.length === 0 && log.traceEntries.length === 0);
     // With an account open, rotating is the next thing to show; before that, creating is.
     buttons.create.classList.toggle('btn-primary', !account);
@@ -356,7 +444,10 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     renderFacts(list, [
       { label: 'Address', value: shorten(address, 10, 8), full: address, copy: address },
       { label: 'Network', value: networkId },
+      { label: 'Spec version', value: String(state.specVersion) },
+      { label: 'Activated', value: state.booted ? 'Yes' : 'No' },
       { label: 'Auth nonce', value: state.authNonce.toString() },
+      { label: 'Device epoch', value: state.deviceEpoch.toString() },
       {
         label: 'Device entries',
         value: String(state.entryCount),
@@ -395,6 +486,78 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
             value: '—',
             hint: 'Create and open do not report a transaction; rotate does.',
           },
+    ]);
+  };
+
+  const renderHoldings = () => {
+    const current =
+      account && shieldedHoldings?.address === account.address ? shieldedHoldings : undefined;
+    const list = byId('holdings-facts');
+    const empty = byId('holdings-empty');
+    list.hidden = !current || current.coins.length === 0;
+    empty.hidden = !!current && current.coins.length > 0;
+    if (!current) {
+      empty.textContent = 'Open an account, then read its shielded holdings.';
+      return;
+    }
+    if (current.coins.length === 0) {
+      empty.textContent = 'No chain-verified shielded coins found.';
+      return;
+    }
+    renderFacts(
+      list,
+      current.coins.flatMap((coin) => [
+        {
+          label: `Inbox #${coin.inboxIndex}`,
+          value: `${coin.value} smallest units`,
+          hint: 'Chain-verified shielded coin.',
+        },
+        { label: 'Color', value: shorten(coin.color, 8, 6), full: coin.color, copy: coin.color },
+      ]),
+    );
+  };
+
+  const renderRoster = () => {
+    const current = account && deviceRoster?.address === account.address ? deviceRoster : undefined;
+    const list = byId('roster-facts');
+    const empty = byId('roster-empty');
+    list.hidden = !current;
+    empty.hidden = !!current;
+    if (!current) return;
+    renderFacts(list, [
+      { label: 'Device epoch', value: current.deviceEpoch.toString() },
+      { label: 'Auth nonce', value: current.authNonce.toString() },
+      { label: 'Live entries', value: String(current.commitments.length) },
+      ...current.commitments.map((commitment, index) => ({
+        label: `Entry ${index + 1}`,
+        value: shorten(commitment, 10, 8),
+        full: commitment,
+        copy: commitment,
+      })),
+    ]);
+  };
+
+  const renderGrantRoster = () => {
+    const current =
+      account && grantRoster?.address === account.address ? grantRoster.roster : undefined;
+    const list = byId('grant-roster-facts');
+    const empty = byId('grant-roster-empty');
+    list.hidden = !current;
+    empty.hidden = !!current;
+    if (!current) return;
+    renderFacts(list, [
+      { label: 'Generation', value: current.generation.toString() },
+      { label: 'Auth nonce', value: current.authNonce.toString() },
+      {
+        label: 'Active grants',
+        value: String(current.entries.filter((entry) => entry.active).length),
+      },
+      ...current.entries.map((entry, index) => ({
+        label: `Grant ${index + 1}`,
+        value: `${shorten(entry.id, 10, 8)} · ${entry.active ? 'active' : 'revoked'}${entry.read ? ' · read' : ''}`,
+        full: entry.id,
+        copy: entry.id,
+      })),
     ]);
   };
 
@@ -463,15 +626,82 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       })
       .catch(() => status('Copy failed: the browser refused clipboard access.'));
   });
+  knownAddress.addEventListener('input', renderButtons);
+  grantGrantee.addEventListener('input', renderButtons);
+  revokeGrantId.addEventListener('input', renderButtons);
+  exportGrantId.addEventListener('input', renderButtons);
+  grantOpeningInput.addEventListener('input', renderButtons);
+  handoffInput.addEventListener('input', renderButtons);
+  removalInput.addEventListener('input', renderButtons);
 
   renderButtons();
   renderProgress();
   renderAccount();
+  renderHoldings();
+  renderRoster();
+  renderGrantRoster();
   renderWallet();
   renderEvidence();
 
   return {
     status,
+    knownAddress: () => knownAddress.value,
+    handoffJson: () => handoffInput.value,
+    grantInput: () => ({
+      grantee: grantGrantee.value.trim(),
+      color: grantAsset.value,
+      maxDemoCall: assetsByColor.get(grantAsset.value)?.amount ?? '0',
+      recipient: grantRecipient.value.trim(),
+      perCallCap: grantPerCall.value.trim(),
+      cap: grantCap.value.trim(),
+    }),
+    revokeGrantId: () => revokeGrantId.value.trim(),
+    exportGrantId: () => exportGrantId.value.trim(),
+    grantSpendInput: () => ({
+      handoff: grantOpeningInput.value,
+      amount: grantSpendAmount.value.trim(),
+      spentPrev: grantSpentPrev.value.trim(),
+    }),
+    showGrantSpentTotal(value: bigint) {
+      grantSpentPrev.value = value.toString();
+    },
+    showGrantHandoff(handoff: unknown) {
+      const output = byId<HTMLTextAreaElement>('grant-opening-output');
+      output.value = JSON.stringify(handoff, null, 2);
+      output.hidden = false;
+    },
+    clearGrantHandoff() {
+      const output = byId<HTMLTextAreaElement>('grant-opening-output');
+      output.value = '';
+      output.hidden = true;
+    },
+    showGranteePublicKey(publicKey: string) {
+      const output = byId<HTMLInputElement>('grantee-output');
+      output.value = publicKey;
+      output.hidden = false;
+    },
+    removalCommitment: () => removalInput.value.trim(),
+    showHandoff(handoff: { fingerprint: string }) {
+      handoffOutput.value = JSON.stringify(handoff, null, 2);
+      handoffOutput.hidden = false;
+      byId('handoff-empty').hidden = true;
+      const value = byId('handoff-fingerprint');
+      value.textContent = `Compare this SHA-256 fingerprint on the owner browser: ${handoff.fingerprint}`;
+      value.hidden = false;
+    },
+    showRoster(
+      address: string,
+      roster: { deviceEpoch: bigint; authNonce: bigint; commitments: readonly string[] },
+    ) {
+      if (account?.address !== address) return;
+      deviceRoster = { address, ...roster };
+      renderRoster();
+    },
+    showGrantRoster(address: string, roster: PassportGrantRoster) {
+      if (account?.address !== address) return;
+      grantRoster = { address, roster };
+      renderGrantRoster();
+    },
     /** Ends the running stage and starts `id`. */
     stage: (id: string) => log.stage(id),
     note: (text: string) => log.note(text),
@@ -518,16 +748,37 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       renderButtons();
     },
     showAccount(view: AccountView) {
+      if (account?.address !== view.address) {
+        const output = byId<HTMLTextAreaElement>('grant-opening-output');
+        output.value = '';
+        output.hidden = true;
+      }
       // The last transaction carries over only while the same account stays open.
       const keep = account?.address === view.address ? account.lastTx : undefined;
       const lastTx = view.lastTx ?? keep;
       account = { ...view, ...(lastTx && { lastTx }) };
+      // A later account action may spend a coin; require a fresh chain check.
+      shieldedHoldings = undefined;
+      deviceRoster = undefined;
+      grantRoster = undefined;
       if (accountBalances?.address !== view.address)
         accountBalances = fundingAsset
           ? { address: view.address, color: fundingAsset.color }
           : undefined;
       renderAccount();
+      renderHoldings();
+      renderRoster();
+      renderGrantRoster();
       renderButtons();
+      renderEvidence();
+    },
+    showShieldedHoldings(
+      address: string,
+      coins: readonly { inboxIndex: number; color: string; value: string }[],
+    ) {
+      if (account?.address !== address) return;
+      shieldedHoldings = { address, coins };
+      renderHoldings();
       renderEvidence();
     },
     enableFunding(assets: readonly { color: string; amount: string }[]) {
@@ -540,6 +791,32 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
             asset.color === '00'.repeat(32)
               ? `NIGHT (${asset.amount} smallest units)`
               : `Test token ${shorten(asset.color, 6, 4)} (${asset.amount} units)`,
+          );
+          option.value = asset.color;
+          return option;
+        }),
+      );
+      withdrawalSelect.replaceChildren(
+        ...assets.map((asset) => {
+          const option = el(
+            'option',
+            undefined,
+            asset.color === '00'.repeat(32)
+              ? 'NIGHT (smallest units)'
+              : `Test token ${shorten(asset.color, 6, 4)} (smallest units)`,
+          );
+          option.value = asset.color;
+          return option;
+        }),
+      );
+      grantAsset.replaceChildren(
+        ...assets.map((asset) => {
+          const option = el(
+            'option',
+            undefined,
+            asset.color === '00'.repeat(32)
+              ? 'NIGHT (smallest units)'
+              : `Test token ${shorten(asset.color, 6, 4)} (smallest units)`,
           );
           option.value = asset.color;
           return option;
@@ -558,6 +835,13 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     },
     selectedFundingAsset() {
       return assetsByColor.get(fundingSelect.value);
+    },
+    withdrawalInput() {
+      return {
+        color: withdrawalSelect.value,
+        amount: withdrawalAmount.value,
+        recipient: withdrawalRecipient.value,
+      };
     },
     showFunding(address: string, color: string, balance: string) {
       accountBalances = {

@@ -13,8 +13,9 @@ first rotates the viewing and roster keys, reseals every grantee and then gives 
 the fresh keys; this requires chain-backed holdings and complete grant targets from the host.
 The joining device can use `openAccountAt(address)` with its own passkey and reader key when it
 knows the ACC address; this checks its live entry and opens the ledger-matched envelope without
-a directory hint. The demo does not expose that address-based flow yet. The account API can
-rotate the P-256 viewing secret or remove an enrolled device after verifying the live reader
+a directory hint. The demo exposes **Open by ACC address** for an already-enrolled passkey; this
+is a recovery from a missing hint, not recovery from loss of every enrolled passkey. The account
+API can rotate the P-256 viewing secret or remove an enrolled device after verifying the live reader
 roster, chain-backed holdings and active read-grant targets; the demo lacks these host sources
 and hides rotation. The new
 browser composition explicitly refuses older

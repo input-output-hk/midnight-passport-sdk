@@ -77,6 +77,49 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
   };
 
   return async (req, res, requestUrl) => {
+    if (requestUrl.pathname === '/v1/demo/value-call') {
+      if (req.method !== 'POST') throw new HttpError(405, 'method not allowed');
+      if (req.headers.origin !== config.corsOrigin)
+        throw new HttpError(403, 'demo value calls require the Passport demo origin');
+      const body = await readJson(req, 16 * 1024);
+      if (!body || typeof body !== 'object' || Array.isArray(body))
+        throw new HttpError(400, 'invalid value call');
+      const fields = body as Record<string, unknown>;
+      if (
+        Object.keys(fields).sort().join(',') !== 'accountAddress,args,circuit' ||
+        typeof fields.accountAddress !== 'string' ||
+        !ADDRESS.test(fields.accountAddress) ||
+        ![
+          'withdraw_unshielded_with_p256',
+          'withdraw_unshielded_with_jubjub',
+          'withdraw_unshielded_with_grant_jubjub',
+        ].includes(String(fields.circuit)) ||
+        !Array.isArray(fields.args)
+      )
+        throw new HttpError(400, 'invalid value call');
+      if (!sponsoredAddresses(config, deployments).has(fields.accountAddress))
+        throw new HttpError(403, 'account is not registered and deployed by this demo');
+      await checkedBackend();
+      const response = await fetch(new URL('/v1/value-call', url), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(300_000),
+        body: JSON.stringify(body),
+      });
+      const result = (await response.json()) as Record<string, unknown>;
+      if (!response.ok)
+        throw new HttpError(
+          response.status,
+          typeof result.error === 'string' ? result.error : 'value call refused',
+        );
+      if (typeof result.txHash !== 'string' || !TX_ID.test(result.txHash))
+        throw new HttpError(502, 'value service returned an invalid transaction ID');
+      json(res, 200, {
+        txHash: result.txHash,
+        ...(typeof result.blockHeight === 'number' && { blockHeight: result.blockHeight }),
+      });
+      return true;
+    }
     if (requestUrl.pathname !== '/v1/demo/funding') return false;
     if (req.method === 'GET') {
       const address = requestUrl.searchParams.get('accountAddress');

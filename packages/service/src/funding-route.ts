@@ -1,5 +1,6 @@
 import type { IncomingMessage } from 'node:http';
 import type { ServiceWire } from '@input-output-hk/mn-passport-protocol';
+import type { FundingCreditEvidence } from './funding-reconciliation.js';
 import { HttpError, json, readJson, type Route } from './http.js';
 
 const ADDRESS = /^[0-9a-f]{64}$/;
@@ -16,7 +17,15 @@ export interface FundingAssetPolicy {
 export type FundingReservation =
   | { readonly state: 'reserved' }
   | { readonly state: 'complete'; readonly result: ServiceWire.FundAccResponse }
-  | { readonly state: 'pending' | 'conflict' | 'daily-limit' };
+  | { readonly state: 'pending' | 'released' | 'conflict' | 'daily-limit' };
+
+/** Durable milestones for diagnosing an uncertain wallet outcome. */
+export type FundingProgress =
+  | { readonly stage: 'balance-observed'; readonly balanceBefore: string }
+  | { readonly stage: 'prepared'; readonly preparationTxId: string }
+  | { readonly stage: 'submitted'; readonly txId: string }
+  /** Backend guarantees it has not entered a wallet operation capable of submitting value. */
+  | { readonly stage: 'no-submit' };
 
 /** Reserve the request ID and daily spend atomically, durably, before any wallet call. */
 export interface FundingStore {
@@ -27,11 +36,25 @@ export interface FundingStore {
   ): Promise<FundingReservation>;
   /** A failed completion must leave the reservation pending for operator reconciliation. */
   complete(requestId: string, result: ServiceWire.FundAccResponse): Promise<void>;
+  /** Persist each wallet milestone before the next spending step. */
+  recordProgress(requestId: string, progress: FundingProgress): Promise<void>;
+  /** Atomically tombstone a request proved to have stopped before any wallet submission. */
+  releaseNoSubmit(requestId: string, actor: string): Promise<void>;
+  /** Atomically persist independently verified deposit evidence and the original result. */
+  completeReconciled(
+    requestId: string,
+    actor: string,
+    result: ServiceWire.FundAccResponse,
+    evidence: FundingCreditEvidence,
+  ): Promise<void>;
 }
 
 /** Must submit through a dedicated wallet, wait for inclusion, and read the credited ACC balance. */
 export interface FundingBackend {
-  fund(request: ServiceWire.FundAccRequest): Promise<ServiceWire.FundAccResponse>;
+  fund(
+    request: ServiceWire.FundAccRequest,
+    recordProgress?: (progress: FundingProgress) => Promise<void>,
+  ): Promise<ServiceWire.FundAccResponse>;
 }
 
 export interface FundingRouteOptions {
@@ -132,11 +155,15 @@ export function fundingRoute(options: FundingRouteOptions): Route {
       return true;
     }
     if (reservation.state === 'pending') throw new HttpError(409, 'funding request is pending');
+    if (reservation.state === 'released')
+      throw new HttpError(409, 'funding request was released; use a new request ID');
     if (reservation.state === 'conflict') throw new HttpError(409, 'funding request ID was reused');
     if (reservation.state === 'daily-limit')
       throw new HttpError(429, 'daily funding limit reached');
     try {
-      const result = await options.backend.fund(request);
+      const result = await options.backend.fund(request, (progress) =>
+        options.store.recordProgress(request.requestId, progress),
+      );
       if (
         result.requestId !== request.requestId ||
         !result.txId ||

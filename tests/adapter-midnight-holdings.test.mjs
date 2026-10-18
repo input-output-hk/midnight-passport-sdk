@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createRequire } from 'node:module';
-import { createMidnightHoldingSource } from '../packages/adapter-midnight-js/dist/index.js';
+import {
+  createGraphqlHoldingIndexer,
+  createMidnightHoldingSource,
+} from '../packages/adapter-midnight-js/dist/index.js';
 
 const require = createRequire(
   new URL('../packages/adapter-midnight-js/package.json', import.meta.url),
 );
-const { ZswapOutput } = await import(require.resolve('@midnightntwrk/ledger-v9'));
+const { ZswapOutput, ZswapOffer, ZswapChainState, ZswapInput } = await import(
+  require.resolve('@midnightntwrk/ledger-v9')
+);
 const account = 'ab'.repeat(32);
 const coin = { nonce: new Uint8Array(32).fill(4), color: new Uint8Array(32).fill(5), value: 7n };
 const other = { nonce: new Uint8Array(32).fill(6), color: coin.color, value: 9n };
@@ -22,6 +27,8 @@ test('holding source selects a distinct ACC output and skips noise or another re
   /** @type {string[]} */
   const queried = [];
   const source = createMidnightHoldingSource({
+    queryShieldedInputs: async () => [],
+    coinNullifier: async () => '11'.repeat(32),
     enumerateContractActions: async () => [
       { txHash: 'tx-a' },
       { txHash: 'tx-a' },
@@ -30,7 +37,7 @@ test('holding source selects a distinct ACC output and skips noise or another re
     queryShieldedOutputs: async (txHash) => {
       queried.push(txHash);
       return txHash === 'tx-a'
-        ? [{ contractAddress: account.toUpperCase(), commitment: commitment(coin) }]
+        ? [{ contractAddress: account.toUpperCase(), commitment: commitment(coin), index: 11n }]
         : [{ contractAddress: 'cd'.repeat(32), commitment: commitment(other) }];
     },
   });
@@ -49,6 +56,8 @@ test('holding source selects a distinct ACC output and skips noise or another re
 test('holding source checks alignment and avoids history queries for no opened coins', async () => {
   let queries = 0;
   const source = createMidnightHoldingSource({
+    queryShieldedInputs: async () => [],
+    coinNullifier: async () => '11'.repeat(32),
     enumerateContractActions: async () => {
       queries++;
       return [];
@@ -64,6 +73,8 @@ test('qualified holding retains the chain output index and refuses an ambiguous 
   const entry = Uint8Array.of(1);
   const opened = [{ kind: /** @type {const} */ ('coin'), coin }];
   const source = createMidnightHoldingSource({
+    queryShieldedInputs: async () => [],
+    coinNullifier: async () => '11'.repeat(32),
     enumerateContractActions: async () => [{ txHash: 'tx-a' }],
     queryShieldedOutputs: async () => [
       { contractAddress: account, commitment: commitment(coin), index: 11n },
@@ -73,15 +84,22 @@ test('qualified holding retains the chain output index and refuses an ambiguous 
     { inboxIndex: 0, coin: { ...coin, mt_index: 11n } },
   ]);
   const noIndex = createMidnightHoldingSource({
+    queryShieldedInputs: async () => [],
+    coinNullifier: async () => '11'.repeat(32),
     enumerateContractActions: async () => [{ txHash: 'tx-a' }],
     queryShieldedOutputs: async () => [{ contractAddress: account, commitment: commitment(coin) }],
   });
-  assert.deepEqual(await noIndex.selectHeldEntries(account, [entry], opened), [0]);
+  await assert.rejects(
+    noIndex.selectHeldEntries(account, [entry], opened),
+    /no unique verified Merkle index/,
+  );
   await assert.rejects(
     noIndex.selectQualifiedHeldCoins(account, [entry], opened),
     /no unique verified Merkle index/,
   );
   const ambiguous = createMidnightHoldingSource({
+    queryShieldedInputs: async () => [],
+    coinNullifier: async () => '11'.repeat(32),
     enumerateContractActions: async () => [{ txHash: 'tx-a' }],
     queryShieldedOutputs: async () => [
       { contractAddress: account, commitment: commitment(coin), index: 11n },
@@ -92,4 +110,47 @@ test('qualified holding retains the chain output index and refuses an ambiguous 
     ambiguous.selectQualifiedHeldCoins(account, [entry], opened),
     /no unique verified Merkle index/,
   );
+});
+
+test('a confirmed but subsequently spent output is excluded', async () => {
+  const entry = Uint8Array.of(1);
+  const source = createMidnightHoldingSource({
+    enumerateContractActions: async () => [{ txHash: 'tx-a' }],
+    queryShieldedOutputs: async () => [
+      { contractAddress: account, commitment: commitment(coin), index: 11n },
+    ],
+    queryShieldedInputs: async () => [{ contractAddress: account, nullifier: '11'.repeat(32) }],
+    coinNullifier: async () => '11'.repeat(32),
+  });
+  assert.deepEqual(await source.selectHeldEntries(account, [entry], [{ kind: 'coin', coin }]), []);
+});
+
+test('current Zswap state derives the same nullifier after a contract coin is spent', async () => {
+  const qualified = {
+    type: hex(coin.color),
+    nonce: hex(coin.nonce),
+    value: coin.value,
+    mt_index: 0n,
+  };
+  const output = ZswapOutput.newContractOwned(qualified, undefined, account);
+  const fresh = new ZswapChainState()
+    .tryApply(ZswapOffer.fromOutput(output))[0]
+    .postBlockUpdate(new Date(), 3600n);
+  let current = fresh;
+  const indexer = createGraphqlHoldingIndexer({
+    networkId: 'undeployed',
+    url: 'http://localhost:18088/api/v4/graphql',
+    wsUrl: 'ws://localhost:18088/api/v4/graphql/ws',
+    publicDataProvider: {
+      queryZSwapAndContractState: async () => [
+        current,
+        /** @type {any} */ ({}),
+        /** @type {any} */ ({}),
+      ],
+    },
+  });
+  const nullifier = await indexer.coinNullifier(account, coin, 0n);
+  const input = ZswapInput.newContractOwned(qualified, undefined, account, fresh);
+  current = fresh.tryApply(ZswapOffer.fromInput(input))[0];
+  assert.equal(await indexer.coinNullifier(account, coin, 0n), nullifier);
 });

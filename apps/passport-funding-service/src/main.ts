@@ -13,6 +13,8 @@ import {
 import { loadFundingConfig } from './config.ts';
 import { deployedAddresses } from './deployments.ts';
 import { prepareLocalnetNight, type NightWallet } from './night-preparation.ts';
+import { valueCallRoute } from './value-call.ts';
+import type { createMidnightWalletPorts } from '@input-output-hk/mn-passport-adapter-midnight-js';
 
 const config = loadFundingConfig(process.env);
 verifyArtefacts(config.artefactDir, config.manifestSha256);
@@ -58,6 +60,10 @@ for (const [key, value] of Object.entries(expected)) {
     throw new Error(`reference wallet ${key} differs from the funding service network`);
 }
 const wallet = (await setup.setupWallet(config.walletSeed)) as {
+  providers: {
+    walletProvider: Parameters<typeof createMidnightWalletPorts>[0];
+    midnightProvider: Parameters<typeof createMidnightWalletPorts>[1];
+  };
   walletCtx: {
     wallet: NightWallet;
     unshieldedKeystore: { signDataAsync(payload: Uint8Array): Promise<unknown> };
@@ -143,6 +149,7 @@ const server = createServer(config, [
     backend,
     store: createFileFundingStore(config.reservationsFile),
   }),
+  valueCallRoute(config, wallet, authorized),
 ]);
 server.listen(config.port, config.host, () => {
   const { address, port } = server.address() as AddressInfo;
