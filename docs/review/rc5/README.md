@@ -1,5 +1,9 @@
 # RC5 local review stack
 
+**Historical snapshot — superseded.** The stack was integrated by PR #220. Use
+[the current release receipt](../../release/rc5-local-receipt.json) and
+[handover runbook](../../release/rc5-lace-handover.md) for qualification and release status.
+
 Status: prepared locally, unpublished. Proposed version: `0.1.0-rc5` (`next`).
 
 Review and merge in order:

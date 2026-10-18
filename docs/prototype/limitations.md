@@ -49,7 +49,7 @@ PRF outputs. A public ACC address or envelope alone cannot restore the secret af
 and recoverable passkey is lost. Older deterministic-key P-256 accounts are refused by the new
 browser composition until migrated. Grant openings remain browser-profile-local without backup.
 
-**Production.** Define and qualify recovery/backup policy, provider behavior, legacy migration and
+**Production.** Define and qualify recovery/backup policy, provider behaviour, legacy migration and
 loss of every enrolled reader. Do not promise seed-phrase recovery or derive the ACC secret from
 its address.
 

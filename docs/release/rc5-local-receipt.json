@@ -2,7 +2,7 @@
   "candidate": "0.1.0-rc5",
   "distTag": "next",
   "published": false,
-  "preparationDate": "2026-10-19",
+  "preparationDate": "2026/10/19",
   "timezone": "Asia/Kuala_Lumpur",
   "implementationBaseline": "95588a3ca1a2578ab2b066957f02c8087cda4d5a",
   "localFixCommit": "31c51618288aa29f4c6870cb3e36f599616143fe",
@@ -60,7 +60,7 @@
     "laceExactSourceTypes": "passed at 502b0794cc7bcfc76342230193fef4ebb63cae1c; seven direct Midnight runtime versions match",
     "localRepositoryGate": "passed: lint, format, build, package tests, app tests and service/funding/browser type checks",
     "sourceBaselineCi": "PR 220, seven passing checks before integration",
-    "newLocalCommitsGithubCi": "pending tomorrow, no push in local preparation",
+    "newLocalCommitsGithubCi": "required on final PR heads #221/#222 before merge; local preparation evidence is not a substitute",
     "pagesRender": "official Jekyll render passed; 141 internal links, zero broken",
     "keyCachedProfile": "all 52 verified; sampled prover/verifier HTTP SHA256, CORS and cache-path refusal passed",
     "keyFreshRegeneration": "deposit_unshielded regenerated and both pinned hashes verified inside Linux/amd64 image on read-only root",
@@ -79,7 +79,8 @@
       }
     },
     "mountedLinuxNetwork": "passed: create/activate/read/reopen, NIGHT deposit 0 to 10, same-ID replay unchanged",
-    "publishedRegistryAccessBytesDigestsAndPages": "pending approved publication"
+    "publishedRegistryAccessBytesDigestsAndPages": "pending approved publication",
+    "reviewFollowupFailureCases": "transport/non-JSON outcomes and preflight refusal are tested separately; the recorded successful network run is retained as historical evidence"
   },
   "images": {
     "service": {
@@ -180,5 +181,20 @@
   },
   "localImageIdNote": "Local Docker IDs are not verified published registry manifest digests.",
   "localPreparationBranch": "codex/rc5-lace-handover",
-  "keyImageConfigurationFix": "writable HOME/XDG cache and pinned CA bundle, qualified by fresh Linux key regeneration"
+  "keyImageConfigurationFix": "writable HOME/XDG cache and pinned CA bundle, qualified by fresh Linux key regeneration",
+  "shareableEvidenceSha256": {
+    "evidence/rc5/package-consumer.txt": "a5bbcfc029ad86f25bbdf3f5d3839fdae49841649a30c050e87cadea7ece8532",
+    "evidence/rc5/reproducibility.txt": "5dbf08e817ab3bb081ee03c6987028f1a5e84e9bb2db6ad585408ef0e3cfe85f",
+    "evidence/rc5/lace-source-types.txt": "8f7b5a716e569630664d1a60a2bf59a827d66bb131069fa7979c463090b76573",
+    "evidence/rc5/key-regeneration.txt": "451d32eadbcbc435ff7e12379275d46819a5ff68101b17dfae22c9447022e586",
+    "evidence/rc5/key-http.txt": "0c05fbe4d16a37b165d60e021eee891542075757b4a893e69967be52102ed91a",
+    "evidence/rc5/key-home-ca.txt": "6fe20427aa75cd5e74c118a8c304af45d53aa11cb5190a7ef8abf827b0e81ae7",
+    "evidence/rc5/network.txt": "273ea1553709254017aea8a6dc820587ac620bbdd8478bd926a0e8ca37d75667",
+    "evidence/rc5/service-startup-smoke.txt": "d7cd6ee4a4b72605bb9d5896c819ff4aa237efeae52433192c792506ff3325b3",
+    "evidence/rc5/funding-startup-smoke.txt": "3e1404a247d9f2fc2494327bfbef50abbbec84aa1243d8ab18079e665293eee2",
+    "evidence/rc5/repository-gate.txt": "4aa01b2c0e97b37687bfda33f5629f91da87b5bb81f6f94a470a46244b7c9f90",
+    "evidence/rc5/image-source-checks.json": "edd98f4d1c8fe9f096a8fb39e6b631c771f398ba80d0e6c90944e536d93fd065"
+  },
+  "machineLocalPathsNote": "packageDirectory and logs are optional author-machine locations; shareable evidence below is committed and uses normalised paths.",
+  "imageQualificationScope": "Local image IDs describe the completed pre-review network run. Later healthcheck bind-host changes are covered by focused HTTP tests and final PR image builds; publish only images rebuilt at the final reviewed source."
 }

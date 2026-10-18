@@ -36,7 +36,7 @@ See [package responsibilities]({{ '/packages/' | relative_url }}) and the
 An administrator must grant your user/team and the consuming Actions repository read access
 to the private packages. Configure the scope for `https://npm.pkg.github.com`; supply the token
 through your environment or credential manager, never committed source. A developer token
-needs `read:packages`; Actions uses its authorized repository token.
+needs `read:packages`; Actions uses its authorised repository token.
 
 Scope configuration (keep the token value outside the file):
 
@@ -77,9 +77,9 @@ Lace source and qualified routes; do not widen hosted consent merely to make a g
    request/response events when reporting a problem. Never include PRF outputs, wallet seeds,
    passkey secrets, grant capability openings or private proof inputs in a shared trace.
 
-### Backend artifacts and limits
+### Backend artefacts and limits
 
-The `midnight-passport-keys` image restores/verifies and serves circuit artifacts. The
+The `midnight-passport-keys` image restores/verifies and serves circuit artefacts. The
 `midnight-passport-service` image proves/deploys/sponsors fees; the
 `midnight-passport-funding` image transfers allowlisted wallet-held assets into an ACC.
 The latter two need a Linux-prepared pinned contract mount and persistent writable state.

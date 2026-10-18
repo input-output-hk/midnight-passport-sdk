@@ -25,7 +25,7 @@ USER 10001:10001
 VOLUME ["/data/contract", "/data/state"]
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s --start-period=300s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:' + (process.env.PASSPORT_SERVICE_PORT || '8787') + '/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "const raw=process.env.PASSPORT_SERVICE_HOST || '127.0.0.1';const host=raw==='0.0.0.0'?'127.0.0.1':raw==='::'?'[::1]':raw.includes(':')&&!raw.startsWith('[')?'['+raw+']':raw;fetch('http://' + host + ':' + (process.env.PASSPORT_SERVICE_PORT || '8787') + '/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 ENTRYPOINT ["/opt/passport/apps/passport-service/image-entrypoint.sh"]
 
 LABEL org.opencontainers.image.source="https://github.com/input-output-hk/midnight-passport-sdk" \

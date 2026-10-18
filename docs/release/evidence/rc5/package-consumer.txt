@@ -1,0 +1,5 @@
+release: packed 9 packages at 0.1.0-rc5 (next); no registry write
+scratch Vite app built from packed SDK
+deposit_unshielded: restored and verified
+restore-acc-keys: 1 circuit(s) verified
+release consumer smoke passed for 9 tarballs

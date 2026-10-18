@@ -1,0 +1,5 @@
+{'ready': True, 'profile': 'all'} circuits 52
+deposit_unshielded prover SHA256 passed
+deposit_unshielded verifier SHA256 passed
+activate_initial_device_with_p256 verifier SHA256 passed
+CORS and unlisted cache path refusal passed

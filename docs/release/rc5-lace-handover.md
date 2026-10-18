@@ -1,7 +1,7 @@
 # RC5 release qualification and Lace handover
 
 Target: `0.1.0-rc5`, GitHub Packages `next`, private package access for the Lace
-consuming repositories. Preparation date: 2026-10-19 (Asia/Kuala_Lumpur).
+consuming repositories. Preparation date: 2026/10/19 (Asia/Kuala_Lumpur).
 Source baseline: prototype integration `95588a3ca1a2578ab2b066957f02c8087cda4d5a`.
 This document is a preparation record, not a published release announcement.
 
@@ -17,8 +17,10 @@ The handover includes package/API docs, package responsibilities, a minimal cons
 container requirements, a demo setup recipe, compatibility evidence and explicit limitations.
 No empty scaffold packages, new contract revision or additional feature is required for RC5.
 
-Preparation stays local: no branch pushes, PRs, release tags, registry writes or GitHub issue
-changes. Review/merge and publication are separate steps for the following work session.
+Preparation completed locally on 2026/10/19. The subsequent user-authorised review step opened
+PRs #221 and #222; merging is conditional on Claude approval and green final-head CI. No release
+tags, registry writes or GitHub issue changes are part of this review. Publication remains a
+separate approved release step.
 All local commits require a verified GPG signature, DCO and a passing repository gate.
 
 ## Acceptance gates
@@ -26,14 +28,14 @@ All local commits require a verified GPG signature, DCO and a passing repository
 - [x] Review the exact final source and run lint, format, build, package/app tests and type checks.
 - [x] Pack nine RC5 tarballs; install/type-check/import and browser-build a clean consumer.
 - [x] Compare hashes across two clean builds, keeping package count aligned with the packer.
-- [x] Qualify all three Linux/amd64 images with pinned artifacts and non-root execution.
+- [x] Qualify all three Linux/amd64 images with pinned artefacts and non-root execution.
 - [x] Run the service image with a Linux dependency mount: manifest, readiness, public URLs,
       deployed ACC, activation and chain read.
 - [x] Run the funding image against that localnet: confirmed deposit, balance read and replay
       of the same request ID without a second transfer.
 - [x] Render Pages and verify internal links; ensure the compatibility matrix and candidate
       notes agree with the evidence.
-- [x] Assemble final local artifact hashes, image IDs, test receipts and deferred-issue list.
+- [x] Assemble final local artefact hashes, image IDs, test receipts and deferred-issue list.
 
 Registry visibility, downloaded package bytes/attestations, immutable GHCR digests and deployed
 Pages can only be verified after publication. Local IDs are not published manifest digests.
@@ -54,9 +56,9 @@ Services need controlled ingress; CORS is not caller authentication. Proof input
 the proving service under the current prototype trust model. Losing every enrolled/recoverable
 passkey is not repaired by the ACC address or public envelopes.
 
-## Tomorrow's review and publication sequence
+## Next review and publication sequence
 
-1. Review the local qualification changes and evidence. Create PRs only when authorized; merge
+1. Review the local qualification changes and evidence. Create PRs only when authorised; merge
    into `passport-acc-prototype` after exact-head CI and self-review.
 2. Confirm the selected version is unused and the private publisher still accepts the source
    tag/commit. Grant the Lace team's users and consuming repositories package read access;
@@ -75,7 +77,7 @@ passkey is not repaired by the ACC address or public envelopes.
    limitations and the short evaluation recipe. Reconcile only issues whose criteria passed.
 
 Do not declare the release complete until steps 5–7 pass. Fix concrete fund-loss,
-installation or artifact-integrity failures before publishing.
+installation or artefact-integrity failures before publishing.
 
 ## Local qualification command
 
@@ -120,12 +122,12 @@ public transaction evidence and exact limitations. It supersedes the earlier pre
 snapshot under `docs/review/rc5/`. The latest Lace type smoke runs on RC5 tarballs; runtime
 recognition/consent results remain the separately documented pinned-source probes.
 
-Local review scope for tomorrow: (1) small healthcheck/queue/release-count fixes in `31c5161`,
+Review scope: (1) small healthcheck/queue/release-count fixes in `31c5161`,
 (2) key-image writable-home/CA fix, and (3) handover docs, qualification harness and evidence.
 The final source CI, registry publication, team/repository access, registry-byte attestation,
-pulled image digests and deployed Pages remain tomorrow's gates.
+pulled image digests and deployed Pages remain post-review publication gates.
 
-Suggested PR order (branches are local only):
+Review sequence (PR #221 contains the release fixes; PR #222 contains the handover):
 
 1. `codex/rc5-release-fixes` → `passport-acc-prototype`: healthcheck ports, queue synchronization
    and shared package-count consumer gate (`31c5161`).
@@ -136,3 +138,19 @@ Suggested PR order (branches are local only):
 The mounted probe uses public genesis funds and synthetic credentials; existing user/demo
 processes and the shared localnet are preserved. Temporary qualification containers can be
 stopped after logs are captured; persistent state, local images and receipts are retained.
+
+## Evidence and failure handling
+
+The receipt links committed, path-normalised evidence under `evidence/rc5/` and records each
+file's SHA-256. Original `/tmp` paths are optional author-machine diagnostics, not handover
+prerequisites. These signed local observations are not independent chain attestations or claims
+that registry publication has passed. Published byte/digest verification remains mandatory.
+
+The probe checks its token and refuses an existing evidence path before contacting services.
+It records public HTTP status/outcome events and writes receipts through a temporary file and
+rename. Raw proxy error bodies and bearer headers are excluded. A failed qualification records
+`FAIL`, but that does not mean the transfer failed: a transport or malformed-response outcome
+can be uncertain. Reconcile the persisted request ID and reservation before retrying; never
+rerun an uncertain result under a new ID. `service-confirmed` and `balance-confirmed` distinguish
+known success from that uncertainty. Transient 502/503/504 readiness replies are retried;
+`status: ready` and the pinned network/binding are required before funding.

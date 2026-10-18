@@ -3,7 +3,8 @@
 // transfers exactly 10 base units of genesis NIGHT through the separate funding service; no real passkeys.
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { waitForFundingReady, submitQualificationFunding } from './rc-qualification-http.mjs';
 import { createPassportAccounts } from '../packages/account/dist/index.js';
 import { createMidnightChain } from '../packages/adapter-midnight-js/dist/index.js';
 import {
@@ -31,6 +32,8 @@ const required = (key) => {
   if (!value) throw new Error(`set ${key}`);
   return value;
 };
+const token = readFileSync(required('PASSPORT_FUNDING_TOKEN_FILE'), 'utf8').trim();
+if (token.length < 32) throw new Error('funding token must have at least 32 characters');
 const service = required('PASSPORT_SERVICE_URL');
 const funding = required('PASSPORT_FUNDING_URL');
 for (const value of [service, funding]) {
@@ -41,6 +44,10 @@ for (const value of [service, funding]) {
 const pin = resolveBinding('acc-s3r1.1');
 const output = process.env.PASSPORT_RC_EVIDENCE;
 if (!output) throw new Error('set PASSPORT_RC_EVIDENCE to a local evidence path');
+if (existsSync(output))
+  throw new Error(
+    'evidence already exists; reconcile the saved request before selecting a fresh evidence path',
+  );
 const config = await fetchCheckedV1Config(service, {
   networkId: 'undeployed',
   bindingId: 'acc-s3r1.1',
@@ -118,7 +125,10 @@ const evidence = {
   manifestSha256: pin.manifestSha256,
   verdict: 'IN_PROGRESS',
 };
-const save = () => writeFileSync(output, JSON.stringify(evidence, null, 2) + '\n');
+const save = () => {
+  writeFileSync(output + '.tmp', JSON.stringify(evidence, null, 2) + '\n', { mode: 0o600 });
+  renameSync(output + '.tmp', output);
+};
 save();
 try {
   const account = await accounts().createAccount({
@@ -132,33 +142,7 @@ try {
   assert.equal((await accounts().openAccount()).address, account.address);
   evidence.createActivateReadReopen = 'passed';
   save();
-  // The funding image may still be verifying its large mounted key tree. Do not issue
-  // money-moving requests until its binding/network readiness has been checked.
-  const deadline = Date.now() + 15 * 60_000;
-  let ready = false;
-  while (Date.now() < deadline) {
-    let response;
-    try {
-      response = await fetch(`${funding}/healthz`, { signal: AbortSignal.timeout(5_000) });
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, 2_000));
-      continue;
-    }
-    assert.equal(response.status, 200, 'funding health endpoint refused qualification');
-    const health = await response.json();
-    assert.ok(
-      health &&
-        typeof health === 'object' &&
-        'networkId' in health &&
-        health.networkId === 'undeployed',
-    );
-    assert.ok('bindingId' in health && health.bindingId === 'acc-s3r1.1');
-    assert.ok('manifestSha256' in health && health.manifestSha256 === pin.manifestSha256);
-    ready = true;
-    break;
-  }
-  assert.ok(ready, 'funding readiness timed out before any transfer request');
-  const token = readFileSync(required('PASSPORT_FUNDING_TOKEN_FILE'), 'utf8').trim();
+  await waitForFundingReady(funding, pin.manifestSha256);
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
   const balances = async () => {
     const r = await fetch(`${funding}/v1/faucet/balances?accountAddress=${account.address}`, {
@@ -176,6 +160,8 @@ try {
     return /** @type {{night: string}} */ (body);
   };
   const before = await balances();
+  evidence.before = before;
+  save();
   const request = {
     requestId: randomUUID(),
     networkId: 'undeployed',
@@ -187,25 +173,48 @@ try {
   };
   evidence.request = request;
   save();
-  const submit = async () => {
-    const r = await fetch(`${funding}/v1/faucet/fund`, {
-      method: 'POST',
+  /** @type {Array<{stage: string, outcome: string, httpStatus?: number}>} */
+  const attempts = [];
+  evidence.fundingAttempts = attempts;
+  /** @param {string} stage */
+  const submit = (stage) =>
+    submitQualificationFunding({
+      base: funding,
       headers,
-      body: JSON.stringify(request),
+      request,
+      onAttempt: (event) => {
+        attempts.push({ stage, ...event });
+        save();
+      },
     });
-    const body = await r.json();
-    assert.equal(r.status, 200, JSON.stringify(body));
-    return body;
-  };
-  const funded = await submit();
+  // A failed qualification is not evidence that no transfer was submitted.
+  evidence.fundingOutcome = 'uncertain';
+  save();
+  const funded = await submit('initial');
+  evidence.funded = funded;
+  evidence.fundingOutcome = 'service-confirmed';
+  save();
   const after = await balances();
   assert.equal(BigInt(after.night), BigInt(before.night) + 10n);
-  const replay = await submit();
+  evidence.after = after;
+  evidence.fundingOutcome = 'balance-confirmed';
+  save();
+  const replay = await submit('replay');
+  evidence.replay = replay;
+  save();
   assert.deepEqual(replay, funded);
   assert.deepEqual(await balances(), after);
   Object.assign(evidence, { before, funded, after, replay, verdict: 'PASS' });
   save();
   console.log('RC container qualification: PASS', account.address);
+} catch (error) {
+  evidence.verdict = 'FAIL';
+  evidence.failure = {
+    name: error instanceof Error ? error.name : 'Error',
+    message: error instanceof Error ? error.message.slice(0, 500) : 'unknown qualification failure',
+  };
+  save();
+  throw error;
 } finally {
   seed.fill(0);
   device.fill(0);
