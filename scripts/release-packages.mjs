@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
+import { releasePackageDirectories } from './release-package-list.mjs';
 
 const mode = process.argv[2];
 const version = process.env.RELEASE_VERSION;
@@ -13,17 +14,7 @@ const tag = process.env.DIST_TAG;
 const root = resolve(import.meta.dirname, '..');
 const output = resolve(process.env.RELEASE_TARBALL_DIR ?? join(root, 'release-tarballs'));
 const registry = 'https://npm.pkg.github.com';
-const expectedPublishable = new Set([
-  'account',
-  'adapter-browser',
-  'adapter-midnight-js',
-  'adapter-service',
-  'adapter-webauthn',
-  'contract',
-  'keys',
-  'protocol',
-  'service',
-]);
+const expectedPublishable = new Set(releasePackageDirectories);
 /** @param {string} message @returns {never} */
 const fail = (message) => {
   throw new Error(`release: ${message}`);

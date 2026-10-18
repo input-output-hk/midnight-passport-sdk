@@ -19,7 +19,7 @@ const decode = (value: string): Uint8Array =>
 const buffer = (value: Uint8Array): ArrayBuffer => Uint8Array.from(value).buffer;
 
 interface SealedOpening {
-  readonly version: 1;
+  readonly version: 1 | 2;
   readonly state: 'pending' | 'published';
   readonly iv: string;
   readonly ciphertext: string;
@@ -51,7 +51,7 @@ export function browserGrantJournal(
       !value ||
       typeof value !== 'object' ||
       Array.isArray(value) ||
-      (value as SealedOpening).version !== 1 ||
+      ![1, 2].includes((value as SealedOpening).version) ||
       !['pending', 'published'].includes((value as SealedOpening).state) ||
       typeof (value as SealedOpening).iv !== 'string' ||
       typeof (value as SealedOpening).ciphertext !== 'string'
@@ -71,16 +71,22 @@ export function browserGrantJournal(
         'encrypt',
         'decrypt',
       ]);
-      return work(key);
+      return await work(key);
     } finally {
       raw.fill(0);
     }
   };
-  const aad = (account: string, grantId: string): Uint8Array =>
-    new TextEncoder().encode(name(account, grantId));
-  const load = async (account: string, grantId: string): Promise<StagedJubjubGrant | undefined> => {
-    const sealed = read(account, grantId);
-    if (!sealed) return undefined;
+  const aad = (account: string, grantId: string, sealed?: SealedOpening): Uint8Array =>
+    new TextEncoder().encode(
+      sealed?.version === 2
+        ? JSON.stringify([name(account, grantId), 2, sealed.state])
+        : name(account, grantId),
+    );
+  const open = async (
+    account: string,
+    grantId: string,
+    sealed: SealedOpening,
+  ): Promise<StagedJubjubGrant> => {
     return withKey(account, async (key) => {
       let plain: ArrayBuffer;
       try {
@@ -88,7 +94,7 @@ export function browserGrantJournal(
           {
             name: 'AES-GCM',
             iv: buffer(decode(sealed.iv)),
-            additionalData: buffer(aad(account, grantId)),
+            additionalData: buffer(aad(account, grantId, sealed)),
           },
           key,
           buffer(decode(sealed.ciphertext)),
@@ -113,32 +119,44 @@ export function browserGrantJournal(
       return value as StagedJubjubGrant;
     });
   };
+  const load = async (account: string, grantId: string): Promise<StagedJubjubGrant | undefined> => {
+    const sealed = read(account, grantId);
+    return sealed ? open(account, grantId, sealed) : undefined;
+  };
+  const save = async (grant: StagedJubjubGrant, state: SealedOpening['state']): Promise<void> => {
+    const account = grant.account;
+    const grantId = grant.bookkeeping.grantId;
+    const sealed: SealedOpening = {
+      version: 2,
+      state,
+      iv: encode(crypto.getRandomValues(new Uint8Array(12))),
+      ciphertext: '',
+    };
+    const ciphertext = await withKey(
+      account,
+      async (key) =>
+        new Uint8Array(
+          await crypto.subtle.encrypt(
+            {
+              name: 'AES-GCM',
+              iv: buffer(decode(sealed.iv)),
+              additionalData: buffer(aad(account, grantId, sealed)),
+            },
+            key,
+            buffer(new TextEncoder().encode(JSON.stringify(grant))),
+          ),
+        ),
+    );
+    storage.setItem(
+      name(account, grantId),
+      JSON.stringify({ ...sealed, ciphertext: encode(ciphertext) }),
+    );
+  };
   return {
     async stage(grant) {
-      const account = grant.account;
-      const grantId = grant.bookkeeping.grantId;
-      if (read(account, grantId)) throw new Error('A staged grant opening already exists.');
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-      const ciphertext = await withKey(
-        account,
-        async (key) =>
-          new Uint8Array(
-            await crypto.subtle.encrypt(
-              { name: 'AES-GCM', iv: buffer(iv), additionalData: buffer(aad(account, grantId)) },
-              key,
-              buffer(new TextEncoder().encode(JSON.stringify(grant))),
-            ),
-          ),
-      );
-      storage.setItem(
-        name(account, grantId),
-        JSON.stringify({
-          version: 1,
-          state: 'pending',
-          iv: encode(iv),
-          ciphertext: encode(ciphertext),
-        } satisfies SealedOpening),
-      );
+      if (read(grant.account, grant.bookkeeping.grantId))
+        throw new Error('A staged grant opening already exists.');
+      await save(grant, 'pending');
     },
     load,
     async pending(account) {
@@ -148,19 +166,22 @@ export function browserGrantJournal(
         const item = storage.key(index);
         if (item?.startsWith(`${prefix}${account}:`)) keys.push(item);
       }
-      return keys
-        .map((item) => {
-          const grantId = item.slice(`${prefix}${account}:`.length);
-          return { grantId, sealed: read(account, grantId) };
-        })
-        .filter(({ sealed }) => sealed?.state === 'pending')
-        .map(({ grantId }) => grantId)
-        .sort();
+      const pending: string[] = [];
+      for (const item of keys) {
+        const grantId = item.slice(`${prefix}${account}:`.length);
+        const sealed = read(account, grantId);
+        if (!sealed) continue;
+        // Authenticate before filtering. Legacy status was not authenticated, so every
+        // valid v1 opening is rechecked against the chain and upgraded on publication.
+        await open(account, grantId, sealed);
+        if (sealed.version === 1 || sealed.state === 'pending') pending.push(grantId);
+      }
+      return pending.sort();
     },
     async markPublished(account, grantId) {
       const sealed = read(account, grantId);
       if (!sealed) throw new Error('The staged grant opening is absent.');
-      storage.setItem(name(account, grantId), JSON.stringify({ ...sealed, state: 'published' }));
+      await save(await open(account, grantId, sealed), 'published');
     },
     async readReadPublicKey(account, grantId) {
       const staged = await load(account, grantId);
