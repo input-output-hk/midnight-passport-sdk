@@ -106,3 +106,51 @@ test('public account record is restored with counter and credential bytes', asyn
     localUseCounter: 3n,
   });
 });
+
+test('journal status tampering cannot hide a pending opening or republish a completed one', async () => {
+  const local = storage();
+  const journal = browserGrantJournal('undeployed', prf(7), local);
+  await journal.stage(opening);
+  const key = local.key(0)!;
+  const pending = local.getItem(key)!;
+  local.setItem(key, JSON.stringify({ ...JSON.parse(pending), state: 'published' }));
+  await assert.rejects(journal.pending(account), /could not be unlocked/);
+  await assert.rejects(journal.markPublished(account, grantId), /could not be unlocked/);
+  local.setItem(key, pending);
+  await journal.markPublished(account, grantId);
+  const published = local.getItem(key)!;
+  assert.notEqual(JSON.parse(published).iv, JSON.parse(pending).iv);
+  local.setItem(key, JSON.stringify({ ...JSON.parse(published), state: 'pending' }));
+  await assert.rejects(journal.load(account, grantId), /could not be unlocked/);
+});
+
+test('legacy openings remain readable but their unauthenticated status is never used to hide recovery', async () => {
+  const local = storage();
+  const name = `mn-passport:grant-journal:v1:undeployed:${account}:${grantId}`;
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await crypto.subtle.importKey('raw', new Uint8Array(32).fill(7), 'AES-GCM', false, [
+    'encrypt',
+  ]);
+  const ciphertext = new Uint8Array(
+    await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(name) },
+      key,
+      new TextEncoder().encode(JSON.stringify(opening)),
+    ),
+  );
+  local.setItem(
+    name,
+    JSON.stringify({
+      version: 1,
+      state: 'published',
+      iv: btoa(String.fromCharCode(...iv)),
+      ciphertext: btoa(String.fromCharCode(...ciphertext)),
+    }),
+  );
+  const journal = browserGrantJournal('undeployed', prf(7), local);
+  assert.deepEqual(await journal.pending(account), [grantId]);
+  assert.deepEqual(await journal.load(account, grantId), opening);
+  await journal.markPublished(account, grantId);
+  assert.equal(JSON.parse(local.getItem(name)!).version, 2);
+  assert.deepEqual(await journal.pending(account), []);
+});

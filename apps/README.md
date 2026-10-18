@@ -259,7 +259,8 @@ and `assertionMaterial`.
     settling sealed bookkeeping and read seals. The demo supplies a browser-local encrypted
     journal and live commitment readers. It exposes reviewed fixed-recipient unshielded spend
     grants, opening export/import, grantee spending, roster reads and recovery. The journal has
-    no backup or cross-device synchronization; exported openings contain grant capability data
+    authenticated pending/published status; legacy records are rechecked during recovery and upgraded
+    on confirmed publication. It has no backup or cross-device synchronization; exported openings contain grant capability data
     and must be shared only with the intended holder.
   - _Grant revocation._ The page exposes selective revocation and revoke-all, with live roster
     confirmation. Read grants require rotation and complete surviving reader/grantee openings;

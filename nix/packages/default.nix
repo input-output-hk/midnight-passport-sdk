@@ -8,7 +8,7 @@
       keyService = pkgs.runCommand "passport-key-service-app" { } ''
         mkdir -p $out/apps/passport-key-service/src $out/packages/contract/bin $out/packages/contract/resources
         cp ${../../apps/passport-key-service/src}/*.mjs $out/apps/passport-key-service/src/
-        cp ${../../packages/contract/bin/restore-acc-keys.mjs} $out/packages/contract/bin/
+        cp ${../../packages/contract/bin/restore-acc-keys.mjs} $out/packages/contract/bin/restore-acc-keys.mjs
         cp ${../../packages/contract/resources}/acc-s3r1.1.* $out/packages/contract/resources/
       '';
     in

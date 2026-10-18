@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { releasePackageDirectories } from './release-package-list.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const version = process.env.RELEASE_VERSION ?? '0.0.0-dev.repro';
@@ -45,7 +46,11 @@ function buildAndPack(directory) {
   const manifest = JSON.parse(
     readFileSync(join(directory, 'release-tarballs', 'manifest.json'), 'utf8'),
   );
-  if (manifest.version !== version || manifest.tag !== tag || manifest.files?.length !== 9)
+  if (
+    manifest.version !== version ||
+    manifest.tag !== tag ||
+    manifest.files?.length !== releasePackageDirectories.length
+  )
     throw new Error('reproducibility check got an incomplete release manifest');
   return manifest.files.map(({ name, sha256 }) => ({ name, sha256 }));
 }

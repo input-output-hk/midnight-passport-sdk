@@ -158,7 +158,9 @@ previous spent total, and chooses **Spend scoped grant**. The page checks the li
 recipient before grantee passkey consent, then confirms the updated commitment. The owner can use
 **Revoke scoped grant** on an active ID and verify its inactive tombstone. **Recover pending grants**
 resumes publication of openings already staged in this browser's encrypted journal after checking
-live ACC commitments. The journal is profile-local; clearing browser storage loses its openings,
+live ACC commitments. New journal records authenticate their pending/published status. Legacy
+records remain readable, but are always rechecked during recovery and upgraded when publication
+is confirmed; their older status cannot hide an opening. The journal is profile-local; clearing browser storage loses its openings,
 and a grant created on another device cannot be recovered here. A node-backed package run covers
 issue, independent holder spend, revoke and post-revoke refusal; the two-browser passkey ceremony
 still needs a manual localnet run.
