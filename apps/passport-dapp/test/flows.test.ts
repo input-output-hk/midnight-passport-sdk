@@ -162,17 +162,23 @@ test('create has five stages and only the deployment and the activation have an 
   assert.match(stages[2]?.label ?? '', /10 waves/);
 });
 
-test('rotate estimates its one proving stage, and open and wallet are all indeterminate', () => {
-  assert.equal(FLOWS.rotate.stages[0]?.estimateMs, ROTATION_ESTIMATE_S * 1000);
+test('rotate reviews readers before its estimated submit stage; open and wallet are indeterminate', () => {
+  assert.deepEqual(
+    FLOWS.rotate.stages.map((stage) => stage.id),
+    ['review', 'submit', 'read'],
+  );
+  assert.equal(FLOWS.rotate.stages[0]?.estimateMs, undefined);
+  assert.equal(FLOWS.rotate.stages[1]?.estimateMs, ROTATION_ESTIMATE_S * 1000);
   assert.equal(ROTATION_ESTIMATE_S, 60);
   for (const action of ['open', 'wallet'] as const) {
     for (const stage of FLOWS[action].stages) assert.equal(stage.estimateMs, undefined, stage.id);
   }
 });
 
-test('the summaries quote the estimates the progress bar uses', () => {
+test('the summaries explain deployment timing and rotation safety', () => {
   assert.match(FLOWS.create.summary, /about 3 min/);
-  assert.match(FLOWS.rotate.summary, /about 60 s/);
+  assert.match(FLOWS.rotate.summary, /read grants/);
+  assert.match(FLOWS.rotate.summary, /surviving reader/);
 });
 
 test('the account is read at the end of create, open and rotate', () => {

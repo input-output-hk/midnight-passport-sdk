@@ -158,7 +158,6 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     byId('open-desc').textContent =
       'Reopens the JubJub account with its passkey and checks its sealed viewing secret against the live ACC.';
   }
-  buttons.rotate.closest('li')?.toggleAttribute('hidden', true);
   const renderPrompts = () => {
     for (const action of ACTIONS) {
       byId(`${action}-prompts`).textContent =
@@ -221,7 +220,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       busy || !account || !/^[0-9a-f]{64}$/.test(removalInput.value.trim());
     removalInput.disabled = busy || !account;
     handoffInput.disabled = busy;
-    buttons.rotate.disabled = true;
+    buttons.rotate.disabled = busy || !account;
     buttons.wallet.disabled = busy;
     buttons.fund.disabled = busy || !account;
     fundingSelect.disabled = busy || !account;
@@ -235,9 +234,9 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     // With an account open, rotating is the next thing to show; before that, creating is.
     buttons.create.classList.toggle('btn-primary', !account);
     buttons.create.classList.toggle('btn-secondary', !!account);
-    buttons.rotate.classList.toggle('btn-primary', false);
-    buttons.rotate.classList.toggle('btn-secondary', true);
-    byId('rotate-needs').hidden = true;
+    buttons.rotate.classList.toggle('btn-primary', !!account);
+    buttons.rotate.classList.toggle('btn-secondary', !account);
+    byId('rotate-needs').hidden = !!account;
     renderPrompts();
     document.body.toggleAttribute('data-busy', busy);
   };

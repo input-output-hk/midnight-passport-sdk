@@ -1,15 +1,17 @@
 // The Lace passkey recipe v1 (lace-platform main: LW-15585, LW-15584, LW-15635), ported so the
-// prototype derives the same secrets Lace would from the same passkey:
+// SDK derives the same authoriser, wallet and per-device reader material as Lace:
 //
 //   PRF(salt = SHA-256('lace/prf/root/v1'))                       -> root (32 bytes)
 //   HKDF-SHA256(root, salt = empty, info = 'lace/hkdf/wallet-entropy/v1', 32)  -> wallet entropy
 //   HKDF-SHA256(entropy, salt = 'lace', info = 'wallet-seed', 32) -> BIP-39 entropy (24 words)
 //   mnemonicToSeedSync(words)                                     -> the 64-byte BIP-39 seed
-//   MIP-0015 v1 deriveSymmetricSecret(seed, 'lace-passport:acc-enc:v1', `${networkId}/0`)
-//                                                                 -> the ACC's X25519 secret
+//   MIP-0015 v1 deriveSymmetricSecret(seed, 'lace-passport:reader:v1', networkId)
+//                                                                 -> this device's reader secret
 //
-// Every intermediate byte array is zeroed before returning. The 24 words are a string and
-// cannot be; they never leave this module.
+// The live ACC viewing secret is random and sealed to reader keys. The earlier deterministic
+// `acc-enc` derivation remains exported only for old prototype compatibility. Every intermediate
+// byte array is zeroed before returning. The 24 words are a string and cannot be; they never
+// leave this module.
 import { x25519 } from '@noble/curves/ed25519.js';
 import { hkdf } from '@noble/hashes/hkdf.js';
 import { hmac } from '@noble/hashes/hmac.js';
@@ -19,12 +21,12 @@ import { wordlist as english } from '@scure/bip39/wordlists/english.js';
 
 const utf8 = (text: string): Uint8Array => new TextEncoder().encode(text);
 
-/** PRF output #1: Lace's ACC authoriser (a JubJub key); the prototype flow still uses P-256. */
+/** PRF output #1: Lace's JubJub ACC authoriser; P-256 uses its passkey public key instead. */
 export const PRF_LABEL_AUTHORISER = 'lace-passport/prf/authoriser/v1';
-/** PRF output #2: the root every wallet and account secret derives from. */
+/** PRF output #2: the root of the wallet seed and this device's reader key. */
 export const PRF_LABEL_ROOT = 'lace/prf/root/v1';
 export const HKDF_WALLET_ENTROPY_INFO = 'lace/hkdf/wallet-entropy/v1';
-/** The MIP-0015 domain of the ACC's encryption key. */
+/** @deprecated Earlier deterministic-key prototype domain; sealed ACCs draw random viewing secrets. */
 export const ACC_ENC_DOMAIN = 'lace-passport:acc-enc:v1';
 /** MIP-0015 domain for this device's X25519 reader key in Lace's envelope model. */
 export const READER_SECRET_DOMAIN = 'lace-passport:reader:v1';
@@ -100,7 +102,7 @@ export function deriveSymmetricSecret(
   }
 }
 
-/** The ACC's X25519 secret: MIP-0015 at `lace-passport:acc-enc:v1`, context `<network>/0`. */
+/** @deprecated Earlier deterministic-key prototype ACC secret; current sealed ACCs use random secrets. */
 export const accEncryptionSecret = (seed: Uint8Array, networkId: string): Uint8Array =>
   deriveSymmetricSecret(seed, { domain: ACC_ENC_DOMAIN, context: `${networkId}/0` });
 
@@ -119,8 +121,8 @@ export function readerPublicKey(seed: Uint8Array, networkId: string): Uint8Array
 }
 
 /**
- * The ACC's `enc_key`, the X25519 public key of {@link accEncryptionSecret}. Network-bound and
- * reproducible from the passkey, so the account's encryption key needs no storage.
+ * @deprecated Earlier deterministic-key prototype ACC key. Current sealed ACCs generate a
+ * random viewing secret and publish device envelopes; see `recipeDeviceKeyring`.
  */
 export function accEncryptionKey(seed: Uint8Array, networkId: string): Uint8Array {
   const secret = accEncryptionSecret(seed, networkId);

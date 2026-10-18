@@ -45,8 +45,8 @@ const ui = createUi(
   {
     note:
       ARM === 'jubjub'
-        ? 'JubJub preview: the ACC viewing secret is random and sealed to the passkey-derived reader. Create/open are available; rotation needs chain-backed holding and grant sources.'
-        : 'P-256 preview: the ACC viewing secret is random and sealed to the passkey-derived reader. Create/open are available; rotation needs a chain-verified device roster.',
+        ? 'JubJub preview: the ACC viewing secret is random and sealed to the passkey-derived reader. Rotation checks live devices, holdings and read grants.'
+        : 'P-256 preview: the ACC viewing secret is random and sealed to the passkey-derived reader. Rotation checks live devices, holdings and read grants.',
     passkey: mockPasskey
       ? 'MOCK (dev only, software key in localStorage)'
       : 'browser authenticator',
@@ -61,7 +61,7 @@ if (ARM === 'jubjub') {
   const note = document.getElementById('key-note');
   if (note)
     note.textContent =
-      'The ACC viewing secret is random and sealed to the passkey-derived reader. This preview supports create/open and reviewed device enrollment. Removal requires complete reader and read-grant openings.';
+      'The ACC viewing secret is random and sealed to the passkey-derived reader. Rotation and device changes require complete live reader and read-grant openings.';
 }
 const { status, stage, record, event: onEvent } = ui;
 setOperationTraceSink(ui.trace);
@@ -613,7 +613,64 @@ ui.on('removeDevice', async () => {
   status('The selected device is absent from the live ACC roster.');
 });
 ui.on('rotate', async () => {
-  throw new Error('Viewing-key rotation needs chain-backed roster and grant sources.');
+  const current = account;
+  if (
+    !current?.rotateViewingKey ||
+    !current.deviceRoster ||
+    !current.grantRoster ||
+    !current.readShieldedHoldings
+  )
+    throw new Error('Open a sealed Passport account with complete chain-backed sources first.');
+  stage('review');
+  const [before, devices, grants, holdings] = await Promise.all([
+    current.state(),
+    current.deviceRoster(),
+    current.grantRoster(),
+    current.readShieldedHoldings({ onEvent }),
+  ]);
+  if (before.authNonce !== devices.authNonce || before.authNonce !== grants.authNonce)
+    throw new Error('The ACC changed while its readers were reviewed. Refresh and try again.');
+  const activeReadGrants = grants.entries.filter((entry) => entry.active && entry.read).length;
+  const approved = window.confirm(
+    `Rotate this Passport ACC's viewing secret?\n\nNetwork: ${network}\nACC: ${current.address}\n` +
+      `Live devices: ${devices.commitments.length}\nShielded holdings: ${holdings.length}\n` +
+      `Active read grants: ${activeReadGrants}\n\n` +
+      'Every live device, holding and read grantee must receive a fresh seal. The SDK refuses an incomplete roster before changing the ACC.',
+  );
+  if (!approved) {
+    status('Viewing-key rotation cancelled before signing.');
+    traceOperation('account.viewingKey.rotationCancelled', { accountAddress: current.address });
+    return;
+  }
+  stage('submit');
+  status('Sealing a new viewing secret to verified readers, then signing and confirming rotation…');
+  const rotated = await current.rotateViewingKey({ onEvent });
+  if (rotated.droppedDeviceEntries.length || rotated.unsealedGrantIds.length)
+    throw new Error('Rotation reported an incomplete reader delivery; inspect the event log.');
+  stage('read');
+  const after = await current.state();
+  if (after.authNonce <= before.authNonce)
+    throw new Error('The ACC did not confirm a newer authorisation nonce.');
+  ui.showAccount({
+    address: current.address,
+    networkId: current.networkId,
+    bindingId: current.bindingId,
+    state: after,
+    lastTx: rotated,
+  });
+  const result = {
+    accountAddress: current.address,
+    txHash: rotated.txHash,
+    authNonceBefore: before.authNonce.toString(),
+    authNonceAfter: after.authNonce.toString(),
+    deviceCount: devices.commitments.length,
+    holdingCount: holdings.length,
+    activeReadGrants,
+    sealedReadGrants: rotated.sealedReadGrants.map(({ grantId }) => grantId),
+  };
+  record('viewingKeyRotated', result);
+  traceOperation('account.viewingKey.rotated', result);
+  status('The ACC confirmed its new sealed viewing secret.');
 });
 ui.on('fund', async () => {
   if (!account || !ui.selectedFundingAsset())

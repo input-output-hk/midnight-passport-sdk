@@ -108,17 +108,14 @@ test('the label says so once the estimate is passed, and not before', () => {
   );
 });
 
-test('the activation fills against 25 seconds and the rotation against 60', () => {
+test('the activation fills against 25 seconds and the reviewed rotation submit against 60', () => {
   const activate = runAt('create', 'activate', 12_500).view(12_500);
   assert.equal(activate.segments[3]?.width, 50);
   assert.equal(activate.label, 'Step 4 of 5: Activate the first device · 0:12 of about 0:25');
-  const rotate = runAt('rotate', 'prove', 30_000).view(30_000);
-  assert.deepEqual(widths(rotate).slice(0, 1), [50]);
-  assert.equal(
-    rotate.label,
-    'Step 1 of 2: Sign with the passkey, prove and submit · 0:30 of about 1:00',
-  );
-  assert.equal(rotate.segments[1]?.state, 'pending');
+  const rotate = runAt('rotate', 'submit', 30_000).view(30_000);
+  assert.deepEqual(widths(rotate).slice(0, 2), [100, 50]);
+  assert.equal(rotate.label, 'Step 2 of 3: Seal fresh keys, sign and submit · 0:30 of about 1:00');
+  assert.equal(rotate.segments[2]?.state, 'pending');
 });
 
 test('open and wallet have no estimate, so each running stage is indeterminate and full', () => {
@@ -138,7 +135,7 @@ test('the segments of a stage with an estimate are wider, in proportion to that 
   assert.deepEqual([passkey, prf, read], [1, 1, 1], 'no estimate: the base width');
   assert.equal(deploy, 9, '180 s in 20 s units');
   assert.equal(activate, 1.25);
-  assert.equal(segmentGrow(FLOWS.rotate.stages[0]!), 3);
+  assert.equal(segmentGrow(FLOWS.rotate.stages[1]!), 3);
   assert.equal(
     segmentGrow({ id: 'tiny', label: 't', estimateMs: 1_000 }),
     1,

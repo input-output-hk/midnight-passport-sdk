@@ -611,7 +611,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
               undefined,
               undefined,
               undefined,
-              { requireAllGrants: true, inOwnerSession: true, rotateRosterForEnrollment: true },
+              { inOwnerSession: true, rotateRosterForEnrollment: true },
             );
             initial = await read();
             if (
@@ -820,7 +820,6 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     excludedGrant?: string | 'all',
     onRotated?: (state: { readonly encKey: Uint8Array; readonly authNonce: bigint }) => void,
     controls: {
-      readonly requireAllGrants?: boolean;
       readonly inOwnerSession?: boolean;
       readonly rotateRosterForEnrollment?: boolean;
     } = {},
@@ -1043,10 +1042,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
               'GrantRosterUnsettled',
               'The read grant disappeared before key rotation.',
             );
-          if (
-            (target || (excludedGrant && excludedGrant !== 'all') || controls.requireAllGrants) &&
-            deliveries.unsealedGrantIds.length
-          )
+          if (deliveries.unsealedGrantIds.length)
             throw new PassportConnectorError(
               'GrantRosterUnsettled',
               'A surviving read grantee cannot receive the fresh key.',
@@ -1693,9 +1689,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           random,
           ...(scope.read && {
             rotateBeforeIssue: () =>
-              rotateP256ViewingKey(record, options, undefined, undefined, undefined, {
-                requireAllGrants: true,
-              }) as Promise<ViewingKeyRotationResult>,
+              rotateP256ViewingKey(record, options) as Promise<ViewingKeyRotationResult>,
           }),
         },
       );

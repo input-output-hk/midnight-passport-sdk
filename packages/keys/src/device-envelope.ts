@@ -60,6 +60,10 @@ const recordOf = (entry: Uint8Array, type: number): boolean =>
   entry.length === ENTRY_LENGTH &&
   entry[0] === type &&
   (entry[1] === SUITE || entry[1] === LEGACY_SUITE);
+// The P-256 extension was introduced only in suite 2. A type/suite combination with no
+// published encoder is malformed, even if the AEAD happens to open under a matching key.
+const p256RecordOf = (entry: Uint8Array, type: number): boolean =>
+  entry.length === ENTRY_LENGTH && entry[0] === type && entry[1] === SUITE;
 const require32 = (bytes: Uint8Array, name: string): void => {
   if (bytes.length !== KEY_LENGTH) throw new Error(`${name} must be 32 bytes`);
 };
@@ -276,8 +280,8 @@ export async function openDeviceRegistration(
   entry: Uint8Array,
 ): Promise<DeviceReader | null> {
   require32(rosterKey, 'roster key');
-  const hasPolicy = recordOf(entry, P256_POLICY_REGISTRATION_TYPE);
-  const isP256 = hasPolicy || recordOf(entry, P256_REGISTRATION_TYPE);
+  const hasPolicy = p256RecordOf(entry, P256_POLICY_REGISTRATION_TYPE);
+  const isP256 = hasPolicy || p256RecordOf(entry, P256_REGISTRATION_TYPE);
   if (!isP256 && !recordOf(entry, REGISTRATION_TYPE)) return null;
   const plaintext = await openFrom(
     entry,

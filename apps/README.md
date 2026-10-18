@@ -55,7 +55,7 @@ pnpm install && pnpm build
 | `VITE_PASSPORT_ARTEFACT_URL` | Service's own `/v1/zk/<bindingId>` | Demo build-time pin when the dedicated key service supplies browser artefacts. |
 | `MN_NODE_PORT`, `MN_INDEXER_PORT`, `MN_PROOF_PORT` | 19944, 18088, 16300 | The localnet's host ports (`infra/localnet/ports.env`); only the defaults of the URLs above.                |
 | `PASSPORT_NETWORK_ID`      | `undeployed`                   | Build-time pin of the dapp (read by `vite build`/`dev`) and the e2e: the network the page is bound to. `prototype:up` sets it from `MN_NETWORK_ID`. A service on another network is refused (`NetworkMismatch`). |
-| `VITE_PASSPORT_ARM`        | `p256`                         | Browser ACC authoriser arm, `p256` or `jubjub`. `pnpm demo up --arm jubjub` sets it for the dev page. Both modes expose create/open; the rotate button is hidden. |
+| `VITE_PASSPORT_ARM`        | `p256`                         | Browser ACC authoriser arm, `p256` or `jubjub`. `pnpm demo up --arm jubjub` sets it for the dev page. Both modes expose create/open and reviewed sealed-key rotation. |
 | `PASSPORT_SERVICE_HOST`    | `127.0.0.1`                    | Service bind address. A non-loopback host exposes the sponsor to whoever can reach it.                                   |
 | `PASSPORT_SERVICE_PORT`    | `8787`                         | Service port. The dapp expects 8787 unless `VITE_PASSPORT_SERVICE_URL` says otherwise.                                   |
 | `PASSPORT_MAX_DEPLOYS`     | `20`                           | Deploy cap per service process.                                                                                          |
@@ -225,8 +225,9 @@ and `assertionMaterial`.
   `enc_key`. The browser publishes a type `0xd1` device envelope and P-256 type `0xd5`
   registration with the passkey's WebAuthn policy. The wallet seed remains independent. The account
   API can rotate this secret or remove an enrolled passkey with live-reader, chain-backed holding
-  and grant-target checks. The
-  page hides rotation until it supplies those host sources. See
+  and grant-target checks. The page supplies those sources and asks for a live-roster review before
+  rotation. A missing device registration or read-grant recipient stops rotation before the key
+  changes. See
   [`docs/prototype/keys.md`](../docs/prototype/keys.md).
 - **Shielded holdings reads use a chain-backed source.** The browser checks the ACC output event,
   exact Merkle index and successful ACC input nullifiers before displaying an opened coin. If the

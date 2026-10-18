@@ -6,6 +6,7 @@ import type { PasskeyCredential, PasskeySeam } from '@input-output-hk/mn-passpor
 import {
   assertionMaterial,
   bigintFromBytes,
+  clientDataJSON,
   equalBytes,
   fromBase64url,
   validateP256Key,
@@ -28,6 +29,56 @@ export function browserPasskey(opts: {
 }): PasskeySeam {
   const policy = webauthnPolicy(opts.rpId, opts.origin);
   const container = () => opts.credentials ?? navigator.credentials;
+  // Chromium deliberately adds this GREASE member to roughly one in five assertions. The
+  // pinned ACC can verify only wa-json134, so request a fresh assertion before signing rather
+  // than submitting bytes the contract will reject. Never rewrite signed client data.
+  const greaseSuffix =
+    ',"other_keys_can_be_added_here":"do not compare clientDataJSON against a template. See https://goo.gl/yabPex"}';
+  const isChromiumGrease = (actual: Uint8Array, expected: Uint8Array): boolean => {
+    const canonical = new TextDecoder().decode(expected);
+    return new TextDecoder().decode(actual) === canonical.slice(0, -1) + greaseSuffix;
+  };
+  const getCanonical = async (
+    publicKey: PublicKeyCredentialRequestOptions,
+    credentialId?: Uint8Array,
+  ): Promise<{ id: Uint8Array; proof: WebAuthnAssertion }> => {
+    const challenge = publicKey.challenge;
+    const expected = clientDataJSON(
+      challenge instanceof ArrayBuffer
+        ? new Uint8Array(challenge)
+        : new Uint8Array(challenge.buffer, challenge.byteOffset, challenge.byteLength),
+      policy.origin,
+    );
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const got = (await container().get({ publicKey })) as PublicKeyCredential | null;
+      if (!got)
+        throw new PassportConnectorError('UserCancelled', 'The passkey prompt was cancelled.');
+      const id = new Uint8Array(got.rawId);
+      if (credentialId && !equalBytes(id, credentialId)) throw wrongPasskey();
+      const response = got.response as AuthenticatorAssertionResponse;
+      const actual = new Uint8Array(response.clientDataJSON);
+      if (equalBytes(actual, expected))
+        return {
+          id,
+          proof: {
+            authenticatorData: new Uint8Array(response.authenticatorData),
+            clientDataJSON: actual,
+            signature: new Uint8Array(response.signature),
+          },
+        };
+      if (!isChromiumGrease(actual, expected))
+        throw new PassportConnectorError(
+          'UnsupportedAuthenticator',
+          'The authenticator does not match the wa-json134 profile: unsupported or mismatched clientDataJSON',
+        );
+      if (attempt === 4)
+        throw new PassportConnectorError(
+          'UnsupportedAuthenticator',
+          'The browser did not return the ACC wa-json134 client data after five attempts.',
+        );
+    }
+    throw new PassportConnectorError('InternalError', 'Unreachable WebAuthn retry state.');
+  };
   /**
    * One assertion ceremony pinned to a known credential (`allowCredentials`): a different credential
    * fails with WRONG_PASSKEY, a dismissed prompt with UserCancelled.
@@ -36,23 +87,17 @@ export function browserPasskey(opts: {
     credentialId: Uint8Array,
     challenge: Uint8Array,
   ): Promise<WebAuthnAssertion> => {
-    const got = (await container().get({
-      publicKey: {
-        challenge: new Uint8Array(challenge),
-        rpId: opts.rpId,
-        userVerification: 'required',
-        allowCredentials: [{ type: 'public-key', id: new Uint8Array(credentialId) }],
-      },
-    })) as PublicKeyCredential | null;
-    if (!got)
-      throw new PassportConnectorError('UserCancelled', 'The passkey prompt was cancelled.');
-    if (!equalBytes(new Uint8Array(got.rawId), credentialId)) throw wrongPasskey();
-    const r = got.response as AuthenticatorAssertionResponse;
-    return {
-      authenticatorData: new Uint8Array(r.authenticatorData),
-      clientDataJSON: new Uint8Array(r.clientDataJSON),
-      signature: new Uint8Array(r.signature),
-    };
+    return (
+      await getCanonical(
+        {
+          challenge: new Uint8Array(challenge),
+          rpId: opts.rpId,
+          userVerification: 'required',
+          allowCredentials: [{ type: 'public-key', id: new Uint8Array(credentialId) }],
+        },
+        credentialId,
+      )
+    ).proof;
   };
   return {
     async create(userName) {
@@ -147,26 +192,16 @@ export function browserPasskey(opts: {
     async identify() {
       try {
         const challenge = crypto.getRandomValues(new Uint8Array(32));
-        const credential = (await container().get({
-          publicKey: {
-            challenge: new Uint8Array(challenge),
-            rpId: opts.rpId,
-            userVerification: 'required',
-          },
-        })) as PublicKeyCredential | null;
-        if (!credential) {
-          throw new PassportConnectorError('UserCancelled', 'No passkey was chosen.');
-        }
-        const r = credential.response as AuthenticatorAssertionResponse;
+        const credential = await getCanonical({
+          challenge: new Uint8Array(challenge),
+          rpId: opts.rpId,
+          userVerification: 'required',
+        });
         // Kept for `owns`: the same assertion proves which key the picked passkey holds, so binding
         // a registry record to it costs no second prompt (Ruling R10(b)).
-        const proof: WebAuthnAssertion = {
-          authenticatorData: new Uint8Array(r.authenticatorData),
-          clientDataJSON: new Uint8Array(r.clientDataJSON),
-          signature: new Uint8Array(r.signature),
-        };
+        const proof = credential.proof;
         return {
-          credentialId: new Uint8Array(credential.rawId),
+          credentialId: credential.id,
           owns(publicKey, keyPolicy) {
             try {
               assertionMaterial(challenge, keyPolicy, publicKey, proof);

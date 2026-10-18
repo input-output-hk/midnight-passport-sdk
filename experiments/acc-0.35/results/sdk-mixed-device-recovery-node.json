@@ -3,40 +3,54 @@
   "bindingId": "acc-s3r1.1",
   "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
   "contractSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
-  "account": "e2977a425df4833a0d62a6a1a32fcb35be8a332601e99880704c53e8cfc33e3b",
+  "account": "5589add7c87066b580c13a4289cdf9014e3d0017de8150d8773f04b16de8a7bf",
   "networkId": "undeployed",
   "ownerScheme": "p256-webauthn",
   "joinedScheme": "jubjub-schnorr",
-  "enrollmentCommitment": "610bfcb85c8ed126cd5fff40d25620c63f6756c58eabac47ad935cbd090e2422",
+  "enrollmentCommitment": "8f0a770bccbf820bcc85fd7c9424b9e36ec10ae602d79743cad2e1e6e92e9435",
   "authNonceBeforeEnrollment": "2",
   "authNonceAfterEnrollment": "5",
   "transactions": [
     {
       "circuit": "activate_initial_device_with_p256",
-      "txHash": "2aa71f06988753889e922754dcff5adc316db53268bd2f8c06ec45dada6df2c4"
+      "txHash": "044452676e9ec19c1a1ad8f887f2a88802acbe748d5278515f166179ad5ed6fb"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "e1a582f2c51f448cde667ec53f72237fcde7f8f2716a34b4e142054d13be8d76"
+      "txHash": "16036fca899ee71049d857380c74dd2f57e7680755899c1d0d9e23a5b9769a5d"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "91121740b2b7ee60cee486e92d4bb9d59c918007de8af50a65e36648b36ad11a"
+      "txHash": "dea653254a64579f3f246e926f4db97af51ee3aae12bb1eea6a01fcf09700146"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "2722fadbab080d3b9fafd6fda5d4932ec2f0f900c19a142f5e44150bb5ce4d78"
+      "txHash": "fcdb36a7f869643fde0c6166cabb251c0bcc9ae72e8c921e232c3dc55ee140dc"
     },
     {
       "circuit": "append_inbox_with_p256",
-      "txHash": "bc50e1facbaf265f8f492bf1b961a3bfffc4fe9df5655ac88622d30a4cee5f3f"
+      "txHash": "e15fd74e4ba00f5f02587a1b4a734a038c2fd523c35a85ca421471c65f720533"
     },
     {
       "circuit": "add_device_with_p256",
-      "txHash": "58c011b05c6d5d0d9b7a3da8f5359e24a2ac0dde5c63e39514dfae6040af37b2"
+      "txHash": "76e47daf99c02269c2b4ef8d1c7bf58231887cd1246b1738ef2a939c0f797a4a"
+    },
+    {
+      "circuit": "append_inbox_with_jubjub",
+      "txHash": "295adc432fe1dd84a0020b7f13c269128a6414f31e8c01af1ffb30a0dc694538"
+    },
+    {
+      "circuit": "append_inbox_with_jubjub",
+      "txHash": "a2cca262749888e95d082b122e38e2460aa516fb74769c9878dfd0b90e1af074"
+    },
+    {
+      "circuit": "rotate_enc_key_with_jubjub",
+      "txHash": "563af58573bf3465a7e37a5794594a2147921f45332386a6a4db46c245ac7b3b"
     }
   ],
   "joinerOpenedByAddress": true,
   "joinerReopenedFromDirectory": true,
-  "scope": "current account API sealed P-256 to JubJub enrollment and recovery with an empty live read-grant roster"
+  "mixedRosterRotationTxHash": "563af58573bf3465a7e37a5794594a2147921f45332386a6a4db46c245ac7b3b",
+  "bothReadersOpenedAfterJubjubRotation": true,
+  "scope": "current account API sealed P-256 to JubJub enrollment, recovery and JubJub-initiated mixed-roster rotation with an empty live read-grant roster"
 }
