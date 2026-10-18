@@ -306,10 +306,12 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
       );
     const entries = pending ? [...inboxEntries, ...record.keyEntries!] : [...inboxEntries];
     const check = async () => {
+      if (!entries.length) throw new Error('the ACC inbox has no sealed key entries');
       const opened = await keyring.openInbox(
         networkId,
-        { account: record.address, encKey, envelopes: entries.reverse() },
-        pending ? record.keyEntries! : [],
+        { account: record.address, encKey, envelopes: [...entries].reverse() },
+        // Empty batches can be a transport no-op, so request an actual sealed entry.
+        pending ? record.keyEntries! : entries.slice(0, 1),
       );
       if (pending) {
         const device = opened[1];

@@ -48,6 +48,15 @@ try {
     cwd: scratch,
     stdio: 'inherit',
   });
+  execFileSync(
+    'node',
+    [
+      join(root, 'scripts/check-midnight-runtime-identity.mjs'),
+      scratch,
+      ...manifest.files.map(({ name }) => name),
+    ],
+    { stdio: 'inherit' },
+  );
   const installed = readdirSync(join(scratch, 'node_modules/.pnpm'));
   const compactVersions = new Set(
     installed

@@ -109,12 +109,10 @@ export async function addJubjubAuthorisingDevice(
     const commitmentHex = toHex(entry);
     return await ports.authoriser.withKeySession(
       async () => {
-        const publicKey = await ports.authoriser.devicePublicKey();
-        if (!samePoint(publicKey, hint.publicKey))
-          throw new PassportConnectorError(
-            'NotAuthorised',
-            'The selected device does not own this ACC.',
-          );
+        // Lace's authorising-only add-device scope admits signatures and commitment scans,
+        // not public-key disclosure. Use the pinned hint; the signed response below must name
+        // exactly this key before any chain call is submitted.
+        const publicKey = hint.publicKey;
         const counter = await flow.step('counter.scan', async () => {
           for (let value = 0n; value < JUBJUB_READER_SCAN_LIMIT; value++) {
             const own = ports.pure.derive_device_entry_with_jubjub(

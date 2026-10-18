@@ -885,3 +885,18 @@ test('sealed P-256 adapter refuses a deterministic-key prototype account explici
     },
   );
 });
+
+test('P-256 sign-in authenticates a real inbox batch when the host skips empty batches', async () => {
+  const fake = createFakePorts({ binding: { pureCircuits } });
+  const keyring = viewingKey();
+  const open = keyring.openInbox.bind(keyring);
+  keyring.openInbox = async (network, held, entries) =>
+    entries.length ? open(network, held, entries) : [];
+  const accounts = createPassportAccounts({ ...fake, viewingKey: keyring });
+  const account = await accounts.createAccount({ userName: 'batched-host', retireAuthority: true });
+  assert.equal((await accounts.openAccount()).address, account.address);
+  const state = fake.ledger.get(account.address);
+  assert.ok(state?.encKey);
+  state.encKey.fill(0);
+  await assert.rejects(accounts.openAccount(), { code: 'EncryptionKeyMismatch' });
+});

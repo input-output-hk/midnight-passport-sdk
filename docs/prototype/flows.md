@@ -31,8 +31,10 @@ The directory persists the boot salt and two sealed entries before activation. `
 can resume missing activation or inbox publication. It validates the selected passkey and its
 live ACC device entry, then checks that the envelope opens the live `enc_key`. A legacy
 deterministic-key account without sealed entries is refused by this browser composition until
-migrated. The standalone page hides rotation because its P-256 flow does not yet have
-chain-verified surviving readers, holdings and read-grant targets.
+migrated. The standalone page now offers **Rotate sealed viewing key**: it reviews live devices,
+verified holdings and active read grants before confirmation, then checks the settled nonce.
+Missing reader or grantee openings refuse the operation. Viewing-key validation requests a real
+sealed entry, because a hosted encryption port may treat an empty batch as a no-op.
 
 ## Historical deterministic-key P-256 flow
 
