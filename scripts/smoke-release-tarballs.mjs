@@ -13,13 +13,15 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { assertReleasePackageSet } from './release-package-list.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const tarballs = resolve(process.env.RELEASE_TARBALL_DIR ?? join(root, 'release-tarballs'));
 /** @type {{version: string, files: Array<{name: string, file: string}>}} */
 const manifest = JSON.parse(readFileSync(join(tarballs, 'manifest.json'), 'utf8'));
-if (manifest.version !== process.env.RELEASE_VERSION || manifest.files?.length !== 9)
-  throw new Error('release pack manifest is missing or has an unexpected version');
+if (manifest.version !== process.env.RELEASE_VERSION)
+  throw new Error('release pack manifest has an unexpected version');
+assertReleasePackageSet(manifest.files);
 const dependencies = Object.fromEntries(
   manifest.files.map(({ name, file }) => {
     const path = join(tarballs, file);
