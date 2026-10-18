@@ -27,6 +27,7 @@
           tag = "build";
           contents = [
             pkgs.nodejs_22
+            pkgs.cacert
             compact.compact-toolchain
             keyService
           ];
@@ -41,6 +42,10 @@
               "PASSPORT_KEY_DIR=/data/keys"
               "PASSPORT_KEY_HOST=0.0.0.0"
               "PASSPORT_KEY_PORT=8788"
+              "HOME=/data/keys"
+              "XDG_CACHE_HOME=/data/keys/.cache"
+              "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+              "SSL_CERT_DIR=${pkgs.cacert}/etc/ssl/certs"
               "NODE_ENV=production"
             ];
             Cmd = [

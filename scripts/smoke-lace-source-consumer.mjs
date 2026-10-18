@@ -14,6 +14,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import ts from 'typescript';
+import { releasePackageDirectories } from './release-package-list.mjs';
 
 const laceHead = '502b0794cc7bcfc76342230193fef4ebb63cae1c';
 const laceCheckout = process.env.LACE_CHECKOUT;
@@ -68,8 +69,11 @@ const root = resolve(import.meta.dirname, '..');
 const tarballs = resolve(process.env.RELEASE_TARBALL_DIR ?? join(root, 'release-tarballs'));
 /** @type {{version: string, files: Array<{name: string, file: string, sha256: string}>}} */
 const manifest = JSON.parse(readFileSync(join(tarballs, 'manifest.json'), 'utf8'));
-if (manifest.files?.length !== 9 || manifest.version !== process.env.RELEASE_VERSION)
-  throw new Error('release manifest must contain nine tarballs at RELEASE_VERSION');
+if (
+  manifest.files?.length !== releasePackageDirectories.length ||
+  manifest.version !== process.env.RELEASE_VERSION
+)
+  throw new Error('release manifest must contain the implemented packages at RELEASE_VERSION');
 const dependencies = Object.fromEntries(
   manifest.files.map(({ name, file, sha256 }) => {
     const path = join(tarballs, file);

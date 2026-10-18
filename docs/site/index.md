@@ -22,3 +22,8 @@ Midnight Passport gives an application a passkey controlled Account Custody Cont
 10. [Engineering handover]({{ '/handover/' | relative_url }}) traces the localnet NIGHT funding flow, operating steps, audit findings and release boundary.
 
 For a local run, follow the [demo guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/AGENTS.md). The current service needs a compiled ACC and its own funded localnet; installing the TypeScript workspace alone is not enough to create an account.
+
+## Lace evaluation
+
+The [Lace handover guide]({{ '/lace-handover/' | relative_url }}) describes the RC5
+evaluation scope, package selection, private-registry access and supported integration boundaries.

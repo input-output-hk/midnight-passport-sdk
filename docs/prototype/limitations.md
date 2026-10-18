@@ -1,25 +1,28 @@
 # Limitations and production requirements
 
-The package grant adapter can verify the pinned ACC roster and read-key hashes, but the standalone
-demo has no durable read-grant opening store. It therefore cannot offer read-grant rotation or
-revocation through its UI yet. A host must supply those openings and the same-network ACC indexer.
-The package's grant issue helper requires an auth-nonce-pinned roster snapshot and rotates before issuing read access;
-the demo still has no grant issue UI.
-The SDK's key-session descriptors carry the context Lace's hosted signer asks to display, but the
-demo uses a local signer; a packed Lace consumer flow has not yet been validated. Read issue and
-revoke-all rotate inside their outer owner session without requesting a second rotation consent.
-The sealed P-256 package flow can rotate away from live read grantees before clearing the pinned
-ACC grant map. The browser demo has no chain-backed holding or read-target source for this flow,
-and P-256 read-grant issue remains a demo integration gap. The account connector can submit and publish a P-256 issue through host ports and recover pending publications, but the demo has not configured those ports. Selective revoke rotates the sealed secret away
-from the revoked grantee and returns new seals for surviving readers.
+This is a localnet preview, with the supported routes and evidence listed in
+[the compatibility matrix](../compatibility.md) and [Lace consumer report](../lace-consumer-report.md).
+The demo exposes scoped spend grant issue/export/import/spend/revoke, device enrollment/removal,
+address recovery, live holdings and unshielded withdrawals. The complete two-browser passkey
+ceremony is still a manual qualification step. Read grants need complete chain-backed holdings
+and surviving device/grantee openings; unavailable data causes refusal. P-256 read-grant issue
+remains a demo integration gap even though the reusable account ports implement it.
 
-This is a prototype for the standalone network. Each item below says what the prototype does and
-what production needs. Two items have fork issues:
+Packed SDK/Lace source and localnet tests now cover specific recognition and authorising-only
+mutation paths. They do not establish full hosted creation, sealed enrollment, hosted address
+recovery or real provider compatibility. Keep the pinned consent scopes in the consumer report.
 
-- [#17](https://github.com/input-output-hk/midnight-passport-sdk/issues/17): show progress, with
-  connector progress events, an event log and a progress bar in the demo.
-- [#20](https://github.com/input-output-hk/midnight-passport-sdk/issues/20): keep the
-  passkey-to-account mapping on the ledger with an identity registry contract.
+## Remote proving exposes private inputs to the service
+
+**Prototype.** The client sends the transaction's private proving inputs to the configured
+proving service. There is no implemented enclave-encryption boundary. TLS can protect transport,
+but does not hide inputs from the service operator. ADR 0007's enclave requirement is an unmet
+production design requirement, not protection supplied by this RC. Do not use sensitive real data
+with an untrusted proving operator; copied demo traces must exclude private proof inputs.
+
+**Production.** Define and implement the reviewed enclave/attestation and encrypted-input
+protocol before claiming operator-blind remote proving. Until then this is an explicit trusted
+operator boundary, alongside controlled ingress and caller authentication.
 
 ## The registry is an off-chain JSON file
 
@@ -36,14 +39,19 @@ After a chain reset the file is stale and must be deleted by hand.
 can find an account. Until then, discovery on a new device needs a name lookup or a chain scan.
 Require proof of possession on writes.
 
-## Rotated encryption keys are random
+## Recovery depends on enrolled, recoverable reader keys
 
-**Prototype.** The account's first encryption key derives from the passkey ([keys.md](./keys.md)).
-A rotation target is 32 random bytes, and nothing keeps a copy. Data encrypted to a rotated key
-cannot be recovered. Lace has no rotation recipe yet.
+**Prototype.** Current browser ACCs use a random viewing secret sealed to enrolled passkey-derived
+reader keys in ledger inbox envelopes. Rotation preserves recoverable seals for verified surviving
+devices and read grantees, and excludes removed readers. See [keys.md](./keys.md). A lost device
+can be replaced through another enrolled device or a provider-restored credential with the same
+PRF outputs. A public ACC address or envelope alone cannot restore the secret after every enrolled
+and recoverable passkey is lost. Older deterministic-key P-256 accounts are refused by the new
+browser composition until migrated. Grant openings remain browser-profile-local without backup.
 
-**Production.** A defined derivation for rotation targets, so that every key an account has held is
-reproducible from the passkey, or a keeping scheme that survives a lost device.
+**Production.** Define and qualify recovery/backup policy, provider behavior, legacy migration and
+loss of every enrolled reader. Do not promise seed-phrase recovery or derive the ACC secret from
+its address.
 
 ## The 64-call counter scan limit
 
@@ -118,27 +126,30 @@ build, unit and app tests, and typechecks. The checks that need a localnet and t
 **Production.** CI will be redesigned from scratch. It should build the artefacts, run the
 integration tests against a localnet, and run the end-to-end script.
 
-## Testnet is not wired
+## Non-localnet networks are not release-qualified
 
-**Prototype.** Only the standalone localnet works. The network id is fixed at `undeployed`. The
-reference client hard-codes the localnet endpoints, so the service refuses to start with another
-`PASSPORT_NETWORK_ID`, indexer, node or proof-server URL. The sponsor wallet's default seed is the
-localnet's public, genesis-funded development seed. LW-15635 itself targets the testnet.
+**Prototype.** The network id and node/indexer/proof URLs are configurable, and services check that
+the reference client agrees. Only `undeployed` localnet flows are qualified here. The genesis
+wallet default is accepted only on that network; other networks require a dedicated sponsor/funding
+seed and explicit asset policy. NIGHT funding is refused outside localnet. Configurability alone
+is not testnet readiness.
 
-**Production.** A real sponsor key and funding, endpoints for the target network pinned at build
-time, and a deployment pipeline for the artefacts.
+**Production.** Qualify funded dedicated wallets, target-network endpoints, deployment policy,
+persistent state, ingress and transaction outcomes on the actual network before use.
 
 ## Also not covered
 
-- **Progress.** The connector reports five coarse steps, and nothing inside the 180-second deploy.
-  See fork issue [#17](https://github.com/input-output-hk/midnight-passport-sdk/issues/17).
-- **Lost passkeys and grant-holder use.** The demo can enroll and remove a second sealed device,
-  open by a known ACC address, withdraw unshielded assets, read shielded holdings, inspect the
-  live grant roster and recover locally staged grant publication. It cannot recover an ACC after
-  all enrolled passkeys are lost. It does not yet issue a scoped grant or let a separate grantee
-  exercise and revoke one through the page. Grant openings in the browser journal have no backup
-  or cross-profile synchronization. The reusable account package includes owner grant issue and
-  revocation flows, but the demo has not validated their full grantee lifecycle.
+- **Progress.** The demo exposes connector events and redacted operation request/response traces.
+  Long proving/deployment operations can still have coarse progress; inspect transaction evidence
+  instead of treating a timeout as proof that nothing was submitted.
+- **Lost passkeys and grant-holder use.** The demo supports sealed second devices and scoped
+  fixed-recipient unshielded spend grants. Package localnet probes exercise holder spending,
+  revoke and post-revoke refusal; the real two-browser passkey ceremony still needs manual
+  qualification. Clearing browser storage loses locally journaled openings. Neither address
+  recovery nor a grant opening restores a lost owner passkey.
+- **Shielded partial spends.** The selected coin must exactly equal the withdrawal amount.
+  Durable change recovery and spent-input reconciliation remain #201; full typed coverage of
+  all contract circuits remains #82. Outstanding Lace live/value-host evidence remains #202.
 - **A wallet of its own.** The built-in wallet is a read-only stand-in. It proves and pays nothing.
   lace-sdk is expected to replace it.
 - **Browsers.** Real-passkey runs used Chrome on macOS only.

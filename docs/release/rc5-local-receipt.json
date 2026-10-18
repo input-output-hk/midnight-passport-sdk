@@ -1,0 +1,184 @@
+{
+  "candidate": "0.1.0-rc5",
+  "distTag": "next",
+  "published": false,
+  "preparationDate": "2026-10-19",
+  "timezone": "Asia/Kuala_Lumpur",
+  "implementationBaseline": "95588a3ca1a2578ab2b066957f02c8087cda4d5a",
+  "localFixCommit": "31c51618288aa29f4c6870cb3e36f599616143fe",
+  "packages": [
+    {
+      "name": "@input-output-hk/mn-passport-protocol",
+      "file": "input-output-hk-mn-passport-protocol-0.1.0-rc5.tgz",
+      "sha256": "85be9fef704ef9e705210062b7dcb997cff3ad76e4b18bdcdde929e500b818e9"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-account",
+      "file": "input-output-hk-mn-passport-account-0.1.0-rc5.tgz",
+      "sha256": "5dfbcf1e81dd2047b16546fe7ff723bbbb05268f87183d64a6899a3561d8fa68"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-midnight-js",
+      "file": "input-output-hk-mn-passport-adapter-midnight-js-0.1.0-rc5.tgz",
+      "sha256": "3337aabb46725cd9b080fd3a601352eb0b851919a195aa2f06d8f27ea03e169f"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-keys",
+      "file": "input-output-hk-mn-passport-keys-0.1.0-rc5.tgz",
+      "sha256": "787c3a4c6a54231f1f8e5d346c972140c72f5737b44f218d1ed06470c9472634"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-webauthn",
+      "file": "input-output-hk-mn-passport-adapter-webauthn-0.1.0-rc5.tgz",
+      "sha256": "046a92a3ab91376f6946185a41fa5f14d840c34ebe2173c07c976206b8cee022"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-service",
+      "file": "input-output-hk-mn-passport-adapter-service-0.1.0-rc5.tgz",
+      "sha256": "1a743bcbb48beedb27e64f938eb201e34d972e3980482129afe3667beb98c385"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-contract",
+      "file": "input-output-hk-mn-passport-contract-0.1.0-rc5.tgz",
+      "sha256": "094e6f9bfaa21ded71c2370308cbb382ea0e8f8eedf7da4820e0519f59641f02"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-browser",
+      "file": "input-output-hk-mn-passport-adapter-browser-0.1.0-rc5.tgz",
+      "sha256": "02254b19543cecc528d46ba17d2a756afbcc1377d083e683625496d852df1e11"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-service",
+      "file": "input-output-hk-mn-passport-service-0.1.0-rc5.tgz",
+      "sha256": "6a057df8065422f6de958898070ad16bbb838fa38442c192bd418fdf6b2c43c5"
+    }
+  ],
+  "packageDirectory": "/tmp/mn-passport-rc5-handover/packages",
+  "checks": {
+    "ninePackageInstallTypesBrowserBuildAndKeyRestoration": "passed",
+    "twoCleanBuildReproducibility": "passed",
+    "laceExactSourceTypes": "passed at 502b0794cc7bcfc76342230193fef4ebb63cae1c; seven direct Midnight runtime versions match",
+    "localRepositoryGate": "passed: lint, format, build, package tests, app tests and service/funding/browser type checks",
+    "sourceBaselineCi": "PR 220, seven passing checks before integration",
+    "newLocalCommitsGithubCi": "pending tomorrow, no push in local preparation",
+    "pagesRender": "official Jekyll render passed; 141 internal links, zero broken",
+    "keyCachedProfile": "all 52 verified; sampled prover/verifier HTTP SHA256, CORS and cache-path refusal passed",
+    "keyFreshRegeneration": "deposit_unshielded regenerated and both pinned hashes verified inside Linux/amd64 image on read-only root",
+    "imageSourceFiles": {
+      "service": {
+        "files": 172,
+        "failures": []
+      },
+      "funding": {
+        "files": 165,
+        "failures": []
+      },
+      "keys": {
+        "files": 6,
+        "failures": []
+      }
+    },
+    "mountedLinuxNetwork": "passed: create/activate/read/reopen, NIGHT deposit 0 to 10, same-ID replay unchanged",
+    "publishedRegistryAccessBytesDigestsAndPages": "pending approved publication"
+  },
+  "images": {
+    "service": {
+      "tag": "midnight-passport-service:rc5-handover",
+      "localImageId": "sha256:2ed1ef31243d4e778d2e332b83e88a12fca47a8bdaf24ef67dd3543e5939a39e",
+      "architecture": "amd64",
+      "user": "10001:10001",
+      "readOnlyRoot": true,
+      "registryDigest": null,
+      "ready": true,
+      "customPortHealth": "healthy"
+    },
+    "funding": {
+      "tag": "midnight-passport-funding:rc5-handover",
+      "localImageId": "sha256:8538a3e2d92ee0fc2b3e9e45a7f73feaf0c78622c646355db1be62ad2f0bb86b",
+      "architecture": "amd64",
+      "user": "10001:10001",
+      "readOnlyRoot": true,
+      "registryDigest": null,
+      "ready": true,
+      "customPortHealth": "healthy"
+    },
+    "keys": {
+      "tag": "midnight-passport-keys:rc5-handover",
+      "localImageId": "sha256:9c8a2504a48928911c1ca5c34721a765780d9762a35fa9d5108486c43a3d6532",
+      "architecture": "amd64",
+      "user": "10001:10001",
+      "readOnlyRoot": true,
+      "registryDigest": null,
+      "ready": true,
+      "archiveSha256": "27668fbf94068b8bd1e4d33478564bb46926c65de2fb0242f81e74c34fdd3d9d"
+    }
+  },
+  "network": {
+    "networkId": "undeployed",
+    "bindingId": "acc-s3r1.1",
+    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "verdict": "PASS",
+    "account": "02a4aff3ee23ec1be827fb449c99a135e8c215268455f09517060d12738d731a",
+    "createActivateReadReopen": "passed",
+    "request": {
+      "requestId": "66f3b3f0-911a-4d3b-a16f-c41caace9c7b",
+      "networkId": "undeployed",
+      "bindingId": "acc-s3r1.1",
+      "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+      "accountAddress": "02a4aff3ee23ec1be827fb449c99a135e8c215268455f09517060d12738d731a",
+      "color": "0000000000000000000000000000000000000000000000000000000000000000",
+      "amount": "10"
+    },
+    "before": {
+      "accountAddress": "02a4aff3ee23ec1be827fb449c99a135e8c215268455f09517060d12738d731a",
+      "color": "0000000000000000000000000000000000000000000000000000000000000000",
+      "night": "0",
+      "fundedAsset": "0"
+    },
+    "funded": {
+      "requestId": "66f3b3f0-911a-4d3b-a16f-c41caace9c7b",
+      "txId": "002b3f9c401fb83d3a216a55f306d91ebb87df577938b36a037620ba96dcc125d8",
+      "preparationTxId": "00a5c3dbdc51e50c1516ec0558de270e82628894d3b77f45c70b80505efbf2d988",
+      "creditedBalance": "10"
+    },
+    "after": {
+      "accountAddress": "02a4aff3ee23ec1be827fb449c99a135e8c215268455f09517060d12738d731a",
+      "color": "0000000000000000000000000000000000000000000000000000000000000000",
+      "night": "10",
+      "fundedAsset": "10"
+    },
+    "replay": {
+      "requestId": "66f3b3f0-911a-4d3b-a16f-c41caace9c7b",
+      "txId": "002b3f9c401fb83d3a216a55f306d91ebb87df577938b36a037620ba96dcc125d8",
+      "preparationTxId": "00a5c3dbdc51e50c1516ec0558de270e82628894d3b77f45c70b80505efbf2d988",
+      "creditedBalance": "10"
+    }
+  },
+  "limitations": [
+    "Partial shielded spends/change recovery deferred under #201; exact-value guard retained.",
+    "Full typed circuit coverage remains #82.",
+    "Outstanding live/value-host evidence remains #202; no full Lace compatibility claim.",
+    "Real two-browser/provider ceremony is not qualified by synthetic credentials.",
+    "NIGHT funding qualified only on undeployed; no testnet/value-host qualification implied.",
+    "All 52 keys verified from cache; fresh regeneration in the image covers deposit_unshielded only.",
+    "Proof inputs are visible to the trusted proving operator; no enclave input encryption.",
+    "Registry package access, byte attestations, immutable published image digests and deployed Pages require post-publication checks."
+  ],
+  "logs": {
+    "packages": "/tmp/mn-passport-rc5-handover-packages.log",
+    "reproducibility": "/tmp/mn-passport-rc5-handover-repro.log",
+    "laceTypes": "/tmp/mn-passport-rc5-handover-lace-types.log",
+    "network": "/tmp/mn-passport-rc5-handover-network.log",
+    "keyRegeneration": "/tmp/mn-passport-rc5-handover-key-regeneration-fixed.log",
+    "keyHttp": "/tmp/mn-passport-rc5-handover-keys-http.log",
+    "keyHomeCa": "/tmp/mn-passport-rc5-handover-key-home-ca.log",
+    "serviceImageBuild": "/tmp/mn-passport-rc5-handover-service-build.log",
+    "fundingImageBuild": "/tmp/mn-passport-rc5-handover-funding-build-retry.log",
+    "keyImageBuild": "/tmp/mn-passport-rc5-handover-key-build.log",
+    "repositoryGate": "/tmp/mn-passport-rc5-handover-final-gate.log",
+    "pages": "/tmp/mn-passport-rc5-handover-pages.log"
+  },
+  "localImageIdNote": "Local Docker IDs are not verified published registry manifest digests.",
+  "localPreparationBranch": "codex/rc5-lace-handover",
+  "keyImageConfigurationFix": "writable HOME/XDG cache and pinned CA bundle, qualified by fresh Linux key regeneration"
+}

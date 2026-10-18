@@ -11,10 +11,12 @@ surface for a user's **Account Custody Contract (ACC)**: onboarding,
 authentication, scoped grants, recovery, storage, proving, and the dApp
 connector all resolve to authorised interactions with that on-chain account.
 
-> **Status:** the `passport-acc-prototype` branch has eight implemented SDK
-> libraries in private GitHub Packages at `0.1.0-rc1`. The wider wallet, dApp,
-> agent, service and funding surfaces remain in development. See the
-> [package map](./docs/site/packages.md) for the exact release state.
+> **Status:** `passport-acc-prototype` contains nine implemented SDK packages and three
+> backend applications. `0.1.0-rc5` is an unpublished preview candidate for Lace evaluation;
+> use the verified published version in the [package guide](./docs/site/packages.md) until
+> RC5 publication is confirmed. [Lace handover](./docs/site/lace-handover.md) describes package
+> selection, access and compatibility limits; [local release qualification](./docs/release/rc5-lace-handover.md)
+> records the remaining release gates.
 
 > **Passport DApp prototype** (branch `passport-acc-prototype`): a working end-to-end demo on a
 > local Midnight network. To run it with Nix, follow [`AGENTS.md`](./AGENTS.md); the design and
@@ -24,7 +26,7 @@ connector all resolve to authorised interactions with that on-chain account.
 
 The [SDK package and API guide](https://input-output-hk.github.io/midnight-passport-sdk/)
 is the GitHub Pages entry point (source in [`docs/site/`](./docs/site/)). It describes the
-prototype API and is published when Pages is enabled for this fork.
+prototype API. RC5 handover updates remain local until reviewed and published.
 
 The design lives in [`docs/`](./docs):
 
@@ -40,7 +42,7 @@ where the component canvases and promises are maintained.
 
 ## Packages
 
-The `0.1.0-rc1` packages are private `@input-output-hk/mn-passport-*` packages on GitHub Packages
+The implemented release packages are private `@input-output-hk/mn-passport-*` packages on GitHub Packages
 ([ADR 0006](./docs/adr/0006-publish-on-github-packages.md)); the package set, ports
 and roles are in [ADR 0007](./docs/adr/0007-package-set-ports-and-flows.md) and the
 [packages design](./docs/superpowers/specs/2026-10-07-passport-sdk-packages-design.md):
@@ -48,11 +50,12 @@ and roles are in [ADR 0007](./docs/adr/0007-package-set-ports-and-flows.md) and 
 - `mn-passport-protocol` — the account API, error codes, progress events, service wire types.
 - `mn-passport-contract` — the ACC artefact per binding (no prover keys), registry, integrity.
 - `mn-passport-account` — the account flows behind ports (`./ports`), fakes and contract suites (`./testing`).
-- `mn-passport-keys` — the Lace key recipe and the ACC encryption-key source.
+- `mn-passport-keys` — portable derivation, JubJub signing, sealed ACC secrets and device keyrings.
 - `mn-passport-adapter-*` — WebAuthn, midnight-js, Passport-service clients, and a browser composition root.
-- `mn-passport-service` — a planned Passport service library; the current service remains in the demo app.
+- `mn-passport-service` — implemented Node HTTP, funding-policy and durable reservation primitives.
+  Proving/sponsorship, wallet funding and key HTTP serving run as separate backend applications/images.
 
-The published `core` and `connect` packages are earlier scaffolding, not the current passkey integration surface. `agent` and the JubJub authoriser remain planned work. See the [package guide](https://input-output-hk.github.io/midnight-passport-sdk/packages/) for authenticated installation.
+`core`, `connect`, `agent` and the separate signer scaffold workspaces are excluded from the nine-package RC. JubJub and P-256 authorisation are implemented within the current keys/adapters/account surfaces. See the [package guide](https://input-output-hk.github.io/midnight-passport-sdk/packages/) for authenticated installation.
 
 ## Development
 
