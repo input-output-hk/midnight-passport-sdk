@@ -1,8 +1,13 @@
 # Compatibility matrix
 
-> **Status:** preview RC4 · updated 2026/10/16. Releases are lockstep across the
+> **Status:** preview RC5 · updated 2026/10/19. Releases are lockstep across the
 > `@input-output-hk/mn-passport-*` packages. The binding data is pinned in
 > `packages/contract/acc-binding-v2.generated.json` and the generated registry.
+
+The [RC5 publication receipt](release/rc5-publication-receipt.json) records the signed source,
+private registry hashes/attestations and published image digests. The release keeps the exact-value
+shielded withdrawal guard. Partial spends (#201), complete typed circuit coverage (#82) and
+remaining live/value-host evidence (#202) are deferred; no full Lace compatibility is claimed.
 
 ## Binding axis
 
@@ -10,6 +15,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | `0.1.0-rc1` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 | `0.1.0-rc4` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
+| `0.1.0-rc5` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 
 The package registry supports only `acc-s3r1.1`. The older provisional
 `0.0.0-prototype.1` binding is retired. The separate `acc-45721e1` key bundle
@@ -23,6 +29,7 @@ Compact runtime.
 | --- | --- | --- |
 | `0.1.0-rc1` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 | `0.1.0-rc4` | `1.0.0-pre.0` | `1.0.0-pre.0` |
+| `0.1.0-rc5` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 
 The local demo service was not a published SDK package in RC1. The service API
 constant names the versioned client wire types; the current prototype browser
@@ -343,12 +350,13 @@ The account API and the service wire types are versioned separately.
 |---|---|---|---|---|---|---|
 | `0.1.0-rc1` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 | `0.1.0-rc4` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
+| `0.1.0-rc5` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 
-RC1 had eight implementations and five empty scaffolds. RC4 contains nine
+RC1 had eight implementations and five empty scaffolds. RC4 and RC5 contain nine
 implemented packages, adding the service library and excluding the scaffolds.
-The RC4 row describes this preview release's binding and wire compatibility;
+The RC5 row describes this preview release's binding and wire compatibility;
 it does not establish full Lace runtime compatibility or complete support for
-all pinned ACC circuits. See the [RC4 release notes](site/release-notes-rc4.md).
+all pinned ACC circuits. See the [RC5 release notes](site/release-notes-rc5.md).
 
 
 ### Hosted signer runtime findings (2026-10-17)

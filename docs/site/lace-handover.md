@@ -6,8 +6,8 @@ permalink: /lace-handover/
 
 ## RC5 evaluation scope
 
-`0.1.0-rc5` is an unpublished candidate. Use the verified release announcement for final
-package versions and image digests; the examples below become installable after publication.
+`0.1.0-rc5` is a published preview. The [release announcement](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc5)
+links exact package hashes, immutable image digests and verification evidence.
 This preview lets Lace engineers evaluate the pinned Passport ACC binding, portable account
 flows and remote service seams. It does not promise full compatibility with Lace's hosted
 creation, sign-in, device consent or value-bearing wallet routes.
@@ -45,10 +45,10 @@ Scope configuration (keep the token value outside the file):
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
-After RC5 publication is confirmed:
+Install the exact preview version:
 
 ```sh
-npm install @input-output-hk/mn-passport-contract@0.1.0-rc5
+npm install --save-exact @input-output-hk/mn-passport-contract@0.1.0-rc5
 ```
 
 ```ts
@@ -94,6 +94,6 @@ JubJub registration records; SDK P-256 registration records are an extension. Sy
 credentials do not establish real provider/browser compatibility or recovery after every
 recoverable passkey is lost.
 
-See [RC5 candidate notes]({{ '/release-notes-rc5/' | relative_url }}),
+See [RC5 release notes]({{ '/release-notes-rc5/' | relative_url }}),
 [limitations](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/prototype/limitations.md) and
 [releasing]({{ '/releasing/' | relative_url }}) for the release boundary.

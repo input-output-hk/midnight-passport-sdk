@@ -12,11 +12,11 @@ authentication, scoped grants, recovery, storage, proving, and the dApp
 connector all resolve to authorised interactions with that on-chain account.
 
 > **Status:** `passport-acc-prototype` contains nine implemented SDK packages and three
-> backend applications. `0.1.0-rc5` is an unpublished preview candidate for Lace evaluation;
-> use the verified published version in the [package guide](./docs/site/packages.md) until
-> RC5 publication is confirmed. [Lace handover](./docs/site/lace-handover.md) describes package
-> selection, access and compatibility limits; [local release qualification](./docs/release/rc5-lace-handover.md)
-> records the remaining release gates.
+> backend applications. The `0.1.0-rc5` preview is published as nine private GitHub npm
+> packages and three public Linux/amd64 GHCR images. [Release notes](./docs/site/release-notes-rc5.md)
+> link the verified hashes, image digests and evaluation limits. [Lace handover](./docs/site/lace-handover.md)
+> describes package selection and access. Shielded withdrawals retain the exact-value guard;
+> this preview does not claim full Lace compatibility.
 
 > **Passport DApp prototype** (branch `passport-acc-prototype`): a working end-to-end demo on a
 > local Midnight network. To run it with Nix, follow [`AGENTS.md`](./AGENTS.md); the design and

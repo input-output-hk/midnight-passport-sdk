@@ -37,14 +37,14 @@ Set the token outside source control and use a user-level or git-ignored `.npmrc
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
-Install the currently verified release (RC4 until RC5 publication is confirmed):
+Install the verified RC5 preview:
 
 ```sh
 npm install --save-exact \
-  @input-output-hk/mn-passport-account@0.1.0-rc4 \
-  @input-output-hk/mn-passport-adapter-browser@0.1.0-rc4 \
-  @input-output-hk/mn-passport-adapter-service@0.1.0-rc4 \
-  @input-output-hk/mn-passport-contract@0.1.0-rc4
+  @input-output-hk/mn-passport-account@0.1.0-rc5 \
+  @input-output-hk/mn-passport-adapter-browser@0.1.0-rc5 \
+  @input-output-hk/mn-passport-adapter-service@0.1.0-rc5 \
+  @input-output-hk/mn-passport-contract@0.1.0-rc5
 ```
 
 Node tooling requires Node 22 or newer. The repository uses `nix develop` to pin Node, pnpm and
@@ -74,12 +74,12 @@ Linux-prepared contract dependencies; mounting a macOS `node_modules` is not sup
 
 ## 4. Compose the browser account API
 
-The maintained [browser composition example](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/examples/browser-quickstart.ts)
+The maintained [browser composition example](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc5/docs/examples/browser-quickstart.ts)
 creates a sealed P-256 account API using the checked local service and packaged binding. Its
 `connectLocalPassport(records)` argument is a host-owned `AccountRecordStore`, not a seed store.
 Implement its `read`, `write` and `exists` methods persistently before creating an account. Preserve
 `localUseCounter` as a bigint and `credentialId` as bytes when serialising. The reference demo's
-[record store](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-dapp/src/grant-journal.ts)
+[record store](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc5/apps/passport-dapp/src/grant-journal.ts)
 shows validation and encoding. Store keys must distinguish network, binding and device/account;
 the demo keeps one selected record per network for evaluation.
 
@@ -106,21 +106,20 @@ not additional SDK globals. `retireAuthority: true` retires the deployment maint
 so the deployed ACC cannot later be upgraded through it. Make that choice explicitly.
 
 Run at exactly `http://localhost:5173` for this local example. The passkey RP ID, origin and
-contract WebAuthn profile must agree. The reference [Vite configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-dapp/vite.config.ts)
-and [polyfill entrypoint](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-dapp/src/main.ts)
+contract WebAuthn profile must agree. The reference [Vite configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc5/apps/passport-dapp/vite.config.ts)
+and [polyfill entrypoint](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc5/apps/passport-dapp/src/main.ts)
 show the Buffer initialisation, WASM support and browser shims required by the pinned Midnight
-runtime. The minimal composition uses APIs also exported by RC4 and is type-checked against the packed RC5 candidate; it is not a
-complete replacement for the reference app's bundler and UI configuration.
+runtime. The minimal composition is type-checked against RC5 tarballs; registry verification confirms
+identical package contents. It is not a complete replacement for the reference app's bundler and UI configuration.
 
 This minimal composition enables create/open/state only. Rotation and device changes require
 verified holdings and complete device/read-grant sources. Grants additionally need live grant
 sources and a durable encrypted publication journal. Unshielded withdrawals need a value-capable
 call port; the fee-only sponsor cannot move those assets. See [Account API]({{ '/api/' | relative_url }})
-before enabling another action. The [reference connector](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-dapp/src/connector.ts)
-shows the fuller localnet composition, including those ports. That linked connector tracks the
-prototype branch: its `valueCalls` and `grantJournalFactory` options require RC5 and are not
-exported by RC4. Do not copy that advanced composition into an RC4 installation; use the
-matching release source or wait for verified RC5 publication.
+before enabling another action. The [reference connector](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc5/apps/passport-dapp/src/connector.ts)
+shows the fuller localnet composition, including those ports. Its `valueCalls` and
+`grantJournalFactory` options are exported by RC5. Use the matching release source and SDK
+version when copying this advanced composition.
 
 ## 5. Diagnose the first failure
 
