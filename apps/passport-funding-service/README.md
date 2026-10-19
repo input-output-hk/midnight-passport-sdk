@@ -132,18 +132,20 @@ files or a shared filesystem lock without a transactional implementation.
 
 The source has focused policy and backend tests. On the local `undeployed` network, this process deposited 10 units of a faucet-minted non-native unshielded asset into a
 live `spec_version = 3` ACC and observed the credited balance. Repeating the same request ID
-returned the same transaction ID and balance. The `0.1.0-rc2` container image passed its release
-build and mounted-tree smoke test and is published to GHCR.
+returned the same transaction ID and balance. Historical RC2 evidence is retained below; use the RC5 image in the next section.
 
 ## Container image
 
 The [funding image workflow](../../.github/workflows/publish-funding-image.yml) publishes
 `ghcr.io/input-output-hk/midnight-passport-funding:<version>` and a commit-SHA tag after a
-signed `funding-v<version>` tag or an authorized workflow dispatch. Release `0.1.0-rc2` also has
-`sha-2f7f2b1974f2`; its immutable digest is
-`sha256:5b1aebaba4944c0beccd8d70047b51b9d779f30a8839461af20c5a10f26ca9e5`. The
-published GHCR package is currently public. Pin the digest when deploying. The `0.1.0-rc2` image
-predates localnet NIGHT funding; build this source or use a later image release for that flow.
+signed `funding-v<version>` tag or an authorised workflow dispatch. Release `0.1.0-rc5` also has
+`sha-9e8048674a54`; its immutable digest is
+`sha256:94f387509d5de572c3c94be6fd7412c103323bf3c499ee597e44799a50689eb2`.
+The published GHCR package is public. Pin this RC5 digest when deploying. It includes the
+localnet NIGHT preparation path; the pulled image passed a deposit from zero to ten smallest
+NIGHT units and an identical-request replay without a second transfer. See the
+[publication receipt](../../docs/release/rc5-publication-receipt.json). NIGHT remains qualified
+only on `undeployed`; dedicated non-localnet wallet configuration does not extend that qualification.
 The image contains the SDK application, not the 11 GiB proving tree, any wallet seed, or tokens.
 Both image workflows run `scripts/smoke-funding-image.sh`: it checks the non-root user, refusal
 without the pinned contract mount, and startup refusal on a non-standalone network without a
@@ -173,10 +175,10 @@ docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" \
   -e MN_INDEXER_URL=http://host.docker.internal:18088/api/v4/graphql \
   -e MN_INDEXER_WS_URL=ws://host.docker.internal:18088/api/v4/graphql/ws \
   -e MN_PROOF_SERVER_URL=http://host.docker.internal:16300 \
-  ghcr.io/input-output-hk/midnight-passport-funding@sha256:5b1aebaba4944c0beccd8d70047b51b9d779f30a8839461af20c5a10f26ca9e5
+  ghcr.io/input-output-hk/midnight-passport-funding@sha256:94f387509d5de572c3c94be6fd7412c103323bf3c499ee597e44799a50689eb2
 ```
 
-The local Linux image build and a mounted-tree run succeeded on `undeployed`: an image-backed
+The earlier RC2 Linux image build and mounted-tree run succeeded on `undeployed`: an image-backed
 request deposited 10 units of a non-native unshielded asset into a live ACC, changing its
 confirmed balance from 10 to 20; repeating the same request UUID returned the same transaction
 ID and balance. The source image uses a read-only contract mount and never downloads proving keys

@@ -1,17 +1,24 @@
 ---
 layout: default
-title: Preview RC5 candidate
+title: Preview RC5 release
 permalink: /release-notes-rc5/
 ---
 
-## Proposed 0.1.0-rc5 — unpublished local candidate
+## 0.1.0-rc5 — published preview · 2026/10/19
 
-RC4 remains the published package release described by the installation examples. RC5 is
-prepared locally for review. No registry package, image tag, signed release tag or Pages
-publication is implied by this page. The candidate contains the same nine implemented
-`@input-output-hk/mn-passport-*` packages, intended for the `next` distribution tag, plus the
-keys, service and funding images. Final versions, hashes and registry digests must be recorded
-after approved publication; local image IDs are not registry manifest digests.
+The nine implemented `@input-output-hk/mn-passport-*` libraries are published privately on
+GitHub Packages at `0.1.0-rc5`, distribution tag `next`. The three backend images are public on
+GHCR for Linux/amd64. Package administrators must grant read access to Lace users and consuming
+repositories; repository membership alone does not establish access to a separately managed package.
+
+- [Release and signed verification assets](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc5)
+- [Publication receipt: package SHA-256 values, image digests and checks](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/release/rc5-publication-receipt.json)
+- [Install and connect]({{ '/getting-started/' | relative_url }}) and [Lace evaluation guide]({{ '/lace-handover/' | relative_url }})
+
+The signed release source is `9e8048674a54adf5e8be2055aaa8f5c9bfe08b06`.
+`sdk-v0.1.0-rc5`, `keys-v0.1.0-rc5`, `service-v0.1.0-rc5` and `funding-v0.1.0-rc5`
+are verified GPG-signed annotated tags at that same GPG-verified, DCO-signed commit.
+The tag messages also carry sign-offs under this release policy.
 
 The ACC binding remains `acc-s3r1.1`, source
 `6458ed5fe6a4843912328bbf11112b97e33abf45`, compiler manifest SHA-256
@@ -24,6 +31,8 @@ packages exclude TypeScript build caches, and the release gate compares independ
 - Demo: localnet NIGHT funding, operation traces, address recovery, chain-backed holdings,
   reviewed owner unshielded withdrawals, sealed device enrollment/removal and scoped spend
   grants with export, holder use and revocation.
+- Demo wallet: **Refresh wallet balance** syncs and reads the existing wallet without a new
+  passkey prompt. Wallet and ACC balances are separate and displayed in smallest units.
 - Funding: durable request progress and operator reconciliation for the supported outcomes.
   A completed request ID replays its recorded result. Indeterminate requests require careful
   reconciliation; this is not permission to submit a second deposit.
@@ -46,7 +55,7 @@ rejected before signing. Change capture, durable change publication and spent-in
 reconciliation are deferred under #201. A value-capable v9 wallet is required; the remote
 fee-only sponsor refuses shielded offers. Do not infer a validated Lace-hosted value route.
 
-This candidate does **not** claim full Lace compatibility. Generic SDK hosted creation needs
+This preview does **not** claim full Lace compatibility. Generic SDK hosted creation needs
 validation excluded from Lace's creation scope; sealed enrollment needs roster reads excluded
 from its non-rotating scope; hosted sign-in filters registrations required by SDK address
 recovery. Tests preserve those scopes and use Lace-owned orchestration where appropriate.
@@ -60,8 +69,27 @@ is not repaired by knowing the ACC address. Typed coverage of every circuit rema
 
 ## Review and evidence
 
-The source tree contains `docs/local-backlog-acceptance.md`, `docs/lace-consumer-report.md`
-and `docs/review/rc5/` with the review stack, exact tests and evidence. These will become
-GitHub links after the reviewed source is pushed and merged. Published checks, private-package
-visibility and registry-byte/attestation matching still belong to the release procedure.
-See [Releasing]({{ '/releasing/' | relative_url }}) for the publication boundary.
+The release source passed repository lint, formatting, builds, package/app tests and service/browser
+type checks. The source workflow compared two independent builds. All nine downloaded registry
+archives passed SRI and publisher-workflow attestation verification; their decompressed tar streams
+match the local candidate byte for byte. The archive SHA-256 values differ from macOS packs only
+because gzip records a different OS header. Use the **published** hashes in the receipt, not an
+unrelated platform's archive hash. Clean installation, entrypoint imports, a Vite browser build,
+physical runtime identity and a restored/hash-verified circuit passed from registry tarballs.
+The browser quickstart was also type-checked against RC5 tarballs.
+
+All three images were pulled by immutable registry digest, checked for Linux/amd64 and non-root
+UID/GID `10001:10001`; version and source-SHA aliases resolve to the same digest. Published service
+and funding images passed startup refusals and a mounted-tree localnet run: create, activate,
+read/reopen, a confirmed NIGHT deposit and identical-request replay without another transfer.
+The key image verified the existing 52-circuit cache, served pinned prover/verifier bytes with range
+and CORS checks, and regenerated `deposit_unshielded` in a fresh volume. Fresh generation of all
+52 circuits was not repeated.
+
+See the [publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/release/rc5-publication-receipt.json),
+[compatibility matrix](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/compatibility.md),
+[review evidence](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/docs/review/rc5)
+and [Releasing]({{ '/releasing/' | relative_url }}). Deferred issues are
+[#201](https://github.com/input-output-hk/midnight-passport-sdk/issues/201),
+[#82](https://github.com/input-output-hk/midnight-passport-sdk/issues/82) and
+[#202](https://github.com/input-output-hk/midnight-passport-sdk/issues/202).

@@ -6,7 +6,7 @@ permalink: /
 
 Midnight Passport gives an application a passkey controlled Account Custody Contract (ACC). The account API creates an account, opens it again with its registered passkey, reads its state and makes a signed call. The browser adapter supplies WebAuthn and the local prototype service supplies deployment, proving and fee sponsorship.
 
-> **Preview RC4:** These pages describe the nine implemented packages at `0.1.0-rc4` on `passport-acc-prototype`. The release pins ACC binding `acc-s3r1.1` from Passport revision `6458ed5`. Shielded withdrawal accepts only an exact-value coin and needs a value-capable v9 wallet; partial spends are rejected. Lace's hosted module has not been validated end to end. See [release notes]({{ '/release-notes-rc4/' | relative_url }}) and [Packages]({{ '/packages/' | relative_url }}) before integrating.
+> **Preview RC5:** The nine implemented packages are published at `0.1.0-rc5` with private GitHub Packages access; three Linux/amd64 backend images are available on GHCR. ACC binding `acc-s3r1.1` remains pinned to Passport revision `6458ed5`. Shielded withdrawals require an exact-value coin; partial spends remain rejected. Synthetic hosted tests do not establish full Lace compatibility. Start with the [release notes]({{ '/release-notes-rc5/' | relative_url }}) and [Packages]({{ '/packages/' | relative_url }}).
 
 ## Start here
 
@@ -20,7 +20,7 @@ installation, an independently pinned service check, a browser composition examp
 5. [Service API]({{ '/service/' | relative_url }}) describes the local prototype endpoints and trust boundary.
 6. [ZK keys]({{ '/keys/' | relative_url }}) explains the artefact integrity pin and prover-key distribution decision.
 7. [Releasing]({{ '/releasing/' | relative_url }}) explains the guarded GitHub Packages workflow.
-8. [Unpublished RC5 candidate]({{ '/release-notes-rc5/' | relative_url }}) describes the local review candidate; RC4 remains the published release.
+8. [Preview RC5 release notes]({{ '/release-notes-rc5/' | relative_url }}) list verified artefacts, checks and deferred work.
 9. [Preview RC4 release notes]({{ '/release-notes-rc4/' | relative_url }}) list validated behavior and deferred work.
 10. [Engineering handover]({{ '/handover/' | relative_url }}) traces the localnet NIGHT funding flow, operating steps, audit findings and release boundary.
 

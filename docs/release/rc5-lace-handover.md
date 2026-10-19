@@ -1,5 +1,9 @@
 # RC5 release qualification and Lace handover
 
+**Published follow-up:** see [the RC5 publication receipt](rc5-publication-receipt.json) and
+[release notes](../site/release-notes-rc5.md) for final registry hashes and immutable image digests.
+The preparation evidence below remains a historical record, including its pre-publication gates.
+
 Target: `0.1.0-rc5`, GitHub Packages `next`, private package access for the Lace
 consuming repositories. Preparation date: 2026/10/19 (Asia/Kuala_Lumpur).
 Source baseline: prototype integration `95588a3ca1a2578ab2b066957f02c8087cda4d5a`.

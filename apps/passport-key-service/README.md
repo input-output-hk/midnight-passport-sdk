@@ -18,15 +18,18 @@ The image is published by
 `ghcr.io/input-output-hk/midnight-passport-keys:<version>`. The workflow runs
 from `passport-acc-prototype` and also accepts `keys-v*` release tags on that
 branch's history. The image has a version tag and a commit-SHA tag. Use a digest
-pin for deployment after choosing a release. GHCR package visibility and
+pin for deployment. `0.1.0-rc5` and `sha-9e8048674a54` resolve to
+`sha256:fc5de57ff6e28a0ceecff5ff13d1c8c960559e3d40630d6f438c7ee665575bd6`.
+The [publication receipt](../../docs/release/rc5-publication-receipt.json) records its checks.
+GHCR package visibility and
 consumer access are configured on the container package's GitHub settings page.
 
 ```sh
 docker volume create passport-acc-keys
-docker run --rm \
+docker run --rm --platform linux/amd64 --read-only --tmpfs /tmp \
   --mount type=volume,src=passport-acc-keys,dst=/data/keys \
   -p 127.0.0.1:8788:8788 \
-  ghcr.io/input-output-hk/midnight-passport-keys:0.1.0-rc1
+  ghcr.io/input-output-hk/midnight-passport-keys@sha256:fc5de57ff6e28a0ceecff5ff13d1c8c960559e3d40630d6f438c7ee665575bd6
 ```
 
 The process runs as UID/GID `10001`. A bind-mounted cache must be writable by
@@ -82,6 +85,6 @@ read-only root, also provide a writable `/tmp` (for example `--tmpfs /tmp`). If 
 home/cache locations, give UID/GID `10001:10001` access. Cache files are not exposed as arbitrary
 HTTP paths: only pinned bundle inputs and known circuit keys are served.
 
-RC5 local qualification regenerates `deposit_unshielded` from packaged ZKIR in the Linux image
-and checks both output hashes. It separately verifies/serves all 52 cached circuits. It does
+RC5 published-image qualification regenerated `deposit_unshielded` from packaged ZKIR in the Linux image
+and checked both output hashes. It separately verified/served all 52 cached circuits. It does
 not claim a fresh generation of every circuit in the container during the handover run.

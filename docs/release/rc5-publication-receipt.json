@@ -1,0 +1,361 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.0-rc5",
+  "distTag": "next",
+  "verifiedAt": "2026-10-19T12:41:34.686241+00:00",
+  "source": {
+    "repository": "https://github.com/input-output-hk/midnight-passport-sdk",
+    "commit": "9e8048674a54adf5e8be2055aaa8f5c9bfe08b06",
+    "tags": [
+      {
+        "tag": "sdk-v0.1.0-rc5",
+        "tagObject": "33e65e0a62ea3d493d1fc3061db5628991c01956",
+        "source": "9e8048674a54adf5e8be2055aaa8f5c9bfe08b06",
+        "verified": true
+      },
+      {
+        "tag": "keys-v0.1.0-rc5",
+        "tagObject": "d9e7fb8e4a2af2ae625694c72ca8bfd759506932",
+        "source": "9e8048674a54adf5e8be2055aaa8f5c9bfe08b06",
+        "verified": true
+      },
+      {
+        "tag": "service-v0.1.0-rc5",
+        "tagObject": "5e8aa9be8cde3cfc2992d7c72768479bcd82bae8",
+        "source": "9e8048674a54adf5e8be2055aaa8f5c9bfe08b06",
+        "verified": true
+      },
+      {
+        "tag": "funding-v0.1.0-rc5",
+        "tagObject": "126d21f03272d4b3f2f7bee6236ca2b47fc0d270",
+        "source": "9e8048674a54adf5e8be2055aaa8f5c9bfe08b06",
+        "verified": true
+      }
+    ],
+    "gpgAndDcoVerified": true
+  },
+  "binding": {
+    "id": "acc-s3r1.1",
+    "passportSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
+    "compact": "0.35.0",
+    "language": "0.27.0",
+    "runtime": "0.20.0",
+    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f"
+  },
+  "laceSource": "502b0794cc7bcfc76342230193fef4ebb63cae1c",
+  "packages": [
+    {
+      "name": "@input-output-hk/mn-passport-protocol",
+      "version": "0.1.0-rc5",
+      "distTag": "next",
+      "visibility": "private",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-protocol",
+      "sha256": "4b0beb7f9bc25a809a9f8e0f59c11c284602c7b4d3134a68b7848feb1bb536d5",
+      "integrity": "sha512-hGaMYWX9pExJUFUyT/MMR1IedUnzTpr7ecQgVb3uuyItBXdv14irsMcajyb6/L5pF7qXxkEdEqeDXJSD3eFspQ==",
+      "localSha256": "85be9fef704ef9e705210062b7dcb997cff3ad76e4b18bdcdde929e500b818e9",
+      "tarStreamSha256": "2e041093890d1d0843cd3cfc37a7c790685ecbc28ab6a1b115d408bf20a6bb6d",
+      "comparison": "gzip OS header only: Linux=3, macOS=19",
+      "attestations": {
+        "sourceWorkflow": true,
+        "publisherWorkflow": true
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-account",
+      "version": "0.1.0-rc5",
+      "distTag": "next",
+      "visibility": "private",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-account",
+      "sha256": "d567fba793dd2be09c24faa834b696e702ea76cb6ceb974ce60fb8a55b847936",
+      "integrity": "sha512-pL5RCFxwdAXwmHHXYmguOVqqySEQqABAPObG2TFj1ovo56rsmT8TMeJ7vFjEDdg5uaJRwjP3pie2XiO/I27Tgg==",
+      "localSha256": "5dfbcf1e81dd2047b16546fe7ff723bbbb05268f87183d64a6899a3561d8fa68",
+      "tarStreamSha256": "8fc79e63f3574823d180f76f81360529efa2dfbefc114127e44cacfea8c46cb0",
+      "comparison": "gzip OS header only: Linux=3, macOS=19",
+      "attestations": {
+        "sourceWorkflow": true,
+        "publisherWorkflow": true
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-midnight-js",
+      "version": "0.1.0-rc5",
+      "distTag": "next",
+      "visibility": "private",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-adapter-midnight-js",
+      "sha256": "0cdce0c492e53e579efa3fc89fd6faa5c16702e626e3b1145ed2bc751ee064d6",
+      "integrity": "sha512-DtoUb7rKEKsYmrpDZvPXglBv8Q/C8UNvVquwCmku9k0ScbgBCe/rTA6gHn0x+Hg8BwQW7XRPj7BwTCZb9w7z2A==",
+      "localSha256": "3337aabb46725cd9b080fd3a601352eb0b851919a195aa2f06d8f27ea03e169f",
+      "tarStreamSha256": "dca050bd6e9b29fe9d3428d34a11eb87048034fae84ab9f0dbd517905b64e5bc",
+      "comparison": "gzip OS header only: Linux=3, macOS=19",
+      "attestations": {
+        "sourceWorkflow": true,
+        "publisherWorkflow": true
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-keys",
+      "version": "0.1.0-rc5",
+      "distTag": "next",
+      "visibility": "private",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-keys",
+      "sha256": "29f91bf288cb8907fdb3b1732dc3fa956f969f44ec202c2a7d7e1c9e73a2f142",
+      "integrity": "sha512-/wy7IHkUHHZqslhyHj5t+NHm2jcSAH0N6ic9PYZqTXX7LdhzJicWVq3VOf5Nenh6kJkm2ws3zOmvbZh8IZp1BQ==",
+      "localSha256": "787c3a4c6a54231f1f8e5d346c972140c72f5737b44f218d1ed06470c9472634",
+      "tarStreamSha256": "83efe8b79d9dfca9a0dea84129ca62afee2a9e8a81ee87b6fa1595adf2224525",
+      "comparison": "gzip OS header only: Linux=3, macOS=19",
+      "attestations": {
+        "sourceWorkflow": true,
+        "publisherWorkflow": true
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-webauthn",
+      "version": "0.1.0-rc5",
+      "distTag": "next",
+      "visibility": "private",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-adapter-webauthn",
+      "sha256": "085686b2e354118706036817167c479d7495edef8dbc41a0bce7414f67549ad9",
+      "integrity": "sha512-VF9PwWPMv0GwtuXbeo2nY4+G894QCeLhNOfDf5Hdg2IDwlcRvyYy4wDEMZz5CzylA+DwQiSOhmJXe02XEWlPFA==",
+      "localSha256": "046a92a3ab91376f6946185a41fa5f14d840c34ebe2173c07c976206b8cee022",
+      "tarStreamSha256": "e76042d9da2361643e23f47ff8a54b18260b1c8d7414377f3022fdf2f2bc0c26",
+      "comparison": "gzip OS header only: Linux=3, macOS=19",
+      "attestations": {
+        "sourceWorkflow": true,
+        "publisherWorkflow": true
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-service",
+      "version": "0.1.0-rc5",
+      "distTag": "next",
+      "visibility": "private",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-adapter-service",
+      "sha256": "c81bab09a2ba7a7638d74b8db5f9b1f8848207472bbb55e4e6f16f715019bc67",
+      "integrity": "sha512-LZn/UZS/qZV0IcrWYEIs2VVcwA84TjpZtn/j2NXH8M/qwpdTKd+vq326h/qS4MKvgimXw4lF6o+p+XV9ho0W0Q==",
+      "localSha256": "1a743bcbb48beedb27e64f938eb201e34d972e3980482129afe3667beb98c385",
+      "tarStreamSha256": "00db3f71a81d4995c2ea1aa71180eb0ea3688d243e018976aa87f77c35150856",
+      "comparison": "gzip OS header only: Linux=3, macOS=19",
+      "attestations": {
+        "sourceWorkflow": true,
+        "publisherWorkflow": true
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-contract",
+      "version": "0.1.0-rc5",
+      "distTag": "next",
+      "visibility": "private",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-contract",
+      "sha256": "f5e7b640fd0a5bf919ca52f8cb439ed035c596c4dc449d114d179647e53cd0c1",
+      "integrity": "sha512-yQnw2hGNnZcOJempquSym499Ahx4iwMUM/WSTefAa5YiqbBuYhQitIruwwBSDWoGtT/exeWnjXTuB76EAgRK/g==",
+      "localSha256": "094e6f9bfaa21ded71c2370308cbb382ea0e8f8eedf7da4820e0519f59641f02",
+      "tarStreamSha256": "35e804ffd180809857bb4c9c278d55c5026ac8f8c23feb472af11c78be722aed",
+      "comparison": "gzip OS header only: Linux=3, macOS=19",
+      "attestations": {
+        "sourceWorkflow": true,
+        "publisherWorkflow": true
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-browser",
+      "version": "0.1.0-rc5",
+      "distTag": "next",
+      "visibility": "private",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-adapter-browser",
+      "sha256": "4922141b8691bbdb209bf2f017f83ee8c7751574456d75c7a2e803974b091de9",
+      "integrity": "sha512-0iNV6gqL5h275mtbGAaN1T7HXebMBmMXtk4aMfzYhWJolTAr1zLE7yb67G2Cf1IEAKmSGBXzZINUYUR7To0KuA==",
+      "localSha256": "02254b19543cecc528d46ba17d2a756afbcc1377d083e683625496d852df1e11",
+      "tarStreamSha256": "be3269115d10630f750f75e3987a3bd59b9b25b6d784f4185fc81bc17152ac27",
+      "comparison": "gzip OS header only: Linux=3, macOS=19",
+      "attestations": {
+        "sourceWorkflow": true,
+        "publisherWorkflow": true
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-service",
+      "version": "0.1.0-rc5",
+      "distTag": "next",
+      "visibility": "private",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-service",
+      "sha256": "6955af6b722b9ce085ae91577355fd81ec5b87041fa40429389e6fa867070887",
+      "integrity": "sha512-idGE1BLRks60BJG/lPSSBXDkFdpOTwVz73KieAZ0pc02HH/5kldyEP48TMFhN+/9wcXSCk4bWnlrypFzMSlP+g==",
+      "localSha256": "6a057df8065422f6de958898070ad16bbb838fa38442c192bd418fdf6b2c43c5",
+      "tarStreamSha256": "ae15bdbb31e5c441bdf636d843e8399be3ac7d072333def4b25d907699b6ac8f",
+      "comparison": "gzip OS header only: Linux=3, macOS=19",
+      "attestations": {
+        "sourceWorkflow": true,
+        "publisherWorkflow": true
+      }
+    }
+  ],
+  "images": [
+    {
+      "name": "keys",
+      "repository": "ghcr.io/input-output-hk/midnight-passport-keys",
+      "version": "0.1.0-rc5",
+      "digest": "sha256:fc5de57ff6e28a0ceecff5ff13d1c8c960559e3d40630d6f438c7ee665575bd6",
+      "immutableRef": "ghcr.io/input-output-hk/midnight-passport-keys@sha256:fc5de57ff6e28a0ceecff5ff13d1c8c960559e3d40630d6f438c7ee665575bd6",
+      "user": "10001:10001",
+      "platform": "linux/amd64",
+      "commitTag": "ghcr.io/input-output-hk/midnight-passport-keys:sha-9e8048674a54",
+      "visibility": "public"
+    },
+    {
+      "name": "service",
+      "repository": "ghcr.io/input-output-hk/midnight-passport-service",
+      "version": "0.1.0-rc5",
+      "digest": "sha256:b4d2900689c37fd7f8fee9dfa1257a45da9a41efd3e7841f4e5496605ccb6b25",
+      "immutableRef": "ghcr.io/input-output-hk/midnight-passport-service@sha256:b4d2900689c37fd7f8fee9dfa1257a45da9a41efd3e7841f4e5496605ccb6b25",
+      "user": "10001:10001",
+      "platform": "linux/amd64",
+      "commitTag": "ghcr.io/input-output-hk/midnight-passport-service:sha-9e8048674a54",
+      "visibility": "public"
+    },
+    {
+      "name": "funding",
+      "repository": "ghcr.io/input-output-hk/midnight-passport-funding",
+      "version": "0.1.0-rc5",
+      "digest": "sha256:94f387509d5de572c3c94be6fd7412c103323bf3c499ee597e44799a50689eb2",
+      "immutableRef": "ghcr.io/input-output-hk/midnight-passport-funding@sha256:94f387509d5de572c3c94be6fd7412c103323bf3c499ee597e44799a50689eb2",
+      "user": "10001:10001",
+      "platform": "linux/amd64",
+      "commitTag": "ghcr.io/input-output-hk/midnight-passport-funding:sha-9e8048674a54",
+      "visibility": "public"
+    }
+  ],
+  "workflows": {
+    "source": "https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/39251127117",
+    "publisher": "https://github.com/input-output-hk/midnight-passport-sdk-publisher/actions/runs/39251605177",
+    "keys": "https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/39251144500",
+    "service": "https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/39251161325",
+    "funding": "https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/39251195407"
+  },
+  "checks": {
+    "repositoryGate": "lint, format, build, package/app tests, service/funding/browser type checks passed; optional gated tests remain skipped",
+    "sourceReproducibility": "two independent builds matched within the Linux source workflow; local macOS two-build check also passed",
+    "registryIntegrity": "all nine SRI and source/publisher workflow attestations verified; source digest pinned to release commit",
+    "crossPlatformArchiveDifference": "only gzip OS header differs: Linux 3, macOS 19; all nine decompressed tar streams are byte-identical",
+    "registryTarballConsumer": "all nine installed; entrypoint imports, type checks, physical runtime identity, Vite build and restored/hash-verified circuit passed",
+    "quickstart": "browser example type-checked against RC5 tarballs",
+    "laceTypes": "exact-source consumer against pinned Lace source passed; seven direct Midnight dependencies match",
+    "imageStartup": "published service/funding refuse missing Linux export, dedicated seed/policy and wrong manifest as applicable",
+    "imageIdentity": "all three pulled by registry digest; version/source aliases agree; Linux/amd64; non-root 10001:10001",
+    "directRegistryInstall": "Authenticated npm install of all nine exact RC5 packages and binding pin check passed; initial third-party npmjs download timeout resolved on retry."
+  },
+  "publishedImageLocalnet": {
+    "networkId": "undeployed",
+    "bindingId": "acc-s3r1.1",
+    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "verdict": "PASS",
+    "account": "b0baef3cf2571bd8313ef81cbb2a67b04fa05c704d5d347b1b0170668f44c56f",
+    "createActivateReadReopen": "passed",
+    "before": {
+      "accountAddress": "b0baef3cf2571bd8313ef81cbb2a67b04fa05c704d5d347b1b0170668f44c56f",
+      "color": "0000000000000000000000000000000000000000000000000000000000000000",
+      "night": "0",
+      "fundedAsset": "0"
+    },
+    "request": {
+      "requestId": "595898ef-a9ec-418b-a9cb-31eecd8b94fe",
+      "networkId": "undeployed",
+      "bindingId": "acc-s3r1.1",
+      "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+      "accountAddress": "b0baef3cf2571bd8313ef81cbb2a67b04fa05c704d5d347b1b0170668f44c56f",
+      "color": "0000000000000000000000000000000000000000000000000000000000000000",
+      "amount": "10"
+    },
+    "fundingAttempts": [
+      {
+        "stage": "initial",
+        "outcome": "started"
+      },
+      {
+        "stage": "initial",
+        "outcome": "response-received",
+        "httpStatus": 200
+      },
+      {
+        "stage": "replay",
+        "outcome": "started"
+      },
+      {
+        "stage": "replay",
+        "outcome": "response-received",
+        "httpStatus": 200
+      }
+    ],
+    "fundingOutcome": "balance-confirmed",
+    "funded": {
+      "requestId": "595898ef-a9ec-418b-a9cb-31eecd8b94fe",
+      "txId": "00ba0f5ce2e95e6dbd85b764d792deac1ed1c03efed2cbfe26afc1450b28d9ac2a",
+      "creditedBalance": "10",
+      "preparationTxId": "00289aa6136b0535d3975a280013479bf21dedb4dabe57174cfaed8d05a891e65f"
+    },
+    "after": {
+      "accountAddress": "b0baef3cf2571bd8313ef81cbb2a67b04fa05c704d5d347b1b0170668f44c56f",
+      "color": "0000000000000000000000000000000000000000000000000000000000000000",
+      "night": "10",
+      "fundedAsset": "10"
+    },
+    "replay": {
+      "requestId": "595898ef-a9ec-418b-a9cb-31eecd8b94fe",
+      "txId": "00ba0f5ce2e95e6dbd85b764d792deac1ed1c03efed2cbfe26afc1450b28d9ac2a",
+      "creditedBalance": "10",
+      "preparationTxId": "00289aa6136b0535d3975a280013479bf21dedb4dabe57174cfaed8d05a891e65f"
+    }
+  },
+  "publishedKeyImage": {
+    "health": {
+      "ready": true,
+      "profile": "all"
+    },
+    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "keys": [
+      {
+        "file": "deposit_unshielded.prover",
+        "sha256": "d8409e37efa3f142a8c9fb44a7a4c25397312317f9cf28f1243c1bba887f56a3",
+        "size": 446790
+      },
+      {
+        "file": "deposit_unshielded.verifier",
+        "sha256": "bb4421a5909564377d15f0756299bef99740089b842e8d9796ad2d3d75831de9",
+        "size": 1353
+      }
+    ],
+    "range": 206,
+    "cors": "http://localhost:5173",
+    "privateCachePath": 404,
+    "freshRegeneration": "deposit_unshielded; new empty volume; restored and hash verified"
+  },
+  "documentation": {
+    "site": "https://input-output-hk.github.io/midnight-passport-sdk/",
+    "gettingStarted": "https://input-output-hk.github.io/midnight-passport-sdk/getting-started/",
+    "useCases": "https://input-output-hk.github.io/midnight-passport-sdk/use-cases/",
+    "agentGuide": "https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/AGENTS.md"
+  },
+  "limitations": [
+    "Shielded withdrawals retain exact-value guard; partial spends/change recovery deferred under #201.",
+    "No claim of full Lace compatibility; remaining live/value-host evidence under #202.",
+    "Complete typed circuit coverage deferred under #82.",
+    "NIGHT funding qualified only on undeployed; amounts in base units.",
+    "Synthetic hosted tests do not establish real passkey-provider coverage.",
+    "Proving service sees private proof inputs; controlled ingress required.",
+    "All enrolled/recoverable passkeys lost cannot be recovered from the ACC address.",
+    "Fresh key regeneration checked deposit_unshielded only; the full existing 52-circuit cache was verified."
+  ],
+  "deferredIssues": [
+    {
+      "number": 201,
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/201"
+    },
+    {
+      "number": 82,
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/82"
+    },
+    {
+      "number": 202,
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/202"
+    }
+  ]
+}
