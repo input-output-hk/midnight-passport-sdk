@@ -18,6 +18,8 @@ shell.
 - [`docs/prototype/`](docs/prototype/README.md): the overview, the demo script, the flows, the keys,
   the limits, and the architecture compared with the SDK proposal.
 - [`apps/README.md`](apps/README.md): every environment variable and script.
+- [`docs/site/getting-started.md`](docs/site/getting-started.md): library installation and a minimal browser host.
+- [`docs/site/use-cases.md`](docs/site/use-cases.md): demo prerequisites, actions and expected results.
 
 ## 1. What you need
 
@@ -51,6 +53,60 @@ services this command started while preserving the localnet volumes.
 to reuse an existing compiled export, or `--no-key-service` to skip the separate key server. The
 browser still gets contract metadata and artefacts through the Passport service on port 8787; the
 key server on port 8788 is for a proof server or other backend consumer.
+
+### Agent startup checklist
+
+1. Read this file, then check the branch, working tree, Docker containers and port listeners.
+   Do not switch over somebody else's changes or start a second wallet on an occupied port.
+   The optional key and funding services also need ports 8788 and 8789.
+2. If a demo is running, read `http://127.0.0.1:8787/healthz`, `/v1/config` and, when enabled,
+   `http://127.0.0.1:8789/healthz`. Expect `undeployed`, `acc-s3r1.1` and the manifest pin below.
+   Verify `http://localhost:5173/` loads, and reuse a healthy stack at the intended source.
+3. For a stopped demo, run `nix develop -c pnpm demo check`, then the launch command above.
+   Add `--contract-dir /absolute/path/to/contract` to reuse an existing export. Do not recompile
+   or regenerate every prover key when the pinned cache is already valid.
+4. After code changes, restart only processes you started, by recorded PIDs, using the same
+   network, contract pin, registry and funding files. Do not reset the chain, delete passkeys,
+   clear browser storage or remove reservation files as a routine startup fix.
+5. Record the source SHA, commands, service URLs, log locations and owned PIDs in the handover.
+   A `200` from the page alone does not establish readiness: wait for checked config and any
+   requested funding service while their wallets synchronise.
+
+### Enable localnet NIGHT funding
+
+Prepare the token and NIGHT asset policy once using the
+[funding guide](apps/passport-funding-service/README.md). Reuse existing private files; do not
+replace the token or policy during a routine restart. Then run:
+
+```sh
+PASSPORT_REPO=/path/to/passport \
+PASSPORT_FUNDING_TOKEN_FILE="$HOME/.midnight-passport/funding-token" \
+PASSPORT_FUNDING_ASSETS_FILE="$HOME/.midnight-passport/funding-assets.json" \
+nix develop -c pnpm demo up --funding
+```
+
+Add `--mock-passkey` for a development-only credential or `--arm jubjub` for that authoriser arm.
+For a presentation use a real PRF-capable provider at exactly `http://localhost:5173/`.
+Create/open an ACC, connect the built-in wallet, deposit `10`, withdraw `1` to that wallet's
+unshielded address and choose **Refresh wallet balance**. Expect ACC `9` and recipient `1`
+after indexer sync, in **smallest units**, not whole NIGHT. Refresh reuses the wallet without
+a passkey prompt. **Refresh ACC state** updates the separate contract view; **Copy full log**
+exports public evidence. Preserve an uncertain funding request ID and use the operator inspection
+and reconciliation tools before retrying. Do not start a second transfer under a new ID.
+
+### Container and platform notes
+
+The service and funding images need a Linux-prepared reference client's `node_modules` as well
+as the pinned contract export. Do not bind-mount macOS dependencies into Linux or reuse an
+unverified old dependency volume. Prepare a dedicated Linux volume with `npm ci` from the export's
+lockfile, then mount it read-only at the export's `node_modules` path. Keep writable state, token
+and policy mounts separate. The runtime UID/GID is `10001`. See the [image guides](apps/README.md)
+for exact mounts and public URL overrides. Custom internal and published ports must match because
+the Host guard validates the port.
+
+The key image's `x86_64-linux` derivation needs a Linux builder; a macOS `aarch64-darwin` Nix
+cannot build it directly. Prefer the signed-tag Linux CI build. The local demo CLI can restore
+keys through the pinned macOS toolchain without building an image.
 
 ## 3. Manual setup
 
@@ -113,7 +169,8 @@ contract's WebAuthn profile are bound to that origin.
 | **Open by ACC address** with an already-enrolled passkey | Provider-dependent picker and PRF ceremony               | Opens the known ACC without a local directory hint; does not recover a lost passkey |
 | **Rotate sealed viewing key**                             | Provider-dependent owner signature ceremonies             | Reviews live devices, holdings and read grants, then reseals a fresh secret before the ACC key switch |
 | **Connect built-in wallet**                              | 1 with an account open, otherwise 2                      | seconds                                                                  |
-| **Copy evidence**                                        | none                                                     | copies the event log as JSON, with no secrets                            |
+| **Refresh wallet balance** | none | Waits for wallet sync (up to 120 s); no wallet recreation or seed derivation. |
+| **Copy full log** | none | Copies public operations and balance snapshots as JSON; no secrets. |
 
 The page shows a progress bar and an event log with each step's start, end, duration and any error,
 taken from the account API's progress events; the deploy's bar still fills against a 3-minute

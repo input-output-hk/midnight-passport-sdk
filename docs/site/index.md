@@ -10,6 +10,9 @@ Midnight Passport gives an application a passkey controlled Account Custody Cont
 
 ## Start here
 
+Start with [Install and connect]({{ '/getting-started/' | relative_url }}) for authenticated
+installation, an independently pinned service check, a browser composition example and common errors.
+
 1. [Problems and package boundaries]({{ '/problems/' | relative_url }}) maps the seven integration needs to current and planned SDK surfaces.
 2. [Packages]({{ '/packages/' | relative_url }}) explains which package owns each part of the integration.
 3. [Account API]({{ '/api/' | relative_url }}) documents `createPassportAccounts`, its ports, events and errors.
