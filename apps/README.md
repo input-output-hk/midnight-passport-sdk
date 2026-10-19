@@ -15,6 +15,11 @@ lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](.
 The prototype's overview, the demo script, the flows, the key derivation and the limitations are in
 [`docs/prototype/`](../docs/prototype/README.md). This file covers setup and operation.
 
+The [demo use cases](../docs/site/use-cases.md) cover the available browser scenarios.
+After connecting the built-in wallet, **Refresh wallet balance** rereads its synced NIGHT,
+token and DUST snapshot without another passkey prompt. This is a manual refresh; use it after
+receiving an ACC withdrawal. **Refresh ACC state** updates the separate smart account.
+
 ## Prerequisites
 
 - **Nix.** Everything runs in the repository's Nix shell (`nix develop`), so no other Compact or

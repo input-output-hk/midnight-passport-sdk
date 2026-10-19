@@ -23,6 +23,10 @@ Midnight Passport gives an application a passkey controlled Account Custody Cont
 
 For a local run, follow the [demo guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/AGENTS.md). The current service needs a compiled ACC and its own funded localnet; installing the TypeScript workspace alone is not enough to create an account.
 
+The [demo use cases]({{ '/use-cases/' | relative_url }}) give the available actions,
+prerequisites, expected results and current evaluation limits, including a NIGHT round trip
+from the funding wallet through the ACC to the built-in wallet.
+
 ## Lace evaluation
 
 The [Lace handover guide]({{ '/lace-handover/' | relative_url }}) describes the RC5

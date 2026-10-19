@@ -8,6 +8,9 @@ A script for presenting the Passport DApp prototype. It describes the page by it
 the layout may change. The actions are **Create account**, **Open with passkey**,
 **Rotate sealed viewing key**, **Connect built-in wallet** and **Copy evidence**.
 
+The [demo use cases](../site/use-cases.md) list the available account, wallet, funding,
+device and grant scenarios with their prerequisites and evaluation limits.
+
 Allow time for ten deployment waves, activation, sealed-key publication and any rotations;
 localnet proof time varies by host.
 
@@ -102,6 +105,16 @@ wallet's balance after confirmation. The demo's passkey-derived built-in wallet 
 and balances but is read-only; it cannot send a received asset from this page. A failed or uncertain
 submission does not establish that funds stayed in the ACC. Check the ACC, transaction and recipient
 on the live chain before submitting again.
+
+To receive into the built-in wallet, connect it first and copy its **Unshielded address** into
+the withdrawal recipient. After the ACC withdrawal confirms, choose **Refresh wallet balance**
+in the Built-in wallet panel. It reuses the existing wallet and waits for indexer sync without
+another passkey prompt. The updated NIGHT, token and DUST snapshot and its UTC timestamp appear
+in the wallet card and operation log. Reads may wait up to 120 seconds for wallet sync. If a read
+fails, the card says balances are unavailable instead of presenting the previous snapshot as
+current; retry the refresh. No page reload or wallet reconnection is needed. Refresh again if the
+indexer has not yet observed a newly confirmed transfer. Amounts are smallest units: funding
+`10` and withdrawing `1` leaves `9` in the ACC and adds `1` base unit to this recipient.
 
 ## Shielded holdings inspection
 

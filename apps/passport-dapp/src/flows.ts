@@ -21,6 +21,7 @@ export type ActionId =
   | 'removeDevice'
   | 'rotate'
   | 'wallet'
+  | 'walletRefresh'
   | 'fund'
   | 'withdraw';
 
@@ -55,6 +56,7 @@ export const PASSKEY_PROMPTS = {
   rotate: 1,
   fund: 0,
   withdraw: 1,
+  walletRefresh: 0,
   walletWithAccount: 1,
   walletWithoutAccount: 2,
 } as const satisfies Record<string, PromptCount>;
@@ -240,6 +242,12 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       { id: 'balances', label: 'Wait for sync and read balances' },
     ],
   },
+  walletRefresh: {
+    title: 'Refresh wallet balance',
+    summary:
+      'Read current NIGHT, token and DUST balances from the connected wallet after indexer sync, without another passkey prompt.',
+    stages: [{ id: 'balances', label: 'Wait for wallet sync and refresh balances' }],
+  },
   fund: {
     title: 'Fund Passport account',
     summary:
@@ -287,6 +295,7 @@ export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep
   removeDevice: {},
   rotate: {},
   wallet: {},
+  walletRefresh: {},
   fund: {},
   withdraw: {},
 };
