@@ -18,7 +18,7 @@ The image is published by
 `ghcr.io/input-output-hk/midnight-passport-keys:<version>`. The workflow runs
 from `passport-acc-prototype` and also accepts `keys-v*` release tags on that
 branch's history. The image has a version tag and a commit-SHA tag. Use a digest
-pin for deployment. RC5 and `sha-9e8048674a54` resolve to
+pin for deployment. `0.1.0-rc5` and `sha-9e8048674a54` resolve to
 `sha256:fc5de57ff6e28a0ceecff5ff13d1c8c960559e3d40630d6f438c7ee665575bd6`.
 The [publication receipt](../../docs/release/rc5-publication-receipt.json) records its checks.
 GHCR package visibility and

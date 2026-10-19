@@ -11,7 +11,7 @@ rate limits at the gateway, and set `PASSPORT_MAX_DEPLOYS` to an operator-approv
 
 The [image workflow](../../.github/workflows/publish-service-image.yml) builds and smoke-tests
 `ghcr.io/input-output-hk/midnight-passport-service:<version>` from a signed `service-v<version>`
-tag on `passport-acc-prototype`, or an authorized workflow dispatch. Release `0.1.0-rc5` and its
+tag on `passport-acc-prototype`, or an authorised workflow dispatch. Release `0.1.0-rc5` and its
 `sha-9e8048674a54` tag share immutable digest
 `sha256:b4d2900689c37fd7f8fee9dfa1257a45da9a41efd3e7841f4e5496605ccb6b25`. Pin that digest when deploying. The image contains the SDK application;
 it contains no proving keys, compiled ACC export, sponsor seed, or account registry.

@@ -17,7 +17,8 @@ repositories; repository membership alone does not establish access to a separat
 
 The signed release source is `9e8048674a54adf5e8be2055aaa8f5c9bfe08b06`.
 `sdk-v0.1.0-rc5`, `keys-v0.1.0-rc5`, `service-v0.1.0-rc5` and `funding-v0.1.0-rc5`
-are verified GPG-signed annotated tags at that same commit, with DCO sign-offs.
+are verified GPG-signed annotated tags at that same GPG-verified, DCO-signed commit.
+The tag messages also carry sign-offs under this release policy.
 
 The ACC binding remains `acc-s3r1.1`, source
 `6458ed5fe6a4843912328bbf11112b97e33abf45`, compiler manifest SHA-256

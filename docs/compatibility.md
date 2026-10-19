@@ -5,7 +5,7 @@
 > `packages/contract/acc-binding-v2.generated.json` and the generated registry.
 
 The [RC5 publication receipt](release/rc5-publication-receipt.json) records the signed source,
-private registry hashes/attestations and published image digests. The release keeps the exact-value
+private registry hashes/attestations, and published image digests. The release keeps the exact-value
 shielded withdrawal guard. Partial spends (#201), complete typed circuit coverage (#82) and
 remaining live/value-host evidence (#202) are deferred; no full Lace compatibility is claimed.
 

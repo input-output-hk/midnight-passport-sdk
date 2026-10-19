@@ -107,7 +107,7 @@ so the deployed ACC cannot later be upgraded through it. Make that choice explic
 
 Run at exactly `http://localhost:5173` for this local example. The passkey RP ID, origin and
 contract WebAuthn profile must agree. The reference [Vite configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc5/apps/passport-dapp/vite.config.ts)
-and [polyfill entrypoint](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc5/apps/passport-dapp/src/main.ts)
+and [polyfill entrypoint](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc5/apps/passport-dapp/src/polyfills.ts)
 show the Buffer initialisation, WASM support and browser shims required by the pinned Midnight
 runtime. The minimal composition is type-checked against RC5 tarballs; registry verification confirms
 identical package contents. It is not a complete replacement for the reference app's bundler and UI configuration.

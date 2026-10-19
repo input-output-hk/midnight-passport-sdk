@@ -7,7 +7,8 @@ permalink: /handover/
 ## Scope and status
 
 This handover describes **localnet NIGHT funding** in the published `0.1.0-rc5` preview.
-The nine private SDK packages and the RC5 funding image include the implemented path;
+The private SDK packages provide reusable funding hooks; the RC5 funding application/image
+implements the localnet NIGHT self-transfer and deposit path.
 [RC5 release notes]({{ '/release-notes-rc5/' | relative_url }}) and the
 [publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/release/rc5-publication-receipt.json)
 record exact versions, immutable image digests and the published-image deposit/replay check.

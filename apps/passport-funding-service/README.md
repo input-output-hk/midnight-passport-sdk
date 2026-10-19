@@ -132,14 +132,13 @@ files or a shared filesystem lock without a transactional implementation.
 
 The source has focused policy and backend tests. On the local `undeployed` network, this process deposited 10 units of a faucet-minted non-native unshielded asset into a
 live `spec_version = 3` ACC and observed the credited balance. Repeating the same request ID
-returned the same transaction ID and balance. The `0.1.0-rc2` container image passed its release
-build and mounted-tree smoke test and is published to GHCR.
+returned the same transaction ID and balance. Historical RC2 evidence is retained below; use the RC5 image in the next section.
 
 ## Container image
 
 The [funding image workflow](../../.github/workflows/publish-funding-image.yml) publishes
 `ghcr.io/input-output-hk/midnight-passport-funding:<version>` and a commit-SHA tag after a
-signed `funding-v<version>` tag or an authorized workflow dispatch. Release `0.1.0-rc5` also has
+signed `funding-v<version>` tag or an authorised workflow dispatch. Release `0.1.0-rc5` also has
 `sha-9e8048674a54`; its immutable digest is
 `sha256:94f387509d5de572c3c94be6fd7412c103323bf3c499ee597e44799a50689eb2`.
 The published GHCR package is public. Pin this RC5 digest when deploying. It includes the
