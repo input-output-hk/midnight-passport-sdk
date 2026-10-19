@@ -26,7 +26,9 @@ connector all resolve to authorised interactions with that on-chain account.
 
 The [SDK package and API guide](https://input-output-hk.github.io/midnight-passport-sdk/)
 is the GitHub Pages entry point (source in [`docs/site/`](./docs/site/)). It describes the
-prototype API. RC5 handover updates remain local until reviewed and published.
+prototype API. Start with [Install and connect](./docs/site/getting-started.md) for library use,
+or the [demo use cases](./docs/site/use-cases.md) for local evaluation. Registry publication
+is tracked separately from documentation deployment.
 
 The design lives in [`docs/`](./docs):
 
@@ -83,9 +85,8 @@ Prerequisite: the private residual-risk register repo cloned as a sibling at
 Node 22, pnpm, the Compact CLI (`compact` 0.5.3), and the Compact toolchain
 0.35.0 (language 0.27.0, runtime 0.20.0, ledger 9; ZKIR 3.1 with
 `--feature-zkir-v3`), plus `gh`, `jq`, and `mkcert` for a local HTTPS origin.
-Toolchain 0.31.1 stays selectable with `compact compile +0.31.1`: it is the one
-[`acc-versions.generated.json`](./packages/contract/acc-versions.generated.json)
-records for the prototype binding. The Compact binaries are the official
+Toolchain 0.31.1 stays selectable with `compact compile +0.31.1` for historical bindings.
+The release binding `acc-s3r1.1` uses Compact 0.35.0 and its independently pinned manifest. The Compact binaries are the official
 releases, fetched by hash ([`nix/packages/compact.nix`](./nix/packages/compact.nix));
 `COMPACT_DIRECTORY` points `compact` at them.
 

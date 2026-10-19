@@ -53,6 +53,8 @@ nine implemented packages. Existing RC1 package records remain historical artifa
 
 ## What an integrator installs
 
+For a first connection and a minimal browser host, follow [Install and connect]({{ '/getting-started/' | relative_url }}).
+
 The nine RC4 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their
 `0.1.0-rc4` release uses the `next` distribution tag and requires package read access. Install the
 entrypoints your code imports; their declared dependencies bring in the supporting packages. A
