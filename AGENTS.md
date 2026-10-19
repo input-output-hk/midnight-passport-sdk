@@ -30,7 +30,7 @@ shell.
 | About 15 GB free disk, and about 8 GB RAM for key generation                                                    | The 52-circuit ACC has 12 GB of prover keys.                                                                |
 | A local checkout of the Passport planning workspace (the passport contract repository; ask the team for access) | The contract source is exported from revision `6458ed5`.                                                    |
 | Chrome or Safari, with a passkey saved in **Google Password Manager or iCloud Keychain**                        | The account needs the WebAuthn PRF extension. Chrome's "Chrome profile" store has no PRF and is refused.    |
-| Free ports 19944, 18088, 16300, 8787 and 5173                                                                   | The Passport localnet uses its own host ports, so it runs beside another Midnight localnet on the defaults. |
+| Free ports 19944, 18088, 16300, 8787, 8788 and 5173                                                                   | The Passport localnet uses its own host ports, so it runs beside another Midnight localnet on the defaults. |
 
 ## 2. One-command setup and launch
 
@@ -58,11 +58,12 @@ key server on port 8788 is for a proof server or other backend consumer.
 
 1. Read this file, then check the branch, working tree, Docker containers and port listeners.
    Do not switch over somebody else's changes or start a second wallet on an occupied port.
-   The optional key and funding services also need ports 8788 and 8789.
+   The key service needs 8788 by default (skip with `--no-key-service`); funding needs 8789 with `--funding`.
 2. If a demo is running, read `http://127.0.0.1:8787/healthz`, `/v1/config` and, when enabled,
    `http://127.0.0.1:8789/healthz`. Expect `undeployed`, `acc-s3r1.1` and the manifest pin below.
    Verify `http://localhost:5173/` loads, and reuse a healthy stack at the intended source.
 3. For a stopped demo, run `nix develop -c pnpm demo check`, then the launch command above.
+   For funding, set the token/policy variables below and include `--funding` in that check.
    Add `--contract-dir /absolute/path/to/contract` to reuse an existing export. Do not recompile
    or regenerate every prover key when the pinned cache is already valid.
 4. After code changes, restart only processes you started, by recorded PIDs, using the same
@@ -88,7 +89,7 @@ nix develop -c pnpm demo up --funding
 Add `--mock-passkey` for a development-only credential or `--arm jubjub` for that authoriser arm.
 For a presentation use a real PRF-capable provider at exactly `http://localhost:5173/`.
 Create/open an ACC, connect the built-in wallet, deposit `10`, withdraw `1` to that wallet's
-unshielded address and choose **Refresh wallet balance**. Expect ACC `9` and recipient `1`
+unshielded address and choose **Refresh wallet balance**. Expect ACC `9` and recipient balance to increase by `1`
 after indexer sync, in **smallest units**, not whole NIGHT. Refresh reuses the wallet without
 a passkey prompt. **Refresh ACC state** updates the separate contract view; **Copy full log**
 exports public evidence. Preserve an uncertain funding request ID and use the operator inspection
@@ -98,9 +99,10 @@ and reconciliation tools before retrying. Do not start a second transfer under a
 
 The service and funding images need a Linux-prepared reference client's `node_modules` as well
 as the pinned contract export. Do not bind-mount macOS dependencies into Linux or reuse an
-unverified old dependency volume. Prepare a dedicated Linux volume with `npm ci` from the export's
-lockfile, then mount it read-only at the export's `node_modules` path. Keep writable state, token
-and policy mounts separate. The runtime UID/GID is `10001`. See the [image guides](apps/README.md)
+unverified old dependency volume. Either install dependencies within a Linux-prepared export and mount that entire tree
+read-only as shown in the image guides, or prepare a dedicated Linux volume with `npm ci`
+from the export's lockfile and mount it read-only at the export's `node_modules` path. Keep writable state, token
+and policy mounts separate. The default runtime UID/GID is `10001`; an explicit `--user` override must retain access to the mounts. See the [image guides](apps/README.md)
 for exact mounts and public URL overrides. Custom internal and published ports must match because
 the Host guard validates the port.
 
