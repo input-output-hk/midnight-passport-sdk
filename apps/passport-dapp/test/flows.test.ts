@@ -42,6 +42,7 @@ const ACTIONS: readonly ActionId[] = [
   'removeDevice',
   'rotate',
   'wallet',
+  'walletRefresh',
   'fund',
   'withdraw',
 ];
@@ -74,6 +75,7 @@ test('prompts per action, with and without an account open', () => {
   assert.equal(promptsFor('rotate', true), 1);
   assert.equal(promptsFor('wallet', true), 1, 'pinned to the open account: one PRF prompt');
   assert.equal(promptsFor('wallet', false), 2, 'no account: the picker, then the PRF prompt');
+  assert.equal(promptsFor('walletRefresh', false), 0, 'refresh reuses the connected wallet');
   assert.equal(promptsFor('fund', true), 0, 'funding needs no passkey prompt');
   assert.equal(promptsFor('withdraw', true), 1, 'owner withdrawal needs passkey consent');
 });
@@ -98,6 +100,7 @@ test('the prompt table has an entry for each action and nothing the actions do n
     'roster',
     'rotate',
     'spendGrant',
+    'walletRefresh',
     'walletWithAccount',
     'walletWithoutAccount',
     'withdraw',
@@ -111,6 +114,7 @@ test('the prompt table has an entry for each action and nothing the actions do n
           min >=
             (action === 'fund' ||
             action === 'refresh' ||
+            action === 'walletRefresh' ||
             action === 'roster' ||
             action === 'grantRoster'
               ? 0

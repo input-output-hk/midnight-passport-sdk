@@ -42,10 +42,12 @@ export interface WalletView {
   readonly unshieldedAddress?: string;
   readonly shieldedAddress?: string;
   readonly dustAddress?: string;
-  readonly unshieldedBalances?: Record<string, bigint>;
-  readonly dust?: { balance: bigint; cap: bigint };
+  /** Explicit undefined clears a previous snapshot after a failed read. */
+  readonly unshieldedBalances?: Record<string, bigint> | undefined;
+  readonly dust?: { balance: bigint; cap: bigint } | undefined;
   /** Set when the balances could not be read (the wallet itself connected). */
-  readonly balanceError?: string;
+  readonly balanceError?: string | undefined;
+  readonly balanceUpdatedAt?: string | undefined;
 }
 
 const ACTIONS: readonly ActionId[] = [
@@ -67,6 +69,7 @@ const ACTIONS: readonly ActionId[] = [
   'removeDevice',
   'rotate',
   'wallet',
+  'walletRefresh',
   'fund',
   'withdraw',
 ];
@@ -222,6 +225,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     handoffInput.disabled = busy;
     buttons.rotate.disabled = busy || !account;
     buttons.wallet.disabled = busy;
+    buttons.walletRefresh.disabled = busy || !wallet.unshieldedAddress;
     buttons.fund.disabled = busy || !account;
     fundingSelect.disabled = busy || !account;
     buttons.fund.closest('li')?.toggleAttribute('hidden', !fundingAsset);
@@ -597,6 +601,12 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
         hint: 'Balance of cap, in Specks.',
       });
     }
+    if (wallet.balanceUpdatedAt)
+      facts.push({
+        label: 'Balances updated',
+        value: wallet.balanceUpdatedAt,
+        hint: 'UTC snapshot; refresh after receiving funds.',
+      });
     renderFacts(list, facts);
   };
 
@@ -873,6 +883,13 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
     showWallet(view: WalletView) {
       wallet = { ...wallet, ...view };
       renderWallet();
+      renderButtons();
+      renderEvidence();
+    },
+    clearWallet() {
+      wallet = {};
+      renderWallet();
+      renderButtons();
       renderEvidence();
     },
   };

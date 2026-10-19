@@ -29,6 +29,7 @@ import { parseDeviceHandoff, prepareDeviceHandoff } from './device-handoff.js';
 import { setOperationTraceSink, tracedFetch, traceOperation } from './operation-trace.js';
 import { createUi } from './ui.js';
 import type { DevWallet } from './wallet/dev-wallet.js';
+import { readWalletBalances } from './wallet/balances.js';
 import { walletSeed } from './wallet/seed.js';
 
 installShim();
@@ -837,6 +838,11 @@ ui.on('withdraw', async () => {
   );
 });
 ui.on('wallet', connectBuiltInWallet);
+ui.on('walletRefresh', async () => {
+  if (!devWallet) throw new Error('Connect the built-in wallet before refreshing its balance.');
+  status('Waiting for wallet sync to refresh balances…');
+  await refreshBuiltInWalletBalances();
+});
 async function connectBuiltInWallet(): Promise<void> {
   status('Reading the service configuration…');
   const config = await fetchServiceConfig(SERVICE_URL, tracedFetch, network);
@@ -867,6 +873,7 @@ async function connectBuiltInWallet(): Promise<void> {
     const { createDevWallet } = await import('./wallet/dev-wallet.js');
     await devWallet?.stop();
     devWallet = undefined;
+    ui.clearWallet();
     devWallet = await createDevWallet(seed, config);
     traceOperation('wallet.facade.started', { networkId: network });
   } finally {
@@ -895,27 +902,51 @@ async function connectBuiltInWallet(): Promise<void> {
   const balances = await ui.attempt('balances', async () => {
     const shielded = await w.getShieldedAddresses();
     ui.showWallet({ shieldedAddress: shielded.shieldedAddress });
-    const [unshieldedBalances, dustBalance] = await Promise.all([
-      w.getUnshieldedBalances(),
-      w.getDustBalance(),
-    ]);
-    record('balances', { shielded, unshieldedBalances, dust: dustBalance });
-    traceOperation('wallet.sync.completed', { networkId: network });
-    traceOperation('wallet.balances', {
-      shieldedAddress: shielded.shieldedAddress,
-      unshieldedBalances: Object.fromEntries(
-        Object.entries(unshieldedBalances).map(([color, value]) => [color, value.toString()]),
-      ),
-      dustBalance: dustBalance.balance.toString(),
-      dustCap: dustBalance.cap.toString(),
-    });
-    return { unshieldedBalances, dust: dustBalance };
+    const snapshot = await readAndRecordWalletBalances(w);
+    record('balances', { shielded, ...snapshot });
+    return snapshot;
   });
+  showWalletBalanceResult(balances);
+}
+
+async function readAndRecordWalletBalances(w: Parameters<typeof readWalletBalances>[0]) {
+  const snapshot = await readWalletBalances(w);
+  const { unshieldedBalances, dust: dustBalance, balanceUpdatedAt } = snapshot;
+  record('balances', snapshot);
+  traceOperation('wallet.sync.completed', { networkId: network });
+  traceOperation('wallet.balances', {
+    unshieldedBalances: Object.fromEntries(
+      Object.entries(unshieldedBalances).map(([color, value]) => [color, value.toString()]),
+    ),
+    dustBalance: dustBalance.balance.toString(),
+    dustCap: dustBalance.cap.toString(),
+    balanceUpdatedAt,
+  });
+  return snapshot;
+}
+
+async function refreshBuiltInWalletBalances() {
+  if (!devWallet) throw new Error('The built-in wallet is not connected.');
+  const w = await devWallet.descriptor.connect(network);
+  const balances = await ui.attempt('balances', () => readAndRecordWalletBalances(w));
+  showWalletBalanceResult(balances);
+}
+
+function showWalletBalanceResult(
+  balances: Awaited<ReturnType<typeof readWalletBalances>> | undefined,
+) {
   if (balances) {
-    ui.showWallet(balances);
-    status('Built-in wallet connected through the DApp Connector API.');
+    ui.showWallet({ ...balances, balanceError: undefined });
+    status(
+      'Built-in wallet balances updated from the indexer. Refresh again after receiving funds.',
+    );
   } else {
-    ui.showWallet({ balanceError: 'See the event log.' });
+    ui.showWallet({
+      unshieldedBalances: undefined,
+      dust: undefined,
+      balanceUpdatedAt: undefined,
+      balanceError: 'See the event log; retry Refresh wallet balance.',
+    });
     status('Built-in wallet connected, but its balances could not be read (see the event log).');
   }
 }
