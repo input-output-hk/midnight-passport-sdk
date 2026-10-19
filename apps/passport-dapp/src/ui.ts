@@ -605,7 +605,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
       facts.push({
         label: 'Balances updated',
         value: wallet.balanceUpdatedAt,
-        hint: 'UTC snapshot; refresh after receiving funds.',
+        hint: 'Local read time (UTC), not the chain confirmation time. Refresh after receiving funds.',
       });
     renderFacts(list, facts);
   };
