@@ -109,7 +109,7 @@ Run at exactly `http://localhost:5173` for this local example. The passkey RP ID
 contract WebAuthn profile must agree. The reference [Vite configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-dapp/vite.config.ts)
 and [polyfill entrypoint](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-dapp/src/main.ts)
 show the Buffer initialisation, WASM support and browser shims required by the pinned Midnight
-runtime. The composition example is type-checked against the packed candidate; it is not a
+runtime. The minimal composition uses APIs also exported by RC4 and is type-checked against the packed RC5 candidate; it is not a
 complete replacement for the reference app's bundler and UI configuration.
 
 This minimal composition enables create/open/state only. Rotation and device changes require
@@ -117,7 +117,10 @@ verified holdings and complete device/read-grant sources. Grants additionally ne
 sources and a durable encrypted publication journal. Unshielded withdrawals need a value-capable
 call port; the fee-only sponsor cannot move those assets. See [Account API]({{ '/api/' | relative_url }})
 before enabling another action. The [reference connector](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-dapp/src/connector.ts)
-shows the fuller localnet composition, including those ports.
+shows the fuller localnet composition, including those ports. That linked connector tracks the
+prototype branch: its `valueCalls` and `grantJournalFactory` options require RC5 and are not
+exported by RC4. Do not copy that advanced composition into an RC4 installation; use the
+matching release source or wait for verified RC5 publication.
 
 ## 5. Diagnose the first failure
 
