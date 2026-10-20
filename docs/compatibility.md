@@ -1,6 +1,6 @@
 # Compatibility matrix
 
-> **Status:** preview RC5 · updated 2026/10/19. Releases are lockstep across the
+> **Status:** preview RC5 · updated 2026/10/20. Releases are lockstep across the
 > `@input-output-hk/mn-passport-*` packages. The binding data is pinned in
 > `packages/contract/acc-binding-v2.generated.json` and the generated registry.
 
@@ -8,6 +8,31 @@ The [RC5 publication receipt](release/rc5-publication-receipt.json) records the 
 private registry hashes/attestations, and published image digests. The release keeps the exact-value
 shielded withdrawal guard. Partial spends (#201), complete typed circuit coverage (#82) and
 remaining live/value-host evidence (#202) are deferred; no full Lace compatibility is claimed.
+
+## October 20 local consumer assessment
+
+The [current consumer review](review/consumer-qualification/README.md) and
+[engineer guide](site/consumer-integration.md) distinguish local packages, the actual
+published `@laceio/sdk@0.1.1-canary.0` entries and a separately pinned authorised
+source checkout. All nine RC5 packages remain private and pass a fresh registry
+consumer installation with matching release SRI. Nine local `0.1.0-consumer.1`
+tarballs also pass; that candidate has not been published.
+
+Current source-type/ACC byte checks, 36 synthetic key/consent checks, both supported
+recognition directions and an authorising-only hosted device mutation pass on
+`undeployed`. Current-source pins and detailed private evidence stay in the owner's
+authorised checkpoint. Historical rows below retain their original scope.
+
+The local key-server fix keeps all bundled verifier keys available in a reduced
+proving profile. Native creation and the current host's actual HTTP loaders pass
+against that correction. **The published RC5 reduced-profile image does not contain
+this fix: use `all` until the next image release.** The correction changes no binding,
+proving key, signing scope or exact-value shielded guard.
+
+Public-entry ESM/CJS loads, real declaration boundaries, current physical runtime
+identity and WASM browser builds pass. The canary's combined abstractions peer warning
+remains documented. This is not an ordinary-wallet transaction qualification, full
+reader enrollment, real-provider/signing-page acceptance or full Lace compatibility.
 
 ## Binding axis
 

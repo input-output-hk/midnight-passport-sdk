@@ -4,7 +4,7 @@
   "releaseVersion": "0.1.0-rc5",
   "releaseSource": "9e8048674a54adf5e8be2055aaa8f5c9bfe08b06",
   "historicalConsumerEvidence": "0.1.0-dev.12 at its recorded host pin; not relabelled as RC5/current host",
-  "reviewBaseline": "0d064afbd80f5d0607129ae127944dfc7e5276df plus local first-slice changes; exact workspace hashes are in qualification receipts",
+  "reviewBaseline": "First stability slice at 5dc13ff plus local current-consumer follow-up; exact private source pins and receipts remain in authorised Obsidian storage",
   "issuesReviewed": 40,
   "criterionExtraction": "Top-level scope/acceptance/deliverable bullets and checkboxes; linked original body remains authoritative, including nested bullets.",
   "limitations": [
@@ -495,43 +495,47 @@
       "observedUpdatedAt": "2026-10-20T03:13:35Z",
       "bodySha256": "d8dce39d2d806cece4373de2e56fa3b29d636fbb050d99d8a54800ca8223317c",
       "originalBodySha256": "30355f20b7d74a90206d9729a59b5927388f91bcd8acd3831c6d00140723d577",
-      "implementation": "partial",
-      "verification": "pinned-historical",
+      "implementation": "implemented-supported-subset",
+      "verification": "locally-verified-supported-subset",
       "evidencePaths": [
         "packages/keys/src/jubjub-authoriser.ts",
         "packages/keys/src/device-keyring.ts",
         "tests/keys-lace-suite2-interop.test.mjs",
-        "docs/lace-consumer-report.md"
+        "docs/lace-consumer-report.md",
+        "docs/review/consumer-qualification/assessment.json",
+        "docs/site/consumer-integration.md",
+        "scripts/run-lace-consumer-flows.mjs"
       ],
-      "assessment": "Typed key ports and pinned vectors implemented. Historical synthetic cross-product runs are not current Lace or real-provider qualification.",
+      "assessment": "Current authorised source and actual published canary requalified against RC5 and local packed SDK. Supported synthetic/localnet recognition and authorising-device paths pass; original consent and safety boundaries remain. No full-provider, ordinary-wallet, value-flow or blanket compatibility claim. Exact private source pins and receipts stay in authorised storage.",
       "criteria": [
         {
           "criterion": "- Add tested PRF/JubJub authoriser and reader-key derivation that match Lace's test vectors and domain/context strings. Host key material stays inside one ceremony and is zeroed after use.",
-          "implementation": "partial",
-          "verification": "pinned-historical",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "implemented-supported-subset",
+          "verification": "locally-verified-supported-subset",
+          "disposition": "local-supported-subset-accepted-review-before-closing"
         },
         {
           "criterion": "- Provide typed ports for random account viewing secret creation, device sealing/opening, key rotation, inbox re-encryption, and read-grant sealing. The account module receives only public keys, ciphertexts, or opened data necessary for the flow.",
-          "implementation": "partial",
-          "verification": "pinned-historical",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "implemented-supported-subset",
+          "verification": "locally-verified-supported-subset",
+          "disposition": "local-supported-subset-accepted-review-before-closing"
         },
         {
           "criterion": "- Demonstrate a Lace-created JubJub ACC opening through SDK flows and an SDK-created JubJub ACC signing in through Lace, with the same binding and network.",
-          "implementation": "partial",
-          "verification": "pinned-historical",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "implemented-supported-subset",
+          "verification": "locally-verified-supported-subset",
+          "disposition": "local-supported-subset-accepted-review-before-closing"
         },
         {
           "criterion": "- Document recovery limits: a remaining enrolled device can read its envelope after another device is lost; total loss of all authorising devices still needs a recovery mechanism.",
-          "implementation": "partial",
-          "verification": "pinned-historical",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "implemented-supported-subset",
+          "verification": "locally-verified-supported-subset",
+          "disposition": "local-supported-subset-accepted-review-before-closing"
         }
       ],
-      "closureRecommendation": "keep-open",
-      "githubMutationPerformed": false
+      "closureRecommendation": "candidate-for-human-review",
+      "githubMutationPerformed": false,
+      "localAcceptanceDate": "2026-10-20"
     },
     {
       "number": 80,
@@ -588,42 +592,46 @@
       "observedUpdatedAt": "2026-10-20T03:18:51Z",
       "bodySha256": "18d5ff8497ed57d996acae3dd4cdb195507752fa7f338a4d3cdca13b383de554",
       "originalBodySha256": "2e1f4f7a3228389d4a7f08e8d1c6f2eb2d270160629170e808b666158bf7e2a5",
-      "implementation": "partial",
-      "verification": "pinned-historical",
+      "implementation": "implemented-supported-subset",
+      "verification": "locally-verified-supported-subset",
       "evidencePaths": [
         "scripts/smoke-lace-source-consumer.mjs",
         "docs/lace-consumer-report.md",
-        "docs/local-backlog-acceptance.md"
+        "docs/local-backlog-acceptance.md",
+        "docs/review/consumer-qualification/assessment.json",
+        "docs/site/consumer-integration.md",
+        "scripts/run-lace-consumer-flows.mjs"
       ],
-      "assessment": "Existing consumer proof pins the older reviewed host source. Current entrypoint/runtime/source qualification remains the next consumer slice; no full compatibility claim.",
+      "assessment": "Current authorised source and actual published canary requalified against RC5 and local packed SDK. Supported synthetic/localnet recognition and authorising-device paths pass; original consent and safety boundaries remain. No full-provider, ordinary-wallet, value-flow or blanket compatibility claim. Exact private source pins and receipts stay in authorised storage.",
       "criteria": [
         {
           "criterion": "- Add compile-time structural tests against the PR's current `PassportAuthoriser`, `PassportEncryptionKey`, `FeeSponsor`, `PassportProver`, `PassportNetworkConfig`, account record, and grant types; document intentional adapters where shapes differ.",
-          "implementation": "partial",
-          "verification": "requires-current-provider-or-host-evidence",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "implemented-supported-subset",
+          "verification": "locally-verified-supported-subset",
+          "disposition": "local-supported-subset-accepted-review-before-closing"
         },
         {
           "criterion": "- Install packed `@input-output-hk/mn-passport-*` tarballs in a scratch Lace-like consumer with the PR's Midnight runtime versions and build it without duplicate runtime copies.",
-          "implementation": "partial",
-          "verification": "pinned-historical",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "implemented-supported-subset",
+          "verification": "locally-verified-supported-subset",
+          "disposition": "local-supported-subset-accepted-review-before-closing"
         },
         {
           "criterion": "- Prove at least create/sign-in and one grant or device flow on a localnet using the SDK package path and Lace's hosted signer. Record the exact PR SHA, SDK version, binding id/hash, and network.",
-          "implementation": "partial",
-          "verification": "requires-current-provider-or-host-evidence",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "implemented-supported-subset",
+          "verification": "locally-verified-supported-subset",
+          "disposition": "local-supported-subset-accepted-review-before-closing"
         },
         {
           "criterion": "- Produce a compatibility report for Lace owners: which SDK packages are ready to consume, which adapters are needed, and which capabilities still belong in Lace. Any future Lace integration is their decision and is outside this SDK issue.",
-          "implementation": "partial",
-          "verification": "pinned-historical",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "implemented-supported-subset",
+          "verification": "locally-verified-supported-subset",
+          "disposition": "local-supported-subset-accepted-review-before-closing"
         }
       ],
-      "closureRecommendation": "keep-open",
-      "githubMutationPerformed": false
+      "closureRecommendation": "candidate-for-human-review",
+      "githubMutationPerformed": false,
+      "localAcceptanceDate": "2026-10-20"
     },
     {
       "number": 82,

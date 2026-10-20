@@ -2,7 +2,7 @@
 // Local-key-origin SDK creation followed by unmodified Lace hosted sign-in. No hosted create claim.
 import { strict as assert } from 'node:assert';
 import { createHash, randomBytes } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { firstValueFrom } from 'rxjs';
 import { it } from 'vitest';
@@ -217,9 +217,9 @@ it('recognises a packed SDK ACC through unmodified Lace hosted sign-in', async (
     assert.equal(signedInAgain.devices.length, 2);
     assert.equal(signedInAgain.localUseCounter, added.nextUseCounter.toString());
     console.log('HOSTED_AUTHORISING_DEVICE_PASS', JSON.stringify({ account: account.address, commitmentHex: added.commitmentHex, txHash: added.txHash, nextUseCounter: added.nextUseCounter.toString(), viewingKeyDelivered: false }));
-    console.log('LACE_CROSS_SIGNIN_PASS', JSON.stringify({
-      laceHead: '502b0794cc7bcfc76342230193fef4ebb63cae1c',
-      sdkVersion: '0.1.0-dev.12',
+    const receipt = {
+      laceHead: process.env.LACE_SOURCE_REVISION,
+      sdkVersion: process.env.RELEASE_VERSION,
       bindingId: network.bindingId,
       manifestSha256: network.manifestSha256,
       networkId: network.networkId,
@@ -227,7 +227,9 @@ it('recognises a packed SDK ACC through unmodified Lace hosted sign-in', async (
       transactions,
       consentKinds,
       scope: 'SDK create with Lace local key ports, then Lace hosted sign-in; hosted authorising-only device addition; no sealed reader enrollment or hosted creation claim',
-    }));
+    };
+    if (process.env.LIVE_CONSUMER_RECEIPT_FILE) writeFileSync(process.env.LIVE_CONSUMER_RECEIPT_FILE, JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+    console.log('LACE_CROSS_SIGNIN_PASS', JSON.stringify(receipt));
   } finally {
     stop();
     client.close();

@@ -162,3 +162,10 @@ omit this optional method may need operator reconciliation after this interrupti
 History lookup is bounded by the recipe's existing envelope, inbox and prior-secret
 limits. This is targeted removal resumption, not a general durable mutation journal;
 #230 still owns that broader work.
+
+## Current consumer assessment
+
+Follow the [consumer integration guide]({{ "/consumer-integration/" | relative_url }})
+for actual registry entrypoints, source pins, runtime identity and opt-in protocol
+diagnostics. `consumer-source` and `consumer-published` are distinct suites; neither
+turns an installed package into a full hosted-wallet compatibility claim.

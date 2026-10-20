@@ -38,7 +38,8 @@ to the private packages. Configure the scope for `https://npm.pkg.github.com`; s
 through your environment or credential manager, never committed source. A developer token
 needs `read:packages`; Actions uses its authorised repository token.
 
-Scope configuration (keep the token value outside the file):
+User-level authentication configuration (keep the token value in the environment;
+project-level environment interpolation is refused by the pinned pnpm):
 
 ```ini
 @input-output-hk:registry=https://npm.pkg.github.com
@@ -106,3 +107,10 @@ legacy finaliser must not be used as a full-retirement fallback. The next local
 stability slice adds qualification receipts and a JubJub read-grant exclusion
 refusal; that code is not part of the published RC5 packages. See
 [Qualification and safety boundaries]({{ '/qualification/' | relative_url }}).
+
+### Next local integration slice
+
+The [consumer integration guide]({{ "/consumer-integration/" | relative_url }})
+separates current source, published-entry and localnet evidence and describes the
+explicit host adapters. RC5 remains the published preview; the reduced-profile
+verifier correction and first stability slice are local candidates.

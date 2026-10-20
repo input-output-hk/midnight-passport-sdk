@@ -60,6 +60,22 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Existing packed tarball installation/types/runtime identity; not a registry install.',
   },
+  'consumer-source-types': {
+    tier: 'packed-consumer',
+    command: [node, 'scripts/smoke-lace-source-consumer.mjs'],
+    requires: ['LACE_CHECKOUT', 'LACE_SOURCE_REVISION', 'RELEASE_VERSION', 'RELEASE_TARBALL_DIR'],
+    timeoutMs: 5 * 60000,
+    establishes:
+      'Explicit clean authorised source, generated ACC hashes and packed SDK types/runtime identity; no hosted flow claim.',
+  },
+  'consumer-published-host': {
+    tier: 'published-consumer',
+    command: [node, 'scripts/smoke-lace-published-consumer.mjs'],
+    requires: ['CONSUMER_ROOT', 'LACE_PACKAGE_VERSION', 'RELEASE_VERSION'],
+    timeoutMs: 3 * 60000,
+    establishes:
+      'Installed host entrypoints, SDK versions, declarations, physical runtime identity and WASM browser build; registry provenance is checked separately.',
+  },
   'outage-reconciliation': {
     tier: 'proof-localnet',
     command: [],
@@ -88,6 +104,8 @@ export const SUITES = Object.freeze({
   browser: ['virtual-authenticator'],
   localnet: ['localnet-night'],
   consumer: ['packed-consumer'],
+  'consumer-source': ['consumer-source-types'],
+  'consumer-published': ['consumer-published-host'],
   release: [
     'binding-source',
     'contract-entries',
