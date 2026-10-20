@@ -4,7 +4,25 @@
 > `mn-passport-skills:spec-driver` per [`docs/development-workflow.md`](./docs/development-workflow.md) §3.
 > Every entry carries its GitHub issue
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
-> Last updated: 2026/08/24.
+> Last updated: 2026/10/20. Historical entries below retain their original issue namespaces.
+
+## Current fork iteration — 2026/10/20
+
+- **Baseline:** published `0.1.0-rc5`, release source `9e804867`, prototype/docs `786206cf`.
+  Nine packages and three images; release notes describe the supported subset.
+- **Local preparation** (Refs #231, #235, #236): preserve the complete fast PR gate,
+  add dependency/image-layer caching, isolate bounded public-key qualification,
+  validate exact sizes/SHA-256 and reject corrupt cache hits. See [CI policy](docs/ci.md)
+  and [ADR 0011](docs/adr/0011-fast-ci-and-coherent-milestone-slices.md).
+  Remote timing and cache warm-up await an authorised push.
+- **First slice ready:** #227 evidence reconciliation, #228 binding/recovery audit,
+  #229 revocation semantics and #231 qualification harness foundation. Follow with
+  #79/#81 consumer compatibility and #230 durable mutations. A required incompatible
+  binding/API change moves the next candidate to the 0.2.0 version axis.
+- **Working agreement:** current branch, local execution, coherent 5k–10k-line PRs
+  with smaller signed commits; keep the exact-value shielded guard. Milestone research,
+  private consumer notes and redacted receipts live in the owner's Midnight Obsidian
+  vault under `Initiatives/07 Midnight Passport ACC/SDK milestones/`.
 
 ## Done
 
