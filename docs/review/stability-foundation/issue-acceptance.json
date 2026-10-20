@@ -4,7 +4,7 @@
   "releaseVersion": "0.1.0-rc5",
   "releaseSource": "9e8048674a54adf5e8be2055aaa8f5c9bfe08b06",
   "historicalConsumerEvidence": "0.1.0-dev.12 at its recorded host pin; not relabelled as RC5/current host",
-  "reviewBaseline": "First stability slice at 5dc13ff plus local current-consumer follow-up; exact private source pins and receipts remain in authorised Obsidian storage",
+  "reviewBaseline": "First stability slice at 5dc13ff, consumer slice at 2ffb0af and local durability/reconstruction supported subset; exact private consumer source pins and receipts remain in authorised Obsidian storage",
   "issuesReviewed": 40,
   "criterionExtraction": "Top-level scope/acceptance/deliverable bullets and checkboxes; linked original body remains authoritative, including nested bullets.",
   "limitations": [
@@ -1406,40 +1406,48 @@
       "observedUpdatedAt": "2026-10-20T03:12:33Z",
       "bodySha256": "2dbb7e6cf1e7d2806153bf0c8e8403e47f4d3f6a4a8f1960405efc91078f0727",
       "originalBodySha256": "7cd0ec9785f629fb6bf313cc63e4f1a2d4525a275701171eb337eabd9bd135c9",
-      "implementation": "planned",
-      "verification": "none",
-      "evidencePaths": [],
-      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "implementation": "local-supported-subset",
+      "verification": "local-simulator-process-and-unit-evidence",
+      "evidencePaths": [
+        "docs/review/durability/README.md",
+        "docs/site/durability.md",
+        "tests/durable-mutations.test.mjs",
+        "tests/mutation-refusal.test.mjs",
+        "tests/mutation-journal.test.mjs",
+        "tests/grant-bookkeeping-recovery.test.mjs",
+        "scripts/qualification/mutation-matrix.mjs"
+      ],
+      "assessment": "Local opt-in protected coordinator and both-arm synthetic fresh-process tests; exact host receipts/fencing and durable deployment integration, key-origin output recovery and combined live proof/provider/active-grant fault acceptance remain explicit limits.",
       "criteria": [
         {
           "criterion": "- [ ] Enumerate state transitions and durable intent fields for both arms, including transaction identifiers, network/binding pins, key generation, roster snapshots, and the original consent/lock choice.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-supported-subset",
+          "verification": "scoped-local-evidence",
+          "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         },
         {
           "criterion": "- [ ] Inject crashes before/after each submission, confirmation, key switch, envelope publication, and device removal; restart with a new process and reconcile the chain before continuing.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-supported-subset",
+          "verification": "scoped-local-evidence",
+          "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         },
         {
           "criterion": "- [ ] Retain access for every intended surviving reader and refuse stale/ambiguous rosters, missing read-grant openings, or unknown outcomes. Never draw replacement keys or blindly resubmit an uncertain operation.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-supported-subset",
+          "verification": "scoped-local-evidence",
+          "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         },
         {
           "criterion": "- [ ] Define cancellation as stopping future work, not undoing submitted chain transactions. Keep secrets and private proof inputs out of public journals/logs.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-supported-subset",
+          "verification": "scoped-local-evidence",
+          "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         },
         {
           "criterion": "- [ ] Supply typed host persistence ports, migration/versioning rules, and tests; no UI-only success while durable/chain state disagrees.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-supported-subset",
+          "verification": "scoped-local-evidence",
+          "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         }
       ],
       "closureRecommendation": "keep-open",
@@ -1826,37 +1834,45 @@
       "observedUpdatedAt": "2026-10-20T03:12:56Z",
       "bodySha256": "ece2039f22c7195bdbbd8810a3c21918c1b121fdfe94f50119154df470652a9b",
       "originalBodySha256": "b3de18da191503dc9736a7cd8531517a8d111da3ab470d596e6c08373ca828ca",
-      "implementation": "planned",
-      "verification": "none",
-      "evidencePaths": [],
-      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "implementation": "local-supported-subset",
+      "verification": "local-simulator-process-and-unit-evidence",
+      "evidencePaths": [
+        "docs/review/durability/README.md",
+        "docs/site/durability.md",
+        "tests/durable-mutations.test.mjs",
+        "tests/mutation-refusal.test.mjs",
+        "tests/mutation-journal.test.mjs",
+        "tests/grant-bookkeeping-recovery.test.mjs",
+        "scripts/qualification/mutation-matrix.mjs"
+      ],
+      "assessment": "Local published-bookkeeping reconstruction and demo fallback authenticate the original reader, trusted origin and live commitments. Missing unpublished/full-scope/private capabilities explicitly refuse. No new backup/export UX; existing v1/v2 reads and consented handoff remain. Owner-review candidate for supported subset.",
       "criteria": [
         {
           "criterion": "- [ ] Specify which grant records can be reconstructed from authenticated chain data and which secret openings require an encrypted backup or another authorised key source.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-supported-subset",
+          "verification": "scoped-local-evidence",
+          "disposition": "owner-review-supported-path-and-explicit-refusal-limits"
         },
         {
           "criterion": "- [ ] Test reload, profile loss, another enrolled device, stale/revoked grants, missing openings, and read-grant rotation. Never substitute an empty roster or weaken live commitment checks.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-supported-subset",
+          "verification": "scoped-local-evidence",
+          "disposition": "owner-review-supported-path-and-explicit-refusal-limits"
         },
         {
           "criterion": "- [ ] Provide the supported chain-reconstruction and/or encrypted backup/restore path, or an explicit preflight refusal and user-visible limitation for unsupported configurations.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-supported-subset",
+          "verification": "scoped-local-evidence",
+          "disposition": "owner-review-supported-path-and-explicit-refusal-limits"
         },
         {
           "criterion": "- [ ] Separate public audit traces from secret capability export; record consent and authentication for any export/import. Preserve backward reads for current records.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-supported-subset",
+          "verification": "scoped-local-evidence",
+          "disposition": "owner-review-supported-path-and-explicit-refusal-limits"
         }
       ],
-      "closureRecommendation": "keep-open",
+      "closureRecommendation": "owner-review-local-supported-subset",
       "githubMutationPerformed": false
     },
     {

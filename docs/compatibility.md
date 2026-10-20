@@ -407,3 +407,22 @@ improve integration diagnostics; #79/#81's cross-product runtime criteria remain
 See [ADR 0012](adr/0012-retain-binding-with-explicit-removal-and-recovery-limits.md)
 and the [qualification guide](site/qualification.md). No binding ID, generated artifact
 or key manifest was repointed. The exact-value shielded withdrawal guard remains.
+
+## Local owner durability and grant reconstruction (#230 / #239)
+
+Unreleased opt-in `createDurablePassportMutations` supports the retained spec-3 owner
+create/activate/inbox, rotate, add-device and remove-entry paths in both arms. It
+requires protected atomic persistence, fresh original consent and a host's exact
+submission outcome source. Unknown sends, changed frontiers, unfenced senders and
+lost uncommitted key outputs are refused. Existing browser/hosted flows are not
+automatically converted; remote deploy waves still need host durability.
+
+The demo can reconstruct complete published grant bookkeeping after local journal
+loss using the original issuing reader and live commitment checks. Another enrolled
+reader, absent unpublished parts, a revoked/replaced grant or corrupt backup cannot
+produce an opening. Existing journal v1/v2 and record suite 1/2 reads are preserved.
+
+See [the engineer guide](site/durability.md) and [local review map](review/durability/README.md)
+for simulator-only restart evidence and remaining host/provider/combined active-grant
+qualification. No binding, withdrawal guard, installed release or Lace host consent
+was changed. No full compatibility or total-loss recovery claim.

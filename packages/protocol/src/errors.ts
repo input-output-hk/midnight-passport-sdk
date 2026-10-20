@@ -32,6 +32,7 @@ const TABLE = {
   GrantRevoked: row(false, 'grant-revoked'),
   GrantRosterUnsettled: row(true, 'grant-roster-unsettled'),
   GrantBookkeepingUnsettled: row(false),
+  MutationUnsettled: row(false),
   ArtefactIntegrity: row(false, 'artefact-integrity'),
   ProverUnavailable: row(true, 'proof-server'),
   SponsorRejected: row('maybe', 'sponsor-exhausted'),

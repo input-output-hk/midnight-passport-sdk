@@ -136,7 +136,7 @@ proof/browser qualification remain on their own resource/time budgets. Hosted
 
 ## Next acceptance gates
 
-- #230: durable account/device/viewing-key mutation recovery.
+- #230: the local opt-in durable owner API has simulator/process tests; complete hosted/proof interruption qualification remains open.
 - #231: complete disposable proof/browser/outage suite and repeated evidence.
 - #232: actual provider and two-browser ceremonies.
 - #235: broader key-profile/consumer coverage.
@@ -161,7 +161,7 @@ non-matching or unavailable history source fails closed. Custom key ports that
 omit this optional method may need operator reconciliation after this interruption.
 History lookup is bounded by the recipe's existing envelope, inbox and prior-secret
 limits. This is targeted removal resumption, not a general durable mutation journal;
-#230 still owns that broader work.
+The opt-in protected coordinator below supplies broader local continuation; the default account API retains this targeted history path.
 
 ## Current consumer assessment
 
@@ -169,3 +169,12 @@ Follow the [consumer integration guide]({{ "/consumer-integration/" | relative_u
 for actual registry entrypoints, source pins, runtime identity and opt-in protocol
 diagnostics. `consumer-source` and `consumer-published` are distinct suites; neither
 turns an installed package into a full hosted-wallet compatibility claim.
+
+## Local durability milestone
+
+The opt-in owner continuation API and authenticated published-grant reconstruction
+are described in [Mutation durability and grant recovery]({{ '/durability/' | relative_url }}).
+These additions are local, unreleased work. Default demo owner buttons still need
+transaction reconciliation after interruption; a journal alone does not supply
+durable remote submissions. Another enrolled reader cannot invent the issuing
+reader's grant opening.

@@ -187,3 +187,12 @@ Both owner arms can use it to identify an excluded target after an interrupted
 removal key switch. Historical records do not become fresh-key recipients;
 missing/ambiguous history fails closed. See the qualification guide's resumption
 section. This is not a general transaction journal or total-loss recovery API.
+
+## Local durability milestone
+
+The opt-in owner continuation API and authenticated published-grant reconstruction
+are described in [Mutation durability and grant recovery]({{ '/durability/' | relative_url }}).
+These additions are local, unreleased work. Default demo owner buttons still need
+transaction reconciliation after interruption; a journal alone does not supply
+durable remote submissions. Another enrolled reader cannot invent the issuing
+reader's grant opening.

@@ -20,8 +20,20 @@
   parity, #231 tiered harness/closed receipts foundation. See the
   [review map](docs/review/stability-foundation/README.md). Full issue closure,
   candidate binding adoption and broader release/provider qualification are not claimed. Follow with
-  #79/#81 consumer compatibility and #230 durable mutations. A required incompatible
+  remaining host/provider qualification. A required incompatible
   binding/API change moves the next candidate to the 0.2.0 version axis.
+- **Consumer slice delivered locally:** #79/#81 current-source/registry entry checks,
+  key HTTP profile correction and supported synthetic recognition/device evidence.
+  See [consumer review](docs/review/consumer-qualification/README.md); full hosted
+  creation/enrollment/value routes retain their explicit limits.
+- **Durability slice delivered locally:** #230 opt-in protected owner continuations
+  and #239 authenticated published-grant reconstruction/demo fallback. See the
+  [review map](docs/review/durability/README.md) and [guide](docs/site/durability.md).
+  200 fresh-process crash cases: 158 resumptions, 42 expected safe refusals.
+  Missing key-origin outputs, unknown/unfenced sends and conflicting state refuse.
+  Host receipt/fencing and multi-wave integration, combined active-grant/holdings
+  live-proof/provider interruption qualification remain open. Default demo owner
+  buttons have not been silently switched to this API.
 - **Working agreement:** current branch, local execution, coherent 5k–10k-line PRs
   with smaller signed commits; keep the exact-value shielded guard. Milestone research,
   private consumer notes and redacted receipts live in the owner's Midnight Obsidian

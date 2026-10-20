@@ -380,7 +380,13 @@ export interface QualifiedHoldingSource extends VerifiedHoldingSource {
   ): Promise<readonly { readonly inboxIndex: number; readonly coin: QualifiedShieldedCoin }[]>;
 }
 
+export interface MutationSubmissionContext {
+  readonly requestId: string;
+  readonly intentSha256: string;
+}
 export interface CallRequest extends FlowOptions {
+  /** Host receipt correlation only; never substitute this for a finalized chain result. */
+  readonly mutation?: MutationSubmissionContext;
   readonly address: string;
   readonly circuit: string;
   readonly args: readonly unknown[];
@@ -398,6 +404,7 @@ export interface Chain {
 }
 
 export interface DeployRequest extends FlowOptions {
+  readonly mutation?: MutationSubmissionContext;
   /** The 32-byte boot commitment, and the ACC's `enc_key`. */
   readonly boot: Uint8Array;
   readonly encKey: Uint8Array;
@@ -545,3 +552,12 @@ export interface Submitter {
   /** Answers the submission id. */
   submit(finalisedTx: Uint8Array): Promise<string>;
 }
+
+export type {
+  MutationJournal,
+  MutationByteStore,
+  MutationConsent,
+  MutationOutcomeSource,
+  MutationDocument,
+  MutationPins,
+} from '../mutation-types.js';

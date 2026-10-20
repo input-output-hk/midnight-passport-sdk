@@ -71,3 +71,12 @@ history port for removal resumption. It keeps the existing envelope/inbox/prior-
 bounds and zeroes internal key copies through the existing key-session cleanup.
 Only public registration metadata crosses that port; current roster resolution
 continues to select fresh-key recipients.
+
+## Local durability milestone
+
+The opt-in owner continuation API and authenticated published-grant reconstruction
+are described in [Mutation durability and grant recovery]({{ '/durability/' | relative_url }}).
+These additions are local, unreleased work. Default demo owner buttons still need
+transaction reconciliation after interruption; a journal alone does not supply
+durable remote submissions. Another enrolled reader cannot invent the issuing
+reader's grant opening.

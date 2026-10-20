@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "scope": "local-supported-subset",
+  "published": false,
+  "releaseQualified": false,
+  "fullCompatibility": false,
+  "binding": "acc-s3r1.1",
+  "matrix": {
+    "caseCount": 200,
+    "resumed": 158,
+    "safelyRefusedKeyOriginWindows": 42,
+    "perArm": {
+      "p256": 100,
+      "jubjub": 100
+    },
+    "actualGeneratedContract": true,
+    "freshProcessAfterEachCrash": true,
+    "proofsOrFunds": false,
+    "activeReadGrantRosterInMatrix": "empty; separate reconstruction/rotation/refusal tests",
+    "receiptSha256": "79148931c625e335bff54b850e324196bc0f3529aac2e0ca92ae5540beadb470",
+    "sources": {
+      "packages/account/src/durable-mutations.ts": "7adad0e88336479b12b48daa1504104d4f2e2a7c91e814ff731558444e112212",
+      "packages/account/src/mutation-types.ts": "42225b388e19260aa76bd7e253e7c1c13253fcc0b74f05cd98ebaa4dd3ec2872",
+      "packages/account/src/mutation-codec.ts": "aba4a54494d5ff8d589ab8cc2eb2447a4af44a30c78156a3fd8bba5f3fce237e",
+      "packages/account/src/mutation-ledger.ts": "e8715d18da1e33a1708c36e7a468d5e829c15e5fb6ce5af154b4acf5a25fcf2d",
+      "packages/account/dist/durable-mutations.js": "19ab16d67a1f09f6dc01ad1f1574bb5a303c8fb03b314494e5fb694f0576210d",
+      "packages/keys/src/mutation-journal.ts": "75bf1fafb56abb77335129df072c09697cc3d18abc5ade21762b52003daba9ce",
+      "packages/keys/dist/mutation-journal.js": "3d7f46153e3b8a2617b3528ec26cde7cfd841269b8452e2d43ab26dda7e2971d",
+      "packages/service/src/mutation-store.ts": "240264d996ac9b727921ebdebbde5b47de0861c49b437e43b310bc03c75bc92f",
+      "packages/service/dist/mutation-store.js": "f2d55457671d0e59882b9cb2d31f2054fa12d271804e4b6dbbb6debff111d3be",
+      "packages/contract/generated/acc-s3r1.1/index.js": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf",
+      "scripts/qualification/mutation-worker.mjs": "45d539b4928b0b45740bffa67968a221cc148c400f809f04d928803704bdabf1",
+      "scripts/qualification/mutation-matrix.mjs": "087696f0a285208f044cdf3c6f190aad4394ea1ebc88e33f26456d4fff56d7df"
+    }
+  },
+  "fullLocalGate": {
+    "exitCode": 0,
+    "tests": 846,
+    "pass": 839,
+    "fail": 0,
+    "skipped": 7
+  },
+  "docs": {
+    "pages": 17,
+    "localLinksAndAnchors": 316,
+    "errors": [],
+    "typescriptExample": "passed",
+    "published": false
+  },
+  "remaining": [
+    "durable hosted transaction receipts/fencing and deploy-wave integration",
+    "combined live proof/provider/holdings/active-grant fault qualification",
+    "automatic recovery of uncommitted key-origin output is unsupported",
+    "total-loss recovery and complete compromised-key retirement are unsupported"
+  ]
+}

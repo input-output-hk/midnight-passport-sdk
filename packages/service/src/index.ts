@@ -64,3 +64,5 @@ export {
   type ActionClasses,
   type GuardedBalanceDeps,
 } from './sponsor-policy.js';
+
+export * from './mutation-store.js';

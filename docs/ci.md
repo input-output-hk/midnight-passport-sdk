@@ -134,3 +134,14 @@ virtual-browser, proof/localnet, packed/published-consumer and manual-provider t
 Its negative/ledger tests run through the existing PR test glob. Expensive real
 flows remain opt-in; unavailable/missing/skipped cases cannot qualify a suite.
 See [the guide](site/qualification.md) and [review map](review/stability-foundation/README.md).
+
+### Mutation interruption qualification (#230 / #239)
+
+Keep the complete `scripts/qualification/mutation-matrix.mjs` in the explicit slow
+lane. It spawns a fresh process per crash/resume boundary in both owner arms and
+executes the pinned generated ACC without proofs/funds. Source/runtime fingerprints
+must remain fixed. The default gate keeps representative restart, cancellation,
+unknown-outcome and no-replacement tests plus the fast grant/storage negatives.
+No workflow was dispatched, and hosted 30–45-second timings still need measurement
+after an authorised push. Do not cache the protected mutation journal or fixture
+world files; only redacted hashes/case counters belong in acceptance artifacts.

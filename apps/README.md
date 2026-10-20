@@ -342,3 +342,18 @@ descriptor for hosted signers; the demo's local passkey authoriser ignores that 
 - **The service exits at start-up.** Its first line says why: usually missing artefacts or a
   hash mismatch.
 - **Stale directory after a chain reset.** The hint stores are only valid for the chain they were written on. `prototype:up` stops the localnet with its volumes kept, so accounts survive a restart. If you drop the volumes (`docker compose … down -v`, or `experiments/acc-0.35/run.sh`, which starts fresh), delete `~/.midnight-passport/registry.json`, `registry.json.v1` and `registry.deployments.json`, or opening fails with `AccountNotFound`.
+
+### Local durability milestone
+
+The browser demo now falls back from its encrypted local grant journal to complete
+published grant/object records using the selected original reader. It checks the
+trusted origin and live commitments; missing, conflicting or inaccessible openings
+remain refused. Another enrolled device need not possess the issuing reader's
+grant opening. Full staged-opening export still requires the original journal.
+
+Owner buttons continue to use the default account API. After an interrupted owner
+mutation, reconcile the original transactions before retrying. Hosts can integrate
+the new opt-in durable API, protected storage and authoritative/fenced submission
+receipts using [the durability guide](../docs/site/durability.md). A browser reload
+is not proof that a pending transaction failed. No remote deployment receipt service
+or new backup/import UI is implied.
