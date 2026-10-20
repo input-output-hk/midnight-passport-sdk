@@ -159,3 +159,19 @@ The MIP-0015 domain `lace-passport:acc-enc:v1` and the context `<networkId>/0` a
 They are the open MIP-0015 point in LW-15635. If Lace settles on other labels, the same passkey will
 derive a different `enc_key`. Accounts created now would then carry a key that the final recipe
 cannot reproduce. Treat any account made by this prototype as disposable.
+
+## Device-entry removal boundary (2026/10/20)
+
+`removeDevice(commitmentHex)` removes one opaque ACC set element. It does not
+prove that the same signing key has no other current, later-counter or future-epoch
+entries. The SDK refuses ambiguous/incomplete rosters and shared target/survivor keys
+before delivering new keys; keep those refusals. A successful viewing/roster rotation
+excludes the selected reader from that new generation, but cannot erase old secrets
+or plaintext. Active read-grant delivery is a separate channel and must be reviewed.
+
+Total-loss recovery is not exposed by the SDK. The pinned `acc-s3r1.1` recovery
+finaliser does not clear prior entries; do not use it as a full compromised-device
+revocation fallback. Current SDK-created accounts use an unretained birth recovery
+key with a zero wrap; an imported account's recovery configuration is unknown to
+that create path. Keeping or opening an address does not recover a lost passkey.
+See the binding decision and qualification guide for the current supported scope.

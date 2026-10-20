@@ -156,3 +156,19 @@ persistent state, ingress and transaction outcomes on the actual network before 
 - **Hardware.** P-256 proofs need about 13.5 GiB on the proof server, so Docker needs at least
   24 GiB. The artefacts take about 12 GB.
 - **Wiring into lace-platform.** This fork stays self-contained.
+
+## Device-entry removal boundary (2026/10/20)
+
+`removeDevice(commitmentHex)` removes one opaque ACC set element. It does not
+prove that the same signing key has no other current, later-counter or future-epoch
+entries. The SDK refuses ambiguous/incomplete rosters and shared target/survivor keys
+before delivering new keys; keep those refusals. A successful viewing/roster rotation
+excludes the selected reader from that new generation, but cannot erase old secrets
+or plaintext. Active read-grant delivery is a separate channel and must be reviewed.
+
+Total-loss recovery is not exposed by the SDK. The pinned `acc-s3r1.1` recovery
+finaliser does not clear prior entries; do not use it as a full compromised-device
+revocation fallback. Current SDK-created accounts use an unretained birth recovery
+key with a zero wrap; an imported account's recovery configuration is unknown to
+that create path. Keeping or opening an address does not recover a lost passkey.
+See the binding decision and qualification guide for the current supported scope.

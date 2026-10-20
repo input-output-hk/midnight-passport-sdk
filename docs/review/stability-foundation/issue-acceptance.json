@@ -1,0 +1,2071 @@
+{
+  "schemaVersion": 1,
+  "reviewDate": "2026-10-20",
+  "releaseVersion": "0.1.0-rc5",
+  "releaseSource": "9e8048674a54adf5e8be2055aaa8f5c9bfe08b06",
+  "historicalConsumerEvidence": "0.1.0-dev.12 at its recorded host pin; not relabelled as RC5/current host",
+  "reviewBaseline": "0d064afbd80f5d0607129ae127944dfc7e5276df plus local first-slice changes; exact workspace hashes are in qualification receipts",
+  "issuesReviewed": 40,
+  "criterionExtraction": "Top-level scope/acceptance/deliverable bullets and checkboxes; linked original body remains authoritative, including nested bullets.",
+  "limitations": [
+    "Historical evidence is preserved at its original source/version.",
+    "Source presence is not proof-backed behavior.",
+    "No issue closure or other GitHub mutation was performed.",
+    "Milestones use individual issue assignments; REST summary counters were previously inconsistent."
+  ],
+  "issues": [
+    {
+      "number": 17,
+      "title": "Show progress: connector progress events, an event log and a progress bar in the demo",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/17",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:13:13Z",
+      "bodySha256": "df4f5d38a44d6f613e28b4294a261543b0397b7a8c26cc16b2f5d3a519a64c68",
+      "originalBodySha256": "b575cb6152a085dafc3418267ecc36a34815b9d12be7dc22fe0f2ccd709b19bb",
+      "implementation": "implemented",
+      "verification": "historical-and-unit",
+      "evidencePaths": [
+        "packages/protocol/src/events.ts",
+        "apps/passport-dapp/src/event-log.ts",
+        "tests/account-ports-flows.test.mjs"
+      ],
+      "assessment": "Per-flow events and demo log exist. Re-run declared full flows to accept end/error pairing; old progress estimates are not measured wave durations.",
+      "criteria": [
+        {
+          "criterion": "- The connector API (`packages/protocol`) defines a typed progress event: `{ id, step, phase: 'start' | 'end' | 'error', at, durationMs?, detail?, error?: { code, message } }`, with `step` from a closed list (below). `createAccount`, `openAccount` and every account call accept an `onEvent` callback; the existing `onProgress` becomes a thin wrapper or is replaced.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Every step that waits on the backend or the user emits a start and an end (or an error) event with timestamps, so durations are exact:",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- The service reports deploy progress per wave. Either `/deploy` streams Server-Sent Events (`wave-start`, `wave-end`, `done`, `error`), or it returns a job id that the client polls (`GET /deploy/{id}`); the choice is recorded in the spec. `/prove-tx` reports queue position and proving start, so a call waiting behind a deploy says so instead of looking frozen.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- The demo page shows:",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Errors carry the failing step, so \"Failed: \u2026\" names where it broke (for example \"wave 7 of 10: sponsor refused\").",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Tests: unit tests for the event sequence of each flow against fake seams (including an error mid-deploy); a service test for per-wave progress; the e2e asserts that every start has a matching end or error.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 20,
+      "title": "Keep the passkey-to-account mapping on the ledger with an identity registry contract",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/20",
+      "observedState": "OPEN",
+      "milestone": "0.2.0",
+      "observedUpdatedAt": "2026-10-20T03:13:16Z",
+      "bodySha256": "a94d069e8417f0c7ab143a4cc64e1cf7ddfe5cec690e02e638be377e4de7940a",
+      "originalBodySha256": "b942cd2dd7aed358c13ac071a2a11f6d94c921e5da65dc5dec09a0b7b3903930",
+      "implementation": "not-implemented",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Known-address opening is implemented; on-chain passkey/account discovery remains deferred.",
+      "criteria": [
+        {
+          "criterion": "- The mapping from a passkey to its account is on the ledger. Opening an account looks it up on chain, so the service's file is no longer the source of truth.",
+          "implementation": "not-implemented",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- The registry contract is a fresh contract in this repository, starting from `identity_registry.compact`. It is compiled with the pinned Compact 0.35.0 toolchain and deployed once per network by the service. Its address is advertised in `/config` and pinned by the app, like the manifest hash.",
+          "implementation": "not-implemented",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- The key does not reveal the passkey: for example `transientHash(domain tag, rp_id_hash, credentialId)`, or the P-256 public key under a domain tag. Pick one and record it in the spec, including what an observer can link.",
+          "implementation": "not-implemented",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Only the account can register or change its own record. Pick one of these options and record the choice:",
+          "implementation": "not-implemented",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Registration is write-once per key, unless the account itself authorises the change (for example after a device rotation or recovery). A third party cannot overwrite or squat a record.",
+          "implementation": "not-implemented",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Create registers the account in the same flow (sponsored), and Open reads it from the ledger. The chain checks from #14 still run: the passkey owns the key, the contract exists, and the device entry is on the ledger.",
+          "implementation": "not-implemented",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- The service's JSON registry becomes an optional cache, or is removed. The sponsor's deployed set keeps working, for example by reading the on-chain registry.",
+          "implementation": "not-implemented",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Tests cover:",
+          "implementation": "not-implemented",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 23,
+      "title": "Faster create: bind a pre-deployed account instead of deploying at create",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/23",
+      "observedState": "OPEN",
+      "milestone": "0.2.0",
+      "observedUpdatedAt": "2026-10-20T03:13:19Z",
+      "bodySha256": "d67923c3ccba4549e1da2d969f27e714472badd5f634a9040a6d97840e0e3444",
+      "originalBodySha256": "01a46189ce6fb8962eac93469d40b9712cdb4678947fb955c6dcf1baa1bda5c0",
+      "implementation": "not-implemented",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "No supported pre-deployed pool/bootstrap authority design. Deploy still uses verifier waves.",
+      "criteria": [
+        {
+          "criterion": "- A design note picks an approach, with a measured create time and the contract changes it needs, if any.",
+          "implementation": "not-implemented",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- If no contract change is needed: the service maintains a pool, create uses it, and the e2e shows create under 60 s.",
+          "implementation": "not-implemented",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 24,
+      "title": "Support both authoriser arms: P-256 WebAuthn (default) and JubJub from PRF",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/24",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:13:22Z",
+      "bodySha256": "72e802bc0c9d4f339b27449f5984503135a249f6e9878dd1883dd26507d28df0",
+      "originalBodySha256": "dee405d77520a890f95ad1777fbbba78fed01d641081ee2760aebce249f4a7a9",
+      "implementation": "implemented",
+      "verification": "historical-and-unit",
+      "evidencePaths": [
+        "packages/account/src/connector.ts",
+        "packages/account/src/jubjub-connector.ts",
+        "tests/account-jubjub.test.mjs",
+        "tests/account-p256-sealed.test.mjs"
+      ],
+      "assessment": "Both owner arms exist and have tests. Real provider qualification and current host acceptance remain independent.",
+      "criteria": [
+        {
+          "criterion": "- **Authoriser seam.** The connector's signing seam is arm-agnostic, with one implementation per arm:",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- **Account binding.** The account records which arm activated it. Create, open and calls pick the matching circuits (`*_with_p256` vs `*_with_jubjub`): activation, device entry derivation, the use-counter rescan, and challenges from the arm's pure circuits.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- **Configuration.** The arm is chosen when the connector is created (default P-256). The demo can switch it, for example with a dev option.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- **Tests.**",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- **Documentation.** The two arms, their trade-offs and the default are in the spec and `docs/prototype/keys.md`.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 25,
+      "title": "Automated browser test with a virtual authenticator (PRF)",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/25",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:13:25Z",
+      "bodySha256": "c55db1097e68a474489323b3ad82733d96d6c12e613394e90adaaab7bc1b3fcc",
+      "originalBodySha256": "dfb091d91786d23b9835f39a59c926801cf9c2bbe4ecf5f59cb2e8f64657255d",
+      "implementation": "implemented",
+      "verification": "historical-and-unit",
+      "evidencePaths": [
+        "apps/passport-dapp/e2e/virtual-authenticator.e2e.ts",
+        "docs/local-backlog-acceptance.md"
+      ],
+      "assessment": "Historical full CDP run and fast negatives exist. This is synthetic browser evidence, not Google/iCloud behavior or a new RC5 full-browser run.",
+      "criteria": [
+        {
+          "criterion": "- A Playwright test drives the real page in Chromium with a CDP virtual authenticator (`ctap2`, internal transport, `hasResidentKey`, `hasUserVerification`, `isUserVerified`, `hasPrf`). The test covers:",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- **Negative paths.**",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- The test runs locally against the localnet with one command. The deploy-heavy path is opt-in; the negative paths run without a chain.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Limits are written down: the virtual authenticator checks our WebAuthn handling and the `wa-json134` profile, not real providers. Real-provider runs (Google Password Manager, iCloud Keychain) stay recorded manual runs.",
+          "implementation": "implemented",
+          "verification": "requires-current-provider-or-host-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 31,
+      "title": "Publish the SDK packages: migration from the prototype (tracking)",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/31",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:13:28Z",
+      "bodySha256": "69fdb7b029c1419a2acac118e32b73926c92777ac1b2037fb2ba7604acc41f44",
+      "originalBodySha256": "e2dd762bf9839f5bd757ba1026b2ab434a1e288d4f6ccbf2abac1baafe1daf6b",
+      "implementation": "partial",
+      "verification": "mixed",
+      "evidencePaths": [
+        "docs/adr/0007-package-set-ports-and-flows.md",
+        "docs/release/rc5-publication-receipt.json"
+      ],
+      "assessment": "Nine packages and three images published. T5\u2013T21 and T23\u2013T24 largely delivered; T22 discovery (#20) is not. Service durability is tracked separately. Do not tick every legacy tranche.",
+      "criteria": [
+        {
+          "criterion": "- [x] T0 (#32): ADR 0006 (publishing on GitHub Packages, the registry rule, the scope) and ADR 0007 (the package set, ports and flows in `account`, the two authoriser arms). Doc-sync of `CLAUDE.md`, `docs/architecture.md` \u00a74.4 and `docs/compatibility.md`.",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [x] T1 (#33): `protocol`: account API v1, error codes v1, `PassportEvent`, service wire types and version constants. The prototype's names stay as deprecated aliases.",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [x] T2 (#34, #35): `account/ports`: the ports of \u00a72, with the connector adapted to them, and the `./ports` lint rule.",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [x] T3 (#36, #37): `account`: events from every flow, `signal`, `retireAuthority`, and the open-time `enc_key` check.",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [x] T4 (#38, #39): `account/testing`: fakes and the port contract suites.",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] T5\u2013T9: `keys`, `adapter-webauthn`, `adapter-service`, `adapter-midnight-js`, and `adapter-browser` as the composition root.",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] T10\u2013T14: FS-0.9 T1\u2013T4. The demo and the service consume the package.",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] T15\u2013T19: handlers, sponsor rules, jobs and polling, Midnight engines, the wave deployer.",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] T20: JubJub (#24).",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] T21: browser test (#25).",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] T22: on-chain directory (#20).",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] T23: `@input-output-hk` scope.",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] T24: `fork-only:` publish workflow with attestations. Restore the cooldown and CI first.",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- The client packages publish to GitHub Packages from the fork's manual workflow.",
+          "implementation": "partial",
+          "verification": "requires-current-provider-or-host-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- A scratch Vite app installs the packed tarballs and builds.",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Validate packed packages against Lace's current Passport implementation and its ACC binding without changing Lace to fit this SDK. Document which components Lace can consume, which adapters are still needed, and leave any Lace integration decision to its owners (#81).",
+          "implementation": "partial",
+          "verification": "mixed",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 74,
+      "title": "Add a dedicated service to fund Passport ACCs from a sponsor wallet",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/74",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:13:30Z",
+      "bodySha256": "7ba6c53af7e663705940e4dccc61a7513674013d1a055535e05009a80e651102",
+      "originalBodySha256": "4c07d6fda8fdaef561f31ad8c3c2b0f0438c922f375fecca3effad09c88029e7",
+      "implementation": "implemented-supported-subset",
+      "verification": "release-and-unit",
+      "evidencePaths": [
+        "apps/passport-funding-service",
+        "docs/release/rc5-publication-receipt.json"
+      ],
+      "assessment": "RC5 published-image NIGHT deposit/replay confirmed on undeployed. Other networks/assets and production deployment are separate qualification, not implied support.",
+      "criteria": [
+        {
+          "criterion": "- A standalone demo can fund a deployed ACC from the development wallet, then read its credited balance.",
+          "implementation": "implemented-supported-subset",
+          "verification": "release-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- A non-standalone deployment refuses to start without an explicit funded wallet and spend policy.",
+          "implementation": "implemented-supported-subset",
+          "verification": "release-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Duplicate request IDs cannot pay twice; unsupported assets, incorrect network/binding, invalid ACCs, zero/over-limit amounts, and unauthorized callers fail closed.",
+          "implementation": "implemented-supported-subset",
+          "verification": "release-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Fee sponsorship remains restricted to value-neutral eligible ACC calls; funding uses its own wallet-spend path.",
+          "implementation": "implemented-supported-subset",
+          "verification": "release-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Service API, client API, operating limits and demo flow are documented and covered by focused tests, including a node-backed deposit for each advertised asset.",
+          "implementation": "implemented-supported-subset",
+          "verification": "release-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 77,
+      "title": "Extract a reusable Passport service library with versioned routes and jobs",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/77",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:13:33Z",
+      "bodySha256": "319bc400794e5ee9a2f84a748e548719b02a3396756dd3f70b243542aebf1be7",
+      "originalBodySha256": "ca52e5f3ffac7963bcaf53a9355e6156c580b20d94226dfbccee3d2a208f4dab",
+      "implementation": "implemented-supported-subset",
+      "verification": "release-and-unit",
+      "evidencePaths": [
+        "packages/service",
+        "apps/passport-service",
+        "docs/release/rc5-publication-receipt.json"
+      ],
+      "assessment": "Reusable routes, policy ports and memory jobs shipped. Durable job reconciliation is #233; production operator hardening is #234.",
+      "criteria": [
+        {
+          "criterion": "- `/v1` config, account directory, deploy, prove, sponsor/submit, and job routes use the protocol package's wire types; `adapter-service` clients run against the reference server.",
+          "implementation": "implemented-supported-subset",
+          "verification": "release-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- The sponsor rule set is injectable and rejects value-bearing operations. Operators can configure authentication, limits, and a funded wallet without patching the library.",
+          "implementation": "implemented-supported-subset",
+          "verification": "release-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- The artefact provider can use the pinned contract package or an independently pinned HTTP key service; manifest and binding checks stay mandatory.",
+          "implementation": "implemented-supported-subset",
+          "verification": "release-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- The demo app consumes the library, with existing localnet create/open/rotate behavior and focused route/port contract tests passing.",
+          "implementation": "implemented-supported-subset",
+          "verification": "release-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Publish only once there is a reusable implementation and a packed-tarball smoke test.",
+          "implementation": "implemented-supported-subset",
+          "verification": "release-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 79,
+      "title": "Align SDK JubJub and viewing-secret ports with Lace Passport",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/79",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:13:35Z",
+      "bodySha256": "d8dce39d2d806cece4373de2e56fa3b29d636fbb050d99d8a54800ca8223317c",
+      "originalBodySha256": "30355f20b7d74a90206d9729a59b5927388f91bcd8acd3831c6d00140723d577",
+      "implementation": "partial",
+      "verification": "pinned-historical",
+      "evidencePaths": [
+        "packages/keys/src/jubjub-authoriser.ts",
+        "packages/keys/src/device-keyring.ts",
+        "tests/keys-lace-suite2-interop.test.mjs",
+        "docs/lace-consumer-report.md"
+      ],
+      "assessment": "Typed key ports and pinned vectors implemented. Historical synthetic cross-product runs are not current Lace or real-provider qualification.",
+      "criteria": [
+        {
+          "criterion": "- Add tested PRF/JubJub authoriser and reader-key derivation that match Lace's test vectors and domain/context strings. Host key material stays inside one ceremony and is zeroed after use.",
+          "implementation": "partial",
+          "verification": "pinned-historical",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Provide typed ports for random account viewing secret creation, device sealing/opening, key rotation, inbox re-encryption, and read-grant sealing. The account module receives only public keys, ciphertexts, or opened data necessary for the flow.",
+          "implementation": "partial",
+          "verification": "pinned-historical",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Demonstrate a Lace-created JubJub ACC opening through SDK flows and an SDK-created JubJub ACC signing in through Lace, with the same binding and network.",
+          "implementation": "partial",
+          "verification": "pinned-historical",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Document recovery limits: a remaining enrolled device can read its envelope after another device is lost; total loss of all authorising devices still needs a recovery mechanism.",
+          "implementation": "partial",
+          "verification": "pinned-historical",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 80,
+      "title": "Expose Lace owner device, grant, and holdings flows from mn-passport-account",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/80",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:13:38Z",
+      "bodySha256": "468896c0b9725fa7dd56197c4d33570a78d678ad1aa9d8f2c8996a8a209b08de",
+      "originalBodySha256": "e89c7e4acfef2a26da6cd4b6b3a9467663f3255deb577b243eeb31fd99fadbc3",
+      "implementation": "partial",
+      "verification": "historical-and-unit",
+      "evidencePaths": [
+        "packages/account/src",
+        "docs/site/circuits.md",
+        "docs/lace-consumer-report.md"
+      ],
+      "assessment": "Supported owner/device/grant/holding flows exist. Durable mutation recovery, complete typed circuit coverage and current host integration remain separate gates.",
+      "criteria": [
+        {
+          "criterion": "- Add device enrollment/removal with resumed deployment state and explicit consent descriptors; then owner grant issue/revoke/revoke-all with scope validation, origin binding, and durable bookkeeping; then holdings/read-grant operations and scoped circuit helpers.",
+          "implementation": "partial",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Each flow has typed request/result/errors, progress/cancellation semantics, authorisation checks, and binding-specific tests. Cases that rotate a viewing secret deliver the new secret only to live devices and read grantees that remain authorised.",
+          "implementation": "partial",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Supply a documented adapter/port mapping and a scratch integration test against Lace's current interfaces, showing where SDK components can be consumed without changing Lace's store or hosted signer behavior. Lace owners decide whether and when to replace local logic.",
+          "implementation": "partial",
+          "verification": "requires-current-provider-or-host-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Keep agent-side grant spending and total-loss recovery as explicit later work; the Lace PR does not implement them.",
+          "implementation": "partial",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 81,
+      "title": "Prove packed SDK packages in the Lace Passport module",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/81",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:18:51Z",
+      "bodySha256": "18d5ff8497ed57d996acae3dd4cdb195507752fa7f338a4d3cdca13b383de554",
+      "originalBodySha256": "2e1f4f7a3228389d4a7f08e8d1c6f2eb2d270160629170e808b666158bf7e2a5",
+      "implementation": "partial",
+      "verification": "pinned-historical",
+      "evidencePaths": [
+        "scripts/smoke-lace-source-consumer.mjs",
+        "docs/lace-consumer-report.md",
+        "docs/local-backlog-acceptance.md"
+      ],
+      "assessment": "Existing consumer proof pins the older reviewed host source. Current entrypoint/runtime/source qualification remains the next consumer slice; no full compatibility claim.",
+      "criteria": [
+        {
+          "criterion": "- Add compile-time structural tests against the PR's current `PassportAuthoriser`, `PassportEncryptionKey`, `FeeSponsor`, `PassportProver`, `PassportNetworkConfig`, account record, and grant types; document intentional adapters where shapes differ.",
+          "implementation": "partial",
+          "verification": "requires-current-provider-or-host-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Install packed `@input-output-hk/mn-passport-*` tarballs in a scratch Lace-like consumer with the PR's Midnight runtime versions and build it without duplicate runtime copies.",
+          "implementation": "partial",
+          "verification": "pinned-historical",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Prove at least create/sign-in and one grant or device flow on a localnet using the SDK package path and Lace's hosted signer. Record the exact PR SHA, SDK version, binding id/hash, and network.",
+          "implementation": "partial",
+          "verification": "requires-current-provider-or-host-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Produce a compatibility report for Lace owners: which SDK packages are ready to consume, which adapters are needed, and which capabilities still belong in Lace. Any future Lace integration is their decision and is outside this SDK issue.",
+          "implementation": "partial",
+          "verification": "pinned-historical",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 82,
+      "title": "Support every pinned Passport ACC circuit in the typed SDK API",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/82",
+      "observedState": "OPEN",
+      "milestone": "0.2.0",
+      "observedUpdatedAt": "2026-10-20T03:13:44Z",
+      "bodySha256": "504108c41288c51af88de76fa69971d9373775fd029e4ec8c6c93e3c3fa23bc0",
+      "originalBodySha256": "d533488c6513a155fc23ea2c9a0f2a07c632c9794ff859ef8ff6837c5665ed8e",
+      "implementation": "partial",
+      "verification": "inventory-and-unit",
+      "evidencePaths": [
+        "docs/site/circuits.md",
+        "scripts/check-circuit-matrix.mjs"
+      ],
+      "assessment": "All 52 proof artifacts are inventoried; only the advertised subset has typed flows. k256 and recovery are not silently enabled.",
+      "criteria": [
+        {
+          "criterion": "- Publish a generated capability matrix for every proving and pure circuit in `acc-s3r1.1`: scheme, inputs/witnesses, authorisation and consent requirements, key availability, flow/API owner, tests, and support status. CI fails if a pinned circuit is missing from the matrix.",
+          "implementation": "partial",
+          "verification": "inventory-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Implement typed builders and flows for activation, device management, encryption/viewing-key operations, inbox, grants, shielded/unshielded deposits and withdrawals, contract-directed withdrawals, and recovery, for every supported scheme arm present in the ACC. Preserve contract checks for caller pinning, relying-party origin, grant scope, and recovery authority.",
+          "implementation": "partial",
+          "verification": "inventory-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- `Authoriser` and account metadata select the correct circuit per enrolled device, including JubJub and P-256 on the same ACC. P-256 WebAuthn signing remains inside the authenticator; JubJub PRF material stays inside one key session and is cleared after use. k256 requires an explicit injected signer; never silently reinterpret key material across schemes.",
+          "implementation": "partial",
+          "verification": "inventory-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- All circuit artifacts are loadable from the versioned contract package/key service with hash checks. A partial key-service profile advertises its available circuits and fails cleanly for unavailable ones; the full profile can serve all 52.",
+          "implementation": "partial",
+          "verification": "inventory-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Add binding-specific tests for every circuit family, negative tests for wrong scheme/consent/scope, and localnet interoperability with the current Lace JubJub path. Record exact Lace PR and ACC binding hashes; preserve Lace's implementation and UI as the reference rather than changing it to fit this SDK.",
+          "implementation": "partial",
+          "verification": "inventory-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Document which APIs are ready, which require a host capability such as a sponsor, sender wallet, or recovery provider, and any circuit that cannot be safely exposed yet. Close only when the full manifest has a tested API path or a documented contract-level blocker with a follow-up issue.",
+          "implementation": "partial",
+          "verification": "inventory-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 161,
+      "title": "Version sealed device registration for P-256 viewing keys",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/161",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:13:46Z",
+      "bodySha256": "d0783223d0634ea22d746e4ea30e2c5b1ebb988ef9ef5dc19f2bde934e65c2d7",
+      "originalBodySha256": "6f8fca2bd34a4bb81b38cbd346f5f78518ed6d79105ed1f1ca6fae8285b4e239",
+      "implementation": "implemented-supported-subset",
+      "verification": "historical-and-unit",
+      "evidencePaths": [
+        "docs/adr/0009-versioned-p256-device-registration.md",
+        "tests/account-p256-sealed.test.mjs",
+        "experiments/acc-0.35/results"
+      ],
+      "assessment": "Versioned authenticated P-256 registrations and mixed sealed rosters exist. Historical node probes and current units do not qualify every provider/host; entry-removal semantics are narrowed in this slice.",
+      "criteria": [
+        {
+          "criterion": "- Document the versioned wire format, canonical P-256 key encoding, authenticated scheme tag, size bounds, and downgrade behavior. Reject malformed or ambiguous registrations.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- `AccountViewingKey` and its key recipe can create, open, rotate, and reseal keys for P-256 and mixed-device rosters. Only live, uniquely matched device entries receive the new secret.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- P-256 account create/open reads the chain key and sealed envelope; the account flow never receives secret bytes. Existing deterministic-key accounts have an explicit compatibility path or refusal.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Read-grant issue/revoke/revoke-all and shielded-holdings reads use that model and fail closed on incomplete roster or grant openings.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Binding-focused and localnet tests cover P-256 create, reload/open, lost-device recovery with a surviving device, mixed-device rotation, and read-grant revocation. Record exact ACC and Lace revisions.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 201,
+      "title": "Settle shielded withdrawal change and reconcile spent ACC coins",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/201",
+      "observedState": "OPEN",
+      "milestone": "0.2.0",
+      "observedUpdatedAt": "2026-10-20T03:13:49Z",
+      "bodySha256": "3a3c07041c69115a142787234de6c25372a667cd2e6a4463cfb7a013cd7b0f08",
+      "originalBodySha256": "2ef1ba0d3dbc325515da0de12fe483d4aef99912f19d19aae86c1bd2470906df",
+      "implementation": "not-implemented",
+      "verification": "guard-tested",
+      "evidencePaths": [
+        "packages/account/src",
+        "docs/site/release-notes-rc5.md"
+      ],
+      "assessment": "Exact-value shielded guard remains mandatory. No partial spend/change-recovery support is claimed.",
+      "criteria": [
+        {
+          "criterion": "- Extract the circuit's private `Maybe<ShieldedCoinInfo>` result from the Midnight transaction handle, with version-pinned tests for the supported midnight-js shape.",
+          "implementation": "not-implemented",
+          "verification": "guard-tested",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Durably record the spend intent and resulting change across submission and process crashes, including an indeterminate finality response. Recovery must distinguish an unsubmitted spend from a confirmed spend without submitting twice.",
+          "implementation": "not-implemented",
+          "verification": "guard-tested",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Resolve the change output's exact Merkle index from the finalized transaction's indexer events and verify its commitment and ACC recipient.",
+          "implementation": "not-implemented",
+          "verification": "guard-tested",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Seal the change description to the current ACC encryption key and publish it through the owner's authenticated inbox circuit; make publication retryable and reconcile the live inbox after interruption.",
+          "implementation": "not-implemented",
+          "verification": "guard-tested",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Reconcile spent input descriptions so `readShieldedHoldings` does not present a spent coin as available. The proof remains the final spent-state check.",
+          "implementation": "not-implemented",
+          "verification": "guard-tested",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Test full and partial spends, missing/ambiguous change events, failed publication, crash recovery, wrong network/key, and P-256/JubJub arms. Run a proof-backed localnet withdrawal before enabling partial amounts in the public API.",
+          "implementation": "not-implemented",
+          "verification": "guard-tested",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 202,
+      "title": "Provide value-capable wallet route for shielded ACC withdrawals",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/202",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:18:54Z",
+      "bodySha256": "b3ed3d516539905bb330b6d1d791b4b8f4392bbd4512473cc7afa483ad034d46",
+      "originalBodySha256": "d69a8734b290571487f43289bb6ba91496dadfa298ce238d95bf541627e611b8",
+      "implementation": "partial",
+      "verification": "pinned-historical",
+      "evidencePaths": [
+        "docs/lace-consumer-report.md",
+        "experiments/acc-0.35/sdk-p256-shielded-withdraw-node.mjs"
+      ],
+      "assessment": "Value-capable direct-wallet exact-spend probe exists. The general host route and current compatible wallet/runtime installation remain unqualified.",
+      "criteria": [
+        {
+          "criterion": "- Define and document the policy boundary between fee-only ACC calls and value-bearing shielded withdrawal calls.",
+          "implementation": "partial",
+          "verification": "pinned-historical",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Provide a supported adapter or example for a wallet-backed `FeeSponsor` and `Submitter` with its own public coin/encryption keys; avoid copying reference-wallet internals into the account core.",
+          "implementation": "partial",
+          "verification": "pinned-historical",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Ensure a host cannot silently route a shielded withdrawal to the fee-only remote sponsor; surface an actionable error or choose the configured value-capable path.",
+          "implementation": "partial",
+          "verification": "pinned-historical",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Cover P-256 and JubJub exact owner spends in a proof-backed localnet check, with consent and network/binding pinning.",
+          "implementation": "partial",
+          "verification": "pinned-historical",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Describe how Lace can provide the wallet route when its hosted authoriser gains `withdraw-shielded` consent and `held_coin` witness support.",
+          "implementation": "partial",
+          "verification": "pinned-historical",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 205,
+      "title": "Exclude TypeScript build cache from release tarballs for reproducible digests",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/205",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:13:54Z",
+      "bodySha256": "64bf723295b4f84202e56e141fb4c130eaf3444a89f347ddade3a3d594cb6729",
+      "originalBodySha256": "200e1f58d88d1a2d594e5b2490edf50a3bab43ba97d7d5695763941d18f4fd50",
+      "implementation": "implemented",
+      "verification": "release-verified",
+      "evidencePaths": [
+        "scripts/release-packages.mjs",
+        "scripts/check-release-reproducibility.mjs",
+        "docs/release/rc5-publication-receipt.json"
+      ],
+      "assessment": "Build caches excluded; independent pack checks and actual-registry attestations recorded. Distinguish canonical tar content from cross-platform gzip header bytes.",
+      "criteria": [
+        {
+          "criterion": "Review the original problem, deliverables and acceptance text at the linked issue; it has no standalone machine-extracted checklist.",
+          "implementation": "implemented",
+          "verification": "release-verified",
+          "disposition": "review-closure-from-recorded-release-evidence"
+        }
+      ],
+      "closureRecommendation": "human-review-candidate",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 208,
+      "title": "Demo: open a known Passport ACC by address and refresh live state",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/208",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:13:56Z",
+      "bodySha256": "9f76c9782c8f5219aa60df6d6d73b9602ee824859c8c78175b350be0f6737d1d",
+      "originalBodySha256": "5e70a5f413d103220b12c781e472f59c427242d497b3aa815c022bcab508f5a0",
+      "implementation": "implemented",
+      "verification": "historical-and-unit",
+      "evidencePaths": [
+        "apps/passport-dapp/src/app.ts",
+        "docs/site/use-cases.md",
+        "tests/account-p256-sealed.test.mjs"
+      ],
+      "assessment": "Known-address opening, read-only ACC refresh and wallet refresh exist. Missing local hint is not passkey or HD seed recovery; real-provider run limitation remains explicit.",
+      "criteria": [
+        {
+          "criterion": "- Add a known-address input and an **Open by ACC address** action to the demo. Validate a 64-character lowercase hex address before prompting for a passkey.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Call the injected account API's `openAccountAt` and reuse the existing chain-state, ACC balance, event-log, and operation-trace presentation. Show which address was requested and which address was verified.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Add a read-only **Refresh ACC state** action for an open account. Show live spec version, activation, authorisation nonce, device epoch, entry count, and available unshielded balances without another passkey prompt.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Explain that knowing an ACC address does not grant control: a live enrolled device and a matching sealed reader envelope are required. The flow must reject wrong passkeys or unrelated accounts.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Document the localnet walkthrough for a missing directory hint and the limitation that this is not account discovery.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- P-256 and JubJub UI paths build and pass app tests. Existing account-package tests for valid/wrong-reader/address cases remain green.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Refresh reads from the chain, logs public state only, and remains available when optional funding is absent.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Manual localnet passkey run opens a known ACC by address, or the run limitation is recorded explicitly.",
+          "implementation": "implemented",
+          "verification": "requires-current-provider-or-host-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- No passkey result, PRF output, viewing secret, or bearer token enters the copied operation trace.",
+          "implementation": "implemented",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 209,
+      "title": "Demo: owner-authorised unshielded ACC withdrawal",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/209",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:13:59Z",
+      "bodySha256": "a3b55b8b588e22865571591803466727d5fbabd2747fb60ce7257c0c40c604f8",
+      "originalBodySha256": "e46585442d4c9eb8ff11d57195e2b263f55fe5b64267b3be36bd266f71db0882",
+      "implementation": "implemented-supported-subset",
+      "verification": "historical-and-unit",
+      "evidencePaths": [
+        "packages/account/src/unshielded-withdrawal.ts",
+        "apps/passport-dapp/src/app.ts",
+        "experiments/acc-0.35/results"
+      ],
+      "assessment": "Owner unshielded transfer and amount/address consent implemented. Historical standalone round trips do not prove every host wallet or network.",
+      "criteria": [
+        {
+          "criterion": "- Add an owner-authorised unshielded withdrawal demo with a validated network-matched recipient, asset color, positive smallest-unit amount, and an explicit review step showing all public transfer details before the passkey ceremony.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Read a fresh ACC balance before submit, refuse an amount above that balance, and show the confirmed transaction ID and post-transfer balance. Keep the fee-only sponsor policy unchanged.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Use the SDK owner flow and pinned binding; do not compose a transaction directly in the page. Default to a small localnet amount and do not silently choose a destination.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Log intent and result without private signing material. Document what the built-in wallet can and cannot do with a received asset.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Invalid recipient, color, amount, and insufficient balance are refused before signing or proving.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- A node-backed localnet round trip from funding wallet to ACC to a controlled user address is recorded with transaction IDs and balances.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- The UI states smallest units and requires a deliberate confirmation of the destination.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 210,
+      "title": "Demo: show chain-verified shielded ACC holdings",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/210",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:14:02Z",
+      "bodySha256": "29569a29b254be0370f90a85f15143ca21bc6f5071a96873f4ac92feb92b763c",
+      "originalBodySha256": "714685d5c587dc05ba02ef2fd08f207bb6c9d90fc8ea14ce0b0db203c132e5fc",
+      "implementation": "implemented-supported-subset",
+      "verification": "historical-and-unit",
+      "evidencePaths": [
+        "packages/account/src/holdings.ts",
+        "packages/account/src/shielded-deposit.ts",
+        "apps/passport-dapp/src/app.ts"
+      ],
+      "assessment": "Qualified holding display and typed deposit helper exist. Shielded partial spending remains disabled; current browser deposit/reopen evidence remains a declared suite requirement.",
+      "criteria": [
+        {
+          "criterion": "- Wire an indexer-backed qualified-holding source to the browser composition and use `readShieldedHoldings` after open. Show coin color/value and inbox index only after the package verifies the corresponding chain-held output.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Add a localnet shielded-deposit fixture or operator action using the existing typed seal-and-confirm helper, then refresh the holdings view.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Keep the raw viewing secret, opened coin nonce, and PRF output out of the UI and copied operation trace. Do not expose shielded withdrawal until #201 and #202 have safe wallet and change settlement.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- A node-backed localnet deposit appears in the ACC holdings panel and survives reopen.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- A forged or unheld inbox entry is excluded by tests and not shown as a holding.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- The page distinguishes unshielded balance from chain-verified shielded coins.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 211,
+      "title": "Demo: enroll and remove a second sealed device",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/211",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:14:04Z",
+      "bodySha256": "2ca63f87da0337db5cc533c5033d1ac30034160d25d4af73e61f5c151d8f345a",
+      "originalBodySha256": "7a90486428fbe0f7f9d1f68fe2561c51a45c7e7e15a733ca5a2ed37d0ebedcad",
+      "implementation": "partial",
+      "verification": "historical-and-unit",
+      "evidencePaths": [
+        "apps/passport-dapp/src/app.ts",
+        "packages/account/src/jubjub-readers.ts",
+        "tests/account-p256-sealed.test.mjs"
+      ],
+      "assessment": "Public joining handoff and entry removal implemented. Real two-browser qualification, interrupted mutation recovery and complete compromised-key revocation are not delivered.",
+      "criteria": [
+        {
+          "criterion": "- Build a two-browser/device localnet ceremony: export only joining public keys and ACC address, verify the joining key and policy on the owner side, use `account.addDevice`, then use `openAccountAt` on the joiner.",
+          "implementation": "partial",
+          "verification": "requires-current-provider-or-host-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Show the live device roster/epoch and the enrollment transaction. Expose removal only after the host supplies the verified roster, holdings and active read-grant targets required to rotate keys away from a removed reader.",
+          "implementation": "partial",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Document how to recover after a delivery or publication interruption; never mark a joiner active until its ACC entry and envelope are confirmed.",
+          "implementation": "partial",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Node-backed localnet test enrolls a second device, reopens with it, and verifies both devices can read the current sealed viewing key.",
+          "implementation": "partial",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Wrong network, stale roster, mismatched key, and self-removal are refused.",
+          "implementation": "partial",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- No private passkey or viewing-key material crosses the handoff.",
+          "implementation": "partial",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 212,
+      "title": "Demo: issue, use, and revoke a scoped ACC grant",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/212",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:14:07Z",
+      "bodySha256": "a93b151b088922df3af3b52fc4f3aaaf2f40d674a4ab8e9cab14c437689ebdfc",
+      "originalBodySha256": "8573fab2c5cce7aefc1c71d2db6957d50e897c94c775931aea46fd044ab4c13d",
+      "implementation": "implemented-supported-subset",
+      "verification": "historical-and-unit",
+      "evidencePaths": [
+        "packages/account/src/grant-holder.ts",
+        "packages/account/src/grant-publication-state.ts",
+        "apps/passport-dapp/src/app.ts",
+        "experiments/acc-0.35/sdk-p256-grant-holder-node.mjs"
+      ],
+      "assessment": "Supported scoped grants and bookkeeping exist. Current host/provider and broader outage/value route qualification remain explicit; total-loss recovery is not bookkeeping recovery.",
+      "criteria": [
+        {
+          "criterion": "- Implement a localnet grant lifecycle demonstration with a fixed, reviewable scope first (one operation, asset, recipient and cap), durable publication state, and a separate grantee view of the confirmed scope.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Wire chain-backed active-grant and commitment readers before enabling read grants or selective revoke. Show generation, grant ID, cap and expiry in public evidence without disclosing secret openings.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Add revoke and recovery from interrupted publication. Keep unsupported combinations disabled with explicit reasons.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Node-backed issue, grantee use, revoke, and attempted post-revoke use are recorded.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Stale roster, wrong origin/caller, invalid caps, and missing read-key opening are refused before presenting a grant as active.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- UI and docs distinguish implemented grant capability from the still-unvalidated Lace hosted flow.",
+          "implementation": "implemented-supported-subset",
+          "verification": "historical-and-unit",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 213,
+      "title": "Add operator reconciliation for pending ACC funding requests",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/213",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:14:09Z",
+      "bodySha256": "bf7ec5275e6452709762daa4e0e4757d44d9ee30345a3ac771917d184a09c706",
+      "originalBodySha256": "8484f532c42b8f76a8e0ae3ddb9b759b8fb16c49d6137f2677b8644ebd4932e4",
+      "implementation": "implemented-supported-subset",
+      "verification": "unit-and-operator-docs",
+      "evidencePaths": [
+        "apps/passport-funding-service",
+        "docs/site/service.md"
+      ],
+      "assessment": "Read-only inspection and audited resolution exist with fail-closed ambiguous cases. Production restart/backup and transactional-store deployment acceptance remains #234/#233.",
+      "criteria": [
+        {
+          "criterion": "- Add a read-only inspection command for pending reservations and relevant transaction IDs/balances, plus an audited operator resolution command that refuses ambiguous evidence.",
+          "implementation": "implemented-supported-subset",
+          "verification": "unit-and-operator-docs",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Preserve idempotency and daily-limit accounting. Never allow a new request ID as a shortcut for a pending one.",
+          "implementation": "implemented-supported-subset",
+          "verification": "unit-and-operator-docs",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Document crash/stale-lock recovery and safe backup of the reservation file. Define a transactional-store port before running replicas.",
+          "implementation": "implemented-supported-subset",
+          "verification": "unit-and-operator-docs",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Tests cover failure before preparation, after preparation, after deposit submission, and after ledger credit but before the result is stored.",
+          "implementation": "implemented-supported-subset",
+          "verification": "unit-and-operator-docs",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- A confirmed credit records the original result and subsequent replay returns it; a proven no-submit case can be released safely; ambiguous cases stay pending.",
+          "implementation": "implemented-supported-subset",
+          "verification": "unit-and-operator-docs",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- Operator actions are logged without seed or bearer-token exposure.",
+          "implementation": "implemented-supported-subset",
+          "verification": "unit-and-operator-docs",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 227,
+      "title": "Reconcile RC5 delivery evidence and close historical implementation issues",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/227",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:12:26Z",
+      "bodySha256": "e6a661ca31653960175e5a419e707419788b2213b49ab0c3d968f788cc974f24",
+      "originalBodySha256": "88ce2af397c7d4df0b3b2ac0ec6988e2beddcab54e413805c431e6581b59a810",
+      "implementation": "foundation-delivered",
+      "verification": "local-evidence",
+      "evidencePaths": [
+        "docs/review/stability-foundation/issue-acceptance.json"
+      ],
+      "assessment": "Acceptance index delivered locally; no GitHub issue has been closed. Only #205 is a strong closure-review candidate from release evidence.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Audit every open SDK issue against its original acceptance criteria, RC5 source, release receipt, and reproducible evidence. Record implemented, verified, partial, and missing separately.",
+          "implementation": "foundation-delivered",
+          "verification": "local-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] For #17, #24, #25, #74, #77, #80, #161, #205, and #208\u2013#213, link exact evidence and close only criteria actually met. Preserve any unverified browser/host requirements in explicit follow-ups.",
+          "implementation": "foundation-delivered",
+          "verification": "local-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Refresh #31 and the compatibility/consumer reports without relabelling historical dev-package evidence as an RC5 or current-host run.",
+          "implementation": "foundation-delivered",
+          "verification": "local-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Record the remaining dependencies, supported subset, and evidence location in one maintained acceptance index.",
+          "implementation": "foundation-delivered",
+          "verification": "local-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 228,
+      "title": "Audit the pinned ACC against upstream recovery fixes and decide the next binding",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/228",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:18:46Z",
+      "bodySha256": "4af71eb65f92bed2f2cc0306a242b563942218e06af1ee7c1f009a8a99a4fb2e",
+      "originalBodySha256": "f958bfb293f13295e43ae469d1b00ddca31c0c231bc5cad66c3a0503d6f28dd4",
+      "implementation": "foundation-delivered",
+      "verification": "local-evidence",
+      "evidencePaths": [
+        "docs/adr/0012-retain-binding-with-explicit-removal-and-recovery-limits.md",
+        "docs/review/stability-foundation/source-audit.json",
+        "docs/review/stability-foundation/candidate-build.json",
+        "docs/review/stability-foundation/finalisation-comparison.json"
+      ],
+      "assessment": "Exact source diff and generated declaration equality recorded; real-signature simulator compares retained/corrected finalisation. Retain current binding with recovery unsupported; no adoption proof/node/keygen claim.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Diff the pinned source against an exact reviewed upstream commit, including recovery finalisation, caller-bound grants, and viewing-envelope changes; classify executable, ABI, codec, and documentation changes.",
+          "implementation": "foundation-delivered",
+          "verification": "local-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Establish recovery reachability for SDK-created and externally opened accounts: constructor recovery key, retained secrets, enabled methods, maintenance retirement, and already-finalised states. Do not infer exploitability or safety from an issue title.",
+          "implementation": "foundation-delivered",
+          "verification": "local-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Add future-epoch, pending-enrolment, successor, and old-entry retirement regressions. Any adopted correction needs pinned full key generation, hashes, proof/node acceptance, and the 15,000 verifier-byte wave budget.",
+          "implementation": "foundation-delivered",
+          "verification": "real-signature simulator only; candidate proof/node/keygen not adopted",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Record an ADR choosing retain-with-supported-limits, verifier maintenance where possible, or a new binding and explicit migration. Never repoint a binding ID or silently move an existing account/funds.",
+          "implementation": "foundation-delivered",
+          "verification": "local-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Gate the version decision: a required new binding or breaking public API moves the next release to 0.2.0-rc1; unsafe recovery must not be enabled merely to complete #82.",
+          "implementation": "foundation-delivered",
+          "verification": "local-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 229,
+      "title": "Qualify device-entry removal versus complete compromised-device revocation",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/229",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:12:31Z",
+      "bodySha256": "1e6953ed4115137018094794221ab9ac982cd8649587433525232d70c8743819",
+      "originalBodySha256": "d8c1eaa6aef0b8dfdb8b8f283f29ca14337dd6bab717d6ac0a462fe8b02611c6",
+      "implementation": "foundation-delivered",
+      "verification": "local-evidence",
+      "evidencePaths": [
+        "tests/contract-entry-semantics.test.mjs",
+        "tests/qualification-roster-boundary.test.mjs",
+        "tests/account-jubjub.test.mjs",
+        "docs/site/qualification.md",
+        "packages/account/src/removal-reader.ts",
+        "packages/keys/src/device-keyring.ts",
+        "tests/account-p256-sealed.test.mjs"
+      ],
+      "assessment": "Both-arm pinned-contract regressions and SDK refusal checks delivered locally. Entry-removal claims corrected; full compromised-key revocation still needs upstream identity/schema work.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Reproduce multiple entries for one key, differing counters, and future-epoch entries against the pinned binding, across P-256/JubJub and mixed rosters where supported.",
+          "implementation": "foundation-delivered",
+          "verification": "local-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Verify post-removal authorisation and viewing access independently; rotation only excludes future viewing generations and cannot erase prior knowledge.",
+          "implementation": "foundation-delivered",
+          "verification": "local-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Document exactly what removeDevice removes. Any UI/API claim of complete revocation must be supported, explicitly unavailable, or corrected before release.",
+          "implementation": "foundation-delivered",
+          "verification": "local-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Record the contract-owned identity/schema dependency and a safe supported policy. If a safety fix requires a new binding or breaking semantics, route it through the binding/version decision.",
+          "implementation": "foundation-delivered",
+          "verification": "local-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 230,
+      "title": "Persist and resume account, device, and viewing-key mutations after interruption",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/230",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:12:33Z",
+      "bodySha256": "2dbb7e6cf1e7d2806153bf0c8e8403e47f4d3f6a4a8f1960405efc91078f0727",
+      "originalBodySha256": "7cd0ec9785f629fb6bf313cc63e4f1a2d4525a275701171eb337eabd9bd135c9",
+      "implementation": "planned",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Enumerate state transitions and durable intent fields for both arms, including transaction identifiers, network/binding pins, key generation, roster snapshots, and the original consent/lock choice.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Inject crashes before/after each submission, confirmation, key switch, envelope publication, and device removal; restart with a new process and reconcile the chain before continuing.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Retain access for every intended surviving reader and refuse stale/ambiguous rosters, missing read-grant openings, or unknown outcomes. Never draw replacement keys or blindly resubmit an uncertain operation.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Define cancellation as stopping future work, not undoing submitted chain transactions. Keep secrets and private proof inputs out of public journals/logs.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Supply typed host persistence ports, migration/versioning rules, and tests; no UI-only success while durable/chain state disagrees.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 231,
+      "title": "Make published-package and image localnet/browser qualification reproducible in CI",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/231",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:12:36Z",
+      "bodySha256": "8d6974ab125fa5aa22ab5c74fb1c6d6c99aea96468e257d7b31a48ad47f92bbb",
+      "originalBodySha256": "28b38cd2fbcc136c23bc976e47cf6e27eee7096d8db1c4ab10c3b89176816ec9",
+      "implementation": "partial-foundation-delivered",
+      "verification": "local-evidence",
+      "evidencePaths": [
+        "scripts/qualify.mjs",
+        "scripts/qualification/runner.mjs",
+        "scripts/qualification/receipt.mjs",
+        "tests/qualification-runner.test.mjs",
+        "docs/site/qualification.md"
+      ],
+      "assessment": "Initial tiered runner, bounded closed receipts, owned-process deadlines and repeatability checks delivered. Broader proof/browser/outage/published/provider suite remains incomplete.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Separate fast unit/port tests, browser virtual-authenticator tests, proof-backed localnet tests, published-artifact consumer tests, and manual provider qualification. Skips never count as passes.",
+          "implementation": "partial-foundation-delivered",
+          "verification": "declared-tier-tests; wider flow/outage/provider release acceptance pending",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Run create/activate/reload/open, NIGHT round trip with wallet refresh, address reopen, holdings, device change, grant issue/use/revoke, and funding replay using version-pinned artefacts and disposable owned state.",
+          "implementation": "partial-foundation-delivered",
+          "verification": "declared-tier-tests; wider flow/outage/provider release acceptance pending",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Exercise process/indexer/prover outages and delayed finality; emit bounded redacted machine receipts with source/package/image hashes and transaction IDs.",
+          "implementation": "partial-foundation-delivered",
+          "verification": "declared-tier-tests; wider flow/outage/provider release acceptance pending",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Use dedicated stacks/ports, deterministic readiness and owned-process cleanup. Keep expensive key/proof runs on suitable scheduled/manual runners; retain cheap negative tests on each PR.",
+          "implementation": "partial-foundation-delivered",
+          "verification": "declared-tier-tests; wider flow/outage/provider release acceptance pending",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Proposed stability gate: three consecutive clean runs of the declared release suite, with measured failure reasons and no unclassified flaky failures.",
+          "implementation": "partial-foundation-delivered",
+          "verification": "declared-tier-tests; wider flow/outage/provider release acceptance pending",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 232,
+      "title": "Qualify real passkey providers and two-browser account lifecycle use cases",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/232",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:12:38Z",
+      "bodySha256": "bb5bd73d97cda77272af75eb0166af105760e490b076ef34f1798b72db1b98a3",
+      "originalBodySha256": "e601956505fe452f4f5e1a55150dfcffa937d6812a30b47431c05731ff17f059",
+      "implementation": "planned",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Publish a versioned browser/OS/provider matrix with supported, refused, and untested cases; include Google/iCloud as actual test targets where accessible, existing credentials, reload, cancellation, and no-PRF refusal.",
+          "implementation": "planned",
+          "verification": "requires-current-provider-or-host-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Exercise a real two-profile/device enrolment, known-address reopen, viewing-key rotation, removal, grant handoff/revoke, and the NIGHT recipient-wallet refresh.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Distinguish synced credential restoration from an independently enrolled survivor and from total-loss recovery. Record RP/origin constraints without promising cross-provider credential portability.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Capture redacted evidence and exact environment versions; do not export credentials or weaken WebAuthn profile/UV checks to obtain a green result.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 233,
+      "title": "Define durable service-job outcomes and restart-safe reconciliation",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/233",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:12:41Z",
+      "bodySha256": "ce44ace847fee4a184bf06cac56eaa86dc4c61239abb6825303d4c0da1f5b69d",
+      "originalBodySha256": "0d6dbb7356283a493be18892f8e948e190c3a261934164c7331c56e9bcade819",
+      "implementation": "planned",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Specify a serialisable job identity/intent, lifecycle, event cursor, retention, and explicit unknown/reconciliation states for supported operations.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Persist accepted intent and transaction milestones before acknowledging relevant work; after restart reconcile submitted work instead of automatically rerunning it.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Test queued/running/completed/failed jobs, duplicate requests, stale cursors, interruption, eviction, and storage failures. Define bounded events/payloads and backpressure.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Keep the simple memory store for documented development use and publish clear durability guarantees for each host composition.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 234,
+      "title": "Harden reference service deployment and publish an operator support contract",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/234",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:12:43Z",
+      "bodySha256": "955346ce52875c2380fce6599053dc1096f22acdbc2c7a6a26607b550854bd1f",
+      "originalBodySha256": "e865d03cf700cd93284decac4dd0924e6ad05ad44c47346d3fcbf9c9f969883e",
+      "implementation": "planned",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Document and test authenticated ingress integration, caller/asset/deploy budgets, queue/resource limits, health versus readiness, timeouts, shutdown, and redacted metrics.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Keep fee-only sponsorship separate from value transfer; validate policy before wallet/prover work and retain fail-closed network/binding checks.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Test token rotation, persistent volume/backup permissions, stale locks, disk-full and corrupt-state handling. Refuse unsupported multi-replica modes unless a transactional store exists.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Make remote-prover disclosure/opt-in explicit; self-hosting instructions must work without claiming an enclave or local-proving privacy guarantee.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Qualify documented non-root Linux deployment commands with their actual mounts and controlled network exposure.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 235,
+      "title": "Qualify key-service profiles, recovery of downloads, and integrity failures",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/235",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:18:49Z",
+      "bodySha256": "8dfee35b4fc69d9bd2d547051914498f79132ba561b79cbfb18801e2b58bf4d2",
+      "originalBodySha256": "717173fa13a0ea86d7c2b87366298fbe6d6900d872c4f14a417c33ecf5b4d7c6",
+      "implementation": "planned",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Test cold and cached restore against the independently pinned manifests, including corrupt/missing ZKIR, verifier, prover, and compiler/toolchain mismatch.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] For every profile, advertise exactly available circuits and bytes; test unavailable circuits, GET/HEAD, valid/invalid ranges, CORS, path traversal, and private cache paths.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Schedule full-cache/full-restore qualification on suitable runners, recording memory/disk/time and distinguishing cached verification from fresh generation.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Provide restore/offline-mirror/resume recipes and bounded resource/egress behavior. Keep large prover keys outside npm; retain small verifier/ZKIR bundles and all expected hashes.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Track MIP-0020 supported APIs explicitly; do not describe an experimental/native regeneration path as a supported browser WASM API.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 236,
+      "title": "Automate private-registry, image, and documentation release acceptance",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/236",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:12:48Z",
+      "bodySha256": "da16ff81175bedb017b8594d9694d066670c1f11d225255db90b0ead00537f10",
+      "originalBodySha256": "54758ab0f296070cfb69657ab615c0c1bf2e91fe074c37bcf26a752e52685a99",
+      "implementation": "planned",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Install all nine exact packages from the real authenticated registry in an authorised clean consumer; verify access/visibility, dist tags, SRI, source/publisher attestations, and physical runtime identity.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Verify version/source image aliases against pulled immutable digests, non-root platform metadata, startup refusals, and the declared localnet suite.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Check published Pages and all active README install/image commands against the same release receipt; prevent older digests becoming current instructions.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Retain GPG/DCO commits/tags and signed manifests; push release tags individually and verify workflow dispatch. Never mirror private npm tarballs as public assets.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Compare same-platform reproducible archive hashes and explicitly normalise or document cross-platform gzip-header differences without weakening exact published-byte attestation checks.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 237,
+      "title": "Define the stable supported capability set and synchronise architecture documentation",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/237",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:12:50Z",
+      "bodySha256": "6480faf40d5e055be01562fa11a1361f46e6570f9d471606e308faed2c899b12",
+      "originalBodySha256": "e63da0e8b49e6ad7284956fba8e7d44942539e4cc200d9a6b844fa1ae39663dc",
+      "implementation": "planned",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Define a machine-checked support table distinguishing packaged, typed, host-dependent, proof-tested, browser-tested, and externally qualified paths. Keep both P-256 and JubJub first-class.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Expose or document host capability negotiation with actionable failures before ceremonies for missing value-wallet, roster, grant-opening, recovery, or circuit-profile requirements.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Freeze existing cryptographic bytes and clearly version any proposed codec/binding changes. Classify k256 as experimental engineering support rather than normative MIP-0013 compliance.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Reconcile current package names/boundaries, ADRs, beta scope, agent instructions, and upstream vision; clearly label historical managed/TEE-only assumptions and current remote-prover limits.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Keep #82 as full circuit-coverage work for 0.2.0; this issue must not claim every packaged circuit is now application-ready.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 238,
+      "title": "Publish executable Passport use-case recipes with evidence and negative-path coverage",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/238",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:12:53Z",
+      "bodySha256": "cf8bc03e2dd937319879e78b0d867e2fbaafdeb52b959bfcb6bb656aca06edc4",
+      "originalBodySha256": "46b580618ffd2d9359d932f32efdf663a56a81f135215159df5bf8c4931bd73c",
+      "implementation": "planned",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Maintain a catalogue for seedless sponsored create, reload/address open, funded ACC\u2192recipient wallet round trip, provider-compatible second-device recovery, grants, holdings, and failure reconciliation.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Each recipe specifies packages/ports, prerequisites, smallest-unit amounts, authority/consent, expected chain outcome, negative paths, cleanup, and an automated/manual evidence tier.",
+          "implementation": "planned",
+          "verification": "requires-current-provider-or-host-evidence",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Type-check published-package examples, validate commands/links in CI, and include sanitized request/response traces without key, grant-opening, or witness leakage.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Map supported scenarios to P1/P3/P4/P6/P7/P8 without claiming full P2/P5/P9/P10 or full wallet-host compatibility. Do not imply the built-in HD wallet is the ACC.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 239,
+      "title": "Recover grant bookkeeping after local storage loss without inventing capabilities",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/239",
+      "observedState": "OPEN",
+      "milestone": "0.1.0",
+      "observedUpdatedAt": "2026-10-20T03:12:56Z",
+      "bodySha256": "ece2039f22c7195bdbbd8810a3c21918c1b121fdfe94f50119154df470652a9b",
+      "originalBodySha256": "b3de18da191503dc9736a7cd8531517a8d111da3ab470d596e6c08373ca828ca",
+      "implementation": "planned",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Specify which grant records can be reconstructed from authenticated chain data and which secret openings require an encrypted backup or another authorised key source.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Test reload, profile loss, another enrolled device, stale/revoked grants, missing openings, and read-grant rotation. Never substitute an empty roster or weaken live commitment checks.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Provide the supported chain-reconstruction and/or encrypted backup/restore path, or an explicit preflight refusal and user-visible limitation for unsupported configurations.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Separate public audit traces from secret capability export; record consent and authentication for any export/import. Preserve backward reads for current records.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 240,
+      "title": "Design and qualify total-loss recovery with successor and viewing-key continuity",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/240",
+      "observedState": "OPEN",
+      "milestone": "0.2.0",
+      "observedUpdatedAt": "2026-10-20T03:12:59Z",
+      "bodySha256": "3e3ddebbc6617f6178d76a580adca85ea6e194a161affb429b039689293fd6df",
+      "originalBodySha256": "fe1fd03934aded2ebfbcec7bb0ca2e8f509ea8414a16ca31e93e7dd0442e6e00",
+      "implementation": "planned",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Derive a reviewed flow from the current recovery standard and upstream reference, behind typed ports; do not infer recovery from the ACC address or an HD seed recipe.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Gate on the binding-security decision, corrected retirement proof/node tests, and migration policy for existing or already-finalised accounts.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Cover guardian/session authentication, threshold failure, cancellation/delay, malicious/stale responses, concurrent sessions, successor validation, and fresh viewing-wrap continuity.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Complete a disposable full-loss restore and post-recovery old-device/grant refusal; obtain independent security review before exposing it as supported.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 241,
+      "title": "Evaluate current-ledger browser proving and portable key regeneration",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/241",
+      "observedState": "OPEN",
+      "milestone": "0.2.0",
+      "observedUpdatedAt": "2026-10-20T03:13:01Z",
+      "bodySha256": "07513171484676f5c58793953de92138b6dc97665d05cf407c72a06e11f560d4",
+      "originalBodySha256": "ba150071562ba7ee94d4cc317f462b5f8bd08c5c334e9357ab1cc492bd1e24db",
+      "implementation": "planned",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Measure feasibility on the exact supported runtime/ledger/compiler/binding and representative P-256/JubJub shielded/unshielded circuits before promising a browser path.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Specify a Worker/provider port, cancellation/progress, memory/network/cache budgets, integrity pins, and explicit hosted fallback consent.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Use supported prover/regeneration APIs or record an upstream blocker; benchmark desktop/mobile/browser targets separately and preserve raw pin-labelled receipts.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Implement only the approved bounded profile; retain the documented self-host path and never silently upload private witnesses on fallback.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 242,
+      "title": "Specify origin-bound dApp and agent grant connection over the owner SDK",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/242",
+      "observedState": "OPEN",
+      "milestone": "0.2.0",
+      "observedUpdatedAt": "2026-10-20T03:13:03Z",
+      "bodySha256": "bfbf833a32aa0d035f719542bd2457851d683c26da7aa26463782f57e975e283",
+      "originalBodySha256": "b745c23d60eb068408359cdddbc636962d6c6f60fd97846b1d746306cf2466a0",
+      "implementation": "planned",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Specify the origin-attested request/possession proof, consent, grant scope translation, sign-in/result, transport failure, and chain verification against the relevant upstream draft/version.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Define least-privilege unattended agent keys independently from human passkey ceremonies; no bypass of user presence or silent device enrolment when connecting a dApp.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Exercise a separate dApp/holder across issue, bounded use, read capability, expiry, revoke, wrong-origin/caller, and reload with evidence.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Use existing neutral package boundaries first; any new connect/core entrypoint requires an implementation and ADR, not an empty published package.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 243,
+      "title": "Qualify wallet-to-ACC funding and value routes beyond the standalone network",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/243",
+      "observedState": "OPEN",
+      "milestone": "0.2.0",
+      "observedUpdatedAt": "2026-10-20T03:13:07Z",
+      "bodySha256": "8b3731bde3ae77c64494d3167c7515f81632e4da79d90ade282ffd4703be3c87",
+      "originalBodySha256": "199bcdb9bea0993eb17af8d66ce8b3f3ba7f42b26acbecaf7a50561b874c9a6d",
+      "implementation": "planned",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Choose an explicit compatible network/ledger/wallet/asset matrix and obtain operator-owned funded wallets, controlled ingress, limits, and persistent transactional state.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Verify deposit and withdrawal credit against attributable successful chain actions, including concurrent senders, partial failures, dust/fees, indexer lag, and idempotent replay.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Keep uncertain reservations pending until evidence supports reconciliation. Qualify multi-process/replica behavior separately from the current single-host store.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Ship a network only with recorded proof-backed receipts and a tested runbook. Keep bridges, external-chain coins, and general cross-chain funding outside this issue.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    },
+    {
+      "number": 244,
+      "title": "Plan the remaining Passport promises and upstream cryptographic integration gates",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/issues/244",
+      "observedState": "OPEN",
+      "milestone": "0.2.0",
+      "observedUpdatedAt": "2026-10-20T03:13:10Z",
+      "bodySha256": "b8ca2e12357c7d06ef52ef4078adc3547ee8949d3b90ca3b6d49fd1a6cc7734e",
+      "originalBodySha256": "060e945b0c3b728b67a21fbbd251c50e09ddfd2f13aff572b7f6b329429f49ab",
+      "implementation": "planned",
+      "verification": "none",
+      "evidencePaths": [],
+      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "criteria": [
+        {
+          "criterion": "- [ ] Maintain a P1\u2013P10/C1\u2013C26 map with current SDK responsibility, host/product responsibility, standard status, external owner, and a testable adoption gate.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Link #20 discovery, #23 create-time optimisation, #82 full typed coverage, #201 partial shielded spends, and the recovery/local-proving/dApp follow-ups; create no duplicate implementation tickets.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Assess new authoriser, viewing-envelope, domain-separation, and alternative compiler/prover work against exact source/codec/key/ABI pins. Open experiments are watch items, not supported release features.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Treat C25 cross-chain integration as upstream-dependent; no automatic Cardano/EVM/Solana custody, bridge, DID, or selective-disclosure claims from adding a signing arm.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        },
+        {
+          "criterion": "- [ ] Record which bounded candidates actually enter 0.2.0 after 0.1.0 acceptance; this planning milestone is not a commitment to deliver the full Passport v1 vision.",
+          "implementation": "planned",
+          "verification": "none",
+          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+        }
+      ],
+      "closureRecommendation": "keep-open",
+      "githubMutationPerformed": false
+    }
+  ]
+}

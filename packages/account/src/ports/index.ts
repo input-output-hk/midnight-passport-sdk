@@ -338,6 +338,14 @@ export interface AccountViewingKey {
     keyring: AccountKeyring,
     entries: readonly Uint8Array[],
   ): Promise<(OpenedInboxEntry | null)[]>;
+  /** Authenticated public registrations from current/prior readable rosters, for
+   * identifying a removal target after an interrupted key switch. Never a fresh-key
+   * recipient list. Secret/roster keys remain inside the implementation. */
+  readDeviceRegistrationHistory?(
+    networkId: string,
+    keyring: AccountKeyring,
+    entries: readonly Uint8Array[],
+  ): Promise<readonly DeviceReader[]>;
   sealGrant(networkId: string, account: string, grant: GrantBookkeeping): Promise<Uint8Array[]>;
   reencryptInbox?(
     networkId: string,

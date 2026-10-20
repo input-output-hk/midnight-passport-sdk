@@ -900,3 +900,71 @@ test('P-256 sign-in authenticates a real inbox batch when the host skips empty b
   state.encKey.fill(0);
   await assert.rejects(accounts.openAccount(), { code: 'EncryptionKeyMismatch' });
 });
+
+test('P-256 removal resumes from authenticated target history and still refuses a grant to that reader', async () => {
+  const fake = createFakePorts();
+  let interrupt = false;
+  /** @type {{grantId:string,readPublicKey:string}[]} */ let targets = [];
+  const ports = {
+    ...fake,
+    viewingKey: viewingKey(),
+    authoriser: {
+      ...fake.authoriser,
+      withKeySession: async (/** @type {()=>Promise<any>} */ work) => work(),
+    },
+    holdings: { selectHeldEntries: async () => [] },
+    readGrants: {
+      readActiveReadGrantTargets: async () => ({
+        authNonce: [...fake.ledger.values()][0]?.authNonce ?? 0n,
+        targets,
+      }),
+    },
+    chain: {
+      ...fake.chain,
+      call: async (
+        /** @type {import('../packages/account/dist/ports/index.js').CallRequest} */ request,
+      ) => {
+        if (request.circuit === 'remove_device_with_p256' && interrupt) {
+          interrupt = false;
+          throw new Error('removal interrupted');
+        }
+        return fake.chain.call(request);
+      },
+    },
+  };
+  const account = await createPassportAccounts(ports).createAccount({
+    userName: 'resume-owner',
+    retireAuthority: true,
+  });
+  const state = fake.ledger.get(account.address);
+  assert.ok(state);
+  state.specVersion = 3;
+  const joining = fakeAuthoriser({ device: 1 });
+  const reader = {
+    scheme: /** @type {const} */ ('p256-webauthn'),
+    readerPublicKey: hex(x25519.getPublicKey(new Uint8Array(32).fill(7))),
+    devicePublicKey: await joining.devicePublicKeyHex(),
+    policy: FAKE_POLICY,
+  };
+  assert.ok(account.addDevice && account.removeDevice);
+  const added = await account.addDevice(reader);
+  const oldKey = state.encKey.slice();
+  interrupt = true;
+  await assert.rejects(account.removeDevice(added.commitmentHex), /removal interrupted/);
+  assert.notDeepEqual(state.encKey, oldKey);
+  assert.equal(state.entries.has(added.commitmentHex), true);
+  const reopened = await createPassportAccounts(ports).openAccount();
+  assert.ok(reopened.removeDevice);
+  targets = [{ grantId: 'ab'.repeat(32), readPublicKey: reader.readerPublicKey }];
+  const keyBeforeRetry = state.encKey.slice(),
+    inboxBeforeRetry = state.inboxEntries.map(hex);
+  await assert.rejects(reopened.removeDevice(added.commitmentHex), { code: 'DeviceRosterInvalid' });
+  assert.deepEqual(state.encKey, keyBeforeRetry);
+  assert.deepEqual(state.inboxEntries.map(hex), inboxBeforeRetry);
+  targets = [];
+  assert.equal(
+    (await reopened.removeDevice(added.commitmentHex)).removedCommitmentHex,
+    added.commitmentHex,
+  );
+  assert.equal(state.entries.has(added.commitmentHex), false);
+});

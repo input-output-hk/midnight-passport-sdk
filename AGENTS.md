@@ -279,6 +279,15 @@ witnesses, giant prover keys or private source snapshots into it.
 - **Keep the docs in step.** When a flow, an endpoint or a prompt count changes, update
   `docs/prototype/` and `apps/README.md` in the same pull request.
 
+### Qualification for the stability milestone
+
+Run `nix develop -c pnpm qualify list` and `plan foundation` before qualification.
+The engineer guide is `docs/site/qualification.md`; the local review map is
+`docs/review/stability-foundation/README.md`. Use fresh evidence paths in the vault
+or a private ignored directory. Missing inputs, skipped tests and unimplemented
+cases never become qualified passes. Three matching foundation runs establish
+repeatability only for that declared scope, not release/provider acceptance.
+
 ### Where things are
 
 | Path                               | What                                                                                                                                       |

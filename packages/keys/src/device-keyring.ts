@@ -343,6 +343,35 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
     );
   };
 
+  const readDeviceRegistrationHistory: NonNullable<
+    AccountViewingKey['readDeviceRegistrationHistory']
+  > = (networkId, keyring, entries) => {
+    checkedEntries(entries);
+    return onNetwork(networkId, async (readerSecret) =>
+      withKeyring(readerSecret, keyring, async ({ all }) => {
+        const registrations = new Map<string, DeviceReader>();
+        for (const entry of entries) {
+          for (const secret of all) {
+            const device = await openDeviceRegistration(secret.rosterKey, entry);
+            if (!device) continue;
+            const identity = JSON.stringify({
+              reader: device.readerPublicKey,
+              signer: device.devicePublicKey,
+              scheme: device.scheme ?? 'jubjub-schnorr',
+              policy: device.policy && {
+                rpIdHash: hex(device.policy.rp_id_hash),
+                origin: hex(device.policy.origin),
+              },
+            });
+            registrations.set(identity, device);
+            break;
+          }
+        }
+        return [...registrations.values()];
+      }),
+    );
+  };
+
   const sealGrant: AccountViewingKey['sealGrant'] = (networkId, account, grant) =>
     onNetwork(networkId, async (readerSecret) => {
       const { object, ...fields } = grant;
@@ -382,6 +411,7 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
     openCoins,
     reencryptCoins,
     openInbox,
+    readDeviceRegistrationHistory,
     sealGrant,
     reencryptInbox: reencryptCoins,
     sealView,

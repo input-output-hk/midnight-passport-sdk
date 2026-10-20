@@ -126,3 +126,11 @@ that left its listener open, so the test process did not exit. Those fixtures no
 bind and connect to explicit IPv4 loopback and register connection teardown with
 `TestContext.after` before assertions. Cleanup runs on failure as well as success.
 This changes test resource ownership, not the service's production network binding.
+
+## Stability harness foundation
+
+`pnpm qualify` now separates source, generated-contract simulator, unit/port,
+virtual-browser, proof/localnet, packed/published-consumer and manual-provider tiers.
+Its negative/ledger tests run through the existing PR test glob. Expensive real
+flows remain opt-in; unavailable/missing/skipped cases cannot qualify a suite.
+See [the guide](site/qualification.md) and [review map](review/stability-foundation/README.md).

@@ -368,3 +368,17 @@ An empty inbox batch is a transport no-op; SDK P-256 and JubJub opening now requ
 entry before accepting the viewing key. Both packed-consumer checks reject separate physical
 copies of the current Compact/ledger modules, even when their versions match. These checks
 improve integration diagnostics; #79/#81's cross-product runtime criteria remain open.
+
+## Stability foundation clarification — 2026/10/20
+
+| Capability | Retained binding support | Evidence boundary |
+| --- | --- | --- |
+| JubJub and P-256 entry removal | One selected opaque entry, with complete/unique SDK roster and fresh viewing/roster delivery checks | Generated-circuit regressions and port/crypto tests; not complete compromised-key revocation |
+| Previous viewing knowledge | Cannot be erased by rotation/removal | Old envelope/registration openings remain possible with the old key context |
+| Total-loss recovery | Not exposed; legacy finaliser is not a safe full-retirement fallback | Exact source and separately compiled candidate simulator comparison; no candidate proof/node/key adoption |
+| Imported-account recovery setup | Unknown from the reference-service constructor policy | Address, schema tags, epoch/count are insufficient to infer the secret lifecycle or installed verifier code |
+| Qualification harness | Foundation source/simulator/port tiers implemented with closed receipts | Missing/skipped/unimplemented cases do not pass; no full release/current-Lace claim |
+
+See [ADR 0012](adr/0012-retain-binding-with-explicit-removal-and-recovery-limits.md)
+and the [qualification guide](site/qualification.md). No binding ID, generated artifact
+or key manifest was repointed. The exact-value shielded withdrawal guard remains.

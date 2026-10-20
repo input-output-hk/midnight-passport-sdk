@@ -1,3 +1,4 @@
+import { resolveRemovalReader } from './removal-reader.js';
 import {
   PASSPORT_API_VERSION,
   type DeviceEnrollmentResult,
@@ -764,20 +765,23 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               'DeviceRosterInvalid',
               'A live device has no unique, usable reader registration.',
             );
-          if (
-            target &&
-            roster.outside.some((removed) =>
-              roster.readers.some(
-                (survivor) =>
-                  survivor.readerPublicKey === removed.readerPublicKey ||
-                  survivor.devicePublicKey === removed.devicePublicKey,
-              ),
-            )
-          )
-            throw new PassportConnectorError(
-              'DeviceRosterInvalid',
-              'The removed device shares a reader or signing key with a survivor.',
-            );
+          const removedReader = target
+            ? await resolveRemovalReader(roster, {
+                ...(viewingKey.readDeviceRegistrationHistory && {
+                  read: () =>
+                    viewingKey.readDeviceRegistrationHistory!(networkId, oldKeyring, oldEntries),
+                }),
+                resolve: (registered) =>
+                  decodeP256
+                    ? resolveRegisteredReaders({
+                        ...rosterInput,
+                        registered,
+                        p256Pure: resolvedBinding.pureCircuits,
+                        decodeP256DevicePublicKey: decodeP256,
+                      })
+                    : resolveJubjubReaders({ ...rosterInput, registered }),
+              })
+            : undefined;
           const held = await holdings.selectHeldEntries(record.address, oldEntries, opened);
           const seen = new Set<number>();
           const holdingEntries: Uint8Array[] = [];
@@ -799,7 +803,6 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               (entry[1] === 1 || entry[1] === 2) &&
               (entry[0] === 0xd2 || entry[0] === 0xd4 || entry[0] === 0xd5),
           );
-          const removedReader = target ? roster.outside[0] : undefined;
           const keys = await viewingKey.createKeys(networkId, {
             devicePublicKey: device,
             keyring: oldKeyring,
@@ -846,6 +849,16 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             throw new PassportConnectorError(
               'GrantRosterUnsettled',
               'Every surviving read grantee must receive the fresh viewing secret.',
+            );
+          if (
+            removedReader &&
+            deliveries.targets.some(
+              ({ readPublicKey }) => readPublicKey === removedReader.readerPublicKey,
+            )
+          )
+            throw new PassportConnectorError(
+              'DeviceRosterInvalid',
+              'An active read grant would return the fresh key to the removed reader.',
             );
           if (revocation && !deliveries.targets.some(({ grantId }) => grantId === revocation))
             throw new PassportConnectorError('GrantRosterUnsettled', 'The read grant disappeared.');

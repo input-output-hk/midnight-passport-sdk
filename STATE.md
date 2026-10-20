@@ -15,8 +15,11 @@
   validate exact sizes/SHA-256 and reject corrupt cache hits. See [CI policy](docs/ci.md)
   and [ADR 0011](docs/adr/0011-fast-ci-and-coherent-milestone-slices.md).
   Remote timing and cache warm-up await an authorised push.
-- **First slice ready:** #227 evidence reconciliation, #228 binding/recovery audit,
-  #229 revocation semantics and #231 qualification harness foundation. Follow with
+- **First slice delivered locally:** #227 issue/evidence index, #228 binding/recovery
+  audit and retention ADR, #229 entry-removal boundaries and JubJub read-grant exclusion
+  parity, #231 tiered harness/closed receipts foundation. See the
+  [review map](docs/review/stability-foundation/README.md). Full issue closure,
+  candidate binding adoption and broader release/provider qualification are not claimed. Follow with
   #79/#81 consumer compatibility and #230 durable mutations. A required incompatible
   binding/API change moves the next candidate to the 0.2.0 version axis.
 - **Working agreement:** current branch, local execution, coherent 5k–10k-line PRs

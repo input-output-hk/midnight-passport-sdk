@@ -57,7 +57,10 @@ export interface ViewingKeyRotationResult extends PassportTxResult {
   readonly unsealedGrantIds: readonly string[];
 }
 
-/** A device removal rotates the viewing and roster keys before revoking its ACC entry. */
+/** Removes one opaque ACC set entry after viewing/roster rotation.
+ * This does not certify that a compromised signing key has no other entries,
+ * and cannot erase viewing secrets or plaintext learned before rotation.
+ */
 export interface DeviceRemovalResult extends ViewingKeyRotationResult {
   readonly removedCommitmentHex: string;
   readonly rotationTxHash: string;
@@ -218,7 +221,10 @@ export interface PassportAccount {
   rotateEncryptionKey(newKey: Uint8Array, options?: FlowOptions): Promise<PassportTxResult>;
   /** Sealed accounts rotate a random viewing secret; requires verified holdings and grant targets. */
   rotateViewingKey?(options?: FlowOptions): Promise<ViewingKeyRotationResult>;
-  /** Sealed owner operation; refuses self-removal and a target absent from the live ACC. */
+  /** Sealed owner entry removal, not complete compromised-key revocation.
+   * Refuses self-removal, an absent target and incomplete/ambiguous reader rosters.
+   * Rotation excludes the target reader from the new generation, not prior knowledge.
+   */
   removeDevice?(commitmentHex: string, options?: FlowOptions): Promise<DeviceRemovalResult>;
   /** Owner enrollment; JubJub rotates first when live read grants require a fresh account key. */
   addDevice?(reader: PassportDeviceReader, options?: FlowOptions): Promise<DeviceEnrollmentResult>;

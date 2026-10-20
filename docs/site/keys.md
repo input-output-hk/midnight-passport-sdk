@@ -21,7 +21,7 @@ The account package also exports `resolveRegisteredReaders` for mixed JubJub/P-2
 After a P-256 owner enrolls a second device, that passkey can call `openAccountAt(address)` with the ACC address supplied by its host. The flow verifies the selected credential and policy, locates its live ACC device entry, and opens an inbox envelope against the current ledger `enc_key`; it does not rely on a directory hint or expose the raw viewing secret. The demo's **Open by ACC address** action now exposes this path for either supported authoriser arm. It requires an already-enrolled passkey and a known address; it does not discover accounts or recover a lost passkey. P-256 rotation is available to hosts that supply verified holdings and a complete live read-grant source.
 `removeDevice` uses a fresh roster key as well as a fresh viewing secret, excludes the target
 reader before sealing, and refuses a surviving reader that shares a key with the target. It then
-calls `remove_device_with_jubjub` and confirms the target left the live ACC set. The operation
+calls the owner's `remove_device_with_jubjub` or `remove_device_with_p256` circuit and confirms the target left the live ACC set. The operation
 spans several chain transactions; an interruption may require the owner to resume from its new
 sealed keyring before trying removal again.
 
@@ -57,3 +57,17 @@ The [bundle builder](https://github.com/input-output-hk/midnight-passport-sdk/bl
 ### Release constraints
 
 GitHub Packages caps an npm version tarball below 256 MB, so the full key set cannot be packed there. The release contract package measures about 5.25 MB unpacked and 2.89 MB compressed. This exceeds the earlier 5 MB unpacked design estimate because it includes both bindings; the release inspector enforces the registry's tarball limit and rejects any `.prover` file.
+
+## Device-entry removal boundary
+
+`removeDevice` removes one opaque entry and excludes its reader from fresh sealed
+keys. It cannot certify complete compromised-key revocation or erase prior viewing
+knowledge. Ambiguous rosters and grants to the removed reader must be reconciled
+before removal. Total-loss recovery remains unavailable on the retained binding.
+See [Qualification and safety boundaries]({{ '/qualification/' | relative_url }}).
+
+The standard key recipe also implements the optional read-only device-registration
+history port for removal resumption. It keeps the existing envelope/inbox/prior-key
+bounds and zeroes internal key copies through the existing key-session cleanup.
+Only public registration metadata crosses that port; current roster resolution
+continues to select fresh-key recipients.

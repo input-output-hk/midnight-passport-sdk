@@ -208,9 +208,9 @@ export const FLOWS: Record<ActionId, FlowDef> = {
     ],
   },
   removeDevice: {
-    title: 'Remove enrolled device',
+    title: 'Remove device entry',
     summary:
-      'Review a live device commitment, rotate the sealed account keys, and confirm that entry is absent from the ACC.',
+      'Rotate sealed keys and remove one live commitment. This cannot guarantee full compromised-key revocation or erase previously learned data.',
     stages: [
       { id: 'review', label: 'Read and review the live device roster' },
       { id: 'submit', label: 'Rotate keys and remove the selected entry' },
