@@ -134,3 +134,18 @@ virtual-browser, proof/localnet, packed/published-consumer and manual-provider t
 Its negative/ledger tests run through the existing PR test glob. Expensive real
 flows remain opt-in; unavailable/missing/skipped cases cannot qualify a suite.
 See [the guide](site/qualification.md) and [review map](review/stability-foundation/README.md).
+
+### Hosted gate scheduling — 2026/10/24
+
+The first foundation core jobs took 65–81 seconds. The revised workflow splits
+lint/format, the complete build/type checks, application/key-service tests and four
+disjoint Node package-test shards. Every shard requires at least four matching files
+before execution. Fresh outputs are built in each runner; only the lockfile-keyed
+pnpm download store is cached. The unchanged required aggregate refuses failed,
+cancelled or skipped dependencies. All external actions remain SHA-pinned.
+
+At source `06dbdc6`, the top-stack [hosted run](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/40036195974)
+passed: lint 24 s, full build/types 29 s, apps 38 s, package shards 20–45 s,
+aggregate 3 s. This workflow is carried into the foundation PR so dependent PRs
+also use the bounded lanes. These are observed runs, not a universal cold-cache
+timing guarantee; proof/outage matrices remain opt-in.

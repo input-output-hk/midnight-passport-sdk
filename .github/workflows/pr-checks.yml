@@ -66,42 +66,81 @@ jobs:
           fi
           echo "Registers stay out of this repo."
 
-  build-lint-test:
-    name: Lint, format, build, and test
+  lint_checks:
+    name: Lint and format
     runs-on: ubuntu-latest
-    # The warm-job target is 30–45 s, not a timeout that conceals real failures.
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version-file: .nvmrc
-      - name: Prepare pnpm
-        run: |
-          corepack enable
-          pnpm config set store-dir "$GITHUB_WORKSPACE/.cache/pnpm"
-      - name: Restore dependency downloads
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
-        with:
-          path: .cache/pnpm
-          key: pnpm-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.nvmrc', 'package.json', 'pnpm-workspace.yaml', '.npmrc', 'pnpm-lock.yaml') }}
-          restore-keys: |
-            pnpm-v1-${{ runner.os }}-${{ runner.arch }}-
-      - name: Install frozen dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
+      - uses: ./.github/actions/prepare-workspace
       - name: Lint and format
         run: |
           pnpm run lint
           pnpm run format:check
-      - name: Build and check script types
+
+  build_types:
+    name: Fresh build and all types
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/prepare-workspace
+      - name: Build and check every script type
         run: pnpm run build
-      - name: Test packages and applications
-        run: |
-          pnpm test
-          pnpm run test:apps
-          node --test apps/passport-key-service/test/*.test.mjs
       - name: Check application types
         run: |
           pnpm --filter passport-service exec tsc --noEmit -p .
           pnpm --filter passport-funding-service exec tsc --noEmit -p .
           pnpm --filter passport-dapp exec tsc --noEmit -p .
+
+  app_tests:
+    name: Application and key service tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/prepare-workspace
+      - name: Fresh package outputs
+        run: pnpm exec tsc -b tsconfig.build.json
+      - name: Test all applications and key service
+        run: |
+          pnpm run test:apps
+          node --test apps/passport-key-service/test/*.test.mjs
+
+  package_tests:
+    name: Package tests (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/prepare-workspace
+      - name: Fresh package outputs (script types run in build_types)
+        run: pnpm exec tsc -b tsconfig.build.json
+      - name: Run every package test through Node's disjoint file shards
+        run: |
+          node -e "if(require('node:fs').globSync('tests/**/*.test.mjs').length < 4){console.error('expected at least four test files for four nonempty shards');process.exit(1)}"
+          node --test --test-shard=${{ matrix.shard }}/4 "tests/**/*.test.mjs"
+
+  # Preserve the required check name. A failed, cancelled or skipped dependency fails it.
+  build-lint-test:
+    name: Lint, format, build, and test
+    if: always()
+    needs: [lint_checks, build_types, app_tests, package_tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Require every full gate component
+        env:
+          LINT_RESULT: ${{ needs.lint_checks.result }}
+          TYPES_RESULT: ${{ needs.build_types.result }}
+          APPS_RESULT: ${{ needs.app_tests.result }}
+          PACKAGES_RESULT: ${{ needs.package_tests.result }}
+        run: |
+          test "$LINT_RESULT" = success
+          test "$TYPES_RESULT" = success
+          test "$APPS_RESULT" = success
+          test "$PACKAGES_RESULT" = success
