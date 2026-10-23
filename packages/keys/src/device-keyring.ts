@@ -147,8 +147,14 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
           continue;
         }
         if (publicKeyHex !== hex(encKey)) {
-          if (seen.has(publicKeyHex) || earlier.length >= MAX_PREVIOUS_SECRETS) zero(opened);
+          if (seen.has(publicKeyHex)) zero(opened);
           else {
+            if (earlier.length >= MAX_PREVIOUS_SECRETS) {
+              zero(opened);
+              throw new Error(
+                'Too many distinct historical viewing keys; reconcile the inbox before continuing.',
+              );
+            }
             seen.add(publicKeyHex);
             earlier.push(opened);
           }
@@ -169,7 +175,6 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
     self: DeviceReader,
     readers: readonly LiveDeviceReader[],
     rosterKey?: Uint8Array,
-    retainedTarget?: DeviceReader,
   ): Promise<AccountKeys> => {
     const secrets: AccountSecrets = {
       secret: x25519.utils.randomSecretKey(),
@@ -185,9 +190,7 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
         registrations: rosterKey
           ? []
           : await Promise.all(
-              [...recipients, ...(retainedTarget ? [retainedTarget] : [])].map((reader) =>
-                sealDeviceRegistration(secrets.rosterKey, reader),
-              ),
+              recipients.map((reader) => sealDeviceRegistration(secrets.rosterKey, reader)),
             ),
       };
     } finally {
@@ -254,14 +257,7 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
           readerKeys.add(reader.readerPublicKey);
           deviceKeys.add(reader.devicePublicKey);
         }
-        const targets = removed
-          ? registered.filter((reader) => reader.devicePublicKey === removed.devicePublicKey)
-          : [];
-        if (removed && targets.length !== 1)
-          throw new Error('removal needs one current authenticated target registration');
-        // Retain metadata under the fresh roster key, never a viewing-key envelope for the target.
-        // A retry can identify it from the actual current generation until removal settles.
-        return create(self, readers, rotateRoster ? undefined : live.rosterKey, targets[0]);
+        return create(self, readers, rotateRoster ? undefined : live.rosterKey);
       });
     });
 

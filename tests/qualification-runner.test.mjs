@@ -167,6 +167,9 @@ test('ignored compiled inputs are included in qualification identity and symlink
     await mkdir(join(root, 'other-build'));
     await symlink(join(root, 'other-build'), join(root, 'packages/example/dist'));
     await assert.rejects(qualificationRuntimeFiles(root), /symlinks/);
+    await rm(join(root, 'packages/example'), { recursive: true, force: true });
+    await symlink(join(root, 'other-build'), join(root, 'packages/example'));
+    await assert.rejects(qualificationRuntimeFiles(root), /symlinks/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

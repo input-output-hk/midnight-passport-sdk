@@ -408,11 +408,12 @@ See [ADR 0012](adr/0012-retain-binding-with-explicit-removal-and-recovery-limits
 and the [qualification guide](site/qualification.md). No binding ID, generated artifact
 or key manifest was repointed. The exact-value shielded withdrawal guard remains.
 
-## 2026/10/23 foundation review correction
+## 2026/10/24 foundation review correction
 
-Unanchored earlier envelopes cannot authenticate a removal target. The history port
-is removed. Removal retains target metadata in the fresh authenticated roster without
-delivering a new key envelope, allowing safe retries after the key switch. Missing or
-ambiguous current targets still refuse. Qualification identities include ignored
-compiled package inputs and reject symlinked dist roots. Repeated outer receipts do
-not audit omitted runs or independently pin every external consumer input.
+Unanchored earlier envelopes cannot authenticate removal targets; the history port
+is removed. The retained-target-metadata experiment was withdrawn because another
+rotation could reinclude that still-live reader. Legacy retry/interleaved rotations
+refuse an unresolved current roster; original protected continuations are a separate
+host capability. Historical-secret overflow refuses instead of hiding old holdings.
+Runtime identities reject symlinked package/dist directories and hash compiled inputs.
+Outer receipt repetition does not certify external consumer-input equivalence.

@@ -97,15 +97,12 @@ target reader, the SDK cannot establish that a read-grant recipient is distinct.
 A focused regression verifies no chain call, inbox publication or ACC key switch
 on this refusal.
 
-## Review correction — 2026/10/23
+## Review correction — 2026/10/24
 
-Sender-chosen earlier envelopes are not evidence of historical ledger keys. The fallback
-and history port are removed. Retain the target registration in the new authenticated
-roster, without a new viewing-key envelope; legacy retries then use current metadata.
-Both arms retain grant/key collision refusals. A seventeen-envelope substitution
-regression verifies the target reader cannot be replaced by unanchored metadata.
-
-Runtime identities also hash ignored compiled package inputs, refusing symlinked files
-and dist roots. Source/runtime preflight precedes evidence lock creation. The three-
-receipt checker establishes matching ordered workspace runs, without proving omitted
-runs or external consumer-input equivalence. Historical evidence is not relabelled.
+The unanchored history fallback/API and the later retained-target-metadata experiment
+are withdrawn. The latter could reinclude a pending removal target in another rotation.
+Legacy retry/interleaved rotations refuse an unresolved roster, while an original
+protected continuation can preserve its verified snapshot. More than sixteen distinct
+earlier keys refuses instead of hiding holdings. Runtime identity includes compiled
+inputs, refuses package/dist symlinks, and preflights before evidence reservation.
+Repeated outer receipts do not audit omitted runs or external consumer inputs.

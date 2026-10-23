@@ -114,16 +114,20 @@ their keys ever appeared on the ledger. The historical-registration fallback and
 optional port are removed. Both arms authenticate targets only against the current
 ledger-matching roster.
 
-During removal, the fresh roster retains the target's registration **without sending
-it a new viewing-key envelope**. If the key switch succeeds and the final removal call
-fails, the next approved invocation can still resolve the exact target from that
-current authenticated metadata. Grant/key collision guards continue to apply. After
-removal, the retained registration is ignored because it matches no live entry.
+The retained-target-metadata experiment was withdrawn after review: if another
+rotation runs while the target remains live, that metadata could promote it back
+into a fresh-key recipient. Removal therefore excludes its registration from the
+fresh roster. A fresh legacy invocation after a key switch may refuse with
+`DeviceRosterInvalid`; it cannot safely rediscover the excluded reader. Other
+legacy rotations also refuse that unresolved roster before publishing fresh keys.
 
-A regression appends seventeen attacker-chosen earlier envelope/roster pairs after an
-interrupted P-256 removal: a grant to the real target reader still refuses before any
-new publication, and retry succeeds after that grant is reconciled. Both arms verify
-successful retry and target exclusion from fresh keys. No wire format or binding change
-is needed. Missing/ambiguous current targets still refuse, and old accounts interrupted
-before this metadata correction may need operator reconciliation. This does not deliver
-complete compromised-key identity revocation or total-loss recovery.
+Use an original protected mutation continuation when the host supplies one. It can
+replay its original verified snapshot; the legacy API has no such journal. Preserve
+old state/IDs for operator reconciliation and never clear uncertain journals to retry.
+This is a deliberate supported-subset boundary, with no claimed full identity
+revocation or total-loss recovery. No binding or wire-format extension is introduced.
+
+The recipe also refuses more than sixteen distinct earlier viewing secrets, rather
+than silently discarding genuine old keys when attacker-chosen envelopes fill that
+bound. Such an inbox requires explicit reconciliation before further owner operations;
+no incomplete holding view is reported as empty or re-sealed as complete.

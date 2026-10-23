@@ -152,13 +152,16 @@ Both arms authenticate a removal target only from the current ledger-matching ro
 The historical-registration port is removed: earlier readable envelopes may carry
 sender-chosen secrets and cannot prove an earlier on-chain key generation.
 
-Removal retains the target's registration under the fresh roster key but sends the
-new viewing key only to survivors. A retry after the key switch can therefore resolve
-the target from authenticated **current** metadata and still refuse a read grant to
-that reader. After removal the registration matches no live entry and is ignored.
-Older interrupted accounts lacking that retained metadata still refuse and need
-operator reconciliation. Missing/ambiguous targets never fall back to earlier secrets.
-Original protected owner journals are a separate host capability in the next stack slice.
+Removal excludes the target's registration from the fresh roster. Carrying it forward
+would allow another rotation to treat a still-live target as a fresh-key recipient.
+A new legacy invocation after a key switch can therefore refuse with
+`DeviceRosterInvalid`; other legacy rotations also refuse that unresolved live roster.
+Use an original protected owner continuation when available, or preserve state for
+operator reconciliation. Never infer target identity from earlier envelopes.
+
+More than sixteen distinct earlier secrets refuses explicitly. The recipe must not
+silently discard genuine old keys and then report an incomplete holding view as empty.
+The legacy/interleaving and overflow refusal regressions preserve key/inbox state.
 
 ## Current consumer assessment
 
