@@ -5,7 +5,10 @@ import { pathToFileURL } from 'node:url';
 import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { encryptedHostMutationStore } from '@input-output-hk/mn-passport-service';
+import {
+  encryptedHostMutationStore,
+  createHostMutationExecutor,
+} from '@input-output-hk/mn-passport-service';
 import { gunzipSync } from 'node:zlib';
 import { createReferenceHostDriver, readHostConfirmation } from '../src/host-driver.ts';
 import type {
@@ -40,7 +43,7 @@ async function tx() {
   ).bind();
 }
 
-test('bounded finality read requires successful raw v9 bytes, exact watch id and matching included hash', async () => {
+test('bounded finality read requires successful raw v9 bytes, exact watch id and matching included hash', async (t) => {
   const value = await tx(),
     identifier = value.identifiers()[0];
   assert.ok(identifier);
@@ -65,12 +68,46 @@ test('bounded finality read requires successful raw v9 bytes, exact watch id and
     fetch: async () =>
       new Response(JSON.stringify({ data: { transactions: [result] } }), { status: 200 }),
   };
+  assert.equal(identifier.length, 66, 'native ledger watch IDs are tagged 33-byte values');
+  const dir = await mkdtemp(join(tmpdir(), 'passport-native-id-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const store = encryptedHostMutationStore(dir, new Uint8Array(32).fill(7));
+  t.after(() => store.close());
+  const executor = createHostMutationExecutor(store, {
+    prepare: async () => ({ address: '12'.repeat(32), steps: 1, context: {} }),
+    prepareStep: async () => ({ tx: step.tx, identifiers: step.identifiers }),
+    submit: async () => identifier,
+    lookup: (s) => readHostConfirmation(s, source),
+    check: async () => true,
+  });
+  const identity: HostMutationIdentity = {
+    pins: {
+      networkId: 'undeployed',
+      bindingId: 'acc-s3r1.1',
+      scheme: 'jubjub-schnorr',
+      manifestSha256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
+    },
+    kind: 'call',
+    requestId: '12'.repeat(16) + ':0',
+    intentSha256: '34'.repeat(32),
+  };
+  const completed = await executor.execute(identity, {});
+  assert.equal(completed.kind, 'confirmed');
+  assert.equal((await store.read(identity))!.steps[0]!.confirmation!.identifier, identifier);
   assert.deepEqual(await readHostConfirmation(step, source), {
     identifier,
     txHash: value.transactionHash(),
     blockHeight: 7,
     succeeded: true,
   });
+  assert.equal(
+    await readHostConfirmation(
+      { ...step, identifiers: [identifier, '00' + 'ff'.repeat(32)] },
+      source,
+    ),
+    undefined,
+    'One matched fee/watch ID cannot confirm an omitted prepared intent',
+  );
   for (const change of [
     { transactionResult: { status: 'PARTIAL_SUCCESS' } },
     { transactionResult: { status: 'FAILURE' } },

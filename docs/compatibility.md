@@ -438,3 +438,16 @@ tests and offline ledger serialization/signature tests are distinct from live pr
 acceptance. Docker was stopped for this slice. Default demo owner buttons and RC5
 remain unchanged. See [host durability](site/host-durability.md) for authentication,
 private mounts, cancellation, TTL and unsupported uncommitted-plan loss.
+
+
+## Local live restart follow-up (unreleased)
+
+The [live source runbook](site/live-qualification.md) and [review map](review/live-outages/README.md)
+separate actual deployment/create/rotation proofs and process/indexer outages from
+software simulation and manual provider acceptance. The dated verification receipt
+records completed scope; it does not qualify the full release or published artifacts.
+Native tagged watch IDs retain 33 bytes while included hashes/addresses remain 32.
+JubJub known-address opening keeps existing write-once directory metadata and verifies
+the requested account from its live entry/sealed inbox. Pending owner traces from an
+older call sequence can refuse continuation; preserve their original implementation
+and journal. Binding, exact-value shielded withdrawal guard and hosted consent remain.

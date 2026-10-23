@@ -28,6 +28,7 @@ type RemoteOutcome =
         | { txHash: string; submissionId: string; blockHeight?: number }
         | { address: string; txIds: readonly string[] };
     };
+const WATCH_ID = /^(?:[0-9a-f]{64}|[0-9a-f]{66})$/;
 const failure = (): never => {
   throw new PassportConnectorError(
     'MutationUnsettled',
@@ -96,7 +97,7 @@ export function remoteHostMutationPorts(
         /^[0-9a-f]{64}$/.test(r.address) &&
         Array.isArray(r.txIds) &&
         r.txIds.length > 0 &&
-        r.txIds.every((id) => typeof id === 'string' && /^[0-9a-f]{64}$/.test(id))
+        r.txIds.every((id) => typeof id === 'string' && WATCH_ID.test(id))
       )
         return {
           kind: 'confirmed',
@@ -105,7 +106,7 @@ export function remoteHostMutationPorts(
         };
       if (
         typeof r.submissionId === 'string' &&
-        /^[0-9a-f]{64}$/.test(r.submissionId) &&
+        WATCH_ID.test(r.submissionId) &&
         typeof r.txHash === 'string' &&
         /^[0-9a-f]{64}$/.test(r.txHash) &&
         (r.blockHeight === undefined ||

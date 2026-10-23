@@ -227,3 +227,14 @@ A live node/proof/indexer restart, funded wallet dust/TTL behavior, combined act
 read-grant/holding interruption scenarios, and real provider/Lace-host qualification
 remain open under #230/#231/#232. This local transport is not a release or full
 compatibility claim. The immutable binding and exact-value shielded guard remain.
+
+
+## Live follow-up
+
+The [live qualification guide]({{ '/live-qualification/' | relative_url }}) defines
+source deployment/create/rotation interruption and indexer-restart cases for both
+arms, along with exact runtime/image evidence and the separate real-provider matrix.
+The original offline evidence above remains historical; consult the dated review
+receipt for the follow-up's actual result, rather than inferring a provider or
+complete release pass. Native tagged watch IDs retain their full 33 bytes; hashes
+and addresses remain 32 bytes.

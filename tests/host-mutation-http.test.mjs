@@ -17,7 +17,8 @@ const token = '12'.repeat(32),
   mutation = { requestId: '34'.repeat(16) + ':0', intentSha256: '56'.repeat(32) };
 const txid = (/** @type {number} */ n) => n.toString(16).padStart(64, '0');
 /** @param {import('node:test').TestContext} t */
-async function fixture(t) {
+async function fixture(t, tagged = false) {
+  const watch = (/** @type {number} */ n) => (tagged ? '00' : '') + txid(n);
   /** @type {Map<string,import('../packages/service/dist/index.js').HostMutationRecord>} */ const records =
     new Map();
   let sends = 0;
@@ -36,7 +37,7 @@ async function fixture(t) {
       steps: i.kind === 'deploy' ? 3 : 1,
       context: {},
     }),
-    prepareStep: async (_r, index) => ({ tx: 'ab', identifiers: [txid(index + 1)] }),
+    prepareStep: async (_r, index) => ({ tx: 'ab', identifiers: [watch(index + 1)] }),
     submit: async (p) => {
       sends++;
       return /** @type {string} */ (p.identifiers[0]);
@@ -196,4 +197,37 @@ test('unknown finality stays unknown through authenticated reconciliation withou
     input: {},
   });
   assert.deepEqual(unknown, { kind: 'unknown' }, 'absence never becomes no-send');
+});
+
+test('native 33-byte tagged watch IDs survive host persistence and both RPC result shapes', async (t) => {
+  const f = await fixture(t, true);
+  const deployed = await f.ports.deployer.deploy({
+    boot: new Uint8Array(32).fill(1),
+    encKey: new Uint8Array(32).fill(2),
+    firstArm: 'jubjub',
+    retireAuthority: true,
+    mutation,
+  });
+  assert.deepEqual(
+    deployed.txIds,
+    [1, 2, 3].map((n) => '00' + txid(n)),
+  );
+  const call = await fixture(t, true);
+  assert.equal(
+    await call.ports.submitter.submit(Uint8Array.of(1), {
+      mutation,
+      address: 'ab'.repeat(32),
+      circuit: 'append_inbox_with_jubjub',
+    }),
+    '00' + txid(1),
+  );
+  const outcome = await call.ports.outcomes.reconcile(pins, {
+    kind: 'call',
+    key: mutation.requestId,
+    digest: mutation.intentSha256,
+    input: {},
+  });
+  assert.equal(outcome.kind, 'confirmed');
+  if (outcome.kind === 'confirmed' && 'txHash' in outcome.result)
+    assert.equal(outcome.result.txHash, txid(99));
 });

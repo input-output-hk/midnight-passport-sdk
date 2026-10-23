@@ -99,7 +99,10 @@ The repeat check rejects reused run IDs, different source bytes, different suite
 skips and incomplete outcomes. It qualifies repeatability only for that suite.
 It always reports `releaseQualified: false` in this foundation.
 
-Available suites are `foundation`, `browser`, `localnet`, `consumer` and `release`.
+Available suites include `foundation`, `browser`, `localnet`, `outages`, `consumer` and `release`.
+The opt-in [live restart suite]({{ "/live-qualification/" | relative_url }}) uses a
+dedicated stack, original protected intents and actual proofs. Its scope and
+real-provider matrix remain separate from the complete release gate.
 `plan` shows required environment **names**, not their values. The localnet suite
 requires explicit standalone consent (`PASSPORT_RC_LOCALNET=1`,
 `MN_NETWORK_ID=undeployed`), existing loopback services and the funding token file.

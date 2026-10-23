@@ -90,7 +90,14 @@ export async function readHostConfirmation(
       'binding',
       bytes(r.raw),
     );
-    if (!tx.identifiers().includes(identifier) || tx.transactionHash() !== r.hash) return undefined;
+    const includedIds = tx.identifiers();
+    // A fee/watch identifier alone must not confirm a different transaction that omitted
+    // the account intent. Merged transactions may add IDs, never omit a prepared one.
+    if (
+      !step.identifiers.every((id) => includedIds.includes(id)) ||
+      tx.transactionHash() !== r.hash
+    )
+      return undefined;
     return { identifier, txHash: r.hash, blockHeight: r.block.height, succeeded: true };
   } catch {
     return undefined;

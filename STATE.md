@@ -42,6 +42,13 @@
   unknown outcomes) and native ledger construction/signature/frontier tests.
   See [host review](docs/review/host-durability/README.md). Docker was stopped;
   live proof/provider and combined fault acceptance remain open. No publication.
+- **Live restart qualification follow-up (2026/10/23):** dedicated source suite for
+  both-arm deployment/create/rotation, post-submit host death and actual indexer
+  stop/start. Preserves original plans/bytes and records runtime/image identities.
+  Live work identified native 33-byte tagged watch IDs and a JubJub known-address
+  open conflict with write-once directory metadata; both fixes have regression
+  coverage. See [live review](docs/review/live-outages/README.md) and its dated
+  receipt for actual acceptance. Broader release/provider criteria remain open.
 - **Working agreement:** current branch, local execution, coherent 5k–10k-line PRs
   with smaller signed commits; keep the exact-value shielded guard. Milestone research,
   private consumer notes and redacted receipts live in the owner's Midnight Obsidian

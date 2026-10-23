@@ -1586,3 +1586,28 @@ test('JubJub sign-in authenticates a real inbox batch when the host skips empty 
   w.encKey().fill(0);
   await assert.rejects(w.accounts.openAccount(), { code: 'EncryptionKeyMismatch' });
 });
+
+test('JubJub address opening preserves a write-once existing directory hint and ignores a conflicting pointer', async () => {
+  const w = world();
+  await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+  const original = await w.ports.directory.get();
+  assert.ok(original?.salt && original.keyEntries?.length);
+  const before = structuredClone(original);
+  for (const hint of [original, { ...original, address: 'cd'.repeat(32) }]) {
+    let writes = 0;
+    const api = createPassportAccounts({
+      ...w.ports,
+      directory: {
+        get: async () => hint,
+        put: async () => {
+          writes++;
+          throw new Error('write-once conflict');
+        },
+      },
+    });
+    assert.ok(api.openAccountAt);
+    assert.equal((await api.openAccountAt(address)).address, address);
+    assert.equal(writes, 0);
+  }
+  assert.deepEqual(original, before);
+});

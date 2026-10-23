@@ -69,6 +69,9 @@ export type HostMutationOutcome =
         | { readonly address: string; readonly txIds: readonly string[] };
     };
 const HEX = /^[0-9a-f]{64}$/;
+// Native ledger-v9 watch IDs are tagged 33-byte values. Retain legacy 32-byte IDs
+// in v1 records; included transaction hashes, addresses and intent digests stay 32 bytes.
+const WATCH_ID = /^(?:[0-9a-f]{64}|[0-9a-f]{66})$/;
 export const hostFailure = (): never => {
   throw new Error('Host mutation is unsettled; reconcile the original protected record.');
 };
@@ -148,7 +151,7 @@ export function validateHostRecord(r: HostMutationRecord): void {
       !Array.isArray(s.identifiers) ||
       s.identifiers.length < 1 ||
       s.identifiers.length > 64 ||
-      s.identifiers.some((id: string) => !HEX.test(id)) ||
+      s.identifiers.some((id: string) => !WATCH_ID.test(id)) ||
       new Set(s.identifiers).size !== s.identifiers.length ||
       (index < r.steps.length - 1 && s.phase !== 'confirmed') ||
       (s.submissionId !== undefined && !s.identifiers.includes(s.submissionId))
