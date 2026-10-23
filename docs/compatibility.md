@@ -438,3 +438,15 @@ dispatch CAS commits that one send; cancellation stops later waves. Failed expli
 resume retains cancellation. Native prepared bytes need ten seconds remaining and are
 never renewed. Direct/reconciled deployment receipts share their validation rules.
 
+
+### Combined source acceptance — 2026/10/24
+
+Frozen source06dbdc6 passed one both-arm combined grant/holding/prover/indexer
+round: 16 case entries, 34 host-confirmed transactions, no duplicate host sends.
+Each arm retained a seven-unit shielded test holding and an independently readable
+active grant through rotation restart. Offline owner200/populated260/host152 cases
+retain their distinct scope and exact source/runtime hashes; see
+[verification](review/combined-outages/verification.json). Owner pre-registration
+proof loss safely refuses explicit resume rather than assuming no send. No real
+provider, live enrollment/removal, full release/Lace or large-inbox resource acceptance
+is implied; broad #230/#231/#232/#239 remain open.
