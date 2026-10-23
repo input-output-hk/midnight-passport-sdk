@@ -121,7 +121,9 @@ jobs:
       - name: Fresh package outputs (script types run in build_types)
         run: pnpm exec tsc -b tsconfig.build.json
       - name: Run every package test through Node's disjoint file shards
-        run: node --test --test-shard=${{ matrix.shard }}/4 "tests/**/*.test.mjs"
+        run: |
+          node -e "if(require('node:fs').globSync('tests/**/*.test.mjs').length < 4){console.error('expected at least four test files for four nonempty shards');process.exit(1)}"
+          node --test --test-shard=${{ matrix.shard }}/4 "tests/**/*.test.mjs"
 
   # Preserve the required check name. A failed, cancelled or skipped dependency fails it.
   build-lint-test:
