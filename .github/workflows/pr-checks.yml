@@ -66,8 +66,8 @@ jobs:
           fi
           echo "Registers stay out of this repo."
 
-  static_app_checks:
-    name: Lint, fresh build, app tests, and types
+  lint_checks:
+    name: Lint and format
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -77,17 +77,35 @@ jobs:
         run: |
           pnpm run lint
           pnpm run format:check
-      - name: Build and check script types
+
+  build_types:
+    name: Fresh build and all types
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/prepare-workspace
+      - name: Build and check every script type
         run: pnpm run build
-      - name: Test applications and key service
-        run: |
-          pnpm run test:apps
-          node --test apps/passport-key-service/test/*.test.mjs
       - name: Check application types
         run: |
           pnpm --filter passport-service exec tsc --noEmit -p .
           pnpm --filter passport-funding-service exec tsc --noEmit -p .
           pnpm --filter passport-dapp exec tsc --noEmit -p .
+
+  app_tests:
+    name: Application and key service tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/prepare-workspace
+      - name: Fresh package outputs
+        run: pnpm exec tsc -b tsconfig.build.json
+      - name: Test all applications and key service
+        run: |
+          pnpm run test:apps
+          node --test apps/passport-key-service/test/*.test.mjs
 
   package_tests:
     name: Package tests (${{ matrix.shard }}/4)
@@ -100,8 +118,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/prepare-workspace
-      - name: Fresh build and script types
-        run: pnpm run build
+      - name: Fresh package outputs (script types run in build_types)
+        run: pnpm exec tsc -b tsconfig.build.json
       - name: Run every package test through Node's disjoint file shards
         run: node --test --test-shard=${{ matrix.shard }}/4 "tests/**/*.test.mjs"
 
@@ -109,14 +127,18 @@ jobs:
   build-lint-test:
     name: Lint, format, build, and test
     if: always()
-    needs: [static_app_checks, package_tests]
+    needs: [lint_checks, build_types, app_tests, package_tests]
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
       - name: Require every full gate component
         env:
-          STATIC_RESULT: ${{ needs.static_app_checks.result }}
+          LINT_RESULT: ${{ needs.lint_checks.result }}
+          TYPES_RESULT: ${{ needs.build_types.result }}
+          APPS_RESULT: ${{ needs.app_tests.result }}
           PACKAGES_RESULT: ${{ needs.package_tests.result }}
         run: |
-          test "$STATIC_RESULT" = success
+          test "$LINT_RESULT" = success
+          test "$TYPES_RESULT" = success
+          test "$APPS_RESULT" = success
           test "$PACKAGES_RESULT" = success
