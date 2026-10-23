@@ -22,10 +22,10 @@ scope; it does not close broad issues or qualify a release, real provider or hos
 
 ## Review corrections carried into the lower stack
 
-- Earlier envelopes can carry sender-chosen secrets. The old history fallback and port are removed. Removal retains target registration
-  under the fresh current roster key without a target viewing-key envelope; both-arm
-  retries remain safe, including seventeen forged older envelope pairs. Missing or
-  ambiguous current target metadata still refuses. No identity-revocation claim.
+- Earlier envelopes can carry sender-chosen secrets. The old history fallback/API and
+  retained-target-metadata experiment are withdrawn. Legacy retry/interleaved rotations
+  refuse an unresolved current roster; an original protected continuation retains its
+  verified snapshot. Historical-key overflow refuses instead of hiding old holdings.
 - Qualification hashes ignored compiled inputs. Three matching ordered local receipts
   do not audit omitted intervening runs; old receipts retain their narrower original scope.
 - Unknown host lookup and wave-boundary polls are read-only. A successor claims only before preparing, and CAS

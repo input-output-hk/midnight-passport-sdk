@@ -66,38 +66,21 @@ jobs:
           fi
           echo "Registers stay out of this repo."
 
-  build-lint-test:
-    name: Lint, format, build, and test
+  static_app_checks:
+    name: Lint, fresh build, app tests, and types
     runs-on: ubuntu-latest
-    # The warm-job target is 30–45 s, not a timeout that conceals real failures.
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version-file: .nvmrc
-      - name: Prepare pnpm
-        run: |
-          corepack enable
-          pnpm config set store-dir "$GITHUB_WORKSPACE/.cache/pnpm"
-      - name: Restore dependency downloads
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
-        with:
-          path: .cache/pnpm
-          key: pnpm-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.nvmrc', 'package.json', 'pnpm-workspace.yaml', '.npmrc', 'pnpm-lock.yaml') }}
-          restore-keys: |
-            pnpm-v1-${{ runner.os }}-${{ runner.arch }}-
-      - name: Install frozen dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
+      - uses: ./.github/actions/prepare-workspace
       - name: Lint and format
         run: |
           pnpm run lint
           pnpm run format:check
       - name: Build and check script types
         run: pnpm run build
-      - name: Test packages and applications
+      - name: Test applications and key service
         run: |
-          pnpm test
           pnpm run test:apps
           node --test apps/passport-key-service/test/*.test.mjs
       - name: Check application types
@@ -105,3 +88,35 @@ jobs:
           pnpm --filter passport-service exec tsc --noEmit -p .
           pnpm --filter passport-funding-service exec tsc --noEmit -p .
           pnpm --filter passport-dapp exec tsc --noEmit -p .
+
+  package_tests:
+    name: Package tests (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/prepare-workspace
+      - name: Fresh build and script types
+        run: pnpm run build
+      - name: Run every package test through Node's disjoint file shards
+        run: node --test --test-shard=${{ matrix.shard }}/4 "tests/**/*.test.mjs"
+
+  # Preserve the required check name. A failed, cancelled or skipped dependency fails it.
+  build-lint-test:
+    name: Lint, format, build, and test
+    if: always()
+    needs: [static_app_checks, package_tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Require every full gate component
+        env:
+          STATIC_RESULT: ${{ needs.static_app_checks.result }}
+          PACKAGES_RESULT: ${{ needs.package_tests.result }}
+        run: |
+          test "$STATIC_RESULT" = success
+          test "$PACKAGES_RESULT" = success

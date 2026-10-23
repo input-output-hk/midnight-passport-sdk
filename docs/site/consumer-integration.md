@@ -44,10 +44,10 @@ validated branded account, grant, counter and network values. Host-to-SDK struct
 assignment can succeed while the reverse assignment fails. Keep an explicit adapter;
 do not use unchecked casts in production to erase that distinction.
 
-The current optional `readDeviceRegistrationHistory` port returns authenticated
-public metadata for interrupted entry-removal recovery. It never provides a fresh
-recipient roster. Existing hosts may omit it; an unsafe or unresolved removal still
-fails closed. This capability is newer than RC5 and must not be accessed as an RC5 API.
+Earlier local notes mentioned an optional registration-history port; it has been
+removed before publication. Such envelopes do not authenticate historical ledger keys.
+Legacy interrupted removal can require operator reconciliation. The explicit protected
+continuation is a separate current-source host capability, and is not an RC5 API.
 
 ## What the local checks establish
 
@@ -159,3 +159,11 @@ process boundaries are appropriate for an independently installed wallet worker.
 non-localnet assessment suites. Neither is part of the fast required PR gate.
 The small input-integrity and runtime refusal regressions run in normal CI;
 registry, proof and host checks remain explicit qualification work.
+
+## Historical-registration API correction — 2026/10/24
+
+The optional `readDeviceRegistrationHistory` port mentioned in earlier local notes
+has been removed. Earlier readable secrets are not authenticated historical ledger
+keys. Hosts must not use them to identify a removal target or fresh-key recipient.
+Legacy interruption may require operator reconciliation; the next durability slice
+adds an explicit protected original continuation. No legacy automatic retry is claimed.

@@ -39,8 +39,11 @@ export async function qualificationRuntimeFiles(root) {
     if (/** @type {NodeJS.ErrnoException} */ (error).code === 'ENOENT') return [];
     throw error;
   }
-  for (const entry of packages)
+  for (const entry of packages) {
+    if (entry.isSymbolicLink())
+      throw new Error('Compiled package directories must not be symlinks.');
     if (entry.isDirectory()) await walk('packages/' + entry.name + '/dist');
+  }
   return found.sort();
 }
 /** @param {string} root */

@@ -5,7 +5,7 @@ Each finding was checked against the code; the reviewer did not execute tests.
 
 | Finding | Disposition |
 | --- | --- |
-| Unanchored earlier envelope used to identify a removal target | Fixed: current ledger-matching roster only; retain target metadata without a fresh target envelope; both-arm retries and seventeen-forged-envelope regression; history API removed |
+| Unanchored earlier envelope used to identify a removal target | Fixed: remove history fallback/API; refuse unresolved legacy interleaving; retain original protected-continuation support; historical-key overflow refuses |
 | Opaque/unregistered removal target refuses | Retained safety boundary: cannot establish distinct grant recipients; full identity revocation needs binding work |
 | Ignored compiled runtime absent from source identity | Fixed: include actual package dist files and reject compiled symlinks; pre-build remains required |
 | Three supplied receipts prove no intervening failures | Claim corrected: chronological/matching/distinct only; omitted runs are unaudited |
@@ -42,3 +42,14 @@ Generic outer receipt matching still needs scenario-specific external input evid
 it is not a complete release provenance gate. No automatic expiry/unknown-send repair
 or full compromised-identity revocation was added. Public setup uses a single reference
 wallet and decodes native contract state with that handle's physical runtime.
+
+## Final removal decision — 2026/10/24
+
+The retained-current-target-registration experiment was withdrawn. An intervening
+rotation could reinclude that still-live target as a fresh-key recipient. Fresh legacy
+retry and interleaved rotations now refuse the unresolved current roster; the explicit
+protected original coordinator remains the supported continuation path. This is an
+intentional limitation rather than a new on-chain registration format. A regression
+checks no key/inbox change on both-arm legacy refusals. Historical-secret overflow
+also refuses explicitly, preventing forged earlier envelopes from silently hiding
+older holding descriptions. Package-root symlinks and obsolete API guidance are fixed.

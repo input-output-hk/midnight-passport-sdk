@@ -155,3 +155,15 @@ All other required core jobs took 4–6 s. The core lane therefore exceeds the w
 it is not declared compliant. Reduce serial build/test duplication or shard independent
 checks in the next CI tuning slice without dropping coverage. Actual proof/fault matrices
 remain opt-in. No workflow was manually dispatched for these measurements.
+
+### Bounded parallel package checks — 2026/10/24
+
+The combined qualification slice splits the root package tests into Node's four
+**disjoint file shards**, alongside the full static/application lane. Each job installs
+the frozen lockfile and builds fresh; compiled outputs are not trusted from a cache.
+All tests remain included. The original required check name is a strict aggregate:
+a failed, cancelled or skipped dependency fails it. Dependency-download preparation
+is shared by a local composite action; every external action remains SHA-pinned.
+This removes redundant serial builds from the former combined test step and gives
+heavy process/crypto tests separate runner capacity. Actual hosted timings must be
+recorded after the stack push; no under-45-second claim follows from local estimates.

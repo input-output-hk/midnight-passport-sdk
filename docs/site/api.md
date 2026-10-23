@@ -181,12 +181,13 @@ knowledge. Ambiguous rosters and grants to the removed reader must be reconciled
 before removal. Total-loss recovery remains unavailable on the retained binding.
 See [Qualification and safety boundaries]({{ '/qualification/' | relative_url }}).
 
-The optional key-port method `AccountViewingKey.readDeviceRegistrationHistory`
-returns only authenticated public device metadata from readable prior generations.
-Both owner arms can use it to identify an excluded target after an interrupted
-removal key switch. Historical records do not become fresh-key recipients;
-missing/ambiguous history fails closed. See the qualification guide's resumption
-section. This is not a general transaction journal or total-loss recovery API.
+## Historical-registration API correction — 2026/10/24
+
+The optional `readDeviceRegistrationHistory` port mentioned in earlier local notes
+has been removed. Earlier readable secrets are not authenticated historical ledger
+keys. Hosts must not use them to identify a removal target or fresh-key recipient.
+Legacy interruption may require operator reconciliation; the protected owner continuation
+is described in the durability guide. No legacy automatic retry is claimed.
 
 ## Local durability milestone
 
