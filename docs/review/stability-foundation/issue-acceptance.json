@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "reviewDate": "2026-10-20",
+  "reviewDate": "2026-10-23",
   "releaseVersion": "0.1.0-rc5",
   "releaseSource": "9e8048674a54adf5e8be2055aaa8f5c9bfe08b06",
   "historicalConsumerEvidence": "0.1.0-dev.12 at its recorded host pin; not relabelled as RC5/current host",
-  "reviewBaseline": "First stability slice at 5dc13ff plus local current-consumer follow-up; exact private source pins and receipts remain in authorised Obsidian storage",
+  "reviewBaseline": "Local stability/consumer/durability slices at signed 626c6f9 plus the current opt-in host continuation slice; historical evidence retains its original scope/source.",
   "issuesReviewed": 40,
   "criterionExtraction": "Top-level scope/acceptance/deliverable bullets and checkboxes; linked original body remains authoritative, including nested bullets.",
   "limitations": [
@@ -1406,40 +1406,57 @@
       "observedUpdatedAt": "2026-10-20T03:12:33Z",
       "bodySha256": "2dbb7e6cf1e7d2806153bf0c8e8403e47f4d3f6a4a8f1960405efc91078f0727",
       "originalBodySha256": "7cd0ec9785f629fb6bf313cc63e4f1a2d4525a275701171eb337eabd9bd135c9",
-      "implementation": "planned",
-      "verification": "none",
-      "evidencePaths": [],
-      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "implementation": "local-owner-and-host-supported-subset",
+      "verification": "local-process-offline-ledger-and-unit-evidence",
+      "evidencePaths": [
+        "docs/review/durability/README.md",
+        "docs/site/durability.md",
+        "tests/durable-mutations.test.mjs",
+        "tests/mutation-refusal.test.mjs",
+        "tests/mutation-journal.test.mjs",
+        "tests/grant-bookkeeping-recovery.test.mjs",
+        "scripts/qualification/mutation-matrix.mjs",
+        "docs/review/host-durability/README.md",
+        "docs/site/host-durability.md",
+        "tests/host-mutations.test.mjs",
+        "tests/host-mutation-http.test.mjs",
+        "apps/passport-service/test/host-driver.test.ts",
+        "scripts/qualification/host-mutation-matrix.mjs",
+        "docs/review/live-outages/README.md",
+        "scripts/qualification/live-outages.mjs",
+        "apps/passport-service/qualification/live-worker.ts"
+      ],
+      "assessment": "Opt-in host receipts/fencing, encrypted original plan/transaction persistence, authenticated client transport and reference wave continuation now implemented locally. Original deployment address and authority policy, exact verifier frontiers and successful raw v9 finality are checked. Synthetic restart/native offline evidence is separate from remaining live proof/provider/combined active-grant acceptance. Default demo owner API unchanged; no remote closure. Live-source outage runner and native watch-ID/all-prepared-ID receipt fixes are implemented; the dated live review receipt records actual supported-subset results. Real providers, combined grant/holdings faults and the full release suite remain separate.",
       "criteria": [
         {
           "criterion": "- [ ] Enumerate state transitions and durable intent fields for both arms, including transaction identifiers, network/binding pins, key generation, roster snapshots, and the original consent/lock choice.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-owner-and-host-supported-subset",
+          "verification": "scoped-process-and-offline-runtime-evidence",
+          "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         },
         {
           "criterion": "- [ ] Inject crashes before/after each submission, confirmation, key switch, envelope publication, and device removal; restart with a new process and reconcile the chain before continuing.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-owner-and-host-supported-subset",
+          "verification": "scoped-process-and-offline-runtime-evidence",
+          "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         },
         {
           "criterion": "- [ ] Retain access for every intended surviving reader and refuse stale/ambiguous rosters, missing read-grant openings, or unknown outcomes. Never draw replacement keys or blindly resubmit an uncertain operation.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-owner-and-host-supported-subset",
+          "verification": "scoped-process-and-offline-runtime-evidence",
+          "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         },
         {
           "criterion": "- [ ] Define cancellation as stopping future work, not undoing submitted chain transactions. Keep secrets and private proof inputs out of public journals/logs.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-owner-and-host-supported-subset",
+          "verification": "scoped-process-and-offline-runtime-evidence",
+          "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         },
         {
           "criterion": "- [ ] Supply typed host persistence ports, migration/versioning rules, and tests; no UI-only success while durable/chain state disagrees.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-owner-and-host-supported-subset",
+          "verification": "scoped-process-and-offline-runtime-evidence",
+          "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         }
       ],
       "closureRecommendation": "keep-open",
@@ -1454,16 +1471,20 @@
       "observedUpdatedAt": "2026-10-20T03:12:36Z",
       "bodySha256": "8d6974ab125fa5aa22ab5c74fb1c6d6c99aea96468e257d7b31a48ad47f92bbb",
       "originalBodySha256": "28b38cd2fbcc136c23bc976e47cf6e27eee7096d8db1c4ab10c3b89176816ec9",
-      "implementation": "partial-foundation-delivered",
+      "implementation": "local-foundation-and-source-outage-runner",
       "verification": "local-evidence",
       "evidencePaths": [
         "scripts/qualify.mjs",
         "scripts/qualification/runner.mjs",
         "scripts/qualification/receipt.mjs",
         "tests/qualification-runner.test.mjs",
-        "docs/site/qualification.md"
+        "docs/site/qualification.md",
+        "docs/site/live-qualification.md",
+        "docs/review/live-outages/README.md",
+        "scripts/qualification/live-outages.mjs",
+        "tests/live-qualification-ownership.test.mjs"
       ],
-      "assessment": "Initial tiered runner, bounded closed receipts, owned-process deadlines and repeatability checks delivered. Broader proof/browser/outage/published/provider suite remains incomplete.",
+      "assessment": "Explicit opt-in dedicated-stack both-arm create/rotation process/indexer outage runner, bounded owned-process cleanup, source/reference/package/image evidence and repeat-round control. See dated receipt for actual passes; this is not the complete published-artifact/release suite.",
       "criteria": [
         {
           "criterion": "- [ ] Separate fast unit/port tests, browser virtual-authenticator tests, proof-backed localnet tests, published-artifact consumer tests, and manual provider qualification. Skips never count as passes.",
@@ -1508,10 +1529,12 @@
       "observedUpdatedAt": "2026-10-20T03:12:38Z",
       "bodySha256": "bb5bd73d97cda77272af75eb0166af105760e490b076ef34f1798b72db1b98a3",
       "originalBodySha256": "e601956505fe452f4f5e1a55150dfcffa937d6812a30b47431c05731ff17f059",
-      "implementation": "planned",
+      "implementation": "local-versioned-provider-matrix-and-manual-plan",
       "verification": "none",
-      "evidencePaths": [],
-      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "evidencePaths": [
+        "docs/site/live-qualification.md"
+      ],
+      "assessment": "Versioned OS/browser/provider matrix and redacted manual evidence procedure prepared. Current live proof identities are software only. No new Google/iCloud/two-device or synced-restoration pass; retain the issue open.",
       "criteria": [
         {
           "criterion": "- [ ] Publish a versioned browser/OS/provider matrix with supported, refused, and untested cases; include Google/iCloud as actual test targets where accessible, existing credentials, reload, cancellation, and no-PRF refusal.",
@@ -1826,37 +1849,45 @@
       "observedUpdatedAt": "2026-10-20T03:12:56Z",
       "bodySha256": "ece2039f22c7195bdbbd8810a3c21918c1b121fdfe94f50119154df470652a9b",
       "originalBodySha256": "b3de18da191503dc9736a7cd8531517a8d111da3ab470d596e6c08373ca828ca",
-      "implementation": "planned",
-      "verification": "none",
-      "evidencePaths": [],
-      "assessment": "Planned follow-up; not delivered by the stability foundation.",
+      "implementation": "local-supported-subset",
+      "verification": "local-simulator-process-and-unit-evidence",
+      "evidencePaths": [
+        "docs/review/durability/README.md",
+        "docs/site/durability.md",
+        "tests/durable-mutations.test.mjs",
+        "tests/mutation-refusal.test.mjs",
+        "tests/mutation-journal.test.mjs",
+        "tests/grant-bookkeeping-recovery.test.mjs",
+        "scripts/qualification/mutation-matrix.mjs"
+      ],
+      "assessment": "Local published-bookkeeping reconstruction and demo fallback authenticate the original reader, trusted origin and live commitments. Missing unpublished/full-scope/private capabilities explicitly refuse. No new backup/export UX; existing v1/v2 reads and consented handoff remain. Owner-review candidate for supported subset.",
       "criteria": [
         {
           "criterion": "- [ ] Specify which grant records can be reconstructed from authenticated chain data and which secret openings require an encrypted backup or another authorised key source.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-supported-subset",
+          "verification": "scoped-local-evidence",
+          "disposition": "owner-review-supported-path-and-explicit-refusal-limits"
         },
         {
           "criterion": "- [ ] Test reload, profile loss, another enrolled device, stale/revoked grants, missing openings, and read-grant rotation. Never substitute an empty roster or weaken live commitment checks.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-supported-subset",
+          "verification": "scoped-local-evidence",
+          "disposition": "owner-review-supported-path-and-explicit-refusal-limits"
         },
         {
           "criterion": "- [ ] Provide the supported chain-reconstruction and/or encrypted backup/restore path, or an explicit preflight refusal and user-visible limitation for unsupported configurations.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-supported-subset",
+          "verification": "scoped-local-evidence",
+          "disposition": "owner-review-supported-path-and-explicit-refusal-limits"
         },
         {
           "criterion": "- [ ] Separate public audit traces from secret capability export; record consent and authentication for any export/import. Preserve backward reads for current records.",
-          "implementation": "planned",
-          "verification": "none",
-          "disposition": "retain-open-until-remaining-acceptance-is-verified"
+          "implementation": "local-supported-subset",
+          "verification": "scoped-local-evidence",
+          "disposition": "owner-review-supported-path-and-explicit-refusal-limits"
         }
       ],
-      "closureRecommendation": "keep-open",
+      "closureRecommendation": "owner-review-local-supported-subset",
       "githubMutationPerformed": false
     },
     {

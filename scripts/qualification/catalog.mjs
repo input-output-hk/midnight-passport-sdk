@@ -78,10 +78,16 @@ export const SCENARIOS = Object.freeze({
   },
   'outage-reconciliation': {
     tier: 'proof-localnet',
-    command: [],
-    requires: [],
-    timeoutMs: 0,
-    establishes: 'Not implemented in the foundation; #231 owns interruption/outage scenarios.',
+    command: [node, 'scripts/qualification/live-outages.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 90 * 60000,
+    establishes:
+      'Dedicated-stack source deployment/create/rotation with software identities, actual proofs, host process death and indexer outages; not the full release or real-provider suite.',
   },
   'published-registry': {
     tier: 'published-consumer',
@@ -103,6 +109,7 @@ export const SUITES = Object.freeze({
   foundation: ['binding-source', 'contract-entries', 'reader-guards'],
   browser: ['virtual-authenticator'],
   localnet: ['localnet-night'],
+  outages: ['outage-reconciliation'],
   consumer: ['packed-consumer'],
   'consumer-source': ['consumer-source-types'],
   'consumer-published': ['consumer-published-host'],

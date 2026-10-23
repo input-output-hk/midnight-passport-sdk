@@ -342,3 +342,33 @@ descriptor for hosted signers; the demo's local passkey authoriser ignores that 
 - **The service exits at start-up.** Its first line says why: usually missing artefacts or a
   hash mismatch.
 - **Stale directory after a chain reset.** The hint stores are only valid for the chain they were written on. `prototype:up` stops the localnet with its volumes kept, so accounts survive a restart. If you drop the volumes (`docker compose … down -v`, or `experiments/acc-0.35/run.sh`, which starts fresh), delete `~/.midnight-passport/registry.json`, `registry.json.v1` and `registry.deployments.json`, or opening fails with `AccountNotFound`.
+
+### Local durability milestone
+
+The browser demo now falls back from its encrypted local grant journal to complete
+published grant/object records using the selected original reader. It checks the
+trusted origin and live commitments; missing, conflicting or inaccessible openings
+remain refused. Another enrolled device need not possess the issuing reader's
+grant opening. Full staged-opening export still requires the original journal.
+
+Owner buttons continue to use the default account API. After an interrupted owner
+mutation, reconcile the original transactions before retrying. Hosts can integrate
+the new opt-in durable API, protected storage and authoritative/fenced submission
+receipts using [the durability guide](../docs/site/durability.md). A browser reload
+is not proof that a pending transaction failed. No remote deployment receipt service
+or new backup/import UI is implied.
+
+### Opt-in durable host RPC (local, unreleased)
+
+The Node service can enable an authenticated host mutation route with
+`PASSPORT_HOST_MUTATION_DIR`, `PASSPORT_HOST_MUTATION_KEY_FILE` and
+`PASSPORT_HOST_MUTATION_TOKEN_FILE`. All three are required; use independent private
+32-byte hex key/token files and retain the private journal mount across restarts.
+The token belongs in the trusted wallet/host, never in a public `VITE_*` setting or
+operation log. No existing sponsor/funding keys are reused or replaced.
+
+The new `remoteHostMutationPorts` opt-in composition resumes the original saved
+deployment and wave bytes. Default demo owner buttons are not migrated. Unknown
+submissions, expired dispatches, missing constructor outputs and mismatched state
+remain refused. See the [engineer guide](../docs/site/host-durability.md) for setup,
+RPC, composition and offline-versus-live qualification limits.

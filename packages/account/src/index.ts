@@ -18,3 +18,10 @@ export * from './connector.js';
 export * from './jubjub-readers.js';
 export * from './jubjub-device.js';
 export * from './seams-bridge.js';
+
+export * from './mutation-types.js';
+export * from './mutation-codec.js';
+export * from './durable-mutations.js';
+
+export * from './grant-bookkeeping-recovery.js';
+export { verifyGrantBookkeepingCommitment } from './grant-opening-check.js';

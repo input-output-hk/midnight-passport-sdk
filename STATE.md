@@ -4,7 +4,7 @@
 > `mn-passport-skills:spec-driver` per [`docs/development-workflow.md`](./docs/development-workflow.md) §3.
 > Every entry carries its GitHub issue
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
-> Last updated: 2026/10/20. Historical entries below retain their original issue namespaces.
+> Last updated: 2026/10/23. Historical entries below retain their original issue namespaces.
 
 ## Current fork iteration — 2026/10/20
 
@@ -20,8 +20,35 @@
   parity, #231 tiered harness/closed receipts foundation. See the
   [review map](docs/review/stability-foundation/README.md). Full issue closure,
   candidate binding adoption and broader release/provider qualification are not claimed. Follow with
-  #79/#81 consumer compatibility and #230 durable mutations. A required incompatible
+  remaining host/provider qualification. A required incompatible
   binding/API change moves the next candidate to the 0.2.0 version axis.
+- **Consumer slice delivered locally:** #79/#81 current-source/registry entry checks,
+  key HTTP profile correction and supported synthetic recognition/device evidence.
+  See [consumer review](docs/review/consumer-qualification/README.md); full hosted
+  creation/enrollment/value routes retain their explicit limits.
+- **Durability slice delivered locally:** #230 opt-in protected owner continuations
+  and #239 authenticated published-grant reconstruction/demo fallback. See the
+  [review map](docs/review/durability/README.md) and [guide](docs/site/durability.md).
+  200 fresh-process crash cases: 158 resumptions, 42 expected safe refusals.
+  Missing key-origin outputs, unknown/unfenced sends and conflicting state refuse.
+  Host receipt/fencing and multi-wave integration, combined active-grant/holdings
+  live-proof/provider interruption qualification remain open. Default demo owner
+  buttons have not been silently switched to this API.
+- **Host continuation slice delivered locally (2026/10/23):** encrypted host records,
+  revision fencing, authenticated opt-in RPC/client ports and reference deployment
+  wave continuation. Preserve the original randomised deployment transaction and
+  maintenance authority policy; reconcile exact watch IDs/raw hashes without
+  uncertain resubmission. 152 synthetic fresh-process cases (108 resumed, 44 safe
+  unknown outcomes) and native ledger construction/signature/frontier tests.
+  See [host review](docs/review/host-durability/README.md). Docker was stopped;
+  live proof/provider and combined fault acceptance remain open. No publication.
+- **Live restart qualification follow-up (2026/10/23):** dedicated source suite for
+  both-arm deployment/create/rotation, post-submit host death and actual indexer
+  stop/start. Preserves original plans/bytes and records runtime/image identities.
+  Live work identified native 33-byte tagged watch IDs and a JubJub known-address
+  open conflict with write-once directory metadata; both fixes have regression
+  coverage. See [live review](docs/review/live-outages/README.md) and its dated
+  receipt for actual acceptance. Broader release/provider criteria remain open.
 - **Working agreement:** current branch, local execution, coherent 5k–10k-line PRs
   with smaller signed commits; keep the exact-value shielded guard. Milestone research,
   private consumer notes and redacted receipts live in the owner's Midnight Obsidian

@@ -1,5 +1,6 @@
 /** What the HTTP layer needs from the chain; the reference client implements it (reference-backend.ts). */
 export interface ChainBackend {
+  readonly hostMutations?: import('./host-mutations.js').HostMutationDriver;
   check(preimage: Uint8Array, keyLocation: string): Promise<(bigint | undefined)[]>;
   prove(
     preimage: Uint8Array,

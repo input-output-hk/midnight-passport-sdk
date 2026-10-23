@@ -1,0 +1,183 @@
+{
+  "schema": 1,
+  "date": "2026-10-23",
+  "scope": "unreleased-source-live-owner-host-process-and-indexer-outages",
+  "signedParent": "11b2a78ce8123d1e0f707cdca6cee930d15119bf",
+  "branch": "codex/rc5-publication-record",
+  "testedWorkspaceSha256": "cd5e66d9b3310dcc344fa8d265373b5450b5a6a52c6ec829b7009fa6b10b75a4",
+  "sourceInputCount": 688,
+  "sourceInputMapSha256": "e9a89b686af2c369e3f44e4699720ba01c449610d49f4146ce544bb8791b8594",
+  "binding": {
+    "id": "acc-s3r1.1",
+    "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "moduleSha256": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf"
+  },
+  "nodeVersion": "v22.23.2",
+  "reference": {
+    "sources": {
+      "package.json": "ed122ba9646137c7a833a7ea6c42d3d98460d9332e11d7c00c5d64acc36cf4e1",
+      "package-lock.json": "a57a8056dfa3989a6fb237f0ff071b172f4864082173ba9c4274c09eac9bee51",
+      "src/node/setup.ts": "437e12a9412ac196ab862e5438ea88b8924776f74b6ba03e7d13820336c5dd49",
+      "src/node/wallet.ts": "0a3687ce13b88c5c36c138eedc21429cc8705aa3e8afcd3efd8c8538594821bf",
+      "src/wallet/wave-deploy.ts": "6d1de9aa21b1cc772df3ce9dd6759a5100c85f11f6fa4bf99453853810be8f9a",
+      "src/wallet/signer.ts": "4c3d593c0947641a116bfca059de399c1fcff24d37c430a38bbbf493c8e3cc8b",
+      "src/wallet/witnesses.ts": "7eadb415ac132fa06670633539573d83904e3d6b126cda020b7244cb2d2f89c0",
+      "contracts/managed/account/contract/index.js": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf",
+      "contracts/managed/account/compiler/contract-manifest.json": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f"
+    },
+    "packages": [
+      {
+        "name": "@midnight-ntwrk/compact-js",
+        "version": "3.0.0-rc.3",
+        "integrity": "sha512-+lJA4PyNT7/0JrjvBBehdP4GfCimXx07SXNPJ73tKyfhSaehCJZ5H2O9OIaG2t3wzW1y14Q+O6kbAkObJfdrWw==",
+        "entrySha256": "832fe39c4b1493494461e73cfd5cebb6185cea8cea9e0f5056025353feb11300"
+      },
+      {
+        "name": "@midnight-ntwrk/compact-runtime",
+        "version": "0.20.0",
+        "integrity": "sha512-vtwZ6PiqPy6sUHmXJlrv/3SyjEsKVdQaRroWowTGgu55CJlJXONUplHyst/dRVKe9C6sApveIo2FgbXoBMiMeQ==",
+        "entrySha256": "f59514c653cc7f267b44e898a11aa0f81f7fbc7418011cb3513ae4b7119ca10f"
+      },
+      {
+        "name": "@midnight-ntwrk/midnight-js-contracts",
+        "version": "5.0.0-rc.2",
+        "integrity": "sha512-dpLy8LEiJmxl+Io3xP+jL95sC4ZbzzmLX0TSBfw0RSOicTPSVkYvcPFrZHCqNvUsYnt+jwTye9AYfXNolljo/A==",
+        "entrySha256": "16a0f7566e9b27761cb34f256f005c7e8e757689bf273358d588b5c71ff26d7e"
+      },
+      {
+        "name": "@midnight-ntwrk/midnight-js-protocol",
+        "version": "5.0.0-rc.2",
+        "integrity": "sha512-WRFeN4OCGAmXbh9Uwa5p333rthOorb7Y7ym2N8VsBZSQSDXY6jvtHT+7OeZyL49WLpLTmwTnCudNvsAb1lLqpA==",
+        "entrySha256": "749223d8867b3d06c342d21161843720c61127432457bd2696581e6e9ec7257c"
+      },
+      {
+        "name": "@midnight-ntwrk/midnight-js-indexer-public-data-provider",
+        "version": "5.0.0-rc.2",
+        "integrity": "sha512-+dWenbbMwsguX3R7Md8BCFHFWdcfEVvFuZDIa862kMc5mbEcyj+h2NULZWb/xc5uI9/WVNfFq9J9Ao7YuEzjCQ==",
+        "entrySha256": "9dd210a50a2e0b96d20d62ef03394a27ac26e231caffdbb1e055692f497446f7"
+      },
+      {
+        "name": "@midnight-ntwrk/midnight-js-http-client-proof-provider",
+        "version": "5.0.0-rc.2",
+        "integrity": "sha512-GRcHrlHrN4sf0Tv9BIdEgybGgnJ9l/QjTIbn+vZanZa0NlCfwI0Ros0DfugKHRJDHWE96GxzynpeBhWO5usmQA==",
+        "entrySha256": "c2a6a7f3bc901c5b4789f253a62aa542fda70e6d09df59b71bdfc5c92c9f085d"
+      },
+      {
+        "name": "@midnightntwrk/ledger-v9",
+        "version": "1.0.0-rc.5",
+        "integrity": "sha512-xd2RDJ7UiJha9c0YA92DYof/eGW6NKBFhQxoCggzyrdYm2KWuE/u4wlv/WRP2/Hvol1O8ymOVatKquGXYBgV9w==",
+        "entrySha256": "effa3b1ad14755663904500a5ababa86fd02bdd4c0f52b5bd73e94253e592675"
+      },
+      {
+        "name": "@midnightntwrk/wallet-sdk-facade",
+        "version": "5.0.0-rc.0",
+        "integrity": "sha512-sXo56UehJHrobvNr2JWkPOhxpljyOrROGaeXLG4NyvRXli0YaZ0pIigOJoEbrrjLEQBa8HiYwUy04zphwuHCtQ==",
+        "entrySha256": "46f3b281fa43012db768a93a1de78c9e706081fc9302d1bf36086c3a90070b05"
+      }
+    ]
+  },
+  "images": [
+    {
+      "service": "node",
+      "imageId": "sha256:9040c346c27f569b72dfbbad9420cf38fc7cc6a13b38adf814a925bbe9311678",
+      "repoDigests": [
+        "midnightntwrk/midnight-node@sha256:9040c346c27f569b72dfbbad9420cf38fc7cc6a13b38adf814a925bbe9311678"
+      ],
+      "architecture": "arm64",
+      "containerId": "4211049e9a4313daaa0274bed2b01d04a8d96a2e2b934efc2b635fade8c78f39",
+      "mounts": [
+        "mn-passport-qual-20261023_node-data"
+      ]
+    },
+    {
+      "service": "indexer",
+      "imageId": "sha256:ecfec6a26b9f8f89b7531e8f7c390f841661fb079bdf0bc57fa2cf8bb3f99c2f",
+      "repoDigests": [
+        "ghcr.io/midnightntwrk/indexer-standalone@sha256:ecfec6a26b9f8f89b7531e8f7c390f841661fb079bdf0bc57fa2cf8bb3f99c2f"
+      ],
+      "architecture": "arm64",
+      "containerId": "c6ecf049c3380f7a2cb838fce83cac78e25dee19843b6fb29506f4c565d6ffe6",
+      "mounts": [
+        "mn-passport-qual-20261023_indexer-data"
+      ]
+    },
+    {
+      "service": "proof-server",
+      "imageId": "sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf",
+      "repoDigests": [
+        "midnightntwrk/proof-server@sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf"
+      ],
+      "architecture": "arm64",
+      "containerId": "80a2ab8ccb2dcc3a7bba699d3be4bca92157d9501bd8c42770bfa3ad9bf5adc4",
+      "mounts": []
+    }
+  ],
+  "gate": {
+    "exitCode": 0,
+    "passed": 861,
+    "existingConditionalSkips": 7,
+    "failed": 0
+  },
+  "live": {
+    "verdict": "PASS",
+    "outerReceiptSha256": "00d8ee9a813edb646975632597e82533ffd06d2d116a3a5ef5bfce404636eb17",
+    "detailedReceiptSha256": "d3eaa4da40e6c03f3b1af4cc66b0b7d51d5a95fbc77f391b2aa6620095c0453f",
+    "bothArmRounds": 3,
+    "lifecycleGroups": 6,
+    "accounts": 6,
+    "confirmedTransactions": 90,
+    "caseEntries": 36,
+    "postSubmitProcessDeaths": 18,
+    "actualIndexerOutageProbes": 18,
+    "retireAuthority": true,
+    "holdingsAndReadGrantRoster": "empty",
+    "circuits": [
+      "activate_initial_device_with_jubjub",
+      "append_inbox_with_jubjub",
+      "rotate_enc_key_with_jubjub",
+      "activate_initial_device_with_p256",
+      "append_inbox_with_p256",
+      "rotate_enc_key_with_p256"
+    ],
+    "originalPlansAndPreparedBytesPreserved": true,
+    "duplicateSends": 0,
+    "freshAddressOpenAndChangedViewingKeyChecked": true
+  },
+  "syntheticMatrices": {
+    "host": {
+      "cases": 152,
+      "resumed": 108,
+      "safelyUnknown": 44,
+      "sha256": "53d438c5d23b349389cb92769c588a2da6f38b5ea6624bd81447c4c0778f0fcd"
+    },
+    "owner": {
+      "cases": 200,
+      "resumed": 158,
+      "safeRefusals": 42,
+      "sha256": "79148931c625e335bff54b850e324196bc0f3529aac2e0ca92ae5540beadb470"
+    }
+  },
+  "docs": {
+    "pages": 19,
+    "localLinksAndAnchors": 353,
+    "errors": []
+  },
+  "fixes": [
+    "Native 33-byte tagged watch identifiers are retained; hashes/addresses stay 32 bytes.",
+    "Included raw bytes must contain every prepared identifier; fee/watch-only matches refuse.",
+    "JubJub address opening preserves write-once directory metadata and verifies requested account on chain."
+  ],
+  "softwareCredentialsOnly": true,
+  "realProviderQualified": false,
+  "releaseQualified": false,
+  "publishedArtifactQualification": false,
+  "publicationChanged": false,
+  "remaining": [
+    "Complete release suite and its three independently recorded repeats",
+    "Combined active grants/holdings and device removal faults",
+    "Prover outages and live wallet/subscription reconnection",
+    "Real Google/iCloud, independent two-device and synced-restoration evidence",
+    "No total-loss recovery, full Lace compatibility or partial shielded spending"
+  ],
+  "evidencePolicy": "Only this newly generated verification metadata is added after source-stable testing; original inputs remain hash-identical. Private logs/fixtures/journals are excluded from handover."
+}

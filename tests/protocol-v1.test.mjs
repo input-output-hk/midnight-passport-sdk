@@ -40,6 +40,7 @@ const TABLE = {
   GrantRevoked: { retryable: false, lace: ['grant-revoked'] },
   GrantRosterUnsettled: { retryable: true, lace: ['grant-roster-unsettled'] },
   GrantBookkeepingUnsettled: { retryable: false, lace: [] },
+  MutationUnsettled: { retryable: false, lace: [] },
   ArtefactIntegrity: { retryable: false, lace: ['artefact-integrity'] },
   ProverUnavailable: { retryable: true, lace: ['proof-server'] },
   SponsorRejected: { retryable: 'maybe', lace: ['sponsor-exhausted'] },

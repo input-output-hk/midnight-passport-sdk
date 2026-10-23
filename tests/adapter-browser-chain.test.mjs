@@ -608,6 +608,8 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
   const { unbound, bound } = await finalizedTx();
   /** @type {string[]} */
   const calls = [];
+  const mutation = { requestId: '45'.repeat(16) + ':0', intentSha256: '67'.repeat(32) };
+  let submittedContext;
   let expectedCircuit = 'rotate_enc_key_with_p256';
   /** @type {unknown[]} */
   const compiledContracts = [];
@@ -635,6 +637,7 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
         assert.equal(context.networkId, 'undeployed');
         assert.equal(context.bindingId, 'acc-45721e1');
         assert.deepEqual(context.circuits, [expectedCircuit]);
+        assert.equal('mutation' in context, false, 'receipt correlation is not proof metadata');
         assert.equal('heldCoin' in context, false, 'private witness is not proof metadata');
         return { tx: unbound.serialize(), provenance: 'remote' };
       },
@@ -647,7 +650,8 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
       },
     },
     submitter: {
-      async submit(/** @type {Uint8Array} */ bytes) {
+      async submit(/** @type {Uint8Array} */ bytes, /** @type {unknown} */ context) {
+        submittedContext = context;
         calls.push('submit');
         assert.deepEqual(bytes, bound.serialize());
         return 'tx-id';
@@ -670,6 +674,7 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
   assert.deepEqual(
     await chain.call({
       address: 'addr',
+      mutation,
       circuit: 'rotate_enc_key_with_p256',
       args: [],
       onEvent: (/** @type {import('../packages/protocol/dist/index.js').PassportEvent} */ event) =>
@@ -678,6 +683,11 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
     { txHash: 'hash', blockHeight: 7 },
   );
   assert.deepEqual(calls, ['prove', 'balance', 'submit']);
+  assert.deepEqual(submittedContext, {
+    mutation,
+    address: 'addr',
+    circuit: 'rotate_enc_key_with_p256',
+  });
   expectedCircuit = 'withdraw_shielded_with_p256';
   const heldCoin = {
     nonce: new Uint8Array(32).fill(3),

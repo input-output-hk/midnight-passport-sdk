@@ -36,3 +36,11 @@ The demo also serves `/v1/config`, `/v1/zk/{bindingId}/*`, `/v1/accounts/{networ
 With `demo up --funding`, the Passport service also exposes `GET /v1/demo/funding` for offered assets and current ACC balances and `POST /v1/demo/funding` for the selected fixed-size deposit. The proxy is localnet and loopback only, requires the demo origin for POST, checks that the ACC was deployed by this demo, and keeps the funding bearer token server-side. It does not expose arbitrary amount selection or a production caller-authentication scheme. See the [engineering handover]({{ '/handover/' | relative_url }}) for the request path and limitations.
 
 `remoteFaucet(base, { headers, fetch?, timeoutMs? })` from `mn-passport-adapter-service/faucet` is the typed caller. Pass a credential callback that returns fresh request headers and retain the same `requestId` after an uncertain result. A completed ID replays its result; a pending ID needs operator reconciliation. Its `FaucetClientError.status` preserves a refusal's HTTP status, with `0` for a transport failure. The client does not generate an idempotency key or keep credentials. A browser host needs an authenticated ingress and CORS policy for its chosen credential header; this client is intended for a trusted backend caller.
+
+## Opt-in host mutation transport
+
+The local unreleased service can enable protected deployment-wave continuation and
+owner submission receipts. It requires a dedicated encryption-key file, independent
+RPC token file and durable private mount. See [Host durability]({{ '/host-durability/' | relative_url }})
+for its authenticated RPC and qualification boundary. Existing v1 job/proving routes
+and the default demo composition do not automatically become durable.

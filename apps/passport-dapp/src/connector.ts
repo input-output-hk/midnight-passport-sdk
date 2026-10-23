@@ -21,6 +21,8 @@ import {
   PASSPORT_API_VERSION,
   type PassportConnectorAPI,
 } from '@input-output-hk/mn-passport-protocol';
+import { createGrantBookkeepingRecovery } from '@input-output-hk/mn-passport-account';
+import { recipeDeviceKeyring } from '@input-output-hk/mn-passport-keys';
 import { tracedFetch } from './operation-trace.js';
 import { browserAccountRecords, browserGrantJournal } from './grant-journal.js';
 import { demoValueCall } from './value-call.js';
@@ -109,6 +111,8 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
       (await holdings()).selectQualifiedHeldCoins(account, entries, opened),
   };
   let journal: ReturnType<typeof browserGrantJournal> | undefined;
+  let recoverReadKey:
+    ((account: string, grantId: string) => Promise<string | undefined>) | undefined;
   let grantSource:
     | Promise<
         ReturnType<
@@ -126,7 +130,8 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
         binding: accModule,
         openings: {
           readReadPublicKey: async (account, grantId) =>
-            journal?.readReadPublicKey(account, grantId),
+            (await journal?.readReadPublicKey(account, grantId)) ??
+            (await recoverReadKey?.(account, grantId)),
         },
       }),
     ));
@@ -179,7 +184,38 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
       readGrant: async (account, grantId) => (await grants()).readGrant(account, grantId),
     },
     grantRoster: { readGrantRoster: async (account) => (await grants()).readGrantRoster(account) },
-    grantJournalFactory: (prf: PrfKeySource) => (journal = browserGrantJournal(networkId, prf)),
+    grantJournalFactory: (prf: PrfKeySource) => {
+      let recovery: Promise<ReturnType<typeof createGrantBookkeepingRecovery>> | undefined;
+      recoverReadKey = async (account, grantId) => {
+        recovery ??= Promise.all([
+          import('@input-output-hk/mn-passport-adapter-midnight-js'),
+          import('./acc-module.js'),
+        ]).then(([{ createMidnightChain }, { accModule }]) =>
+          createGrantBookkeepingRecovery({
+            networkId,
+            origin: RP_ID,
+            chain: createMidnightChain({
+              network,
+              binding: accModule,
+              prover: remoteV1Prover(SERVICE_URL, { fetch: tracedFetch }),
+              sponsor,
+              sponsorKeys: config,
+              submitter: sponsor,
+            }),
+            viewingKey: recipeDeviceKeyring(prf),
+            commitments: {
+              readGrantCommitment: async (address, id) =>
+                (await grants()).readGrantCommitment(address, id),
+            },
+            pure: accModule.pureCircuits as unknown as Parameters<
+              typeof createGrantBookkeepingRecovery
+            >[0]['pure'],
+          }),
+        );
+        return (await recovery).readReadPublicKey(account, grantId);
+      };
+      return (journal = browserGrantJournal(networkId, prf));
+    },
     records: browserAccountRecords(networkId),
     random: (length) => crypto.getRandomValues(new Uint8Array(length)),
   });

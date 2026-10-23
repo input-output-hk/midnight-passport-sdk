@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "date": "2026-10-23",
+  "scope": "unreleased-local-host-durability-supported-subset",
+  "branch": "codex/rc5-publication-record",
+  "signedParent": "626c6f9289ec64c2bcbde7cf58d6ecdbc470e5b1",
+  "bindingId": "acc-s3r1.1",
+  "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "gate": {
+    "exitCode": 0,
+    "passed": 857,
+    "skippedExistingConditional": 7,
+    "failed": 0,
+    "checks": [
+      "lint",
+      "format:check",
+      "build",
+      "package tests",
+      "app tests",
+      "service/funding/dapp type checks",
+      "key service tests"
+    ]
+  },
+  "hostMatrix": {
+    "scope": "synthetic-host-transport-fresh-process",
+    "cases": 152,
+    "resumed": 108,
+    "safelyUnknown": 44,
+    "receiptSha256": "032c6b26df4c5cfb1658b7f6d7089c33d46ba8008858221ab1b3d0013e2bf62c",
+    "sources": {
+      "packages/service/src/host-mutations.ts": "a0b23b314916bb02ce43ded8c854f2b7444801076039a34ae3e43c6b75aadecf",
+      "packages/service/dist/host-mutations.js": "87b7e13c36d4b1c042d214a1d3f36aa3acf135077c9ad23f33e64e6918017ace",
+      "packages/service/src/host-mutation-store.ts": "bec603c3b5c4318f99477ceaa4d004e83357c3c5eefb21fb043e868e859ff591",
+      "packages/service/dist/host-mutation-store.js": "bec6514da820533c339033584f22965642045f27f47dc21954c9aef8b0b73537",
+      "apps/passport-service/src/host-driver.ts": "cd45bd5420315ee3a7d852d242deb3324c384971ca787ea8fe1fdaa331ccd16d",
+      "scripts/qualification/host-mutation-worker.mjs": "57fccd15c811fd352bcf3cb34489583dc518d27abb6aa29ad226c0f9f66fb867",
+      "scripts/qualification/host-mutation-matrix.mjs": "eeb0afca6fb14fd04a6870a653d3c5b35693c83cb4a6768533533d9f4b6c824a"
+    },
+    "liveNode": false,
+    "proofsOrFunds": false
+  },
+  "nativeLedgerOffline": {
+    "passed": true,
+    "arms": [
+      "p256",
+      "jubjub"
+    ],
+    "retirementChoices": [
+      true,
+      false
+    ],
+    "checks": [
+      "original randomized deployment serialization",
+      "encrypted plan roundtrip",
+      "full verifier roster and maintenance authority/counter frontier",
+      "signed maintenance serialization",
+      "successful raw v9 transaction confirmation and era/status negatives"
+    ]
+  },
+  "docs": {
+    "pages": 18,
+    "localLinksAndAnchors": 335,
+    "errors": [],
+    "jekyllBuildExitCode": 0,
+    "typescriptExampleExitCode": 0
+  },
+  "liveProofQualification": false,
+  "releaseQualified": false,
+  "remoteMutations": false,
+  "remainingIssues": [
+    230,
+    231,
+    232
+  ],
+  "limitations": [
+    "Docker stopped; no new live node/proof/provider/host acceptance",
+    "Default demo owner composition unchanged",
+    "Uncommitted constructor loss and uncertain dispatch remain unknown without re-send",
+    "Single sponsor service and protected POSIX local journal retention required",
+    "Full Lace compatibility, total-loss recovery and partial shielded spends unsupported"
+  ]
+}

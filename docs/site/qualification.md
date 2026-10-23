@@ -99,7 +99,10 @@ The repeat check rejects reused run IDs, different source bytes, different suite
 skips and incomplete outcomes. It qualifies repeatability only for that suite.
 It always reports `releaseQualified: false` in this foundation.
 
-Available suites are `foundation`, `browser`, `localnet`, `consumer` and `release`.
+Available suites include `foundation`, `browser`, `localnet`, `outages`, `consumer` and `release`.
+The opt-in [live restart suite]({{ "/live-qualification/" | relative_url }}) uses a
+dedicated stack, original protected intents and actual proofs. Its scope and
+real-provider matrix remain separate from the complete release gate.
 `plan` shows required environment **names**, not their values. The localnet suite
 requires explicit standalone consent (`PASSPORT_RC_LOCALNET=1`,
 `MN_NETWORK_ID=undeployed`), existing loopback services and the funding token file.
@@ -136,7 +139,7 @@ proof/browser qualification remain on their own resource/time budgets. Hosted
 
 ## Next acceptance gates
 
-- #230: durable account/device/viewing-key mutation recovery.
+- #230: the local opt-in durable owner API has simulator/process tests; complete hosted/proof interruption qualification remains open.
 - #231: complete disposable proof/browser/outage suite and repeated evidence.
 - #232: actual provider and two-browser ceremonies.
 - #235: broader key-profile/consumer coverage.
@@ -169,6 +172,15 @@ Follow the [consumer integration guide]({{ "/consumer-integration/" | relative_u
 for actual registry entrypoints, source pins, runtime identity and opt-in protocol
 diagnostics. `consumer-source` and `consumer-published` are distinct suites; neither
 turns an installed package into a full hosted-wallet compatibility claim.
+
+## Local durability milestone
+
+The opt-in owner continuation API and authenticated published-grant reconstruction
+are described in [Mutation durability and grant recovery]({{ '/durability/' | relative_url }}).
+These additions are local, unreleased work. Default demo owner buttons still need
+transaction reconciliation after interruption; a journal alone does not supply
+durable remote submissions. Another enrolled reader cannot invent the issuing
+reader's grant opening.
 
 ### Runtime identity and repeated receipts
 
