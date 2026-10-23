@@ -66,3 +66,17 @@ work at the existing 4096 limits still requires resource qualification.
 Restore an explicit minimum of four test files before each of the four CI shards.
 The actual Node guard refuses an empty directory; every shard and the aggregate must
 succeed. No skipped/empty runner is counted as qualification.
+
+## Verified follow-up and matrix assertion
+
+The read-only follow-up reviewed b753ab0/8790533/2dab5eb/06dbdc6, confirmed both
+candidate/CI corrections and found only a stale review-map sentence, fixed in 0cb6a6e.
+The final matrix caught an overly strict new assertion: missing original sealed
+read-grant delivery is wrapped by the connector as `GrantRosterUnsettled`. Only
+three populated sealView-output boundaries expect that typed code; every other
+key-origin window still requires `MutationUnsettled`. All original generation,
+enrollment, effect, consent, holding and grant invariants remain. Both exhaustive
+matrices passed after the correction. The focused read-only supplement found no
+blocking regression. Optional matching of human-readable messages was not added:
+the typed code, exact boundary and state invariants are the tested contract. These
+reviews are advisory and did not run tests or authorize a merge.

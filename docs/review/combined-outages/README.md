@@ -46,6 +46,30 @@ hosted CI measurements honestly; the separated gates measured 24–40 seconds at
 lint 16 s, full build/types 33 s, apps 37 s, package shards 18–44 s and aggregate 2 s.
 These are measured hosted runs, not a universal cold-cache timing guarantee.
 
-Final accepted counts and evidence will be recorded in `verification.json` after the
-current-source live/offline runs finish. Failed development attempts retain original
+Final scoped acceptance is recorded in [verification.json](verification.json). Failed development attempts retain original
 journals/IDs privately; they never become clean evidence. No user funds or passkeys are used.
+
+## Accepted evidence — 2026/10/24
+
+- Frozen live source `06dbdc6`: one both-arm round, two ACCs, 16 passed case
+  entries, 34 host-confirmed transactions and zero duplicate host sends. Each arm
+  had one active read grant and one seven-unit shielded test holding. Original plans
+  and prepared bytes survived. Four actual prover stops, two post-submit process
+  deaths and two actual indexer-outage probes were exercised.
+- Offline owner matrix: 200 cases (158 resumed, 42 safe key-origin refusals).
+  Populated rotate/add/remove matrix: 260 (200 resumed, 60 safe key-origin refusals).
+  Both use fresh processes and four bounded independent roots per batch. The corrected
+  harness was run in a dedicated ancillary checkout; all listed source/dist hashes
+  match this branch. Synthetic host matrix: 152 (108 resumed, 44 safely unknown);
+  every listed source/dist hash still matches, so its narrower original receipt is retained.
+- Full local gate: 870 passed, seven existing conditional skips, zero failures.
+  Jekyll and local links/anchors checked. The frozen-source hosted run passed with
+  core jobs 20–45 seconds; final PR head checks remain visible on GitHub.
+
+The owner pre-registration prover failure is a **safe unresolved refusal**, not
+automatic recovery. Legacy interrupted removal still requires the original protected
+continuation. Real providers/two-device lifecycle, live enrollment/removal, the entire
+release suite, published consumers/images and resource qualification at maximum inbox
+bounds remain separate acceptance. Broader issues remain open. The final forward
+changes affect docs/CI lineage and the exact expected error code in the offline matrix;
+the live harness and SDK executable inputs are unchanged from the accepted freeze.

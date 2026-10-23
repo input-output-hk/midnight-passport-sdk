@@ -8,8 +8,11 @@ The review map is `docs/review/combined-outages/README.md`.
 Safety corrections refuse unresolved legacy removal/interleaving, retain bounded
 historical decryption candidates without metadata trust, hash compiled runtime inputs,
 keep unknown polls read-only, propagate cancellation and refuse expired native bytes.
-Exact-value shielded guards and immutable acc-s3r1.1 remain. Live/offline final evidence
-is being collected; release/provider qualification and broader issue closure remain false.
+Exact-value shielded guards and immutable acc-s3r1.1 remain. Accepted scoped evidence: 16 live case entries / 34 host-confirmed transactions,
+200 owner + 260 populated + 152 host offline cases. Four actual prover stops and two
+indexer/process interruptions; zero duplicate host sends. See the combined review
+map and verification receipt. Release/provider qualification and broader issue closure
+remain false. Owner pre-registration proof loss safely stays unresolved; no blind resend.
 
 # STATE — Midnight Passport SDK
 

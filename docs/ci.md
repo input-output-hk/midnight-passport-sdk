@@ -142,8 +142,8 @@ lane. It spawns a fresh process per crash/resume boundary in both owner arms and
 executes the pinned generated ACC without proofs/funds. Source/runtime fingerprints
 must remain fixed. The default gate keeps representative restart, cancellation,
 unknown-outcome and no-replacement tests plus the fast grant/storage negatives.
-No workflow was dispatched, and hosted 30–45-second timings still need measurement
-after an authorised push. Do not cache the protected mutation journal or fixture
+Hosted scheduling measurements follow below. No workflow was manually dispatched.
+Do not cache the protected mutation journal or fixture
 world files; only redacted hashes/case counters belong in acceptance artifacts.
 
 ## Hosted measurements — 2026/10/23
@@ -151,19 +151,22 @@ world files; only redacted hashes/case counters belong in acceptance artifacts.
 The first stack's core jobs passed in **65 s** ([#248 run](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/40026604779))
 and **81 s** ([#249 run](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/40026626812)).
 Install took 3 s; build 8–9 s; package/application tests 25/43 s; application types 7–8 s.
-All other required core jobs took 4–6 s. The core lane therefore exceeds the warm target;
-it is not declared compliant. Reduce serial build/test duplication or shard independent
-checks in the next CI tuning slice without dropping coverage. Actual proof/fault matrices
+All other required core jobs took 4–6 s. The initial serial lane exceeded the warm target. The revised scheduling below
+keeps coverage while separating independent checks. Actual proof/fault matrices
 remain opt-in. No workflow was manually dispatched for these measurements.
 
-### Bounded parallel package checks — 2026/10/24
+### Hosted gate scheduling — 2026/10/24
 
-The combined qualification slice splits the root package tests into Node's four
-**disjoint file shards**, alongside the full static/application lane. Each job installs
-the frozen lockfile and builds fresh; compiled outputs are not trusted from a cache.
-All tests remain included. The original required check name is a strict aggregate:
-a failed, cancelled or skipped dependency fails it. Dependency-download preparation
-is shared by a local composite action; every external action remains SHA-pinned.
-This removes redundant serial builds from the former combined test step and gives
-heavy process/crypto tests separate runner capacity. Actual hosted timings must be
-recorded after the stack push; no under-45-second claim follows from local estimates.
+The first foundation core jobs took 65–81 seconds. The revised workflow splits
+lint/format, the complete build/type checks, application/key-service tests and four
+disjoint Node package-test shards. Every shard requires at least four matching files
+before execution. Fresh outputs are built in each runner; only the lockfile-keyed
+pnpm download store is cached. The unchanged required aggregate refuses failed,
+cancelled or skipped dependencies. All external actions remain SHA-pinned.
+
+At source `06dbdc6`, the top-stack [hosted run](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/40036195974)
+passed: lint 24 s, full build/types 29 s, apps 38 s, package shards 20–45 s,
+aggregate 3 s. This workflow is carried into the foundation PR so dependent PRs
+also use the bounded lanes. These are observed runs, not a universal cold-cache
+timing guarantee; proof/outage matrices remain opt-in.
+

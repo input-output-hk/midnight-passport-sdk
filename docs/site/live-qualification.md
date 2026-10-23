@@ -175,3 +175,26 @@ nix develop -c node scripts/qualification/mutation-matrix.mjs \
 ```
 
 That matrix executes the actual pinned generated ACC with software signatures, real sealing/opening, one active grant and one coin description across rotation, device enrollment and removal boundaries in fresh processes. Its output/input event transport and Merkle position are synthetic. It has no proofs, chain funds or live-wallet claim. A successful continuation must preserve the coin, the surviving device readers and the grant's ability to open the current secret; removed readers must fail to open it. Lost uncommitted key-origin outputs safely refuse. Representative both-arm receipt-loss/unknown-outcome tests run in fast CI; the full matrix stays opt-in.
+
+## Scoped combined acceptance — 2026/10/24
+
+At source `06dbdc6`, one both-arm standalone round passed 16 case entries with
+34 host-confirmed transactions and no duplicate host sends. Each ACC had an
+active read grant and one seven-unit shielded test holding; rotation preserved the
+holding and the independent grantee opened the current viewing key after restart.
+Four actual prover stops, two post-submit host deaths and two actual indexer-outage
+probes were exercised. This is one round of the declared source scope, not the
+three-run complete release/provider gate.
+
+The pre-registration owner proof failure deliberately remains unresolved on explicit
+resume, without registering or resending a replacement. Offline matrices separately
+cover 200 owner, 260 populated rotate/add/remove and 152 host cases, including safe
+refusals. The final offline harness accepts the grant-specific typed refusal only
+at lost original grant-delivery output boundaries; it does not weaken state checks.
+See the [scoped verification receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/rc5-publication-record/docs/review/combined-outages/verification.json).
+
+This evidence does not qualify real providers, live enrollment/removal, the complete
+release, published artifacts or maximum-inbox resource behavior. Earlier keys remain
+bounded decryption candidates without authenticating metadata; candidate-by-coin
+work still scales within the existing 4096 limits. Keep original uncertain IDs and
+protected state for operator reconciliation.

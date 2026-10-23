@@ -191,7 +191,22 @@ export async function runMutationMatrix(output, profile = 'empty') {
                 blocked ? 2 : 0,
                 `${arm}/${operation}/${label}: ${JSON.stringify(resumed)}`,
               );
-              if (blocked) assert.equal(resumed.output?.code, 'MutationUnsettled');
+              if (blocked) {
+                // Grant delivery wraps an unavailable original sealed output with its
+                // fail-closed grant-specific code; other key-origin windows stay generic.
+                const grantDelivery =
+                  profile === 'populated' &&
+                  [
+                    'material:sealView:before',
+                    'material:sealView:after',
+                    'output:viewing.sealView:committed:before',
+                  ].includes(label);
+                assert.equal(
+                  resumed.output?.code,
+                  grantDelivery ? 'GrantRosterUnsettled' : 'MutationUnsettled',
+                  `${arm}/${operation}/${label}: unexpected refusal`,
+                );
+              }
               const after = await mutationWorld(root);
               assert.equal(
                 after.created,
