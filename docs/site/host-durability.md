@@ -255,3 +255,13 @@ recovery. Network latency can still cross an expiry after the last check. Retain
 IDs/journals for operator reconciliation. No operator replacement/rollback API is claimed.
 Direct and reconciled deployment receipts now share address, nonempty transaction-ID,
 zero nonce, unbooted state, zero device count and original encryption-key validation.
+
+A wave-boundary state lookup that is still behind also writes no claim revision: the
+frontier check runs before claiming preparation. The owner's AbortSignal is forwarded
+through reconciliation and correlated submission to the host request. A failed explicit
+resume with an unknown outcome keeps cancellation set, so another attempt still needs
+explicit approval. A cancelled preparation retains computed ready bytes by design;
+those bytes may later expire, and no automatic replacement is promised. The native
+expiry guard requires ten seconds remaining before proof/dispatch as a minimum margin,
+without guaranteeing inclusion latency. The original sixty-second transaction window
+is retained because the reference fee/DUST rules constrain it.

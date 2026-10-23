@@ -57,7 +57,7 @@ for (const arm of /** @type {const} */ (['jubjub', 'p256'])) {
   });
 }
 
-test('unanchored historical registrations never authenticate a removal target', async () => {
+test('removal authenticates exactly one current target and refuses shared survivor keys', async () => {
   const { resolveRemovalReader } = await import('../packages/account/dist/removal-reader.js');
   const survivor = {
     readerPublicKey: '11'.repeat(32),
@@ -65,34 +65,24 @@ test('unanchored historical registrations never authenticate a removal target', 
     epoch: 0n,
     counter: 1n,
   };
-  const forged = {
+  const target = {
     readerPublicKey: '33'.repeat(32),
     devicePublicKey: '44'.repeat(32),
     epoch: 0n,
     counter: 0n,
   };
   const current = { readers: [survivor], outside: [], dropped: [] };
-  let reads = 0;
+  await assert.rejects(resolveRemovalReader(current), { code: 'DeviceRosterInvalid' });
+  assert.deepEqual(await resolveRemovalReader({ ...current, outside: [target] }), target);
+  await assert.rejects(resolveRemovalReader({ ...current, outside: [target, target] }), {
+    code: 'DeviceRosterInvalid',
+  });
   await assert.rejects(
-    resolveRemovalReader(current, {
-      read: async () => {
-        reads++;
-        return [forged];
-      },
-      resolve: () => ({ readers: [], outside: [forged], dropped: [] }),
+    resolveRemovalReader({
+      ...current,
+      outside: [{ ...target, readerPublicKey: survivor.readerPublicKey }],
     }),
     { code: 'DeviceRosterInvalid' },
   );
-  assert.equal(reads, 0, 'Sender-chosen earlier secrets cannot authenticate a target.');
-  assert.deepEqual(
-    await resolveRemovalReader({ ...current, outside: [forged] }, { resolve: () => current }),
-    forged,
-  );
-  await assert.rejects(
-    resolveRemovalReader(
-      { ...current, outside: [{ ...forged, readerPublicKey: survivor.readerPublicKey }] },
-      { resolve: () => current },
-    ),
-    { code: 'DeviceRosterInvalid' },
-  );
+  assert.equal('readDeviceRegistrationHistory' in keyring, false);
 });

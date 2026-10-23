@@ -765,23 +765,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               'DeviceRosterInvalid',
               'A live device has no unique, usable reader registration.',
             );
-          const removedReader = target
-            ? await resolveRemovalReader(roster, {
-                ...(viewingKey.readDeviceRegistrationHistory && {
-                  read: () =>
-                    viewingKey.readDeviceRegistrationHistory!(networkId, oldKeyring, oldEntries),
-                }),
-                resolve: (registered) =>
-                  decodeP256
-                    ? resolveRegisteredReaders({
-                        ...rosterInput,
-                        registered,
-                        p256Pure: resolvedBinding.pureCircuits,
-                        decodeP256DevicePublicKey: decodeP256,
-                      })
-                    : resolveJubjubReaders({ ...rosterInput, registered }),
-              })
-            : undefined;
+          const removedReader = target ? await resolveRemovalReader(roster) : undefined;
           const held = await holdings.selectHeldEntries(record.address, oldEntries, opened);
           const seen = new Set<number>();
           const holdingEntries: Uint8Array[] = [];

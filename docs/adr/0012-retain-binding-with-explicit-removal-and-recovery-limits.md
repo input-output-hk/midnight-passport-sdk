@@ -109,17 +109,21 @@ on this refusal.
 
 ## Interrupted removal and historical-envelope trust — 2026/10/23
 
-The original historical-registration fallback was withdrawn after review. An envelope
-addressed to a reader can carry a sender-chosen earlier secret; decryption alone does
-not establish that its public key was ever a ledger `enc_key`. Such metadata cannot
-authenticate a removal target or exclude a grant to that target's actual reader.
+Earlier readable envelopes can carry sender-chosen secrets; decryption does not prove
+their keys ever appeared on the ledger. The historical-registration fallback and its
+optional port are removed. Both arms authenticate targets only against the current
+ledger-matching roster.
 
-Both arms now require one unique target registration in the current ledger-matching
-roster. If a legacy removal switches the key and loses the target registration before
-its final call settles, a new legacy invocation refuses with `DeviceRosterInvalid`.
-Use an original protected mutation continuation when available, or retain state for
-operator reconciliation. Never infer identity from unanchored history or clear a
-pending journal to retry. Missing/unregistered targets remain unsupported rather than
-risking delivery of the fresh viewing key to an excluded reader. General durable
-mutation journals are tracked in #230; complete identity revocation still needs a new
-contract binding. This changes no on-chain wire format.
+During removal, the fresh roster retains the target's registration **without sending
+it a new viewing-key envelope**. If the key switch succeeds and the final removal call
+fails, the next approved invocation can still resolve the exact target from that
+current authenticated metadata. Grant/key collision guards continue to apply. After
+removal, the retained registration is ignored because it matches no live entry.
+
+A regression appends seventeen attacker-chosen earlier envelope/roster pairs after an
+interrupted P-256 removal: a grant to the real target reader still refuses before any
+new publication, and retry succeeds after that grant is reconciled. Both arms verify
+successful retry and target exclusion from fresh keys. No wire format or binding change
+is needed. Missing/ambiguous current targets still refuse, and old accounts interrupted
+before this metadata correction may need operator reconciliation. This does not deliver
+complete compromised-key identity revocation or total-loss recovery.

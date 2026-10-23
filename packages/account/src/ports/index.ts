@@ -338,14 +338,6 @@ export interface AccountViewingKey {
     keyring: AccountKeyring,
     entries: readonly Uint8Array[],
   ): Promise<(OpenedInboxEntry | null)[]>;
-  /** Diagnostic public metadata from readable envelopes. Earlier secrets are not
-   * anchored to historical ledger keys: never authenticate a removal target or a
-   * fresh-key recipient from this port. Secret/roster keys stay inside the implementation. */
-  readDeviceRegistrationHistory?(
-    networkId: string,
-    keyring: AccountKeyring,
-    entries: readonly Uint8Array[],
-  ): Promise<readonly DeviceReader[]>;
   sealGrant(networkId: string, account: string, grant: GrantBookkeeping): Promise<Uint8Array[]>;
   reencryptInbox?(
     networkId: string,
@@ -556,6 +548,7 @@ export interface Submitter {
       readonly mutation: MutationSubmissionContext;
       readonly address: string;
       readonly circuit: string;
+      readonly signal?: FlowOptions['signal'];
     },
   ): Promise<string>;
 }

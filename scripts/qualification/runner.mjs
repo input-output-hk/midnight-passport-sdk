@@ -150,13 +150,14 @@ export async function runSuite(suite, output, { root = ROOT, env = process.env }
     if (/** @type {NodeJS.ErrnoException} */ (error).code !== 'ENOENT') throw error;
   }
   await mkdir(dirname(outputFile), { recursive: true, mode: 0o700 });
+  // Refuse invalid source/runtime before reserving an evidence path.
+  const source = await workspaceIdentity(root);
   const runId = randomUUID();
   await writeFile(lock, JSON.stringify({ runId, suite, startedAt: new Date().toISOString() }), {
     flag: 'wx',
     mode: 0o600,
   });
   // A crash leaves the lock for reconciliation; a second run cannot overwrite uncertain evidence.
-  const source = await workspaceIdentity(root);
   const startedAt = new Date().toISOString();
   const results = [];
   for (const scenario of plan) {

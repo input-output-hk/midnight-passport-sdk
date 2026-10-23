@@ -253,9 +253,9 @@ export function createHostMutationExecutor(store: HostMutationStore, driver: Hos
       let step = record!.steps.at(-1);
       if (!step || step.phase === 'confirmed') {
         // Claim only before preparing. Unknown lookup polls need no full new revision.
-        if (record!.owner !== owner) await save({ owner });
         const index = record!.steps.length;
         if (!(await driver.check(record!, index))) return { kind: 'unknown' };
+        if (record!.owner !== owner) await save({ owner });
         const prepared = await driver.prepareStep(record!, index);
         await save({ steps: [...record!.steps, { ...prepared, phase: 'ready' }] });
         checkpoint();

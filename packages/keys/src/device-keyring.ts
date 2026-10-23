@@ -169,6 +169,7 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
     self: DeviceReader,
     readers: readonly LiveDeviceReader[],
     rosterKey?: Uint8Array,
+    retainedTarget?: DeviceReader,
   ): Promise<AccountKeys> => {
     const secrets: AccountSecrets = {
       secret: x25519.utils.randomSecretKey(),
@@ -184,7 +185,9 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
         registrations: rosterKey
           ? []
           : await Promise.all(
-              recipients.map((reader) => sealDeviceRegistration(secrets.rosterKey, reader)),
+              [...recipients, ...(retainedTarget ? [retainedTarget] : [])].map((reader) =>
+                sealDeviceRegistration(secrets.rosterKey, reader),
+              ),
             ),
       };
     } finally {
@@ -251,7 +254,14 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
           readerKeys.add(reader.readerPublicKey);
           deviceKeys.add(reader.devicePublicKey);
         }
-        return create(self, readers, rotateRoster ? undefined : live.rosterKey);
+        const targets = removed
+          ? registered.filter((reader) => reader.devicePublicKey === removed.devicePublicKey)
+          : [];
+        if (removed && targets.length !== 1)
+          throw new Error('removal needs one current authenticated target registration');
+        // Retain metadata under the fresh roster key, never a viewing-key envelope for the target.
+        // A retry can identify it from the actual current generation until removal settles.
+        return create(self, readers, rotateRoster ? undefined : live.rosterKey, targets[0]);
       });
     });
 
@@ -343,35 +353,6 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
     );
   };
 
-  const readDeviceRegistrationHistory: NonNullable<
-    AccountViewingKey['readDeviceRegistrationHistory']
-  > = (networkId, keyring, entries) => {
-    checkedEntries(entries);
-    return onNetwork(networkId, async (readerSecret) =>
-      withKeyring(readerSecret, keyring, async ({ all }) => {
-        const registrations = new Map<string, DeviceReader>();
-        for (const entry of entries) {
-          for (const secret of all) {
-            const device = await openDeviceRegistration(secret.rosterKey, entry);
-            if (!device) continue;
-            const identity = JSON.stringify({
-              reader: device.readerPublicKey,
-              signer: device.devicePublicKey,
-              scheme: device.scheme ?? 'jubjub-schnorr',
-              policy: device.policy && {
-                rpIdHash: hex(device.policy.rp_id_hash),
-                origin: hex(device.policy.origin),
-              },
-            });
-            registrations.set(identity, device);
-            break;
-          }
-        }
-        return [...registrations.values()];
-      }),
-    );
-  };
-
   const sealGrant: AccountViewingKey['sealGrant'] = (networkId, account, grant) =>
     onNetwork(networkId, async (readerSecret) => {
       const { object, ...fields } = grant;
@@ -411,7 +392,6 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
     openCoins,
     reencryptCoins,
     openInbox,
-    readDeviceRegistrationHistory,
     sealGrant,
     reencryptInbox: reencryptCoins,
     sealView,

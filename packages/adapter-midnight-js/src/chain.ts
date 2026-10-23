@@ -256,7 +256,17 @@ export function createMidnightChain(opts: {
         }),
         midnightProvider: createMidnightProvider(async (tx) => {
           const id = await track('sponsor.submit', () =>
-            submitter.submit(tx.serialize(), mutation ? { mutation, address, circuit } : undefined),
+            submitter.submit(
+              tx.serialize(),
+              mutation
+                ? {
+                    mutation,
+                    address,
+                    circuit,
+                    ...(flowOptions.signal && { signal: flowOptions.signal }),
+                  }
+                : undefined,
+            ),
           );
           finality = report('chain.finality');
           return id;

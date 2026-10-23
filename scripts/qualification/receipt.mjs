@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile, readdir } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, readdir, lstat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { SCENARIOS, SUITES } from './catalog.mjs';
 
@@ -16,6 +16,9 @@ export async function qualificationRuntimeFiles(root) {
   const walk = async (relative) => {
     let entries;
     try {
+      const directory = await lstat(join(root, relative));
+      if (directory.isSymbolicLink() || !directory.isDirectory())
+        throw new Error('Compiled qualification inputs must not be symlinks.');
       entries = await readdir(join(root, relative), { withFileTypes: true });
     } catch (error) {
       if (/** @type {NodeJS.ErrnoException} */ (error).code === 'ENOENT') return;

@@ -58,6 +58,15 @@ test('cancellation retains the submitted intent; explicit newly approved resume 
       'MutationUnsettled',
     );
     assert.equal((await mutationWorld(root)).effects.length, before.effects.length);
+    assert.equal(
+      invokeMutationWorker(root, 'jubjub', 'create', 'resume-cancelled', 'none', 'unknown').status,
+      2,
+    );
+    assert.equal(
+      invokeMutationWorker(root, 'jubjub', 'create', 'resume').status,
+      2,
+      'An unresolved failed explicit resume must not clear cancellation.',
+    );
     assert.equal(invokeMutationWorker(root, 'jubjub', 'create', 'resume-cancelled').status, 0);
     const after = await mutationWorld(root);
     assert.ok(after.consents.at(-1).resuming);

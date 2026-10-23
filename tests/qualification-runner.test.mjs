@@ -162,6 +162,11 @@ test('ignored compiled inputs are included in qualification identity and symlink
     assert.deepEqual(await qualificationRuntimeFiles(root), ['packages/example/dist/index.js']);
     await symlink('index.js', join(root, 'packages/example/dist/alias.js'));
     await assert.rejects(qualificationRuntimeFiles(root), /symlinks/);
+    await rm(join(root, 'packages/example/dist/alias.js'));
+    await rm(join(root, 'packages/example/dist'), { recursive: true });
+    await mkdir(join(root, 'other-build'));
+    await symlink(join(root, 'other-build'), join(root, 'packages/example/dist'));
+    await assert.rejects(qualificationRuntimeFiles(root), /symlinks/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

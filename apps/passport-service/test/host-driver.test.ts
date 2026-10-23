@@ -309,6 +309,30 @@ test('driver builds real ledger deployment and maintenance bytes and refuses cha
     false,
     'Expired prepared bytes must be refused before entering dispatching.',
   );
+  const nearlyExpired = (
+    await L.Transaction.fromParts(
+      'undeployed',
+      undefined,
+      undefined,
+      L.Intent.new(new Date(Date.now() + 500)),
+    ).prove(proving, L.CostModel.initialCostModel())
+  ).bind();
+  assert.equal(
+    await driver.check(
+      {
+        ...record,
+        steps: [
+          {
+            phase: 'ready',
+            tx: hex(nearlyExpired.serialize()),
+            identifiers: nearlyExpired.identifiers(),
+          },
+        ],
+      },
+      0,
+    ),
+    false,
+  );
   const expiredPlan = structuredClone(record);
   const context = expiredPlan.plan!.context as any;
   const old = L.Transaction.deserialize(

@@ -136,7 +136,6 @@ export function createDurablePassportMutations({
         phase: 'pending',
         entries: [],
       });
-    if (doc!.phase === 'cancelled') await save({ phase: 'pending' });
     const chain = typeof ports.chain === 'function' ? await ports.chain() : ports.chain;
     const binding = typeof ports.binding === 'function' ? await ports.binding() : ports.binding;
     const deployReceipt = (value: unknown) => {
@@ -189,7 +188,12 @@ export function createDurablePassportMutations({
     if (unresolved >= 0) {
       const entry = doc!.entries[unresolved]!,
         effect = entry.effect!;
-      const outcome = await outcomes.reconcile(pins, effect);
+      const outcome = await outcomes.reconcile(
+        pins,
+        effect,
+        options.signal ? { signal: options.signal } : undefined,
+      );
+      checkpoint(options);
       if (outcome.kind === 'unknown' || outcome.digest !== effect.digest)
         return mutationFailure('Submission outcome is unknown or names another intent.');
       if (outcome.kind === 'not-submitted') {
@@ -258,6 +262,7 @@ export function createDurablePassportMutations({
       }
     };
     await ensureFrontier();
+    if (doc!.phase === 'cancelled') await save({ phase: 'pending' });
     if (doc!.phase === 'complete') {
       await settleLocal();
       return doc!.result as DurableMutationResult;
@@ -334,7 +339,7 @@ export function createDurablePassportMutations({
           typeof (result as { txHash?: unknown }).txHash !== 'string' ||
           !(result as { txHash?: unknown }).txHash
         )
-          return mutationFailure('A finalized mutation transaction ID is required.');
+          return mutationFailure('A finalised mutation transaction ID is required.');
         // This port promises finality; an indexer that has not caught up must be reconciled,
         // never treated as successful durable state.
         if (!sameMutationLedger(await readLive(address), expected))

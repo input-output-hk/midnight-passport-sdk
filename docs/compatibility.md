@@ -408,56 +408,19 @@ See [ADR 0012](adr/0012-retain-binding-with-explicit-removal-and-recovery-limits
 and the [qualification guide](site/qualification.md). No binding ID, generated artifact
 or key manifest was repointed. The exact-value shielded withdrawal guard remains.
 
-## Local owner durability and grant reconstruction (#230 / #239)
+## 2026/10/23 foundation review correction
 
-Unreleased opt-in `createDurablePassportMutations` supports the retained spec-3 owner
-create/activate/inbox, rotate, add-device and remove-entry paths in both arms. It
-requires protected atomic persistence, fresh original consent and a host's exact
-submission outcome source. Unknown sends, changed frontiers, unfenced senders and
-lost uncommitted key outputs are refused. Existing browser/hosted flows are not
-automatically converted; remote deploy waves still need host durability.
+Unanchored earlier envelopes cannot authenticate a removal target. The history port
+is removed. Removal retains target metadata in the fresh authenticated roster without
+delivering a new key envelope, allowing safe retries after the key switch. Missing or
+ambiguous current targets still refuse. Qualification identities include ignored
+compiled package inputs and reject symlinked dist roots. Repeated outer receipts do
+not audit omitted runs or independently pin every external consumer input.
 
-The demo can reconstruct complete published grant bookkeeping after local journal
-loss using the original issuing reader and live commitment checks. Another enrolled
-reader, absent unpublished parts, a revoked/replaced grant or corrupt backup cannot
-produce an opening. Existing journal v1/v2 and record suite 1/2 reads are preserved.
+## 2026/10/23 host durability correction
 
-See [the engineer guide](site/durability.md) and [local review map](review/durability/README.md)
-for simulator-only restart evidence and remaining host/provider/combined active-grant
-qualification. No binding, withdrawal guard, installed release or Lace host consent
-was changed. No full compatibility or total-loss recovery claim.
-
-### Local authenticated host transport (2026/10/23)
-
-`remoteHostMutationPorts` and the opt-in reference service route now persist the
-original constructor/deployment transaction, authority and finalised wave bytes.
-Revision fences block stale senders; uncertain broadcasts are looked up without
-rebroadcast. Complete 52-key binding checks, exact maintenance frontiers and original
-retirement placement precede continuation. Both-arm/lock-choice synthetic process
-tests and offline ledger serialization/signature tests are distinct from live proof
-acceptance. Docker was stopped for this slice. Default demo owner buttons and RC5
-remain unchanged. See [host durability](site/host-durability.md) for authentication,
-private mounts, cancellation, TTL and unsupported uncommitted-plan loss.
-
-
-## Local live restart follow-up (unreleased)
-
-The [live source runbook](site/live-qualification.md) and [review map](review/live-outages/README.md)
-separate actual deployment/create/rotation proofs and process/indexer outages from
-software simulation and manual provider acceptance. The dated verification receipt
-records completed scope; it does not qualify the full release or published artifacts.
-Native tagged watch IDs retain 33 bytes while included hashes/addresses remain 32.
-JubJub known-address opening keeps existing write-once directory metadata and verifies
-the requested account from its live entry/sealed inbox. Pending owner traces from an
-older call sequence can refuse continuation; preserve their original implementation
-and journal. Binding, exact-value shielded withdrawal guard and hosted consent remain.
-
-## 2026/10/23 review corrections
-
-Historical readable envelopes are not authenticated historical ledger generations.
-Legacy removal that loses its target registration after the key switch now refuses;
-protected original continuations retain their verified snapshot. Unknown host lookup
-polls retain no new full journal revisions. Cancellation after the dispatch CAS lets
-that committed dispatch finish and stops future waves. Expired prepared bytes refuse
-before dispatch and are never automatically renewed. Source qualification also hashes
-ignored compiled package inputs; older source-only receipts keep their original scope.
+Unknown lookup and wave-frontier polls retain no new full journal revisions.
+Cancellation propagates through correlated host calls and reconciliation. A successful
+dispatch CAS commits that one send; cancellation stops later waves. Failed explicit
+resume retains cancellation. Native prepared bytes need ten seconds remaining and are
+never renewed. Direct/reconciled deployment receipts share their validation rules.

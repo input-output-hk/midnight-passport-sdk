@@ -78,7 +78,11 @@ export type MutationOutcome =
       readonly result: TxResult | { readonly address: string; readonly txIds: readonly string[] };
     };
 export interface MutationOutcomeSource {
-  reconcile(pins: MutationPins, effect: MutationEffect): Promise<MutationOutcome>;
+  reconcile(
+    pins: MutationPins,
+    effect: MutationEffect,
+    options?: Pick<FlowOptions, 'signal'>,
+  ): Promise<MutationOutcome>;
 }
 /** Explicit approval of the original intent on every process invocation, including resume. */
 export interface MutationConsent {

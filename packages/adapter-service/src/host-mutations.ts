@@ -174,21 +174,33 @@ export function remoteHostMutationPorts(
       async submit(tx, context) {
         if (!context) return failure();
         const { mutation, address, circuit } = context;
-        const result = await finish(identity(mutation.requestId, mutation.intentSha256, 'call'), {
-          tx: toHex(tx),
-          address,
-          circuit,
-        });
+        const result = await finish(
+          identity(mutation.requestId, mutation.intentSha256, 'call'),
+          {
+            tx: toHex(tx),
+            address,
+            circuit,
+          },
+          context.signal,
+        );
         if (!('txHash' in result)) return failure();
         return result.submissionId;
       },
     },
     outcomes: {
-      async reconcile(pins: MutationPins, effect: MutationEffect) {
+      async reconcile(
+        pins: MutationPins,
+        effect: MutationEffect,
+        context: { readonly signal?: AbortSignalLike } = {},
+      ) {
         if (!samePins(pins, pinned)) return failure();
-        const answer = await request('reconcile', {
-          identity: identity(effect.key, effect.digest, effect.kind),
-        });
+        const answer = await request(
+          'reconcile',
+          {
+            identity: identity(effect.key, effect.digest, effect.kind),
+          },
+          context.signal,
+        );
         if (answer.kind === 'confirmed' && answer.digest !== effect.digest) return failure();
         if (answer.kind === 'confirmed' && 'txHash' in answer.result)
           return {
