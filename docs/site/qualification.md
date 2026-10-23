@@ -146,22 +146,19 @@ proof/browser qualification remain on their own resource/time budgets. Hosted
 The [first-slice review map](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/stability-foundation/README.md)
 links exact implementation/evidence boundaries and the issue acceptance index.
 
-### Resuming an entry removal after rotation
+### Interrupted entry removal and unanchored history
 
-If the key switch lands but removal fails, the target's registration is no longer
-in the fresh roster. The standard key recipe supplies optional
-`AccountViewingKey.readDeviceRegistrationHistory`: it opens authenticated public
-registration metadata under current/prior envelopes the acting reader can already
-open. Secret bytes remain inside the port. The flow re-derives the exact live
-target and rechecks shared keys and active grants before proceeding.
+Both arms authenticate a removal target only from the current ledger-matching roster.
+The diagnostic `readDeviceRegistrationHistory` port can open sender-chosen earlier
+envelopes, so its output does not prove an earlier on-chain key generation. It is never
+an authorisation source or a fresh-key recipient list.
 
-Historical registrations are **never** the fresh-key recipient list. Only the
-current verified survivor roster receives new deliveries. A missing, ambiguous,
-non-matching or unavailable history source fails closed. Custom key ports that
-omit this optional method may need operator reconciliation after this interruption.
-History lookup is bounded by the recipe's existing envelope, inbox and prior-secret
-limits. This is targeted removal resumption, not a general durable mutation journal;
-#230 still owns that broader work.
+A new legacy invocation after a key switch may lack the target's current registration;
+it then refuses with `DeviceRosterInvalid`, with and without active read grants.
+Retain the original protected mutation continuation when available, or preserve state
+for operator reconciliation. Never substitute a historical reader or clear an uncertain
+journal to force removal. The protected coordinator replays the original verified
+snapshot; it does not rediscover target identity from envelope history.
 
 ## Current consumer assessment
 
@@ -169,3 +166,17 @@ Follow the [consumer integration guide]({{ "/consumer-integration/" | relative_u
 for actual registry entrypoints, source pins, runtime identity and opt-in protocol
 diagnostics. `consumer-source` and `consumer-published` are distinct suites; neither
 turns an installed package into a full hosted-wallet compatibility claim.
+
+### Runtime identity and repeated receipts
+
+Build through Nix before running a suite. The workspace identity includes tracked and
+untracked source **and ignored `packages/*/dist` inputs** actually imported by tests.
+Compiled symlinks are refused. Older receipts that hash only source keep that narrower
+scope and are not upgraded to new-source acceptance.
+
+`qualify repeat` checks three distinct passing receipts with matching source/runtime,
+binding and scope in chronological order. These local receipts are unsigned; the tool
+cannot detect omitted intervening runs. Operators must retain the entire run sequence
+when asserting consecutiveness. `omittedRunsAudited: false` makes that boundary explicit.
+Keep outputs outside the tracked tree (or in a private ignored directory), since output
+locks/evidence appearing inside source inputs correctly invalidate a source-stability check.

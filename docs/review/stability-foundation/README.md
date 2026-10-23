@@ -96,3 +96,13 @@ preparing a new roster, matching the P-256 refusal boundary. Without an identifi
 target reader, the SDK cannot establish that a read-grant recipient is distinct.
 A focused regression verifies no chain call, inbox publication or ACC key switch
 on this refusal.
+
+## Review correction — 2026/10/23
+
+The earlier target-only history fallback is withdrawn: sender-chosen earlier envelopes
+are not evidence of historical ledger keys. Current-roster target verification remains
+required; fresh legacy removal after a key switch refuses. The original protected
+mutation route retains its original verified snapshot. Runtime identities now also hash
+ignored compiled package inputs. The three-receipt checker establishes matching ordered
+runs, without proving that an operator omitted no intervening run. Historical receipts
+retain their original hashes and scope; they are not relabelled.

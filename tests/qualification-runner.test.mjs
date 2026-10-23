@@ -10,6 +10,7 @@ import {
   tapSummary,
   validateReceipt,
   writeReceipt,
+  qualificationRuntimeFiles,
 } from '../scripts/qualification/receipt.mjs';
 
 const identity = {
@@ -150,4 +151,18 @@ test('receipt scope cannot omit declared cases or relabel a unit test as proof e
   assert.ok(wrongTier.results[0]);
   wrongTier.results[0].tier = 'proof-localnet';
   assert.throws(() => validateReceipt(wrongTier), /tier/);
+});
+
+test('ignored compiled inputs are included in qualification identity and symlinks refused', async () => {
+  const { mkdir, writeFile, symlink } = await import('node:fs/promises');
+  const root = await mkdtemp(join(tmpdir(), 'passport-runtime-inputs-'));
+  try {
+    await mkdir(join(root, 'packages/example/dist'), { recursive: true });
+    await writeFile(join(root, 'packages/example/dist/index.js'), 'export const v=1;');
+    assert.deepEqual(await qualificationRuntimeFiles(root), ['packages/example/dist/index.js']);
+    await symlink('index.js', join(root, 'packages/example/dist/alias.js'));
+    await assert.rejects(qualificationRuntimeFiles(root), /symlinks/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

@@ -338,9 +338,9 @@ export interface AccountViewingKey {
     keyring: AccountKeyring,
     entries: readonly Uint8Array[],
   ): Promise<(OpenedInboxEntry | null)[]>;
-  /** Authenticated public registrations from current/prior readable rosters, for
-   * identifying a removal target after an interrupted key switch. Never a fresh-key
-   * recipient list. Secret/roster keys remain inside the implementation. */
+  /** Diagnostic public metadata from readable envelopes. Earlier secrets are not
+   * anchored to historical ledger keys: never authenticate a removal target or a
+   * fresh-key recipient from this port. Secret/roster keys stay inside the implementation. */
   readDeviceRegistrationHistory?(
     networkId: string,
     keyring: AccountKeyring,

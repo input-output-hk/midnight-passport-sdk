@@ -901,7 +901,7 @@ test('P-256 sign-in authenticates a real inbox batch when the host skips empty b
   await assert.rejects(accounts.openAccount(), { code: 'EncryptionKeyMismatch' });
 });
 
-test('P-256 removal resumes from authenticated target history and still refuses a grant to that reader', async () => {
+test('legacy P-256 removal refuses historical target rediscovery with and without a read grant', async () => {
   const fake = createFakePorts();
   let interrupt = false;
   /** @type {{grantId:string,readPublicKey:string}[]} */ let targets = [];
@@ -962,9 +962,6 @@ test('P-256 removal resumes from authenticated target history and still refuses 
   assert.deepEqual(state.encKey, keyBeforeRetry);
   assert.deepEqual(state.inboxEntries.map(hex), inboxBeforeRetry);
   targets = [];
-  assert.equal(
-    (await reopened.removeDevice(added.commitmentHex)).removedCommitmentHex,
-    added.commitmentHex,
-  );
-  assert.equal(state.entries.has(added.commitmentHex), false);
+  await assert.rejects(reopened.removeDevice(added.commitmentHex), { code: 'DeviceRosterInvalid' });
+  assert.equal(state.entries.has(added.commitmentHex), true);
 });

@@ -9,7 +9,7 @@ private registry hashes/attestations, and published image digests. The release k
 shielded withdrawal guard. Partial spends (#201), complete typed circuit coverage (#82) and
 remaining live/value-host evidence (#202) are deferred; no full Lace compatibility is claimed.
 
-## October 20 local consumer assessment
+## 2026/10/20 local consumer assessment
 
 The [current consumer review](review/consumer-qualification/README.md) and
 [engineer guide](site/consumer-integration.md) distinguish local packages, the actual
@@ -407,3 +407,11 @@ improve integration diagnostics; #79/#81's cross-product runtime criteria remain
 See [ADR 0012](adr/0012-retain-binding-with-explicit-removal-and-recovery-limits.md)
 and the [qualification guide](site/qualification.md). No binding ID, generated artifact
 or key manifest was repointed. The exact-value shielded withdrawal guard remains.
+
+## 2026/10/23 foundation review correction
+
+Unanchored earlier envelopes cannot authenticate a removal target. Fresh legacy
+removal after a key switch refuses when the current roster no longer identifies
+the target. Protected original continuations are a separate host capability.
+Qualification identities now include ignored compiled package inputs. Repeated
+local receipts establish matching chronological runs without auditing omitted runs.
