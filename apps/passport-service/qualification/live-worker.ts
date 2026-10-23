@@ -279,7 +279,7 @@ if (mode === 'host') {
     prepare: (identity: HostMutationIdentity, input: Parameters<typeof original.prepare>[1]) =>
       diagnose('prepare', () => original.prepare(identity, input)),
     prepareStep: async (record: HostMutationRecord, index: number) => {
-      if (fault === 'before-deploy-proof' && record.identity.kind === 'deploy' && index === 0)
+      if (fault === 'before-deploy-proof' && record.identity.kind === 'deploy' && index === 1)
         await proofBoundary('deploy');
       return diagnose('prepareStep', () => original.prepareStep(record, index));
     },

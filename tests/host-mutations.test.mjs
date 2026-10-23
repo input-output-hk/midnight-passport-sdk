@@ -286,3 +286,18 @@ test('cancellation after the dispatch fence sends that step once and stops the n
   assert.equal((await f.engine.resume(identity)).kind, 'confirmed');
   assert.equal(f.counts().sent, 3);
 });
+
+test('unknown state at the next wave boundary retains no new owner revisions', async () => {
+  const f = fixture();
+  f.driver.check = async (_record, count) => count === 0;
+  assert.deepEqual(await f.engine.execute(identity, input), { kind: 'unknown' });
+  assert.equal(f.get()?.steps[0]?.phase, 'confirmed');
+  const revision = f.get()?.revision;
+  for (let n = 0; n < 25; n++)
+    assert.deepEqual(await f.engine.resume(identity), { kind: 'unknown' });
+  assert.equal(f.get()?.revision, revision);
+  assert.equal(f.counts().sent, 1);
+  f.driver.check = async () => true;
+  assert.equal((await f.engine.resume(identity)).kind, 'confirmed');
+  assert.equal(f.counts().sent, 3);
+});

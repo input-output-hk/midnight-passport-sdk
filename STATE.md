@@ -1,3 +1,16 @@
+## 2026/10/24 — combined populated/prover qualification slice
+
+Current branch retained. Draft stack #248 (stability/consumer foundation) → #249
+(owner/host durability) is pushed with GPG/DCO-signed review corrections. The
+current branch carries the next combined grants/holdings and prover-outage profile.
+The review map is `docs/review/combined-outages/README.md`.
+
+Safety corrections retain current authenticated removal target metadata without a
+fresh target envelope, remove historical target trust, hash compiled runtime inputs,
+keep unknown polls read-only, propagate cancellation and refuse expired native bytes.
+Exact-value shielded guards and immutable acc-s3r1.1 remain. Live/offline final evidence
+is being collected; release/provider qualification and broader issue closure remain false.
+
 # STATE — Midnight Passport SDK
 
 > The committed record of SDK development, maintained by

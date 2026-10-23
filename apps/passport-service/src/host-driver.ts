@@ -317,7 +317,11 @@ export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutation
           String(deploy.address) !== record.plan!.address
         )
           return hostFailure();
-        if (![...tx.intents.values()].every((intent: any) => intent.ttl.getTime() > Date.now()))
+        if (
+          ![...tx.intents.values()].every(
+            (intent: { readonly ttl: Date }) => intent.ttl.getTime() > Date.now() + 10000,
+          )
+        )
           return hostFailure();
         const proven = await tx.prove(r.proving, L.CostModel.initialCostModel());
         return prepared(
@@ -341,10 +345,7 @@ export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutation
         action = bare.addSignature(0n, L.signData(context.signingKey, bare.dataToSign));
       }
       const ttl = new Date(Date.now() + 60000),
-        intent =
-          index === 0
-            ? L.Intent.new(ttl).addDeploy(action)
-            : L.Intent.new(ttl).addMaintenanceUpdate(action);
+        intent = L.Intent.new(ttl).addMaintenanceUpdate(action);
       const unproven = L.Transaction.fromParts(r.networkId, undefined, undefined, intent);
       const proven = await unproven.prove(r.proving, L.CostModel.initialCostModel());
       const balanced = await r.providers.walletProvider.balanceTx({ version: 'v9', tx: proven });
@@ -361,7 +362,7 @@ export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutation
       if (
         pending?.phase === 'ready' &&
         ![...decode(pending.tx).intents.values()].every(
-          (intent: any) => intent.ttl.getTime() > Date.now(),
+          (intent: { readonly ttl: Date }) => intent.ttl.getTime() > Date.now() + 10000,
         )
       )
         return false;

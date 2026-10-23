@@ -959,30 +959,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
               'DeviceRosterInvalid',
               'Every live device needs one unique registered reader before rotation.',
             );
-          const removedReader = target
-            ? await resolveRemovalReader(roster, {
-                ...(keyring.readDeviceRegistrationHistory && {
-                  read: () =>
-                    keyring.readDeviceRegistrationHistory!(networkId, oldKeyring, oldEntries),
-                }),
-                resolve: (registered) =>
-                  resolveRegisteredReaders({
-                    account: record.address,
-                    epoch: view.deviceEpoch,
-                    registered,
-                    liveEntries: view.deviceEntries,
-                    allowedEntries: view.deviceEntries.filter(
-                      (entry) => !equalBytes(entry, target),
-                    ),
-                    pure: {
-                      derive_device_entry_with_jubjub: pure.derive_device_entry_with_jubjub!,
-                    },
-                    p256Pure: pure,
-                    decodeDevicePublicKey: decodeJubjub,
-                    decodeP256DevicePublicKey: decodeP256,
-                  }),
-              })
-            : undefined;
+          const removedReader = target ? await resolveRemovalReader(roster) : undefined;
           const initial = view;
           const held = await ports.holdings!.selectHeldEntries(record.address, oldEntries, opened);
           const seen = new Set<number>();

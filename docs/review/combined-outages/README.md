@@ -22,16 +22,18 @@ scope; it does not close broad issues or qualify a release, real provider or hos
 
 ## Review corrections carried into the lower stack
 
-- Earlier envelopes can carry sender-chosen secrets. The old history fallback no longer
-  authenticates a removal target. Missing current target metadata refuses; original
-  protected continuations can retain the original verified snapshot. No identity-revocation claim.
+- Earlier envelopes can carry sender-chosen secrets. The old history fallback and port are removed. Removal retains target registration
+  under the fresh current roster key without a target viewing-key envelope; both-arm
+  retries remain safe, including seventeen forged older envelope pairs. Missing or
+  ambiguous current target metadata still refuses. No identity-revocation claim.
 - Qualification hashes ignored compiled inputs. Three matching ordered local receipts
   do not audit omitted intervening runs; old receipts retain their narrower original scope.
-- Unknown host polls are read-only. A successor claims only before preparing, and CAS
+- Unknown host lookup and wave-boundary polls are read-only. A successor claims only before preparing, and CAS
   still fences stale prepared results. Dispatch CAS is the cancellation point of no return.
 - Native expired constructor/ready bytes refuse before proof/dispatch without renewal.
   Expiry recovery, lost uncommitted constructors and unknown sends remain unsupported.
-- Direct and reconciled deploy results share address, nonempty ID, zero nonce/device and
+- Cancellation reaches correlated submit/reconciliation; failed explicit resume retains
+  cancellation. Direct and reconciled deploy results share address, nonempty ID, zero nonce/device and
   original encryption-key/frontier validation.
 
 External suggestions to regenerate constructors, accept arbitrary later ledger prefixes,

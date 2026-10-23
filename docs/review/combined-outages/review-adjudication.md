@@ -5,7 +5,7 @@ Each finding was checked against the code; the reviewer did not execute tests.
 
 | Finding | Disposition |
 | --- | --- |
-| Unanchored earlier envelope used to identify a removal target | Fixed: current ledger-matching roster only; negative tests in both arms. Legacy interruption limitation documented |
+| Unanchored earlier envelope used to identify a removal target | Fixed: current ledger-matching roster only; retain target metadata without a fresh target envelope; both-arm retries and seventeen-forged-envelope regression; history API removed |
 | Opaque/unregistered removal target refuses | Retained safety boundary: cannot establish distinct grant recipients; full identity revocation needs binding work |
 | Ignored compiled runtime absent from source identity | Fixed: include actual package dist files and reject compiled symlinks; pre-build remains required |
 | Three supplied receipts prove no intervening failures | Claim corrected: chronological/matching/distinct only; omitted runs are unaudited |
@@ -27,3 +27,18 @@ Each finding was checked against the code; the reviewer did not execute tests.
 
 No issue was closed, binding repinned, shielded partial spend enabled, release published or
 blanket host/provider compatibility asserted by these corrections.
+
+## Follow-up verification
+
+The next read-only reviews confirmed the first four host corrections. Further verified
+fixes now cover unknown wave-boundary polls, cancellation forwarding into correlated
+host calls/reconciliation, preserving cancelled state after an unresolved explicit
+resume, and a ten-second native TTL margin. A cancelled preparation deliberately
+retains its computed output, even if it later expires; discarding or replacing those
+bytes would contradict this journal's preservation contract. Source preflight precedes
+evidence reservation and rejects a symlinked dist root as well as symlinked entries.
+
+Generic outer receipt matching still needs scenario-specific external input evidence;
+it is not a complete release provenance gate. No automatic expiry/unknown-send repair
+or full compromised-identity revocation was added. Public setup uses a single reference
+wallet and decodes native contract state with that handle's physical runtime.

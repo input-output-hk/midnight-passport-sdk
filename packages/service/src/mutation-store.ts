@@ -25,8 +25,9 @@ export function fileMutationByteStore(directory: string) {
   const read = async (id: string): Promise<ByteRecord | undefined> => {
     check(id);
     await ready();
+    const pattern = new RegExp(`^${id}\\.r(0|[1-9][0-9]{0,5})\\.json$`);
     const revisions = (await readdir(root)).flatMap((name) => {
-      const m = new RegExp(`^${id}\\.r(0|[1-9][0-9]{0,5})\\.json$`).exec(name);
+      const m = pattern.exec(name);
       return m ? [Number(m[1])] : [];
     });
     if (!revisions.length) return undefined;

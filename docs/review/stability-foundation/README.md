@@ -99,10 +99,13 @@ on this refusal.
 
 ## Review correction — 2026/10/23
 
-The earlier target-only history fallback is withdrawn: sender-chosen earlier envelopes
-are not evidence of historical ledger keys. Current-roster target verification remains
-required; fresh legacy removal after a key switch refuses. The original protected
-mutation route retains its original verified snapshot. Runtime identities now also hash
-ignored compiled package inputs. The three-receipt checker establishes matching ordered
-runs, without proving that an operator omitted no intervening run. Historical receipts
-retain their original hashes and scope; they are not relabelled.
+Sender-chosen earlier envelopes are not evidence of historical ledger keys. The fallback
+and history port are removed. Retain the target registration in the new authenticated
+roster, without a new viewing-key envelope; legacy retries then use current metadata.
+Both arms retain grant/key collision refusals. A seventeen-envelope substitution
+regression verifies the target reader cannot be replaced by unanchored metadata.
+
+Runtime identities also hash ignored compiled package inputs, refusing symlinked files
+and dist roots. Source/runtime preflight precedes evidence lock creation. The three-
+receipt checker establishes matching ordered workspace runs, without proving omitted
+runs or external consumer-input equivalence. Historical evidence is not relabelled.

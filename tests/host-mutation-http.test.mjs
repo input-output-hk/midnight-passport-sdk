@@ -231,3 +231,37 @@ test('native 33-byte tagged watch IDs survive host persistence and both RPC resu
   if (outcome.kind === 'confirmed' && 'txHash' in outcome.result)
     assert.equal(outcome.result.txHash, txid(99));
 });
+
+for (const kind of ['reconcile', 'submit'])
+  test(`remote host ${kind} propagates cancellation`, async () => {
+    const controller = new AbortController();
+    /** @type {AbortSignal|undefined} */ let wireSignal;
+    const remote = remoteHostMutationPorts('http://127.0.0.1:9999', {
+      pins,
+      token,
+      fetch: async (_url, init) => {
+        wireSignal = /** @type {AbortSignal} */ (init?.signal);
+        const signal = wireSignal;
+        assert.ok(signal);
+        return new Promise((_resolve, reject) =>
+          signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true }),
+        );
+      },
+    });
+    const result =
+      kind === 'reconcile'
+        ? remote.outcomes.reconcile(
+            pins,
+            { key: mutation.requestId, digest: mutation.intentSha256, kind: 'deploy', input: {} },
+            { signal: controller.signal },
+          )
+        : remote.submitter.submit(new Uint8Array([1]), {
+            mutation,
+            address: 'ab'.repeat(32),
+            circuit: 'append_inbox_with_jubjub',
+            signal: controller.signal,
+          });
+    controller.abort();
+    await assert.rejects(result, { code: 'MutationUnsettled' });
+    assert.equal(wireSignal?.aborted, true);
+  });

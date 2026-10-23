@@ -66,11 +66,10 @@ knowledge. Ambiguous rosters and grants to the removed reader must be reconciled
 before removal. Total-loss recovery remains unavailable on the retained binding.
 See [Qualification and safety boundaries]({{ '/qualification/' | relative_url }}).
 
-The optional registration-history port returns diagnostic metadata from readable
-envelopes. Earlier secrets are not anchored to prior ledger keys. Neither removal-target
-authentication nor fresh-key recipient selection trusts that history. A new legacy
-removal invocation may therefore require operator reconciliation after a key switch;
-an original protected mutation can retain its verified target snapshot.
+Removal retains target registration metadata under the fresh authenticated roster key,
+without giving the target a new viewing-key envelope. A retry can identify it from the
+current roster. The unanchored earlier-registration history port has been removed;
+sender-chosen older secrets never authenticate targets or fresh-key recipients.
 
 ## Local durability milestone
 

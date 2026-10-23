@@ -23,7 +23,7 @@ export function encodeMutationValue(value: unknown, depth = 0): MutationValue {
   if (value instanceof Uint8Array) return { $bytes: toHex(value) };
   if (Array.isArray(value)) return value.map((item) => encodeMutationValue(item, depth + 1));
   if (!value || typeof value !== 'object' || Object.getPrototypeOf(value) !== Object.prototype)
-    return mutationFailure('Mutation value is not serializable.');
+    return mutationFailure('Mutation value is not serialisable.');
   return Object.fromEntries(
     Object.entries(value)
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))

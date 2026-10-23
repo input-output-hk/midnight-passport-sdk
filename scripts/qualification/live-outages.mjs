@@ -458,7 +458,8 @@ export async function runLiveOutages() {
             if (fault === 'before-deploy-proof') {
               assert.equal(records.length, 1);
               assert.equal(records[0].phase, 'active');
-              assert.equal(records[0].steps.length, 0);
+              assert.equal(records[0].steps.length, 1);
+              assert.equal(records[0].steps[0].phase, 'confirmed');
               assert.ok(records[0].planHash);
             }
             if (fault === 'before-owner-proof') beforeProverUnknown = records;
