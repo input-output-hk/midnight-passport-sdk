@@ -7,6 +7,7 @@ import { recipeDeviceKeyring } from '../packages/keys/dist/index.js';
 import {
   openDeviceEnvelope,
   openDeviceRegistration,
+  sealDeviceEnvelope,
 } from '../packages/keys/dist/device-envelope.js';
 
 /** @param {Uint8Array} bytes */
@@ -216,4 +217,30 @@ test('P-256 owner and JubJub device can open a mixed-roster rotation', async () 
   }
   ownerReader.fill(0);
   remote.secretKey.fill(0);
+});
+
+test('historical key overflow refuses instead of silently hiding old holdings', async () => {
+  const source = {
+    withSession: async (/** @type {()=>Promise<any>} */ work) => work(),
+    deviceSecret: async () => new Uint8Array(32).fill(7),
+    deriveSecret: async () => new Uint8Array(32).fill(7),
+  };
+  const ring = recipeDeviceKeyring(source);
+  const keys = await ring.createKeys('undeployed', { devicePublicKey: selfDeviceKey });
+  const envelopes = [...keys.envelopes];
+  for (let n = 0; n < 17; n++)
+    envelopes.unshift(
+      await sealDeviceEnvelope(await ring.readerPublicKey('undeployed'), {
+        secret: new Uint8Array(32).fill(40 + n),
+        rosterKey: new Uint8Array(32).fill(90 + n),
+      }),
+    );
+  await assert.rejects(
+    ring.openInbox(
+      'undeployed',
+      { account: 'ab'.repeat(32), encKey: keys.encKey, envelopes },
+      keys.registrations,
+    ),
+    /Too many distinct historical viewing keys/,
+  );
 });
