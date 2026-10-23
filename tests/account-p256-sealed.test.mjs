@@ -1,3 +1,7 @@
+import {
+  sealDeviceEnvelope,
+  sealDeviceRegistration,
+} from '../packages/keys/dist/device-envelope.js';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createPassportAccounts } from '../packages/account/dist/index.js';
@@ -901,7 +905,7 @@ test('P-256 sign-in authenticates a real inbox batch when the host skips empty b
   await assert.rejects(accounts.openAccount(), { code: 'EncryptionKeyMismatch' });
 });
 
-test('legacy P-256 removal refuses historical target rediscovery with and without a read grant', async () => {
+test('P-256 removal resumes from current target metadata and refuses grants to its reader', async () => {
   const fake = createFakePorts();
   let interrupt = false;
   /** @type {{grantId:string,readPublicKey:string}[]} */ let targets = [];
@@ -953,6 +957,21 @@ test('legacy P-256 removal refuses historical target rediscovery with and withou
   await assert.rejects(account.removeDevice(added.commitmentHex), /removal interrupted/);
   assert.notDeepEqual(state.encKey, oldKey);
   assert.equal(state.entries.has(added.commitmentHex), true);
+  // A still-authorised target can append arbitrary envelopes to the owner. More than
+  // the previous-secret cap must not replace the current authenticated target reader.
+  for (let n = 0; n < 17; n++) {
+    const chosen = {
+      secret: new Uint8Array(32).fill(50 + n),
+      rosterKey: new Uint8Array(32).fill(80 + n),
+    };
+    state.inboxEntries.push(
+      await sealDeviceEnvelope(await ports.viewingKey.readerPublicKey('undeployed'), chosen),
+      await sealDeviceRegistration(chosen.rosterKey, {
+        ...reader,
+        readerPublicKey: hex(x25519.getPublicKey(chosen.secret)),
+      }),
+    );
+  }
   const reopened = await createPassportAccounts(ports).openAccount();
   assert.ok(reopened.removeDevice);
   targets = [{ grantId: 'ab'.repeat(32), readPublicKey: reader.readerPublicKey }];
@@ -962,6 +981,9 @@ test('legacy P-256 removal refuses historical target rediscovery with and withou
   assert.deepEqual(state.encKey, keyBeforeRetry);
   assert.deepEqual(state.inboxEntries.map(hex), inboxBeforeRetry);
   targets = [];
-  await assert.rejects(reopened.removeDevice(added.commitmentHex), { code: 'DeviceRosterInvalid' });
-  assert.equal(state.entries.has(added.commitmentHex), true);
+  assert.equal(
+    (await reopened.removeDevice(added.commitmentHex)).removedCommitmentHex,
+    added.commitmentHex,
+  );
+  assert.equal(state.entries.has(added.commitmentHex), false);
 });

@@ -149,16 +149,16 @@ links exact implementation/evidence boundaries and the issue acceptance index.
 ### Interrupted entry removal and unanchored history
 
 Both arms authenticate a removal target only from the current ledger-matching roster.
-The diagnostic `readDeviceRegistrationHistory` port can open sender-chosen earlier
-envelopes, so its output does not prove an earlier on-chain key generation. It is never
-an authorisation source or a fresh-key recipient list.
+The historical-registration port is removed: earlier readable envelopes may carry
+sender-chosen secrets and cannot prove an earlier on-chain key generation.
 
-A new legacy invocation after a key switch may lack the target's current registration;
-it then refuses with `DeviceRosterInvalid`, with and without active read grants.
-Retain the original protected mutation continuation when available, or preserve state
-for operator reconciliation. Never substitute a historical reader or clear an uncertain
-journal to force removal. The protected coordinator replays the original verified
-snapshot; it does not rediscover target identity from envelope history.
+Removal retains the target's registration under the fresh roster key but sends the
+new viewing key only to survivors. A retry after the key switch can therefore resolve
+the target from authenticated **current** metadata and still refuse a read grant to
+that reader. After removal the registration matches no live entry and is ignored.
+Older interrupted accounts lacking that retained metadata still refuse and need
+operator reconciliation. Missing/ambiguous targets never fall back to earlier secrets.
+Original protected owner journals are a separate host capability in the next stack slice.
 
 ## Current consumer assessment
 
@@ -180,3 +180,9 @@ cannot detect omitted intervening runs. Operators must retain the entire run seq
 when asserting consecutiveness. `omittedRunsAudited: false` makes that boundary explicit.
 Keep outputs outside the tracked tree (or in a private ignored directory), since output
 locks/evidence appearing inside source inputs correctly invalidate a source-stability check.
+
+The generic repeat checker binds workspace source, compiled package inputs, binding
+and scenario scope. External tarballs, authorized source checkouts, installed host
+roots and environment choices need their scenario-specific receipts checked separately;
+three outer receipts alone do not establish identical external inputs. Full release
+consumer/provider acceptance remains an independent gate.

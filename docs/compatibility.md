@@ -410,8 +410,9 @@ or key manifest was repointed. The exact-value shielded withdrawal guard remains
 
 ## 2026/10/23 foundation review correction
 
-Unanchored earlier envelopes cannot authenticate a removal target. Fresh legacy
-removal after a key switch refuses when the current roster no longer identifies
-the target. Protected original continuations are a separate host capability.
-Qualification identities now include ignored compiled package inputs. Repeated
-local receipts establish matching chronological runs without auditing omitted runs.
+Unanchored earlier envelopes cannot authenticate a removal target. The history port
+is removed. Removal retains target metadata in the fresh authenticated roster without
+delivering a new key envelope, allowing safe retries after the key switch. Missing or
+ambiguous current targets still refuse. Qualification identities include ignored
+compiled package inputs and reject symlinked dist roots. Repeated outer receipts do
+not audit omitted runs or independently pin every external consumer input.

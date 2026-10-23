@@ -1,18 +1,12 @@
 import { PassportConnectorError } from './errors.js';
-import type { DeviceReader, LiveDeviceReader } from './ports/index.js';
+import type { LiveDeviceReader } from './ports/index.js';
 import type { ReaderResolution } from './jubjub-readers.js';
 
 /** Only the current ledger-matching roster may authenticate the excluded target.
  * Earlier envelopes can carry sender-chosen secrets, with no evidence their keys were
  * ever on chain. Durable resumption replays the original verified snapshot instead.
  */
-export async function resolveRemovalReader(
-  current: ReaderResolution,
-  _history: {
-    read?: () => Promise<readonly DeviceReader[]>;
-    resolve: (registered: readonly DeviceReader[]) => ReaderResolution;
-  },
-): Promise<LiveDeviceReader> {
+export async function resolveRemovalReader(current: ReaderResolution): Promise<LiveDeviceReader> {
   const excluded = current.outside;
   const removed = excluded[0];
   if (excluded.length !== 1 || !removed)
