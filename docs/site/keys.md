@@ -69,8 +69,20 @@ See [Qualification and safety boundaries]({{ '/qualification/' | relative_url }}
 Removal excludes target metadata from the fresh roster. A fresh legacy invocation
 may refuse after an interrupted key switch, as do other legacy rotations of that
 unresolved roster. An original protected continuation is a separate host capability.
-The unanchored history port is removed. More than sixteen distinct earlier viewing
-secrets refuses explicitly instead of silently hiding old holding descriptions.
+The unanchored history port is removed. Earlier secrets remain bounded decryption
+candidates; they neither authenticate metadata nor evict genuine older holding keys.
+
+### Historical candidate correction — 2026/10/24
+
+The global sixteen-key truncation/refusal is withdrawn: anonymous earlier envelopes
+must neither evict a genuine old coin key nor lock sign-in. All distinct earlier
+secrets within the existing 4096-envelope bound remain decryption candidates, and
+are zeroed after use. Only the ledger-matching current secret/roster authenticates
+metadata; earlier candidates never identify device-removal targets. The regression
+places a real older coin behind seventeen forged envelopes and verifies metadata,
+coin reads, device delivery and new key creation remain usable. Large-inbox work
+still scales with candidate keys and coin entries; the existing 4096 limits and
+operator/resource qualification remain explicit. No unbounded-input guarantee.
 
 ## Local durability milestone
 
@@ -80,3 +92,4 @@ These additions are local, unreleased work. Default demo owner buttons still nee
 transaction reconciliation after interruption; a journal alone does not supply
 durable remote submissions. Another enrolled reader cannot invent the issuing
 reader's grant opening.
+

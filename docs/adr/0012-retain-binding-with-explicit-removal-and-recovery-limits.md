@@ -127,7 +127,19 @@ old state/IDs for operator reconciliation and never clear uncertain journals to 
 This is a deliberate supported-subset boundary, with no claimed full identity
 revocation or total-loss recovery. No binding or wire-format extension is introduced.
 
-The recipe also refuses more than sixteen distinct earlier viewing secrets, rather
-than silently discarding genuine old keys when attacker-chosen envelopes fill that
-bound. Such an inbox requires explicit reconciliation before further owner operations;
-no incomplete holding view is reported as empty or re-sealed as complete.
+The recipe retains every distinct earlier decryption candidate within the existing
+4096-envelope bound. Anonymous envelopes cannot evict a genuine old key or trigger
+a separate sixteen-key lockout. Only the current ledger-matching secret authenticates
+roster metadata; holding descriptions still require chain verification.
+
+### Historical candidate correction — 2026/10/24
+
+The global sixteen-key truncation/refusal is withdrawn: anonymous earlier envelopes
+must neither evict a genuine old coin key nor lock sign-in. All distinct earlier
+secrets within the existing 4096-envelope bound remain decryption candidates, and
+are zeroed after use. Only the ledger-matching current secret/roster authenticates
+metadata; earlier candidates never identify device-removal targets. The regression
+places a real older coin behind seventeen forged envelopes and verifies metadata,
+coin reads, device delivery and new key creation remain usable. Large-inbox work
+still scales with candidate keys and coin entries; the existing 4096 limits and
+operator/resource qualification remain explicit. No unbounded-input guarantee.
