@@ -238,3 +238,20 @@ The original offline evidence above remains historical; consult the dated review
 receipt for the follow-up's actual result, rather than inferring a provider or
 complete release pass. Native tagged watch IDs retain their full 33 bytes; hashes
 and addresses remain 32 bytes.
+
+## Review corrections — 2026/10/23
+
+Unknown lookup-only polls do not claim a new owner revision or copy the full encrypted
+record again. A successor claims the preparation fence only when preparing another step.
+Cancellation before dispatch leaves the ready bytes unsent; the successful dispatch CAS
+is the point of no return. Cancellation after it allows that single committed dispatch
+to enter submit and prevents later waves. Process death in the remaining fence/send
+window is still unknown; no lease, absence or timeout authorises a resend.
+
+The native driver refuses an expired saved constructor intent before proving and an
+expired ready transaction before the dispatch CAS. Its bytes are not renewed or replaced.
+This avoids knowingly sending an expired transaction; it does not add automatic expiry
+recovery. Network latency can still cross an expiry after the last check. Retain original
+IDs/journals for operator reconciliation. No operator replacement/rollback API is claimed.
+Direct and reconciled deployment receipts now share address, nonempty transaction-ID,
+zero nonce, unbooted state, zero device count and original encryption-key validation.

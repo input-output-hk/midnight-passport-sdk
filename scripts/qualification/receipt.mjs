@@ -1,11 +1,45 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { SCENARIOS, SUITES } from './catalog.mjs';
 
 /** @param {string | Uint8Array} bytes */
 export const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
+/** Compiled JS is ignored by Git but is executed by qualification tests. Never omit it.
+ * @param {string} root
+ * @returns {Promise<string[]>}
+ */
+export async function qualificationRuntimeFiles(root) {
+  /** @type {string[]} */ const found = [];
+  /** @param {string} relative */
+  const walk = async (relative) => {
+    let entries;
+    try {
+      entries = await readdir(join(root, relative), { withFileTypes: true });
+    } catch (error) {
+      if (/** @type {NodeJS.ErrnoException} */ (error).code === 'ENOENT') return;
+      throw error;
+    }
+    for (const entry of entries) {
+      const name = relative + '/' + entry.name;
+      if (entry.isSymbolicLink())
+        throw new Error('Compiled qualification inputs must not be symlinks.');
+      if (entry.isDirectory()) await walk(name);
+      else if (entry.isFile()) found.push(name);
+    }
+  };
+  let packages;
+  try {
+    packages = await readdir(join(root, 'packages'), { withFileTypes: true });
+  } catch (error) {
+    if (/** @type {NodeJS.ErrnoException} */ (error).code === 'ENOENT') return [];
+    throw error;
+  }
+  for (const entry of packages)
+    if (entry.isDirectory()) await walk('packages/' + entry.name + '/dist');
+  return found.sort();
+}
 /** @param {string} root */
 export async function workspaceIdentity(root) {
   const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
@@ -21,7 +55,9 @@ export async function workspaceIdentity(root) {
   const hash = createHash('sha256');
   let fileCount = 0;
   // Include current bytes, including new uncommitted code. Deleted files get an explicit marker.
-  for (const name of [...new Set(names.split('\0').filter(Boolean))].sort()) {
+  for (const name of [
+    ...new Set([...names.split('\0').filter(Boolean), ...(await qualificationRuntimeFiles(root))]),
+  ].sort()) {
     let fileHash;
     try {
       fileHash = sha256(await readFile(join(root, name)));
@@ -265,7 +301,8 @@ export async function verifyQualificationBinding(root) {
  * @param {unknown[]} receipts
  */
 export function qualifyRepeatedRuns(receipts) {
-  if (receipts.length !== 3) throw new Error('exactly three consecutive receipts are required');
+  if (receipts.length !== 3)
+    throw new Error('exactly three chronological matching receipts are required');
   const records = receipts.map(validateReceipt);
   const first = records[0];
   const scope = (/** @type {any} */ record) =>
@@ -285,6 +322,7 @@ export function qualifyRepeatedRuns(receipts) {
   return {
     repeatable: true,
     runs: 3,
+    omittedRunsAudited: false,
     suite: first.suite,
     workspaceSha256: first.source.workspaceSha256,
     releaseQualified: false,

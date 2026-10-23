@@ -103,3 +103,19 @@ test('failed initial journal CAS stops before any key generation or chain deploy
   assert.equal(fresh.counts().writes, 1);
   assert.equal(f.fake.ledger.size, 0);
 });
+
+test('direct deployment acceptance rejects empty transaction IDs and a nonzero dormant nonce', async () => {
+  const { invokeMutationWorker } = await import('../scripts/qualification/mutation-matrix.mjs');
+  const { mkdtemp, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  for (const outcome of ['bad-receipt', 'nonzero-initial']) {
+    const root = await mkdtemp(tmpdir() + '/passport-deploy-refusal-');
+    try {
+      const result = invokeMutationWorker(root, 'p256', 'create', 'run', 'none', outcome);
+      assert.equal(result.status, 2, JSON.stringify(result));
+      assert.equal(result.output.code, 'MutationUnsettled');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+});

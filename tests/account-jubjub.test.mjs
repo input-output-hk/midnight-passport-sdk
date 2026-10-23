@@ -1407,7 +1407,7 @@ test('revoke-all rotates away from every live read grantee without resealing the
   reader.secretKey.fill(0);
 });
 
-test('JubJub removal can resume after the key switch lands but the removal call fails', async () => {
+test('legacy JubJub removal refuses unanchored target rediscovery after a key switch', async () => {
   const w = world();
   const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
   const { entry } = await w.addRemoteDevice();
@@ -1419,9 +1419,8 @@ test('JubJub removal can resume after the key switch lands but the removal call 
   assert.equal((await account.state()).entryCount, 2);
   const reopened = await w.accounts.openAccount();
   assert.ok(reopened.removeDevice);
-  const result = await reopened.removeDevice(hex(entry));
-  assert.equal(result.removedCommitmentHex, hex(entry));
-  assert.equal((await reopened.state()).entryCount, 1);
+  await assert.rejects(reopened.removeDevice(hex(entry)), { code: 'DeviceRosterInvalid' });
+  assert.equal((await reopened.state()).entryCount, 2);
 });
 
 test('JubJub rotation refuses unverified holdings and a missing custody port before calls', async () => {

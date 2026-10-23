@@ -288,6 +288,46 @@ test('driver builds real ledger deployment and maintenance bytes and refuses cha
     Buffer.from(prepared.tx, 'hex'),
   );
   assert.deepEqual(decoded.identifiers(), prepared.identifiers);
+  const expired = (
+    await L.Transaction.fromParts(
+      'undeployed',
+      undefined,
+      undefined,
+      L.Intent.new(new Date(Date.now() - 60000)),
+    ).prove(proving, L.CostModel.initialCostModel())
+  ).bind();
+  assert.equal(
+    await driver.check(
+      {
+        ...record,
+        steps: [
+          { phase: 'ready', tx: hex(expired.serialize()), identifiers: expired.identifiers() },
+        ],
+      },
+      0,
+    ),
+    false,
+    'Expired prepared bytes must be refused before entering dispatching.',
+  );
+  const expiredPlan = structuredClone(record);
+  const context = expiredPlan.plan!.context as any;
+  const old = L.Transaction.deserialize(
+    'signature',
+    'pre-proof',
+    'pre-binding',
+    Buffer.from(context.deployTx, 'hex'),
+  );
+  const deployAction = [...old.intents.values()][0].actions[0];
+  context.deployTx = hex(
+    L.Transaction.fromParts(
+      'undeployed',
+      undefined,
+      undefined,
+      L.Intent.new(new Date(Date.now() - 60000)).addDeploy(deployAction),
+    ).serialize(),
+  );
+  await assert.rejects(driver.prepareStep(expiredPlan, 0), /host mutation/i);
+
   observed = [...decoded.intents.values()][0].actions[0].initialState;
   assert.equal(await driver.check(record, 1), true);
   const firstState = L.ContractState.deserialize(observed.serialize());

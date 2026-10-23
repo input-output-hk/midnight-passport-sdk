@@ -317,6 +317,8 @@ export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutation
           String(deploy.address) !== record.plan!.address
         )
           return hostFailure();
+        if (![...tx.intents.values()].every((intent: any) => intent.ttl.getTime() > Date.now()))
+          return hostFailure();
         const proven = await tx.prove(r.proving, L.CostModel.initialCostModel());
         return prepared(
           (await r.providers.walletProvider.balanceTx({ version: 'v9', tx: proven })).tx,
@@ -355,6 +357,14 @@ export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutation
     },
     lookup: (step) => readHostConfirmation(step, r),
     async check(record, count) {
+      const pending = record.steps[count];
+      if (
+        pending?.phase === 'ready' &&
+        ![...decode(pending.tx).intents.values()].every(
+          (intent: any) => intent.ttl.getTime() > Date.now(),
+        )
+      )
+        return false;
       if (record.identity.kind === 'call') {
         contextOf(record);
         const state = await snapshot(record.plan!.address);

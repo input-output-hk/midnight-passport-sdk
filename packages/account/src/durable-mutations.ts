@@ -139,6 +139,28 @@ export function createDurablePassportMutations({
     if (doc!.phase === 'cancelled') await save({ phase: 'pending' });
     const chain = typeof ports.chain === 'function' ? await ports.chain() : ports.chain;
     const binding = typeof ports.binding === 'function' ? await ports.binding() : ports.binding;
+    const deployReceipt = (value: unknown) => {
+      const result = value as { address?: unknown; txIds?: unknown } | undefined;
+      if (
+        !result ||
+        typeof result.address !== 'string' ||
+        !/^[0-9a-f]{64}$/.test(result.address) ||
+        !Array.isArray(result.txIds) ||
+        !result.txIds.length ||
+        !result.txIds.every((id: unknown) => typeof id === 'string' && id.length > 0)
+      )
+        return mutationFailure('Deployment receipt is incomplete.');
+      return { address: result.address, txIds: result.txIds as string[] };
+    };
+    const checkDeployment = (current: MutationLedger, encKey: Uint8Array) => {
+      if (
+        current.booted ||
+        current.authNonce !== 0n ||
+        current.entryCount !== 0 ||
+        mutationDigest(current.encKey) !== mutationDigest(encKey)
+      )
+        return mutationFailure('The deployed ACC differs from the durable creation intent.');
+    };
     const readLive = async (address: string) =>
       mutationLedger(
         await chain.readAccount(address, { includeInbox: true, includeDevices: true }),
@@ -193,26 +215,14 @@ export function createDurablePassportMutations({
             { address: effect.address, ledger: effect.after },
           );
         } else {
-          if (
-            !('address' in result) ||
-            !('txIds' in result) ||
-            !result.txIds.length ||
-            !result.txIds.every((id) => typeof id === 'string' && id.length > 0)
-          )
-            return mutationFailure('Deployment receipt is incomplete.');
-          const current = await readLive(result.address);
+          const deployed = deployReceipt(result);
+          const current = await readLive(deployed.address);
           const input = effect.input as { encKey: Uint8Array };
-          if (
-            current.booted ||
-            current.authNonce !== 0n ||
-            current.entryCount !== 0 ||
-            mutationDigest(current.encKey) !== mutationDigest(input.encKey)
-          )
-            return mutationFailure('Deployment ledger does not match the original intent.');
+          checkDeployment(current, input.encKey);
           await replace(
             unresolved,
             { ...entry, phase: 'done', result },
-            { address: result.address, ledger: current },
+            { address: deployed.address, ledger: current },
           );
         }
       }
@@ -333,17 +343,10 @@ export function createDurablePassportMutations({
           );
         await replace(index, { ...old, phase: 'done', result }, { address, ledger: expected });
       } else {
-        const deployed = result as { address: string; txIds: readonly string[] };
-        if (!deployed.txIds?.length)
-          return mutationFailure('Durable deployment needs all wave transaction identifiers.');
+        const deployed = deployReceipt(result);
         const current = await readLive(deployed.address);
         const request = input as { encKey: Uint8Array };
-        if (
-          current.booted ||
-          current.entryCount !== 0 ||
-          mutationDigest(current.encKey) !== mutationDigest(request.encKey)
-        )
-          return mutationFailure('The deployed ACC differs from the durable creation intent.');
+        checkDeployment(current, request.encKey);
         await replace(
           index,
           { ...old, phase: 'done', result },

@@ -89,6 +89,19 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Dedicated-stack source deployment/create/rotation with software identities, actual proofs, host process death and indexer outages; not the full release or real-provider suite.',
   },
+  'combined-grants-holdings-prover': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-combined.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 90 * 60000,
+    establishes:
+      'Both software authoriser arms: populated chain-verified shielded holding and active read grant, restart continuation, committed-deploy prover recovery and safe refusal after owner pre-registration proving failure. Not real-provider or full release acceptance.',
+  },
   'published-registry': {
     tier: 'published-consumer',
     command: [],
@@ -110,6 +123,7 @@ export const SUITES = Object.freeze({
   browser: ['virtual-authenticator'],
   localnet: ['localnet-night'],
   outages: ['outage-reconciliation'],
+  'combined-outages': ['combined-grants-holdings-prover'],
   consumer: ['packed-consumer'],
   'consumer-source': ['consumer-source-types'],
   'consumer-published': ['consumer-published-host'],

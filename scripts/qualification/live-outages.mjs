@@ -85,7 +85,7 @@ async function indexerReady() {
 }
 
 /** Fingerprint ignored reference code/deps separately from the workspace. @param {string} contract */
-async function referenceFingerprint(contract) {
+export async function referenceFingerprint(contract) {
   const files = [
     'package.json',
     'package-lock.json',
@@ -94,6 +94,15 @@ async function referenceFingerprint(contract) {
     'src/wallet/wave-deploy.ts',
     'src/wallet/signer.ts',
     'src/wallet/witnesses.ts',
+    'src/wallet/account.ts',
+    'src/wallet/inbox.ts',
+    'src/tests/flow.ts',
+    'src/tests/runner.ts',
+    'contracts/managed/faucet/contract/index.js',
+    'contracts/managed/faucet/compiler/contract-manifest.json',
+    'contracts/managed/faucet/keys/mint_shielded.prover',
+    'contracts/managed/faucet/keys/mint_shielded.verifier',
+    'contracts/managed/faucet/zkir/mint_shielded.zkir',
     'contracts/managed/account/contract/index.js',
     'contracts/managed/account/compiler/contract-manifest.json',
   ];
@@ -157,6 +166,9 @@ export async function runLiveOutages() {
     ),
     '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   );
+  const profile = process.env.PASSPORT_LIVE_PROFILE ?? 'baseline';
+  assert.ok(['baseline', 'combined'].includes(profile));
+  const combined = profile === 'combined';
   const rounds = Number(process.env.PASSPORT_LIVE_ROUNDS ?? '1');
   assert.ok(Number.isInteger(rounds) && rounds >= 1 && rounds <= 3);
   const source = await workspaceIdentity(ROOT),
@@ -207,7 +219,10 @@ export async function runLiveOutages() {
       JSON.stringify(
         {
           schema: 1,
-          scope: 'source-live-proof-process-and-indexer-outages',
+          scope: combined
+            ? 'source-live-combined-grants-holdings-prover-outages'
+            : 'source-live-proof-process-and-indexer-outages',
+          profile,
           verdict,
           source,
           binding,
@@ -288,6 +303,7 @@ export async function runLiveOutages() {
             const message = JSON.parse(line.slice(14));
             messages.push(message);
             if (
+              message.proverBoundary ||
               message.ready ||
               message.diagnosticStage ||
               message.crash ||
@@ -298,6 +314,7 @@ export async function runLiveOutages() {
                 'live worker:',
                 JSON.stringify({
                   ready: message.ready,
+                  proverBoundary: message.proverBoundary,
                   stage: message.diagnosticStage,
                   crash: message.crash,
                   failed: message.failed,
@@ -338,13 +355,47 @@ export async function runLiveOutages() {
       for (const arm of ['jubjub', 'p256']) {
         const root = join(output, `round-${round}-${arm}`);
         await mkdir(root, { mode: 0o700 });
-        for (const [operation, fault, mode] of /** @type {Array<[string,string,string]>} */ ([
-          ['create', 'deploy:0:after-submit', 'owner'],
-          ['create', 'call:0:after-submit', 'resume'],
-          ['create', 'none', 'resume'],
-          ['rotate', 'call:0:after-submit', 'owner'],
-          ['rotate', 'none', 'resume'],
-        ])) {
+        const stages = combined
+          ? [
+              ['create', 'before-deploy-proof', 'owner'],
+              ['create', 'none', 'resume'],
+              ['populate', 'none', 'populate'],
+              ['rotate', 'call:0:after-submit', 'owner'],
+              ['rotate', 'none', 'resume'],
+              ['rotate-prover', 'before-owner-proof', 'owner'],
+              ['rotate-prover', 'assert-unknown', 'resume'],
+            ]
+          : [
+              ['create', 'deploy:0:after-submit', 'owner'],
+              ['create', 'call:0:after-submit', 'resume'],
+              ['create', 'none', 'resume'],
+              ['rotate', 'call:0:after-submit', 'owner'],
+              ['rotate', 'none', 'resume'],
+            ];
+        let beforeProverUnknown;
+        for (const [operation, fault, mode] of /** @type {Array<[string,string,string]>} */ (
+          stages
+        )) {
+          if (mode === 'populate') {
+            const populated = await finished(
+              worker(mode, root, arm, operation, 'none'),
+              15 * 60000,
+            );
+            assert.equal(
+              populated.code,
+              0,
+              'Live grant issue, mint and shielded deposit must settle.',
+            );
+            assert.ok(
+              populated.messages.some(
+                (/** @type {any} */ m) =>
+                  m.populated?.heldCoins === 1 && m.populated?.grantOpenedCurrentKey === true,
+              ),
+            );
+            evidence.push({ round, arm, operation, verdict: 'PASS', owner: populated });
+            await save();
+            continue;
+          }
           assert.equal(interrupted, false, 'Qualification interrupted.');
           console.log(`live qualification: round ${round} ${arm} ${operation} ${fault}`);
           const started = Date.now(),
@@ -356,7 +407,32 @@ export async function runLiveOutages() {
             180000,
             () => host.child.exitCode !== null || host.child.signalCode !== null,
           );
-          const owner = worker(mode, root, arm, operation, 'none');
+          const proofOutage = fault.startsWith('before-');
+          const owner = worker(
+            mode,
+            root,
+            arm,
+            operation,
+            proofOutage || fault === 'assert-unknown' ? fault : 'none',
+          );
+          if (proofOutage) {
+            const target = fault === 'before-deploy-proof' ? host : owner;
+            await waitFor(
+              async () => target.messages.some((m) => m.proverBoundary),
+              180000,
+              () => target.child.exitCode !== null || target.child.signalCode !== null,
+            );
+            docker(['stop', '--time', '1', /** @type {string} */ (ids[2])]);
+            assert.equal(
+              JSON.parse(docker(['inspect', /** @type {string} */ (ids[2])]))[0].State.Running,
+              false,
+            );
+            await writeFile(
+              join(root, `prover-down-${fault === 'before-deploy-proof' ? 'deploy' : 'owner'}`),
+              'owned prover stopped\n',
+              { flag: 'wx', mode: 0o600 },
+            );
+          }
           const result = await finished(owner, 12 * 60000);
           const c = {
             round,
@@ -369,7 +445,44 @@ export async function runLiveOutages() {
           };
           evidence.push(c);
           await save();
-          if (fault !== 'none') {
+          if (proofOutage || fault === 'assert-unknown') {
+            assert.equal(result.code, 2, 'Outage/unknown outcome must retain the mutation.');
+            assert.ok(
+              result.messages.some((/** @type {any} */ m) => m.audit?.unresolvedEffects === 1),
+            );
+            stop(host.child);
+            await finished(host, 10000);
+            const inspect = await finished(worker('inspect', root, arm, operation, 'none'), 15000);
+            assert.equal(inspect.code, 0);
+            const records = inspect.messages.find((/** @type {any} */ m) => m.records).records;
+            if (fault === 'before-deploy-proof') {
+              assert.equal(records.length, 1);
+              assert.equal(records[0].phase, 'active');
+              assert.equal(records[0].steps.length, 0);
+              assert.ok(records[0].planHash);
+            }
+            if (fault === 'before-owner-proof') beforeProverUnknown = records;
+            if (fault === 'assert-unknown')
+              assert.deepEqual(
+                records,
+                beforeProverUnknown,
+                'Unregistered owner outcome must not prepare or send a replacement.',
+              );
+            c.owner.proverRecords = records;
+            if (proofOutage) {
+              docker(['start', /** @type {string} */ (ids[2])]);
+              await waitFor(
+                async () =>
+                  fetch('http://127.0.0.1:16310/health', {
+                    signal: AbortSignal.timeout(2000),
+                  }).then(
+                    () => true,
+                    () => false,
+                  ),
+                60000,
+              );
+            }
+          } else if (fault !== 'none') {
             const died = await finished(host, 10000);
             assert.equal(died.code, 86, 'Expected exact host crash boundary.');
             assert.equal(result.code, 2, 'Owner must retain an unresolved mutation.');
@@ -390,6 +503,13 @@ export async function runLiveOutages() {
             await waitFor(indexerReady, 60000);
           } else {
             assert.equal(result.code, 0, 'Original mutation must complete.');
+            if (combined && operation === 'rotate')
+              assert.ok(
+                result.messages.some(
+                  (/** @type {any} */ m) =>
+                    m.populated?.heldCoins === 1 && m.populated?.grantOpenedCurrentKey === true,
+                ),
+              );
             stop(host.child);
             await finished(host, 10000);
           }
@@ -420,10 +540,15 @@ export async function runLiveOutages() {
           true,
         );
         for (const prior of evidence.filter(
-          (e) => e.round === round && e.arm === arm && e.owner?.probe,
+          (e) =>
+            e.round === round &&
+            e.arm === arm &&
+            (e.owner?.probe || e.fault === 'before-deploy-proof'),
         )) {
-          for (const before of prior.owner.probe.messages.find((/** @type {any} */ m) => m.records)
-            .records) {
+          const priorRecords =
+            prior.owner.proverRecords ??
+            prior.owner.probe.messages.find((/** @type {any} */ m) => m.records).records;
+          for (const before of priorRecords) {
             const after = records.find(
               (/** @type {any} */ r) => r.identity.requestId === before.identity.requestId,
             );
@@ -440,7 +565,17 @@ export async function runLiveOutages() {
               );
           }
         }
-        evidence.push({ round, arm, verdict: 'PASS', finalRecords: records, sends: sends.length });
+        evidence.push({
+          round,
+          arm,
+          verdict: 'PASS',
+          finalRecords: records,
+          sends: sends.length,
+          ...(combined && {
+            ownerPreRegistrationProverFailure: 'safely-unresolved-no-resend',
+            populatedHoldingsAndGrant: true,
+          }),
+        });
         await save();
       }
     assert.deepEqual(await workspaceIdentity(ROOT), source, 'Source changed during qualification.');
@@ -450,9 +585,7 @@ export async function runLiveOutages() {
       'Reference runtime changed during qualification.',
     );
     verdict = 'PASS';
-    console.log(
-      'Live proof/process/indexer qualification: PASS (software identities; scoped suite).',
-    );
+    console.log(`Live ${profile} qualification: PASS (software identities; scoped suite).`);
   } catch (error) {
     verdict = 'FAIL';
     throw error;
@@ -461,6 +594,8 @@ export async function runLiveOutages() {
     // Restore an indexer interrupted by a failed probe, retaining all volumes and evidence.
     if (!JSON.parse(docker(['inspect', /** @type {string} */ (ids[1])]))[0].State.Running)
       docker(['start', /** @type {string} */ (ids[1])]);
+    if (!JSON.parse(docker(['inspect', /** @type {string} */ (ids[2])]))[0].State.Running)
+      docker(['start', /** @type {string} */ (ids[2])]);
     await save();
     process.removeListener('SIGINT', interrupt);
     process.removeListener('SIGTERM', interrupt);

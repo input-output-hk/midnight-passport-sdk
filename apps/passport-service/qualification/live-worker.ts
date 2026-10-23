@@ -1,5 +1,7 @@
 // Opt-in, synthetic-identity LOCALNET qualification. Never import from the service entrypoint.
 import assert from 'node:assert/strict';
+import { x25519 } from '@noble/curves/ed25519.js';
+import { jubjub } from '@noble/curves/misc.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
@@ -50,6 +52,8 @@ import {
   deriveSymmetricSecret,
   recipeDeviceKeyring,
   recipeJubjubAuthoriser,
+  sealInboxCoin,
+  openGrantView,
 } from '../../../packages/keys/dist/index.js';
 import {
   fetchCheckedV1Config,
@@ -58,13 +62,20 @@ import {
   remoteV1Sponsor,
   remoteDirectory,
 } from '../../../packages/adapter-service/dist/index.js';
-import { createMidnightChain } from '../../../packages/adapter-midnight-js/dist/index.js';
+import {
+  createMidnightChain,
+  createHostedAccChain,
+  createMidnightHoldingSource,
+  createGraphqlHoldingIndexer,
+  createMidnightGrantSource,
+} from '../../../packages/adapter-midnight-js/dist/index.js';
+import { resolveBinding } from '../../../packages/contract/dist/index.js';
 import * as binding from '../../../packages/contract/generated/acc-s3r1.1/index.js';
 import type { PassportPorts } from '../../../packages/account/dist/ports/index.js';
 import type { MutationIntent } from '../../../packages/account/dist/index.js';
 
 const [mode, root, arm, operation = 'create', fault = 'none'] = process.argv.slice(2);
-assert.ok(root && ['host', 'owner', 'resume', 'probe', 'inspect'].includes(mode!));
+assert.ok(root && ['host', 'owner', 'resume', 'probe', 'inspect', 'populate'].includes(mode!));
 assert.ok(arm === 'p256' || arm === 'jubjub');
 assert.ok(isAbsolute(root));
 assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18098/api/v4/graphql/ws');
@@ -103,6 +114,17 @@ const save = (name: string, value: unknown) => {
   }
 };
 const emit = (value: object) => console.log('PASSPORT_LIVE ' + JSON.stringify(value));
+const combined = process.env.PASSPORT_LIVE_PROFILE === 'combined';
+const referenceImport = (path: string) =>
+  import(pathToFileURL(join(process.env.PASSPORT_CONTRACT_DIR!, path)).href);
+const proofBoundary = async (boundary: string) => {
+  emit({ proverBoundary: boundary });
+  const until = Date.now() + 30000;
+  while (!existsSync(join(root, `prover-down-${boundary}`))) {
+    assert.ok(Date.now() < until, 'Owned prover outage handshake expired.');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+};
 const pins = {
   networkId: 'undeployed',
   bindingId: 'acc-s3r1.1',
@@ -117,7 +139,12 @@ if (!existsSync(join(root, 'fixture.json'))) {
     credential: randomBytes(16),
     hostKey: randomBytes(32),
     token: randomBytes(32),
-    ids: { create: hex(randomBytes(16)), rotate: hex(randomBytes(16)) },
+    grantSecret: randomBytes(32),
+    ids: {
+      create: hex(randomBytes(16)),
+      rotate: hex(randomBytes(16)),
+      'rotate-prover': hex(randomBytes(16)),
+    },
   });
 }
 const fixture = read('fixture.json');
@@ -251,8 +278,11 @@ if (mode === 'host') {
     ...original,
     prepare: (identity: HostMutationIdentity, input: Parameters<typeof original.prepare>[1]) =>
       diagnose('prepare', () => original.prepare(identity, input)),
-    prepareStep: (record: HostMutationRecord, index: number) =>
-      diagnose('prepareStep', () => original.prepareStep(record, index)),
+    prepareStep: async (record: HostMutationRecord, index: number) => {
+      if (fault === 'before-deploy-proof' && record.identity.kind === 'deploy' && index === 0)
+        await proofBoundary('deploy');
+      return diagnose('prepareStep', () => original.prepareStep(record, index));
+    },
     check: (record: HostMutationRecord, count: number) =>
       diagnose('check', () => original.check(record, count)),
     submit: async (tx: Parameters<typeof original.submit>[0]) => {
@@ -309,10 +339,20 @@ if (mode === 'host') {
   server.listen(config.port, config.host, () => emit({ ready: true, pid: process.pid }));
 } else {
   const base = `http://127.0.0.1:${process.env.PASSPORT_SERVICE_PORT}`;
-  const config = await fetchCheckedV1Config(base, {
-    ...pins,
-    artefactUrl: `${base}/v1/zk/acc-s3r1.1`,
-  });
+  const config =
+    mode === 'populate'
+      ? {
+          indexerUri: process.env.MN_INDEXER_URL!,
+          indexerWsUri: process.env.MN_INDEXER_WS_URL!,
+          nodeUri: process.env.MN_NODE_URL!,
+          zkBaseUrl: `${base}/v1/zk/acc-s3r1.1`,
+          coinPublicKey: '',
+          encryptionPublicKey: '',
+        }
+      : await fetchCheckedV1Config(base, {
+          ...pins,
+          artefactUrl: `${base}/v1/zk/acc-s3r1.1`,
+        });
   const network = {
     ...pins,
     indexerUrl: config.indexerUri,
@@ -346,14 +386,70 @@ if (mode === 'host') {
     pollIntervalMs: 500,
   });
   const sponsor = remoteV1Sponsor(base);
-  const chain = createMidnightChain({
+  const actualProver = remoteV1Prover(base);
+  const prover = {
+    proveTx: async (...args: Parameters<typeof actualProver.proveTx>) => {
+      if (fault === 'before-owner-proof') await proofBoundary('owner');
+      return actualProver.proveTx(...args);
+    },
+  };
+  let chain = createMidnightChain({
     network,
     binding: binding as any,
-    prover: remoteV1Prover(base),
+    prover,
     sponsor,
     sponsorKeys: config,
     submitter: host.submitter,
   });
+  let setupContext: any, setupModule: any;
+  if (mode === 'populate') {
+    // Directory transport only: no second wallet or prover host during setup.
+    const local = loadConfig(process.env);
+    const directoryServer = createServer(local, [
+      directoryRoute({
+        networkId: pins.networkId,
+        store: createFileDirectoryStore(directoryFile(local.registryFile)),
+      }),
+    ]);
+    await new Promise<void>((resolve, reject) => {
+      directoryServer.once('error', reject);
+      directoryServer.listen(local.port, local.host, resolve);
+    });
+    setupModule = await referenceImport('src/node/setup.ts');
+    setupContext = await setupModule.setupWallet('0'.repeat(63) + '1');
+    const account = read('result-create.json').account;
+    const handle = await setupModule.connectAccount(setupContext, account);
+    chain = createHostedAccChain({
+      network,
+      binding: { id: pins.bindingId, ...resolveBinding(pins.bindingId) },
+      readLedger: async (address) => {
+        assert.equal(address, account);
+        // Decode with the handle's own physical runtime; native ChargedState is branded.
+        return handle.ledgerState();
+      },
+      connectHandle: async (address) => {
+        assert.equal(address, account);
+        return { callTx: handle.callTx };
+      },
+    });
+  }
+  const grantSource = createMidnightGrantSource({
+    network,
+    binding,
+    openings: {
+      readReadPublicKey: async (_account, grantId) =>
+        existsSync(join(root, 'grants.json'))
+          ? read('grants.json')[grantId]?.bookkeeping.readPublicKey
+          : undefined,
+    },
+  });
+  const holdingSource = createMidnightHoldingSource(
+    createGraphqlHoldingIndexer({
+      networkId: network.networkId,
+      url: network.indexerUrl,
+      wsUrl: network.indexerWsUrl,
+    }),
+  );
   const ports: PassportPorts = {
     network,
     binding,
@@ -373,15 +469,137 @@ if (mode === 'host') {
       exists: async () => existsSync(join(root, 'record.json')),
       write: async (value) => save('record.json', value),
     },
-    holdings: { selectHeldEntries: async () => [] },
-    readGrants: {
-      readActiveReadGrantTargets: async (address) => ({
-        authNonce: (await chain.readAccount(address))!.authNonce,
-        targets: [],
-      }),
+    holdings: combined ? holdingSource : { selectHeldEntries: async () => [] },
+    readGrants: combined
+      ? grantSource
+      : {
+          readActiveReadGrantTargets: async (address) => ({
+            authNonce: (await chain.readAccount(address))!.authNonce,
+            targets: [],
+          }),
+        },
+    grants: grantSource,
+    grantCommitments: grantSource,
+    grantDetails: grantSource,
+    grantRoster: grantSource,
+    grantOrigin: 'localhost',
+    grantJournal: {
+      stage: async (opening) => {
+        const grants = existsSync(join(root, 'grants.json')) ? read('grants.json') : {};
+        assert.equal(grants[opening.bookkeeping.grantId], undefined);
+        grants[opening.bookkeeping.grantId] = opening;
+        save('grants.json', grants);
+      },
+      load: async (_account, id) =>
+        existsSync(join(root, 'grants.json')) ? read('grants.json')[id] : undefined,
+      pending: async () =>
+        Object.keys(existsSync(join(root, 'grants.json')) ? read('grants.json') : {}).filter(
+          (id) =>
+            !(existsSync(join(root, 'published.json')) ? read('published.json') : []).includes(id),
+        ),
+      markPublished: async (_account, id) =>
+        save('published.json', [
+          ...(existsSync(join(root, 'published.json')) ? read('published.json') : []),
+          id,
+        ]),
     },
     random: (length) => new Uint8Array(randomBytes(length)),
   };
+  const assertPopulated = async (account: string) => {
+    if (!combined || !existsSync(join(root, 'coin.json'))) return undefined;
+    const live = (await chain.readAccount(account, { includeDevices: true, includeInbox: true }))!;
+    const ring = { account, encKey: live.encKey!, envelopes: live.inboxEntries! };
+    const opened = await viewingKey.openInbox(pins.networkId, ring, live.inboxEntries!);
+    const held = await holdingSource.selectQualifiedHeldCoins(account, live.inboxEntries!, opened);
+    assert.equal(held.length, 1);
+    const expected = read('coin.json');
+    assert.deepEqual(held[0]!.coin.color, expected.color);
+    assert.deepEqual(held[0]!.coin.nonce, expected.nonce);
+    assert.equal(held[0]!.coin.value, expected.value);
+    const targets = await grantSource.readActiveReadGrantTargets(account);
+    assert.equal(targets.targets.length, 1);
+    const target = targets.targets[0]!;
+    assert.equal(target.readPublicKey, hex(x25519.getPublicKey(fixture.grantSecret)));
+    let current = false;
+    for (const entry of opened)
+      if (
+        entry?.kind === 'grant' &&
+        entry.record.part === 'view' &&
+        entry.record.grantId === target.grantId
+      ) {
+        const secret = await openGrantView(fixture.grantSecret, {
+          account,
+          grantId: target.grantId,
+          seal: unhex(entry.record.seal),
+          expectedEncKey: live.encKey!,
+        });
+        if (secret) {
+          current = true;
+          secret.fill(0);
+        }
+      }
+    assert.ok(current, 'Independent grantee must open the current viewing secret.');
+    return {
+      heldCoins: 1,
+      activeReadGrants: 1,
+      grantOpenedCurrentKey: true,
+      value: expected.value.toString(),
+      merkleIndex: held[0]!.coin.mt_index.toString(),
+    };
+  };
+  if (mode === 'populate') {
+    assert.ok(combined);
+    assert.equal(
+      existsSync(join(root, 'coin.json')),
+      false,
+      'Never repeat an uncertain setup deposit.',
+    );
+    const account = read('result-create.json').account;
+    const api = await createPassportAccounts(ports).openAccountAt!(account);
+    const granted = await api.issueGrant!({
+      grantee: {
+        scheme: 'jubjub-schnorr',
+        publicKey: hex(
+          jubjub.Point.fromAffine(
+            binding.pureCircuits.compute_public_point_with_jubjub(11n),
+          ).toBytes(),
+        ),
+      },
+      operations: ['withdraw-unshielded'],
+      color: '34'.repeat(32),
+      recipient: { kind: 'any' },
+      maxCoinValue: '100',
+      perCallCap: '10',
+      cap: '100',
+      expiresAt: null,
+      read: true,
+      rpId: 'localhost',
+      readPublicKey: hex(x25519.getPublicKey(fixture.grantSecret)),
+    });
+    assert.equal(granted.status, 'active');
+    const faucet = await setupModule.deployFaucet(setupContext.walletCtx);
+    const { mintToUser } = await referenceImport('src/tests/flow.ts');
+    const coin = await mintToUser(setupContext, faucet, hex(randomBytes(32)), 7n);
+    // Save write-ahead setup intent before value submission. No automatic retry after uncertainty.
+    save('coin.json', coin);
+    const view = (await chain.readAccount(account))!;
+    const deposited = await chain.call({
+      address: account,
+      circuit: 'deposit_shielded',
+      args: [
+        { nonce: coin.nonce, color: coin.color, value: coin.value },
+        await sealInboxCoin(view.encKey!, coin),
+      ],
+    });
+    save('setup-receipt.json', {
+      grantId: granted.grantId,
+      depositTxHash: deposited.txHash,
+      faucetAddress: faucet.address,
+    });
+    emit({ completed: 'populate', account, populated: await assertPopulated(account) });
+    store.close();
+    process.exit(0);
+  }
   const coordinator = createDurablePassportMutations({
     ports,
     journal: encryptedMutationJournal(
@@ -417,7 +635,12 @@ if (mode === 'host') {
           (r) => r.ok,
           () => false,
         );
-        if ((error as any)?.code !== 'MutationUnsettled' || !available || Date.now() >= deadline)
+        if (
+          fault !== 'none' ||
+          (error as any)?.code !== 'MutationUnsettled' ||
+          !available ||
+          Date.now() >= deadline
+        )
           throw error;
         // Test host re-approves the same original synthetic intent. Never create a new ID.
         continuing = true;
@@ -434,7 +657,7 @@ if (mode === 'host') {
       includeInbox: true,
     }))!;
     assert.ok(live.encKey && live.deviceEntries?.length === 1);
-    if (operation === 'rotate') {
+    if (operation.startsWith('rotate')) {
       const before = read('view-create.json');
       assert.notEqual(
         hex(live.encKey),
@@ -449,6 +672,7 @@ if (mode === 'host') {
       account: result.account,
       audit: await coordinator.inspect(id),
       authNonce: state.authNonce.toString(),
+      populated: await assertPopulated(result.account),
       records: await publicRecords(),
     });
     store.close();

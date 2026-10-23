@@ -16,12 +16,17 @@ export function invokeMutationWorker(
   mode = 'run',
   fault = 'none',
   outcomes = 'known',
+  profile = 'empty',
 ) {
-  const child = spawnSync(process.execPath, [worker, root, arm, operation, mode, fault, outcomes], {
-    encoding: 'utf8',
-    timeout: 20000,
-    maxBuffer: 1024 * 1024,
-  });
+  const child = spawnSync(
+    process.execPath,
+    [worker, root, arm, operation, mode, fault, outcomes, profile],
+    {
+      encoding: 'utf8',
+      timeout: 20000,
+      maxBuffer: 1024 * 1024,
+    },
+  );
   if (child.error) throw child.error;
   const line = child.stdout.trim().split('\n').at(-1);
   return {
@@ -36,7 +41,11 @@ export const mutationWorld = async (root) =>
     decodeMutationValue(JSON.parse(await readFile(join(root, 'world.json'), 'utf8')))
   );
 /** @param {string} output */
-export async function runMutationMatrix(output) {
+export async function runMutationMatrix(output, profile = 'empty') {
+  assert.ok(['empty', 'populated'].includes(profile));
+  /** @param {string} root @param {string} arm @param {string} op */
+  const invoke = (root, arm, op, mode = 'run', crash = 'none', outcomes = 'known') =>
+    invokeMutationWorker(root, arm, op, mode, crash, outcomes, profile);
   const identity = async () =>
     Object.fromEntries(
       await Promise.all(
@@ -45,6 +54,20 @@ export async function runMutationMatrix(output) {
           'packages/account/src/mutation-types.ts',
           'packages/account/src/mutation-codec.ts',
           'packages/account/src/mutation-ledger.ts',
+          'packages/account/src/removal-reader.ts',
+          'packages/account/dist/removal-reader.js',
+          'packages/account/src/connector.ts',
+          'packages/account/src/jubjub-connector.ts',
+          'packages/account/src/read-grant-deliveries.ts',
+          'packages/account/dist/connector.js',
+          'packages/account/dist/jubjub-connector.js',
+          'packages/account/dist/read-grant-deliveries.js',
+          'packages/adapter-midnight-js/src/holdings.ts',
+          'packages/adapter-midnight-js/src/grants.ts',
+          'packages/adapter-midnight-js/dist/holdings.js',
+          'packages/adapter-midnight-js/dist/grants.js',
+          'packages/keys/src/device-keyring.ts',
+          'packages/keys/dist/device-keyring.js',
           'packages/account/dist/durable-mutations.js',
           'packages/keys/src/mutation-journal.ts',
           'packages/keys/dist/mutation-journal.js',
@@ -70,12 +93,14 @@ export async function runMutationMatrix(output) {
   /** @type {Array<Record<string,unknown>>} */ const cases = [];
   try {
     for (const arm of ['p256', 'jubjub'])
-      for (const operation of ['create', 'rotate', 'add-device', 'remove-device']) {
+      for (const operation of profile === 'populated'
+        ? ['rotate', 'add-device', 'remove-device']
+        : ['create', 'rotate', 'add-device', 'remove-device']) {
         const baselineRoot = join(scratch, `${arm}-${operation}-baseline`);
-        const prep = invokeMutationWorker(baselineRoot, arm, operation, 'prepare');
+        const prep = invoke(baselineRoot, arm, operation, 'prepare');
         assert.equal(prep.status, 0, JSON.stringify({ arm, operation, prep }));
         const initial = await readFile(join(baselineRoot, 'world.json'));
-        const baseline = invokeMutationWorker(baselineRoot, arm, operation);
+        const baseline = invoke(baselineRoot, arm, operation);
         assert.equal(baseline.status, 0, JSON.stringify(baseline));
         const before = await mutationWorld(baselineRoot);
         const labels = /** @type {string[]} */ ([...new Set(before.events)]);
@@ -83,14 +108,14 @@ export async function runMutationMatrix(output) {
           const root = join(scratch, `${arm}-${operation}-${i}`);
           await mkdir(root, { mode: 0o700 });
           await writeFile(join(root, 'world.json'), initial, { mode: 0o600 });
-          const killed = invokeMutationWorker(root, arm, operation, 'run', label);
+          const killed = invoke(root, arm, operation, 'run', label);
           assert.equal(
             killed.status,
             86,
             `${arm}/${operation}/${label}: ${JSON.stringify(killed)}`,
           );
           const atCrash = await mutationWorld(root);
-          const resumed = invokeMutationWorker(root, arm, operation, 'resume');
+          const resumed = invoke(root, arm, operation, 'resume');
           const blocked =
             label === 'material:before' ||
             label === 'material:after' ||
@@ -119,6 +144,12 @@ export async function runMutationMatrix(output) {
             blocked ? atCrash.effects.length : before.effects.length,
             'duplicate/lost effect',
           );
+          if (profile === 'populated' && !blocked)
+            assert.deepEqual(after.populatedVerified, {
+              held: 1,
+              activeReadGrants: 1,
+              currentGrantOpened: true,
+            });
           assert.ok(after.consents.every((/** @type {any} */ c) => c.intent.kind === operation));
           if (operation === 'create')
             assert.equal(
@@ -140,7 +171,11 @@ export async function runMutationMatrix(output) {
     const report = {
       sources,
       schema: 1,
-      scope: 'synthetic-fresh-process-durable-mutations',
+      scope:
+        profile === 'populated'
+          ? 'synthetic-populated-grants-holdings-fresh-process'
+          : 'synthetic-fresh-process-durable-mutations',
+      profile,
       binding: 'acc-s3r1.1',
       noProofsOrFunds: true,
       hostOutcomeSource: 'atomic-local-synthetic-transport',
@@ -157,6 +192,6 @@ export async function runMutationMatrix(output) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const output = process.argv[2];
   if (!output) throw new Error('Provide a fresh receipt path.');
-  const report = await runMutationMatrix(output);
+  const report = await runMutationMatrix(output, process.argv[3] ?? 'empty');
   console.log(JSON.stringify({ caseCount: report.caseCount, status: 'passed', output }));
 }

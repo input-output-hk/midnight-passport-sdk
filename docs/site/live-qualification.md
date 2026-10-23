@@ -33,8 +33,8 @@ resend a transaction. The runner compares pre/post-restart plan and prepared-byt
 requires one original deployment and final confirmed receipts, and refuses duplicate sends.
 These cases use an empty holdings/read-grant roster and retire maintenance authority.
 Other retirement choices have separate offline evidence; they are not silently included
-in this live scope. Grant/holdings combined faults, device removal, prover outages and
-NIGHT round trips remain separate cases to qualify.
+in this original live scope. The combined profile below adds populated grants/holdings
+and prover boundaries. Live device removal and NIGHT round trips remain separate cases.
 
 Native ledger-v9 **watch identifiers are tagged 33-byte hex values**; included
 transaction hashes and ACC addresses remain 32 bytes. The host retains the exact
@@ -147,3 +147,31 @@ An address alone does not restore HD keys. Provider sync, an independently enrol
 survivor and total-loss recovery are different cases. Total-loss recovery, complete
 compromised-key retirement, full Lace compatibility and partial shielded spends
 remain unsupported; no check here widens hosted consent or the exact-value guard.
+
+## Combined grants, holdings and prover outages
+
+`pnpm qualify run combined-outages` is a separate opt-in source suite. It runs both software authoriser arms against the dedicated retained standalone network. Its setup uses one active read grant with a separately generated X25519 reader and an actual seven-unit shielded test-token deposit. The SDK holding source recomputes the native commitment from decrypted descriptions, reads actual output/input events and verifies the Merkle index. The grant source reads the actual pinned ACC map and checks the reader-public-key hash. No synthetic roster replaces these sources in the live combined profile.
+
+For each arm the suite stops the inspected proof-server container after committing the original deployment plan but before preparing its first transaction. The failed invocation retains that plan and sends nothing. After the same prover restarts, a new host and owner process resume the same original mutation ID. It compares original/final plan hashes and disallows replacement deployment addresses or retirement choices.
+
+After grant/deposit setup, the suite kills the host just after the first rotation append is submitted, stops and restarts the dedicated indexer, and resumes. The held coin must still qualify, and the independent grantee must open a seal whose secret matches the live new ACC viewing key. All prepared bytes and original plan hashes are retained; repeated send identifiers are refused.
+
+A final rotation stops the actual prover before the owner call reaches host registration. That failure remains an unresolved owner effect. Restoring the prover and explicitly resuming the same intent must **refuse without creating a host record or sending a replacement**. This tests a safety boundary, not successful automatic recovery. Current host absence cannot attest that an earlier sender was fenced. Preserve the encrypted journal and original ID for operator reconciliation; do not clear it or silently start a new operation to manufacture a pass.
+
+Use fresh private evidence roots. Setup itself is deliberately single-use; its grant openings and coin intent are retained before value submission, and an uncertain setup is not replayed automatically. Only the public standalone genesis seed is accepted. This is local source/software-identity evidence, not real-provider, published-registry/image or full release qualification.
+
+```sh
+PASSPORT_RC_LOCALNET=1 MN_NETWORK_ID=undeployed \
+PASSPORT_CONTRACT_DIR=/absolute/path/to/acc-6458ed5/contract \
+PASSPORT_LIVE_ROOT=/private/evidence/new-combined-run \
+nix develop -c pnpm qualify run combined-outages --output /private/evidence/combined-1.json
+```
+
+For the exhaustive offline continuation tier:
+
+```sh
+nix develop -c node scripts/qualification/mutation-matrix.mjs \
+  /private/evidence/new-populated-matrix.json populated
+```
+
+That matrix executes the actual pinned generated ACC with software signatures, real sealing/opening, one active grant and one coin description across rotation, device enrollment and removal boundaries in fresh processes. Its output/input event transport and Merkle position are synthetic. It has no proofs, chain funds or live-wallet claim. A successful continuation must preserve the coin, the surviving device readers and the grant's ability to open the current secret; removed readers must fail to open it. Lost uncommitted key-origin outputs safely refuse. Representative both-arm receipt-loss/unknown-outcome tests run in fast CI; the full matrix stays opt-in.
