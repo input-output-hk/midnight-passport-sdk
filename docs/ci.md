@@ -145,3 +145,13 @@ unknown-outcome and no-replacement tests plus the fast grant/storage negatives.
 No workflow was dispatched, and hosted 30–45-second timings still need measurement
 after an authorised push. Do not cache the protected mutation journal or fixture
 world files; only redacted hashes/case counters belong in acceptance artifacts.
+
+## Hosted measurements — 2026/10/23
+
+The first stack's core jobs passed in **65 s** ([#248 run](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/40026604779))
+and **81 s** ([#249 run](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/40026626812)).
+Install took 3 s; build 8–9 s; package/application tests 25/43 s; application types 7–8 s.
+All other required core jobs took 4–6 s. The core lane therefore exceeds the warm target;
+it is not declared compliant. Reduce serial build/test duplication or shard independent
+checks in the next CI tuning slice without dropping coverage. Actual proof/fault matrices
+remain opt-in. No workflow was manually dispatched for these measurements.

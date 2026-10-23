@@ -118,7 +118,7 @@ const readAccount = async () => {
   const entries = [...l.devices];
   return {
     booted: l.booted,
-    authNonce: l.auth_nonce,
+    authNonce: outcomeMode === 'nonzero-initial' && !l.booted ? 1n : l.auth_nonce,
     deviceEpoch: l.device_epoch,
     specVersion: Number(l.spec_version),
     entryCount: entries.length,
@@ -216,7 +216,7 @@ const ports = {
       await save();
       await rebuild();
       await fault('deploy:after');
-      return result;
+      return outcomeMode === 'bad-receipt' ? { ...result, txIds: [''] } : result;
     },
   },
 };

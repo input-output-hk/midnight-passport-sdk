@@ -107,12 +107,19 @@ target reader, the SDK cannot establish that a read-grant recipient is distinct.
 A focused regression verifies no chain call, inbox publication or ACC key switch
 on this refusal.
 
-## Preserving interrupted removal
+## Interrupted removal and historical-envelope trust — 2026/10/23
 
-The stricter target-reader check initially exposed the existing retry-after-key-switch
-regression. Preserve that path through authenticated public registration history in
-an optional key-port method, with exact live-target matching and the same grant/key
-collision refusals. Keep historical metadata out of the fresh recipient list. Both
-JubJub and P-256 paths share this target-only resolver. Default current-roster opening
-and wire formats remain unchanged; secrets stay inside the key port. Missing or
-ambiguous history fails closed. General durable mutation journals remain #230.
+The original historical-registration fallback was withdrawn after review. An envelope
+addressed to a reader can carry a sender-chosen earlier secret; decryption alone does
+not establish that its public key was ever a ledger `enc_key`. Such metadata cannot
+authenticate a removal target or exclude a grant to that target's actual reader.
+
+Both arms now require one unique target registration in the current ledger-matching
+roster. If a legacy removal switches the key and loses the target registration before
+its final call settles, a new legacy invocation refuses with `DeviceRosterInvalid`.
+Use an original protected mutation continuation when available, or retain state for
+operator reconciliation. Never infer identity from unanchored history or clear a
+pending journal to retry. Missing/unregistered targets remain unsupported rather than
+risking delivery of the fresh viewing key to an excluded reader. General durable
+mutation journals are tracked in #230; complete identity revocation still needs a new
+contract binding. This changes no on-chain wire format.

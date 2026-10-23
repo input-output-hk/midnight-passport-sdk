@@ -239,7 +239,6 @@ export function createHostMutationExecutor(store: HostMutationStore, driver: Hos
       if (record.phase === 'complete') return outcome(record);
       // No committed constructor plan: cannot recreate its authority/address implicitly.
       if (record.phase === 'preparing') return { kind: 'unknown' };
-      await save({ owner });
     }
     const advance = async (step: HostMutationStep) => {
       const steps = [...record!.steps];
@@ -253,6 +252,8 @@ export function createHostMutationExecutor(store: HostMutationStore, driver: Hos
       checkpoint();
       let step = record!.steps.at(-1);
       if (!step || step.phase === 'confirmed') {
+        // Claim only before preparing. Unknown lookup polls need no full new revision.
+        if (record!.owner !== owner) await save({ owner });
         const index = record!.steps.length;
         if (!(await driver.check(record!, index))) return { kind: 'unknown' };
         const prepared = await driver.prepareStep(record!, index);
@@ -266,7 +267,8 @@ export function createHostMutationExecutor(store: HostMutationStore, driver: Hos
         checkpoint();
         await advance({ ...step, phase: 'dispatching' });
         step = record!.steps.at(-1)!;
-        checkpoint();
+        // The dispatch fence is the point of no return. A later cancellation stops
+        // the next step, without stranding this committed dispatch before submit.
         // The persisted CAS is the fence. A stale earlier producer cannot enter submit.
         const submissionId = await driver.submit(step);
         if (!step.identifiers.includes(submissionId)) return hostFailure();

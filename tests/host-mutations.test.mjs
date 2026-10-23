@@ -120,10 +120,16 @@ test('unknown finality never resends or prepares the next wave, even across mult
   const f = fixture();
   f.visible(false);
   assert.deepEqual(await f.engine.execute(identity, input), { kind: 'unknown' });
-  for (let n = 0; n < 4; n++)
+  const revision = f.get()?.revision;
+  for (let n = 0; n < 25; n++)
     assert.deepEqual(await createHostMutationExecutor(f.store, f.driver).resume(identity), {
       kind: 'unknown',
     });
+  assert.equal(
+    f.get()?.revision,
+    revision,
+    'Unknown lookup-only polls must retain no new full revisions.',
+  );
   assert.equal(f.counts().sent, 1);
   assert.equal(f.counts().prepared, 1);
   f.visible();
@@ -263,4 +269,20 @@ test('cancellation during the frontier read prevents the subsequent dispatch', a
   await assert.rejects(f.engine.execute(identity, input, { signal: controller.signal }));
   assert.equal(f.counts().sent, 0);
   assert.equal(f.get()?.steps[0]?.phase, 'ready');
+});
+
+test('cancellation after the dispatch fence sends that step once and stops the next wave', async () => {
+  const f = fixture();
+  const controller = new AbortController();
+  const compare = f.store.compareAndSwap;
+  f.store.compareAndSwap = async (expected, next) => {
+    const ok = await compare(expected, next);
+    if (ok && next.steps.at(-1)?.phase === 'dispatching') controller.abort();
+    return ok;
+  };
+  await assert.rejects(f.engine.execute(identity, input, { signal: controller.signal }));
+  assert.equal(f.counts().sent, 1);
+  assert.equal(f.get()?.steps[0]?.phase, 'confirmed');
+  assert.equal((await f.engine.resume(identity)).kind, 'confirmed');
+  assert.equal(f.counts().sent, 3);
 });

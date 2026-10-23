@@ -66,11 +66,11 @@ knowledge. Ambiguous rosters and grants to the removed reader must be reconciled
 before removal. Total-loss recovery remains unavailable on the retained binding.
 See [Qualification and safety boundaries]({{ '/qualification/' | relative_url }}).
 
-The standard key recipe also implements the optional read-only device-registration
-history port for removal resumption. It keeps the existing envelope/inbox/prior-key
-bounds and zeroes internal key copies through the existing key-session cleanup.
-Only public registration metadata crosses that port; current roster resolution
-continues to select fresh-key recipients.
+The optional registration-history port returns diagnostic metadata from readable
+envelopes. Earlier secrets are not anchored to prior ledger keys. Neither removal-target
+authentication nor fresh-key recipient selection trusts that history. A new legacy
+removal invocation may therefore require operator reconciliation after a key switch;
+an original protected mutation can retain its verified target snapshot.
 
 ## Local durability milestone
 

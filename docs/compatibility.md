@@ -9,7 +9,7 @@ private registry hashes/attestations, and published image digests. The release k
 shielded withdrawal guard. Partial spends (#201), complete typed circuit coverage (#82) and
 remaining live/value-host evidence (#202) are deferred; no full Lace compatibility is claimed.
 
-## October 20 local consumer assessment
+## 2026/10/20 local consumer assessment
 
 The [current consumer review](review/consumer-qualification/README.md) and
 [engineer guide](site/consumer-integration.md) distinguish local packages, the actual
@@ -451,3 +451,13 @@ JubJub known-address opening keeps existing write-once directory metadata and ve
 the requested account from its live entry/sealed inbox. Pending owner traces from an
 older call sequence can refuse continuation; preserve their original implementation
 and journal. Binding, exact-value shielded withdrawal guard and hosted consent remain.
+
+## 2026/10/23 review corrections
+
+Historical readable envelopes are not authenticated historical ledger generations.
+Legacy removal that loses its target registration after the key switch now refuses;
+protected original continuations retain their verified snapshot. Unknown host lookup
+polls retain no new full journal revisions. Cancellation after the dispatch CAS lets
+that committed dispatch finish and stops future waves. Expired prepared bytes refuse
+before dispatch and are never automatically renewed. Source qualification also hashes
+ignored compiled package inputs; older source-only receipts keep their original scope.
