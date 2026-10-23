@@ -82,7 +82,7 @@ const decodeP256DevicePublicKey = (compressedHex: string) => {
 
 /** Full viewing-key port plus focused coin methods for callers that need only coin entries. */
 export interface DeviceKeyring extends AccountViewingKey {
-  /** Open coin descriptions with the live and up to 16 previous envelope secrets. */
+  /** Open coin descriptions with the live and bounded earlier envelope secrets. */
   openCoins(
     networkId: string,
     keyring: AccountKeyring,

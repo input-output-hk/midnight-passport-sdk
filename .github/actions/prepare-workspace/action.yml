@@ -1,0 +1,23 @@
+name: Prepare frozen workspace
+description: Restore verified dependency downloads and install from the committed lockfile.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      with:
+        node-version-file: .nvmrc
+    - name: Prepare pnpm
+      shell: bash
+      run: |
+        corepack enable
+        pnpm config set store-dir "$GITHUB_WORKSPACE/.cache/pnpm"
+    - name: Restore dependency downloads
+      uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      with:
+        path: .cache/pnpm
+        key: pnpm-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.nvmrc', 'package.json', 'pnpm-workspace.yaml', '.npmrc', 'pnpm-lock.yaml') }}
+        restore-keys: |
+          pnpm-v1-${{ runner.os }}-${{ runner.arch }}-
+    - name: Install frozen dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile --prefer-offline
