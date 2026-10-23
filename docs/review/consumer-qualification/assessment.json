@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-20",
+  "scope": "Local supported-subset assessment for issues 79 and 81",
+  "publishedSdkVersion": "0.1.0-rc5",
+  "localPackVersion": "0.1.0-consumer.1",
+  "publishedHost": {
+    "name": "@laceio/sdk",
+    "version": "0.1.1-canary.0",
+    "entries": [
+      "experimental",
+      "midnight"
+    ]
+  },
+  "currentSourcePinLocation": "Authorised private checkpoint; not published here",
+  "bindingId": "acc-s3r1.1",
+  "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "checks": {
+    "packedPackages": 9,
+    "privateRegistryPackages": 9,
+    "currentDirectRuntimeVersionMatches": 7,
+    "syntheticKeyAndConsentTests": 36,
+    "verifierLoads": 52,
+    "ownerProvingBundles": 10,
+    "publicEntryTypes": "passed",
+    "esmAndCjsEntryLoads": "passed",
+    "wasmBrowserBuilds": "passed",
+    "registrySriAndVisibility": "passed",
+    "sdkCreatedHostedSignin": "passed",
+    "hostedAuthorisingOnlyDevice": "passed",
+    "nativeCreatedSdkAddressOpen": "passed",
+    "reducedProfileNativeDeployment": "passed"
+  },
+  "syntheticCredentials": true,
+  "simulatedWindows": true,
+  "network": "undeployed",
+  "fullCompatibility": false,
+  "realProvider": false,
+  "newPublication": false,
+  "remainingGates": [
+    "real-provider and hosted-page acceptance (#232)",
+    "value-host routes (#202)",
+    "stable capability contract (#237)",
+    "full circuit API (#82)",
+    "partial shielded spends (#201, guard retained)"
+  ]
+}

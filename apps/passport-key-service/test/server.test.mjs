@@ -89,7 +89,7 @@ test('server streams pinned keys with ranges and rejects unknown paths', async (
   assert.equal((await fetch(`${base}/v1/manifest`)).status, 200);
 });
 
-test('a selected circuit profile refuses other circuits and reports its coverage', async () => {
+test('a proving profile retains bundled verifier keys for deployment and reports both sets', async () => {
   assert.equal(JUBJUB_OWNER_CIRCUITS.length, 10);
   assert.throws(() => selectKeyProfile('jubjub-owner-v1', new Map()), /absent/);
   assert.throws(() => selectKeyProfile('unknown', new Map()), /unsupported/);
@@ -105,10 +105,19 @@ test('a selected circuit profile refuses other circuits and reports its coverage
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   after(() => server.close());
   const base = `http://127.0.0.1:${server.address().port}`;
-  assert.deepEqual(await (await fetch(`${base}/v1/profile`)).json(), profile);
+  assert.deepEqual(await (await fetch(`${base}/v1/profile`)).json(), {
+    ...profile,
+    verifierCircuits: ['c'],
+  });
   assert.equal((await fetch(`${base}/zk/acc/keys/c.prover`)).status, 404);
   assert.equal((await fetch(`${base}/v1/zk/${bundle.bindingId}/keys/c.prover`)).status, 404);
   assert.equal((await fetch(`${base}/zk/acc/zkir/c.zkir`)).status, 404);
+  for (const prefix of ['/zk/acc', `/v1/zk/${bundle.bindingId}`]) {
+    const response = await fetch(`${base}${prefix}/keys/c.verifier`);
+    assert.equal(response.status, 200);
+    assert.equal(await response.text(), verifier.toString());
+    assert.equal((await fetch(`${base}${prefix}/keys/unknown.verifier`)).status, 404);
+  }
   assert.equal((await fetch(`${base}/zk/acc/compiler/contract-manifest.json`)).status, 200);
 });
 

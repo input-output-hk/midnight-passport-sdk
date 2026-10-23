@@ -89,6 +89,12 @@ export function createKeyServer({
 }) {
   if (!/^[a-z0-9][a-z0-9.-]*$/.test(bindingId)) throw new Error('invalid binding ID');
   const available = new Set(profile.circuits);
+  // Deployment installs verifier keys for operations whose proofs may be produced by a caller
+  // outside the owner module. A proving cache profile must not hide the bundled verifiers.
+  const verifierCircuits = [...files.keys()]
+    .filter((name) => /^keys\/[a-z][a-z0-9_]*\.verifier$/.test(name))
+    .map((name) => name.slice('keys/'.length, -'.verifier'.length))
+    .sort();
   return createServer((req, res) => {
     const origin = req.headers.origin;
     if (corsOrigins.length) res.setHeader('vary', 'Origin');
@@ -119,7 +125,7 @@ export function createKeyServer({
     }
     if (path === '/v1/profile') {
       res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' });
-      res.end(req.method === 'HEAD' ? undefined : JSON.stringify(profile));
+      res.end(req.method === 'HEAD' ? undefined : JSON.stringify({ ...profile, verifierCircuits }));
       return;
     }
     const prefix = path.startsWith(`/v1/zk/${bindingId}/`)
@@ -128,7 +134,7 @@ export function createKeyServer({
         ? '/zk/acc/'
         : undefined;
     const name = prefix && path.slice(prefix.length);
-    const circuitPath = /^(?:zkir|keys)\/([a-z][a-z0-9_]*)\.(?:zkir|bzkir|verifier|prover)$/.exec(
+    const circuitPath = /^(?:zkir|keys)\/([a-z][a-z0-9_]*)\.(?:zkir|bzkir|prover)$/.exec(
       name ?? '',
     );
     if (circuitPath && !available.has(circuitPath[1])) {

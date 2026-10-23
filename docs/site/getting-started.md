@@ -30,7 +30,9 @@ The packages are **private GitHub Packages**, not npmjs packages. Ask a package 
 for read access. A developer token needs package read permission; a consuming Actions repository
 must be granted package access for its `GITHUB_TOKEN`.
 
-Set the token outside source control and use a user-level or git-ignored `.npmrc`:
+Set the token outside source control and use a user-level credential file (for npm, `~/.npmrc`). The pinned pnpm
+refuses environment interpolation in project-level auth settings, even in a
+git-ignored project file; keep credentials in user configuration:
 
 ```ini
 @input-output-hk:registry=https://npm.pkg.github.com

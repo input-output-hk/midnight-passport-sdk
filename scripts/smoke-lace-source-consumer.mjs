@@ -1,28 +1,22 @@
 #!/usr/bin/env node
 // Compile the actual Lace PR contract seam sources against packed SDK tarballs.
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import ts from 'typescript';
-import { assertReleasePackageSet } from './release-package-list.mjs';
+import { checkConsumerSource, checkConsumerTarballs, consumerSha256 } from './consumer-inputs.mjs';
 
-const laceHead = '502b0794cc7bcfc76342230193fef4ebb63cae1c';
+const laceHead = process.env.LACE_SOURCE_REVISION ?? '502b0794cc7bcfc76342230193fef4ebb63cae1c';
 const laceCheckout = process.env.LACE_CHECKOUT;
-if (!laceCheckout) throw new Error('set LACE_CHECKOUT to the checkout of Lace PR #2845');
-const actualHead = execFileSync('git', ['-C', laceCheckout, 'rev-parse', 'HEAD'], {
-  encoding: 'utf8',
-}).trim();
-if (actualHead !== laceHead) throw new Error(`Lace HEAD ${actualHead} differs from ${laceHead}`);
+if (!laceCheckout) throw new Error('set LACE_CHECKOUT to an authorised consumer checkout');
+const sourceScope = [
+  'packages/contract/passport/src',
+  'packages/module/passport-account/src',
+  'packages/module/passport-account/package.json',
+  'packages/lib/passkey/src',
+];
+const sourceIdentity = checkConsumerSource(laceCheckout, laceHead, sourceScope);
 const source = join(laceCheckout, 'packages/contract/passport/src');
 const laceDependencies = JSON.parse(
   readFileSync(join(laceCheckout, 'packages/module/passport-account/package.json'), 'utf8'),
@@ -46,41 +40,27 @@ if (
   !matchedRuntimeVersions['@midnightntwrk/ledger-v9']
 )
   throw new Error('Lace and SDK runtime comparison is incomplete');
-execFileSync('git', [
-  '-C',
-  laceCheckout,
-  'diff',
-  '--quiet',
-  'HEAD',
-  '--',
-  'packages/contract/passport/src',
-]);
-execFileSync('git', [
-  '-C',
-  laceCheckout,
-  'diff',
-  '--quiet',
-  'HEAD',
-  '--',
-  'packages/module/passport-account/src/acc/gated-call.ts',
-  'packages/module/passport-account/src/acc/generated/index.d.ts',
-]);
 const root = resolve(import.meta.dirname, '..');
-const tarballs = resolve(process.env.RELEASE_TARBALL_DIR ?? join(root, 'release-tarballs'));
-/** @type {{version: string, files: Array<{name: string, file: string, sha256: string}>}} */
-const manifest = JSON.parse(readFileSync(join(tarballs, 'manifest.json'), 'utf8'));
-if (manifest.version !== process.env.RELEASE_VERSION)
-  throw new Error('release manifest must use RELEASE_VERSION');
-assertReleasePackageSet(manifest.files);
-const dependencies = Object.fromEntries(
-  manifest.files.map(({ name, file, sha256 }) => {
-    const path = join(tarballs, file);
-    if (!existsSync(path)) throw new Error(`missing ${path}`);
-    const actualSha256 = createHash('sha256').update(readFileSync(path)).digest('hex');
-    if (actualSha256 !== sha256) throw new Error(`tarball hash mismatch: ${file}`);
-    return [name, `file:${path}`];
+const bindingPin = JSON.parse(
+  readFileSync(join(root, 'packages/contract/acc-binding-v2.generated.json'), 'utf8'),
+);
+const generatedFiles = /** @type {Array<[string, string]>} */ ([
+  ['js', 'index.js'],
+  ['types', 'index.d.ts'],
+]);
+const generatedIdentity = Object.fromEntries(
+  generatedFiles.map(([kind, name]) => {
+    const digest = consumerSha256(
+      readFileSync(join(laceCheckout, 'packages/module/passport-account/src/acc/generated', name)),
+    );
+    if (digest !== bindingPin.module[kind].sha256)
+      throw new Error('consumer generated ACC differs from the supported binding');
+    return [kind, digest];
   }),
 );
+const tarballs = resolve(process.env.RELEASE_TARBALL_DIR ?? join(root, 'release-tarballs'));
+const manifest = checkConsumerTarballs(tarballs, process.env.RELEASE_VERSION ?? '');
+const { dependencies } = manifest;
 const scratch = mkdtempSync(join(tmpdir(), 'mn-passport-lace-source-'));
 try {
   const laceSource = join(scratch, 'lace-contract');
@@ -164,6 +144,31 @@ try {
     { stdio: 'inherit' },
   );
   execFileSync('pnpm', ['exec', 'tsc', '-p', 'tsconfig.json'], { cwd: scratch, stdio: 'inherit' });
+  checkConsumerSource(laceCheckout, laceHead, sourceScope);
+  if (process.env.CONSUMER_RECEIPT_FILE) {
+    writeFileSync(
+      process.env.CONSUMER_RECEIPT_FILE,
+      JSON.stringify(
+        {
+          schemaVersion: 1,
+          kind: 'source-types',
+          source: sourceIdentity,
+          sdkVersion: manifest.version,
+          manifestSha256: manifest.manifestSha256,
+          matchedRuntimeVersions,
+          bindingId: bindingPin.id,
+          bindingManifestSha256: bindingPin.manifestSha256,
+          generatedIdentity,
+          checks: ['tarball-sha256', 'physical-runtime-identity', 'source-types'],
+          fullCompatibility: false,
+          realProvider: false,
+        },
+        null,
+        2,
+      ) + '\n',
+      { flag: 'wx', mode: 0o600 },
+    );
+  }
   console.log(
     `Lace PR #2845 ${laceHead}: packed SDK ${manifest.version} types passed; ` +
       `${Object.keys(matchedRuntimeVersions).length} direct Midnight runtime versions match`,

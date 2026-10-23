@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -12,10 +12,21 @@ import { configRoute, pinnedZkRoute, zkRoute } from '../src/routes/zk.ts';
 import { bindingCircuits, verifyArtefacts } from '../src/artefacts.ts';
 import { JSON_TYPE, fakeArtefacts, testConfig } from './fixtures.ts';
 
-async function start(config = testConfig()) {
+// Register cleanup before assertions: a failed fetch must not leave a listener alive.
+function cleanup(t: TestContext, server: ReturnType<typeof createServer>) {
+  t.after(async () => {
+    server.closeAllConnections();
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  });
+}
+
+async function start(t: TestContext, config = testConfig()) {
   const server = createServer(config, [configRoute(config, () => ({})), zkRoute(config)]);
-  await new Promise<void>((r) => server.listen(0, r));
-  const base = `http://localhost:${(server.address() as AddressInfo).port}`;
+  cleanup(t, server);
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   return { base, server, config };
 }
 
@@ -27,8 +38,8 @@ test('the artefact check accepts a matching tree and refuses a tampered one', ()
   assert.throws(() => verifyArtefacts(c.artefactDir, c.manifestSha256), /keys\/c\.verifier/);
 });
 
-test('/zk serves artefact files as octet-stream with CORS and cache headers', async () => {
-  const { base, server } = await start();
+test('/zk serves artefact files as octet-stream with CORS and cache headers', async (t) => {
+  const { base, server } = await start(t);
   const res = await fetch(`${base}/zk/acc/keys/c.verifier`, {
     headers: { origin: 'http://localhost:5173' },
   });
@@ -39,7 +50,6 @@ test('/zk serves artefact files as octet-stream with CORS and cache headers', as
   assert.match(res.headers.get('cache-control') ?? '', /immutable/);
   const manifest = await fetch(`${base}/zk/acc/compiler/contract-manifest.json`);
   assert.equal(manifest.headers.get('cache-control'), 'no-cache');
-  server.close();
 });
 
 test('/v1/config points at verified binding-specific artefacts', async (t) => {
@@ -57,7 +67,7 @@ test('/v1/config points at verified binding-specific artefacts', async (t) => {
     pinnedZkRoute(config),
   ]);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-  t.after(() => server.close());
+  cleanup(t, server);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const response = await fetch(`${base}/v1/config`);
   assert.equal(response.status, 200);
@@ -84,7 +94,7 @@ test('/v1/config can advertise an independently pinned key service', async (t) =
     configRoute(config, () => ({ coinPublicKey: 'aa', encryptionPublicKey: 'bb' })),
   ]);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-  t.after(() => server.close());
+  cleanup(t, server);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const v1 = (await (await fetch(`${base}/v1/config`)).json()) as Record<string, string>;
   assert.equal(v1.zkBaseUrl, keyBase);
@@ -121,8 +131,8 @@ test('the v1 artefact route refuses an unpinned or corrupt tree at startup', () 
   assert.throws(() => pinnedZkRoute(config), /keys\/c\.verifier/);
 });
 
-test('/zk refuses path traversal and unknown files with 404', async () => {
-  const { base, server } = await start();
+test('/zk refuses path traversal and unknown files with 404', async (t) => {
+  const { base, server } = await start(t);
   for (const p of [
     '/zk/acc/../registry.json',
     '/zk/acc/%2e%2e/registry.json',
@@ -131,26 +141,23 @@ test('/zk refuses path traversal and unknown files with 404', async () => {
   ]) {
     assert.equal((await fetch(base + p)).status, 404, p);
   }
-  server.close();
 });
 
-test('/zk refuses a key-tree symlink that resolves outside its verified root', async () => {
+test('/zk refuses a key-tree symlink that resolves outside its verified root', async (t) => {
   const config = testConfig();
   const elsewhere = mkdtempSync(join(tmpdir(), 'acc-external-'));
   writeFileSync(join(elsewhere, 'secret.txt'), 'do not serve');
   symlinkSync(join(elsewhere, 'secret.txt'), join(config.artefactDir, 'keys/secret.txt'));
-  const { base, server } = await start(config);
+  const { base, server } = await start(t, config);
   assert.equal((await fetch(`${base}/zk/acc/keys/secret.txt`)).status, 404);
-  server.close();
 });
 
-test('/config reports the network, binding and pinned manifest', async () => {
-  const { base, server, config } = await start();
+test('/config reports the network, binding and pinned manifest', async (t) => {
+  const { base, server, config } = await start(t);
   const body = (await (await fetch(`${base}/config`)).json()) as Record<string, string>;
   assert.equal(body.networkId, 'undeployed');
   assert.equal(body.manifestSha256, config.manifestSha256);
   assert.equal(body.zkBaseUrl, `${base}/zk/acc`);
-  server.close();
 });
 
 /**
@@ -160,7 +167,7 @@ test('/config reports the network, binding and pinned manifest', async () => {
  */
 function rawGet(port: number, target: string): Promise<number> {
   return new Promise((resolveStatus, reject) => {
-    const socket = connect(port, 'localhost', () =>
+    const socket = connect(port, '127.0.0.1', () =>
       socket.write(
         `GET ${target} HTTP/1.1\r\nHost: localhost:${port}\r\nConnection: close\r\n\r\n`,
       ),
@@ -172,8 +179,8 @@ function rawGet(port: number, target: string): Promise<number> {
   });
 }
 
-test('/zk refuses raw traversal targets, including the encoded forms that reach its guard', async () => {
-  const { server } = await start();
+test('/zk refuses raw traversal targets, including the encoded forms that reach its guard', async (t) => {
+  const { server } = await start(t);
   const port = (server.address() as AddressInfo).port;
   const targets = [
     '/zk/acc/../registry.json',
@@ -185,14 +192,13 @@ test('/zk refuses raw traversal targets, including the encoded forms that reach 
     '/zk/acc/keys',
   ];
   for (const target of targets) assert.equal(await rawGet(port, target), 404, target);
-  server.close();
 });
 
-test('/zk serves only the compiler, zkir and keys folders', async () => {
+test('/zk serves only the compiler, zkir and keys folders', async (t) => {
   const config = testConfig();
   mkdirSync(join(config.artefactDir, 'contract'), { recursive: true });
   writeFileSync(join(config.artefactDir, 'contract/index.js'), 'export {};');
-  const { base, server } = await start(config);
+  const { base, server } = await start(t, config);
   assert.equal((await fetch(`${base}/zk/acc/contract/index.js`)).status, 404);
   assert.equal((await fetch(`${base}/zk/acc/registry.json`)).status, 404);
   for (const ok of [
@@ -203,16 +209,15 @@ test('/zk serves only the compiler, zkir and keys folders', async () => {
   ]) {
     assert.equal((await fetch(`${base}/zk/acc/${ok}`)).status, 200, ok);
   }
-  server.close();
 });
 
-test('/zk survives a client that aborts mid-download', async () => {
+test('/zk survives a client that aborts mid-download', async (t) => {
   const config = testConfig();
   writeFileSync(join(config.artefactDir, 'keys/big.prover'), new Uint8Array(32 * 1024 * 1024));
-  const { base, server } = await start(config);
+  const { base, server } = await start(t, config);
   const port = (server.address() as AddressInfo).port;
   await new Promise<void>((resolveAbort, reject) => {
-    const socket = connect(port, 'localhost', () =>
+    const socket = connect(port, '127.0.0.1', () =>
       socket.write(`GET /zk/acc/keys/big.prover HTTP/1.1\r\nHost: localhost:${port}\r\n\r\n`),
     );
     socket.once('data', () => {
@@ -223,10 +228,9 @@ test('/zk survives a client that aborts mid-download', async () => {
   });
   assert.equal((await fetch(`${base}/config`)).status, 200);
   assert.equal((await fetch(`${base}/zk/acc/keys/c.verifier`)).status, 200);
-  server.close();
 });
 
-test('readJson answers 400 for malformed JSON and 413 for an oversized body', async () => {
+test('readJson answers 400 for malformed JSON and 413 for an oversized body', async (t) => {
   const config = testConfig();
   const echo: Route = async (req, res, url) => {
     if (req.method !== 'POST' || url.pathname !== '/echo') return false;
@@ -234,8 +238,9 @@ test('readJson answers 400 for malformed JSON and 413 for an oversized body', as
     return true;
   };
   const server = createServer(config, [echo]);
-  await new Promise<void>((r) => server.listen(0, r));
-  const base = `http://localhost:${(server.address() as AddressInfo).port}`;
+  cleanup(t, server);
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const ok = await fetch(`${base}/echo`, { method: 'POST', headers: JSON_TYPE, body: '{"a":1}' });
   assert.equal(ok.status, 200);
   assert.deepEqual(await ok.json(), { a: 1 });
@@ -253,7 +258,6 @@ test('readJson answers 400 for malformed JSON and 413 for an oversized body', as
   });
   assert.equal(big.status, 413);
   assert.match(((await big.json()) as { error: string }).error, /too large/);
-  server.close();
 });
 
 test('loadConfig refuses a non-integer or out-of-range port', () => {
@@ -396,7 +400,7 @@ test('a network other than undeployed needs an explicit sponsor seed', () => {
   );
 });
 
-test('/config advertises exactly the configured stack', async () => {
+test('/config advertises exactly the configured stack', async (t) => {
   const config = testConfig({
     networkId: 'preview',
     nodeUri: 'https://node.example',
@@ -404,10 +408,9 @@ test('/config advertises exactly the configured stack', async () => {
     indexerWsUri: 'wss://indexer.example/graphql/ws',
     proofServerUri: 'https://prover.example',
   });
-  const { base, server } = await start(config);
+  const { base, server } = await start(t, config);
   const body = (await (await fetch(`${base}/config`)).json()) as Record<string, string>;
   assert.deepEqual(stackOf(body as unknown as ServiceConfig), stackOf(config));
-  server.close();
 });
 
 test('loadConfig binds loopback by default and reads the host and deploy cap', () => {

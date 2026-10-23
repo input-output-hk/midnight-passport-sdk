@@ -1,6 +1,12 @@
 # Lace Passport consumer report — local SDK candidate
 
-Status: local integration candidate, 2026-10-17. This report tracks SDK issue #81 and does not change Lace.
+Status: **historical** local integration candidate, 2026-10-17.
+
+For the October 20 local current-consumer assessment, see
+[consumer qualification](site/consumer-integration.md) and its
+[review map](review/consumer-qualification/README.md). The records below retain their
+original source and package versions; they have not been relabelled as current.
+ This report tracks SDK issue #81 and does not change Lace.
 
 | Pin | Value |
 | --- | --- |

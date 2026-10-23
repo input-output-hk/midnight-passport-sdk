@@ -1,6 +1,7 @@
 .git
 .github
 .direnv
+.cache
 .mn-passport-skills
 **/.env
 **/.env.*

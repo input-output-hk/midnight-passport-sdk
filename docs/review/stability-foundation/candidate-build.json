@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "candidate-build",
+  "sourceRevision": "cd346383c89b9ac3b328122b0053d66a2ce6215e",
+  "compiler": {
+    "version": "0.35.0",
+    "commit": "debb05f9414b9d1e176741c2be289bb32233f0fc",
+    "runtime": "0.20.0"
+  },
+  "command": "compact compile +0.35.0 --feature-zkir-v3 --skip-zk contracts/account.compact contracts/managed/account",
+  "compilerManifestSha256": "0bd809da4e267d1c846e54754a9b6af6f09370464dd3de3f5452aba2f505ef4b",
+  "generatedModuleSha256": "afdc3aaa5bb426329122427ed65876bd820fc5bb452c02cb4eb48a7b97ed5697",
+  "declarationsSha256": "cc57ab4721b91f89e754b887ef55a5bb40dc356cf44089febfcfd8c4a10f8932",
+  "declarationsByteIdenticalToPinned": true,
+  "registeredAsBinding": false,
+  "newKeysGenerated": false,
+  "proofOrNodeQualified": false,
+  "verifierWaveBudgetQualified": false,
+  "sourceInputsVerified": [
+    {
+      "path": "contract/contracts/account.compact",
+      "sha256": "ef1e3d6eb873e91e205c12e07f33cda744d228470dd43a4794cb3784447fd6ae"
+    },
+    {
+      "path": "contract/contracts/account-p256.compact",
+      "sha256": "50aca789d611fab99292725a64a8231e0a6509ca726fdb1e23babf96e0ad9fd4"
+    },
+    {
+      "path": "contract/contracts/webauthn.compact",
+      "sha256": "04e84a53c6ffd2701a7f07820ef6becf2ffee06e05de9ca9dfd9e2b33ce7dedb"
+    }
+  ],
+  "nixInputs": {
+    "flake.lock": "4ced94e994377b976e35cf509e219f423e9bf1f846f7e0248831af0e437767a3",
+    "nix/packages/compact.nix": "9bbcbdae85c7eccdc7c5794086aa6b2fc1cdb224b80a3b0f4cbf3b060b6a56d4"
+  }
+}

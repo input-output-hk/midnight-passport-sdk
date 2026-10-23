@@ -235,6 +235,25 @@ ACC's strict `wa-json134` profile remains a compatibility limit for real passkey
 
 ## 8. Rules for coding agents working on this branch
 
+### Next milestone working agreement — 2026/10/20
+
+Continue on the branch already checked out; the owner explicitly requested the current
+branch, not `main`. Prepare work locally. Prefer coherent **5k–10k authored changed lines
+per PR**, with smaller signed commits and a review map. Do not pad diffs; this instruction
+supersedes the historical 400/600-line split rules in local skills and plans.
+
+The next milestone focuses on supported-subset stability, binding/recovery and revocation
+semantics, interruption safety and reproducible consumer qualification. See [CI policy](docs/ci.md)
+and issues #227–#244. Keep exact-value shielded withdrawal guards and describe compatibility
+from actual evidence. A breaking binding/API change triggers a version-axis decision.
+
+Keep milestone decisions, important redacted receipts and handovers in the owner's Midnight
+Obsidian vault, under `Initiatives/07 Midnight Passport ACC/SDK milestones/`. Update its
+`Current checkpoint.md` and artifact index after meaningful progress. Public docs remain here;
+private consumer notes stay in the vault. Never copy wallet state, tokens, passkeys, proof
+witnesses, giant prover keys or private source snapshots into it.
+
+
 - **Use Nix for every command:** `nix develop -c …`. Never call a global `compact`, `node` or
   `pnpm`. The scripts' `guard.sh` refuses any toolchain outside the Nix store.
 - **Run the checks locally before every commit.** Pull requests also run the checks in
@@ -259,6 +278,15 @@ ACC's strict `wa-json134` profile remains a compatibility limit for real passkey
   `undeployed.env` is git-ignored), no sponsor seed, no passkey or PRF material, and no prover keys.
 - **Keep the docs in step.** When a flow, an endpoint or a prompt count changes, update
   `docs/prototype/` and `apps/README.md` in the same pull request.
+
+### Qualification for the stability milestone
+
+Run `nix develop -c pnpm qualify list` and `plan foundation` before qualification.
+The engineer guide is `docs/site/qualification.md`; the local review map is
+`docs/review/stability-foundation/README.md`. Use fresh evidence paths in the vault
+or a private ignored directory. Missing inputs, skipped tests and unimplemented
+cases never become qualified passes. Three matching foundation runs establish
+repeatability only for that declared scope, not release/provider acceptance.
 
 ### Where things are
 

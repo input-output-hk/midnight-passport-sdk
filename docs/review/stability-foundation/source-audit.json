@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "source-comparison",
+  "pinnedRevision": "6458ed5fe6a4843912328bbf11112b97e33abf45",
+  "reviewedRevision": "cd346383c89b9ac3b328122b0053d66a2ce6215e",
+  "files": [
+    {
+      "path": "contract/contracts/account.compact",
+      "pinnedSha256": "a5a05eef67399856dc9d25ae9989a3972b4695f1f2fe6a25bfd68ee51669d3d5",
+      "reviewedSha256": "ef1e3d6eb873e91e205c12e07f33cda744d228470dd43a4794cb3784447fd6ae",
+      "sourceChanged": true,
+      "executableChanged": true,
+      "declarationSurfaceEqual": true,
+      "pinnedDeviceSetReset": false,
+      "reviewedDeviceSetReset": true
+    },
+    {
+      "path": "contract/contracts/account-p256.compact",
+      "pinnedSha256": "50aca789d611fab99292725a64a8231e0a6509ca726fdb1e23babf96e0ad9fd4",
+      "reviewedSha256": "50aca789d611fab99292725a64a8231e0a6509ca726fdb1e23babf96e0ad9fd4",
+      "sourceChanged": false,
+      "executableChanged": false,
+      "declarationSurfaceEqual": true,
+      "pinnedDeviceSetReset": false,
+      "reviewedDeviceSetReset": false
+    },
+    {
+      "path": "contract/contracts/webauthn.compact",
+      "pinnedSha256": "04e84a53c6ffd2701a7f07820ef6becf2ffee06e05de9ca9dfd9e2b33ce7dedb",
+      "reviewedSha256": "04e84a53c6ffd2701a7f07820ef6becf2ffee06e05de9ca9dfd9e2b33ce7dedb",
+      "sourceChanged": false,
+      "executableChanged": false,
+      "declarationSurfaceEqual": true,
+      "pinnedDeviceSetReset": false,
+      "reviewedDeviceSetReset": false
+    }
+  ],
+  "declarationsEqual": true,
+  "executableChanges": [
+    "contract/contracts/account.compact"
+  ],
+  "limits": [
+    "Declaration comparison is not binary ABI, codec or proof compatibility.",
+    "Source changes do not update any deployed account or registered binding.",
+    "Fresh key generation, proof/node validation and verifier wave sizing are separate gates."
+  ]
+}
