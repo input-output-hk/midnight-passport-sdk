@@ -159,9 +159,9 @@ A new legacy invocation after a key switch can therefore refuse with
 Use an original protected owner continuation when available, or preserve state for
 operator reconciliation. Never infer target identity from earlier envelopes.
 
-More than sixteen distinct earlier secrets refuses explicitly. The recipe must not
-silently discard genuine old keys and then report an incomplete holding view as empty.
-The legacy/interleaving and overflow refusal regressions preserve key/inbox state.
+Anonymous earlier candidates neither authenticate metadata nor evict genuine old
+coin keys. The candidate pool is bounded by the existing envelope/inbox limits. The
+legacy/interleaving refusal and seventeen-forged-envelope regressions preserve state.
 
 ## Current consumer assessment
 
@@ -189,3 +189,15 @@ and scenario scope. External tarballs, authorized source checkouts, installed ho
 roots and environment choices need their scenario-specific receipts checked separately;
 three outer receipts alone do not establish identical external inputs. Full release
 consumer/provider acceptance remains an independent gate.
+
+### Historical candidate correction — 2026/10/24
+
+The global sixteen-key truncation/refusal is withdrawn: anonymous earlier envelopes
+must neither evict a genuine old coin key nor lock sign-in. All distinct earlier
+secrets within the existing 4096-envelope bound remain decryption candidates, and
+are zeroed after use. Only the ledger-matching current secret/roster authenticates
+metadata; earlier candidates never identify device-removal targets. The regression
+places a real older coin behind seventeen forged envelopes and verifies metadata,
+coin reads, device delivery and new key creation remain usable. Large-inbox work
+still scales with candidate keys and coin entries; the existing 4096 limits and
+operator/resource qualification remain explicit. No unbounded-input guarantee.

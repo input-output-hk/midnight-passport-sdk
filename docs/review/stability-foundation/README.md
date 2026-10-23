@@ -106,3 +106,15 @@ protected continuation can preserve its verified snapshot. More than sixteen dis
 earlier keys refuses instead of hiding holdings. Runtime identity includes compiled
 inputs, refuses package/dist symlinks, and preflights before evidence reservation.
 Repeated outer receipts do not audit omitted runs or external consumer inputs.
+
+### Historical candidate correction — 2026/10/24
+
+The global sixteen-key truncation/refusal is withdrawn: anonymous earlier envelopes
+must neither evict a genuine old coin key nor lock sign-in. All distinct earlier
+secrets within the existing 4096-envelope bound remain decryption candidates, and
+are zeroed after use. Only the ledger-matching current secret/roster authenticates
+metadata; earlier candidates never identify device-removal targets. The regression
+places a real older coin behind seventeen forged envelopes and verifies metadata,
+coin reads, device delivery and new key creation remain usable. Large-inbox work
+still scales with candidate keys and coin entries; the existing 4096 limits and
+operator/resource qualification remain explicit. No unbounded-input guarantee.

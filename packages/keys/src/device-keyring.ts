@@ -29,7 +29,6 @@ import { sealGrantView } from './grant-view-seal.js';
 
 const KEY_LENGTH = 32;
 const MAX_ENVELOPES = 4096;
-const MAX_PREVIOUS_SECRETS = 16;
 const MAX_INBOX_ENTRIES = 4096;
 const hex = (bytes: Uint8Array): string =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -149,12 +148,8 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
         if (publicKeyHex !== hex(encKey)) {
           if (seen.has(publicKeyHex)) zero(opened);
           else {
-            if (earlier.length >= MAX_PREVIOUS_SECRETS) {
-              zero(opened);
-              throw new Error(
-                'Too many distinct historical viewing keys; reconcile the inbox before continuing.',
-              );
-            }
+            // Every candidate remains bounded by MAX_ENVELOPES. Anonymous earlier
+            // envelopes neither authenticate metadata nor evict genuine old coin keys.
             seen.add(publicKeyHex);
             earlier.push(opened);
           }
