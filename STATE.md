@@ -4,7 +4,7 @@
 > `mn-passport-skills:spec-driver` per [`docs/development-workflow.md`](./docs/development-workflow.md) §3.
 > Every entry carries its GitHub issue
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
-> Last updated: 2026/10/20. Historical entries below retain their original issue namespaces.
+> Last updated: 2026/10/23. Historical entries below retain their original issue namespaces.
 
 ## Current fork iteration — 2026/10/20
 
@@ -34,6 +34,14 @@
   Host receipt/fencing and multi-wave integration, combined active-grant/holdings
   live-proof/provider interruption qualification remain open. Default demo owner
   buttons have not been silently switched to this API.
+- **Host continuation slice delivered locally (2026/10/23):** encrypted host records,
+  revision fencing, authenticated opt-in RPC/client ports and reference deployment
+  wave continuation. Preserve the original randomised deployment transaction and
+  maintenance authority policy; reconcile exact watch IDs/raw hashes without
+  uncertain resubmission. 152 synthetic fresh-process cases (108 resumed, 44 safe
+  unknown outcomes) and native ledger construction/signature/frontier tests.
+  See [host review](docs/review/host-durability/README.md). Docker was stopped;
+  live proof/provider and combined fault acceptance remain open. No publication.
 - **Working agreement:** current branch, local execution, coherent 5k–10k-line PRs
   with smaller signed commits; keep the exact-value shielded guard. Milestone research,
   private consumer notes and redacted receipts live in the owner's Midnight Obsidian

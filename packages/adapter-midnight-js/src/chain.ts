@@ -173,7 +173,7 @@ export function createMidnightChain(opts: {
         hasEntry: (entry) => ledger.devices.member(entry),
       };
     },
-    async call({ address, circuit, args, heldCoin, onEvent, ...flowOptions }) {
+    async call({ address, circuit, args, heldCoin, onEvent, mutation, ...flowOptions }) {
       setNetworkId(network.networkId);
       const shieldedSpend = circuit.startsWith('withdraw_shielded');
       if (shieldedSpend !== (heldCoin !== undefined))
@@ -255,7 +255,9 @@ export function createMidnightChain(opts: {
             ),
         }),
         midnightProvider: createMidnightProvider(async (tx) => {
-          const id = await track('sponsor.submit', () => submitter.submit(tx.serialize()));
+          const id = await track('sponsor.submit', () =>
+            submitter.submit(tx.serialize(), mutation ? { mutation, address, circuit } : undefined),
+          );
           finality = report('chain.finality');
           return id;
         }),

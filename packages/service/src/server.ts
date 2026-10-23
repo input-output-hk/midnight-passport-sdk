@@ -29,7 +29,7 @@ const isJson = (req: IncomingMessage): boolean =>
 export function createServer(config: HttpServiceConfig, routes: Route[]): Server {
   return createHttpServer(async (req, res) => {
     res.setHeader('access-control-allow-origin', config.corsOrigin);
-    res.setHeader('access-control-allow-headers', 'content-type');
+    res.setHeader('access-control-allow-headers', 'content-type, authorization');
     res.setHeader('access-control-allow-methods', 'GET, POST, PUT, OPTIONS');
     const host = req.headers.host?.toLowerCase();
     if (host === undefined || !allowedHosts(config, req.socket.localPort).has(host)) {

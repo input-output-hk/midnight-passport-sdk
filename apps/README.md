@@ -357,3 +357,18 @@ the new opt-in durable API, protected storage and authoritative/fenced submissio
 receipts using [the durability guide](../docs/site/durability.md). A browser reload
 is not proof that a pending transaction failed. No remote deployment receipt service
 or new backup/import UI is implied.
+
+### Opt-in durable host RPC (local, unreleased)
+
+The Node service can enable an authenticated host mutation route with
+`PASSPORT_HOST_MUTATION_DIR`, `PASSPORT_HOST_MUTATION_KEY_FILE` and
+`PASSPORT_HOST_MUTATION_TOKEN_FILE`. All three are required; use independent private
+32-byte hex key/token files and retain the private journal mount across restarts.
+The token belongs in the trusted wallet/host, never in a public `VITE_*` setting or
+operation log. No existing sponsor/funding keys are reused or replaced.
+
+The new `remoteHostMutationPorts` opt-in composition resumes the original saved
+deployment and wave bytes. Default demo owner buttons are not migrated. Unknown
+submissions, expired dispatches, missing constructor outputs and mismatched state
+remain refused. See the [engineer guide](../docs/site/host-durability.md) for setup,
+RPC, composition and offline-versus-live qualification limits.

@@ -110,3 +110,10 @@ expected outcomes are counted; refusals are not labelled successful resumptions.
 Full local gate: 839 passes, seven existing conditional skips, zero failures.
 Jekyll: 17 pages and 316 local links/anchors; integration example type-checks.
 Required hosted CI timing remains unmeasured; no workflow was dispatched.
+
+## Follow-up — 2026/10/23
+
+The [host continuation slice](../host-durability/README.md) supplies opt-in encrypted
+submission receipts/fencing, original deployment transaction reuse and reference
+wave continuation. The historical results above retain their source and scope.
+Live proof/provider and combined fault acceptance still remain open.

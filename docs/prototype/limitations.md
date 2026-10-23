@@ -172,3 +172,13 @@ revocation fallback. Current SDK-created accounts use an unretained birth recove
 key with a zero wrap; an imported account's recovery configuration is unknown to
 that create path. Keeping or opening an address does not recover a lost passkey.
 See the binding decision and qualification guide for the current supported scope.
+
+### Local host durability work (2026/10/23)
+
+An authenticated opt-in host route can persist original deployment/wave transactions
+and maintenance authority material in an encrypted journal. It fences stale senders
+and reconciles known identifiers without blind resubmission. This is separate from
+the default demo owner path and has offline/process evidence only in this slice.
+Docker was stopped; live proof/provider restart acceptance, TTL reconciliation and
+lost uncommitted constructor outputs remain explicit limits. See
+[host durability](../site/host-durability.md).

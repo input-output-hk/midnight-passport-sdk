@@ -550,7 +550,14 @@ export interface FeeSponsor {
 }
 export interface Submitter {
   /** Answers the submission id. */
-  submit(finalisedTx: Uint8Array): Promise<string>;
+  submit(
+    finalisedTx: Uint8Array,
+    context?: {
+      readonly mutation: MutationSubmissionContext;
+      readonly address: string;
+      readonly circuit: string;
+    },
+  ): Promise<string>;
 }
 
 export type {
@@ -558,6 +565,8 @@ export type {
   MutationByteStore,
   MutationConsent,
   MutationOutcomeSource,
+  MutationOutcome,
+  MutationEffect,
   MutationDocument,
   MutationPins,
 } from '../mutation-types.js';

@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "reviewDate": "2026-10-20",
+  "reviewDate": "2026-10-23",
   "releaseVersion": "0.1.0-rc5",
   "releaseSource": "9e8048674a54adf5e8be2055aaa8f5c9bfe08b06",
   "historicalConsumerEvidence": "0.1.0-dev.12 at its recorded host pin; not relabelled as RC5/current host",
-  "reviewBaseline": "First stability slice at 5dc13ff, consumer slice at 2ffb0af and local durability/reconstruction supported subset; exact private consumer source pins and receipts remain in authorised Obsidian storage",
+  "reviewBaseline": "Local stability/consumer/durability slices at signed 626c6f9 plus the current opt-in host continuation slice; historical evidence retains its original scope/source.",
   "issuesReviewed": 40,
   "criterionExtraction": "Top-level scope/acceptance/deliverable bullets and checkboxes; linked original body remains authoritative, including nested bullets.",
   "limitations": [
@@ -1406,8 +1406,8 @@
       "observedUpdatedAt": "2026-10-20T03:12:33Z",
       "bodySha256": "2dbb7e6cf1e7d2806153bf0c8e8403e47f4d3f6a4a8f1960405efc91078f0727",
       "originalBodySha256": "7cd0ec9785f629fb6bf313cc63e4f1a2d4525a275701171eb337eabd9bd135c9",
-      "implementation": "local-supported-subset",
-      "verification": "local-simulator-process-and-unit-evidence",
+      "implementation": "local-owner-and-host-supported-subset",
+      "verification": "local-process-offline-ledger-and-unit-evidence",
       "evidencePaths": [
         "docs/review/durability/README.md",
         "docs/site/durability.md",
@@ -1415,38 +1415,44 @@
         "tests/mutation-refusal.test.mjs",
         "tests/mutation-journal.test.mjs",
         "tests/grant-bookkeeping-recovery.test.mjs",
-        "scripts/qualification/mutation-matrix.mjs"
+        "scripts/qualification/mutation-matrix.mjs",
+        "docs/review/host-durability/README.md",
+        "docs/site/host-durability.md",
+        "tests/host-mutations.test.mjs",
+        "tests/host-mutation-http.test.mjs",
+        "apps/passport-service/test/host-driver.test.ts",
+        "scripts/qualification/host-mutation-matrix.mjs"
       ],
-      "assessment": "Local opt-in protected coordinator and both-arm synthetic fresh-process tests; exact host receipts/fencing and durable deployment integration, key-origin output recovery and combined live proof/provider/active-grant fault acceptance remain explicit limits.",
+      "assessment": "Opt-in host receipts/fencing, encrypted original plan/transaction persistence, authenticated client transport and reference wave continuation now implemented locally. Original deployment address and authority policy, exact verifier frontiers and successful raw v9 finality are checked. Synthetic restart/native offline evidence is separate from remaining live proof/provider/combined active-grant acceptance. Default demo owner API unchanged; no remote closure.",
       "criteria": [
         {
           "criterion": "- [ ] Enumerate state transitions and durable intent fields for both arms, including transaction identifiers, network/binding pins, key generation, roster snapshots, and the original consent/lock choice.",
-          "implementation": "local-supported-subset",
-          "verification": "scoped-local-evidence",
+          "implementation": "local-owner-and-host-supported-subset",
+          "verification": "scoped-process-and-offline-runtime-evidence",
           "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         },
         {
           "criterion": "- [ ] Inject crashes before/after each submission, confirmation, key switch, envelope publication, and device removal; restart with a new process and reconcile the chain before continuing.",
-          "implementation": "local-supported-subset",
-          "verification": "scoped-local-evidence",
+          "implementation": "local-owner-and-host-supported-subset",
+          "verification": "scoped-process-and-offline-runtime-evidence",
           "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         },
         {
           "criterion": "- [ ] Retain access for every intended surviving reader and refuse stale/ambiguous rosters, missing read-grant openings, or unknown outcomes. Never draw replacement keys or blindly resubmit an uncertain operation.",
-          "implementation": "local-supported-subset",
-          "verification": "scoped-local-evidence",
+          "implementation": "local-owner-and-host-supported-subset",
+          "verification": "scoped-process-and-offline-runtime-evidence",
           "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         },
         {
           "criterion": "- [ ] Define cancellation as stopping future work, not undoing submitted chain transactions. Keep secrets and private proof inputs out of public journals/logs.",
-          "implementation": "local-supported-subset",
-          "verification": "scoped-local-evidence",
+          "implementation": "local-owner-and-host-supported-subset",
+          "verification": "scoped-process-and-offline-runtime-evidence",
           "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         },
         {
           "criterion": "- [ ] Supply typed host persistence ports, migration/versioning rules, and tests; no UI-only success while durable/chain state disagrees.",
-          "implementation": "local-supported-subset",
-          "verification": "scoped-local-evidence",
+          "implementation": "local-owner-and-host-supported-subset",
+          "verification": "scoped-process-and-offline-runtime-evidence",
           "disposition": "owner-review-supported-subset-retain-open-for-unqualified-host-scenarios"
         }
       ],

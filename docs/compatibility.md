@@ -426,3 +426,15 @@ See [the engineer guide](site/durability.md) and [local review map](review/durab
 for simulator-only restart evidence and remaining host/provider/combined active-grant
 qualification. No binding, withdrawal guard, installed release or Lace host consent
 was changed. No full compatibility or total-loss recovery claim.
+
+### Local authenticated host transport (2026/10/23)
+
+`remoteHostMutationPorts` and the opt-in reference service route now persist the
+original constructor/deployment transaction, authority and finalised wave bytes.
+Revision fences block stale senders; uncertain broadcasts are looked up without
+rebroadcast. Complete 52-key binding checks, exact maintenance frontiers and original
+retirement placement precede continuation. Both-arm/lock-choice synthetic process
+tests and offline ledger serialization/signature tests are distinct from live proof
+acceptance. Docker was stopped for this slice. Default demo owner buttons and RC5
+remain unchanged. See [host durability](site/host-durability.md) for authentication,
+private mounts, cancellation, TTL and unsupported uncommitted-plan loss.
