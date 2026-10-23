@@ -25,7 +25,8 @@ scope; it does not close broad issues or qualify a release, real provider or hos
 - Earlier envelopes can carry sender-chosen secrets. The old history fallback/API and
   retained-target-metadata experiment are withdrawn. Legacy retry/interleaved rotations
   refuse an unresolved current roster; an original protected continuation retains its
-  verified snapshot. Historical-key overflow refuses instead of hiding old holdings.
+  verified snapshot. All distinct historical decryption candidates within the existing
+  envelope bound remain available for older holdings; they never authenticate metadata.
 - Qualification hashes ignored compiled inputs. Three matching ordered local receipts
   do not audit omitted intervening runs; old receipts retain their narrower original scope.
 - Unknown host lookup and wave-boundary polls are read-only. A successor claims only before preparing, and CAS
@@ -40,7 +41,10 @@ External suggestions to regenerate constructors, accept arbitrary later ledger p
 resend unknown transactions, infer no-send from absence or overwrite conflicting directory
 hints were rejected because they weaken the original consent/intent/receipt boundary.
 Dynamic reference types and real-provider acceptance remain separate limitations. Report
-hosted CI measurements honestly; the 30–45 s warm target has not yet been met.
+hosted CI measurements honestly; the separated gates measured 24–40 seconds at
+`e901270`. At `2dab5eb`, including the nonempty-file guard, all gates passed:
+lint 16 s, full build/types 33 s, apps 37 s, package shards 18–44 s and aggregate 2 s.
+These are measured hosted runs, not a universal cold-cache timing guarantee.
 
 Final accepted counts and evidence will be recorded in `verification.json` after the
 current-source live/offline runs finish. Failed development attempts retain original

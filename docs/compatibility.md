@@ -414,9 +414,21 @@ Unanchored earlier envelopes cannot authenticate removal targets; the history po
 is removed. The retained-target-metadata experiment was withdrawn because another
 rotation could reinclude that still-live reader. Legacy retry/interleaved rotations
 refuse an unresolved current roster; original protected continuations are a separate
-host capability. Historical-secret overflow refuses instead of hiding old holdings.
+host capability. Anonymous earlier envelopes cannot evict genuine older holding keys or force a separate sixteen-key lockout.
 Runtime identities reject symlinked package/dist directories and hash compiled inputs.
 Outer receipt repetition does not certify external consumer-input equivalence.
+
+### Historical candidate correction — 2026/10/24
+
+The global sixteen-key truncation/refusal is withdrawn: anonymous earlier envelopes
+must neither evict a genuine old coin key nor lock sign-in. All distinct earlier
+secrets within the existing 4096-envelope bound remain decryption candidates, and
+are zeroed after use. Only the ledger-matching current secret/roster authenticates
+metadata; earlier candidates never identify device-removal targets. The regression
+places a real older coin behind seventeen forged envelopes and verifies metadata,
+coin reads, device delivery and new key creation remain usable. Large-inbox work
+still scales with candidate keys and coin entries; the existing 4096 limits and
+operator/resource qualification remain explicit. No unbounded-input guarantee.
 
 ## 2026/10/23 host durability correction
 
@@ -425,3 +437,4 @@ Cancellation propagates through correlated host calls and reconciliation. A succ
 dispatch CAS commits that one send; cancellation stops later waves. Failed explicit
 resume retains cancellation. Native prepared bytes need ten seconds remaining and are
 never renewed. Direct/reconciled deployment receipts share their validation rules.
+
