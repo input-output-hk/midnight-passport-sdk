@@ -64,7 +64,7 @@ See [ADR 0012](https://github.com/input-output-hk/midnight-passport-sdk/blob/pas
 | Virtual browser | Real browser WebAuthn handling with synthetic CDP credentials | Google/iCloud synchronization or recovery |
 | Proof/localnet | The declared transaction flow on the configured standalone stack | Other networks or every provider/host |
 | Packed consumer | Installation/types/runtime identity of local release tarballs | An actual authenticated registry installation |
-| Published consumer | Exact installed registry/image bytes and compatible runtime | Every product use case |
+| Published consumer | Installed entrypoint hashes, declared versions, types/runtime and browser build | Registry tarball provenance, image bytes or every product use case; verify separately |
 | Manual provider | Recorded provider/browser/version/device ceremony | Any provider or version not actually tested |
 
 The foundation's contract tests deliberately confirm known legacy limitations.
@@ -99,7 +99,7 @@ The repeat check rejects reused run IDs, different source bytes, different suite
 skips and incomplete outcomes. It qualifies repeatability only for that suite.
 It always reports `releaseQualified: false` in this foundation.
 
-Available suites include `foundation`, `browser`, `localnet`, `outages`, `consumer` and `release`.
+Available suites include `foundation`, `browser`, `localnet`, `outages`, `consumer`, `consumer-source`, `consumer-published` and `release`; `qualify list` is authoritative.
 The opt-in [live restart suite]({{ "/live-qualification/" | relative_url }}) uses a
 dedicated stack, original protected intents and actual proofs. Its scope and
 real-provider matrix remain separate from the complete release gate.
@@ -119,7 +119,7 @@ release suite in this slice.
 
 ## Receipt and resource rules
 
-Receipts pin the source commit, dirty state, complete current workspace fingerprint,
+Receipts pin the source commit, dirty state, tracked/untracked-unignored source plus package-dist fingerprint,
 actual shipped module hash, binding and compiler manifest. Each declared scenario
 retains its evidence tier and outcome. Missing cases or relabelled tiers are rejected.
 Only aggregate counters, bounded output digests and fixed error codes are exported;
@@ -159,7 +159,7 @@ Removal excludes the target's registration from the fresh roster. Carrying it fo
 would allow another rotation to treat a still-live target as a fresh-key recipient.
 A new legacy invocation after a key switch can therefore refuse with
 `DeviceRosterInvalid`; other legacy rotations also refuse that unresolved live roster.
-Use an original protected owner continuation when available, or preserve state for
+A dependent durability host may provide an original protected owner continuation against an unchanged frontier. Otherwise preserve state for
 operator reconciliation. Never infer target identity from earlier envelopes.
 
 Anonymous earlier candidates neither authenticate metadata nor evict genuine old
@@ -213,3 +213,24 @@ places a real older coin behind seventeen forged envelopes and verifies metadata
 coin reads, device delivery and new key creation remain usable. Large-inbox work
 still scales with candidate keys and coin entries; the existing 4096 limits and
 operator/resource qualification remain explicit. No unbounded-input guarantee.
+
+
+### Adversarial interruption is outside entry-removal support
+
+Removal is not atomic: a still-live target can submit another authorised call after
+the key switch, advance the nonce and invalidate the final removal. The legacy API
+then refuses the unresolved roster. A protected continuation cannot repair an
+intervening ledger change either. Operator reconciliation can remain unresolved;
+there is no supported automatic recovery or full compromised-signer revocation on
+this binding. An opaque entry without a unique current reader also refuses. Do not
+advertise this SDK flow for retiring an active adversarial identity. Historical
+reader inference cannot safely restore those guarantees.
+
+At the existing bounds, candidate-by-coin work can approach 4096 × 4096 decryption
+attempts. This is not a qualified latency budget; large-inbox resource acceptance
+remains open. A smaller secret cap must not evict genuine older holding keys.
+Dependencies, installed runtime bytes and other ignored executable inputs need
+separate scenario-specific provenance; the workspace fingerprint does not hash all
+of node_modules or every application build output. Test scenarios with no passing
+TAP summary now refuse as NO_TESTS, while non-test diagnostics retain their own
+explicit success contract.

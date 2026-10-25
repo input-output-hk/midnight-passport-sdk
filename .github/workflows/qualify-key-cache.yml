@@ -47,6 +47,7 @@ jobs:
         if: steps.cache.outputs.cache-hit == 'true'
         run: nix develop -c node scripts/ci-key-cache.mjs verify
       - name: Restore missing keys with the pinned toolchain
+        if: steps.cache.outputs.cache-hit != 'true'
         env:
           KEY_DIRECTORY: ${{ steps.plan.outputs.directory }}
           CIRCUITS: ${{ steps.plan.outputs.circuits }}
@@ -54,6 +55,7 @@ jobs:
           nix develop -c node packages/contract/bin/restore-acc-keys.mjs \
             --binding acc-s3r1.1 --output "$KEY_DIRECTORY" --circuits "$CIRCUITS"
       - name: Verify every selected prover and verifier byte
+        if: steps.cache.outputs.cache-hit != 'true'
         run: nix develop -c node scripts/ci-key-cache.mjs verify
       - name: Save only verified public keys
         if: steps.cache.outputs.cache-hit != 'true'

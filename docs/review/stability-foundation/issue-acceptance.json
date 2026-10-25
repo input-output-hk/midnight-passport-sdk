@@ -57,7 +57,7 @@
           "disposition": "retain-open-until-remaining-acceptance-is-verified"
         },
         {
-          "criterion": "- Errors carry the failing step, so \"Failed: \u2026\" names where it broke (for example \"wave 7 of 10: sponsor refused\").",
+          "criterion": "- Errors carry the failing step, so \"Failed: …\" names where it broke (for example \"wave 7 of 10: sponsor refused\").",
           "implementation": "implemented",
           "verification": "historical-and-unit",
           "disposition": "retain-open-until-remaining-acceptance-is-verified"
@@ -281,10 +281,10 @@
         "docs/adr/0007-package-set-ports-and-flows.md",
         "docs/release/rc5-publication-receipt.json"
       ],
-      "assessment": "Nine packages and three images published. T5\u2013T21 and T23\u2013T24 largely delivered; T22 discovery (#20) is not. Service durability is tracked separately. Do not tick every legacy tranche.",
+      "assessment": "Nine packages and three images published. T5–T21 and T23–T24 largely delivered; T22 discovery (#20) is not. Service durability is tracked separately. Do not tick every legacy tranche.",
       "criteria": [
         {
-          "criterion": "- [x] T0 (#32): ADR 0006 (publishing on GitHub Packages, the registry rule, the scope) and ADR 0007 (the package set, ports and flows in `account`, the two authoriser arms). Doc-sync of `CLAUDE.md`, `docs/architecture.md` \u00a74.4 and `docs/compatibility.md`.",
+          "criterion": "- [x] T0 (#32): ADR 0006 (publishing on GitHub Packages, the registry rule, the scope) and ADR 0007 (the package set, ports and flows in `account`, the two authoriser arms). Doc-sync of `CLAUDE.md`, `docs/architecture.md` §4.4 and `docs/compatibility.md`.",
           "implementation": "partial",
           "verification": "mixed",
           "disposition": "retain-open-until-remaining-acceptance-is-verified"
@@ -296,7 +296,7 @@
           "disposition": "retain-open-until-remaining-acceptance-is-verified"
         },
         {
-          "criterion": "- [x] T2 (#34, #35): `account/ports`: the ports of \u00a72, with the connector adapted to them, and the `./ports` lint rule.",
+          "criterion": "- [x] T2 (#34, #35): `account/ports`: the ports of §2, with the connector adapted to them, and the `./ports` lint rule.",
           "implementation": "partial",
           "verification": "mixed",
           "disposition": "retain-open-until-remaining-acceptance-is-verified"
@@ -314,19 +314,19 @@
           "disposition": "retain-open-until-remaining-acceptance-is-verified"
         },
         {
-          "criterion": "- [ ] T5\u2013T9: `keys`, `adapter-webauthn`, `adapter-service`, `adapter-midnight-js`, and `adapter-browser` as the composition root.",
+          "criterion": "- [ ] T5–T9: `keys`, `adapter-webauthn`, `adapter-service`, `adapter-midnight-js`, and `adapter-browser` as the composition root.",
           "implementation": "partial",
           "verification": "mixed",
           "disposition": "retain-open-until-remaining-acceptance-is-verified"
         },
         {
-          "criterion": "- [ ] T10\u2013T14: FS-0.9 T1\u2013T4. The demo and the service consume the package.",
+          "criterion": "- [ ] T10–T14: FS-0.9 T1–T4. The demo and the service consume the package.",
           "implementation": "partial",
           "verification": "mixed",
           "disposition": "retain-open-until-remaining-acceptance-is-verified"
         },
         {
-          "criterion": "- [ ] T15\u2013T19: handlers, sponsor rules, jobs and polling, Midnight engines, the wave deployer.",
+          "criterion": "- [ ] T15–T19: handlers, sponsor rules, jobs and polling, Midnight engines, the wave deployer.",
           "implementation": "partial",
           "verification": "mixed",
           "disposition": "retain-open-until-remaining-acceptance-is-verified"
@@ -1273,7 +1273,7 @@
           "disposition": "retain-open-until-remaining-acceptance-is-verified"
         },
         {
-          "criterion": "- [ ] For #17, #24, #25, #74, #77, #80, #161, #205, and #208\u2013#213, link exact evidence and close only criteria actually met. Preserve any unverified browser/host requirements in explicit follow-ups.",
+          "criterion": "- [ ] For #17, #24, #25, #74, #77, #80, #161, #205, and #208–#213, link exact evidence and close only criteria actually met. Preserve any unverified browser/host requirements in explicit follow-ups.",
           "implementation": "foundation-delivered",
           "verification": "local-evidence",
           "disposition": "retain-open-until-remaining-acceptance-is-verified"
@@ -1426,7 +1426,7 @@
         "scripts/qualification/live-outages.mjs",
         "apps/passport-service/qualification/live-worker.ts"
       ],
-      "assessment": "Opt-in host receipts/fencing, encrypted original plan/transaction persistence, authenticated client transport and reference wave continuation now implemented locally. Original deployment address and authority policy, exact verifier frontiers and successful raw v9 finality are checked. Synthetic restart/native offline evidence is separate from remaining live proof/provider/combined active-grant acceptance. Default demo owner API unchanged; no remote closure. Live-source outage runner and native watch-ID/all-prepared-ID receipt fixes are implemented; the dated live review receipt records actual supported-subset results. Real providers, combined grant/holdings faults and the full release suite remain separate.",
+      "assessment": "Opt-in host receipts/fencing, encrypted original plan/transaction persistence, authenticated client transport and reference wave continuation now implemented locally. Original deployment address and authority policy, exact verifier frontiers and successful raw v9 finality are checked. Synthetic restart/native offline evidence is separate from remaining live proof/provider/combined active-grant acceptance. Default demo owner API unchanged; no remote closure. Live-source outage runner and native watch-ID/all-prepared-ID receipt fixes are implemented; the dated live review receipt records actual supported-subset results. Real providers, combined grant/holdings faults and the full release suite remain separate. The historical 90-transaction receipt predates later cancellation/frontier/TTL/preparation changes and does not qualify this head. Concurrent deposits, key-origin exceptions, absent host registration and expiry can remain unresolved; call preparation alone can now revalidate original input under a fresh fence.",
       "criteria": [
         {
           "criterion": "- [ ] Enumerate state transitions and durable intent fields for both arms, including transaction identifiers, network/binding pins, key generation, roster snapshots, and the original consent/lock choice.",
@@ -1813,7 +1813,7 @@
       "assessment": "Planned follow-up; not delivered by the stability foundation.",
       "criteria": [
         {
-          "criterion": "- [ ] Maintain a catalogue for seedless sponsored create, reload/address open, funded ACC\u2192recipient wallet round trip, provider-compatible second-device recovery, grants, holdings, and failure reconciliation.",
+          "criterion": "- [ ] Maintain a catalogue for seedless sponsored create, reload/address open, funded ACC→recipient wallet round trip, provider-compatible second-device recovery, grants, holdings, and failure reconciliation.",
           "implementation": "planned",
           "verification": "none",
           "disposition": "retain-open-until-remaining-acceptance-is-verified"
@@ -2073,7 +2073,7 @@
       "assessment": "Planned follow-up; not delivered by the stability foundation.",
       "criteria": [
         {
-          "criterion": "- [ ] Maintain a P1\u2013P10/C1\u2013C26 map with current SDK responsibility, host/product responsibility, standard status, external owner, and a testable adoption gate.",
+          "criterion": "- [ ] Maintain a P1–P10/C1–C26 map with current SDK responsibility, host/product responsibility, standard status, external owner, and a testable adoption gate.",
           "implementation": "planned",
           "verification": "none",
           "disposition": "retain-open-until-remaining-acceptance-is-verified"

@@ -174,3 +174,25 @@ test('ignored compiled inputs are included in qualification identity and symlink
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('declared Node test scenarios refuse absent or zero passing TAP summaries', async () => {
+  for (const text of ['', '# pass 0\n# fail 0\n# skipped 0']) {
+    const fixture = scenario('console.log(' + JSON.stringify(text) + ')');
+    // --test is a scenario declaration; this fixture simulates a vacuous runner's stdout.
+    const script = fixture.command[2];
+    assert.ok(script);
+    fixture.command = [process.execPath, '-e', script, '--', '--test'];
+    const result = await runCommand(fixture);
+    assert.equal(result.outcome, 'failed');
+    assert.equal(result.failureCode, 'NO_TESTS');
+  }
+  const fixture = scenario('console.log("# pass 1\\n# fail 0\\n# skipped 0")');
+  const script = fixture.command[2];
+  assert.ok(script);
+  fixture.command = [process.execPath, '-e', script, '--', '--test'];
+  assert.equal((await runCommand(fixture)).outcome, 'passed');
+  assert.equal(
+    (await runCommand(scenario('console.log("a non-test diagnostic")'))).outcome,
+    'passed',
+  );
+});

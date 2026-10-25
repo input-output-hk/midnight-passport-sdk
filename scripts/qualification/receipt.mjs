@@ -201,6 +201,7 @@ export function validateReceipt(value) {
         'TIME_LIMIT',
         'OUTPUT_LIMIT',
         'TEST_FAILURE',
+        'NO_TESTS',
         'TEST_SKIP',
         'SOURCE_CHANGED',
       ].includes(result.failureCode)

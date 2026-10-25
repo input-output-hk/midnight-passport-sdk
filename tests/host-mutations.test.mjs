@@ -301,3 +301,70 @@ test('unknown state at the next wave boundary retains no new owner revisions', a
   assert.equal((await f.engine.resume(identity)).kind, 'confirmed');
   assert.equal(f.counts().sent, 3);
 });
+
+test('call preparation retries original durable input after a transient failure, without a new send intent', async () => {
+  const f = fixture(),
+    call = { ...identity, kind: /** @type {const} */ ('call') };
+  let attempts = 0;
+  f.driver.prepare = async (_identity, request) => {
+    assert.deepEqual(request, input);
+    if (++attempts === 1) throw new Error('indexer unavailable before call plan');
+    return { address: 'ab'.repeat(32), steps: 1, context: { original: request } };
+  };
+  await assert.rejects(f.engine.execute(call, input), /indexer unavailable/);
+  assert.equal(f.get()?.phase, 'preparing');
+  assert.equal(f.counts().sent, 0);
+  assert.equal(
+    (await createHostMutationExecutor(f.store, f.driver).resume(call)).kind,
+    'confirmed',
+  );
+  assert.equal(attempts, 2);
+  assert.equal(f.counts().sent, 1);
+  assert.deepEqual(f.get()?.input, input);
+});
+
+test('retrying a preparing call fences an earlier still-running producer before it can dispatch', async () => {
+  const f = fixture(),
+    call = { ...identity, kind: /** @type {const} */ ('call') };
+  let entered = () => {},
+    release = () => {},
+    attempts = 0;
+  const started = new Promise((resolve) => {
+    entered = () => resolve(undefined);
+  });
+  const held = new Promise((resolve) => {
+    release = () => resolve(undefined);
+  });
+  f.driver.prepare = async () => {
+    if (++attempts === 1) {
+      entered();
+      await held;
+    }
+    return { address: 'ab'.repeat(32), steps: 1, context: { original: input } };
+  };
+  const old = f.engine.execute(call, input);
+  const refused = assert.rejects(old, /unsettled/);
+  await started;
+  assert.equal(
+    (await createHostMutationExecutor(f.store, f.driver).resume(call)).kind,
+    'confirmed',
+  );
+  release();
+  await refused;
+  assert.equal(f.counts().sent, 1);
+});
+
+test('failed deployment constructor preparation is still unknown and never recreated implicitly', async () => {
+  const f = fixture();
+  let attempts = 0;
+  f.driver.prepare = async () => {
+    attempts++;
+    throw new Error('constructor result lost');
+  };
+  await assert.rejects(f.engine.execute(identity, input), /constructor/);
+  assert.deepEqual(await createHostMutationExecutor(f.store, f.driver).resume(identity), {
+    kind: 'unknown',
+  });
+  assert.equal(attempts, 1);
+  assert.equal(f.counts().sent, 0);
+});

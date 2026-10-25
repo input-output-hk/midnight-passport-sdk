@@ -1,5 +1,10 @@
 # Host submission and deployment continuation — local review
 
+**Historical-source evidence:** the 90-transaction live receipt predates later
+cancellation, frontier, TTL and preparation corrections. Its source pins are not
+current-head qualification. Subsequent suites must retain their own exact sources
+and scopes; no full restart/provider/release claim is made.
+
 2026/10/23; Refs #230, #231. Parent signed local source `626c6f9`.
 This is a separate coherent local commit on the current branch. No push, issue
 closure, publication, Docker start, wallet reset or host signing-scope change.
