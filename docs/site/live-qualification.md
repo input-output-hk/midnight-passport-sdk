@@ -281,3 +281,51 @@ context, while the owner opens the current context and the target receives the
 specific current-key refusal. Effect-port attempt counters must remain zero, and
 all historical host records/send counts must remain unchanged. This is new
 read-only chain evidence, not a new 88-transaction proof run.
+
+## Grant profile loss and revocation
+
+This opt-in source suite is separate from the historical survivor run. Its entrypoint
+explicitly selects `grants`; an ambient profile cannot replace its cases. Reuse only
+the dedicated retained `mn-passport-qual-20261023` stack described above, with its
+owned ports/volumes and immutable compiled export. Never reset a shared chain or
+run two standalone payer wallets concurrently.
+
+```sh
+PASSPORT_RC_LOCALNET=1 MN_NETWORK_ID=undeployed \
+PASSPORT_CONTRACT_DIR=/absolute/path/to/pinned/contract \
+PASSPORT_LIVE_ROOT=/private/new-grant-evidence \
+nix develop -c pnpm qualify run grant-recovery-live \
+  --output /private/new-grant-suite.json
+```
+
+The source and compiled runtime must remain unchanged throughout. A fresh root is
+required. The parent creates accounts in both software authoriser arms, stages and
+publishes two independent read grants, deposits one qualified seven-unit shielded
+holding and enrolls a survivor. It then stops the host before a separate native
+owner-grant worker uses the same standalone payer.
+
+The worker creates four distinct empty profiles: original reader, independent
+enrolled reader, absent-opening provider and wrong-read-key provider. Its ports
+cannot load the old grant journal. Protected original journal/profile files are
+hash-checked without decoding them as recovery inputs. Successful reconstruction
+uses complete published parts and live commitments. Refusals require the specific
+error, unchanged ledger and zero effect attempts; positive current readers/grantees
+must work on that same live state.
+
+Rotation preserves both read grantees and the holding. Selective revoke removes
+one current-key reader while preserving the other, owner/survivor and holding.
+Revoke-all confirms an empty grant map and next generation, with neither grantee
+opening the new key. Grantee seals are decoded by the owner and handed to distinct
+read keys; no automatic grantee discovery or private-key recovery is established.
+
+Native grant calls store private write-ahead requests before one attempt. These
+are not durable coordinator submissions. On failure preserve all profiles,
+requests, sealed outputs, IDs and receipts; inspect the exact state before another
+action. Never rerun this worker in the same root, infer no-send from absence or
+blindly replay an interrupted grant revocation. Partial/conflicting publication
+and stale snapshot negatives remain separately labelled fast port cases.
+
+Receipts always set real-provider and full-release flags false. Export only the
+allowlisted public receipt/verification files. Keep fixture identities, grant
+openings, wallet databases and native request arguments outside Git and the Vault.
+See [grant recovery]({{ '/grant-recovery/' | relative_url }}) for the integration API.

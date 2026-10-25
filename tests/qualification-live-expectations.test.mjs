@@ -20,6 +20,8 @@ test('baseline selection cannot be replaced by an ambient wallet profile', () =>
     assert.equal(liveProfileOptions('combined').combined, true);
     assert.equal(liveProfileOptions('lifecycle').lifecycle, true);
     assert.equal(liveProfileOptions('wallet').walletOnly, true);
+    assert.equal(liveProfileOptions('grants').grantRecovery, true);
+    assert.equal(liveProfileOptions('grants').walletOnly, false);
   } finally {
     if (before === undefined) delete process.env.PASSPORT_LIVE_PROFILE;
     else process.env.PASSPORT_LIVE_PROFILE = before;

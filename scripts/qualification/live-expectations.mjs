@@ -1,16 +1,20 @@
 import assert from 'node:assert/strict';
 
 /** Explicit entrypoint selection; an ambient shell profile never changes a scenario.
- * @param {'baseline'|'combined'|'lifecycle'|'wallet'|'removed-recheck'} [profile]
+ * @param {'baseline'|'combined'|'lifecycle'|'wallet'|'removed-recheck'|'grants'} [profile]
  */
 export function liveProfileOptions(profile = 'baseline') {
-  assert.ok(['baseline', 'combined', 'lifecycle', 'wallet', 'removed-recheck'].includes(profile));
+  assert.ok(
+    ['baseline', 'combined', 'lifecycle', 'wallet', 'removed-recheck', 'grants'].includes(profile),
+  );
   const removedOnly = profile === 'removed-recheck';
-  const lifecycle = profile === 'lifecycle' || removedOnly;
+  const grantRecovery = profile === 'grants';
+  const lifecycle = profile === 'lifecycle' || removedOnly || grantRecovery;
   return {
     profile,
     lifecycle,
     removedOnly,
+    grantRecovery,
     walletOnly: profile === 'wallet',
     combined: lifecycle || profile === 'combined',
   };

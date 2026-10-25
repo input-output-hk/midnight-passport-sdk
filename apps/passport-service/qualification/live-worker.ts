@@ -121,7 +121,8 @@ const save = (name: string, value: unknown) => {
   }
 };
 const emit = (value: object) => console.log('PASSPORT_LIVE ' + JSON.stringify(value));
-const lifecycle = process.env.PASSPORT_LIVE_PROFILE === 'lifecycle';
+const grantRecovery = process.env.PASSPORT_LIVE_PROFILE === 'grants';
+const lifecycle = process.env.PASSPORT_LIVE_PROFILE === 'lifecycle' || grantRecovery;
 const combined = lifecycle || process.env.PASSPORT_LIVE_PROFILE === 'combined';
 const referenceImport = (path: string) =>
   import(pathToFileURL(join(process.env.PASSPORT_CONTRACT_DIR!, path)).href);
@@ -148,6 +149,7 @@ if (!existsSync(join(root, 'fixture.json'))) {
     hostKey: randomBytes(32),
     token: randomBytes(32),
     grantSecret: randomBytes(32),
+    ...(grantRecovery && { readGrantSecrets: [randomBytes(32), randomBytes(32)] }),
     ...(lifecycle && {
       participants: Object.fromEntries(
         await Promise.all(
@@ -550,31 +552,36 @@ if (mode === 'host') {
     assert.deepEqual(held[0]!.coin.nonce, expected.nonce);
     assert.equal(held[0]!.coin.value, expected.value);
     const targets = await grantSource.readActiveReadGrantTargets(account);
-    assert.equal(targets.targets.length, 1);
-    const target = targets.targets[0]!;
-    assert.equal(target.readPublicKey, hex(x25519.getPublicKey(fixture.grantSecret)));
-    let current = false;
-    for (const entry of opened)
-      if (
-        entry?.kind === 'grant' &&
-        entry.record.part === 'view' &&
-        entry.record.grantId === target.grantId
-      ) {
-        const secret = await openGrantView(fixture.grantSecret, {
-          account,
-          grantId: target.grantId,
-          seal: unhex(entry.record.seal),
-          expectedEncKey: live.encKey!,
-        });
-        if (secret) {
-          current = true;
-          secret.fill(0);
+    const secrets: Uint8Array[] = grantRecovery ? fixture.readGrantSecrets : [fixture.grantSecret];
+    assert.equal(targets.targets.length, secrets.length);
+    for (const readSecret of secrets) {
+      const target = targets.targets.find(
+        (t) => t.readPublicKey === hex(x25519.getPublicKey(readSecret)),
+      );
+      assert.ok(target, 'Every independent read key must match a live target.');
+      let current = false;
+      for (const entry of opened)
+        if (
+          entry?.kind === 'grant' &&
+          entry.record.part === 'view' &&
+          entry.record.grantId === target.grantId
+        ) {
+          const secret = await openGrantView(readSecret, {
+            account,
+            grantId: target.grantId,
+            seal: unhex(entry.record.seal),
+            expectedEncKey: live.encKey!,
+          });
+          if (secret) {
+            current = true;
+            secret.fill(0);
+          }
         }
-      }
-    assert.ok(current, 'Independent grantee must open the current viewing secret.');
+      assert.ok(current, 'Independent grantee must open the current viewing secret.');
+    }
     return {
       heldCoins: 1,
-      activeReadGrants: 1,
+      activeReadGrants: targets.targets.length,
       grantOpenedCurrentKey: true,
       value: expected.value.toString(),
       merkleIndex: held[0]!.coin.mt_index.toString(),
@@ -589,27 +596,34 @@ if (mode === 'host') {
     );
     const account = read('result-create.json').account;
     const api = await createPassportAccounts(ports).openAccountAt!(account);
-    const granted = await api.issueGrant!({
-      grantee: {
-        scheme: 'jubjub-schnorr',
-        publicKey: hex(
-          jubjub.Point.fromAffine(
-            binding.pureCircuits.compute_public_point_with_jubjub(11n),
-          ).toBytes(),
-        ),
-      },
-      operations: ['withdraw-unshielded'],
-      color: '34'.repeat(32),
-      recipient: { kind: 'any' },
-      maxCoinValue: '100',
-      perCallCap: '10',
-      cap: '100',
-      expiresAt: null,
-      read: true,
-      rpId: 'localhost',
-      readPublicKey: hex(x25519.getPublicKey(fixture.grantSecret)),
-    });
-    assert.equal(granted.status, 'active');
+    const grantIds: string[] = [];
+    const readSecrets: Uint8Array[] = grantRecovery
+      ? fixture.readGrantSecrets
+      : [fixture.grantSecret];
+    for (const [index, readSecret] of readSecrets.entries()) {
+      const granted = await api.issueGrant!({
+        grantee: {
+          scheme: 'jubjub-schnorr',
+          publicKey: hex(
+            jubjub.Point.fromAffine(
+              binding.pureCircuits.compute_public_point_with_jubjub(11n + 2n * BigInt(index)),
+            ).toBytes(),
+          ),
+        },
+        operations: ['withdraw-unshielded'],
+        color: '34'.repeat(32),
+        recipient: { kind: 'any' },
+        maxCoinValue: '100',
+        perCallCap: '10',
+        cap: '100',
+        expiresAt: null,
+        read: true,
+        rpId: 'localhost',
+        readPublicKey: hex(x25519.getPublicKey(readSecret)),
+      });
+      assert.equal(granted.status, 'active');
+      grantIds.push(granted.grantId);
+    }
     const faucet = await setupModule.deployFaucet(setupContext.walletCtx);
     const { mintToUser } = await referenceImport('src/tests/flow.ts');
     const coin = await mintToUser(setupContext, faucet, hex(randomBytes(32)), 7n);
@@ -625,7 +639,8 @@ if (mode === 'host') {
       ],
     });
     save('setup-receipt.json', {
-      grantId: granted.grantId,
+      grantId: grantIds[0],
+      ...(grantRecovery && { grantIds }),
       depositTxHash: deposited.txHash,
       faucetAddress: faucet.address,
     });

@@ -182,6 +182,10 @@ published-record path with the selected reader. Missing/corrupt local entries
 and wrong key origins are not silently replaced. Its explicit grant handoff still
 requires the full local staged opening; reconstruction does not manufacture one.
 
+See [Recover grant bookkeeping]({{ '/grant-recovery/' | relative_url }}) for the
+composition example, empty-profile boundary, error meanings and selective/all
+read-revocation qualification. This source work is not in published RC5.
+
 ## Qualification and remaining boundary
 
 Fast tests cover codec/storage corruption, CAS races, cancellation, unknown

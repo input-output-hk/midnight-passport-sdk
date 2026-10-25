@@ -450,6 +450,22 @@ proof loss safely refuses explicit resume rather than assuming no send. No real
 provider, live enrollment/removal, full release/Lace or large-inbox resource acceptance
 is implied; broad #230/#231/#232/#239 remain open.
 
+### Grant bookkeeping after profile loss — source slice 2026/10/26
+
+Both generated-contract signature arms now have a shared qualification case for
+separate empty profiles, original-reader reconstruction, independent enrolled-reader
+refusal, absent/wrong opening providers and selective/all read revocation. Ordinary
+JubJub create/directory open also persists the verified local record needed by grant
+APIs. The native suite adds two live read grants and a qualified holding; its final
+signed-source execution is pending. See [the review map](review/grant-recovery/README.md).
+
+Reconstruction returns bookkeeping only. It does not recreate full staged scope,
+private grantee keys, incomplete publication or total identity loss. An inactive
+tombstone yields `GrantRevoked`; absent individual commitments after revoke-all
+remain `GrantBookkeepingUnsettled`. Missing openings retain active IDs and refuse
+preserving rotation. Native grant interruption and automatic grantee seal discovery
+are not qualified by this case. No published RC5 or full Lace claim is widened.
+
 ### Survivor/reconnect qualification scope — 2026/10/25
 
 The local source adds an opt-in `survivor-reconnect` suite: three independent

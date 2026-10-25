@@ -154,7 +154,7 @@ export async function referenceFingerprint(contract) {
   return { sources, packages };
 }
 
-/** @param {'baseline'|'combined'|'lifecycle'|'wallet'|'removed-recheck'} [requestedProfile] */
+/** @param {'baseline'|'combined'|'lifecycle'|'wallet'|'removed-recheck'|'grants'} [requestedProfile] */
 export async function runLiveOutages(requestedProfile = 'baseline') {
   assert.equal(process.env.PASSPORT_RC_LOCALNET, '1', 'Explicit localnet opt-in required.');
   assert.equal(process.env.MN_NETWORK_ID, 'undeployed');
@@ -171,7 +171,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
     ),
     '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   );
-  const { profile, lifecycle, walletOnly, combined, removedOnly } =
+  const { profile, lifecycle, walletOnly, combined, removedOnly, grantRecovery } =
     liveProfileOptions(requestedProfile);
   const rounds = Number(process.env.PASSPORT_LIVE_ROUNDS ?? '1');
   assert.ok(Number.isInteger(rounds) && rounds >= 1 && rounds <= 3);
@@ -249,11 +249,13 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
             ? 'source-live-read-only-removed-access-recheck'
             : walletOnly
               ? 'source-live-wallet-indexer-reconnect'
-              : lifecycle
-                ? 'source-live-enrollment-survivor-removal-and-wallet-reconnect'
-                : combined
-                  ? 'source-live-combined-grants-holdings-prover-outages'
-                  : 'source-live-proof-process-and-indexer-outages',
+              : grantRecovery
+                ? 'source-live-grant-profile-reconstruction-and-revocation'
+                : lifecycle
+                  ? 'source-live-enrollment-survivor-removal-and-wallet-reconnect'
+                  : combined
+                    ? 'source-live-combined-grants-holdings-prover-outages'
+                    : 'source-live-proof-process-and-indexer-outages',
           profile,
           verdict,
           source,
@@ -310,7 +312,9 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
             ? 'apps/passport-dapp/e2e/wallet-reconnect.e2e.ts'
             : mode === 'wallet-producer'
               ? 'apps/passport-service/qualification/wallet-transfer.ts'
-              : 'apps/passport-service/qualification/live-worker.ts',
+              : mode === 'grant-recovery'
+                ? 'apps/passport-service/qualification/grant-recovery.ts'
+                : 'apps/passport-service/qualification/live-worker.ts',
         ),
         mode,
         root,
@@ -358,7 +362,8 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
               message.walletReady ||
               message.walletDisconnected ||
               message.walletTransferPrepared ||
-              message.walletSubmitted
+              message.walletSubmitted ||
+              message.grantRecoveryStage
             )
               console.log(
                 'live worker:',
@@ -373,6 +378,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
                   walletDisconnected: message.walletDisconnected,
                   walletTransferPrepared: message.walletTransferPrepared,
                   walletSubmitted: message.walletSubmitted,
+                  grantRecoveryStage: message.grantRecoveryStage,
                 }),
               );
           } catch {
@@ -423,29 +429,63 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
         }
         const stages = removedOnly
           ? [['verify-removed', 'none', 'verify']]
-          : lifecycle
-            ? lifecycleStages(/** @type {'p256'|'jubjub'} */ (arm))
-            : combined
-              ? [
-                  ['create', 'before-deploy-proof', 'owner'],
-                  ['create', 'none', 'resume'],
-                  ['populate', 'none', 'populate'],
-                  ['rotate', 'call:0:after-submit', 'owner'],
-                  ['rotate', 'none', 'resume'],
-                  ['rotate-prover', 'before-owner-proof', 'owner'],
-                  ['rotate-prover', 'assert-unknown', 'resume'],
-                ]
-              : [
-                  ['create', 'deploy:0:after-submit', 'owner'],
-                  ['create', 'call:0:after-submit', 'resume'],
-                  ['create', 'none', 'resume'],
-                  ['rotate', 'call:0:after-submit', 'owner'],
-                  ['rotate', 'none', 'resume'],
-                ];
+          : grantRecovery
+            ? [
+                ['create', 'none', 'owner'],
+                ['populate', 'none', 'populate'],
+                ['add-survivor', 'none', 'owner'],
+                ['grant-recovery', 'none', 'grant-recovery'],
+              ]
+            : lifecycle
+              ? lifecycleStages(/** @type {'p256'|'jubjub'} */ (arm))
+              : combined
+                ? [
+                    ['create', 'before-deploy-proof', 'owner'],
+                    ['create', 'none', 'resume'],
+                    ['populate', 'none', 'populate'],
+                    ['rotate', 'call:0:after-submit', 'owner'],
+                    ['rotate', 'none', 'resume'],
+                    ['rotate-prover', 'before-owner-proof', 'owner'],
+                    ['rotate-prover', 'assert-unknown', 'resume'],
+                  ]
+                : [
+                    ['create', 'deploy:0:after-submit', 'owner'],
+                    ['create', 'call:0:after-submit', 'resume'],
+                    ['create', 'none', 'resume'],
+                    ['rotate', 'call:0:after-submit', 'owner'],
+                    ['rotate', 'none', 'resume'],
+                  ];
         let beforeProverUnknown;
         for (const [operation, fault, mode] of /** @type {Array<[string,string,string]>} */ (
           stages
         )) {
+          if (mode === 'grant-recovery') {
+            const checked = await finished(worker(mode, root, arm, operation, 'none'), 30 * 60000);
+            assert.equal(
+              checked.code,
+              0,
+              'Native grant reconstruction/rotation/revocation must complete. Preserve original state on failure.',
+            );
+            const result = checked.messages.find(
+              (/** @type {any} */ m) => m.completed === 'grant-recovery',
+            );
+            assert.ok(
+              result &&
+                result.cases.length === 5 &&
+                result.profiles === 4 &&
+                result.nativeCalls > 0,
+            );
+            assert.equal(result.forbiddenJournalTouches, 0);
+            assert.equal(result.protectedProfileUnchanged, true);
+            assert.equal(result.heldCoinsQualified, 1);
+            assert.equal(result.originalJournalConsulted, false);
+            assert.equal(result.fullIssueScopeRecovered, false);
+            assert.equal(result.privateGranteeKeysRecovered, false);
+            assert.equal(result.nativeGrantContinuationQualified, false);
+            evidence.push({ round, arm, operation, verdict: 'PASS', owner: checked });
+            await save();
+            continue;
+          }
           if (mode === 'verify') {
             const host = worker('host', root, arm, operation, 'none');
             await waitFor(
@@ -703,7 +743,13 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
             ? { historicalSends: sends.length, currentSends: 0, verifiedReadOnly: true }
             : { sends: sends.length }),
           ...(lifecycle &&
-            !removedOnly && { enrolledSurvivorAuthorized: true, targetRemoved: true }),
+            !removedOnly &&
+            !grantRecovery && { enrolledSurvivorAuthorized: true, targetRemoved: true }),
+          ...(grantRecovery && {
+            grantProfileRecoveryQualified: true,
+            enrolledSurvivorRetained: true,
+            nativeGrantContinuationQualified: false,
+          }),
           ...(combined &&
             !lifecycle && {
               ownerPreRegistrationProverFailure: 'safely-unresolved-no-resend',
@@ -712,7 +758,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
         });
         await save();
       }
-      if ((lifecycle && !removedOnly) || walletOnly) {
+      if ((lifecycle && !removedOnly && !grantRecovery) || walletOnly) {
         const wallet = await runWalletReconnect({
           root: join(output, `round-${round}-wallet`),
           worker,

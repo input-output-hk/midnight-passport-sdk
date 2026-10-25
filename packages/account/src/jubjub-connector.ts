@@ -340,6 +340,19 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     recordPure.set(active, pure);
     if (pending)
       await flow.step('directory.write', () => directory.put(networkId, active), 'always');
+    // Grant APIs require the same verified local record as address-based opening.
+    // Reconstruct it after successful create/directory reopening as well; the
+    // current live counter is authoritative, never an old profile's cached value.
+    const counter = findCounter(active, view);
+    if (counter === undefined)
+      throw new PassportConnectorError('NotAuthorised', 'This device has no live ACC entry.');
+    await ports.records?.write({
+      address: active.address,
+      bindingId: network.bindingId,
+      scheme: 'jubjub-schnorr',
+      credentialId: active.credentialId.slice(),
+      localUseCounter: counter,
+    });
     return account(active);
   };
   /** Deliver from the live keyring, then enroll the reader through a separate gated call. */
