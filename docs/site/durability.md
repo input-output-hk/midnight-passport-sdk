@@ -17,7 +17,7 @@ transaction or deployment service crash durable.
 | Page reload after settled creation | Open the known ACC with the enrolled credential | The selected key origin must still derive the original reader; the current sealed envelope must open the ledger key |
 | Owner mutation interrupted with a protected continuation | `createDurablePassportMutations(...).resume({ id })` | Same pins and original intent, fresh host approval, exact chain reconciliation and a host submission outcome source |
 | Transaction outcome unknown | Stop and reconcile the original request | No blind retry, new mutation ID, replacement generation or assumption that an empty indexer response proves no send |
-| Process died during key-output computation before its durable acknowledgement | Refuse with `MutationUnsettled` | The ordinary key port cannot recover this output atomically. Recover the original output in the owning host, or reconcile manually; the SDK does not draw another key |
+| Crash or ordinary key-origin exception before durable output acknowledgement | Refuse with `MutationUnsettled` | The ordinary key port cannot recover this output atomically. Recover the original output in the owning host, or reconcile manually; the SDK does not draw another key |
 | Browser grant journal lost, published records complete | Recover published bookkeeping with the **original issuing reader** | Live commitment, trusted origin, read-key hash and stable chain snapshot checks must all pass |
 | Another enrolled device can open the ACC but cannot open those grant records | Restore the original reader or its protected publication journal | Shared ACC viewing access does not imply possession of a device-reader-encrypted grant opening |
 | Pending grant never published completely | Resume from its original encrypted grant journal | Chain reconstruction cannot invent missing salt, object opening, full scope or grantee signing secret |
@@ -217,3 +217,20 @@ The next local slice adds [durable host submissions and deployment waves]({{ '/h
 including an authenticated opt-in RPC, encrypted authority/transaction storage,
 revision fencing and exact original deployment transaction reuse. The default
 demo owner API is unchanged; proof-backed host interruption acceptance remains open.
+
+
+### Concurrent deposits and unresolved material
+
+Exact ledger snapshots include the inbox. A permissionless payment or another
+caller can change that frontier and permanently stop a protected continuation;
+there is no automatic inbox-extension reconciliation. This can occur after a
+transaction confirmed. Original receipts/keys remain protected; a new ID is not a
+repair. Key-origin throws, not only process death, may also leave an unavailable
+original result. No generic exception proves no output. Pre-registration proving
+failures and expired native bytes retain their explicit unresolved limits.
+
+Known-address JubJub opening verifies the explicitly selected ACC and preserves
+any earlier write-once directory hint. That hint may name another account; it is
+not silently repointed. A later directory-selected account can therefore differ
+from the explicitly selected address. Hosts should display the selected address
+and use known-address opening again for that account.

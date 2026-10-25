@@ -49,6 +49,8 @@ export interface HostMutationStore {
   compareAndSwap(expected: number | undefined, record: HostMutationRecord): Promise<boolean>;
 }
 /** The driver owns chain-era decoding and finality. prepare/prepareStep MUST NOT broadcast.
+ * Call prepare validates the original already-built input and may be retried under a new
+ * revision fence; it must not generate replacement intent/authority or dispatch.
  * lookup must verify the exact identifier and SucceedEntirely; absence/timeout is unknown.
  * check verifies the exact original verifier roster, authority/counter and account generation.
  */
@@ -237,8 +239,16 @@ export function createHostMutationExecutor(store: HostMutationStore, driver: Hos
     } else {
       if (input !== undefined && hostHash(input) !== hostHash(record.input)) return hostFailure();
       if (record.phase === 'complete') return outcome(record);
-      // No committed constructor plan: cannot recreate its authority/address implicitly.
-      if (record.phase === 'preparing') return { kind: 'unknown' };
+      if (record.phase === 'preparing') {
+        // Constructor output may have existed before acknowledgement; never regenerate it.
+        if (record.identity.kind === 'deploy') return { kind: 'unknown' };
+        // A call's original input is already durable. Fence any earlier preparer before
+        // validating that same input again; a stale producer cannot commit or dispatch.
+        await save({ owner });
+        const plan = await driver.prepare(identity, record.input);
+        await save({ plan, phase: 'active' });
+        checkpoint();
+      }
     }
     const advance = async (step: HostMutationStep) => {
       const steps = [...record!.steps];

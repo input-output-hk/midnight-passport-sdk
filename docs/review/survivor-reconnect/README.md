@@ -1,5 +1,10 @@
 # Enrolled survivor, grants/holdings and wallet reconnect
 
+**Historical-source qualification:** dated receipts below retain their original
+source/compiled hashes and test assertions. The 2026/10/26 host-preparation and
+harness corrections are not retroactively qualified by those receipts. Original
+codes can be audited separately; new live checks require separate source evidence.
+
 2026/10/25. Local source qualification for #230/#231/#232/#239. No release or
 real-provider acceptance is implied. The immutable binding, artifact manifest and
 exact-value shielded withdrawal guard are unchanged.

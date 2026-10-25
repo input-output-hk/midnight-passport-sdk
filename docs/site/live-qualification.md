@@ -191,7 +191,7 @@ resume, without registering or resending a replacement. Offline matrices separat
 cover 200 owner, 260 populated rotate/add/remove and 152 host cases, including safe
 refusals. The final offline harness accepts the grant-specific typed refusal only
 at lost original grant-delivery output boundaries; it does not weaken state checks.
-See the [scoped verification receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/rc5-publication-record/docs/review/combined-outages/verification.json).
+See the [scoped verification receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/ac89527acb270d965c171647f79d52f1691ca06a/docs/review/combined-outages/verification.json).
 
 This evidence does not qualify real providers, live enrollment/removal, the complete
 release, published artifacts or maximum-inbox resource behavior. Earlier keys remain
@@ -252,3 +252,32 @@ retained all addresses/balance, invalidated old handles and closed subscriptions
 Source/dist/reference fingerprints matched. This is Node/software evidence from
 one round, with the multi-transaction removal and shared-bookkeeping limits above.
 No browser/provider, complete release/Lace or seed-loss recovery acceptance is implied.
+
+
+## Review corrections — 2026/10/26
+
+Entrypoints now explicitly select their profile; ambient PASSPORT_LIVE_PROFILE
+cannot turn an account suite into a wallet-only pass. Fault stages require the
+expected typed SDK/transport code as well as retained pending state. Removed-reader
+checks match the exact no-current-envelope refusal and use an authorised positive
+control on the same ring. Verification runs with a reachable host and zero mutation
+attempts observed at the effect ports, so a dead service cannot masquerade as refusal.
+The wallet test has a bounded 90-second approval window, a 180-second original TTL,
+and an actual native TTL check before dispatch; expired bytes are never renewed.
+
+Earlier accepted receipts retain their exact historical source and assertions.
+They do not prove new checks added after their source freeze. Retrospective checks
+of saved typed failure codes are separate from fresh proof executions. See the
+current review records for that distinction. Native host constructor/maintenance
+TTL policy remains unchanged by the separate synthetic wallet-transfer timing.
+
+For a read-only recheck of an already accepted survivor fixture, use
+`pnpm qualify run removed-recheck` with a new private `PASSPORT_LIVE_ROOT` and
+`PASSPORT_SURVIVOR_FIXTURE_ROOT` pointing to the earlier accepted lifecycle root.
+The runner copies each private fixture into its new protected evidence directory;
+it does not delete/rewrite the original or replay any historical mutation. A live
+host must be reachable. The selected target must still open its earlier key
+context, while the owner opens the current context and the target receives the
+specific current-key refusal. Effect-port attempt counters must remain zero, and
+all historical host records/send counts must remain unchanged. This is new
+read-only chain evidence, not a new 88-transaction proof run.

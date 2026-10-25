@@ -79,6 +79,7 @@ import {
 } from '../../../scripts/qualification/identities.mjs';
 
 import { crashesAfterSubmit } from '../../../scripts/qualification/lifecycle-stages.mjs';
+import { requireNoCurrentKey } from '../../../scripts/qualification/live-expectations.mjs';
 
 const [mode, root, arm, operation = 'create', fault = 'none'] = process.argv.slice(2);
 assert.ok(root && ['host', 'owner', 'resume', 'probe', 'inspect', 'populate'].includes(mode!));
@@ -363,7 +364,7 @@ if (mode === 'host') {
 } else {
   const base = `http://127.0.0.1:${process.env.PASSPORT_SERVICE_PORT}`;
   const config =
-    mode === 'populate' || operation === 'verify-removed'
+    mode === 'populate'
       ? {
           indexerUri: process.env.MN_INDEXER_URL!,
           indexerWsUri: process.env.MN_INDEXER_WS_URL!,
@@ -635,11 +636,36 @@ if (mode === 'host') {
   if (lifecycle && operation === 'verify-removed') {
     const account = read('result-create.json').account;
     const before = await publicRecords();
-    await assert.rejects(createPassportAccounts(ports).openAccountAt!(account), {
+    assert.equal((await fetch(base + '/healthz')).ok, true);
+    let mutationAttempts = 0;
+    const forbidden = async (): Promise<never> => {
+      mutationAttempts++;
+      throw new Error('Removed identity attempted a mutation.');
+    };
+    const guarded: PassportPorts = {
+      ...ports,
+      chain: { ...chain, call: forbidden },
+      directory: { ...ports.directory!, put: forbidden },
+      deployer: { ...ports.deployer, deploy: forbidden },
+      records: { ...ports.records!, write: forbidden },
+    };
+    await assert.rejects(createPassportAccounts(guarded).openAccountAt!(account), {
       code: arm === 'p256' ? 'AccountNotFound' : 'NotAuthorised',
     });
     const live = (await chain.readAccount(account, { includeInbox: true, includeDevices: true }))!;
-    await assert.rejects(
+    const owner = softwareParticipant(fixture.participants.owner, arm);
+    await owner.keyring.openInbox(
+      pins.networkId,
+      { account, encKey: live.encKey!, envelopes: live.inboxEntries! },
+      live.inboxEntries!,
+    );
+    const priorTargetKey = unhex(read('view-add-target.json').encKey);
+    await viewingKey.openInbox(
+      pins.networkId,
+      { account, encKey: priorTargetKey, envelopes: live.inboxEntries! },
+      live.inboxEntries!,
+    );
+    await requireNoCurrentKey(() =>
       viewingKey.openInbox(
         pins.networkId,
         { account, encKey: live.encKey!, envelopes: live.inboxEntries! },
@@ -651,7 +677,15 @@ if (mode === 'host') {
       before,
       'Removed identity must not register or send a call.',
     );
-    emit({ completed: operation, removedIdentityRefused: true, hostRecordsUnchanged: true });
+    assert.equal(mutationAttempts, 0);
+    emit({
+      completed: operation,
+      removedIdentityRefused: true,
+      hostRecordsUnchanged: true,
+      hostReachable: true,
+      originalTargetKeyStillWorks: true,
+      mutationAttempts,
+    });
     store.close();
     process.exit(0);
   }
@@ -754,7 +788,7 @@ if (mode === 'host') {
         const reader = softwareParticipant(fixture.participants[name], arm);
         const entries = await reader.keyring.openInbox(
           pins.networkId,
-          { account: result.account, encKey: live.encKey, envelopes: live.inboxEntries! },
+          { account: result.account, encKey: live.encKey!, envelopes: live.inboxEntries! },
           live.inboxEntries!,
         );
         if (existsSync(join(root, 'coin.json')))
@@ -771,10 +805,10 @@ if (mode === 'host') {
       }
       if (operation === 'remove-target' || operation === 'survivor-rotate') {
         const target = softwareParticipant(fixture.participants.target, arm);
-        await assert.rejects(
+        await requireNoCurrentKey(() =>
           target.keyring.openInbox(
             pins.networkId,
-            { account: result.account, encKey: live.encKey, envelopes: live.inboxEntries! },
+            { account: result.account, encKey: live.encKey!, envelopes: live.inboxEntries! },
             live.inboxEntries!,
           ),
         );

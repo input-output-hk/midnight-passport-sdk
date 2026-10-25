@@ -441,10 +441,10 @@ never renewed. Direct/reconciled deployment receipts share their validation rule
 
 ### Combined source acceptance — 2026/10/24
 
-Frozen source06dbdc6 passed one both-arm combined grant/holding/prover/indexer
+Frozen source `06dbdc6` passed one both-arm combined grant/holding/prover/indexer
 round: 16 case entries, 34 host-confirmed transactions, no duplicate host sends.
 Each arm retained a seven-unit shielded test holding and an independently readable
-active grant through rotation restart. Offline owner200/populated260/host152 cases
+active grant through rotation restart. Offline owner 200 / populated 260 / host 152 cases
 retain their distinct scope and exact source/runtime hashes; see
 [verification](review/combined-outages/verification.json). Owner pre-registration
 proof loss safely refuses explicit resume rather than assuming no send. No real

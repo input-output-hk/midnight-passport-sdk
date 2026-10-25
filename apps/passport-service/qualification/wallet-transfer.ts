@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { privateFiles, boundedWait, publicEvent as emit } from './private-files.ts';
 import { readHostConfirmation } from '../src/host-driver.ts';
+import { WALLET_WINDOWS } from '../../../scripts/qualification/live-expectations.mjs';
 
 const [, root] = process.argv.slice(2);
 assert.equal(process.env.PASSPORT_RC_LOCALNET, '1');
@@ -57,6 +58,7 @@ try {
     'undeployed',
   );
   const wallet = context.walletCtx.wallet;
+  const expiry = new Date(Date.now() + WALLET_WINDOWS.ttlMs);
   const recipe = await wallet.transferTransaction(
     [
       {
@@ -64,7 +66,7 @@ try {
         outputs: [{ type: '00'.repeat(32), receiverAddress: recipient, amount: 2n }],
       },
     ],
-    { ttl: new Date(Date.now() + 60000) },
+    { ttl: expiry },
   );
   const signed = await wallet.signRecipe(recipe, (bytes: Uint8Array) =>
     context.walletCtx.unshieldedKeystore.signDataAsync(bytes),
@@ -73,6 +75,7 @@ try {
   const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', finalized.serialize());
   const prepared = {
     phase: 'ready',
+    expiresAt: expiry.toISOString(),
     tx: Buffer.from(tx.serialize()).toString('hex'),
     identifiers: tx.identifiers().map(String),
     bytesSha256: createHash('sha256').update(tx.serialize()).digest('hex'),
@@ -83,7 +86,7 @@ try {
     bytesSha256: prepared.bytesSha256,
     identifiers: prepared.identifiers,
   });
-  await boundedWait(() => files.exists('wallet-send.json'), 30000);
+  await boundedWait(() => files.exists('wallet-send.json'), WALLET_WINDOWS.approvalMs);
   assert.equal(files.read('wallet-transfer.json').phase, 'ready');
   assert.equal(
     await fetch(process.env.MN_INDEXER_URL!, { signal: AbortSignal.timeout(2000) }).then(
@@ -91,6 +94,13 @@ try {
       () => false,
     ),
     false,
+  );
+  assert.ok(
+    [...tx.intents.values()].every(
+      (intent: { ttl: Date }) =>
+        intent.ttl.getTime() > Date.now() + WALLET_WINDOWS.dispatchMarginMs,
+    ),
+    'Original prepared transfer expired; preserve it, never renew or send stale bytes.',
   );
   files.save('wallet-transfer.json', { ...prepared, phase: 'dispatching' });
   emit({ walletSendEntered: true, bytesSha256: prepared.bytesSha256 });

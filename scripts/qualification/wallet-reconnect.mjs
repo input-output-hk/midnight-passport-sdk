@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { WALLET_WINDOWS } from './live-expectations.mjs';
 
 /** @param {{root:string,worker:(...args:any[])=>any,finished:(w:any,ms:number)=>Promise<any>,waitFor:(f:()=>Promise<boolean>,ms:number,terminal?:()=>boolean)=>Promise<void>,docker:(args:string[])=>string,indexerId:string,indexerReady:()=>Promise<boolean>}} c */
 export async function runWalletReconnect(c) {
@@ -36,7 +37,7 @@ export async function runWalletReconnect(c) {
   await marker('wallet-send', { approveOriginalPreparedTransfer: true });
   await c.waitFor(
     async () => producer.messages.some((/** @type {any} */ m) => m.walletSubmitted),
-    60000,
+    WALLET_WINDOWS.submitMs,
     alive(producer),
   );
   assert.equal(await c.indexerReady(), false);

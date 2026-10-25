@@ -1,5 +1,10 @@
 # Live durability qualification — local review
 
+**Historical-source evidence:** the 90-transaction live receipt predates later
+cancellation, frontier, TTL and preparation corrections. Its source pins are not
+current-head qualification. Subsequent suites must retain their own exact sources
+and scopes; no full restart/provider/release claim is made.
+
 Refs #230/#231/#232. Signed parent `11b2a78`; current branch retained, no push or publication.
 
 ## Review order

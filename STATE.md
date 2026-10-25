@@ -1,3 +1,13 @@
+## 2026/10/26 — host preparation and evidence review correction
+
+Call preparation now retries only its original durable input under a fresh revision
+fence; stale preparers cannot dispatch. Deployment constructor loss, expired bytes,
+pre-host proof failure, key-origin exceptions and concurrent ledger/deposit changes
+remain explicitly unresolved. Do not infer no send or replace unknown output.
+Historical 90-transaction evidence predates later corrections and does not qualify
+this head. New call-preparation/fence regressions are fast source tests. No binding,
+exact-value guard, publication or broad #230 closure changes.
+
 ## 2026/10/25 — enrolled survivor and wallet reconnect
 
 Delivered locally on the current branch; no push, merge or publication. Frozen

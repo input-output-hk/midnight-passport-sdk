@@ -1,7 +1,7 @@
 // Dedicated-stack proof qualification. Software credentials only; never a real provider pass.
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, cp, lstat } from 'node:fs/promises';
 import { resolve, join, isAbsolute } from 'node:path';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -9,6 +9,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { workspaceIdentity, verifyQualificationBinding } from './receipt.mjs';
 import { runWalletReconnect } from './wallet-reconnect.mjs';
 import { lifecycleStages } from './lifecycle-stages.mjs';
+import { liveProfileOptions, requireExpectedFailure } from './live-expectations.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const PROJECT = 'mn-passport-qual-20261023';
@@ -153,7 +154,8 @@ export async function referenceFingerprint(contract) {
   return { sources, packages };
 }
 
-export async function runLiveOutages() {
+/** @param {'baseline'|'combined'|'lifecycle'|'wallet'|'removed-recheck'} [requestedProfile] */
+export async function runLiveOutages(requestedProfile = 'baseline') {
   assert.equal(process.env.PASSPORT_RC_LOCALNET, '1', 'Explicit localnet opt-in required.');
   assert.equal(process.env.MN_NETWORK_ID, 'undeployed');
   const output = process.env.PASSPORT_LIVE_ROOT ?? '';
@@ -169,16 +171,34 @@ export async function runLiveOutages() {
     ),
     '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   );
-  const profile = process.env.PASSPORT_LIVE_PROFILE ?? 'baseline';
-  assert.ok(['baseline', 'combined', 'lifecycle', 'wallet'].includes(profile));
-  const lifecycle = profile === 'lifecycle';
-  const walletOnly = profile === 'wallet';
-  const combined = lifecycle || profile === 'combined';
+  const { profile, lifecycle, walletOnly, combined, removedOnly } =
+    liveProfileOptions(requestedProfile);
   const rounds = Number(process.env.PASSPORT_LIVE_ROUNDS ?? '1');
   assert.ok(Number.isInteger(rounds) && rounds >= 1 && rounds <= 3);
   const source = await workspaceIdentity(ROOT),
     binding = await verifyQualificationBinding(ROOT),
     reference = await referenceFingerprint(contract);
+  /** Historical qualification receipt; local fixture shape is checked before use. @type {any} */
+  let prior;
+  /** @type {string|undefined} */
+  let priorSha;
+  const priorRoot = process.env.PASSPORT_SURVIVOR_FIXTURE_ROOT ?? '';
+  if (removedOnly) {
+    assert.ok(
+      isAbsolute(priorRoot) &&
+        !output.startsWith(priorRoot + '/') &&
+        !priorRoot.startsWith(output + '/') &&
+        output !== priorRoot,
+    );
+    assert.equal((await lstat(priorRoot)).isSymbolicLink(), false);
+    const priorBytes = await readFile(join(priorRoot, 'receipt.json'));
+    priorSha = hash(priorBytes);
+    prior = JSON.parse(priorBytes.toString('utf8'));
+    assert.equal(prior.verdict, 'PASS');
+    assert.equal(prior.profile, 'lifecycle');
+    assert.deepEqual(prior.binding, binding);
+    assert.ok(rounds <= prior.roundsRequested);
+  }
   const inspection = JSON.parse(docker(['inspect', ...CONTAINERS]));
   const ids = inspection.map((/** @type {any} */ c, /** @type {number} */ i) =>
     requireOwnedContainer(c, /** @type {string} */ (CONTAINERS[i])),
@@ -202,6 +222,7 @@ export async function runLiveOutages() {
   const env = {
     ...process.env,
     PASSPORT_RC_LOCALNET: '1',
+    PASSPORT_LIVE_PROFILE: removedOnly ? 'lifecycle' : profile,
     MN_NETWORK_ID: 'undeployed',
     MIDNIGHT_NETWORK: 'local',
     MN_NODE_URL: 'http://127.0.0.1:19954',
@@ -224,13 +245,15 @@ export async function runLiveOutages() {
       JSON.stringify(
         {
           schema: 1,
-          scope: walletOnly
-            ? 'source-live-wallet-indexer-reconnect'
-            : lifecycle
-              ? 'source-live-enrollment-survivor-removal-and-wallet-reconnect'
-              : combined
-                ? 'source-live-combined-grants-holdings-prover-outages'
-                : 'source-live-proof-process-and-indexer-outages',
+          scope: removedOnly
+            ? 'source-live-read-only-removed-access-recheck'
+            : walletOnly
+              ? 'source-live-wallet-indexer-reconnect'
+              : lifecycle
+                ? 'source-live-enrollment-survivor-removal-and-wallet-reconnect'
+                : combined
+                  ? 'source-live-combined-grants-holdings-prover-outages'
+                  : 'source-live-proof-process-and-indexer-outages',
           profile,
           verdict,
           source,
@@ -242,6 +265,10 @@ export async function runLiveOutages() {
           realProviderQualified: false,
           releaseQualified: false,
           roundsRequested: rounds,
+          ...(removedOnly && {
+            priorReceiptSha256: priorSha,
+            noHistoricalMutationsReplayed: true,
+          }),
           cases: evidence,
         },
         null,
@@ -382,37 +409,63 @@ export async function runLiveOutages() {
       for (const arm of walletOnly ? [] : ['jubjub', 'p256']) {
         const root = join(output, `round-${round}-${arm}`);
         await mkdir(root, { mode: 0o700 });
-        const stages = lifecycle
-          ? lifecycleStages(/** @type {'p256'|'jubjub'} */ (arm))
-          : combined
-            ? [
-                ['create', 'before-deploy-proof', 'owner'],
-                ['create', 'none', 'resume'],
-                ['populate', 'none', 'populate'],
-                ['rotate', 'call:0:after-submit', 'owner'],
-                ['rotate', 'none', 'resume'],
-                ['rotate-prover', 'before-owner-proof', 'owner'],
-                ['rotate-prover', 'assert-unknown', 'resume'],
-              ]
-            : [
-                ['create', 'deploy:0:after-submit', 'owner'],
-                ['create', 'call:0:after-submit', 'resume'],
-                ['create', 'none', 'resume'],
-                ['rotate', 'call:0:after-submit', 'owner'],
-                ['rotate', 'none', 'resume'],
-              ];
+        if (removedOnly) {
+          // Read-only requalification in a separate private copy. Never mutate/delete
+          // the accepted source fixture or replay its already-complete operations.
+          await cp(join(priorRoot, `round-${round}-${arm}`), root, {
+            recursive: true,
+            dereference: false,
+            errorOnExist: true,
+            force: false,
+          });
+          assert.equal((await lstat(join(root, 'fixture.json'))).isFile(), true);
+        }
+        const stages = removedOnly
+          ? [['verify-removed', 'none', 'verify']]
+          : lifecycle
+            ? lifecycleStages(/** @type {'p256'|'jubjub'} */ (arm))
+            : combined
+              ? [
+                  ['create', 'before-deploy-proof', 'owner'],
+                  ['create', 'none', 'resume'],
+                  ['populate', 'none', 'populate'],
+                  ['rotate', 'call:0:after-submit', 'owner'],
+                  ['rotate', 'none', 'resume'],
+                  ['rotate-prover', 'before-owner-proof', 'owner'],
+                  ['rotate-prover', 'assert-unknown', 'resume'],
+                ]
+              : [
+                  ['create', 'deploy:0:after-submit', 'owner'],
+                  ['create', 'call:0:after-submit', 'resume'],
+                  ['create', 'none', 'resume'],
+                  ['rotate', 'call:0:after-submit', 'owner'],
+                  ['rotate', 'none', 'resume'],
+                ];
         let beforeProverUnknown;
         for (const [operation, fault, mode] of /** @type {Array<[string,string,string]>} */ (
           stages
         )) {
           if (mode === 'verify') {
+            const host = worker('host', root, arm, operation, 'none');
+            await waitFor(
+              async () => host.messages.some((m) => m.ready),
+              180000,
+              () => host.child.exitCode !== null || host.child.signalCode !== null,
+            );
             const checked = await finished(worker('owner', root, arm, operation, 'none'), 30000);
             assert.equal(checked.code, 0);
             assert.ok(
               checked.messages.some(
-                (/** @type {any} */ m) => m.removedIdentityRefused && m.hostRecordsUnchanged,
+                (/** @type {any} */ m) =>
+                  m.removedIdentityRefused &&
+                  m.hostRecordsUnchanged &&
+                  m.hostReachable &&
+                  m.originalTargetKeyStillWorks &&
+                  m.mutationAttempts === 0,
               ),
             );
+            stop(host.child);
+            await finished(host, 10000);
             evidence.push({ round, arm, operation, verdict: 'PASS', owner: checked });
             await save();
             continue;
@@ -487,6 +540,7 @@ export async function runLiveOutages() {
           evidence.push(c);
           await save();
           if (proofOutage || fault === 'assert-unknown') {
+            requireExpectedFailure(result, operation, fault);
             assert.equal(result.code, 2, 'Outage/unknown outcome must retain the mutation.');
             assert.ok(
               result.messages.some((/** @type {any} */ m) => m.audit?.unresolvedEffects === 1),
@@ -527,6 +581,7 @@ export async function runLiveOutages() {
           } else if (fault !== 'none') {
             const died = await finished(host, 10000);
             assert.equal(died.code, 86, 'Expected exact host crash boundary.');
+            requireExpectedFailure(result, operation, fault);
             assert.equal(result.code, 2, 'Owner must retain an unresolved mutation.');
             assert.ok(
               result.messages.some((/** @type {any} */ m) => m.audit?.unresolvedEffects === 1),
@@ -629,13 +684,25 @@ export async function runLiveOutages() {
               );
           }
         }
+        if (removedOnly) {
+          /** @type {{finalRecords:unknown,sends:number}|undefined} */
+          const previous = prior.cases.find(
+            (/** @type {any} */ c) => c.round === round && c.arm === arm && c.finalRecords,
+          );
+          assert.ok(previous);
+          assert.deepEqual(records, previous.finalRecords, 'No historical host record may change.');
+          assert.equal(sends.length, previous.sends, 'No historical intent may be sent again.');
+        }
         evidence.push({
           round,
           arm,
           verdict: 'PASS',
           finalRecords: records,
-          sends: sends.length,
-          ...(lifecycle && { enrolledSurvivorAuthorized: true, targetRemoved: true }),
+          ...(removedOnly
+            ? { historicalSends: sends.length, currentSends: 0, verifiedReadOnly: true }
+            : { sends: sends.length }),
+          ...(lifecycle &&
+            !removedOnly && { enrolledSurvivorAuthorized: true, targetRemoved: true }),
           ...(combined &&
             !lifecycle && {
               ownerPreRegistrationProverFailure: 'safely-unresolved-no-resend',
@@ -644,7 +711,7 @@ export async function runLiveOutages() {
         });
         await save();
       }
-      if (lifecycle || walletOnly) {
+      if ((lifecycle && !removedOnly) || walletOnly) {
         const wallet = await runWalletReconnect({
           root: join(output, `round-${round}-wallet`),
           worker,
@@ -658,6 +725,12 @@ export async function runLiveOutages() {
         await save();
       }
     }
+    if (removedOnly)
+      assert.equal(
+        hash(await readFile(join(priorRoot, 'receipt.json'))),
+        priorSha,
+        'Prior receipt changed during recheck.',
+      );
     assert.deepEqual(await workspaceIdentity(ROOT), source, 'Source changed during qualification.');
     assert.deepEqual(
       await referenceFingerprint(contract),

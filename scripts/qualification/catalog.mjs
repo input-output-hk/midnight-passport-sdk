@@ -115,6 +115,20 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Both software crypto arms: independent enrolled survivor and target with active grant/holding, original-ID enrollment/removal continuations after host/indexer faults, survivor authorization, removed-reader refusal, then real built-in wallet socket reconnect and fresh NIGHT credit. No real-provider or full release acceptance.',
   },
+  'removed-access-recheck': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-removed-recheck.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+      'PASSPORT_SURVIVOR_FIXTURE_ROOT',
+    ],
+    timeoutMs: 15 * 60000,
+    establishes:
+      'Current-source read-only removed-access recheck on private copies of accepted software lifecycle fixtures, with a reachable host, effect-attempt guards and exact no-current-key refusal. No historical mutations replayed and no new proof-generation claim.',
+  },
   'wallet-indexer-reconnect': {
     tier: 'proof-localnet',
     command: [node, 'scripts/qualification/live-wallet.mjs'],
@@ -152,6 +166,7 @@ export const SUITES = Object.freeze({
   'combined-outages': ['combined-grants-holdings-prover'],
   'survivor-reconnect': ['survivor-enrollment-removal-wallet'],
   'wallet-reconnect': ['wallet-indexer-reconnect'],
+  'removed-recheck': ['removed-access-recheck'],
   consumer: ['packed-consumer'],
   'consumer-source': ['consumer-source-types'],
   'consumer-published': ['consumer-published-host'],

@@ -536,16 +536,22 @@ try {
     }),
   );
 } catch (/** @type {any} */ error) {
-  await assertPopulated();
+  let invariantFailed = false;
+  try {
+    await assertPopulated();
+  } catch (invariant) {
+    invariantFailed = true;
+    console.error('Population invariant failed while reporting the original refusal:', invariant);
+  }
   await save();
   console.log(
     JSON.stringify({
-      status: 'refused',
+      status: invariantFailed ? 'invariant-failed' : 'refused',
       code: error.code ?? 'Error',
       message: error.message,
       effects: world.effects.length,
       created: world.created,
     }),
   );
-  process.exitCode = 2;
+  process.exitCode = invariantFailed ? 3 : 2;
 }

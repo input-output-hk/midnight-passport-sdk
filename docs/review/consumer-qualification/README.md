@@ -52,7 +52,7 @@ No real hosted page/provider, full reader enrollment, total-loss recovery, full 
 revocation, partial shielded spending, value-bearing grantee flow, ordinary-wallet/Passport
 runtime mixing or blanket Lace compatibility claim. Generic hosted SDK creation still needs
 operations outside the original creation consent; native orchestration is the qualified route.
-The optional historical-reader port is a current local addition, not an RC5 export.
+The historical-reader port was withdrawn; unanchored earlier envelopes do not authenticate removal targets.
 
 The local #79/#81 supported-subset evidence is ready for owner review. No GitHub issue was
 closed. The broader provider/value/capability work stays with #232, #202 and #237; durable

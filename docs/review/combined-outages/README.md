@@ -1,5 +1,10 @@
 # Combined grants/holdings and prover-outage qualification
 
+**Historical-source qualification:** dated receipts below retain their original
+source/compiled hashes and test assertions. The 2026/10/26 host-preparation and
+harness corrections are not retroactively qualified by those receipts. Original
+codes can be audited separately; new live checks require separate source evidence.
+
 2026/10/23. Refs #230/#231/#232/#239. This slice extends the declared source/software-identity
 scope; it does not close broad issues or qualify a release, real provider or hosted wallet.
 

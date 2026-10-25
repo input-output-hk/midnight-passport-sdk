@@ -156,7 +156,8 @@ returned. Disabled routes retain the server's normal `404` behavior.
 | Durable phase | Restart behavior |
 | --- | --- |
 | No record | Unknown. A late original HTTP request might still arrive; absence never proves no send |
-| Preparing, no committed constructor plan | Unknown; do not generate a new authority/address implicitly |
+| Preparing deployment, no committed constructor plan | Unknown; do not generate a new authority/address implicitly |
+| Preparing owner call, original input committed | Claim a new revision fence and revalidate the same already-built input; no new transaction or authority |
 | Active, original plan committed | Claim a new revision fence and resume that plan |
 | Ready transaction committed | Recheck the frontier and send the saved bytes once |
 | Dispatching/sent transaction | Look up the stored watch ID, including when the submit response was lost. No rebroadcast |
@@ -265,3 +266,32 @@ those bytes may later expire, and no automatic replacement is promised. The nati
 expiry guard requires ten seconds remaining before proof/dispatch as a minimum margin,
 without guaranteeing inclusion latency. The original sixty-second transaction window
 is retained because the reference fee/DUST rules constrain it.
+
+
+## Exact-frontier and preparation limits — 2026/10/26
+
+The coordinator deliberately requires the complete recorded ledger frontier. Even
+an unsolicited shielded deposit changes its inbox and can make continuation refuse
+permanently, including after a call confirmed. There is no append-only deposit
+rebase or general repair API. Ignoring arbitrary new inbox entries could miss a
+holding or trust forged metadata; no such relaxation is supplied. Concurrent
+account mutation is outside the supported continuation scope. Original journals,
+IDs and funds must be retained for explicit operator/binding work (#230).
+
+Owner-call preparation can now retry the original committed input after a transient
+read/validation error, under a new CAS fence. An older preparer cannot commit or
+broadcast. Missing deployment constructor output remains unknown. This does not
+recover a failed owner proof before host registration: the host's absence still
+cannot fence a late original request. Expired ready/constructor bytes are not renewed.
+A retry is useful only while the original bytes and frontier remain valid.
+
+An ordinary key-origin exception can also leave a running material step unresolved:
+a generic throw is not an authoritative guarantee that no original output exists.
+Cancellation/exception does not permit replacement generation. Typed host-owned
+output recovery or a stronger no-output fence is separate work, not automatic
+transient-error recovery promised by this API.
+
+The historical 90-transaction live receipt is pinned to its earlier tested source;
+it does not qualify later cancellation/frontier/TTL/preparation changes. Keep dated
+source receipts separate, and use subsequent exact-source suites for their own
+narrower scope. No full restart or release qualification is claimed here.
