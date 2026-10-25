@@ -10,7 +10,7 @@ export const SCENARIOS = Object.freeze({
   },
   'contract-entries': {
     tier: 'contract-simulator',
-    command: [node, '--test', 'tests/contract-entry-semantics.test.mjs'],
+    command: [node, '--test', '--test-reporter=tap', 'tests/contract-entry-semantics.test.mjs'],
     requires: [],
     timeoutMs: 20000,
     establishes:
@@ -21,6 +21,7 @@ export const SCENARIOS = Object.freeze({
     command: [
       node,
       '--test',
+      '--test-reporter=tap',
       'tests/account-jubjub-readers.test.mjs',
       'tests/account-jubjub.test.mjs',
       'tests/account-p256-sealed.test.mjs',

@@ -102,7 +102,7 @@ on this refusal.
 The unanchored history fallback/API and the later retained-target-metadata experiment
 are withdrawn. The latter could reinclude a pending removal target in another rotation.
 Legacy retry/interleaved rotations refuse an unresolved roster, while an original
-protected continuation can preserve its verified snapshot. Earlier secrets remain bounded
+protected continuation in the dependent durability slice can preserve its verified snapshot only against an unchanged frontier; it is not supplied by this foundation. Earlier secrets remain bounded
 decryption candidates without metadata trust or eviction of genuine old coin keys.
 Runtime identity includes compiled
 inputs, refuses package/dist symlinks, and preflights before evidence reservation.
