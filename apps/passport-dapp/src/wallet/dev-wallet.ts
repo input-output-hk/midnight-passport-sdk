@@ -21,6 +21,7 @@ import {
   UnshieldedWallet,
 } from '@midnightntwrk/wallet-sdk-unshielded-wallet';
 import * as Rx from 'rxjs';
+import { devWalletSession, walletApiError as apiError } from './lifecycle.ts';
 
 /** The service's `/config` members the wallet needs. */
 export interface DevWalletConfig {
@@ -37,9 +38,6 @@ export interface DevWalletApiError extends Error {
   code: DevWalletErrorCode;
   reason: string;
 }
-const apiError = (code: DevWalletErrorCode, reason: string): DevWalletApiError =>
-  Object.assign(new Error(reason), { type: 'DAppConnectorAPIError' as const, code, reason });
-
 /** How long a balance read waits for a synced state before it fails. */
 const SYNC_TIMEOUT_MS = 120_000;
 
@@ -192,21 +190,5 @@ export async function createDevWallet(
     },
   };
 
-  return {
-    descriptor: {
-      name: 'Built-in dev wallet',
-      apiVersion: '4.1.0',
-      rdns: 'io.iohk.passport.devwallet',
-      async connect(networkId: string) {
-        if (networkId !== config.networkId) {
-          throw apiError(
-            'InvalidRequest',
-            `the wallet is on ${config.networkId}, not ${networkId}`,
-          );
-        }
-        return connected;
-      },
-    },
-    stop: () => facade.stop(),
-  };
+  return devWalletSession(config.networkId, connected, () => facade.stop());
 }

@@ -450,3 +450,16 @@ retain their distinct scope and exact source/runtime hashes; see
 proof loss safely refuses explicit resume rather than assuming no send. No real
 provider, live enrollment/removal, full release/Lace or large-inbox resource acceptance
 is implied; broad #230/#231/#232/#239 remain open.
+
+### Survivor/reconnect qualification scope — 2026/10/25
+
+The local source adds an opt-in `survivor-reconnect` suite: three independent
+software identities in both arms, enrollment/removal post-submit continuation with
+active grants/holdings, survivor authorization and removed-reader current-key
+refusal, then an actual built-in wallet indexer disconnect and fresh incoming
+NIGHT balance. Its [review map](review/survivor-reconnect/README.md) records evidence
+status. The wallet test runs in Node, uses the same preserved synthetic HD seed
+and a direct standalone transfer; it does not qualify an ACC withdrawal, a browser
+provider, seed-loss recovery or full Lace compatibility. Removal spans transactions
+and does not retire a concurrent compromised signer atomically. No published
+package/image, binding pin, key manifest or exact-value guard changes in this slice.

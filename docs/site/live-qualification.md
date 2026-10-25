@@ -198,3 +198,42 @@ release, published artifacts or maximum-inbox resource behavior. Earlier keys re
 bounded decryption candidates without authenticating metadata; candidate-by-coin
 work still scales within the existing 4096 limits. Keep original uncertain IDs and
 protected state for operator reconciliation.
+
+## Enrolled survivor and wallet reconnect
+
+Run `pnpm qualify run survivor-reconnect` with the same prerequisites and a fresh
+`PASSPORT_LIVE_ROOT` as above. Both software authoriser arms create a fresh ACC,
+issue an active read grant and deposit a seven-unit shielded test coin. Three
+independent signing/reader identities are privately persisted before enrollment.
+
+The owner enrolls a surviving reader, then a target. During target enrollment the
+host dies after submitting the actual add-device call. During removal it dies
+after the actual viewing-key switch, before the entry-removal call. Each interruption
+includes a real indexer stop, a read-only unknown probe, and continuation under the
+original ID, plan, outputs and prepared bytes. Final confirmation must retain the
+holding, current access for owner/survivor and the independent grantee, and refuse
+current-key access for the removed target. The independently enrolled survivor
+then authorizes a real rotation. Removed-identity known-address opening must fail
+without registering or sending another host call.
+
+Removal is **not atomic compromised-key revocation**: the target may retain signing
+authority between key switch and final removal. This suite has no adversarial
+concurrent signer and cannot erase old viewing knowledge. It uses shared trusted
+grant-opening bookkeeping, not recovery after losing that bookkeeping. Real
+providers/two browsers and total-loss recovery remain separate acceptance gates.
+
+The suite ends with the actual built-in read-only wallet running in Node. Its
+indexer socket is disconnected; a separately journalled payer sends two smallest
+NIGHT units while the indexer is down. After restart, included raw transaction bytes
+and node finality prove offline inclusion. The same wallet instance must observe
+the new balance and socket, with unchanged shielded/unshielded/dust addresses.
+Stop invalidates old handles, closes subscriptions and refuses new connections;
+recreating from the same preserved private seed restores those addresses and balance.
+This tests network freshness with a new credit, not only a cached balance.
+
+Use `pnpm qualify run wallet-reconnect` for just this wallet diagnostic, with the
+same environment and fresh private output paths. A prepared or dispatched transfer
+is single-use: preserve its private receipt/bytes on failure and do not blindly
+retry it. This is a direct standalone transfer, not an ACC withdrawal or a browser
+passkey/provider recovery test. Logical `getConnectionStatus` does not promise a
+fresh indexer connection. The full suites stay opt-in, outside fast PR CI.

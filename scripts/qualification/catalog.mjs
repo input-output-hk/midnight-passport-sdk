@@ -102,6 +102,32 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Both software authoriser arms: populated chain-verified shielded holding and active read grant, restart continuation, committed-deploy prover recovery and safe refusal after owner pre-registration proving failure. Not real-provider or full release acceptance.',
   },
+  'survivor-enrollment-removal-wallet': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-lifecycle.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 120 * 60000,
+    establishes:
+      'Both software crypto arms: independent enrolled survivor and target with active grant/holding, original-ID enrollment/removal continuations after host/indexer faults, survivor authorization, removed-reader refusal, then real built-in wallet socket reconnect and fresh NIGHT credit. No real-provider or full release acceptance.',
+  },
+  'wallet-indexer-reconnect': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-wallet.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 20 * 60000,
+    establishes:
+      'Actual built-in read-only wallet in Node: socket close/reopen, fresh standalone NIGHT credit finalized while indexer is down, unchanged addresses/seed across stop/recreation. No browser or passkey-provider acceptance.',
+  },
   'published-registry': {
     tier: 'published-consumer',
     command: [],
@@ -124,6 +150,8 @@ export const SUITES = Object.freeze({
   localnet: ['localnet-night'],
   outages: ['outage-reconciliation'],
   'combined-outages': ['combined-grants-holdings-prover'],
+  'survivor-reconnect': ['survivor-enrollment-removal-wallet'],
+  'wallet-reconnect': ['wallet-indexer-reconnect'],
   consumer: ['packed-consumer'],
   'consumer-source': ['consumer-source-types'],
   'consumer-published': ['consumer-published-host'],

@@ -73,6 +73,12 @@ import { resolveBinding } from '../../../packages/contract/dist/index.js';
 import * as binding from '../../../packages/contract/generated/acc-s3r1.1/index.js';
 import type { PassportPorts } from '../../../packages/account/dist/ports/index.js';
 import type { MutationIntent } from '../../../packages/account/dist/index.js';
+import {
+  createSoftwareIdentity,
+  softwareParticipant,
+} from '../../../scripts/qualification/identities.mjs';
+
+import { crashesAfterSubmit } from '../../../scripts/qualification/lifecycle-stages.mjs';
 
 const [mode, root, arm, operation = 'create', fault = 'none'] = process.argv.slice(2);
 assert.ok(root && ['host', 'owner', 'resume', 'probe', 'inspect', 'populate'].includes(mode!));
@@ -114,7 +120,8 @@ const save = (name: string, value: unknown) => {
   }
 };
 const emit = (value: object) => console.log('PASSPORT_LIVE ' + JSON.stringify(value));
-const combined = process.env.PASSPORT_LIVE_PROFILE === 'combined';
+const lifecycle = process.env.PASSPORT_LIVE_PROFILE === 'lifecycle';
+const combined = lifecycle || process.env.PASSPORT_LIVE_PROFILE === 'combined';
 const referenceImport = (path: string) =>
   import(pathToFileURL(join(process.env.PASSPORT_CONTRACT_DIR!, path)).href);
 const proofBoundary = async (boundary: string) => {
@@ -140,10 +147,26 @@ if (!existsSync(join(root, 'fixture.json'))) {
     hostKey: randomBytes(32),
     token: randomBytes(32),
     grantSecret: randomBytes(32),
+    ...(lifecycle && {
+      participants: Object.fromEntries(
+        await Promise.all(
+          ['owner', 'survivor', 'target'].map(async (role) => [
+            role,
+            await createSoftwareIdentity(),
+          ]),
+        ),
+      ),
+    }),
     ids: {
       create: hex(randomBytes(16)),
       rotate: hex(randomBytes(16)),
       'rotate-prover': hex(randomBytes(16)),
+      ...Object.fromEntries(
+        ['add-survivor', 'add-target', 'remove-target', 'survivor-rotate'].map((op) => [
+          op,
+          hex(randomBytes(16)),
+        ]),
+      ),
     },
   });
 }
@@ -296,7 +319,7 @@ if (mode === 'host') {
       });
       const id = await original.submit(tx);
       event({ stage: 'send-return', requestId: current.identity.requestId, boundary, id });
-      if (fault === `${boundary}:after-submit`) {
+      if (crashesAfterSubmit(fault, current)) {
         emit({ crash: fault });
         process.exit(86);
       }
@@ -340,7 +363,7 @@ if (mode === 'host') {
 } else {
   const base = `http://127.0.0.1:${process.env.PASSPORT_SERVICE_PORT}`;
   const config =
-    mode === 'populate'
+    mode === 'populate' || operation === 'verify-removed'
       ? {
           indexerUri: process.env.MN_INDEXER_URL!,
           indexerWsUri: process.env.MN_INDEXER_WS_URL!,
@@ -360,21 +383,30 @@ if (mode === 'host') {
     nodeUrl: config.nodeUri,
     artefactUrl: config.zkBaseUrl,
   };
-  const source = {
+  const role =
+    operation === 'survivor-rotate'
+      ? 'survivor'
+      : operation === 'verify-removed'
+        ? 'target'
+        : 'owner';
+  const participant = lifecycle ? softwareParticipant(fixture.participants[role], arm) : undefined;
+  const source = participant?.source ?? {
     withSession: async <T>(work: () => Promise<T>) => work(),
     deviceSecret: async () => new Uint8Array(fixture.device),
     deriveSecret: async (p: Parameters<typeof deriveSymmetricSecret>[1]) =>
       deriveSymmetricSecret(fixture.seed, p),
   };
   const authoriser =
-    arm === 'p256'
+    participant?.authoriser ??
+    (arm === 'p256'
       ? {
           ...fakeAuthoriser({ credentialId: fixture.credential }),
           // Explicit software test session, never a browser/provider approval claim.
           withKeySession: async <T>(work: () => Promise<T>) => work(),
         }
-      : recipeJubjubAuthoriser(source, binding.pureCircuits);
-  const viewingKey = recipeDeviceKeyring(source);
+      : recipeJubjubAuthoriser(source, binding.pureCircuits));
+  const viewingKey = participant?.keyring ?? recipeDeviceKeyring(source);
+  const recordFile = role === 'owner' ? 'record.json' : `${role}-record.json`;
   // The suite includes rotation: refuse an incomplete fixture before deploying anything.
   assert.equal(typeof authoriser.withKeySession, 'function');
   assert.equal(typeof viewingKey.decodeDevicePublicKey, 'function');
@@ -457,7 +489,7 @@ if (mode === 'host') {
     deployer: host.deployer,
     directory: remoteDirectory(base),
     authoriser,
-    credentials: fakeCredentials({ authoriser }),
+    credentials: participant?.credentials ?? fakeCredentials({ authoriser }),
     viewingKey,
     encryptionKey: {
       publicKey: async () => {
@@ -465,9 +497,9 @@ if (mode === 'host') {
       },
     },
     records: {
-      read: async () => (existsSync(join(root, 'record.json')) ? read('record.json') : undefined),
-      exists: async () => existsSync(join(root, 'record.json')),
-      write: async (value) => save('record.json', value),
+      read: async () => (existsSync(join(root, recordFile)) ? read(recordFile) : undefined),
+      exists: async () => existsSync(join(root, recordFile)),
+      write: async (value) => save(recordFile, value),
     },
     holdings: combined ? holdingSource : { selectHeldEntries: async () => [] },
     readGrants: combined
@@ -600,12 +632,35 @@ if (mode === 'host') {
     store.close();
     process.exit(0);
   }
+  if (lifecycle && operation === 'verify-removed') {
+    const account = read('result-create.json').account;
+    const before = await publicRecords();
+    await assert.rejects(createPassportAccounts(ports).openAccountAt!(account), {
+      code: arm === 'p256' ? 'AccountNotFound' : 'NotAuthorised',
+    });
+    const live = (await chain.readAccount(account, { includeInbox: true, includeDevices: true }))!;
+    await assert.rejects(
+      viewingKey.openInbox(
+        pins.networkId,
+        { account, encKey: live.encKey!, envelopes: live.inboxEntries! },
+        live.inboxEntries!,
+      ),
+    );
+    assert.deepEqual(
+      await publicRecords(),
+      before,
+      'Removed identity must not register or send a call.',
+    );
+    emit({ completed: operation, removedIdentityRefused: true, hostRecordsUnchanged: true });
+    store.close();
+    process.exit(0);
+  }
   const coordinator = createDurablePassportMutations({
     ports,
     journal: encryptedMutationJournal(
       pins,
       source,
-      fileMutationByteStore(join(root, 'owner-journal')),
+      fileMutationByteStore(join(root, role === 'owner' ? 'owner-journal' : `${role}-journal`)),
     ),
     outcomes: host.outcomes,
     consent: {
@@ -618,7 +673,26 @@ if (mode === 'host') {
   const intent: MutationIntent =
     operation === 'create'
       ? { kind: 'create', userName: 'live-durability-software-identity', retireAuthority: true }
-      : { kind: 'rotate', account: read('result-create.json').account };
+      : operation === 'add-survivor' || operation === 'add-target'
+        ? {
+            kind: 'add-device',
+            account: read('result-create.json').account,
+            reader: await softwareParticipant(
+              fixture.participants[operation === 'add-survivor' ? 'survivor' : 'target'],
+              arm,
+            ).reader(),
+          }
+        : operation === 'remove-target'
+          ? {
+              kind: 'remove-device',
+              account: read('result-create.json').account,
+              commitmentHex: read('result-add-target.json').result.commitmentHex,
+            }
+          : { kind: 'rotate', account: read('result-create.json').account };
+  if (operation !== 'create' && !existsSync(join(root, `before-${operation}.json`))) {
+    const view = (await chain.readAccount(read('result-create.json').account))!;
+    save(`before-${operation}.json`, { encKey: hex(view.encKey!), authNonce: view.authNonce });
+  }
   try {
     let result;
     const deadline = Date.now() + 10 * 60000;
@@ -651,20 +725,71 @@ if (mode === 'host') {
     const opened = await createPassportAccounts(ports).openAccountAt!(result.account);
     const state = await opened.state();
     assert.equal(state.booted, true);
-    assert.equal(state.entryCount, 1);
+    const expectedEntries =
+      !lifecycle || operation === 'create' ? 1 : operation === 'add-target' ? 3 : 2;
+    assert.equal(state.entryCount, expectedEntries);
     const live = (await chain.readAccount(result.account, {
       includeDevices: true,
       includeInbox: true,
     }))!;
-    assert.ok(live.encKey && live.deviceEntries?.length === 1);
-    if (operation.startsWith('rotate')) {
-      const before = read('view-create.json');
+    assert.ok(live.encKey && live.deviceEntries?.length === expectedEntries);
+    if (operation !== 'create') {
+      const before = read(`before-${operation}.json`);
       assert.notEqual(
         hex(live.encKey),
         before.encKey,
         'Rotation must actually switch the ACC viewing key.',
       );
       assert.ok(state.authNonce > before.authNonce);
+    }
+    let readers: object | undefined;
+    if (lifecycle) {
+      const names =
+        operation === 'create'
+          ? ['owner']
+          : operation === 'add-target'
+            ? ['owner', 'survivor', 'target']
+            : ['owner', 'survivor'];
+      for (const name of names) {
+        const reader = softwareParticipant(fixture.participants[name], arm);
+        const entries = await reader.keyring.openInbox(
+          pins.networkId,
+          { account: result.account, encKey: live.encKey, envelopes: live.inboxEntries! },
+          live.inboxEntries!,
+        );
+        if (existsSync(join(root, 'coin.json')))
+          assert.equal(
+            (
+              await holdingSource.selectQualifiedHeldCoins(
+                result.account,
+                live.inboxEntries!,
+                entries,
+              )
+            ).length,
+            1,
+          );
+      }
+      if (operation === 'remove-target' || operation === 'survivor-rotate') {
+        const target = softwareParticipant(fixture.participants.target, arm);
+        await assert.rejects(
+          target.keyring.openInbox(
+            pins.networkId,
+            { account: result.account, encKey: live.encKey, envelopes: live.inboxEntries! },
+            live.inboxEntries!,
+          ),
+        );
+        assert.ok(
+          !live.deviceEntries!.some(
+            (v) => hex(v) === read('result-add-target.json').result.commitmentHex,
+          ),
+        );
+      }
+      readers = {
+        currentReaders: names,
+        removedTargetCannotOpenCurrentKey:
+          operation === 'remove-target' || operation === 'survivor-rotate',
+        actor: role,
+      };
     }
     save(`view-${operation}.json`, { encKey: hex(live.encKey), authNonce: state.authNonce });
     emit({
@@ -673,6 +798,7 @@ if (mode === 'host') {
       audit: await coordinator.inspect(id),
       authNonce: state.authNonce.toString(),
       populated: await assertPopulated(result.account),
+      ...(readers && { readers }),
       records: await publicRecords(),
     });
     store.close();

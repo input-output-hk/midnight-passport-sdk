@@ -7,6 +7,8 @@ import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { setTimeout as delay } from 'node:timers/promises';
 import { workspaceIdentity, verifyQualificationBinding } from './receipt.mjs';
+import { runWalletReconnect } from './wallet-reconnect.mjs';
+import { lifecycleStages } from './lifecycle-stages.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const PROJECT = 'mn-passport-qual-20261023';
@@ -123,6 +125,7 @@ export async function referenceFingerprint(contract) {
     '@midnight-ntwrk/midnight-js-http-client-proof-provider',
     '@midnightntwrk/ledger-v9',
     '@midnightntwrk/wallet-sdk-facade',
+    '@midnightntwrk/wallet-sdk-address-format',
   ]) {
     const info = lock.packages['node_modules/' + name];
     let entry;
@@ -167,8 +170,10 @@ export async function runLiveOutages() {
     '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   );
   const profile = process.env.PASSPORT_LIVE_PROFILE ?? 'baseline';
-  assert.ok(['baseline', 'combined'].includes(profile));
-  const combined = profile === 'combined';
+  assert.ok(['baseline', 'combined', 'lifecycle', 'wallet'].includes(profile));
+  const lifecycle = profile === 'lifecycle';
+  const walletOnly = profile === 'wallet';
+  const combined = lifecycle || profile === 'combined';
   const rounds = Number(process.env.PASSPORT_LIVE_ROUNDS ?? '1');
   assert.ok(Number.isInteger(rounds) && rounds >= 1 && rounds <= 3);
   const source = await workspaceIdentity(ROOT),
@@ -219,9 +224,13 @@ export async function runLiveOutages() {
       JSON.stringify(
         {
           schema: 1,
-          scope: combined
-            ? 'source-live-combined-grants-holdings-prover-outages'
-            : 'source-live-proof-process-and-indexer-outages',
+          scope: walletOnly
+            ? 'source-live-wallet-indexer-reconnect'
+            : lifecycle
+              ? 'source-live-enrollment-survivor-removal-and-wallet-reconnect'
+              : combined
+                ? 'source-live-combined-grants-holdings-prover-outages'
+                : 'source-live-proof-process-and-indexer-outages',
           profile,
           verdict,
           source,
@@ -268,7 +277,14 @@ export async function runLiveOutages() {
       [
         '--import',
         'tsx',
-        resolve(ROOT, 'apps/passport-service/qualification/live-worker.ts'),
+        resolve(
+          ROOT,
+          mode === 'wallet-observer'
+            ? 'apps/passport-dapp/e2e/wallet-reconnect.e2e.ts'
+            : mode === 'wallet-producer'
+              ? 'apps/passport-service/qualification/wallet-transfer.ts'
+              : 'apps/passport-service/qualification/live-worker.ts',
+        ),
         mode,
         root,
         arm,
@@ -276,7 +292,10 @@ export async function runLiveOutages() {
         fault,
       ],
       {
-        cwd: join(ROOT, 'apps/passport-service'),
+        cwd: join(
+          ROOT,
+          mode === 'wallet-observer' ? 'apps/passport-dapp' : 'apps/passport-service',
+        ),
         detached: true,
         env: { ...env, PASSPORT_REGISTRY_FILE: join(root, 'registry.json') },
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -308,7 +327,11 @@ export async function runLiveOutages() {
               message.diagnosticStage ||
               message.crash ||
               message.failed ||
-              message.completed
+              message.completed ||
+              message.walletReady ||
+              message.walletDisconnected ||
+              message.walletTransferPrepared ||
+              message.walletSubmitted
             )
               console.log(
                 'live worker:',
@@ -319,6 +342,10 @@ export async function runLiveOutages() {
                   crash: message.crash,
                   failed: message.failed,
                   completed: message.completed,
+                  walletReady: message.walletReady,
+                  walletDisconnected: message.walletDisconnected,
+                  walletTransferPrepared: message.walletTransferPrepared,
+                  walletSubmitted: message.walletSubmitted,
                 }),
               );
           } catch {
@@ -351,31 +378,45 @@ export async function runLiveOutages() {
   try {
     await waitFor(indexerReady, 60000);
     await save();
-    for (let round = 1; round <= rounds; round++)
-      for (const arm of ['jubjub', 'p256']) {
+    for (let round = 1; round <= rounds; round++) {
+      for (const arm of walletOnly ? [] : ['jubjub', 'p256']) {
         const root = join(output, `round-${round}-${arm}`);
         await mkdir(root, { mode: 0o700 });
-        const stages = combined
-          ? [
-              ['create', 'before-deploy-proof', 'owner'],
-              ['create', 'none', 'resume'],
-              ['populate', 'none', 'populate'],
-              ['rotate', 'call:0:after-submit', 'owner'],
-              ['rotate', 'none', 'resume'],
-              ['rotate-prover', 'before-owner-proof', 'owner'],
-              ['rotate-prover', 'assert-unknown', 'resume'],
-            ]
-          : [
-              ['create', 'deploy:0:after-submit', 'owner'],
-              ['create', 'call:0:after-submit', 'resume'],
-              ['create', 'none', 'resume'],
-              ['rotate', 'call:0:after-submit', 'owner'],
-              ['rotate', 'none', 'resume'],
-            ];
+        const stages = lifecycle
+          ? lifecycleStages(/** @type {'p256'|'jubjub'} */ (arm))
+          : combined
+            ? [
+                ['create', 'before-deploy-proof', 'owner'],
+                ['create', 'none', 'resume'],
+                ['populate', 'none', 'populate'],
+                ['rotate', 'call:0:after-submit', 'owner'],
+                ['rotate', 'none', 'resume'],
+                ['rotate-prover', 'before-owner-proof', 'owner'],
+                ['rotate-prover', 'assert-unknown', 'resume'],
+              ]
+            : [
+                ['create', 'deploy:0:after-submit', 'owner'],
+                ['create', 'call:0:after-submit', 'resume'],
+                ['create', 'none', 'resume'],
+                ['rotate', 'call:0:after-submit', 'owner'],
+                ['rotate', 'none', 'resume'],
+              ];
         let beforeProverUnknown;
         for (const [operation, fault, mode] of /** @type {Array<[string,string,string]>} */ (
           stages
         )) {
+          if (mode === 'verify') {
+            const checked = await finished(worker('owner', root, arm, operation, 'none'), 30000);
+            assert.equal(checked.code, 0);
+            assert.ok(
+              checked.messages.some(
+                (/** @type {any} */ m) => m.removedIdentityRefused && m.hostRecordsUnchanged,
+              ),
+            );
+            evidence.push({ round, arm, operation, verdict: 'PASS', owner: checked });
+            await save();
+            continue;
+          }
           if (mode === 'populate') {
             const populated = await finished(
               worker(mode, root, arm, operation, 'none'),
@@ -504,7 +545,29 @@ export async function runLiveOutages() {
             await waitFor(indexerReady, 60000);
           } else {
             assert.equal(result.code, 0, 'Original mutation must complete.');
-            if (combined && operation === 'rotate')
+            if (lifecycle) {
+              const completed = result.messages.find(
+                (/** @type {any} */ m) => m.completed === operation,
+              );
+              assert.ok(completed?.readers, 'Require the actual reader checks, not only exit 0.');
+              assert.equal(
+                completed.readers.actor,
+                operation === 'survivor-rotate' ? 'survivor' : 'owner',
+              );
+              assert.deepEqual(
+                completed.readers.currentReaders,
+                operation === 'create'
+                  ? ['owner']
+                  : operation === 'add-target'
+                    ? ['owner', 'survivor', 'target']
+                    : ['owner', 'survivor'],
+              );
+              assert.equal(
+                completed.readers.removedTargetCannotOpenCurrentKey,
+                operation === 'remove-target' || operation === 'survivor-rotate',
+              );
+            }
+            if (combined && (operation === 'rotate' || (lifecycle && operation !== 'create')))
               assert.ok(
                 result.messages.some(
                   (/** @type {any} */ m) =>
@@ -572,13 +635,29 @@ export async function runLiveOutages() {
           verdict: 'PASS',
           finalRecords: records,
           sends: sends.length,
-          ...(combined && {
-            ownerPreRegistrationProverFailure: 'safely-unresolved-no-resend',
-            populatedHoldingsAndGrant: true,
-          }),
+          ...(lifecycle && { enrolledSurvivorAuthorized: true, targetRemoved: true }),
+          ...(combined &&
+            !lifecycle && {
+              ownerPreRegistrationProverFailure: 'safely-unresolved-no-resend',
+              populatedHoldingsAndGrant: true,
+            }),
         });
         await save();
       }
+      if (lifecycle || walletOnly) {
+        const wallet = await runWalletReconnect({
+          root: join(output, `round-${round}-wallet`),
+          worker,
+          finished,
+          waitFor,
+          docker,
+          indexerId: /** @type {string} */ (ids[1]),
+          indexerReady,
+        });
+        evidence.push({ round, ...wallet });
+        await save();
+      }
+    }
     assert.deepEqual(await workspaceIdentity(ROOT), source, 'Source changed during qualification.');
     assert.deepEqual(
       await referenceFingerprint(contract),

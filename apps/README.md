@@ -372,3 +372,14 @@ deployment and wave bytes. Default demo owner buttons are not migrated. Unknown
 submissions, expired dispatches, missing constructor outputs and mismatched state
 remain refused. See the [engineer guide](../docs/site/host-durability.md) for setup,
 RPC, composition and offline-versus-live qualification limits.
+
+### Built-in wallet lifecycle qualification
+
+A stopped built-in wallet rejects existing API handles, late balance results and
+new connections. Reconnect by creating a new instance with the existing approved
+key source; stopping does not change the derivation recipe. Logical connection
+status does not prove a fresh indexer connection. The opt-in `pnpm qualify run
+wallet-reconnect` diagnostic and `survivor-reconnect` lifecycle suite check the actual
+wallet composition against an owned standalone indexer outage and a fresh incoming
+NIGHT credit. See the [live runbook](../docs/site/live-qualification.md#enrolled-survivor-and-wallet-reconnect).
+These Node/software-fixture cases do not qualify real passkeys or seed-loss recovery.
