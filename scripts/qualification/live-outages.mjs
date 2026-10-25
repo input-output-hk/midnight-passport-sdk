@@ -408,10 +408,11 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
     for (let round = 1; round <= rounds; round++) {
       for (const arm of walletOnly ? [] : ['jubjub', 'p256']) {
         const root = join(output, `round-${round}-${arm}`);
-        await mkdir(root, { mode: 0o700 });
+        if (!removedOnly) await mkdir(root, { mode: 0o700 });
         if (removedOnly) {
           // Read-only requalification in a separate private copy. Never mutate/delete
           // the accepted source fixture or replay its already-complete operations.
+          // cp must create the destination: errorOnExist also rejects an empty directory.
           await cp(join(priorRoot, `round-${round}-${arm}`), root, {
             recursive: true,
             dereference: false,
