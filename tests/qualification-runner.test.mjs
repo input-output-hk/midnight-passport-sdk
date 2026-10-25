@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { SCENARIOS } from '../scripts/qualification/catalog.mjs';
 import { planSuite, runCommand } from '../scripts/qualification/runner.mjs';
 import {
   qualifyRepeatedRuns,
@@ -33,8 +34,20 @@ const receipt = () => ({
   binding: { ...binding },
   results: [
     { id: 'binding-source', tier: 'source-comparison', outcome: 'passed', elapsedMs: 1 },
-    { id: 'contract-entries', tier: 'contract-simulator', outcome: 'passed', elapsedMs: 1 },
-    { id: 'reader-guards', tier: 'unit-port', outcome: 'passed', elapsedMs: 1 },
+    {
+      id: 'contract-entries',
+      tier: 'contract-simulator',
+      outcome: 'passed',
+      elapsedMs: 1,
+      tests: { passed: 1, failed: 0, skipped: 0, cancelled: 0 },
+    },
+    {
+      id: 'reader-guards',
+      tier: 'unit-port',
+      outcome: 'passed',
+      elapsedMs: 1,
+      tests: { passed: 1, failed: 0, skipped: 0, cancelled: 0 },
+    },
   ],
   allRequiredPassed: true,
   releaseQualified: false,
@@ -175,24 +188,39 @@ test('ignored compiled inputs are included in qualification identity and symlink
   }
 });
 
-test('declared Node test scenarios refuse absent or zero passing TAP summaries', async () => {
-  for (const text of ['', '# pass 0\n# fail 0\n# skipped 0']) {
-    const fixture = scenario('console.log(' + JSON.stringify(text) + ')');
-    // --test is a scenario declaration; this fixture simulates a vacuous runner's stdout.
-    const script = fixture.command[2];
-    assert.ok(script);
-    fixture.command = [process.execPath, '-e', script, '--', '--test'];
-    const result = await runCommand(fixture);
-    assert.equal(result.outcome, 'failed');
-    assert.equal(result.failureCode, 'NO_TESTS');
+test('real catalog Node test flags require positive TAP evidence regardless of default reporter', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'passport-tap-'));
+  try {
+    const command = SCENARIOS['contract-entries'].command.slice(0, 3);
+    assert.ok(command.includes('--test-reporter=tap'));
+    const fixture = { ...scenario('unused'), command };
+    const env = { ...process.env };
+    delete env.NODE_TEST_CONTEXT; // The probe is an independent runner, not this test process child.
+    const empty = await runCommand(fixture, { root, env });
+    assert.equal(empty.outcome, 'failed');
+    assert.equal(empty.failureCode, 'NO_TESTS');
+    await writeFile(
+      join(root, 'sample.test.mjs'),
+      "import {test} from 'node:test'; test('real callback',()=>{});\n",
+    );
+    const real = await runCommand(fixture, { root, env });
+    assert.equal(real.outcome, 'passed');
+    assert.equal(real.tests?.passed, 1);
+    assert.equal(
+      (await runCommand(scenario('console.log("non-test diagnostic")'))).outcome,
+      'passed',
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
-  const fixture = scenario('console.log("# pass 1\\n# fail 0\\n# skipped 0")');
-  const script = fixture.command[2];
-  assert.ok(script);
-  fixture.command = [process.execPath, '-e', script, '--', '--test'];
-  assert.equal((await runCommand(fixture)).outcome, 'passed');
-  assert.equal(
-    (await runCommand(scenario('console.log("a non-test diagnostic")'))).outcome,
-    'passed',
-  );
+});
+
+test('receipt validation and repetition cannot qualify test passes with missing or zero counters', () => {
+  for (const tests of [undefined, { passed: 0, failed: 0, skipped: 0, cancelled: 0 }]) {
+    const changed = receipt(),
+      row = changed.results[1];
+    assert.ok(row);
+    Object.assign(row, { tests });
+    assert.throws(() => validateReceipt(changed), /positive passing test evidence/);
+  }
 });

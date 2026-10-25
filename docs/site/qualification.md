@@ -218,7 +218,13 @@ At the existing bounds, candidate-by-coin work can approach 4096 × 4096 decrypt
 attempts. This is not a qualified latency budget; large-inbox resource acceptance
 remains open. A smaller secret cap must not evict genuine older holding keys.
 Dependencies, installed runtime bytes and other ignored executable inputs need
-separate scenario-specific provenance; the workspace fingerprint does not hash all
-of node_modules or every application build output. Test scenarios with no passing
+separate scenario-specific provenance; the workspace fingerprint hashes none
+of the git-ignored node_modules tree or every application build output. Test scenarios with no passing
 TAP summary now refuse as NO_TESTS, while non-test diagnostics retain their own
 explicit success contract.
+
+
+Declared Node test scenarios pin the TAP reporter, and both receipt creation and
+validation require a positive passing count. Historical receipts without that
+evidence cannot be requalified by the repeat checker. Non-test diagnostics have
+separate explicit contracts; a process exit alone does not prove test execution.
