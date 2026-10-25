@@ -463,3 +463,9 @@ and a direct standalone transfer; it does not qualify an ACC withdrawal, a brows
 provider, seed-loss recovery or full Lace compatibility. Removal spans transactions
 and does not retire a concurrent compromised signer atomically. No published
 package/image, binding pin, key manifest or exact-value guard changes in this slice.
+
+The signed `094c7f0` source completed this declared local scope: 21 case entries,
+88 confirmed host transactions, zero duplicate sends, four host deaths/four account
+indexer probes, plus the separate fresh-credit wallet outage/recreation case. See
+[verification](review/survivor-reconnect/verification.json). Executable inputs are
+unchanged by later documentation-only forward changes. Broad issues remain open.

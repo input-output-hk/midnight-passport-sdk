@@ -237,3 +237,18 @@ is single-use: preserve its private receipt/bytes on failure and do not blindly
 retry it. This is a direct standalone transfer, not an ACC withdrawal or a browser
 passkey/provider recovery test. Logical `getConnectionStatus` does not promise a
 fresh indexer connection. The full suites stay opt-in, outside fast PR CI.
+
+## Scoped survivor/reconnect acceptance — 2026/10/25
+
+At signed source `094c7f0`, one both-arm round passed **21 entries and 88
+host-confirmed transactions**, with no duplicate host sends. Four post-submit host
+deaths and four real indexer-outage probes covered enrollment and removal. Both
+active grants and seven-unit shielded holdings survived; each independently enrolled
+survivor authorized the final rotation, and removed-identity opening refused.
+
+The final wallet case proved a fresh two-unit NIGHT credit finalized while its
+indexer was down, observed by the same wallet after restart. Same-seed recreation
+retained all addresses/balance, invalidated old handles and closed subscriptions.
+Source/dist/reference fingerprints matched. This is Node/software evidence from
+one round, with the multi-transaction removal and shared-bookkeeping limits above.
+No browser/provider, complete release/Lace or seed-loss recovery acceptance is implied.

@@ -53,10 +53,27 @@ browser/provider ceremony, ACC withdrawal, ordinary-wallet signing through Lace,
 provider sync, seed-loss recovery or interrupted constructor/key-origin recovery.
 Connection status describes the logical provider session, not network freshness.
 
-## Evidence status
+## Accepted scoped evidence — 2026/10/25
+
+Signed frozen source `094c7f0` passed one both-arm round: **21 case entries,
+88 host-confirmed transactions, zero duplicate host sends**, four actual post-submit
+host deaths and four actual indexer-outage probes. Each arm retained its active grant
+and seven-unit shielded holding, completed original enrollment/removal continuations,
+and proved authorization by the independently enrolled survivor. Removed-identity
+known-address opening refused without host changes.
+
+The final actual wallet case added one indexer outage and a separate two-unit NIGHT
+transfer finalized during downtime. The same instance acquired the new balance and
+reopened its socket; recreation retained addresses/seed/balance, stale handles refused,
+and subscriptions closed. Source/dist and reference fingerprints matched at the end.
+
+Pre-freeze full gate: 877 passed, seven existing conditional skips, zero failures.
+Jekyll: 19 pages, 372 local links and anchors, zero errors. See [verification.json](verification.json)
+for exact source, hashes and scope. Later documentation-only forward changes do not
+change any SDK, demo-wallet, live-harness or compiled executable inputs.
 
 A development wallet diagnostic passed after correcting ESM-only dependency loading;
-its earlier failed attempt prepared/sent nothing and is retained separately. The
-signed-source full lifecycle run and final verification record are pending. Never
-present a partial run or diagnostic as final both-arm acceptance. Private fixtures,
-journals, transaction bytes and logs stay outside the repository and Vault.
+its earlier failed attempt prepared/sent nothing and is retained separately. Private
+fixtures, journals, transaction bytes and logs stay outside the repository and Vault.
+No remote issue closure, merge or publication occurred in this slice. Broader
+#230/#231/#232/#239 and release/provider acceptance remain open.

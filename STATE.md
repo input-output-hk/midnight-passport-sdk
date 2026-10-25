@@ -1,3 +1,22 @@
+## 2026/10/25 — enrolled survivor and wallet reconnect
+
+Delivered locally on the current branch; no push, merge or publication. Frozen
+signed source `094c7f0` passed 21 live entries / 88 confirmed host transactions /
+zero duplicate sends in one both-arm software-identity round. Active grants and
+seven-unit shielded holdings survived enrollment/removal crashes; original intents,
+plans and prepared bytes continued, independently enrolled survivors authorized
+rotation, and removed identities refused current access. Actual built-in Node wallet
+reconnected after indexer downtime and observed a new two-unit NIGHT credit, then
+recreated the same HD identity/balance and closed subscriptions. Stopped wallet
+handles now refuse late results/new connections, with race/cleanup regressions.
+
+Full pre-freeze gate: 877 passed, seven existing conditional skips, zero failures; docs check passes. See
+[review map](docs/review/survivor-reconnect/README.md) and exact verification receipt.
+Removal remains multi-transaction; shared trusted read-opening bookkeeping and
+preserved software seed are explicit. No atomic compromised-signer retirement,
+real-provider/two-browser, total-loss recovery, full release/Lace or large-inbox
+resource qualification. Binding pins and exact-value withdrawal guard unchanged.
+
 ## 2026/10/24 — combined populated/prover qualification slice
 
 Current branch retained. Draft stack #248 (stability/consumer foundation) → #249
