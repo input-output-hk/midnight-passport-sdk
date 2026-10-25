@@ -121,8 +121,7 @@ fresh roster. A fresh legacy invocation after a key switch may refuse with
 `DeviceRosterInvalid`; it cannot safely rediscover the excluded reader. Other
 legacy rotations also refuse that unresolved roster before publishing fresh keys.
 
-Use an original protected mutation continuation when the host supplies one. It can
-replay its original verified snapshot; the legacy API has no such journal. Preserve
+Use an original protected mutation continuation when the host supplies one. The dependent durability slice can retain an original verified snapshot, but only against an unchanged ledger frontier; the legacy API has no such journal. Preserve
 old state/IDs for operator reconciliation and never clear uncertain journals to retry.
 This is a deliberate supported-subset boundary, with no claimed full identity
 revocation or total-loss recovery. No binding or wire-format extension is introduced.
@@ -143,3 +142,22 @@ places a real older coin behind seventeen forged envelopes and verifies metadata
 coin reads, device delivery and new key creation remain usable. Large-inbox work
 still scales with candidate keys and coin entries; the existing 4096 limits and
 operator/resource qualification remain explicit. No unbounded-input guarantee.
+
+
+### Adversarial interruption and opaque-entry refusal — 2026/10/26
+
+A still-live removal target can deliberately advance auth_nonce between the key
+switch and final remove-device call. It can retain signing authority while legacy
+retry/rotation refuses the incomplete current roster. Even an original protected
+continuation must refuse an intervening ledger change; operator reconciliation
+may remain unresolved. This binding exposes no atomic individual-key retirement
+or supported automatic repair for that state. The supported entry-removal use case
+requires no concurrent adversarial signer. It must not be described as compromised
+identity revocation. The foundation does not yet supply the dependent durability API.
+
+JubJub also refuses an opaque entry with no unique current reader registration;
+removing such commitments without establishing viewing/grant exclusion is outside
+this supported subset. Restoring an unauthenticated historical-reader fallback or
+keeping a target registration in the fresh roster would weaken that exclusion.
+A new explicit signing-only primitive or an atomic contract change requires its
+own API/binding decision and acceptance; neither is silently introduced here.

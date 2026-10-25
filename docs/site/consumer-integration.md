@@ -47,7 +47,7 @@ do not use unchecked casts in production to erase that distinction.
 Earlier local notes mentioned an optional registration-history port; it has been
 removed before publication. Such envelopes do not authenticate historical ledger keys.
 Legacy interrupted removal can require operator reconciliation. The explicit protected
-continuation is a separate current-source host capability, and is not an RC5 API.
+continuation is supplied by the dependent durability slice, not by this foundation or published RC5. Even a protected continuation refuses a changed ledger frontier.
 
 ## What the local checks establish
 

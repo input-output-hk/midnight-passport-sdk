@@ -102,11 +102,13 @@ export async function runCommand(
   const stdout = Buffer.concat(output),
     stderr = Buffer.concat(errors);
   const tests = tapSummary(stdout.toString('utf8'));
+  // A declared Node test command cannot qualify an empty or missing TAP run.
+  const emptyTests = scenario.command.includes('--test') && !(tests.passed && tests.passed > 0);
   const outcome = exceeded
     ? 'output-limit'
     : expired
       ? 'timed-out'
-      : spawnFailed || exit.code !== 0 || tests.failed || tests.cancelled
+      : spawnFailed || exit.code !== 0 || tests.failed || tests.cancelled || emptyTests
         ? 'failed'
         : tests.skipped
           ? 'passed-with-skips'
@@ -121,9 +123,11 @@ export async function runCommand(
           ? 'PROCESS_EXIT'
           : tests.failed || tests.cancelled
             ? 'TEST_FAILURE'
-            : tests.skipped
-              ? 'TEST_SKIP'
-              : undefined;
+            : emptyTests
+              ? 'NO_TESTS'
+              : tests.skipped
+                ? 'TEST_SKIP'
+                : undefined;
   return {
     outcome,
     elapsedMs: Math.round(performance.now() - started),
