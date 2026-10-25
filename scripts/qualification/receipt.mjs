@@ -236,6 +236,11 @@ export function validateReceipt(value) {
       (result.tests.failed || result.tests.skipped || result.tests.cancelled)
     )
       throw new Error('passing outcome contradicts test counts');
+    const testCommand = /** @type {Record<string,{command:readonly string[]}>} */ (SCENARIOS)[
+      result.id
+    ]?.command.includes('--test');
+    if (result.outcome === 'passed' && testCommand && !(result.tests?.passed > 0))
+      throw new Error('Declared test scenario requires positive passing test evidence.');
     if (result.tests) {
       exact(result.tests, ['passed', 'failed', 'skipped', 'cancelled']);
       for (const count of Object.values(result.tests))

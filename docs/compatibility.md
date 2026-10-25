@@ -413,8 +413,7 @@ or key manifest was repointed. The exact-value shielded withdrawal guard remains
 Unanchored earlier envelopes cannot authenticate removal targets; the history port
 is removed. The retained-target-metadata experiment was withdrawn because another
 rotation could reinclude that still-live reader. Legacy retry/interleaved rotations
-refuse an unresolved current roster; original protected continuations are a separate
-host capability. Anonymous earlier envelopes cannot evict genuine older holding keys or force a separate sixteen-key lockout.
+refuse an unresolved current roster; original protected continuations need the dependent durability API and an unchanged ledger frontier; the foundation itself does not supply them. Anonymous earlier envelopes cannot evict genuine older holding keys or force a separate sixteen-key lockout.
 Runtime identities reject symlinked package/dist directories and hash compiled inputs.
 Outer receipt repetition does not certify external consumer-input equivalence.
 

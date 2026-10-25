@@ -121,7 +121,7 @@ fresh roster. A fresh legacy invocation after a key switch may refuse with
 `DeviceRosterInvalid`; it cannot safely rediscover the excluded reader. Other
 legacy rotations also refuse that unresolved roster before publishing fresh keys.
 
-Use an original protected mutation continuation when the host supplies one. The dependent durability slice can retain an original verified snapshot, but only against an unchanged ledger frontier; the legacy API has no such journal. Preserve
+The foundation provides no protected continuation API. The dependent durability slice can retain an original verified snapshot, but only against an unchanged ledger frontier; the legacy API has no such journal. Preserve
 old state/IDs for operator reconciliation and never clear uncertain journals to retry.
 This is a deliberate supported-subset boundary, with no claimed full identity
 revocation or total-loss recovery. No binding or wire-format extension is introduced.
