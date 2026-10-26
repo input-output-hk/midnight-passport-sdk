@@ -21,7 +21,8 @@
     "prototype:funding-service": "pnpm --filter passport-funding-service start",
     "prototype:dapp": "pnpm --filter passport-dapp dev",
     "prototype:e2e": "pnpm --filter passport-dapp e2e",
-    "demo": "node scripts/demo.mjs"
+    "demo": "node scripts/demo.mjs",
+    "qualify": "node scripts/qualify.mjs"
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.20.0",

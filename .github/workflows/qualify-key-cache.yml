@@ -1,0 +1,78 @@
+name: Qualify Passport key cache
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [passport-acc-prototype]
+    paths:
+      - 'packages/contract/resources/**'
+      - 'packages/contract/bin/restore-acc-keys.mjs'
+      - 'apps/passport-key-service/src/profiles.mjs'
+      - 'scripts/ci-key-cache.mjs'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'nix/packages/compact.nix'
+      - '.github/workflows/qualify-key-cache.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: passport-key-cache
+  cancel-in-progress: false
+
+# Expensive qualification is independent of the 30–45-second PR lane.
+# No PR code or credentials run here. Schedule support requires the workflow on
+# the repository's default branch; this fork develops on the prototype branch.
+jobs:
+  keys:
+    if: github.repository == 'input-output-hk/midnight-passport-sdk' && github.ref == 'refs/heads/passport-acc-prototype'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+      - name: Plan a bounded public-key cache
+        id: plan
+        run: nix develop -c node scripts/ci-key-cache.mjs plan --github-output
+      - name: Restore exact keys
+        id: cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ steps.plan.outputs.directory }}
+          key: ${{ steps.plan.outputs.key }}
+      - name: Reject an incomplete or corrupt cache hit
+        if: steps.cache.outputs.cache-hit == 'true'
+        run: nix develop -c node scripts/ci-key-cache.mjs verify
+      - name: Restore missing keys with the pinned toolchain
+        if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          KEY_DIRECTORY: ${{ steps.plan.outputs.directory }}
+          CIRCUITS: ${{ steps.plan.outputs.circuits }}
+        run: |
+          nix develop -c node packages/contract/bin/restore-acc-keys.mjs \
+            --binding acc-s3r1.1 --output "$KEY_DIRECTORY" --circuits "$CIRCUITS"
+      - name: Verify every selected prover and verifier byte
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: nix develop -c node scripts/ci-key-cache.mjs verify
+      - name: Save only verified public keys
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ steps.plan.outputs.directory }}
+          key: ${{ steps.plan.outputs.key }}
+      - name: Record scope and source
+        env:
+          CACHE_KEY: ${{ steps.plan.outputs.key }}
+          CACHE_BYTES: ${{ steps.plan.outputs.bytes }}
+          CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
+        run: |
+          {
+            echo '## Public prover/verifier cache qualification'
+            echo "Source: $(git rev-parse HEAD)"
+            echo "Exact key: $CACHE_KEY"
+            echo "Cache hit: ${CACHE_HIT:-false}; verified uncompressed bytes: $CACHE_BYTES"
+            echo 'Scope: jubjub-owner-v1, ten circuits. This is key integrity evidence, not transaction or full consumer qualification.'
+          } >> "$GITHUB_STEP_SUMMARY"

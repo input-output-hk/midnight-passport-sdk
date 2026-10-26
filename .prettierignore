@@ -5,6 +5,7 @@ node_modules/
 dist/
 build/
 coverage/
+.cache/
 pnpm-lock.yaml
 *.md
 docs/

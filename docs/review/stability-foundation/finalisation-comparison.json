@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "contract-simulator",
+  "candidateModuleSha256": "afdc3aaa5bb426329122427ed65876bd820fc5bb452c02cb4eb48a7b97ed5697",
+  "candidateRegisteredAsBinding": false,
+  "proofOrNodeQualified": false,
+  "results": [
+    {
+      "module": "pinned",
+      "ownerArm": "jubjub",
+      "priorEntriesCleared": false,
+      "oldCurrentEpochEntryCleared": false,
+      "pendingEnrollmentCleared": false,
+      "successorAuthorised": true,
+      "successorRecoveryKeyInstalled": true
+    },
+    {
+      "module": "pinned",
+      "ownerArm": "p256",
+      "priorEntriesCleared": false,
+      "oldCurrentEpochEntryCleared": false,
+      "pendingEnrollmentCleared": false,
+      "successorAuthorised": true,
+      "successorRecoveryKeyInstalled": true
+    },
+    {
+      "module": "candidate",
+      "ownerArm": "jubjub",
+      "priorEntriesCleared": true,
+      "oldCurrentEpochEntryCleared": true,
+      "pendingEnrollmentCleared": true,
+      "successorAuthorised": true,
+      "successorRecoveryKeyInstalled": true
+    },
+    {
+      "module": "candidate",
+      "ownerArm": "p256",
+      "priorEntriesCleared": true,
+      "oldCurrentEpochEntryCleared": true,
+      "pendingEnrollmentCleared": true,
+      "successorAuthorised": true,
+      "successorRecoveryKeyInstalled": true
+    }
+  ]
+}

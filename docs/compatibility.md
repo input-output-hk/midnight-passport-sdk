@@ -1,6 +1,6 @@
 # Compatibility matrix
 
-> **Status:** preview RC5 · updated 2026/10/19. Releases are lockstep across the
+> **Status:** preview RC5 · updated 2026/10/20. Releases are lockstep across the
 > `@input-output-hk/mn-passport-*` packages. The binding data is pinned in
 > `packages/contract/acc-binding-v2.generated.json` and the generated registry.
 
@@ -8,6 +8,31 @@ The [RC5 publication receipt](release/rc5-publication-receipt.json) records the 
 private registry hashes/attestations, and published image digests. The release keeps the exact-value
 shielded withdrawal guard. Partial spends (#201), complete typed circuit coverage (#82) and
 remaining live/value-host evidence (#202) are deferred; no full Lace compatibility is claimed.
+
+## 2026/10/20 local consumer assessment
+
+The [current consumer review](review/consumer-qualification/README.md) and
+[engineer guide](site/consumer-integration.md) distinguish local packages, the actual
+published `@laceio/sdk@0.1.1-canary.0` entries and a separately pinned authorised
+source checkout. All nine RC5 packages remain private and pass a fresh registry
+consumer installation with matching release SRI. Nine local `0.1.0-consumer.1`
+tarballs also pass; that candidate has not been published.
+
+Current source-type/ACC byte checks, 36 synthetic key/consent checks, both supported
+recognition directions and an authorising-only hosted device mutation pass on
+`undeployed`. Current-source pins and detailed private evidence stay in the owner's
+authorised checkpoint. Historical rows below retain their original scope.
+
+The local key-server fix keeps all bundled verifier keys available in a reduced
+proving profile. Native creation and the current host's actual HTTP loaders pass
+against that correction. **The published RC5 reduced-profile image does not contain
+this fix: use `all` until the next image release.** The correction changes no binding,
+proving key, signing scope or exact-value shielded guard.
+
+Public-entry ESM/CJS loads, real declaration boundaries, current physical runtime
+identity and WASM browser builds pass. The canary's combined abstractions peer warning
+remains documented. This is not an ordinary-wallet transaction qualification, full
+reader enrollment, real-provider/signing-page acceptance or full Lace compatibility.
 
 ## Binding axis
 
@@ -368,3 +393,38 @@ An empty inbox batch is a transport no-op; SDK P-256 and JubJub opening now requ
 entry before accepting the viewing key. Both packed-consumer checks reject separate physical
 copies of the current Compact/ledger modules, even when their versions match. These checks
 improve integration diagnostics; #79/#81's cross-product runtime criteria remain open.
+
+## Stability foundation clarification — 2026/10/20
+
+| Capability | Retained binding support | Evidence boundary |
+| --- | --- | --- |
+| JubJub and P-256 entry removal | One selected opaque entry, with complete/unique SDK roster and fresh viewing/roster delivery checks | Generated-circuit regressions and port/crypto tests; not complete compromised-key revocation |
+| Previous viewing knowledge | Cannot be erased by rotation/removal | Old envelope/registration openings remain possible with the old key context |
+| Total-loss recovery | Not exposed; legacy finaliser is not a safe full-retirement fallback | Exact source and separately compiled candidate simulator comparison; no candidate proof/node/key adoption |
+| Imported-account recovery setup | Unknown from the reference-service constructor policy | Address, schema tags, epoch/count are insufficient to infer the secret lifecycle or installed verifier code |
+| Qualification harness | Foundation source/simulator/port tiers implemented with closed receipts | Missing/skipped/unimplemented cases do not pass; no full release/current-Lace claim |
+
+See [ADR 0012](adr/0012-retain-binding-with-explicit-removal-and-recovery-limits.md)
+and the [qualification guide](site/qualification.md). No binding ID, generated artifact
+or key manifest was repointed. The exact-value shielded withdrawal guard remains.
+
+## 2026/10/24 foundation review correction
+
+Unanchored earlier envelopes cannot authenticate removal targets; the history port
+is removed. The retained-target-metadata experiment was withdrawn because another
+rotation could reinclude that still-live reader. Legacy retry/interleaved rotations
+refuse an unresolved current roster; original protected continuations need the dependent durability API and an unchanged ledger frontier; the foundation itself does not supply them. Anonymous earlier envelopes cannot evict genuine older holding keys or force a separate sixteen-key lockout.
+Runtime identities reject symlinked package/dist directories and hash compiled inputs.
+Outer receipt repetition does not certify external consumer-input equivalence.
+
+### Historical candidate correction — 2026/10/24
+
+The global sixteen-key truncation/refusal is withdrawn: anonymous earlier envelopes
+must neither evict a genuine old coin key nor lock sign-in. All distinct earlier
+secrets within the existing 4096-envelope bound remain decryption candidates, and
+are zeroed after use. Only the ledger-matching current secret/roster authenticates
+metadata; earlier candidates never identify device-removal targets. The regression
+places a real older coin behind seventeen forged envelopes and verifies metadata,
+coin reads, device delivery and new key creation remain usable. Large-inbox work
+still scales with candidate keys and coin entries; the existing 4096 limits and
+operator/resource qualification remain explicit. No unbounded-input guarantee.

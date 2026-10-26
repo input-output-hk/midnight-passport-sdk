@@ -51,7 +51,7 @@ wallet and included in its policy. The browser never receives its seed or fundin
 | Update the displayed wallet balance | Connect the wallet once, then **Refresh wallet balance** in its panel. | Reuse its current connection to read NIGHT, token and DUST balances after sync, with no additional passkey prompt. The UTC snapshot time and public balances are logged. This does not update the ACC card. |
 | Inspect shielded holdings | Open an ACC that already has shielded deposits, then **Read shielded holdings**. | Only inbox coins verified against live ACC outputs, positions and spend state appear. Unshielded faucet deposits do not populate this panel. There is no shielded deposit/withdrawal control in this page. |
 | Enrol a second device | In a second browser profile, enter the ACC address and **Prepare joining device**. Transfer its public handoff to the owner, compare fingerprints, then **Enroll joining device**. | The joining passkey is added to the live roster and receives a sealed viewing key. It can then open by ACC address. The handoff contains public keys only. |
-| Rotate viewing keys or remove a device | Read the live roster, then **Rotate sealed viewing key** or enter a complete commitment and **Remove enrolled device**. | The SDK checks devices, verified holdings and active read-grant openings before resealing. Missing openings stop the operation. Removal can span several transactions; inspect live state after interruptions. |
+| Rotate viewing keys or remove a device | Read the live roster, then **Rotate sealed viewing key** or enter a complete commitment and **Remove device entry**. | The SDK checks devices, verified holdings and active read-grant openings before resealing. Missing openings stop the operation. Removal can span several transactions; inspect live state after interruptions. |
 | Delegate limited unshielded spending | Prepare a grant-holder passkey in a separate profile. The owner enters its public key, asset, fixed recipient, per-call limit and total cap, then **Issue scoped grant**. | A live grant restricts the named JubJub holder's spending scope. The owner uses **Export grant opening** to pass its opening directly to the holder. |
 | Spend, revoke or recover a grant | Holder: paste its opening and **Spend scoped grant**. Owner: **Revoke scoped grant** or **Recover pending grants**. | Spending checks the live scope and spent counter. Revocation leaves an inactive tombstone. Recovery resumes staged publications from this profile's encrypted journal; it cannot recreate openings lost by clearing browser storage. |
 | Explain or diagnose operations | Expand **Operation trace (requests and responses)**, then **Copy full log**. | Export timed stages, public requests/responses, transaction identifiers, addresses and balance snapshots. Seeds, viewing secrets, PRF values and funding tokens are excluded. Grant openings are handed off separately. |
@@ -84,3 +84,11 @@ live chain before retrying. Funding retries must reuse the original request ID u
 - Losing every enrolled and recoverable passkey cannot be repaired using only the ACC address.
 - The proving service sees private proof inputs and sponsors transactions. Use controlled ingress;
   the prototype is not a hardened public faucet or a claim of full Lace compatibility.
+
+## Device-entry removal boundary
+
+`removeDevice` removes one opaque entry and excludes its reader from fresh sealed
+keys. It cannot certify complete compromised-key revocation or erase prior viewing
+knowledge. Ambiguous rosters and grants to the removed reader must be reconciled
+before removal. Total-loss recovery remains unavailable on the retained binding.
+See [Qualification and safety boundaries]({{ '/qualification/' | relative_url }}).

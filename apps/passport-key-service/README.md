@@ -50,16 +50,19 @@ default list is empty. Keep the service behind a private or controlled ingress.
 `PASSPORT_KEY_PROFILE=jubjub-owner-v1` restores and serves the ten proving
 circuits currently used by Lace PR #2845, about 530 MB instead of the full 12 GB.
 The default `all` profile restores all 52 circuits. `/v1/profile` reports the
-active circuit list; `/v1/manifest` remains the complete binding's integrity
+`circuits` proving list and the separate `verifierCircuits` list. All small, pinned
+verifier keys remain available even outside a reduced proving profile, because a
+consumer may install operations proved by another caller. Unselected prover and ZKIR
+requests still return 404. `/v1/manifest` remains the complete binding's integrity
 manifest, so a partial profile must not be treated as a complete key cache.
-Use an image version that includes profile and CORS support when configuring
-these variables.
+The verifier-availability correction is local next-milestone work; it is not in the
+published RC5 image. Use the RC5 `all` profile until an image containing the fix is published.
 
 | Endpoint | Response |
 | --- | --- |
 | `GET /healthz` | Ready only after all keys pass verification. |
 | `GET /v1/manifest` | Readable key manifest with per-file SHA-256 and toolchain. |
-| `GET /v1/profile` | Active key profile and available proving circuits. |
+| `GET /v1/profile` | Active proving profile (`circuits`) and all bundled `verifierCircuits`. |
 | `GET /zk/acc/compiler/contract-manifest.json` | Pinned compiler manifest. |
 | `GET /zk/acc/zkir/<circuit>.{zkir,bzkir}` | Verified bundled ZKIR. |
 | `GET /zk/acc/keys/<circuit>.verifier` | Verified bundled verifier key. |

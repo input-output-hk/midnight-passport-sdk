@@ -14,6 +14,7 @@ export const JUBJUB_OWNER_CIRCUITS = Object.freeze([
   'rotate_enc_key_with_jubjub',
 ]);
 
+/** @param {string} name @param {Map<string, unknown>} provers */
 export function selectKeyProfile(name, provers) {
   if (name === 'all')
     return { name, circuits: [...provers.keys()].map((key) => key.slice(0, -7)).sort() };

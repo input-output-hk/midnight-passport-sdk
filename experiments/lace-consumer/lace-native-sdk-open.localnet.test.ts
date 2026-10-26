@@ -2,7 +2,7 @@
 // Local-key-origin SDK creation followed by unmodified Lace hosted sign-in. No hosted create claim.
 import { strict as assert } from 'node:assert';
 import { createHash, randomBytes } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { firstValueFrom } from 'rxjs';
 import { it } from 'vitest';
@@ -78,7 +78,7 @@ it('opens a Lace-created ACC through packed SDK address recovery', async () => {
     indexerUrl: config.indexerUri,
     indexerWsUrl: config.indexerWsUri,
     nodeUrl: config.nodeUri,
-    artefactUrl: config.zkBaseUrl,
+    artefactUrl: process.env.PASSPORT_LACE_ARTEFACT_URL ?? config.zkBaseUrl,
   };
   const binding = { Contract, ledger, pureCircuits };
   const sponsor = remoteV1Sponsor(service);
@@ -201,7 +201,9 @@ it('opens a Lace-created ACC through packed SDK address recovery', async () => {
       const account = await createPassportAccounts(ports).openAccountAt(created.account.address);
       assert.equal(account.address, created.account.address);
       assert.equal((await account.state()).entryCount, 1);
-      console.log('LACE_CREATED_SDK_OPEN_PASS', JSON.stringify({ account: account.address, laceHead: '502b0794cc7bcfc76342230193fef4ebb63cae1c', sdkVersion: '0.1.0-dev.12', bindingId: network.bindingId, manifestSha256: network.manifestSha256, networkId: network.networkId, consentKinds }));
+      const receipt = { account: account.address, laceHead: process.env.LACE_SOURCE_REVISION, sdkVersion: process.env.RELEASE_VERSION, bindingId: network.bindingId, manifestSha256: network.manifestSha256, networkId: network.networkId, consentKinds };
+    if (process.env.LIVE_CONSUMER_RECEIPT_FILE) writeFileSync(process.env.LIVE_CONSUMER_RECEIPT_FILE, JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+    console.log('LACE_CREATED_SDK_OPEN_PASS', JSON.stringify(receipt));
     } finally { worker.stdin.end(); lines.close(); worker.kill('SIGTERM'); }
   } finally {
     stop();

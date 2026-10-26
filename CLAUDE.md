@@ -41,8 +41,7 @@ The unit of work is a **per-feature spec** (`FS-x.y`: brief in
    tranches), derived from the source docs. It names the GitHub issue and
    **stops and asks if there is none**.
 2. **Plan — `mn-passport-skills:spec-driver` (plan phase).** Read the spec, confirm its
-   issue, and break it into ordered PR-sized **gated tranches** (≤ 400 net lines
-   soft, 600 hard); add them to `STATE.md` → Backlog. No issue → stop and ask.
+   issue, and break it into ordered PR-sized **gated tranches** (prefer coherent 5k–10k authored changed lines; smaller commits are welcome); add them to `STATE.md` → Backlog. No issue → stop and ask.
 3. **Loop — `mn-passport-skills:spec-driver` (loop phase), per tranche:**
    1. `mn-passport-skills:devenv` — environment ready (HTTPS-local, devnet, proof server, compact CLI, debts repo).
    2. Implement the tranche.
@@ -71,9 +70,11 @@ compatibility matrix) and `mn-passport-skills:devenv`.
   ([ADR 0006](./docs/adr/0006-publish-on-github-packages.md)); the workspace
   names stay `@midnight-ntwrk/mn-passport-*` until the rename in tranche T23.
 - **Registers gitignored** (`.mn-passport-skills/`); **`STATE.md` committed**.
-- **Tranche budget** ≤ 400 net changed lines soft, 600 hard — enforced in
-  the loop (plan estimates and `pr-open` split); CI reports it as advisory
-  warnings, and merging an exceptional over-budget PR is a human decision.
+- **PR size preference (2026/10/20):** coherent 5k–10k authored changed lines,
+  with smaller commits and a review map. No padding and no hard size gate. This
+  owner instruction supersedes historical 400/600-line rules in skill files.
+- **Current execution:** continue locally on the existing branch. See [CI policy](docs/ci.md);
+  do not switch to `main` or push as part of local milestone preparation.
 
 ## Normative MUSTs (`conformance` checks these)
 

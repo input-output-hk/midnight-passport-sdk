@@ -1,6 +1,6 @@
 # Development workflow — the `mn-passport-skills` family
 
-> **Status:** draft · 2026/10/08
+> **Status:** workflow reference · updated 2026/10/20
 > **Companion to:** [`sdk-requirements.md`](./sdk-requirements.md) (the *what/why*)
 > and [`architecture.md`](./architecture.md) (the *how*). This document is the
 > *how we build it* — the Claude-harness skills that drive SDK development and
@@ -64,16 +64,12 @@ code, or perform outward actions.
 
 **`mn-passport-skills-spec-driver`** — plan, then loop.
 - *Plan phase* (harness plan mode): a per-feature spec → an ordered set of
-  **tranches, each sized to one small/medium PR**, each with an acceptance
-  gate. **Every tranche carries a size estimate** (files touched, rough net
-  lines), against the **tranche budget**: target **≤ ~400 net changed lines**,
-  hard split above **600** (both excluding lockfiles, generated code, test
-  fixtures, and the standalone `experiments/` tree — cheap-to-review
-  mechanical lines and non-tranche exploratory work don't count). A plan with
-  a tranche estimated over budget is **invalid** — it gets re-split at plan
-  time, when splitting is cheap, not after the code exists. The estimate is
-  what lets the human reviewer catch an oversized tranche during plan review.
-  PR boundaries are decided here, up front — not bolted on later. The
+  **coherent slices, preferably 5,000–10,000 authored changed lines per PR**
+  when the work warrants it (owner instruction, 2026/10/20). Smaller commits and
+  preparatory fixes are welcome. Exclude lockfiles, generated code, fixtures and
+  experiments from the authored-size report. Add a review map and acceptance
+  evidence to large PRs. Do not pad changes to meet a line target or split at the
+  historical 400/600-line limits. PR boundaries follow coherent acceptance. The
   plan phase also **requires the spec's GitHub issue** (from
   `midnightntwrk/passport/issues`); if the spec names none, it **stops and
   asks for it** before planning — no untraceable work.
@@ -137,9 +133,9 @@ provisional decisions and open validations that still need re-checking.
 
 ### Ship
 
-**`mn-passport-skills-pr-open`** — sizing check against the **same tranche budget as
-the plan phase** (soft flag past ~400 net changed lines, split required past
-600 — estimates drift, so this is the backstop) and the **PR description** ("what's being built" + link to
+**`mn-passport-skills-pr-open`** — report the authored size against the preferred
+5k–10k range and prepare the **PR description** (review map, acceptance evidence,
+what is being built, and a link to
 the spec tranche **and the spec's GitHub issue** — `Refs #NN`, or `Closes #NN`
 on the tranche that finishes it). **Prepares** the branch, commits, and
 description, then **stops for explicit human confirmation before
@@ -362,16 +358,11 @@ The chain runs **issue → spec → tranches → PRs → `STATE.md`**:
 
 Deterministic guarantees, run by the harness/CI rather than judged by a skill:
 
-- **Diff-size guardrail** — the same numbers as the tranche budget: **soft
-  warning past 400 net changed lines, hard past 600** (excluding lockfiles,
-  generated code, test fixtures, and the standalone `experiments/` tree —
-  exploratory prototypes, not tranche work), pointing back to
-  `mn-passport-skills-pr-open`'s split suggestion. **In CI both thresholds
-  are advisory** (warnings on the PR, never blocking) — the hard split is
-  enforced inside the loop by `spec-driver`/`pr-open`, and merging an
-  exceptional over-budget PR (a migration, a large generated change) is a
-  human decision. Running the script locally without `--ci` still fails
-  hard past 600, which is what the loop obeys.
+- **Review size report** — prefer coherent 5k–10k-line PRs, with smaller signed
+  commits. The script excludes lockfiles, generated code, fixtures and experiments.
+  Above 10k, it asks for a review map and rationale; below 5k, it explicitly allows
+  smaller changes. Neither case is a failing gate. The owner's 2026/10/20 policy
+  supersedes historical sizing text in local skills and old feature plans.
 - **Security register never in this repo** — security findings live in the
   private sibling repo `../mn-passport-sdk-debts`; `.mn-passport-skills/` stays
   git-ignored as a backstop so no register file can be committed here.
@@ -401,11 +392,9 @@ Stated so the doc is decisive; each is revisitable.
 - **Prefix** `mn-passport-skills-` for every development skill.
 - **Specs are per-feature**, derived from `sdk/docs`; the big docs are the
   source of truth.
-- **Tranche budget: 400 soft / 600 hard** net changed lines (excluding
-  lockfiles, generated code, test fixtures, and the standalone
-  `experiments/` tree). Applied three times with the same numbers:
-  plan-phase estimates (a plan with an over-budget tranche is invalid),
-  `pr-open`'s backstop check, and the CI guardrail.
+- **PR size preference: 5k–10k authored changed lines** for coherent slices;
+  smaller commits and fixes are fine. No hard line-count split and no padding.
+  Record review boundaries and acceptance results.
 - **Two registers, two homes.** The *security register* (owned by
   `security-audit`) lives in the **private sibling repo
   `../mn-passport-sdk-debts`** and is committed + pushed there per PR. The
@@ -435,3 +424,11 @@ Stated so the doc is decisive; each is revisitable.
   existing tooling and owns register entries), revisitable.
 - ~~Whether per-feature spec authoring warrants its own skill.~~ **Resolved:**
   authoring is now `mn-passport-skills-spec-author` (§2 Spine).
+
+## 6. Fast CI and qualification (2026/10/20)
+
+See [CI policy and cache design](ci.md). Keep every existing package, app, key-server
+and type check in the required PR lane. Target 30–45 seconds per warm required
+job, measure cold starts separately, and cancel superseded PR runs. Key generation,
+proof-backed localnet/browser runs and release publication have separate evidence
+and time budgets; a green fast gate does not qualify a release.

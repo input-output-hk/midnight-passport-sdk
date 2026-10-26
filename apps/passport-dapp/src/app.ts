@@ -571,10 +571,10 @@ ui.on('removeDevice', async () => {
   if (!before.commitments.includes(target))
     throw new Error('That commitment is absent from the live ACC device roster.');
   const approved = window.confirm(
-    `Remove this enrolled device from Passport ACC?\n\nNetwork: ${network}\nACC: ${current.address}\n` +
+    `Remove this device entry from Passport ACC?\n\nNetwork: ${network}\nACC: ${current.address}\n` +
       `Device commitment: ${target}\nDevice epoch: ${before.deviceEpoch}\n` +
       `Live entries: ${before.commitments.length}\n\n` +
-      'The SDK rotates the viewing and roster keys before removal. The removed passkey will lose access. Confirm the full commitment against the live roster.',
+      'The SDK rotates the viewing and roster keys and removes this one entry. This does not guarantee full revocation of a compromised key: another entry may still authorise calls. Previously learned data stays known. Confirm the full commitment against the live roster.',
   );
   if (!approved) {
     status('Device removal cancelled before signing.');
@@ -604,6 +604,7 @@ ui.on('removeDevice', async () => {
   const result = {
     accountAddress: current.address,
     removedCommitment: target,
+    removalScope: 'entry',
     rotationTxHash: removed.rotationTxHash,
     removalTxHash: removed.txHash,
     deviceEpoch: after.deviceEpoch.toString(),
@@ -611,7 +612,9 @@ ui.on('removeDevice', async () => {
   };
   record('deviceRemoved', result);
   traceOperation('account.device.removed', result);
-  status('The selected device is absent from the live ACC roster.');
+  status(
+    'The selected entry is absent from the live ACC roster. This confirms entry removal, not complete compromised-key revocation.',
+  );
 });
 ui.on('rotate', async () => {
   const current = account;

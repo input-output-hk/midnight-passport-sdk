@@ -1,3 +1,4 @@
+import { sealInboxCoin } from '../packages/keys/dist/inbox-coin.js';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { x25519 } from '@noble/curves/ed25519.js';
@@ -7,6 +8,7 @@ import { recipeDeviceKeyring } from '../packages/keys/dist/index.js';
 import {
   openDeviceEnvelope,
   openDeviceRegistration,
+  sealDeviceEnvelope,
 } from '../packages/keys/dist/device-envelope.js';
 
 /** @param {Uint8Array} bytes */
@@ -216,4 +218,54 @@ test('P-256 owner and JubJub device can open a mixed-roster rotation', async () 
   }
   ownerReader.fill(0);
   remote.secretKey.fill(0);
+});
+
+test('seventeen anonymous earlier envelopes do not lock metadata or hide a genuine older coin', async () => {
+  const source = {
+    withSession: async (/** @type {()=>Promise<any>} */ work) => work(),
+    deviceSecret: async () => new Uint8Array(32).fill(7),
+    deriveSecret: async () => new Uint8Array(32).fill(7),
+  };
+  const ring = recipeDeviceKeyring(source);
+  const original = await ring.createKeys('undeployed', { devicePublicKey: selfDeviceKey });
+  const account = 'ab'.repeat(32);
+  const coin = { nonce: new Uint8Array(32).fill(4), color: new Uint8Array(32).fill(5), value: 7n };
+  const entry = await sealInboxCoin(original.encKey, coin);
+  const rotated = await ring.createKeys('undeployed', {
+    devicePublicKey: selfDeviceKey,
+    keyring: { account, encKey: original.encKey, envelopes: original.envelopes },
+    registrations: original.registrations,
+  });
+  const envelopes = [...rotated.envelopes, ...original.envelopes];
+  for (let n = 0; n < 17; n++)
+    envelopes.unshift(
+      await sealDeviceEnvelope(await ring.readerPublicKey('undeployed'), {
+        secret: new Uint8Array(32).fill(40 + n),
+        rosterKey: new Uint8Array(32).fill(90 + n),
+      }),
+    );
+  const keyring = { account, encKey: rotated.encKey, envelopes };
+  const opened = await ring.openInbox('undeployed', keyring, [...original.registrations, entry]);
+  assert.equal(opened[0]?.kind, 'device');
+  assert.deepEqual(opened.at(-1), { kind: 'coin', coin });
+  assert.deepEqual(await ring.openCoins('undeployed', keyring, [entry]), [coin]);
+  const other = x25519.keygen();
+  const delivery = await ring.sealToDevice('undeployed', keyring, {
+    readerPublicKey: hex(other.publicKey),
+    devicePublicKey: hex(jubjub.Point.BASE.multiply(13n).toBytes()),
+    epoch: 0n,
+    counter: 0n,
+  });
+  const received = await openDeviceEnvelope(other.secretKey, delivery.envelope);
+  assert.ok(received);
+  assert.deepEqual(x25519.getPublicKey(received.secret), rotated.encKey);
+  received.secret.fill(0);
+  received.rosterKey.fill(0);
+  other.secretKey.fill(0);
+  const next = await ring.createKeys('undeployed', {
+    devicePublicKey: selfDeviceKey,
+    keyring,
+    registrations: original.registrations,
+  });
+  assert.notDeepEqual(next.encKey, rotated.encKey);
 });

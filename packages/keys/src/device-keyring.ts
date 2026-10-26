@@ -29,7 +29,6 @@ import { sealGrantView } from './grant-view-seal.js';
 
 const KEY_LENGTH = 32;
 const MAX_ENVELOPES = 4096;
-const MAX_PREVIOUS_SECRETS = 16;
 const MAX_INBOX_ENTRIES = 4096;
 const hex = (bytes: Uint8Array): string =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -83,7 +82,7 @@ const decodeP256DevicePublicKey = (compressedHex: string) => {
 
 /** Full viewing-key port plus focused coin methods for callers that need only coin entries. */
 export interface DeviceKeyring extends AccountViewingKey {
-  /** Open coin descriptions with the live and up to 16 previous envelope secrets. */
+  /** Open coin descriptions with the live and bounded earlier envelope secrets. */
   openCoins(
     networkId: string,
     keyring: AccountKeyring,
@@ -147,8 +146,10 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
           continue;
         }
         if (publicKeyHex !== hex(encKey)) {
-          if (seen.has(publicKeyHex) || earlier.length >= MAX_PREVIOUS_SECRETS) zero(opened);
+          if (seen.has(publicKeyHex)) zero(opened);
           else {
+            // Every candidate remains bounded by MAX_ENVELOPES. Anonymous earlier
+            // envelopes neither authenticate metadata nor evict genuine old coin keys.
             seen.add(publicKeyHex);
             earlier.push(opened);
           }
