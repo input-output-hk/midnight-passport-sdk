@@ -31,7 +31,15 @@ not a release or real-provider acceptance.
 
 ## Evidence status
 
-Fast/native checks are pending their final execution and signed-source receipts.
+Source48262a2 passed906tests with7existing conditional skips and zero failures;
+Jekyll checked20pages/415links and anchors. The first native attempt stopped on a
+qualification expectation defect: deployment post-submit host loss correctly
+returned `MutationUnsettled` while the harness expected `InternalError`. The exact
+mapping is corrected; both alternate codes remain negative controls for other
+registered boundaries. The failed receipt and original pending intent are retained;
+end audit confirmed unchanged source, compiled inputs and reference export. This
+is a harness correction, not a production behavior change. Native acceptance is
+pending a fresh signed-source run.
 No runner existence or skipped test establishes a pass. Later proof results must
 retain exact actual source pins and failed attempts. Previous native receipts
 remain historical, not relabelled as current-harness qualification.

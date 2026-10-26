@@ -61,7 +61,9 @@ export function requireExpectedFailure(result, operation, fault) {
       /^circuit:rotate_enc_key_with_(jubjub|p256):after-submit$/.test(fault));
   assert.ok(known, 'Unknown operation/fault must not qualify through a fallback error code.');
   const code =
-    fault === 'assert-unknown' || fault === 'before-deploy-proof'
+    fault === 'assert-unknown' ||
+    fault === 'before-deploy-proof' ||
+    fault === 'deploy:0:after-submit'
       ? 'MutationUnsettled'
       : 'InternalError';
   assert.equal(result.code, 2);

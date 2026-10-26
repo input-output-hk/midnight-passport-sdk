@@ -183,7 +183,7 @@ test('native grant summaries require exact cases, positive writes and the arm-sp
 test('current native fault classification is closed and refuses wrong/duplicate success or failure summaries', () => {
   /** @type {Array<[string,string,string]>} */ const cases = [
     ['create', 'before-deploy-proof', 'MutationUnsettled'],
-    ['create', 'deploy:0:after-submit', 'InternalError'],
+    ['create', 'deploy:0:after-submit', 'MutationUnsettled'],
     ['create', 'call:0:after-submit', 'InternalError'],
     ['rotate', 'call:0:after-submit', 'InternalError'],
     ['survivor-rotate', 'call:0:after-submit', 'InternalError'],
@@ -202,6 +202,14 @@ test('current native fault classification is closed and refuses wrong/duplicate 
     for (const change of [
       { code: 0 },
       { messages: [{ ...message, code: 'Error' }] },
+      {
+        messages: [
+          {
+            ...message,
+            code: code === 'MutationUnsettled' ? 'InternalError' : 'MutationUnsettled',
+          },
+        ],
+      },
       { messages: [{ ...message, audit: { unresolvedEffects: 0 } }] },
       { messages: [message, message] },
       { messages: [message, { completed: operation }] },
