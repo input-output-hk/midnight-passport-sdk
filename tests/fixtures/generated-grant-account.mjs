@@ -106,12 +106,14 @@ export async function generatedGrantAccount(arm) {
         read: async () => record,
         exists: async () => record !== undefined,
         write: async (value) => {
+          effects.push(`profile-record:${name}`);
           record = value;
         },
       },
       directory: {
         get: async () => hint,
         put: async (_network, value) => {
+          effects.push(`profile-directory:${name}`);
           hint = value;
         },
       },

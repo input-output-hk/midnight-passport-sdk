@@ -312,6 +312,10 @@ uses complete published parts and live commitments. Refusals require the specifi
 error, unchanged ledger and zero effect attempts; positive current readers/grantees
 must work on that same live state.
 
+Effect accounting includes fresh local account-record and directory writes, not
+only chain calls. An idempotent write is still an attempted effect and invalidates
+a refusal check. The generated fixture injects such a write to check this guard.
+
 Rotation preserves both read grantees and the holding. Selective revoke removes
 one current-key reader while preserving the other, owner/survivor and holding.
 Revoke-all confirms an empty grant map and next generation, with neither grantee

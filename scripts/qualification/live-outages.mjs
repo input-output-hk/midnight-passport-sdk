@@ -477,6 +477,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
             );
             assert.equal(result.forbiddenJournalTouches, 0);
             assert.equal(result.protectedProfileUnchanged, true);
+            assert.equal(result.refusalChecksIncludeProfileWrites, true);
             assert.equal(result.heldCoinsQualified, 1);
             assert.equal(result.originalJournalConsulted, false);
             assert.equal(result.fullIssueScopeRecovered, false);

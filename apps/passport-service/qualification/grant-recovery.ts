@@ -128,6 +128,7 @@ const holdingSource = createMidnightHoldingSource(
   }),
 );
 let forbiddenJournalTouches = 0;
+let freshProfileWrites = 0;
 let profiles = 0;
 const participants = {
   owner: softwareParticipant(fixture.participants.owner, arm),
@@ -159,13 +160,19 @@ const profile = async (role: 'owner' | 'survivor', name: string): Promise<Passpo
     directory: {
       get: async () =>
         fresh.exists('hint.json') ? (fresh.read('hint.json') as AccountHint) : undefined,
-      put: async (_n, hint) => fresh.save('hint.json', hint),
+      put: async (_n, hint) => {
+        freshProfileWrites++;
+        fresh.save('hint.json', hint);
+      },
     },
     records: {
       read: async () =>
         fresh.exists('record.json') ? (fresh.read('record.json') as AccountRecord) : undefined,
       exists: async () => fresh.exists('record.json'),
-      write: async (record) => fresh.save('record.json', record),
+      write: async (record) => {
+        freshProfileWrites++;
+        fresh.save('record.json', record);
+      },
     },
     grantJournal: {
       stage: forbidden,
@@ -187,7 +194,7 @@ try {
       readSecret: fixture.readGrantSecrets[index],
     })),
     heldCoins: 1,
-    effectCount: () => effects.length,
+    effectCount: () => effects.length + freshProfileWrites,
     assertRetained: async () => {
       for (const [name, digest] of Object.entries(retained))
         assert.equal(
@@ -228,6 +235,8 @@ try {
     ...result,
     profiles,
     forbiddenJournalTouches,
+    freshProfileWrites,
+    refusalChecksIncludeProfileWrites: true,
     nativeCalls: effects.length,
     heldCoinsQualified: 1,
     confirmedCircuits: effects.map((e) => e.input.circuit),

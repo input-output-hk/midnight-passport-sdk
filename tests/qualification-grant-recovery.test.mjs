@@ -7,6 +7,36 @@ import { createPassportAccounts } from '../packages/account/dist/index.js';
 for (const arm of /** @type {const} */ (['jubjub', 'p256'])) {
   test(`${arm}: generated ACC recovers a fresh reader profile and preserves selective read revocation`, async () => {
     const f = await generatedGrantAccount(arm);
+    if (arm === 'jubjub') {
+      // A matching SDK refusal must still fail qualification if it wrote even an
+      // identical local record. The probe leaves the generated ACC untouched.
+      await assert.rejects(
+        runGrantRecoveryCase({
+          ...f,
+          profile: async (role, name) => {
+            const ports = await f.profile(role, `audit-probe-${name}`);
+            if (role !== 'survivor') return ports;
+            assert.ok(ports.viewingKey && ports.records);
+            const viewingKey = ports.viewingKey,
+              records = ports.records;
+            return {
+              ...ports,
+              viewingKey: {
+                ...viewingKey,
+                openInbox: async (...args) => {
+                  const result = await viewingKey.openInbox(...args);
+                  const record = await records.read();
+                  if (record) await records.write(record);
+                  return result;
+                },
+              },
+            };
+          },
+        }),
+        { code: 'ERR_ASSERTION', message: /^Refusal must precede every effect attempt\./ },
+      );
+      await f.assertRetained();
+    }
     // A normal directory reload also reconstructs a missing account record, while
     // keeping the original protected grant journal outside the fresh profile.
     const reload = await f.profile('owner', 'directory-reload');
