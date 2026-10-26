@@ -70,9 +70,14 @@ export async function runCommand(
   let total = 0,
     exceeded = false,
     expired = false;
+  // A declared test is an independent runner, even when invoked by another Node test.
+  const childEnv = { ...env };
+  delete childEnv.NODE_TEST_CONTEXT;
+  // Declared tests use the catalog flags, never an ambient test filter/shard/loader.
+  if (scenario.command.includes('--test')) delete childEnv.NODE_OPTIONS;
   const child = spawn(scenario.command[0], scenario.command.slice(1), {
     cwd: root,
-    env,
+    env: childEnv,
     detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
