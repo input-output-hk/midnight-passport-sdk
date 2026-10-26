@@ -491,3 +491,15 @@ The signed `094c7f0` source completed this declared local scope: 21 case entries
 indexer probes, plus the separate fresh-credit wallet outage/recreation case. See
 [verification](review/survivor-reconnect/verification.json). Executable inputs are
 unchanged by later documentation-only forward changes. Broad issues remain open.
+
+
+### Current preparation and outage follow-up — 2026/10/26
+
+The source adds memory/encrypted-file held-successor call-preparation races and
+real-loopback HTTP conflict, persistent refusal, simulated expiry, cancellation
+and client-timeout tests. No automatic replacement or uncertain rebroadcast is
+introduced. The new explicit `survivor-outages` profile combines deployment/prover,
+activation, populated enrollment/removal and survivor rotation/indexer boundaries.
+Native acceptance remains pending its actual signed-source receipt. Real-provider,
+full Lace and the complete release gate remain open. See
+[review map](review/preparation-outages/README.md).

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 /** Explicit entrypoint selection; an ambient shell profile never changes a scenario.
- * @param {'baseline'|'combined'|'lifecycle'|'wallet'|'removed-recheck'|'grants'|'grants-jubjub'|'grants-p256'} [profile]
+ * @param {'baseline'|'combined'|'lifecycle'|'wallet'|'removed-recheck'|'grants'|'grants-jubjub'|'grants-p256'|'survivor-outages'|'survivor-outages-jubjub'|'survivor-outages-p256'} [profile]
  */
 export function liveProfileOptions(profile = 'baseline') {
   assert.ok(
@@ -14,24 +14,33 @@ export function liveProfileOptions(profile = 'baseline') {
       'grants',
       'grants-jubjub',
       'grants-p256',
+      'survivor-outages',
+      'survivor-outages-jubjub',
+      'survivor-outages-p256',
     ].includes(profile),
   );
   const removedOnly = profile === 'removed-recheck';
   const grantRecovery = ['grants', 'grants-jubjub', 'grants-p256'].includes(profile);
-  const lifecycle = profile === 'lifecycle' || removedOnly || grantRecovery;
+  const survivorOutages = [
+    'survivor-outages',
+    'survivor-outages-jubjub',
+    'survivor-outages-p256',
+  ].includes(profile);
+  const lifecycle = profile === 'lifecycle' || removedOnly || grantRecovery || survivorOutages;
   return {
     profile,
     lifecycle,
     removedOnly,
     grantRecovery,
+    survivorOutages,
     walletOnly: profile === 'wallet',
     combined: lifecycle || profile === 'combined',
     arms:
       profile === 'wallet'
         ? []
-        : profile === 'grants-jubjub'
+        : ['grants-jubjub', 'survivor-outages-jubjub'].includes(profile)
           ? ['jubjub']
-          : profile === 'grants-p256'
+          : ['grants-p256', 'survivor-outages-p256'].includes(profile)
             ? ['p256']
             : ['jubjub', 'p256'],
     // Two read-grant issues include preserving rotations and sealed publications.
@@ -39,14 +48,31 @@ export function liveProfileOptions(profile = 'baseline') {
     populateTimeoutMs: (grantRecovery ? 30 : 15) * 60000,
   };
 }
-/** @param {{code:number|null,messages:Array<{failed?:string,code?:string,audit?:{unresolvedEffects?:number}}>}} result @param {string} operation @param {string} fault */
+/** @param {{code:number|null,messages:Array<{failed?:string,completed?:string,code?:string,audit?:{unresolvedEffects?:number}}>}} result @param {string} operation @param {string} fault */
 export function requireExpectedFailure(result, operation, fault) {
+  const known =
+    (operation === 'create' &&
+      ['before-deploy-proof', 'deploy:0:after-submit', 'call:0:after-submit'].includes(fault)) ||
+    (operation === 'rotate-prover' && ['before-owner-proof', 'assert-unknown'].includes(fault)) ||
+    (['rotate', 'survivor-rotate'].includes(operation) && fault === 'call:0:after-submit') ||
+    (operation === 'add-target' &&
+      /^circuit:add_device_with_(jubjub|p256):after-submit$/.test(fault)) ||
+    (operation === 'remove-target' &&
+      /^circuit:rotate_enc_key_with_(jubjub|p256):after-submit$/.test(fault));
+  assert.ok(known, 'Unknown operation/fault must not qualify through a fallback error code.');
   const code =
     fault === 'assert-unknown' || fault === 'before-deploy-proof'
       ? 'MutationUnsettled'
       : 'InternalError';
   assert.equal(result.code, 2);
-  const failure = result.messages.find((m) => m.failed === operation);
+  const failures = result.messages.filter((m) => m.failed !== undefined);
+  assert.equal(failures.length, 1);
+  const failure = failures[0];
+  assert.equal(failure?.failed, operation);
+  assert.equal(
+    result.messages.some((m) => m.completed === operation),
+    false,
+  );
   assert.equal(
     failure?.code,
     code,
@@ -140,4 +166,13 @@ export function requireGrantRecoveryCompletion(messages, arm) {
   const completed = messages.filter((m) => m.completed === 'grant-recovery');
   assert.equal(completed.length, 1);
   requireGrantRecoverySummary(completed[0], arm);
+}
+
+/** Require the injected boundary, not an unrelated process exit.
+ * @param {{code:number|null,messages:Array<{crash?:string}>}} result @param {string} fault */
+export function requireExpectedHostCrash(result, fault) {
+  assert.equal(result.code, 86);
+  const crashes = result.messages.filter((m) => m.crash !== undefined);
+  assert.equal(crashes.length, 1);
+  assert.equal(crashes[0]?.crash, fault);
 }

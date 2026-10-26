@@ -8,10 +8,11 @@ import { createRequire } from 'node:module';
 import { setTimeout as delay } from 'node:timers/promises';
 import { workspaceIdentity, verifyQualificationBinding } from './receipt.mjs';
 import { runWalletReconnect } from './wallet-reconnect.mjs';
-import { lifecycleStages } from './lifecycle-stages.mjs';
+import { lifecycleStages, survivorOutageStages } from './lifecycle-stages.mjs';
 import {
   liveProfileOptions,
   requireExpectedFailure,
+  requireExpectedHostCrash,
   requireGrantRecoveryCompletion,
 } from './live-expectations.mjs';
 import { copyQualificationFixture } from './fixture-copy.mjs';
@@ -159,7 +160,7 @@ export async function referenceFingerprint(contract) {
   return { sources, packages };
 }
 
-/** @param {'baseline'|'combined'|'lifecycle'|'wallet'|'removed-recheck'|'grants'|'grants-jubjub'|'grants-p256'} [requestedProfile] */
+/** @param {'baseline'|'combined'|'lifecycle'|'wallet'|'removed-recheck'|'grants'|'grants-jubjub'|'grants-p256'|'survivor-outages'|'survivor-outages-jubjub'|'survivor-outages-p256'} [requestedProfile] */
 export async function runLiveOutages(requestedProfile = 'baseline') {
   assert.equal(process.env.PASSPORT_RC_LOCALNET, '1', 'Explicit localnet opt-in required.');
   assert.equal(process.env.MN_NETWORK_ID, 'undeployed');
@@ -183,6 +184,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
     combined,
     removedOnly,
     grantRecovery,
+    survivorOutages,
     arms,
     populateTimeoutMs,
   } = liveProfileOptions(requestedProfile);
@@ -235,7 +237,8 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
   const env = {
     ...process.env,
     PASSPORT_RC_LOCALNET: '1',
-    PASSPORT_LIVE_PROFILE: removedOnly ? 'lifecycle' : grantRecovery ? 'grants' : profile,
+    PASSPORT_LIVE_PROFILE:
+      removedOnly || survivorOutages ? 'lifecycle' : grantRecovery ? 'grants' : profile,
     MN_NETWORK_ID: 'undeployed',
     MIDNIGHT_NETWORK: 'local',
     MN_NODE_URL: 'http://127.0.0.1:19954',
@@ -262,13 +265,15 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
             ? 'source-live-read-only-removed-access-recheck'
             : walletOnly
               ? 'source-live-wallet-indexer-reconnect'
-              : grantRecovery
-                ? 'source-live-grant-profile-reconstruction-and-revocation'
-                : lifecycle
-                  ? 'source-live-enrollment-survivor-removal-and-wallet-reconnect'
-                  : combined
-                    ? 'source-live-combined-grants-holdings-prover-outages'
-                    : 'source-live-proof-process-and-indexer-outages',
+              : survivorOutages
+                ? 'source-live-populated-survivor-prover-process-indexer-outages'
+                : grantRecovery
+                  ? 'source-live-grant-profile-reconstruction-and-revocation'
+                  : lifecycle
+                    ? 'source-live-enrollment-survivor-removal-and-wallet-reconnect'
+                    : combined
+                      ? 'source-live-combined-grants-holdings-prover-outages'
+                      : 'source-live-proof-process-and-indexer-outages',
           profile,
           armsRequested: arms,
           verdict,
@@ -438,33 +443,36 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
         }
         const stages = removedOnly
           ? [['verify-removed', 'none', 'verify']]
-          : grantRecovery
-            ? [
-                ['create', 'none', 'owner'],
-                ['populate', 'none', 'populate'],
-                ['add-survivor', 'none', 'owner'],
-                ['grant-recovery', 'none', 'grant-recovery'],
-              ]
-            : lifecycle
-              ? lifecycleStages(/** @type {'p256'|'jubjub'} */ (arm))
-              : combined
-                ? [
-                    ['create', 'before-deploy-proof', 'owner'],
-                    ['create', 'none', 'resume'],
-                    ['populate', 'none', 'populate'],
-                    ['rotate', 'call:0:after-submit', 'owner'],
-                    ['rotate', 'none', 'resume'],
-                    ['rotate-prover', 'before-owner-proof', 'owner'],
-                    ['rotate-prover', 'assert-unknown', 'resume'],
-                  ]
-                : [
-                    ['create', 'deploy:0:after-submit', 'owner'],
-                    ['create', 'call:0:after-submit', 'resume'],
-                    ['create', 'none', 'resume'],
-                    ['rotate', 'call:0:after-submit', 'owner'],
-                    ['rotate', 'none', 'resume'],
-                  ];
+          : survivorOutages
+            ? survivorOutageStages(/** @type {'p256'|'jubjub'} */ (arm))
+            : grantRecovery
+              ? [
+                  ['create', 'none', 'owner'],
+                  ['populate', 'none', 'populate'],
+                  ['add-survivor', 'none', 'owner'],
+                  ['grant-recovery', 'none', 'grant-recovery'],
+                ]
+              : lifecycle
+                ? lifecycleStages(/** @type {'p256'|'jubjub'} */ (arm))
+                : combined
+                  ? [
+                      ['create', 'before-deploy-proof', 'owner'],
+                      ['create', 'none', 'resume'],
+                      ['populate', 'none', 'populate'],
+                      ['rotate', 'call:0:after-submit', 'owner'],
+                      ['rotate', 'none', 'resume'],
+                      ['rotate-prover', 'before-owner-proof', 'owner'],
+                      ['rotate-prover', 'assert-unknown', 'resume'],
+                    ]
+                  : [
+                      ['create', 'deploy:0:after-submit', 'owner'],
+                      ['create', 'call:0:after-submit', 'resume'],
+                      ['create', 'none', 'resume'],
+                      ['rotate', 'call:0:after-submit', 'owner'],
+                      ['rotate', 'none', 'resume'],
+                    ];
         let beforeProverUnknown;
+        let beforeUnknownSends;
         for (const [operation, fault, mode] of /** @type {Array<[string,string,string]>} */ (
           stages
         )) {
@@ -547,7 +555,11 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
           if (proofOutage) {
             const target = fault === 'before-deploy-proof' ? host : owner;
             await waitFor(
-              async () => target.messages.some((m) => m.proverBoundary),
+              async () =>
+                target.messages.some(
+                  (m) =>
+                    m.proverBoundary === (fault === 'before-deploy-proof' ? 'deploy' : 'owner'),
+                ),
               180000,
               () => target.child.exitCode !== null || target.child.signalCode !== null,
             );
@@ -592,13 +604,26 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
               assert.equal(records[0].steps[0].phase, 'confirmed');
               assert.ok(records[0].planHash);
             }
-            if (fault === 'before-owner-proof') beforeProverUnknown = records;
-            if (fault === 'assert-unknown')
+            const sendCount = JSON.parse(await readFile(join(root, 'events.json'), 'utf8')).filter(
+              (/** @type {any} */ e) => e.stage === 'send-enter',
+            ).length;
+            c.owner.hostSendCount = sendCount;
+            if (fault === 'before-owner-proof') {
+              beforeProverUnknown = records;
+              beforeUnknownSends = sendCount;
+            }
+            if (fault === 'assert-unknown') {
+              assert.equal(
+                sendCount,
+                beforeUnknownSends,
+                'Unknown original owner intent must not add a host send.',
+              );
               assert.deepEqual(
                 records,
                 beforeProverUnknown,
                 'Unregistered owner outcome must not prepare or send a replacement.',
               );
+            }
             c.owner.proverRecords = records;
             if (proofOutage) {
               docker(['start', /** @type {string} */ (ids[2])]);
@@ -615,7 +640,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
             }
           } else if (fault !== 'none') {
             const died = await finished(host, 10000);
-            assert.equal(died.code, 86, 'Expected exact host crash boundary.');
+            requireExpectedHostCrash(died, fault);
             requireExpectedFailure(result, operation, fault);
             assert.equal(result.code, 2, 'Owner must retain an unresolved mutation.');
             assert.ok(
@@ -745,14 +770,14 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
             nativeGrantContinuationQualified: false,
           }),
           ...(combined &&
-            !lifecycle && {
+            (!lifecycle || survivorOutages) && {
               ownerPreRegistrationProverFailure: 'safely-unresolved-no-resend',
               populatedHoldingsAndGrant: true,
             }),
         });
         await save();
       }
-      if ((lifecycle && !removedOnly && !grantRecovery) || walletOnly) {
+      if ((lifecycle && !removedOnly && !grantRecovery && !survivorOutages) || walletOnly) {
         const wallet = await runWalletReconnect({
           root: join(output, `round-${round}-wallet`),
           worker,

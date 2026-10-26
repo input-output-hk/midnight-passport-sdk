@@ -103,6 +103,45 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Both software authoriser arms: populated chain-verified shielded holding and active read grant, restart continuation, committed-deploy prover recovery and safe refusal after owner pre-registration proving failure. Not real-provider or full release acceptance.',
   },
+  'survivor-outages-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-survivor-outages.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 180 * 60000,
+    establishes:
+      'Both software authoriser scope: populated survivor lifecycle with original deployment prover recovery, post-submit process/indexer interruption and exact error/refusal after owner pre-registration proving outage. No wallet/provider/full release acceptance.',
+  },
+  'survivor-outages-jubjub-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-survivor-outages-jubjub.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 100 * 60000,
+    establishes:
+      'JubJub-only software authoriser scope: populated survivor lifecycle with original deployment prover recovery, post-submit process/indexer interruption and exact error/refusal after owner pre-registration proving outage. No wallet/provider/full release acceptance.',
+  },
+  'survivor-outages-p256-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-survivor-outages-p256.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 100 * 60000,
+    establishes:
+      'P-256-only software authoriser scope: populated survivor lifecycle with original deployment prover recovery, post-submit process/indexer interruption and exact error/refusal after owner pre-registration proving outage. No wallet/provider/full release acceptance.',
+  },
   'survivor-enrollment-removal-wallet': {
     tier: 'proof-localnet',
     command: [node, 'scripts/qualification/live-lifecycle.mjs'],
@@ -220,6 +259,9 @@ export const SUITES = Object.freeze({
   outages: ['outage-reconciliation'],
   'combined-outages': ['combined-grants-holdings-prover'],
   'survivor-reconnect': ['survivor-enrollment-removal-wallet'],
+  'survivor-outages': ['survivor-outages-native'],
+  'survivor-outages-jubjub': ['survivor-outages-jubjub-native'],
+  'survivor-outages-p256': ['survivor-outages-p256-native'],
   'wallet-reconnect': ['wallet-indexer-reconnect'],
   'removed-recheck': ['removed-access-recheck'],
   'grant-recovery': ['grant-recovery-generated'],

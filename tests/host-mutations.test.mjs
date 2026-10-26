@@ -368,3 +368,142 @@ test('failed deployment constructor preparation is still unknown and never recre
   assert.equal(attempts, 1);
   assert.equal(f.counts().sent, 0);
 });
+
+function barrier() {
+  let release = () => {};
+  const ready = new Promise((resolve) => {
+    release = () => resolve(undefined);
+  });
+  return { ready, release };
+}
+const originalCall = {
+  address: 'ab'.repeat(32),
+  circuit: 'append_inbox_with_p256',
+  tx: '01020304',
+};
+
+for (const storage of ['memory', 'encrypted-file'])
+  test(
+    `${storage}: an old call preparer is fenced while its successor is still held`,
+    { timeout: 10000 },
+    async () => {
+      const f = fixture(),
+        call = { ...identity, kind: /** @type {const} */ ('call') };
+      const root = await mkdtemp(join(tmpdir(), 'passport-held-call-'));
+      const disk =
+        storage === 'encrypted-file'
+          ? encryptedHostMutationStore(root, new Uint8Array(32).fill(9))
+          : undefined;
+      const store = disk ?? f.store;
+      const first = barrier(),
+        second = barrier(),
+        releaseFirst = barrier(),
+        releaseSecond = barrier();
+      let attempts = 0;
+      /** @type {Promise<unknown>[]} */ const pending = [];
+      f.driver.prepare = async (_i, request) => {
+        assert.deepEqual(request, originalCall);
+        const attempt = ++attempts;
+        (attempt === 1 ? first : second).release();
+        await (attempt === 1 ? releaseFirst : releaseSecond).ready;
+        return { address: originalCall.address, steps: 1, context: { original: request } };
+      };
+      try {
+        const old = createHostMutationExecutor(store, f.driver).execute(call, originalCall);
+        pending.push(old);
+        const rejected = assert.rejects(old, /unsettled/);
+        await first.ready;
+        const original = await store.read(call);
+        const successor = createHostMutationExecutor(store, f.driver).resume(call);
+        pending.push(successor);
+        await second.ready;
+        const claimed = await store.read(call);
+        assert.notEqual(claimed?.owner, original?.owner);
+        assert.equal(claimed?.phase, 'preparing');
+        releaseFirst.release();
+        await rejected;
+        assert.equal(
+          f.counts().sent,
+          0,
+          'Stale producer must fail before the successor completes.',
+        );
+        assert.equal(f.counts().prepared, 0);
+        assert.deepEqual(await store.read(call), claimed);
+        releaseSecond.release();
+        assert.equal((await successor).kind, 'confirmed');
+        assert.equal(f.counts().sent, 1);
+        assert.equal(attempts, 2);
+        assert.deepEqual((await store.read(call))?.input, originalCall);
+      } finally {
+        releaseFirst.release();
+        releaseSecond.release();
+        await Promise.allSettled(pending);
+        disk?.close();
+        await rm(root, { recursive: true, force: true });
+      }
+    },
+  );
+
+test('preparing calls reject changed bytes before claiming a fence or retrying preparation', async () => {
+  const f = fixture(),
+    call = { ...identity, kind: /** @type {const} */ ('call') };
+  let attempts = 0;
+  f.driver.prepare = async (_i, request) => {
+    assert.deepEqual(request, originalCall);
+    if (++attempts === 1) throw new Error('temporary validation outage');
+    return { address: originalCall.address, steps: 1, context: {} };
+  };
+  await assert.rejects(f.engine.execute(call, originalCall), /temporary/);
+  const before = structuredClone(f.get());
+  await assert.rejects(f.engine.execute(call, { ...originalCall, tx: 'aabb' }), /unsettled/);
+  assert.deepEqual(f.get(), before);
+  assert.equal(attempts, 1);
+  assert.equal(f.counts().sent, 0);
+  assert.equal((await f.engine.resume(call)).kind, 'confirmed');
+  assert.deepEqual(f.get()?.input, originalCall);
+});
+
+test('persistent preparation refusal retains original call input without preparing or dispatching a step', async () => {
+  const f = fixture(),
+    call = { ...identity, kind: /** @type {const} */ ('call') };
+  let attempts = 0;
+  f.driver.prepare = async (_i, request) => {
+    attempts++;
+    assert.deepEqual(request, originalCall);
+    throw new Error('still unavailable');
+  };
+  await assert.rejects(f.engine.execute(call, originalCall), /unavailable/);
+  for (let n = 0; n < 3; n++)
+    await assert.rejects(createHostMutationExecutor(f.store, f.driver).resume(call), /unavailable/);
+  assert.equal(attempts, 4);
+  assert.equal(f.get()?.phase, 'preparing');
+  assert.deepEqual(f.get()?.input, originalCall);
+  assert.equal(f.counts().sent, 0);
+  assert.equal(f.counts().prepared, 0);
+});
+
+test('a retried call whose validation/expiry check refuses stays unknown without replacing its bytes', async () => {
+  const f = fixture(),
+    call = { ...identity, kind: /** @type {const} */ ('call') };
+  let attempts = 0;
+  f.driver.prepare = async (_i, request) => {
+    assert.deepEqual(request, originalCall);
+    if (++attempts === 1) throw new Error('transient preparation');
+    return { address: originalCall.address, steps: 1, context: { original: request } };
+  };
+  await assert.rejects(f.engine.execute(call, originalCall), /transient/);
+  let expired = false;
+  f.driver.check = async () => !expired;
+  f.driver.prepareStep = async (record) => {
+    expired = true; // Clock/frontier changes after preparation, before dispatch.
+    return { tx: /** @type {{tx:string}} */ (record.input).tx, identifiers: [id(1)] };
+  };
+  assert.deepEqual(await f.engine.resume(call), { kind: 'unknown' });
+  const before = structuredClone(f.get());
+  for (let n = 0; n < 3; n++) assert.deepEqual(await f.engine.resume(call), { kind: 'unknown' });
+  assert.deepEqual(f.get(), before);
+  assert.equal(f.get()?.steps[0]?.tx, originalCall.tx);
+  assert.equal(f.get()?.steps[0]?.phase, 'ready');
+  assert.equal(f.counts().sent, 0);
+  assert.equal(attempts, 2);
+});

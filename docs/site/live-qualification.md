@@ -360,3 +360,52 @@ transactions and 17 direct native owner calls (setup excluded), with no duplicat
 host sends. See the [grant evidence summary]({{ '/grant-recovery/#recorded-milestone-evidence--20261026' | relative_url }})
 and repository review record for receipt hashes and limitations. Repeating a failed
 fixture is not the recovery procedure; retain its original protected state.
+
+
+## Current preparation/outage slice — 2026/10/26
+
+`survivor-outages` is an explicit integrated software-identity source profile for
+#230/#231. It creates fresh owned accounts; it never replays old failed fixtures.
+The native scope is pending a final matching signed-source receipt.
+
+```sh
+PASSPORT_RC_LOCALNET=1 MN_NETWORK_ID=undeployed \
+PASSPORT_CONTRACT_DIR=/absolute/path/to/pinned/contract \
+PASSPORT_LIVE_ROOT=/private/new-survivor-outage-run \
+nix develop -c pnpm qualify run survivor-outages \
+  --output /private/new-survivor-outage-suite.json
+```
+
+The original create ID crosses a deployment submit crash, a prover outage before
+the next maintenance proof, and an activation submit crash, then completes. An
+actual active read grant and seven-unit shielded test holding are populated before
+an independent survivor is enrolled. Target enrollment, removal's key switch and
+survivor rotation each have a post-submit host crash plus actual indexer stop/
+unknown lookup/restart. Owner/survivor/grantee and holding checks must still pass;
+a removed reader must fail current-key opening against a reachable host.
+
+The final owner rotation stops the prover before host registration. Explicit
+same-ID resume must remain `MutationUnsettled`, with unchanged host records and
+send count. Preserve its protected intent, including after a successful safety
+qualification; it is not a completed or no-send owner operation. Native grant
+crash continuation and wallet reconnect are separate cases, not silently included.
+
+Each arm has fifteen declared stages plus a final record check. Only the expected
+SDK code and exactly one failure summary qualify. Host death must report exit86
+and the requested boundary; arbitrary errors/other deaths cannot pass. Every
+prover handshake names the expected deploy/owner boundary. Source/reference hashes
+must remain fixed until the end. All broad provider/release flags stay false.
+
+For a targeted fresh run use explicit suite `survivor-outages-jubjub` or
+`survivor-outages-p256`. Each receipt names its requested arms. A single-arm pass
+never qualifies both arms. The slower lane allows180minutes for both arms or100
+for a single arm; fast PR CI runs only the cheap controls and HTTP/race negatives.
+Use the retained dedicated stack/ports/volumes above and stop only owned compute
+afterwards. Never reset the chain or regenerate keys to obtain a pass.
+
+### Provider boundary
+
+This profile contributes software/localnet preconditions for #232. Existing
+Google/iCloud/two-browser rows remain untested at this new source. A restored
+synced credential, an independently enrolled survivor and total-loss recovery are
+still separate cases; no real credential or provider prompt is automated here.

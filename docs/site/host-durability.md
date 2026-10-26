@@ -320,3 +320,21 @@ The current stale-producer regression releases the old preparer after the
 successor completes. It does not cover every held-successor interleaving. More
 preparation-expiry, persistent-refusal and HTTP call-retry combinations remain
 #230 test work; the existing cases do not constitute exhaustive race acceptance.
+
+
+## Preparation/HTTP regression slice — 2026/10/26
+
+New source regressions release a stale preparer while its successor is still held,
+using both memory and encrypted-file stores. They require no dispatch until the
+successor alone completes, and no fence/write/prepare for conflicting original
+call bytes. Persistent preparation refusal preserves its input. A simulated
+validation/expiry refusal keeps ready bytes unchanged and sends nothing.
+
+Actual loopback HTTP tests cover fresh-executor reconciliation, auth/pin/input
+refusal, sanitised preparation failures, client cancellation and an actual client
+timeout during held call preparation. Accepted output remains durable; transport
+failure sends one execute request and requires explicit same-ID continuation.
+These use a fake chain driver, not native expiry or a new process. Existing
+native ledger expiry checks and the dedicated proof/outage lane keep their own
+scope. The SDK/host semantics are unchanged; complete race/provider acceptance
+is not inferred from these new tests.

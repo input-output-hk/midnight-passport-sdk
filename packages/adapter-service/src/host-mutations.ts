@@ -43,7 +43,9 @@ const samePins = (a: MutationPins, b: MutationPins) =>
   a.manifestSha256 === b.manifestSha256 &&
   a.scheme === b.scheme;
 /** Opt-in host ports for use with createDurablePassportMutations. No legacy route fallback.
- * Reconcile may finish known remaining deployment waves under the invocation's original approval.
+ * Reconcile may finish deployment waves or revalidate an original already-built call
+ * still in preparation, and dispatch under the invocation's original approval. It is
+ * not universally read-only. Unknown broadcasts remain lookup-only; no rebroadcast.
  * An uncertain broadcast is only looked up; neither this client nor the server retries its POST.
  */
 export function remoteHostMutationPorts(

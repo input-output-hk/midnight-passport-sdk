@@ -6,6 +6,18 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/10/26. Historical entries below retain their original issue namespaces.
 
+## 2026/10/26 — preparation/HTTP and current outage slice
+
+Refs #230, #231, #232. Current branch retained. New deterministic held-successor
+races cover memory and encrypted-file CAS stores, original-byte conflicts and safe
+preparation/dispatch refusals. Real loopback HTTP tests cover fresh-executor
+reconciliation, authentication, persistent refusal, cancellation and timeout with
+original output retention. Explicit integrated both-arm/per-arm survivor outage
+profiles add closed fault/error/crash checks and unchanged-send unknown probes.
+Final source/native qualification is pending; no provider/full Lace or release
+claim. See `docs/review/preparation-outages/README.md`. Exact-value guard and
+immutable binding remain unchanged.
+
 ## 2026/10/26 — final qualification review hardening
 
 Refs #230, #231, #232, #239.
