@@ -347,3 +347,16 @@ Receipts always set real-provider and full-release flags false. Export only the
 allowlisted public receipt/verification files. Keep fixture identities, grant
 openings, wallet databases and native request arguments outside Git and the Vault.
 See [grant recovery]({{ '/grant-recovery/' | relative_url }}) for the integration API.
+
+
+### Recorded grant scope — 2026/10/26
+
+JubJub completed five entries at `4a45aa0`, with a separate end fingerprint audit;
+its overall run remains failed after the later P-256 setup timeout. The explicit
+P-256 suite passed five entries at `7483786`. SDK/native worker/shared assertions,
+compiled and reference inputs match across those pins under a recorded component
+comparison; there is no same-source both-arm CLI PASS. Each scope confirms 22 host
+transactions and 17 direct native owner calls (setup excluded), with no duplicate
+host sends. See the [grant evidence summary]({{ '/grant-recovery/#recorded-milestone-evidence--20261026' | relative_url }})
+and repository review record for receipt hashes and limitations. Repeating a failed
+fixture is not the recovery procedure; retain its original protected state.

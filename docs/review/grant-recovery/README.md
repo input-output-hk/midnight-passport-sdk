@@ -36,5 +36,29 @@ provider/full Lace, total-loss or historical-knowledge erasure acceptance.
 
 ## Evidence
 
-Implementation/fast checks are in progress. Native acceptance is pending its final
-signed-source execution; runner existence does not establish a passed case.
+[Verification](verification.json) records one native round per software arm:
+
+| Scope | Actual signed source | Evidence |
+| --- | --- | --- |
+| JubJub | `4a45aa0d12aa8edec762845e1ec61a5646ecd899` | Five completed entries from an overall **failed** run; separate end source/reference audit |
+| P-256 | `7483786d81b5a743b6a7a7210af24cebda96b2a5` | Explicit single-arm suite **PASS**, five entries |
+
+Each arm reconstructed two grants in fresh profiles, refused an independent
+reader and missing/wrong openings before effects, rotated, selectively revoked,
+then revoked all while retaining the owner, survivor and seven-unit holding.
+Together these scopes contain 44 confirmed host transactions with no duplicate
+host sends and 34 native owner-call attempts; native setup transactions are
+excluded from these counts. Host sends and direct owner calls are distinct.
+
+The JubJub run subsequently failed during P-256 setup at the old fifteen-minute
+harness budget. It remains failed. The new P-256 suite uses an explicit arm and a
+bounded thirty-minute two-grant setup budget; native TTLs and no-replay rules did
+not change. The recorded comparison verifies 1,102 unchanged non-harness inputs,
+including SDK, native worker, shared assertions, compiled runtime and reference
+inputs. Harness changes are allowlisted with hashes. **There is no same-source
+both-arm CLI PASS** and no retroactive relabelling of either receipt.
+
+At P-256 source, the full gate passed 889 tests with seven pre-existing conditional
+skips and zero failures; the focused generated-contract suite passed ten tests
+without skips. Provider, full Lace, total-loss, native grant crash continuation and
+release qualification remain false. Original failed-run private state is retained.

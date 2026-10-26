@@ -131,3 +131,22 @@ The live runbook also provides explicit per-arm suites for targeted qualificatio
 Keep each receipt's arm, original source and verdict. A completed arm in a later
 failed run is not an overall pass; any retained scoped evidence needs a recorded
 end fingerprint audit and an explicit component comparison after harness changes.
+
+## Recorded milestone evidence — 2026/10/26
+
+One software-identity native round per arm exercised the scope above. JubJub's five
+completed entries are retained at signed source `4a45aa0`, with a separate end
+source/reference fingerprint audit; that overall run later **failed** during
+P-256 setup. P-256's explicit single-arm suite **passed** at `7483786`. A recorded
+comparison verifies that SDK, native worker, shared assertions, compiled runtime
+and reference inputs were unchanged across those sources; only allowlisted
+harness/tests and documentation changed. There is no same-source both-arm CLI PASS.
+
+Across these two scopes: 44 confirmed host transactions, no duplicate host sends,
+34 direct native owner-call attempts, and preserved holdings/remaining readers.
+Direct setup transactions are excluded from those counts. The focused generated
+suite passed ten tests without skips; the full source gate passed 889 tests with
+seven existing conditional skips and zero failures. The
+[review record](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/docs/review/grant-recovery)
+contains exact source pins, hashes, component comparison and limitations. This
+adds source milestone evidence; published RC5 and provider/Lace acceptance are unchanged.

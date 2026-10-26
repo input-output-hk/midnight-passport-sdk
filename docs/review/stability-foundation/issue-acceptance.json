@@ -1850,7 +1850,7 @@
       "bodySha256": "ece2039f22c7195bdbbd8810a3c21918c1b121fdfe94f50119154df470652a9b",
       "originalBodySha256": "b3de18da191503dc9736a7cd8531517a8d111da3ab470d596e6c08373ca828ca",
       "implementation": "local-supported-subset",
-      "verification": "local-simulator-process-and-unit-evidence",
+      "verification": "scoped-per-arm-native-and-generated-evidence",
       "evidencePaths": [
         "docs/review/durability/README.md",
         "docs/site/durability.md",
@@ -1858,9 +1858,13 @@
         "tests/mutation-refusal.test.mjs",
         "tests/mutation-journal.test.mjs",
         "tests/grant-bookkeeping-recovery.test.mjs",
-        "scripts/qualification/mutation-matrix.mjs"
+        "scripts/qualification/mutation-matrix.mjs",
+        "docs/review/grant-recovery/README.md",
+        "docs/review/grant-recovery/verification.json",
+        "docs/site/grant-recovery.md",
+        "tests/qualification-grant-recovery.test.mjs"
       ],
-      "assessment": "Local published-bookkeeping reconstruction and demo fallback authenticate the original reader, trusted origin and live commitments. Missing unpublished/full-scope/private capabilities explicitly refuse. No new backup/export UX; existing v1/v2 reads and consented handoff remain. Owner-review candidate for supported subset.",
+      "assessment": "Original-reader chain reconstruction now has separate empty-profile generated-contract cases in both arms and native per-arm rotation/selective/all revocation with holdings. JubJub completed at 4a45aa0 inside an overall later failed run, separately end-audited; explicit P-256 PASS at 7483786. Recorded component comparison preserves identical SDK/worker/shared assertions/compiled/reference inputs; no same-source both-arm CLI PASS. Missing openings retain active IDs and refuse before effects. Full staged scope/private key/total-loss recovery, native grant crash continuation, unaided grantee discovery and provider/Lace/release acceptance remain excluded. No issue is automatically closed.",
       "criteria": [
         {
           "criterion": "- [ ] Specify which grant records can be reconstructed from authenticated chain data and which secret openings require an encrypted backup or another authorised key source.",
@@ -1888,7 +1892,8 @@
         }
       ],
       "closureRecommendation": "owner-review-local-supported-subset",
-      "githubMutationPerformed": false
+      "githubMutationPerformed": false,
+      "evidenceReviewedAt": "2026-10-26"
     },
     {
       "number": 240,

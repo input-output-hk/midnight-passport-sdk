@@ -1,3 +1,24 @@
+## 2026/10/26 — scoped grant recovery/revocation evidence
+
+Source milestone #239 now has one native software round per arm: five completed
+JubJub entries at `4a45aa0` (overall later FAIL, separately end-audited) and five
+P-256 entries with explicit single-arm PASS at `7483786`. Component comparison
+preserves identical SDK, worker, shared assertions, compiled/reference inputs;
+there is no same-source both-arm CLI PASS. Across scopes: 44 confirmed host
+transactions, zero duplicate host sends and 34 direct native owner calls; setup
+is excluded. Original-reader fresh-profile reconstruction, independent-reader and
+missing/wrong-opening refusal, rotation, selective/all revocation and holdings
+passed. See [review/evidence](docs/review/grant-recovery/README.md).
+
+JubJub create/directory reopen saves the verified account record required by grant
+APIs. Gate: 889 passed, seven existing conditional skips, zero failures. Four fresh
+profiles per arm never load the original grant journal; uncertain failed fixture
+state remains protected. Owned qualification containers are stopped with volumes
+and artifact caches retained. No total identity loss, native grant crash
+continuation, real-provider, full Lace or release claim; exact-value guard and
+binding unchanged. Review stack #248 → #249 → #250 awaits final external follow-up
+and eligible signed merges; no new release is authorized in this goal.
+
 ## 2026/10/26 — host preparation and evidence review correction
 
 Call preparation now retries only its original durable input under a fresh revision

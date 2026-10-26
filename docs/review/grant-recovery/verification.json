@@ -1,0 +1,318 @@
+{
+  "schema": 1,
+  "date": "2026-10-26T01:53:32.533896+00:00",
+  "scope": "source-component-equivalent-per-arm-software-grant-profile-loss-and-revocation",
+  "binding": {
+    "id": "acc-s3r1.1",
+    "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "moduleSha256": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf"
+  },
+  "roundsPerArm": 1,
+  "arms": {
+    "jubjub": {
+      "testedSource": {
+        "commit": "4a45aa0d12aa8edec762845e1ec61a5646ecd899",
+        "dirty": false,
+        "workspaceSha256": "763801c33d101fb8804ca1a16e0689ddeac78b1b87c09d7671929784a6159d01",
+        "fileCount": 1229
+      },
+      "parentCaseEntries": 5,
+      "grantAssertions": [
+        {
+          "name": "original-reader-reconstruction",
+          "reconstructed": 2,
+          "independentReaderRefused": true,
+          "recoveredFullIssueScope": false
+        },
+        {
+          "name": "opening-preflight-refusals",
+          "preservedActiveTargets": 2,
+          "noTransportEffects": true
+        },
+        {
+          "name": "recovered-reader-rotation",
+          "activeReadGrants": 2,
+          "ownerAndSurvivorRetained": true,
+          "heldCoinsQualified": 1
+        },
+        {
+          "name": "selective-read-revocation",
+          "revoked": 1,
+          "survivingReadGrants": 1,
+          "revokedOpeningRefused": true,
+          "heldCoinsQualified": 1
+        },
+        {
+          "name": "all-read-revocation",
+          "activeGrants": 0,
+          "generationAdvanced": true,
+          "ownerAndSurvivorRetained": true,
+          "heldCoinsQualified": 1
+        }
+      ],
+      "hostSends": 22,
+      "confirmedHostTransactions": 22,
+      "nativeOwnerCallAttempts": 17,
+      "nativeCallsReturnedConfirmed": 17,
+      "freshProfiles": 4,
+      "freshProfileWrites": 10,
+      "originalJournalConsulted": false,
+      "protectedProfileUnchanged": true,
+      "refusalChecksIncludeProfileWrites": true,
+      "qualifiedHeldCoins": 1,
+      "testCoinValue": "7"
+    },
+    "p256": {
+      "testedSource": {
+        "commit": "7483786d81b5a743b6a7a7210af24cebda96b2a5",
+        "dirty": false,
+        "workspaceSha256": "3bfeedb787efab9bafaadfd265db5a9c5514f0aed45d9dfe831a4a9c0af44442",
+        "fileCount": 1231
+      },
+      "parentCaseEntries": 5,
+      "grantAssertions": [
+        {
+          "name": "original-reader-reconstruction",
+          "reconstructed": 2,
+          "independentReaderRefused": true,
+          "recoveredFullIssueScope": false
+        },
+        {
+          "name": "opening-preflight-refusals",
+          "preservedActiveTargets": 2,
+          "noTransportEffects": true
+        },
+        {
+          "name": "recovered-reader-rotation",
+          "activeReadGrants": 2,
+          "ownerAndSurvivorRetained": true,
+          "heldCoinsQualified": 1
+        },
+        {
+          "name": "selective-read-revocation",
+          "revoked": 1,
+          "survivingReadGrants": 1,
+          "revokedOpeningRefused": true,
+          "heldCoinsQualified": 1
+        },
+        {
+          "name": "all-read-revocation",
+          "activeGrants": 0,
+          "generationAdvanced": true,
+          "ownerAndSurvivorRetained": true,
+          "heldCoinsQualified": 1
+        }
+      ],
+      "hostSends": 22,
+      "confirmedHostTransactions": 22,
+      "nativeOwnerCallAttempts": 17,
+      "nativeCallsReturnedConfirmed": 17,
+      "freshProfiles": 4,
+      "freshProfileWrites": 4,
+      "originalJournalConsulted": false,
+      "protectedProfileUnchanged": true,
+      "refusalChecksIncludeProfileWrites": true,
+      "qualifiedHeldCoins": 1,
+      "testCoinValue": "7"
+    }
+  },
+  "executionImages": [
+    {
+      "service": "node",
+      "imageId": "sha256:9040c346c27f569b72dfbbad9420cf38fc7cc6a13b38adf814a925bbe9311678",
+      "repoDigests": [
+        "midnightntwrk/midnight-node@sha256:9040c346c27f569b72dfbbad9420cf38fc7cc6a13b38adf814a925bbe9311678"
+      ],
+      "architecture": "arm64",
+      "containerId": "4211049e9a4313daaa0274bed2b01d04a8d96a2e2b934efc2b635fade8c78f39",
+      "mounts": [
+        "mn-passport-qual-20261023_node-data"
+      ]
+    },
+    {
+      "service": "indexer",
+      "imageId": "sha256:ecfec6a26b9f8f89b7531e8f7c390f841661fb079bdf0bc57fa2cf8bb3f99c2f",
+      "repoDigests": [
+        "ghcr.io/midnightntwrk/indexer-standalone@sha256:ecfec6a26b9f8f89b7531e8f7c390f841661fb079bdf0bc57fa2cf8bb3f99c2f"
+      ],
+      "architecture": "arm64",
+      "containerId": "c6ecf049c3380f7a2cb838fce83cac78e25dee19843b6fb29506f4c565d6ffe6",
+      "mounts": [
+        "mn-passport-qual-20261023_indexer-data"
+      ]
+    },
+    {
+      "service": "proof-server",
+      "imageId": "sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf",
+      "repoDigests": [
+        "midnightntwrk/proof-server@sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf"
+      ],
+      "architecture": "arm64",
+      "containerId": "80a2ab8ccb2dcc3a7bba699d3be4bca92157d9501bd8c42770bfa3ad9bf5adc4",
+      "mounts": []
+    }
+  ],
+  "nodeVersion": "v22.23.2",
+  "nativeEvidence": {
+    "jubjub": {
+      "kind": "completed-arm-prefix-with-separate-end-fingerprint-audit",
+      "originalOverallVerdict": "FAIL",
+      "originalSource": "4a45aa0d12aa8edec762845e1ec61a5646ecd899",
+      "reasonOverallFailed": "Subsequent P-256 setup exceeded the old fifteen-minute harness limit"
+    },
+    "p256": {
+      "kind": "explicit-single-arm-native-run",
+      "overallVerdict": "PASS",
+      "originalSource": "7483786d81b5a743b6a7a7210af24cebda96b2a5"
+    }
+  },
+  "sameSourceBothArmCliRunPassed": false,
+  "sdkNativeWorkerSharedGrantCaseAndCompiledInputsUnchanged": true,
+  "componentComparison": {
+    "schema": 1,
+    "oldSource": {
+      "commit": "4a45aa0d12aa8edec762845e1ec61a5646ecd899",
+      "dirty": false,
+      "workspaceSha256": "763801c33d101fb8804ca1a16e0689ddeac78b1b87c09d7671929784a6159d01",
+      "fileCount": 1229
+    },
+    "newSource": {
+      "commit": "7483786d81b5a743b6a7a7210af24cebda96b2a5",
+      "dirty": false,
+      "workspaceSha256": "3bfeedb787efab9bafaadfd265db5a9c5514f0aed45d9dfe831a4a9c0af44442",
+      "fileCount": 1231
+    },
+    "changes": [
+      {
+        "path": "docs/site/grant-recovery.md",
+        "oldSha256": "ca195fc708eb6ce9e887096753cb2dada4f41259eb82fe6cfd89e65e061932ba",
+        "newSha256": "7878ab21079c3551f0dfdef7554756c9f1621d0d76b11ad018483105d56147ab"
+      },
+      {
+        "path": "docs/site/live-qualification.md",
+        "oldSha256": "591c143aa0e908d689bb19f6b4ff95f660717df27c3f477a93bae256ea46ed55",
+        "newSha256": "4ea410351c74fa3ff0cc1bf2e84697e055103c585a85b613991a7b1656006cdf"
+      },
+      {
+        "path": "scripts/qualification/catalog.mjs",
+        "oldSha256": "31097289d217413aa91bf1a34d7816ba42599c626dc79e53c2b2400b1f037c88",
+        "newSha256": "000efab02b5aac174c090fb43c95a73fdc583629db4cd5c3c38c3822969a3b71"
+      },
+      {
+        "path": "scripts/qualification/live-expectations.mjs",
+        "oldSha256": "f6e5bf0ffb62dc5457645950d3d14fab4bf83332b42b6eed0acd747a757320c3",
+        "newSha256": "39b05fa26dd17af0914172c18e9c47ad3961dd2a9dbcfc1bb8daa272a8f526d2"
+      },
+      {
+        "path": "scripts/qualification/live-outages.mjs",
+        "oldSha256": "1fa32833193dee4a2e26b5558cf61b8576d85f8ba3788d43413f1998b267ff89",
+        "newSha256": "4b283d52088f5fe2fc70b8155e3fbacbdc22d486e6228654f87a488ed2349394"
+      },
+      {
+        "path": "scripts/qualification/receipt.mjs",
+        "oldSha256": "483d1d83387ffd9dd51785bc1352bd5d9c63f927046cbacf6c3a6bab38dd2cb8",
+        "newSha256": "c068f677d2f17ef949088cea277b3e0bc1f9c6b1c0e8f6f653844bf5d0afa839"
+      },
+      {
+        "path": "tests/qualification-live-expectations.test.mjs",
+        "oldSha256": "48d07aa22bad3f8cf8dad4f71800b25a978f0515b00c9fa243addcfbf3615699",
+        "newSha256": "cd069186488ecebd8f29faaf59878d696da0f7adde7d20d36a2e36b84ead2fa2"
+      },
+      {
+        "path": "tests/qualification-runner.test.mjs",
+        "oldSha256": "90c11fad1b2a548d82738213156461a7cd8aa876f245c9f17c024a56a6772d39",
+        "newSha256": "af7fd2df638f5819435b5bedab7454109ea6d1a151fe969a5596367ca69b668f"
+      },
+      {
+        "path": "scripts/qualification/live-grants-jubjub.mjs",
+        "oldSha256": null,
+        "newSha256": "5ce4a3b188baa854c2608512aefcf52e4e3937c168dee84c4b62aac8fa116747"
+      },
+      {
+        "path": "scripts/qualification/live-grants-p256.mjs",
+        "oldSha256": null,
+        "newSha256": "f512b89846af9c51d8e10b5392fe7839e855a15c33a7cf1b91dfeca5878ee29e"
+      }
+    ],
+    "explicitHarnessAllowlist": [
+      "scripts/qualification/catalog.mjs",
+      "scripts/qualification/live-expectations.mjs",
+      "scripts/qualification/live-outages.mjs",
+      "scripts/qualification/receipt.mjs",
+      "scripts/qualification/live-grants-jubjub.mjs",
+      "scripts/qualification/live-grants-p256.mjs",
+      "tests/qualification-live-expectations.test.mjs",
+      "tests/qualification-runner.test.mjs"
+    ],
+    "unchangedNonHarnessInputCount": 1102,
+    "sdkNativeWorkerSharedGrantCaseAndCompiledInputsUnchanged": true,
+    "referenceInputsUnchanged": true,
+    "originalOverallVerdict": "FAIL",
+    "completedJubjubScopeSource": "4a45aa0d12aa8edec762845e1ec61a5646ecd899",
+    "noOverallRunPromotion": true,
+    "releaseQualified": false
+  },
+  "parentCaseEntriesAcrossScopes": 10,
+  "hostSends": 44,
+  "hostConfirmedTransactions": 44,
+  "duplicateHostSendsWithinEachScope": 0,
+  "nativeOwnerCallAttempts": 34,
+  "nativeSetupTransactionsIncludedInCounts": false,
+  "realProviderQualified": false,
+  "releaseQualified": false,
+  "fullLaceQualified": false,
+  "fullIssueScopeRecovered": false,
+  "privateGranteeKeysRecovered": false,
+  "totalIdentityLossRecovered": false,
+  "nativeGrantContinuationQualified": false,
+  "receipts": {
+    "accepted-grants-v2/receipt.json": {
+      "bytes": 103597,
+      "sha256": "9037a1e9a830b087ebe1fb960289349be8c52c8088a5cbc756838e21c220a151"
+    },
+    "accepted-grants-v2-suite.json": {
+      "bytes": 1093,
+      "sha256": "e90628f01e71130dccdbc9441a25d7d4131339f14916c3b488069684019abe9c"
+    },
+    "jubjub-completed-scope-attestation.json": {
+      "bytes": 5838,
+      "sha256": "d366419cd41590cc14fa0a031c708185c70cc8bf1b5c807eaf97a00bf92563b6"
+    },
+    "grant-component-comparison.json": {
+      "bytes": 3484,
+      "sha256": "78388b3d3da51947f7203999e0b0685a427c0868eebdac4dfe3ab50a9b946a16"
+    },
+    "accepted-grants-p256-v3/receipt.json": {
+      "bytes": 87421,
+      "sha256": "06547622736f1f32c431f07823a72b419413893c18ffc56a70384b392d49c246"
+    },
+    "accepted-grants-p256-v3-suite.json": {
+      "bytes": 1060,
+      "sha256": "b72b1037d823108b572375d6a7e405cfaa306e8b453c5f232bf8d11351559588"
+    },
+    "grant-generated-p256-v3-source.json": {
+      "bytes": 1168,
+      "sha256": "5dd3be88ebb9b0293847851ec6a6c1553cef2e84668d037a5bd480768d6c7ab8"
+    }
+  },
+  "preFreezeGate": {
+    "pass": 889,
+    "fail": 0,
+    "skipped": 7,
+    "cancelled": 0,
+    "exitCode": 0,
+    "logSha256": "c6e5f2d8d309f1061c823b580646189c68833df4327c29ed902ae5783bc3624a"
+  },
+  "limits": [
+    "Distinct actual source pins per arm; no same-source both-arm CLI PASS. Failed overall v2 receipt remains failed.",
+    "Source component comparison allows only listed qualification harness/tests/docs changes; SDK, native worker, shared assertions, compiled and reference inputs are unchanged.",
+    "Software identities on the owned retained localnet, not real providers or full release/Lace acceptance.",
+    "Original selected reader and private grantee keys are preserved inputs; no total identity or signing-key recovery.",
+    "Full staged scope/missing parts are not recreated; partial/conflicting/stale publication negatives are fast port cases.",
+    "Independent enrolled viewing access cannot decrypt another issuing reader\u2019s grant records.",
+    "Native grant issue/revocation span transactions outside the four-intent durable coordinator; preserve uncertain inputs, never blindly replay.",
+    "Grantees receive owner-decoded seals; unaided discovery is not qualified. Historical knowledge cannot be erased.",
+    "Host sends and native API-call attempts are distinct; setup issue/mint/deposit transactions are not included in totals.",
+    "Failed v1/v2 private state remains protected; no state reset or original-intent replacement."
+  ]
+}

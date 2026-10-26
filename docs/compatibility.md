@@ -456,8 +456,15 @@ Both generated-contract signature arms now have a shared qualification case for
 separate empty profiles, original-reader reconstruction, independent enrolled-reader
 refusal, absent/wrong opening providers and selective/all read revocation. Ordinary
 JubJub create/directory open also persists the verified local record needed by grant
-APIs. The native suite adds two live read grants and a qualified holding; its final
-signed-source execution is pending. See [the review map](review/grant-recovery/README.md).
+APIs. Native scope now has five completed JubJub entries at `4a45aa0` (its later
+overall run failed, with a separate completed-arm end audit) and a five-entry
+P-256 single-arm PASS at `7483786`. The recorded component comparison preserves
+identical SDK/native worker/shared assertions, compiled runtime and reference
+inputs; there is no same-source both-arm CLI PASS. Across scopes: 44 confirmed
+host transactions, no duplicate host sends and 34 direct native owner calls,
+excluding setup transactions. Both retain two grants through rotation and the
+seven-unit holding through selective/all revoke. See [review map](review/grant-recovery/README.md)
+and [verification](review/grant-recovery/verification.json) for exact hashes/limits.
 
 Reconstruction returns bookkeeping only. It does not recreate full staged scope,
 private grantee keys, incomplete publication or total identity loss. An inactive
