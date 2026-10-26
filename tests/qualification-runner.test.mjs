@@ -207,10 +207,12 @@ test('pinned catalog flags run independently of inherited Node test context', as
     const command = SCENARIOS['contract-entries'].command.slice(0, 3);
     assert.ok(command.includes('--test-reporter=tap'));
     const fixture = { ...scenario('unused', 10000), command };
+    await writeFile(join(root, 'forbidden-preload.cjs'), 'process.exit(87);\n');
     const env = {
       ...process.env,
       NODE_TEST_CONTEXT: 'child-v8',
-      NODE_OPTIONS: '--test-shard=1/99',
+      NODE_OPTIONS: '--require=./forbidden-preload.cjs --test-shard=2/99',
+      NODE_PATH: join(root, 'untrusted-modules'),
     };
     const empty = await runCommand(fixture, { root, env });
     assert.equal(empty.outcome, 'failed');
@@ -222,10 +224,19 @@ test('pinned catalog flags run independently of inherited Node test context', as
     const real = await runCommand(fixture, { root, env });
     assert.equal(real.outcome, 'passed');
     assert.equal(real.tests?.passed, 1);
-    assert.equal(env.NODE_OPTIONS, '--test-shard=1/99');
+    assert.equal(env.NODE_OPTIONS, '--require=./forbidden-preload.cjs --test-shard=2/99');
+    assert.equal(env.NODE_PATH, join(root, 'untrusted-modules'));
     assert.equal(env.NODE_TEST_CONTEXT, 'child-v8'); // Caller-owned environment is unchanged.
     assert.equal(
-      (await runCommand(scenario('console.log("non-test diagnostic")', 10000))).outcome,
+      (
+        await runCommand(
+          scenario(
+            'if(process.env.NODE_TEST_CONTEXT || process.env.NODE_OPTIONS || process.env.NODE_PATH)process.exit(9)',
+            10000,
+          ),
+          { root, env },
+        )
+      ).outcome,
       'passed',
     );
   } finally {
