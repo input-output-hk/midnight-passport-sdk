@@ -90,6 +90,113 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Dedicated-stack source deployment/create/rotation with software identities, actual proofs, host process death and indexer outages; not the full release or real-provider suite.',
   },
+  'combined-grants-holdings-prover': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-combined.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 90 * 60000,
+    establishes:
+      'Both software authoriser arms: populated chain-verified shielded holding and active read grant, restart continuation, committed-deploy prover recovery and safe refusal after owner pre-registration proving failure. Not real-provider or full release acceptance.',
+  },
+  'survivor-enrollment-removal-wallet': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-lifecycle.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 120 * 60000,
+    establishes:
+      'Both software crypto arms: independent enrolled survivor and target with active grant/holding, original-ID enrollment/removal continuations after host/indexer faults, survivor authorization, removed-reader refusal, then real built-in wallet socket reconnect and fresh NIGHT credit. No real-provider or full release acceptance.',
+  },
+  'removed-access-recheck': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-removed-recheck.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+      'PASSPORT_SURVIVOR_FIXTURE_ROOT',
+    ],
+    timeoutMs: 15 * 60000,
+    establishes:
+      'Current-source read-only removed-access recheck on private copies of accepted software lifecycle fixtures, with a reachable host, effect-attempt guards and exact no-current-key refusal. No historical mutations replayed and no new proof-generation claim.',
+  },
+  'grant-recovery-generated': {
+    tier: 'contract-simulator',
+    command: [
+      node,
+      '--test',
+      '--test-reporter=tap',
+      'tests/qualification-grant-recovery.test.mjs',
+      'tests/grant-bookkeeping-recovery.test.mjs',
+      'tests/keys-grant-record.test.mjs',
+    ],
+    requires: [],
+    timeoutMs: 30000,
+    establishes:
+      'Both generated-contract software signature arms: separate empty profiles, authenticated original-reader reconstruction, independent-reader/missing/wrong-opening refusals, selective/all read revocation. Port fault and legacy record tests; no proofs or holdings qualification.',
+  },
+  'grant-recovery-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-grants.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 120 * 60000,
+    establishes:
+      'Both software authoriser arms on the owned localnet: two independently readable grants, one qualified shielded holding, original-reader reconstruction in separate empty profiles, independent-reader refusal, rotation and selective/all native revocation. No private grantee key recovery, durable grant continuation, unaided grantee discovery or real-provider/full release acceptance.',
+  },
+  'grant-recovery-native-jubjub': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-grants-jubjub.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 90 * 60000,
+    establishes:
+      'JubJub-only native grant profile-loss/rotation/revocation case with two read grants, an enrolled survivor and a qualified holding. Explicit single-arm scope; no P-256, provider, durable grant continuation or full release acceptance.',
+  },
+  'grant-recovery-native-p256': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-grants-p256.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 90 * 60000,
+    establishes:
+      'P-256-only native grant profile-loss/rotation/revocation case with two read grants, an enrolled survivor and a qualified holding. Explicit single-arm scope; no JubJub, provider, durable grant continuation or full release acceptance.',
+  },
+  'wallet-indexer-reconnect': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-wallet.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 20 * 60000,
+    establishes:
+      'Actual built-in read-only wallet in Node: socket close/reopen, fresh standalone NIGHT credit finalized while indexer is down, unchanged addresses/seed across stop/recreation. No browser or passkey-provider acceptance.',
+  },
   'published-registry': {
     tier: 'published-consumer',
     command: [],
@@ -111,6 +218,14 @@ export const SUITES = Object.freeze({
   browser: ['virtual-authenticator'],
   localnet: ['localnet-night'],
   outages: ['outage-reconciliation'],
+  'combined-outages': ['combined-grants-holdings-prover'],
+  'survivor-reconnect': ['survivor-enrollment-removal-wallet'],
+  'wallet-reconnect': ['wallet-indexer-reconnect'],
+  'removed-recheck': ['removed-access-recheck'],
+  'grant-recovery': ['grant-recovery-generated'],
+  'grant-recovery-live': ['grant-recovery-native'],
+  'grant-recovery-jubjub': ['grant-recovery-native-jubjub'],
+  'grant-recovery-p256': ['grant-recovery-native-p256'],
   consumer: ['packed-consumer'],
   'consumer-source': ['consumer-source-types'],
   'consumer-published': ['consumer-published-host'],

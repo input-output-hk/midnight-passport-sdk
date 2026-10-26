@@ -1,3 +1,45 @@
+# STATE — Midnight Passport SDK
+
+> The committed record of SDK development, maintained by
+> `mn-passport-skills:spec-driver` per [`docs/development-workflow.md`](./docs/development-workflow.md) §3.
+> Every entry carries its GitHub issue
+> ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
+> Last updated: 2026/10/26. Historical entries below retain their original issue namespaces.
+
+## 2026/10/26 — final qualification review hardening
+
+Refs #230, #231, #232, #239.
+
+Foundation review fixes now reject zero-test skipped-result rows and isolate
+scenario children from inherited Node test context, options/preloads and module
+paths. Actual test/non-test probes check early-exit preload refusal, a shard that
+excludes the only test, exact TAP reporter and repeat validation. The input
+comparison in `docs/review/grant-recovery/post-review-inputs.json` preserves the
+native evidence's original sources while verifying unchanged SDK/worker/shared
+assertions/compiled bytes. These harness changes do not requalify native receipts
+at a new head. All old source counts and failed verdicts remain historical.
+
+## 2026/10/26 — scoped grant recovery/revocation evidence
+
+Source milestone #239 now has one native software round per arm: five completed
+JubJub entries at `4a45aa0` (overall later FAIL, separately end-audited) and five
+P-256 entries with explicit single-arm PASS at `7483786`. Component comparison
+preserves identical SDK, worker, shared assertions, compiled/reference inputs;
+there is no same-source both-arm CLI PASS. Across scopes: 44 confirmed host
+transactions, zero duplicate host sends and 34 direct native owner calls; setup
+is excluded. Original-reader fresh-profile reconstruction, independent-reader and
+missing/wrong-opening refusal, rotation, selective/all revocation and holdings
+passed. See [review/evidence](docs/review/grant-recovery/README.md).
+
+JubJub create/directory reopen saves the verified account record required by grant
+APIs. Gate: 889 passed, seven existing conditional skips, zero failures. Four fresh
+profiles per arm never load the original grant journal; uncertain failed fixture
+state remains protected. Owned qualification containers are stopped with volumes
+and artifact caches retained. No total identity loss, native grant crash
+continuation, real-provider, full Lace or release claim; exact-value guard and
+binding unchanged. Review stack #248 → #249 → #250 awaits final external follow-up
+and eligible signed merges; no new release is authorized in this goal.
+
 ## 2026/10/26 — host preparation and evidence review correction
 
 Call preparation now retries only its original durable input under a fresh revision
@@ -8,13 +50,40 @@ Historical 90-transaction evidence predates later corrections and does not quali
 this head. New call-preparation/fence regressions are fast source tests. No binding,
 exact-value guard, publication or broad #230 closure changes.
 
-# STATE — Midnight Passport SDK
+## 2026/10/25 — enrolled survivor and wallet reconnect
 
-> The committed record of SDK development, maintained by
-> `mn-passport-skills:spec-driver` per [`docs/development-workflow.md`](./docs/development-workflow.md) §3.
-> Every entry carries its GitHub issue
-> ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
-> Last updated: 2026/10/23. Historical entries below retain their original issue namespaces.
+Delivered locally on the current branch; no push, merge or publication. Frozen
+signed source `094c7f0` passed 21 live entries / 88 confirmed host transactions /
+zero duplicate sends in one both-arm software-identity round. Active grants and
+seven-unit shielded holdings survived enrollment/removal crashes; original intents,
+plans and prepared bytes continued, independently enrolled survivors authorized
+rotation, and removed identities refused current access. Actual built-in Node wallet
+reconnected after indexer downtime and observed a new two-unit NIGHT credit, then
+recreated the same HD identity/balance and closed subscriptions. Stopped wallet
+handles now refuse late results/new connections, with race/cleanup regressions.
+
+Full pre-freeze gate: 877 passed, seven existing conditional skips, zero failures; docs check passes. See
+[review map](docs/review/survivor-reconnect/README.md) and exact verification receipt.
+Removal remains multi-transaction; shared trusted read-opening bookkeeping and
+preserved software seed are explicit. No atomic compromised-signer retirement,
+real-provider/two-browser, total-loss recovery, full release/Lace or large-inbox
+resource qualification. Binding pins and exact-value withdrawal guard unchanged.
+
+## 2026/10/24 — combined populated/prover qualification slice
+
+Current branch retained. Draft stack #248 (stability/consumer foundation) → #249
+(owner/host durability) is pushed with GPG/DCO-signed review corrections. The
+current branch carries the next combined grants/holdings and prover-outage profile.
+The review map is `docs/review/combined-outages/README.md`.
+
+Safety corrections refuse unresolved legacy removal/interleaving, retain bounded
+historical decryption candidates without metadata trust, hash compiled runtime inputs,
+keep unknown polls read-only, propagate cancellation and refuse expired native bytes.
+Exact-value shielded guards and immutable acc-s3r1.1 remain. Accepted scoped evidence: 16 live case entries / 34 host-confirmed transactions,
+200 owner + 260 populated + 152 host offline cases. Four actual prover stops and two
+indexer/process interruptions; zero duplicate host sends. See the combined review
+map and verification receipt. Release/provider qualification and broader issue closure
+remain false. Owner pre-registration proof loss safely stays unresolved; no blind resend.
 
 ## Current fork iteration — 2026/10/20
 

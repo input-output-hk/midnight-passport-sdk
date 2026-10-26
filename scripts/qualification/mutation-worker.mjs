@@ -4,6 +4,17 @@
 import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
+import assert from 'node:assert/strict';
+import { x25519 } from '@noble/curves/ed25519.js';
+import { jubjub } from '@noble/curves/misc.js';
+import {
+  createMidnightGrantSource,
+  createMidnightHoldingSource,
+} from '../../packages/adapter-midnight-js/dist/index.js';
+import { createRequire } from 'node:module';
+const { ZswapOutput } = createRequire(
+  new URL('../../packages/adapter-midnight-js/package.json', import.meta.url),
+)('@midnightntwrk/ledger-v9');
 import { createConstructorContext } from '@midnight-ntwrk/compact-runtime';
 import {
   createPassportAccounts,
@@ -20,13 +31,22 @@ import {
   encryptedMutationJournal,
   recipeDeviceKeyring,
   recipeJubjubAuthoriser,
+  sealInboxCoin,
+  openGrantView,
 } from '../../packages/keys/dist/index.js';
 import { fileMutationByteStore } from '../../packages/service/dist/index.js';
 import * as binding from '../../packages/contract/generated/acc-s3r1.1/index.js';
 import { AccSimulator } from './acc-simulator.mjs';
 
-const [root = '', arm = '', operation = '', mode = 'run', crash = 'none', outcomeMode = 'known'] =
-  process.argv.slice(2);
+const [
+  root = '',
+  arm = '',
+  operation = '',
+  mode = 'run',
+  crash = 'none',
+  outcomeMode = 'known',
+  profile = 'empty',
+] = process.argv.slice(2);
 if (
   !root ||
   !['p256', 'jubjub'].includes(arm) ||
@@ -64,7 +84,14 @@ const fault = async (/** @type {string} */ label) => {
   if (mode === 'prepare') return;
   world.events.push(label);
   await save();
-  if (crash === label) process.exit(86);
+  if (
+    crash === label ||
+    (crash === 'first-owner-send:after' &&
+      label.startsWith('submit:') &&
+      label.includes('91'.repeat(16)) &&
+      label.endsWith(':after'))
+  )
+    process.exit(86);
 };
 const source = (value = 7) => ({
   withSession: async (/** @type {()=>Promise<any>} */ work) => work(),
@@ -75,6 +102,7 @@ const source = (value = 7) => ({
       p.length ?? 32,
     ),
 });
+assert.ok(['empty', 'populated'].includes(profile));
 const keySource = source();
 const keyring = recipeDeviceKeyring(keySource);
 const fake = createFakePorts();
@@ -230,6 +258,94 @@ for (const method of ['sealToDevice', 'reencryptInbox', 'sealView', 'sealGrant']
       return result;
     };
 }
+// In this offline tier the generated ACC authenticates grants; the indexer transport is synthetic.
+// Production selection still recomputes the real native commitment and filters spent/duplicates.
+const grantSource = createMidnightGrantSource({
+  network: ports.network,
+  binding,
+  publicDataProvider: /** @type {any} */ ({
+    queryContractState: async () => ({ data: sim.state }),
+  }),
+  openings: {
+    readReadPublicKey: async (_account, grantId) =>
+      world.grants?.[grantId]?.bookkeeping.readPublicKey,
+  },
+});
+const coin = { nonce: new Uint8Array(32).fill(41), color: new Uint8Array(32).fill(42), value: 7n };
+const commitment = ZswapOutput.newContractOwned(
+  { type: hex(coin.color), nonce: hex(coin.nonce), value: coin.value },
+  undefined,
+  address,
+).commitment;
+const holdingSource = createMidnightHoldingSource({
+  enumerateContractActions: async () => [{ txHash: 'synthetic-deposit' }],
+  queryShieldedOutputs: async () => [{ contractAddress: address, commitment, index: 3n }],
+  queryShieldedInputs: async () => [],
+  coinNullifier: async () => '05'.repeat(32),
+});
+const grantSecret = new Uint8Array(32).fill(47);
+if (profile === 'populated')
+  Object.assign(ports, {
+    holdings: holdingSource,
+    readGrants: grantSource,
+    grants: grantSource,
+    grantCommitments: grantSource,
+    grantDetails: grantSource,
+    grantRoster: grantSource,
+    grantOrigin: 'localhost',
+    grantJournal: {
+      stage: async (/** @type {any} */ opening) => {
+        (world.grants ??= {})[opening.bookkeeping.grantId] = opening;
+        await save();
+      },
+      load: async (/** @type {string} */ _account, /** @type {string} */ id) => world.grants?.[id],
+      pending: async () =>
+        Object.keys(world.grants ?? {}).filter((id) => !world.published?.includes(id)),
+      markPublished: async (/** @type {string} */ _account, /** @type {string} */ id) => {
+        (world.published ??= []).push(id);
+        await save();
+      },
+    },
+  });
+const assertPopulated = async () => {
+  if (profile !== 'populated') return;
+  const view = await readAccount();
+  assert.ok(view);
+  const ring = { account: address, encKey: view.encKey, envelopes: view.inboxEntries };
+  const entries = await keyring.openInbox('undeployed', ring, view.inboxEntries);
+  const held = await holdingSource.selectQualifiedHeldCoins(address, view.inboxEntries, entries);
+  assert.equal(held.length, 1);
+  assert.deepEqual(held[0]?.coin, { ...coin, mt_index: 3n });
+  const targets = await grantSource.readActiveReadGrantTargets(address);
+  assert.equal(targets.targets.length, 1);
+  const target = targets.targets[0];
+  assert.ok(target);
+  const grantId = target.grantId;
+  assert.equal(target.readPublicKey, hex(x25519.getPublicKey(grantSecret)));
+  const views = entries.filter(
+    (e) => e?.kind === 'grant' && e.record.part === 'view' && e.record.grantId === grantId,
+  );
+  let current = false;
+  for (const item of views) {
+    assert.ok(item?.kind === 'grant' && item.record.part === 'view');
+    const secret = await openGrantView(grantSecret, {
+      account: address,
+      grantId,
+      seal: from(item.record.seal),
+      expectedEncKey: view.encKey,
+    });
+    if (secret) {
+      current = true;
+      secret.fill(0);
+    }
+  }
+  assert.equal(current, true, 'Independent grantee must open the actual current viewing secret.');
+  world.populatedVerified = {
+    held: held.length,
+    activeReadGrants: targets.targets.length,
+    currentGrantOpened: current,
+  };
+};
 const survivorSource = source(13),
   survivorKeyring = recipeDeviceKeyring(survivorSource),
   survivorAuthoriser = recipeJubjubAuthoriser(survivorSource, binding.pureCircuits);
@@ -246,10 +362,46 @@ const reader = {
 };
 if (mode === 'prepare') {
   if (operation !== 'create') {
-    const account = await createPassportAccounts(ports).createAccount({
+    let account = await createPassportAccounts(ports).createAccount({
       userName: 'synthetic',
       retireAuthority: true,
     });
+    if (profile === 'populated') {
+      const api = createPassportAccounts(ports);
+      assert.ok(api.openAccountAt);
+      account = await api.openAccountAt(account.address);
+      assert.ok(account.issueGrant);
+      const result = await account.issueGrant({
+        grantee: {
+          scheme: 'jubjub-schnorr',
+          publicKey: hex(
+            jubjub.Point.fromAffine(
+              binding.pureCircuits.compute_public_point_with_jubjub(11n),
+            ).toBytes(),
+          ),
+        },
+        operations: ['withdraw-unshielded'],
+        color: hex(coin.color),
+        recipient: { kind: 'any' },
+        maxCoinValue: '100',
+        perCallCap: '10',
+        cap: '100',
+        expiresAt: null,
+        read: true,
+        rpId: 'localhost',
+        readPublicKey: hex(x25519.getPublicKey(grantSecret)),
+      });
+      assert.equal(result.status, 'active');
+      const view = await readAccount();
+      assert.ok(view);
+      // No chain/proof claim: deposit is executed in the pinned simulator, history is synthetic.
+      await ports.chain.call({
+        address,
+        circuit: 'deposit_shielded',
+        args: [coin, await sealInboxCoin(view.encKey, coin)],
+      });
+      await assertPopulated();
+    }
     if (operation === 'remove-device' || operation === 'rotate') {
       if (!account.addDevice) throw new Error('missing enrolment');
       const added = await account.addDevice(reader);
@@ -372,6 +524,8 @@ try {
     }
     if (!denied) throw new Error('removed reader still opens current key');
   }
+  await assertPopulated();
+  await save();
   console.log(
     JSON.stringify({
       status: 'complete',
@@ -382,14 +536,22 @@ try {
     }),
   );
 } catch (/** @type {any} */ error) {
+  let invariantFailed = false;
+  try {
+    await assertPopulated();
+  } catch (invariant) {
+    invariantFailed = true;
+    console.error('Population invariant failed while reporting the original refusal:', invariant);
+  }
+  await save();
   console.log(
     JSON.stringify({
-      status: 'refused',
+      status: invariantFailed ? 'invariant-failed' : 'refused',
       code: error.code ?? 'Error',
       message: error.message,
       effects: world.effects.length,
       created: world.created,
     }),
   );
-  process.exitCode = 2;
+  process.exitCode = invariantFailed ? 3 : 2;
 }

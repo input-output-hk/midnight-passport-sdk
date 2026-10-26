@@ -73,16 +73,20 @@ async function start(
   });
   const server = createServer(testConfig(), [route]);
   await new Promise<void>((r) => server.listen(0, r));
-  t.after(() => {
-    server.closeAllConnections();
-    server.close();
-  });
+  t.after(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+        server.closeAllConnections();
+      }),
+  );
   return { base: `http://localhost:${(server.address() as AddressInfo).port}`, logs };
 }
 const post = (url: string, body: unknown) =>
   fetch(url, {
     method: 'POST',
-    headers: JSON_TYPE,
+    // Each test owns a short-lived server; never reuse a pooled socket after teardown.
+    headers: { ...JSON_TYPE, connection: 'close' },
     body: typeof body === 'string' ? body : JSON.stringify(body),
   });
 const deployBody = { boot: '11'.repeat(32), encKey: '22'.repeat(32), retireAuthority: true };
@@ -467,7 +471,7 @@ test('/deploy refuses an oversized body with 413', async (t) => {
 test('other methods and paths fall through to 404', async (t) => {
   const f = fakeBackend();
   const { base } = await start(t, f.backend);
-  assert.equal((await fetch(`${base}/prove`)).status, 404);
+  assert.equal((await fetch(`${base}/prove`, { headers: { connection: 'close' } })).status, 404);
   assert.equal((await post(`${base}/sponsor`, { tx: '01' })).status, 404);
 });
 

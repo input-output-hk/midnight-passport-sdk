@@ -127,7 +127,7 @@ export function validateReceipt(value) {
     typeof r.startedAt !== 'string' ||
     !Object.hasOwn(SUITES, r.suite) ||
     !/^[a-f0-9-]{36}$/.test(r.runId) ||
-    !/^[a-z-]+$/.test(r.suite) ||
+    !/^[a-z][a-z0-9-]*$/.test(r.suite) ||
     !Number.isFinite(Date.parse(r.startedAt))
   )
     throw new Error('invalid receipt identity');
@@ -170,7 +170,7 @@ export function validateReceipt(value) {
     if (
       typeof result.id !== 'string' ||
       typeof result.tier !== 'string' ||
-      !/^[a-z-]+$/.test(result.id) ||
+      !/^[a-z][a-z0-9-]*$/.test(result.id) ||
       seen.has(result.id) ||
       !/^[a-z-]+$/.test(result.tier)
     )

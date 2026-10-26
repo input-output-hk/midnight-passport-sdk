@@ -437,3 +437,57 @@ dispatch CAS commits that one send; cancellation stops later waves. Failed expli
 resume retains cancellation. Native prepared bytes need ten seconds remaining and are
 never renewed. Direct/reconciled deployment receipts share their validation rules.
 
+
+### Combined source acceptance — 2026/10/24
+
+Frozen source `06dbdc6` passed one both-arm combined grant/holding/prover/indexer
+round: 16 case entries, 34 host-confirmed transactions, no duplicate host sends.
+Each arm retained a seven-unit shielded test holding and an independently readable
+active grant through rotation restart. Offline owner 200 / populated 260 / host 152 cases
+retain their distinct scope and exact source/runtime hashes; see
+[verification](review/combined-outages/verification.json). Owner pre-registration
+proof loss safely refuses explicit resume rather than assuming no send. No real
+provider, live enrollment/removal, full release/Lace or large-inbox resource acceptance
+is implied; broad #230/#231/#232/#239 remain open.
+
+### Grant bookkeeping after profile loss — source slice 2026/10/26
+
+Both generated-contract signature arms now have a shared qualification case for
+separate empty profiles, original-reader reconstruction, independent enrolled-reader
+refusal, absent/wrong opening providers and selective/all read revocation. Ordinary
+JubJub create/directory open also persists the verified local record needed by grant
+APIs. Native scope now has five completed JubJub entries at `4a45aa0` (its later
+overall run failed, with a separate completed-arm end audit) and a five-entry
+P-256 single-arm PASS at `7483786`. The recorded component comparison preserves
+identical SDK/native worker/shared assertions, compiled runtime and reference
+inputs; there is no same-source both-arm CLI PASS. Across scopes: 44 confirmed
+host transactions, no duplicate host sends and 34 direct native owner calls,
+excluding setup transactions. Both retain two grants through rotation and the
+seven-unit holding through selective/all revoke. See [review map](review/grant-recovery/README.md)
+and [verification](review/grant-recovery/verification.json) for exact hashes/limits.
+
+Reconstruction returns bookkeeping only. It does not recreate full staged scope,
+private grantee keys, incomplete publication or total identity loss. An inactive
+tombstone yields `GrantRevoked`; absent individual commitments after revoke-all
+remain `GrantBookkeepingUnsettled`. Missing openings retain active IDs and refuse
+preserving rotation. Native grant interruption and automatic grantee seal discovery
+are not qualified by this case. No published RC5 or full Lace claim is widened.
+
+### Survivor/reconnect qualification scope — 2026/10/25
+
+The local source adds an opt-in `survivor-reconnect` suite: three independent
+software identities in both arms, enrollment/removal post-submit continuation with
+active grants/holdings, survivor authorization and removed-reader current-key
+refusal, then an actual built-in wallet indexer disconnect and fresh incoming
+NIGHT balance. Its [review map](review/survivor-reconnect/README.md) records evidence
+status. The wallet test runs in Node, uses the same preserved synthetic HD seed
+and a direct standalone transfer; it does not qualify an ACC withdrawal, a browser
+provider, seed-loss recovery or full Lace compatibility. Removal spans transactions
+and does not retire a concurrent compromised signer atomically. No published
+package/image, binding pin, key manifest or exact-value guard changes in this slice.
+
+The signed `094c7f0` source completed this declared local scope: 21 case entries,
+88 confirmed host transactions, zero duplicate sends, four host deaths/four account
+indexer probes, plus the separate fresh-credit wallet outage/recreation case. See
+[verification](review/survivor-reconnect/verification.json). Executable inputs are
+unchanged by later documentation-only forward changes. Broad issues remain open.

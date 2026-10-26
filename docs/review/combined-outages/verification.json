@@ -1,0 +1,172 @@
+{
+  "schema": 1,
+  "date": "2026/10/24",
+  "scope": "source-software-identity-combined-grants-holdings-and-prover-outages",
+  "testedSource": {
+    "commit": "06dbdc6a022be5cd26d3a85197637621b84d4719",
+    "dirty": false,
+    "workspaceSha256": "ea23b97033a19735c0c28b0a373ee16d260287d0734d1637bc1d8cf06a652e8c",
+    "fileCount": 1204
+  },
+  "binding": {
+    "id": "acc-s3r1.1",
+    "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "moduleSha256": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf"
+  },
+  "realProviderQualified": false,
+  "releaseQualified": false,
+  "live": {
+    "rounds": 1,
+    "arms": [
+      "jubjub",
+      "p256"
+    ],
+    "accounts": 2,
+    "caseEntries": 16,
+    "hostConfirmedTransactions": 34,
+    "hostSends": 34,
+    "duplicateHostSends": 0,
+    "activeReadGrantSetups": 2,
+    "shieldedTestCoinDeposits": 2,
+    "testCoinValue": "7",
+    "postSubmitProcessDeaths": 2,
+    "actualIndexerOutageProbes": 2,
+    "actualProverStops": 4,
+    "ownerPreRegistrationFailures": "safely-unresolved-no-resend",
+    "originalPlansAndPreparedBytesPreserved": true
+  },
+  "ownerMatrix": {
+    "cases": 200,
+    "outcomes": {
+      "resumed": 158,
+      "refused-key-origin-window": 42
+    }
+  },
+  "populatedMatrix": {
+    "cases": 260,
+    "outcomes": {
+      "resumed": 200,
+      "refused-key-origin-window": 60
+    },
+    "proofsOrFunds": false,
+    "execution": "dedicated ancillary checkout; listed source/dist hashes checked against final branch",
+    "historyTransport": "synthetic native-commitment indexer"
+  },
+  "hostMatrix": {
+    "cases": 152,
+    "outcomes": {
+      "safely-unknown": 44,
+      "resumed": 108
+    },
+    "listedSourceAndRuntimeHashesMatch": true
+  },
+  "localGate": {
+    "passed": 870,
+    "existingConditionalSkips": 7,
+    "failed": 0,
+    "actionlint": "passed"
+  },
+  "docs": {
+    "pages": 19,
+    "localLinksAndAnchors": 372,
+    "errors": [],
+    "generator": "Jekyll 4.4.1"
+  },
+  "ci": {
+    "head": "06dbdc6a022be5cd26d3a85197637621b84d4719",
+    "run": "https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/40036195974",
+    "jobs": [
+      {
+        "name": "Review size (5k\u201310k preferred)",
+        "seconds": 6.0,
+        "result": "success"
+      },
+      {
+        "name": "7-day dependency cooldown",
+        "seconds": 5.0,
+        "result": "success"
+      },
+      {
+        "name": "Application and key service tests",
+        "seconds": 38.0,
+        "result": "success"
+      },
+      {
+        "name": "Package tests (3/4)",
+        "seconds": 20.0,
+        "result": "success"
+      },
+      {
+        "name": "Fresh build and all types",
+        "seconds": 29.0,
+        "result": "success"
+      },
+      {
+        "name": "Registers never tracked",
+        "seconds": 4.0,
+        "result": "success"
+      },
+      {
+        "name": "Package tests (4/4)",
+        "seconds": 26.0,
+        "result": "success"
+      },
+      {
+        "name": "Package tests (1/4)",
+        "seconds": 45.0,
+        "result": "success"
+      },
+      {
+        "name": "Package tests (2/4)",
+        "seconds": 38.0,
+        "result": "success"
+      },
+      {
+        "name": "Lint and format",
+        "seconds": 24.0,
+        "result": "success"
+      },
+      {
+        "name": "Lint, format, build, and test",
+        "seconds": 3.0,
+        "result": "success"
+      }
+    ]
+  },
+  "limitations": [
+    "Software credentials; no actual provider/two-device/sync qualification.",
+    "Live device enrollment/removal and wallet subscription reconnect remain separate acceptance.",
+    "Legacy interrupted or interleaved removal refuses; original protected continuation is required.",
+    "Earlier secrets remain decryption candidates within existing 4096 limits, never metadata authentication; large candidate-by-inbox resource qualification remains.",
+    "Expiry, lost uncommitted constructors, unrelated changed frontiers and unknown sends are not automatically replaced or repaired.",
+    "No partial shielded spends, full identity revocation, total-loss recovery or blanket Lace compatibility.",
+    "No published-package/image/full release qualification or remote issue closure."
+  ],
+  "receiptSha256": {
+    "accepted-live-v3/receipt.json": "2369ff21cd139704f237382aface4647061e497d20242c669a9b56c1585b3b51",
+    "accepted-suite-v3.json": "93667fb55d8b45963ada3c2e375b2759b2fd079d02df1fe0b4f49d5abb609e01",
+    "accepted-owner-matrix-v4.json": "1761d7f7e060feb913b032f2a1726f30077e6f3c2e9425ed36693aa21eecf4d1",
+    "populated-matrix-corrected-probe.json": "7f5a8c3134de0a828b867fc270e95c1be4cd97774b132aa03f48f53f0c005e08",
+    "accepted-host-matrix.json": "b7bf1e4a1a4f0409133eb35a6252319f8aabdb9ad2fd458e79eb94798491bf3d",
+    "source-inputs-v3.json": "3a658e8c0f724b3c805e6beb7689a7df133b8607bd2ebdb15481bbaaa08aaa39",
+    "ci-source-v3.json": "5a8931a5e07f52cd3fede50bf9753ed62510ca841e42346fb179a2bb31b98e3c",
+    "docs-v3-check.json": "4bdacd279f7712ce5fc29914d3fd6403f7f8ba1bb7fad946131d5388dd90dcef"
+  },
+  "evidenceLinkage": {
+    "frozenCommit": "06dbdc6a022be5cd26d3a85197637621b84d4719",
+    "forwardChanges": [
+      "STATE.md",
+      "docs/ci.md",
+      "docs/compatibility.md",
+      "docs/review/combined-outages/README.md",
+      "docs/review/combined-outages/review-adjudication.md",
+      "docs/review/stability-foundation/README.md",
+      "docs/site/live-qualification.md",
+      "scripts/qualification/mutation-matrix.mjs"
+    ],
+    "allowedChanges": "Documentation, STATE and offline matrix refusal-code assertion only; no SDK or live harness changes.",
+    "sdkAndLiveHarnessInputsMatch": true,
+    "allListedMatrixSourceAndDistHashesMatch": true,
+    "note": "Checked before adding the acceptance JSON itself; final code/dist checked again after the full gate."
+  }
+}

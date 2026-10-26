@@ -1,5 +1,7 @@
 // Opt-in, synthetic-identity LOCALNET qualification. Never import from the service entrypoint.
 import assert from 'node:assert/strict';
+import { x25519 } from '@noble/curves/ed25519.js';
+import { jubjub } from '@noble/curves/misc.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
@@ -50,6 +52,8 @@ import {
   deriveSymmetricSecret,
   recipeDeviceKeyring,
   recipeJubjubAuthoriser,
+  sealInboxCoin,
+  openGrantView,
 } from '../../../packages/keys/dist/index.js';
 import {
   fetchCheckedV1Config,
@@ -58,13 +62,27 @@ import {
   remoteV1Sponsor,
   remoteDirectory,
 } from '../../../packages/adapter-service/dist/index.js';
-import { createMidnightChain } from '../../../packages/adapter-midnight-js/dist/index.js';
+import {
+  createMidnightChain,
+  createHostedAccChain,
+  createMidnightHoldingSource,
+  createGraphqlHoldingIndexer,
+  createMidnightGrantSource,
+} from '../../../packages/adapter-midnight-js/dist/index.js';
+import { resolveBinding } from '../../../packages/contract/dist/index.js';
 import * as binding from '../../../packages/contract/generated/acc-s3r1.1/index.js';
 import type { PassportPorts } from '../../../packages/account/dist/ports/index.js';
 import type { MutationIntent } from '../../../packages/account/dist/index.js';
+import {
+  createSoftwareIdentity,
+  softwareParticipant,
+} from '../../../scripts/qualification/identities.mjs';
+
+import { crashesAfterSubmit } from '../../../scripts/qualification/lifecycle-stages.mjs';
+import { requireNoCurrentKey } from '../../../scripts/qualification/live-expectations.mjs';
 
 const [mode, root, arm, operation = 'create', fault = 'none'] = process.argv.slice(2);
-assert.ok(root && ['host', 'owner', 'resume', 'probe', 'inspect'].includes(mode!));
+assert.ok(root && ['host', 'owner', 'resume', 'probe', 'inspect', 'populate'].includes(mode!));
 assert.ok(arm === 'p256' || arm === 'jubjub');
 assert.ok(isAbsolute(root));
 assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18098/api/v4/graphql/ws');
@@ -103,6 +121,19 @@ const save = (name: string, value: unknown) => {
   }
 };
 const emit = (value: object) => console.log('PASSPORT_LIVE ' + JSON.stringify(value));
+const grantRecovery = process.env.PASSPORT_LIVE_PROFILE === 'grants';
+const lifecycle = process.env.PASSPORT_LIVE_PROFILE === 'lifecycle' || grantRecovery;
+const combined = lifecycle || process.env.PASSPORT_LIVE_PROFILE === 'combined';
+const referenceImport = (path: string) =>
+  import(pathToFileURL(join(process.env.PASSPORT_CONTRACT_DIR!, path)).href);
+const proofBoundary = async (boundary: string) => {
+  emit({ proverBoundary: boundary });
+  const until = Date.now() + 30000;
+  while (!existsSync(join(root, `prover-down-${boundary}`))) {
+    assert.ok(Date.now() < until, 'Owned prover outage handshake expired.');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+};
 const pins = {
   networkId: 'undeployed',
   bindingId: 'acc-s3r1.1',
@@ -117,7 +148,29 @@ if (!existsSync(join(root, 'fixture.json'))) {
     credential: randomBytes(16),
     hostKey: randomBytes(32),
     token: randomBytes(32),
-    ids: { create: hex(randomBytes(16)), rotate: hex(randomBytes(16)) },
+    grantSecret: randomBytes(32),
+    ...(grantRecovery && { readGrantSecrets: [randomBytes(32), randomBytes(32)] }),
+    ...(lifecycle && {
+      participants: Object.fromEntries(
+        await Promise.all(
+          ['owner', 'survivor', 'target'].map(async (role) => [
+            role,
+            await createSoftwareIdentity(),
+          ]),
+        ),
+      ),
+    }),
+    ids: {
+      create: hex(randomBytes(16)),
+      rotate: hex(randomBytes(16)),
+      'rotate-prover': hex(randomBytes(16)),
+      ...Object.fromEntries(
+        ['add-survivor', 'add-target', 'remove-target', 'survivor-rotate'].map((op) => [
+          op,
+          hex(randomBytes(16)),
+        ]),
+      ),
+    },
   });
 }
 const fixture = read('fixture.json');
@@ -251,8 +304,11 @@ if (mode === 'host') {
     ...original,
     prepare: (identity: HostMutationIdentity, input: Parameters<typeof original.prepare>[1]) =>
       diagnose('prepare', () => original.prepare(identity, input)),
-    prepareStep: (record: HostMutationRecord, index: number) =>
-      diagnose('prepareStep', () => original.prepareStep(record, index)),
+    prepareStep: async (record: HostMutationRecord, index: number) => {
+      if (fault === 'before-deploy-proof' && record.identity.kind === 'deploy' && index === 1)
+        await proofBoundary('deploy');
+      return diagnose('prepareStep', () => original.prepareStep(record, index));
+    },
     check: (record: HostMutationRecord, count: number) =>
       diagnose('check', () => original.check(record, count)),
     submit: async (tx: Parameters<typeof original.submit>[0]) => {
@@ -266,7 +322,7 @@ if (mode === 'host') {
       });
       const id = await original.submit(tx);
       event({ stage: 'send-return', requestId: current.identity.requestId, boundary, id });
-      if (fault === `${boundary}:after-submit`) {
+      if (crashesAfterSubmit(fault, current)) {
         emit({ crash: fault });
         process.exit(86);
       }
@@ -309,10 +365,20 @@ if (mode === 'host') {
   server.listen(config.port, config.host, () => emit({ ready: true, pid: process.pid }));
 } else {
   const base = `http://127.0.0.1:${process.env.PASSPORT_SERVICE_PORT}`;
-  const config = await fetchCheckedV1Config(base, {
-    ...pins,
-    artefactUrl: `${base}/v1/zk/acc-s3r1.1`,
-  });
+  const config =
+    mode === 'populate'
+      ? {
+          indexerUri: process.env.MN_INDEXER_URL!,
+          indexerWsUri: process.env.MN_INDEXER_WS_URL!,
+          nodeUri: process.env.MN_NODE_URL!,
+          zkBaseUrl: `${base}/v1/zk/acc-s3r1.1`,
+          coinPublicKey: '',
+          encryptionPublicKey: '',
+        }
+      : await fetchCheckedV1Config(base, {
+          ...pins,
+          artefactUrl: `${base}/v1/zk/acc-s3r1.1`,
+        });
   const network = {
     ...pins,
     indexerUrl: config.indexerUri,
@@ -320,21 +386,30 @@ if (mode === 'host') {
     nodeUrl: config.nodeUri,
     artefactUrl: config.zkBaseUrl,
   };
-  const source = {
+  const role =
+    operation === 'survivor-rotate'
+      ? 'survivor'
+      : operation === 'verify-removed'
+        ? 'target'
+        : 'owner';
+  const participant = lifecycle ? softwareParticipant(fixture.participants[role], arm) : undefined;
+  const source = participant?.source ?? {
     withSession: async <T>(work: () => Promise<T>) => work(),
     deviceSecret: async () => new Uint8Array(fixture.device),
     deriveSecret: async (p: Parameters<typeof deriveSymmetricSecret>[1]) =>
       deriveSymmetricSecret(fixture.seed, p),
   };
   const authoriser =
-    arm === 'p256'
+    participant?.authoriser ??
+    (arm === 'p256'
       ? {
           ...fakeAuthoriser({ credentialId: fixture.credential }),
           // Explicit software test session, never a browser/provider approval claim.
           withKeySession: async <T>(work: () => Promise<T>) => work(),
         }
-      : recipeJubjubAuthoriser(source, binding.pureCircuits);
-  const viewingKey = recipeDeviceKeyring(source);
+      : recipeJubjubAuthoriser(source, binding.pureCircuits));
+  const viewingKey = participant?.keyring ?? recipeDeviceKeyring(source);
+  const recordFile = role === 'owner' ? 'record.json' : `${role}-record.json`;
   // The suite includes rotation: refuse an incomplete fixture before deploying anything.
   assert.equal(typeof authoriser.withKeySession, 'function');
   assert.equal(typeof viewingKey.decodeDevicePublicKey, 'function');
@@ -346,14 +421,70 @@ if (mode === 'host') {
     pollIntervalMs: 500,
   });
   const sponsor = remoteV1Sponsor(base);
-  const chain = createMidnightChain({
+  const actualProver = remoteV1Prover(base);
+  const prover = {
+    proveTx: async (...args: Parameters<typeof actualProver.proveTx>) => {
+      if (fault === 'before-owner-proof') await proofBoundary('owner');
+      return actualProver.proveTx(...args);
+    },
+  };
+  let chain = createMidnightChain({
     network,
     binding: binding as any,
-    prover: remoteV1Prover(base),
+    prover,
     sponsor,
     sponsorKeys: config,
     submitter: host.submitter,
   });
+  let setupContext: any, setupModule: any;
+  if (mode === 'populate') {
+    // Directory transport only: no second wallet or prover host during setup.
+    const local = loadConfig(process.env);
+    const directoryServer = createServer(local, [
+      directoryRoute({
+        networkId: pins.networkId,
+        store: createFileDirectoryStore(directoryFile(local.registryFile)),
+      }),
+    ]);
+    await new Promise<void>((resolve, reject) => {
+      directoryServer.once('error', reject);
+      directoryServer.listen(local.port, local.host, resolve);
+    });
+    setupModule = await referenceImport('src/node/setup.ts');
+    setupContext = await setupModule.setupWallet('0'.repeat(63) + '1');
+    const account = read('result-create.json').account;
+    const handle = await setupModule.connectAccount(setupContext, account);
+    chain = createHostedAccChain({
+      network,
+      binding: { id: pins.bindingId, ...resolveBinding(pins.bindingId) },
+      readLedger: async (address) => {
+        assert.equal(address, account);
+        // Decode with the handle's own physical runtime; native ChargedState is branded.
+        return handle.ledgerState();
+      },
+      connectHandle: async (address) => {
+        assert.equal(address, account);
+        return { callTx: handle.callTx };
+      },
+    });
+  }
+  const grantSource = createMidnightGrantSource({
+    network,
+    binding,
+    openings: {
+      readReadPublicKey: async (_account, grantId) =>
+        existsSync(join(root, 'grants.json'))
+          ? read('grants.json')[grantId]?.bookkeeping.readPublicKey
+          : undefined,
+    },
+  });
+  const holdingSource = createMidnightHoldingSource(
+    createGraphqlHoldingIndexer({
+      networkId: network.networkId,
+      url: network.indexerUrl,
+      wsUrl: network.indexerWsUrl,
+    }),
+  );
   const ports: PassportPorts = {
     network,
     binding,
@@ -361,7 +492,7 @@ if (mode === 'host') {
     deployer: host.deployer,
     directory: remoteDirectory(base),
     authoriser,
-    credentials: fakeCredentials({ authoriser }),
+    credentials: participant?.credentials ?? fakeCredentials({ authoriser }),
     viewingKey,
     encryptionKey: {
       publicKey: async () => {
@@ -369,25 +500,216 @@ if (mode === 'host') {
       },
     },
     records: {
-      read: async () => (existsSync(join(root, 'record.json')) ? read('record.json') : undefined),
-      exists: async () => existsSync(join(root, 'record.json')),
-      write: async (value) => save('record.json', value),
+      read: async () => (existsSync(join(root, recordFile)) ? read(recordFile) : undefined),
+      exists: async () => existsSync(join(root, recordFile)),
+      write: async (value) => save(recordFile, value),
     },
-    holdings: { selectHeldEntries: async () => [] },
-    readGrants: {
-      readActiveReadGrantTargets: async (address) => ({
-        authNonce: (await chain.readAccount(address))!.authNonce,
-        targets: [],
-      }),
+    holdings: combined ? holdingSource : { selectHeldEntries: async () => [] },
+    readGrants: combined
+      ? grantSource
+      : {
+          readActiveReadGrantTargets: async (address) => ({
+            authNonce: (await chain.readAccount(address))!.authNonce,
+            targets: [],
+          }),
+        },
+    grants: grantSource,
+    grantCommitments: grantSource,
+    grantDetails: grantSource,
+    grantRoster: grantSource,
+    grantOrigin: 'localhost',
+    grantJournal: {
+      stage: async (opening) => {
+        const grants = existsSync(join(root, 'grants.json')) ? read('grants.json') : {};
+        assert.equal(grants[opening.bookkeeping.grantId], undefined);
+        grants[opening.bookkeeping.grantId] = opening;
+        save('grants.json', grants);
+      },
+      load: async (_account, id) =>
+        existsSync(join(root, 'grants.json')) ? read('grants.json')[id] : undefined,
+      pending: async () =>
+        Object.keys(existsSync(join(root, 'grants.json')) ? read('grants.json') : {}).filter(
+          (id) =>
+            !(existsSync(join(root, 'published.json')) ? read('published.json') : []).includes(id),
+        ),
+      markPublished: async (_account, id) =>
+        save('published.json', [
+          ...(existsSync(join(root, 'published.json')) ? read('published.json') : []),
+          id,
+        ]),
     },
     random: (length) => new Uint8Array(randomBytes(length)),
   };
+  const assertPopulated = async (account: string) => {
+    if (!combined || !existsSync(join(root, 'coin.json'))) return undefined;
+    const live = (await chain.readAccount(account, { includeDevices: true, includeInbox: true }))!;
+    const ring = { account, encKey: live.encKey!, envelopes: live.inboxEntries! };
+    const opened = await viewingKey.openInbox(pins.networkId, ring, live.inboxEntries!);
+    const held = await holdingSource.selectQualifiedHeldCoins(account, live.inboxEntries!, opened);
+    assert.equal(held.length, 1);
+    const expected = read('coin.json');
+    assert.deepEqual(held[0]!.coin.color, expected.color);
+    assert.deepEqual(held[0]!.coin.nonce, expected.nonce);
+    assert.equal(held[0]!.coin.value, expected.value);
+    const targets = await grantSource.readActiveReadGrantTargets(account);
+    const secrets: Uint8Array[] = grantRecovery ? fixture.readGrantSecrets : [fixture.grantSecret];
+    assert.equal(targets.targets.length, secrets.length);
+    for (const readSecret of secrets) {
+      const target = targets.targets.find(
+        (t) => t.readPublicKey === hex(x25519.getPublicKey(readSecret)),
+      );
+      assert.ok(target, 'Every independent read key must match a live target.');
+      let current = false;
+      for (const entry of opened)
+        if (
+          entry?.kind === 'grant' &&
+          entry.record.part === 'view' &&
+          entry.record.grantId === target.grantId
+        ) {
+          const secret = await openGrantView(readSecret, {
+            account,
+            grantId: target.grantId,
+            seal: unhex(entry.record.seal),
+            expectedEncKey: live.encKey!,
+          });
+          if (secret) {
+            current = true;
+            secret.fill(0);
+          }
+        }
+      assert.ok(current, 'Independent grantee must open the current viewing secret.');
+    }
+    return {
+      heldCoins: 1,
+      activeReadGrants: targets.targets.length,
+      grantOpenedCurrentKey: true,
+      value: expected.value.toString(),
+      merkleIndex: held[0]!.coin.mt_index.toString(),
+    };
+  };
+  if (mode === 'populate') {
+    assert.ok(combined);
+    assert.equal(
+      existsSync(join(root, 'coin.json')),
+      false,
+      'Never repeat an uncertain setup deposit.',
+    );
+    const account = read('result-create.json').account;
+    const api = await createPassportAccounts(ports).openAccountAt!(account);
+    const grantIds: string[] = [];
+    const readSecrets: Uint8Array[] = grantRecovery
+      ? fixture.readGrantSecrets
+      : [fixture.grantSecret];
+    for (const [index, readSecret] of readSecrets.entries()) {
+      const granted = await api.issueGrant!({
+        grantee: {
+          scheme: 'jubjub-schnorr',
+          publicKey: hex(
+            jubjub.Point.fromAffine(
+              binding.pureCircuits.compute_public_point_with_jubjub(11n + 2n * BigInt(index)),
+            ).toBytes(),
+          ),
+        },
+        operations: ['withdraw-unshielded'],
+        color: '34'.repeat(32),
+        recipient: { kind: 'any' },
+        maxCoinValue: '100',
+        perCallCap: '10',
+        cap: '100',
+        expiresAt: null,
+        read: true,
+        rpId: 'localhost',
+        readPublicKey: hex(x25519.getPublicKey(readSecret)),
+      });
+      assert.equal(granted.status, 'active');
+      grantIds.push(granted.grantId);
+    }
+    const faucet = await setupModule.deployFaucet(setupContext.walletCtx);
+    const { mintToUser } = await referenceImport('src/tests/flow.ts');
+    const coin = await mintToUser(setupContext, faucet, hex(randomBytes(32)), 7n);
+    // Save write-ahead setup intent before value submission. No automatic retry after uncertainty.
+    save('coin.json', coin);
+    const view = (await chain.readAccount(account))!;
+    const deposited = await chain.call({
+      address: account,
+      circuit: 'deposit_shielded',
+      args: [
+        { nonce: coin.nonce, color: coin.color, value: coin.value },
+        await sealInboxCoin(view.encKey!, coin),
+      ],
+    });
+    save('setup-receipt.json', {
+      grantId: grantIds[0],
+      ...(grantRecovery && { grantIds }),
+      depositTxHash: deposited.txHash,
+      faucetAddress: faucet.address,
+    });
+    emit({ completed: 'populate', account, populated: await assertPopulated(account) });
+    store.close();
+    process.exit(0);
+  }
+  if (lifecycle && operation === 'verify-removed') {
+    const account = read('result-create.json').account;
+    const before = await publicRecords();
+    assert.equal((await fetch(base + '/healthz')).ok, true);
+    let mutationAttempts = 0;
+    const forbidden = async (): Promise<never> => {
+      mutationAttempts++;
+      throw new Error('Removed identity attempted a mutation.');
+    };
+    const guarded: PassportPorts = {
+      ...ports,
+      chain: { ...chain, call: forbidden },
+      directory: { ...ports.directory!, put: forbidden },
+      deployer: { ...ports.deployer, deploy: forbidden },
+      records: { ...ports.records!, write: forbidden },
+    };
+    await assert.rejects(createPassportAccounts(guarded).openAccountAt!(account), {
+      code: arm === 'p256' ? 'AccountNotFound' : 'NotAuthorised',
+    });
+    const live = (await chain.readAccount(account, { includeInbox: true, includeDevices: true }))!;
+    const owner = softwareParticipant(fixture.participants.owner, arm);
+    await owner.keyring.openInbox(
+      pins.networkId,
+      { account, encKey: live.encKey!, envelopes: live.inboxEntries! },
+      live.inboxEntries!,
+    );
+    const priorTargetKey = unhex(read('view-add-target.json').encKey);
+    await viewingKey.openInbox(
+      pins.networkId,
+      { account, encKey: priorTargetKey, envelopes: live.inboxEntries! },
+      live.inboxEntries!,
+    );
+    await requireNoCurrentKey(() =>
+      viewingKey.openInbox(
+        pins.networkId,
+        { account, encKey: live.encKey!, envelopes: live.inboxEntries! },
+        live.inboxEntries!,
+      ),
+    );
+    assert.deepEqual(
+      await publicRecords(),
+      before,
+      'Removed identity must not register or send a call.',
+    );
+    assert.equal(mutationAttempts, 0);
+    emit({
+      completed: operation,
+      removedIdentityRefused: true,
+      hostRecordsUnchanged: true,
+      hostReachable: true,
+      originalTargetKeyStillWorks: true,
+      mutationAttempts,
+    });
+    store.close();
+    process.exit(0);
+  }
   const coordinator = createDurablePassportMutations({
     ports,
     journal: encryptedMutationJournal(
       pins,
       source,
-      fileMutationByteStore(join(root, 'owner-journal')),
+      fileMutationByteStore(join(root, role === 'owner' ? 'owner-journal' : `${role}-journal`)),
     ),
     outcomes: host.outcomes,
     consent: {
@@ -400,7 +722,26 @@ if (mode === 'host') {
   const intent: MutationIntent =
     operation === 'create'
       ? { kind: 'create', userName: 'live-durability-software-identity', retireAuthority: true }
-      : { kind: 'rotate', account: read('result-create.json').account };
+      : operation === 'add-survivor' || operation === 'add-target'
+        ? {
+            kind: 'add-device',
+            account: read('result-create.json').account,
+            reader: await softwareParticipant(
+              fixture.participants[operation === 'add-survivor' ? 'survivor' : 'target'],
+              arm,
+            ).reader(),
+          }
+        : operation === 'remove-target'
+          ? {
+              kind: 'remove-device',
+              account: read('result-create.json').account,
+              commitmentHex: read('result-add-target.json').result.commitmentHex,
+            }
+          : { kind: 'rotate', account: read('result-create.json').account };
+  if (operation !== 'create' && !existsSync(join(root, `before-${operation}.json`))) {
+    const view = (await chain.readAccount(read('result-create.json').account))!;
+    save(`before-${operation}.json`, { encKey: hex(view.encKey!), authNonce: view.authNonce });
+  }
   try {
     let result;
     const deadline = Date.now() + 10 * 60000;
@@ -417,7 +758,12 @@ if (mode === 'host') {
           (r) => r.ok,
           () => false,
         );
-        if ((error as any)?.code !== 'MutationUnsettled' || !available || Date.now() >= deadline)
+        if (
+          fault !== 'none' ||
+          (error as any)?.code !== 'MutationUnsettled' ||
+          !available ||
+          Date.now() >= deadline
+        )
           throw error;
         // Test host re-approves the same original synthetic intent. Never create a new ID.
         continuing = true;
@@ -428,14 +774,16 @@ if (mode === 'host') {
     const opened = await createPassportAccounts(ports).openAccountAt!(result.account);
     const state = await opened.state();
     assert.equal(state.booted, true);
-    assert.equal(state.entryCount, 1);
+    const expectedEntries =
+      !lifecycle || operation === 'create' ? 1 : operation === 'add-target' ? 3 : 2;
+    assert.equal(state.entryCount, expectedEntries);
     const live = (await chain.readAccount(result.account, {
       includeDevices: true,
       includeInbox: true,
     }))!;
-    assert.ok(live.encKey && live.deviceEntries?.length === 1);
-    if (operation === 'rotate') {
-      const before = read('view-create.json');
+    assert.ok(live.encKey && live.deviceEntries?.length === expectedEntries);
+    if (operation !== 'create') {
+      const before = read(`before-${operation}.json`);
       assert.notEqual(
         hex(live.encKey),
         before.encKey,
@@ -443,12 +791,63 @@ if (mode === 'host') {
       );
       assert.ok(state.authNonce > before.authNonce);
     }
+    let readers: object | undefined;
+    if (lifecycle) {
+      const names =
+        operation === 'create'
+          ? ['owner']
+          : operation === 'add-target'
+            ? ['owner', 'survivor', 'target']
+            : ['owner', 'survivor'];
+      for (const name of names) {
+        const reader = softwareParticipant(fixture.participants[name], arm);
+        const entries = await reader.keyring.openInbox(
+          pins.networkId,
+          { account: result.account, encKey: live.encKey!, envelopes: live.inboxEntries! },
+          live.inboxEntries!,
+        );
+        if (existsSync(join(root, 'coin.json')))
+          assert.equal(
+            (
+              await holdingSource.selectQualifiedHeldCoins(
+                result.account,
+                live.inboxEntries!,
+                entries,
+              )
+            ).length,
+            1,
+          );
+      }
+      if (operation === 'remove-target' || operation === 'survivor-rotate') {
+        const target = softwareParticipant(fixture.participants.target, arm);
+        await requireNoCurrentKey(() =>
+          target.keyring.openInbox(
+            pins.networkId,
+            { account: result.account, encKey: live.encKey!, envelopes: live.inboxEntries! },
+            live.inboxEntries!,
+          ),
+        );
+        assert.ok(
+          !live.deviceEntries!.some(
+            (v) => hex(v) === read('result-add-target.json').result.commitmentHex,
+          ),
+        );
+      }
+      readers = {
+        currentReaders: names,
+        removedTargetCannotOpenCurrentKey:
+          operation === 'remove-target' || operation === 'survivor-rotate',
+        actor: role,
+      };
+    }
     save(`view-${operation}.json`, { encKey: hex(live.encKey), authNonce: state.authNonce });
     emit({
       completed: operation,
       account: result.account,
       audit: await coordinator.inspect(id),
       authNonce: state.authNonce.toString(),
+      populated: await assertPopulated(result.account),
+      ...(readers && { readers }),
       records: await publicRecords(),
     });
     store.close();

@@ -60,6 +60,19 @@ const scenario = (/** @type {string} */ code, timeoutMs = 2000) => ({
   establishes: 'test fixture',
 });
 
+test('registered P-256-only evidence cannot qualify the both-arm grant suite', () => {
+  const single = {
+    ...receipt(),
+    suite: 'grant-recovery-p256',
+    results: [
+      { id: 'grant-recovery-native-p256', tier: 'proof-localnet', outcome: 'passed', elapsedMs: 1 },
+    ],
+  };
+  validateReceipt(single);
+  assert.throws(() => validateReceipt({ ...single, suite: 'grant-recovery-live' }));
+  assert.throws(() => validateReceipt({ ...single, suite: 'unregistered-p256' }));
+});
+
 test('plans name missing inputs, distinguish tiers and leave unimplemented release gates visible', () => {
   assert.deepEqual(planSuite('foundation', {}).find((s) => s.id === 'binding-source')?.missing, [
     'PASSPORT_REPO',

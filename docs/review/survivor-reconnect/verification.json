@@ -1,0 +1,95 @@
+{
+  "arms": {
+    "jubjub": {
+      "cases": 10,
+      "hostSends": 44,
+      "hostConfirmedTransactions": 44,
+      "survivorAuthorized": true,
+      "removedCurrentAccessRefused": true,
+      "activeReadGrants": 1,
+      "qualifiedHeldCoins": 1,
+      "testCoinValue": "7"
+    },
+    "p256": {
+      "cases": 10,
+      "hostSends": 44,
+      "hostConfirmedTransactions": 44,
+      "survivorAuthorized": true,
+      "removedCurrentAccessRefused": true,
+      "activeReadGrants": 1,
+      "qualifiedHeldCoins": 1,
+      "testCoinValue": "7"
+    }
+  },
+  "hostSends": 88,
+  "hostConfirmedTransactions": 88,
+  "duplicateHostSends": 0,
+  "postSubmitProcessDeaths": 4,
+  "actualIndexerOutageProbes": 4,
+  "wallet": {
+    "nodeExecution": true,
+    "initialNight": "0",
+    "afterIndexerRestartNight": "2",
+    "afterWalletRecreationNight": "2",
+    "originalSends": 1,
+    "sameAddressesAndPreservedSeed": true,
+    "staleHandleRefused": true,
+    "subscriptionsClosed": true,
+    "socketOpens": 9,
+    "socketCloses": 9,
+    "offlineInclusionHeight": 3483,
+    "beforeIndexerRestartFinalizedHeight": 3483
+  },
+  "schema": 1,
+  "date": "2026/10/25",
+  "testedSource": {
+    "commit": "094c7f0d953d768146ef8c2a1d2a6de3577c7d0c",
+    "dirty": false,
+    "workspaceSha256": "90801c99b004d7376edbf684ff9cc5368d5f1a0bf588d0225defce397f198bf6",
+    "fileCount": 1218
+  },
+  "binding": {
+    "id": "acc-s3r1.1",
+    "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "moduleSha256": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf"
+  },
+  "rounds": 1,
+  "caseEntries": 21,
+  "actualWalletIndexerOutages": 1,
+  "realProviderQualified": false,
+  "releaseQualified": false,
+  "receipts": {
+    "accepted-live-v1/receipt.json": {
+      "bytes": 802280,
+      "sha256": "9949dd3eeab2ee85fb9eeac63b6db5616dcad5b11c555ec4c41fcdae3532c70e"
+    },
+    "accepted-suite-v1.json": {
+      "bytes": 1068,
+      "sha256": "0718ec1790d92c50d761810af185a76cf1a9a4341e3e0beab9e1ac91670a2b62"
+    }
+  },
+  "scope": "source-software-identity-enrolled-survivor-grants-holdings-and-wallet-reconnect",
+  "preFreezeGate": {
+    "passed": 877,
+    "skipped": 7,
+    "failed": 0,
+    "exitCode": 0,
+    "logSha256": "c1f197f749fb43f49ecb9f27fb48aa130c8f3f06878188a7f75a35cba0aabbbc"
+  },
+  "docsCheck": {
+    "pages": 19,
+    "localLinksAndAnchors": 372,
+    "errors": [],
+    "generator": "Jekyll 4.4.1"
+  },
+  "delivery": "Local only on current branch; no push, merge, package, image or Pages publication.",
+  "limits": [
+    "Software identities and Node wallet; real providers/two-browser ceremonies untested.",
+    "Removal spans transactions; no adversarial concurrent signer or atomic compromised-identity retirement.",
+    "Previously learned secrets cannot be erased.",
+    "Shared trusted read-public opening bookkeeping; no profile-loss or private signing-key recovery.",
+    "Wallet reuses preserved synthetic HD seed; no seed-loss/provider-sync recovery.",
+    "Wallet credit is a separate direct standalone transfer, not an ACC withdrawal.",
+    "One declared both-arm round; no full release/Lace or maximum-inbox resource acceptance."
+  ]
+}

@@ -241,11 +241,15 @@ evidence cannot be requalified by the repeat checker. A process exit alone does
 not prove test execution.
 
 Every scenario subprocess discards inherited `NODE_TEST_CONTEXT`, `NODE_OPTIONS`
-and `NODE_PATH`. An enclosing Node test cannot force its serialised protocol;
-ambient filters, shards, preloads and alternate module paths cannot replace the
-catalog command. Caller-owned environments are not mutated. The real probe uses a
+and `NODE_PATH`. Direct child Node execution therefore does not inherit those three runtime
+controls. This does not isolate a wrapper's configuration: pnpm/npm can reintroduce
+`node-options` from their own environment or user configuration, and other Node,
+TLS and tool settings remain operator inputs. Caller-owned environments are not mutated. The real probe uses a
 preload that would exit early and a shard excluding its only file, and checks both
 test and non-test children. Its ten-second startup bound accommodates loaded
 hosts; it is not a qualified performance budget. This is not a hermetic execution
 sandbox: the trusted operator, pinned runtime, installed dependencies and remaining
 scenario inputs still require the provenance appropriate to that evidence tier.
+Qualification is supported through the pinned macOS/Linux Nix shell; these checks
+do not qualify Windows environment handling. Resource tuning must be explicit in
+the scenario command/configuration; inherited `NODE_OPTIONS` is discarded.

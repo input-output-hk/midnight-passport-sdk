@@ -4,7 +4,9 @@
     "composite": false,
     "noEmit": true,
     "types": ["node"],
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "checkJs": true
   },
   "include": ["src", "test", "qualification"]
 }
