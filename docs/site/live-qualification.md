@@ -304,6 +304,20 @@ publishes two independent read grants, deposits one qualified seven-unit shielde
 holding and enrolls a survivor. It then stops the host before a separate native
 owner-grant worker uses the same standalone payer.
 
+For an explicit single-arm run, use suite `grant-recovery-jubjub` or
+`grant-recovery-p256` with its own fresh evidence root. The entrypoint selects the
+arm; ambient environment variables cannot narrow the both-arm suite. Receipts name
+`armsRequested`, and a single-arm pass does not qualify the other arm. Two-grant
+setup has a bounded 30-minute budget: real P-256 issue/rotation/publication exceeded
+the original single-grant 15-minute budget. Native transaction TTLs and unknown-send
+rules are unchanged; this timeout never renews bytes or reissues a grant.
+
+A timed-out overall run remains failed, even if an earlier arm completed. Retaining
+that completed arm requires its original assertions/source pin and a separately
+recorded end source/reference fingerprint audit. Any later component comparison
+must list changed harness files explicitly; it must not relabel the failed overall
+receipt or claim it passed at a new source.
+
 The worker creates four distinct empty profiles: original reader, independent
 enrolled reader, absent-opening provider and wrong-read-key provider. Its ports
 cannot load the old grant journal. Protected original journal/profile files are

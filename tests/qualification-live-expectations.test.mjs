@@ -22,6 +22,11 @@ test('baseline selection cannot be replaced by an ambient wallet profile', () =>
     assert.equal(liveProfileOptions('wallet').walletOnly, true);
     assert.equal(liveProfileOptions('grants').grantRecovery, true);
     assert.equal(liveProfileOptions('grants').walletOnly, false);
+    assert.deepEqual(liveProfileOptions('grants').arms, ['jubjub', 'p256']);
+    assert.deepEqual(liveProfileOptions('grants-jubjub').arms, ['jubjub']);
+    assert.deepEqual(liveProfileOptions('grants-p256').arms, ['p256']);
+    assert.equal(liveProfileOptions('grants-p256').populateTimeoutMs, 30 * 60000);
+    assert.equal(liveProfileOptions('combined').populateTimeoutMs, 15 * 60000);
   } finally {
     if (before === undefined) delete process.env.PASSPORT_LIVE_PROFILE;
     else process.env.PASSPORT_LIVE_PROFILE = before;

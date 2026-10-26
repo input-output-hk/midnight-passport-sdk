@@ -154,7 +154,7 @@ export async function referenceFingerprint(contract) {
   return { sources, packages };
 }
 
-/** @param {'baseline'|'combined'|'lifecycle'|'wallet'|'removed-recheck'|'grants'} [requestedProfile] */
+/** @param {'baseline'|'combined'|'lifecycle'|'wallet'|'removed-recheck'|'grants'|'grants-jubjub'|'grants-p256'} [requestedProfile] */
 export async function runLiveOutages(requestedProfile = 'baseline') {
   assert.equal(process.env.PASSPORT_RC_LOCALNET, '1', 'Explicit localnet opt-in required.');
   assert.equal(process.env.MN_NETWORK_ID, 'undeployed');
@@ -171,8 +171,16 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
     ),
     '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   );
-  const { profile, lifecycle, walletOnly, combined, removedOnly, grantRecovery } =
-    liveProfileOptions(requestedProfile);
+  const {
+    profile,
+    lifecycle,
+    walletOnly,
+    combined,
+    removedOnly,
+    grantRecovery,
+    arms,
+    populateTimeoutMs,
+  } = liveProfileOptions(requestedProfile);
   const rounds = Number(process.env.PASSPORT_LIVE_ROUNDS ?? '1');
   assert.ok(Number.isInteger(rounds) && rounds >= 1 && rounds <= 3);
   const source = await workspaceIdentity(ROOT),
@@ -222,7 +230,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
   const env = {
     ...process.env,
     PASSPORT_RC_LOCALNET: '1',
-    PASSPORT_LIVE_PROFILE: removedOnly ? 'lifecycle' : profile,
+    PASSPORT_LIVE_PROFILE: removedOnly ? 'lifecycle' : grantRecovery ? 'grants' : profile,
     MN_NETWORK_ID: 'undeployed',
     MIDNIGHT_NETWORK: 'local',
     MN_NODE_URL: 'http://127.0.0.1:19954',
@@ -257,6 +265,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
                     ? 'source-live-combined-grants-holdings-prover-outages'
                     : 'source-live-proof-process-and-indexer-outages',
           profile,
+          armsRequested: arms,
           verdict,
           source,
           binding,
@@ -412,7 +421,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
     await waitFor(indexerReady, 60000);
     await save();
     for (let round = 1; round <= rounds; round++) {
-      for (const arm of walletOnly ? [] : ['jubjub', 'p256']) {
+      for (const arm of arms) {
         const root = join(output, `round-${round}-${arm}`);
         if (!removedOnly) await mkdir(root, { mode: 0o700 });
         if (removedOnly) {
@@ -515,7 +524,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
           if (mode === 'populate') {
             const populated = await finished(
               worker(mode, root, arm, operation, 'none'),
-              15 * 60000,
+              populateTimeoutMs,
             );
             assert.equal(
               populated.code,

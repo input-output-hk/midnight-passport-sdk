@@ -1,14 +1,23 @@
 import assert from 'node:assert/strict';
 
 /** Explicit entrypoint selection; an ambient shell profile never changes a scenario.
- * @param {'baseline'|'combined'|'lifecycle'|'wallet'|'removed-recheck'|'grants'} [profile]
+ * @param {'baseline'|'combined'|'lifecycle'|'wallet'|'removed-recheck'|'grants'|'grants-jubjub'|'grants-p256'} [profile]
  */
 export function liveProfileOptions(profile = 'baseline') {
   assert.ok(
-    ['baseline', 'combined', 'lifecycle', 'wallet', 'removed-recheck', 'grants'].includes(profile),
+    [
+      'baseline',
+      'combined',
+      'lifecycle',
+      'wallet',
+      'removed-recheck',
+      'grants',
+      'grants-jubjub',
+      'grants-p256',
+    ].includes(profile),
   );
   const removedOnly = profile === 'removed-recheck';
-  const grantRecovery = profile === 'grants';
+  const grantRecovery = ['grants', 'grants-jubjub', 'grants-p256'].includes(profile);
   const lifecycle = profile === 'lifecycle' || removedOnly || grantRecovery;
   return {
     profile,
@@ -17,6 +26,17 @@ export function liveProfileOptions(profile = 'baseline') {
     grantRecovery,
     walletOnly: profile === 'wallet',
     combined: lifecycle || profile === 'combined',
+    arms:
+      profile === 'wallet'
+        ? []
+        : profile === 'grants-jubjub'
+          ? ['jubjub']
+          : profile === 'grants-p256'
+            ? ['p256']
+            : ['jubjub', 'p256'],
+    // Two read-grant issues include preserving rotations and sealed publications.
+    // The old single-grant fifteen-minute budget timed out real P-256 setup.
+    populateTimeoutMs: (grantRecovery ? 30 : 15) * 60000,
   };
 }
 /** @param {{code:number|null,messages:Array<{failed?:string,code?:string,audit?:{unresolvedEffects?:number}}>}} result @param {string} operation @param {string} fault */

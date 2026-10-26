@@ -158,6 +158,32 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Both software authoriser arms on the owned localnet: two independently readable grants, one qualified shielded holding, original-reader reconstruction in separate empty profiles, independent-reader refusal, rotation and selective/all native revocation. No private grantee key recovery, durable grant continuation, unaided grantee discovery or real-provider/full release acceptance.',
   },
+  'grant-recovery-native-jubjub': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-grants-jubjub.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 90 * 60000,
+    establishes:
+      'JubJub-only native grant profile-loss/rotation/revocation case with two read grants, an enrolled survivor and a qualified holding. Explicit single-arm scope; no P-256, provider, durable grant continuation or full release acceptance.',
+  },
+  'grant-recovery-native-p256': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-grants-p256.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 90 * 60000,
+    establishes:
+      'P-256-only native grant profile-loss/rotation/revocation case with two read grants, an enrolled survivor and a qualified holding. Explicit single-arm scope; no JubJub, provider, durable grant continuation or full release acceptance.',
+  },
   'wallet-indexer-reconnect': {
     tier: 'proof-localnet',
     command: [node, 'scripts/qualification/live-wallet.mjs'],
@@ -198,6 +224,8 @@ export const SUITES = Object.freeze({
   'removed-recheck': ['removed-access-recheck'],
   'grant-recovery': ['grant-recovery-generated'],
   'grant-recovery-live': ['grant-recovery-native'],
+  'grant-recovery-jubjub': ['grant-recovery-native-jubjub'],
+  'grant-recovery-p256': ['grant-recovery-native-p256'],
   consumer: ['packed-consumer'],
   'consumer-source': ['consumer-source-types'],
   'consumer-published': ['consumer-published-host'],

@@ -126,3 +126,8 @@ Fresh profiles receive no original grant journal; protected files are retained a
 hash-checked. See the [live runbook]({{ '/live-qualification/#grant-profile-loss-and-revocation' | relative_url }}).
 Only a matching signed-source native receipt establishes this scope. Fast tests
 alone do not qualify proofs, real providers, full Lace integration or a release.
+
+The live runbook also provides explicit per-arm suites for targeted qualification.
+Keep each receipt's arm, original source and verdict. A completed arm in a later
+failed run is not an overall pass; any retained scoped evidence needs a recorded
+end fingerprint audit and an explicit component comparison after harness changes.
