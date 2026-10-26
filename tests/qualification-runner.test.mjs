@@ -191,7 +191,13 @@ test('ignored compiled inputs are included in qualification identity and symlink
 test('every declared Node test scenario pins TAP reporting', () => {
   for (const [id, declared] of Object.entries(SCENARIOS)) {
     const command = /** @type {readonly string[]} */ (declared.command);
-    if (command.includes('--test')) assert.ok(command.includes('--test-reporter=tap'), id);
+    if (command.includes('--test')) {
+      assert.deepEqual(
+        command.filter((flag) => flag.startsWith('--test-reporter')),
+        ['--test-reporter=tap'],
+        id,
+      );
+    }
   }
 });
 
@@ -201,7 +207,11 @@ test('pinned catalog flags run independently of inherited Node test context', as
     const command = SCENARIOS['contract-entries'].command.slice(0, 3);
     assert.ok(command.includes('--test-reporter=tap'));
     const fixture = { ...scenario('unused', 10000), command };
-    const env = { ...process.env, NODE_TEST_CONTEXT: 'child-v8' };
+    const env = {
+      ...process.env,
+      NODE_TEST_CONTEXT: 'child-v8',
+      NODE_OPTIONS: '--test-shard=1/99',
+    };
     const empty = await runCommand(fixture, { root, env });
     assert.equal(empty.outcome, 'failed');
     assert.equal(empty.failureCode, 'NO_TESTS');
@@ -212,9 +222,10 @@ test('pinned catalog flags run independently of inherited Node test context', as
     const real = await runCommand(fixture, { root, env });
     assert.equal(real.outcome, 'passed');
     assert.equal(real.tests?.passed, 1);
+    assert.equal(env.NODE_OPTIONS, '--test-shard=1/99');
     assert.equal(env.NODE_TEST_CONTEXT, 'child-v8'); // Caller-owned environment is unchanged.
     assert.equal(
-      (await runCommand(scenario('console.log("non-test diagnostic")'))).outcome,
+      (await runCommand(scenario('console.log("non-test diagnostic")', 10000))).outcome,
       'passed',
     );
   } finally {
