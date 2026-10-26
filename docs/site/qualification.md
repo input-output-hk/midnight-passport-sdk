@@ -218,20 +218,22 @@ At the existing bounds, candidate-by-coin work can approach 4096 × 4096 decrypt
 attempts. This is not a qualified latency budget; large-inbox resource acceptance
 remains open. A smaller secret cap must not evict genuine older holding keys.
 Dependencies, installed runtime bytes and other ignored executable inputs need
-separate scenario-specific provenance; the workspace fingerprint includes
+separate scenario-specific provenance. The workspace fingerprint includes
 `packages/*/dist`, but excludes the git-ignored `node_modules` tree and does not
-cover every application build output. Test scenarios with no passing TAP summary now refuse as NO_TESTS, while non-test diagnostics retain their own
-explicit success contract.
-
+cover every application build output. Test scenarios with no passing TAP summary
+refuse as NO_TESTS; non-test diagnostics have separate explicit success contracts.
 
 Declared Node test scenarios pin the TAP reporter, and both receipt creation and
 validation require a positive passing count. Historical receipts without that
-evidence cannot be requalified by the repeat checker. Non-test diagnostics have
-separate explicit contracts; a process exit alone does not prove test execution.
+evidence cannot be requalified by the repeat checker. A process exit alone does
+not prove test execution.
 
-All scenario subprocesses discard inherited `NODE_TEST_CONTEXT` so an enclosing
-Node test cannot force a serialised runner protocol in place of TAP. Declared Node
-test scenarios also discard `NODE_OPTIONS`: ambient filters, shards, loaders and
-reporters cannot narrow their catalog commands. Caller-owned environments are not
-mutated. Non-test scenarios retain their separate success/provenance contracts. The real nested-runner probe allows ten seconds for loaded hosts; that
-is a test startup bound, not a qualified performance budget.
+Every scenario subprocess discards inherited `NODE_TEST_CONTEXT`, `NODE_OPTIONS`
+and `NODE_PATH`. An enclosing Node test cannot force its serialised protocol;
+ambient filters, shards, preloads and alternate module paths cannot replace the
+catalog command. Caller-owned environments are not mutated. The real probe uses a
+preload that would exit early and a shard excluding its only file, and checks both
+test and non-test children. Its ten-second startup bound accommodates loaded
+hosts; it is not a qualified performance budget. This is not a hermetic execution
+sandbox: the trusted operator, pinned runtime, installed dependencies and remaining
+scenario inputs still require the provenance appropriate to that evidence tier.
