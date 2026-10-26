@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "testedSource": {
+    "commit": "5d2bf2062fab64a40eadee009823e7a69bd70cc6",
+    "dirty": false,
+    "workspaceSha256": "355d66785919fe35843ac8cdc7574d874d19b13482df7e14484438c77fc8fcbc",
+    "fileCount": 1240
+  },
+  "testedInputMapSha256": "0d80f7d10e857bab64836e79de2ef1af2490d579160d3f9da55f6989e0f0d150",
+  "comparedNonDocumentationInputs": 1115,
+  "nonDocumentationInputMapSha256": "9948b0faf28f37162447cbb0b2425dbf7c8e0091f27967a6f7770383f12a07af",
+  "allOtherTrackedAndCompiledBytesEqual": true,
+  "documentationDeltaPaths": [
+    "STATE.md",
+    "docs/compatibility.md",
+    "docs/review/preparation-outages/README.md",
+    "docs/review/preparation-outages/executable-inputs.json",
+    "docs/review/preparation-outages/verification.json",
+    "docs/site/host-durability.md",
+    "docs/site/live-qualification.md"
+  ],
+  "statement": "The native receipt remains pinned to its original source. Only documentation/STATE metadata differs; all other tracked and compiled package inputs match the native freeze. This does not requalify the receipt at a new source."
+}

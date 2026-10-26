@@ -500,6 +500,11 @@ real-loopback HTTP conflict, persistent refusal, simulated expiry, cancellation
 and client-timeout tests. No automatic replacement or uncertain rebroadcast is
 introduced. The new explicit `survivor-outages` profile combines deployment/prover,
 activation, populated enrollment/removal and survivor rotation/indexer boundaries.
-Native acceptance remains pending its actual signed-source receipt. Real-provider,
-full Lace and the complete release gate remain open. See
+Signed source `5d2bf2062fab64a40eadee009823e7a69bd70cc6` passed one both-arm software/localnet round:
+32 entries, 88 confirmed host transactions, zero duplicate host sends, ten
+indexer-down probes and four prover stops. Original IDs/plans/bytes survived;
+pre-registration owner proof failure remained safely unresolved with unchanged
+host records/send count. The first failed harness expectation and its uncertain
+intent are retained. This adds no real-provider/two-browser, full Lace or
+three-consecutive-run release acceptance. Those broader gates remain open. See
 [review map](review/preparation-outages/README.md).

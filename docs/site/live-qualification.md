@@ -366,7 +366,14 @@ fixture is not the recovery procedure; retain its original protected state.
 
 `survivor-outages` is an explicit integrated software-identity source profile for
 #230/#231. It creates fresh owned accounts; it never replays old failed fixtures.
-The native scope is pending a final matching signed-source receipt.
+Signed source `5d2bf2062fab64a40eadee009823e7a69bd70cc6` completed one both-arm localnet run:
+32 passed entries, 88 confirmed host transactions and zero duplicate host sends.
+Ten actual indexer-down probes and four actual prover stops passed. Source,
+compiled-workspace and selected reference fingerprints remained fixed through
+the run. The final owner pre-registration intent remains safely unresolved; it
+is preserved, not completed or discarded. The failed first attempt is retained
+in the repository's `docs/review/preparation-outages/` record, alongside its
+specific deployment-error expectation correction and the successful receipt hashes.
 
 ```sh
 PASSPORT_RC_LOCALNET=1 MN_NETWORK_ID=undeployed \

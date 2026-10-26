@@ -316,10 +316,10 @@ frontier checks and the host's native validation remain distinct; changed or sta
 calls can still refuse/fail and must not become replacements. Keep the original
 ID, bytes and protected state. Unknown/pending is never evidence of no send.
 
-The current stale-producer regression releases the old preparer after the
-successor completes. It does not cover every held-successor interleaving. More
-preparation-expiry, persistent-refusal and HTTP call-retry combinations remain
-#230 test work; the existing cases do not constitute exhaustive race acceptance.
+The earlier stale-producer regression released the old preparer after the
+successor completed. The following slice adds the held-successor interleaving,
+preparation refusal and authenticated HTTP combinations. This coverage does not
+constitute exhaustive race acceptance or native expiry qualification.
 
 
 ## Preparation/HTTP regression slice — 2026/10/26

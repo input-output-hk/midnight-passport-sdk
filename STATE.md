@@ -14,9 +14,15 @@ preparation/dispatch refusals. Real loopback HTTP tests cover fresh-executor
 reconciliation, authentication, persistent refusal, cancellation and timeout with
 original output retention. Explicit integrated both-arm/per-arm survivor outage
 profiles add closed fault/error/crash checks and unchanged-send unknown probes.
-Final source/native qualification is pending; no provider/full Lace or release
-claim. See `docs/review/preparation-outages/README.md`. Exact-value guard and
-immutable binding remain unchanged.
+Signed source `5d2bf2062fab64a40eadee009823e7a69bd70cc6` passed 906 tests with 7 existing conditional
+skips and no failures, plus one both-arm native round: 32 entries, 88 confirmed
+host transactions, zero duplicate sends, ten indexer-down probes/four prover
+stops. Original IDs/plans/bytes survived; the final owner pre-registration
+failure remains safely unresolved without host-record/send-count changes.
+A deployment-error expectation defect was corrected; its failed original run
+and pending intent remain retained. No provider/full Lace, three-run release
+or complete issue claim. See `docs/review/preparation-outages/README.md`.
+Exact-value guard and immutable binding remain unchanged.
 
 ## 2026/10/26 — final qualification review hardening
 
