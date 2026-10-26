@@ -62,3 +62,17 @@ At P-256 source, the full gate passed 889 tests with seven pre-existing conditio
 skips and zero failures; the focused generated-contract suite passed ten tests
 without skips. Provider, full Lace, total-loss, native grant crash continuation and
 release qualification remain false. Original failed-run private state is retained.
+
+
+## Later review corrections
+
+The evidence-only commit `eeecad8` preserved all executable inputs from `7483786`.
+A later signed merge inherits foundation review fixes to the qualification runner,
+receipt validator and tests: independent child context, no inherited preload/path/
+filter/shard options, and positive evidence for skipped-result rows. These are
+harness corrections, not a rerun or relabelling of the original native evidence.
+[Post-review input comparison](post-review-inputs.json) enumerates changed hashes;
+SDK, native grant worker, shared grant assertions and compiled inputs remain
+unchanged. Documentation/STATE metadata is additional. The newer full local gate
+contains one extra catalog invariant test; original source-gate counts remain
+historical. Trusted operator/runtime/dependency provenance is still required.

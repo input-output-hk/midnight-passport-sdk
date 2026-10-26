@@ -1,3 +1,14 @@
+## 2026/10/26 — final qualification review hardening
+
+Foundation review fixes now reject zero-test skipped-result rows and isolate
+scenario children from inherited Node test context, options/preloads and module
+paths. Actual test/non-test probes check early-exit preload refusal, a shard that
+excludes the only test, exact TAP reporter and repeat validation. The input
+comparison in `docs/review/grant-recovery/post-review-inputs.json` preserves the
+native evidence's original sources while verifying unchanged SDK/worker/shared
+assertions/compiled bytes. These harness changes do not requalify native receipts
+at a new head. All old source counts and failed verdicts remain historical.
+
 ## 2026/10/26 — scoped grant recovery/revocation evidence
 
 Source milestone #239 now has one native software round per arm: five completed

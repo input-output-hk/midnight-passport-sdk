@@ -201,14 +201,32 @@ test('ignored compiled inputs are included in qualification identity and symlink
   }
 });
 
-test('real catalog Node test flags require positive TAP evidence regardless of default reporter', async () => {
+test('every declared Node test scenario pins TAP reporting', () => {
+  for (const [id, declared] of Object.entries(SCENARIOS)) {
+    const command = /** @type {readonly string[]} */ (declared.command);
+    if (command.includes('--test')) {
+      assert.deepEqual(
+        command.filter((flag) => flag.startsWith('--test-reporter')),
+        ['--test-reporter=tap'],
+        id,
+      );
+    }
+  }
+});
+
+test('pinned catalog flags run independently of inherited Node test context', async () => {
   const root = await mkdtemp(join(tmpdir(), 'passport-tap-'));
   try {
     const command = SCENARIOS['contract-entries'].command.slice(0, 3);
     assert.ok(command.includes('--test-reporter=tap'));
-    const fixture = { ...scenario('unused'), command };
-    const env = { ...process.env };
-    delete env.NODE_TEST_CONTEXT; // The probe is an independent runner, not this test process child.
+    const fixture = { ...scenario('unused', 10000), command };
+    await writeFile(join(root, 'forbidden-preload.cjs'), 'process.exit(87);\n');
+    const env = {
+      ...process.env,
+      NODE_TEST_CONTEXT: 'child-v8',
+      NODE_OPTIONS: '--require=./forbidden-preload.cjs --test-shard=2/99',
+      NODE_PATH: join(root, 'untrusted-modules'),
+    };
     const empty = await runCommand(fixture, { root, env });
     assert.equal(empty.outcome, 'failed');
     assert.equal(empty.failureCode, 'NO_TESTS');
@@ -219,8 +237,19 @@ test('real catalog Node test flags require positive TAP evidence regardless of d
     const real = await runCommand(fixture, { root, env });
     assert.equal(real.outcome, 'passed');
     assert.equal(real.tests?.passed, 1);
+    assert.equal(env.NODE_OPTIONS, '--require=./forbidden-preload.cjs --test-shard=2/99');
+    assert.equal(env.NODE_PATH, join(root, 'untrusted-modules'));
+    assert.equal(env.NODE_TEST_CONTEXT, 'child-v8'); // Caller-owned environment is unchanged.
     assert.equal(
-      (await runCommand(scenario('console.log("non-test diagnostic")'))).outcome,
+      (
+        await runCommand(
+          scenario(
+            'if(process.env.NODE_TEST_CONTEXT || process.env.NODE_OPTIONS || process.env.NODE_PATH)process.exit(9)',
+            10000,
+          ),
+          { root, env },
+        )
+      ).outcome,
       'passed',
     );
   } finally {
@@ -228,12 +257,20 @@ test('real catalog Node test flags require positive TAP evidence regardless of d
   }
 });
 
-test('receipt validation and repetition cannot qualify test passes with missing or zero counters', () => {
-  for (const tests of [undefined, { passed: 0, failed: 0, skipped: 0, cancelled: 0 }]) {
-    const changed = receipt(),
-      row = changed.results[1];
-    assert.ok(row);
-    Object.assign(row, { tests });
-    assert.throws(() => validateReceipt(changed), /positive passing test evidence/);
+test('receipt validation and repetition reject missing or zero declared test evidence', () => {
+  for (const outcome of ['passed', 'passed-with-skips']) {
+    for (const tests of [undefined, { passed: 0, failed: 0, skipped: 1, cancelled: 0 }]) {
+      const changed = receipt(),
+        row = changed.results[1];
+      assert.ok(row);
+      Object.assign(row, { outcome, tests });
+      if (outcome === 'passed' && tests) tests.skipped = 0;
+      changed.allRequiredPassed = outcome === 'passed';
+      assert.throws(() => validateReceipt(changed), /positive passing test evidence/);
+      assert.throws(
+        () => qualifyRepeatedRuns([changed, receipt(), receipt()]),
+        /positive passing test evidence/,
+      );
+    }
   }
 });

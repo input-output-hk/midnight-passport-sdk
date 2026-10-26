@@ -239,7 +239,11 @@ export function validateReceipt(value) {
     const testCommand = /** @type {Record<string,{command:readonly string[]}>} */ (SCENARIOS)[
       result.id
     ]?.command.includes('--test');
-    if (result.outcome === 'passed' && testCommand && !(result.tests?.passed > 0))
+    if (
+      ['passed', 'passed-with-skips'].includes(result.outcome) &&
+      testCommand &&
+      !(result.tests?.passed > 0)
+    )
       throw new Error('Declared test scenario requires positive passing test evidence.');
     if (result.tests) {
       exact(result.tests, ['passed', 'failed', 'skipped', 'cancelled']);

@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "comparisonBase": {
+    "commit": "7483786d81b5a743b6a7a7210af24cebda96b2a5",
+    "dirty": false,
+    "workspaceSha256": "3bfeedb787efab9bafaadfd265db5a9c5514f0aed45d9dfe831a4a9c0af44442",
+    "fileCount": 1231
+  },
+  "mergeParents": [
+    "eeecad829bfd5053502a1a9274f41d846adb20aa",
+    "7a2249166e0bc67b78abcedaa65d9bccecaad3bf"
+  ],
+  "mode": "Per-file runtime comparison before the signed merge; additional metadata is documentation only, not a whole-tree native requalification.",
+  "changedExistingInputs": [
+    {
+      "path": "STATE.md",
+      "testedSha256": "f6ea7b77691bc8d00464736a5fa4a4308c6477471089c740d736c58707dae1a5",
+      "currentSha256": "fdcd5e78a66042279bdea67fddcd62ef63f3e3070b652f02708dc7511f16a827"
+    },
+    {
+      "path": "docs/compatibility.md",
+      "testedSha256": "e7f53350e2d5f7a25740c6962beb3ab1e0d742efc93271da70959fef5ba06314",
+      "currentSha256": "d23361ed88953f4785b60f21200dec888f8bf7721d78b9670afec9b45738eb66"
+    },
+    {
+      "path": "docs/review/grant-recovery/README.md",
+      "testedSha256": "2d51488536ff45157eefb1e6abc6992900271c79dcb7356750923f86b361018d",
+      "currentSha256": "06414659503a217d33f9b72b6bfe79b58dcba34e6df4b95a1b181d8a02c1ce13"
+    },
+    {
+      "path": "docs/review/stability-foundation/issue-acceptance.json",
+      "testedSha256": "181db6df45dace78af777f30233555758002183818188e5269bf4d697146cc01",
+      "currentSha256": "0e081bc2b36ad7925e03dc9fa1e619258e48421cb85bb3f500d06b48acf5ba68"
+    },
+    {
+      "path": "docs/site/grant-recovery.md",
+      "testedSha256": "7878ab21079c3551f0dfdef7554756c9f1621d0d76b11ad018483105d56147ab",
+      "currentSha256": "3dc66fa5e93ee20fce8526781f6c057c555fec830c5732f0d4e80fb1af922031"
+    },
+    {
+      "path": "docs/site/live-qualification.md",
+      "testedSha256": "4ea410351c74fa3ff0cc1bf2e84697e055103c585a85b613991a7b1656006cdf",
+      "currentSha256": "a4ab2437e310d79f5df31017e30fb1937629d68d0dd630ef456d2f1993b44316"
+    },
+    {
+      "path": "docs/site/qualification.md",
+      "testedSha256": "5050c0d12220847e5d220d2e0413e383f4e38598f699ea90fba6ddde6bb593a6",
+      "currentSha256": "009f681cdf6220a769606cf6a3af53676ec30450cf7d29fce6aebb092d00f9f1"
+    },
+    {
+      "path": "scripts/qualification/receipt.mjs",
+      "testedSha256": "c068f677d2f17ef949088cea277b3e0bc1f9c6b1c0e8f6f653844bf5d0afa839",
+      "currentSha256": "a6d343210aac63ed23fc8a88a194d53dd622dbc25d14b633294777a3f61fc30b"
+    },
+    {
+      "path": "scripts/qualification/runner.mjs",
+      "testedSha256": "750d1cf90e26fde147e3e260e8c9dc95e60f99e30d638660d09d7f0c3b29c657",
+      "currentSha256": "e9e11d86b2b640e2f3636d0929ef930dd3b77cb78aa24085e244cc59514f09d3"
+    },
+    {
+      "path": "tests/qualification-runner.test.mjs",
+      "testedSha256": "af7fd2df638f5819435b5bedab7454109ea6d1a151fe969a5596367ca69b668f",
+      "currentSha256": "66631a45c47ed557963ddadca444ff29fa32d720d6a01d217c81618b95398ebe"
+    }
+  ],
+  "newMetadata": [
+    "docs/review/grant-recovery/post-review-inputs.json",
+    "docs/review/grant-recovery/verification.json"
+  ],
+  "allOtherFrozenSourceAndDistFilesUnchanged": true,
+  "sdkNativeGrantWorkerSharedAssertionsCompiledAndReferenceInputsUnchanged": true,
+  "referenceQualification": "Reference source/dependency inputs rehashed after review and match original native P-256 receipt; no regeneration or new native claim.",
+  "nativeReceiptsRelabelled": false,
+  "sameSourceBothArmCliRunPassed": false,
+  "releaseQualified": false,
+  "referenceRecheckedAgainstOriginalReceipt": true,
+  "referenceCheckSha256": "1035f41c8bbadcfec8afcb8963835aed4af59eb80c6da3b0091d0ca37e74857f",
+  "metadataBoundary": "Comparison file and later review prose/STATE additions are documentation only; executable changes are exactly runner.mjs, receipt.mjs and qualification-runner.test.mjs."
+}

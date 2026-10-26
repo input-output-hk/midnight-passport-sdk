@@ -230,13 +230,26 @@ At the existing bounds, candidate-by-coin work can approach 4096 × 4096 decrypt
 attempts. This is not a qualified latency budget; large-inbox resource acceptance
 remains open. A smaller secret cap must not evict genuine older holding keys.
 Dependencies, installed runtime bytes and other ignored executable inputs need
-separate scenario-specific provenance; the workspace fingerprint hashes none
-of the git-ignored node_modules tree or every application build output. Test scenarios with no passing
-TAP summary now refuse as NO_TESTS, while non-test diagnostics retain their own
-explicit success contract.
-
+separate scenario-specific provenance. The workspace fingerprint includes
+`packages/*/dist`, but excludes the git-ignored `node_modules` tree and does not
+cover every application build output. Test scenarios with no passing TAP summary
+refuse as NO_TESTS; non-test diagnostics have separate explicit success contracts.
 
 Declared Node test scenarios pin the TAP reporter, and both receipt creation and
 validation require a positive passing count. Historical receipts without that
-evidence cannot be requalified by the repeat checker. Non-test diagnostics have
-separate explicit contracts; a process exit alone does not prove test execution.
+evidence cannot be requalified by the repeat checker. A process exit alone does
+not prove test execution.
+
+Every scenario subprocess discards inherited `NODE_TEST_CONTEXT`, `NODE_OPTIONS`
+and `NODE_PATH`. Direct child Node execution therefore does not inherit those three runtime
+controls. This does not isolate a wrapper's configuration: pnpm/npm can reintroduce
+`node-options` from their own environment or user configuration, and other Node,
+TLS and tool settings remain operator inputs. Caller-owned environments are not mutated. The real probe uses a
+preload that would exit early and a shard excluding its only file, and checks both
+test and non-test children. Its ten-second startup bound accommodates loaded
+hosts; it is not a qualified performance budget. This is not a hermetic execution
+sandbox: the trusted operator, pinned runtime, installed dependencies and remaining
+scenario inputs still require the provenance appropriate to that evidence tier.
+Qualification is supported through the pinned macOS/Linux Nix shell; these checks
+do not qualify Windows environment handling. Resource tuning must be explicit in
+the scenario command/configuration; inherited `NODE_OPTIONS` is discarded.
