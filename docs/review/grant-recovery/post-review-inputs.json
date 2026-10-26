@@ -11,12 +11,12 @@
     {
       "path": "STATE.md",
       "testedSha256": "f6ea7b77691bc8d00464736a5fa4a4308c6477471089c740d736c58707dae1a5",
-      "currentSha256": "2995a3ccf4522c6c5539f46b7cfb8826713fd6ab5eb615b007fa5ea940b3c5fc"
+      "currentSha256": "49d87951c209d5c87289770844a9b6d2c870f246b7c5c5f78a059fffcafc15bf"
     },
     {
       "path": "apps/passport-service/test/chain.test.ts",
       "testedSha256": "64965b0e2331e4abb9c9b7f626c5603955d0de0460f09b0f8f6b4ced40374bd0",
-      "currentSha256": "fd375d99bd831c6a797b028d4ace18b4eed7ae8e304f770d99af62c8c498149f"
+      "currentSha256": "f3a7cb950874aa6506cf59e55a8476dbf2fc2b313ec2035e8b99fb9e351b7199"
     },
     {
       "path": "docs/compatibility.md",
@@ -56,12 +56,12 @@
     {
       "path": "scripts/qualification/live-expectations.mjs",
       "testedSha256": "39b05fa26dd17af0914172c18e9c47ad3961dd2a9dbcfc1bb8daa272a8f526d2",
-      "currentSha256": "1e82c05cc9e0e3674ca68b0261cdb3bb9534b20d055cf40bcaf8a72da874c0ca"
+      "currentSha256": "79d49c4cb24ab8beaad17911635842152badd5ed64b5dc3d8779474e43d33c98"
     },
     {
       "path": "scripts/qualification/live-outages.mjs",
       "testedSha256": "4b283d52088f5fe2fc70b8155e3fbacbdc22d486e6228654f87a488ed2349394",
-      "currentSha256": "ea2e7c4416cfe6bbf2d91cc42d6b8b6b705e7fcd5453706aed5129782510257b"
+      "currentSha256": "cf94aa7102a35acbed86ecb7478145bd3695603a3309fcec967c7e28ce025585"
     },
     {
       "path": "scripts/qualification/mutation-matrix.mjs",
@@ -81,7 +81,7 @@
     {
       "path": "tests/qualification-live-expectations.test.mjs",
       "testedSha256": "cd069186488ecebd8f29faaf59878d696da0f7adde7d20d36a2e36b84ead2fa2",
-      "currentSha256": "7be70d895ba07cf73c6a84c610b903edd48786a610377f7147ccd729808e1eca"
+      "currentSha256": "bcaa32e4531512f7b9269cead7723f96f1b878f8b4626ce66ddc37ebe26c4a40"
     },
     {
       "path": "tests/qualification-runner.test.mjs",
@@ -103,15 +103,16 @@
   "referenceRecheckedAgainstOriginalReceipt": true,
   "referenceCheckSha256": "1035f41c8bbadcfec8afcb8963835aed4af59eb80c6da3b0091d0ca37e74857f",
   "metadataBoundary": "All changed executable inputs are listed harness/tests or the HTTP test fixture. SDK, native grant worker, shared case and compiled inputs match the native source; no original receipt is relabelled.",
-  "comparisonTargetParent": "2ba945ed6ce9f70b0993a27223ad64ca94956a15",
+  "comparisonTargetParent": "60fe037358db75c97633d8c66007f44489845bc8",
   "newExecutableInputs": [
     {
       "path": "scripts/qualification/fixture-copy.mjs",
-      "sha256": "e54be9680c04e58a572db427242086a03807643a7e4027af8c4ebb52d013522f"
+      "sha256": "c417617223a316b3fa02a81975a4ebcb0f9c0248adb6fb6bad085e458c9c4fee"
     },
     {
       "path": "tests/qualification-fixture-copy.test.mjs",
-      "sha256": "3472f187e11dd79275147f8bf58f50f034248371304ca476ca84a14a92b73c24"
+      "sha256": "8071a668a0a04591e373ac58dae54bab8dee839d15270b84d8063ebaf7b02c0a"
     }
-  ]
+  ],
+  "finalHarnessRefinements": "Atomic fresh destination reservation; exact ordered seventeen-call profile and unique completion; test-only GET socket isolation. Existing summaries pass these refinements read-only."
 }

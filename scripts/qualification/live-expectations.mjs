@@ -106,21 +106,21 @@ export function requireGrantRecoverySummary(result, arm) {
   assert.ok(Number.isSafeInteger(result.freshProfileWrites) && result.freshProfileWrites > 0);
   assert.ok(Number.isSafeInteger(result.nativeCalls) && result.nativeCalls > 0);
   assert.equal(result.confirmedCircuits?.length, result.nativeCalls);
-  const counts = new Map();
-  for (const circuit of result.confirmedCircuits)
-    counts.set(circuit, (counts.get(circuit) ?? 0) + 1);
   assert.deepEqual(
-    [...counts.keys()].sort(),
+    result.confirmedCircuits,
     [
-      `append_inbox_with_${arm}`,
-      `rotate_enc_key_with_${arm}`,
-      `revoke_grant_with_${arm}`,
-      `revoke_all_grants_with_${arm}`,
-    ].sort(),
+      ...Array(4).fill('append_inbox'),
+      'rotate_enc_key',
+      ...Array(4).fill('append_inbox'),
+      'rotate_enc_key',
+      'append_inbox',
+      'revoke_grant',
+      ...Array(2).fill('append_inbox'),
+      'rotate_enc_key',
+      'append_inbox',
+      'revoke_all_grants',
+    ].map((name) => `${name}_with_${arm}`),
   );
-  assert.equal(counts.get(`rotate_enc_key_with_${arm}`), 3);
-  assert.equal(counts.get(`revoke_grant_with_${arm}`), 1);
-  assert.equal(counts.get(`revoke_all_grants_with_${arm}`), 1);
   assert.equal(result.forbiddenJournalTouches, 0);
   assert.equal(result.protectedProfileUnchanged, true);
   assert.equal(result.refusalChecksIncludeProfileWrites, true);
@@ -132,4 +132,12 @@ export function requireGrantRecoverySummary(result, arm) {
     'nativeGrantContinuationQualified',
   ])
     assert.equal(result[key], false);
+}
+
+/** Exactly one completion; conflicting or duplicate summaries cannot be hidden.
+ * @param {any[]} messages @param {string} arm */
+export function requireGrantRecoveryCompletion(messages, arm) {
+  const completed = messages.filter((m) => m.completed === 'grant-recovery');
+  assert.equal(completed.length, 1);
+  requireGrantRecoverySummary(completed[0], arm);
 }

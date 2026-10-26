@@ -6,6 +6,7 @@ import {
   requireNoCurrentKey,
   WALLET_WINDOWS,
   requireGrantRecoverySummary,
+  requireGrantRecoveryCompletion,
 } from '../scripts/qualification/live-expectations.mjs';
 import {
   createSoftwareIdentity,
@@ -95,7 +96,7 @@ test('native grant summaries require exact cases, positive writes and the arm-sp
       completed: 'grant-recovery',
       profiles: 4,
       freshProfileWrites: 4,
-      nativeCalls: 6,
+      nativeCalls: 17,
       cases: [
         {
           name: 'original-reader-reconstruction',
@@ -126,11 +127,17 @@ test('native grant summaries require exact cases, positive writes and the arm-sp
         },
       ],
       confirmedCircuits: [
-        `append_inbox_with_${arm}`,
-        ...Array(3).fill(`rotate_enc_key_with_${arm}`),
-        `revoke_grant_with_${arm}`,
-        `revoke_all_grants_with_${arm}`,
-      ],
+        ...Array(4).fill('append_inbox'),
+        'rotate_enc_key',
+        ...Array(4).fill('append_inbox'),
+        'rotate_enc_key',
+        'append_inbox',
+        'revoke_grant',
+        ...Array(2).fill('append_inbox'),
+        'rotate_enc_key',
+        'append_inbox',
+        'revoke_all_grants',
+      ].map((name) => `${name}_with_${arm}`),
       forbiddenJournalTouches: 0,
       protectedProfileUnchanged: true,
       refusalChecksIncludeProfileWrites: true,
@@ -141,10 +148,24 @@ test('native grant summaries require exact cases, positive writes and the arm-sp
       nativeGrantContinuationQualified: false,
     };
     requireGrantRecoverySummary(result, arm);
+    requireGrantRecoveryCompletion([{ ready: true }, result], arm);
+    assert.throws(() => requireGrantRecoveryCompletion([], arm));
+    assert.throws(() => requireGrantRecoveryCompletion([result, { ...result }], arm));
     for (const change of [
       { cases: result.cases.map((c, i) => (i === 3 ? result.cases[0] : c)) },
       { freshProfileWrites: 0 },
-      { nativeCalls: 7 },
+      { nativeCalls: 18 },
+      {
+        nativeCalls: 18,
+        confirmedCircuits: [...result.confirmedCircuits, `append_inbox_with_${arm}`],
+      },
+      { nativeCalls: 16, confirmedCircuits: result.confirmedCircuits.slice(1) },
+      { confirmedCircuits: [...result.confirmedCircuits].reverse() },
+      {
+        confirmedCircuits: result.confirmedCircuits.map((c, i) =>
+          i === 4 ? `append_inbox_with_${arm}` : c,
+        ),
+      },
       {
         confirmedCircuits: result.confirmedCircuits.map((c) =>
           c.includes('revoke_all') ? `revoke_grant_with_${arm}` : c,

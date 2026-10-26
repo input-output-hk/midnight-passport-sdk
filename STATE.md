@@ -8,7 +8,7 @@
 
 ## 2026/10/26 — final qualification review hardening
 
-Refs #230, #231, #239.
+Refs #230, #231, #232, #239.
 
 Foundation review fixes now reject zero-test skipped-result rows and isolate
 scenario children from inherited Node test context, options/preloads and module

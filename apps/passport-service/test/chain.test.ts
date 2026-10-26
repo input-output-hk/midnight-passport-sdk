@@ -471,7 +471,7 @@ test('/deploy refuses an oversized body with 413', async (t) => {
 test('other methods and paths fall through to 404', async (t) => {
   const f = fakeBackend();
   const { base } = await start(t, f.backend);
-  assert.equal((await fetch(`${base}/prove`)).status, 404);
+  assert.equal((await fetch(`${base}/prove`, { headers: { connection: 'close' } })).status, 404);
   assert.equal((await post(`${base}/sponsor`, { tx: '01' })).status, 404);
 });
 

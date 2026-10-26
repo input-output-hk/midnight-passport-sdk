@@ -1,4 +1,4 @@
-import { cp, lstat, readdir } from 'node:fs/promises';
+import { cp, lstat, readdir, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 /** Refuse aliases before a worker can write through a copied fixture.
@@ -14,12 +14,17 @@ export async function requireRegularFixtureTree(root) {
  * @param {string} source @param {string} destination */
 export async function copyQualificationFixture(source, destination) {
   await requireRegularFixtureTree(source);
-  await cp(source, destination, {
-    recursive: true,
-    dereference: false,
-    errorOnExist: true,
-    force: false,
-  });
+  if (!(await lstat(source)).isDirectory())
+    throw new Error('Qualification fixture root must be a directory.');
+  // mkdir reserves a fresh destination atomically; fs.cp alone merges directories.
+  await mkdir(destination, { mode: 0o700 });
+  for (const name of await readdir(source))
+    await cp(join(source, name), join(destination, name), {
+      recursive: true,
+      dereference: false,
+      errorOnExist: true,
+      force: false,
+    });
   // Also reject aliases introduced between the preflight and copy, before any worker starts.
   await requireRegularFixtureTree(destination);
 }

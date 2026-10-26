@@ -19,6 +19,15 @@ test('fixture copies are independent and refuse nested/root aliases before worke
     await writeFile(join(copy, 'store', 'record'), 'copy-only');
     assert.equal(await readFile(join(source, 'store', 'record'), 'utf8'), 'original');
     await assert.rejects(copyQualificationFixture(source, copy), /exist/i);
+    const empty = join(root, 'existing-empty');
+    await mkdir(empty);
+    await assert.rejects(copyQualificationFixture(source, empty), { code: 'EEXIST' });
+    const stale = join(root, 'existing-stale');
+    await mkdir(stale);
+    await writeFile(join(stale, 'extra'), 'retained');
+    await assert.rejects(copyQualificationFixture(source, stale), { code: 'EEXIST' });
+    assert.equal(await readFile(join(stale, 'extra'), 'utf8'), 'retained');
+
     await symlink(join(source, 'store', 'record'), join(source, 'store', 'alias'));
     await assert.rejects(copyQualificationFixture(source, join(root, 'refused')), /regular files/);
     await assert.rejects(lstat(join(root, 'refused')), { code: 'ENOENT' });

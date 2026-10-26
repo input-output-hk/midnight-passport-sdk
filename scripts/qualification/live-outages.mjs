@@ -12,7 +12,7 @@ import { lifecycleStages } from './lifecycle-stages.mjs';
 import {
   liveProfileOptions,
   requireExpectedFailure,
-  requireGrantRecoverySummary,
+  requireGrantRecoveryCompletion,
 } from './live-expectations.mjs';
 import { copyQualificationFixture } from './fixture-copy.mjs';
 
@@ -432,7 +432,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
         if (removedOnly) {
           // Read-only requalification in a separate private copy. Never mutate/delete
           // the accepted source fixture or replay its already-complete operations.
-          // cp must create the destination: errorOnExist also rejects an empty directory.
+          // The copy helper atomically reserves a fresh destination and rejects aliases.
           await copyQualificationFixture(join(priorRoot, `round-${round}-${arm}`), root);
           assert.equal((await lstat(join(root, 'fixture.json'))).isFile(), true);
         }
@@ -475,10 +475,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
               0,
               'Native grant reconstruction/rotation/revocation must complete. Preserve original state on failure.',
             );
-            const result = checked.messages.find(
-              (/** @type {any} */ m) => m.completed === 'grant-recovery',
-            );
-            requireGrantRecoverySummary(result, arm);
+            requireGrantRecoveryCompletion(checked.messages, arm);
             evidence.push({ round, arm, operation, verdict: 'PASS', owner: checked });
             await save();
             continue;
