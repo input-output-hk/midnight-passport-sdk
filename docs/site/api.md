@@ -186,5 +186,14 @@ See [Qualification and safety boundaries]({{ '/qualification/' | relative_url }}
 The optional `readDeviceRegistrationHistory` port mentioned in earlier local notes
 has been removed. Earlier readable secrets are not authenticated historical ledger
 keys. Hosts must not use them to identify a removal target or fresh-key recipient.
-Legacy interruption may require operator reconciliation; the next durability slice
-adds an explicit protected original continuation. No legacy automatic retry is claimed.
+Legacy interruption may require operator reconciliation; the protected owner continuation
+is described in the durability guide. No legacy automatic retry is claimed.
+
+## Local durability milestone
+
+The opt-in owner continuation API and authenticated published-grant reconstruction
+are described in [Mutation durability and grant recovery]({{ '/durability/' | relative_url }}).
+These additions are local, unreleased work. Default demo owner buttons still need
+transaction reconciliation after interruption; a journal alone does not supply
+durable remote submissions. Another enrolled reader cannot invent the issuing
+reader's grant opening.

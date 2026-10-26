@@ -1734,7 +1734,17 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
                 'EncryptionKeyMismatch',
                 'The live ACC inbox has no unique registration for this device.',
               );
-            await flow.step('directory.write', () => directory.put(networkId, record), 'always');
+            // Known-address opening has already verified the live entry and sealed keys.
+            // Existing directory pointers are write-once and may retain boot salt/key entries;
+            // never replace them with this minimal address-derived hint (or trust them over chain).
+            const existing = await flow.step('directory.read', () =>
+              directory.get(networkId, {
+                kind: 'credential-id',
+                credentialId: identity.credentialId,
+              }),
+            );
+            if (!existing)
+              await flow.step('directory.write', () => directory.put(networkId, record), 'always');
             await ports.records?.write({
               address,
               bindingId: network.bindingId,

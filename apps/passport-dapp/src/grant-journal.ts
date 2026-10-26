@@ -107,6 +107,8 @@ export function browserGrantJournal(
         value = JSON.parse(new TextDecoder().decode(plain));
       } catch {
         throw new Error('The grant opening is corrupt.');
+      } finally {
+        new Uint8Array(plain).fill(0);
       }
       if (
         !value ||

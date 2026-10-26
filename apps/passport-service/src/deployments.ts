@@ -1,4 +1,15 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+  openSync,
+  closeSync,
+  fsyncSync,
+  unlinkSync,
+} from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { dirname } from 'node:path';
 import type { ServiceConfig } from './config.ts';
 
@@ -38,15 +49,32 @@ export class DeploymentLog {
     return new Set((this.#load()[this.#networkId] ?? []).map((a) => a.toLowerCase()));
   }
 
-  /** Load, extend and replace in one synchronous step; the rename makes the write atomic. */
+  /** Single sponsor process: publish atomically and durably before reporting deploy completion. */
   add(address: string): void {
     const store = this.#load();
     const known = new Set(store[this.#networkId] ?? []);
     known.add(address.toLowerCase());
     store[this.#networkId] = [...known];
     mkdirSync(dirname(this.#file), { recursive: true, mode: 0o700 });
-    writeFileSync(`${this.#file}.tmp`, JSON.stringify(store, null, 2));
-    renameSync(`${this.#file}.tmp`, this.#file);
+    const temporary = `${this.#file}.pending-${randomUUID()}`;
+    try {
+      const file = openSync(temporary, 'wx', 0o600);
+      try {
+        writeFileSync(file, JSON.stringify(store, null, 2));
+        fsyncSync(file);
+      } finally {
+        closeSync(file);
+      }
+      renameSync(temporary, this.#file);
+      const parent = openSync(dirname(this.#file), 'r');
+      try {
+        fsyncSync(parent);
+      } finally {
+        closeSync(parent);
+      }
+    } finally {
+      if (existsSync(temporary)) unlinkSync(temporary);
+    }
   }
 }
 

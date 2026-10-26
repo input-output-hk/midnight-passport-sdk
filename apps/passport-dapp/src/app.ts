@@ -64,6 +64,10 @@ if (ARM === 'jubjub') {
     note.textContent =
       'The ACC viewing secret is random and sealed to the passkey-derived reader. Rotation and device changes require complete live reader and read-grant openings.';
 }
+const recoveryNote = document.getElementById('key-note');
+if (recoveryNote)
+  recoveryNote.textContent +=
+    ' Keep the original passkey: another enrolled reader cannot recover its grant openings. If an owner operation is interrupted, reconcile its transactions before retrying.';
 const { status, stage, record, event: onEvent } = ui;
 setOperationTraceSink(ui.trace);
 

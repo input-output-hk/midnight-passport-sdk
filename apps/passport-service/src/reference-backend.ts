@@ -1,3 +1,4 @@
+import { createReferenceHostDriver } from './host-driver.ts';
 import { randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
@@ -63,6 +64,12 @@ interface ReferenceNetworkModule {
 }
 
 interface WaveDeployModule {
+  allCircuits(): string[];
+  planWaves(
+    sizes: Map<string, number>,
+    firstArm: 'p256' | 'jubjub',
+    retireAuthority: boolean,
+  ): unknown[];
   deployAccountInWaves(
     providers: unknown,
     compiledContract: unknown,
@@ -169,6 +176,8 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
   }
   const waves = await loadModule<WaveDeployModule>(root('src/wallet/wave-deploy.ts'), [
     'deployAccountInWaves',
+    'allCircuits',
+    'planWaves',
   ]);
   const witnesses = await loadModule<WitnessesModule>(root('src/wallet/witnesses.ts'), [
     'emptyCoinStore',
@@ -202,7 +211,43 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
   const registry = await zkConfig.nodeZkConfigRegistry(config.artefactDir);
   const proving = proofProvider.httpClientProvingProvider(config.proofServerUri, registry);
 
+  const contracts = await loadModule<any>(pkg('@midnight-ntwrk/midnight-js-contracts'), [
+    'createUnprovenDeployTx',
+  ]);
+  const protocol = await loadModule<any>(pkg('@midnight-ntwrk/midnight-js-protocol'), [
+    'versionOfRecord',
+  ]);
+  const hostLedger = await loadModule<any>(pkg('@midnightntwrk/ledger-v9'), [
+    'Transaction',
+    'ContractState',
+    'ContractDeploy',
+    'ContractMaintenanceAuthority',
+    'Intent',
+    'MaintenanceUpdate',
+    'ReplaceAuthority',
+    'VerifierKeyInsert',
+    'ContractOperationVersionedVerifierKey',
+    'signData',
+    'ContractCall',
+    'CostModel',
+    'signatureVerifyingKey',
+  ]);
   return {
+    hostMutations: createReferenceHostDriver({
+      providers,
+      proving,
+      setup,
+      waves,
+      signer,
+      witnesses,
+      ledger: hostLedger,
+      versionOfRecord: protocol.versionOfRecord,
+      contracts,
+      networkId: config.networkId,
+      indexerUrl: config.indexerUri,
+      allowedAccount: (address) => sponsoredAddresses(config, deployments).has(address),
+      deploymentCompleted: (address) => deployments.add(address),
+    }),
     check: (preimage, keyLocation) => proving.check(preimage, keyLocation),
     prove: (preimage, keyLocation, overwriteBindingInput) =>
       proving.prove(preimage, keyLocation, overwriteBindingInput),

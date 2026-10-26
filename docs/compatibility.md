@@ -428,3 +428,12 @@ places a real older coin behind seventeen forged envelopes and verifies metadata
 coin reads, device delivery and new key creation remain usable. Large-inbox work
 still scales with candidate keys and coin entries; the existing 4096 limits and
 operator/resource qualification remain explicit. No unbounded-input guarantee.
+
+## 2026/10/23 host durability correction
+
+Unknown lookup and wave-frontier polls retain no new full journal revisions.
+Cancellation propagates through correlated host calls and reconciliation. A successful
+dispatch CAS commits that one send; cancellation stops later waves. Failed explicit
+resume retains cancellation. Native prepared bytes need ten seconds remaining and are
+never renewed. Direct/reconciled deployment receipts share their validation rules.
+

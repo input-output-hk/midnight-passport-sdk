@@ -83,3 +83,13 @@ places a real older coin behind seventeen forged envelopes and verifies metadata
 coin reads, device delivery and new key creation remain usable. Large-inbox work
 still scales with candidate keys and coin entries; the existing 4096 limits and
 operator/resource qualification remain explicit. No unbounded-input guarantee.
+
+## Local durability milestone
+
+The opt-in owner continuation API and authenticated published-grant reconstruction
+are described in [Mutation durability and grant recovery]({{ '/durability/' | relative_url }}).
+These additions are local, unreleased work. Default demo owner buttons still need
+transaction reconciliation after interruption; a journal alone does not supply
+durable remote submissions. Another enrolled reader cannot invent the issuing
+reader's grant opening.
+

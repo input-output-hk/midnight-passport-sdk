@@ -3,7 +3,7 @@ import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { grantOriginHash, granteePoint, type GrantScopePure } from './grant-scope.js';
 import type { StagedJubjubGrant } from './jubjub-grant-issue.js';
-import type { LiveGrantCommitment } from './ports/index.js';
+import type { GrantBookkeeping, LiveGrantCommitment } from './ports/index.js';
 
 const EMPTY = new Uint8Array(32);
 const same = (a: Uint8Array, b: Uint8Array): boolean =>
@@ -23,20 +23,40 @@ export function verifyStagedGrantCommitment(
   live: LiveGrantCommitment | undefined,
   pure: Pick<GrantScopePure, 'derive_grant_id_with_jubjub' | 'derive_grant_object_commit'>,
 ): void {
+  return verifyGrantBookkeepingCommitment(
+    staged.account,
+    staged.origin,
+    staged.bookkeeping,
+    live,
+    pure,
+    staged.scope.read === true,
+  );
+}
+
+/** Authenticate reconstructed records without inventing a grant's unavailable full scope. */
+export function verifyGrantBookkeepingCommitment(
+  account: string,
+  origin: string,
+  grant: GrantBookkeeping,
+  live: LiveGrantCommitment | undefined,
+  pure: Pick<GrantScopePure, 'derive_grant_id_with_jubjub' | 'derive_grant_object_commit'>,
+  expectedRead = grant.readPublicKey !== undefined,
+): void {
   if (!live?.active)
     throw new PassportConnectorError('GrantRevoked', 'The staged grant is not active on chain.');
   if (
     live.objectCommit.length !== 32 ||
     live.readPkHash.length !== 32 ||
-    live.read !== (staged.scope.read === true)
+    live.read !== expectedRead
   )
     throw new PassportConnectorError('GrantScopeInvalid', 'The live grant scope differs.');
   try {
-    const grant = staged.bookkeeping;
+    if (!Number.isInteger(grant.slot) || grant.slot < 0 || grant.slot > 255)
+      throw new Error('invalid grant slot');
     const derivedId = pure.derive_grant_id_with_jubjub(
-      { bytes: bytes32(staged.account) },
+      { bytes: bytes32(account) },
       granteePoint(grant.granteePublicKey),
-      grantOriginHash(staged.origin),
+      grantOriginHash(origin),
       BigInt(grant.slot),
     );
     if (

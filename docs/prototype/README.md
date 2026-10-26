@@ -165,3 +165,10 @@ the repository so that accounts can be reopened later. After a chain reset, dele
 - [limitations.md](./limitations.md): what the prototype does not do, and what production needs.
 - [`apps/README.md`](../../apps/README.md): setup, environment variables, how to run the stack, and
   operational troubleshooting. This folder does not repeat it.
+
+### Local interruption-safety work
+
+[Mutation durability and grant recovery](../site/durability.md) describes the opt-in
+protected owner coordinator and demo published-bookkeeping fallback. Default owner
+buttons still require reconciliation after an interruption. Keep the original
+reader/journal: another enrolled reader cannot invent missing grant openings.

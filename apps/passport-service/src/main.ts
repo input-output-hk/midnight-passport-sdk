@@ -1,3 +1,4 @@
+import { configuredHostMutations } from './host-config.ts';
 import type { AddressInfo } from 'node:net';
 import { bindingCircuits } from './artefacts.ts';
 import { assertPinnedBinding } from './binding-pin.ts';
@@ -30,6 +31,13 @@ const backend = await loadReferenceBackend(config);
 const runExclusive = serial(8);
 const deploymentBudget = createDeploymentBudget(config.maxDeploys);
 const jobs = createMemoryJobStore();
+const hostMutations = configuredHostMutations(
+  config,
+  backend.hostMutations,
+  process.env,
+  runExclusive,
+  () => deploymentBudget.accept(),
+);
 const directory = createFileDirectoryStore(directoryFile(config.registryFile));
 const demoFunding = demoFundingRoute(config, process.env);
 const server = createServer(config, [
@@ -37,6 +45,7 @@ const server = createServer(config, [
     if (request.method !== 'GET' || url.pathname !== '/healthz') return false;
     json(response, 200, {
       status: 'ready',
+      hostMutations: hostMutations !== undefined,
       networkId: config.networkId,
       bindingId: config.bindingId,
       manifestSha256: config.manifestSha256,
@@ -49,6 +58,7 @@ const server = createServer(config, [
   registryRoute(config),
   directoryRoute({ networkId: config.networkId, store: directory }),
   jobsRoute(jobs),
+  ...(hostMutations ? [hostMutations] : []),
   v1ChainRoute(backend, { jobs, deploymentBudget, runExclusive }),
   chainRoute(backend, {
     circuits: bindingCircuits(config.artefactDir),
