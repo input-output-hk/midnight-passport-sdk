@@ -50,7 +50,7 @@ async function invokeAsync(args, active) {
     const timer = setTimeout(() => {
       expired = true;
       child.kill('SIGKILL');
-    }, 80000); // Four bounded parallel workers retain up to 20 seconds each of CPU budget.
+    }, 80000); // Eighty seconds of wall time per worker allows contention; this is not a CPU budget.
     const collect = (/** @type {Buffer} */ chunk, /** @type {boolean} */ error) => {
       if (stdout.length + stderr.length + chunk.length > 1024 * 1024) {
         exceeded = true;

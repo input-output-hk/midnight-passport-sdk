@@ -67,3 +67,69 @@ export const WALLET_WINDOWS = Object.freeze({
   submitMs: 60000,
   dispatchMarginMs: 10000,
 });
+
+/** Require the complete native grant case and arm-specific circuit inventory.
+ * @param {any} result @param {string} arm */
+export function requireGrantRecoverySummary(result, arm) {
+  assert.ok(['jubjub', 'p256'].includes(arm));
+  assert.deepEqual(result?.cases, [
+    {
+      name: 'original-reader-reconstruction',
+      reconstructed: 2,
+      independentReaderRefused: true,
+      recoveredFullIssueScope: false,
+    },
+    { name: 'opening-preflight-refusals', preservedActiveTargets: 2, noTransportEffects: true },
+    {
+      name: 'recovered-reader-rotation',
+      activeReadGrants: 2,
+      ownerAndSurvivorRetained: true,
+      heldCoinsQualified: 1,
+    },
+    {
+      name: 'selective-read-revocation',
+      revoked: 1,
+      survivingReadGrants: 1,
+      revokedOpeningRefused: true,
+      heldCoinsQualified: 1,
+    },
+    {
+      name: 'all-read-revocation',
+      activeGrants: 0,
+      generationAdvanced: true,
+      ownerAndSurvivorRetained: true,
+      heldCoinsQualified: 1,
+    },
+  ]);
+  assert.equal(result.completed, 'grant-recovery');
+  assert.equal(result.profiles, 4);
+  assert.ok(Number.isSafeInteger(result.freshProfileWrites) && result.freshProfileWrites > 0);
+  assert.ok(Number.isSafeInteger(result.nativeCalls) && result.nativeCalls > 0);
+  assert.equal(result.confirmedCircuits?.length, result.nativeCalls);
+  const counts = new Map();
+  for (const circuit of result.confirmedCircuits)
+    counts.set(circuit, (counts.get(circuit) ?? 0) + 1);
+  assert.deepEqual(
+    [...counts.keys()].sort(),
+    [
+      `append_inbox_with_${arm}`,
+      `rotate_enc_key_with_${arm}`,
+      `revoke_grant_with_${arm}`,
+      `revoke_all_grants_with_${arm}`,
+    ].sort(),
+  );
+  assert.equal(counts.get(`rotate_enc_key_with_${arm}`), 3);
+  assert.equal(counts.get(`revoke_grant_with_${arm}`), 1);
+  assert.equal(counts.get(`revoke_all_grants_with_${arm}`), 1);
+  assert.equal(result.forbiddenJournalTouches, 0);
+  assert.equal(result.protectedProfileUnchanged, true);
+  assert.equal(result.refusalChecksIncludeProfileWrites, true);
+  assert.equal(result.heldCoinsQualified, 1);
+  for (const key of [
+    'originalJournalConsulted',
+    'fullIssueScopeRecovered',
+    'privateGranteeKeysRecovered',
+    'nativeGrantContinuationQualified',
+  ])
+    assert.equal(result[key], false);
+}

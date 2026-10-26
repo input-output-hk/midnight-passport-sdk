@@ -5,6 +5,7 @@ import {
   requireExpectedFailure,
   requireNoCurrentKey,
   WALLET_WINDOWS,
+  requireGrantRecoverySummary,
 } from '../scripts/qualification/live-expectations.mjs';
 import {
   createSoftwareIdentity,
@@ -86,4 +87,73 @@ test('wallet approval and submission budgets leave margin inside the original TT
     WALLET_WINDOWS.ttlMs >
       WALLET_WINDOWS.approvalMs + WALLET_WINDOWS.submitMs + WALLET_WINDOWS.dispatchMarginMs,
   );
+});
+
+test('native grant summaries require exact cases, positive writes and the arm-specific circuit inventory', () => {
+  for (const arm of ['jubjub', 'p256']) {
+    const result = {
+      completed: 'grant-recovery',
+      profiles: 4,
+      freshProfileWrites: 4,
+      nativeCalls: 6,
+      cases: [
+        {
+          name: 'original-reader-reconstruction',
+          reconstructed: 2,
+          independentReaderRefused: true,
+          recoveredFullIssueScope: false,
+        },
+        { name: 'opening-preflight-refusals', preservedActiveTargets: 2, noTransportEffects: true },
+        {
+          name: 'recovered-reader-rotation',
+          activeReadGrants: 2,
+          ownerAndSurvivorRetained: true,
+          heldCoinsQualified: 1,
+        },
+        {
+          name: 'selective-read-revocation',
+          revoked: 1,
+          survivingReadGrants: 1,
+          revokedOpeningRefused: true,
+          heldCoinsQualified: 1,
+        },
+        {
+          name: 'all-read-revocation',
+          activeGrants: 0,
+          generationAdvanced: true,
+          ownerAndSurvivorRetained: true,
+          heldCoinsQualified: 1,
+        },
+      ],
+      confirmedCircuits: [
+        `append_inbox_with_${arm}`,
+        ...Array(3).fill(`rotate_enc_key_with_${arm}`),
+        `revoke_grant_with_${arm}`,
+        `revoke_all_grants_with_${arm}`,
+      ],
+      forbiddenJournalTouches: 0,
+      protectedProfileUnchanged: true,
+      refusalChecksIncludeProfileWrites: true,
+      heldCoinsQualified: 1,
+      originalJournalConsulted: false,
+      fullIssueScopeRecovered: false,
+      privateGranteeKeysRecovered: false,
+      nativeGrantContinuationQualified: false,
+    };
+    requireGrantRecoverySummary(result, arm);
+    for (const change of [
+      { cases: result.cases.map((c, i) => (i === 3 ? result.cases[0] : c)) },
+      { freshProfileWrites: 0 },
+      { nativeCalls: 7 },
+      {
+        confirmedCircuits: result.confirmedCircuits.map((c) =>
+          c.includes('revoke_all') ? `revoke_grant_with_${arm}` : c,
+        ),
+      },
+      { originalJournalConsulted: true },
+      { protectedProfileUnchanged: false },
+    ])
+      assert.throws(() => requireGrantRecoverySummary({ ...result, ...change }, arm));
+    assert.throws(() => requireGrantRecoverySummary(result, arm === 'p256' ? 'jubjub' : 'p256'));
+  }
 });

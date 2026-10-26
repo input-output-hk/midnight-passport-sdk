@@ -6,16 +6,17 @@
     "workspaceSha256": "3bfeedb787efab9bafaadfd265db5a9c5514f0aed45d9dfe831a4a9c0af44442",
     "fileCount": 1231
   },
-  "mergeParents": [
-    "eeecad829bfd5053502a1a9274f41d846adb20aa",
-    "7a2249166e0bc67b78abcedaa65d9bccecaad3bf"
-  ],
-  "mode": "Per-file runtime comparison before the signed merge; additional metadata is documentation only, not a whole-tree native requalification.",
+  "mode": "Per-file comparison before the final correction commit; comparison metadata itself is documentation, not a whole-tree native requalification.",
   "changedExistingInputs": [
     {
       "path": "STATE.md",
       "testedSha256": "f6ea7b77691bc8d00464736a5fa4a4308c6477471089c740d736c58707dae1a5",
-      "currentSha256": "fdcd5e78a66042279bdea67fddcd62ef63f3e3070b652f02708dc7511f16a827"
+      "currentSha256": "2995a3ccf4522c6c5539f46b7cfb8826713fd6ab5eb615b007fa5ea940b3c5fc"
+    },
+    {
+      "path": "apps/passport-service/test/chain.test.ts",
+      "testedSha256": "64965b0e2331e4abb9c9b7f626c5603955d0de0460f09b0f8f6b4ced40374bd0",
+      "currentSha256": "fd375d99bd831c6a797b028d4ace18b4eed7ae8e304f770d99af62c8c498149f"
     },
     {
       "path": "docs/compatibility.md",
@@ -25,7 +26,7 @@
     {
       "path": "docs/review/grant-recovery/README.md",
       "testedSha256": "2d51488536ff45157eefb1e6abc6992900271c79dcb7356750923f86b361018d",
-      "currentSha256": "06414659503a217d33f9b72b6bfe79b58dcba34e6df4b95a1b181d8a02c1ce13"
+      "currentSha256": "81282df2e25c8bdf4687c01648c7960656d10eb5328a76cffa7d79531e4bc0e5"
     },
     {
       "path": "docs/review/stability-foundation/issue-acceptance.json",
@@ -35,17 +36,37 @@
     {
       "path": "docs/site/grant-recovery.md",
       "testedSha256": "7878ab21079c3551f0dfdef7554756c9f1621d0d76b11ad018483105d56147ab",
-      "currentSha256": "3dc66fa5e93ee20fce8526781f6c057c555fec830c5732f0d4e80fb1af922031"
+      "currentSha256": "9ca11f23e0961435768d9ae5af46734ef1e230fda88bbaec6c01c7215e24f918"
+    },
+    {
+      "path": "docs/site/host-durability.md",
+      "testedSha256": "35e30e7cab06b0cd79359f64b3608833e9326baf1eea40560f13bef338ca1bc7",
+      "currentSha256": "af5642fbf7b78c8fcf20821c1548b8127eee73e701fdb8a6a81fa368968c3da8"
     },
     {
       "path": "docs/site/live-qualification.md",
       "testedSha256": "4ea410351c74fa3ff0cc1bf2e84697e055103c585a85b613991a7b1656006cdf",
-      "currentSha256": "a4ab2437e310d79f5df31017e30fb1937629d68d0dd630ef456d2f1993b44316"
+      "currentSha256": "0ec0e7cbf990b56dfdae49997d4540ca71a56e4d4433b2ee14eefe7982d5584b"
     },
     {
       "path": "docs/site/qualification.md",
       "testedSha256": "5050c0d12220847e5d220d2e0413e383f4e38598f699ea90fba6ddde6bb593a6",
       "currentSha256": "009f681cdf6220a769606cf6a3af53676ec30450cf7d29fce6aebb092d00f9f1"
+    },
+    {
+      "path": "scripts/qualification/live-expectations.mjs",
+      "testedSha256": "39b05fa26dd17af0914172c18e9c47ad3961dd2a9dbcfc1bb8daa272a8f526d2",
+      "currentSha256": "1e82c05cc9e0e3674ca68b0261cdb3bb9534b20d055cf40bcaf8a72da874c0ca"
+    },
+    {
+      "path": "scripts/qualification/live-outages.mjs",
+      "testedSha256": "4b283d52088f5fe2fc70b8155e3fbacbdc22d486e6228654f87a488ed2349394",
+      "currentSha256": "ea2e7c4416cfe6bbf2d91cc42d6b8b6b705e7fcd5453706aed5129782510257b"
+    },
+    {
+      "path": "scripts/qualification/mutation-matrix.mjs",
+      "testedSha256": "c64f0863234eca968a0bcf7fda1b4962d16364aeca6a0db8aa73efca57769e4f",
+      "currentSha256": "c51fdd7d2e5e83cfb9590f04ecf2789cfaf6813b723766ac627f49ddb76d6722"
     },
     {
       "path": "scripts/qualification/receipt.mjs",
@@ -58,12 +79,18 @@
       "currentSha256": "e9e11d86b2b640e2f3636d0929ef930dd3b77cb78aa24085e244cc59514f09d3"
     },
     {
+      "path": "tests/qualification-live-expectations.test.mjs",
+      "testedSha256": "cd069186488ecebd8f29faaf59878d696da0f7adde7d20d36a2e36b84ead2fa2",
+      "currentSha256": "7be70d895ba07cf73c6a84c610b903edd48786a610377f7147ccd729808e1eca"
+    },
+    {
       "path": "tests/qualification-runner.test.mjs",
       "testedSha256": "af7fd2df638f5819435b5bedab7454109ea6d1a151fe969a5596367ca69b668f",
       "currentSha256": "66631a45c47ed557963ddadca444ff29fa32d720d6a01d217c81618b95398ebe"
     }
   ],
   "newMetadata": [
+    "docs/review/grant-recovery/review-adjudication.md",
     "docs/review/grant-recovery/post-review-inputs.json",
     "docs/review/grant-recovery/verification.json"
   ],
@@ -75,5 +102,16 @@
   "releaseQualified": false,
   "referenceRecheckedAgainstOriginalReceipt": true,
   "referenceCheckSha256": "1035f41c8bbadcfec8afcb8963835aed4af59eb80c6da3b0091d0ca37e74857f",
-  "metadataBoundary": "Comparison file and later review prose/STATE additions are documentation only; executable changes are exactly runner.mjs, receipt.mjs and qualification-runner.test.mjs."
+  "metadataBoundary": "All changed executable inputs are listed harness/tests or the HTTP test fixture. SDK, native grant worker, shared case and compiled inputs match the native source; no original receipt is relabelled.",
+  "comparisonTargetParent": "2ba945ed6ce9f70b0993a27223ad64ca94956a15",
+  "newExecutableInputs": [
+    {
+      "path": "scripts/qualification/fixture-copy.mjs",
+      "sha256": "e54be9680c04e58a572db427242086a03807643a7e4027af8c4ebb52d013522f"
+    },
+    {
+      "path": "tests/qualification-fixture-copy.test.mjs",
+      "sha256": "3472f187e11dd79275147f8bf58f50f034248371304ca476ca84a14a92b73c24"
+    }
+  ]
 }

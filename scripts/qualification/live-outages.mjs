@@ -1,7 +1,7 @@
 // Dedicated-stack proof qualification. Software credentials only; never a real provider pass.
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdir, readFile, writeFile, cp, lstat } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, lstat } from 'node:fs/promises';
 import { resolve, join, isAbsolute } from 'node:path';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -9,7 +9,12 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { workspaceIdentity, verifyQualificationBinding } from './receipt.mjs';
 import { runWalletReconnect } from './wallet-reconnect.mjs';
 import { lifecycleStages } from './lifecycle-stages.mjs';
-import { liveProfileOptions, requireExpectedFailure } from './live-expectations.mjs';
+import {
+  liveProfileOptions,
+  requireExpectedFailure,
+  requireGrantRecoverySummary,
+} from './live-expectations.mjs';
+import { copyQualificationFixture } from './fixture-copy.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const PROJECT = 'mn-passport-qual-20261023';
@@ -428,12 +433,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
           // Read-only requalification in a separate private copy. Never mutate/delete
           // the accepted source fixture or replay its already-complete operations.
           // cp must create the destination: errorOnExist also rejects an empty directory.
-          await cp(join(priorRoot, `round-${round}-${arm}`), root, {
-            recursive: true,
-            dereference: false,
-            errorOnExist: true,
-            force: false,
-          });
+          await copyQualificationFixture(join(priorRoot, `round-${round}-${arm}`), root);
           assert.equal((await lstat(join(root, 'fixture.json'))).isFile(), true);
         }
         const stages = removedOnly
@@ -478,20 +478,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
             const result = checked.messages.find(
               (/** @type {any} */ m) => m.completed === 'grant-recovery',
             );
-            assert.ok(
-              result &&
-                result.cases.length === 5 &&
-                result.profiles === 4 &&
-                result.nativeCalls > 0,
-            );
-            assert.equal(result.forbiddenJournalTouches, 0);
-            assert.equal(result.protectedProfileUnchanged, true);
-            assert.equal(result.refusalChecksIncludeProfileWrites, true);
-            assert.equal(result.heldCoinsQualified, 1);
-            assert.equal(result.originalJournalConsulted, false);
-            assert.equal(result.fullIssueScopeRecovered, false);
-            assert.equal(result.privateGranteeKeysRecovered, false);
-            assert.equal(result.nativeGrantContinuationQualified, false);
+            requireGrantRecoverySummary(result, arm);
             evidence.push({ round, arm, operation, verdict: 'PASS', owner: checked });
             await save();
             continue;

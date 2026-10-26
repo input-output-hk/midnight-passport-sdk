@@ -1,4 +1,14 @@
+# STATE — Midnight Passport SDK
+
+> The committed record of SDK development, maintained by
+> `mn-passport-skills:spec-driver` per [`docs/development-workflow.md`](./docs/development-workflow.md) §3.
+> Every entry carries its GitHub issue
+> ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
+> Last updated: 2026/10/26. Historical entries below retain their original issue namespaces.
+
 ## 2026/10/26 — final qualification review hardening
+
+Refs #230, #231, #239.
 
 Foundation review fixes now reject zero-test skipped-result rows and isolate
 scenario children from inherited Node test context, options/preloads and module
@@ -74,14 +84,6 @@ Exact-value shielded guards and immutable acc-s3r1.1 remain. Accepted scoped evi
 indexer/process interruptions; zero duplicate host sends. See the combined review
 map and verification receipt. Release/provider qualification and broader issue closure
 remain false. Owner pre-registration proof loss safely stays unresolved; no blind resend.
-
-# STATE — Midnight Passport SDK
-
-> The committed record of SDK development, maintained by
-> `mn-passport-skills:spec-driver` per [`docs/development-workflow.md`](./docs/development-workflow.md) §3.
-> Every entry carries its GitHub issue
-> ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
-> Last updated: 2026/10/23. Historical entries below retain their original issue namespaces.
 
 ## Current fork iteration — 2026/10/20
 

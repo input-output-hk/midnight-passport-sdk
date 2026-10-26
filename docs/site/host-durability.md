@@ -157,7 +157,7 @@ returned. Disabled routes retain the server's normal `404` behavior.
 | --- | --- |
 | No record | Unknown. A late original HTTP request might still arrive; absence never proves no send |
 | Preparing deployment, no committed constructor plan | Unknown; do not generate a new authority/address implicitly |
-| Preparing owner call, original input committed | Claim a new revision fence and revalidate the same already-built input; no new transaction or authority |
+| Preparing owner call, original input committed | Explicit resume/reconcile may claim a new fence, revalidate the same already-built input and dispatch it under the original approval; no replacement transaction/authority |
 | Active, original plan committed | Claim a new revision fence and resume that plan |
 | Ready transaction committed | Recheck the frontier and send the saved bytes once |
 | Dispatching/sent transaction | Look up the stored watch ID, including when the submit response was lost. No rebroadcast |
@@ -243,7 +243,10 @@ and addresses remain 32 bytes.
 ## Review corrections — 2026/10/23
 
 Unknown lookup-only polls do not claim a new owner revision or copy the full encrypted
-record again. A successor claims the preparation fence only when preparing another step.
+record again. A successor claims the preparation fence when preparing another step,
+or before revalidating an original call still in `preparing`. The latter claim
+precedes driver validation and retains a full encrypted revision even if validation
+refuses; it is not a lookup-only poll. Bound explicit retries operationally.
 Cancellation before dispatch leaves the ready bytes unsent; the successful dispatch CAS
 is the point of no return. Cancellation after it allows that single committed dispatch
 to enter submit and prevents later waves. Process death in the remaining fence/send
@@ -295,3 +298,25 @@ The historical 90-transaction live receipt is pinned to its earlier tested sourc
 it does not qualify later cancellation/frontier/TTL/preparation changes. Keep dated
 source receipts separate, and use subsequent exact-source suites for their own
 narrower scope. No full restart or release qualification is claimed here.
+
+
+## Call preparation contract and remaining test scope — 2026/10/26
+
+`HostMutationDriver.prepare` for calls must validate the original already-built
+input deterministically, without proving, rebalancing, new authority or replacing
+an intent. The shipped native driver decodes the saved transaction bytes. A custom
+driver that builds a fresh call on retry does not satisfy this contract. Deployment
+constructor loss is still unknown; this change does not permit regeneration.
+
+Explicit `/reconcile` can continue a call that never committed its prepared plan,
+including dispatch under the original approval after native checks. It is not a
+universally read-only operation. In contrast, a record with an uncertain broadcast
+only looks up its saved identifiers, with no rebroadcast. The owner's ordinary
+frontier checks and the host's native validation remain distinct; changed or stale
+calls can still refuse/fail and must not become replacements. Keep the original
+ID, bytes and protected state. Unknown/pending is never evidence of no send.
+
+The current stale-producer regression releases the old preparer after the
+successor completes. It does not cover every held-successor interleaving. More
+preparation-expiry, persistent-refusal and HTTP call-retry combinations remain
+#230 test work; the existing cases do not constitute exhaustive race acceptance.

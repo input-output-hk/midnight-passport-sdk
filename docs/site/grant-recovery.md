@@ -121,7 +121,7 @@ It does not prove transactions or qualify holdings. It runs in normal PR CI.
 The native suite creates fresh synthetic accounts, two read grants and a qualified
 seven-unit shielded holding per arm, then enrolls a survivor. It reconstructs
 bookkeeping in separate empty profiles, refuses independent-reader/missing/wrong
-opening attempts before effects, rotates, selectively revokes, then revokes all.
+opening attempts before tracked transport/profile writes, rotates, selectively revokes, then revokes all.
 Fresh profiles receive no original grant journal; protected files are retained and
 hash-checked. See the [live runbook]({{ '/live-qualification/#grant-profile-loss-and-revocation' | relative_url }}).
 Only a matching signed-source native receipt establishes this scope. Fast tests
@@ -150,3 +150,27 @@ seven existing conditional skips and zero failures. The
 [review record](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/docs/review/grant-recovery)
 contains exact source pins, hashes, component comparison and limitations. This
 adds source milestone evidence; published RC5 and provider/Lace acceptance are unchanged.
+
+
+### Review scope of refusal and harness checks
+
+The refusal counter measures attempted chain/transport calls plus fresh-profile
+account-record and directory writes. It does not count passkey ceremonies, key
+creation or sealing; no claim of zero prompts or zero key-origin work follows.
+The injected idempotent-write negative control currently uses the generated
+JubJub arm. Both native arms count real writes, but no injected native-write fault
+or P-256-specific injected counter fault is qualified by that control.
+
+The newer parent also requires exact grant-case names/results, positive profile
+writes and arm-specific rotation/selective/all-revoke circuit inventory. Applying
+this validator to retained summaries is an additional read-only check, not a new
+native proof run. Removed-reader recheck copies now reject symlinks before and
+after copying, before starting workers. Existing receipts keep their old source.
+
+Exact fault-to-error mappings added after historical combined/survivor runs remain
+source assertions; the grant runs have no outage faults. Those old live receipts do
+not establish the new mapping on every native crash/prover boundary. Additional
+current-harness outage runs remain #230/#231/#232 qualification work. The fixture
+holding in this scope is deliberately seven units, not a generic arbitrary-value
+holding claim. Multi-account profile switching and exhaustive continuation races
+also remain outside this grant-recovery acceptance.

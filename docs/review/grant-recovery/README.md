@@ -13,7 +13,7 @@ refusals; no new binding, total-loss promise or release.
 3. JubJub connector: persist the verified local record after create/directory
    reopen, taking the counter from the current verified ledger.
 4. `scripts/qualification/grant-recovery-case.mjs`: shared positive/negative
-   assertions, no-effect refusals, selective/all revocation, no secret progress.
+   assertions, transport/profile-write refusals, selective/all revocation, no secret progress.
 5. Generated fixture/tests: shipped contract and real signatures in both arms,
    distinct empty profiles, forbidden old journal ports; unit partial/stale and
    v1/v2 record checks remain separate declared cases.
@@ -44,7 +44,7 @@ provider/full Lace, total-loss or historical-knowledge erasure acceptance.
 | P-256 | `7483786d81b5a743b6a7a7210af24cebda96b2a5` | Explicit single-arm suite **PASS**, five entries |
 
 Each arm reconstructed two grants in fresh profiles, refused an independent
-reader and missing/wrong openings before effects, rotated, selectively revoked,
+reader and missing/wrong openings before tracked transport/profile writes, rotated, selectively revoked,
 then revoked all while retaining the owner, survivor and seven-unit holding.
 Together these scopes contain 44 confirmed host transactions with no duplicate
 host sends and 34 native owner-call attempts; native setup transactions are
@@ -76,3 +76,21 @@ SDK, native grant worker, shared grant assertions and compiled inputs remain
 unchanged. Documentation/STATE metadata is additional. The newer full local gate
 contains one extra catalog invariant test; original source-gate counts remain
 historical. Trusted operator/runtime/dependency provenance is still required.
+
+
+## Final review scope
+
+The later parent validates exact grant assertions/circuit inventory and refuses
+symlinks in recheck copies. Refusal accounting measures transport and local profile
+writes, excluding ceremonies/key creation/sealing. The injected write control is
+currently generated JubJub only. Historical outage receipts do not validate later
+exact fault-code mappings. Worker failures are already covered by the parent's
+outer tracked-child cleanup; there is no claimed absence of that cleanup.
+
+The live worker intentionally requires its seven-unit fixture holding. The JubJub
+record-write fix is accepted for this single-account profile scope; switching one
+profile between accounts or conflicting with an existing durable final record can
+safely refuse and is not multi-account/profile-continuation acceptance. The
+remaining duplicate counter lookup is a nonblocking optimisation, not a change to
+ledger authority. No SDK/native grant worker/shared case changed in the final
+harness review corrections.

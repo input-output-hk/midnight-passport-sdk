@@ -323,7 +323,7 @@ enrolled reader, absent-opening provider and wrong-read-key provider. Its ports
 cannot load the old grant journal. Protected original journal/profile files are
 hash-checked without decoding them as recovery inputs. Successful reconstruction
 uses complete published parts and live commitments. Refusals require the specific
-error, unchanged ledger and zero effect attempts; positive current readers/grantees
+error, unchanged ledger and zero tracked transport/profile write attempts; positive current readers/grantees
 must work on that same live state.
 
 Effect accounting includes fresh local account-record and directory writes, not
