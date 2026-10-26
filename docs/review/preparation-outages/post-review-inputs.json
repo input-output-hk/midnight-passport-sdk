@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "date": "2026/10/27",
+  "nativeSource": {
+    "commit": "5d2bf2062fab64a40eadee009823e7a69bd70cc6",
+    "dirty": false,
+    "workspaceSha256": "355d66785919fe35843ac8cdc7574d874d19b13482df7e14484438c77fc8fcbc",
+    "fileCount": 1240
+  },
+  "priorDocumentationHead": "df5a1d32b170bcc80de91a61f3b16d56dd3a0ca8",
+  "sdkSourceAndCompiledFilesUnchanged": 674,
+  "historicalFailureSummariesRevalidated": 16,
+  "nativeRunRepeated": false,
+  "changedExistingInputs": [
+    {
+      "path": "apps/passport-service/qualification/live-worker.ts",
+      "testedSha256": "66536ecf517306fc6833634ad1064095b0277a17c841d959307f6ec6d1f632c9",
+      "currentSha256": "c02a615d0aa99fcd95bfbe1fdd41c33b2dc2b572491bda7c30169f510915c1e8"
+    },
+    {
+      "path": "scripts/qualification/lifecycle-stages.mjs",
+      "testedSha256": "9e07e0899fb2dfa903062b2b784377ac439b45746a6e32b1ff6bb0d5a601c66e",
+      "currentSha256": "86cb5473db643fd88550eabc5a636abb8b8ec8cad236e6338d908666392cd07a"
+    },
+    {
+      "path": "scripts/qualification/live-expectations.mjs",
+      "testedSha256": "54e0f61f2983a163af947c69ec28ff103cf559445bebb96c745dc910f2f64439",
+      "currentSha256": "21892e6edff7cf962d3690c3f58aa418aa3dd78e14a94a40b19efccf3dc131e9"
+    },
+    {
+      "path": "scripts/qualification/live-outages.mjs",
+      "testedSha256": "b14ac12916f672a9303ebe280e9bcc961ade1bbf82df44322df77127ed1b76cd",
+      "currentSha256": "2deb5ef1b08bc36f24dd0f5609a0b26e8d0e36dd3b3efe9dd832b1ecacf9b682"
+    },
+    {
+      "path": "tests/host-mutation-http.test.mjs",
+      "testedSha256": "9e8193c6d124b35a5f1dae67f7d0ac57cfc952f3d579f9cd1846e3eab5a35dfb",
+      "currentSha256": "84b706dbbcf63cd635c43e6b07d24c4e13fd00e2506243bc0196771044321944"
+    },
+    {
+      "path": "tests/qualification-live-expectations.test.mjs",
+      "testedSha256": "70724827acc0c3f680cc176f61c70def600ae58dd78a96075bf95977a2fb534c",
+      "currentSha256": "42b6cb92e5f1256476921d8085f8391cc22f6b2ad29e0728eaf771ff4d645ed8"
+    }
+  ],
+  "addedInputs": [
+    "tests/qualification-crash-marker.test.mjs"
+  ],
+  "scope": "Later harness/diagnostic/test corrections; no requalification at a new source. Historical executable-inputs.json is explicitly pinned to df5a1d3.",
+  "documentationDeltaPaths": [
+    "STATE.md",
+    "docs/compatibility.md",
+    "docs/review/preparation-outages/README.md",
+    "docs/site/host-durability.md",
+    "docs/site/live-qualification.md"
+  ]
+}

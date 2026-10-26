@@ -491,3 +491,30 @@ The signed `094c7f0` source completed this declared local scope: 21 case entries
 indexer probes, plus the separate fresh-credit wallet outage/recreation case. See
 [verification](review/survivor-reconnect/verification.json). Executable inputs are
 unchanged by later documentation-only forward changes. Broad issues remain open.
+
+
+### Current preparation and outage follow-up — 2026/10/26
+
+The source adds memory/encrypted-file held-successor call-preparation races and
+real-loopback HTTP conflict, persistent refusal, simulated expiry, cancellation
+and client-timeout tests. No automatic replacement or uncertain rebroadcast is
+introduced. The new explicit `survivor-outages` profile combines deployment/prover,
+activation, populated enrollment/removal and survivor rotation/indexer boundaries.
+Signed source `5d2bf2062fab64a40eadee009823e7a69bd70cc6` passed one both-arm software/localnet round:
+32 entries, 88 confirmed host transactions, zero duplicate host sends, ten
+indexer-down probes and four prover stops. Original IDs/plans/bytes survived;
+pre-registration owner proof failure remained safely unresolved with unchanged
+host records/send count. The first failed harness expectation and its uncertain
+intent are retained. This adds no real-provider/two-browser, full Lace or
+three-consecutive-run release acceptance. Those broader gates remain open. See
+[review map](review/preparation-outages/README.md).
+
+
+### Qualification review follow-up — 2026/10/27
+
+The native receipt remains pinned to `5d2bf20`. Later review fixes await the
+crash marker's stdout flush and reject a circuit fault from the wrong crypto arm.
+Focused child-process/backpressure and classifier tests cover those corrections;
+the old native failure summaries were revalidated read-only. SDK execution and
+binding bytes are unchanged. This is not a fresh native or provider qualification
+at the later review head; the repository review record lists the exact delta.

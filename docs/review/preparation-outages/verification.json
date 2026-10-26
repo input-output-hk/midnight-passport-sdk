@@ -1,0 +1,552 @@
+{
+  "schema": 1,
+  "date": "2026/10/26",
+  "scope": "source-live-populated-survivor-prover-process-indexer-outages",
+  "testedSource": {
+    "commit": "5d2bf2062fab64a40eadee009823e7a69bd70cc6",
+    "dirty": false,
+    "workspaceSha256": "355d66785919fe35843ac8cdc7574d874d19b13482df7e14484438c77fc8fcbc",
+    "fileCount": 1240
+  },
+  "binding": {
+    "id": "acc-s3r1.1",
+    "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "moduleSha256": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf"
+  },
+  "nodeVersion": "v22.23.2",
+  "images": [
+    {
+      "service": "node",
+      "imageId": "sha256:9040c346c27f569b72dfbbad9420cf38fc7cc6a13b38adf814a925bbe9311678",
+      "repoDigests": [
+        "midnightntwrk/midnight-node@sha256:9040c346c27f569b72dfbbad9420cf38fc7cc6a13b38adf814a925bbe9311678"
+      ],
+      "architecture": "arm64"
+    },
+    {
+      "service": "indexer",
+      "imageId": "sha256:ecfec6a26b9f8f89b7531e8f7c390f841661fb079bdf0bc57fa2cf8bb3f99c2f",
+      "repoDigests": [
+        "ghcr.io/midnightntwrk/indexer-standalone@sha256:ecfec6a26b9f8f89b7531e8f7c390f841661fb079bdf0bc57fa2cf8bb3f99c2f"
+      ],
+      "architecture": "arm64"
+    },
+    {
+      "service": "proof-server",
+      "imageId": "sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf",
+      "repoDigests": [
+        "midnightntwrk/proof-server@sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf"
+      ],
+      "architecture": "arm64"
+    }
+  ],
+  "reference": {
+    "sources": {
+      "package.json": "ed122ba9646137c7a833a7ea6c42d3d98460d9332e11d7c00c5d64acc36cf4e1",
+      "package-lock.json": "a57a8056dfa3989a6fb237f0ff071b172f4864082173ba9c4274c09eac9bee51",
+      "src/node/setup.ts": "437e12a9412ac196ab862e5438ea88b8924776f74b6ba03e7d13820336c5dd49",
+      "src/node/wallet.ts": "0a3687ce13b88c5c36c138eedc21429cc8705aa3e8afcd3efd8c8538594821bf",
+      "src/wallet/wave-deploy.ts": "6d1de9aa21b1cc772df3ce9dd6759a5100c85f11f6fa4bf99453853810be8f9a",
+      "src/wallet/signer.ts": "4c3d593c0947641a116bfca059de399c1fcff24d37c430a38bbbf493c8e3cc8b",
+      "src/wallet/witnesses.ts": "7eadb415ac132fa06670633539573d83904e3d6b126cda020b7244cb2d2f89c0",
+      "src/wallet/account.ts": "4280bbffe324e4da18f22c33d50169d8b5261fefec389697d2868706c7a53bc7",
+      "src/wallet/inbox.ts": "3c4bce6dd5e92eda4b8e2dda15fc4aef91003300c4296cb3794a1d8d695a5922",
+      "src/tests/flow.ts": "7d5f3e696490a19ff800c15f2323a712666f5b1bbf51f98c9290de856be62f2d",
+      "src/tests/runner.ts": "afaa6e9b685402b3f31ff943326b70a294e3793b72b93a42bc3ecad4c01b1299",
+      "contracts/managed/faucet/contract/index.js": "a2750959f862618b9a0ad5cb4b5d2602f7581e3498b3bab870bc7bdecedcd49b",
+      "contracts/managed/faucet/compiler/contract-manifest.json": "7524ee9b245cce3e35363f20200f6cc63ef6abaa9a4fec0c2b0b3fa5270cd0e8",
+      "contracts/managed/faucet/keys/mint_shielded.prover": "672d05e8ac576c4aca68088f8e8311b4de4a298fb9c99806b788fa4135f5dcda",
+      "contracts/managed/faucet/keys/mint_shielded.verifier": "9646166e5a75da9c050bc2f544332710bf0b13ca02d4f30efec53b15f948c3ac",
+      "contracts/managed/faucet/zkir/mint_shielded.zkir": "b118a89e59c07b46fce84fd973c94a5106087a38257112af105c53f80e9f2a6a",
+      "contracts/managed/account/contract/index.js": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf",
+      "contracts/managed/account/compiler/contract-manifest.json": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f"
+    },
+    "packages": [
+      {
+        "name": "@midnight-ntwrk/compact-js",
+        "version": "3.0.0-rc.3",
+        "integrity": "sha512-+lJA4PyNT7/0JrjvBBehdP4GfCimXx07SXNPJ73tKyfhSaehCJZ5H2O9OIaG2t3wzW1y14Q+O6kbAkObJfdrWw==",
+        "entrySha256": "832fe39c4b1493494461e73cfd5cebb6185cea8cea9e0f5056025353feb11300"
+      },
+      {
+        "name": "@midnight-ntwrk/compact-runtime",
+        "version": "0.20.0",
+        "integrity": "sha512-vtwZ6PiqPy6sUHmXJlrv/3SyjEsKVdQaRroWowTGgu55CJlJXONUplHyst/dRVKe9C6sApveIo2FgbXoBMiMeQ==",
+        "entrySha256": "f59514c653cc7f267b44e898a11aa0f81f7fbc7418011cb3513ae4b7119ca10f"
+      },
+      {
+        "name": "@midnight-ntwrk/midnight-js-contracts",
+        "version": "5.0.0-rc.2",
+        "integrity": "sha512-dpLy8LEiJmxl+Io3xP+jL95sC4ZbzzmLX0TSBfw0RSOicTPSVkYvcPFrZHCqNvUsYnt+jwTye9AYfXNolljo/A==",
+        "entrySha256": "16a0f7566e9b27761cb34f256f005c7e8e757689bf273358d588b5c71ff26d7e"
+      },
+      {
+        "name": "@midnight-ntwrk/midnight-js-protocol",
+        "version": "5.0.0-rc.2",
+        "integrity": "sha512-WRFeN4OCGAmXbh9Uwa5p333rthOorb7Y7ym2N8VsBZSQSDXY6jvtHT+7OeZyL49WLpLTmwTnCudNvsAb1lLqpA==",
+        "entrySha256": "749223d8867b3d06c342d21161843720c61127432457bd2696581e6e9ec7257c"
+      },
+      {
+        "name": "@midnight-ntwrk/midnight-js-indexer-public-data-provider",
+        "version": "5.0.0-rc.2",
+        "integrity": "sha512-+dWenbbMwsguX3R7Md8BCFHFWdcfEVvFuZDIa862kMc5mbEcyj+h2NULZWb/xc5uI9/WVNfFq9J9Ao7YuEzjCQ==",
+        "entrySha256": "9dd210a50a2e0b96d20d62ef03394a27ac26e231caffdbb1e055692f497446f7"
+      },
+      {
+        "name": "@midnight-ntwrk/midnight-js-http-client-proof-provider",
+        "version": "5.0.0-rc.2",
+        "integrity": "sha512-GRcHrlHrN4sf0Tv9BIdEgybGgnJ9l/QjTIbn+vZanZa0NlCfwI0Ros0DfugKHRJDHWE96GxzynpeBhWO5usmQA==",
+        "entrySha256": "c2a6a7f3bc901c5b4789f253a62aa542fda70e6d09df59b71bdfc5c92c9f085d"
+      },
+      {
+        "name": "@midnightntwrk/ledger-v9",
+        "version": "1.0.0-rc.5",
+        "integrity": "sha512-xd2RDJ7UiJha9c0YA92DYof/eGW6NKBFhQxoCggzyrdYm2KWuE/u4wlv/WRP2/Hvol1O8ymOVatKquGXYBgV9w==",
+        "entrySha256": "effa3b1ad14755663904500a5ababa86fd02bdd4c0f52b5bd73e94253e592675"
+      },
+      {
+        "name": "@midnightntwrk/wallet-sdk-facade",
+        "version": "5.0.0-rc.0",
+        "integrity": "sha512-sXo56UehJHrobvNr2JWkPOhxpljyOrROGaeXLG4NyvRXli0YaZ0pIigOJoEbrrjLEQBa8HiYwUy04zphwuHCtQ==",
+        "entrySha256": "46f3b281fa43012db768a93a1de78c9e706081fc9302d1bf36086c3a90070b05"
+      },
+      {
+        "name": "@midnightntwrk/wallet-sdk-address-format",
+        "version": "4.0.0-rc.0",
+        "integrity": "sha512-2VEm/wSDgpZs+iUz4fGPHwE5gvcuH1Xs6FqYrKDgtO1DtP0lcVd3mUWwSVbMNiN+kZfaqwDx8hOj+w+9FRpqJg==",
+        "entrySha256": "b81cf14d8f605cad125b7cfe1f746bef5de03a3771184d31349d6182baca4ac1"
+      }
+    ]
+  },
+  "softwareCredentials": true,
+  "realProviderQualified": false,
+  "releaseQualified": false,
+  "live": {
+    "rounds": 1,
+    "arms": [
+      {
+        "arm": "jubjub",
+        "caseEntries": 16,
+        "hostConfirmedTransactions": 44,
+        "hostSends": 44,
+        "duplicateHostSends": 0,
+        "oneOriginalDeployment": true,
+        "sameCreateIntentAcrossFourStages": true,
+        "postSubmitHostDeathsAndIndexerProbes": 5,
+        "actualProverStops": 2,
+        "originalPlansAndPreparedBytesPreserved": true,
+        "unknownHostRecordsAndSendCountUnchanged": true,
+        "ownerPreRegistrationFailure": "safely-unresolved-no-resend",
+        "stages": [
+          {
+            "operation": "create",
+            "fault": "deploy:0:after-submit",
+            "verdict": "PASS",
+            "durationMs": 59634,
+            "errorCode": "MutationUnsettled",
+            "unresolvedEffects": 1,
+            "indexerDownProbePassed": true
+          },
+          {
+            "operation": "create",
+            "fault": "before-deploy-proof",
+            "verdict": "PASS",
+            "durationMs": 44272,
+            "errorCode": "MutationUnsettled",
+            "unresolvedEffects": 1
+          },
+          {
+            "operation": "create",
+            "fault": "call:0:after-submit",
+            "verdict": "PASS",
+            "durationMs": 233745,
+            "errorCode": "InternalError",
+            "unresolvedEffects": 1,
+            "indexerDownProbePassed": true
+          },
+          {
+            "operation": "create",
+            "fault": "none",
+            "verdict": "PASS",
+            "durationMs": 93458,
+            "readers": {
+              "currentReaders": [
+                "owner"
+              ],
+              "removedTargetCannotOpenCurrentKey": false,
+              "actor": "owner"
+            }
+          },
+          {
+            "operation": "populate",
+            "verdict": "PASS"
+          },
+          {
+            "operation": "add-survivor",
+            "fault": "none",
+            "verdict": "PASS",
+            "durationMs": 247279,
+            "populated": {
+              "heldCoins": 1,
+              "activeReadGrants": 1,
+              "grantOpenedCurrentKey": true,
+              "value": "7"
+            },
+            "readers": {
+              "currentReaders": [
+                "owner",
+                "survivor"
+              ],
+              "removedTargetCannotOpenCurrentKey": false,
+              "actor": "owner"
+            }
+          },
+          {
+            "operation": "add-target",
+            "fault": "circuit:add_device_with_jubjub:after-submit",
+            "verdict": "PASS",
+            "durationMs": 309579,
+            "errorCode": "InternalError",
+            "unresolvedEffects": 1,
+            "indexerDownProbePassed": true
+          },
+          {
+            "operation": "add-target",
+            "fault": "none",
+            "verdict": "PASS",
+            "durationMs": 49350,
+            "populated": {
+              "heldCoins": 1,
+              "activeReadGrants": 1,
+              "grantOpenedCurrentKey": true,
+              "value": "7"
+            },
+            "readers": {
+              "currentReaders": [
+                "owner",
+                "survivor",
+                "target"
+              ],
+              "removedTargetCannotOpenCurrentKey": false,
+              "actor": "owner"
+            }
+          },
+          {
+            "operation": "remove-target",
+            "fault": "circuit:rotate_enc_key_with_jubjub:after-submit",
+            "verdict": "PASS",
+            "durationMs": 198961,
+            "errorCode": "InternalError",
+            "unresolvedEffects": 1,
+            "indexerDownProbePassed": true
+          },
+          {
+            "operation": "remove-target",
+            "fault": "none",
+            "verdict": "PASS",
+            "durationMs": 109107,
+            "populated": {
+              "heldCoins": 1,
+              "activeReadGrants": 1,
+              "grantOpenedCurrentKey": true,
+              "value": "7"
+            },
+            "readers": {
+              "currentReaders": [
+                "owner",
+                "survivor"
+              ],
+              "removedTargetCannotOpenCurrentKey": true,
+              "actor": "owner"
+            }
+          },
+          {
+            "operation": "survivor-rotate",
+            "fault": "call:0:after-submit",
+            "verdict": "PASS",
+            "durationMs": 62500,
+            "errorCode": "InternalError",
+            "unresolvedEffects": 1,
+            "indexerDownProbePassed": true
+          },
+          {
+            "operation": "survivor-rotate",
+            "fault": "none",
+            "verdict": "PASS",
+            "durationMs": 152292,
+            "populated": {
+              "heldCoins": 1,
+              "activeReadGrants": 1,
+              "grantOpenedCurrentKey": true,
+              "value": "7"
+            },
+            "readers": {
+              "currentReaders": [
+                "owner",
+                "survivor"
+              ],
+              "removedTargetCannotOpenCurrentKey": true,
+              "actor": "survivor"
+            }
+          },
+          {
+            "operation": "verify-removed",
+            "verdict": "PASS"
+          },
+          {
+            "operation": "rotate-prover",
+            "fault": "before-owner-proof",
+            "verdict": "PASS",
+            "durationMs": 47441,
+            "errorCode": "InternalError",
+            "unresolvedEffects": 1
+          },
+          {
+            "operation": "rotate-prover",
+            "fault": "assert-unknown",
+            "verdict": "PASS",
+            "durationMs": 38415,
+            "errorCode": "MutationUnsettled",
+            "unresolvedEffects": 1
+          },
+          {
+            "verdict": "PASS"
+          }
+        ]
+      },
+      {
+        "arm": "p256",
+        "caseEntries": 16,
+        "hostConfirmedTransactions": 44,
+        "hostSends": 44,
+        "duplicateHostSends": 0,
+        "oneOriginalDeployment": true,
+        "sameCreateIntentAcrossFourStages": true,
+        "postSubmitHostDeathsAndIndexerProbes": 5,
+        "actualProverStops": 2,
+        "originalPlansAndPreparedBytesPreserved": true,
+        "unknownHostRecordsAndSendCountUnchanged": true,
+        "ownerPreRegistrationFailure": "safely-unresolved-no-resend",
+        "stages": [
+          {
+            "operation": "create",
+            "fault": "deploy:0:after-submit",
+            "verdict": "PASS",
+            "durationMs": 63811,
+            "errorCode": "MutationUnsettled",
+            "unresolvedEffects": 1,
+            "indexerDownProbePassed": true
+          },
+          {
+            "operation": "create",
+            "fault": "before-deploy-proof",
+            "verdict": "PASS",
+            "durationMs": 37270,
+            "errorCode": "MutationUnsettled",
+            "unresolvedEffects": 1
+          },
+          {
+            "operation": "create",
+            "fault": "call:0:after-submit",
+            "verdict": "PASS",
+            "durationMs": 235226,
+            "errorCode": "InternalError",
+            "unresolvedEffects": 1,
+            "indexerDownProbePassed": true
+          },
+          {
+            "operation": "create",
+            "fault": "none",
+            "verdict": "PASS",
+            "durationMs": 177431,
+            "readers": {
+              "currentReaders": [
+                "owner"
+              ],
+              "removedTargetCannotOpenCurrentKey": false,
+              "actor": "owner"
+            }
+          },
+          {
+            "operation": "populate",
+            "verdict": "PASS"
+          },
+          {
+            "operation": "add-survivor",
+            "fault": "none",
+            "verdict": "PASS",
+            "durationMs": 565797,
+            "populated": {
+              "heldCoins": 1,
+              "activeReadGrants": 1,
+              "grantOpenedCurrentKey": true,
+              "value": "7"
+            },
+            "readers": {
+              "currentReaders": [
+                "owner",
+                "survivor"
+              ],
+              "removedTargetCannotOpenCurrentKey": false,
+              "actor": "owner"
+            }
+          },
+          {
+            "operation": "add-target",
+            "fault": "circuit:add_device_with_p256:after-submit",
+            "verdict": "PASS",
+            "durationMs": 644568,
+            "errorCode": "InternalError",
+            "unresolvedEffects": 1,
+            "indexerDownProbePassed": true
+          },
+          {
+            "operation": "add-target",
+            "fault": "none",
+            "verdict": "PASS",
+            "durationMs": 43666,
+            "populated": {
+              "heldCoins": 1,
+              "activeReadGrants": 1,
+              "grantOpenedCurrentKey": true,
+              "value": "7"
+            },
+            "readers": {
+              "currentReaders": [
+                "owner",
+                "survivor",
+                "target"
+              ],
+              "removedTargetCannotOpenCurrentKey": false,
+              "actor": "owner"
+            }
+          },
+          {
+            "operation": "remove-target",
+            "fault": "circuit:rotate_enc_key_with_p256:after-submit",
+            "verdict": "PASS",
+            "durationMs": 374203,
+            "errorCode": "InternalError",
+            "unresolvedEffects": 1,
+            "indexerDownProbePassed": true
+          },
+          {
+            "operation": "remove-target",
+            "fault": "none",
+            "verdict": "PASS",
+            "durationMs": 170571,
+            "populated": {
+              "heldCoins": 1,
+              "activeReadGrants": 1,
+              "grantOpenedCurrentKey": true,
+              "value": "7"
+            },
+            "readers": {
+              "currentReaders": [
+                "owner",
+                "survivor"
+              ],
+              "removedTargetCannotOpenCurrentKey": true,
+              "actor": "owner"
+            }
+          },
+          {
+            "operation": "survivor-rotate",
+            "fault": "call:0:after-submit",
+            "verdict": "PASS",
+            "durationMs": 102490,
+            "errorCode": "InternalError",
+            "unresolvedEffects": 1,
+            "indexerDownProbePassed": true
+          },
+          {
+            "operation": "survivor-rotate",
+            "fault": "none",
+            "verdict": "PASS",
+            "durationMs": 317986,
+            "populated": {
+              "heldCoins": 1,
+              "activeReadGrants": 1,
+              "grantOpenedCurrentKey": true,
+              "value": "7"
+            },
+            "readers": {
+              "currentReaders": [
+                "owner",
+                "survivor"
+              ],
+              "removedTargetCannotOpenCurrentKey": true,
+              "actor": "survivor"
+            }
+          },
+          {
+            "operation": "verify-removed",
+            "verdict": "PASS"
+          },
+          {
+            "operation": "rotate-prover",
+            "fault": "before-owner-proof",
+            "verdict": "PASS",
+            "durationMs": 57058,
+            "errorCode": "InternalError",
+            "unresolvedEffects": 1
+          },
+          {
+            "operation": "rotate-prover",
+            "fault": "assert-unknown",
+            "verdict": "PASS",
+            "durationMs": 36569,
+            "errorCode": "MutationUnsettled",
+            "unresolvedEffects": 1
+          },
+          {
+            "verdict": "PASS"
+          }
+        ]
+      }
+    ],
+    "caseEntries": 32,
+    "hostConfirmedTransactions": 88,
+    "hostSends": 88,
+    "duplicateHostSends": 0,
+    "actualIndexerOutageProbes": 10,
+    "actualProverStops": 4
+  },
+  "localGate": {
+    "passed": 906,
+    "existingConditionalSkips": 7,
+    "failed": 0,
+    "logSha256": "4111a2e659d5b0157342537369160efd642af2420eba0b0c41b5e624a94545b8"
+  },
+  "integrity": {
+    "sourceAndCompiledRuntimeUnchanged": true,
+    "referenceUnchanged": true,
+    "rawReceiptSha256": "ce6ed9574f562ae10be0d31deacbdbf7f282784443ce3217820cae8c5b92af98",
+    "suiteReceiptSha256": "174ae73a747843702c763848caf973326c3c37da42f7e148b4de06801a473466",
+    "endAuditSha256": "03835f2a5e2b9db1a35ab7e6acbf160aa41303a4e54a22a500fe0388ba02d8f5",
+    "frozenInputMapSha256": "0d80f7d10e857bab64836e79de2ef1af2490d579160d3f9da55f6989e0f0d150"
+  },
+  "failedAttempts": [
+    {
+      "name": "v1",
+      "verdict": "FAIL",
+      "source": {
+        "commit": "48262a2d4eeef93ff1e0fbf8df3f5eaf5845388d",
+        "dirty": false,
+        "workspaceSha256": "76225d45466a27eaa80d4122206f62f3e7a0bec80834aba5420bb6409dcacfb5",
+        "fileCount": 1240
+      },
+      "rawReceiptSha256": "419b23985882ceeeed5815f4ca4ae775e66b9cbb7de6dfe7a07126650622c3a0",
+      "sourceAndReferenceEndAuditPassed": true,
+      "cause": "Harness expected InternalError for deployment post-submit host loss; current SDK correctly returned MutationUnsettled with original pending intent. Exact expectation corrected; failed state retained, not replayed."
+    }
+  ],
+  "limits": [
+    "One software-identity localnet run in each arm; not three consecutive release runs.",
+    "No real passkey-provider or two-browser acceptance (#232 remains open).",
+    "No new native grant crash continuation, total-loss recovery, atomic compromised-signer retirement, partial shielded spending or full Lace compatibility.",
+    "Fast preparation/HTTP tests use fake drivers; validation refusal is not new native expiry evidence.",
+    "No wallet reconnect in this profile; previous evidence is historical.",
+    "Test faucet minted a seven-unit shielded test coin, not production funds."
+  ]
+}

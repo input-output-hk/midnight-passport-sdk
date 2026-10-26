@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "testedSource": {
+    "commit": "5d2bf2062fab64a40eadee009823e7a69bd70cc6",
+    "dirty": false,
+    "workspaceSha256": "355d66785919fe35843ac8cdc7574d874d19b13482df7e14484438c77fc8fcbc",
+    "fileCount": 1240
+  },
+  "testedInputMapSha256": "0d80f7d10e857bab64836e79de2ef1af2490d579160d3f9da55f6989e0f0d150",
+  "comparedNonDocumentationInputs": 1115,
+  "nonDocumentationInputMapSha256": "9948b0faf28f37162447cbb0b2425dbf7c8e0091f27967a6f7770383f12a07af",
+  "allOtherTrackedAndCompiledBytesEqual": true,
+  "documentationDeltaPaths": [
+    "STATE.md",
+    "docs/compatibility.md",
+    "docs/review/preparation-outages/README.md",
+    "docs/review/preparation-outages/executable-inputs.json",
+    "docs/review/preparation-outages/verification.json",
+    "docs/site/host-durability.md",
+    "docs/site/live-qualification.md"
+  ],
+  "statement": "Historical forwarding audit at df5a1d32b170bcc80de91a61f3b16d56dd3a0ca8: only documentation/STATE metadata differed from native source 5d2bf20. Later harness review corrections are listed separately in post-review-inputs.json; no native receipt is requalified at a later source.",
+  "comparisonHead": "df5a1d32b170bcc80de91a61f3b16d56dd3a0ca8"
+}

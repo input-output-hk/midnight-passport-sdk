@@ -28,3 +28,31 @@ export function crashesAfterSubmit(fault, record) {
       fault === `circuit:${circuit}:after-submit`)
   );
 }
+
+/** Integrated current-harness outages; the final pre-registration intent stays unresolved.
+ * @param {'p256'|'jubjub'} arm @returns {Array<[string,string,string]>} */
+export const survivorOutageStages = (arm) => [
+  ['create', 'deploy:0:after-submit', 'owner'],
+  ['create', 'before-deploy-proof', 'resume'],
+  ['create', 'call:0:after-submit', 'resume'],
+  ['create', 'none', 'resume'],
+  ...lifecycleStages(arm).slice(1, 7),
+  ['survivor-rotate', 'call:0:after-submit', 'owner'],
+  ['survivor-rotate', 'none', 'resume'],
+  ['verify-removed', 'none', 'verify'],
+  ['rotate-prover', 'before-owner-proof', 'owner'],
+  ['rotate-prover', 'assert-unknown', 'resume'],
+];
+
+/** Flush the identifying marker before intentional process death, including piped stdout.
+ * @param {string} fault @returns {Promise<never>} */
+export async function emitCrashAndExit(fault) {
+  if (typeof fault !== 'string' || !fault.length || fault.length > 128)
+    throw new Error('Invalid crash boundary.');
+  await new Promise((resolve, reject) => {
+    process.stdout.write(`PASSPORT_LIVE ${JSON.stringify({ crash: fault })}\n`, (error) =>
+      error ? reject(error) : resolve(undefined),
+    );
+  });
+  process.exit(86);
+}

@@ -78,7 +78,10 @@ import {
   softwareParticipant,
 } from '../../../scripts/qualification/identities.mjs';
 
-import { crashesAfterSubmit } from '../../../scripts/qualification/lifecycle-stages.mjs';
+import {
+  crashesAfterSubmit,
+  emitCrashAndExit,
+} from '../../../scripts/qualification/lifecycle-stages.mjs';
 import { requireNoCurrentKey } from '../../../scripts/qualification/live-expectations.mjs';
 
 const [mode, root, arm, operation = 'create', fault = 'none'] = process.argv.slice(2);
@@ -323,8 +326,7 @@ if (mode === 'host') {
       const id = await original.submit(tx);
       event({ stage: 'send-return', requestId: current.identity.requestId, boundary, id });
       if (crashesAfterSubmit(fault, current)) {
-        emit({ crash: fault });
-        process.exit(86);
+        await emitCrashAndExit(fault);
       }
       return id;
     },

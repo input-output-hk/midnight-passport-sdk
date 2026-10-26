@@ -23,7 +23,7 @@ async function fixture(t, tagged = false) {
     new Map();
   let sends = 0;
   const store = {
-    read: async (/** @type {any} */ i) => records.get(i.requestId),
+    read: async (/** @type {any} */ i) => structuredClone(records.get(i.requestId)),
     compareAndSwap: async (/** @type {number|undefined} */ old, /** @type {any} */ next) => {
       if (records.get(next.identity.requestId)?.revision !== old) return false;
       records.set(next.identity.requestId, structuredClone(next));
@@ -65,10 +65,13 @@ async function fixture(t, tagged = false) {
     }),
   ]);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(undefined)));
-  t.after(() => {
-    server.closeAllConnections();
-    server.close();
-  });
+  t.after(
+    () =>
+      new Promise((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve(undefined)));
+        server.closeAllConnections();
+      }),
+  );
   const address = server.address();
   assert.ok(address && typeof address === 'object');
   const base = `http://127.0.0.1:${address.port}`;
@@ -77,6 +80,7 @@ async function fixture(t, tagged = false) {
     driver,
     executor,
     records,
+    store,
     sends: () => sends,
     ports: remoteHostMutationPorts(base, { pins, token, timeoutMs: 1000, pollIntervalMs: 0 }),
   };
@@ -265,3 +269,218 @@ for (const kind of ['reconcile', 'submit'])
     await assert.rejects(result, { code: 'MutationUnsettled' });
     assert.equal(wireSignal?.aborted, true);
   });
+
+const callInput = { tx: '010203', address: 'ab'.repeat(32), circuit: 'append_inbox_with_jubjub' };
+const callIdentity = { pins, ...mutation, kind: /** @type {const} */ ('call') };
+const callEffect = {
+  kind: /** @type {const} */ ('call'),
+  key: mutation.requestId,
+  digest: mutation.intentSha256,
+  input: {},
+};
+const rawCall = (
+  /** @type {string} */ base,
+  /** @type {string} */ path,
+  /** @type {unknown} */ body,
+  auth = token,
+) =>
+  fetch(`${base}/v1/mutations/${path}`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      connection: 'close',
+      authorization: `Bearer ${auth}`,
+    },
+    body: JSON.stringify(body),
+  });
+function gate() {
+  let release = () => {};
+  const promise = new Promise((resolve) => {
+    release = () => resolve(undefined);
+  });
+  return { promise, release };
+}
+
+test('HTTP call preparation retries only original bytes through a fresh executor; auth/conflicts cannot trigger it', async (t) => {
+  const f = await fixture(t);
+  /** @type {unknown[]} */ const inputs = [];
+  f.driver.prepare = async (_i, value) => {
+    inputs.push(value);
+    if (inputs.length === 1) throw new Error('protected preparation diagnostic');
+    return { address: callInput.address, steps: 1, context: { original: value } };
+  };
+  await assert.rejects(
+    f.ports.submitter.submit(Uint8Array.of(1, 2, 3), {
+      mutation,
+      address: callInput.address,
+      circuit: callInput.circuit,
+    }),
+    { code: 'MutationUnsettled' },
+  );
+  assert.equal(f.records.get(mutation.requestId)?.phase, 'preparing');
+  const before = structuredClone(f.records.get(mutation.requestId));
+  const wrong = await rawCall(f.base, 'execute', {
+    identity: callIdentity,
+    input: { ...callInput, tx: 'ff' },
+  });
+  assert.equal(wrong.status, 409);
+  assert.ok(!(await wrong.text()).includes('protected preparation diagnostic'));
+  assert.equal(
+    (await rawCall(f.base, 'reconcile', { identity: callIdentity }, '00'.repeat(32))).status,
+    401,
+  );
+  assert.equal(
+    (
+      await rawCall(f.base, 'reconcile', {
+        identity: { ...callIdentity, pins: { ...pins, networkId: 'preprod' } },
+      })
+    ).status,
+    409,
+  );
+  assert.deepEqual(f.records.get(mutation.requestId), before);
+  assert.equal(inputs.length, 1);
+  assert.equal(f.sends(), 0);
+  const fresh = createHostMutationExecutor(f.store, f.driver);
+  f.executor.resume = (...args) => fresh.resume(...args);
+  const result = await f.ports.outcomes.reconcile(pins, callEffect);
+  assert.equal(result.kind, 'confirmed');
+  assert.deepEqual(inputs, [callInput, callInput]);
+  assert.equal(f.sends(), 1);
+  assert.deepEqual(await f.ports.outcomes.reconcile(pins, callEffect), result);
+  assert.equal(inputs.length, 2);
+  assert.equal(f.sends(), 1);
+});
+
+test('HTTP persistent call preparation refusal is sanitised and never becomes a no-send or replacement answer', async (t) => {
+  const f = await fixture(t);
+  let attempts = 0;
+  f.driver.prepare = async () => {
+    attempts++;
+    throw new Error('secret diagnostic fixture');
+  };
+  for (const path of ['execute', 'reconcile', 'reconcile']) {
+    const response = await rawCall(f.base, path, {
+      identity: callIdentity,
+      ...(path === 'execute' && { input: callInput }),
+    });
+    assert.equal(response.status, 409);
+    const body = await response.text();
+    assert.ok(!body.includes('secret diagnostic fixture'));
+    assert.match(body, /original request ID/);
+  }
+  assert.equal(attempts, 3);
+  assert.equal(f.sends(), 0);
+  assert.equal(f.records.get(mutation.requestId)?.phase, 'preparing');
+  assert.deepEqual(f.records.get(mutation.requestId)?.input, callInput);
+});
+
+test('HTTP reconciliation preserves ready call bytes when its dispatch validation refuses', async (t) => {
+  const f = await fixture(t);
+  let attempts = 0,
+    expired = false;
+  f.driver.prepare = async () => {
+    if (++attempts === 1) throw new Error('temporary preparation outage');
+    return { address: callInput.address, steps: 1, context: {} };
+  };
+  f.driver.prepareStep = async () => {
+    expired = true;
+    return { tx: callInput.tx, identifiers: [txid(1)] };
+  };
+  f.driver.check = async () => !expired;
+  assert.equal(
+    (await rawCall(f.base, 'execute', { identity: callIdentity, input: callInput })).status,
+    409,
+  );
+  assert.deepEqual(await f.ports.outcomes.reconcile(pins, callEffect), { kind: 'unknown' });
+  const before = structuredClone(f.records.get(mutation.requestId));
+  assert.deepEqual(await f.ports.outcomes.reconcile(pins, callEffect), { kind: 'unknown' });
+  assert.deepEqual(f.records.get(mutation.requestId), before);
+  assert.equal(before?.steps[0]?.tx, callInput.tx);
+  assert.equal(f.sends(), 0);
+  assert.equal(attempts, 2);
+});
+
+for (const failure of ['cancellation', 'timeout'])
+  test(
+    `HTTP ${failure} during call preparation retains output and allows only explicit same-ID continuation`,
+    { timeout: 10000 },
+    async (t) => {
+      const f = await fixture(t),
+        entered = gate(),
+        released = gate(),
+        aborted = gate(),
+        persisted = gate();
+      const controller = new AbortController();
+      let attempts = 0,
+        posts = 0;
+      const execute = f.executor.execute;
+      let receivedSignal = false;
+      f.executor.execute = (i, input, options) => {
+        receivedSignal = !!options?.signal;
+        if (!receivedSignal) {
+          entered.release();
+          aborted.release();
+          return Promise.reject(new Error('Route omitted the abort signal.'));
+        }
+        options?.signal?.aborted
+          ? aborted.release()
+          : /** @type {AbortSignal} */ (options?.signal)?.addEventListener(
+              'abort',
+              aborted.release,
+              { once: true },
+            );
+        return execute(i, input, options);
+      };
+      const save = f.store.compareAndSwap;
+      f.store.compareAndSwap = async (revision, record) => {
+        const ok = await save(revision, record);
+        if (ok && record.phase === 'active') persisted.release();
+        return ok;
+      };
+      f.driver.prepare = async (_i, input) => {
+        attempts++;
+        assert.deepEqual(input, callInput);
+        entered.release();
+        await released.promise;
+        return { address: callInput.address, steps: 1, context: { original: input } };
+      };
+      const ports = remoteHostMutationPorts(f.base, {
+        pins,
+        token,
+        timeoutMs: failure === 'timeout' ? 1000 : 5000,
+        fetch: async (url, init) => {
+          posts++;
+          return fetch(url, {
+            .../** @type {RequestInit} */ (init),
+            headers: { ...init?.headers, connection: 'close' },
+          });
+        },
+      });
+      const pending = ports.submitter.submit(Uint8Array.of(1, 2, 3), {
+        mutation,
+        address: callInput.address,
+        circuit: callInput.circuit,
+        signal: controller.signal,
+      });
+      const refused = assert.rejects(pending, { code: 'MutationUnsettled' });
+      try {
+        await entered.promise;
+        assert.ok(receivedSignal, 'Route must pass its abort signal to the executor.');
+        if (failure === 'cancellation') controller.abort();
+        await refused;
+        await aborted.promise;
+        assert.equal(posts, 1, 'Transport failure never automatically repeats execute.');
+        released.release();
+        await persisted.promise;
+        assert.equal(f.sends(), 0);
+        assert.equal((await ports.outcomes.reconcile(pins, callEffect)).kind, 'confirmed');
+        assert.equal(posts, 2);
+        assert.equal(attempts, 1);
+        assert.equal(f.sends(), 1);
+        assert.deepEqual(f.records.get(mutation.requestId)?.input, callInput);
+      } finally {
+        released.release();
+        await Promise.allSettled([pending]);
+      }
+    },
+  );

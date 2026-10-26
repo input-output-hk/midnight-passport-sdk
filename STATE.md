@@ -6,6 +6,33 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/10/26. Historical entries below retain their original issue namespaces.
 
+## 2026/10/27 — PR251 qualification review corrections
+
+Refs #230, #231, #232. Await crash-marker stdout flush before intentional exit,
+require the running crypto arm in fault classification, and diagnose a missing
+HTTP abort signal without waiting for a timeout. Real child-process backpressure
+and opposite-arm controls cover the fixes. Original native receipts remain at
+5d2bf20; no native run is relabelled or fixture replayed. The post-review input
+comparison lists the harness/test delta and unchanged SDK execution inputs.
+
+## 2026/10/26 — preparation/HTTP and current outage slice
+
+Refs #230, #231, #232. Current branch retained. New deterministic held-successor
+races cover memory and encrypted-file CAS stores, original-byte conflicts and safe
+preparation/dispatch refusals. Real loopback HTTP tests cover fresh-executor
+reconciliation, authentication, persistent refusal, cancellation and timeout with
+original output retention. Explicit integrated both-arm/per-arm survivor outage
+profiles add closed fault/error/crash checks and unchanged-send unknown probes.
+Signed source `5d2bf2062fab64a40eadee009823e7a69bd70cc6` passed 906 tests with 7 existing conditional
+skips and no failures, plus one both-arm native round: 32 entries, 88 confirmed
+host transactions, zero duplicate sends, ten indexer-down probes/four prover
+stops. Original IDs/plans/bytes survived; the final owner pre-registration
+failure remains safely unresolved without host-record/send-count changes.
+A deployment-error expectation defect was corrected; its failed original run
+and pending intent remain retained. No provider/full Lace, three-run release
+or complete issue claim. See `docs/review/preparation-outages/README.md`.
+Exact-value guard and immutable binding remain unchanged.
+
 ## 2026/10/26 — final qualification review hardening
 
 Refs #230, #231, #232, #239.

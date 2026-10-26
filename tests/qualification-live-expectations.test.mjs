@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   liveProfileOptions,
   requireExpectedFailure,
+  requireExpectedHostCrash,
   requireNoCurrentKey,
   WALLET_WINDOWS,
   requireGrantRecoverySummary,
@@ -42,15 +43,18 @@ test('unknown-send qualification refuses arbitrary errors even with a pending au
       { failed: 'rotate-prover', code: 'MutationUnsettled', audit: { unresolvedEffects: 1 } },
     ],
   };
-  requireExpectedFailure(result, 'rotate-prover', 'assert-unknown');
+  requireExpectedFailure(result, 'rotate-prover', 'assert-unknown', 'jubjub');
   assert.throws(() =>
     requireExpectedFailure(
       { ...result, messages: [{ ...result.messages[0], code: 'InternalError' }] },
       'rotate-prover',
       'assert-unknown',
+      'jubjub',
     ),
   );
-  assert.throws(() => requireExpectedFailure(result, 'different-operation', 'assert-unknown'));
+  assert.throws(() =>
+    requireExpectedFailure(result, 'different-operation', 'assert-unknown', 'jubjub'),
+  );
 });
 
 test('no-current-key evidence requires the specific cryptographic refusal and a real usable positive ring', async () => {
@@ -177,4 +181,82 @@ test('native grant summaries require exact cases, positive writes and the arm-sp
       assert.throws(() => requireGrantRecoverySummary({ ...result, ...change }, arm));
     assert.throws(() => requireGrantRecoverySummary(result, arm === 'p256' ? 'jubjub' : 'p256'));
   }
+});
+
+test('current native fault classification is closed and refuses wrong/duplicate success or failure summaries', () => {
+  /** @type {Array<[string,string,string]>} */ const cases = [
+    ['create', 'before-deploy-proof', 'MutationUnsettled'],
+    ['create', 'deploy:0:after-submit', 'MutationUnsettled'],
+    ['create', 'call:0:after-submit', 'InternalError'],
+    ['rotate', 'call:0:after-submit', 'InternalError'],
+    ['survivor-rotate', 'call:0:after-submit', 'InternalError'],
+    ['rotate-prover', 'before-owner-proof', 'InternalError'],
+    ['rotate-prover', 'assert-unknown', 'MutationUnsettled'],
+  ];
+  for (const arm of ['p256', 'jubjub'])
+    cases.push(
+      ['add-target', `circuit:add_device_with_${arm}:after-submit`, 'InternalError'],
+      ['remove-target', `circuit:rotate_enc_key_with_${arm}:after-submit`, 'InternalError'],
+    );
+  for (const [operation, fault, code] of cases) {
+    const arm = fault.includes('_p256') ? 'p256' : 'jubjub';
+    const message = { failed: operation, code, audit: { unresolvedEffects: 1 } };
+    const result = { code: 2, messages: [message] };
+    requireExpectedFailure(result, operation, fault, arm);
+    if (fault.startsWith('circuit:'))
+      assert.throws(
+        () => requireExpectedFailure(result, operation, fault, arm === 'p256' ? 'jubjub' : 'p256'),
+        /Unknown operation\/fault/,
+      );
+    for (const change of [
+      { code: 0 },
+      { messages: [{ ...message, code: 'Error' }] },
+      {
+        messages: [
+          {
+            ...message,
+            code: code === 'MutationUnsettled' ? 'InternalError' : 'MutationUnsettled',
+          },
+        ],
+      },
+      { messages: [{ ...message, audit: { unresolvedEffects: 0 } }] },
+      { messages: [message, message] },
+      { messages: [message, { completed: operation }] },
+    ])
+      assert.throws(() => requireExpectedFailure({ ...result, ...change }, operation, fault, arm));
+  }
+  assert.throws(() =>
+    requireExpectedFailure(
+      {
+        code: 2,
+        messages: [{ failed: 'rotate', code: 'InternalError', audit: { unresolvedEffects: 1 } }],
+      },
+      'rotate',
+      'unregistered-fault',
+      'jubjub',
+    ),
+  );
+  for (const [profile, arms] of [
+    ['survivor-outages', ['jubjub', 'p256']],
+    ['survivor-outages-jubjub', ['jubjub']],
+    ['survivor-outages-p256', ['p256']],
+  ]) {
+    const options = liveProfileOptions(/** @type {any} */ (profile));
+    assert.equal(options.survivorOutages, true);
+    assert.equal(options.lifecycle, true);
+    assert.equal(options.combined, true);
+    assert.deepEqual(options.arms, arms);
+  }
+});
+
+test('host crash evidence must name exactly the requested boundary', () => {
+  const fault = 'call:0:after-submit';
+  requireExpectedHostCrash({ code: 86, messages: [{ crash: fault }] }, fault);
+  for (const result of [
+    { code: 1, messages: [{ crash: fault }] },
+    { code: 86, messages: [] },
+    { code: 86, messages: [{ crash: 'deploy:0:after-submit' }] },
+    { code: 86, messages: [{ crash: fault }, { crash: fault }] },
+  ])
+    assert.throws(() => requireExpectedHostCrash(result, fault));
 });
