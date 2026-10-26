@@ -43,3 +43,16 @@ export const survivorOutageStages = (arm) => [
   ['rotate-prover', 'before-owner-proof', 'owner'],
   ['rotate-prover', 'assert-unknown', 'resume'],
 ];
+
+/** Flush the identifying marker before intentional process death, including piped stdout.
+ * @param {string} fault @returns {Promise<never>} */
+export async function emitCrashAndExit(fault) {
+  if (typeof fault !== 'string' || !fault.length || fault.length > 128)
+    throw new Error('Invalid crash boundary.');
+  await new Promise((resolve, reject) => {
+    process.stdout.write(`PASSPORT_LIVE ${JSON.stringify({ crash: fault })}\n`, (error) =>
+      error ? reject(error) : resolve(undefined),
+    );
+  });
+  process.exit(86);
+}

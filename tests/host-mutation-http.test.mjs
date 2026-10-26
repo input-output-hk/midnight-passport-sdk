@@ -414,7 +414,14 @@ for (const failure of ['cancellation', 'timeout'])
       let attempts = 0,
         posts = 0;
       const execute = f.executor.execute;
+      let receivedSignal = false;
       f.executor.execute = (i, input, options) => {
+        receivedSignal = !!options?.signal;
+        if (!receivedSignal) {
+          entered.release();
+          aborted.release();
+          return Promise.reject(new Error('Route omitted the abort signal.'));
+        }
         options?.signal?.aborted
           ? aborted.release()
           : /** @type {AbortSignal} */ (options?.signal)?.addEventListener(
@@ -458,6 +465,7 @@ for (const failure of ['cancellation', 'timeout'])
       const refused = assert.rejects(pending, { code: 'MutationUnsettled' });
       try {
         await entered.promise;
+        assert.ok(receivedSignal, 'Route must pass its abort signal to the executor.');
         if (failure === 'cancellation') controller.abort();
         await refused;
         await aborted.promise;

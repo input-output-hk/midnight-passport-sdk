@@ -19,5 +19,6 @@
     "docs/site/host-durability.md",
     "docs/site/live-qualification.md"
   ],
-  "statement": "The native receipt remains pinned to its original source. Only documentation/STATE metadata differs; all other tracked and compiled package inputs match the native freeze. This does not requalify the receipt at a new source."
+  "statement": "Historical forwarding audit at df5a1d32b170bcc80de91a61f3b16d56dd3a0ca8: only documentation/STATE metadata differed from native source 5d2bf20. Later harness review corrections are listed separately in post-review-inputs.json; no native receipt is requalified at a later source.",
+  "comparisonHead": "df5a1d32b170bcc80de91a61f3b16d56dd3a0ca8"
 }

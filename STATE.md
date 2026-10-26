@@ -6,6 +6,15 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/10/26. Historical entries below retain their original issue namespaces.
 
+## 2026/10/27 — PR251 qualification review corrections
+
+Refs #230, #231, #232. Await crash-marker stdout flush before intentional exit,
+require the running crypto arm in fault classification, and diagnose a missing
+HTTP abort signal without waiting for a timeout. Real child-process backpressure
+and opposite-arm controls cover the fixes. Original native receipts remain at
+5d2bf20; no native run is relabelled or fixture replayed. The post-review input
+comparison lists the harness/test delta and unchanged SDK execution inputs.
+
 ## 2026/10/26 — preparation/HTTP and current outage slice
 
 Refs #230, #231, #232. Current branch retained. New deterministic held-successor

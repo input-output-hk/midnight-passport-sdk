@@ -398,14 +398,14 @@ qualification; it is not a completed or no-send owner operation. Native grant
 crash continuation and wallet reconnect are separate cases, not silently included.
 
 Each arm has fifteen declared stages plus a final record check. Only the expected
-SDK code and exactly one failure summary qualify. Host death must report exit86
+SDK code and exactly one failure summary qualify. Host death must report exit 86
 and the requested boundary; arbitrary errors/other deaths cannot pass. Every
 prover handshake names the expected deploy/owner boundary. Source/reference hashes
 must remain fixed until the end. All broad provider/release flags stay false.
 
 For a targeted fresh run use explicit suite `survivor-outages-jubjub` or
 `survivor-outages-p256`. Each receipt names its requested arms. A single-arm pass
-never qualifies both arms. The slower lane allows180minutes for both arms or100
+never qualifies both arms. The slower lane allows 180 minutes for both arms or 100
 for a single arm; fast PR CI runs only the cheap controls and HTTP/race negatives.
 Use the retained dedicated stack/ports/volumes above and stop only owned compute
 afterwards. Never reset the chain or regenerate keys to obtain a pass.
@@ -416,3 +416,13 @@ This profile contributes software/localnet preconditions for #232. Existing
 Google/iCloud/two-browser rows remain untested at this new source. A restored
 synced credential, an independently enrolled survivor and total-loss recovery are
 still separate cases; no real credential or provider prompt is automated here.
+
+
+### Qualification review follow-up — 2026/10/27
+
+The native receipt remains pinned to `5d2bf20`. Later review fixes await the
+crash marker's stdout flush and reject a circuit fault from the wrong crypto arm.
+Focused child-process/backpressure and classifier tests cover those corrections;
+the old native failure summaries were revalidated read-only. SDK execution and
+binding bytes are unchanged. This is not a fresh native or provider qualification
+at the later review head; the repository review record lists the exact delta.

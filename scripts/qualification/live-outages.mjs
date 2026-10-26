@@ -587,7 +587,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
           evidence.push(c);
           await save();
           if (proofOutage || fault === 'assert-unknown') {
-            requireExpectedFailure(result, operation, fault);
+            requireExpectedFailure(result, operation, fault, arm);
             assert.equal(result.code, 2, 'Outage/unknown outcome must retain the mutation.');
             assert.ok(
               result.messages.some((/** @type {any} */ m) => m.audit?.unresolvedEffects === 1),
@@ -641,7 +641,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
           } else if (fault !== 'none') {
             const died = await finished(host, 10000);
             requireExpectedHostCrash(died, fault);
-            requireExpectedFailure(result, operation, fault);
+            requireExpectedFailure(result, operation, fault, arm);
             assert.equal(result.code, 2, 'Owner must retain an unresolved mutation.');
             assert.ok(
               result.messages.some((/** @type {any} */ m) => m.audit?.unresolvedEffects === 1),

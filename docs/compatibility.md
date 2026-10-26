@@ -508,3 +508,13 @@ host records/send count. The first failed harness expectation and its uncertain
 intent are retained. This adds no real-provider/two-browser, full Lace or
 three-consecutive-run release acceptance. Those broader gates remain open. See
 [review map](review/preparation-outages/README.md).
+
+
+### Qualification review follow-up — 2026/10/27
+
+The native receipt remains pinned to `5d2bf20`. Later review fixes await the
+crash marker's stdout flush and reject a circuit fault from the wrong crypto arm.
+Focused child-process/backpressure and classifier tests cover those corrections;
+the old native failure summaries were revalidated read-only. SDK execution and
+binding bytes are unchanged. This is not a fresh native or provider qualification
+at the later review head; the repository review record lists the exact delta.

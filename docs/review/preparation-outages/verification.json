@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "date": "2026-10-26",
+  "date": "2026/10/26",
   "scope": "source-live-populated-survivor-prover-process-indexer-outages",
   "testedSource": {
     "commit": "5d2bf2062fab64a40eadee009823e7a69bd70cc6",

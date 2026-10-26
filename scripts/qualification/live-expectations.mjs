@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 /** Explicit entrypoint selection; an ambient shell profile never changes a scenario.
  * @param {'baseline'|'combined'|'lifecycle'|'wallet'|'removed-recheck'|'grants'|'grants-jubjub'|'grants-p256'|'survivor-outages'|'survivor-outages-jubjub'|'survivor-outages-p256'} [profile]
+ * @returns {{profile:string,lifecycle:boolean,removedOnly:boolean,grantRecovery:boolean,survivorOutages:boolean,walletOnly:boolean,combined:boolean,arms:Array<'jubjub'|'p256'>,populateTimeoutMs:number}}
  */
 export function liveProfileOptions(profile = 'baseline') {
   assert.ok(
@@ -48,17 +49,16 @@ export function liveProfileOptions(profile = 'baseline') {
     populateTimeoutMs: (grantRecovery ? 30 : 15) * 60000,
   };
 }
-/** @param {{code:number|null,messages:Array<{failed?:string,completed?:string,code?:string,audit?:{unresolvedEffects?:number}}>}} result @param {string} operation @param {string} fault */
-export function requireExpectedFailure(result, operation, fault) {
+/** @param {{code:number|null,messages:Array<{failed?:string,completed?:string,code?:string,audit?:{unresolvedEffects?:number}}>}} result @param {string} operation @param {string} fault @param {'jubjub'|'p256'} arm */
+export function requireExpectedFailure(result, operation, fault, arm) {
+  assert.ok(['jubjub', 'p256'].includes(arm), 'Require the declared crypto arm.');
   const known =
     (operation === 'create' &&
       ['before-deploy-proof', 'deploy:0:after-submit', 'call:0:after-submit'].includes(fault)) ||
     (operation === 'rotate-prover' && ['before-owner-proof', 'assert-unknown'].includes(fault)) ||
     (['rotate', 'survivor-rotate'].includes(operation) && fault === 'call:0:after-submit') ||
-    (operation === 'add-target' &&
-      /^circuit:add_device_with_(jubjub|p256):after-submit$/.test(fault)) ||
-    (operation === 'remove-target' &&
-      /^circuit:rotate_enc_key_with_(jubjub|p256):after-submit$/.test(fault));
+    (operation === 'add-target' && fault === `circuit:add_device_with_${arm}:after-submit`) ||
+    (operation === 'remove-target' && fault === `circuit:rotate_enc_key_with_${arm}:after-submit`);
   assert.ok(known, 'Unknown operation/fault must not qualify through a fallback error code.');
   const code =
     fault === 'assert-unknown' ||

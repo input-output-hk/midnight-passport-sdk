@@ -43,15 +43,18 @@ test('unknown-send qualification refuses arbitrary errors even with a pending au
       { failed: 'rotate-prover', code: 'MutationUnsettled', audit: { unresolvedEffects: 1 } },
     ],
   };
-  requireExpectedFailure(result, 'rotate-prover', 'assert-unknown');
+  requireExpectedFailure(result, 'rotate-prover', 'assert-unknown', 'jubjub');
   assert.throws(() =>
     requireExpectedFailure(
       { ...result, messages: [{ ...result.messages[0], code: 'InternalError' }] },
       'rotate-prover',
       'assert-unknown',
+      'jubjub',
     ),
   );
-  assert.throws(() => requireExpectedFailure(result, 'different-operation', 'assert-unknown'));
+  assert.throws(() =>
+    requireExpectedFailure(result, 'different-operation', 'assert-unknown', 'jubjub'),
+  );
 });
 
 test('no-current-key evidence requires the specific cryptographic refusal and a real usable positive ring', async () => {
@@ -196,9 +199,15 @@ test('current native fault classification is closed and refuses wrong/duplicate 
       ['remove-target', `circuit:rotate_enc_key_with_${arm}:after-submit`, 'InternalError'],
     );
   for (const [operation, fault, code] of cases) {
+    const arm = fault.includes('_p256') ? 'p256' : 'jubjub';
     const message = { failed: operation, code, audit: { unresolvedEffects: 1 } };
     const result = { code: 2, messages: [message] };
-    requireExpectedFailure(result, operation, fault);
+    requireExpectedFailure(result, operation, fault, arm);
+    if (fault.startsWith('circuit:'))
+      assert.throws(
+        () => requireExpectedFailure(result, operation, fault, arm === 'p256' ? 'jubjub' : 'p256'),
+        /Unknown operation\/fault/,
+      );
     for (const change of [
       { code: 0 },
       { messages: [{ ...message, code: 'Error' }] },
@@ -214,7 +223,7 @@ test('current native fault classification is closed and refuses wrong/duplicate 
       { messages: [message, message] },
       { messages: [message, { completed: operation }] },
     ])
-      assert.throws(() => requireExpectedFailure({ ...result, ...change }, operation, fault));
+      assert.throws(() => requireExpectedFailure({ ...result, ...change }, operation, fault, arm));
   }
   assert.throws(() =>
     requireExpectedFailure(
@@ -224,6 +233,7 @@ test('current native fault classification is closed and refuses wrong/duplicate 
       },
       'rotate',
       'unregistered-fault',
+      'jubjub',
     ),
   );
   for (const [profile, arms] of [
