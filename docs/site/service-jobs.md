@@ -343,3 +343,50 @@ The tests provision only synthetic private keys/receipts and remove their own
 temporary directories. Docker, live wallets, existing user accounts and retained
 native fixtures are untouched. This is service transport qualification; native
 proofs, provider ceremonies and actual released-image qualification remain open.
+
+## Native proof and local image qualification
+
+Two opt-in suites extend the synthetic transport checks. Read the
+[live qualification guide]({{ '/live-qualification/' | relative_url }}) before
+controlling the dedicated localnet. Use fresh private `PASSPORT_LIVE_ROOT` paths,
+the existing pinned contract export and the same retained localnet volumes.
+`PASSPORT_RC_LOCALNET=1` and `MN_NETWORK_ID=undeployed` are required.
+
+```sh
+nix develop -c pnpm qualify plan host-jobs-native
+nix develop -c pnpm qualify run host-jobs-native --output /private/evidence/host-jobs-source-suite.json
+```
+
+`host-jobs-native` uses actual native proofs and software owner credentials,
+with a dedicated instrumented host process. It exercises original deployment and
+activation submit/reply loss, real indexer stop/unknown lookup, prover failure
+before the next committed deployment step and explicit original continuation.
+A final owner proof fails before host registration and remains safely unknown;
+it must not add a job, prepared transaction or broadcast on resume.
+
+`host-jobs-image-native` runs the locally built **production service entrypoint**
+with `PASSPORT_NATIVE_JOB_IMAGE=sha256:…` and
+`PASSPORT_NATIVE_JOB_DEPS_VOLUME=mn-passport-hostjobs-20261027-linux-deps`.
+Build from the exact committed qualification source and label the image with
+`org.opencontainers.image.revision`. Keep the contract export read-only and overlay
+its `node_modules` with a separately prepared Linux dependency volume. The
+reference lockfile stays pinned. Do not mount macOS dependencies into Linux.
+The local qualification uses `linux/amd64`, including emulation on an arm64 host;
+that platform is part of its receipt.
+
+Provision four independent private synthetic files and non-nested job/host
+journals through the fixture preparation stage. The image runs as a non-root
+UID/GID matching those private bind files, with read-only key/token mounts and
+retained writable state. It restarts the same exact owned container after native
+deployment and owner-call boundaries, then completes and opens the original ACC.
+The runner refuses an existing container name or fixture destination. Failed or
+unknown roots remain preserved for inspection; they are never replaced/replayed.
+
+Native image evidence counts authenticated **durable dispatch claims and included
+identifiers**. The source harness separately instruments submit-entry attempts.
+Neither is silently substituted for the other. Both suites pin signed source,
+compiled runtime and reference fingerprints before execution and audit them at
+the end. No source/build edits while they run. Private constructor/signing/owner
+state stays outside Git and the knowledge base; export only reviewed public/hash
+summaries. Actual results must be read from their dated receipts; the existence
+of these suites is not a pass, real-provider or released-image qualification.

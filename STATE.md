@@ -6,6 +6,16 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/10/26. Historical entries below retain their original issue namespaces.
 
+## 2026/10/27 — native host-job/image qualification harness (#233/#231)
+
+Add opt-in source/native and local production-image restart suites over fresh
+software owner fixtures, original job/host/owner journals and pinned keys. Private
+history inspection exports hashes, dispatch claims and public milestones only;
+source send-attempt instrumentation and image inclusion evidence are distinct.
+Native results pending at this harness commit. No new binding, provider, release
+or publication claim; preserve all historical uncertain fixtures and volumes.
+See `docs/review/native-host-jobs/README.md`.
+
 ## 2026/10/27 — reference host-job integration (#233), local continuation
 
 Extend signed source655b1cb with explicit reference-service configuration, shared

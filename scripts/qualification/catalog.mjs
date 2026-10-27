@@ -236,6 +236,34 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Actual built-in read-only wallet in Node: socket close/reopen, fresh standalone NIGHT credit finalized while indexer is down, unchanged addresses/seed across stop/recreation. No browser or passkey-provider acceptance.',
   },
+  'host-jobs-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-host-jobs.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 100 * 60000,
+    establishes:
+      'Fresh P-256/Jubjub software owner fixtures through actual host-job HTTP/native proofs; original deployment/call submit crashes, committed-plan prover outage, indexer unknown probes and pre-registration safe unknown. No provider/image/release qualification.',
+  },
+  'host-jobs-image-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-host-jobs-image.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+      'PASSPORT_NATIVE_JOB_IMAGE',
+      'PASSPORT_NATIVE_JOB_DEPS_VOLUME',
+    ],
+    timeoutMs: 100 * 60000,
+    establishes:
+      'Local exact-source Linux/amd64 production service image, separate Linux reference dependencies and retained private state; both software owner arms through deployment/call container kill/restart. Durable dispatch claims and ledger inclusion, not instrumented send-attempt counts or released-image/provider qualification.',
+  },
   'published-registry': {
     tier: 'published-consumer',
     command: [],
@@ -253,6 +281,8 @@ export const SCENARIOS = Object.freeze({
   },
 });
 export const SUITES = Object.freeze({
+  'host-jobs-native': ['host-jobs-native'],
+  'host-jobs-image-native': ['host-jobs-image-native'],
   foundation: ['binding-source', 'contract-entries', 'reader-guards'],
   browser: ['virtual-authenticator'],
   localnet: ['localnet-night'],

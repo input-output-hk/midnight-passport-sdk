@@ -15,6 +15,7 @@ import {
   closeSync,
   fsyncSync,
   existsSync,
+  readdirSync,
 } from 'node:fs';
 import { loadConfig } from '../src/config.ts';
 import { assertPinnedBinding } from '../src/binding-pin.ts';
@@ -35,6 +36,9 @@ import {
   createHostMutationExecutor,
   encryptedHostMutationStore,
   hostMutationRoute,
+  createHostMutationJobs,
+  encryptedHostJobStore,
+  hostJobRoute,
   hostHash,
   fileMutationByteStore,
   type HostMutationRecord,
@@ -58,6 +62,7 @@ import {
 import {
   fetchCheckedV1Config,
   remoteHostMutationPorts,
+  remoteHostJobPorts,
   remoteV1Prover,
   remoteV1Sponsor,
   remoteDirectory,
@@ -85,7 +90,9 @@ import {
 import { requireNoCurrentKey } from '../../../scripts/qualification/live-expectations.mjs';
 
 const [mode, root, arm, operation = 'create', fault = 'none'] = process.argv.slice(2);
-assert.ok(root && ['host', 'owner', 'resume', 'probe', 'inspect', 'populate'].includes(mode!));
+assert.ok(
+  root && ['host', 'owner', 'resume', 'probe', 'inspect', 'populate', 'prepare'].includes(mode!),
+);
 assert.ok(arm === 'p256' || arm === 'jubjub');
 assert.ok(isAbsolute(root));
 assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18098/api/v4/graphql/ws');
@@ -124,6 +131,7 @@ const save = (name: string, value: unknown) => {
   }
 };
 const emit = (value: object) => console.log('PASSPORT_LIVE ' + JSON.stringify(value));
+const hostJobs = process.env.PASSPORT_LIVE_HOST_JOBS === '1';
 const grantRecovery = process.env.PASSPORT_LIVE_PROFILE === 'grants';
 const lifecycle = process.env.PASSPORT_LIVE_PROFILE === 'lifecycle' || grantRecovery;
 const combined = lifecycle || process.env.PASSPORT_LIVE_PROFILE === 'combined';
@@ -144,13 +152,14 @@ const pins = {
   scheme: arm === 'p256' ? ('p256-webauthn' as const) : ('jubjub-schnorr' as const),
 };
 if (!existsSync(join(root, 'fixture.json'))) {
-  assert.equal(mode, 'host');
+  assert.ok(mode === 'host' || (hostJobs && mode === 'prepare'));
   save('fixture.json', {
     seed: randomBytes(32),
     device: randomBytes(32),
     credential: randomBytes(16),
     hostKey: randomBytes(32),
     token: randomBytes(32),
+    ...(hostJobs && { jobKey: randomBytes(32), jobToken: randomBytes(32) }),
     grantSecret: randomBytes(32),
     ...(grantRecovery && { readGrantSecrets: [randomBytes(32), randomBytes(32)] }),
     ...(lifecycle && {
@@ -177,6 +186,68 @@ if (!existsSync(join(root, 'fixture.json'))) {
   });
 }
 const fixture = read('fixture.json');
+if (hostJobs)
+  assert.ok(
+    fixture.jobKey && fixture.jobToken,
+    'Use a fresh job fixture; never retrofit historical state.',
+  );
+if (mode === 'prepare') {
+  for (const [name, value] of Object.entries({
+    'host-key': fixture.hostKey,
+    'host-token': fixture.token,
+    'job-key': fixture.jobKey,
+    'job-token': fixture.jobToken,
+  })) {
+    writeFileSync(join(root, name), hex(value as Uint8Array) + '\n', { flag: 'wx', mode: 0o600 });
+  }
+  emit({ prepared: true, hostJobs: true });
+  await new Promise<void>((resolve, reject) =>
+    process.stdout.write('', (error) => (error ? reject(error) : resolve())),
+  );
+  process.exit(0);
+}
+const jobStore = hostJobs
+  ? encryptedHostJobStore(join(root, 'job-journal'), fixture.jobKey)
+  : undefined;
+const jobRecords = async () => {
+  if (!jobStore || !existsSync(join(root, 'job-journal'))) return [];
+  const ids = [
+    ...new Set(
+      readdirSync(join(root, 'job-journal')).flatMap((name) => {
+        const found = /^([0-9a-f]{32})\.r[0-9]+\.json$/.exec(name);
+        return found && found[1] !== '0'.repeat(32) ? [found[1]!] : [];
+      }),
+    ),
+  ];
+  return Promise.all(
+    ids.map(async (id) => {
+      const record = await jobStore.read(id);
+      assert.ok(record);
+      return record;
+    }),
+  );
+};
+const jobSummaries = async () =>
+  (await jobRecords()).map((r) => ({
+    jobId: r.id,
+    state: r.state,
+    revision: r.revision,
+    descriptorSha256: r.descriptorSha256,
+    identity: r.descriptor.identity,
+    inputSha256: hostHash(r.descriptor.input),
+    milestones: r.milestones,
+  }));
+const closeStores = () => {
+  jobStore?.close();
+  store.close();
+};
+async function finishWorker(code: number): Promise<never> {
+  closeStores();
+  await new Promise<void>((resolve, reject) =>
+    process.stdout.write('', (error) => (error ? reject(error) : resolve())),
+  );
+  process.exit(code);
+}
 const identities = () =>
   existsSync(join(root, 'identities.json'))
     ? (read('identities.json') as HostMutationIdentity[])
@@ -190,7 +261,9 @@ const event = (e: object) => {
 };
 const publicRecords = async () => {
   const records = [];
-  for (const id of identities()) {
+  for (const id of hostJobs
+    ? (await jobRecords()).map((r) => r.descriptor.identity)
+    : identities()) {
     const r = await store.read(id);
     assert.ok(r);
     records.push({
@@ -220,7 +293,9 @@ if (mode === 'probe' || mode === 'inspect') {
     );
     const before = await publicRecords();
     let checked = 0;
-    for (const identity of identities()) {
+    for (const identity of hostJobs
+      ? (await jobRecords()).map((r) => r.descriptor.identity)
+      : identities()) {
       const r = (await store.read(identity))!;
       for (const step of r.steps.filter(
         (s) => s.phase === 'dispatching' || s.phase === 'submitted',
@@ -240,9 +315,8 @@ if (mode === 'probe' || mode === 'inspect') {
     assert.deepEqual(await publicRecords(), before);
     emit({ probe: 'unknown-during-real-indexer-outage', checked });
   }
-  emit({ records: await publicRecords() });
-  store.close();
-  process.exit(0);
+  emit({ records: await publicRecords(), ...(hostJobs && { jobs: await jobSummaries() }) });
+  await finishWorker(0);
 }
 
 if (mode === 'host') {
@@ -342,10 +416,23 @@ if (mode === 'host') {
   const queue = serial(8),
     budget = createDeploymentBudget(3),
     jobs = createMemoryJobStore();
+  const durableJobs = jobStore
+    ? createHostMutationJobs(
+        jobStore,
+        {
+          ...engine,
+          execute: async (...args: Parameters<typeof engine.execute>) => {
+            if (args[0].kind === 'deploy' && !(await engine.inspect(args[0]))) budget.accept();
+            return engine.execute(...args);
+          },
+        },
+        { pins, runExclusive: queue, completedTtlMs: 86400000 },
+      )
+    : undefined;
   const server = createServer(config, [
     async (_req, res, url) => {
       if (url.pathname !== '/healthz') return false;
-      json(res, 200, { status: 'ready', hostMutations: true });
+      json(res, 200, { status: 'ready', hostMutations: true, hostJobs: durableJobs !== undefined });
       return true;
     },
     configRoute(config, () => backend.sponsorKeys()),
@@ -355,6 +442,7 @@ if (mode === 'host') {
       store: createFileDirectoryStore(directoryFile(config.registryFile)),
     }),
     jobsRoute(jobs),
+    ...(durableJobs ? [hostJobRoute({ jobs: durableJobs, pins, token: fixture.jobToken })] : []),
     hostMutationRoute({
       executor: engine,
       pins,
@@ -416,9 +504,9 @@ if (mode === 'host') {
   assert.equal(typeof authoriser.withKeySession, 'function');
   assert.equal(typeof viewingKey.decodeDevicePublicKey, 'function');
   assert.equal(typeof viewingKey.decodeP256DevicePublicKey, 'function');
-  const host = remoteHostMutationPorts(base, {
+  const host = (hostJobs ? remoteHostJobPorts : remoteHostMutationPorts)(base, {
     pins,
-    token: hex(fixture.token),
+    token: hex(hostJobs ? fixture.jobToken : fixture.token),
     timeoutMs: 600000,
     pollIntervalMs: 500,
   });
@@ -647,8 +735,7 @@ if (mode === 'host') {
       faucetAddress: faucet.address,
     });
     emit({ completed: 'populate', account, populated: await assertPopulated(account) });
-    store.close();
-    process.exit(0);
+    await finishWorker(0);
   }
   if (lifecycle && operation === 'verify-removed') {
     const account = read('result-create.json').account;
@@ -703,8 +790,7 @@ if (mode === 'host') {
       originalTargetKeyStillWorks: true,
       mutationAttempts,
     });
-    store.close();
-    process.exit(0);
+    await finishWorker(0);
   }
   const coordinator = createDurablePassportMutations({
     ports,
@@ -851,9 +937,9 @@ if (mode === 'host') {
       populated: await assertPopulated(result.account),
       ...(readers && { readers }),
       records: await publicRecords(),
+      ...(hostJobs && { jobs: await jobSummaries() }),
     });
-    store.close();
-    process.exit(0);
+    await finishWorker(0);
   } catch (error) {
     console.error(
       'protected owner diagnostic',
@@ -865,7 +951,6 @@ if (mode === 'host') {
       messageSha256: hash(String(error)),
       audit: await coordinator.inspect(id),
     });
-    store.close();
-    process.exit(2);
+    await finishWorker(2);
   }
 }
