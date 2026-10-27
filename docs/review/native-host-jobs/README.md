@@ -45,3 +45,11 @@ never label image claims as a separate instrumented network-attempt counter.
 Receipts will name exact signed source, ignored compiled inputs/reference hashes,
 image ID/platform/mounts, elapsed times, public milestones and limitations. Missing
 inputs, unexpected exits and failed native runs never become successful passes.
+
+The native classifier reuses the established exact SDK mapping: deployment
+reply/prover loss and explicit unknown resume report `MutationUnsettled`; scoped
+owner-call submission/proof exceptions have the existing `InternalError` envelope.
+Require a single matching failure, no completed operation, and one unresolved
+original effect. A generic exception or incorrect crypto arm must not pass.
+The image owner uses normal same-ID software-approved continuation while inclusion
+is pending; only the actual externally controlled container kill ends that stage.

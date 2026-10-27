@@ -390,3 +390,9 @@ the end. No source/build edits while they run. Private constructor/signing/owner
 state stays outside Git and the knowledge base; export only reviewed public/hash
 summaries. Actual results must be read from their dated receipts; the existence
 of these suites is not a pass, real-provider or released-image qualification.
+
+A call-side owner flow can wrap the low-level job adapter's unsettled error in
+its existing `InternalError` scoped-transaction envelope. The owner journal still
+retains the original unresolved effect. Qualification matches the declared
+operation/fault/arm-specific SDK code, not an arbitrary exception. Never infer
+no submission from an error category; inspect the original journal and ledger.

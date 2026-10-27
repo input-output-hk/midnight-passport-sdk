@@ -87,6 +87,7 @@ import {
   crashesAfterSubmit,
   emitCrashAndExit,
 } from '../../../scripts/qualification/lifecycle-stages.mjs';
+import { isNativeJobPendingError } from '../../../scripts/qualification/native-job-evidence.mjs';
 import { requireNoCurrentKey } from '../../../scripts/qualification/live-expectations.mjs';
 
 const [mode, root, arm, operation = 'create', fault = 'none'] = process.argv.slice(2);
@@ -856,7 +857,9 @@ if (mode === 'host') {
         );
         if (
           fault !== 'none' ||
-          (error as any)?.code !== 'MutationUnsettled' ||
+          !(hostJobs
+            ? isNativeJobPendingError(error, await coordinator.inspect(id))
+            : (error as any)?.code === 'MutationUnsettled') ||
           !available ||
           Date.now() >= deadline
         )

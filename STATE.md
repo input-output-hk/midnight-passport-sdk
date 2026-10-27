@@ -4,7 +4,7 @@
 > `mn-passport-skills:spec-driver` per [`docs/development-workflow.md`](./docs/development-workflow.md) §3.
 > Every entry carries its GitHub issue
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
-> Last updated: 2026/10/26. Historical entries below retain their original issue namespaces.
+> Last updated: 2026/10/27. Historical entries below retain their original issue namespaces.
 
 ## 2026/10/27 — native host-job/image qualification harness (#233/#231)
 

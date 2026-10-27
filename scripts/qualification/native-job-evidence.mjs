@@ -219,7 +219,27 @@ export function requireNativeJobFailure(r, operation, code = 'MutationUnsettled'
   assert.equal(r.code, 2);
   const failures = r.messages.filter((m) => m.failed);
   assert.equal(failures.length, 1);
+  assert.equal(
+    r.messages.some((m) => m.completed === operation),
+    false,
+  );
   assert.equal(failures[0]?.failed, operation);
   assert.equal(failures[0]?.code, code);
   assert.equal(failures[0]?.audit?.unresolvedEffects, 1);
+}
+
+/** The software qualification host may re-approve only the same unresolved job effect.
+ * Midnight JS wraps a scoped submit exception in this fixed native envelope. A proof,
+ * generic InternalError or material-origin failure must not enter this continuation loop.
+ * @param {unknown} error @param {{unresolvedEffects:number}|undefined} audit */
+export function isNativeJobPendingError(error, audit) {
+  if (audit?.unresolvedEffects !== 1 || !error || typeof error !== 'object' || !('code' in error))
+    return false;
+  if (error.code === 'MutationUnsettled') return true;
+  return (
+    error.code === 'InternalError' &&
+    'message' in error &&
+    error.message ===
+      "Unexpected error submitting scoped transaction '<unnamed>': PassportConnectorError: Host job is unsettled. Retain the original identity and explicitly reconcile; do not create a replacement."
+  );
 }

@@ -15,6 +15,7 @@ import {
   nativeJobSnapshot,
   assertNativeJobContinuation,
   requireNativeJobFailure,
+  isNativeJobPendingError,
 } from '../scripts/qualification/native-job-evidence.mjs';
 import { descriptor, servicePins } from './fixtures/host-jobs.mjs';
 /** @param {import('node:test').TestContext} t */
@@ -157,6 +158,35 @@ test('native failure classifier refuses arbitrary exits, another operation, wron
       messages: [{ failed: 'create', code: 'MutationUnsettled', audit: { unresolvedEffects: 0 } }],
     },
     { ...good, messages: [...good.messages, ...good.messages] },
+    { ...good, messages: [...good.messages, { completed: 'create' }] },
   ])
     assert.throws(() => requireNativeJobFailure(bad, 'create'));
+});
+
+test('software native continuation recognises only unresolved job errors and the exact scoped submit envelope', () => {
+  const message =
+    "Unexpected error submitting scoped transaction '<unnamed>': PassportConnectorError: Host job is unsettled. Retain the original identity and explicitly reconcile; do not create a replacement.";
+  assert.equal(
+    isNativeJobPendingError({ code: 'InternalError', message }, { unresolvedEffects: 1 }),
+    true,
+  );
+  assert.equal(
+    isNativeJobPendingError({ code: 'MutationUnsettled' }, { unresolvedEffects: 1 }),
+    true,
+  );
+  for (const error of [
+    new Error('ordinary failure'),
+    { code: 'InternalError', message: 'proof failed' },
+    { code: 'InternalError', message: message + ' unknown extra details' },
+    { code: 'ProverUnavailable', message },
+  ])
+    assert.equal(isNativeJobPendingError(error, { unresolvedEffects: 1 }), false);
+  assert.equal(
+    isNativeJobPendingError({ code: 'InternalError', message }, { unresolvedEffects: 0 }),
+    false,
+  );
+});
+
+test('missing owner audit never permits automatic software qualification continuation', () => {
+  assert.equal(isNativeJobPendingError({ code: 'MutationUnsettled' }, undefined), false);
 });

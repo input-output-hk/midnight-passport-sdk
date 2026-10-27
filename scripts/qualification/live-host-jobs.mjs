@@ -6,7 +6,7 @@ import { join, resolve, isAbsolute } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { workspaceIdentity, verifyQualificationBinding } from './receipt.mjs';
 import { requireOwnedContainer, referenceFingerprint } from './live-outages.mjs';
-import { requireExpectedHostCrash } from './live-expectations.mjs';
+import { requireExpectedHostCrash, requireExpectedFailure } from './live-expectations.mjs';
 import {
   nativeJobHash,
   nativeJobSnapshot,
@@ -154,6 +154,7 @@ export async function runNativeHostJobs(lane = 'source') {
   /** @type {Array<Record<string,any>>} */ const cases = [];
   /** @type {string[]} */ const ownedContainers = [];
   let verdict = 'IN_PROGRESS';
+  /** @type {string|undefined} */ let failureSha256;
   const receipt = {
     schema: 1,
     scope:
@@ -187,7 +188,8 @@ export async function runNativeHostJobs(lane = 'source') {
   const save = async () =>
     writeFile(
       join(output, 'receipt.json'),
-      JSON.stringify({ ...receipt, verdict }, null, 2) + '\n',
+      JSON.stringify({ ...receipt, verdict, ...(failureSha256 && { failureSha256 }) }, null, 2) +
+        '\n',
       { mode: 0o600 },
     );
   /** @param {import('node:child_process').ChildProcess} c */ const kill = (c) => {
@@ -437,7 +439,8 @@ export async function runNativeHostJobs(lane = 'source') {
                 (m) => m.completed === 'create' && m.audit?.phase === 'complete',
               ),
             );
-          } else requireNativeJobFailure(result, 'create');
+          } else
+            requireExpectedFailure(result, 'create', fault, /** @type {'jubjub'|'p256'} */ (arm));
           if (fault === 'deploy:0:after-submit' || fault === 'call:0:after-submit') {
             requireExpectedHostCrash(await finished(h, 15000), fault);
             await probe(root, arm);
@@ -477,7 +480,12 @@ export async function runNativeHostJobs(lane = 'source') {
           mode: 0o600,
         });
         const failed = await finished(owner);
-        requireNativeJobFailure(failed, 'rotate-prover', 'ProverUnavailable');
+        requireExpectedFailure(
+          failed,
+          'rotate-prover',
+          'before-owner-proof',
+          /** @type {'jubjub'|'p256'} */ (arm),
+        );
         kill(h.child);
         await finished(h, 15000);
         const before = await nativeJobSnapshot(root);
@@ -488,7 +496,12 @@ export async function runNativeHostJobs(lane = 'source') {
           worker('resume', root, arm, 'rotate-prover', 'assert-unknown'),
           60000,
         );
-        requireNativeJobFailure(unknown, 'rotate-prover');
+        requireExpectedFailure(
+          unknown,
+          'rotate-prover',
+          'assert-unknown',
+          /** @type {'jubjub'|'p256'} */ (arm),
+        );
         kill(live.child);
         await finished(live, 15000);
         const after = await nativeJobSnapshot(root);
@@ -517,7 +530,7 @@ export async function runNativeHostJobs(lane = 'source') {
         let previous;
         for (const [n, kind] of ['deploy', 'call'].entries()) {
           const started = Date.now(),
-            owner = worker(n === 0 ? 'owner' : 'resume', root, arm, 'create', 'image-boundary');
+            owner = worker(n === 0 ? 'owner' : 'resume', root, arm, 'create', 'none');
           await wait(
             async () => {
               const s = await nativeJobSnapshot(root, { history: false });
@@ -537,7 +550,11 @@ export async function runNativeHostJobs(lane = 'source') {
           const before = await nativeJobSnapshot(root);
           docker(['kill', '--signal', 'KILL', id]);
           const interrupted = await finished(owner, 60000);
-          requireNativeJobFailure(interrupted, 'create');
+          requireNativeJobFailure(
+            interrupted,
+            'create',
+            kind === 'deploy' ? 'MutationUnsettled' : 'InternalError',
+          );
           const retained = await nativeJobSnapshot(root);
           assertNativeJobContinuation(before, retained);
           if (previous) assertNativeJobContinuation(previous, retained);
@@ -644,6 +661,9 @@ export async function runNativeHostJobs(lane = 'source') {
     await save();
     console.log('native jobs qualification: PASS ' + lane);
   } catch (error) {
+    const diagnostic = error instanceof Error ? (error.stack ?? error.message) : String(error);
+    failureSha256 = nativeJobHash(diagnostic);
+    await writeFile(join(output, 'failure.private.log'), diagnostic, { mode: 0o600 });
     verdict = 'FAIL';
     await save();
     throw error;
