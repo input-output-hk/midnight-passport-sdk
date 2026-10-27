@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile, lstat } from 'node:fs/promises';
-import { join, resolve, isAbsolute } from 'node:path';
+import { join, resolve, isAbsolute, basename } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { workspaceIdentity, verifyQualificationBinding } from './receipt.mjs';
 import { requireOwnedContainer, referenceFingerprint } from './live-outages.mjs';
@@ -13,6 +13,12 @@ import {
   assertNativeJobContinuation,
   requireNativeJobFailure,
 } from './native-job-evidence.mjs';
+import {
+  imageStateNames,
+  IMAGE_JOURNAL_MANIFEST,
+  mirrorImageJournals,
+  nativeWorkerStopped,
+} from './image-journal-mirror.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..'),
   PROJECT = 'mn-passport-qual-20261023';
@@ -21,6 +27,7 @@ const docker = (args) =>
   execFileSync('docker', args, {
     encoding: 'utf8',
     timeout: 60000,
+    maxBuffer: 8 * 1024 * 1024,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 /** @param {()=>Promise<boolean>} check @param {number} ms @param {()=>boolean} [terminal] */
@@ -153,6 +160,7 @@ export async function runNativeHostJobs(lane = 'source') {
   /** @type {Set<import('node:child_process').ChildProcess>} */ const children = new Set();
   /** @type {Array<Record<string,any>>} */ const cases = [];
   /** @type {string[]} */ const ownedContainers = [];
+  /** @type {Array<Record<string,any>>} */ const imageStates = [];
   let verdict = 'IN_PROGRESS';
   /** @type {string|undefined} */ let failureSha256;
   const receipt = {
@@ -176,6 +184,7 @@ export async function runNativeHostJobs(lane = 'source') {
           dockerHostPlatform: 'linux/arm64',
           depsVolume,
           linuxReference,
+          imageStates,
         }
       : {}),
     localnet: inspected.map((/** @type {any} */ c) => ({
@@ -322,7 +331,7 @@ export async function runNativeHostJobs(lane = 'source') {
   };
   /** @param {string} root @param {string} arm */
   const imageContainer = (root, arm) => {
-    const name = `mn-passport-hostjobs-20261027-${arm}`;
+    const { container: name, volume } = imageStateNames(basename(output), arm);
     assert.equal(
       docker(['ps', '-a', '--filter', `name=^/${name}$`, '--format', '{{.ID}}']).trim(),
       '',
@@ -331,6 +340,60 @@ export async function runNativeHostJobs(lane = 'source') {
     const uid = process.getuid?.(),
       gid = process.getgid?.();
     assert.ok(uid && gid && uid !== 0);
+    assert.equal(
+      docker(['volume', 'ls', '--filter', `name=^${volume}$`, '--format', '{{.Name}}']).trim(),
+      '',
+    );
+    docker([
+      'volume',
+      'create',
+      '--label',
+      'passport.qualification=native-host-jobs-20261027',
+      volume,
+    ]);
+    // Provision only this fresh Linux volume. The service itself always runs non-root.
+    const filesystem = JSON.parse(
+      docker([
+        'run',
+        '--rm',
+        '--platform',
+        'linux/amd64',
+        '--network',
+        'none',
+        '--user',
+        '0:0',
+        '--mount',
+        `type=volume,src=${volume},dst=/data/state,volume-nocopy`,
+        '--entrypoint',
+        'node',
+        imageId,
+        '-e',
+        `const fs=require('node:fs');fs.chownSync('/data/state',${uid},${gid});fs.chmodSync('/data/state',448);const s=fs.statfsSync('/data/state');console.log(JSON.stringify({type:s.type,nativeLinuxVolume:true}));`,
+      ]),
+    );
+    assert.equal(filesystem.type, 0xef53, 'State must be on the Docker-managed ext filesystem.');
+    const probe = JSON.parse(
+      docker([
+        'run',
+        '--rm',
+        '--platform',
+        'linux/amd64',
+        '--network',
+        'none',
+        '--user',
+        `${uid}:${gid}`,
+        '--mount',
+        `type=volume,src=${volume},dst=/data/state,volume-nocopy`,
+        '--entrypoint',
+        'node',
+        imageId,
+        '--input-type=module',
+        '-e',
+        `import {fileMutationByteStore} from '/opt/passport/packages/service/dist/index.js';const b=fileMutationByteStore('/data/state/fs-probe'),id='1'.repeat(32),bytes=new Uint8Array(32);const first=await b.compareAndSwap(id,undefined,{revision:0,bytes});const second=await b.compareAndSwap(id,0,{revision:1,bytes});console.log(JSON.stringify({first,second,head:(await b.read(id)).revision,uid:process.getuid()}));`,
+      ]),
+    );
+    assert.deepEqual(probe, { first: true, second: true, head: 1, uid });
+    imageStates.push({ arm, volume, filesystem, probe });
     const args = [
       'create',
       '--name',
@@ -350,7 +413,7 @@ export async function runNativeHostJobs(lane = 'source') {
       '--mount',
       `type=volume,src=${depsVolume},dst=/data/contract/node_modules,readonly,volume-nocopy`,
       '--mount',
-      `type=bind,src=${root},dst=/data/state`,
+      `type=volume,src=${volume},dst=/data/state,volume-nocopy`,
     ];
     for (const key of ['host-key', 'host-token', 'job-key', 'job-token'])
       args.push('--mount', `type=bind,src=${join(root, key)},dst=/private/${key},readonly`);
@@ -385,6 +448,15 @@ export async function runNativeHostJobs(lane = 'source') {
     assert.match(id, /^[a-f0-9]{64}$/);
     ownedContainers.push(id);
     return id;
+  };
+  /** Only immutable encrypted revisions leave Linux; no execution or key export.
+   * @param {string} id @param {string} root @param {{history?:boolean}} [options] */
+  const imageSnapshot = async (id, root, options) => {
+    const manifest = JSON.parse(docker(['exec', id, 'node', '-e', IMAGE_JOURNAL_MANIFEST]));
+    await mirrorImageJournals(root, manifest, async (journal, name, destination) => {
+      docker(['cp', `${id}:/data/state/${journal}/${name}`, destination]);
+    });
+    return nativeJobSnapshot(root, options);
   };
   const onInterrupt = () => {
     for (const c of children) kill(c);
@@ -423,7 +495,7 @@ export async function runNativeHostJobs(lane = 'source') {
             await wait(
               async () => h.messages.some((m) => m.proverBoundary === 'deploy'),
               180000,
-              () => h.child.exitCode !== null,
+              () => nativeWorkerStopped(h.child),
             );
             docker(['stop', '--time', '1', ids[2]]);
             await writeFile(join(root, 'prover-down-deploy'), 'owned prover stopped\n', {
@@ -472,7 +544,7 @@ export async function runNativeHostJobs(lane = 'source') {
         await wait(
           async () => owner.messages.some((m) => m.proverBoundary === 'owner'),
           180000,
-          () => owner.child.exitCode !== null,
+          () => nativeWorkerStopped(owner.child),
         );
         docker(['stop', '--time', '1', ids[2]]);
         await writeFile(join(root, 'prover-down-owner'), 'owned prover stopped\n', {
@@ -533,7 +605,7 @@ export async function runNativeHostJobs(lane = 'source') {
             owner = worker(n === 0 ? 'owner' : 'resume', root, arm, 'create', 'none');
           await wait(
             async () => {
-              const s = await nativeJobSnapshot(root, { history: false });
+              const s = await imageSnapshot(id, root, { history: false });
               return s.jobs.some(
                 (j) =>
                   j.identity.kind === kind &&
@@ -545,9 +617,9 @@ export async function runNativeHostJobs(lane = 'source') {
               );
             },
             12 * 60000,
-            () => owner.child.exitCode !== null,
+            () => nativeWorkerStopped(owner.child),
           );
-          const before = await nativeJobSnapshot(root);
+          const before = await imageSnapshot(id, root);
           docker(['kill', '--signal', 'KILL', id]);
           const interrupted = await finished(owner, 60000);
           requireNativeJobFailure(
@@ -555,7 +627,9 @@ export async function runNativeHostJobs(lane = 'source') {
             'create',
             kind === 'deploy' ? 'MutationUnsettled' : 'InternalError',
           );
-          const retained = await nativeJobSnapshot(root);
+          // Restart the SAME container/volume before read-only journal copying.
+          docker(['start', id]);
+          const retained = await imageSnapshot(id, root);
           assertNativeJobContinuation(before, retained);
           if (previous) assertNativeJobContinuation(previous, retained);
           previous = retained;
@@ -570,7 +644,6 @@ export async function runNativeHostJobs(lane = 'source') {
             containerId: id,
           });
           await save();
-          docker(['start', id]);
           await wait(
             async () => ready('http://127.0.0.1:18797/healthz'),
             600000,
@@ -582,7 +655,7 @@ export async function runNativeHostJobs(lane = 'source') {
         assert.ok(
           completed.messages.some((m) => m.completed === 'create' && m.audit?.phase === 'complete'),
         );
-        const final = await nativeJobSnapshot(root);
+        const final = await imageSnapshot(id, root);
         assert.ok(previous);
         assertNativeJobContinuation(previous, final);
         assert.ok(final.jobs.every((j) => j.state === 'done'));
@@ -595,7 +668,13 @@ export async function runNativeHostJobs(lane = 'source') {
         ]);
         assert.equal(inspection.Mounts.filter((/** @type {any} */ m) => m.RW).length, 1);
         assert.ok(
-          inspection.Mounts.some((/** @type {any} */ m) => m.Destination === '/data/state' && m.RW),
+          inspection.Mounts.some(
+            (/** @type {any} */ m) =>
+              m.Destination === '/data/state' &&
+              m.RW &&
+              m.Type === 'volume' &&
+              m.Name === imageStateNames(basename(output), arm).volume,
+          ),
         );
         for (const path of [
           '/data/contract',

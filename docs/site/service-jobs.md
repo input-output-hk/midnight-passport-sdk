@@ -377,7 +377,7 @@ that platform is part of its receipt.
 Provision four independent private synthetic files and non-nested job/host
 journals through the fixture preparation stage. The image runs as a non-root
 UID/GID matching those private bind files, with read-only key/token mounts and
-retained writable state. It restarts the same exact owned container after native
+retained writable Linux state volume. It restarts the same exact owned container after native
 deployment and owner-call boundaries, then completes and opens the original ACC.
 The runner refuses an existing container name or fixture destination. Failed or
 unknown roots remain preserved for inspection; they are never replaced/replayed.
@@ -396,3 +396,27 @@ its existing `InternalError` scoped-transaction envelope. The owner journal stil
 retains the original unresolved effect. Qualification matches the declared
 operation/fault/arm-specific SDK code, not an arbitrary exception. Never infer
 no submission from an error category; inspect the original journal and ledger.
+
+
+### Image state filesystem and observer
+
+Use a fresh `PASSPORT_LIVE_ROOT` whose final component is `image-v1` through
+`image-v999`. The runner creates separately labelled container/state-volume names
+for each arm and refuses existing names. It provisions only the fresh volume,
+checks the Docker-managed ext filesystem, then tests two durable CAS revisions as
+the non-root service user before starting the production entrypoint. The volume
+and all original unknown fixtures remain available after failure or cleanup.
+
+Encrypted immutable journal revisions are copied read-only to the private host
+fixture for inspection. Every observation checks hashes against the Linux source;
+missing/replaced history, unsafe paths, modes, symlinks and corrupt copies fail.
+These observer copies never drive work. Back up the retained Linux volumes as
+well as the protected owner fixture; a copy is not a restart journal.
+
+A 2026/10/27 macOS bind-state attempt failed before publishing its initial host
+revision, leaving an accepted job unknown and an uncommitted temporary file. The
+exact initial file-sync/close failure cause was not established; independent
+scratch CAS writes passed. That attempt is a failure, not evidence for macOS
+shared-folder durability. This image qualification requires Linux volume state;
+macOS bind-mounted durable state remains unqualified. Missing host state still
+never authorises replacement or a new send.

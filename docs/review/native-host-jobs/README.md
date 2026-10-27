@@ -21,7 +21,7 @@ No provider, full Lace, package publication or release acceptance is implied.
    Existing direct profiles retain their pins. Flush final pipe output on exit.
 4. Image lane: actual production entrypoint, independent Linux npm-ci reference
    dependency volume overlay, read-only contract/key/token mounts and retained
-   writable synthetic state. Non-root UID/GID matches private bind files.
+   writable synthetic state on a fresh retained Linux volume. Non-root UID/GID matches private bind files.
    Local Linux/amd64 image on an arm64 Docker host is explicitly emulated.
 5. Cheap negative tests validate corrupted/missing historical records, immutable
    source/effect comparisons, no protected payload in summaries, and strict error
@@ -53,3 +53,11 @@ Require a single matching failure, no completed operation, and one unresolved
 original effect. A generic exception or incorrect crypto arm must not pass.
 The image owner uses normal same-ID software-approved continuation while inclusion
 is pending; only the actual externally controlled container kill ends that stage.
+
+
+The image observer mirrors only hashed immutable encrypted revisions; the service
+never uses the mirror. Review `image-journal-mirror.mjs` and its rejection tests.
+State volume preparation is isolated; native ext filesystem and non-root CAS
+preflight precede main. Signal-only child exit must terminate a boundary wait.
+The failed macOS bind-state attempt remains unqualified, separately retained; no
+claim is made that a filesystem failure was repaired by replacing an original job.
