@@ -426,7 +426,15 @@ if (mode === 'host') {
             return engine.execute(...args);
           },
         },
-        { pins, runExclusive: queue, completedTtlMs: 86400000 },
+        {
+          pins: {
+            networkId: pins.networkId,
+            bindingId: pins.bindingId,
+            manifestSha256: pins.manifestSha256,
+          },
+          runExclusive: queue,
+          completedTtlMs: 86400000,
+        },
       )
     : undefined;
   const server = createServer(config, [
