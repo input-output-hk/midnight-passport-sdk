@@ -6,6 +6,22 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/10/27. Historical entries below retain their original issue namespaces.
 
+## 2026/10/27 — native host jobs and production Docker restart qualification (#233/#231)
+
+Local qualification delivered: 12 source/native cases at signed `0f90ab0` and six
+production image cases at signed `c128b3c`, for both P-256 and Jubjub. The original
+create completes and reopens. Each arm records 13 source submit entries with zero
+duplicate prepared-byte entries, and 13 confirmed image steps with single durable
+claims. Source/runtime/reference end audits and 291 production-file hashes match.
+The local Linux/amd64 image `ea189f3…deeda` is emulated on arm64 and uses a native
+ext state volume. The macOS bind-state failure remains unqualified with its
+original unknown retained. No publication, provider or full Lace acceptance.
+See `docs/review/native-host-jobs/README.md` and its `qualification.json`. The full
+gate passed 976 tests, with seven existing skips. Final docs, cleanup and backup
+evidence is in the owner checkpoint. Next is job-backed lifecycle with grants,
+holdings and wallet reconnect. Broad issues remain open; historical harness notes
+below retain their original scope.
+
 ## 2026/10/27 — native host-job/image qualification harness (#233/#231)
 
 Add opt-in source/native and local production-image restart suites over fresh

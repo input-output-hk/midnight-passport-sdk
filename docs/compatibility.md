@@ -1,6 +1,6 @@
 # Compatibility matrix
 
-> **Status:** preview RC5 · updated 2026/10/20. Releases are lockstep across the
+> **Status:** published preview RC5 · local qualification updated 2026/10/27 UTC. Releases are lockstep across the
 > `@input-output-hk/mn-passport-*` packages. The binding data is pinned in
 > `packages/contract/acc-binding-v2.generated.json` and the generated registry.
 
@@ -537,3 +537,36 @@ source checks and never implies native proofs, actual released images/registry,
 real providers or full Lace compatibility. Broad #233 and existing release
 limitations remain open. See [runbook](site/service-jobs.md) and
 [ADR0013](adr/0013-explicit-host-job-reference-composition.md).
+
+
+## 2026/10/27 local native host-job and image continuation
+
+The [native review map and receipt](review/native-host-jobs/README.md) record
+12 source/native-proof cases and six production-entrypoint Docker cases across
+P-256 and Jubjub. Original create/activation/inbox jobs survive reply loss and
+same-container Linux-volume restarts, complete and reopen the original ACC.
+Real source prover/indexer outages refuse work or retain original uncertainty;
+a failed owner proof before host registration stays unknown without replacement.
+
+Source qualification is pinned to signed `0f90ab0`; image qualification to signed
+`c128b3c`. All 291 production source/runtime files match across those sources and
+the local image, with matching reference lock and nine selected dependency entry
+pins. Source records 13 host submit entries with no duplicate prepared-byte entries
+per arm. The image records 13 confirmed steps/single durable dispatch claims per
+arm; it does not independently instrument network attempts. Image owner-local
+journal summaries can lag; final actual Linux-volume exports establish acceptance.
+
+The exact local image is
+`sha256:ea189f3f7214e6c09e1734a1921efe46f0fbe0ebee6341ddc8baf864358deeda`,
+Linux/amd64 emulated on arm64. Only Linux ext volume state is qualified. An earlier
+macOS bind-state attempt left its first accepted job unknown before host revision
+publication; its exact storage failure cause remains unestablished, and the
+original fixture is retained. **macOS bind-backed durable image state remains
+unqualified.** Harness fixes/negative controls cover strict pin projection, native
+error envelopes, signal termination and immutable encrypted observer copies.
+
+These are unreleased local host-job results, not a new RC5/registry/image release,
+real-provider or full Lace pass. Job-backed enrollment/removal with grants,
+holdings and wallet reconnect remain a next slice. Automatic scanning, distributed
+wallet locking, persistent budget, unknown/no-send repair and journal compaction
+remain open. Exact-value shielded withdrawals and other release limits are unchanged.

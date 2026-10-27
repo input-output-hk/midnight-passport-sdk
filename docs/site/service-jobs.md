@@ -415,8 +415,36 @@ well as the protected owner fixture; a copy is not a restart journal.
 
 A 2026/10/27 macOS bind-state attempt failed before publishing its initial host
 revision, leaving an accepted job unknown and an uncommitted temporary file. The
-exact initial file-sync/close failure cause was not established; independent
+exact initial storage failure cause was not established; independent
 scratch CAS writes passed. That attempt is a failure, not evidence for macOS
 shared-folder durability. This image qualification requires Linux volume state;
 macOS bind-mounted durable state remains unqualified. Missing host state still
 never authorises replacement or a new send.
+
+
+### Recorded local acceptance — 2026/10/27 UTC
+
+Both P-256 and Jubjub passed the source/native-proof sequence (12 cases) and
+production-entrypoint Linux-volume Docker sequence (six cases). Each original
+created account completed and reopened after its declared interruptions. Each arm
+has four completed create-related host jobs and 13 confirmed steps. Separate
+before-registration owner-proof failure fixtures intentionally remain unknown.
+
+Source-native evidence is pinned to signed `0f90ab0`; local image evidence to
+signed `c128b3c`, with all 291 production source/runtime files identical. The image
+ID is `sha256:ea189f3f7214e6c09e1734a1921efe46f0fbe0ebee6341ddc8baf864358deeda`
+(`linux/amd64`, emulated on arm64). The reference lock and nine selected package
+entry/version/integrity pins match. See repository
+`docs/review/native-host-jobs/README.md` and its machine-readable receipt for
+job/transaction hashes, snapshots, mount metadata and earlier failed attempts.
+
+Source submit-entry counters are distinct from image durable dispatch claims and
+included identifiers. Image owner-worker local journal summaries may lag; final
+fresh Linux-volume exports establish the host state. Preserve both the actual
+Linux state volume and the separate protected owner fixture/keys when backing up;
+read the volume as the service UID/GID. Never resume from the observer mirror.
+
+This acceptance covers creation/activation/inbox continuation. Job-backed device
+lifecycle with grants/holdings and wallet reconnect, real providers and full Lace
+integration remain separate. No new package or image has been published; RC5 does
+not include this opt-in API. Broad #233/#231 and existing release limits stay open.

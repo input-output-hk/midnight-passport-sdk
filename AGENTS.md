@@ -325,3 +325,27 @@ released-image acceptance. Keep the full local gate before each signed commit.
 | `infra/localnet`, `infra/networks` | The Passport localnet and the Midnight stack configuration (one file per network)                                                          |
 | `experiments/acc-0.35`             | Fetch, compile and run scripts for the contract, plus run records `results/x1–x9`                                                          |
 | `docs/superpowers/specs/`          | The prototype spec and the publishing design for the SDK packages                                                                          |
+
+
+### Native durable-job qualification checkpoint — 2026/10/27 UTC
+
+Read `docs/review/native-host-jobs/README.md` and `docs/site/service-jobs.md` before
+running the opt-in `host-jobs-native` / `host-jobs-image-native` suites. Both arms
+have source-native and local production-image acceptance at the exact signed
+sources in the receipt. Published RC5 is unchanged. The local image is Linux/amd64
+emulated on arm64, with separately prepared Linux reference dependencies.
+
+Image durable journals use fresh retained Linux ext volumes. A previous macOS
+bind-state attempt is unqualified and retains an original unknown job; do not
+replay it or replace its ID. Use a fresh root ending `image-v1` through `image-v999`;
+existing container/volume/root names are refused. The production service always
+runs non-root; only fresh-volume metadata preparation uses root. Observer copies
+contain immutable encrypted revisions only and never drive work. Back up the
+actual volume plus private owner fixture/keys, as the matching service UID/GID.
+
+Retain intentional negative-case unknown intents. A missing host/job record never
+proves no send. Keep source, compiled outputs and reference inputs frozen during
+native runs, then verify end hashes before editing. Stop only exact owned worker
+PIDs and the dedicated qualification containers; retain ledger/key/state volumes.
+Slow proof/image suites remain outside fast CI. Current next scope is job-backed
+enrollment/removal/rotation with survivor/grants/holdings and wallet reconnect.

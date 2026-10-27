@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "qualifiedSource": "0f90ab04f307a445cace3bfec60859b32a6f78fc",
+  "qualifiedImageSource": "c128b3c5a34fb3165b2510a9ff9edd2b66b713f2",
+  "sourceNativeCases": 12,
+  "imageNativeCases": 6,
+  "productionFilesStillMatch": 291,
+  "gate": {
+    "exitCode": 0,
+    "tests": 983,
+    "pass": 976,
+    "fail": 0,
+    "skipped": 7,
+    "logSha256": "d72a73dd89c67fd78a3051f07061c6735cd9f8c057f7ffa7e45f7ff0e6fa94e0",
+    "commands": [
+      "pnpm run lint",
+      "pnpm run format:check",
+      "pnpm run build",
+      "pnpm test",
+      "pnpm run test:apps",
+      "passport-service tsc --noEmit",
+      "passport-funding-service tsc --noEmit",
+      "passport-dapp tsc --noEmit",
+      "node --test apps/passport-key-service/test/*.test.mjs"
+    ],
+    "documentationOnlyChangesSinceImageSource": true
+  },
+  "docs": {
+    "pages": 21,
+    "localLinksAndAnchors": 462,
+    "errors": [],
+    "generator": "Jekyll 4.4.1"
+  },
+  "audits": {
+    "source-v3-end-audit.json": "11d5ca7a93710a084a5af8fdeda6dddff4f40e1a00d847e0180083cd0704cca9",
+    "image-v2-end-audit.json": "f5b388bf41702638686d4a009a9a811fbc230e1221e250ebff27f4cd890a1d45",
+    "production-continuity.json": "a623c253ced7e57c80098ec65ac76f82ca52b9658c7352520cc59a31977cb16e",
+    "image-runtime-audit.json": "f062b52b860f3cc20240d6f0f83c3271dba8a92224ce6e6bf1dce0f2b1dc3a84",
+    "linux-reference-audit.json": "e107daee6b56cba15e2286b1b4860ce3eb7b60c67f57d84da92ddfa67b3fd9ae",
+    "source-signatures.json": "6092a5d827099f49ddca6bcb2a3444be307df80343275c6f44176cea62eae713"
+  },
+  "protectedBackup": {
+    "archives": 4,
+    "totalBytes": 164452915,
+    "allCRCVerified": true,
+    "allPrivateMode": true,
+    "metadataSha256": "3b09ef8b31d39b5966d90592106dbabef18c883d846b3b260831c8d26e9ab283",
+    "privateArchivesInGitOrKnowledgeBase": false
+  },
+  "cleanup": {
+    "ownedComputeStopped": [
+      {
+        "id": "c6ecf049c3380f7a2cb838fce83cac78e25dee19843b6fb29506f4c565d6ffe6",
+        "name": "/mn-passport-qual-20261023-indexer-1",
+        "running": false
+      },
+      {
+        "id": "80a2ab8ccb2dcc3a7bba699d3be4bca92157d9501bd8c42770bfa3ad9bf5adc4",
+        "name": "/mn-passport-qual-20261023-proof-server-1",
+        "running": false
+      },
+      {
+        "id": "4211049e9a4313daaa0274bed2b01d04a8d96a2e2b934efc2b635fade8c78f39",
+        "name": "/mn-passport-qual-20261023-node-1",
+        "running": false
+      }
+    ],
+    "qualifiedImageContainersStopped": [
+      "7fa28d6ad3e19408c6d42055e6ae0d1db9bd1a41a38f4d83f7e7913621a863ff",
+      "cf6abb107cd31906884ab85418dae7a73d687b55a64e4ff85d8b086a0340ae6d"
+    ],
+    "volumesRetained": [
+      "mn-passport-qual-20261023_node-data",
+      "mn-passport-qual-20261023_indexer-data",
+      "mn-passport-hostjobs-20261027-linux-deps",
+      "mn-passport-hostjobs-20261027-image-v2-jubjub-state",
+      "mn-passport-hostjobs-20261027-image-v2-p256-state"
+    ],
+    "unrelatedRunningBefore": [
+      "0360c9d3d9e0 tr-standalone-local-b23-indexer-1",
+      "fff099f154f4 tr-standalone-local-b23-node-1",
+      "ca7d31deb498 tr-standalone-local-b23-proof-server-1",
+      "f18abb54afe8 mn-passport-sdk-localnet-indexer-1"
+    ],
+    "unrelatedRunningAfter": [
+      "0360c9d3d9e0 tr-standalone-local-b23-indexer-1",
+      "fff099f154f4 tr-standalone-local-b23-node-1",
+      "ca7d31deb498 tr-standalone-local-b23-proof-server-1",
+      "f18abb54afe8 mn-passport-sdk-localnet-indexer-1"
+    ],
+    "commandsTargetedOnlyExactOwnedIds": true,
+    "volumesOrKeysDeleted": false
+  },
+  "published": false,
+  "realProviderQualified": false,
+  "releaseQualified": false
+}

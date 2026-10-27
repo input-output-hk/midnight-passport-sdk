@@ -1,0 +1,1694 @@
+{
+  "schema": 1,
+  "qualificationDateUTC": "2026-10-27",
+  "verdict": "PASS",
+  "binding": {
+    "id": "acc-s3r1.1",
+    "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "moduleSha256": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf"
+  },
+  "lanes": {
+    "source": {
+      "scope": "source-native-host-job-proof-process-outages",
+      "source": {
+        "commit": "0f90ab04f307a445cace3bfec60859b32a6f78fc",
+        "dirty": false,
+        "workspaceSha256": "94f69de9af22f68cff99e92a2225d6a8a3bb01516fc98d877d2bb63b5523f9ff",
+        "fileCount": 1284
+      },
+      "fullReceiptSha256": "b6a8ca170d5eb270a11c0cd9f03efb16a2dd4cd869988f2c16a73c9b5059b16e",
+      "suiteReceiptSha256": "3bbdb8392ef698bfdc5fa029645548882696a4707904cf2e085e16c5319e4cd0",
+      "cases": [
+        {
+          "arm": "jubjub",
+          "operation": "create",
+          "verdict": "PASS",
+          "fault": "deploy:0:after-submit",
+          "durationMs": 72791,
+          "snapshotSha256": "aa647c5ef6bb425224d8e2361e97073a874e74b30084c9db5590c6a0fdc95956"
+        },
+        {
+          "arm": "jubjub",
+          "operation": "create",
+          "verdict": "PASS",
+          "fault": "before-deploy-proof",
+          "durationMs": 40639,
+          "snapshotSha256": "b8c12e521c25bb17ea2754a6eb029d59b5ef5b52d612144a5ebdb8a824310ff3"
+        },
+        {
+          "arm": "jubjub",
+          "operation": "create",
+          "verdict": "PASS",
+          "fault": "call:0:after-submit",
+          "durationMs": 235895,
+          "snapshotSha256": "454bcb45308c96dfe144dbc69e61ee462c2ad9345cc7c84330931f19a989f349"
+        },
+        {
+          "arm": "jubjub",
+          "operation": "create",
+          "verdict": "PASS",
+          "fault": "none",
+          "durationMs": 99251,
+          "snapshotSha256": "ae44dc95afcca34e2d8426083762030a27c517a7f2f3abc71ff3c8f49bcd39bb"
+        },
+        {
+          "arm": "jubjub",
+          "operation": "rotate-prover",
+          "verdict": "PASS",
+          "snapshotSha256": "ae44dc95afcca34e2d8426083762030a27c517a7f2f3abc71ff3c8f49bcd39bb"
+        },
+        {
+          "arm": "jubjub",
+          "operation": "send-audit",
+          "verdict": "PASS",
+          "hostSendAttempts": 13,
+          "duplicateSendAttempts": 0,
+          "snapshotSha256": "ae44dc95afcca34e2d8426083762030a27c517a7f2f3abc71ff3c8f49bcd39bb"
+        },
+        {
+          "arm": "p256",
+          "operation": "create",
+          "verdict": "PASS",
+          "fault": "deploy:0:after-submit",
+          "durationMs": 65868,
+          "snapshotSha256": "4c43514d50160d6accfa5b132d836e4a52733a75212e9de98adf183e4ba0836f"
+        },
+        {
+          "arm": "p256",
+          "operation": "create",
+          "verdict": "PASS",
+          "fault": "before-deploy-proof",
+          "durationMs": 43124,
+          "snapshotSha256": "deddf38b624be608ac85a8c514cd6ed4a2aeec7461c7543871d159c114f6f640"
+        },
+        {
+          "arm": "p256",
+          "operation": "create",
+          "verdict": "PASS",
+          "fault": "call:0:after-submit",
+          "durationMs": 239499,
+          "snapshotSha256": "83f5d55923234a4ed2878c8f13de75a9dac8e5493f3b1a8bc61b630fca528241"
+        },
+        {
+          "arm": "p256",
+          "operation": "create",
+          "verdict": "PASS",
+          "fault": "none",
+          "durationMs": 174135,
+          "snapshotSha256": "7bd17204dc3ddd1a7284f4663249e26607af14b961e50d74b8d6177b8612fd4f"
+        },
+        {
+          "arm": "p256",
+          "operation": "rotate-prover",
+          "verdict": "PASS",
+          "snapshotSha256": "7bd17204dc3ddd1a7284f4663249e26607af14b961e50d74b8d6177b8612fd4f"
+        },
+        {
+          "arm": "p256",
+          "operation": "send-audit",
+          "verdict": "PASS",
+          "hostSendAttempts": 13,
+          "duplicateSendAttempts": 0,
+          "snapshotSha256": "7bd17204dc3ddd1a7284f4663249e26607af14b961e50d74b8d6177b8612fd4f"
+        }
+      ],
+      "final": [
+        {
+          "arm": "jubjub",
+          "snapshot": {
+            "jobs": [
+              {
+                "jobId": "328e0063e1949c4058b152de9fc83674",
+                "identity": {
+                  "intentSha256": "ed2be8a9f12f987c9ec0561ab691d75c0bff3daa8fc1982651a3db1a3f981fb0",
+                  "kind": "call",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "jubjub-schnorr"
+                  },
+                  "requestId": "184d8bb7bf22bae579114ad06facb501:12"
+                },
+                "descriptorSha256": "b8ff8e5d8ea31fe6c16a1dc83550b2938fa94462d066ef8464613b92193b8e80",
+                "inputSha256": "5daaed9a600bc79555ec3219da9cd7d8393d4b7c9ff8beaf842335d566e2bf0c",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 1,
+                  "preparedSteps": 1
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 6,
+                  "address": "f9fc3b5377162d9d8fa61f324d441f670757aaf8907c1774e4333c78cff8d21d",
+                  "planHash": "667f845bfc14ec2b058b2857703920517a1fa4f66bad325f449e98233e78cca5",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "289fbcdf7a88a5f419695ff87861a1fee3f338881f7fe2da78ef8d158d8368a4",
+                      "identifiers": [
+                        "000ee919750f968a63f042d751a7cb9344e2231f88f220d3f23af801e8c23bfb39",
+                        "00ea0e7e68bc6304ae789680c53ba6d00b235dde3b0dceedad89bcd0e20776b1b5"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00ea0e7e68bc6304ae789680c53ba6d00b235dde3b0dceedad89bcd0e20776b1b5",
+                      "confirmation": {
+                        "blockHeight": 6182,
+                        "identifier": "00ea0e7e68bc6304ae789680c53ba6d00b235dde3b0dceedad89bcd0e20776b1b5",
+                        "succeeded": true,
+                        "txHash": "289fbcdf7a88a5f419695ff87861a1fee3f338881f7fe2da78ef8d158d8368a4"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "jobId": "b9c5a8f00c9a282d41a63d69603c17ff",
+                "identity": {
+                  "intentSha256": "d4768e45c68e83c24556cddf430ef1d233110b73b57bd0a4f7d5ef6aa14d2016",
+                  "kind": "call",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "jubjub-schnorr"
+                  },
+                  "requestId": "184d8bb7bf22bae579114ad06facb501:9"
+                },
+                "descriptorSha256": "5bdbd152b144ff43dce73aef494e0ec12b0c669ca60898918963d9b39627ca6a",
+                "inputSha256": "e5ced855a570d56475d0f77bd5175b891ff5b17f78e7e91ababfe48e6b329dec",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 1,
+                  "preparedSteps": 1
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 5,
+                  "address": "f9fc3b5377162d9d8fa61f324d441f670757aaf8907c1774e4333c78cff8d21d",
+                  "planHash": "06bcaeb011e70261d77e03fbb30d3fa7861766b2fa4ce9766bc87723e69d7826",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "b9e681decc259be5b34e5dd20f9052f5ee475912e2ffbb498db6e0e3d913eff2",
+                      "identifiers": [
+                        "00b22325216a094b671bc90037cd8dff9f043a30ff8226e32ad2af7442c224ce02",
+                        "00eb9a549c983357bd550e3266709a7191f49f193c6199cc921b0b131514f7c488"
+                      ],
+                      "dispatchClaims": 1,
+                      "confirmation": {
+                        "blockHeight": 6169,
+                        "identifier": "00b22325216a094b671bc90037cd8dff9f043a30ff8226e32ad2af7442c224ce02",
+                        "succeeded": true,
+                        "txHash": "b9e681decc259be5b34e5dd20f9052f5ee475912e2ffbb498db6e0e3d913eff2"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "jobId": "c5471cc4ae02bad0bef0f30ed5e67344",
+                "identity": {
+                  "intentSha256": "7957cde1cdd996e56ff088bd92f4ddfebf617bcbb6f8dab31053e3e650df3b21",
+                  "kind": "call",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "jubjub-schnorr"
+                  },
+                  "requestId": "184d8bb7bf22bae579114ad06facb501:15"
+                },
+                "descriptorSha256": "e7b1ac764c2401fac31a297e9f29039323089b68025782f92e65b83399a3ec7c",
+                "inputSha256": "88c5c10b0be984df5872f74f205309519d78c8f57b1d398a87a7e9b6d26bb704",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 1,
+                  "preparedSteps": 1
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 6,
+                  "address": "f9fc3b5377162d9d8fa61f324d441f670757aaf8907c1774e4333c78cff8d21d",
+                  "planHash": "aa7deb84b8b3069f1ea51c2641850db5200021ad9192c0d9c7dc4c25b7591741",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "2a2e6bdb25b975c1b24cdfcb2a1a33ec56b741832fc682cc54f0a1fbb04f8211",
+                      "identifiers": [
+                        "00f9f9ea36df7ee215bc18ace60e8de7305dd08e9b677e84607b1ed67b1958f7d0",
+                        "00b994ea3d0586cd5079fa6e97eeb82c95cae36b692f47b63b7a5d58be910fb46f"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00b994ea3d0586cd5079fa6e97eeb82c95cae36b692f47b63b7a5d58be910fb46f",
+                      "confirmation": {
+                        "blockHeight": 6186,
+                        "identifier": "00b994ea3d0586cd5079fa6e97eeb82c95cae36b692f47b63b7a5d58be910fb46f",
+                        "succeeded": true,
+                        "txHash": "2a2e6bdb25b975c1b24cdfcb2a1a33ec56b741832fc682cc54f0a1fbb04f8211"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "jobId": "f360c09dcc7c709fbd1b90c299a9dffd",
+                "identity": {
+                  "intentSha256": "8c97452acc152a55bf243d6999e7c730b6ea0d0c2ff1722d9f54cf76a26546ea",
+                  "kind": "deploy",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "jubjub-schnorr"
+                  },
+                  "requestId": "184d8bb7bf22bae579114ad06facb501:5"
+                },
+                "descriptorSha256": "56d5b21d66a8baaeb67a65881fca3211edfc6027e0538fd130f2805055da3771",
+                "inputSha256": "815b4d721eaca75290835b696aeda7e02e10ae320a6eddb9df4cc35b710c2e21",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 10,
+                  "preparedSteps": 10
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 44,
+                  "address": "f9fc3b5377162d9d8fa61f324d441f670757aaf8907c1774e4333c78cff8d21d",
+                  "planHash": "3d18aac8d6ab28cbb40dcd90b1ebf1151545c2dacb6b8056f4c600739f7ec2e9",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "f2f3b937d74c6851224228b954ff2eb0b1190e29b84e2f7cc73d5f044f276c61",
+                      "identifiers": [
+                        "009e5a575a5b067b0cd4e1440aeb855de42771bb730d7e3fe15c67b8b965f0f4d7",
+                        "00772aac0e5f8bec4b029cae306542e241643250802346584a54b9cfd80a12d8bb"
+                      ],
+                      "dispatchClaims": 1,
+                      "confirmation": {
+                        "blockHeight": 6123,
+                        "identifier": "009e5a575a5b067b0cd4e1440aeb855de42771bb730d7e3fe15c67b8b965f0f4d7",
+                        "succeeded": true,
+                        "txHash": "f2f3b937d74c6851224228b954ff2eb0b1190e29b84e2f7cc73d5f044f276c61"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "ad35b2fd8815b1586a32a540d68b144e9affb0b988696e5d7ebf2db58f4d2506",
+                      "identifiers": [
+                        "005f246b3b841dfe2246f1f47be5422fcedbd280682a383832c011a0d6dd1d7c58",
+                        "00a7aa2f18023a36ddc6ffa970a708286c3da3f245cc1b0e93073885165e8917a3"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00a7aa2f18023a36ddc6ffa970a708286c3da3f245cc1b0e93073885165e8917a3",
+                      "confirmation": {
+                        "blockHeight": 6141,
+                        "identifier": "00a7aa2f18023a36ddc6ffa970a708286c3da3f245cc1b0e93073885165e8917a3",
+                        "succeeded": true,
+                        "txHash": "ad35b2fd8815b1586a32a540d68b144e9affb0b988696e5d7ebf2db58f4d2506"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "76e78fc2309f785cc594923739cf5cf1c1a43cb3489a7ffd5430169694c4473f",
+                      "identifiers": [
+                        "00f20b3a8956ced425a75f1acab6980fc942bdc885dd51f2052c60815b11678408",
+                        "009638792c0eb4a2496b09fbc9ed03b4e06fd9f7f49365c3a5fdb074a866b0a221"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "009638792c0eb4a2496b09fbc9ed03b4e06fd9f7f49365c3a5fdb074a866b0a221",
+                      "confirmation": {
+                        "blockHeight": 6144,
+                        "identifier": "009638792c0eb4a2496b09fbc9ed03b4e06fd9f7f49365c3a5fdb074a866b0a221",
+                        "succeeded": true,
+                        "txHash": "76e78fc2309f785cc594923739cf5cf1c1a43cb3489a7ffd5430169694c4473f"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "f983a099325500f2b16c63ad0c7472a3214a8d57fae77fdc9ee2c0cedbe1e860",
+                      "identifiers": [
+                        "00ed61f33f37180e832e7740c1c46fad611c3091cdaba91551be42e450ddbc6668",
+                        "0098a9de6646d6963b331db301b358dd11efc56a075f16938198a315860bd1f4c3"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "0098a9de6646d6963b331db301b358dd11efc56a075f16938198a315860bd1f4c3",
+                      "confirmation": {
+                        "blockHeight": 6147,
+                        "identifier": "0098a9de6646d6963b331db301b358dd11efc56a075f16938198a315860bd1f4c3",
+                        "succeeded": true,
+                        "txHash": "f983a099325500f2b16c63ad0c7472a3214a8d57fae77fdc9ee2c0cedbe1e860"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "73362cc86f91bfb9b8071899b81e07c484d8d4c9793abf189a08a600b8170fcf",
+                      "identifiers": [
+                        "006c2e927a0c08d2f5793c6f4e5234f74d0ff61a2e4278f5e4ec223b7a7347bc9f",
+                        "00aee2e7eb3abc91a26e4e4f1d1d4e70405d4dc31674be9319f12892835dfcd55e"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00aee2e7eb3abc91a26e4e4f1d1d4e70405d4dc31674be9319f12892835dfcd55e",
+                      "confirmation": {
+                        "blockHeight": 6150,
+                        "identifier": "00aee2e7eb3abc91a26e4e4f1d1d4e70405d4dc31674be9319f12892835dfcd55e",
+                        "succeeded": true,
+                        "txHash": "73362cc86f91bfb9b8071899b81e07c484d8d4c9793abf189a08a600b8170fcf"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "74a6c9fa32674632e6f65b5a4bacb05cc1041b63387917f4d1ffbae6e70dbbcb",
+                      "identifiers": [
+                        "006aa18fbd96c4a3305028a0f15e369f2e81e2891cae007defec9a355633c609cf",
+                        "00f791b71617c900dea9e1e9069df48ce75261f4dab253b86ca2528807af924509"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00f791b71617c900dea9e1e9069df48ce75261f4dab253b86ca2528807af924509",
+                      "confirmation": {
+                        "blockHeight": 6153,
+                        "identifier": "00f791b71617c900dea9e1e9069df48ce75261f4dab253b86ca2528807af924509",
+                        "succeeded": true,
+                        "txHash": "74a6c9fa32674632e6f65b5a4bacb05cc1041b63387917f4d1ffbae6e70dbbcb"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "cce551afc44c21e52c3723a09ef0475a28526c77593a97e5cd1466d0e46086c5",
+                      "identifiers": [
+                        "000a192530b3f0a9a18884d0074aba6c960422a344a62777fc36fbec879cee7551",
+                        "00d8a5fb5f81ca64f6fc300b47c9d932a4a551cda6ceac21f325e78b9837abb215"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00d8a5fb5f81ca64f6fc300b47c9d932a4a551cda6ceac21f325e78b9837abb215",
+                      "confirmation": {
+                        "blockHeight": 6156,
+                        "identifier": "00d8a5fb5f81ca64f6fc300b47c9d932a4a551cda6ceac21f325e78b9837abb215",
+                        "succeeded": true,
+                        "txHash": "cce551afc44c21e52c3723a09ef0475a28526c77593a97e5cd1466d0e46086c5"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "a2b3ca01c5662b692e340d70e62c38a4a9aff5783ec9db7ad6669c010d9ebfdc",
+                      "identifiers": [
+                        "00700dd0e4122f5db0e61aed40a06a9a1ebc28b417e58dad9273e655b74b483668",
+                        "000eca26e24dc87d789b48578cf4b0e664dcaa4bc854c8ff4c46d41f090ade858a"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "000eca26e24dc87d789b48578cf4b0e664dcaa4bc854c8ff4c46d41f090ade858a",
+                      "confirmation": {
+                        "blockHeight": 6159,
+                        "identifier": "000eca26e24dc87d789b48578cf4b0e664dcaa4bc854c8ff4c46d41f090ade858a",
+                        "succeeded": true,
+                        "txHash": "a2b3ca01c5662b692e340d70e62c38a4a9aff5783ec9db7ad6669c010d9ebfdc"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "b901f4c6c0de865139142480a8afd14c7e5ecd650725da64b5a91ede3eebca1e",
+                      "identifiers": [
+                        "0027ebce5877108d6db4ba6713454557e01befc4150fb284d03e75bd97bec73129",
+                        "003900290899a826992ed6f44d7d53fdd6ee1e383f63f2d32668ecbecf451df231"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "003900290899a826992ed6f44d7d53fdd6ee1e383f63f2d32668ecbecf451df231",
+                      "confirmation": {
+                        "blockHeight": 6162,
+                        "identifier": "003900290899a826992ed6f44d7d53fdd6ee1e383f63f2d32668ecbecf451df231",
+                        "succeeded": true,
+                        "txHash": "b901f4c6c0de865139142480a8afd14c7e5ecd650725da64b5a91ede3eebca1e"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "01f5a9b08c94699abffdd514309bffd5982a070ed2e7c1e2db512d949ad226bd",
+                      "identifiers": [
+                        "008038bd4e7434496aeea8dada8d90f87e3251828513040ee423dd82a4f7a5ddac",
+                        "000278104d5dbe590df2ebcdcb4274b05767af8788c5e02a72a10b260e7b027e3e"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "000278104d5dbe590df2ebcdcb4274b05767af8788c5e02a72a10b260e7b027e3e",
+                      "confirmation": {
+                        "blockHeight": 6165,
+                        "identifier": "000278104d5dbe590df2ebcdcb4274b05767af8788c5e02a72a10b260e7b027e3e",
+                        "succeeded": true,
+                        "txHash": "01f5a9b08c94699abffdd514309bffd5982a070ed2e7c1e2db512d949ad226bd"
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "dispatchClaims": 13,
+            "confirmed": 13,
+            "attemptsInstrumented": false,
+            "historyAudited": true
+          },
+          "hostSendAttempts": 13,
+          "duplicateSendAttempts": 0
+        },
+        {
+          "arm": "p256",
+          "snapshot": {
+            "jobs": [
+              {
+                "jobId": "439660ab15f74c65c0f15253ba6697b0",
+                "identity": {
+                  "intentSha256": "ebf21f0e79fabf374d04036044b1a2f6062f626826f8f6e35c053fcb2be38fc8",
+                  "kind": "deploy",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "p256-webauthn"
+                  },
+                  "requestId": "f241c09112e11e2c78c07319d9614d6d:5"
+                },
+                "descriptorSha256": "86bd0ee4c23f90f83d490b445fc161f36801ff2e151c8dacb7abe42ffe5a56ea",
+                "inputSha256": "641ce7454900a58beab611d08ad71eeba0c83c9ed5c996cf052ed1b0d42a980d",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 10,
+                  "preparedSteps": 10
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 44,
+                  "address": "14802fa84e647e11b6dc6f7e16343bf9fbcbc56b9110882b9594876b233cfbcd",
+                  "planHash": "7a93d9b154ec31c5e8947ce8f6a24e80a54930efed8a159b77aef6f64b46653b",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "758f6027b3aaca0e588e03e71e36219c7d54c19da43d35198108265abdaef482",
+                      "identifiers": [
+                        "0067087d5b94865e59804c67b64d84215419084157aa66c28025e046673fde8d01",
+                        "00253455156ed45f1611d80b88cb7f0682fa0754d9eefbefffe133ca19c78dddb9"
+                      ],
+                      "dispatchClaims": 1,
+                      "confirmation": {
+                        "blockHeight": 6213,
+                        "identifier": "0067087d5b94865e59804c67b64d84215419084157aa66c28025e046673fde8d01",
+                        "succeeded": true,
+                        "txHash": "758f6027b3aaca0e588e03e71e36219c7d54c19da43d35198108265abdaef482"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "a755f4d6f33ddc106b5e51eb128a0162953224b552595a124d273b896b5fd0b3",
+                      "identifiers": [
+                        "00ffb9f0507c4896537b4eb7e08055b491e6bebc72ca308b405ca59095c193593d",
+                        "003371e912e80a0a4bc095c937252b75f2f187ad292861a7e2924924a2c8ee8fe4"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "003371e912e80a0a4bc095c937252b75f2f187ad292861a7e2924924a2c8ee8fe4",
+                      "confirmation": {
+                        "blockHeight": 6231,
+                        "identifier": "003371e912e80a0a4bc095c937252b75f2f187ad292861a7e2924924a2c8ee8fe4",
+                        "succeeded": true,
+                        "txHash": "a755f4d6f33ddc106b5e51eb128a0162953224b552595a124d273b896b5fd0b3"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "df8d15e761189dbf81f18b3a48cf814984a35b7c198e1d55986e84afbcd5f4e0",
+                      "identifiers": [
+                        "004edb0afa473a7b69fe465ae79ae6bffce3d29f12202d4dc7f7ecc674255a4bb6",
+                        "004af72554fefb99b9dc5133b040175b70cc9cc05d4ed39a2f69be97afefe60332"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "004af72554fefb99b9dc5133b040175b70cc9cc05d4ed39a2f69be97afefe60332",
+                      "confirmation": {
+                        "blockHeight": 6234,
+                        "identifier": "004af72554fefb99b9dc5133b040175b70cc9cc05d4ed39a2f69be97afefe60332",
+                        "succeeded": true,
+                        "txHash": "df8d15e761189dbf81f18b3a48cf814984a35b7c198e1d55986e84afbcd5f4e0"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "5457eb1945e38cdd43b295158f5edb0638d9219ab66f7e2563875640fc8403c7",
+                      "identifiers": [
+                        "003f801caa6f8d97f28b169b0abaeda387c7c8f57893c664d41809359145234b43",
+                        "0024b1e07e4934e1f38e0404fca6e698ae5bdce5e630113d718b774cb9e03b0a67"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "0024b1e07e4934e1f38e0404fca6e698ae5bdce5e630113d718b774cb9e03b0a67",
+                      "confirmation": {
+                        "blockHeight": 6237,
+                        "identifier": "0024b1e07e4934e1f38e0404fca6e698ae5bdce5e630113d718b774cb9e03b0a67",
+                        "succeeded": true,
+                        "txHash": "5457eb1945e38cdd43b295158f5edb0638d9219ab66f7e2563875640fc8403c7"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "c4077286b48127d37bf6c54d54df51dee9e48be944f85c77144e125b0d950725",
+                      "identifiers": [
+                        "0039f67fe020f14f22b3437d2d3175f3cfcc565f4bb67b83be0347008ed6551bb0",
+                        "00ef2258dc64f5d1509bff14866009a8c4de5e1576de266d21b0ee70c6039876b6"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00ef2258dc64f5d1509bff14866009a8c4de5e1576de266d21b0ee70c6039876b6",
+                      "confirmation": {
+                        "blockHeight": 6240,
+                        "identifier": "00ef2258dc64f5d1509bff14866009a8c4de5e1576de266d21b0ee70c6039876b6",
+                        "succeeded": true,
+                        "txHash": "c4077286b48127d37bf6c54d54df51dee9e48be944f85c77144e125b0d950725"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "9000ee07e722fb7b82a2f65a3f22f1e755e5a0dbe344d70cbe085a0b317a9dd5",
+                      "identifiers": [
+                        "00a653df6522ffd3475400c9125b57f96202ebb4008e2381f440c56645f70afc65",
+                        "0077d1fe5e087861c405e88cc5e5683f6a2581806a5825f6f106244c604b109952"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "0077d1fe5e087861c405e88cc5e5683f6a2581806a5825f6f106244c604b109952",
+                      "confirmation": {
+                        "blockHeight": 6243,
+                        "identifier": "0077d1fe5e087861c405e88cc5e5683f6a2581806a5825f6f106244c604b109952",
+                        "succeeded": true,
+                        "txHash": "9000ee07e722fb7b82a2f65a3f22f1e755e5a0dbe344d70cbe085a0b317a9dd5"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "d7247743ef670dc1becc623a66474aa287f5e900f5e5cc850a6f477c537fd66e",
+                      "identifiers": [
+                        "006e09129093f4c93507cffc0f90158f29367792edd4ae8216c9831c796dbd3e44",
+                        "00dc48a7e9f563c1ca62ad92ac11f6edde5aa24c92d2325a6dede0addedf406844"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00dc48a7e9f563c1ca62ad92ac11f6edde5aa24c92d2325a6dede0addedf406844",
+                      "confirmation": {
+                        "blockHeight": 6246,
+                        "identifier": "00dc48a7e9f563c1ca62ad92ac11f6edde5aa24c92d2325a6dede0addedf406844",
+                        "succeeded": true,
+                        "txHash": "d7247743ef670dc1becc623a66474aa287f5e900f5e5cc850a6f477c537fd66e"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "18ac750fec1c74354dc850a1ce0e984991e848f3d050f2c9242d746980600dcd",
+                      "identifiers": [
+                        "008925d2cc4d81521cdc9b88ffcd90460b2262334469ce2dd49c2e06ec9ce7f426",
+                        "00e3ff83e44c95689c6fd6886d0b46ffc2b95a779b47dfc00827f08dbbe3092a32"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00e3ff83e44c95689c6fd6886d0b46ffc2b95a779b47dfc00827f08dbbe3092a32",
+                      "confirmation": {
+                        "blockHeight": 6249,
+                        "identifier": "00e3ff83e44c95689c6fd6886d0b46ffc2b95a779b47dfc00827f08dbbe3092a32",
+                        "succeeded": true,
+                        "txHash": "18ac750fec1c74354dc850a1ce0e984991e848f3d050f2c9242d746980600dcd"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "8b9cfed8a8a58f0ab3de555a981134cf5edd200dcf18d1300a656bb476ea3a32",
+                      "identifiers": [
+                        "002567f23d42624138fd7be14ce0da08b3b81f040fc5ea5fbc6240b5e42229de33",
+                        "001843b4be3c7a4f4a924f748af22e37211e342424a2c9fa4a1d74f27db9e76e95"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "001843b4be3c7a4f4a924f748af22e37211e342424a2c9fa4a1d74f27db9e76e95",
+                      "confirmation": {
+                        "blockHeight": 6252,
+                        "identifier": "001843b4be3c7a4f4a924f748af22e37211e342424a2c9fa4a1d74f27db9e76e95",
+                        "succeeded": true,
+                        "txHash": "8b9cfed8a8a58f0ab3de555a981134cf5edd200dcf18d1300a656bb476ea3a32"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "e38de8642312b35f6a80341ffc300aac3fd4d07e3aae0561a2e81627f03c34b0",
+                      "identifiers": [
+                        "0048402f1ad2b45e27d6aabe0222491902709eb9f7f3a1a682dce1fc4d8572b1c8",
+                        "009357e6c6579c5eee8cb8c344a5d7d2b45b91ae6fa0e23ef8157e8ebcc069269e"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "009357e6c6579c5eee8cb8c344a5d7d2b45b91ae6fa0e23ef8157e8ebcc069269e",
+                      "confirmation": {
+                        "blockHeight": 6255,
+                        "identifier": "009357e6c6579c5eee8cb8c344a5d7d2b45b91ae6fa0e23ef8157e8ebcc069269e",
+                        "succeeded": true,
+                        "txHash": "e38de8642312b35f6a80341ffc300aac3fd4d07e3aae0561a2e81627f03c34b0"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "jobId": "5d75376ccfed17c8cd1059aee9c8e597",
+                "identity": {
+                  "intentSha256": "f371b1be595e5abd34a90d808e285499e206e2ab06edc9d42ebf14f5f99d0b11",
+                  "kind": "call",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "p256-webauthn"
+                  },
+                  "requestId": "f241c09112e11e2c78c07319d9614d6d:16"
+                },
+                "descriptorSha256": "c5a77ceb74c90216f5e4295dc337593eb6e0c7c72cdc57021a364498bdb89ae2",
+                "inputSha256": "7088f711e842f958abd1e6d3df088c47de4c48b66f8b35715ee0b61f00a26e0c",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 1,
+                  "preparedSteps": 1
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 6,
+                  "address": "14802fa84e647e11b6dc6f7e16343bf9fbcbc56b9110882b9594876b233cfbcd",
+                  "planHash": "ccb66c44c6d69960803a8a909f9aa1cf7ad3ac730c5c12dc94423a92fc3f9131",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "b55109c3ef663318334e9d3f373a298baa72e678c8bf4fa0db5c4cf79b4f2fef",
+                      "identifiers": [
+                        "00ce9da0e843605ddceb5ff41a8e68cb6aebd9d17d92459abfb8d237d4e425076e",
+                        "0045613ac84c544f30d8691715c264d1fea26aac0a7261e00b4bb94aa95e62b972"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "0045613ac84c544f30d8691715c264d1fea26aac0a7261e00b4bb94aa95e62b972",
+                      "confirmation": {
+                        "blockHeight": 6289,
+                        "identifier": "0045613ac84c544f30d8691715c264d1fea26aac0a7261e00b4bb94aa95e62b972",
+                        "succeeded": true,
+                        "txHash": "b55109c3ef663318334e9d3f373a298baa72e678c8bf4fa0db5c4cf79b4f2fef"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "jobId": "9afc8daa5b5bce33b22d3e4503aae506",
+                "identity": {
+                  "intentSha256": "ca0598d52d656cd4341f83da88d273d1d954f906d93ac80d6c28657bd59a5887",
+                  "kind": "call",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "p256-webauthn"
+                  },
+                  "requestId": "f241c09112e11e2c78c07319d9614d6d:10"
+                },
+                "descriptorSha256": "92fe322e6e8213647e547200fcb68e34a6bd76d29c7b3f4e15b30ad6ab4eb2bf",
+                "inputSha256": "d201935e2e378acb081ab99ec6a8365986501e560043c51e0701f02822236621",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 1,
+                  "preparedSteps": 1
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 5,
+                  "address": "14802fa84e647e11b6dc6f7e16343bf9fbcbc56b9110882b9594876b233cfbcd",
+                  "planHash": "876c029f29350129d83bac1e48b8f2bd8c4e7f3d52a3b52f0670493923f67b52",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "524606e672172d236a48455e37b97bd077e53c9e743566728c2c61d704d2ff99",
+                      "identifiers": [
+                        "003f66e3a1e91b811cb37506f51c019aea688da646b0099b512a6a182116afef71",
+                        "007f8af51a610132d8ceb020e97f4c54dbe0317158fbca38b2172cae34d5bc638c"
+                      ],
+                      "dispatchClaims": 1,
+                      "confirmation": {
+                        "blockHeight": 6260,
+                        "identifier": "003f66e3a1e91b811cb37506f51c019aea688da646b0099b512a6a182116afef71",
+                        "succeeded": true,
+                        "txHash": "524606e672172d236a48455e37b97bd077e53c9e743566728c2c61d704d2ff99"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "jobId": "e8bebef1573ad12af4cb3a17e75c57f1",
+                "identity": {
+                  "intentSha256": "52057bb03351e9dd16aba64d409bf51c46b994e3d5b30a1d615bece12ffdc899",
+                  "kind": "call",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "p256-webauthn"
+                  },
+                  "requestId": "f241c09112e11e2c78c07319d9614d6d:13"
+                },
+                "descriptorSha256": "4dc05d5534fe6784b3c0117fe05a9a83f02f25d1bf4782bf7030c509cd66c76b",
+                "inputSha256": "c89ee1bd2b95cd4229c8376b6992e797e6b6b92da3c05ac9e9a00ccd93f5175c",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 1,
+                  "preparedSteps": 1
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 6,
+                  "address": "14802fa84e647e11b6dc6f7e16343bf9fbcbc56b9110882b9594876b233cfbcd",
+                  "planHash": "5c7fb54aa6cd6e2e9af02edccd285c775feb448b8655ae459bae0072aaa99f43",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "e915f127610063431fe4160ae0cd26ce2651e69514dacb346f87277aa93c27bf",
+                      "identifiers": [
+                        "004b14ef12ccca611cad71e759d5ce3ffc4db1ff7ddae46e50e86e8b99aedb789f",
+                        "000d610258f42e402582cf84bd262923eeb2cc28ce0bd01540ae1e50d6ee503b91"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "000d610258f42e402582cf84bd262923eeb2cc28ce0bd01540ae1e50d6ee503b91",
+                      "confirmation": {
+                        "blockHeight": 6280,
+                        "identifier": "000d610258f42e402582cf84bd262923eeb2cc28ce0bd01540ae1e50d6ee503b91",
+                        "succeeded": true,
+                        "txHash": "e915f127610063431fe4160ae0cd26ce2651e69514dacb346f87277aa93c27bf"
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "dispatchClaims": 13,
+            "confirmed": 13,
+            "attemptsInstrumented": false,
+            "historyAudited": true
+          },
+          "hostSendAttempts": 13,
+          "duplicateSendAttempts": 0
+        }
+      ],
+      "attemptsInstrumented": true
+    },
+    "image": {
+      "scope": "local-production-image-native-host-job-restarts",
+      "source": {
+        "commit": "c128b3c5a34fb3165b2510a9ff9edd2b66b713f2",
+        "dirty": false,
+        "workspaceSha256": "5439304ad168c9392f926fcec558fef46b4ce3f75c2059d8affd1f79bdd3ee3e",
+        "fileCount": 1286
+      },
+      "fullReceiptSha256": "4368a1734e5b016cc31487a8f6291af706f5340b84f4cf66ce0a19e1aa506153",
+      "suiteReceiptSha256": "ae8f4b32c7dbf0b6daa1424825a8bb4b55532c2932eb85c1489f6886df6ca360",
+      "cases": [
+        {
+          "arm": "jubjub",
+          "operation": "create",
+          "verdict": "PASS",
+          "boundary": "deploy",
+          "durationMs": 48829,
+          "snapshotSha256": "9495c0deb4cc459f770cac4f84a9e05b6dbabe3b0452fe75adcc14a40c7e6a00"
+        },
+        {
+          "arm": "jubjub",
+          "operation": "create",
+          "verdict": "PASS",
+          "boundary": "call",
+          "durationMs": 203016,
+          "snapshotSha256": "39e451197cd1e6ba30ee5c500228ad7e52000835edd9a3c5a08f47e6c9934f85"
+        },
+        {
+          "arm": "jubjub",
+          "operation": "create",
+          "verdict": "PASS",
+          "snapshotSha256": "9c4e535c433f31d00bd342fa0b0792242cb913bba615592fff8eb1ef04fb1390"
+        },
+        {
+          "arm": "p256",
+          "operation": "create",
+          "verdict": "PASS",
+          "boundary": "deploy",
+          "durationMs": 32400,
+          "snapshotSha256": "8860e3d6bdec1c68c2b7a1117492a53b19c2d7bd4851d1cc8593dabdb2d68180"
+        },
+        {
+          "arm": "p256",
+          "operation": "create",
+          "verdict": "PASS",
+          "boundary": "call",
+          "durationMs": 200672,
+          "snapshotSha256": "1950c9a5ba1252839ac992ab18e646b61e08b0f0ecfa6f777d224a139edc23b2"
+        },
+        {
+          "arm": "p256",
+          "operation": "create",
+          "verdict": "PASS",
+          "snapshotSha256": "bdd21bd174e4076d7880503c95cc7be52657161761083abec57921b5627c9641"
+        }
+      ],
+      "final": [
+        {
+          "arm": "jubjub",
+          "snapshot": {
+            "jobs": [
+              {
+                "jobId": "28fe278000143cd1bda60a15045bcb7a",
+                "identity": {
+                  "intentSha256": "3aeba8d2e8a4c08de679b23eeabe67a8f040178c6263f5d8b3d32816cbf483d4",
+                  "kind": "call",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "jubjub-schnorr"
+                  },
+                  "requestId": "f164993b371036285b40bcd022f9c6a6:12"
+                },
+                "descriptorSha256": "0a7f82fed2a70edf58e2d5a3f755fd5652fa9d7b0ec6f943dac83953ee87efac",
+                "inputSha256": "c68b41dc2ee76ebb61d593274138f0f4764a5d6e50889259f5ed0c06865f36d8",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 1,
+                  "preparedSteps": 1
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 6,
+                  "address": "5bf8278fd6fd7a228a36a4a78615a24cb7011ee88edae32fa92f3ba1e25ff22e",
+                  "planHash": "853d4aa2644c332ab707ada78c777c713979f4749647ac8754f265c37e9eddb9",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "a44538c5669bfd3f4b10a903a0edfa38773f96be8c69adad20a41923c20749bf",
+                      "identifiers": [
+                        "00d6e6a592b83e09b04f4315a0a6cc2e51a1d2eed2e66a471173ae95136011984a",
+                        "003c8ea712ca8d53818dfab3241ae64ca53394bc1dc17de53280023e49a9549a5e"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "003c8ea712ca8d53818dfab3241ae64ca53394bc1dc17de53280023e49a9549a5e",
+                      "confirmation": {
+                        "blockHeight": 6616,
+                        "identifier": "003c8ea712ca8d53818dfab3241ae64ca53394bc1dc17de53280023e49a9549a5e",
+                        "succeeded": true,
+                        "txHash": "a44538c5669bfd3f4b10a903a0edfa38773f96be8c69adad20a41923c20749bf"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "jobId": "6d89519fdb4dcf664ab000ba19d42b8f",
+                "identity": {
+                  "intentSha256": "9a97aa7593c5fa545157988e8c7a3776b404d855ed395abe7c86567f61de7ff2",
+                  "kind": "call",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "jubjub-schnorr"
+                  },
+                  "requestId": "f164993b371036285b40bcd022f9c6a6:9"
+                },
+                "descriptorSha256": "c30738febb978f905d46ed938479e7c41a65e4943c51b6ee681c27ec385e858b",
+                "inputSha256": "213b5b33862872d5f104fbccb879d25203ee7a5c53268995b6934c9b745adba7",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 1,
+                  "preparedSteps": 1
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 5,
+                  "address": "5bf8278fd6fd7a228a36a4a78615a24cb7011ee88edae32fa92f3ba1e25ff22e",
+                  "planHash": "cad48ebb7774231daa0f06178dcf0e1f1a1a524e647d5d4865bd3c7fd57a9cf2",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "786b188203c90e5ca9f615a8c3a63e98ab68c1feaf14d70c98cd6a5a58845af8",
+                      "identifiers": [
+                        "00d066b3ae38d39c556141bb2d50c8f7cee34625f126240c643186ecd010e3c093",
+                        "009fff91e6c1ac1388a3efdba61b1a9958da40a66bad0cbc39103dc9f0addd2c11"
+                      ],
+                      "dispatchClaims": 1,
+                      "confirmation": {
+                        "blockHeight": 6585,
+                        "identifier": "00d066b3ae38d39c556141bb2d50c8f7cee34625f126240c643186ecd010e3c093",
+                        "succeeded": true,
+                        "txHash": "786b188203c90e5ca9f615a8c3a63e98ab68c1feaf14d70c98cd6a5a58845af8"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "jobId": "820786801dd611130f01b43ce1e4e91f",
+                "identity": {
+                  "intentSha256": "54dcdb8a82b4883bf4d6e36ae95e0254db5e0ae9c06c7ef337e8661d0a4a4586",
+                  "kind": "call",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "jubjub-schnorr"
+                  },
+                  "requestId": "f164993b371036285b40bcd022f9c6a6:15"
+                },
+                "descriptorSha256": "79d61f525116d2ce614941ee4d8c6f44192997bede4af23750b70fec0cfe4baf",
+                "inputSha256": "bae944e04243e68f7b937eacb03bbff2369ca78d62b211ef74055533ab5df706",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 1,
+                  "preparedSteps": 1
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 6,
+                  "address": "5bf8278fd6fd7a228a36a4a78615a24cb7011ee88edae32fa92f3ba1e25ff22e",
+                  "planHash": "d05db43c2bd6bea09efed3b63c199f7780a77a729d56467c856b86da5b533303",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "7a5220db5a58caac9ad939f7922d70635fe1e9bde7aad5773c059d1a041c4e90",
+                      "identifiers": [
+                        "002ca5a61711aba48a17cc0db38c54249c16fc9b5285a73929a06f414db0086996",
+                        "0015b5eaaef0689b36c93144e26156dd4611cf587008ee2c9830eeff0d5a53ab59"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "0015b5eaaef0689b36c93144e26156dd4611cf587008ee2c9830eeff0d5a53ab59",
+                      "confirmation": {
+                        "blockHeight": 6626,
+                        "identifier": "0015b5eaaef0689b36c93144e26156dd4611cf587008ee2c9830eeff0d5a53ab59",
+                        "succeeded": true,
+                        "txHash": "7a5220db5a58caac9ad939f7922d70635fe1e9bde7aad5773c059d1a041c4e90"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "jobId": "8e4fac6430b3cd56a55385b66c96237a",
+                "identity": {
+                  "intentSha256": "2a8544e25efd8409ae9e13111b2e1656d8b1958d5fc0a8deab8e57165dc27bed",
+                  "kind": "deploy",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "jubjub-schnorr"
+                  },
+                  "requestId": "f164993b371036285b40bcd022f9c6a6:5"
+                },
+                "descriptorSha256": "c7e4d0d31ed43e7e62799c6d82717eb56e9853c024da2b7f0959c56b105787de",
+                "inputSha256": "1dd58c66c35eee2bc09ea5c30d478a66e7531f45112f08441eab23ebddcd72d9",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 10,
+                  "preparedSteps": 10
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 43,
+                  "address": "5bf8278fd6fd7a228a36a4a78615a24cb7011ee88edae32fa92f3ba1e25ff22e",
+                  "planHash": "8abdbc10fd920f65c1d91c695b7c3b144aaa16b1891ec69e9c7deb96103db0db",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "c46f1110f0a06891e6979e559f5874483dbd56335aefd071f5aea35fbe5db5a2",
+                      "identifiers": [
+                        "00e758e0d58360bef85dd2015ae5036bb63490a03163429bc1441a1cb11ad82f68",
+                        "00d7412cdd20e3a89a165b6aee4a0cecaa74acf04a77266cbd6cf4db23ec626756"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00d7412cdd20e3a89a165b6aee4a0cecaa74acf04a77266cbd6cf4db23ec626756",
+                      "confirmation": {
+                        "blockHeight": 6516,
+                        "identifier": "00d7412cdd20e3a89a165b6aee4a0cecaa74acf04a77266cbd6cf4db23ec626756",
+                        "succeeded": true,
+                        "txHash": "c46f1110f0a06891e6979e559f5874483dbd56335aefd071f5aea35fbe5db5a2"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "debf5cc8aa198bdac17608c0443dc37985f91271710e0656c8807f6857bf4a0e",
+                      "identifiers": [
+                        "001c58605744539ff4fa3a341e60f9d175c33fc1cd167f0d937860256935eb5ea9",
+                        "006de06c8389d5b151769a80a73089c16cce9ae7ccdc0b1551bf4e9b98798899ac"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "006de06c8389d5b151769a80a73089c16cce9ae7ccdc0b1551bf4e9b98798899ac",
+                      "confirmation": {
+                        "blockHeight": 6553,
+                        "identifier": "006de06c8389d5b151769a80a73089c16cce9ae7ccdc0b1551bf4e9b98798899ac",
+                        "succeeded": true,
+                        "txHash": "debf5cc8aa198bdac17608c0443dc37985f91271710e0656c8807f6857bf4a0e"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "9d12b650857fbcc475d35e766d53a34521beae186056d8f210876a018136a8e5",
+                      "identifiers": [
+                        "00d659329f0d696e36dbd8f179e4ff94c485f4715f42033ffffe8ad044151fa584",
+                        "00cf7d0f7c08cc4232064f6b5f6bcaa5957f396b8f3499cdb46672998e14fe513c"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00cf7d0f7c08cc4232064f6b5f6bcaa5957f396b8f3499cdb46672998e14fe513c",
+                      "confirmation": {
+                        "blockHeight": 6557,
+                        "identifier": "00cf7d0f7c08cc4232064f6b5f6bcaa5957f396b8f3499cdb46672998e14fe513c",
+                        "succeeded": true,
+                        "txHash": "9d12b650857fbcc475d35e766d53a34521beae186056d8f210876a018136a8e5"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "0375ca0cc57c75ec1b471b3242cf754f84a08830b20753b72eb5c0ae4bdb6d3b",
+                      "identifiers": [
+                        "003b0e02e5526c4b4d03bc7154c0d9f558afcf80c40a0d467ed2e1b3fc5429dacb",
+                        "0020acb7bcf33324e3385d18963b41318a1f4115d26363df41cabf467de5ab0799"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "0020acb7bcf33324e3385d18963b41318a1f4115d26363df41cabf467de5ab0799",
+                      "confirmation": {
+                        "blockHeight": 6560,
+                        "identifier": "0020acb7bcf33324e3385d18963b41318a1f4115d26363df41cabf467de5ab0799",
+                        "succeeded": true,
+                        "txHash": "0375ca0cc57c75ec1b471b3242cf754f84a08830b20753b72eb5c0ae4bdb6d3b"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "82bded2bc6332a19cc4df0e21f0e26a9bc977faed65ed52cd9ea9b665afce391",
+                      "identifiers": [
+                        "009573fc32e54cbdb3dc07de71f59899fb65f5da0dc7c53628fd3ce4542ec50158",
+                        "00822a6290f4b5026b3bd7cd4443706fcbf07c3d0d9543624195e57a6ea0b5f3be"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00822a6290f4b5026b3bd7cd4443706fcbf07c3d0d9543624195e57a6ea0b5f3be",
+                      "confirmation": {
+                        "blockHeight": 6563,
+                        "identifier": "00822a6290f4b5026b3bd7cd4443706fcbf07c3d0d9543624195e57a6ea0b5f3be",
+                        "succeeded": true,
+                        "txHash": "82bded2bc6332a19cc4df0e21f0e26a9bc977faed65ed52cd9ea9b665afce391"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "cb0ecce5158dde692aa5cb4431d903433c5b4fcd9d6f3200198755cac9652bbe",
+                      "identifiers": [
+                        "00b62e4b24044bc4753c90c4b91f9e65cacc18c0a4f796aaa921005ca17ca185ce",
+                        "0013412aa0d0892af3267fde1722cdc73631d6457d92b4c045174788946dfb7d83"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "0013412aa0d0892af3267fde1722cdc73631d6457d92b4c045174788946dfb7d83",
+                      "confirmation": {
+                        "blockHeight": 6566,
+                        "identifier": "0013412aa0d0892af3267fde1722cdc73631d6457d92b4c045174788946dfb7d83",
+                        "succeeded": true,
+                        "txHash": "cb0ecce5158dde692aa5cb4431d903433c5b4fcd9d6f3200198755cac9652bbe"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "3f1ee5330ceaa838e45a9d849c2b77e3e05e60d81c77cd7a31407bae9c2a4ddb",
+                      "identifiers": [
+                        "001ce24599413564307f733c3617962879e7d4b2ae335bc1076377eb68005c43b4",
+                        "00184030270c7198bb28e1acf879557219bca07f9fe99ec47f4d668cf4e4c5b9b1"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00184030270c7198bb28e1acf879557219bca07f9fe99ec47f4d668cf4e4c5b9b1",
+                      "confirmation": {
+                        "blockHeight": 6569,
+                        "identifier": "00184030270c7198bb28e1acf879557219bca07f9fe99ec47f4d668cf4e4c5b9b1",
+                        "succeeded": true,
+                        "txHash": "3f1ee5330ceaa838e45a9d849c2b77e3e05e60d81c77cd7a31407bae9c2a4ddb"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "649e490fddd59fe2abeeee42bf0458e8a92ed8fac9162267c2aa0e66efc6bbc3",
+                      "identifiers": [
+                        "00ff3f292afa64a4b105fe825c53adacbcd7297f003d448ff4cdddd32e057af75d",
+                        "00ec10f60c6fdd58e6165fc4a973e6be58be5f6a88c604b19c73bac50e2800f75a"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00ec10f60c6fdd58e6165fc4a973e6be58be5f6a88c604b19c73bac50e2800f75a",
+                      "confirmation": {
+                        "blockHeight": 6573,
+                        "identifier": "00ec10f60c6fdd58e6165fc4a973e6be58be5f6a88c604b19c73bac50e2800f75a",
+                        "succeeded": true,
+                        "txHash": "649e490fddd59fe2abeeee42bf0458e8a92ed8fac9162267c2aa0e66efc6bbc3"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "e824ea6619d4fc25c4d1e55b61e9581c74fd7e85cf4bbfb2fde7bebe92023c7c",
+                      "identifiers": [
+                        "00275b198bbbd387ea4d3c4bb5c9017a3d7deb64baead1d773469ca2f13ade2eb1",
+                        "00d3190291c3028dbdac13bf0fce54a3623d45c5ac4c966a836387216107db2e02"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00d3190291c3028dbdac13bf0fce54a3623d45c5ac4c966a836387216107db2e02",
+                      "confirmation": {
+                        "blockHeight": 6576,
+                        "identifier": "00d3190291c3028dbdac13bf0fce54a3623d45c5ac4c966a836387216107db2e02",
+                        "succeeded": true,
+                        "txHash": "e824ea6619d4fc25c4d1e55b61e9581c74fd7e85cf4bbfb2fde7bebe92023c7c"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "6a5f4a85dfd2cda1ff0d4adc427663ba8342abcaad85e7cf7a18101f81c328a7",
+                      "identifiers": [
+                        "007891436136c3e8fb875fba32c229b683e8f464e012bc4bc2356ee7c56b9bd592",
+                        "00eb4b1bc794de20e986478f38b0a712700da79eeed164bc17c775bfa7daf6c097"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00eb4b1bc794de20e986478f38b0a712700da79eeed164bc17c775bfa7daf6c097",
+                      "confirmation": {
+                        "blockHeight": 6579,
+                        "identifier": "00eb4b1bc794de20e986478f38b0a712700da79eeed164bc17c775bfa7daf6c097",
+                        "succeeded": true,
+                        "txHash": "6a5f4a85dfd2cda1ff0d4adc427663ba8342abcaad85e7cf7a18101f81c328a7"
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "dispatchClaims": 13,
+            "confirmed": 13,
+            "attemptsInstrumented": false,
+            "historyAudited": true
+          },
+          "containerId": "7fa28d6ad3e19408c6d42055e6ae0d1db9bd1a41a38f4d83f7e7913621a863ff",
+          "mounts": [
+            {
+              "type": "bind",
+              "destination": "/data/contract",
+              "readOnly": true
+            },
+            {
+              "type": "volume",
+              "destination": "/data/state",
+              "readOnly": false,
+              "volume": "mn-passport-hostjobs-20261027-image-v2-jubjub-state"
+            },
+            {
+              "type": "bind",
+              "destination": "/private/host-key",
+              "readOnly": true
+            },
+            {
+              "type": "bind",
+              "destination": "/private/host-token",
+              "readOnly": true
+            },
+            {
+              "type": "bind",
+              "destination": "/private/job-key",
+              "readOnly": true
+            },
+            {
+              "type": "bind",
+              "destination": "/private/job-token",
+              "readOnly": true
+            },
+            {
+              "type": "volume",
+              "destination": "/data/contract/node_modules",
+              "readOnly": true,
+              "volume": "mn-passport-hostjobs-20261027-linux-deps"
+            }
+          ]
+        },
+        {
+          "arm": "p256",
+          "snapshot": {
+            "jobs": [
+              {
+                "jobId": "259b55d0426730ba822f926f6990c79c",
+                "identity": {
+                  "intentSha256": "0c7eb5058815e0ec143ac59a6605ca5708307e8f439fb0cd2f0d2e6ce02e0930",
+                  "kind": "call",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "p256-webauthn"
+                  },
+                  "requestId": "5c75858a70fa65b5a8ecacb1be75ebaa:16"
+                },
+                "descriptorSha256": "c969ba2a4c9795d5a4e5412933ea74dd15cfac107705b3ed5b32ed59b880cd3c",
+                "inputSha256": "21dad0ae8f6bd83a05bc373034ae192b0102bc83ce7e2ca3f8ccae80bccadbe2",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 1,
+                  "preparedSteps": 1
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 6,
+                  "address": "e5651219e7effa84694d49f107bef808e362f20b61e6c81215cf6df66492132f",
+                  "planHash": "37b6bc85c8ab6141a3148788359920546852a8e9136d275035159e9a962c454c",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "b9e3c4f2447a1e648ac353c99555510dc95b751faaee590089dac85e287550b2",
+                      "identifiers": [
+                        "00c57cfdd9db791bd600f0ab27ebca300c0d5d76dad369c827ddd94e4560ef668d",
+                        "00363f1928910409044fa42c9291584d4136dd6cce64ca02460dafab8b0a1fc734"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00363f1928910409044fa42c9291584d4136dd6cce64ca02460dafab8b0a1fc734",
+                      "confirmation": {
+                        "blockHeight": 6814,
+                        "identifier": "00363f1928910409044fa42c9291584d4136dd6cce64ca02460dafab8b0a1fc734",
+                        "succeeded": true,
+                        "txHash": "b9e3c4f2447a1e648ac353c99555510dc95b751faaee590089dac85e287550b2"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "jobId": "3aebef59189e023265520b8b74ba3520",
+                "identity": {
+                  "intentSha256": "77d3b546c20b8314617150ba8c46f3582cebe34733928bb16c42d03550cdb2b4",
+                  "kind": "deploy",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "p256-webauthn"
+                  },
+                  "requestId": "5c75858a70fa65b5a8ecacb1be75ebaa:5"
+                },
+                "descriptorSha256": "fa7474f7741e8ea688ed1b0a0fd7c1e29f35fd82ea706de1eec294d7b022a5a3",
+                "inputSha256": "f67f2f8efc2c84885f9da0f1ec5d896669e48f63d298036a0dc9d53263b641a6",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 10,
+                  "preparedSteps": 10
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 43,
+                  "address": "e5651219e7effa84694d49f107bef808e362f20b61e6c81215cf6df66492132f",
+                  "planHash": "8d6c2437e28d01d9237860f80ec9b86e9c9659859633b1dfb4f80f38f812acd5",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "247676e55f8cf542d45fdaa133b3f1abf38ace1bbb3b19265b146323ef2f2e33",
+                      "identifiers": [
+                        "005a6ac79c4f7ebb2c4137b10e2efecbde1924c863c5555aa288dbe224cd221b12",
+                        "006bf70796c71d6003049efd9429b5a136922589b81c5d77ac956158157492678d"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "006bf70796c71d6003049efd9429b5a136922589b81c5d77ac956158157492678d",
+                      "confirmation": {
+                        "blockHeight": 6663,
+                        "identifier": "006bf70796c71d6003049efd9429b5a136922589b81c5d77ac956158157492678d",
+                        "succeeded": true,
+                        "txHash": "247676e55f8cf542d45fdaa133b3f1abf38ace1bbb3b19265b146323ef2f2e33"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "e770ef67f210a131386fb0a19a5c65b4a4984e9156dbc8c8440a13e6e5ea5d8c",
+                      "identifiers": [
+                        "0019addc3b2d1a371efc62837c19501458832889284b09747d3a2470fd57635322",
+                        "0040982fa2f9d9bb45cfe1e5d16ac967fb7775aac3451c8bcbf6d7322aa189a145"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "0040982fa2f9d9bb45cfe1e5d16ac967fb7775aac3451c8bcbf6d7322aa189a145",
+                      "confirmation": {
+                        "blockHeight": 6697,
+                        "identifier": "0040982fa2f9d9bb45cfe1e5d16ac967fb7775aac3451c8bcbf6d7322aa189a145",
+                        "succeeded": true,
+                        "txHash": "e770ef67f210a131386fb0a19a5c65b4a4984e9156dbc8c8440a13e6e5ea5d8c"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "9b462928cf4d7a5d1a349912afe74d84768874e9451912e572046fe184d25482",
+                      "identifiers": [
+                        "00eafef45a85441d94ece885e570a8a994bb856111c0401db7f5fc1652a389ce50",
+                        "0090fe9ac28c04f86ccd5b51788cf28e6af8a7b128daa1ac3e71cf43724f58ead1"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "0090fe9ac28c04f86ccd5b51788cf28e6af8a7b128daa1ac3e71cf43724f58ead1",
+                      "confirmation": {
+                        "blockHeight": 6700,
+                        "identifier": "0090fe9ac28c04f86ccd5b51788cf28e6af8a7b128daa1ac3e71cf43724f58ead1",
+                        "succeeded": true,
+                        "txHash": "9b462928cf4d7a5d1a349912afe74d84768874e9451912e572046fe184d25482"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "261619343490e2d5a41364bf18b700bc37d9b0f94542c638933cd38f5a4aa17d",
+                      "identifiers": [
+                        "004ac6db7bcf118ea928b11262377a870ec99706832636d6460080f5d9bfbed072",
+                        "00c9d1ea474a0208d1736b9614a6afe6cd79ce4c6d90030163a76a2b7ee4cda3ac"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00c9d1ea474a0208d1736b9614a6afe6cd79ce4c6d90030163a76a2b7ee4cda3ac",
+                      "confirmation": {
+                        "blockHeight": 6703,
+                        "identifier": "00c9d1ea474a0208d1736b9614a6afe6cd79ce4c6d90030163a76a2b7ee4cda3ac",
+                        "succeeded": true,
+                        "txHash": "261619343490e2d5a41364bf18b700bc37d9b0f94542c638933cd38f5a4aa17d"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "98d65830282fe913468056ff8525e88236ad0fc618efc55a7d59e4f20a46ad8a",
+                      "identifiers": [
+                        "007a94d71d4ffe111f9871bc23a0d2a3bd6c14998f3c25744a28b5124c6d72e739",
+                        "000e1a8f8d921cfddf9cd0cf4a07d62254e371a5c5891356c56694cb9cdab627ea"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "000e1a8f8d921cfddf9cd0cf4a07d62254e371a5c5891356c56694cb9cdab627ea",
+                      "confirmation": {
+                        "blockHeight": 6706,
+                        "identifier": "000e1a8f8d921cfddf9cd0cf4a07d62254e371a5c5891356c56694cb9cdab627ea",
+                        "succeeded": true,
+                        "txHash": "98d65830282fe913468056ff8525e88236ad0fc618efc55a7d59e4f20a46ad8a"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "671ddf94858d423a00e45fd824fd0230bfca8c2c8553a529da29785acb976951",
+                      "identifiers": [
+                        "00aaf45c923b6ef0827c3e2779a6c825b40bb82dd52c4777df6463c2124b8a75b3",
+                        "00c71d0c5cf7d63cf9e9afa21aa59a342d92b17cd45643688e6934801ba69e6349"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00c71d0c5cf7d63cf9e9afa21aa59a342d92b17cd45643688e6934801ba69e6349",
+                      "confirmation": {
+                        "blockHeight": 6710,
+                        "identifier": "00c71d0c5cf7d63cf9e9afa21aa59a342d92b17cd45643688e6934801ba69e6349",
+                        "succeeded": true,
+                        "txHash": "671ddf94858d423a00e45fd824fd0230bfca8c2c8553a529da29785acb976951"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "4dbf4d4f5c3f75f7f6a40d15b94d94224083394d11c36913699e3b972d6db362",
+                      "identifiers": [
+                        "000ad4d98589e860ea3fba313775112835e745c0154293c5be644b9c2fb3a396a0",
+                        "00c51fbc63308234026ee0d57c8c46777a55ec49e9114deb271dce58a16b0a07b4"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00c51fbc63308234026ee0d57c8c46777a55ec49e9114deb271dce58a16b0a07b4",
+                      "confirmation": {
+                        "blockHeight": 6713,
+                        "identifier": "00c51fbc63308234026ee0d57c8c46777a55ec49e9114deb271dce58a16b0a07b4",
+                        "succeeded": true,
+                        "txHash": "4dbf4d4f5c3f75f7f6a40d15b94d94224083394d11c36913699e3b972d6db362"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "7fd216188f77546589553d626f30a8c388d8134c801b00e1550f79475ae19099",
+                      "identifiers": [
+                        "00c3985cf3900363a6997da8ef360596acb86c0daeaf1f25105b6ca0026c42b7c1",
+                        "000815dcd0b5044c943463d8a7e94745459d91d8cddfb577715c693759c01dc28e"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "000815dcd0b5044c943463d8a7e94745459d91d8cddfb577715c693759c01dc28e",
+                      "confirmation": {
+                        "blockHeight": 6717,
+                        "identifier": "000815dcd0b5044c943463d8a7e94745459d91d8cddfb577715c693759c01dc28e",
+                        "succeeded": true,
+                        "txHash": "7fd216188f77546589553d626f30a8c388d8134c801b00e1550f79475ae19099"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "3738adf15f1a3c87743ea4fc61102bfb2fa8bffe46820c7ca487d4810590876b",
+                      "identifiers": [
+                        "005f9bb2763da80043625680c0293334ac01338adc2b9b021e3202b23cde0e7c6b",
+                        "00c66252d624d757ef4d40db267c5e8b636a7ed5216e745918a9cc82617bb28171"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00c66252d624d757ef4d40db267c5e8b636a7ed5216e745918a9cc82617bb28171",
+                      "confirmation": {
+                        "blockHeight": 6720,
+                        "identifier": "00c66252d624d757ef4d40db267c5e8b636a7ed5216e745918a9cc82617bb28171",
+                        "succeeded": true,
+                        "txHash": "3738adf15f1a3c87743ea4fc61102bfb2fa8bffe46820c7ca487d4810590876b"
+                      }
+                    },
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "fc3a15abc931e543fcee9661d2e1db93e3dc3b52caeef5758abaefd1143d4021",
+                      "identifiers": [
+                        "0091a36aa6d82ab089b0676221413cd002942db388a9de878f3dbd47c073c1f76c",
+                        "008897383aaed8421895ef78e0e0e8b7466da80e0fab6420bcbea1dc5c6558799e"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "008897383aaed8421895ef78e0e0e8b7466da80e0fab6420bcbea1dc5c6558799e",
+                      "confirmation": {
+                        "blockHeight": 6723,
+                        "identifier": "008897383aaed8421895ef78e0e0e8b7466da80e0fab6420bcbea1dc5c6558799e",
+                        "succeeded": true,
+                        "txHash": "fc3a15abc931e543fcee9661d2e1db93e3dc3b52caeef5758abaefd1143d4021"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "jobId": "6a665a6dbe090c8dee6c1b43907d9b3d",
+                "identity": {
+                  "intentSha256": "ddfbb8b9a9acd55ca8061fcf5e99ecf7fdd21943218bfb69944693b51ca9f317",
+                  "kind": "call",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "p256-webauthn"
+                  },
+                  "requestId": "5c75858a70fa65b5a8ecacb1be75ebaa:10"
+                },
+                "descriptorSha256": "97a7029a0762414dcf68ad4389ac48d50430173861a171d9cdc5ea64719df935",
+                "inputSha256": "88b8a43fc08d1c73692d7c15a8d48976d18442f56722a6b286feb110f40749f2",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 1,
+                  "preparedSteps": 1
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 5,
+                  "address": "e5651219e7effa84694d49f107bef808e362f20b61e6c81215cf6df66492132f",
+                  "planHash": "70fb2f7a5f8d5fd4813cf080b43f7c3084e1903b3135f2251b220be64ad57fcb",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "372e4a0be6dbc883d96b924d48634817199dae3fb17617683a57fbdb6446b15c",
+                      "identifiers": [
+                        "004c782aec94dc7246c5673ba37ccb9b69edc406beb9f4bc9276891b7f52f1258b",
+                        "005a935e886fb5c2890b3c05f154608ca50c58897954bbb9049bc1b4871212e8cf"
+                      ],
+                      "dispatchClaims": 1,
+                      "confirmation": {
+                        "blockHeight": 6729,
+                        "identifier": "004c782aec94dc7246c5673ba37ccb9b69edc406beb9f4bc9276891b7f52f1258b",
+                        "succeeded": true,
+                        "txHash": "372e4a0be6dbc883d96b924d48634817199dae3fb17617683a57fbdb6446b15c"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "jobId": "e57d48b8b678dba2994dc93bd498a191",
+                "identity": {
+                  "intentSha256": "db4a628c3ef46e1f3ea5d39fdfe0ab38fca06b6a84e4c5bb11110f7ccaaa28d1",
+                  "kind": "call",
+                  "pins": {
+                    "bindingId": "acc-s3r1.1",
+                    "manifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+                    "networkId": "undeployed",
+                    "scheme": "p256-webauthn"
+                  },
+                  "requestId": "5c75858a70fa65b5a8ecacb1be75ebaa:13"
+                },
+                "descriptorSha256": "2f06a5e27996e48f1befd2668fb7978252396a5a5c7e5f9f883e08b3a3303d3d",
+                "inputSha256": "d6c1c794b2e496e4d2c30844cb974a41282b1679fb8cbd7dc059a0bb28b12c47",
+                "state": "done",
+                "milestones": {
+                  "confirmedSteps": 1,
+                  "preparedSteps": 1
+                },
+                "host": {
+                  "phase": "complete",
+                  "revision": 6,
+                  "address": "e5651219e7effa84694d49f107bef808e362f20b61e6c81215cf6df66492132f",
+                  "planHash": "d58ecf6d6851097b7fa5df0ab19c6c30e4cf3d2ce12eb51e51dd9dcc58b6eaae",
+                  "steps": [
+                    {
+                      "phase": "confirmed",
+                      "bytesSha256": "a95fc33a75a757747154371b2a15835287df2df7dde7e0ac81ad275e02446b71",
+                      "identifiers": [
+                        "0017af3077fc969dbcc65ca6c4c3d9791877ddb450f24287d2a44936808f50813f",
+                        "00d6467135d0e68d84eedc7de5798e103b3905c864828074beafcb7a0ad37506a1"
+                      ],
+                      "dispatchClaims": 1,
+                      "submissionId": "00d6467135d0e68d84eedc7de5798e103b3905c864828074beafcb7a0ad37506a1",
+                      "confirmation": {
+                        "blockHeight": 6782,
+                        "identifier": "00d6467135d0e68d84eedc7de5798e103b3905c864828074beafcb7a0ad37506a1",
+                        "succeeded": true,
+                        "txHash": "a95fc33a75a757747154371b2a15835287df2df7dde7e0ac81ad275e02446b71"
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "dispatchClaims": 13,
+            "confirmed": 13,
+            "attemptsInstrumented": false,
+            "historyAudited": true
+          },
+          "containerId": "cf6abb107cd31906884ab85418dae7a73d687b55a64e4ff85d8b086a0340ae6d",
+          "mounts": [
+            {
+              "type": "bind",
+              "destination": "/data/contract",
+              "readOnly": true
+            },
+            {
+              "type": "volume",
+              "destination": "/data/state",
+              "readOnly": false,
+              "volume": "mn-passport-hostjobs-20261027-image-v2-p256-state"
+            },
+            {
+              "type": "bind",
+              "destination": "/private/host-key",
+              "readOnly": true
+            },
+            {
+              "type": "bind",
+              "destination": "/private/host-token",
+              "readOnly": true
+            },
+            {
+              "type": "bind",
+              "destination": "/private/job-key",
+              "readOnly": true
+            },
+            {
+              "type": "bind",
+              "destination": "/private/job-token",
+              "readOnly": true
+            },
+            {
+              "type": "volume",
+              "destination": "/data/contract/node_modules",
+              "readOnly": true,
+              "volume": "mn-passport-hostjobs-20261027-linux-deps"
+            }
+          ]
+        }
+      ],
+      "imageId": "sha256:ea189f3f7214e6c09e1734a1921efe46f0fbe0ebee6341ddc8baf864358deeda",
+      "platform": "linux/amd64",
+      "dockerHostPlatform": "linux/arm64",
+      "depsVolume": "mn-passport-hostjobs-20261027-linux-deps",
+      "imageStates": [
+        {
+          "arm": "jubjub",
+          "volume": "mn-passport-hostjobs-20261027-image-v2-jubjub-state",
+          "filesystem": {
+            "type": 61267,
+            "nativeLinuxVolume": true
+          },
+          "probe": {
+            "first": true,
+            "second": true,
+            "head": 1,
+            "uid": 501
+          }
+        },
+        {
+          "arm": "p256",
+          "volume": "mn-passport-hostjobs-20261027-image-v2-p256-state",
+          "filesystem": {
+            "type": 61267,
+            "nativeLinuxVolume": true
+          },
+          "probe": {
+            "first": true,
+            "second": true,
+            "head": 1,
+            "uid": 501
+          }
+        }
+      ],
+      "attemptsInstrumented": false
+    }
+  },
+  "productionContinuity": {
+    "sourceNativeCommit": "0f90ab04f307a445cace3bfec60859b32a6f78fc",
+    "imageHarnessCommit": "c128b3c5a34fb3165b2510a9ff9edd2b66b713f2",
+    "productionFileCount": 291,
+    "unchanged": true,
+    "inputsSha256": "0b10401920c29a42f78d97d993b3346688acf44e152d6e6e90a24fad7eb74bef",
+    "note": "Harness/docs-only change; qualified source-native production bytes remain identical. Each suite separately pins whole-workspace source."
+  },
+  "priorFailures": [
+    {
+      "verdict": "FAIL",
+      "source": "dbd0c4d489c7c9aebb7d3b010a22d8f40a6d2c34",
+      "stage": "host-startup",
+      "cause": "Harness passed authoriser scheme as an extra service-pin property; strict descriptor coordinator refused configuration.",
+      "ownerAccountOperationStarted": false,
+      "hostJournalCreated": false,
+      "jobJournalCreated": false,
+      "sourceRuntimeReferenceEndAudit": "unchanged",
+      "originalFixturePreserved": true,
+      "replayed": false
+    },
+    {
+      "verdict": "FAIL",
+      "source": "eabfc1cfd0362a939f8291ce4506900992860743",
+      "stage": "expected activation post-submit crash classification",
+      "cause": "Harness expected MutationUnsettled; existing scoped native chain wraps call submission as InternalError.",
+      "earlierCasesPassed": 2,
+      "nativeDeploymentWavesConfirmed": 10,
+      "activationCrashObserved": true,
+      "ownerIntentPending": true,
+      "originalFixturePreserved": true,
+      "sourceRuntimeReferenceEndAudit": "unchanged",
+      "replayed": false
+    },
+    {
+      "verdict": "FAIL",
+      "source": "0f90ab04f307a445cace3bfec60859b32a6f78fc",
+      "scope": "macOS bind-mounted image state",
+      "observations": {
+        "serviceHealthy": true,
+        "jobAccepted": true,
+        "jobState": "unknown",
+        "publishedHostRevisions": 0,
+        "uncommittedTemporaryFiles": 1,
+        "dispatchClaimsObserved": 0,
+        "independentScratchCASWritesPassed": 3,
+        "originalKept": true,
+        "replayed": false
+      },
+      "termination": "Operator ended unqualifiable attempt; SIGINT exposed signal-only child exit detection bug, then exact parent SIGKILL and owned container stop. Outer suite reports failure. Inner receipt remains original IN_PROGRESS and must not be cited as success.",
+      "endAudit": "source/runtime/reference unchanged",
+      "next": "Use separate retained Linux filesystem state volume and immutable read-only snapshot transport; macOS bind-backed state remains unqualified, exact fsync/close failure cause not established."
+    }
+  ],
+  "limits": [
+    "Local synthetic software credentials; no real-provider or full-Lace acceptance.",
+    "Source native submit-entry count differs from image durable dispatch claims and inclusion observations.",
+    "Local Linux/amd64 image emulated on arm64; no registry publication or released-image acceptance.",
+    "Linux ext volume state only; macOS bind-backed durable state remains unqualified.",
+    "No automatic scanner, distributed wallet lock, persistent budget or unknown/no-send repair.",
+    "Existing exact-value shielded withdrawal guard and release limitations unchanged."
+  ]
+}
