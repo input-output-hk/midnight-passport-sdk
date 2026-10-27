@@ -156,7 +156,7 @@ export function chainRoute(backend: ChainBackend, options: ChainRouteOptions): R
         failure: 'the sponsor could not balance the transaction',
         parse: (b) => {
           const tx = bytes(b.tx, 'tx');
-          return async () => ({ tx: hex(await backend.balance(tx)) });
+          return async () => ({ tx: hex(await queue(() => backend.balance(tx))) });
         },
       },
     ],
@@ -167,7 +167,7 @@ export function chainRoute(backend: ChainBackend, options: ChainRouteOptions): R
         failure: 'the sponsor could not submit the transaction',
         parse: (b) => {
           const tx = bytes(b.tx, 'tx');
-          return async () => ({ txId: await backend.submit(tx) });
+          return async () => ({ txId: await queue(() => backend.submit(tx)) });
         },
       },
     ],

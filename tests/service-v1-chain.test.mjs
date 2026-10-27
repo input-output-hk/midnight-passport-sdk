@@ -164,3 +164,96 @@ test('v1 routes reject malformed inputs before work and sanitize a failed proof 
   );
   assert.equal(JSON.stringify(polled).includes('private proof-server detail'), false);
 });
+
+test(
+  'legacy and v1 balance/submit operations respect the shared sponsor queue',
+  { timeout: 5000 },
+  async (t) => {
+    let release = () => {};
+    const blocked = new Promise((resolve) => {
+      release = () => resolve(undefined);
+    });
+    const runExclusive = serial(8);
+    const held = runExclusive(() => blocked);
+    /** @type {string[]} */ const calls = [];
+    /** @type {import('../packages/service/dist/index.js').ChainBackend} */
+    const backend = {
+      check: async () => [],
+      prove: async () => byte(1),
+      proveTx: async () => byte(1),
+      balance: async () => {
+        calls.push('balance');
+        return byte(1);
+      },
+      submit: async () => {
+        calls.push('submit');
+        return 'submission';
+      },
+      deploy: async () => ({ address: 'ab'.repeat(32), txHashes: [] }),
+      sponsorKeys: () => ({ coinPublicKey: '', encryptionPublicKey: '' }),
+    };
+    const budget = createDeploymentBudget(1),
+      jobs = createMemoryJobStore();
+    t.after(async () => {
+      release();
+      await held;
+    });
+    // Observe actual queue admission, without assuming network arrival order or sleeping.
+    const entered = new Set();
+    let all = () => {};
+    const queued = new Promise((r) => {
+      all = () => r(undefined);
+    });
+    const instrumented = /** @type {typeof runExclusive} */ (
+      async (work) => {
+        const promise = runExclusive(work);
+        entered.add(promise);
+        if (entered.size === 4) all();
+        return promise;
+      }
+    );
+    const live = createServer({ host: '127.0.0.1', corsOrigin: 'http://localhost:5173' }, [
+      v1ChainRoute(backend, { jobs, deploymentBudget: budget, runExclusive: instrumented }),
+      chainRoute(backend, {
+        circuits: new Set(),
+        maxDeploys: 1,
+        deploymentBudget: budget,
+        runExclusive: instrumented,
+      }),
+    ]);
+    await new Promise((r) => live.listen(0, '127.0.0.1', () => r(undefined)));
+    const a = live.address();
+    assert.ok(a && typeof a === 'object');
+    t.after(
+      () =>
+        new Promise((r) => {
+          live.close(r);
+          live.closeAllConnections();
+        }),
+    );
+    const requests = [
+      '/sponsor/balance',
+      '/sponsor/submit',
+      '/v1/sponsor/balance',
+      '/v1/sponsor/submit',
+    ].map((path) =>
+      fetch(`http://127.0.0.1:${a.port}${path}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ tx: '01' }),
+      }),
+    );
+    try {
+      await queued;
+      assert.deepEqual(calls, []);
+      release();
+      await held;
+      for (const response of await Promise.all(requests)) assert.equal(response.status, 200);
+      assert.equal(calls.filter((c) => c === 'balance').length, 2);
+      assert.equal(calls.filter((c) => c === 'submit').length, 2);
+    } finally {
+      release();
+      await Promise.allSettled(requests);
+    }
+  },
+);

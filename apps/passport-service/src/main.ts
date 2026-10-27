@@ -1,3 +1,4 @@
+import { serviceShutdown, shutdownHandler } from './shutdown.ts';
 import { configuredHostMutations } from './host-config.ts';
 import type { AddressInfo } from 'node:net';
 import { bindingCircuits } from './artefacts.ts';
@@ -46,6 +47,7 @@ const server = createServer(config, [
     json(response, 200, {
       status: 'ready',
       hostMutations: hostMutations !== undefined,
+      hostJobs: hostMutations?.hostJobs ?? false,
       networkId: config.networkId,
       bindingId: config.bindingId,
       manifestSha256: config.manifestSha256,
@@ -71,3 +73,7 @@ server.listen(config.port, config.host, () => {
   const { address, port } = server.address() as AddressInfo;
   console.log(`passport-service: http://${address}:${port} (network ${config.networkId})`);
 });
+
+const stop = serviceShutdown(server, hostMutations, runExclusive);
+const onSignal = shutdownHandler(stop);
+for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, onSignal);

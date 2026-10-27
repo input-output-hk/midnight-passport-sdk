@@ -50,6 +50,8 @@ export interface HostJobStore {
 }
 export interface HostJobView {
   readonly jobId: string;
+  /** Binds status/explicit continuation to the full public mutation identity. */
+  readonly identitySha256: string;
   readonly state: HostJobState | 'expired';
   readonly milestones: HostJobMilestones;
   readonly events: readonly HostJobEvent[];
@@ -426,6 +428,7 @@ export function createHostMutationJobs(
     const expired = r.state === 'done' && time() - r.finishedAt! >= r.policy.completedTtlMs;
     return clone({
       jobId: r.id,
+      identitySha256: hostHash(r.descriptor.identity),
       state: expired ? 'expired' : r.state,
       milestones: r.milestones,
       events: expired ? [] : r.events.filter((e) => e.sequence > Number(after ?? first)),
@@ -548,9 +551,14 @@ export function createHostMutationJobs(
       const r = await read(id);
       return r ? view(r, after) : undefined;
     },
-    async start(id: string): Promise<{ jobId: string }> {
+    async start(id: string, expectedIdentitySha256?: string): Promise<{ jobId: string }> {
       const r = await read(id);
       if (!r) throw new HttpError(404, 'host job not found');
+      if (
+        expectedIdentitySha256 !== undefined &&
+        expectedIdentitySha256 !== hostHash(r.descriptor.identity)
+      )
+        throw new HttpError(409, 'host job identity conflicts with the original intent');
       if (r.state !== 'queued') return { jobId: id };
       admit();
       let claimed = false;
@@ -563,9 +571,14 @@ export function createHostMutationJobs(
       }
       return { jobId: id };
     },
-    async reconcile(id: string): Promise<{ jobId: string }> {
+    async reconcile(id: string, expectedIdentitySha256?: string): Promise<{ jobId: string }> {
       const r = await read(id);
       if (!r) throw new HttpError(404, 'host job not found');
+      if (
+        expectedIdentitySha256 !== undefined &&
+        expectedIdentitySha256 !== hostHash(r.descriptor.identity)
+      )
+        throw new HttpError(409, 'host job identity conflicts with the original intent');
       if (r.state !== 'queued' && r.state !== 'done') {
         admit();
         schedule(r, false);

@@ -58,9 +58,21 @@ export function hostJobRoute(options: {
       json(res, 202, await options.jobs.accept(d));
     } else {
       const b = body as Record<string, unknown>;
-      if (Object.keys(b).length !== 1 || typeof b.jobId !== 'string')
+      if (
+        Object.keys(b).some((k) => !['jobId', 'identitySha256'].includes(k)) ||
+        typeof b.jobId !== 'string' ||
+        (b.identitySha256 !== undefined &&
+          (typeof b.identitySha256 !== 'string' || !/^[0-9a-f]{64}$/.test(b.identitySha256)))
+      )
         throw new HttpError(400, 'invalid host job request');
-      json(res, 202, await options.jobs[action === 'start' ? 'start' : 'reconcile'](b.jobId));
+      json(
+        res,
+        202,
+        await options.jobs[action === 'start' ? 'start' : 'reconcile'](
+          b.jobId,
+          b.identitySha256 as string | undefined,
+        ),
+      );
     }
     return true;
   };

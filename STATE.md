@@ -6,6 +6,17 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/10/26. Historical entries below retain their original issue namespaces.
 
+## 2026/10/27 — reference host-job integration (#233), local continuation
+
+Extend signed source655b1cb with explicit reference-service configuration, shared
+host executor/queue/deployment budget and bounded graceful shutdown. Add
+browser-safe client/owner ports, identity-bound status and explicit same-ID
+continuation without POST replay or legacy fallback. Legacy/v1 sponsor calls now
+use the shared queue; prior paths bypassed it. Actual configured-service process
+restart E2E covers both arms and call/deploy at two boundaries over fake drivers.
+See ADR0013 and `docs/site/service-jobs.md`; broad #233 and native/provider/image
+release qualification remain open. Local source only, no new publication.
+
 ## 2026/10/27 — durable host-job outcomes (#233), local first slice
 
 PR #251 merged at signed merge `6399b30` after green exact-head CI/images and fresh Claude

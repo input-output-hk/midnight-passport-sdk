@@ -13,6 +13,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { packedHostJobsSmoke } from './packed-host-jobs-smoke.mjs';
 import { checkConsumerTarballs } from './consumer-inputs.mjs';
 
 const root = resolve(import.meta.dirname, '..');
@@ -95,6 +96,7 @@ try {
        import * as hosted from '@input-output-hk/mn-passport-adapter-browser/hosted-jubjub';
        import * as midnight from '@input-output-hk/mn-passport-adapter-midnight-js';
        import * as service from '@input-output-hk/mn-passport-service';
+       import * as jobClient from '@input-output-hk/mn-passport-adapter-service';
        if (contract.BINDING_VERSION !== 'acc-s3r1.1' ||
            contract.SUPPORTED_BINDINGS.length !== 1 ||
            typeof binding.Contract !== 'function' ||
@@ -110,6 +112,9 @@ try {
            typeof midnight.createMidnightWalletPorts !== 'function' ||
            typeof browser.createBrowserPassport !== 'function' ||
            typeof hosted.hostedJubjubAuthoriser !== 'function' ||
+           typeof jobClient.remoteHostJobs !== 'function' ||
+           typeof jobClient.remoteHostJobPorts !== 'function' ||
+           typeof service.createHostMutationJobs !== 'function' ||
            typeof service.createServer !== 'function' ||
            typeof service.chainRoute !== 'function' ||
            typeof service.zkRoute !== 'function' ||
@@ -130,6 +135,10 @@ try {
     ],
     { cwd: scratch, stdio: 'inherit' },
   );
+  execFileSync(process.execPath, ['--input-type=module', '-e', packedHostJobsSmoke], {
+    cwd: scratch,
+    stdio: 'inherit',
+  });
   mkdirSync(join(scratch, 'src'));
   copyFileSync(join(root, 'tests/fixtures/lace-seams.mjs'), join(scratch, 'src/lace-seams.mjs'));
   writeFileSync(
@@ -175,13 +184,14 @@ try {
   );
   writeFileSync(
     join(scratch, 'src/main.js'),
-    `import { BINDING_VERSION } from '@input-output-hk/mn-passport-contract';
+    `import { remoteHostJobs } from '@input-output-hk/mn-passport-adapter-service';
+     import { BINDING_VERSION } from '@input-output-hk/mn-passport-contract';
      import { Contract } from '@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1';
      import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
      import { createBrowserPassport } from '@input-output-hk/mn-passport-adapter-browser';
      import { hostedJubjubAuthoriser } from '@input-output-hk/mn-passport-adapter-browser/hosted-jubjub';
      document.querySelector('#app').textContent =
-       [BINDING_VERSION, Contract.name, createPassportAccounts.name, createBrowserPassport.name, hostedJubjubAuthoriser.name].join(' ');\n`,
+       [BINDING_VERSION, Contract.name, createPassportAccounts.name, createBrowserPassport.name, hostedJubjubAuthoriser.name, remoteHostJobs.name].join(' ');\n`,
   );
   execFileSync('pnpm', ['exec', 'vite', 'build'], { cwd: scratch, stdio: 'inherit' });
   if (!existsSync(join(scratch, 'dist/index.html'))) throw new Error('scratch Vite build missing');

@@ -288,6 +288,27 @@ or a private ignored directory. Missing inputs, skipped tests and unimplemented
 cases never become qualified passes. Three matching foundation runs establish
 repeatability only for that declared scope, not release/provider acceptance.
 
+### Durable host-job transport checks (unreleased source)
+
+Host-job integration is opt-in; do not switch the default browser demo to it or put
+its operator bearer token in browser storage. Read `docs/site/service-jobs.md` for
+three job settings in addition to the three host-mutation settings, independent
+keys and non-nested retained journals. Do not replace existing private files.
+`/healthz` advertises `hostJobs` only when configured. SIGINT/SIGTERM drains work
+for up to 30 seconds; a timeout is unknown, never permission to replay a send.
+
+After `nix develop -c pnpm run build`, run:
+
+```sh
+nix develop -c node --test tests/remote-host-jobs.test.mjs tests/host-jobs-http.test.mjs tests/host-jobs-process.test.mjs
+nix develop -c pnpm --filter passport-service exec node --import tsx --test test/host-jobs-config.test.ts test/host-jobs-e2e.test.ts
+```
+
+These own ephemeral subprocesses and synthetic private journals only. They do not
+need Docker, live wallets or existing qualification fixtures. Record this as real
+transport/process coverage with fake chain drivers, never native/provider or
+released-image acceptance. Keep the full local gate before each signed commit.
+
 ### Where things are
 
 | Path                               | What                                                                                                                                       |

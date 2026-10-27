@@ -10,3 +10,5 @@ export * from './v1-ports.js';
 export * from './faucet.js';
 export type * from './options.js';
 export * from './host-mutations.js';
+
+export * from './host-jobs.js';

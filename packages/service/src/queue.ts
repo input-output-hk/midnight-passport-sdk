@@ -10,11 +10,11 @@ import { HttpError } from './http.js';
  */
 export function serial(
   maxWaiting = Number.POSITIVE_INFINITY,
-): <T>(job: () => Promise<T>) => Promise<T> {
+): (<T>(job: () => Promise<T>) => Promise<T>) & { readonly drain?: () => Promise<void> } {
   // `tail` only ever fulfils, so a failure is reported to its own caller and to nobody else.
   let tail: Promise<void> = Promise.resolve();
   let pending = 0; // running plus waiting
-  return <T>(job: () => Promise<T>): Promise<T> => {
+  const run = <T>(job: () => Promise<T>): Promise<T> => {
     if (pending > maxWaiting) {
       return Promise.reject(new HttpError(503, 'service busy: too many queued jobs'));
     }
@@ -26,4 +26,7 @@ export function serial(
     tail = next.then(settled, settled);
     return next;
   };
+  // A drain observes accepted work without taking a capacity slot. Stop external
+  // admission first; custom queue functions may supply the same optional hook.
+  return Object.assign(run, { drain: () => tail });
 }

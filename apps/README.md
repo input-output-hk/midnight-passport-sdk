@@ -383,3 +383,28 @@ wallet-reconnect` diagnostic and `survivor-reconnect` lifecycle suite check the 
 wallet composition against an owned standalone indexer outage and a fresh incoming
 NIGHT credit. See the [live runbook](../docs/site/live-qualification.md#enrolled-survivor-and-wallet-reconnect).
 These Node/software-fixture cases do not qualify real passkeys or seed-loss recovery.
+
+
+### Opt-in durable host jobs (local, unreleased)
+
+On top of the three host-mutation settings above, set `PASSPORT_HOST_JOB_DIR`,
+`PASSPORT_HOST_JOB_KEY_FILE` and `PASSPORT_HOST_JOB_TOKEN_FILE`. Use distinct,
+non-nested private journals and four independent private key/token values, separate
+from the sponsor seed. Optional bounds are `PASSPORT_HOST_JOB_MAX_JOBS` (128),
+`PASSPORT_HOST_JOB_MAX_ACTIVE` (8), `PASSPORT_HOST_JOB_EVENT_LIMIT` (32), and
+`PASSPORT_HOST_JOB_COMPLETED_TTL_MS` (600000). Partial configuration fails startup.
+`/healthz` advertises `hostJobs`; no token or private path is returned. The default
+demo keeps its existing owner ports.
+
+Jobs and direct host RPC share one executor, sponsor queue and process-local
+deployment budget. Legacy/v1 sponsor balance/submit calls also use that queue.
+SIGINT/SIGTERM drains HTTP, accepted jobs and queued wallet work; a 30-second
+deadline exits nonzero with original-ID/journal retention guidance. The deployment
+cap resets on restart; unknown work is never automatically replaced. For images,
+retain both writable journals and mount four independent private files read-only
+for the service UID. Published RC5 lacks this source feature.
+
+[Engineer runbook](../docs/site/service-jobs.md) covers the low-level client,
+`remoteHostJobPorts` owner composition, explicit recovery, resource bounds and
+real HTTP/killed-process E2E commands. These tests use synthetic chain drivers,
+not native proofs or real passkey providers. Legacy callback jobs remain volatile.

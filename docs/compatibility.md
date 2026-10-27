@@ -518,3 +518,22 @@ Focused child-process/backpressure and classifier tests cover those corrections;
 the old native failure summaries were revalidated read-only. SDK execution and
 binding bytes are unchanged. This is not a fresh native or provider qualification
 at the later review head; the repository review record lists the exact delta.
+
+
+## 2026/10/27 unreleased host-job reference integration
+
+The local descriptor-based `/v1/host-jobs` API now has opt-in reference-service
+composition and `remoteHostJobs` / `remoteHostJobPorts` consumer exports. These
+require matching client/service source with `identitySha256`; published RC5 does
+not supply them. Existing `/v1/jobs`, `remoteV1*` and direct host RPC stay separate.
+No ACC, account API or published service API version is changed in this local work.
+
+Real HTTP/encrypted-journal tests cover eight P-256/Jubjub call/deploy service-kill
+boundaries, retained uncertainty before host registration, receipt lookup without
+rebroadcast after fake submission, shared sponsor queue/budget, lost replies,
+cancellation, strict receipt/identity checks and graceful/forced shutdown. Chain
+drivers are synthetic. Packed-package transport smoke is recorded separately from
+source checks and never implies native proofs, actual released images/registry,
+real providers or full Lace compatibility. Broad #233 and existing release
+limitations remain open. See [runbook](site/service-jobs.md) and
+[ADR0013](adr/0013-explicit-host-job-reference-composition.md).

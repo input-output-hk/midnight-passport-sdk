@@ -39,3 +39,38 @@ scanner, enable the new route by default, prove a distributed wallet lock or
 qualify native proofs/images/providers. Those remain explicit #233/#234/#231
 follow-ups. Broad issues stay open. Validation receipts will record exact source
 and tests; existence of the API or an unavailable input never becomes a pass.
+
+## Reference-service/consumer continuation — #233, 2026/10/27
+
+Derived decisions: ADR0013; baseline signed source655b1cb. Review in this order:
+
+1. `apps/passport-service/src/host-config.ts`: opt-in settings, owned independent
+   key/token files, disjoint journal roots, same executor and budget wrapper,
+   shared wallet queue, active HTTP/job drain before key close.
+2. `packages/service/src/host-jobs.ts`, `host-job-route.ts`: additive public identity
+   hash and optional expected identity guard before any start/reconcile scheduling.
+3. `packages/adapter-service/src/host-jobs.ts`: fixed scalar canonical WebCrypto
+   hashes, wire guards, one accept/start, read-only polls, explicit same-ID resume,
+   no missing-job replacement or legacy fallback, bounded request/body/delay and
+   strict result kind/digest validation. Tokens are for trusted operator hosts.
+4. `chain.ts`, `v1-chain.ts`, `queue.ts`: legacy/v1 balance/submit join the shared
+   sponsor queue; drain does not reserve capacity or fail because that queue is full.
+   Individual calls are serialised, not a whole balance-then-submit session.
+5. Reference `shutdown.ts`/`main.ts`: idempotent SIGINT/SIGTERM, finish HTTP and
+   async jobs/queued wallet work, 30-second failed-exit deadline preserving original
+   uncertainty. No journal deletion or no-send claim on timeout.
+6. `remote-host-jobs.test.mjs`, `host-jobs-config.test.ts`, `host-jobs-e2e.test.ts`,
+   `shutdown.test.ts`: real transport, policy sharing, withheld proofs, malicious
+   receipts, lost POSTs, cancellation, held body/fetch, caller mutation, full queue
+   and graceful/forced shutdown. Eight both-arm call/deploy process-kill boundaries
+   plus a forced deadline restart. Fake chain drivers are explicit throughout.
+7. `scripts/packed-host-jobs-smoke.mjs` and the existing release-tarball consumer:
+   imports/types/browser bundle plus actual loopback calls/deployments from the
+   installed package graph, using encrypted journals and synthetic receipts.
+
+Known limits remain: callback jobs volatile; no automatic worker scanner,
+distributed wallet lock/persistent spending ceiling, terminal no-send repair,
+immutable-history compaction, native proof/image/provider or complete #233/Lace
+acceptance. Asynchronous reconcile may report an older unknown snapshot while its
+approved work runs; GET can collect its later result without another POST. Client
+and service versions must both implement identitySha256. Published RC5 unchanged.
