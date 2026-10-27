@@ -27,7 +27,7 @@ export interface JobStore {
 export interface JobStoreOptions {
   /** Upper bound across running and retained completed jobs. */
   readonly maxJobs?: number;
-  /** Completed jobs expire after this many milliseconds; use a durable store across restarts. */
+  /** Process-local completed-result retention; this does not make callback work restartable. */
   readonly completedTtlMs?: number;
   readonly now?: () => number;
   /** A host may inject a predictable id generator for tests, but production uses random UUIDs. */
@@ -36,7 +36,8 @@ export interface JobStoreOptions {
   readonly errorOf?: (cause: unknown) => { code: PassportErrorCode; message: string };
 }
 
-/** A bounded, process-local reference store. Operators can inject durable JobStore implementations. */
+/** Process-local reference store. A work closure is not a persistable intent.
+ * For opt-in durable host mutations use createHostMutationJobs and its separate protocol. */
 export function createMemoryJobStore(options: JobStoreOptions = {}): JobStore {
   const maxJobs = options.maxJobs ?? 128;
   const ttl = options.completedTtlMs ?? 10 * 60_000;

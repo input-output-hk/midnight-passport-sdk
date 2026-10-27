@@ -6,6 +6,17 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/10/26. Historical entries below retain their original issue namespaces.
 
+## 2026/10/27 — durable host-job outcomes (#233), local first slice
+
+PR #251 merged at signed merge `6399b30` after green exact-head CI/images and fresh Claude
+review; core substantive jobs took 17–39 seconds. Current branch retained. Add descriptor-based
+host jobs over the existing host executor, encrypted CAS acceptance/capacity,
+single-start admission and explicit unknown reconciliation. Public status is
+bounded; terminal expiry retains IDs. Fresh-process and HTTP tests use fake chain
+drivers and real files/processes/transports. Legacy callback jobs remain local
+and the reference app does not enable the new route. No native/provider, complete
+issue or release acceptance is inferred. See `docs/review/host-jobs/README.md`.
+
 ## 2026/10/27 — PR251 qualification review corrections
 
 Refs #230, #231, #232. Await crash-marker stdout flush before intentional exit,

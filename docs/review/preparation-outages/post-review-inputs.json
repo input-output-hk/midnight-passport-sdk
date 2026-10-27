@@ -8,6 +8,7 @@
     "fileCount": 1240
   },
   "priorDocumentationHead": "df5a1d32b170bcc80de91a61f3b16d56dd3a0ca8",
+  "comparisonHead": "963dc5e61d448c239a7e6810be2b43b24fe10535",
   "sdkSourceAndCompiledFilesUnchanged": 674,
   "historicalFailureSummariesRevalidated": 16,
   "nativeRunRepeated": false,
@@ -46,11 +47,12 @@
   "addedInputs": [
     "tests/qualification-crash-marker.test.mjs"
   ],
-  "scope": "Later harness/diagnostic/test corrections; no requalification at a new source. Historical executable-inputs.json is explicitly pinned to df5a1d3.",
+  "scope": "Historical audit through comparisonHead 963dc5e only; later source work is outside this receipt. Harness/diagnostic/test corrections did not repeat native qualification. Historical executable-inputs.json is explicitly pinned to df5a1d3. Documentation delta paths below compare nativeSource 5d2bf20 to comparisonHead, excluding this receipt itself.",
   "documentationDeltaPaths": [
     "STATE.md",
     "docs/compatibility.md",
     "docs/review/preparation-outages/README.md",
+    "docs/review/preparation-outages/executable-inputs.json",
     "docs/site/host-durability.md",
     "docs/site/live-qualification.md"
   ]

@@ -69,3 +69,6 @@ export * from './mutation-store.js';
 export * from './host-mutations.js';
 export * from './host-mutation-store.js';
 export * from './host-mutation-route.js';
+export * from './host-jobs.js';
+export * from './host-job-store.js';
+export * from './host-job-route.js';
