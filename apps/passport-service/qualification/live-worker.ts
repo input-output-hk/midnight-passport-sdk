@@ -660,7 +660,11 @@ if (mode === 'host') {
     },
     random: (length) => new Uint8Array(randomBytes(length)),
   };
-  const assertPopulated = async (account: string, readerKeyring = viewingKey) => {
+  const assertPopulated = async (
+    account: string,
+    readerKeyring = viewingKey,
+    grantPublisherKeyring = readerKeyring,
+  ) => {
     if (!combined || !existsSync(join(root, 'coin.json'))) return undefined;
     const live = (await chain.readAccount(account, { includeDevices: true, includeInbox: true }))!;
     const ring = { account, encKey: live.encKey!, envelopes: live.inboxEntries! };
@@ -672,6 +676,13 @@ if (mode === 'host') {
     assert.deepEqual(held[0]!.coin.nonce, expected.nonce);
     assert.equal(held[0]!.coin.value, expected.value);
     const targets = await grantSource.readActiveReadGrantTargets(account);
+    // Grant bookkeeping is encrypted to the publishing device's reader key, not
+    // the shared ACC viewing secret. A different enrolled reader can still open
+    // the holding; the grantee's current seal must be obtained from its publisher.
+    const grantEntries =
+      grantPublisherKeyring === readerKeyring
+        ? opened
+        : await grantPublisherKeyring.openInbox(pins.networkId, ring, live.inboxEntries!);
     const secrets: Uint8Array[] = grantRecovery ? fixture.readGrantSecrets : [fixture.grantSecret];
     assert.equal(targets.targets.length, secrets.length);
     for (const readSecret of secrets) {
@@ -680,7 +691,7 @@ if (mode === 'host') {
       );
       assert.ok(target, 'Every independent read key must match a live target.');
       let current = false;
-      for (const entry of opened)
+      for (const entry of grantEntries)
         if (
           entry?.kind === 'grant' &&
           entry.record.part === 'view' &&
@@ -822,7 +833,12 @@ if (mode === 'host') {
       originalTargetKeyStillWorks: true,
       mutationAttempts,
       hostJobsUnchanged: true,
-      populated: await assertPopulated(account, owner.keyring),
+      populated: await assertPopulated(
+        account,
+        owner.keyring,
+        softwareParticipant(fixture.participants.survivor, arm).keyring,
+      ),
+      grantSealPublisher: 'survivor',
     });
     await finishWorker(0);
   }

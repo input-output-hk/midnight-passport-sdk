@@ -541,3 +541,15 @@ runners. Cheap controls reject stale responses, wrong-fork hashes, mismatched
 heights, stale/incompatible timestamps and RPC/transport errors. This is a
 qualification precondition, not a claim that the production service detects every
 possible node/indexer fault or that a generic rejection proves no submission.
+
+
+### Read-grant delivery between enrolled devices
+
+Grant bookkeeping entries are encrypted to their publishing device's reader key.
+The shared ACC viewing secret allows enrolled devices to read holdings; it does
+not make another device's grant bookkeeping readable. After a survivor-led
+rotation, retain and deliver the confirmed result's `sealedReadGrants` to the
+relevant grantees. A grantee uses its own read key to open that seal and must
+validate it against the live ACC encryption key. The lifecycle qualification
+checks the publisher's actual chain entry and independently opens the inner seal;
+it does not claim automatic cross-device bookkeeping recovery or seal delivery.

@@ -357,3 +357,13 @@ remain false. Owner pre-registration proof loss safely stays unresolved; no blin
   [`docs/roadmap/specs/M2-Connect/FS-2.4-authorising-additional-keys.md`](./docs/roadmap/specs/M2-Connect/FS-2.4-authorising-additional-keys.md),
   requirements §3.5 amended. **No contract-team gate.** Not planned — needs
   its own SDK issue.
+
+
+### 2026-10-29: lifecycle grant-publisher check
+
+Source-v3 (`c068250`) recovered all three Jubjub interrupted mutations, including
+survivor rotation, then failed a check that assumed owner-readable grant
+bookkeeping. Records are publisher-reader encrypted. The qualification now
+checks holdings as owner and opens the actual survivor-published chain seal
+with the independent grantee key. No production key format/contract/runtime
+change. Failed roots stay failed; new source/image runs remain required.

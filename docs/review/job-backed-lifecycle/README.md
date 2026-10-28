@@ -142,3 +142,25 @@ wallet can build, the node's finalized hash/height must be present in the indexe
 with a fresh millisecond timestamp. Both native runner families use the guard;
 its negative controls reproduce stale/forked readiness. This change does not
 relabel prior runs, or by itself qualify the remaining lifecycle/image cases.
+
+
+## Publisher-specific grant delivery check — 2026/10/29
+
+The fresh source-v3 run at `c068250` completed Jubjub enrollment, removal and
+survivor-led rotation with original-ID recovery. It then failed the removed-reader
+verification's independent grantee assertion. The owner could open the current
+ACC key and qualified holding, but could not decrypt the latest grant bookkeeping
+entry published by the survivor. Grant records use the publishing device's reader
+secret; they do not use the shared ACC viewing secret. The survivor's own
+post-rotation grant assertion had passed. This is a qualification assumption
+failure, not evidence of a failed rotation or a shared-bookkeeping guarantee.
+
+The corrected check keeps the owner holding/read-access assertion and obtains
+the current grant seal from the actual survivor publisher's chain inbox entry.
+The independent grantee must still decrypt it using its own read secret and
+match the live ACC key. It does not trust local result metadata as delivery.
+A real-crypto negative control verifies that another enrolled reader cannot
+decrypt publisher-specific bookkeeping, while the grantee opens the exported
+seal. Hosts must retain/export the confirmed rotation's `sealedReadGrants` for
+consumers; enrolled-device access alone is not grant-bookkeeping portability.
+The failed source-v3 receipt remains FAIL. Fresh complete runs are still required.
