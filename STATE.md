@@ -6,6 +6,23 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/10/27. Historical entries below retain their original issue namespaces.
 
+## 2026/10/28 — partial job-backed lifecycle execution; capacity stop
+
+At GPG/DCO signed `a4c3d4f`, Jubjub creation, standalone read-grant/holding setup
+and survivor enrollment passed. Target enrollment hit its native post-submit
+host exit and real indexer outage probe. The next restart failed the existing
+2 GiB capacity guard, leaving the original target job/intent retained and
+unresolved. End source/runtime/reference audit passed unchanged. Final snapshot:
+22 jobs / 31 dispatch claims / 30 confirmed steps, 31 instrumented submit entries
+without duplicate prepared bytes. Overall native suite FAIL_CAPACITY; recovery,
+removal, rotation, wallet, P-256 and ARM image qualification pending. The ARM image
+passed only 291-file production byte and nine-package locked reference checks.
+Fullgate984pass/7existing skips/0failure before execution; docs21pages/462links.
+Protected fixtures backed up with SHA256/gzip CRC. Owned container stop requested,
+Docker response pending; verify before reuse. No broad cleanup, no unknown replay,
+no publication. Free15GiB before next native run. See the dated partial receipt in
+`docs/review/job-backed-lifecycle/` and the Obsidian checkpoint.
+
 ## 2026/10/28 — job-backed populated lifecycle qualification harness
 
 Add opt-in source/native and production Linux/arm64 suites for enrolled survivor,

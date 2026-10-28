@@ -57,3 +57,55 @@ separate. macOS bind-backed image journals remain unqualified. No automatic
 scanner, distributed wallet lock, persistent budget, no-send repair or journal
 compaction is claimed. Keep historical unknown intents, exact-value shielded
 withdrawal guard and release/provider limits unchanged.
+
+
+## Partial native execution — 2026/10/28
+
+**Incomplete: the native suite failed its host-capacity guard.** Signed source
+`a4c3d4fb0483ac7da71174b002f7e9749cf116ab` completed Jubjub creation/reopen,
+standalone grant/holding population and survivor enrollment. Owner and survivor
+opened the current viewing key; one qualified seven-unit mock shielded holding
+and one active caller-pinned read grant stayed valid.
+
+Target enrollment reached the actual `add_device_with_jubjub` post-submit host
+exit, before owner acknowledgement. The real indexer outage probe reported one
+unknown original effect. The next host restart was refused below the existing
+2 GiB free-space guard, so **original-ID recovery was not qualified**. Source,
+compiled runtime and reference end hashes remained unchanged. The final protected
+snapshot has 22 jobs, 31 single durable dispatch claims, 30 confirmed host steps
+and one retained running original target job. Independent instrumentation has
+31 submit entries and no repeated prepared-byte entry. These counters do not
+claim a completed lifecycle or permission to replay the pending effect.
+
+Removal, survivor rotation, wallet reconnect, every P-256 native case and every
+ARM64 image lifecycle case remain pending. The production image
+`sha256:2a41b3b40772c714f9bbe9efed84ad89022fa14ee44dc6099fa54c72107e8ddd`
+passed source/runtime (291 files) and locked Linux dependency checks (nine selected
+entries). It has not passed the new native lifecycle suite. The pre-execution full
+gate passed 984 tests with seven existing skips and zero failures; docs built
+21 pages with 462 valid local links/anchors. See [the receipt](qualification.json).
+
+No original uncertain intent, fixture, ledger state or proving key was deleted.
+Private fixtures/raw logs were backed up separately with SHA-256 and gzip CRC;
+only public/hash receipts belong in the knowledge base. Container shutdown was
+requested for the exact three owned IDs; Docker became unresponsive, so shutdown
+must be verified before reuse. Do not restart Docker globally over unrelated
+stacks. Neither generic storage failure nor a repaired ENOSPC event is claimed.
+
+Before resuming, free **at least 15 GiB** on the fixture/repository filesystem,
+check Docker responsiveness and verify recorded owned IDs/volumes. Inspect and
+reconcile the retained target effect using its exact original intent and prepared
+bytes with explicit software approval; never execute a replacement or infer no
+send. Preserve this failed suite. Fresh complete qualification needs a new root,
+new signed-input freeze and both-arm source/image results. Published RC5,
+exact-value shielded withdrawals and real-provider/full-Lace limits are unchanged.
+
+
+The follow-up documentation gate exited early with code7 during disk exhaustion;
+its exact Node exit cause is not diagnosed. A separate cleanup-metadata write
+raised ENOSPC. These partial-result documentation edits require a fresh full gate
+before GPG/DCO signing; the earlier implementation gate does not qualify later
+edits. The implementation remains `a4c3d4f`; a subsequent documentation commit
+does not requalify native execution. Retry validation results and commit
+signatures are retained in the owner's dated knowledge-base artifacts. Resume
+native qualification only after the capacity and Docker checks above succeed.

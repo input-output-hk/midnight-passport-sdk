@@ -368,3 +368,13 @@ are not job-backed. Stop the host sponsor before either standalone wallet. Walle
 reconnect uses the private synthetic account owner seed, not a real provider;
 never print/copy that seed or imply ACC viewing secrets derive an HD wallet.
 Audit frozen signed source/runtime/reference before editing; preserve failures.
+
+
+The first job-backed lifecycle run stopped at host-capacity guard; read its
+partial receipt before claiming acceptance. Free at least **15 GiB before native
+qualification** even with a valid key cache. Source-v1 retains a running original
+Jubjub target-enrollment job after real submission. Preserve it and inspect/
+reconcile that same intent; do not execute a replacement or reuse the failed root
+for a fresh pass. Docker shutdown was requested by exact owned IDs but became
+unresponsive; verify actual state, and leave unrelated stacks alone. Full
+lifecycle/P-256/image/wallet acceptance is still pending, not released.

@@ -6,7 +6,8 @@ permalink: /service-jobs/
 
 **Unreleased source work for #233.** This opt-in Node API is local milestone work.
 Published RC5, the default demo and the legacy `/v1/jobs` protocol are unchanged.
-No new native proof, browser-provider or full Lace qualification is claimed.
+Dated local native-proof results are scoped below; browser-provider and full Lace
+qualification remain open.
 
 ## Problem and supported scope
 
@@ -498,3 +499,23 @@ job-backed effects. Stop the sponsor host before each standalone payer. Native
 proof suites have a bounded 180-minute budget and stay outside fast CI. All
 original private fixtures and actual Linux state volumes must be retained on
 failure; never resume from an observer copy or replace an unknown intent.
+
+
+### Partial lifecycle run — 2026/10/28
+
+The new source suite is **not qualified yet**. At signed `a4c3d4f`, Jubjub creation,
+standalone grant/holding setup and survivor enrollment completed. Target
+enrollment crossed its native post-submit/reply-loss boundary and real indexer
+unknown-outcome probe; host capacity then fell below the 2 GiB guard before
+original-ID recovery. The original running job/intent and prepared bytes remain
+retained. Final snapshot: 22 jobs, 31 single dispatch claims, 30 confirmed steps;
+31 instrumented source submit entries without repeated prepared-byte entries.
+This is partial evidence, not full enrollment recovery or complete lifecycle
+acceptance. P-256, removal, survivor rotation, reconnect and ARM64 image cases
+remain pending. The local ARM64 image passed byte/dependency checks only.
+
+Repository `docs/review/job-backed-lifecycle/qualification.json` preserves the
+failed aggregate verdict and exact pins. Free at least 15 GiB before restarting
+native qualification, verify Docker/owned container state and retain the failed
+root. Reconcile only the original target intent; a fresh complete test uses a new
+root. Never turn a missing receipt, capacity stop or skipped lane into a pass.
