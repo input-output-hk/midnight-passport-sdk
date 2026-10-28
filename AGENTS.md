@@ -378,3 +378,16 @@ reconcile that same intent; do not execute a replacement or reuse the failed roo
 for a fresh pass. Docker shutdown was requested by exact owned IDs but became
 unresponsive; verify actual state, and leave unrelated stacks alone. Full
 lifecycle/P-256/image/wallet acceptance is still pending, not released.
+
+
+After the approved Docker restart, original enrollment recovery passed separately;
+source-v1 remains a failed full suite. Source-v2 exposed a stale/forked indexer and
+node rejection 171. Read the new readiness incident in the review map. Require
+`dedicatedIndexerReadiness()` before native wallet setup: HTTP 200, height 1 and
+wallet `isSynced` alone do not prove indexer currency. The archived indexer
+container `mn-passport-qual-20261023-indexer-before-fork-20261028` and original
+`mn-passport-qual-20261023_indexer-data` volume are retained. The canonical cache
+uses the original service name/port with a new recorded ID and volume
+`mn-passport-qual-20261023_indexer-canonical-20261028`; do not delete either history
+or recreate the old stale binding with Compose. Node/prover IDs and chain remain
+unchanged. Preserve the source-v2 unknown; never repair it by replacing its send.

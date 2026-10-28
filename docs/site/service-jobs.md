@@ -519,3 +519,25 @@ failed aggregate verdict and exact pins. Free at least 15 GiB before restarting
 native qualification, verify Docker/owned container state and retain the failed
 root. Reconcile only the original target intent; a fresh complete test uses a new
 root. Never turn a missing receipt, capacity stop or skipped lane into a pass.
+
+
+### Require canonical indexer readiness before wallet setup
+
+The native qualification runners compare the node's current finalized block hash
+and height with the same block in the indexer, and require a block timestamp
+within two minutes of the host clock. A successful HTTP response or an old block
+at height one is insufficient. The wallet's own `isSynced` can describe the stale
+indexer's tip and does not establish that the indexer has caught up to the node.
+
+A retained localnet after disk exhaustion and Docker interruption reproduced this
+failure: the indexer served a six-hour-old, divergent tip while the node continued
+producing blocks. The first new deployment's DUST action used that old time and
+the node returned code 171. The intent stayed unknown; it was not resubmitted.
+The old indexer container and volume were retained, and a fresh indexer cache was
+created for the existing canonical node. No node chain or proving key was reset.
+
+The new guard applies to startup and indexer-restart waits in the opt-in native
+runners. Cheap controls reject stale responses, wrong-fork hashes, mismatched
+heights, stale/incompatible timestamps and RPC/transport errors. This is a
+qualification precondition, not a claim that the production service detects every
+possible node/indexer fault or that a generic rejection proves no submission.

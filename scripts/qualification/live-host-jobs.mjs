@@ -1,4 +1,5 @@
 // Native proof + service restart runner. Only the dedicated retained project is controllable.
+import { dedicatedIndexerReadiness } from './indexer-readiness.mjs';
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile, lstat } from 'node:fs/promises';
@@ -52,18 +53,7 @@ async function ready(path) {
   }
 }
 async function indexerReady() {
-  try {
-    const r = await fetch('http://127.0.0.1:18098/api/v4/graphql', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ query: '{ block(offset:{height:1}) { hash height } }' }),
-      signal: AbortSignal.timeout(2000),
-    });
-    const body = /** @type {any} */ (await r.json());
-    return r.ok && !!body.data?.block?.hash;
-  } catch {
-    return false;
-  }
+  return (await dedicatedIndexerReadiness()).ready;
 }
 /** @param {'source'|'image'} [lane] @param {'creation'|'lifecycle'} [profile] */
 export async function runNativeHostJobs(lane = 'source', profile = 'creation') {

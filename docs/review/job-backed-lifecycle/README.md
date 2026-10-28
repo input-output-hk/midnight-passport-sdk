@@ -109,3 +109,36 @@ edits. The implementation remains `a4c3d4f`; a subsequent documentation commit
 does not requalify native execution. Retry validation results and commit
 signatures are retained in the owner's dated knowledge-base artifacts. Resume
 native qualification only after the capacity and Docker checks above succeed.
+
+
+## Resume and readiness incident — 2026/10/28
+
+After the user approved a Docker Desktop restart, all original IDs, images and
+volumes were verified. The original enrollment intent completed through explicit
+same-ID recovery at signed `db2fc84`, retaining prepared bytes and a single
+original dispatch claim. All 22 jobs became done, all 31 steps confirmed, with
+31 total instrumented submit entries: recovery added no submission. The holding,
+active read grant and all three enrolled readers passed. A separate recovery
+receipt and protected post-recovery archive retain this evidence; the original
+source-v1 suite remains FAIL.
+
+A fresh source-v2 did not qualify. Its initial deployment received node error 171
+and stayed unknown. Inspection showed the indexer's tip still at height 7122,
+time 15:55:24 UTC, while the canonical node had advanced after Docker restoration.
+The failed transaction's DUST time was 15:55:24 UTC and its intent TTL 22:12:35 UTC.
+The indexer and node shared genesis and history through the checked height 7100,
+but their hashes differed at heights7120/7122. The recovered original enrollment's
+confirmation at height 7058 matched the canonical node during diagnosis.
+
+Restarting only the indexer did not repair this divergence: it repeatedly logged
+`unexpected block` height 0 while retaining height 7122. Its original stopped
+container and volume were archived under retained names; a new cache on the same
+pinned image now reindexes the existing canonical node. Source-v2's unknown
+original intent and bytes remain preserved. No chain reset, replacement send,
+key regeneration or dependency upgrade occurred.
+
+Review `scripts/qualification/indexer-readiness.mjs`: before a qualification
+wallet can build, the node's finalized hash/height must be present in the indexer
+with a fresh millisecond timestamp. Both native runner families use the guard;
+its negative controls reproduce stale/forked readiness. This change does not
+relabel prior runs, or by itself qualify the remaining lifecycle/image cases.

@@ -6,6 +6,19 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/10/27. Historical entries below retain their original issue namespaces.
 
+## 2026/10/28 — resumed recovery and canonical indexer readiness
+
+Approved Docker recovery preserved original resources. Explicit same-ID original
+enrollment recovery passed at db2fc84: 22 jobs / 31 confirmed steps, no new submits,
+holding/read grant/all enrolled readers retained. Source-v1 stays FAIL. Fresh
+source-v2 failed after rejection 171: the indexer served a six-hour-old divergent
+tip; wallet `isSynced` and the old height-one check falsely admitted setup.
+Retain both source-v2 unknown and old indexer data. Fresh cache reindexes the same
+canonical node, without resetting chain or keys. New qualification readiness
+requires node-finalized hash/height plus a fresh indexed timestamp; cheap negative
+controls cover stale/forked data and transport failures. Remaining native cases
+are not yet qualified. See the job-backed lifecycle review map.
+
 ## 2026/10/28 — partial job-backed lifecycle execution; capacity stop
 
 At GPG/DCO signed `a4c3d4f`, Jubjub creation, standalone read-grant/holding setup
