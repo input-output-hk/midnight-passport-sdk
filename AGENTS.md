@@ -349,3 +349,22 @@ native runs, then verify end hashes before editing. Stop only exact owned worker
 PIDs and the dedicated qualification containers; retain ledger/key/state volumes.
 Slow proof/image suites remain outside fast CI. Current next scope is job-backed
 enrollment/removal/rotation with survivor/grants/holdings and wallet reconnect.
+
+
+### Job-backed populated lifecycle qualification — 2026/10/28
+
+Read `docs/review/job-backed-lifecycle/README.md` and the final section of
+`docs/site/service-jobs.md` before the opt-in `host-job-lifecycle-native` and
+`host-job-lifecycle-image-native` suites. Fresh roots only; existing fixtures,
+unknowns and chain/key volumes must be retained. The new image lane requires
+Linux/arm64 and its separately prepared locked ARM64 dependency cache; old
+creation qualification remains Linux/amd64. Use actual production entrypoint and
+Linux ext state volumes, non-root service UID/GID, read-only keys/reference.
+
+Source post-submit host exits and image owner-result observation loss followed
+by container KILL are different boundaries. Require original IDs and fresh
+circuit-bound job history. Standalone grant/mint/deposit setup and wallet credit
+are not job-backed. Stop the host sponsor before either standalone wallet. Wallet
+reconnect uses the private synthetic account owner seed, not a real provider;
+never print/copy that seed or imply ACC viewing secrets derive an HD wallet.
+Audit frozen signed source/runtime/reference before editing; preserve failures.

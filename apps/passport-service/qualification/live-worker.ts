@@ -87,6 +87,7 @@ import {
   crashesAfterSubmit,
   emitCrashAndExit,
 } from '../../../scripts/qualification/lifecycle-stages.mjs';
+import { confirmedReplyLossProbe } from '../../../scripts/qualification/job-lifecycle-spec.mjs';
 import { isNativeJobPendingError } from '../../../scripts/qualification/native-job-evidence.mjs';
 import { requireNoCurrentKey } from '../../../scripts/qualification/live-expectations.mjs';
 
@@ -513,12 +514,32 @@ if (mode === 'host') {
   assert.equal(typeof authoriser.withKeySession, 'function');
   assert.equal(typeof viewingKey.decodeDevicePublicKey, 'function');
   assert.equal(typeof viewingKey.decodeP256DevicePublicKey, 'function');
-  const host = (hostJobs ? remoteHostJobPorts : remoteHostMutationPorts)(base, {
+  const imageReplyCircuit = fault.startsWith('image-reply:') ? fault.slice(12) : undefined;
+  if (imageReplyCircuit)
+    assert.ok(
+      hostJobs && lifecycle && mode === 'owner' && /^[a-z][a-z0-9_]+$/.test(imageReplyCircuit),
+    );
+  const imageReplyProbe = imageReplyCircuit
+    ? confirmedReplyLossProbe(imageReplyCircuit, emit)
+    : undefined;
+  const rawHost = (hostJobs ? remoteHostJobPorts : remoteHostMutationPorts)(base, {
     pins,
     token: hex(hostJobs ? fixture.jobToken : fixture.token),
     timeoutMs: 600000,
     pollIntervalMs: 500,
+    ...(imageReplyProbe && { onSnapshot: imageReplyProbe.observe }),
   });
+  const host = imageReplyCircuit
+    ? {
+        ...rawHost,
+        submitter: {
+          submit: (...args: Parameters<typeof rawHost.submitter.submit>) => {
+            imageReplyProbe!.track(args[1]?.circuit);
+            return rawHost.submitter.submit(...args);
+          },
+        },
+      }
+    : rawHost;
   const sponsor = remoteV1Sponsor(base);
   const actualProver = remoteV1Prover(base);
   const prover = {
@@ -639,11 +660,11 @@ if (mode === 'host') {
     },
     random: (length) => new Uint8Array(randomBytes(length)),
   };
-  const assertPopulated = async (account: string) => {
+  const assertPopulated = async (account: string, readerKeyring = viewingKey) => {
     if (!combined || !existsSync(join(root, 'coin.json'))) return undefined;
     const live = (await chain.readAccount(account, { includeDevices: true, includeInbox: true }))!;
     const ring = { account, encKey: live.encKey!, envelopes: live.inboxEntries! };
-    const opened = await viewingKey.openInbox(pins.networkId, ring, live.inboxEntries!);
+    const opened = await readerKeyring.openInbox(pins.networkId, ring, live.inboxEntries!);
     const held = await holdingSource.selectQualifiedHeldCoins(account, live.inboxEntries!, opened);
     assert.equal(held.length, 1);
     const expected = read('coin.json');
@@ -749,6 +770,7 @@ if (mode === 'host') {
   if (lifecycle && operation === 'verify-removed') {
     const account = read('result-create.json').account;
     const before = await publicRecords();
+    const jobsBefore = await jobSummaries();
     assert.equal((await fetch(base + '/healthz')).ok, true);
     let mutationAttempts = 0;
     const forbidden = async (): Promise<never> => {
@@ -791,6 +813,7 @@ if (mode === 'host') {
       'Removed identity must not register or send a call.',
     );
     assert.equal(mutationAttempts, 0);
+    assert.deepEqual(await jobSummaries(), jobsBefore);
     emit({
       completed: operation,
       removedIdentityRefused: true,
@@ -798,6 +821,8 @@ if (mode === 'host') {
       hostReachable: true,
       originalTargetKeyStillWorks: true,
       mutationAttempts,
+      hostJobsUnchanged: true,
+      populated: await assertPopulated(account, owner.keyring),
     });
     await finishWorker(0);
   }
@@ -841,7 +866,7 @@ if (mode === 'host') {
   }
   try {
     let result;
-    const deadline = Date.now() + 10 * 60000;
+    const deadline = Date.now() + (hostJobs && lifecycle ? 30 : 10) * 60000;
     let continuing = mode === 'resume';
     while (!result) {
       try {
@@ -856,7 +881,7 @@ if (mode === 'host') {
           () => false,
         );
         if (
-          fault !== 'none' ||
+          (fault !== 'none' && (!imageReplyProbe || imageReplyProbe.lost)) ||
           !(hostJobs
             ? isNativeJobPendingError(error, await coordinator.inspect(id))
             : (error as any)?.code === 'MutationUnsettled') ||

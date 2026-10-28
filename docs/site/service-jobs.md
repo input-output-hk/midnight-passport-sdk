@@ -448,3 +448,53 @@ This acceptance covers creation/activation/inbox continuation. Job-backed device
 lifecycle with grants/holdings and wallet reconnect, real providers and full Lace
 integration remain separate. No new package or image has been published; RC5 does
 not include this opt-in API. Broad #233/#231 and existing release limits stay open.
+
+
+## Job-backed populated lifecycle qualification (unreleased)
+
+Two additional opt-in suites cover the device lifecycle with an independently
+enrolled survivor, one active caller-pinned read grant and one qualified mock
+shielded holding, followed by wallet reconnect. Their existence is not a pass;
+read repository `docs/review/job-backed-lifecycle/README.md` and dated receipts.
+
+```sh
+nix develop -c pnpm qualify plan host-job-lifecycle-native
+nix develop -c pnpm qualify run host-job-lifecycle-native --output /private/evidence/lifecycle-source-suite.json
+```
+
+Use the same required localnet/network/contract variables as above and a **fresh**
+private `PASSPORT_LIVE_ROOT`. The source lane exits after native target enrollment,
+removal/key rotation and survivor rotation submission, stops the actual indexer
+for an unknown-outcome probe, then resumes the original intent. It must preserve
+holdings, current-reader access and the read grant after every completion.
+
+`host-job-lifecycle-image-native` selects a separate **Linux/arm64** profile,
+actual production service entrypoint, Linux ext state volumes and locked Linux
+reference dependencies. Set `PASSPORT_NATIVE_JOB_IMAGE` to the image ID built from
+the exact clean signed source, with its revision label, and
+`PASSPORT_NATIVE_JOB_DEPS_VOLUME=mn-passport-joblife-20261028-linux-deps-arm64`.
+The cache label must be `passport.qualification=job-lifecycle-20261028`. Prepare it
+with `npm ci` from the pinned reference lock, not macOS dependencies. Fresh roots
+end `image-v1` through `image-v999`; new containers/volumes use the separate
+`mn-passport-joblife-20261028` namespace.
+
+The image lane interrupts the software owner's observation of a **confirmed**
+original target job, then kills/restarts the same production container and
+retained volume before same-ID continuation. It does not claim a pre-submission
+kill. A current-intent/circuit-bound receipt is required; an old completed job,
+foreign intent or arbitrary error cannot establish the boundary.
+
+After removal and survivor rotation, the removed target must fail with a
+reachable host and zero host/job mutation. Its historical disclosed key remains
+readable. The built-in wallet uses the same synthetic account owner's key-source
+seed, reconnects through a real indexer outage and observes a standalone payer's
+two-smallest-unit NIGHT transfer. Recreating it must retain addresses/balance,
+refuse stale handles and close subscriptions; grant/holding checks run again.
+This establishes software owner continuity, not real passkey-provider recovery,
+full Lace integration or ACC viewing-secret-to-HD derivation.
+
+Population grant/mint/deposit and the wallet credit are standalone setup, not
+job-backed effects. Stop the sponsor host before each standalone payer. Native
+proof suites have a bounded 180-minute budget and stay outside fast CI. All
+original private fixtures and actual Linux state volumes must be retained on
+failure; never resume from an observer copy or replace an unknown intent.

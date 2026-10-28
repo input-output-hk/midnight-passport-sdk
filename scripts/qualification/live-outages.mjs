@@ -252,6 +252,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
   for (const k of ['PASSPORT_SPONSOR_SEED', 'PASSPORT_SPONSOR_SEED_FILE'])
     assert.equal(env[k], undefined);
   for (const k of Object.keys(env)) if (k.startsWith('PASSPORT_PUBLIC_')) delete env[k];
+  delete env.PASSPORT_WALLET_OWNER_FIXTURE;
   /** @type {Set<import('node:child_process').ChildProcess>} */ const children = new Set();
   /** @type {any[]} */ const evidence = [];
   let verdict = 'IN_PROGRESS';

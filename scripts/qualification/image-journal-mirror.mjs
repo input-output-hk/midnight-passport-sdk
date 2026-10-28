@@ -8,11 +8,14 @@ import { nativeJobHash } from './native-job-evidence.mjs';
 const JOURNALS = ['host-journal', 'job-journal'];
 const REVISION = /^[a-f0-9]{32}\.r(0|[1-9][0-9]{0,5})\.json$/;
 const LIMIT = 16 * 1024 * 1024 + 128;
-/** @param {string} label @param {string} arm */
-export function imageStateNames(label, arm) {
+/** @param {string} label @param {string} arm @param {'creation'|'lifecycle'} [profile] */
+export function imageStateNames(label, arm, profile = 'creation') {
+  assert.ok(['creation', 'lifecycle'].includes(profile));
   assert.match(label, /^image-v[1-9][0-9]{0,2}$/);
   assert.ok(['jubjub', 'p256'].includes(arm));
-  const container = `mn-passport-hostjobs-20261027-${label}-${arm}`;
+  const prefix =
+    profile === 'lifecycle' ? 'mn-passport-joblife-20261028' : 'mn-passport-hostjobs-20261027';
+  const container = `${prefix}-${label}-${arm}`;
   return { container, volume: container + '-state' };
 }
 

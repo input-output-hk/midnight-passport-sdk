@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile, lstat } from 'node:fs/promises';
-import { join, resolve, isAbsolute, basename } from 'node:path';
+import { join, resolve, isAbsolute, basename, dirname } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { workspaceIdentity, verifyQualificationBinding } from './receipt.mjs';
 import { requireOwnedContainer, referenceFingerprint } from './live-outages.mjs';
@@ -19,6 +19,8 @@ import {
   mirrorImageJournals,
   nativeWorkerStopped,
 } from './image-journal-mirror.mjs';
+import { nativeJobProfile } from './job-lifecycle-spec.mjs';
+import { runJobBackedLifecycle } from './job-lifecycle-run.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..'),
   PROJECT = 'mn-passport-qual-20261023';
@@ -63,8 +65,10 @@ async function indexerReady() {
     return false;
   }
 }
-/** @param {'source'|'image'} [lane] */
-export async function runNativeHostJobs(lane = 'source') {
+/** @param {'source'|'image'} [lane] @param {'creation'|'lifecycle'} [profile] */
+export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
+  const options = nativeJobProfile(profile),
+    lifecycle = profile === 'lifecycle';
   assert.ok(['source', 'image'].includes(lane));
   assert.equal(process.env.IN_NIX_SHELL !== undefined, true);
   assert.equal(process.env.PASSPORT_RC_LOCALNET, '1');
@@ -93,10 +97,10 @@ export async function runNativeHostJobs(lane = 'source') {
     depsVolume = process.env.PASSPORT_NATIVE_JOB_DEPS_VOLUME ?? '';
   if (lane === 'image') {
     assert.match(imageId, /^sha256:[a-f0-9]{64}$/);
-    assert.equal(depsVolume, 'mn-passport-hostjobs-20261027-linux-deps');
+    assert.equal(depsVolume, options.depsVolume);
     const image = JSON.parse(docker(['image', 'inspect', imageId]))[0];
     assert.equal(image.Config.Labels['org.opencontainers.image.revision'], source.commit);
-    assert.equal(image.Architecture, 'amd64');
+    assert.equal(image.Architecture, options.arch);
     assert.deepEqual(image.Config.Entrypoint, [
       '/opt/passport/apps/passport-service/image-entrypoint.sh',
     ]);
@@ -104,14 +108,14 @@ export async function runNativeHostJobs(lane = 'source') {
   let linuxReference;
   if (lane === 'image') {
     const volume = JSON.parse(docker(['volume', 'inspect', depsVolume]))[0];
-    assert.equal(volume.Labels['passport.qualification'], 'native-host-jobs-20261027');
+    assert.equal(volume.Labels['passport.qualification'], options.depsLabel);
     const script = `const fs=require('node:fs'),c=require('node:crypto'),p=require('node:path'),m=require('node:module');const dir='/data/contract';const lock=JSON.parse(fs.readFileSync(p.join(dir,'package-lock.json'),'utf8'));const req=m.createRequire(p.join(dir,'package.json'));const names=${JSON.stringify(reference.packages.map((p) => p.name))};const hash=(b)=>c.createHash('sha256').update(b).digest('hex');const packages=names.map(name=>{let entry;try{entry=req.resolve(name);}catch(error){if(error.code!=='ERR_PACKAGE_PATH_NOT_EXPORTED')throw error;const root=p.join(dir,'node_modules',name),manifest=JSON.parse(fs.readFileSync(p.join(root,'package.json'),'utf8'));entry=p.join(root,manifest.exports['.'].import);}const info=lock.packages['node_modules/'+name];return {name,version:info.version,integrity:info.integrity,entrySha256:hash(fs.readFileSync(entry))};});console.log(JSON.stringify({platform:process.platform,arch:process.arch,node:process.version,lockSha256:hash(fs.readFileSync(p.join(dir,'package-lock.json'))),packages}));`;
     linuxReference = JSON.parse(
       docker([
         'run',
         '--rm',
         '--platform',
-        'linux/amd64',
+        options.platform,
         '--network',
         'none',
         '--user',
@@ -128,7 +132,7 @@ export async function runNativeHostJobs(lane = 'source') {
       ]),
     );
     assert.equal(linuxReference.platform, 'linux');
-    assert.equal(linuxReference.arch, 'x64');
+    assert.equal(linuxReference.arch, options.arch === 'amd64' ? 'x64' : options.arch);
     assert.equal(linuxReference.lockSha256, reference.sources['package-lock.json']);
     assert.deepEqual(linuxReference.packages, reference.packages);
   }
@@ -136,7 +140,7 @@ export async function runNativeHostJobs(lane = 'source') {
   /** @type {NodeJS.ProcessEnv} */ const env = {
     ...process.env,
     PASSPORT_LIVE_HOST_JOBS: '1',
-    PASSPORT_LIVE_PROFILE: 'baseline',
+    PASSPORT_LIVE_PROFILE: lifecycle ? 'lifecycle' : 'baseline',
     PASSPORT_RC_LOCALNET: '1',
     MN_NETWORK_ID: 'undeployed',
     MIDNIGHT_NETWORK: 'local',
@@ -157,6 +161,7 @@ export async function runNativeHostJobs(lane = 'source') {
       k.startsWith('PASSPORT_HOST_JOB_')
     )
       delete env[k];
+  delete env.PASSPORT_WALLET_OWNER_FIXTURE;
   /** @type {Set<import('node:child_process').ChildProcess>} */ const children = new Set();
   /** @type {Array<Record<string,any>>} */ const cases = [];
   /** @type {string[]} */ const ownedContainers = [];
@@ -165,8 +170,10 @@ export async function runNativeHostJobs(lane = 'source') {
   /** @type {string|undefined} */ let failureSha256;
   const receipt = {
     schema: 1,
-    scope:
-      lane === 'source'
+    profile,
+    scope: lifecycle
+      ? `job-backed-populated-lifecycle-${lane}`
+      : lane === 'source'
         ? 'source-native-host-job-proof-process-outages'
         : 'local-production-image-native-host-job-restarts',
     lane,
@@ -180,7 +187,7 @@ export async function runNativeHostJobs(lane = 'source') {
     ...(lane === 'image'
       ? {
           imageId,
-          platform: 'linux/amd64',
+          platform: options.platform,
           dockerHostPlatform: 'linux/arm64',
           depsVolume,
           linuxReference,
@@ -216,7 +223,14 @@ export async function runNativeHostJobs(lane = 'source') {
       [
         '--import',
         'tsx',
-        join(ROOT, 'apps/passport-service/qualification/live-worker.ts'),
+        join(
+          ROOT,
+          mode === 'wallet-observer'
+            ? 'apps/passport-dapp/e2e/wallet-reconnect.e2e.ts'
+            : mode === 'wallet-producer'
+              ? 'apps/passport-service/qualification/wallet-transfer.ts'
+              : 'apps/passport-service/qualification/live-worker.ts',
+        ),
         mode,
         root,
         arm,
@@ -224,8 +238,18 @@ export async function runNativeHostJobs(lane = 'source') {
         fault,
       ],
       {
-        cwd: join(ROOT, 'apps/passport-service'),
-        env: { ...env, PASSPORT_REGISTRY_FILE: join(root, 'registry.json') },
+        cwd: join(
+          ROOT,
+          mode === 'wallet-observer' ? 'apps/passport-dapp' : 'apps/passport-service',
+        ),
+        env: {
+          ...env,
+          PASSPORT_REGISTRY_FILE: join(root, 'registry.json'),
+          ...(lifecycle &&
+            mode === 'wallet-observer' && {
+              PASSPORT_WALLET_OWNER_FIXTURE: join(dirname(root), 'fixture.json'),
+            }),
+        },
         detached: true,
         stdio: ['ignore', 'pipe', 'pipe'],
       },
@@ -250,7 +274,17 @@ export async function runNativeHostJobs(lane = 'source') {
           try {
             const m = JSON.parse(line.slice(14));
             messages.push(m);
-            if (m.ready || m.crash || m.proverBoundary || m.failed || m.completed === operation)
+            if (
+              m.ready ||
+              m.crash ||
+              m.proverBoundary ||
+              m.failed ||
+              m.completed ||
+              m.imageReplyLost ||
+              m.walletReady ||
+              m.walletDisconnected ||
+              m.walletSubmitted
+            )
               console.log(
                 'native jobs:',
                 JSON.stringify({
@@ -262,6 +296,10 @@ export async function runNativeHostJobs(lane = 'source') {
                   proverBoundary: m.proverBoundary,
                   failed: m.failed,
                   code: m.code,
+                  imageReplyLost: m.imageReplyLost,
+                  walletReady: m.walletReady,
+                  walletDisconnected: m.walletDisconnected,
+                  walletSubmitted: m.walletSubmitted,
                   completed: typeof m.completed === 'string' ? m.completed : undefined,
                 }),
               );
@@ -300,9 +338,9 @@ export async function runNativeHostJobs(lane = 'source') {
       clearTimeout(timer);
     }
   };
-  /** @param {string} root @param {string} arm @param {string} fault */
-  const host = async (root, arm, fault) => {
-    const w = worker('host', root, arm, 'create', fault);
+  /** @param {string} root @param {string} arm @param {string} fault @param {string} [operation] */
+  const host = async (root, arm, fault, operation = 'create') => {
+    const w = worker('host', root, arm, operation, fault);
     await wait(
       async () => w.messages.some((m) => m.ready),
       240000,
@@ -331,7 +369,7 @@ export async function runNativeHostJobs(lane = 'source') {
   };
   /** @param {string} root @param {string} arm */
   const imageContainer = (root, arm) => {
-    const { container: name, volume } = imageStateNames(basename(output), arm);
+    const { container: name, volume } = imageStateNames(basename(output), arm, profile);
     assert.equal(
       docker(['ps', '-a', '--filter', `name=^/${name}$`, '--format', '{{.ID}}']).trim(),
       '',
@@ -344,20 +382,14 @@ export async function runNativeHostJobs(lane = 'source') {
       docker(['volume', 'ls', '--filter', `name=^${volume}$`, '--format', '{{.Name}}']).trim(),
       '',
     );
-    docker([
-      'volume',
-      'create',
-      '--label',
-      'passport.qualification=native-host-jobs-20261027',
-      volume,
-    ]);
+    docker(['volume', 'create', '--label', 'passport.qualification=' + options.label, volume]);
     // Provision only this fresh Linux volume. The service itself always runs non-root.
     const filesystem = JSON.parse(
       docker([
         'run',
         '--rm',
         '--platform',
-        'linux/amd64',
+        options.platform,
         '--network',
         'none',
         '--user',
@@ -377,7 +409,7 @@ export async function runNativeHostJobs(lane = 'source') {
         'run',
         '--rm',
         '--platform',
-        'linux/amd64',
+        options.platform,
         '--network',
         'none',
         '--user',
@@ -399,9 +431,9 @@ export async function runNativeHostJobs(lane = 'source') {
       '--name',
       name,
       '--label',
-      'passport.qualification=native-host-jobs-20261027',
+      'passport.qualification=' + options.label,
       '--platform',
-      'linux/amd64',
+      options.platform,
       '--network',
       `${PROJECT}_midnight`,
       '--user',
@@ -474,7 +506,29 @@ export async function runNativeHostJobs(lane = 'source') {
       assert.equal(prepared.code, 0);
       assert.ok(prepared.messages.some((m) => m.prepared && m.hostJobs));
       console.log(`native jobs: ${lane} ${arm} fresh fixture prepared`);
-      if (lane === 'source') {
+      if (lifecycle) {
+        await runJobBackedLifecycle({
+          lane,
+          root,
+          arm,
+          worker,
+          host,
+          finished,
+          kill,
+          probe,
+          docker,
+          ids,
+          imageContainer,
+          imageSnapshot,
+          indexerReady,
+          wait,
+          ready,
+          cases,
+          save,
+          imageId,
+          options,
+        });
+      } else if (lane === 'source') {
         /** @type {Awaited<ReturnType<typeof nativeJobSnapshot>>|undefined} */ let previous;
         for (const fault of [
           'deploy:0:after-submit',
@@ -673,7 +727,7 @@ export async function runNativeHostJobs(lane = 'source') {
               m.Destination === '/data/state' &&
               m.RW &&
               m.Type === 'volume' &&
-              m.Name === imageStateNames(basename(output), arm).volume,
+              m.Name === imageStateNames(basename(output), arm, profile).volume,
           ),
         );
         for (const path of [
@@ -753,7 +807,7 @@ export async function runNativeHostJobs(lane = 'source') {
     await Promise.allSettled([...children].map((c) => new Promise((r) => c.once('close', r))));
     for (const id of ownedContainers) {
       const c = JSON.parse(docker(['inspect', id]))[0];
-      assert.equal(c.Config.Labels['passport.qualification'], 'native-host-jobs-20261027');
+      assert.equal(c.Config.Labels['passport.qualification'], options.label);
       if (c.State.Running) docker(['stop', '--time', '35', id]);
     }
     for (const id of [ids[1], ids[2]])

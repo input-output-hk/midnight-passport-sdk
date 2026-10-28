@@ -1,6 +1,7 @@
 // Node execution of the actual built-in wallet; software seed, not browser/provider acceptance.
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import { readSyntheticOwnerWalletSeed } from '../../../scripts/qualification/wallet-owner-identity.mjs';
 import {
   privateFiles,
   boundedWait,
@@ -16,7 +17,14 @@ assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18098/api/v4/graphql
 assert.equal(process.env.MN_NODE_URL, 'http://127.0.0.1:19954');
 const files = privateFiles(root!);
 assert.equal(files.exists('wallet-fixture.json'), false, 'Do not replace a prior wallet identity.');
-files.save('wallet-fixture.json', { seed: new Uint8Array(randomBytes(32)) });
+const ownerFixture = process.env.PASSPORT_WALLET_OWNER_FIXTURE;
+if (ownerFixture) {
+  assert.equal(process.env.PASSPORT_LIVE_HOST_JOBS, '1');
+  assert.equal(process.env.PASSPORT_LIVE_PROFILE, 'lifecycle');
+}
+files.save('wallet-fixture.json', {
+  seed: ownerFixture ? readSyntheticOwnerWalletSeed(ownerFixture) : new Uint8Array(randomBytes(32)),
+});
 const material = files.read('wallet-fixture.json');
 const nativeSocket = globalThis.WebSocket;
 let opens = 0,
@@ -97,6 +105,7 @@ try {
   await boundedWait(() => active === 0, 10000);
   emit({
     completed: 'wallet-reconnect',
+    ownerSeedPinned: ownerFixture !== undefined,
     initialNight: initial.toString(),
     afterRestartNight: received.toString(),
     reopenedNight: '2',

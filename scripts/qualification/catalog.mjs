@@ -236,6 +236,34 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Actual built-in read-only wallet in Node: socket close/reopen, fresh standalone NIGHT credit finalized while indexer is down, unchanged addresses/seed across stop/recreation. No browser or passkey-provider acceptance.',
   },
+  'host-job-lifecycle-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-job-lifecycle.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 180 * 60000,
+    establishes:
+      'Both software arms: job-backed enrollment/removal/survivor rotation with active caller-pinned read grant and qualified holding, original-ID native submit-loss recovery, removed-reader refusal and owner-key-source-pinned built-in wallet indexer reconnect. Standalone grant/value setup is separate; no provider/full-Lace/release acceptance.',
+  },
+  'host-job-lifecycle-image-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-job-lifecycle-image.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+      'PASSPORT_NATIVE_JOB_IMAGE',
+      'PASSPORT_NATIVE_JOB_DEPS_VOLUME',
+    ],
+    timeoutMs: 180 * 60000,
+    establishes:
+      'Both software arms: actual Linux/arm64 production entrypoint and retained Linux journals, owner observation loss at confirmed original lifecycle results followed by container KILL/restart, grant/holding preservation and owner-pinned wallet reconnect. No image pre-submit kill, provider, full Lace or release acceptance.',
+  },
   'host-jobs-native': {
     tier: 'proof-localnet',
     command: [node, 'scripts/qualification/live-host-jobs.mjs'],
@@ -281,6 +309,8 @@ export const SCENARIOS = Object.freeze({
   },
 });
 export const SUITES = Object.freeze({
+  'host-job-lifecycle-native': ['host-job-lifecycle-native'],
+  'host-job-lifecycle-image-native': ['host-job-lifecycle-image-native'],
   'host-jobs-native': ['host-jobs-native'],
   'host-jobs-image-native': ['host-jobs-image-native'],
   foundation: ['binding-source', 'contract-entries', 'reader-guards'],

@@ -152,6 +152,9 @@ export async function nativeJobSnapshot(root, options = {}) {
         identity,
         descriptorSha256: j.descriptorSha256,
         inputSha256: hostHash(j.descriptor.input),
+        ...(identity.kind === 'call' && {
+          circuit: /** @type {{circuit:string}} */ (j.descriptor.input).circuit,
+        }),
         state: j.state,
         milestones: j.milestones,
         ...(r
@@ -198,6 +201,7 @@ export function assertNativeJobContinuation(before, after) {
     assert.ok(current);
     assert.equal(current.descriptorSha256, original.descriptorSha256);
     assert.equal(current.inputSha256, original.inputSha256);
+    assert.equal(current.circuit, original.circuit);
     assert.deepEqual(current.identity, original.identity);
     if (original.host) {
       assert.ok(current.host);

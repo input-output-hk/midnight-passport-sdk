@@ -6,6 +6,18 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/10/27. Historical entries below retain their original issue namespaces.
 
+## 2026/10/28 — job-backed populated lifecycle qualification harness
+
+Add opt-in source/native and production Linux/arm64 suites for enrolled survivor,
+target enrollment/removal and survivor-led rotation with an active caller-pinned
+read grant and qualified holding, then owner-seed-pinned built-in wallet reconnect.
+Require original-ID continuation, historical/current reader semantics, untouched
+private fixture and post-wallet grant/holding checks. Source submit crash and
+image confirmed-result observation loss plus actual container KILL are distinct
+boundaries. Standalone setup and wallet credit are not job-backed. New negative
+controls run in ordinary tests; native suites remain outside fast CI. No native
+pass is implied by this harness. See `docs/review/job-backed-lifecycle/README.md`.
+
 ## 2026/10/27 — native host jobs and production Docker restart qualification (#233/#231)
 
 Local qualification delivered: 12 source/native cases at signed `0f90ab0` and six

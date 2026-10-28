@@ -56,7 +56,9 @@ export function requireExpectedFailure(result, operation, fault, arm) {
     (operation === 'create' &&
       ['before-deploy-proof', 'deploy:0:after-submit', 'call:0:after-submit'].includes(fault)) ||
     (operation === 'rotate-prover' && ['before-owner-proof', 'assert-unknown'].includes(fault)) ||
-    (['rotate', 'survivor-rotate'].includes(operation) && fault === 'call:0:after-submit') ||
+    (['rotate', 'survivor-rotate'].includes(operation) &&
+      (fault === 'call:0:after-submit' ||
+        fault === `circuit:rotate_enc_key_with_${arm}:after-submit`)) ||
     (operation === 'add-target' && fault === `circuit:add_device_with_${arm}:after-submit`) ||
     (operation === 'remove-target' && fault === `circuit:rotate_enc_key_with_${arm}:after-submit`);
   assert.ok(known, 'Unknown operation/fault must not qualify through a fallback error code.');
