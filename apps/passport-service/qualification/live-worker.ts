@@ -63,6 +63,7 @@ import {
   fetchCheckedV1Config,
   remoteHostMutationPorts,
   remoteHostJobPorts,
+  remoteHostJobs,
   remoteV1Prover,
   remoteV1Sponsor,
   remoteDirectory,
@@ -88,6 +89,7 @@ import {
   emitCrashAndExit,
 } from '../../../scripts/qualification/lifecycle-stages.mjs';
 import { confirmedReplyLossProbe } from '../../../scripts/qualification/job-lifecycle-spec.mjs';
+import { observeImageJobReplies } from '../../../scripts/qualification/image-job-observer.mjs';
 import { isNativeJobPendingError } from '../../../scripts/qualification/native-job-evidence.mjs';
 import { requireNoCurrentKey } from '../../../scripts/qualification/live-expectations.mjs';
 
@@ -529,16 +531,12 @@ if (mode === 'host') {
     pollIntervalMs: 500,
     ...(imageReplyProbe && { onSnapshot: imageReplyProbe.observe }),
   });
-  const host = imageReplyCircuit
-    ? {
-        ...rawHost,
-        submitter: {
-          submit: (...args: Parameters<typeof rawHost.submitter.submit>) => {
-            imageReplyProbe!.track(args[1]?.circuit);
-            return rawHost.submitter.submit(...args);
-          },
-        },
-      }
+  const host = imageReplyProbe
+    ? observeImageJobReplies(
+        rawHost,
+        remoteHostJobs(base, { pins, token: hex(fixture.jobToken), timeoutMs: 600000 }),
+        imageReplyProbe,
+      )
     : rawHost;
   const sponsor = remoteV1Sponsor(base);
   const actualProver = remoteV1Prover(base);

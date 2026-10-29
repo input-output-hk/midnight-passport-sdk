@@ -367,3 +367,22 @@ bookkeeping. Records are publisher-reader encrypted. The qualification now
 checks holdings as owner and opens the actual survivor-published chain seal
 with the independent grantee key. No production key format/contract/runtime
 change. Failed roots stay failed; new source/image runs remain required.
+
+
+## Terminal image reconciliation observer — 2026/10/29
+
+Image-v2 passed Jubjub creation, standalone population and survivor enrollment.
+Target enrollment then completed normally without the expected observation-loss
+marker, so the strict boundary assertion stopped the suite: it remains FAIL. All
+22 observed jobs were done. Source/reference end hashes stayed unchanged and the
+actual Linux state and owner fixture were protected separately.
+
+The qualification hook watched polling snapshots only. The job client can return
+a terminal `done` snapshot directly from reconciliation without polling. The
+image-only wrapper now observes both paths, validates the original identity via
+the real client, and interrupts before the owner accepts the confirmed outcome.
+Transport controls cover confirmed terminal reconciliation without another send,
+and unknown outcomes without a manufactured loss marker. Production transport,
+service execution and transaction durability are unchanged. Fresh image evidence
+is required; this correction does not relabel the failed run. The complete
+source-v4 result remains pinned to signed b9a203b and its audited runtime.

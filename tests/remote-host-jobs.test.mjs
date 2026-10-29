@@ -7,7 +7,51 @@ import {
   remoteHostJobPorts,
 } from '../packages/adapter-service/dist/index.js';
 import { fixture, descriptor, servicePins, barrier } from './fixtures/host-jobs.mjs';
+import { observeImageJobReplies } from '../scripts/qualification/image-job-observer.mjs';
+import { confirmedReplyLossProbe } from '../scripts/qualification/job-lifecycle-spec.mjs';
 const token = 'cd'.repeat(32);
+for (const visible of [true, false])
+  test(`image observer covers terminal original-ID reconciliation (confirmed=${visible})`, async (t) => {
+    const f = await setup(t);
+    const input = /** @type {{address:string,circuit:string,tx:string}} */ (f.d.input);
+    const d = { ...f.d, input: { ...input, circuit: 'add_device_with_jubjub' } };
+    f.visible(visible);
+    await f.client.execute(d.identity, d.input);
+    const before = f.counts();
+    /** @type {Record<string,unknown>[]} */ const marker = [];
+    const probe = confirmedReplyLossProbe(d.input.circuit, (m) => marker.push(m));
+    const ports = observeImageJobReplies(remoteHostJobPorts(f.base, f.options), f.client, probe);
+    const effect = {
+      key: d.identity.requestId,
+      digest: d.identity.intentSha256,
+      kind: /** @type {const} */ ('call'),
+      input: { circuit: d.input.circuit },
+    };
+    if (visible) {
+      const methods = f.methods.length;
+      await assert.rejects(() => ports.outcomes.reconcile(d.identity.pins, effect), {
+        code: 'MutationUnsettled',
+      });
+      assert.equal(probe.lost, true);
+      assert.deepEqual(marker, [
+        {
+          imageReplyLost: true,
+          circuit: d.input.circuit,
+          jobId: await remoteHostJobId(d.identity),
+          state: 'done',
+        },
+      ]);
+      assert.ok(f.methods.slice(methods).every((m) => m.startsWith('GET ')));
+    } else {
+      assert.deepEqual(await ports.outcomes.reconcile(d.identity.pins, effect), {
+        kind: 'unknown',
+      });
+      assert.equal(probe.lost, false);
+      assert.equal(marker.length, 0);
+    }
+    assert.equal(f.counts().sends, before.sends);
+    assert.equal(f.counts().executions, before.executions);
+  });
 /** @param {import('node:test').TestContext} t @param {Partial<import('../packages/service/dist/index.js').HostJobOptions>} [options] */
 async function setup(t, options = {}) {
   const f = fixture(undefined, options),

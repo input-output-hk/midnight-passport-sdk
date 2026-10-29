@@ -164,3 +164,22 @@ decrypt publisher-specific bookkeeping, while the grantee opens the exported
 seal. Hosts must retain/export the confirmed rotation's `sealedReadGrants` for
 consumers; enrolled-device access alone is not grant-bookkeeping portability.
 The failed source-v3 receipt remains FAIL. Fresh complete runs are still required.
+
+
+## Terminal image reconciliation observer — 2026/10/29
+
+Image-v2 passed Jubjub creation, standalone population and survivor enrollment.
+Target enrollment then completed normally without the expected observation-loss
+marker, so the strict boundary assertion stopped the suite: it remains FAIL. All
+22 observed jobs were done. Source/reference end hashes stayed unchanged and the
+actual Linux state and owner fixture were protected separately.
+
+The qualification hook watched polling snapshots only. The job client can return
+a terminal `done` snapshot directly from reconciliation without polling. The
+image-only wrapper now observes both paths, validates the original identity via
+the real client, and interrupts before the owner accepts the confirmed outcome.
+Transport controls cover confirmed terminal reconciliation without another send,
+and unknown outcomes without a manufactured loss marker. Production transport,
+service execution and transaction durability are unchanged. Fresh image evidence
+is required; this correction does not relabel the failed run. The complete
+source-v4 result remains pinned to signed b9a203b and its audited runtime.
