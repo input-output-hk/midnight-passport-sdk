@@ -1,6 +1,6 @@
 # Compatibility matrix
 
-> **Status:** published preview RC5 · local qualification updated 2026/10/28. Releases are lockstep across the
+> **Status:** published preview RC5 · local qualification updated 2026/10/30. Releases are lockstep across the
 > `@input-output-hk/mn-passport-*` packages. The binding data is pinned in
 > `packages/contract/acc-binding-v2.generated.json` and the generated registry.
 
@@ -33,6 +33,21 @@ Public-entry ESM/CJS loads, real declaration boundaries, current physical runtim
 identity and WASM browser builds pass. The canary's combined abstractions peer warning
 remains documented. This is not an ordinary-wallet transaction qualification, full
 reader enrollment, real-provider/signing-page acceptance or full Lace compatibility.
+
+## 2026/10/30 local installed candidate qualification
+
+[Installed consumer evidence](review/installed-consumer/README.md) records all nine
+`0.1.0-installed.20261030` local tarballs, complete installed SDK file bytes,
+physical runtime identity, second fresh offline/frozen lock install, and eight
+both-arm call/deploy HTTP/process interruption cases. Original pre-host unknowns
+stay unknown; recorded synthetic submissions reconcile without recovery effects.
+The installed hosted adapter preserves supported consent and refuses lossy
+conversion plus unsupported rotation/withdrawal sessions before secret access.
+
+These are synthetic chain/host checks at signed `12f40019ee71163aa7636f81b47bd6383b064d99`.
+They do not update the earlier native proof/image pins, revalidate an actual Lace
+release, qualify a provider, establish registry provenance, or change published
+RC5. Exact-value shielded withdrawal guards and all existing release limits remain.
 
 ## Binding axis
 

@@ -36,3 +36,28 @@ The local manifest establishes supplied-file integrity, not publisher identity.
 A lock freezes dependency resolution and runtime copies; it does not qualify all
 operation families or actual host releases. Real proof, image, provider and Lace
 acceptance stay distinct. Do not automatically close broad #81/#231/#232.
+
+## Local acceptance — 2026/10/30
+
+The public `pnpm qualify run consumer-installed --output …` command passed at clean
+GPG/DCO-signed `12f40019ee71163aa7636f81b47bd6383b064d99`; the invoking workspace
+fingerprint stayed unchanged. See [the outer receipt](suite-receipt.json),
+[installed receipt](installed-receipt.json) and [verification](verification.json).
+The outer stdout digest equals the complete inner receipt bytes. The candidate
+`0.1.0-installed.20261030` is a local test version of unchanged production SDK
+source from #252, not a new registry release.
+
+A second fresh consumer installed the same nine tarballs with the first consumer's
+exact lock offline/frozen. All eight both-arm call/deploy process cases and the
+synthetic hosted-consent checks passed; the signed-source scenario took 2,938 ms
+on this machine, not a promised CI latency. Three deliberate tamper controls
+(lock, bundle, installed SDK file) failed before creating any new scenario run,
+then restored the exact bytes. A matching-harness controller SIGTERM probe exited
+with code 2 and terminated its observed owned worker. No native Docker or wallet
+resources were started. Historical synthetic unknowns remain retained privately.
+
+The full Nix gate passed 999 tests with seven existing conditional skips and zero
+failures; Jekyll built 21 pages / 463 valid local links and anchors. The new cheap
+archive/receipt controls are in normal tests; installing dependencies and process
+qualification remain opt-in. Documentation after this signed execution does not
+retroactively qualify a different source or package graph.

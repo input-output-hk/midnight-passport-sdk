@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "verdict": "PASS_LOCAL_INSTALLED_SYNTHETIC",
+  "source": {
+    "commit": "12f40019ee71163aa7636f81b47bd6383b064d99",
+    "dirty": false,
+    "workspaceSha256": "d253dfb3d0f05c083cf817de72cb218f522bec135732231bd33881a67b4203b7",
+    "fileCount": 1308
+  },
+  "packedProductionSource": "7e0bb40d1f23a116165b279165bd7ea90241301d",
+  "sdkVersion": "0.1.0-installed.20261030",
+  "installedSdkFiles": 521,
+  "secondFreshConsumerFrozenOffline": true,
+  "manifestSha256": "325e352d54cb204c3aea23bf94321f01aa5ae628004d1c41ea33043f1d19ce04",
+  "lockSha256": "914993646e2a76d03c7d028901a892bd6de7c47c0311343f1927f079efb5d651",
+  "installedReceiptSha256": "a70e2d67a51e340dde7b059de250b240c59d5e6344e9a8a08bd420299cc48652",
+  "suiteReceiptSha256": "ed5ba5564866156c608941286ca1c35e87dc0cf6867a7651660ffa7871a7a23c",
+  "gate": {
+    "pass": 999,
+    "fail": 0,
+    "skipped": 7,
+    "cancelled": 0,
+    "exitCode": 0,
+    "logSha256": "6bd8c4d759828d247cdb0e5715a2a02c091939ad185bab33ba234010afbb6c85"
+  },
+  "docs": {
+    "pages": 21,
+    "localLinksAndAnchors": 463,
+    "errors": [],
+    "generator": "Jekyll 4.4.1"
+  },
+  "negativeControls": {
+    "schemaVersion": 1,
+    "cases": [
+      {
+        "name": "lock-change",
+        "verdict": "PASS_REFUSED_BEFORE_NEW_RUN"
+      },
+      {
+        "name": "tarball-change",
+        "verdict": "PASS_REFUSED_BEFORE_NEW_RUN"
+      },
+      {
+        "name": "installed-file-change",
+        "verdict": "PASS_REFUSED_BEFORE_NEW_RUN"
+      }
+    ],
+    "newScenarioRuns": 0,
+    "originalBytesRestored": true
+  },
+  "controllerCleanup": {
+    "schemaVersion": 1,
+    "controllerSignal": "SIGTERM",
+    "controllerExitCode": 2,
+    "ownedWorkersObserved": 1,
+    "ownedWorkersExited": true,
+    "noDockerTouched": true
+  },
+  "limits": [
+    "Synthetic chain and hosted signer; no native proof or real provider/Lace acceptance.",
+    "All supplied SDK files compared; not every transitive dependency byte.",
+    "Local tarball manifest relation only; not actual-registry publisher provenance.",
+    "Pre-host unknown fixtures retained; no no-send repair or replay.",
+    "Published RC5 and exact-value shielded withdrawal guards unchanged."
+  ],
+  "realProvider": false,
+  "fullLace": false,
+  "releaseQualified": false,
+  "published": false,
+  "finalDocumentationGate": {
+    "pass": 999,
+    "fail": 0,
+    "skipped": 7,
+    "cancelled": 0,
+    "exitCode": 0,
+    "logSha256": "e1c6cb52786e38eb3105017daf5ce73cb74b280eb918b0959b203b592cc945fc"
+  }
+}
