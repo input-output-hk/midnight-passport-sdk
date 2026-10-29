@@ -403,3 +403,16 @@ publisher and deliver it to the independent grantee; owner ACC access alone
 does not recover a survivor's bookkeeping. Preserve the stated source/image
 interruption boundaries and software/provider/release limits. Stop only recorded
 owned compute and keep all state/dependency/key volumes.
+
+
+### Installed candidate consumers — 2026/10/30
+
+The opt-in `consumer-installed` suite requires a fresh private consumer outside
+this checkout, prepared with `scripts/qualify-installed-consumer.mjs prepare`.
+Read the installed-candidate section of `docs/site/consumer-integration.md`.
+Use all nine checked local tarballs, retain the lock/config and immutable run
+receipts, and replay a supplied hash-pinned lock offline in a second fresh app.
+The harness checks installed SDK bytes, actual HTTP/process kills and synthetic
+hosted-consent refusals. Its fake chain and host never qualify native proofs,
+real passkey providers, registry provenance or full Lace. Do not add installs to
+fast required CI, delete unknown fixtures, or publish private install logs/locks.

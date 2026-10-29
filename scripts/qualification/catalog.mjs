@@ -61,6 +61,14 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Existing packed tarball installation/types/runtime identity; not a registry install.',
   },
+  'installed-consumer-interruptions': {
+    tier: 'packed-consumer',
+    command: [node, 'scripts/qualify-installed-consumer.mjs', 'run'],
+    requires: ['CONSUMER_ROOT'],
+    timeoutMs: 3 * 60000,
+    establishes:
+      'Prepared nine-tarball consumer: exact installed files, frozen offline lock/runtime identity, both-arm real HTTP and killed-process original-ID recovery with synthetic drivers. Not registry, native proof, real-provider or full Lace acceptance.',
+  },
   'consumer-source-types': {
     tier: 'packed-consumer',
     command: [node, 'scripts/smoke-lace-source-consumer.mjs'],
@@ -329,6 +337,7 @@ export const SUITES = Object.freeze({
   'grant-recovery-jubjub': ['grant-recovery-native-jubjub'],
   'grant-recovery-p256': ['grant-recovery-native-p256'],
   consumer: ['packed-consumer'],
+  'consumer-installed': ['installed-consumer-interruptions'],
   'consumer-source': ['consumer-source-types'],
   'consumer-published': ['consumer-published-host'],
   release: [

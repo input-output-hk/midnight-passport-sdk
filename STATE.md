@@ -4,7 +4,21 @@
 > `mn-passport-skills:spec-driver` per [`docs/development-workflow.md`](./docs/development-workflow.md) §3.
 > Every entry carries its GitHub issue
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
-> Last updated: 2026/10/27. Historical entries below retain their original issue namespaces.
+> Last updated: 2026/10/30. Historical entries below retain their original issue namespaces.
+
+## 2026/10/30 — review handoff and installed-package qualification
+
+Pushed signed local work through `7e0bb40` as fork PR #252, targeting
+`passport-acc-prototype`; its exact-head checks are green. The review map covers
+durable host jobs plus completed native populated lifecycle acceptance; historical
+partial-run sections below retain their original scope. Published RC5 is unchanged.
+
+The local #81/#231 follow-up adds a fresh installed-consumer lane: nine supplied
+candidate tarballs, exact installed SDK file bytes, frozen offline lock replay,
+physical runtime identity, real HTTP/process-kill original-ID reconciliation and
+synthetic hosted-consent refusals. See `docs/review/installed-consumer/README.md`
+and the consumer guide for reproduction and precise evidence limits. It neither
+operates real wallets/providers nor changes runtime, ACC, consent or value guards.
 
 ## 2026/10/28 — resumed recovery and canonical indexer readiness
 

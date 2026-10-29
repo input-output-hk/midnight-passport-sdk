@@ -167,3 +167,68 @@ has been removed. Earlier readable secrets are not authenticated historical ledg
 keys. Hosts must not use them to identify a removal target or fresh-key recipient.
 Legacy interruption may require operator reconciliation; the next durability slice
 adds an explicit protected original continuation. No legacy automatic retry is claimed.
+
+## Installed candidate interruption qualification
+
+The opt-in `consumer-installed` suite extends #81/#231 with a retained application
+outside the workspace. It installs all nine local candidate tarballs, compares
+**every installed SDK file byte** with its supplied tarball, checks one physical
+copy of the pinned Midnight runtime family, and reuses an unchanged lockfile for
+an offline frozen install. A local manifest authenticates its file relationships;
+it does not establish registry publisher identity or release provenance.
+
+Prepare a new private path whose parent already exists. The first preparation may
+resolve/download external dependencies; lifecycle scripts and pnpmfile hooks are
+disabled. No registry publish occurs. Use the repository's Nix shell throughout:
+
+```sh
+CONSUMER_ROOT=/absolute/private/new-consumer \
+RELEASE_VERSION=<exact-local-pack-version> \
+RELEASE_TARBALL_DIR=/absolute/private/nine-tarball-bundle \
+nix develop -c node scripts/qualify-installed-consumer.mjs prepare
+
+CONSUMER_ROOT=/absolute/private/new-consumer \
+nix develop -c pnpm qualify run consumer-installed \
+  --output /absolute/private/new-qualification-receipt.json
+```
+
+For a second fresh application, set `CONSUMER_LOCK_FILE` to the first application's
+`pnpm-lock.yaml` and `CONSUMER_LOCK_SHA256` to its recorded SHA-256 during `prepare`.
+That preparation uses `--offline --frozen-lockfile`; a missing cached dependency is
+a failure. `CONSUMER_MANIFEST_SHA256` can pin the supplied bundle independently.
+`run` also accepts external manifest/lock hashes and refuses a different retained
+version or Node runtime. Keep the lockfile and `qualification-inputs.json` together;
+only hashes belong in a public handover if private dependencies appear in a lock.
+
+Each run creates fresh synthetic fixtures and checks eight cases: both authoriser
+arms × call/deployment × two interruption boundaries. A real loopback HTTP worker
+is killed after the job is claimed before host execution, or after the last
+synthetic submission is durably recorded before acknowledgment. A fresh process
+uses the installed client/service packages and the original job identity.
+
+| Boundary | Required result | Safety check |
+| --- | --- | --- |
+| Claimed job, no host record | Original remains `unknown` | No preparation, execution or submission during reconciliation. Missing host state never proves no send. |
+| Recorded submission, lost acknowledgment | Original becomes `done` | Ledger bytes unchanged; no recovery preparation or submission. Deployment has two synthetic steps. |
+| Repeated original resume / conflicting input / unauthorised request / missing GET | Original outcome preserved; conflict and authentication refused | No replacement ID, legacy fallback or additional effect. |
+
+A separate installed hosted-JubJub adapter probe preserves the full supported
+consent descriptor, refuses a lossy converter, and refuses rotation and shielded/
+unshielded withdrawals that lack a hosted consent descriptor. Rejected operations
+never open a host session or request secret material. This uses a **synthetic
+host**, not Lace's signer page, branded constructors or a real provider.
+
+The inner `runs/<run-id>/receipt.json` records bundle/lock/harness hashes, all nine
+SDK file inventories, runtime names, cases and explicit negative scope flags.
+The outer qualification receipt binds the invoking checkout and binding. Modified
+installed files, archive traversal/links, altered bundles or locks fail before a
+new scenario starts. Failed runs and intentional unknowns remain private and are
+never relabelled; use fresh fixtures instead of replacing their intents. Workers
+own only ephemeral loopback sockets and terminate on success/failure; no Docker,
+real wallet, proof server, hosted signer or existing demo is used.
+
+This does **not** extend native proof acceptance, verify every transitive dependency
+byte, qualify Google/iCloud restoration, establish actual-registry provenance, or
+claim full Lace compatibility. It does not enable new owner operations or partial
+shielded spends. Installation/restart runs remain outside required fast PR CI;
+archive-integrity and receipt-refusal controls run in the ordinary test gate.
