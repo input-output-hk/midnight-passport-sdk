@@ -1,8 +1,9 @@
 # Job-backed populated device lifecycle and wallet reconnect
 
 Refs #233/#230/#231/#232/#239. Local qualification on the existing working
-branch; no publication or full Lace/provider acceptance. This document describes
-the harness. Actual results will be recorded separately after native execution.
+branch; no publication or full Lace/provider acceptance. Completed local results
+are in the final section and machine-readable receipt. Earlier failed attempts
+retain their original verdicts.
 
 ## Review map
 
@@ -191,3 +192,45 @@ submit completion, before the owner accepts its result. Real HTTP controls
 exercise direct completion, terminal reconciliation and unknown outcomes. This
 is deterministic owner observation loss after confirmation on either return
 path; no production observer semantics or transaction execution are changed.
+
+
+## Completed local lifecycle qualification — 2026/10/29
+
+Fresh source-v4 passed both arms at signed `b9a203ba03363811588b356b5ae7013895f51e44`; image-v3 passed both at
+signed `7703135cb3b90a4eeb64aca6342fd679ac14a678`. All 291 production source/runtime files match between them.
+The earlier partial/failed attempts above remain historical failures. Their
+unknowns, old indexer cache and private fixtures are retained.
+
+| Lane | Arm | Done jobs | Confirmed steps / single dispatch claims |
+| --- | --- | ---: | ---: |
+| source-v4 | jubjub | 35 | 44 |
+| source-v4 | p256 | 35 | 44 |
+| image-v3 | jubjub | 35 | 44 |
+| image-v3 | p256 | 35 | 44 |
+
+The source lane additionally matches actual native submit entries to claims with
+no duplicate prepared-byte entries. The image lane validates actual retained
+Linux-volume histories; it does not independently count network sends. Both
+lanes retain original intent IDs across the declared interruptions, verify owner
+and survivor access, refuse the removed target without mutation, and preserve
+the chain-qualified holding and independent grantee's current viewing access.
+The built-in wallet retains the synthetic owner's seed, address and credit of
+two smallest NIGHT units across actual indexer outage, socket reconnect and
+recreation; stale handles fail and subscriptions close. Standalone setup and wallet credit
+are not job-backed transfers.
+
+Local production image: `sha256:cf7d8d449d12159f7e374dcd4e27422a95b19d2c970a0c832d49d152b2f31b4a` (Linux/arm64). All 291 production files and nine
+selected locked dependency entries match the frozen input audit. End source/
+reference hashes are unchanged. Confirmation heights are anchored to matching
+canonical finalized node/indexer blocks; these are trusted-pair checks, not
+cryptographic inclusion proofs. Grant bookkeeping remains publisher-specific:
+the host must export/deliver confirmed read seals after a different device rotates.
+
+No RC/package/image was published, and real-provider/full-Lace recovery is not
+qualified. Exact-value shielded withdrawals, Linux-volume-only durability and
+open scanner/locking/budget/no-send/compaction limitations remain unchanged.
+The final cache audit verified all 208 files (12,182,210,301 bytes), with matching
+SHA-256/size and no regeneration. Four completed-qualification private archives
+were verified with SHA-256/gzip CRC and mode 0600; authority and raw logs stay
+outside Git and the knowledge base. Failed-attempt backups remain separate.
+See the machine-readable `qualification.json` and hashed knowledge-base artifacts.

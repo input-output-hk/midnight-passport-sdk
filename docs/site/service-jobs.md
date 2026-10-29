@@ -501,21 +501,23 @@ original private fixtures and actual Linux state volumes must be retained on
 failure; never resume from an observer copy or replace an unknown intent.
 
 
-### Partial lifecycle run — 2026/10/28
+### Historical partial lifecycle run — 2026/10/28
 
-The new source suite is **not qualified yet**. At signed `a4c3d4f`, Jubjub creation,
+The first source run was **not qualified**. Current results appear below. At signed `a4c3d4f`, Jubjub creation,
 standalone grant/holding setup and survivor enrollment completed. Target
 enrollment crossed its native post-submit/reply-loss boundary and real indexer
 unknown-outcome probe; host capacity then fell below the 2 GiB guard before
-original-ID recovery. The original running job/intent and prepared bytes remain
+original-ID recovery. At that stop, the original running job/intent and prepared bytes were
 retained. Final snapshot: 22 jobs, 31 single dispatch claims, 30 confirmed steps;
 31 instrumented source submit entries without repeated prepared-byte entries.
 This is partial evidence, not full enrollment recovery or complete lifecycle
 acceptance. P-256, removal, survivor rotation, reconnect and ARM64 image cases
-remain pending. The local ARM64 image passed byte/dependency checks only.
+were pending for that run. The local ARM64 image passed byte/dependency checks only.
 
-Repository `docs/review/job-backed-lifecycle/qualification.json` preserves the
-failed aggregate verdict and exact pins. Free at least 15 GiB before restarting
+Repository `docs/review/job-backed-lifecycle/qualification.json` includes failed
+attempt summaries and current acceptance. The immutable failed aggregate and
+exact pins remain in the knowledge-base artifacts. The original enrollment later
+recovered using the same ID; its first suite remains FAIL. Free at least 15 GiB before restarting
 native qualification, verify Docker/owned container state and retain the failed
 root. Reconcile only the original target intent; a fresh complete test uses a new
 root. Never turn a missing receipt, capacity stop or skipped lane into a pass.
@@ -553,3 +555,16 @@ relevant grantees. A grantee uses its own read key to open that seal and must
 validate it against the live ACC encryption key. The lifecycle qualification
 checks the publisher's actual chain entry and independently opens the inner seal;
 it does not claim automatic cross-device bookkeeping recovery or seal delivery.
+
+
+### Current local lifecycle results — 2026/10/29
+
+Fresh source/native and Linux/arm64 production-entrypoint image runs passed both arms at signed
+`b9a203ba03363811588b356b5ae7013895f51e44` (source) and
+`7703135cb3b90a4eeb64aca6342fd679ac14a678` (image). They cover original-ID recovery of
+enrollment/removal/survivor rotation, removed-reader refusal, grant/holding continuity and the
+actual synthetic-owner built-in wallet across indexer outage/reconnect/recreation. See
+`docs/review/job-backed-lifecycle/qualification.json` for hashes, counts and historical
+failures. Published RC5 is unchanged. Real-provider recovery/full Lace, macOS bind durability,
+automatic scanning, distributed locking and unknown/no-send repair remain unqualified. Source
+and image interruption boundaries and standalone value-setup limits remain as described above.

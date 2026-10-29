@@ -572,19 +572,37 @@ wallet locking, persistent budget, unknown/no-send repair and journal compaction
 remain open. Exact-value shielded withdrawals and other release limits are unchanged.
 
 
-## Job-backed lifecycle qualification — partial 2026/10/28
+## Job-backed lifecycle qualification — historical partial run 2026/10/28
 
 The local qualification harness extends opt-in descriptor jobs to populated device
 lifecycle and an owner-seed-pinned built-in wallet. The initial source run at
 `a4c3d4f` completed Jubjub create/reopen, standalone read-grant/holding setup and
 survivor enrollment. Target enrollment reached its native submit/reply-loss fault
 and real indexer outage probe; the capacity guard stopped the suite before
-same-ID recovery. One original job remains running, retained with immutable
-history. Overall acceptance is **incomplete**, not a passed device-lifecycle row.
+same-ID recovery. That run retained one original running job with immutable
+history. Its later original-ID recovery did not relabel the failed suite. That
+run did not establish lifecycle acceptance.
 
-All P-256, removal/rotation, owner-pinned reconnect and Linux/arm64 image lifecycle
-cases remain pending. The ARM64 image's 291 production files and nine selected
+P-256, removal/rotation, owner-pinned reconnect and Linux/arm64 image lifecycle
+cases were pending for that run. The ARM64 image's 291 production files and nine selected
 Linux dependency entries match; this is a byte audit, not native acceptance.
-See [the partial review and receipt](review/job-backed-lifecycle/README.md).
+See [the review and receipt, including attempt history](review/job-backed-lifecycle/README.md).
 Historical direct lifecycle and AMD64 creation results retain their original
 scope. RC5, provider/full-Lace limitations and exact-value guards are unchanged.
+
+
+## Completed local job-backed lifecycle — 2026/10/29
+
+Fresh source-v4/image-v3 passed both arms at signed `b9a203ba03363811588b356b5ae7013895f51e44`
+(source) and `7703135cb3b90a4eeb64aca6342fd679ac14a678` (image). Original-ID
+enrollment/removal/survivor-rotation recovery, removed-reader refusal, grant/holding
+preservation and owner-seed-pinned wallet reconnect passed. Earlier failed roots/unknowns and
+old indexer data are retained. No publication/provider/full-Lace acceptance. Details and exact
+counts: [review map](review/job-backed-lifecycle/README.md) and
+[receipt](review/job-backed-lifecycle/qualification.json).
+
+Source post-submit exit and image confirmed-result observer loss followed by KILL remain
+different boundaries. Linux ext state only; grant bookkeeping/export is publisher-specific.
+Standalone setup/wallet credit are not job-backed value transfers. Canonical anchors trust the
+node/indexer pair; they are not light-client proofs. Exact-value withdrawal and open operational
+limits remain.

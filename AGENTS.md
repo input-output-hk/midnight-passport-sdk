@@ -391,3 +391,15 @@ uses the original service name/port with a new recorded ID and volume
 `mn-passport-qual-20261023_indexer-canonical-20261028`; do not delete either history
 or recreate the old stale binding with Compose. Node/prover IDs and chain remain
 unchanged. Preserve the source-v2 unknown; never repair it by replacing its send.
+
+
+### Latest lifecycle status — 2026/10/29
+
+The partial-run and Docker incident notes above are historical. Read the final
+review map and receipt: fresh source-v4/image-v3 completed both arms locally.
+Keep all original failed/unknown fixtures and archived indexer data. Grant
+bookkeeping is publisher-reader encrypted: fetch the confirmed seal via its
+publisher and deliver it to the independent grantee; owner ACC access alone
+does not recover a survivor's bookkeeping. Preserve the stated source/image
+interruption boundaries and software/provider/release limits. Stop only recorded
+owned compute and keep all state/dependency/key volumes.

@@ -394,3 +394,14 @@ submit completion, before the owner accepts its result. Real HTTP controls
 exercise direct completion, terminal reconciliation and unknown outcomes. This
 is deterministic owner observation loss after confirmation on either return
 path; no production observer semantics or transaction execution are changed.
+
+
+## Completed local job-backed lifecycle — 2026/10/29
+
+Fresh source-v4/image-v3 passed both arms at signed `b9a203ba03363811588b356b5ae7013895f51e44`
+(source) and `7703135cb3b90a4eeb64aca6342fd679ac14a678` (image). Original-ID
+enrollment/removal/survivor-rotation recovery, removed-reader refusal, grant/holding
+preservation and owner-seed-pinned wallet reconnect passed. Earlier failed roots/unknowns and
+old indexer data are retained. No publication/provider/full-Lace acceptance. Details and exact
+counts: [review map](docs/review/job-backed-lifecycle/README.md) and
+[receipt](docs/review/job-backed-lifecycle/qualification.json).

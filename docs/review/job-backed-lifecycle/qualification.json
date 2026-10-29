@@ -1,176 +1,138 @@
 {
-  "schema": 1,
-  "status": "INCOMPLETE_CAPACITY_STOP",
+  "schema": 2,
+  "status": "PASS_LOCAL_SYNTHETIC_LIFECYCLE",
   "source": {
-    "commit": "a4c3d4fb0483ac7da71174b002f7e9749cf116ab",
+    "commit": "b9a203ba03363811588b356b5ae7013895f51e44",
     "dirty": false,
-    "workspaceSha256": "d24cce57d5adf5ce6c30104853fd5fbd751696e7c14dd2beb7177436e2fa9784",
-    "fileCount": 1297
+    "workspaceSha256": "af7d882ba3af14b21df55d0543ddb0ef9c775c9de55f8129333240196c5af65e",
+    "fileCount": 1300
   },
   "binding": {
     "id": "acc-s3r1.1",
     "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
     "moduleSha256": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf"
   },
-  "sourceNativeSuiteVerdict": "FAIL",
-  "completedStages": [
-    "jubjub:create",
-    "jubjub:populate-standalone",
-    "jubjub:add-survivor"
-  ],
-  "observedFault": "jubjub:add-target native-after-submit-before-owner-ack",
-  "originalIdRecoveryQualified": false,
-  "realIndexerOutageProbes": [
-    {
-      "probe": "unknown-during-real-indexer-outage",
-      "checked": 1,
-      "logSha256": "0785e1817aed79710e33308d912cc020f5b3b235cd61e22cc8ae05e945d4f315"
+  "sourceExecutionGate": {
+    "passed": 988,
+    "failed": 0,
+    "skipped": 7,
+    "logSha256": "bf018d8af3d7f46228fbbe0c0c8bcddd824ed8c5b67256a6a92660a422ea1f66",
+    "exitCode": 0
+  },
+  "imageExecutionGate": {
+    "passed": 991,
+    "failed": 0,
+    "skipped": 7,
+    "exitCode": 0,
+    "logSha256": "bf3a4e7699721d017abe8f85ec79613803a4c3e38cd3cfa90ff738fa5fe312e5"
+  },
+  "lanes": {
+    "source-v4": {
+      "verdict": "PASS",
+      "cases": 28,
+      "arms": {
+        "jubjub": {
+          "jobs": 35,
+          "dispatchClaims": 44,
+          "confirmedSteps": 44,
+          "ownerFixtureUnchanged": true,
+          "hostSendEntries": 44,
+          "duplicatePreparedByteEntries": 0
+        },
+        "p256": {
+          "jobs": 35,
+          "dispatchClaims": 44,
+          "confirmedSteps": 44,
+          "ownerFixtureUnchanged": true,
+          "hostSendEntries": 44,
+          "duplicatePreparedByteEntries": 0
+        }
+      },
+      "receiptSha256": "5649f7aa6bf27bef4237ee017aac6957ff2fe80031f439adf8b970a65ca1ae9b",
+      "sourceEndUnchanged": true,
+      "canonicalConfirmations": 90,
+      "distinctCanonicalBlocks": 90
+    },
+    "image-v3": {
+      "verdict": "PASS",
+      "cases": 26,
+      "arms": {
+        "jubjub": {
+          "jobs": 35,
+          "dispatchClaims": 44,
+          "confirmedSteps": 44,
+          "ownerFixtureUnchanged": true
+        },
+        "p256": {
+          "jobs": 35,
+          "dispatchClaims": 44,
+          "confirmedSteps": 44,
+          "ownerFixtureUnchanged": true
+        }
+      },
+      "receiptSha256": "fd5b93c330b5c6d489b14f8d255a0a5707a3229aa1e864676fc3b5e647cb4025",
+      "sourceEndUnchanged": true,
+      "canonicalConfirmations": 90,
+      "distinctCanonicalBlocks": 90
     }
-  ],
-  "instrumentedHostSendEntries": 31,
-  "duplicatePreparedByteEntries": 0,
-  "finalJobCount": 22,
-  "durableDispatchClaims": 31,
-  "confirmedSteps": 30,
-  "pendingOriginalJobs": [
-    {
-      "jobId": "8b58722c89f5ae548f94bd62d1a0ffc2",
-      "requestId": "3c3b2562597f2701ec1da329ea086678:52",
-      "circuit": "add_device_with_jubjub",
-      "state": "running",
-      "hostPhase": "active"
-    }
-  ],
-  "stopReason": "Host free capacity fell below the existing 2 GiB guard before restarting the source host for original-ID recovery. No ENOSPC repaired or native failure relabelled.",
-  "pending": [
-    "original target-intent reconciliation",
-    "Jubjub removal and survivor rotation",
-    "Jubjub owner-pinned wallet reconnect",
-    "all P-256 native cases",
-    "all Linux/arm64 image lifecycle cases"
-  ],
+  },
   "image": {
-    "id": "sha256:2a41b3b40772c714f9bbe9efed84ad89022fa14ee44dc6099fa54c72107e8ddd",
+    "source": {
+      "commit": "7703135cb3b90a4eeb64aca6342fd679ac14a678",
+      "dirty": false,
+      "workspaceSha256": "2c75b908d72ec1969228645a433e26bf3e677274f0b380dbca18501a71ade32a",
+      "fileCount": 1301
+    },
+    "id": "sha256:cf7d8d449d12159f7e374dcd4e27422a95b19d2c970a0c832d49d152b2f31b4a",
     "platform": "linux/arm64",
-    "nativeLifecycleQualified": false,
     "productionFilesMatch": 291,
     "linuxReferencePackagesMatch": 9
   },
-  "fullGate": {
-    "passed": 984,
-    "skipped": 7,
-    "failed": 0,
-    "logSha256": "8b8b007c9919c35d44368268f900a5e64bfe8259a57c1c89b65383b64dde8181"
-  },
-  "docsBuild": {
-    "pages": 21,
-    "localLinksAndAnchors": 462,
-    "errors": [],
-    "generator": "Jekyll 4.4.1"
-  },
-  "sourceEndAudit": {
-    "unchanged": true,
-    "source": {
-      "commit": "a4c3d4fb0483ac7da71174b002f7e9749cf116ab",
-      "dirty": false,
-      "workspaceSha256": "d24cce57d5adf5ce6c30104853fd5fbd751696e7c14dd2beb7177436e2fa9784",
-      "fileCount": 1297
+  "historicalAttempts": [
+    {
+      "root": "source-v1",
+      "verdict": "FAIL",
+      "reason": "Capacity guard; original enrollment separately recovered without another submission."
     },
-    "reference": {
-      "sources": {
-        "package.json": "ed122ba9646137c7a833a7ea6c42d3d98460d9332e11d7c00c5d64acc36cf4e1",
-        "package-lock.json": "a57a8056dfa3989a6fb237f0ff071b172f4864082173ba9c4274c09eac9bee51",
-        "src/node/setup.ts": "437e12a9412ac196ab862e5438ea88b8924776f74b6ba03e7d13820336c5dd49",
-        "src/node/wallet.ts": "0a3687ce13b88c5c36c138eedc21429cc8705aa3e8afcd3efd8c8538594821bf",
-        "src/wallet/wave-deploy.ts": "6d1de9aa21b1cc772df3ce9dd6759a5100c85f11f6fa4bf99453853810be8f9a",
-        "src/wallet/signer.ts": "4c3d593c0947641a116bfca059de399c1fcff24d37c430a38bbbf493c8e3cc8b",
-        "src/wallet/witnesses.ts": "7eadb415ac132fa06670633539573d83904e3d6b126cda020b7244cb2d2f89c0",
-        "src/wallet/account.ts": "4280bbffe324e4da18f22c33d50169d8b5261fefec389697d2868706c7a53bc7",
-        "src/wallet/inbox.ts": "3c4bce6dd5e92eda4b8e2dda15fc4aef91003300c4296cb3794a1d8d695a5922",
-        "src/tests/flow.ts": "7d5f3e696490a19ff800c15f2323a712666f5b1bbf51f98c9290de856be62f2d",
-        "src/tests/runner.ts": "afaa6e9b685402b3f31ff943326b70a294e3793b72b93a42bc3ecad4c01b1299",
-        "contracts/managed/faucet/contract/index.js": "a2750959f862618b9a0ad5cb4b5d2602f7581e3498b3bab870bc7bdecedcd49b",
-        "contracts/managed/faucet/compiler/contract-manifest.json": "7524ee9b245cce3e35363f20200f6cc63ef6abaa9a4fec0c2b0b3fa5270cd0e8",
-        "contracts/managed/faucet/keys/mint_shielded.prover": "672d05e8ac576c4aca68088f8e8311b4de4a298fb9c99806b788fa4135f5dcda",
-        "contracts/managed/faucet/keys/mint_shielded.verifier": "9646166e5a75da9c050bc2f544332710bf0b13ca02d4f30efec53b15f948c3ac",
-        "contracts/managed/faucet/zkir/mint_shielded.zkir": "b118a89e59c07b46fce84fd973c94a5106087a38257112af105c53f80e9f2a6a",
-        "contracts/managed/account/contract/index.js": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf",
-        "contracts/managed/account/compiler/contract-manifest.json": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f"
-      },
-      "packages": [
-        {
-          "name": "@midnight-ntwrk/compact-js",
-          "version": "3.0.0-rc.3",
-          "integrity": "sha512-+lJA4PyNT7/0JrjvBBehdP4GfCimXx07SXNPJ73tKyfhSaehCJZ5H2O9OIaG2t3wzW1y14Q+O6kbAkObJfdrWw==",
-          "entrySha256": "832fe39c4b1493494461e73cfd5cebb6185cea8cea9e0f5056025353feb11300"
-        },
-        {
-          "name": "@midnight-ntwrk/compact-runtime",
-          "version": "0.20.0",
-          "integrity": "sha512-vtwZ6PiqPy6sUHmXJlrv/3SyjEsKVdQaRroWowTGgu55CJlJXONUplHyst/dRVKe9C6sApveIo2FgbXoBMiMeQ==",
-          "entrySha256": "f59514c653cc7f267b44e898a11aa0f81f7fbc7418011cb3513ae4b7119ca10f"
-        },
-        {
-          "name": "@midnight-ntwrk/midnight-js-contracts",
-          "version": "5.0.0-rc.2",
-          "integrity": "sha512-dpLy8LEiJmxl+Io3xP+jL95sC4ZbzzmLX0TSBfw0RSOicTPSVkYvcPFrZHCqNvUsYnt+jwTye9AYfXNolljo/A==",
-          "entrySha256": "16a0f7566e9b27761cb34f256f005c7e8e757689bf273358d588b5c71ff26d7e"
-        },
-        {
-          "name": "@midnight-ntwrk/midnight-js-protocol",
-          "version": "5.0.0-rc.2",
-          "integrity": "sha512-WRFeN4OCGAmXbh9Uwa5p333rthOorb7Y7ym2N8VsBZSQSDXY6jvtHT+7OeZyL49WLpLTmwTnCudNvsAb1lLqpA==",
-          "entrySha256": "749223d8867b3d06c342d21161843720c61127432457bd2696581e6e9ec7257c"
-        },
-        {
-          "name": "@midnight-ntwrk/midnight-js-indexer-public-data-provider",
-          "version": "5.0.0-rc.2",
-          "integrity": "sha512-+dWenbbMwsguX3R7Md8BCFHFWdcfEVvFuZDIa862kMc5mbEcyj+h2NULZWb/xc5uI9/WVNfFq9J9Ao7YuEzjCQ==",
-          "entrySha256": "9dd210a50a2e0b96d20d62ef03394a27ac26e231caffdbb1e055692f497446f7"
-        },
-        {
-          "name": "@midnight-ntwrk/midnight-js-http-client-proof-provider",
-          "version": "5.0.0-rc.2",
-          "integrity": "sha512-GRcHrlHrN4sf0Tv9BIdEgybGgnJ9l/QjTIbn+vZanZa0NlCfwI0Ros0DfugKHRJDHWE96GxzynpeBhWO5usmQA==",
-          "entrySha256": "c2a6a7f3bc901c5b4789f253a62aa542fda70e6d09df59b71bdfc5c92c9f085d"
-        },
-        {
-          "name": "@midnightntwrk/ledger-v9",
-          "version": "1.0.0-rc.5",
-          "integrity": "sha512-xd2RDJ7UiJha9c0YA92DYof/eGW6NKBFhQxoCggzyrdYm2KWuE/u4wlv/WRP2/Hvol1O8ymOVatKquGXYBgV9w==",
-          "entrySha256": "effa3b1ad14755663904500a5ababa86fd02bdd4c0f52b5bd73e94253e592675"
-        },
-        {
-          "name": "@midnightntwrk/wallet-sdk-facade",
-          "version": "5.0.0-rc.0",
-          "integrity": "sha512-sXo56UehJHrobvNr2JWkPOhxpljyOrROGaeXLG4NyvRXli0YaZ0pIigOJoEbrrjLEQBa8HiYwUy04zphwuHCtQ==",
-          "entrySha256": "46f3b281fa43012db768a93a1de78c9e706081fc9302d1bf36086c3a90070b05"
-        },
-        {
-          "name": "@midnightntwrk/wallet-sdk-address-format",
-          "version": "4.0.0-rc.0",
-          "integrity": "sha512-2VEm/wSDgpZs+iUz4fGPHwE5gvcuH1Xs6FqYrKDgtO1DtP0lcVd3mUWwSVbMNiN+kZfaqwDx8hOj+w+9FRpqJg==",
-          "entrySha256": "b81cf14d8f605cad125b7cfe1f746bef5de03a3771184d31349d6182baca4ac1"
-        }
-      ]
+    {
+      "root": "source-v2",
+      "verdict": "FAIL",
+      "reason": "Stale/forked indexer; node rejected initial deployment; original unknown retained."
+    },
+    {
+      "root": "source-v3",
+      "verdict": "FAIL",
+      "reason": "Qualification assumed owner-readable survivor grant bookkeeping; corrected publisher lookup."
+    },
+    {
+      "root": "image-v2",
+      "verdict": "FAIL",
+      "reason": "Target enrollment completed without expected observer marker; confirmed return-path hooks added. No restart boundary qualified."
     }
-  },
+  ],
+  "limits": [
+    "software owner identities, not real WebAuthn/provider recovery or full Lace",
+    "standalone grant/mint/deposit setup and wallet credit, not job-backed value transfer",
+    "source post-submit exit differs from image confirmed-result observation loss then KILL",
+    "Linux ext state only; macOS bind state unqualified",
+    "trusted node/indexer canonical anchors, not light-client inclusion proofs",
+    "grant seal delivery/export remains a host responsibility; bookkeeping is publisher-specific"
+  ],
   "realProviderQualified": false,
   "fullLaceQualified": false,
   "releaseQualified": false,
   "published": false,
-  "followupDocumentationGate": {
-    "exitCode": 7,
-    "passed": false,
-    "cause": "Exited early during host disk exhaustion; exact Node exit cause not diagnosed. Cleanup metadata write independently raised ENOSPC.",
-    "logSha256": "db49a4db0ddb4d91cc7bef195cf43b7b4c31686204bb4fd5e6d8a6f6dc52c207"
+  "keyCacheAudit": {
+    "verifiedFiles": 208,
+    "totalBytes": 12182210301,
+    "allHashesAndSizesMatch": true,
+    "regenerated": false,
+    "receiptSha256": "9c7b5e61ae35115adc20c0b837be412cb40be9b2f6eed7b552beb7848557dffa"
   },
-  "cleanup": {
-    "ownedNativeWorkersExited": true,
-    "threeOwnedContainerStopAttempted": true,
-    "dockerManagementUnresponsive": true,
-    "containerStopUnconfirmed": true,
-    "proofServerStillHttpReachable": true,
-    "unrelatedStacksNotRestarted": true
+  "protectedBackups": {
+    "archives": 4,
+    "bytes": 430081131,
+    "allPrivateMode": true,
+    "metadataSha256": "68ebd2922522f720af59e2fce87ee9c0cdb162762ba9cc2bd9af420d6dcc66c6"
   }
 }
