@@ -386,3 +386,11 @@ and unknown outcomes without a manufactured loss marker. Production transport,
 service execution and transaction durability are unchanged. Fresh image evidence
 is required; this correction does not relabel the failed run. The complete
 source-v4 result remains pinned to signed b9a203b and its audited runtime.
+
+
+The exact native return path that bypassed polling was not isolated. The
+qualification wrapper also checks the validated original job after direct
+submit completion, before the owner accepts its result. Real HTTP controls
+exercise direct completion, terminal reconciliation and unknown outcomes. This
+is deterministic owner observation loss after confirmation on either return
+path; no production observer semantics or transaction execution are changed.

@@ -10,6 +10,31 @@ import { fixture, descriptor, servicePins, barrier } from './fixtures/host-jobs.
 import { observeImageJobReplies } from '../scripts/qualification/image-job-observer.mjs';
 import { confirmedReplyLossProbe } from '../scripts/qualification/job-lifecycle-spec.mjs';
 const token = 'cd'.repeat(32);
+test('image observer interrupts direct submit completion with the same confirmed job', async (t) => {
+  const f = await setup(t);
+  /** @type {Record<string,unknown>[]} */ const markers = [];
+  const probe = confirmedReplyLossProbe('add_device_with_jubjub', (m) => markers.push(m));
+  const ports = observeImageJobReplies(
+    remoteHostJobPorts(f.base, f.options),
+    f.client,
+    probe,
+    f.d.identity.pins,
+  );
+  await assert.rejects(
+    () =>
+      ports.submitter.submit(Uint8Array.of(1), {
+        address: 'ab'.repeat(32),
+        circuit: 'add_device_with_jubjub',
+        mutation: { requestId: f.d.identity.requestId, intentSha256: f.d.identity.intentSha256 },
+      }),
+    { code: 'MutationUnsettled' },
+  );
+  assert.equal(probe.lost, true);
+  assert.equal(markers.length, 1);
+  assert.equal(markers[0]?.jobId, await remoteHostJobId(f.d.identity));
+  assert.equal((await f.client.get(f.d.identity))?.state, 'done');
+  assert.equal(f.counts().sends, 1);
+});
 for (const visible of [true, false])
   test(`image observer covers terminal original-ID reconciliation (confirmed=${visible})`, async (t) => {
     const f = await setup(t);
@@ -20,7 +45,12 @@ for (const visible of [true, false])
     const before = f.counts();
     /** @type {Record<string,unknown>[]} */ const marker = [];
     const probe = confirmedReplyLossProbe(d.input.circuit, (m) => marker.push(m));
-    const ports = observeImageJobReplies(remoteHostJobPorts(f.base, f.options), f.client, probe);
+    const ports = observeImageJobReplies(
+      remoteHostJobPorts(f.base, f.options),
+      f.client,
+      probe,
+      f.d.identity.pins,
+    );
     const effect = {
       key: d.identity.requestId,
       digest: d.identity.intentSha256,

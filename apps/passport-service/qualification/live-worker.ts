@@ -536,6 +536,7 @@ if (mode === 'host') {
         rawHost,
         remoteHostJobs(base, { pins, token: hex(fixture.jobToken), timeoutMs: 600000 }),
         imageReplyProbe,
+        pins,
       )
     : rawHost;
   const sponsor = remoteV1Sponsor(base);
