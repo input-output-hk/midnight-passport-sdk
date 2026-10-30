@@ -4,10 +4,9 @@ title: Preview RC6 release
 permalink: /release-notes-rc6/
 ---
 
-## 0.1.0-rc6 — release candidate · 2026/10/30
+## 0.1.0-rc6 — published preview · 2026/10/30
 
-**Publication pending.** RC5 remains the published preview until the release assets
-and registry checks below are complete. RC6 keeps the nine implemented libraries,
+The nine implemented libraries are published at `0.1.0-rc6`. RC6 keeps
 private GitHub npm packages under `@input-output-hk/mn-passport-*`, the `next`
 distribution tag, and three public Linux/amd64 GHCR backend images. Install exact,
 matching SDK versions; package administrators must grant consumers read access.
@@ -106,7 +105,19 @@ its `releaseQualified: false` is not rewritten into a provider acceptance claim.
   source `c754615`, eight TTL-zero cases. These counts cover different
   scopes and sources; they are not one interchangeable end-to-end suite.
 
-Final signed source/tags, registry package hashes/SRI, attestations, image digests,
-installation results and published-doc verification will be recorded in the RC6
-publication receipt and GitHub release after publishing. Earlier RC5 receipts and
-all failed/unknown native attempts retain their original status.
+The [GitHub release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc6) and
+[signed publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc6/rc6-publication-receipt.json)
+record exact registry SHA-256/SRI, source and publisher attestations, image digests,
+installation checks, and documentation verification. The signed release source is
+`7848d3029de753727bb376e8dd90ca05cd132b55`; SDK/keys/service/funding tags all resolve to it.
+All nine packages remain private; GHCR images retain public visibility.
+Earlier RC5 receipts and failed/unknown native attempts retain their own status.
+
+Registry downloads passed SRI and private visibility checks. Clean authenticated
+npm installation passed; all 521 installed SDK files match their registry tarballs.
+The registry-tarball consumer passed imports/types/browser build, physical runtime
+identity, restored/hash-verified single circuit, and eight TTL-zero synthetic
+process cases. Those are package/transport checks, not native/provider acceptance.
+Published key-image HTTP checks passed on the ten-circuit profile with all 52
+verifier hashes, selected prover hash, range/CORS and refusal checks. No full
+fresh Linux key regeneration or repeated native lifecycle is claimed by this release.

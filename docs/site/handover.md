@@ -4,6 +4,11 @@ title: Engineering handover
 permalink: /handover/
 ---
 
+This page retains the **historical RC5 localnet operation trace**. For the current
+SDK preview and image/package pins, use [RC6 notes]({{ '/release-notes-rc6/' | relative_url }})
+and its signed receipt. Historical NIGHT transactions are not re-labelled as RC6 tests.
+
+
 ## Scope and status
 
 This handover describes **localnet NIGHT funding** in the published `0.1.0-rc5` preview.

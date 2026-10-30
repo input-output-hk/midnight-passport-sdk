@@ -39,7 +39,7 @@ With `demo up --funding`, the Passport service also exposes `GET /v1/demo/fundin
 
 ## Opt-in host mutation transport
 
-The RC6 candidate service can enable protected deployment-wave continuation and
+The RC6 preview service can enable protected deployment-wave continuation and
 owner submission receipts. It requires a dedicated encryption-key file, independent
 RPC token file and durable private mount. See [Host durability]({{ '/host-durability/' | relative_url }})
 for its authenticated RPC and qualification boundary. Existing v1 job/proving routes

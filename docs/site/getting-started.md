@@ -39,14 +39,14 @@ git-ignored project file; keep credentials in user configuration:
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
-Install the verified RC5 preview:
+Install the verified RC6 preview:
 
 ```sh
 npm install --save-exact \
-  @input-output-hk/mn-passport-account@0.1.0-rc5 \
-  @input-output-hk/mn-passport-adapter-browser@0.1.0-rc5 \
-  @input-output-hk/mn-passport-adapter-service@0.1.0-rc5 \
-  @input-output-hk/mn-passport-contract@0.1.0-rc5
+  @input-output-hk/mn-passport-account@0.1.0-rc6 \
+  @input-output-hk/mn-passport-adapter-browser@0.1.0-rc6 \
+  @input-output-hk/mn-passport-adapter-service@0.1.0-rc6 \
+  @input-output-hk/mn-passport-contract@0.1.0-rc6
 ```
 
 Node tooling requires Node 22 or newer. The repository uses `nix develop` to pin Node, pnpm and
@@ -76,12 +76,12 @@ Linux-prepared contract dependencies; mounting a macOS `node_modules` is not sup
 
 ## 4. Compose the browser account API
 
-The maintained [browser composition example](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc5/docs/examples/browser-quickstart.ts)
+The maintained [browser composition example](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc6/docs/examples/browser-quickstart.ts)
 creates a sealed P-256 account API using the checked local service and packaged binding. Its
 `connectLocalPassport(records)` argument is a host-owned `AccountRecordStore`, not a seed store.
 Implement its `read`, `write` and `exists` methods persistently before creating an account. Preserve
 `localUseCounter` as a bigint and `credentialId` as bytes when serialising. The reference demo's
-[record store](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc5/apps/passport-dapp/src/grant-journal.ts)
+[record store](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc6/apps/passport-dapp/src/grant-journal.ts)
 shows validation and encoding. Store keys must distinguish network, binding and device/account;
 the demo keeps one selected record per network for evaluation.
 
@@ -108,19 +108,19 @@ not additional SDK globals. `retireAuthority: true` retires the deployment maint
 so the deployed ACC cannot later be upgraded through it. Make that choice explicitly.
 
 Run at exactly `http://localhost:5173` for this local example. The passkey RP ID, origin and
-contract WebAuthn profile must agree. The reference [Vite configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc5/apps/passport-dapp/vite.config.ts)
-and [polyfill entrypoint](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc5/apps/passport-dapp/src/polyfills.ts)
+contract WebAuthn profile must agree. The reference [Vite configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc6/apps/passport-dapp/vite.config.ts)
+and [polyfill entrypoint](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc6/apps/passport-dapp/src/polyfills.ts)
 show the Buffer initialisation, WASM support and browser shims required by the pinned Midnight
-runtime. The minimal composition is type-checked against RC5 tarballs; registry verification confirms
+runtime. The minimal composition is type-checked against RC6 tarballs; registry verification confirms
 identical package contents. It is not a complete replacement for the reference app's bundler and UI configuration.
 
 This minimal composition enables create/open/state only. Rotation and device changes require
 verified holdings and complete device/read-grant sources. Grants additionally need live grant
 sources and a durable encrypted publication journal. Unshielded withdrawals need a value-capable
 call port; the fee-only sponsor cannot move those assets. See [Account API]({{ '/api/' | relative_url }})
-before enabling another action. The [reference connector](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc5/apps/passport-dapp/src/connector.ts)
+before enabling another action. The [reference connector](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc6/apps/passport-dapp/src/connector.ts)
 shows the fuller localnet composition, including those ports. Its `valueCalls` and
-`grantJournalFactory` options are exported by RC5. Use the matching release source and SDK
+`grantJournalFactory` options are exported by RC6. Use the matching release source and SDK
 version when copying this advanced composition.
 
 ## 5. Diagnose the first failure
@@ -137,10 +137,10 @@ version when copying this advanced composition.
 
 For handover, export public logs and report the installed version, binding, manifest, network and
 service/image digests. Exclude PRF output, seed material, viewing secrets, grant openings and tokens.
-Shielded partial spends remain refused; see [preview limits]({{ '/release-notes-rc5/' | relative_url }})
+Shielded partial spends remain refused; see [preview limits]({{ '/release-notes-rc6/' | relative_url }})
 and the [Lace compatibility boundary]({{ '/lace-handover/' | relative_url }}).
 
 
 ## Optional RC6 operator host-job integration
 
-For a trusted operator host/BFF, the [durable service-job runbook]({{ '/service-jobs/' | relative_url }}) describes opt-in encrypted reference-service settings, `remoteHostJobPorts` for the durable owner composition, explicit restart recovery and real HTTP/process tests. Client and service must both support identity hashes. Keep the bearer token out of a public browser page; portable browser imports do not make the token public. The default demo and published RC5 keep their existing behaviour.
+For a trusted operator host/BFF, the [durable service-job runbook]({{ '/service-jobs/' | relative_url }}) describes opt-in encrypted reference-service settings, `remoteHostJobPorts` for the durable owner composition, explicit restart recovery and real HTTP/process tests. Client and service must both support identity hashes. Keep the bearer token out of a public browser page; portable browser imports do not make the token public. The default demo keeps its existing composition; RC6 host jobs require explicit opt-in.

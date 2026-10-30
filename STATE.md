@@ -6,6 +6,14 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/10/30. Historical entries below retain their original issue namespaces.
 
+## RC6 artefacts published — 2026/10/30
+
+Nine private GitHub npm packages `0.1.0-rc6` / `next` and three public GHCR images
+are published from signed source `7848d3029de753727bb376e8dd90ca05cd132b55`. Registry SRI/private visibility,
+a clean authenticated npm install, all 521 installed SDK file bytes and key-image
+HTTP checks pass. Final signed publication assets follow post-deployment doc checks;
+source-specific native/provider limits remain explicit. No full Lace/provider claim.
+
 ## RC6 release preparation — 2026/10/30
 
 User explicitly authorised the release goal: land completed review work, verify

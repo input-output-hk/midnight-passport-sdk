@@ -68,7 +68,7 @@ See [Qualification and safety boundaries]({{ '/qualification/' | relative_url }}
 
 Removal excludes target metadata from the fresh roster. A fresh legacy invocation
 may refuse after an interrupted key switch, as do other legacy rotations of that
-unresolved roster. An original protected continuation needs the dependent durability slice and an unchanged checked frontier; it is not part of this foundation or published RC5.
+unresolved roster. An original protected continuation needs the opt-in RC6 durability API and an unchanged checked frontier; it is not provided by the legacy flow.
 The unanchored history port is removed. Earlier secrets remain bounded decryption
 candidates; they neither authenticate metadata nor evict genuine older holding keys.
 

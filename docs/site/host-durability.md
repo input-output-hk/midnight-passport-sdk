@@ -4,7 +4,7 @@ title: Durable host submissions and deployment waves
 permalink: /host-durability/
 ---
 
-**RC6 candidate host transport following the owner continuation API.** See the [RC6 release status]({{ "/release-notes-rc6/" | relative_url }}). This page describes
+**RC6 preview host transport following the owner continuation API.** See the [RC6 release status]({{ "/release-notes-rc6/" | relative_url }}). This page describes
 the opt-in Node host transport for [mutation durability]({{ '/durability/' | relative_url }}).
 Published RC5 and the default demo owner buttons are unchanged. Docker was stopped
 during this slice: offline/process tests do not establish proof-backed localnet,

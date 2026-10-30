@@ -4,7 +4,7 @@ title: Lace evaluation handover
 permalink: /lace-handover/
 ---
 
-## RC6 candidate for the next evaluation
+## RC6 evaluation scope
 
 [RC6 release status]({{ '/release-notes-rc6/' | relative_url }}) adds opt-in owner/
 host continuations, original-reader grant reconstruction, reduced key-profile
@@ -12,16 +12,16 @@ verifier coverage and installed-package interruption checks. Use the matching
 account, client and backend versions; do not mix the new job client with an older
 server. Keep host-native consent and orchestration for flows the hosted signer
 does not support. These additions do not requalify the older host version below
-or establish full Lace/provider compatibility. The signed publication receipt
-will supply final installation and image pins after release verification.
+or establish full Lace/provider compatibility. Use the [signed publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc6/rc6-publication-receipt.json)
+for current installation and image pins. All SDK packages are `0.1.0-rc6`, private
+on GitHub Packages. Install only the entrypoints your application imports and
+request package read access for each consuming user/repository.
 
-## RC5 evaluation scope
+## Integration guide
 
-`0.1.0-rc5` is a published preview. The [release announcement](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc5)
-links exact package hashes, immutable image digests and verification evidence.
 This preview lets Lace engineers evaluate the pinned Passport ACC binding, portable account
-flows and remote service seams. It does not promise full compatibility with Lace's hosted
-creation, sign-in, device consent or value-bearing wallet routes.
+flows and remote service seams. Full compatibility with Lace's hosted creation, sign-in,
+device consent and value-bearing wallet routes remains unqualified.
 
 ### What to consume
 
@@ -60,7 +60,7 @@ project-level environment interpolation is refused by the pinned pnpm):
 Install the exact preview version:
 
 ```sh
-npm install --save-exact @input-output-hk/mn-passport-contract@0.1.0-rc5
+npm install --save-exact @input-output-hk/mn-passport-contract@0.1.0-rc6
 ```
 
 ```ts
@@ -106,7 +106,7 @@ JubJub registration records; SDK P-256 registration records are an extension. Sy
 credentials do not establish real provider/browser compatibility or recovery after every
 recoverable passkey is lost.
 
-See [RC5 release notes]({{ '/release-notes-rc5/' | relative_url }}),
+See [RC6 release notes]({{ '/release-notes-rc6/' | relative_url }}),
 [limitations](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/prototype/limitations.md) and
 [releasing]({{ '/releasing/' | relative_url }}) for the release boundary.
 
@@ -114,14 +114,14 @@ See [RC5 release notes]({{ '/release-notes-rc5/' | relative_url }}),
 
 The retained binding supports entry removal with SDK roster/delivery checks, not
 complete compromised-key revocation. Total-loss recovery is not exposed; the
-legacy finaliser must not be used as a full-retirement fallback. The next local
-stability slice adds qualification receipts and a JubJub read-grant exclusion
-refusal; that code is not part of the published RC5 packages. See
+legacy finaliser must not be used as a full-retirement fallback. RC6 includes
+qualification receipts and a JubJub read-grant exclusion refusal. See
 [Qualification and safety boundaries]({{ '/qualification/' | relative_url }}).
 
-### Next local integration slice
+### Evidence for the next integration slice
 
-The [consumer integration guide]({{ "/consumer-integration/" | relative_url }})
+The [consumer integration guide]({{ '/consumer-integration/' | relative_url }})
 separates current source, published-entry and localnet evidence and describes the
-explicit host adapters. RC5 remains the published preview; the reduced-profile
-verifier correction and first stability slice are local candidates.
+explicit host adapters. RC6 publishes the reduced-profile verifier correction and
+opt-in stability APIs. Actual Lace and real-provider acceptance remain separate
+work, with earlier RC5 evidence retained as historical.

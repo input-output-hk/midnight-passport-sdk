@@ -11,9 +11,9 @@ rate limits at the gateway, and set `PASSPORT_MAX_DEPLOYS` to an operator-approv
 
 The [image workflow](../../.github/workflows/publish-service-image.yml) builds and smoke-tests
 `ghcr.io/input-output-hk/midnight-passport-service:<version>` from a signed `service-v<version>`
-tag on `passport-acc-prototype`, or an authorised workflow dispatch. Release `0.1.0-rc5` and its
-`sha-9e8048674a54` tag share immutable digest
-`sha256:b4d2900689c37fd7f8fee9dfa1257a45da9a41efd3e7841f4e5496605ccb6b25`. Pin that digest when deploying. The image contains the SDK application;
+tag on `passport-acc-prototype`, or an authorised workflow dispatch. Release `0.1.0-rc6` and its
+`sha-7848d3029de7` tag share immutable digest
+`sha256:79eefc9f079e7382d593a492cb640635900886002c240afba5568c57791fb279`. Pin that digest when deploying. The image contains the SDK application;
 it contains no proving keys, compiled ACC export, sponsor seed, or account registry.
 
 Prepare the pinned Passport revision `6458ed5` export **on Linux** with Compact 0.35.0 and its
@@ -52,15 +52,17 @@ docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" \
   -e PASSPORT_PUBLIC_INDEXER_URL=http://localhost:18088/api/v4/graphql \
   -e PASSPORT_PUBLIC_INDEXER_WS_URL=ws://localhost:18088/api/v4/graphql/ws \
   -e PASSPORT_PUBLIC_PROOF_SERVER_URL=http://localhost:16300 \
-  ghcr.io/input-output-hk/midnight-passport-service@sha256:b4d2900689c37fd7f8fee9dfa1257a45da9a41efd3e7841f4e5496605ccb6b25
+  ghcr.io/input-output-hk/midnight-passport-service@sha256:79eefc9f079e7382d593a492cb640635900886002c240afba5568c57791fb279
 ```
 
 The Docker build smoke checks the non-root user, missing-export refusal, non-standalone
 startup refusal without a dedicated seed, and refusal of a manifest hash outside the package pin.
-The published RC5 digest passed startup refusals and a mounted-tree localnet run with a fresh
+The current RC6 digest passed startup/refusal smoke checks on Linux/amd64
+(emulated on the local ARM64 host). A fresh native lifecycle was not repeated on it.
+The historical RC5 digest passed startup refusals and a mounted-tree localnet run with a fresh
 JubJub ACC: ten deployment waves, activation, chain read and reopen. Together with the published
 funding image, the ACC received ten smallest NIGHT units and replayed the same request without
-a second deposit. The [publication receipt](../../docs/release/rc5-publication-receipt.json)
+a second deposit. The historical [RC5 publication receipt](../../docs/release/rc5-publication-receipt.json)
 records the exact source, transactions and image digests. This does not establish full Lace or
 non-localnet NIGHT compatibility.
 The [demo guide](../README.md) documents the source process, browser, and localnet flows.
