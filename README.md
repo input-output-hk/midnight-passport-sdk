@@ -12,8 +12,8 @@ authentication, scoped grants, recovery, storage, proving, and the dApp
 connector all resolve to authorised interactions with that on-chain account.
 
 > **Status:** `passport-acc-prototype` contains nine implemented SDK packages and three
-> backend applications. The `0.1.0-rc5` preview is published as nine private GitHub npm
-> packages and three public Linux/amd64 GHCR images. [Release notes](./docs/site/release-notes-rc5.md)
+> backend applications. The `0.1.0-rc6` preview is published as nine private GitHub npm
+> packages and three public Linux/amd64 GHCR images. [Release notes](./docs/site/release-notes-rc6.md)
 > link the verified hashes, image digests and evaluation limits. [Lace handover](./docs/site/lace-handover.md)
 > describes package selection and access. Shielded withdrawals retain the exact-value guard;
 > this preview does not claim full Lace compatibility.

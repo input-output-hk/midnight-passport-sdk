@@ -6,8 +6,8 @@ permalink: /consumer-integration/
 
 This guide covers the supported Passport integration boundary for #79 and #81.
 The October 20 assessments below are historical, version-pinned host evidence.
-The RC6 candidate includes their supported additions plus later durability and installed-consumer work;
-see the [RC6 publication status]({{ "/release-notes-rc6/" | relative_url }}). The [historical report](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/lace-consumer-report.md)
+The RC6 preview includes their supported additions plus later durability and installed-consumer work;
+see the [RC6 release status]({{ "/release-notes-rc6/" | relative_url }}). The [historical report](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/lace-consumer-report.md)
 retains its original source pins and transactions. Current authorised source pins,
 private diagnostics and detailed receipts remain in the owner's private handover.
 A public package install and a private source test are separate evidence.
@@ -48,7 +48,7 @@ do not use unchecked casts in production to erase that distinction.
 Earlier local notes mentioned an optional registration-history port; it has been
 removed before publication. Such envelopes do not authenticate historical ledger keys.
 Legacy interrupted removal can require operator reconciliation. The explicit protected
-continuation is supplied by the dependent durability slice, not by this foundation or published RC5. Even a protected continuation refuses a changed ledger frontier.
+continuation is supplied by the opt-in RC6 durability API, not by the legacy foundation. Even a protected continuation refuses a changed ledger frontier.
 
 ## What the local checks establish
 

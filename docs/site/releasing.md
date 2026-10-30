@@ -4,15 +4,29 @@ title: Releasing packages
 permalink: /releasing/
 ---
 
-## RC6 release in progress
+## Current RC6 artefacts and verification
 
-The next preview is `0.1.0-rc6`, with the same nine private npm packages and
-three public Linux/amd64 images. [RC6 notes]({{ '/release-notes-rc6/' | relative_url }})
-state the candidate scope and limitations. RC5 digests below remain historical
-pins until the verified RC6 publication receipt is available. Source and private
-publisher package checks include eight installed-package TTL-zero process cases;
-expiry must never strand a confirmed receipt. Release tests retain independent
-proof, actual-host, synthetic, and manual-provider evidence classes.
+`0.1.0-rc6` publishes the same nine private GitHub npm packages, distribution tag
+`next`, and three public Linux/amd64 images. The [release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc6)
+and [signed receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc6/rc6-publication-receipt.json)
+record actual package hashes/SRI, attestations, installation and image checks.
+The source is `7848d3029de753727bb376e8dd90ca05cd132b55` with four GPG/DCO-signed tags.
+Use matching RC6 clients and backend; the default demo remains on its original
+composition. [RC6 notes]({{ '/release-notes-rc6/' | relative_url }}) state limits.
+
+| Image (`ghcr.io/input-output-hk/`) | Version | Immutable digest |
+| --- | --- | --- |
+| `midnight-passport-keys` | `0.1.0-rc6` | `sha256:86280acb7f23c7a9f46339c9b58afb7416038d7c2d2ab05559ef4029027929be` |
+| `midnight-passport-service` | `0.1.0-rc6` | `sha256:79eefc9f079e7382d593a492cb640635900886002c240afba5568c57791fb279` |
+| `midnight-passport-funding` | `0.1.0-rc6` | `sha256:08958777f20fa0dcda448926d2c4d65897bf1f364fe54d2462c86ee2438b7076` |
+
+Deploy by immutable digest. The key image's selected proving profile serves all
+bundled verifier keys. Service/funding still require Linux-prepared reference
+mounts and dedicated operator configuration. Registry manifest digests are not
+local Docker config IDs. Current evidence separates actual startup/HTTP tests
+from historical source-native/local-image lifecycle receipts.
+
+## Publishing procedure and historical RC5 evidence
 
 The `0.1.0-rc5` preview packs nine implemented packages, including the Node `service` HTTP core, for the **private** GitHub Packages npm registry under `@input-output-hk/mn-passport-*`. It uses the `next` distribution tag. [RC5 release notes]({{ '/release-notes-rc5/' | relative_url }}) list supported flows and limits. The older `0.1.0-rc1` release has 13 private package records: eight implementations and five empty scaffolds. Those scaffolds remain private workspace packages and are excluded from RC5.
 
@@ -98,9 +112,9 @@ The key image publishes from `keys-v<version>`, the proving/sponsorship service 
 reviewed source triggers its own workflow and publishes a version alias and source-SHA alias.
 Verify their registry digests agree. Push the tags separately as described above.
 
-RC2 and RC3 image records are historical and superseded by the current RC5 digests above.
+RC2 and RC3 image records are historical and superseded by subsequent previews; their RC5 successors above are historical too.
 Their [earlier qualification record](https://github.com/input-output-hk/midnight-passport-sdk/blob/9e8048674a54adf5e8be2055aaa8f5c9bfe08b06/docs/site/releasing.md)
 remains available for audits. Use the [service](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-service/README.md),
 [funding](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md)
 and [key](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-key-service/README.md)
-image guides for RC5 mount, wallet and network requirements.
+image guides for RC6 mount, wallet and network requirements.

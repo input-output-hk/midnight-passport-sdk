@@ -23,7 +23,7 @@ responsibility, reserved `core` and `connect` for later work, and retired three 
 
 The table names each package in the source tree. “Active” means it exports an implementation;
 it does not mean every feature in the original vision is finished. Only the nine active packages
-are packed for RC5.
+are packed for RC6.
 
 | Package (`@input-output-hk/mn-passport-*`) | Purpose and place in the vision | Current implementation |
 | --- | --- | --- |
@@ -48,20 +48,20 @@ placeholders. The current source has extracted the server and chain HTTP handler
 `ChainBackend`; the demo still owns the wallet, network, key cache and directory. The original
 vision also includes higher-level `core`, `connect`, and `agent` entry libraries for the Passport app,
 dApps, and agents. A host should not have to import every adapter. The five placeholders are now
-private workspace packages and are excluded by both release allowlists, so RC5 packs
+private workspace packages and are excluded by both release allowlists, so RC6 packs
 nine implemented packages. Existing RC1 package records remain historical artifacts.
 
 ## What an integrator installs
 
 For a first connection and a minimal browser host, follow [Install and connect]({{ '/getting-started/' | relative_url }}).
 
-The nine RC5 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their
-`0.1.0-rc5` release uses the `next` distribution tag and requires package read access. Install the
+The nine RC6 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their
+`0.1.0-rc6` release uses the `next` distribution tag and requires package read access. Install the
 entrypoints your code imports; their declared dependencies bring in the supporting packages. A
 browser host using the account API and packaged binding can start with:
 
 ```sh
-npm install --save-exact @input-output-hk/mn-passport-account@0.1.0-rc5 @input-output-hk/mn-passport-adapter-browser@0.1.0-rc5 @input-output-hk/mn-passport-contract@0.1.0-rc5
+npm install --save-exact @input-output-hk/mn-passport-account@0.1.0-rc6 @input-output-hk/mn-passport-adapter-browser@0.1.0-rc6 @input-output-hk/mn-passport-contract@0.1.0-rc6
 ```
 
 ## Dependency direction

@@ -4,8 +4,9 @@ title: Durable host mutation jobs
 permalink: /service-jobs/
 ---
 
-**RC6 candidate operator API for #233.** See the [RC6 release status]({{ "/release-notes-rc6/" | relative_url }}).
-Published RC5, the default demo and the legacy `/v1/jobs` protocol are unchanged.
+**RC6 preview operator API for #233.** See the [RC6 release status]({{ "/release-notes-rc6/" | relative_url }}).
+RC6 publishes this opt-in API. The default demo and legacy `/v1/jobs` protocol
+keep their existing composition.
 Dated local native-proof results are scoped below; browser-provider and full Lace
 qualification remain open.
 
@@ -237,11 +238,11 @@ shutdown timeout. Legacy callbacks remain process-local even on graceful shutdow
 For an image, mount both writable journal directories under retained state and
 four read-only private key/token files accessible to the configured UID. Pass the
 same variables with container paths. No image layer or public config endpoint
-should contain these values. Published RC5 images do not include this source work.
+should contain these values. RC6 images include this opt-in work; RC5 images do not.
 
 ## Consumer adapter and explicit recovery
 
-The RC6 candidate `mn-passport-adapter-service` root exports `remoteHostJobs`,
+The RC6 preview `mn-passport-adapter-service` root exports `remoteHostJobs`,
 `remoteHostJobPorts`, `remoteHostJobId` and their public types. These imports use
 WebCrypto SHA-256 without linking Node/service code. The dedicated job token still
 belongs in a **trusted operator host or BFF**, not a public browser page.
@@ -451,7 +452,7 @@ read the volume as the service UID/GID. Never resume from the observer mirror.
 
 This acceptance covers creation/activation/inbox continuation. Job-backed device
 lifecycle with grants/holdings and wallet reconnect, real providers and full Lace
-integration remain separate. No new package or image has been published; RC5 does
+integration remain separate. Those dated results predate RC6 publication; RC5 does
 not include this opt-in API. Broad #233/#231 and existing release limits stay open.
 
 
@@ -569,7 +570,7 @@ Fresh source/native and Linux/arm64 production-entrypoint image runs passed both
 enrollment/removal/survivor rotation, removed-reader refusal, grant/holding continuity and the
 actual synthetic-owner built-in wallet across indexer outage/reconnect/recreation. See
 `docs/review/job-backed-lifecycle/qualification.json` for hashes, counts and historical
-failures. Published RC5 is unchanged. Real-provider recovery/full Lace, macOS bind durability,
+failures. Those native revisions differ from the RC6 release source. Real-provider recovery/full Lace, macOS bind durability,
 automatic scanning, distributed locking and unknown/no-send repair remain unqualified. Source
 and image interruption boundaries and standalone value-setup limits remain as described above.
 

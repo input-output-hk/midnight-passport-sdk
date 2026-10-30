@@ -18,9 +18,9 @@ The image is published by
 `ghcr.io/input-output-hk/midnight-passport-keys:<version>`. The workflow runs
 from `passport-acc-prototype` and also accepts `keys-v*` release tags on that
 branch's history. The image has a version tag and a commit-SHA tag. Use a digest
-pin for deployment. `0.1.0-rc5` and `sha-9e8048674a54` resolve to
-`sha256:fc5de57ff6e28a0ceecff5ff13d1c8c960559e3d40630d6f438c7ee665575bd6`.
-The [publication receipt](../../docs/release/rc5-publication-receipt.json) records its checks.
+pin for deployment. `0.1.0-rc6` and `sha-7848d3029de7` resolve to
+`sha256:86280acb7f23c7a9f46339c9b58afb7416038d7c2d2ab05559ef4029027929be`.
+The [publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc6/rc6-publication-receipt.json) records its checks.
 GHCR package visibility and
 consumer access are configured on the container package's GitHub settings page.
 
@@ -29,7 +29,7 @@ docker volume create passport-acc-keys
 docker run --rm --platform linux/amd64 --read-only --tmpfs /tmp \
   --mount type=volume,src=passport-acc-keys,dst=/data/keys \
   -p 127.0.0.1:8788:8788 \
-  ghcr.io/input-output-hk/midnight-passport-keys@sha256:fc5de57ff6e28a0ceecff5ff13d1c8c960559e3d40630d6f438c7ee665575bd6
+  ghcr.io/input-output-hk/midnight-passport-keys@sha256:86280acb7f23c7a9f46339c9b58afb7416038d7c2d2ab05559ef4029027929be
 ```
 
 The process runs as UID/GID `10001`. A bind-mounted cache must be writable by
@@ -55,8 +55,8 @@ verifier keys remain available even outside a reduced proving profile, because a
 consumer may install operations proved by another caller. Unselected prover and ZKIR
 requests still return 404. `/v1/manifest` remains the complete binding's integrity
 manifest, so a partial profile must not be treated as a complete key cache.
-The RC6 candidate contains the verifier-availability correction; RC5 does not.
-Check the [RC6 publication status](../../docs/site/release-notes-rc6.md) before deploying
+The RC6 image contains the verifier-availability correction; RC5 does not.
+Check the [RC6 release notes](../../docs/site/release-notes-rc6.md) before deploying
 its image. For the older RC5 image, keep the `all` profile.
 
 | Endpoint | Response |

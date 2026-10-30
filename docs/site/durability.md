@@ -4,7 +4,7 @@ title: Mutation durability and grant recovery
 permalink: /durability/
 ---
 
-**RC6 candidate APIs for #230 and #239; not included in RC5.** See the [RC6 release status]({{ "/release-notes-rc6/" | relative_url }}).
+**RC6 preview APIs for #230 and #239; not included in RC5.** See the [RC6 release status]({{ "/release-notes-rc6/" | relative_url }}).
 The binding remains `acc-s3r1.1`. This work adds an opt-in account API and protected
 persistence helpers. The default browser composition and demo owner buttons still
 use the original account API. Integrating a journal alone does not make a remote
