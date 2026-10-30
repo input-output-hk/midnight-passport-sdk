@@ -139,3 +139,8 @@ For handover, export public logs and report the installed version, binding, mani
 service/image digests. Exclude PRF output, seed material, viewing secrets, grant openings and tokens.
 Shielded partial spends remain refused; see [preview limits]({{ '/release-notes-rc5/' | relative_url }})
 and the [Lace compatibility boundary]({{ '/lace-handover/' | relative_url }}).
+
+
+## Optional operator host-job integration (unreleased)
+
+For a trusted operator host/BFF, the [durable service-job runbook]({{ '/service-jobs/' | relative_url }}) describes opt-in encrypted reference-service settings, `remoteHostJobPorts` for the durable owner composition, explicit restart recovery and real HTTP/process tests. Client and service must both support identity hashes. Keep the bearer token out of a public browser page; portable browser imports do not make the token public. The default demo and published RC5 keep their existing behaviour.

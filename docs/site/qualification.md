@@ -99,7 +99,7 @@ The repeat check rejects reused run IDs, different source bytes, different suite
 skips and incomplete outcomes. It qualifies repeatability only for that suite.
 It always reports `releaseQualified: false` in this foundation.
 
-Available suites include `foundation`, `browser`, `localnet`, `outages`, `consumer`, `consumer-source`, `consumer-published` and `release`; `qualify list` is authoritative.
+Available suites include `foundation`, `browser`, `localnet`, `outages`, `consumer`, `consumer-source`, `consumer-published`, `consumer-installed` and `release`; `qualify list` is authoritative.
 The opt-in [live restart suite]({{ "/live-qualification/" | relative_url }}) uses a
 dedicated stack, original protected intents and actual proofs. Its scope and
 real-provider matrix remain separate from the complete release gate.
@@ -253,3 +253,14 @@ scenario inputs still require the provenance appropriate to that evidence tier.
 Qualification is supported through the pinned macOS/Linux Nix shell; these checks
 do not qualify Windows environment handling. Resource tuning must be explicit in
 the scenario command/configuration; inherited `NODE_OPTIONS` is discarded.
+
+
+### Installed candidate interruption tier
+
+`consumer-installed` uses a separately prepared nine-package application, frozen
+offline installs, exact installed SDK file bytes, real loopback HTTP and killed
+processes with synthetic chain drivers. See the [consumer guide]({{ "/consumer-integration/" | relative_url }})
+for preparation, lock replay, retained evidence and consent refusals. It is opt-in;
+missing inputs, incomplete cases or a failed install cannot produce a pass.
+Native proof, authenticated registry, actual host and manual-provider evidence
+remain independent tiers.

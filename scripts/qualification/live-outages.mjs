@@ -1,4 +1,5 @@
 // Dedicated-stack proof qualification. Software credentials only; never a real provider pass.
+import { dedicatedIndexerReadiness } from './indexer-readiness.mjs';
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile, lstat } from 'node:fs/promises';
@@ -79,18 +80,7 @@ async function waitFor(test, timeoutMs, terminal = () => false) {
   throw new Error('Bounded qualification readiness expired.');
 }
 async function indexerReady() {
-  try {
-    const r = await fetch('http://127.0.0.1:18098/api/v4/graphql', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ query: '{ block(offset:{height:1}) { hash height } }' }),
-      signal: AbortSignal.timeout(3000),
-    });
-    const v = /** @type {any} */ (await r.json());
-    return r.ok && !!v.data?.block?.hash;
-  } catch {
-    return false;
-  }
+  return (await dedicatedIndexerReadiness()).ready;
 }
 
 /** Fingerprint ignored reference code/deps separately from the workspace. @param {string} contract */
@@ -252,6 +242,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
   for (const k of ['PASSPORT_SPONSOR_SEED', 'PASSPORT_SPONSOR_SEED_FILE'])
     assert.equal(env[k], undefined);
   for (const k of Object.keys(env)) if (k.startsWith('PASSPORT_PUBLIC_')) delete env[k];
+  delete env.PASSPORT_WALLET_OWNER_FIXTURE;
   /** @type {Set<import('node:child_process').ChildProcess>} */ const children = new Set();
   /** @type {any[]} */ const evidence = [];
   let verdict = 'IN_PROGRESS';

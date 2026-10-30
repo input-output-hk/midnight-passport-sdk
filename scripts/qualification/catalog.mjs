@@ -61,6 +61,14 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Existing packed tarball installation/types/runtime identity; not a registry install.',
   },
+  'installed-consumer-interruptions': {
+    tier: 'packed-consumer',
+    command: [node, 'scripts/qualify-installed-consumer.mjs', 'run'],
+    requires: ['CONSUMER_ROOT'],
+    timeoutMs: 3 * 60000,
+    establishes:
+      'Prepared nine-tarball consumer: exact installed files, frozen offline lock/runtime identity, both-arm real HTTP and killed-process original-ID recovery with synthetic drivers. Not registry, native proof, real-provider or full Lace acceptance.',
+  },
   'consumer-source-types': {
     tier: 'packed-consumer',
     command: [node, 'scripts/smoke-lace-source-consumer.mjs'],
@@ -236,6 +244,62 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Actual built-in read-only wallet in Node: socket close/reopen, fresh standalone NIGHT credit finalized while indexer is down, unchanged addresses/seed across stop/recreation. No browser or passkey-provider acceptance.',
   },
+  'host-job-lifecycle-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-job-lifecycle.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 180 * 60000,
+    establishes:
+      'Both software arms: job-backed enrollment/removal/survivor rotation with active caller-pinned read grant and qualified holding, original-ID native submit-loss recovery, removed-reader refusal and owner-key-source-pinned built-in wallet indexer reconnect. Standalone grant/value setup is separate; no provider/full-Lace/release acceptance.',
+  },
+  'host-job-lifecycle-image-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-job-lifecycle-image.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+      'PASSPORT_NATIVE_JOB_IMAGE',
+      'PASSPORT_NATIVE_JOB_DEPS_VOLUME',
+    ],
+    timeoutMs: 180 * 60000,
+    establishes:
+      'Both software arms: actual Linux/arm64 production entrypoint and retained Linux journals, owner observation loss at confirmed original lifecycle results followed by container KILL/restart, grant/holding preservation and owner-pinned wallet reconnect. No image pre-submit kill, provider, full Lace or release acceptance.',
+  },
+  'host-jobs-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-host-jobs.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 100 * 60000,
+    establishes:
+      'Fresh P-256/Jubjub software owner fixtures through actual host-job HTTP/native proofs; original deployment/call submit crashes, committed-plan prover outage, indexer unknown probes and pre-registration safe unknown. No provider/image/release qualification.',
+  },
+  'host-jobs-image-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-host-jobs-image.mjs'],
+    requires: [
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+      'PASSPORT_NATIVE_JOB_IMAGE',
+      'PASSPORT_NATIVE_JOB_DEPS_VOLUME',
+    ],
+    timeoutMs: 100 * 60000,
+    establishes:
+      'Local exact-source Linux/amd64 production service image, separate Linux reference dependencies and retained private state; both software owner arms through deployment/call container kill/restart. Durable dispatch claims and ledger inclusion, not instrumented send-attempt counts or released-image/provider qualification.',
+  },
   'published-registry': {
     tier: 'published-consumer',
     command: [],
@@ -253,6 +317,10 @@ export const SCENARIOS = Object.freeze({
   },
 });
 export const SUITES = Object.freeze({
+  'host-job-lifecycle-native': ['host-job-lifecycle-native'],
+  'host-job-lifecycle-image-native': ['host-job-lifecycle-image-native'],
+  'host-jobs-native': ['host-jobs-native'],
+  'host-jobs-image-native': ['host-jobs-image-native'],
   foundation: ['binding-source', 'contract-entries', 'reader-guards'],
   browser: ['virtual-authenticator'],
   localnet: ['localnet-night'],
@@ -269,6 +337,7 @@ export const SUITES = Object.freeze({
   'grant-recovery-jubjub': ['grant-recovery-native-jubjub'],
   'grant-recovery-p256': ['grant-recovery-native-p256'],
   consumer: ['packed-consumer'],
+  'consumer-installed': ['installed-consumer-interruptions'],
   'consumer-source': ['consumer-source-types'],
   'consumer-published': ['consumer-published-host'],
   release: [

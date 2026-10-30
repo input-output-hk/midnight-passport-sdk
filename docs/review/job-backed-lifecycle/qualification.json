@@ -1,0 +1,138 @@
+{
+  "schema": 2,
+  "status": "PASS_LOCAL_SYNTHETIC_LIFECYCLE",
+  "source": {
+    "commit": "b9a203ba03363811588b356b5ae7013895f51e44",
+    "dirty": false,
+    "workspaceSha256": "af7d882ba3af14b21df55d0543ddb0ef9c775c9de55f8129333240196c5af65e",
+    "fileCount": 1300
+  },
+  "binding": {
+    "id": "acc-s3r1.1",
+    "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "moduleSha256": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf"
+  },
+  "sourceExecutionGate": {
+    "passed": 988,
+    "failed": 0,
+    "skipped": 7,
+    "logSha256": "bf018d8af3d7f46228fbbe0c0c8bcddd824ed8c5b67256a6a92660a422ea1f66",
+    "exitCode": 0
+  },
+  "imageExecutionGate": {
+    "passed": 991,
+    "failed": 0,
+    "skipped": 7,
+    "exitCode": 0,
+    "logSha256": "bf3a4e7699721d017abe8f85ec79613803a4c3e38cd3cfa90ff738fa5fe312e5"
+  },
+  "lanes": {
+    "source-v4": {
+      "verdict": "PASS",
+      "cases": 28,
+      "arms": {
+        "jubjub": {
+          "jobs": 35,
+          "dispatchClaims": 44,
+          "confirmedSteps": 44,
+          "ownerFixtureUnchanged": true,
+          "hostSendEntries": 44,
+          "duplicatePreparedByteEntries": 0
+        },
+        "p256": {
+          "jobs": 35,
+          "dispatchClaims": 44,
+          "confirmedSteps": 44,
+          "ownerFixtureUnchanged": true,
+          "hostSendEntries": 44,
+          "duplicatePreparedByteEntries": 0
+        }
+      },
+      "receiptSha256": "5649f7aa6bf27bef4237ee017aac6957ff2fe80031f439adf8b970a65ca1ae9b",
+      "sourceEndUnchanged": true,
+      "canonicalConfirmations": 90,
+      "distinctCanonicalBlocks": 90
+    },
+    "image-v3": {
+      "verdict": "PASS",
+      "cases": 26,
+      "arms": {
+        "jubjub": {
+          "jobs": 35,
+          "dispatchClaims": 44,
+          "confirmedSteps": 44,
+          "ownerFixtureUnchanged": true
+        },
+        "p256": {
+          "jobs": 35,
+          "dispatchClaims": 44,
+          "confirmedSteps": 44,
+          "ownerFixtureUnchanged": true
+        }
+      },
+      "receiptSha256": "fd5b93c330b5c6d489b14f8d255a0a5707a3229aa1e864676fc3b5e647cb4025",
+      "sourceEndUnchanged": true,
+      "canonicalConfirmations": 90,
+      "distinctCanonicalBlocks": 90
+    }
+  },
+  "image": {
+    "source": {
+      "commit": "7703135cb3b90a4eeb64aca6342fd679ac14a678",
+      "dirty": false,
+      "workspaceSha256": "2c75b908d72ec1969228645a433e26bf3e677274f0b380dbca18501a71ade32a",
+      "fileCount": 1301
+    },
+    "id": "sha256:cf7d8d449d12159f7e374dcd4e27422a95b19d2c970a0c832d49d152b2f31b4a",
+    "platform": "linux/arm64",
+    "productionFilesMatch": 291,
+    "linuxReferencePackagesMatch": 9
+  },
+  "historicalAttempts": [
+    {
+      "root": "source-v1",
+      "verdict": "FAIL",
+      "reason": "Capacity guard; original enrollment separately recovered without another submission."
+    },
+    {
+      "root": "source-v2",
+      "verdict": "FAIL",
+      "reason": "Stale/forked indexer; node rejected initial deployment; original unknown retained."
+    },
+    {
+      "root": "source-v3",
+      "verdict": "FAIL",
+      "reason": "Qualification assumed owner-readable survivor grant bookkeeping; corrected publisher lookup."
+    },
+    {
+      "root": "image-v2",
+      "verdict": "FAIL",
+      "reason": "Target enrollment completed without expected observer marker; confirmed return-path hooks added. No restart boundary qualified."
+    }
+  ],
+  "limits": [
+    "software owner identities, not real WebAuthn/provider recovery or full Lace",
+    "standalone grant/mint/deposit setup and wallet credit, not job-backed value transfer",
+    "source post-submit exit differs from image confirmed-result observation loss then KILL",
+    "Linux ext state only; macOS bind state unqualified",
+    "trusted node/indexer canonical anchors, not light-client inclusion proofs",
+    "grant seal delivery/export remains a host responsibility; bookkeeping is publisher-specific"
+  ],
+  "realProviderQualified": false,
+  "fullLaceQualified": false,
+  "releaseQualified": false,
+  "published": false,
+  "keyCacheAudit": {
+    "verifiedFiles": 208,
+    "totalBytes": 12182210301,
+    "allHashesAndSizesMatch": true,
+    "regenerated": false,
+    "receiptSha256": "9c7b5e61ae35115adc20c0b837be412cb40be9b2f6eed7b552beb7848557dffa"
+  },
+  "protectedBackups": {
+    "archives": 4,
+    "bytes": 430081131,
+    "allPrivateMode": true,
+    "metadataSha256": "68ebd2922522f720af59e2fce87ee9c0cdb162762ba9cc2bd9af420d6dcc66c6"
+  }
+}

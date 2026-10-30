@@ -288,6 +288,27 @@ or a private ignored directory. Missing inputs, skipped tests and unimplemented
 cases never become qualified passes. Three matching foundation runs establish
 repeatability only for that declared scope, not release/provider acceptance.
 
+### Durable host-job transport checks (unreleased source)
+
+Host-job integration is opt-in; do not switch the default browser demo to it or put
+its operator bearer token in browser storage. Read `docs/site/service-jobs.md` for
+three job settings in addition to the three host-mutation settings, independent
+keys and non-nested retained journals. Do not replace existing private files.
+`/healthz` advertises `hostJobs` only when configured. SIGINT/SIGTERM drains work
+for up to 30 seconds; a timeout is unknown, never permission to replay a send.
+
+After `nix develop -c pnpm run build`, run:
+
+```sh
+nix develop -c node --test tests/remote-host-jobs.test.mjs tests/host-jobs-http.test.mjs tests/host-jobs-process.test.mjs
+nix develop -c pnpm --filter passport-service exec node --import tsx --test test/host-jobs-config.test.ts test/host-jobs-e2e.test.ts
+```
+
+These own ephemeral subprocesses and synthetic private journals only. They do not
+need Docker, live wallets or existing qualification fixtures. Record this as real
+transport/process coverage with fake chain drivers, never native/provider or
+released-image acceptance. Keep the full local gate before each signed commit.
+
 ### Where things are
 
 | Path                               | What                                                                                                                                       |
@@ -304,3 +325,94 @@ repeatability only for that declared scope, not release/provider acceptance.
 | `infra/localnet`, `infra/networks` | The Passport localnet and the Midnight stack configuration (one file per network)                                                          |
 | `experiments/acc-0.35`             | Fetch, compile and run scripts for the contract, plus run records `results/x1–x9`                                                          |
 | `docs/superpowers/specs/`          | The prototype spec and the publishing design for the SDK packages                                                                          |
+
+
+### Native durable-job qualification checkpoint — 2026/10/27 UTC
+
+Read `docs/review/native-host-jobs/README.md` and `docs/site/service-jobs.md` before
+running the opt-in `host-jobs-native` / `host-jobs-image-native` suites. Both arms
+have source-native and local production-image acceptance at the exact signed
+sources in the receipt. Published RC5 is unchanged. The local image is Linux/amd64
+emulated on arm64, with separately prepared Linux reference dependencies.
+
+Image durable journals use fresh retained Linux ext volumes. A previous macOS
+bind-state attempt is unqualified and retains an original unknown job; do not
+replay it or replace its ID. Use a fresh root ending `image-v1` through `image-v999`;
+existing container/volume/root names are refused. The production service always
+runs non-root; only fresh-volume metadata preparation uses root. Observer copies
+contain immutable encrypted revisions only and never drive work. Back up the
+actual volume plus private owner fixture/keys, as the matching service UID/GID.
+
+Retain intentional negative-case unknown intents. A missing host/job record never
+proves no send. Keep source, compiled outputs and reference inputs frozen during
+native runs, then verify end hashes before editing. Stop only exact owned worker
+PIDs and the dedicated qualification containers; retain ledger/key/state volumes.
+Slow proof/image suites remain outside fast CI. Current next scope is job-backed
+enrollment/removal/rotation with survivor/grants/holdings and wallet reconnect.
+
+
+### Job-backed populated lifecycle qualification — 2026/10/28
+
+Read `docs/review/job-backed-lifecycle/README.md` and the final section of
+`docs/site/service-jobs.md` before the opt-in `host-job-lifecycle-native` and
+`host-job-lifecycle-image-native` suites. Fresh roots only; existing fixtures,
+unknowns and chain/key volumes must be retained. The new image lane requires
+Linux/arm64 and its separately prepared locked ARM64 dependency cache; old
+creation qualification remains Linux/amd64. Use actual production entrypoint and
+Linux ext state volumes, non-root service UID/GID, read-only keys/reference.
+
+Source post-submit host exits and image owner-result observation loss followed
+by container KILL are different boundaries. Require original IDs and fresh
+circuit-bound job history. Standalone grant/mint/deposit setup and wallet credit
+are not job-backed. Stop the host sponsor before either standalone wallet. Wallet
+reconnect uses the private synthetic account owner seed, not a real provider;
+never print/copy that seed or imply ACC viewing secrets derive an HD wallet.
+Audit frozen signed source/runtime/reference before editing; preserve failures.
+
+
+The first job-backed lifecycle run stopped at host-capacity guard; read its
+partial receipt before claiming acceptance. Free at least **15 GiB before native
+qualification** even with a valid key cache. Source-v1 retains a running original
+Jubjub target-enrollment job after real submission. Preserve it and inspect/
+reconcile that same intent; do not execute a replacement or reuse the failed root
+for a fresh pass. Docker shutdown was requested by exact owned IDs but became
+unresponsive; verify actual state, and leave unrelated stacks alone. Full
+lifecycle/P-256/image/wallet acceptance is still pending, not released.
+
+
+After the approved Docker restart, original enrollment recovery passed separately;
+source-v1 remains a failed full suite. Source-v2 exposed a stale/forked indexer and
+node rejection 171. Read the new readiness incident in the review map. Require
+`dedicatedIndexerReadiness()` before native wallet setup: HTTP 200, height 1 and
+wallet `isSynced` alone do not prove indexer currency. The archived indexer
+container `mn-passport-qual-20261023-indexer-before-fork-20261028` and original
+`mn-passport-qual-20261023_indexer-data` volume are retained. The canonical cache
+uses the original service name/port with a new recorded ID and volume
+`mn-passport-qual-20261023_indexer-canonical-20261028`; do not delete either history
+or recreate the old stale binding with Compose. Node/prover IDs and chain remain
+unchanged. Preserve the source-v2 unknown; never repair it by replacing its send.
+
+
+### Latest lifecycle status — 2026/10/29
+
+The partial-run and Docker incident notes above are historical. Read the final
+review map and receipt: fresh source-v4/image-v3 completed both arms locally.
+Keep all original failed/unknown fixtures and archived indexer data. Grant
+bookkeeping is publisher-reader encrypted: fetch the confirmed seal via its
+publisher and deliver it to the independent grantee; owner ACC access alone
+does not recover a survivor's bookkeeping. Preserve the stated source/image
+interruption boundaries and software/provider/release limits. Stop only recorded
+owned compute and keep all state/dependency/key volumes.
+
+
+### Installed candidate consumers — 2026/10/30
+
+The opt-in `consumer-installed` suite requires a fresh private consumer outside
+this checkout, prepared with `scripts/qualify-installed-consumer.mjs prepare`.
+Read the installed-candidate section of `docs/site/consumer-integration.md`.
+Use all nine checked local tarballs, retain the lock/config and immutable run
+receipts, and replay a supplied hash-pinned lock offline in a second fresh app.
+The harness checks installed SDK bytes, actual HTTP/process kills and synthetic
+hosted-consent refusals. Its fake chain and host never qualify native proofs,
+real passkey providers, registry provenance or full Lace. Do not add installs to
+fast required CI, delete unknown fixtures, or publish private install logs/locks.

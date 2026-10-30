@@ -133,9 +133,9 @@ export function v1ChainRoute(backend: ChainBackend, options: V1ChainRouteOptions
     const tx = bytes(body.tx, 'tx');
     try {
       if (path === '/v1/sponsor/balance') {
-        json(res, 200, { tx: hex(await backend.balance(tx)) });
+        json(res, 200, { tx: hex(await runExclusive(() => backend.balance(tx))) });
       } else {
-        json(res, 200, { txId: await backend.submit(tx) });
+        json(res, 200, { txId: await runExclusive(() => backend.submit(tx)) });
       }
     } catch (cause) {
       if (cause instanceof HttpError) throw cause;

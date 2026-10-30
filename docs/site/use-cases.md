@@ -101,3 +101,10 @@ These additions are local, unreleased work. Default demo owner buttons still nee
 transaction reconciliation after interruption; a journal alone does not supply
 durable remote submissions. Another enrolled reader cannot invent the issuing
 reader's grant opening.
+
+
+## Operator-managed durable host jobs (unreleased source)
+
+An engineer running a trusted host/BFF can submit an immutable call/deploy job,
+observe bounded status, reconnect after a lost proxy reply and explicitly resume
+the original approved identity after a service restart. The [service-job guide]({{ '/service-jobs/' | relative_url }}) gives setup, expected outcomes and the eight-case transport restart matrix. This is a separate opt-in API; the demo owner buttons and released RC5 remain on their existing composition. Missing host records stay unknown, completed expiry does not recycle IDs, and no automatic retry or replacement transaction is created. Real passkey providers, native proofs and full Lace integration keep their separate evidence requirements.

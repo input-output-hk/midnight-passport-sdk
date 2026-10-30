@@ -214,10 +214,16 @@ export function createHostMutationExecutor(store: HostMutationStore, driver: Hos
     identity: HostMutationIdentity,
     input?: HostJson,
     signal?: { readonly aborted: boolean },
+    expectedInputSha256?: string,
   ): Promise<HostMutationOutcome> => {
     identity = JSON.parse(hostCanonical(identity)) as HostMutationIdentity;
     if (input !== undefined) input = JSON.parse(hostCanonical(input)) as HostJson;
     let record = await read(identity);
+    if (
+      expectedInputSha256 !== undefined &&
+      (!HEX.test(expectedInputSha256) || (record && hostHash(record.input) !== expectedInputSha256))
+    )
+      return hostFailure();
     const owner = randomUUID();
     const checkpoint = () => {
       if (signal?.aborted) return hostFailure();
@@ -303,8 +309,8 @@ export function createHostMutationExecutor(store: HostMutationStore, driver: Hos
     ) => drive(identity, input, options.signal),
     resume: (
       identity: HostMutationIdentity,
-      options: { signal?: { readonly aborted: boolean } } = {},
-    ) => drive(identity, undefined, options.signal),
+      options: { signal?: { readonly aborted: boolean }; expectedInputSha256?: string } = {},
+    ) => drive(identity, undefined, options.signal, options.expectedInputSha256),
     async inspect(identity: HostMutationIdentity) {
       const r = await read(identity);
       return r

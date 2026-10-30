@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { WALLET_WINDOWS } from './live-expectations.mjs';
 
-/** @param {{root:string,worker:(...args:any[])=>any,finished:(w:any,ms:number)=>Promise<any>,waitFor:(f:()=>Promise<boolean>,ms:number,terminal?:()=>boolean)=>Promise<void>,docker:(args:string[])=>string,indexerId:string,indexerReady:()=>Promise<boolean>}} c */
+/** @param {{root:string,ownerArm?:'jubjub'|'p256',worker:(...args:any[])=>any,finished:(w:any,ms:number)=>Promise<any>,waitFor:(f:()=>Promise<boolean>,ms:number,terminal?:()=>boolean)=>Promise<void>,docker:(args:string[])=>string,indexerId:string,indexerReady:()=>Promise<boolean>}} c */
 export async function runWalletReconnect(c) {
   await mkdir(c.root, { mode: 0o700 });
   /** @param {string} name @param {unknown} value */
@@ -12,7 +12,7 @@ export async function runWalletReconnect(c) {
       flag: 'wx',
       mode: 0o600,
     });
-  const observer = c.worker('wallet-observer', c.root, 'jubjub', 'wallet', 'none');
+  const observer = c.worker('wallet-observer', c.root, c.ownerArm ?? 'jubjub', 'wallet', 'none');
   /** @param {any} w */
   const alive = (w) => () => w.child.exitCode !== null || w.child.signalCode !== null;
   await c.waitFor(
@@ -20,7 +20,7 @@ export async function runWalletReconnect(c) {
     180000,
     alive(observer),
   );
-  const producer = c.worker('wallet-producer', c.root, 'jubjub', 'wallet', 'none');
+  const producer = c.worker('wallet-producer', c.root, c.ownerArm ?? 'jubjub', 'wallet', 'none');
   await c.waitFor(
     async () => producer.messages.some((/** @type {any} */ m) => m.walletTransferPrepared),
     180000,
@@ -75,7 +75,8 @@ export async function runWalletReconnect(c) {
         m.sameAddresses &&
         m.sameSeed &&
         m.staleHandleRefused &&
-        m.subscriptionsClosed,
+        m.subscriptionsClosed &&
+        (c.ownerArm === undefined || m.ownerSeedPinned === true),
     ),
   );
   assert.ok(

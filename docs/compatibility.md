@@ -1,6 +1,6 @@
 # Compatibility matrix
 
-> **Status:** preview RC5 · updated 2026/10/20. Releases are lockstep across the
+> **Status:** published preview RC5 · local qualification updated 2026/10/30. Releases are lockstep across the
 > `@input-output-hk/mn-passport-*` packages. The binding data is pinned in
 > `packages/contract/acc-binding-v2.generated.json` and the generated registry.
 
@@ -33,6 +33,21 @@ Public-entry ESM/CJS loads, real declaration boundaries, current physical runtim
 identity and WASM browser builds pass. The canary's combined abstractions peer warning
 remains documented. This is not an ordinary-wallet transaction qualification, full
 reader enrollment, real-provider/signing-page acceptance or full Lace compatibility.
+
+## 2026/10/30 local installed candidate qualification
+
+[Installed consumer evidence](review/installed-consumer/README.md) records all nine
+`0.1.0-installed.20261030` local tarballs, complete installed SDK file bytes,
+physical runtime identity, second fresh offline/frozen lock install, and eight
+both-arm call/deploy HTTP/process interruption cases. Original pre-host unknowns
+stay unknown; recorded synthetic submissions reconcile without recovery effects.
+The installed hosted adapter preserves supported consent and refuses lossy
+conversion plus unsupported rotation/withdrawal sessions before secret access.
+
+These are synthetic chain/host checks at signed `12f40019ee71163aa7636f81b47bd6383b064d99`.
+They do not update the earlier native proof/image pins, revalidate an actual Lace
+release, qualify a provider, establish registry provenance, or change published
+RC5. Exact-value shielded withdrawal guards and all existing release limits remain.
 
 ## Binding axis
 
@@ -518,3 +533,102 @@ Focused child-process/backpressure and classifier tests cover those corrections;
 the old native failure summaries were revalidated read-only. SDK execution and
 binding bytes are unchanged. This is not a fresh native or provider qualification
 at the later review head; the repository review record lists the exact delta.
+
+
+## 2026/10/27 unreleased host-job reference integration
+
+The local descriptor-based `/v1/host-jobs` API now has opt-in reference-service
+composition and `remoteHostJobs` / `remoteHostJobPorts` consumer exports. These
+require matching client/service source with `identitySha256`; published RC5 does
+not supply them. Existing `/v1/jobs`, `remoteV1*` and direct host RPC stay separate.
+No ACC, account API or published service API version is changed in this local work.
+
+Real HTTP/encrypted-journal tests cover eight P-256/Jubjub call/deploy service-kill
+boundaries, retained uncertainty before host registration, receipt lookup without
+rebroadcast after fake submission, shared sponsor queue/budget, lost replies,
+cancellation, strict receipt/identity checks and graceful/forced shutdown. Chain
+drivers are synthetic. Packed-package transport smoke is recorded separately from
+source checks and never implies native proofs, actual released images/registry,
+real providers or full Lace compatibility. Broad #233 and existing release
+limitations remain open. See [runbook](site/service-jobs.md) and
+[ADR0013](adr/0013-explicit-host-job-reference-composition.md).
+
+
+## 2026/10/27 local native host-job and image continuation
+
+The [native review map and receipt](review/native-host-jobs/README.md) record
+12 source/native-proof cases and six production-entrypoint Docker cases across
+P-256 and Jubjub. Original create/activation/inbox jobs survive reply loss and
+same-container Linux-volume restarts, complete and reopen the original ACC.
+Real source prover/indexer outages refuse work or retain original uncertainty;
+a failed owner proof before host registration stays unknown without replacement.
+
+Source qualification is pinned to signed `0f90ab0`; image qualification to signed
+`c128b3c`. All 291 production source/runtime files match across those sources and
+the local image, with matching reference lock and nine selected dependency entry
+pins. Source records 13 host submit entries with no duplicate prepared-byte entries
+per arm. The image records 13 confirmed steps/single durable dispatch claims per
+arm; it does not independently instrument network attempts. Image owner-local
+journal summaries can lag; final actual Linux-volume exports establish acceptance.
+
+The exact local image is
+`sha256:ea189f3f7214e6c09e1734a1921efe46f0fbe0ebee6341ddc8baf864358deeda`,
+Linux/amd64 emulated on arm64. Only Linux ext volume state is qualified. An earlier
+macOS bind-state attempt left its first accepted job unknown before host revision
+publication; its exact storage failure cause remains unestablished, and the
+original fixture is retained. **macOS bind-backed durable image state remains
+unqualified.** Harness fixes/negative controls cover strict pin projection, native
+error envelopes, signal termination and immutable encrypted observer copies.
+
+These are unreleased local host-job results, not a new RC5/registry/image release,
+real-provider or full Lace pass. Job-backed enrollment/removal with grants,
+holdings and wallet reconnect remain a next slice. Automatic scanning, distributed
+wallet locking, persistent budget, unknown/no-send repair and journal compaction
+remain open. Exact-value shielded withdrawals and other release limits are unchanged.
+
+
+## Job-backed lifecycle qualification — historical partial run 2026/10/28
+
+The local qualification harness extends opt-in descriptor jobs to populated device
+lifecycle and an owner-seed-pinned built-in wallet. The initial source run at
+`a4c3d4f` completed Jubjub create/reopen, standalone read-grant/holding setup and
+survivor enrollment. Target enrollment reached its native submit/reply-loss fault
+and real indexer outage probe; the capacity guard stopped the suite before
+same-ID recovery. That run retained one original running job with immutable
+history. Its later original-ID recovery did not relabel the failed suite. That
+run did not establish lifecycle acceptance.
+
+P-256, removal/rotation, owner-pinned reconnect and Linux/arm64 image lifecycle
+cases were pending for that run. The ARM64 image's 291 production files and nine selected
+Linux dependency entries match; this is a byte audit, not native acceptance.
+See [the review and receipt, including attempt history](review/job-backed-lifecycle/README.md).
+Historical direct lifecycle and AMD64 creation results retain their original
+scope. RC5, provider/full-Lace limitations and exact-value guards are unchanged.
+
+
+## Completed local job-backed lifecycle — 2026/10/29
+
+Fresh source-v4/image-v3 passed both arms at signed `b9a203ba03363811588b356b5ae7013895f51e44`
+(source) and `7703135cb3b90a4eeb64aca6342fd679ac14a678` (image). Original-ID
+enrollment/removal/survivor-rotation recovery, removed-reader refusal, grant/holding
+preservation and owner-seed-pinned wallet reconnect passed. Earlier failed roots/unknowns and
+old indexer data are retained. No publication/provider/full-Lace acceptance. Details and exact
+counts: [review map](review/job-backed-lifecycle/README.md) and
+[receipt](review/job-backed-lifecycle/qualification.json).
+
+Source post-submit exit and image confirmed-result observer loss followed by KILL remain
+different boundaries. Linux ext state only; grant bookkeeping/export is publisher-specific.
+Standalone setup/wallet credit are not job-backed value transfers. Canonical anchors trust the
+node/indexer pair; they are not light-client proofs. Exact-value withdrawal and open operational
+limits remain.
+
+
+## RC6 host-job receipt and queue boundary
+
+An authenticated full-identity result read collects the original confirmed receipt
+after public status expiry (including TTL zero), without mutation or replay.
+Missing/unconfirmed jobs remain unresolved; policy expiry never authorises a new
+send. Legacy/v1 sponsor balance/submit routes now share the wallet queue with
+proof/deploy work: requests can wait or return 503 at capacity. Reconcile remains
+asynchronous, and pre-host no-send repair stays deferred. See the service-job
+runbook for original-ID recovery and controlled operator topology.
