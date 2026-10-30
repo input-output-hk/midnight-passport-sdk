@@ -124,7 +124,7 @@ async function worker() {
               return host.execute(...args);
             },
     },
-    { pins },
+    { pins, completedTtlMs: 0 },
   );
   const server = service.createServer({ host: '127.0.0.1', corsOrigin: 'http://localhost:5173' }, [
     service.hostJobRoute({ jobs, pins, token: Buffer.from(token, 'hex') }),
@@ -405,6 +405,7 @@ async function suite() {
             submitEntries: ledgerBefore ? JSON.parse(ledgerBefore.toString()).length : 0,
             recoveryEffectAttempts: 0,
             ledgerUnchanged: true,
+            resultVisibilityTtlMs: 0,
             checks: [
               'actual-http',
               'process-sigkill',

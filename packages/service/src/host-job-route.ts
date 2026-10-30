@@ -39,7 +39,7 @@ export function hostJobRoute(options: {
       return true;
     }
     const action = url.pathname.slice('/v1/host-jobs/'.length);
-    if (req.method !== 'POST' || !['accept', 'start', 'reconcile'].includes(action))
+    if (req.method !== 'POST' || !['accept', 'start', 'reconcile', 'result'].includes(action))
       throw new HttpError(404, 'unknown host job operation');
     if (url.search) throw new HttpError(400, 'unexpected host job query');
     const body = await readJson(req, action === 'accept' ? HOST_JOB_INPUT_LIMIT + 4096 : 256);
@@ -61,10 +61,15 @@ export function hostJobRoute(options: {
       if (
         Object.keys(b).some((k) => !['jobId', 'identitySha256'].includes(k)) ||
         typeof b.jobId !== 'string' ||
+        (action === 'result' && typeof b.identitySha256 !== 'string') ||
         (b.identitySha256 !== undefined &&
           (typeof b.identitySha256 !== 'string' || !/^[0-9a-f]{64}$/.test(b.identitySha256)))
       )
         throw new HttpError(400, 'invalid host job request');
+      if (action === 'result') {
+        json(res, 202, await options.jobs.result(b.jobId as string, b.identitySha256 as string));
+        return true;
+      }
       json(
         res,
         202,

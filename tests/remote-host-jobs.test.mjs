@@ -537,7 +537,7 @@ test(
   },
 );
 
-test('expired results retain identity without a continuation POST, and stale cursor refuses without reset', async (t) => {
+test('expired result collection uses only an identity-bound read, and stale cursor refuses without reset', async (t) => {
   const f = await setup(t, { completedTtlMs: 0 });
   await f.client.accept(
     f.d.identity,
@@ -548,10 +548,13 @@ test('expired results retain identity without a continuation POST, and stale cur
   await f.client.start(f.d.identity);
   await f.jobs.drain();
   const before = f.methods.length;
-  const expired = await f.client.resume(f.d.identity);
-  assert.equal(expired?.state, 'expired');
-  assert.equal(expired?.outcome, undefined);
-  assert.ok(f.methods.slice(before).every((p) => p.startsWith('GET ')));
+  const collected = await f.client.resume(f.d.identity);
+  assert.equal(collected?.state, 'done');
+  assert.ok(collected?.outcome);
+  assert.ok(
+    f.methods.slice(before).every((p) => p.startsWith('GET ') || p === 'POST /v1/host-jobs/result'),
+  );
+  assert.equal((await f.client.get(f.d.identity))?.state, 'expired');
   const ring = await setup(t, { eventLimit: 1 });
   await ring.client.execute(
     ring.d.identity,
@@ -567,3 +570,45 @@ test('expired results retain identity without a continuation POST, and stale cur
   assert.equal(latest?.events.length, 1);
   assert.deepEqual((await ring.client.get(ring.d.identity, undefined, latest?.cursor))?.events, []);
 });
+
+for (const ttl of [0, 10])
+  test(`expired confirmed result remains collectable without execution (TTL=${ttl})`, async (t) => {
+    let clock = 100;
+    const f = await setup(t, { completedTtlMs: ttl, now: () => clock });
+    const result = await f.client.execute(
+      f.d.identity,
+      /** @type {import('../packages/adapter-service/dist/index.js').RemoteHostJobInput} */ (
+        f.d.input
+      ),
+    );
+    assert.equal(result?.state, 'done');
+    clock += 10;
+    const before = f.counts(),
+      record = JSON.stringify(await f.jobStore.read(await remoteHostJobId(f.d.identity)));
+    assert.equal((await f.client.get(f.d.identity))?.state, 'expired');
+    const resumed = await f.client.resume(f.d.identity);
+    assert.equal(resumed?.state, 'done');
+    const ports = remoteHostJobPorts(f.base, f.options);
+    const outcome = await ports.outcomes.reconcile(f.d.identity.pins, {
+      key: f.d.identity.requestId,
+      digest: f.d.identity.intentSha256,
+      kind: 'call',
+      input: {},
+    });
+    assert.equal(outcome.kind, 'confirmed');
+    assert.deepEqual(f.counts(), before);
+    assert.equal(
+      JSON.stringify(await f.jobStore.read(await remoteHostJobId(f.d.identity))),
+      record,
+    );
+    assert.equal(
+      (await f.client.get(f.d.identity))?.state,
+      'expired',
+      'Explicit retrieval never renews status visibility.',
+    );
+    await assert.rejects(
+      () => f.client.result({ ...f.d.identity, intentSha256: 'ff'.repeat(32) }),
+      { code: 'MutationUnsettled' },
+    );
+    assert.deepEqual(f.counts(), before);
+  });

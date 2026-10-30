@@ -14,6 +14,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { packedHostJobsSmoke } from './packed-host-jobs-smoke.mjs';
+import { validateInstalledCases } from './consumer/installed-cases.mjs';
 import { checkConsumerTarballs } from './consumer-inputs.mjs';
 
 const root = resolve(import.meta.dirname, '..');
@@ -139,6 +140,18 @@ try {
     cwd: scratch,
     stdio: 'inherit',
   });
+  // Exercise TTL-zero retained receipts through the exact installed package graph.
+  const interrupts = join(scratch, 'installed-interruptions');
+  mkdirSync(interrupts);
+  const harness = join(scratch, 'installed-host-jobs.mjs');
+  copyFileSync(join(root, 'scripts/consumer/installed-host-jobs.mjs'), harness);
+  execFileSync(process.execPath, [harness, 'suite', interrupts], {
+    cwd: scratch,
+    stdio: 'inherit',
+    timeout: 60000,
+  });
+  validateInstalledCases(JSON.parse(readFileSync(join(interrupts, 'cases.json'), 'utf8')));
+  console.log('installed package restarts: eight TTL-zero cases and synthetic consent passed');
   mkdirSync(join(scratch, 'src'));
   copyFileSync(join(root, 'tests/fixtures/lace-seams.mjs'), join(scratch, 'src/lace-seams.mjs'));
   writeFileSync(

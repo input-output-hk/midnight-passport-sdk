@@ -37,6 +37,7 @@ export function validateInstalledCases(value) {
       c.state !== (c.boundary === 'after-send' ? 'done' : 'unknown') ||
       c.recoveryEffectAttempts !== 0 ||
       c.ledgerUnchanged !== true ||
+      c.resultVisibilityTtlMs !== 0 ||
       c.submitEntries !== (c.boundary === 'before-host' ? 0 : c.kind === 'deploy' ? 2 : 1) ||
       !/^[a-f0-9]{32}$/.test(c.jobId) ||
       !/^[a-f0-9]{64}$/.test(c.identitySha256) ||

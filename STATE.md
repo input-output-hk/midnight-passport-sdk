@@ -373,7 +373,7 @@ remain false. Owner pre-registration proof loss safely stays unresolved; no blin
   its own SDK issue.
 
 
-### 2026-10-29: lifecycle grant-publisher check
+### 2026/10/29: lifecycle grant-publisher check
 
 Source-v3 (`c068250`) recovered all three Jubjub interrupted mutations, including
 survivor rotation, then failed a check that assumed owner-readable grant

@@ -124,3 +124,14 @@ test('lost acceptance response is recovered by original descriptor; errors discl
   assert.equal((await f.request('start', { jobId: 'not-an-id' })).status, 400);
   assert.equal((await f.request('start', { jobId: '45'.repeat(16) })).status, 404);
 });
+
+test('retained-result RPC requires token and full original identity and never starts queued jobs', async (t) => {
+  const f = await serverFixture(t),
+    d = descriptor();
+  const a = /** @type {{jobId:string}} */ (await (await f.request('accept', d)).json());
+  const body = { jobId: a.jobId, identitySha256: 'aa'.repeat(32) };
+  assert.equal((await f.request('result', body, false)).status, 401);
+  assert.equal((await f.request('result', { jobId: a.jobId })).status, 400);
+  assert.equal((await f.request('result', body)).status, 409);
+  assert.equal(f.counts().executions, 0);
+});

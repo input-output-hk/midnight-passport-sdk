@@ -355,7 +355,7 @@ export function createHostMutationJobs(
     hostJobFailure();
   let open = true,
     admitted = 0;
-  const tasks = new Set<Promise<void>>();
+  const activeIds = new Set<string>();
   const drainWaiters = new Set<() => void>();
   const releaseAdmission = () => {
     admitted--;
@@ -416,7 +416,7 @@ export function createHostMutationJobs(
       ...(outcome && { outcome, finishedAt: at }),
     };
   };
-  const view = (r: HostJobRecord, after?: string): HostJobView => {
+  const view = (r: HostJobRecord, after?: string, retainedResult = false): HostJobView => {
     const first = r.events[0]!.sequence - 1;
     if (
       after !== undefined &&
@@ -425,7 +425,8 @@ export function createHostMutationJobs(
       throw new HttpError(400, 'invalid host job cursor');
     if (after !== undefined && Number(after) < first)
       throw new HttpError(410, 'host job cursor expired; read a fresh snapshot');
-    const expired = r.state === 'done' && time() - r.finishedAt! >= r.policy.completedTtlMs;
+    const expired =
+      !retainedResult && r.state === 'done' && time() - r.finishedAt! >= r.policy.completedTtlMs;
     return clone({
       jobId: r.id,
       identitySha256: hostHash(r.descriptor.identity),
@@ -488,21 +489,22 @@ export function createHostMutationJobs(
     admitted++;
   };
   const schedule = (record: HostJobRecord, execute: boolean) => {
-    const task = Promise.resolve()
+    activeIds.add(record.id);
+    void Promise.resolve()
       .then(() => exclusive(() => observe(record, execute)))
       .catch(async () => {
         // Queue/storage failure is not an authoritative no-send receipt.
         try {
-          await save(record.revision, transition(record, 'unknown'));
+          if (record.state !== 'unknown')
+            await save(record.revision, transition(record, 'unknown'));
         } catch {
           /* protected journal retained */
         }
       })
       .finally(() => {
         releaseAdmission();
-        tasks.delete(task);
+        activeIds.delete(record.id);
       });
-    tasks.add(task);
   };
   return {
     async accept(value: HostJobDescriptor): Promise<{ jobId: string }> {
@@ -551,6 +553,19 @@ export function createHostMutationJobs(
       const r = await read(id);
       return r ? view(r, after) : undefined;
     },
+    /** Explicit authenticated identity-bound receipt read, even after public visibility expires.
+     * Never schedules work, renews visibility, changes history or frees the original identity. */
+    async result(id: string, expectedIdentitySha256: string): Promise<HostJobView> {
+      const r = await read(id);
+      if (!r) throw new HttpError(404, 'host job not found');
+      if (
+        !HEX.test(expectedIdentitySha256) ||
+        expectedIdentitySha256 !== hostHash(r.descriptor.identity)
+      )
+        throw new HttpError(409, 'host job identity conflicts with the original intent');
+      if (r.state !== 'done') throw new HttpError(409, 'host job result is not confirmed');
+      return view(r, undefined, true);
+    },
     async start(id: string, expectedIdentitySha256?: string): Promise<{ jobId: string }> {
       const r = await read(id);
       if (!r) throw new HttpError(404, 'host job not found');
@@ -579,7 +594,7 @@ export function createHostMutationJobs(
         expectedIdentitySha256 !== hostHash(r.descriptor.identity)
       )
         throw new HttpError(409, 'host job identity conflicts with the original intent');
-      if (r.state !== 'queued' && r.state !== 'done') {
+      if (r.state !== 'queued' && r.state !== 'done' && !activeIds.has(id)) {
         admit();
         schedule(r, false);
       }

@@ -2,6 +2,8 @@
 // Qualification may build with a wallet only after observing node finality in that indexer.
 /** @param {{fetch?:typeof fetch,now?:()=>number}} [options] */
 export async function dedicatedIndexerReadiness(options = {}) {
+  /** @param {unknown} v @returns {v is Record<string,unknown>} */
+  const object = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
   const request = options.fetch ?? fetch;
   const now = options.now ?? Date.now;
   const node = 'http://127.0.0.1:19954';
@@ -15,7 +17,9 @@ export async function dedicatedIndexerReadiness(options = {}) {
       signal: AbortSignal.timeout(2000),
     });
     if (!response.ok) throw new Error('Readiness transport unavailable.');
-    return /** @type {any} */ (await response.json());
+    const value = await response.json();
+    if (!object(value)) throw new Error('Readiness response unavailable.');
+    return value;
   };
   /** @param {string} method @param {unknown[]} [params] */
   const rpc = async (method, params = []) => {
@@ -28,7 +32,11 @@ export async function dedicatedIndexerReadiness(options = {}) {
     if (typeof finalized !== 'string' || !/^0x[0-9a-f]{64}$/.test(finalized))
       return { ready: false };
     const header = await rpc('chain_getHeader', [finalized]);
-    if (typeof header?.number !== 'string' || !/^0x[0-9a-f]+$/.test(header.number))
+    if (
+      !object(header) ||
+      typeof header.number !== 'string' ||
+      !/^0x[0-9a-f]+$/.test(header.number)
+    )
       return { ready: false };
     const height = Number(BigInt(header.number));
     if (!Number.isSafeInteger(height) || height < 1) return { ready: false };
@@ -38,12 +46,13 @@ export async function dedicatedIndexerReadiness(options = {}) {
         'query QualificationFinality($offset:BlockOffset!){block(offset:$offset){hash height timestamp}}',
       variables: { offset: { hash } },
     });
-    const block = body.data?.block;
+    const block = object(body.data) && object(body.data.block) ? body.data.block : undefined;
     if (
       body.errors ||
       block?.hash !== hash ||
       block?.height !== height ||
-      !Number.isSafeInteger(block?.timestamp)
+      typeof block?.timestamp !== 'number' ||
+      !Number.isSafeInteger(block.timestamp)
     )
       return { ready: false };
     const lagMs = now() - block.timestamp;

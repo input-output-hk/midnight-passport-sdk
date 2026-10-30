@@ -292,8 +292,9 @@ export async function inspectThenExplicitlyResume(
 `execute` sends one accept and one start, then polls GET. It never automatically
 reconciles an unknown result or retries a lost POST. `resume` first checks the
 saved identity and job status. Under explicit approval it starts an existing
-queued job or reconciles a running/unknown job once, then polls GET. Missing and
-expired jobs remain unsettled; resume never creates a replacement. A done job
+queued job or reconciles a running/unknown job once, then polls GET. Missing jobs remain unsettled;
+expired confirmed jobs use the authenticated, identity-bound result read. Resume
+never creates a replacement. A done job
 returns its checked receipt without another POST. Reconcile is asynchronous: if
 the saved job is already unknown and continuation is slow, `resume` can still
 return unknown while that approved work runs. Use read-only `get` polls to collect
@@ -568,3 +569,30 @@ actual synthetic-owner built-in wallet across indexer outage/reconnect/recreatio
 failures. Published RC5 is unchanged. Real-provider recovery/full Lace, macOS bind durability,
 automatic scanning, distributed locking and unknown/no-send repair remain unqualified. Source
 and image interruption boundaries and standalone value-setup limits remain as described above.
+
+
+## Retained confirmed result collection — RC6
+
+Public status expiry hides the completed outcome and events; it never deletes
+confirmed receipts or prevents collecting the original operation after restart.
+An explicitly authorised client uses `POST /v1/host-jobs/result` with `jobId` and
+the full original `identitySha256`, plus the operator bearer token. The service
+returns a validated `done` snapshot only for an already confirmed matching job.
+This read never schedules/replays work, writes a revision, renews visibility or
+releases the identity/capacity reservation. Missing, conflicting and unconfirmed
+jobs refuse. GET remains redacted after expiry, including TTL zero.
+
+`remoteHostJobs.result(identity)` exposes that read. `execute`/`resume` and the
+owner outcome port collect an expired confirmed result automatically within their
+existing request deadline. Historical frozen TTL-zero policies are recoverable
+without changing the saved policy or transaction. Tests cover immediate/delayed
+expiry, authenticated HTTP, encrypted-store restart and eight installed-package
+process cases at TTL zero. Local in-flight IDs avoid duplicate admission, and
+unchanged unknown queue failures add no immutable revisions.
+
+Queue/budget rejection without a host record remains conservative `unknown`;
+this release supplies no general fenced no-send repair. Reconcile is asynchronous
+and can return an older unknown while its one approved task runs; use GET polls.
+Balance/submit routes share the sponsor queue, so they can wait behind proofs or
+receive 503 at capacity. This is deliberate wallet serialization, not a latency
+promise or a distributed wallet lock.

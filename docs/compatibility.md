@@ -621,3 +621,14 @@ different boundaries. Linux ext state only; grant bookkeeping/export is publishe
 Standalone setup/wallet credit are not job-backed value transfers. Canonical anchors trust the
 node/indexer pair; they are not light-client proofs. Exact-value withdrawal and open operational
 limits remain.
+
+
+## RC6 host-job receipt and queue boundary
+
+An authenticated full-identity result read collects the original confirmed receipt
+after public status expiry (including TTL zero), without mutation or replay.
+Missing/unconfirmed jobs remain unresolved; policy expiry never authorises a new
+send. Legacy/v1 sponsor balance/submit routes now share the wallet queue with
+proof/deploy work: requests can wait or return 503 at capacity. Reconcile remains
+asynchronous, and pre-host no-send repair stays deferred. See the service-job
+runbook for original-ID recovery and controlled operator topology.

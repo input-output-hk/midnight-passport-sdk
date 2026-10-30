@@ -8,6 +8,7 @@ import {
   encryptedHostJobStore,
   createHostMutationJobs,
   hostJobId,
+  hostHash,
   validateHostJobRecord,
   hostCanonical,
 } from '../packages/service/dist/index.js';
@@ -453,4 +454,69 @@ test('existing host input conflict never becomes a confirmed job receipt through
   assert.equal((await f.jobs.get(a.jobId))?.outcome, undefined);
   assert.equal(f.counts().sends, before.sends);
   assert.equal(f.counts().prepared, before.prepared);
+});
+
+test('retained zero-TTL encrypted result survives restart and frozen public expiry policy', async (t) => {
+  const p = await disk(t, 2),
+    f = fixture(p.store, { completedTtlMs: 0 });
+  const d = descriptor(),
+    a = await f.jobs.accept(d);
+  await f.jobs.start(a.jobId);
+  await f.jobs.drain();
+  const before = await p.store.read(a.jobId),
+    counts = f.counts();
+  const restarted = createHostMutationJobs(p.store, f.executor, {
+    pins: servicePins,
+    completedTtlMs: 600000,
+  });
+  assert.equal((await restarted.get(a.jobId))?.state, 'expired');
+  const receipt = await restarted.result(a.jobId, hostHash(d.identity));
+  assert.equal(receipt.state, 'done');
+  assert.ok(receipt.outcome);
+  assert.deepEqual(await p.store.read(a.jobId), before);
+  assert.deepEqual(f.counts(), counts);
+  await assert.rejects(() => restarted.result(a.jobId, 'ff'.repeat(32)), { status: 409 });
+});
+
+test('repeated queue failure with unchanged unknown state creates no journal revisions', async () => {
+  const store = createMemoryHostJobStore();
+  const f = fixture(store, {
+    runExclusive: async () => {
+      throw Error('synthetic full queue');
+    },
+  });
+  const a = await f.jobs.accept(descriptor());
+  await f.jobs.start(a.jobId);
+  await f.jobs.drain();
+  const original = await store.read(a.jobId);
+  assert.equal(original?.state, 'unknown');
+  for (let n = 0; n < 3; n++) {
+    await f.jobs.reconcile(a.jobId);
+    await f.jobs.drain();
+  }
+  assert.deepEqual(await store.read(a.jobId), original);
+  assert.equal(f.counts().executions, 0);
+});
+
+test('duplicate local reconcile calls cannot consume admission behind an active original', async () => {
+  const f = fixture(undefined, { maxActive: 1 }),
+    entered = barrier(),
+    release = barrier(),
+    original = f.driver.submit;
+  f.driver.submit = async (tx) => {
+    entered.release();
+    await release.promise;
+    return original(tx);
+  };
+  const a = await f.jobs.accept(descriptor());
+  await f.jobs.start(a.jobId);
+  try {
+    await entered.promise;
+    for (let n = 0; n < 4; n++) await f.jobs.reconcile(a.jobId);
+  } finally {
+    release.release();
+    await f.jobs.drain();
+  }
+  assert.equal(f.counts().sends, 1);
+  assert.equal(f.counts().resumes, 0);
 });

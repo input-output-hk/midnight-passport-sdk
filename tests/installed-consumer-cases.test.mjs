@@ -18,6 +18,7 @@ function receipt() {
           identitySha256: 'aa'.repeat(32),
           recoveryEffectAttempts: 0,
           ledgerUnchanged: true,
+          resultVisibilityTtlMs: 0,
           submitEntries: boundary === 'before-host' ? 0 : kind === 'call' ? 1 : 2,
           checks: [
             'actual-http',

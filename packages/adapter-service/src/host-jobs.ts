@@ -442,6 +442,18 @@ export function remoteHostJobs(base: string, options: RemoteHostJobOptions) {
     if (!fields(answer, ['jobId']) || answer.jobId !== h.jobId) return fail();
     return { jobId: h.jobId };
   };
+  const retained = async (
+    identity: RemoteHostJobIdentity,
+    signal?: AbortSignalLike,
+    deadline?: number,
+  ) => {
+    const i = checkedIdentity(identity),
+      h = await identityHashes(i);
+    const value = await request('result', h, signal, deadline);
+    const snapshot = checkedSnapshot(value, i, h);
+    if (snapshot.state !== 'done' || !snapshot.outcome) return fail();
+    return snapshot;
+  };
   const wait = async (
     identity: RemoteHostJobIdentity,
     signal?: AbortSignalLike,
@@ -466,7 +478,8 @@ export function remoteHostJobs(base: string, options: RemoteHostJobOptions) {
       } catch {
         return fail();
       }
-      if (['done', 'unknown', 'expired'].includes(snapshot.state)) return snapshot;
+      if (snapshot.state === 'expired') return retained(i, signal, deadline);
+      if (['done', 'unknown'].includes(snapshot.state)) return snapshot;
       try {
         await pause(Math.min(delay, Math.max(0, deadline - performance.now())), signal);
       } catch {
@@ -496,6 +509,7 @@ export function remoteHostJobs(base: string, options: RemoteHostJobOptions) {
   return {
     get,
     wait,
+    result: (i: RemoteHostJobIdentity, signal?: AbortSignalLike) => retained(i, signal),
     start: (i: RemoteHostJobIdentity, signal?: AbortSignalLike) => action('start', i, signal),
     reconcile: (i: RemoteHostJobIdentity, signal?: AbortSignalLike) =>
       action('reconcile', i, signal),
@@ -517,7 +531,8 @@ export function remoteHostJobs(base: string, options: RemoteHostJobOptions) {
       const deadline = performance.now() + timeout,
         i = checkedIdentity(identity),
         snapshot = await get(i, signal, undefined, deadline);
-      if (!snapshot || snapshot.state === 'expired' || snapshot.state === 'done') return snapshot;
+      if (!snapshot || snapshot.state === 'done') return snapshot;
+      if (snapshot.state === 'expired') return retained(i, signal, deadline);
       await action(snapshot.state === 'queued' ? 'start' : 'reconcile', i, signal, deadline);
       return wait(i, signal, deadline);
     },

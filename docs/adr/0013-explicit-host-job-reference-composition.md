@@ -52,6 +52,6 @@ No automatic scanner, compaction, rollback detection or distributed wallet polic
 
 Fast CI runs real HTTP, encrypted files and hard-killed/restarted reference-service
 processes over synthetic chain drivers, for both schemes and call/deploy effects.
-These establish transport/restart behavior, not native proofs, passkey providers,
+These establish transport/restart behaviour, not native proofs, passkey providers,
 full Lace compatibility or release acceptance. Keep slow native and actual image
 qualification as separately pinned evidence. Broad #233 remains open.
