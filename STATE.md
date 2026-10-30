@@ -6,13 +6,38 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/10/30. Historical entries below retain their original issue namespaces.
 
-## RC6 artefacts published — 2026/10/30
+## RC6 release complete — 2026/10/30
 
-Nine private GitHub npm packages `0.1.0-rc6` / `next` and three public GHCR images
-are published from signed source `7848d3029de753727bb376e8dd90ca05cd132b55`. Registry SRI/private visibility,
-a clean authenticated npm install, all 521 installed SDK file bytes and key-image
-HTTP checks pass. Final signed publication assets follow post-deployment doc checks;
-source-specific native/provider limits remain explicit. No full Lace/provider claim.
+[Preview `0.1.0-rc6`](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc6)
+is published: nine private GitHub npm packages (`next`) and three public Linux/amd64
+GHCR images, from signed source `7848d3029de753727bb376e8dd90ca05cd132b55`.
+Four GPG/DCO-signed tags identify the source; reviewed PRs #252/#253/#254 are merged.
+The [signed publication receipt](docs/release/rc6-publication-receipt.json), its
+[detached signature](docs/release/rc6-publication-receipt.json.asc), and the
+[Lace handover](docs/release/rc6-lace-handover.md) contain exact installation and image pins.
+
+Verification: all nine registry SHA-256/SRI, source/publisher attestations, private
+visibility/next, clean authenticated npm install, all 521 installed SDK files,
+imports/types/browser build/runtime identity, eight TTL-zero synthetic process
+cases and single-circuit regeneration/hash verification passed. Public image
+manifest/config hashes and source/version aliases, actual digest pulls,
+service/funding startup refusals and selected key HTTP/all 52 verifier hashes pass.
+Live Pages passed 22 pages / 500 local links and anchors. Full local gate passed
+1,005 tests, with seven existing conditional skips and zero failures.
+
+A review finding was fixed before publishing: confirmed results remain collectible
+after TTL expiry through authenticated identity-bound reads without replay or
+journal mutation. The final publication docs were self-reviewed after earlier
+external reviews; the last Claude follow-up hit its CLI session quota. No fresh
+external approval is claimed. No SDK dependency, ACC/runtime or consent-policy
+upgrade was introduced by publication.
+
+Exact-value shielded withdrawal guards remain. Full Lace/provider acceptance,
+partial shielded change/value-host paths, complete typed circuits, broad operator
+hardening and total-loss recovery remain deferred. Historical native source/image
+receipts retain their exact revisions and boundaries; no repeated native lifecycle
+on RC6 images is claimed. Owned release test compute and the merged auxiliary
+branch are cleaned up; retained state/key volumes and unrelated stacks are untouched.
 
 ## RC6 release preparation — 2026/10/30
 
