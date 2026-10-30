@@ -71,6 +71,7 @@ try {
   mkdirSync(join(laceSource, 'store'));
   cpSync(join(source, 'store/slice.ts'), join(laceSource, 'store/slice.ts'));
   cpSync(join(root, 'tests/fixtures/lace-source-consumer.ts'), join(scratch, 'consumer.ts'));
+  cpSync(join(root, 'docs/examples/jubjub-grant-scope.ts'), join(scratch, 'jubjub-grant-scope.ts'));
   cpSync(
     join(laceCheckout, 'packages/module/passport-account/src/acc/generated/index.d.ts'),
     join(scratch, 'lace-acc-generated.d.ts'),

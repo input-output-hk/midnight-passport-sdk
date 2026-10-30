@@ -77,6 +77,14 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Explicit clean authorised source, generated ACC hashes and packed SDK types/runtime identity; no hosted flow claim.',
   },
+  'consumer-verified-host': {
+    tier: 'published-consumer',
+    command: [node, 'scripts/qualify-host-consumer.mjs', 'run'],
+    requires: ['CONSUMER_ROOT', 'CONSUMER_CONFIG_SHA256'],
+    timeoutMs: 4 * 60000,
+    establishes:
+      'Prepared exact registry SDK/host packages: external receipt/config pins, every installed SDK/host file, frozen lock/runtime identity, public entry types/ESM/CJS/WASM and synthetic public-host transport. Not signer handlers/page, native proofs or full compatibility.',
+  },
   'consumer-published-host': {
     tier: 'published-consumer',
     command: [node, 'scripts/smoke-lace-published-consumer.mjs'],
@@ -340,6 +348,7 @@ export const SUITES = Object.freeze({
   'consumer-installed': ['installed-consumer-interruptions'],
   'consumer-source': ['consumer-source-types'],
   'consumer-published': ['consumer-published-host'],
+  'consumer-host-integrity': ['consumer-verified-host'],
   release: [
     'binding-source',
     'contract-entries',

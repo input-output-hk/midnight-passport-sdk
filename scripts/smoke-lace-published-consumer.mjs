@@ -69,6 +69,9 @@ const browser = join(root, 'sdk-consumer-browser');
 if (existsSync(fixture) || existsSync(browser))
   throw new Error('use a fresh consumer output directory');
 copyFileSync(join(import.meta.dirname, '../tests/fixtures/lace-published-consumer.ts'), fixture);
+const scopeFixture = join(root, 'jubjub-grant-scope.ts');
+if (existsSync(scopeFixture)) throw Error('use a fresh host scope output');
+copyFileSync(join(import.meta.dirname, '../docs/examples/jubjub-grant-scope.ts'), scopeFixture);
 execFileSync(
   'pnpm',
   [
@@ -87,6 +90,42 @@ execFileSync(
   ],
   { cwd: root, stdio: 'inherit' },
 );
+// Run the real published host's remote seams, composed with the installed SDK adapter.
+const runtimeFixture = join(root, 'sdk-published-runtime.mjs');
+const protocolReceipt = join(root, 'public-protocol-receipt.json');
+if (existsSync(runtimeFixture) || existsSync(protocolReceipt))
+  throw Error('use a fresh runtime output');
+copyFileSync(
+  join(import.meta.dirname, '../tests/fixtures/lace-published-runtime.js'),
+  runtimeFixture,
+);
+execFileSync(
+  'pnpm',
+  [
+    'exec',
+    'tsc',
+    '--strict',
+    '--skipLibCheck',
+    '--target',
+    'ES2022',
+    '--module',
+    'ESNext',
+    '--moduleResolution',
+    'Bundler',
+    '--outDir',
+    join(root, 'host-example'),
+    scopeFixture,
+  ],
+  { cwd: root, stdio: 'inherit' },
+);
+execFileSync(process.execPath, [runtimeFixture], { cwd: root, stdio: 'inherit', timeout: 60000 });
+const protocol = JSON.parse(readFileSync(protocolReceipt, 'utf8'));
+if (
+  protocol.kind !== 'published-host-public-protocol' ||
+  protocol.testsPassed !== 13 ||
+  protocol.cases.length !== 13
+)
+  throw Error('public host protocol receipt is incomplete');
 mkdirSync(browser);
 writeFileSync(join(browser, 'index.html'), '<script type="module" src="/main.js"></script>');
 writeFileSync(
@@ -123,11 +162,14 @@ const receipt = {
   lockSha256: consumerSha256(readFileSync(lock)),
   entryChecks,
   runtimeIdentity: Object.keys(identities),
+  protocol,
   checks: [
     'installed-versions',
     'physical-runtime-identity',
     'public-entry-types',
     'esm-entries',
+    'cjs-entries',
+    'public-host-protocol',
     'browser-build',
   ],
   fullCompatibility: false,
