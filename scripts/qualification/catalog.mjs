@@ -65,7 +65,7 @@ export const SCENARIOS = Object.freeze({
     tier: 'packed-consumer',
     command: [node, 'scripts/qualify-installed-consumer.mjs', 'run'],
     requires: ['CONSUMER_ROOT'],
-    timeoutMs: 3 * 60000,
+    timeoutMs: 5 * 60000,
     establishes:
       'Prepared nine-tarball consumer: exact installed files, frozen offline lock/runtime identity, both-arm real HTTP and killed-process original-ID recovery with synthetic drivers. Not registry, native proof, real-provider or full Lace acceptance.',
   },

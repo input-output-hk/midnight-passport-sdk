@@ -5,8 +5,9 @@ permalink: /consumer-integration/
 ---
 
 This guide covers the supported Passport integration boundary for #79 and #81.
-The October 20 work is a **local candidate**, not a new published release. RC5
-remains the published preview. The [historical report](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/lace-consumer-report.md)
+The October 20 assessments below are historical, version-pinned host evidence.
+The RC6 candidate includes their supported additions plus later durability and installed-consumer work;
+see the [RC6 publication status]({{ "/release-notes-rc6/" | relative_url }}). The [historical report](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/lace-consumer-report.md)
 retains its original source pins and transactions. Current authorised source pins,
 private diagnostics and detailed receipts remain in the owner's private handover.
 A public package install and a private source test are separate evidence.

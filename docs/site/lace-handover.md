@@ -4,6 +4,17 @@ title: Lace evaluation handover
 permalink: /lace-handover/
 ---
 
+## RC6 candidate for the next evaluation
+
+[RC6 release status]({{ '/release-notes-rc6/' | relative_url }}) adds opt-in owner/
+host continuations, original-reader grant reconstruction, reduced key-profile
+verifier coverage and installed-package interruption checks. Use the matching
+account, client and backend versions; do not mix the new job client with an older
+server. Keep host-native consent and orchestration for flows the hosted signer
+does not support. These additions do not requalify the older host version below
+or establish full Lace/provider compatibility. The signed publication receipt
+will supply final installation and image pins after release verification.
+
 ## RC5 evaluation scope
 
 `0.1.0-rc5` is a published preview. The [release announcement](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc5)

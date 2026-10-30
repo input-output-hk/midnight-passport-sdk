@@ -4,7 +4,7 @@ title: Durable host mutation jobs
 permalink: /service-jobs/
 ---
 
-**Unreleased source work for #233.** This opt-in Node API is local milestone work.
+**RC6 candidate operator API for #233.** See the [RC6 release status]({{ "/release-notes-rc6/" | relative_url }}).
 Published RC5, the default demo and the legacy `/v1/jobs` protocol are unchanged.
 Dated local native-proof results are scoped below; browser-provider and full Lace
 qualification remain open.
@@ -133,9 +133,12 @@ including when reopening a stored job under a new service configuration.
 | `POST /v1/host-jobs/accept` | `{version: 1, identity, input}` | `202 {jobId}` after persisted acceptance; does not start work |
 | `POST /v1/host-jobs/start` | `{jobId, identitySha256?}` | `202 {jobId}` after single-start claim/admission, without waiting for proof/finality |
 | `POST /v1/host-jobs/reconcile` | `{jobId, identitySha256?}` | `202 {jobId}` for explicit same-intent continuation; no new execute |
+| `POST /v1/host-jobs/result` | `{jobId, identitySha256}` (required) | Synchronous `202` checked `done` snapshot; no scheduling/history write; `404` missing, `409` identity conflict or unconfirmed |
 | `GET /v1/host-jobs/{jobId}?after={cursor}` | None | `200` public snapshot and retained event delta |
 
-A `202` is not finality. Poll the same ID for the result. If the acceptance response
+Acceptance/start/reconcile `202` replies are not finality. Poll the same ID.
+The result-read route uses the operator POST protocol's `202` convention but
+returns the already-confirmed snapshot synchronously; it never queues work. If the acceptance response
 is lost, resubmit the **same descriptor** to recover its deterministic job ID.
 A changed identity digest or input under that request ID is a conflict. A lost
 start/reconcile response or disconnected caller does not cancel the durable work;
@@ -188,7 +191,7 @@ qualification. Exact-value shielded guards and the immutable ACC binding remain.
 
 ## Enable jobs in the reference service
 
-Unreleased source now composes this API in `apps/passport-service` when explicitly
+The RC6 reference service composes this API in `apps/passport-service` when explicitly
 configured. Keep the existing three `PASSPORT_HOST_MUTATION_*` settings from the
 [host guide]({{ '/host-durability/#enable-the-node-reference-host' | relative_url }}),
 then supply **all three** job settings:
@@ -238,7 +241,7 @@ should contain these values. Published RC5 images do not include this source wor
 
 ## Consumer adapter and explicit recovery
 
-The unreleased `mn-passport-adapter-service` root exports `remoteHostJobs`,
+The RC6 candidate `mn-passport-adapter-service` root exports `remoteHostJobs`,
 `remoteHostJobPorts`, `remoteHostJobId` and their public types. These imports use
 WebCrypto SHA-256 without linking Node/service code. The dedicated job token still
 belongs in a **trusted operator host or BFF**, not a public browser page.
@@ -297,8 +300,8 @@ expired confirmed jobs use the authenticated, identity-bound result read. Resume
 never creates a replacement. A done job
 returns its checked receipt without another POST. Reconcile is asynchronous: if
 the saved job is already unknown and continuation is slow, `resume` can still
-return unknown while that approved work runs. Use read-only `get` polls to collect
-its later outcome; an unknown snapshot is not a reason to post another reconcile. Cancellation ends client
+return unknown while that approved work runs. Use read-only `get` polls to observe progress; if the state is `expired`,
+call `result(identity)` (or `resume`) to collect its retained confirmed receipt; an unknown snapshot is not a reason to post another reconcile. Cancellation ends client
 waiting; accepted service work continues. Error messages are fixed and contain no
 service diagnostics. The total and per-request budgets include response-body
 waiting; even a custom fetch that ignores cancellation cannot prolong the client
@@ -452,7 +455,7 @@ integration remain separate. No new package or image has been published; RC5 doe
 not include this opt-in API. Broad #233/#231 and existing release limits stay open.
 
 
-## Job-backed populated lifecycle qualification (unreleased)
+## Job-backed populated lifecycle qualification (historical source evidence)
 
 Two additional opt-in suites cover the device lifecycle with an independently
 enrolled survivor, one active caller-pinned read grant and one qualified mock
@@ -596,3 +599,11 @@ and can return an older unknown while its one approved task runs; use GET polls.
 Balance/submit routes share the sponsor queue, so they can wait behind proofs or
 receive 503 at capacity. This is deliberate wallet serialization, not a latency
 promise or a distributed wallet lock.
+
+
+The `onSnapshot` observer reports checked public status, which can be redacted
+`expired` before the client collects a retained result. Use the final validated
+return value to show confirmation. Local active-ID suppression avoids routine
+duplicate admission; a concurrent completion can still cause a stale read-only
+resume observation. Existing host and job CAS prevent stale commits or replay;
+this is not a distributed scheduler or strict single-observer guarantee.

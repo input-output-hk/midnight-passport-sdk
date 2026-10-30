@@ -4,7 +4,7 @@ title: Recover grant bookkeeping
 permalink: /grant-recovery/
 ---
 
-**Source milestone work for #239; not part of published RC5.** Account control,
+**RC6 candidate grant reconstruction for #239; not part of RC5.** See the [RC6 release status]({{ "/release-notes-rc6/" | relative_url }}). Account control,
 published grant bookkeeping and a grantee's private signing key are separate
 capabilities. The retained binding is `acc-s3r1.1`.
 

@@ -1,0 +1,286 @@
+{
+  "schemaVersion": 1,
+  "kind": "installed-candidate-interruption",
+  "runId": "8f51bf0a-b19a-43c2-8864-e69522813ad6",
+  "sdkVersion": "0.1.0-rc6",
+  "manifestSha256": "49277636a07d40b609c912e24e08f3296570875f66065aef841a97f67525fa05",
+  "lockSha256": "0ecbea2f4cb01930976938a98ef2f8ccc00bf9e94958d8b82bb47831980f8e3d",
+  "harnessSha256": "71ae575f1f7ceb08a02a71d3a7b01e837101ece7d81c2c0a825e398be688d826",
+  "packageManager": "pnpm@10.34.5",
+  "nodeVersion": "v22.23.2",
+  "installed": [
+    {
+      "name": "@input-output-hk/mn-passport-protocol",
+      "version": "0.1.0-rc6",
+      "tarballSha256": "0fda381ac51eaff090d30ed281311549bc38d224f124226e52752b2ce4994e83",
+      "files": 30,
+      "filesSha256": "7cc8882d5efa196c18cdba9334fae49dbff4dfbaf6ab5d18d4c2da944f84dc40"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-account",
+      "version": "0.1.0-rc6",
+      "tarballSha256": "35de32969f4c07e7bef6d0280a02b4e04e34e9ee03997aa5867dbd2a352b3c5c",
+      "files": 154,
+      "filesSha256": "04f4aef915d228f1bc178738148b179055a430f25aedc170e675266fc65676c2"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-midnight-js",
+      "version": "0.1.0-rc6",
+      "tarballSha256": "23110305b4221737b3b5c46448f49f0b9eb8fa1ad8e86a7707494e8eb4c65edd",
+      "files": 31,
+      "filesSha256": "adbfffcd7e8728fde270457d32d0294d4e94354d0e49de5172ccf248bd079b31"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-keys",
+      "version": "0.1.0-rc6",
+      "tarballSha256": "2ab842e5d96c194ae30e7a85a9ac4fb39d23f27f681a3fc3d792be819c53b4b3",
+      "files": 50,
+      "filesSha256": "1681665291fdb75847b547196c9189eca96da8b19ee839db5245705b48a08319"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-webauthn",
+      "version": "0.1.0-rc6",
+      "tarballSha256": "9ff7d8c2ad4085f9fbaea97677f260877679241540dca7674541c9c4485a7c32",
+      "files": 26,
+      "filesSha256": "29c13a27875f3612654af5f8ee7417ae955ece78db35210a50c9b0251024bee5"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-service",
+      "version": "0.1.0-rc6",
+      "tarballSha256": "c81cfbb05d5a7fe2d36cad19eb02875ed880b87af6de5673de066b8c3b528193",
+      "files": 62,
+      "filesSha256": "cf9021f9c4b1c81d2aa9b03a7bd905a58a965ec777c25e5847d783787446ee03"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-contract",
+      "version": "0.1.0-rc6",
+      "tarballSha256": "a6e418329f511b4cc7138a734f8a2710d5ea69b0acfdfd0541af9956620ab853",
+      "files": 36,
+      "filesSha256": "b17b15935af4afe12da4429957f598195e1a650ad57833ea6002d5328a20e4b1"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-browser",
+      "version": "0.1.0-rc6",
+      "tarballSha256": "5cf8ae5f1ab6221fbf10b123e9c7e0e6577e96b358f283278657043db0064c93",
+      "files": 30,
+      "filesSha256": "008c809a2e0c30131438c31ae1529af90ff755b6f8eeb956e487343dd2e4950f"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-service",
+      "version": "0.1.0-rc6",
+      "tarballSha256": "e84b32eee7c401cc21a40ad14730e7435735a18a72a67f10334ae8bd2fe7f03e",
+      "files": 102,
+      "filesSha256": "8e198e38a2ab19ff043912f7494d8ac1c64e611e30129cd5cdce330cbcc28d15"
+    }
+  ],
+  "runtimeIdentity": [
+    "@midnight-ntwrk/compact-js",
+    "@midnight-ntwrk/compact-runtime",
+    "@midnightntwrk/ledger-v9"
+  ],
+  "cases": [
+    {
+      "arm": "jubjub-schnorr",
+      "kind": "call",
+      "boundary": "before-host",
+      "verdict": "PASS",
+      "state": "unknown",
+      "jobId": "31843ee7bb122600cc8e3b1ae0c461b5",
+      "identitySha256": "4381cd2ad5f258bc5f354076a8d7cf7ce0e968a77304b6190ea7aac18537db14",
+      "submitEntries": 0,
+      "recoveryEffectAttempts": 0,
+      "ledgerUnchanged": true,
+      "resultVisibilityTtlMs": 0,
+      "checks": [
+        "actual-http",
+        "process-sigkill",
+        "original-id",
+        "repeat-resume",
+        "input-conflict",
+        "unauthorised-refusal",
+        "missing-read-only"
+      ]
+    },
+    {
+      "arm": "jubjub-schnorr",
+      "kind": "call",
+      "boundary": "after-send",
+      "verdict": "PASS",
+      "state": "done",
+      "jobId": "5edeb6c55c9e2f7881f421d99b06872e",
+      "identitySha256": "4f3cb40c4920dd78137b4ad78d7e96dd2a201927fe7eeb177f847ea34b6a023a",
+      "submitEntries": 1,
+      "recoveryEffectAttempts": 0,
+      "ledgerUnchanged": true,
+      "resultVisibilityTtlMs": 0,
+      "checks": [
+        "actual-http",
+        "process-sigkill",
+        "original-id",
+        "repeat-resume",
+        "input-conflict",
+        "unauthorised-refusal",
+        "missing-read-only"
+      ]
+    },
+    {
+      "arm": "jubjub-schnorr",
+      "kind": "deploy",
+      "boundary": "before-host",
+      "verdict": "PASS",
+      "state": "unknown",
+      "jobId": "ac84e45d111ec528d203a799a9fbb631",
+      "identitySha256": "30ed1f7849ae26c63877d5840e37b06afe01d2a9c2a4b16ea71e471f7a9bdf16",
+      "submitEntries": 0,
+      "recoveryEffectAttempts": 0,
+      "ledgerUnchanged": true,
+      "resultVisibilityTtlMs": 0,
+      "checks": [
+        "actual-http",
+        "process-sigkill",
+        "original-id",
+        "repeat-resume",
+        "input-conflict",
+        "unauthorised-refusal",
+        "missing-read-only"
+      ]
+    },
+    {
+      "arm": "jubjub-schnorr",
+      "kind": "deploy",
+      "boundary": "after-send",
+      "verdict": "PASS",
+      "state": "done",
+      "jobId": "1312a852c1b478d7c8ec24064dfc023c",
+      "identitySha256": "662998e05a6404b5a3252730b1f3b9703a553a14d0881d0dfd6a7e043ce61b86",
+      "submitEntries": 2,
+      "recoveryEffectAttempts": 0,
+      "ledgerUnchanged": true,
+      "resultVisibilityTtlMs": 0,
+      "checks": [
+        "actual-http",
+        "process-sigkill",
+        "original-id",
+        "repeat-resume",
+        "input-conflict",
+        "unauthorised-refusal",
+        "missing-read-only"
+      ]
+    },
+    {
+      "arm": "p256-webauthn",
+      "kind": "call",
+      "boundary": "before-host",
+      "verdict": "PASS",
+      "state": "unknown",
+      "jobId": "1179ad5b500c10e466403f9099835a1f",
+      "identitySha256": "2d740640f8e118cad6039d2c5a3a1bc6f9cc5a7f564f7d536e8a48695465ca77",
+      "submitEntries": 0,
+      "recoveryEffectAttempts": 0,
+      "ledgerUnchanged": true,
+      "resultVisibilityTtlMs": 0,
+      "checks": [
+        "actual-http",
+        "process-sigkill",
+        "original-id",
+        "repeat-resume",
+        "input-conflict",
+        "unauthorised-refusal",
+        "missing-read-only"
+      ]
+    },
+    {
+      "arm": "p256-webauthn",
+      "kind": "call",
+      "boundary": "after-send",
+      "verdict": "PASS",
+      "state": "done",
+      "jobId": "857bc01483be3cb87ec98ae8913651fd",
+      "identitySha256": "db8931bf317a1192056d77b70dfbb1ac7e8b0bdd77214f8ce35de1dac47e7daa",
+      "submitEntries": 1,
+      "recoveryEffectAttempts": 0,
+      "ledgerUnchanged": true,
+      "resultVisibilityTtlMs": 0,
+      "checks": [
+        "actual-http",
+        "process-sigkill",
+        "original-id",
+        "repeat-resume",
+        "input-conflict",
+        "unauthorised-refusal",
+        "missing-read-only"
+      ]
+    },
+    {
+      "arm": "p256-webauthn",
+      "kind": "deploy",
+      "boundary": "before-host",
+      "verdict": "PASS",
+      "state": "unknown",
+      "jobId": "fac926d2a683e3ffa2b2fe6368c8bc73",
+      "identitySha256": "50ed515d39dbe427a1f6c5fc67269ab136d8ff556f92e97cf988cebf37cacdbc",
+      "submitEntries": 0,
+      "recoveryEffectAttempts": 0,
+      "ledgerUnchanged": true,
+      "resultVisibilityTtlMs": 0,
+      "checks": [
+        "actual-http",
+        "process-sigkill",
+        "original-id",
+        "repeat-resume",
+        "input-conflict",
+        "unauthorised-refusal",
+        "missing-read-only"
+      ]
+    },
+    {
+      "arm": "p256-webauthn",
+      "kind": "deploy",
+      "boundary": "after-send",
+      "verdict": "PASS",
+      "state": "done",
+      "jobId": "8f0dae1ef73a8a8c2394e7ec5ca83c4b",
+      "identitySha256": "baebc71f1018d96adc156eb193c8ea04186f99818ff2a11ae6a87aca3f45e96d",
+      "submitEntries": 2,
+      "recoveryEffectAttempts": 0,
+      "ledgerUnchanged": true,
+      "resultVisibilityTtlMs": 0,
+      "checks": [
+        "actual-http",
+        "process-sigkill",
+        "original-id",
+        "repeat-resume",
+        "input-conflict",
+        "unauthorised-refusal",
+        "missing-read-only"
+      ]
+    }
+  ],
+  "consent": {
+    "kind": "synthetic-hosted-consent",
+    "supportedDescriptorPreserved": true,
+    "lossyConversionRefused": true,
+    "unsupportedOwnerFlowsRefused": [
+      "rotate-encryption-key",
+      "withdraw-unshielded",
+      "withdraw-shielded"
+    ],
+    "noRejectedHostSessions": true,
+    "secretCalls": 0,
+    "realProvider": false
+  },
+  "checks": [
+    "tarball-sha256",
+    "installed-file-bytes",
+    "frozen-offline-install",
+    "physical-runtime-identity",
+    "actual-http-process-restart",
+    "inputs-unchanged"
+  ],
+  "allRequiredPassed": true,
+  "realProvider": false,
+  "fullLace": false,
+  "nativeProof": false,
+  "registryProvenance": false,
+  "releaseQualified": false
+}

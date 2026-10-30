@@ -1,14 +1,14 @@
 # CLAUDE.md — Midnight Passport SDK
 
 This repository is the **Midnight Passport SDK**: the runtime packages
-(`@midnight-ntwrk/mn-passport-*`) that are the programmatic surface for a user's
+(`@input-output-hk/mn-passport-*`) that are the programmatic surface for a user's
 Account Custody Contract (ACC). It is built **spec-driven and harness-assisted**
 — the `mn-passport-skills` plugin drives development from a spec to merged PRs.
 
 **Naming:** development-time skills are `mn-passport-skills:*` (the plugin); the
-shipped runtime packages are `@midnight-ntwrk/mn-passport-*`. The `-skills`
-infix and the `@midnight-ntwrk/` scope tell them apart: `mn-passport-skills`
-*build* the SDK; `@midnight-ntwrk/mn-passport-*` *are* the SDK.
+shipped runtime packages are `@input-output-hk/mn-passport-*`. The `-skills`
+infix and the runtime package scope tell them apart: `mn-passport-skills`
+*build* the SDK; `@input-output-hk/mn-passport-*` *are* the SDK.
 
 ## Source of truth (`docs/`)
 
@@ -68,7 +68,7 @@ compatibility matrix) and `mn-passport-skills:devenv`.
   scope, `@midnight-ntwrk/*` included, resolves from public npm. No token is
   ever committed. This fork publishes `@input-output-hk/mn-passport-*`
   ([ADR 0006](./docs/adr/0006-publish-on-github-packages.md)); the workspace
-  names stay `@midnight-ntwrk/mn-passport-*` until the rename in tranche T23.
+  and published package names both use that fork scope.
 - **Registers gitignored** (`.mn-passport-skills/`); **`STATE.md` committed**.
 - **PR size preference (2026/10/20):** coherent 5k–10k authored changed lines,
   with smaller commits and a review map. No padding and no hard size gate. This
@@ -99,7 +99,7 @@ compatibility matrix) and `mn-passport-skills:devenv`.
   commit ever reports unsigned, stop and fix the config rather than
   committing unsigned — the org repository expects verified commits. Check
   with `git log --show-signature -1`.
-- Packages `@midnight-ntwrk/mn-passport-*`; dev skills `mn-passport-skills:*`.
+- Packages `@input-output-hk/mn-passport-*`; dev skills `mn-passport-skills:*`.
 - Midnight-branded product (not IOG-branded) for any UI.
 - **Committed docs stay vendor-neutral:** "the provider" and "the proving &
   settlement service", not vendor names.

@@ -49,6 +49,15 @@ They do not update the earlier native proof/image pins, revalidate an actual Lac
 release, qualify a provider, establish registry provenance, or change published
 RC5. Exact-value shielded withdrawal guards and all existing release limits remain.
 
+## RC6 candidate release boundary
+
+SDK `0.1.0-rc6` retains binding `acc-s3r1.1`, source `6458ed5`, Compact 0.35.0,
+runtime 0.20.0 and account/service API `1.0.0-pre.0`. It adds opt-in durability,
+retained expired-receipt collection and grant reconstruction; the default demo
+is not silently migrated. See the RC6 release notes for publication status and
+all deferred issues. Earlier native/host receipts retain their exact signed
+sources; they are not relabelled as fresh provider or released-image acceptance.
+
 ## Binding axis
 
 | SDK | ACC binding | Passport source | Compiler | Language | Runtime (`@midnight-ntwrk/compact-runtime`) | Compiler manifest SHA-256 |
@@ -56,6 +65,7 @@ RC5. Exact-value shielded withdrawal guards and all existing release limits rema
 | `0.1.0-rc1` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 | `0.1.0-rc4` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 | `0.1.0-rc5` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
+| `0.1.0-rc6` **candidate** | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 
 The package registry supports only `acc-s3r1.1`. The older provisional
 `0.0.0-prototype.1` binding is retired. The separate `acc-45721e1` key bundle
@@ -70,6 +80,7 @@ Compact runtime.
 | `0.1.0-rc1` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 | `0.1.0-rc4` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 | `0.1.0-rc5` | `1.0.0-pre.0` | `1.0.0-pre.0` |
+| `0.1.0-rc6` **candidate** | `1.0.0-pre.0` | `1.0.0-pre.0` |
 
 The local demo service was not a published SDK package in RC1. The service API
 constant names the versioned client wire types; the current prototype browser
@@ -391,6 +402,7 @@ The account API and the service wire types are versioned separately.
 | `0.1.0-rc1` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 | `0.1.0-rc4` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 | `0.1.0-rc5` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
+| `0.1.0-rc6` **candidate** | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 
 RC1 had eight implementations and five empty scaffolds. RC4 and RC5 contain nine
 implemented packages, adding the service library and excluding the scaffolds.

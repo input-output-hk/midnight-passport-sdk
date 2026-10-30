@@ -6,6 +6,16 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/10/30. Historical entries below retain their original issue namespaces.
 
+## RC6 release preparation — 2026/10/30
+
+User explicitly authorised the release goal: land completed review work, verify
+nine private GitHub npm packages and three GHCR images, update docs and publish
+signed release evidence. RC6 retains ACC/runtime/API pins, exact-value shielded
+withdrawals and explicit provider/Lace limits. The operator's retained-result read
+collects expired confirmed jobs (including TTL zero) without mutation or replay;
+release smoke exercises eight installed-package process cases at TTL zero. No
+comprehensive provider/release-suite claim replaces scoped historical receipts.
+
 ## 2026/10/30 — review handoff and installed-package qualification
 
 Pushed signed local work through `7e0bb40` as fork PR #252, targeting

@@ -116,7 +116,7 @@ P-256 `account.revokeGrant` signs `revoke_grant_with_p256` on `acc-s3r1.1` and c
 
 P-256 `revokeAllGrants` uses `revoke_all_grants_with_p256` on `acc-s3r1.1`. It requires a complete live grant roster and, when read grants are active, sealed keys, verified holdings and a matching complete read-target source. It rotates the viewing secret to live devices while sealing no read grantee, verifies the grant map remained unchanged, signs the binding's challenge with the account credential, and rechecks the roster and ACC nonce before submission. It reports `cleared` only after an empty map with the next generation is observed. The result includes the prior rotation when one occurred. Hosts must inspect chain and inbox state before retrying an unsettled submission after rotation.
 
-`sealActiveReadGrants(input, ports)` prepares read-grant delivery records for a new ACC viewing key. Its chain-backed target source must include every active read grant, return the ACC auth nonce, and verify each available read public key against the on-chain hash. The helper refuses a stale nonce, omits a grant being issued or revoked, validates each sealed inbox record against its grant ID and new key, and reports grants whose read key could not be sealed. Revoke-all validates the roster with `exceptAll` and seals no grantee. Rotation, read issue and read revoke use it to preserve authorised readers before a key switch. Durable recovery of interrupted rotations remains release work.
+`sealActiveReadGrants(input, ports)` prepares read-grant delivery records for a new ACC viewing key. Its chain-backed target source must include every active read grant, return the ACC auth nonce, and verify each available read public key against the on-chain hash. The helper refuses a stale nonce, omits a grant being issued or revoked, validates each sealed inbox record against its grant ID and new key, and reports grants whose read key could not be sealed. Revoke-all validates the roster with `exceptAll` and seals no grantee. Rotation, read issue and read revoke use it to preserve authorised readers before a key switch. Protected original-intent recovery is opt-in and requires the [durable owner and host composition]({{ "/durability/" | relative_url }}).
 
 The `mn-passport-service` package now exports a bounded `createMemoryJobStore` and `jobsRoute` for `GET /v1/jobs/{id}?after={cursor}`. A submitted job is pollable before work begins; polls return only events after the cursor plus its current result or sanitized error. The memory store is a standalone reference implementation and loses jobs on restart. Its work closure is not serialisable, so replacing its storage does not make arbitrary work restartable. For supported call/deployment effects, the separate [durable host-job API]({{ "/service-jobs/" | relative_url }}) accepts immutable descriptors and reconciles through the existing host journal. It is an opt-in source API and does not change the default application or published RC5. `v1ChainRoute` serves `POST /v1/prove-tx` and `/v1/deploy` as `202 {jobId}` plus synchronous `POST /v1/sponsor/balance` and `/v1/sponsor/submit`. The demo serves these routes alongside its legacy paths, using one proof/deploy/sponsor queue and one deployment cap. `serviceConfigRoute` answers `/v1/config` with the pinned network, binding, manifest hash, API version and sponsor public keys. `pinnedZkRoute` verifies the full artefact tree before serving the binding-specific `/v1/zk/{bindingId}` URL that config advertises. The demo browser uses the versioned routes. On a `/v1/accounts` miss it reads the legacy `/accounts` registry so existing demo accounts can reopen; new hints go only to `/v1/accounts`.
 
@@ -194,16 +194,11 @@ keys. Hosts must not use them to identify a removal target or fresh-key recipien
 Legacy interruption may require operator reconciliation; the protected owner continuation
 is described in the durability guide. No legacy automatic retry is claimed.
 
-## Local durability milestone
+## RC6 opt-in durability boundary
 
-The opt-in owner continuation API and authenticated published-grant reconstruction
-are described in [Mutation durability and grant recovery]({{ '/durability/' | relative_url }}).
-These additions are local, unreleased work. Default demo owner buttons still need
-transaction reconciliation after interruption; a journal alone does not supply
-durable remote submissions. Another enrolled reader cannot invent the issuing
-reader's grant opening.
+{% include durability-boundary.md %}
 
 
-### Unreleased durable host-job consumer
+### RC6 candidate durable host-job consumer
 
 `mn-passport-adapter-service` additionally exports `remoteHostJobs`, `remoteHostJobId` and `remoteHostJobPorts` for the opt-in authenticated `/v1/host-jobs` protocol. The reference service explicitly enables it with private job configuration, sharing the host executor, sponsor queue and deployment policy. Client and service must both support the public identity hash; published RC5 and the default demo remain unchanged. GET is read-only; explicit approved resume never recreates a missing job. See the [service jobs runbook]({{ '/service-jobs/' | relative_url }}) for composition, settings, use cases and restart-test scope.
