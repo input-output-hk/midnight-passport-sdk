@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "kind": "verified-published-host-consumer",
+  "harness": {
+    "scripts/qualify-host-consumer.mjs": "f5229c2a634ee7d482b4bd1b42c1e24da4ab14979d1fa305bd0ce63924c34779",
+    "scripts/consumer/host-inputs.mjs": "00f7d482989ebc49eca91100fa7f185d8b2804bf4547c495fabd614f9923477d",
+    "scripts/consumer/installed-inputs.mjs": "82ca9bad296c3d35987e57fe80b495f224521da87a0e8651b6cd902af7bd768f",
+    "scripts/consumer-inputs.mjs": "974a110bc40a22b9393b7dd72848074e093c3a7c6e94cc4afbf4c8cb6466548e",
+    "scripts/release-package-list.mjs": "8937c72eee1d1bf1d8b2565ba3b2ab5eee591b5c3d87f80d6a1c2117af124724",
+    "scripts/smoke-lace-published-consumer.mjs": "2bc33974ae57737abc981cc4a8f4d08918d19320ddf8094670e35422ab64af00",
+    "scripts/check-midnight-runtime-identity.mjs": "3990bff2bcdd06eae93941f7980302108241bcbc6340ead3653891bba6d33df9",
+    "tests/fixtures/lace-published-consumer.ts": "c6b1e0e76341af6645bd6204c54ab2d5b1831a66d81af6ac4f59b7e891b4fd96",
+    "tests/fixtures/lace-published-runtime.js": "00a7d524b38b14a892ad03c92a15e9c10cb9fa17f017f73215898624034a83c2",
+    "docs/examples/jubjub-grant-scope.ts": "47f3eba66079f5446089a0302c246a55b72037d3e8a7fc06182f5bfb9115129e"
+  },
+  "sdkVersion": "0.1.0-rc6",
+  "hostVersion": "0.1.2-canary.2",
+  "configSha256": "bb3afda392c63c10b0edba042739b0a189722f13b7d9860ec7354145e36a9c27",
+  "lockSha256": "ac813c2c8bb14947e26b49a1cc2c54aa60237b99fd9b34e8c335e7b54b668432",
+  "publicationReceiptSha256": "6d58c1f85ee6901764f9013ec91b727a9a91485a86061e8f531e10e464e47af1",
+  "installed": {
+    "sdk": {
+      "version": "0.1.0-rc6",
+      "manifestSha256": "0d10095098b395f3eaed49d9e86e46dd6c4e0abad5d2664441b90919f6b79b10",
+      "packages": [
+        {
+          "name": "@input-output-hk/mn-passport-protocol",
+          "version": "0.1.0-rc6",
+          "tarballSha256": "7d6da9717e0ff69d4083ab0a109478dfd2ccb48d757554eb6960834ca70b87b3",
+          "files": 30,
+          "filesSha256": "7cc8882d5efa196c18cdba9334fae49dbff4dfbaf6ab5d18d4c2da944f84dc40"
+        },
+        {
+          "name": "@input-output-hk/mn-passport-account",
+          "version": "0.1.0-rc6",
+          "tarballSha256": "cce6f78c634b8a64a81a7d0eff9f9d4953743df455034f0f546a870fa490c14f",
+          "files": 154,
+          "filesSha256": "04f4aef915d228f1bc178738148b179055a430f25aedc170e675266fc65676c2"
+        },
+        {
+          "name": "@input-output-hk/mn-passport-adapter-midnight-js",
+          "version": "0.1.0-rc6",
+          "tarballSha256": "003bfbf835b95ba111fbdddfbc5787689ac5936ae2436c0b9515183c90946834",
+          "files": 31,
+          "filesSha256": "adbfffcd7e8728fde270457d32d0294d4e94354d0e49de5172ccf248bd079b31"
+        },
+        {
+          "name": "@input-output-hk/mn-passport-keys",
+          "version": "0.1.0-rc6",
+          "tarballSha256": "06184e4fde7140ad9aaa4a1d822b4686d50513f6d3282f91abe805d47ad99ebf",
+          "files": 50,
+          "filesSha256": "1681665291fdb75847b547196c9189eca96da8b19ee839db5245705b48a08319"
+        },
+        {
+          "name": "@input-output-hk/mn-passport-adapter-webauthn",
+          "version": "0.1.0-rc6",
+          "tarballSha256": "84a554f6781beb05c23599abc4a3100b0b662b8a2ffaad4c35daee9e1539c943",
+          "files": 26,
+          "filesSha256": "29c13a27875f3612654af5f8ee7417ae955ece78db35210a50c9b0251024bee5"
+        },
+        {
+          "name": "@input-output-hk/mn-passport-adapter-service",
+          "version": "0.1.0-rc6",
+          "tarballSha256": "b8601a08c87bfd4ac5224c38bbbca74edf7d91c016f8ff0e589a130be58cd4f5",
+          "files": 62,
+          "filesSha256": "e3543f8bf64e3ec9c1d458902760f55de04d3c368fe839c94583cf48902aff2f"
+        },
+        {
+          "name": "@input-output-hk/mn-passport-contract",
+          "version": "0.1.0-rc6",
+          "tarballSha256": "38ae771ecd98850844aa3565d4a9393f8c53f6fc7ca34813319ae85fec37ddf5",
+          "files": 36,
+          "filesSha256": "b17b15935af4afe12da4429957f598195e1a650ad57833ea6002d5328a20e4b1"
+        },
+        {
+          "name": "@input-output-hk/mn-passport-adapter-browser",
+          "version": "0.1.0-rc6",
+          "tarballSha256": "9506dac76987731e1aa1c6de89e3f62219ab3d079476689ccb0f1a6befc345b2",
+          "files": 30,
+          "filesSha256": "008c809a2e0c30131438c31ae1529af90ff755b6f8eeb956e487343dd2e4950f"
+        },
+        {
+          "name": "@input-output-hk/mn-passport-service",
+          "version": "0.1.0-rc6",
+          "tarballSha256": "829482ad2c1dc47aa958a9b7f16816e3655be7e01391de3a3aabc84b891efddf",
+          "files": 102,
+          "filesSha256": "8e198e38a2ab19ff043912f7494d8ac1c64e611e30129cd5cdce330cbcc28d15"
+        }
+      ]
+    },
+    "host": {
+      "name": "@laceio/sdk",
+      "version": "0.1.2-canary.2",
+      "sha256": "97a8ddeef426e0245093e8be615ec523db9c8a5693a94d7e34fb61f9f29e4cb5",
+      "integrity": "sha512-piJkO/0jzB5h6c2R36r56vk5I563xRe/3hdt5FhapOcc4iUT+HyuDXHpMrhhOCbXSRz6Mhv0EtpaAnonYLGpyg==",
+      "entries": [
+        {
+          "entry": "./experimental",
+          "hashes": {
+            "types": "fc9af2fd8b0692efec02b32e3e4131a8bedd83f71c61c61dcc6409ba990dcf5c",
+            "import": "9c02e7f7fe57eb2267593658535a02ed572b43ba7c92a2d9320722c88d9c7d25",
+            "require": "976c18eee8d75c4e890a342585e7e715223b76ea2fb032d5436c9a65d2b5ef25"
+          }
+        },
+        {
+          "entry": "./midnight",
+          "hashes": {
+            "types": "9f1fbc8fd0c67b9d85345da8190943bb47890e0b56c991c12958cefc3451b006",
+            "import": "fe59848c866c6c4d56f22961068ce30fe93a7fb521151f790810d96217ad6203",
+            "require": "1a9df5d4063ddaf7f9aa7259cf401374b034436e26610bd9d250643896ac144d"
+          }
+        }
+      ],
+      "installed": {
+        "name": "@laceio/sdk",
+        "version": "0.1.2-canary.2",
+        "tarballSha256": "97a8ddeef426e0245093e8be615ec523db9c8a5693a94d7e34fb61f9f29e4cb5",
+        "files": 378,
+        "filesSha256": "2409eedd0eb73e681b130f67c3480d829b60b450c28136235d0665333b1f3e89"
+      }
+    }
+  },
+  "entry": {
+    "schemaVersion": 1,
+    "kind": "installed-published-host",
+    "host": {
+      "name": "@laceio/sdk",
+      "version": "0.1.2-canary.2"
+    },
+    "sdkVersion": "0.1.0-rc6",
+    "lockSha256": "ac813c2c8bb14947e26b49a1cc2c54aa60237b99fd9b34e8c335e7b54b668432",
+    "entryChecks": [
+      {
+        "entry": "./experimental",
+        "hashes": {
+          "types": "fc9af2fd8b0692efec02b32e3e4131a8bedd83f71c61c61dcc6409ba990dcf5c",
+          "import": "9c02e7f7fe57eb2267593658535a02ed572b43ba7c92a2d9320722c88d9c7d25",
+          "require": "976c18eee8d75c4e890a342585e7e715223b76ea2fb032d5436c9a65d2b5ef25"
+        },
+        "esm": "passed",
+        "cjs": "passed"
+      },
+      {
+        "entry": "./midnight",
+        "hashes": {
+          "types": "9f1fbc8fd0c67b9d85345da8190943bb47890e0b56c991c12958cefc3451b006",
+          "import": "fe59848c866c6c4d56f22961068ce30fe93a7fb521151f790810d96217ad6203",
+          "require": "1a9df5d4063ddaf7f9aa7259cf401374b034436e26610bd9d250643896ac144d"
+        },
+        "esm": "passed",
+        "cjs": "passed"
+      }
+    ],
+    "runtimeIdentity": [
+      "@midnight-ntwrk/compact-js",
+      "@midnight-ntwrk/compact-runtime",
+      "@midnightntwrk/ledger-v9"
+    ],
+    "protocol": {
+      "schemaVersion": 1,
+      "kind": "published-host-public-protocol",
+      "cases": [
+        "supported device consent and commitment batch cross the public host transport",
+        "missing flow is refused before transport or callback",
+        "missing required device consent field is refused before transport",
+        "open refusal cannot execute the operation",
+        "failed operation retains its code even if close also fails",
+        "malformed commitment count cannot become a successful SDK result",
+        "unsupported SDK rotation and withdrawal kinds never reach the host",
+        "lossy consent conversion never opens a host session",
+        "non-JubJub circuit is refused before the host request",
+        "public module construction validates endpoints without network or key access",
+        "remote record presence stays signer-owned and empty inbox is not validation",
+        "wider host grantee schemes require explicit refusal without relabelling",
+        "public host decoded grant scheme is refused at the SDK inbox boundary"
+      ],
+      "testsPassed": 13,
+      "syntheticTransport": true,
+      "hostSignerHandlers": false,
+      "signerPage": false,
+      "nativeProof": false,
+      "fullCompatibility": false,
+      "realProvider": false
+    },
+    "checks": [
+      "installed-versions",
+      "physical-runtime-identity",
+      "public-entry-types",
+      "esm-entries",
+      "cjs-entries",
+      "public-host-protocol",
+      "browser-build"
+    ],
+    "fullCompatibility": false,
+    "realProvider": false,
+    "localnet": false
+  },
+  "fullCompatibility": false,
+  "realProvider": false,
+  "localnet": false
+}

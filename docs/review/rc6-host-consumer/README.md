@@ -54,8 +54,15 @@ consent and grant-scheme adapters; those failures are retained privately, never
 turned into successful native/Lace/provider acceptance. The actual canary peer
 range warning remains recorded; no ordinary wallet transaction compatibility follows.
 
-The final receipt will bind the clean signed harness source and outer qualification
-scope. Private source pins, raw install logs/locks and source contents stay out of
+The [outer receipt](suite-receipt.json) at clean signed source
+`47e1d6976872d15c26db5114a4f35fbfbe6ca1f1` passed in 8,274 ms with the retained
+frozen lock. The [inner receipt](consumer-receipt.json) bytes match its stdout hash;
+all ten harness hashes match that signed source. [Assessment](assessment.json),
+[five actual tamper refusals](tamper-controls.json) and [full local gate](code-gate.json)
+record their separate scopes. The full gate passed 1,017 tests with seven existing
+conditional skips and zero failures. Source-private receipt hashes permit an
+authorised audit without publishing its source pin. All state/input bytes were
+restored after the negative controls. Private source pins, raw install logs/locks and source contents stay out of
 public Git. Public evidence includes hashes and supported/refused outcomes only.
 
 ## Limits retained

@@ -22,6 +22,10 @@ of coercing secp256k1 into JubJub. Fresh preparation compares521SDK/378host file
 actual tamper refusals cover host/SDK code, lock, config and archive. Current-source
 declaration/generated ACC evidence remains separate and private. See
 [review map](docs/review/rc6-host-consumer/README.md) for scope and final receipts.
+Clean signed-source `47e1d69` qualification passed in8,274ms, all13cases; its
+inner receipt hash and ten harness hashes match the outer/signed source. Full
+gate1,017pass/7existing skips/0fail; Jekyll22pages/501links. Evidence is local in
+the review map; private source details remain in Obsidian. No push/publication.
 The existing RC6 publication and historical native/provider limits remain unchanged.
 
 ## RC6 release complete — 2026/10/30

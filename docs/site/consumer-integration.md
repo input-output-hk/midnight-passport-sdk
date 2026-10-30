@@ -46,14 +46,13 @@ its private source pin is retained privately and is not inferred from the canary
   assignment alone can conceal that mismatch. `jubjubGrantInbox(hostViewing)`
   supplies the checked `openInbox` for SDK grant recovery and refuses decoded
   unsupported grant records too. Omitted legacy schemes denote JubJub.
-  It maps already
-  validated host data; it does not parse untrusted JSON or enable new circuits.
+  These helpers map already validated host data; it does not parse untrusted JSON or enable new circuits.
 - Circuit-level proof ports and transaction proof ports remain different. A
   device/reader record still needs an explicit network/binding/counter mapping.
   Successful construction of a module is not a successful account operation.
 - The canary's combined optional-peer metadata spans the two ledger generations.
-  The tested exact composition retains its peer warning (notably its older
-  abstractions range); no ordinary-wallet/Passport mixing is qualified. Do not
+  The tested exact composition retains peer warnings (its older
+  abstractions range and a Polkadot util transitive range); no ordinary-wallet/Passport mixing is qualified. Do not
   suppress a strict peer failure or force a newer runtime to make a check green.
 
 ### Reproduce from verified published artifacts
