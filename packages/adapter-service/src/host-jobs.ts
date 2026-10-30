@@ -328,8 +328,9 @@ const pause = (ms: number, signal?: AbortSignalLike) =>
     if (signal?.aborted) abort();
   });
 
-/** No automatic POST retry, mutating reconciliation, or legacy fallback. Missing/expired jobs
- * remain unsettled. A trusted operator/BFF must hold the token; this is not a public dApp RPC. */
+/** No automatic POST retry, mutating reconciliation, or legacy fallback. Missing/unconfirmed jobs
+ * remain unsettled. Expired confirmed receipts use the identity-bound read, never a new send.
+ * A trusted operator/BFF holds the token; this is not a public dApp RPC. */
 export function remoteHostJobs(base: string, options: RemoteHostJobOptions) {
   const pins = { ...options.pins },
     token = options.token,

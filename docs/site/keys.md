@@ -40,7 +40,7 @@ For `acc-s3r1.1`, the 52 circuits have **4,984,299 bytes of text ZKIR**, **1,597
 
 The [Passport key service image](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-key-service/README.md) packages that restore path as a standalone Node HTTP service. It generates missing prover keys into a persistent volume, verifies the cache before readiness, and streams keys with HTTP ranges. Its image is released through GitHub Container Registry without the sponsor wallet. It supplies key bytes to a proof server; it is not itself a transaction prover. The default profile serves all 52 circuits. `PASSPORT_KEY_PROFILE=jubjub-owner-v1` restores ten JubJub owner/deposit circuits, and `/v1/profile` reports that restricted set. `PASSPORT_KEY_CORS_ORIGINS` allows exact browser origins to fetch pinned artefacts, including a ranged prover download. Lace PR #2845's compiled ACC bytes and circuit hashes match this SDK's `acc-s3r1.1` binding; Lace's separate binding label does not change the byte pins.
 
-The key image also serves the same verified files at `/v1/zk/acc-s3r1.1`. To advertise it in the Passport service's `/v1/config`, set `PASSPORT_PUBLIC_ZK_BASE_URL=https://<key-host>/v1/zk/acc-s3r1.1`. The consuming app must independently pin that exact URL as its `artefactUrl`; the demo accepts `VITE_PASSPORT_ARTEFACT_URL` at build time. The account service still needs its local pinned contract tree for proving. A restricted key profile serves only its declared circuits, so select `all` for consumers that need the complete binding.
+The key image also serves the same verified files at `/v1/zk/acc-s3r1.1`. To advertise it in the Passport service's `/v1/config`, set `PASSPORT_PUBLIC_ZK_BASE_URL=https://<key-host>/v1/zk/acc-s3r1.1`. The consuming app must independently pin that exact URL as its `artefactUrl`; the demo accepts `VITE_PASSPORT_ARTEFACT_URL` at build time. The account service still needs its local pinned contract tree for proving. A restricted profile serves proving/ZKIR bundles only for its declared circuits and all bundled pinned verifier keys. Select `all` when the consumer needs every proving circuit.
 
 The readable JSON lists SHA-256 and size for every circuit's ZKIR, binary ZKIR, prover and verifier files. It also records the compiler version and commit, the `zkir-v3` command, and hashes of the Nix Compact recipe and `flake.lock` used to select the toolchain. The restore command requires the pinned Compact 0.35.0 Nix shell. It checks the readable JSON against a hash pinned in package code, verifies it against the compiler manifest, then checks bundled inputs and regenerated `.prover`/`.verifier` files before moving keys into the output directory. It rejects mismatched existing files. A service may also pass `--manifest-sha256` from its deployment configuration. Never take that pin from the artefact host being checked.
 
@@ -84,11 +84,11 @@ coin reads, device delivery and new key creation remain usable. Large-inbox work
 still scales with candidate keys and coin entries; the existing 4096 limits and
 operator/resource qualification remain explicit. No unbounded-input guarantee.
 
-## Local durability milestone
+## RC6 opt-in durability boundary
 
 The opt-in owner continuation API and authenticated published-grant reconstruction
 are described in [Mutation durability and grant recovery]({{ '/durability/' | relative_url }}).
-These additions are local, unreleased work. Default demo owner buttons still need
+These additions are RC6 candidate APIs; see the [release status]({{ "/release-notes-rc6/" | relative_url }}). Default demo owner buttons still need
 transaction reconciliation after interruption; a journal alone does not supply
 durable remote submissions. Another enrolled reader cannot invent the issuing
 reader's grant opening.

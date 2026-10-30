@@ -141,6 +141,6 @@ Shielded partial spends remain refused; see [preview limits]({{ '/release-notes-
 and the [Lace compatibility boundary]({{ '/lace-handover/' | relative_url }}).
 
 
-## Optional operator host-job integration (unreleased)
+## Optional RC6 operator host-job integration
 
 For a trusted operator host/BFF, the [durable service-job runbook]({{ '/service-jobs/' | relative_url }}) describes opt-in encrypted reference-service settings, `remoteHostJobPorts` for the durable owner composition, explicit restart recovery and real HTTP/process tests. Client and service must both support identity hashes. Keep the bearer token out of a public browser page; portable browser imports do not make the token public. The default demo and published RC5 keep their existing behaviour.

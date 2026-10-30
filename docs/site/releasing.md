@@ -4,6 +4,16 @@ title: Releasing packages
 permalink: /releasing/
 ---
 
+## RC6 release in progress
+
+The next preview is `0.1.0-rc6`, with the same nine private npm packages and
+three public Linux/amd64 images. [RC6 notes]({{ '/release-notes-rc6/' | relative_url }})
+state the candidate scope and limitations. RC5 digests below remain historical
+pins until the verified RC6 publication receipt is available. Source and private
+publisher package checks include eight installed-package TTL-zero process cases;
+expiry must never strand a confirmed receipt. Release tests retain independent
+proof, actual-host, synthetic and manual-provider evidence classes.
+
 The `0.1.0-rc5` preview packs nine implemented packages, including the Node `service` HTTP core, for the **private** GitHub Packages npm registry under `@input-output-hk/mn-passport-*`. It uses the `next` distribution tag. [RC5 release notes]({{ '/release-notes-rc5/' | relative_url }}) list supported flows and limits. The older `0.1.0-rc1` release has 13 private package records: eight implementations and five empty scaffolds. Those scaffolds remain private workspace packages and are excluded from RC5.
 
 The source repository's [release-check workflow](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/.github/workflows/publish.yml) builds, tests, packs, smoke tests, and attests a signed release tag. The [exact-source Lace consumer check](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/compatibility.md#lace-consumer-seam-check) checks the pinned PR source against local tarballs; it is a type-level seam check, not a claim of Lace runtime interoperability. The [private publisher](https://github.com/input-output-hk/midnight-passport-sdk-publisher) checks for a passing release every 15 minutes, verifies the signed source tag and commit, then independently runs the build and packaging checks. Its clean consumer test imports the account and browser entrypoints, builds a scratch Vite app using the packaged grants binding, and restores a circuit from the packaged ZKIR. The pack manifest records each tarball's SHA-256 digest; the private publisher checks it before publishing and verifies the release version and **private** visibility after each package. The workflow can resume after a partial run. It uses only the private repository's `GITHUB_TOKEN` and publishes only to GitHub Packages.
@@ -35,7 +45,7 @@ The first live publish from the public source repository created public package 
 
 The [packaging tracker](https://github.com/input-output-hk/midnight-passport-sdk/issues/31) is the release checklist.
 
-## Current RC5 artefacts and verification
+## Historical RC5 artefacts and verification
 
 The [RC5 release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc5)
 and [publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/release/rc5-publication-receipt.json)

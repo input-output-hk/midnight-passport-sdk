@@ -358,7 +358,7 @@ receipts using [the durability guide](../docs/site/durability.md). A browser rel
 is not proof that a pending transaction failed. No remote deployment receipt service
 or new backup/import UI is implied.
 
-### Opt-in durable host RPC (local, unreleased)
+### Opt-in durable host RPC (RC6 candidate)
 
 The Node service can enable an authenticated host mutation route with
 `PASSPORT_HOST_MUTATION_DIR`, `PASSPORT_HOST_MUTATION_KEY_FILE` and
@@ -385,7 +385,7 @@ NIGHT credit. See the [live runbook](../docs/site/live-qualification.md#enrolled
 These Node/software-fixture cases do not qualify real passkeys or seed-loss recovery.
 
 
-### Opt-in durable host jobs (local, unreleased)
+### Opt-in durable host jobs (RC6 candidate)
 
 On top of the three host-mutation settings above, set `PASSPORT_HOST_JOB_DIR`,
 `PASSPORT_HOST_JOB_KEY_FILE` and `PASSPORT_HOST_JOB_TOKEN_FILE`. Use distinct,

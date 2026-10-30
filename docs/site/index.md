@@ -8,6 +8,11 @@ Midnight Passport gives an application a passkey controlled Account Custody Cont
 
 > **Preview RC5:** The nine implemented packages are published at `0.1.0-rc5` with private GitHub Packages access; three Linux/amd64 backend images are available on GHCR. ACC binding `acc-s3r1.1` remains pinned to Passport revision `6458ed5`. Shielded withdrawals require an exact-value coin; partial spends remain rejected. Synthetic hosted tests do not establish full Lace compatibility. Start with the [release notes]({{ '/release-notes-rc5/' | relative_url }}) and [Packages]({{ '/packages/' | relative_url }}).
 
+RC6 is being prepared with opt-in durable owner/host jobs, grant reconstruction and
+installed-package qualification. [RC6 candidate notes]({{ '/release-notes-rc6/' | relative_url }})
+separate implemented APIs from publication and real-provider acceptance.
+
+
 ## Start here
 
 Start with [Install and connect]({{ '/getting-started/' | relative_url }}) for authenticated
