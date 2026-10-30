@@ -93,17 +93,12 @@ knowledge. Ambiguous rosters and grants to the removed reader must be reconciled
 before removal. Total-loss recovery remains unavailable on the retained binding.
 See [Qualification and safety boundaries]({{ '/qualification/' | relative_url }}).
 
-## Local durability milestone
+## RC6 opt-in durability boundary
 
-The opt-in owner continuation API and authenticated published-grant reconstruction
-are described in [Mutation durability and grant recovery]({{ '/durability/' | relative_url }}).
-These additions are local, unreleased work. Default demo owner buttons still need
-transaction reconciliation after interruption; a journal alone does not supply
-durable remote submissions. Another enrolled reader cannot invent the issuing
-reader's grant opening.
+{% include durability-boundary.md %}
 
 
-## Operator-managed durable host jobs (unreleased source)
+## Operator-managed durable host jobs (RC6)
 
 An engineer running a trusted host/BFF can submit an immutable call/deploy job,
 observe bounded status, reconnect after a lost proxy reply and explicitly resume

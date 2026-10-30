@@ -55,8 +55,9 @@ verifier keys remain available even outside a reduced proving profile, because a
 consumer may install operations proved by another caller. Unselected prover and ZKIR
 requests still return 404. `/v1/manifest` remains the complete binding's integrity
 manifest, so a partial profile must not be treated as a complete key cache.
-The verifier-availability correction is local next-milestone work; it is not in the
-published RC5 image. Use the RC5 `all` profile until an image containing the fix is published.
+The RC6 candidate contains the verifier-availability correction; RC5 does not.
+Check the [RC6 publication status](../../docs/site/release-notes-rc6.md) before deploying
+its image. For the older RC5 image, keep the `all` profile.
 
 | Endpoint | Response |
 | --- | --- |

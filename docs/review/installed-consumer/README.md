@@ -65,7 +65,7 @@ retroactively qualify a different source or package graph.
 
 ## Historical receipt boundary after the RC6 retained-result change
 
-The receipts above belong to12f4001/default TTL. The later harness deliberately
+The receipts above belong to 12f4001/default TTL. The later harness deliberately
 requires TTL-zero case evidence; do not validate/relabel the old receipt with that
 new schema. [RC6 candidate evidence](../rc6-candidate/README.md) records the fresh
 c754615 run, its own tarball and harness hashes, and eight TTL-zero cases. The

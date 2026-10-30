@@ -6,7 +6,7 @@ permalink: /consumer-integration/
 
 This guide covers the supported Passport integration boundary for #79 and #81.
 The October 20 assessments below are historical, version-pinned host evidence.
-RC6 packages their supported additions plus later durability and installed-consumer work;
+The RC6 candidate includes their supported additions plus later durability and installed-consumer work;
 see the [RC6 publication status]({{ "/release-notes-rc6/" | relative_url }}). The [historical report](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/lace-consumer-report.md)
 retains its original source pins and transactions. Current authorised source pins,
 private diagnostics and detailed receipts remain in the owner's private handover.

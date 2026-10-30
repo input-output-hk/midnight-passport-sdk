@@ -175,12 +175,7 @@ turns an installed package into a full hosted-wallet compatibility claim.
 
 ## RC6 opt-in durability boundary
 
-The opt-in owner continuation API and authenticated published-grant reconstruction
-are described in [Mutation durability and grant recovery]({{ '/durability/' | relative_url }}).
-These additions are RC6 candidate APIs; see the [release status]({{ "/release-notes-rc6/" | relative_url }}). Default demo owner buttons still need
-transaction reconciliation after interruption; a journal alone does not supply
-durable remote submissions. Another enrolled reader cannot invent the issuing
-reader's grant opening.
+{% include durability-boundary.md %}
 
 ### Runtime identity and repeated receipts
 

@@ -191,7 +191,7 @@ qualification. Exact-value shielded guards and the immutable ACC binding remain.
 
 ## Enable jobs in the reference service
 
-Unreleased source now composes this API in `apps/passport-service` when explicitly
+The RC6 reference service composes this API in `apps/passport-service` when explicitly
 configured. Keep the existing three `PASSPORT_HOST_MUTATION_*` settings from the
 [host guide]({{ '/host-durability/#enable-the-node-reference-host' | relative_url }}),
 then supply **all three** job settings:
@@ -455,7 +455,7 @@ integration remain separate. No new package or image has been published; RC5 doe
 not include this opt-in API. Broad #233/#231 and existing release limits stay open.
 
 
-## Job-backed populated lifecycle qualification (unreleased)
+## Job-backed populated lifecycle qualification (historical source evidence)
 
 Two additional opt-in suites cover the device lifecycle with an independently
 enrolled survivor, one active caller-pinned read grant and one qualified mock

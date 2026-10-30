@@ -12,7 +12,7 @@ state the candidate scope and limitations. RC5 digests below remain historical
 pins until the verified RC6 publication receipt is available. Source and private
 publisher package checks include eight installed-package TTL-zero process cases;
 expiry must never strand a confirmed receipt. Release tests retain independent
-proof, actual-host, synthetic and manual-provider evidence classes.
+proof, actual-host, synthetic, and manual-provider evidence classes.
 
 The `0.1.0-rc5` preview packs nine implemented packages, including the Node `service` HTTP core, for the **private** GitHub Packages npm registry under `@input-output-hk/mn-passport-*`. It uses the `next` distribution tag. [RC5 release notes]({{ '/release-notes-rc5/' | relative_url }}) list supported flows and limits. The older `0.1.0-rc1` release has 13 private package records: eight implementations and five empty scaffolds. Those scaffolds remain private workspace packages and are excluded from RC5.
 

@@ -15,7 +15,7 @@ matching SDK versions; package administrators must grant consumers read access.
 ## Changes since RC5
 
 - Portable key-origin/hosted adapters preserve explicit consent and separate the
-  reader key, random ACC viewing secret and HD wallet seed. Branded host values
+  reader key, random ACC viewing secret, and HD wallet seed. Branded host values
   still need deliberate adapters; circuit proving and transaction proving differ.
 - Reduced key profiles serve every pinned small verifier while restricting proving
   bundles to the selected circuit roster. The ten-circuit `jubjub-owner-v1` profile
@@ -79,7 +79,7 @@ stay outside npm: restore from packaged ZKIR and verify every hash/size.
   they are not cryptographic light-client proofs.
 - Grant/holding setup and wallet credit in those lifecycle tests are standalone,
   not job-backed value transfers. The default demo owner buttons do not acquire
-  durable behavior merely because a journal or new HTTP endpoint exists.
+  durable behaviour merely because a journal or new HTTP endpoint exists.
 - NIGHT funding is qualified on the pinned `undeployed` localnet, in smallest
   units. Other environments need a dedicated funded wallet, explicit policy and
   separate acceptance. Proving servers receive private proof inputs; restrict ingress.
@@ -98,9 +98,12 @@ its `releaseQualified: false` is not rewritten into a provider acceptance claim.
   [service jobs]({{ '/service-jobs/' | relative_url }}).
 - Repository review maps: `docs/review/consumer-qualification/`,
   `host-jobs/`, `native-host-jobs/`, `job-backed-lifecycle/` and `installed-consumer/`.
-- Candidate gate: 1,005 tests passed, seven existing conditional skips; source-native
-  populated lifecycle 28 cases, local production-image lifecycle 26 cases, and
-  installed synthetic interruption eight cases. These counts cover different
+- Candidate code gate at `c754615`: 1,005 tests passed, seven existing conditional
+  skips ([gate receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/rc6-candidate/code-gate.json)).
+  [Historical populated lifecycle receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/job-backed-lifecycle/qualification.json):
+  source `b9a203b`, 28 cases; local image source `7703135`, 26 cases.
+  [Installed synthetic interruption receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/rc6-candidate/suite-receipt.json):
+  source `c754615`, eight TTL-zero cases. These counts cover different
   scopes and sources; they are not one interchangeable end-to-end suite.
 
 Final signed source/tags, registry package hashes/SRI, attestations, image digests,

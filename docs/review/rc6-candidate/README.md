@@ -11,7 +11,17 @@ install and synthetic hosted-consent checks pass.
 [Inner installed receipt](installed-receipt.json) and [outer signed-source receipt](suite-receipt.json)
 are hash-bound: outer stdoutSha256 equals inner receipt bytes. The scenario took
 2,945ms on this machine. It uses synthetic chain/host drivers, not native proofs,
-an actual host release, a registry publication or real passkey providers. Subsequent
-documentation commits do not relabel this source. Earlier12f4001 default-TTL
+an actual host release, a registry publication, or real passkey providers. Later
+JSDoc edits change packed adapter-service JS/declaration bytes, and catalog edits
+change the workspace fingerprint. These are earlier candidate hashes, not final
+release byte pins; final release smoke and publisher attestations verify the new
+archives. Do not relabel this source. Earlier 12f4001 default-TTL
 receipts remain historical; they are not TTL-zero acceptance. Release workflow
 smoke reruns the installed TTL-zero harness on the exact release tarballs.
+
+
+The five-minute installed-consumer catalog budget covers two individually bounded
+120-second phases (offline install and scenario process) plus file audits. The
+release smoke's 60-second bound covers only the harness after its separate install;
+it does not include that installation. Neither is a performance promise, and the
+old signed-source receipt retains its original catalog/deadline and fingerprint.
