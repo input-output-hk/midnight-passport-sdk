@@ -172,7 +172,11 @@ byte/link snapshot of the full installed dependency and tooling tree. A moved or
 modified runtime, changed harness, or legacy schema requires a fresh scratch
 consumer. Existing schema-1 receipts remain historical records. Runtime snapshots
 detect drift; release signatures, the frozen lock, and registry integrity establish
-their separate provenance boundaries. Inner entry hashes are checked against the
+their separate provenance boundaries. The smoke creates a start marker before the first installed import, so an interrupted
+run is retained even if it produced no other output. TypeScript and Vite run through
+the pinned Node executable; pnpm is used only for fresh preparation. The snapshot
+covers installed inputs, with the Nix/Node and initial registry trust boundaries
+still explicit. Inner entry hashes are checked against the
 pinned host archive before the outer receipt is accepted.
 
 ## Reproduce installation and entry checks

@@ -19,6 +19,8 @@ import {
   verifyRetainedHostConsumer,
   installedTreeIdentity,
   requireFreshHostOutputs,
+  HOST_ENTRY_OUTPUTS,
+  HOST_ENTRY_CHECKS,
 } from '../scripts/consumer/host-retained.mjs';
 import { consumerSha256 } from '../scripts/consumer-inputs.mjs';
 const repository = fileURLToPath(new URL('..', import.meta.url));
@@ -68,15 +70,7 @@ function receipt() {
     lockSha256: 'dd',
     entryChecks: entries.map((e) => ({ ...e, esm: 'passed', cjs: 'passed' })),
     runtimeIdentity: ['runtime'],
-    checks: [
-      'installed-versions',
-      'physical-runtime-identity',
-      'public-entry-types',
-      'esm-entries',
-      'cjs-entries',
-      'public-host-protocol',
-      'browser-build',
-    ],
+    checks: [...HOST_ENTRY_CHECKS],
     protocol: {
       kind: 'published-host-public-protocol',
       testsPassed: 13,
@@ -188,12 +182,7 @@ test('an interrupted output refuses the next host import without rerunning the f
   const root = mkdtempSync(join(tmpdir(), 'host-interrupted-'));
   try {
     requireFreshHostOutputs(root);
-    for (const name of [
-      'public-entry.private.log',
-      'sdk-published-consumer.ts',
-      'public-protocol-receipt.json',
-      'sdk-consumer-browser',
-    ]) {
+    for (const name of HOST_ENTRY_OUTPUTS) {
       writeFileSync(join(root, name), 'retained failed output');
       assert.throws(() => requireFreshHostOutputs(root), /preserve the earlier run/);
       rmSync(join(root, name));

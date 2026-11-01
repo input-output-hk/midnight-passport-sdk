@@ -60,8 +60,9 @@ merging the completed consumer slice:
 - New tests cover runtime byte/path/file-set drift, symlinks, prepare/run harness
   mismatch, forged entry/hash/runtime evidence, duplicate protocol cases, and
   malformed grant records and legacy/modern inbox normalisation. Interrupted
-  outputs are refused before another import; transitive compiler/tooling drift and
-  all relative harness imports have regression checks. Documentation spelling and evidence-count spacing are
+  outputs and a pre-import start marker are refused before another import; transitive compiler/tooling drift and
+  all relative harness imports have regression checks. Runtime tools run directly
+  through the pinned Node process instead of consulting pnpm execution configuration. Documentation spelling and evidence-count spacing are
   corrected. No runtime package behaviour, consent, or value guard changes.
 
 Fresh schema-2 qualification at signed source

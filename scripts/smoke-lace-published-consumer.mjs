@@ -11,7 +11,7 @@ import {
 } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { consumerSha256 } from './consumer-inputs.mjs';
-import { requireFreshHostOutputs } from './consumer/host-retained.mjs';
+import { requireFreshHostOutputs, HOST_ENTRY_CHECKS } from './consumer/host-retained.mjs';
 import { releasePackageDirectories } from './release-package-list.mjs';
 import { checkMidnightRuntimeIdentity } from './check-midnight-runtime-identity.mjs';
 
@@ -21,6 +21,11 @@ const sdkVersion = process.env.RELEASE_VERSION;
 if (!process.env.CONSUMER_ROOT || !hostVersion || !sdkVersion)
   throw new Error('set CONSUMER_ROOT, LACE_PACKAGE_VERSION and RELEASE_VERSION');
 requireFreshHostOutputs(root);
+writeFileSync(
+  join(root, 'host-entry-started.json'),
+  JSON.stringify({ kind: 'host-entry-started' }) + '\n',
+  { flag: 'wx', mode: 0o600 },
+);
 const host = JSON.parse(readFileSync(join(root, 'node_modules/@laceio/sdk/package.json'), 'utf8'));
 if (host.name !== '@laceio/sdk' || host.version !== hostVersion)
   throw new Error('installed host package identity differs');
@@ -68,17 +73,13 @@ const entryChecks = entries.map((entry) => {
 });
 const fixture = join(root, 'sdk-published-consumer.ts');
 const browser = join(root, 'sdk-consumer-browser');
-if (existsSync(fixture) || existsSync(browser))
-  throw new Error('use a fresh consumer output directory');
 copyFileSync(join(import.meta.dirname, '../tests/fixtures/lace-published-consumer.ts'), fixture);
 const scopeFixture = join(root, 'jubjub-grant-scope.ts');
-if (existsSync(scopeFixture)) throw Error('use a fresh host scope output');
 copyFileSync(join(import.meta.dirname, '../docs/examples/jubjub-grant-scope.ts'), scopeFixture);
 execFileSync(
-  'pnpm',
+  process.execPath,
   [
-    'exec',
-    'tsc',
+    join(root, 'node_modules/typescript/bin/tsc'),
     '--outDir',
     join(root, 'host-example'),
     '--strict',
@@ -96,8 +97,6 @@ execFileSync(
 // Run the real published host's remote seams, composed with the installed SDK adapter.
 const runtimeFixture = join(root, 'sdk-published-runtime.mjs');
 const protocolReceipt = join(root, 'public-protocol-receipt.json');
-if (existsSync(runtimeFixture) || existsSync(protocolReceipt))
-  throw Error('use a fresh runtime output');
 copyFileSync(
   join(import.meta.dirname, '../tests/fixtures/lace-published-runtime.js'),
   runtimeFixture,
@@ -132,8 +131,14 @@ export default defineConfig({plugins:[wasm()],build:{target:'esnext'}});
 `,
 );
 execFileSync(
-  'pnpm',
-  ['exec', 'vite', 'build', browser, '--config', join(browser, 'vite.config.mjs')],
+  process.execPath,
+  [
+    join(root, 'node_modules/vite/bin/vite.js'),
+    'build',
+    browser,
+    '--config',
+    join(browser, 'vite.config.mjs'),
+  ],
   { cwd: root, stdio: 'inherit' },
 );
 const lock = join(root, 'pnpm-lock.yaml');
@@ -147,15 +152,7 @@ const receipt = {
   entryChecks,
   runtimeIdentity: Object.keys(identities),
   protocol,
-  checks: [
-    'installed-versions',
-    'physical-runtime-identity',
-    'public-entry-types',
-    'esm-entries',
-    'cjs-entries',
-    'public-host-protocol',
-    'browser-build',
-  ],
+  checks: HOST_ENTRY_CHECKS,
   fullCompatibility: false,
   realProvider: false,
   localnet: false,

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   cpSync,
@@ -59,7 +59,10 @@ function fixture() {
     for (const ext of ['js', 'd.ts', 'cjs'])
       writeFileSync(join(source, 'dist', name + '.' + ext), '// pinned test artifact\n');
   const host = join(bundle, 'host.tgz');
-  const packHost = () => execFileSync('tar', ['-czf', host, '-C', join(root, 'source'), 'package']);
+  const packHost = () =>
+    execFileSync('tar', ['-czf', host, '-C', join(root, 'source'), 'package'], {
+      env: { ...process.env, COPYFILE_DISABLE: '1' },
+    });
   packHost();
   const bytes = readFileSync(host);
   const pin = {
@@ -86,7 +89,9 @@ function fixture() {
     const installed = join(root, 'node_modules', name);
     mkdirSync(installed, { recursive: true });
     cpSync(source, installed, { recursive: true });
-    execFileSync('tar', ['-czf', join(bundle, file), '-C', join(root, 'source'), 'package']);
+    execFileSync('tar', ['-czf', join(bundle, file), '-C', join(root, 'source'), 'package'], {
+      env: { ...process.env, COPYFILE_DISABLE: '1' },
+    });
     return { name, file, sha256: consumerSha256(readFileSync(join(bundle, file))) };
   });
   writeFileSync(join(bundle, 'manifest.json'), JSON.stringify({ version, files }));
@@ -218,7 +223,9 @@ test('unsafe or absent export targets are rejected before a public entry can be 
       entry.import = target;
       writeFileSync(join(source, 'package.json'), JSON.stringify(pkg));
       const path = join(f.root, 'unsafe-host.tgz');
-      execFileSync('tar', ['-czf', path, '-C', join(f.root, 'host-source'), 'package']);
+      execFileSync('tar', ['-czf', path, '-C', join(f.root, 'host-source'), 'package'], {
+        env: { ...process.env, COPYFILE_DISABLE: '1' },
+      });
       const bytes = readFileSync(path);
       assert.throws(
         () =>
@@ -329,6 +336,68 @@ test('retained verifier refuses changed runtime or transitive tooling bytes even
     assert.throws(verify, /installed dependency tree changed/);
     assert.equal(readFileSync(join(f.root, 'pnpm-lock.yaml'), 'utf8'), 'fixed lock');
   } finally {
+    f.close();
+  }
+});
+
+test('killing an early host import retains a marker and refuses the next import', async () => {
+  const f = fixture();
+  /** @type {import('node:child_process').ChildProcess | undefined} */ let child;
+  try {
+    const flag = join(f.root, 'IMPORT-COUNT');
+    writeFileSync(
+      join(f.root, 'node_modules/@laceio/sdk/dist/experimental.js'),
+      'import {appendFileSync} from "node:fs";appendFileSync(' +
+        JSON.stringify(flag) +
+        ',"import\\n");setInterval(()=>{},1000);await new Promise(()=>{});export function createLaceWallet(){}',
+    );
+    const script = fileURLToPath(
+      new URL('../scripts/smoke-lace-published-consumer.mjs', import.meta.url),
+    );
+    /** @type {NodeJS.ProcessEnv} */
+    const env = {
+      ...process.env,
+      CONSUMER_ROOT: f.root,
+      LACE_PACKAGE_VERSION: f.pin.version,
+      RELEASE_VERSION: f.version,
+    };
+    delete env.NODE_OPTIONS;
+    delete env.NODE_PATH;
+    delete env.NODE_TEST_CONTEXT;
+    child = spawn(process.execPath, [script], {
+      cwd: f.root,
+      env,
+      detached: true,
+      stdio: 'ignore',
+    });
+    const exit = new Promise((resolve) => child?.once('exit', resolve));
+    const deadline = Date.now() + 8000;
+    while (!existsSync(flag)) {
+      assert.equal(child.exitCode, null, 'host smoke exited before its held import');
+      assert.ok(Date.now() < deadline, 'held host import did not start');
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    assert.ok(existsSync(join(f.root, 'host-entry-started.json')));
+    assert.equal(existsSync(join(f.root, 'sdk-published-consumer.ts')), false);
+    assert.ok(child.pid);
+    process.kill(-child.pid, 'SIGTERM');
+    await exit;
+    const before = readFileSync(flag, 'utf8');
+    assert.equal(before, 'import\n');
+    const retry = spawnSync(process.execPath, [script], {
+      cwd: f.root,
+      env,
+      encoding: 'utf8',
+      timeout: 8000,
+    });
+    assert.notEqual(retry.status, 0);
+    assert.match(retry.stderr, /preserve the earlier run/);
+    assert.equal(readFileSync(flag, 'utf8'), before);
+  } finally {
+    if (child?.pid)
+      try {
+        process.kill(-child.pid, 'SIGKILL');
+      } catch {}
     f.close();
   }
 });

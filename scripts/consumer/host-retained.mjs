@@ -98,7 +98,8 @@ export function installedTreeIdentity(consumer) {
   return { files, links, treeSha256: hash.digest('hex') };
 }
 
-const hostOutputs = Object.freeze([
+export const HOST_ENTRY_OUTPUTS = Object.freeze([
+  'host-entry-started.json',
   'public-entry.private.log',
   'public-entry-receipt.json',
   'host-consumer-receipt.json',
@@ -113,7 +114,7 @@ const hostOutputs = Object.freeze([
  * @param {string} root
  */
 export function requireFreshHostOutputs(root) {
-  if (hostOutputs.some((file) => existsSync(join(root, file))))
+  if (HOST_ENTRY_OUTPUTS.some((file) => existsSync(join(root, file))))
     throw Error('host consumer output already exists; preserve the earlier run');
 }
 
@@ -173,6 +174,16 @@ export function verifyRetainedHostConsumer(root, expected, repository) {
   );
   return config;
 }
+export const HOST_ENTRY_CHECKS = Object.freeze([
+  'installed-versions',
+  'physical-runtime-identity',
+  'public-entry-types',
+  'esm-entries',
+  'cjs-entries',
+  'public-host-protocol',
+  'browser-build',
+]);
+
 /** Inner evidence must name exactly the entries authenticated from the host archive.
  * @param {any} entry @param {any} config
  */
@@ -200,15 +211,7 @@ export function verifyHostEntryReceipt(entry, config) {
   assert.ok(
     entry.protocol.cases.every((/** @type {unknown} */ c) => typeof c === 'string' && c.length),
   );
-  assert.deepEqual(entry.checks, [
-    'installed-versions',
-    'physical-runtime-identity',
-    'public-entry-types',
-    'esm-entries',
-    'cjs-entries',
-    'public-host-protocol',
-    'browser-build',
-  ]);
+  assert.deepEqual(entry.checks, HOST_ENTRY_CHECKS);
   assert.equal(entry.protocol.syntheticTransport, true);
   for (const field of ['hostSignerHandlers', 'signerPage', 'nativeProof'])
     assert.equal(entry.protocol[field], false);
