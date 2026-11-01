@@ -18,7 +18,13 @@ asynchronous host-store initialisation: the public feature provider was missing.
 Its key/derivation preflight passed, the failed fixture is retained, and all three
 owned containers stopped with source unchanged. The corrected development
 composition includes `m.featureDev`; an isolated asynchronous startup probe passes.
-No native pass is claimed from that failed run.
+No native pass is claimed from that failed run. The next signed attempt
+(`7ae7893`) synchronised the sponsor, then our runner's immediate-dispatch assertion
+failed before any account record. Public action processing is asynchronous; an
+isolated observer probe confirms `idle` immediately, then `ceremony`/terminal state.
+The corrected runner subscribes before dispatch and bounds acceptance without
+redispatch. Both failed roots remain private, with unchanged source and owned cleanup.
+
 
 It keeps SDK transaction ports read-only and preserves provider/hosted-mutation
 qualification as separate gates. No new package or image release.

@@ -241,7 +241,9 @@ before and after execution. The development composition includes the public
 `m.storageInMemory` and `m.featureDev` providers alongside the Passport module;
 the upstream base store needs the feature provider even when no optional blockchain
 feature is enabled. Production hosts should supply their upstream feature provider.
-It strictly compiles the flow against those installed
+The runner subscribes to flow state before dispatch: public action processing is
+asynchronous. It requires observed acceptance and a successful terminal result; a
+dropped or uncertain action is never redispatched. It strictly compiles the flow against those installed
 public declarations; there are no private host source aliases or production patches.
 
 The intended checks are:

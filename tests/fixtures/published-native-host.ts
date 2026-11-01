@@ -137,35 +137,53 @@ export async function runNativeHost(io: NativeHostIO) {
     check: (s: PassportSliceState) => void,
   ) => {
     requireTrue(['idle', 'ready'].includes(state().flow), 'A host flow was already running');
-    let previous: string = '';
-    dispatch();
-    requireTrue(state().flow === 'ceremony', 'The public host module did not accept the action');
-    const deadline = Date.now() + 25 * 60_000;
-    for (;;) {
-      const current = state();
-      if (current.flow !== previous) {
-        previous = current.flow;
-        io.checkpoint('host-flow', { action: name, flow: current.flow });
+    let accepted = false;
+    let previous: PassportSliceState['flow'] | undefined;
+    // Public dispatch schedules action processing; subscribe first so a fast flow cannot
+    // hide its ceremony between timer polls. Never redispatch a dropped/uncertain action.
+    const subscription = wallet.stateObservables.passport.selectFlow$.subscribe((flow) => {
+      if (flow === 'ceremony') accepted = true;
+      if (accepted && flow !== previous) {
+        previous = flow;
+        io.checkpoint('host-flow', { action: name, flow });
       }
-      if (current.flow === 'error')
-        throw Error(
-          'Host action failed: ' +
-            name +
-            ' ' +
-            current.flowError?.code +
-            ' ' +
-            current.flowError?.message,
+    });
+    try {
+      const acceptanceDeadline = Date.now() + 10000;
+      const deadline = Date.now() + 25 * 60_000;
+      dispatch();
+      for (;;) {
+        const current = state();
+        if (!accepted) {
+          requireTrue(
+            Date.now() < acceptanceDeadline,
+            'The public host module did not accept the action; do not redispatch',
+          );
+          await pause(20);
+          continue;
+        }
+        if (current.flow === 'error')
+          throw Error(
+            'Host action failed: ' +
+              name +
+              ' ' +
+              current.flowError?.code +
+              ' ' +
+              current.flowError?.message,
+          );
+        if (current.flow === 'ready') {
+          check(current);
+          cases.push(name);
+          return;
+        }
+        requireTrue(
+          Date.now() < deadline,
+          'The host action deadline expired; preserve the pending fixture',
         );
-      if (current.flow === 'ready') {
-        check(current);
-        cases.push(name);
-        return;
+        await pause(100);
       }
-      requireTrue(
-        Date.now() < deadline,
-        'The host action deadline expired; preserve the pending fixture',
-      );
-      await pause(100);
+    } finally {
+      subscription.unsubscribe();
     }
   };
   const credential = io.owner.credentialRef();
