@@ -64,8 +64,18 @@ merging the completed consumer slice:
   all relative harness imports have regression checks. Documentation spelling and evidence-count spacing are
   corrected. No runtime package behaviour, consent, or value guard changes.
 
-Fresh schema-2 qualification results are recorded separately from the original
-schema-1 evidence. Interrupted scratch outputs are retained; they are not passes.
+Fresh schema-2 qualification at signed source
+`778482eb8dde97c8263db92e99c2c8343122fd78` passed in **10,696 ms**:
+[outer receipt](review-suite-receipt.json), [matching inner receipt](review-consumer-receipt.json),
+[seven actual tamper controls](review-tamper-controls.json), [full gate](review-code-gate.json),
+and [rendered documentation checks](review-docs-check.json). All eleven harness hashes
+match the signed source, and the inner bytes match the outer stdout hash. The full
+installed snapshot covers **28,762 files and 1,157 links**; host and SDK archive
+checks remain separate. The gate passed **1,026 tests / seven existing conditional
+skips / zero failures**, including all application typechecks. Jekyll rendered 22
+pages with 501 checked local links/anchors and no errors. These supersede the earlier
+schema-1 results for the reviewed implementation. Interrupted scratch outputs are
+retained; they are not passes. No native or provider claim follows from these checks.
 
 ## Acceptance and evidence classes
 
