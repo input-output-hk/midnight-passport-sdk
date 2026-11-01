@@ -441,3 +441,74 @@ byte, qualify Google/iCloud restoration, establish actual-registry provenance, o
 claim full Lace compatibility. It does not enable new owner operations or partial
 shielded spends. Installation/restart runs remain outside required fast PR CI;
 archive-integrity and receipt-refusal controls run in the ordinary test gate.
+
+## Public-source signer handlers
+
+The public host package exports the remote **client** and seams, but does not export a signer
+server/handler entry. The optional qualification lane builds the actual unmodified public
+handlers/server from `input-output-hk/lace-sdk` commit
+`ce04076bbe70d8455c924d175cfcb7ee65844ae7`, separately from the authenticated
+`@laceio/sdk@0.1.2-canary.2` archive and nine RC6 packages. This is an engineer test harness,
+not an additional supported host package export. npm's absent `gitHead` is not inferred.
+
+Start with the retained consumer instructions above and a clean detached public-source clone
+at that commit. Supplemental dependencies must be in a **separate fresh directory**, without
+changing the retained consumer's lock or node_modules. Its package.json dependencies are:
+
+```json
+{
+  "@scure/bip39": "1.6.0",
+  "@noble/hashes": "1.8.0",
+  "@noble/ciphers": "2.2.0",
+  "bip39-build-wordlist": "npm:@scure/bip39@2.2.0"
+}
+```
+
+Install them under Nix with scripts/hooks disabled; retain and hash that lock. The split wordlist
+version follows the pinned upstream tsdown alias, rather than replacing its mnemonic implementation.
+The builder audits supplemental dependencies, public Git blobs, every emitted external, and all
+bundle bytes. Existing output roots and any input drift are refused.
+
+```sh
+CONSUMER_ROOT=/private/consumer \
+CONSUMER_CONFIG_SHA256=<retained-external-pin> \
+PASSPORT_PUBLIC_SOURCE_ROOT=/private/public-lace \
+PASSPORT_SIGNER_DEPS=/private/source-deps \
+PASSPORT_SIGNER_ROOT=/private/consumer/signer-v1 \
+nix develop -c node scripts/qualify-public-signer.mjs prepare
+```
+
+Record the resulting `configSha256` outside the prepared root. Then:
+
+```sh
+PASSPORT_SIGNER_ROOT=/private/consumer/signer-v1 \
+PASSPORT_SIGNER_SHA256=<recorded-external-pin> \
+PASSPORT_SIGNER_PROTOCOL_ROOT=/private/consumer/signer-protocol-v1 \
+nix develop -c pnpm qualify run consumer-signer-protocol --output /private/protocol-receipt.json
+```
+
+This runs the real installed client/seams and public-source server/handlers over native
+`MessageChannel`, with **simulated window routing and synthetic PRF credentials**. The SDK
+`addJubjubAuthorisingDevice` signs against a fake chain whose callback independently verifies
+the signature. Consent denial, origin restrictions, session scope, expiry, cancellation, busy
+and callback failure have negative coverage. No browser, real passkey provider or native proof
+is established by that result. Request/result bodies and PRF material stay private; public
+receipts contain hashes and case names.
+
+For a native run, first read the native orchestration section, use its same explicit localnet
+opt-ins/key cache and set the two signer pin variables above. Use a fresh `native-*` output:
+
+```sh
+nix develop -c pnpm qualify plan consumer-signer-native
+# After the required variables, readiness and signed clean source are established:
+nix develop -c pnpm qualify run consumer-signer-native --output /private/native-signer-receipt.json
+```
+
+The native extension preserves the creation/funding/read-grant/revoke baseline, then uses the
+SDK call pipeline and real remote handlers for **authorising-only add-device**. Creation and
+grant flows still use the host's local signer. The new entry has signing authority without
+reader enrollment or a delivered viewing secret. Host reconnect and the exact funded holding
+are checked, with independent canonical finality and input/cleanup receipts. A native lane is
+qualified only by its exact-source successful receipt, not its implementation or guard tests.
+Unsupported hosted rotation/withdrawal kinds remain refused; full Lace, signer-page/provider,
+P-256 remote signing and image qualification remain separate work.

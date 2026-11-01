@@ -21,6 +21,7 @@ import { verifyRetainedHostConsumer } from './consumer/host-retained.mjs';
 import { consumerSha256 } from './consumer-inputs.mjs';
 import { workspaceIdentity, verifyQualificationBinding } from './qualification/receipt.mjs';
 import { dedicatedIndexerReadiness } from './qualification/indexer-readiness.mjs';
+import { verifyPublicSigner } from './consumer/public-signer-source.mjs';
 import { nativeLeasePath } from './qualification/native-lease.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -116,17 +117,36 @@ export function nativeScope(env) {
   return { consumer, output: join(consumer, basename(output)), keys: realpathSync(keys) };
 }
 /** @param {any} result */
-export function nativeResult(result) {
-  assert.equal(result.kind, 'published-host-native-orchestration');
-  assert.equal(result.testsPassed, 14);
-  assert.equal(result.cases.length, 14);
-  assert.equal(new Set(result.cases).size, 14);
+export function nativeResult(result, profile = 'public-module') {
+  assert.ok(['public-module', 'hosted-authorising'].includes(profile));
+  const hosted = profile === 'hosted-authorising';
+  assert.equal(
+    result.kind,
+    hosted ? 'published-hosted-signer-native' : 'published-host-native-orchestration',
+  );
+  const count = hosted ? 20 : 14;
+  assert.equal(result.testsPassed, count);
+  assert.equal(result.cases.length, count);
+  assert.equal(new Set(result.cases).size, count);
+  if (hosted) {
+    assert.equal(result.authorisingOnly, true);
+    assert.equal(result.readerDelivery, false);
+    assert.ok(
+      result.proofs.some(
+        (/** @type {any} */ p) =>
+          p.keyLocation === 'keys/add_device_with_jubjub' ||
+          p.keyLocation.split('?')[0]?.endsWith('/add_device_with_jubjub'),
+      ),
+      'Hosted native result must include the SDK add-device proof',
+    );
+  }
   assert.equal(result.keyOriginDerivationMatched, true);
   assert.equal(result.nativeProof, true);
   assert.equal(result.hostPublicModule, true);
-  assert.equal(result.sdkReadOnly, true);
+  assert.equal(result.sdkReadOnly, !hosted);
+  assert.equal(result.hostSignerHandlers, hosted);
   assert.equal(result.syntheticCredentials, true);
-  for (const key of ['hostSignerHandlers', 'signerPage', 'realProvider', 'fullCompatibility'])
+  for (const key of ['signerPage', 'realProvider', 'fullCompatibility'])
     assert.equal(result[key], false);
   assert.match(result.address, /^[a-f0-9]{64}$/);
   assert.match(result.grantId, /^[a-f0-9]{64}$/);
@@ -221,9 +241,22 @@ export async function nativeFinality(account, hashes, options = {}) {
   }
 }
 
-export async function runNativeHost() {
+export async function runNativeHost(profile = 'public-module') {
+  assert.ok(['public-module', 'hosted-authorising'].includes(profile));
+  const signer =
+    profile === 'hosted-authorising'
+      ? {
+          root: process.env.PASSPORT_SIGNER_ROOT ?? '',
+          sha256: process.env.PASSPORT_SIGNER_SHA256 ?? '',
+        }
+      : undefined;
+  const signerInput = signer ? verifyPublicSigner(signer.root, signer.sha256, ROOT) : undefined;
   const { consumer, output, keys } = nativeScope(process.env),
     pin = process.env.CONSUMER_CONFIG_SHA256 ?? '';
+  if (signerInput) {
+    assert.equal(realpathSync(signerInput.consumer.root), consumer);
+    assert.equal(signerInput.consumer.configSha256, pin);
+  }
   const initial = await workspaceIdentity(ROOT);
   assert.equal(initial.dirty, false, 'Commit and sign source before native execution');
   const config = verifyRetainedHostConsumer(consumer, pin, ROOT);
@@ -274,6 +307,7 @@ export async function runNativeHost() {
   /** @type {NodeJS.ProcessEnv} */ const env = {
     ...process.env,
     PASSPORT_NATIVE_CHILD: '1',
+    PASSPORT_NATIVE_PROFILE: profile,
     PASSPORT_NATIVE_SDK_ROOT: ROOT,
     PASSPORT_KEY_DIR: keys,
     MN_NETWORK_ID: 'undeployed',
@@ -326,18 +360,24 @@ export async function runNativeHost() {
       ['tests/fixtures/published-native-host-bootstrap.js', 'bootstrap.mjs'],
       ['docs/examples/jubjub-grant-scope.ts', 'jubjub-grant-scope.ts'],
     ];
+    if (signer)
+      copies.push(
+        ['tests/fixtures/published-native-host.ts', 'native-baseline.ts'],
+        ['tests/fixtures/public-signer-harness.js', 'public-signer-harness.js'],
+        ['scripts/qualification/signer-windows.mjs', 'signer-windows.mjs'],
+      );
+    if (signer) copies[0] = ['tests/fixtures/public-signer-native.ts', 'native-core.ts'];
     for (const [source, target] of copies) copyFileSync(join(ROOT, source), join(output, target));
     const sourceInputs = Object.fromEntries(
-      ['native-core.ts', 'bootstrap.mjs', 'jubjub-grant-scope.ts'].map((file) => [
-        file,
-        consumerSha256(readFileSync(join(output, file))),
-      ]),
+      copies.map(([, file]) => [file, consumerSha256(readFileSync(join(output, file)))]),
     );
     writeFileSync(
       join(output, 'native-inputs.json'),
       JSON.stringify(
         {
           kind: 'published-host-native-inputs',
+          profile,
+          signer,
           source: initial,
           sourceInputs,
           configSha256: pin,
@@ -368,10 +408,9 @@ export async function runNativeHost() {
       120000,
     );
     compiled = Object.fromEntries(
-      ['native-core.js', 'jubjub-grant-scope.js'].map((file) => [
-        file,
-        consumerSha256(readFileSync(join(output, 'compiled', file))),
-      ]),
+      ['native-core.js', 'jubjub-grant-scope.js', ...(signer ? ['native-baseline.js'] : [])].map(
+        (file) => [file, consumerSha256(readFileSync(join(output, 'compiled', file)))],
+      ),
     );
     verifyRetainedHostConsumer(consumer, pin, ROOT);
     assert.deepEqual(await workspaceIdentity(ROOT), initial);
@@ -405,7 +444,8 @@ export async function runNativeHost() {
     assert.equal(health.ok, true);
     await command([join(output, 'bootstrap.mjs')], 'native-worker.private.log', 60 * 60000);
     inner = JSON.parse(readFileSync(join(output, 'native-result.json'), 'utf8'));
-    nativeResult(inner);
+    nativeResult(inner, profile);
+    if (signer) verifyPublicSigner(signer.root, signer.sha256, ROOT);
     finality = await nativeFinality(inner.address, inner.confirmedContractActions);
     assert.equal(interrupted, false, 'Native qualification interrupted');
     for (const [file, hash] of Object.entries(sourceInputs))
@@ -462,7 +502,9 @@ export async function runNativeHost() {
     runtime: { node: process.version, platform: process.platform, arch: process.arch },
     publishedSdkSource: publication.source.commit,
     schemaVersion: 1,
-    kind: 'verified-published-host-native',
+    kind: signer ? 'verified-public-signer-native' : 'verified-published-host-native',
+    signer,
+    profile,
     outcome: verdict,
     source: initial,
     endSource: end,
@@ -496,4 +538,5 @@ export async function runNativeHost() {
   if (verdict !== 'passed')
     throw Error('Native qualification failed; preserve its private output root');
 }
-if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) await runNativeHost();
+if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename)
+  await runNativeHost(process.argv[2] ?? 'public-module');

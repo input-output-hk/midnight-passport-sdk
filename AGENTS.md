@@ -454,3 +454,15 @@ The actual host proves its operations; the SDK ports in this lane are read-only.
 Type/guard tests are not a live pass. Keep real-provider/page, native SDK hosted
 mutations, production image and full-compatibility qualification separate. Publish
 only public receipts/hashes; synthetic secrets and sealed record history stay private.
+
+### Public-source remote signer qualification
+
+Read `docs/review/public-signer/README.md` and the consumer guide before
+`consumer-signer-protocol` / `consumer-signer-native`. The public npm entry exports the client,
+not handlers: build the separately pinned **public** source with the audited builder. Do not
+import private implementation or cast unsupported consent to a different flow. Use fresh external
+supplemental-dependency/build/run roots and preserve every failure. Protocol uses real handlers/
+crypto/native MessageChannel, simulated windows and fake chain. Native adds one authorising-only
+SDK enrollment after the existing native baseline; no reader/viewing-key delivery. Do not claim
+browser/provider/full-hosted-lifecycle compatibility. Keep existing signed-source, capacity,
+lease, finality, retained unknowns and owned-resource cleanup requirements.

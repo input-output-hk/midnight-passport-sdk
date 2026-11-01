@@ -288,6 +288,91 @@ async function retainBalanced(bytes, count) {
     'Balanced transaction exceeds normal-class node weight limits; refused before host submission',
   );
 }
+let signerHarness;
+let extension = {};
+if (source.profile === 'hosted-authorising') {
+  const { createPublicSignerHarness } = await import('./public-signer-harness.js');
+  const publicSource = await import(
+    pathToFileURL(join(source.signer.root, 'bundle/handlers.mjs')).href
+  );
+  signerHarness = await createPublicSignerHarness({
+    source: publicSource,
+    owner,
+    root,
+    forbiddenSecrets: [material.owner.device, material.owner.root],
+  });
+  const { HDWallet, Roles } = hostRequire('@midnightntwrk/wallet-sdk-hd');
+  const hd = HDWallet.fromSeed(Buffer.from('0'.repeat(63) + '1', 'hex'));
+  assert.equal(hd.type, 'seedOk');
+  const derived = hd.hdWallet.selectAccount(0).selectRoles([Roles.Zswap]).deriveKeysAt(0);
+  hd.hdWallet.clear();
+  assert.equal(derived.type, 'keysDerived');
+  const keys = ledger.ZswapSecretKeys.fromSeed(derived.keys[Roles.Zswap]);
+  const sponsorKeys = {
+    coinPublicKey: keys.coinPublicKey,
+    encryptionPublicKey: keys.encryptionPublicKey,
+  };
+  keys.clear();
+  derived.keys[Roles.Zswap].fill(0);
+  extension = {
+    remote: {
+      authoriser: signerHarness.seams.authoriser,
+      setDecision: signerHarness.setDecision,
+      requestCount: () => signerHarness.stats().requests.length,
+    },
+    conversions: {
+      account: publicSource.AccAddress,
+      epoch: publicSource.DeviceEpoch,
+      counter: publicSource.UseCounter,
+      flow: (flow) => {
+        publicSource.decodeSignerFlow(flow);
+        return structuredClone(flow);
+      },
+    },
+    sponsorKeys,
+    proveTx: async (bytes, prover) => {
+      const tx = ledger.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
+      const proven = await tx.prove(prover, ledger.CostModel.initialCostModel());
+      return { tx: proven.serialize(), provenance: 'remote' };
+    },
+    submit: async (bytes) => {
+      const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
+      const ids = tx.identifiers();
+      assert.ok(ids.length > 0);
+      assert.match(ids[0], /^00[a-f0-9]{64}$/);
+      checkpoint('sdk-native-submit-start', { txId: ids[0], bytes: bytes.length });
+      // No retry. Any interruption after this call is uncertain and retains the original ID.
+      await new Promise((resolve, reject) => {
+        let unsubscribe,
+          settled = false;
+        const finish = (error) => {
+          if (settled) return;
+          settled = true;
+          unsubscribe?.();
+          error ? reject(error) : resolve();
+        };
+        relay.tx.midnight
+          .sendMnTransaction('0x' + Buffer.from(bytes).toString('hex'))
+          .send((result) => {
+            if (
+              result.dispatchError ||
+              result.status.isInvalid ||
+              result.status.isDropped ||
+              result.status.isUsurped
+            )
+              finish(Error('Native SDK submission rejected; retain original intent'));
+            else if (result.status.isInBlock || result.status.isFinalized) finish();
+          })
+          .then((stop) => {
+            unsubscribe = stop;
+            if (settled) stop();
+          })
+          .catch(reject);
+      });
+      return ids[0];
+    },
+  };
+}
 try {
   await waitForCapacity();
   const { runNativeHost } = await import('./compiled/native-core.js');
@@ -299,6 +384,7 @@ try {
     readRecord,
     retainBalanced,
     checkpoint,
+    ...extension,
   });
   assert.equal(draws.creations, 0);
   assert.ok(draws.owner > 0 && draws.grantee > 0);
@@ -314,6 +400,14 @@ try {
   );
   checkpoint('native-orchestration-complete', { testsPassed: receipt.testsPassed });
 } finally {
+  if (signerHarness) {
+    await signerHarness.close();
+    writeFileSync(
+      join(root, 'signer-transport-result.json'),
+      JSON.stringify(signerHarness.stats(), null, 2) + '\n',
+      { flag: 'wx', mode: 0o600 },
+    );
+  }
   await relay.disconnect();
   await new Promise((resolve) => server.close(resolve));
 }

@@ -352,3 +352,22 @@ test('partial success, contradictory segments, foreign ACC and duplicate hashes 
     nativeFinality(f.account, [f.txHash, f.txHash], { fetch: f.request, readiness: f.readiness }),
   );
 });
+
+test('hosted native acceptance cannot relabel the read-only baseline or claim reader delivery', () => {
+  assert.throws(() => nativeResult(result(), 'hosted-authorising'));
+  const hosted = {
+    ...result(),
+    kind: 'published-hosted-signer-native',
+    testsPassed: 20,
+    cases: Array.from({ length: 20 }, (_, i) => 'hosted ' + i),
+    sdkReadOnly: false,
+    hostSignerHandlers: true,
+    authorisingOnly: true,
+    readerDelivery: false,
+    proofs: [{ keyLocation: 'keys/add_device_with_jubjub', bytes: 10 }],
+  };
+  nativeResult(hosted, 'hosted-authorising');
+  assert.throws(() => nativeResult(hosted));
+  assert.throws(() => nativeResult({ ...hosted, readerDelivery: true }, 'hosted-authorising'));
+  assert.throws(() => nativeResult({ ...hosted, proofs: result().proofs }, 'hosted-authorising'));
+});

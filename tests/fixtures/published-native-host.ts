@@ -56,7 +56,16 @@ const requireTrue: (condition: unknown, message: string) => asserts condition = 
   if (!condition) throw Error(message);
 };
 
+export interface HostedNativeContext {
+  address: string;
+  publicKey: { x: bigint; y: bigint };
+  sponsor: { balanceAndSign(bytes: Uint8Array): Promise<Uint8Array> };
+  prover: Parameters<typeof m.createPassportAccountModule>[0]['prover'];
+  reconnect(): Promise<void>;
+  holdings(): Promise<void>;
+}
 export interface NativeHostIO {
+  qualifyHosted?(context: HostedNativeContext): Promise<string[]>;
   owner: m.PasskeySessionKeySource;
   grantee: m.PasskeySessionKeySource;
   credentialId: Uint8Array;
@@ -535,6 +544,34 @@ export async function runNativeHost(io: NativeHostIO) {
       staleReadSecret.fill(0);
     }
     cases.push('revoked historical read seal does not open the fresh viewing key');
+    if (io.qualifyHosted) {
+      cases.push(
+        ...(await io.qualifyHosted({
+          address,
+          publicKey: hostPoint,
+          sponsor,
+          prover,
+          reconnect: () =>
+            action(
+              'public module reconnects after hosted SDK enrollment',
+              () => wallet.dispatch('passport.signIn'),
+              (s) => {
+                requireTrue(
+                  s.account?.address === address && s.devices.length === 2,
+                  'Reconnected host did not discover both authorities',
+                );
+              },
+            ),
+          holdings: async () => {
+            const current = await opened.readShieldedHoldings!();
+            requireTrue(
+              current.length === 1 && current[0]?.coin.value === 7n,
+              'Hosted enrollment changed the funded holding',
+            );
+          },
+        })),
+      );
+    }
     const actions = await indexer.enumerateContractActions(address);
     const txHashes = [...new Set(actions.map((a) => a.txHash))];
     requireTrue(
@@ -574,8 +611,8 @@ export async function runNativeHost(io: NativeHostIO) {
       keyOriginDerivationMatched: true,
       nativeProof: true,
       hostPublicModule: true,
-      sdkReadOnly: true,
-      hostSignerHandlers: false,
+      sdkReadOnly: !io.qualifyHosted,
+      hostSignerHandlers: !!io.qualifyHosted,
       signerPage: false,
       realProvider: false,
       fullCompatibility: false,

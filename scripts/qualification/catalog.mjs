@@ -85,6 +85,32 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Prepared exact registry SDK/host packages: external receipt/config pins, every installed SDK/host file, frozen lock/runtime identity, public entry types/ESM/CJS/WASM and synthetic public-host transport. Not signer handlers/page, native proofs or full compatibility.',
   },
+  'consumer-public-signer-protocol': {
+    tier: 'published-consumer',
+    command: [node, 'scripts/qualify-public-signer.mjs', 'run'],
+    requires: ['PASSPORT_SIGNER_ROOT', 'PASSPORT_SIGNER_SHA256', 'PASSPORT_SIGNER_PROTOCOL_ROOT'],
+    timeoutMs: 4 * 60000,
+    establishes:
+      'Actual published client/seams and pinned public-source handlers/server over native MessageChannel with simulated windows and synthetic PRF. SDK authorising-only add uses independently verified real signature against fake chain; denial/origin/scope/expiry/cancellation guards. No browser/provider/native acceptance.',
+  },
+  'consumer-public-signer-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualify-published-native-host.mjs', 'hosted-authorising'],
+    requires: [
+      'CONSUMER_ROOT',
+      'CONSUMER_CONFIG_SHA256',
+      'PASSPORT_SIGNER_ROOT',
+      'PASSPORT_SIGNER_SHA256',
+      'PASSPORT_HOST_NATIVE',
+      'PASSPORT_HOST_NATIVE_ROOT',
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_KEY_DIR',
+    ],
+    timeoutMs: 75 * 60000,
+    establishes:
+      'Native public-host baseline plus RC6 authorising-only add-device through public signer handlers, real proving/sponsorship/submission, canonical readback and original holding preserved. Creation/grants use local host signer; window routing simulated, credentials synthetic, no reader delivery, browser/provider/image or full compatibility claim.',
+  },
   'consumer-published-native-host': {
     tier: 'proof-localnet',
     command: [node, 'scripts/qualify-published-native-host.mjs'],
@@ -366,6 +392,8 @@ export const SUITES = Object.freeze({
   'consumer-published': ['consumer-published-host'],
   'consumer-host-integrity': ['consumer-verified-host'],
   'consumer-host-native': ['consumer-published-native-host'],
+  'consumer-signer-protocol': ['consumer-public-signer-protocol'],
+  'consumer-signer-native': ['consumer-public-signer-native'],
   release: [
     'binding-source',
     'contract-entries',
