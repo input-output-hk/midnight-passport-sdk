@@ -4,11 +4,11 @@
   "harness": {
     "scripts/qualify-host-consumer.mjs": "c0e0732307969d92d5852c933c81f8a373b8a6202a0606dd412f8959aed3cb4f",
     "scripts/consumer/host-inputs.mjs": "85e70f5c5552795cd0173230f78704c3df33373a4bf03aa9e8be805ae1a073b0",
-    "scripts/consumer/host-retained.mjs": "58dd3de0ed2e5acd7854c3af110a68bf4a83e950c7388399738be7482426f677",
+    "scripts/consumer/host-retained.mjs": "e6f3da8601444faf5c47620b81893a409f592b27dbe5e94cb725ebdd0138eaf4",
     "scripts/consumer/installed-inputs.mjs": "82ca9bad296c3d35987e57fe80b495f224521da87a0e8651b6cd902af7bd768f",
     "scripts/consumer-inputs.mjs": "6b6a48b58552e34edd9e86f3803fb3747867d731b9dec12339bfc32867564349",
     "scripts/release-package-list.mjs": "8937c72eee1d1bf1d8b2565ba3b2ab5eee591b5c3d87f80d6a1c2117af124724",
-    "scripts/smoke-lace-published-consumer.mjs": "fff491b95b8bf53e7beb61e6ba1cbc893be9c1883e5a466d7e2f3d9cfafa23e5",
+    "scripts/smoke-lace-published-consumer.mjs": "afcf2784b60ca4cbe5a257ca5bb65fd6d51f13d6fb0b013d0bcb501ea4c050b4",
     "scripts/check-midnight-runtime-identity.mjs": "3990bff2bcdd06eae93941f7980302108241bcbc6340ead3653891bba6d33df9",
     "tests/fixtures/lace-published-consumer.ts": "c6b1e0e76341af6645bd6204c54ab2d5b1831a66d81af6ac4f59b7e891b4fd96",
     "tests/fixtures/lace-published-runtime.js": "00a7d524b38b14a892ad03c92a15e9c10cb9fa17f017f73215898624034a83c2",
@@ -16,7 +16,7 @@
   },
   "sdkVersion": "0.1.0-rc6",
   "hostVersion": "0.1.2-canary.2",
-  "configSha256": "8e6fd974405385d31bb9bbba9bea335516b3a5a1ffabf88ddb5e469a6a025acb",
+  "configSha256": "1a58b63b84c110ff745bdd270619a683a9bb45bb89a223401eef1f787b7df819",
   "lockSha256": "ac813c2c8bb14947e26b49a1cc2c54aa60237b99fd9b34e8c335e7b54b668432",
   "publicationReceiptSha256": "6d58c1f85ee6901764f9013ec91b727a9a91485a86061e8f531e10e464e47af1",
   "installed": {
@@ -124,23 +124,23 @@
   "installedTree": {
     "files": 28762,
     "links": 1157,
-    "treeSha256": "f39d6c4dfe2824619a7e4df55cc65afdd3ee6ba0aed44bf756d6089b01f3d065"
+    "treeSha256": "1a328047bc660de48673c7461cac82d094d2094e7eeb0b2e65d44d70d484cc01"
   },
   "runtimeSnapshot": {
     "@midnight-ntwrk/compact-js": {
       "files": 437,
       "treeSha256": "e40759d56e16429bf7b4c9f970cffbdfe816fcfa6ab15060fcbbded5a88c9635",
-      "pathSha256": "c5b7f12f1b81684712152adbd5383c19608e03ac84ae13d9ed344881d23b57ed"
+      "pathSha256": "9d46fba78efd3277f27e9f468af7af93a051a97ec836ad87df2c1241f8d2da47"
     },
     "@midnight-ntwrk/compact-runtime": {
       "files": 62,
       "treeSha256": "9354dfae0ceb0e3fced587b0d83975a52e3d0d1ae90c314dd7e43ed7bad058ca",
-      "pathSha256": "96c4604845ad40919e07b26b65d7801003e0fae7afef3b1a6356c9dfe2f11d5a"
+      "pathSha256": "240bc4e647f8f17cc69890b11329d4ae5e971c61f9bcea0b60d5fa8efb01e92d"
     },
     "@midnightntwrk/ledger-v9": {
       "files": 33,
       "treeSha256": "cb8299d92e74e278769530f620fb1e368828f8a154457bfc381934b0d7cbef66",
-      "pathSha256": "7a5edd57e7708f9532af0a4a7c5a0a457e1e06845ee9b220b6b783fe0cdcd777"
+      "pathSha256": "8d0824e52e29275fd4a4737a72cbc2d659c1253db2be08503c1fd6b01fc5eb92"
     }
   },
   "entry": {

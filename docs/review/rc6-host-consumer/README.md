@@ -66,17 +66,20 @@ merging the completed consumer slice:
   corrected. No runtime package behaviour, consent, or value guard changes.
 
 Fresh schema-2 qualification at signed source
-`778482eb8dde97c8263db92e99c2c8343122fd78` passed in **10,696 ms**:
+`c195dbafe52d74009ee19c9cffc6ddf5b7faabb1` passed in **11,974 ms**:
 [outer receipt](review-suite-receipt.json), [matching inner receipt](review-consumer-receipt.json),
 [seven actual tamper controls](review-tamper-controls.json), [full gate](review-code-gate.json),
 and [rendered documentation checks](review-docs-check.json). All eleven harness hashes
 match the signed source, and the inner bytes match the outer stdout hash. The full
 installed snapshot covers **28,762 files and 1,157 links**; host and SDK archive
-checks remain separate. The gate passed **1,026 tests / seven existing conditional
+checks remain separate. The gate passed **1,027 tests / seven existing conditional
 skips / zero failures**, including all application typechecks. Jekyll rendered 22
 pages with 501 checked local links/anchors and no errors. These supersede the earlier
 schema-1 results for the reviewed implementation. Interrupted scratch outputs are
-retained; they are not passes. No native or provider claim follows from these checks.
+retained; they are not passes. The early-import interruption regression also kills a real child process group and
+proves that its start marker prevents another import. The smoke tools run directly
+through the pinned Node process, and macOS fixture tar metadata is disabled explicitly.
+No native or provider claim follows from these checks.
 
 ## Acceptance and evidence classes
 

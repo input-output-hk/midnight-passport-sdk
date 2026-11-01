@@ -3,40 +3,48 @@
     {
       "case": "host-code",
       "refusedBeforeImport": true,
-      "originalBytesRestored": true
+      "originalBytesRestored": true,
+      "privateLogSha256": "e1881254bd5e9f56913c28273bc7d4f1d0d355b3ddd83cc3a9a95af9aa42e8d5"
     },
     {
       "case": "sdk-code",
       "refusedBeforeImport": true,
-      "originalBytesRestored": true
+      "originalBytesRestored": true,
+      "privateLogSha256": "8dc54b0d6758ef014bea51c06355b9ad0c4efdf9b7364afca397eb59157a57e2"
     },
     {
       "case": "lock",
       "refusedBeforeImport": true,
-      "originalBytesRestored": true
+      "originalBytesRestored": true,
+      "privateLogSha256": "6afe32e81dee7d35cebb4c2b30ed5bfe2631d0c2ca59118b7d797b02de7707ba"
     },
     {
       "case": "configuration",
       "refusedBeforeImport": true,
-      "originalBytesRestored": true
+      "originalBytesRestored": true,
+      "privateLogSha256": "227e3662dbdba86b1ec818cbb2bc9ec9dd8be9b7c2d5938460569a8f60408d36"
     },
     {
       "case": "host-tarball",
       "refusedBeforeImport": true,
-      "originalBytesRestored": true
+      "originalBytesRestored": true,
+      "privateLogSha256": "f3f5c78af8bdb09a8f1ee3ba284d7fa5db3f2c6701f6936370e45902d387c452"
     },
     {
       "case": "runtime-bytes",
       "refusedBeforeImport": true,
-      "originalBytesRestored": true
+      "originalBytesRestored": true,
+      "privateLogSha256": "f5af8ac5f25b78b102de203761fd7a3956bdc5cc241ba84df8f63c86c363adb0"
     },
     {
       "case": "tooling-bytes",
       "refusedBeforeImport": true,
-      "originalBytesRestored": true
+      "originalBytesRestored": true,
+      "privateLogSha256": "8a5ff27a29e3e5ff098ecb4e075b68732d2713cf06a8b4f36cf5fc671cf45ba0"
     }
   ],
   "actualPublishedConsumer": true,
   "arbitraryCodeExecuted": false,
-  "privatePathsOmitted": true
+  "privatePathsOmitted": true,
+  "source": "c195dbafe52d74009ee19c9cffc6ddf5b7faabb1"
 }

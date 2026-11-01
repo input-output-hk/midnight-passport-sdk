@@ -15,10 +15,10 @@ hashes and every stated limit. Interrupted outputs refuse before imports. Decode
 legacy/modern JubJub grant parts normalise identically, while unsupported schemes
 and malformed records remain explicit refusals. No shipped package runtime change.
 
-Signed-source `778482e` schema-2 qualification passed in 10,696 ms; 28,762 installed
+Signed-source `c195dba` schema-2 qualification passed in 11,974 ms; 28,762 installed
 files / 1,157 links, 521 SDK files / 378 host files, thirteen synthetic public-host
 protocol cases, seven actual tamper controls, eleven matching harness hashes.
-Full gate: 1,026 pass / seven existing conditional skips / zero failures; all app
+Full gate: 1,027 pass / seven existing conditional skips / zero failures; all app
 types pass. Jekyll: 22 pages / 501 local links and anchors / zero errors. See
 [review follow-up evidence](docs/review/rc6-host-consumer/README.md#review-follow-up--20261101).
 Earlier source receipts below remain historical. Native public-host orchestration
