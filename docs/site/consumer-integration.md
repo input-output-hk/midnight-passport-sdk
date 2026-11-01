@@ -259,7 +259,9 @@ The intended checks are:
 - Create and activate an ACC through public `createLaceWallet` and its Passport
   module, with a pre-existing synthetic PRF credential and sealed private records.
 - Deposit **7 smallest NIGHT units**, then verify the holding against chain output
-  history. The development deposit wallet starts only after the fee wallet stops.
+  history. Ledger-v9 intent identifiers are 33 bytes (66 hex characters, including
+  the `00` discriminator); transaction hashes are 32 bytes. Resolve the identifier
+  to a successful canonical hash before accepting funding. The development deposit wallet starts only after the fee wallet stops.
 - Issue a bounded JubJub read grant, open its sealed capability with the SDK, and
   verify that rotation preserves the holding.
 - Refuse an unrelated reader, reopen the host-created ACC by address through RC6,

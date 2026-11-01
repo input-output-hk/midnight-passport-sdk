@@ -152,7 +152,7 @@ function result() {
     fullCompatibility: false,
     address: 'ab'.repeat(32),
     grantId: 'cd'.repeat(32),
-    depositTxId: 'ef'.repeat(32),
+    depositTxId: '00' + 'ef'.repeat(32),
     depositTxHash: '12'.repeat(32),
     confirmedContractActions: ['12'.repeat(32)],
     holding: { value: '7', color: '00'.repeat(32) },
@@ -161,6 +161,14 @@ function result() {
     draws: { owner: 1, grantee: 1, creations: 0 },
   };
 }
+test('native receipt distinguishes a 33-byte v9 intent identifier from a transaction hash', () => {
+  const good = result();
+  nativeResult(good);
+  assert.throws(() => nativeResult({ ...good, depositTxId: 'ef'.repeat(32) }));
+  assert.throws(() => nativeResult({ ...good, depositTxId: '01' + 'ef'.repeat(32) }));
+  assert.throws(() => nativeResult({ ...good, depositTxHash: good.depositTxId }));
+});
+
 test('native acceptance refuses a missing proof, provider/full-compatibility claim or skipped case', () => {
   nativeResult(result());
   /** @type {Array<(r:ReturnType<typeof result>)=>void>} */ const changes = [

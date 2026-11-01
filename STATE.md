@@ -39,6 +39,12 @@ sponsor startup. Its private capture saved the balanced deployment then refused
 before host submission: the capture imported the contract ledger decoder instead
 of the ledger runtime. Corrected to resolve the installed host ledger-v9 runtime;
 standalone decoding/cost inspection of retained bytes is read-only, never a replay.
+Attempt5 (`763ca3b`) created/activated the ACC, completed the sealed record and
+submitted the deposit; the harness then rejected its identifier. Ledger-v9 intent
+IDs are33bytes/66hex (00 discriminator plus32bytes), while transaction hashes are
+32bytes/64hex. The public helper's return is correct; the harness confused them.
+Corrected both acceptance guards and added a regression. Failed v5 remains failed;
+its deposit must not be repeated. No upstream return-shape bug is established.
 
 
 It keeps SDK transaction ports read-only and preserves provider/hosted-mutation

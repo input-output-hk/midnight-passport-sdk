@@ -229,7 +229,10 @@ export async function runNativeHost(io: NativeHostIO) {
     await feeWallet.stop();
     deposit = m.createDevDeposit({ seedHex: SEED, network: NETWORK, prover, proofServerUrl });
     const funded = await deposit.depositShielded({ address, amount: 7n });
-    requireTrue(/^[a-f0-9]{64}$/.test(funded.txId), 'The deposit returned no transaction id');
+    requireTrue(
+      /^00[a-f0-9]{64}$/.test(funded.txId),
+      'The deposit returned no ledger-v9 intent identifier',
+    );
     const depositResponse = await fetch(NETWORK.indexerUrl, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

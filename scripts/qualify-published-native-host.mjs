@@ -130,7 +130,7 @@ export function nativeResult(result) {
     assert.equal(result[key], false);
   assert.match(result.address, /^[a-f0-9]{64}$/);
   assert.match(result.grantId, /^[a-f0-9]{64}$/);
-  assert.match(result.depositTxId, /^[a-f0-9]{64}$/);
+  assert.match(result.depositTxId, /^00[a-f0-9]{64}$/);
   assert.match(result.depositTxHash, /^[a-f0-9]{64}$/);
   assert.ok(result.confirmedContractActions.includes(result.depositTxHash));
   assert.equal(
