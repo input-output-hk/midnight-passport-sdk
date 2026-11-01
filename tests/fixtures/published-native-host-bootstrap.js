@@ -327,6 +327,14 @@ if (source.profile === 'hosted-authorising') {
   };
   keys.clear();
   derived.keys[Roles.Zswap].fill(0);
+  const lookupKey = publicSource.createManifestKeyMaterialResolver({
+    artefactUrl: 'http://127.0.0.1:18798/v1/zk/acc-s3r1.1',
+    fetchBytes: async (url) => {
+      const response = await fetch(url, { signal: AbortSignal.timeout(60000) });
+      assert.ok(response.ok, 'Pinned proving material fetch failed');
+      return new Uint8Array(await response.arrayBuffer());
+    },
+  });
   extension = {
     remote: {
       authoriser: signerHarness.seams.authoriser,
@@ -345,15 +353,21 @@ if (source.profile === 'hosted-authorising') {
     sponsorKeys,
     proveTx: async (bytes, prover) => {
       const tx = ledger.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
-      const proven = await tx.prove(prover, ledger.CostModel.initialCostModel());
+      const proving = {
+        prove: (...args) => prover.prove(...args),
+        check: async (...args) => ledger.parseCheckResult(await prover.check(...args)),
+        lookupKey,
+      };
+      const proven = await tx.prove(proving, ledger.CostModel.initialCostModel());
       return { tx: proven.serialize(), provenance: 'remote' };
     },
     submit: async (bytes) => {
       const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
       const ids = tx.identifiers();
       assert.ok(ids.length > 0);
-      assert.match(ids[0], /^00[a-f0-9]{64}$/);
-      checkpoint('sdk-native-submit-start', { txId: ids[0], bytes: bytes.length });
+      const txId = ids.at(-1); // Same intent-selection convention as the public host provider.
+      assert.match(txId, /^00[a-f0-9]{64}$/);
+      checkpoint('sdk-native-submit-start', { txId, bytes: bytes.length });
       // No retry. Any interruption after this call is uncertain and retains the original ID.
       await new Promise((resolve, reject) => {
         let unsubscribe,
@@ -382,7 +396,7 @@ if (source.profile === 'hosted-authorising') {
           })
           .catch(reject);
       });
-      return ids[0];
+      return txId;
     },
   };
 }

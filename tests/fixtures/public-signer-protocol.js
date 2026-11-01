@@ -235,27 +235,44 @@ try {
   await check('outside-session access is refused', async () => {
     await refused(() => h.client.request('device-public-key', {}), 'key-session-required');
   });
-  await check('add-device scope refuses public-key disclosure and wrong account', async () => {
-    await sdk.withKeySession(
-      async () => {
-        await refused(() => sdk.devicePublicKey(), 'flow-scope');
-        await refused(
-          () =>
-            sdk.authorise({
-              account: 'ac'.repeat(32),
-              circuit: 'add_device_with_jubjub',
-              args: [new Uint8Array(32)],
-              witnessValues: [],
-              authNonce: 0n,
-              useCounter: 1n,
-            }),
-          'flow-scope',
-        );
-      },
-      { kind: 'add-device', account, commitmentHex: 'dc'.repeat(32) },
-    );
-    assert.equal(calls, 1);
-  });
+  await check(
+    'add-device scope refuses public-key disclosure, wrong account, commitment and circuit',
+    async () => {
+      await sdk.withKeySession(
+        async () => {
+          await refused(() => sdk.devicePublicKey(), 'flow-scope');
+          await refused(
+            () =>
+              sdk.authorise({
+                account: 'ac'.repeat(32),
+                circuit: 'add_device_with_jubjub',
+                args: [new Uint8Array(32)],
+                witnessValues: [],
+                authNonce: 0n,
+                useCounter: 1n,
+              }),
+            'flow-scope',
+          );
+          for (const circuit of ['add_device_with_jubjub', 'remove_device_with_jubjub']) {
+            await refused(
+              () =>
+                sdk.authorise({
+                  account,
+                  circuit,
+                  args: [new Uint8Array(32)],
+                  witnessValues: [],
+                  authNonce: 0n,
+                  useCounter: 1n,
+                }),
+              'flow-scope',
+            );
+          }
+        },
+        { kind: 'add-device', account, commitmentHex: 'dc'.repeat(32) },
+      );
+      assert.equal(calls, 1);
+    },
+  );
   await check('missing consent field and unknown flow are rejected before PRF', async () => {
     const before = draws;
     assert.throws(() => sdk.withKeySession(async () => {}, { kind: 'add-device', account }));
@@ -341,6 +358,13 @@ try {
     );
     assert.equal(calls, 1);
     assert.equal(h.stats().requests.at(-1).kind, 'flow-close');
+    assert.equal(
+      h.stats().requests.at(-1).payloadSha256,
+      (await import('node:crypto'))
+        .createHash('sha256')
+        .update(JSON.stringify({ outcome: 'failed', code: 'controlled-failure' }))
+        .digest('hex'),
+    );
   });
 } finally {
   await h.close();

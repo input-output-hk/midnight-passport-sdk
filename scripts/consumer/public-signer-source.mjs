@@ -174,6 +174,7 @@ export async function buildPublicSigner(options) {
       `export {createPassportSignerHandlers} from ${JSON.stringify(join(source.root, PUBLIC_SIGNER_SOURCE.module))};`,
       `export {serveSignerRequests} from ${JSON.stringify(join(source.root, PUBLIC_SIGNER_SOURCE.server))};`,
       `export {createAccountRecordStore,toAccountRecords} from ${JSON.stringify(join(source.root, 'packages/module/passport-account/src/store/account-record.ts'))};`,
+      `export {createManifestKeyMaterialResolver} from ${JSON.stringify(join(source.root, 'packages/module/passport-account/src/infra/http-prover.ts'))};`,
       `export {decodeSignerFlow} from ${JSON.stringify(join(source.root, 'packages/module/passport-account/src/remote/flow-descriptor.ts'))};`,
       `export {AccAddress,DeviceEpoch,UseCounter} from ${JSON.stringify(join(source.root, 'packages/contract/passport/src/value-objects/index.ts'))};`,
     ].join('\n') + '\n',
