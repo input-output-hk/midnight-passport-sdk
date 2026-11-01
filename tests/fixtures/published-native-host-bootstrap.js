@@ -9,10 +9,11 @@ import {
   mkdirSync,
   lstatSync,
   renameSync,
+  realpathSync,
 } from 'node:fs';
 import { createHash, randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 assert.equal(process.env.PASSPORT_NATIVE_CHILD, '1');
@@ -301,7 +302,19 @@ if (source.profile === 'hosted-authorising') {
     root,
     forbiddenSecrets: [material.owner.device, material.owner.root],
   });
-  const { HDWallet, Roles } = hostRequire('@midnightntwrk/wallet-sdk-hd');
+  const hdRoot = realpathSync(
+    join(
+      dirname(hostRequire.resolve('@laceio/sdk/experimental')),
+      '../../..',
+      '@midnightntwrk/wallet-sdk-hd',
+    ),
+  );
+  const hdManifest = JSON.parse(readFileSync(join(hdRoot, 'package.json'), 'utf8'));
+  assert.equal(hdManifest.name, '@midnightntwrk/wallet-sdk-hd');
+  assert.equal(hdManifest.exports['.'].import, './dist/index.js');
+  const { HDWallet, Roles } = await import(
+    pathToFileURL(join(hdRoot, hdManifest.exports['.'].import)).href
+  );
   const hd = HDWallet.fromSeed(Buffer.from('0'.repeat(63) + '1', 'hex'));
   assert.equal(hd.type, 'seedOk');
   const derived = hd.hdWallet.selectAccount(0).selectRoles([Roles.Zswap]).deriveKeysAt(0);
