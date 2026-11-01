@@ -262,7 +262,8 @@ The intended checks are:
   history. Ledger-v9 intent identifiers are 33 bytes (66 hex characters, including
   the `00` discriminator); transaction hashes are 32 bytes. Resolve the identifier
   to a successful canonical hash before accepting funding. The development deposit wallet starts only after the fee wallet stops.
-- Issue a bounded JubJub read grant, open its sealed capability with the SDK, and
+- Issue a bounded JubJub read grant with explicit `rpId: "localhost"` matching
+  the synthetic credential, open its sealed capability with the SDK, and
   verify that rotation preserves the holding.
 - Refuse an unrelated reader, reopen the host-created ACC by address through RC6,
   verify its holding and live grant, and recover the original reader's authenticated

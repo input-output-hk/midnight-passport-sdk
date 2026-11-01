@@ -290,6 +290,7 @@ export async function runNativeHost(io: NativeHostIO) {
       cap: '7',
       expiresAt: null,
       read: true,
+      rpId: 'localhost',
       readPublicKey,
     };
     await action(

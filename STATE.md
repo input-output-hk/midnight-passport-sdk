@@ -45,6 +45,10 @@ IDs are33bytes/66hex (00 discriminator plus32bytes), while transaction hashes ar
 32bytes/64hex. The public helper's return is correct; the harness confused them.
 Corrected both acceptance guards and added a regression. Failed v5 remains failed;
 its deposit must not be repeated. No upstream return-shape bug is established.
+Attempt6 (`aab9829`) confirmed seven-unit funding and host chain-verified holdings,
+then read-grant validation refused before mutation: its scope requires explicit
+RP id. The fixture now supplies localhost, matching the synthetic credential.
+This keeps the upstream guard; v6 remains a retained failed full suite.
 
 
 It keeps SDK transaction ports read-only and preserves provider/hosted-mutation
