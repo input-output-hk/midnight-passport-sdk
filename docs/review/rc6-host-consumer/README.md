@@ -30,10 +30,39 @@ no new SDK package/image publication or host modification.
 7. `tests/fixtures/lace-published-runtime.js`: actual public export imports,
    `createRemotePassportSeams` plus installed SDK hosted adapter, thirteen protocol
    cases with a synthetic request transport. Module construction checks endpoints;
-   it does not initialize a wallet, execute an account flow or reach a live network.
+   it does not initialise a wallet, execute an account flow or reach a live network.
 8. The opt-in `consumer-host-integrity` scenario, engineer/agent instructions and
-   final sanitized acceptance receipt. No registry install or WASM build joins the
+   final sanitised acceptance receipt. No registry install or WASM build joins the
    30–45 second required CI lane.
+
+## Review follow-up — 2026/11/01
+
+PR #256 received a fresh external review. The follow-up adds these checks before
+merging the completed consumer slice:
+
+- Schema 2 retains the preparation harness hashes, physical runtime paths, and
+  complete Compact/ledger package tree hashes, including WASM. Run refuses a
+  different harness or runtime snapshot; prepare a fresh consumer after an update.
+  The existing identity traversal already refused duplicate runtime copies. The
+  snapshot adds detection of a moved or modified single copy; it does not authenticate
+  runtime provenance independently of the installed lock and registry.
+- Inner receipts must match the archive-pinned entry/hash pairs, runtime names,
+  unique protocol-case count, and explicit compatibility limits. The older signed
+  source receipt below remains historical evidence under schema 1.
+- The example strips the supported host-only bookkeeping scheme on conversion,
+  refuses malformed decoded grant records explicitly, and retains the guard for
+  the actual host codec's `granteeScheme` field. It does not invent an alternative
+  nested scheme encoding or parse arbitrary untrusted JSON.
+- Negative tests locate the CLI relative to the test file, not the caller's working
+  directory. Receipt roster validation uses the central package list. One emitting
+  TypeScript pass checks both the consumer declarations and the runnable example.
+- New tests cover runtime byte/path/file-set drift, symlinks, prepare/run harness
+  mismatch, forged entry/hash/runtime evidence, duplicate protocol cases, and
+  malformed grant records. Documentation spelling and evidence-count spacing are
+  corrected. No runtime package behaviour, consent, or value guard changes.
+
+Fresh schema-2 qualification results are recorded separately from the original
+schema-1 evidence. Interrupted scratch outputs are retained; they are not passes.
 
 ## Acceptance and evidence classes
 

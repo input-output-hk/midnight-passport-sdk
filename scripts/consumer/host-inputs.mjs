@@ -2,7 +2,12 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { consumerSha256, checkConsumerTarballs } from '../consumer-inputs.mjs';
+import {
+  consumerSha256,
+  checkConsumerTarballs,
+  isExactConsumerVersion,
+} from '../consumer-inputs.mjs';
+import { releasePackageDirectories } from '../release-package-list.mjs';
 import {
   auditInstalledBundle,
   auditInstalledPackage,
@@ -12,7 +17,7 @@ import {
 /** @typedef {{name:string, version:string, sha256:string, integrity:string}} HostPin */
 /** @param {Uint8Array} bytes @param {HostPin} pin */
 export function checkHostArchive(bytes, pin) {
-  if (pin.name !== '@laceio/sdk' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(pin.version))
+  if (pin.name !== '@laceio/sdk' || !isExactConsumerVersion(pin.version))
     throw Error('host requires its exact package identity');
   if (!/^[a-f0-9]{64}$/.test(pin.sha256) || consumerSha256(bytes) !== pin.sha256)
     throw Error('host archive SHA-256 differs');
@@ -59,7 +64,7 @@ export function checkPublicationBundle(bundle, version, receiptBytes, receiptSha
   if (
     receipt.version !== version ||
     !Array.isArray(receipt.packages) ||
-    receipt.packages.length !== 9
+    receipt.packages.length !== releasePackageDirectories.length
   )
     throw Error('publication receipt package set differs');
   const names = new Set();

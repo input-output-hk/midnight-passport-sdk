@@ -31,7 +31,8 @@ export type HostGrantBookkeeping = GrantBookkeeping & { readonly granteeScheme?:
 export function toJubjubGrantBookkeeping(grant: HostGrantBookkeeping): GrantBookkeeping {
   if (grant.granteeScheme !== undefined && grant.granteeScheme !== 'jubjub-schnorr')
     throw new Error('this SDK grant bookkeeping requires a JubJub grantee');
-  return { ...grant };
+  const { granteeScheme: _scheme, ...bookkeeping } = grant;
+  return bookkeeping;
 }
 
 /** Wrap the decoded inbox used by SDK grant recovery. Structural compatibility of
@@ -44,6 +45,8 @@ export function jubjubGrantInbox(
     openInbox: async (...args) => {
       const entries = await source.openInbox(...args);
       for (const entry of entries) {
+        if (entry?.kind === 'grant' && (!entry.record || typeof entry.record !== 'object'))
+          throw new Error('malformed host grant record');
         if (
           entry?.kind === 'grant' &&
           entry.record.part === 'grant' &&

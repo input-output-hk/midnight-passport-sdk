@@ -18,13 +18,13 @@ workspace dependency, binding, value guard or host implementation changes.
 Current host declarations require the explicit hosted-authoriser consent adapter;
 wider grant scopes, bookkeeping and decoded inbox records must refuse unsupported
 grantee schemes. The new checked examples and tests enforce that boundary instead
-of coercing secp256k1 into JubJub. Fresh preparation compares521SDK/378host files;
+of coercing secp256k1 into JubJub. Fresh preparation compares 521 SDK / 378 host files;
 actual tamper refusals cover host/SDK code, lock, config and archive. Current-source
 declaration/generated ACC evidence remains separate and private. See
 [review map](docs/review/rc6-host-consumer/README.md) for scope and final receipts.
-Clean signed-source `47e1d69` qualification passed in8,274ms, all13cases; its
+Clean signed-source `47e1d69` qualification passed in 8,274 ms, all 13 cases; its
 inner receipt hash and ten harness hashes match the outer/signed source. Full
-gate1,017pass/7existing skips/0fail; Jekyll22pages/501links. Evidence is local in
+gate: 1,017 pass / 7 existing skips / 0 failures; Jekyll: 22 pages / 501 links. Evidence is local in
 the review map; private source details remain in Obsidian. No push/publication.
 The existing RC6 publication and historical native/provider limits remain unchanged.
 

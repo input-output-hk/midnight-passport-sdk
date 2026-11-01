@@ -12,7 +12,9 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { hostConsumerHarness } from '../scripts/consumer/host-retained.mjs';
 import { tmpdir } from 'node:os';
 import {
   checkHostArchive,
@@ -223,7 +225,8 @@ test('retained run detects modified host code before spawning any host entry', (
     writeFileSync(join(f.root, 'package.json'), '{}');
     writeFileSync(join(f.root, 'pnpm-lock.yaml'), 'test lock');
     const config = {
-      schemaVersion: 1,
+      schemaVersion: 2,
+      prepareHarness: hostConsumerHarness(fileURLToPath(new URL('..', import.meta.url))),
       version: f.version,
       pin: f.pin,
       receiptSha256: f.receiptSha256,
@@ -251,7 +254,7 @@ test('retained run detects modified host code before spawning any host entry', (
     delete env.NODE_PATH;
     const result = spawnSync(
       process.execPath,
-      [resolve('scripts/qualify-host-consumer.mjs'), 'run'],
+      [fileURLToPath(new URL('../scripts/qualify-host-consumer.mjs', import.meta.url)), 'run'],
       { env, encoding: 'utf8', timeout: 15000 },
     );
     assert.notEqual(result.status, 0);
@@ -264,7 +267,7 @@ test('retained run detects modified host code before spawning any host entry', (
     );
     const changed = spawnSync(
       process.execPath,
-      [resolve('scripts/qualify-host-consumer.mjs'), 'run'],
+      [fileURLToPath(new URL('../scripts/qualify-host-consumer.mjs', import.meta.url)), 'run'],
       { env, encoding: 'utf8', timeout: 15000 },
     );
     assert.match(changed.stderr, /external configuration SHA/);

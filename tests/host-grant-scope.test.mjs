@@ -69,7 +69,7 @@ test('legacy and explicitly JubJub grant bookkeeping preserve commitments and sc
   };
   assert.deepEqual(example.toJubjubGrantBookkeeping(legacy), legacy);
   const modern = { ...legacy, granteeScheme: 'jubjub-schnorr' };
-  assert.deepEqual(example.toJubjubGrantBookkeeping(modern), modern);
+  assert.deepEqual(example.toJubjubGrantBookkeeping(modern), legacy);
 });
 
 test('grant inbox adapter refuses unsupported host-decoded grant records before SDK recovery', async () => {
@@ -113,4 +113,12 @@ test('grant inbox adapter preserves coin/device/object entries and legacy or Jub
   ];
   const reader = example.jubjubGrantInbox({ openInbox: async () => entries });
   assert.equal(await reader.openInbox('undeployed', {}, []), entries);
+});
+
+// A malformed decoded record is refused rather than interpreted as a legacy scheme.
+test('grant inbox refuses a missing decoded record', async () => {
+  for (const record of [null, undefined, 'invalid']) {
+    const reader = example.jubjubGrantInbox({ openInbox: async () => [{ kind: 'grant', record }] });
+    await assert.rejects(() => reader.openInbox('undeployed', {}, []), /malformed host grant/);
+  }
 });

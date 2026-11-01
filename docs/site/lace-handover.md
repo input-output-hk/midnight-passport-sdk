@@ -21,7 +21,7 @@ Current local follow-up qualification against `@laceio/sdk@0.1.2-canary.2` is
 [documented separately]({{ '/consumer-integration/' | relative_url }}#current-published-host-and-rc6--20261030).
 It requires the explicit consent and JubJub-grantee adapters; raw authoriser and
 wider host grant scopes are not drop-in assignments. This does not change the
-RC6 artifacts or qualify full Lace/provider behavior.
+RC6 artifacts or qualify full Lace/provider behaviour.
 
 ## Integration guide
 

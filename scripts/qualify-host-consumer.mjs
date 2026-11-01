@@ -10,13 +10,18 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { basename, dirname, join, resolve, sep } from 'node:path';
-import { consumerSha256 } from './consumer-inputs.mjs';
+import { consumerSha256, isExactConsumerVersion } from './consumer-inputs.mjs';
 import {
   auditHostConsumer,
   checkHostArchive,
   checkPublicationBundle,
 } from './consumer/host-inputs.mjs';
-import { checkMidnightRuntimeIdentity } from './check-midnight-runtime-identity.mjs';
+import {
+  hostConsumerHarness,
+  retainedRuntimeIdentity,
+  verifyRetainedHostConsumer,
+  verifyHostEntryReceipt,
+} from './consumer/host-retained.mjs';
 
 const repository = resolve(import.meta.dirname, '..');
 const mode = process.argv[2];
@@ -31,8 +36,7 @@ if (root === repository || root.startsWith(repository + sep) || repository.start
 const bundle = join(root, 'bundle'),
   configFile = join(root, 'host-consumer-inputs.json');
 const hash = (/** @type {string} */ file) => consumerSha256(readFileSync(file));
-const exact = (/** @type {unknown} */ value) =>
-  typeof value === 'string' && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value);
+const exact = isExactConsumerVersion;
 const env = { ...process.env };
 for (const name of ['NODE_OPTIONS', 'NODE_PATH', 'NODE_TEST_CONTEXT']) delete env[name];
 /** @param {string} executable @param {string[]} args @param {string} log */
@@ -145,11 +149,13 @@ if (mode === 'prepare') {
     readFileSync(join(bundle, 'publication-receipt.json')),
     receiptSha256,
   );
-  const runtimeIdentity = Object.keys(
-    checkMidnightRuntimeIdentity(root, [pin.name, ...inputs.files.map((f) => f.name)]),
-  ).sort();
+  const runtimeIdentity = retainedRuntimeIdentity(root, [
+    pin.name,
+    ...inputs.files.map((f) => f.name),
+  ]);
   const config = {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    prepareHarness: hostConsumerHarness(repository),
     version,
     pin,
     receiptSha256,
@@ -178,52 +184,8 @@ if (mode === 'prepare') {
   if (!/^[a-f0-9]{64}$/.test(expected ?? '') || hash(configFile) !== expected)
     throw Error('retained host consumer requires its external configuration SHA-256');
   const config = JSON.parse(readFileSync(configFile, 'utf8'));
-  const verify = () => {
-    if (
-      hash(configFile) !== expected ||
-      config.schemaVersion !== 1 ||
-      config.nodeVersion !== process.version ||
-      !exact(config.version)
-    )
-      throw Error('host consumer inputs or Node changed');
-    if (
-      hash(join(root, 'package.json')) !== config.packageJsonSha256 ||
-      hash(join(root, 'pnpm-lock.yaml')) !== config.lockSha256
-    )
-      throw Error('host consumer manifest or lock changed');
-    const inputs = checkPublicationBundle(
-      bundle,
-      config.version,
-      readFileSync(join(bundle, 'publication-receipt.json')),
-      config.receiptSha256,
-    );
-    if (
-      inputs.manifestSha256 !== config.manifestSha256 ||
-      JSON.stringify(auditHostConsumer(root, bundle, config.version, config.pin)) !==
-        JSON.stringify(config.installed)
-    )
-      throw Error('host consumer installed bytes or archive changed');
-    const ids = Object.keys(
-      checkMidnightRuntimeIdentity(root, [config.pin.name, ...inputs.files.map((f) => f.name)]),
-    ).sort();
-    if (JSON.stringify(ids) !== JSON.stringify(config.runtimeIdentity))
-      throw Error('host consumer runtime changed');
-  };
-  const harnessFiles = [
-    'scripts/qualify-host-consumer.mjs',
-    'scripts/consumer/host-inputs.mjs',
-    'scripts/consumer/installed-inputs.mjs',
-    'scripts/consumer-inputs.mjs',
-    'scripts/release-package-list.mjs',
-    'scripts/smoke-lace-published-consumer.mjs',
-    'scripts/check-midnight-runtime-identity.mjs',
-    'tests/fixtures/lace-published-consumer.ts',
-    'tests/fixtures/lace-published-runtime.js',
-    'docs/examples/jubjub-grant-scope.ts',
-  ];
-  const harness = () =>
-    Object.fromEntries(harnessFiles.map((file) => [file, hash(join(repository, file))]));
-  const source = harness();
+  const verify = () => verifyRetainedHostConsumer(root, expected ?? '', repository);
+  const source = hostConsumerHarness(repository);
   verify();
   const receipt = join(root, 'public-entry-receipt.json');
   if (existsSync(receipt) || existsSync(join(root, 'host-consumer-receipt.json')))
@@ -240,22 +202,12 @@ if (mode === 'prepare') {
     'public-entry.private.log',
   );
   verify();
-  if (JSON.stringify(harness()) !== JSON.stringify(source))
+  if (JSON.stringify(hostConsumerHarness(repository)) !== JSON.stringify(source))
     throw Error('qualification harness changed during the run');
   const entry = JSON.parse(readFileSync(receipt, 'utf8'));
-  if (
-    entry.kind !== 'installed-published-host' ||
-    entry.sdkVersion !== config.version ||
-    entry.host.version !== config.pin.version ||
-    entry.lockSha256 !== config.lockSha256 ||
-    entry.entryChecks.length !== 2 ||
-    entry.entryChecks.some(
-      (/** @type {{esm:string,cjs:string}} */ e) => e.esm !== 'passed' || e.cjs !== 'passed',
-    )
-  )
-    throw Error('host entry receipt differs from retained inputs');
+  verifyHostEntryReceipt(entry, config);
   const result = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'verified-published-host-consumer',
     harness: source,
     sdkVersion: config.version,
@@ -264,6 +216,12 @@ if (mode === 'prepare') {
     lockSha256: config.lockSha256,
     publicationReceiptSha256: config.receiptSha256,
     installed: config.installed,
+    runtimeSnapshot: Object.fromEntries(
+      Object.entries(config.runtimeIdentity).map(([name, value]) => [
+        name,
+        { ...value, path: undefined, pathSha256: consumerSha256(value.path) },
+      ]),
+    ),
     entry,
     fullCompatibility: false,
     realProvider: false,

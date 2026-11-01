@@ -77,7 +77,8 @@ execFileSync(
   [
     'exec',
     'tsc',
-    '--noEmit',
+    '--outDir',
+    join(root, 'host-example'),
     '--strict',
     '--skipLibCheck',
     '--target',
@@ -98,25 +99,6 @@ if (existsSync(runtimeFixture) || existsSync(protocolReceipt))
 copyFileSync(
   join(import.meta.dirname, '../tests/fixtures/lace-published-runtime.js'),
   runtimeFixture,
-);
-execFileSync(
-  'pnpm',
-  [
-    'exec',
-    'tsc',
-    '--strict',
-    '--skipLibCheck',
-    '--target',
-    'ES2022',
-    '--module',
-    'ESNext',
-    '--moduleResolution',
-    'Bundler',
-    '--outDir',
-    join(root, 'host-example'),
-    scopeFixture,
-  ],
-  { cwd: root, stdio: 'inherit' },
 );
 execFileSync(process.execPath, [runtimeFixture], { cwd: root, stdio: 'inherit', timeout: 60000 });
 const protocol = JSON.parse(readFileSync(protocolReceipt, 'utf8'));

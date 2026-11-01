@@ -163,6 +163,17 @@ peer warning when the Passport runtime family is selected. Entry load/build succ
 does not qualify the ordinary-wallet operation family. Do not force a different
 ledger/runtime into the ACC pipeline to suppress that warning.
 
+### Retained consumer schema
+
+The verified prepare/run CLI uses schema 2. It pins the preparation harness and
+rechecks that same harness at run time, together with the physical paths and
+complete file hashes of the selected Compact/ledger runtime packages. A moved or
+modified runtime, changed harness, or legacy schema requires a fresh scratch
+consumer. Existing schema-1 receipts remain historical records. Runtime snapshots
+detect drift; release signatures, the frozen lock, and registry integrity establish
+their separate provenance boundaries. Inner entry hashes are checked against the
+pinned host archive before the outer receipt is accepted.
+
 ## Reproduce installation and entry checks
 
 Start with a fresh private scratch application and exact versions. Authenticate

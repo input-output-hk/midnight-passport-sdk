@@ -8,6 +8,10 @@ import { assertReleasePackageSet } from './release-package-list.mjs';
 /** @param {Uint8Array | string} value */
 export const consumerSha256 = (value) => createHash('sha256').update(value).digest('hex');
 
+/** @param {unknown} value */
+export const isExactConsumerVersion = (value) =>
+  typeof value === 'string' && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value);
+
 /** Read a complete reviewed Git object, refusing tracked edits and untracked source overlays.
  * A caller supplies the revision out of band; private consumer pins need not enter public Git.
  * @param {string} checkout @param {string} revision @param {string[]} paths
@@ -47,8 +51,7 @@ export function checkConsumerSource(checkout, revision, paths) {
  * @param {string} directory @param {string} version
  */
 export function checkConsumerTarballs(directory, version) {
-  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version))
-    throw new Error('consumer requires an exact SDK version');
+  if (!isExactConsumerVersion(version)) throw new Error('consumer requires an exact SDK version');
   const root = realpathSync(directory);
   const bytes = readFileSync(join(root, 'manifest.json'));
   const manifest = JSON.parse(bytes.toString('utf8'));
