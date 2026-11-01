@@ -85,6 +85,22 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Prepared exact registry SDK/host packages: external receipt/config pins, every installed SDK/host file, frozen lock/runtime identity, public entry types/ESM/CJS/WASM and synthetic public-host transport. Not signer handlers/page, native proofs or full compatibility.',
   },
+  'consumer-published-native-host': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualify-published-native-host.mjs'],
+    requires: [
+      'CONSUMER_ROOT',
+      'CONSUMER_CONFIG_SHA256',
+      'PASSPORT_HOST_NATIVE',
+      'PASSPORT_HOST_NATIVE_ROOT',
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_KEY_DIR',
+    ],
+    timeoutMs: 75 * 60000,
+    establishes:
+      'Exact published RC6/public-host pairing, synthetic existing PRF credentials, actual public-module deployment/NIGHT deposit/read-grant issue/revoke, SDK known-address reopen/holdings/bookkeeping reads, canonical node finality and owned cleanup. SDK transaction ports remain read-only; no hosted signer page/provider, image or full compatibility claim.',
+  },
   'consumer-published-host': {
     tier: 'published-consumer',
     command: [node, 'scripts/smoke-lace-published-consumer.mjs'],
@@ -349,6 +365,7 @@ export const SUITES = Object.freeze({
   'consumer-source': ['consumer-source-types'],
   'consumer-published': ['consumer-published-host'],
   'consumer-host-integrity': ['consumer-verified-host'],
+  'consumer-host-native': ['consumer-published-native-host'],
   release: [
     'binding-source',
     'contract-entries',

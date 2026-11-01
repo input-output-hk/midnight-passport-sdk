@@ -438,3 +438,19 @@ Current wider host grant types require an explicit JubJub check; never cast or
 relabel a secp256k1 grantee. Consent needs `hostedJubjubAuthoriser` plus validated
 host constructors. Preserve unsupported rotation/withdrawal refusals. Source,
 actual published package, native and real-provider tiers remain distinct.
+
+
+### Public host/native qualification (local, opt-in)
+
+Use `pnpm qualify plan consumer-host-native` and the
+[consumer integration guide](docs/site/consumer-integration.md#public-package-native-orchestration-lane).
+This lane uses the authenticated RC6/current-public-host consumer; it imports no
+private Lace implementation. It requires signed clean source, existing verified
+prover keys, fresh private output below the consumer root, and the stopped retained
+qualification stack. It starts/stops only owned IDs, preserves all volumes and
+failed/unknown fixtures, and forbids user sponsor-seed overrides. Never run a second
+genesis wallet alongside it or delete a stale lease without inspecting its owner.
+The actual host proves its operations; the SDK ports in this lane are read-only.
+Type/guard tests are not a live pass. Keep real-provider/page, native SDK hosted
+mutations, production image and full-compatibility qualification separate. Publish
+only public receipts/hashes; synthetic secrets and sealed record history stay private.

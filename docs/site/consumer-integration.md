@@ -226,6 +226,72 @@ The source check refuses tracked edits, untracked/ignored source overlays, a cha
 ACC module and tarball hashes. A signed release manifest establishes publisher provenance;
 a local pack manifest establishes only the relationship to its supplied files.
 
+## Public-package native orchestration lane
+
+The opt-in `consumer-host-native` lane exercises the actual public host module and
+its store actions on the retained dedicated localnet. Its source is being prepared
+locally; a typecheck or fast guard test alone is **not** a native qualification pass.
+Record the signed-source receipt before accepting the results.
+
+The target stays fixed at nine SDK packages `0.1.0-rc6`, public
+`@laceio/sdk@0.1.2-canary.2`, and `acc-s3r1.1`. Start with the verified schema-2
+consumer above and its independently recorded configuration hash. The runner checks
+all installed SDK/host bytes, dependency links, runtime trees, and compiler inputs
+before and after execution. It strictly compiles the flow against those installed
+public declarations; there are no private host source aliases or production patches.
+
+The intended checks are:
+
+- Compare the host and SDK signing/reader derivations before any account operation.
+- Create and activate an ACC through public `createLaceWallet` and its Passport
+  module, with a pre-existing synthetic PRF credential and sealed private records.
+- Deposit **7 smallest NIGHT units**, then verify the holding against chain output
+  history. The development deposit wallet starts only after the fee wallet stops.
+- Issue a bounded JubJub read grant, open its sealed capability with the SDK, and
+  verify that rotation preserves the holding.
+- Refuse an unrelated reader, reopen the host-created ACC by address through RC6,
+  verify its holding and live grant, and recover the original reader's authenticated
+  published bookkeeping through the checked inbox adapter.
+- Reconnect the host, revoke the read grant, and verify the SDK sees the inactive
+  tombstone, preserves the holding, and refuses the historical seal for the fresh key.
+- Independently verify successful contract actions against canonical finalized node
+  blocks. Stop only the three owned containers this invocation started.
+
+The SDK account transaction ports deliberately refuse proving, sponsorship,
+submission, and deployment in this lane. Its native transactions belong to the public
+host module; the SDK crossover covers reads, key derivation, capability decoding,
+and bookkeeping. This does not qualify native SDK mutation through a hosted signer,
+real browser/provider ceremonies, ordinary-wallet entry mixing, Docker service
+images, compromised-device retirement, or partial shielded spends. Existing consent
+and exact-value guards remain unchanged.
+
+Prerequisites: Docker with at least 24 GiB memory, 15 GiB free disk, the stopped
+retained `mn-passport-qual-20261023` project on ports 19954/18098/16310, an existing
+verified flat prover-key cache for `jubjub-owner-v1`, and free loopback port 18798.
+The node and canonical indexer volumes are preserved. The key server verifies the
+ten existing prover keys and serves all 52 bundled verifier keys; it never regenerates
+missing keys. The public standalone genesis wallet is used only on that dedicated
+`undeployed` chain. An active stack or an existing native output directory is refused.
+
+```sh
+CONSUMER_ROOT=/absolute/private/verified-consumer \
+CONSUMER_CONFIG_SHA256=<independently-recorded-config-SHA256> \
+PASSPORT_HOST_NATIVE=1 PASSPORT_RC_LOCALNET=1 MN_NETWORK_ID=undeployed \
+PASSPORT_HOST_NATIVE_ROOT=/absolute/private/verified-consumer/native-signed-run-1 \
+PASSPORT_KEY_DIR=/absolute/path/to/verified/prover-keys \
+nix develop -c pnpm qualify run consumer-host-native \
+  --output /absolute/private/new-native-suite-receipt.json
+```
+
+Commit and GPG/DCO-sign the harness first: dirty source is refused. Failed and
+interrupted roots, encrypted deployment records, synthetic key material, and
+uncertain transactions are retained privately. They are never copied into the
+knowledge base or public evidence. A process lease prevents concurrent runs; if it
+survives a crash, inspect its PID and recorded source before operator cleanup.
+Never clear a lease or replace a request/fixture merely to force another attempt.
+Only sanitised receipts and public transaction/block hashes belong in the handover.
+This slow lane stays outside required fast CI.
+
 ## Reproduce protocol diagnostics
 
 Use a disposable authorised source checkout with its dependencies installed in the

@@ -6,6 +6,21 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/11/01. Historical entries below retain their original issue namespaces.
 
+## Active local native public-host slice — 2026/11/01
+
+PR #256 is merged at signed `d463b49` after exact-head CI and external/self-review;
+published consumer docs are verified at the matching Pages deployment. The next
+#81/#231 slice runs the actual public Passport module/store orchestration with
+RC6 registry packages, synthetic PRF identities, retained localnet proofs and key
+HTTP, populated holdings, read-grant issue/revoke, and SDK reopening/bookkeeping.
+It keeps SDK transaction ports read-only and preserves provider/hosted-mutation
+qualification as separate gates. No new package or image release.
+
+The runner and five offline resource/integrity/finality guards are being delivered
+locally on the current branch. A native pass is not yet recorded. Commit/sign source,
+run the opt-in `consumer-host-native` lane, then record actual outcomes and owned
+cleanup. Preserve every failed root and encrypted pending record; no automatic replay.
+
 ## Current host review follow-up — 2026/11/01
 
 PR #256 publishes the completed #81/#231 consumer slice. External review follow-ups
