@@ -237,7 +237,11 @@ The target stays fixed at nine SDK packages `0.1.0-rc6`, public
 `@laceio/sdk@0.1.2-canary.2`, and `acc-s3r1.1`. Start with the verified schema-2
 consumer above and its independently recorded configuration hash. The runner checks
 all installed SDK/host bytes, dependency links, runtime trees, and compiler inputs
-before and after execution. It strictly compiles the flow against those installed
+before and after execution. The development composition includes the public
+`m.storageInMemory` and `m.featureDev` providers alongside the Passport module;
+the upstream base store needs the feature provider even when no optional blockchain
+feature is enabled. Production hosts should supply their upstream feature provider.
+It strictly compiles the flow against those installed
 public declarations; there are no private host source aliases or production patches.
 
 The intended checks are:

@@ -13,6 +13,13 @@ published consumer docs are verified at the matching Pages deployment. The next
 #81/#231 slice runs the actual public Passport module/store orchestration with
 RC6 registry packages, synthetic PRF identities, retained localnet proofs and key
 HTTP, populated holdings, read-grant issue/revoke, and SDK reopening/bookkeeping.
+The first signed attempt (`b84a1ce`) stopped before ACC deployment during
+asynchronous host-store initialisation: the public feature provider was missing.
+Its key/derivation preflight passed, the failed fixture is retained, and all three
+owned containers stopped with source unchanged. The corrected development
+composition includes `m.featureDev`; an isolated asynchronous startup probe passes.
+No native pass is claimed from that failed run.
+
 It keeps SDK transaction ports read-only and preserves provider/hosted-mutation
 qualification as separate gates. No new package or image release.
 

@@ -122,7 +122,7 @@ export async function runNativeHost(io: NativeHostIO) {
     accountRecordStore: io.records,
   });
   const wallet = await createLaceWallet({
-    modules: [m.storageInMemory, passport] as const,
+    modules: [m.storageInMemory, m.featureDev, passport] as const,
     environment: 'test',
     config: {},
   });
