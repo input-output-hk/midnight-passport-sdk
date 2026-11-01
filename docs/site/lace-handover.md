@@ -17,6 +17,12 @@ for current installation and image pins. All SDK packages are `0.1.0-rc6`, priva
 on GitHub Packages. Install only the entrypoints your application imports and
 request package read access for each consuming user/repository.
 
+Current local follow-up qualification against `@laceio/sdk@0.1.2-canary.2` is
+[documented separately]({{ '/consumer-integration/' | relative_url }}#current-published-host-and-rc6--20261030).
+It requires the explicit consent and JubJub-grantee adapters; raw authoriser and
+wider host grant scopes are not drop-in assignments. This does not change the
+RC6 artifacts or qualify full Lace/provider behaviour.
+
 ## Integration guide
 
 This preview lets Lace engineers evaluate the pinned Passport ACC binding, portable account

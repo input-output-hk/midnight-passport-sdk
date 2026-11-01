@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "date": "2026/10/30",
+  "scope": "local current published host subset for #81/#231",
+  "harnessSource": "47e1d6976872d15c26db5114a4f35fbfbe6ca1f1",
+  "sdkVersion": "0.1.0-rc6",
+  "hostVersion": "0.1.2-canary.2",
+  "hostSha256": "97a8ddeef426e0245093e8be615ec523db9c8a5693a94d7e34fb61f9f29e4cb5",
+  "publicationReceiptSha256": "6d58c1f85ee6901764f9013ec91b727a9a91485a86061e8f531e10e464e47af1",
+  "sdkFiles": 521,
+  "hostFiles": 378,
+  "syntheticPublicHostProtocolCases": 13,
+  "esmAndCjsEntries": [
+    "experimental",
+    "midnight"
+  ],
+  "publicTypes": "passed with explicit adapters",
+  "wasmBrowserBuild": "passed",
+  "physicalRuntimeIdentity": "passed",
+  "offlineFrozenReplay": "passed",
+  "lockSha256": "ac813c2c8bb14947e26b49a1cc2c54aa60237b99fd9b34e8c335e7b54b668432",
+  "configSha256": "bb3afda392c63c10b0edba042739b0a189722f13b7d9860ec7354145e36a9c27",
+  "actualTamperRefusals": 5,
+  "authorisedSourceTypes": {
+    "passed": true,
+    "matchedMidnightRuntimeVersions": 7,
+    "generatedAccBytesMatch": true,
+    "privateReceiptSha256": "3854343bc44f5e800baabe7caa41118754e2a2345299788d247ccffb3aec7ebf",
+    "sourcePinPublished": false
+  },
+  "initialUnadaptedDeclarationRuns": "failed; original diagnostics retained privately; consent/grantee mapping corrected in fixtures/examples",
+  "peerWarnings": [
+    "optional host abstractions range ^2.1.0 versus selected 3.0.0-rc.0",
+    "Polkadot transitive peer util14.0.3 versus selected14.0.1; no ordinary-wallet acceptance"
+  ],
+  "hostSignerHandlers": false,
+  "signerPage": false,
+  "nativeProof": false,
+  "realProvider": false,
+  "fullCompatibility": false,
+  "newPublication": false,
+  "remainingGates": [
+    "actual hosted native account operation with this registry/source composition",
+    "real signer page/provider/two-browser #232",
+    "ordinary wallet and value-host #202",
+    "complete typed circuits/new grantee schemes #82",
+    "partial shielded spend/change #201 remains refused"
+  ]
+}

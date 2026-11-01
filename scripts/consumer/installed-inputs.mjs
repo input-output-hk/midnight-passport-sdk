@@ -87,48 +87,58 @@ export function packageArchive(compressed) {
   return files;
 }
 
+/** Audit one pinned npm package without executing it. The host and SDK must use the same
+ * byte check; version equality alone cannot establish installed provenance.
+ * @param {string} root @param {Uint8Array} compressed
+ * @param {{name:string,version:string,sha256:string}} pin
+ */
+export function auditInstalledPackage(root, compressed, pin) {
+  const modules = join(realpathSync(root), 'node_modules');
+  const { name, version, sha256 } = pin;
+  if (!/^(@[a-z0-9-]+\/)?[a-z0-9-]+$/.test(name)) throw Error('invalid package name');
+  if (consumerSha256(compressed) !== sha256) throw Error('package archive hash differs');
+  const folder = realpathSync(join(modules, name));
+  if (!folder.startsWith(modules + sep)) throw Error('installed package escapes consumer');
+  const expected = packageArchive(compressed);
+  const pkg = JSON.parse(/** @type {Buffer} */ (expected.get('package.json')).toString());
+  if (pkg.name !== name || pkg.version !== version) throw Error('tarball package identity differs');
+  /** @type {string[]} */ const actual = [];
+  const walk = (/** @type {string} */ directory) => {
+    for (const entry of readdirSync(directory)) {
+      if (directory === folder && entry === 'node_modules') continue;
+      const path = join(directory, entry),
+        stat = lstatSync(path);
+      if (stat.isSymbolicLink()) throw Error('installed package contains a symlink');
+      if (stat.isDirectory()) walk(path);
+      else if (stat.isFile()) actual.push(relative(folder, path).split(sep).join('/'));
+      else throw Error('installed package contains a special file');
+    }
+  };
+  walk(folder);
+  actual.sort();
+  if (JSON.stringify(actual) !== JSON.stringify([...expected.keys()].sort()))
+    throw Error('installed package file set differs from tarball');
+  const hash = createHash('sha256');
+  for (const path of actual) {
+    const bytes = readFileSync(join(folder, path));
+    if (!bytes.equals(/** @type {Buffer} */ (expected.get(path))))
+      throw Error('installed package bytes differ from tarball');
+    hash.update(JSON.stringify([path, consumerSha256(bytes)]) + '\n');
+  }
+  return {
+    name,
+    version,
+    tarballSha256: sha256,
+    files: actual.length,
+    filesSha256: hash.digest('hex'),
+  };
+}
+
 /** @param {string} root @param {string} bundle @param {string} version */
 export function auditInstalledBundle(root, bundle, version) {
-  const consumer = realpathSync(root),
-    modules = join(consumer, 'node_modules');
   const manifest = checkConsumerTarballs(bundle, version);
-  const packages = manifest.files.map(({ name, file, sha256 }) => {
-    const folder = realpathSync(join(modules, name));
-    if (!folder.startsWith(modules + sep)) throw Error('installed SDK escapes consumer');
-    const expected = packageArchive(readFileSync(join(bundle, file)));
-    const pkg = JSON.parse(/** @type {Buffer} */ (expected.get('package.json')).toString());
-    if (pkg.name !== name || pkg.version !== version)
-      throw Error('tarball package identity differs');
-    /** @type {string[]} */ const actual = [];
-    const walk = (/** @type {string} */ directory) => {
-      for (const entry of readdirSync(directory)) {
-        if (directory === folder && entry === 'node_modules') continue;
-        const path = join(directory, entry),
-          stat = lstatSync(path);
-        if (stat.isSymbolicLink()) throw Error('installed SDK contains a symlink');
-        if (stat.isDirectory()) walk(path);
-        else if (stat.isFile()) actual.push(relative(folder, path).split(sep).join('/'));
-        else throw Error('installed SDK contains a special file');
-      }
-    };
-    walk(folder);
-    actual.sort();
-    if (JSON.stringify(actual) !== JSON.stringify([...expected.keys()].sort()))
-      throw Error('installed SDK file set differs from tarball');
-    const hash = createHash('sha256');
-    for (const path of actual) {
-      const bytes = readFileSync(join(folder, path));
-      if (!bytes.equals(/** @type {Buffer} */ (expected.get(path))))
-        throw Error('installed SDK bytes differ from tarball');
-      hash.update(JSON.stringify([path, consumerSha256(bytes)]) + '\n');
-    }
-    return {
-      name,
-      version,
-      tarballSha256: sha256,
-      files: actual.length,
-      filesSha256: hash.digest('hex'),
-    };
-  });
+  const packages = manifest.files.map(({ name, file, sha256 }) =>
+    auditInstalledPackage(root, readFileSync(join(bundle, file)), { name, version, sha256 }),
+  );
   return { version, manifestSha256: manifest.manifestSha256, packages };
 }

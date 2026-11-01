@@ -12,6 +12,101 @@ retains its original source pins and transactions. Current authorised source pin
 private diagnostics and detailed receipts remain in the owner's private handover.
 A public package install and a private source test are separate evidence.
 
+## Current published host and RC6 — 2026/10/30
+
+Local source now adds an opt-in, retained consumer check for the actual published
+`@laceio/sdk@0.1.2-canary.2` and nine private SDK `0.1.0-rc6` packages. The
+previous October20/canary0 assessment below is historical, not relabelled. Stable
+host `0.1.1` does not export its Passport experimental entry; select the canary
+explicitly. This qualification code is local follow-up work, not part of the
+immutable RC6 npm artifacts.
+
+The new check compares all **521 SDK files and 378 host files** with pinned
+registry tarballs, then runs actual public entry types, cold ESM/CJS loads,
+physical Compact/ledger identity, a WASM browser build and **13 synthetic transport
+cases** through the public `createRemotePassportSeams` and installed SDK adapter.
+The cases check original consent/session encoding, batch decoding, rejected
+approval, failure/close handling, missing required fields, unsupported/lossy
+flow refusal, module endpoint validation and signer-owned record presence.
+They do not run the real signer handlers/page, a wallet operation, native proof
+or provider ceremony. A separate authorised current-source type check passes;
+its private source pin is retained privately and is not inferred from the canary.
+
+### Adapters the current host requires
+
+- Raw `PassportAuthoriser` is **not** assignable to the wider SDK authoriser:
+  use `hostedJubjubAuthoriser` with the host's validated branded constructors and
+  a lossless supported-flow conversion. Unsupported rotation and withdrawal
+  descriptors remain refused before opening a session. Do not widen consent.
+- A host `GrantScopeInput` may name a secp256k1 grantee. RC6's typed grant API
+  accepts JubJub grantees only. The checked
+  [scope example](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/examples/jubjub-grant-scope.ts)
+  preserves the scope and explicitly refuses other schemes. Its companion bookkeeping
+  mapper also refuses an explicit unsupported `granteeScheme`; structural record
+  assignment alone can conceal that mismatch. `jubjubGrantInbox(hostViewing)`
+  supplies the checked `openInbox` for SDK grant recovery and refuses decoded
+  unsupported grant records too. Omitted legacy schemes denote JubJub.
+  These helpers map already validated host data; it does not parse untrusted JSON or enable new circuits.
+- Circuit-level proof ports and transaction proof ports remain different. A
+  device/reader record still needs an explicit network/binding/counter mapping.
+  Successful construction of a module is not a successful account operation.
+- The canary's combined optional-peer metadata spans the two ledger generations.
+  The tested exact composition retains peer warnings (its older
+  abstractions range and a Polkadot util transitive range); no ordinary-wallet/Passport mixing is qualified. Do not
+  suppress a strict peer failure or force a newer runtime to make a check green.
+
+### Reproduce from verified published artifacts
+
+Use Node/pnpm in the repository's Nix shell and a fresh private directory outside
+this checkout. Obtain all nine RC6 tarballs through authorised GitHub Packages
+access; `npm pack` them into a bundle with `manifest.json` containing the exact
+nine `{name,file,sha256}` entries and `version: "0.1.0-rc6"`. Their hashes and SRI
+must match the [RC6 signed receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc6/rc6-publication-receipt.json).
+Verify its detached GPG signature and fingerprint before pinning its SHA-256.
+The script checks that hash and every package's hash/SRI; it does not authenticate
+its own out-of-band pin or replace GPG/npm publisher verification.
+
+Download the exact host tarball from its public npm metadata and independently
+pin SHA-256 plus SHA-512 SRI. This run used host SHA-256
+`97a8ddeef426e0245093e8be615ec523db9c8a5693a94d7e34fb61f9f29e4cb5`.
+Use the checked [dependency example](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/examples/host-consumer-dependencies.json)
+for this composition; it does not change SDK workspace dependencies. Set
+registry authentication in a user-level configuration, then prepare:
+
+```sh
+export CONSUMER_ROOT=/private/path/to/new-consumer
+export RELEASE_VERSION=0.1.0-rc6
+export RELEASE_TARBALL_DIR=/private/path/to/verified-sdk-bundle
+export SDK_PUBLICATION_RECEIPT=/private/path/to/rc6-publication-receipt.json
+export SDK_PUBLICATION_RECEIPT_SHA256=6d58c1f85ee6901764f9013ec91b727a9a91485a86061e8f531e10e464e47af1
+export LACE_PACKAGE_VERSION=0.1.2-canary.2
+export LACE_TARBALL_FILE=/private/path/to/sdk-0.1.2-canary.2.tgz
+export LACE_TARBALL_SHA256=97a8ddeef426e0245093e8be615ec523db9c8a5693a94d7e34fb61f9f29e4cb5
+export LACE_TARBALL_INTEGRITY='sha512-piJkO/0jzB5h6c2R36r56vk5I563xRe/3hdt5FhapOcc4iUT+HyuDXHpMrhhOCbXSRz6Mhv0EtpaAnonYLGpyg=='
+export CONSUMER_DEPENDENCIES_FILE="$PWD/docs/examples/host-consumer-dependencies.json"
+nix develop -c node scripts/qualify-host-consumer.mjs prepare
+```
+
+Prepare prints the configuration SHA-256. Retain it independently; a config cannot
+prove its own integrity. For an offline frozen replay in another fresh root, add
+`CONSUMER_LOCK_FILE` and its externally checked `CONSUMER_LOCK_SHA256` before
+prepare. Failed preparations remain intact. No install script or pnpm hook runs.
+
+```sh
+export CONSUMER_CONFIG_SHA256=<the-prepare-output-config-sha256>
+nix develop -c pnpm qualify run consumer-host-integrity --output /private/path/to/new-suite.json
+```
+
+The scenario refuses modified config/lock/manifests, tarballs, missing/extra/changed
+installed host or SDK files, and physical runtime divergence before importing a
+host entry. It checks the same inputs and harness hashes after the run. Receipts
+bind exact installed file hashes, lock, archive pins, public entry conditions and
+case names. A completed output is never overwritten or silently rerun. Keep raw
+private package-manager logs and locks outside shared artifacts; public summaries
+contain hashes/outcomes only. This opt-in lane adds no registry install or WASM
+build to the 30–45 second required CI jobs.
+
+
 ## Select a composition
 
 | Need | SDK components | Host responsibility |
@@ -67,6 +162,22 @@ dependency families. The public canary's combined peer metadata emits an abstrac
 peer warning when the Passport runtime family is selected. Entry load/build success
 does not qualify the ordinary-wallet operation family. Do not force a different
 ledger/runtime into the ACC pipeline to suppress that warning.
+
+### Retained consumer schema
+
+The verified prepare/run CLI uses schema 2. It pins the preparation harness and
+rechecks that same harness at run time, together with the physical paths and
+complete file hashes of the selected Compact/ledger runtime packages, plus a
+byte/link snapshot of the full installed dependency and tooling tree. A moved or
+modified runtime, changed harness, or legacy schema requires a fresh scratch
+consumer. Existing schema-1 receipts remain historical records. Runtime snapshots
+detect drift; release signatures, the frozen lock, and registry integrity establish
+their separate provenance boundaries. The smoke creates a start marker before the first installed import, so an interrupted
+run is retained even if it produced no other output. TypeScript and Vite run through
+the pinned Node executable; pnpm is used only for fresh preparation. The snapshot
+covers installed inputs, with the Nix/Node and initial registry trust boundaries
+still explicit. Inner entry hashes are checked against the
+pinned host archive before the outer receipt is accepted.
 
 ## Reproduce installation and entry checks
 

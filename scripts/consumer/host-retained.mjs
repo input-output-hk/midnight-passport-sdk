@@ -1,0 +1,222 @@
+// Retained, authenticated consumer inputs. These checks execute no installed package code.
+import assert from 'node:assert/strict';
+import {
+  existsSync,
+  lstatSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  realpathSync,
+} from 'node:fs';
+import { join, sep } from 'node:path';
+import { createHash } from 'node:crypto';
+import { consumerSha256, isExactConsumerVersion } from '../consumer-inputs.mjs';
+import { checkMidnightRuntimeIdentity } from '../check-midnight-runtime-identity.mjs';
+import { auditHostConsumer, checkPublicationBundle } from './host-inputs.mjs';
+
+const harnessFiles = [
+  'scripts/qualify-host-consumer.mjs',
+  'scripts/consumer/host-inputs.mjs',
+  'scripts/consumer/host-retained.mjs',
+  'scripts/consumer/installed-inputs.mjs',
+  'scripts/consumer-inputs.mjs',
+  'scripts/release-package-list.mjs',
+  'scripts/smoke-lace-published-consumer.mjs',
+  'scripts/check-midnight-runtime-identity.mjs',
+  'tests/fixtures/lace-published-consumer.ts',
+  'tests/fixtures/lace-published-runtime.js',
+  'docs/examples/jubjub-grant-scope.ts',
+];
+/** @param {string} repository */
+export function hostConsumerHarness(repository) {
+  return Object.fromEntries(
+    harnessFiles.map((file) => [file, consumerSha256(readFileSync(join(repository, file)))]),
+  );
+}
+
+/** Bind the installed runtime tree as observed at preparation, including WASM and declarations.
+ * This detects subsequent drift; the authenticated lock/registry supplies its initial provenance.
+ * Exclude only dependencies at the package root (audited separately for physical identity).
+ * @param {string} root
+ */
+export function runtimeTreeIdentity(root) {
+  const hash = createHash('sha256');
+  let files = 0;
+  /** @param {string} relative */
+  const walk = (relative) => {
+    const path = join(root, relative),
+      stat = lstatSync(path);
+    if (stat.isSymbolicLink()) throw Error('runtime package contains a symlink');
+    if (stat.isDirectory()) {
+      for (const name of readdirSync(path).sort()) {
+        if (!relative && name === 'node_modules') continue;
+        walk(relative ? relative + '/' + name : name);
+      }
+    } else {
+      if (!stat.isFile()) throw Error('runtime package contains a non-file');
+      hash.update(relative + '\0' + consumerSha256(readFileSync(path)) + '\n');
+      files++;
+    }
+  };
+  walk('');
+  if (!files) throw Error('runtime package is empty');
+  return { path: root, files, treeSha256: hash.digest('hex') };
+}
+/** Pin all installed executable/tooling inputs, not only the SDK and identity packages.
+ * Pnpm's internal links are recorded and must stay inside this consumer's node_modules.
+ * The snapshot detects drift after preparation; it does not replace registry signatures/SRI.
+ * @param {string} consumer
+ */
+export function installedTreeIdentity(consumer) {
+  const requested = join(consumer, 'node_modules');
+  if (lstatSync(requested).isSymbolicLink())
+    throw Error('consumer node_modules must not be a symlink');
+  const root = realpathSync(requested),
+    hash = createHash('sha256');
+  let files = 0,
+    links = 0;
+  /** @param {string} relative */
+  const walk = (relative) => {
+    const path = join(root, relative),
+      stat = lstatSync(path);
+    if (stat.isSymbolicLink()) {
+      const target = realpathSync(path);
+      if (target !== root && !target.startsWith(root + sep))
+        throw Error('installed dependency link escapes consumer');
+      hash.update('link\0' + relative + '\0' + readlinkSync(path) + '\n');
+      links++;
+    } else if (stat.isDirectory()) {
+      for (const name of readdirSync(path).sort()) walk(relative ? relative + '/' + name : name);
+    } else {
+      if (!stat.isFile()) throw Error('installed dependency contains a non-file');
+      hash.update('file\0' + relative + '\0' + consumerSha256(readFileSync(path)) + '\n');
+      files++;
+    }
+  };
+  walk('');
+  if (!files) throw Error('installed dependency tree is empty');
+  return { files, links, treeSha256: hash.digest('hex') };
+}
+
+export const HOST_ENTRY_OUTPUTS = Object.freeze([
+  'host-entry-started.json',
+  'public-entry.private.log',
+  'public-entry-receipt.json',
+  'host-consumer-receipt.json',
+  'sdk-published-consumer.ts',
+  'jubjub-grant-scope.ts',
+  'host-example',
+  'sdk-published-runtime.mjs',
+  'public-protocol-receipt.json',
+  'sdk-consumer-browser',
+]);
+/** Failed and interrupted runs are retained too; refuse before any installed import.
+ * @param {string} root
+ */
+export function requireFreshHostOutputs(root) {
+  if (HOST_ENTRY_OUTPUTS.some((file) => existsSync(join(root, file))))
+    throw Error('host consumer output already exists; preserve the earlier run');
+}
+
+/** @param {string} root @param {string[]} entries */
+export function retainedRuntimeIdentity(root, entries) {
+  return Object.fromEntries(
+    Object.entries(checkMidnightRuntimeIdentity(root, entries)).map(([name, path]) => [
+      name,
+      runtimeTreeIdentity(/** @type {string} */ (path)),
+    ]),
+  );
+}
+/** @param {string} root @param {string} expected @param {string} repository */
+export function verifyRetainedHostConsumer(root, expected, repository) {
+  const hash = (/** @type {string} */ file) => consumerSha256(readFileSync(join(root, file)));
+  if (!/^[a-f0-9]{64}$/.test(expected) || hash('host-consumer-inputs.json') !== expected)
+    throw Error('retained host consumer requires its external configuration SHA-256');
+  const config = JSON.parse(readFileSync(join(root, 'host-consumer-inputs.json'), 'utf8'));
+  if (
+    config.schemaVersion !== 2 ||
+    config.nodeVersion !== process.version ||
+    !isExactConsumerVersion(config.version)
+  )
+    throw Error('host consumer schema, Node or version changed; prepare a fresh consumer');
+  assert.deepEqual(
+    hostConsumerHarness(repository),
+    config.prepareHarness,
+    'prepare/run harness differs; prepare a fresh consumer',
+  );
+  if (
+    hash('package.json') !== config.packageJsonSha256 ||
+    hash('pnpm-lock.yaml') !== config.lockSha256
+  )
+    throw Error('host consumer manifest or lock changed');
+  const bundle = join(root, 'bundle');
+  const inputs = checkPublicationBundle(
+    bundle,
+    config.version,
+    readFileSync(join(bundle, 'publication-receipt.json')),
+    config.receiptSha256,
+  );
+  if (
+    inputs.manifestSha256 !== config.manifestSha256 ||
+    JSON.stringify(auditHostConsumer(root, bundle, config.version, config.pin)) !==
+      JSON.stringify(config.installed)
+  )
+    throw Error('host consumer installed bytes or archive changed');
+  assert.deepEqual(
+    retainedRuntimeIdentity(root, [config.pin.name, ...inputs.files.map((f) => f.name)]),
+    config.runtimeIdentity,
+    'host consumer physical runtime tree changed',
+  );
+  assert.deepEqual(
+    installedTreeIdentity(root),
+    config.installedTree,
+    'host consumer installed dependency tree changed',
+  );
+  return config;
+}
+export const HOST_ENTRY_CHECKS = Object.freeze([
+  'installed-versions',
+  'physical-runtime-identity',
+  'public-entry-types',
+  'esm-entries',
+  'cjs-entries',
+  'public-host-protocol',
+  'browser-build',
+]);
+
+/** Inner evidence must name exactly the entries authenticated from the host archive.
+ * @param {any} entry @param {any} config
+ */
+export function verifyHostEntryReceipt(entry, config) {
+  assert.equal(entry.kind, 'installed-published-host');
+  assert.equal(entry.sdkVersion, config.version);
+  assert.equal(entry.host.name, config.pin.name);
+  assert.equal(entry.host.version, config.pin.version);
+  assert.equal(entry.lockSha256, config.lockSha256);
+  assert.deepEqual(
+    entry.entryChecks,
+    config.installed.host.entries.map(
+      (/** @type {{entry:string,hashes:Record<string,string>}} */ e) => ({
+        ...e,
+        esm: 'passed',
+        cjs: 'passed',
+      }),
+    ),
+  );
+  assert.deepEqual(entry.runtimeIdentity.sort(), Object.keys(config.runtimeIdentity).sort());
+  assert.equal(entry.protocol.kind, 'published-host-public-protocol');
+  assert.equal(entry.protocol.testsPassed, 13);
+  assert.equal(entry.protocol.cases.length, 13);
+  assert.equal(new Set(entry.protocol.cases).size, 13);
+  assert.ok(
+    entry.protocol.cases.every((/** @type {unknown} */ c) => typeof c === 'string' && c.length),
+  );
+  assert.deepEqual(entry.checks, HOST_ENTRY_CHECKS);
+  assert.equal(entry.protocol.syntheticTransport, true);
+  for (const field of ['hostSignerHandlers', 'signerPage', 'nativeProof'])
+    assert.equal(entry.protocol[field], false);
+  for (const field of ['fullCompatibility', 'realProvider', 'localnet']) {
+    assert.equal(entry[field], false);
+    if (field !== 'localnet') assert.equal(entry.protocol[field], false);
+  }
+}

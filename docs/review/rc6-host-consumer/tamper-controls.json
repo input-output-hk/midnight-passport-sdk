@@ -1,0 +1,32 @@
+{
+  "cases": [
+    {
+      "case": "host-code",
+      "refusedBeforeImport": true,
+      "originalBytesRestored": true
+    },
+    {
+      "case": "sdk-code",
+      "refusedBeforeImport": true,
+      "originalBytesRestored": true
+    },
+    {
+      "case": "lock",
+      "refusedBeforeImport": true,
+      "originalBytesRestored": true
+    },
+    {
+      "case": "configuration",
+      "refusedBeforeImport": true,
+      "originalBytesRestored": true
+    },
+    {
+      "case": "host-tarball",
+      "refusedBeforeImport": true,
+      "originalBytesRestored": true
+    }
+  ],
+  "actualPublishedConsumer": true,
+  "arbitraryCodeExecuted": false,
+  "privatePathsOmitted": true
+}

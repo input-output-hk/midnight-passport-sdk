@@ -4,7 +4,47 @@
 > `mn-passport-skills:spec-driver` per [`docs/development-workflow.md`](./docs/development-workflow.md) §3.
 > Every entry carries its GitHub issue
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
-> Last updated: 2026/10/30. Historical entries below retain their original issue namespaces.
+> Last updated: 2026/11/01. Historical entries below retain their original issue namespaces.
+
+## Current host review follow-up — 2026/11/01
+
+PR #256 publishes the completed #81/#231 consumer slice. External review follow-ups
+bind the preparation harness, physical runtime paths/bytes and every installed
+dependency/tooling file/link; the inner evidence must match pinned host entry
+hashes and every stated limit. Interrupted outputs refuse before imports. Decoded
+legacy/modern JubJub grant parts normalise identically, while unsupported schemes
+and malformed records remain explicit refusals. No shipped package runtime change.
+
+Signed-source `c195dba` schema-2 qualification passed in 11,974 ms; 28,762 installed
+files / 1,157 links, 521 SDK files / 378 host files, thirteen synthetic public-host
+protocol cases, seven actual tamper controls, eleven matching harness hashes.
+Full gate: 1,027 pass / seven existing conditional skips / zero failures; all app
+types pass. Jekyll: 22 pages / 501 local links and anchors / zero errors. See
+[review follow-up evidence](docs/review/rc6-host-consumer/README.md#review-follow-up--20261101).
+Earlier source receipts below remain historical. Native public-host orchestration
+is the next local slice; current receipts do not establish native/provider acceptance.
+
+## Current published host follow-up — 2026/10/30 (local)
+
+Next #81/#231 slice qualifies the nine RC6 packages with actual public
+`@laceio/sdk@0.1.2-canary.2`. A retained fresh consumer checks every installed
+SDK/host byte, external receipt/archive/config pins and a frozen lock before and
+after public entry/type/ESM/CJS/WASM and thirteen synthetic transport probes.
+Opt-in qualification remains outside fast required CI. No shipped runtime,
+workspace dependency, binding, value guard or host implementation changes.
+
+Current host declarations require the explicit hosted-authoriser consent adapter;
+wider grant scopes, bookkeeping and decoded inbox records must refuse unsupported
+grantee schemes. The new checked examples and tests enforce that boundary instead
+of coercing secp256k1 into JubJub. Fresh preparation compares 521 SDK / 378 host files;
+actual tamper refusals cover host/SDK code, lock, config and archive. Current-source
+declaration/generated ACC evidence remains separate and private. See
+[review map](docs/review/rc6-host-consumer/README.md) for scope and final receipts.
+Clean signed-source `47e1d69` qualification passed in 8,274 ms, all 13 cases; its
+inner receipt hash and ten harness hashes match the outer/signed source. Full
+gate: 1,017 pass / 7 existing skips / 0 failures; Jekyll: 22 pages / 501 links. Evidence is local in
+the review map; private source details remain in Obsidian. No push/publication.
+The existing RC6 publication and historical native/provider limits remain unchanged.
 
 ## RC6 release complete — 2026/10/30
 

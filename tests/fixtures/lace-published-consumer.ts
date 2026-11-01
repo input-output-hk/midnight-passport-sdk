@@ -12,6 +12,15 @@ import {
   type PassportAccountInfo,
 } from '@laceio/sdk/experimental';
 import { createLaceWallet as createOrdinaryWallet } from '@laceio/sdk/midnight';
+import {
+  hostedJubjubAuthoriser,
+  type HostedJubjubConversions,
+} from '@input-output-hk/mn-passport-adapter-browser/hosted-jubjub';
+import {
+  toJubjubGrantScope,
+  toJubjubGrantBookkeeping,
+  jubjubGrantInbox,
+} from './jubjub-grant-scope';
 import { recipeDeviceKeyring } from '@input-output-hk/mn-passport-keys';
 import type {
   AccountRecord,
@@ -37,10 +46,23 @@ declare const keySource: PrfKeySource;
 declare const record: PassportAccountInfo;
 
 const sdkViewing: AccountViewingKey = viewing;
-const sdkAuthoriser: Authoriser = authoriser; // Structural only; runtime branding needs an adapter.
+const checkedGrantReader = jubjubGrantInbox(viewing);
+void checkedGrantReader;
+// The host's narrower consent union needs explicit branding and rejection of unsupported flows.
+declare const conversions: HostedJubjubConversions<
+  Parameters<PassportAuthoriser['deviceCommitment']>[0],
+  Parameters<PassportAuthoriser['deviceCommitment']>[1],
+  Parameters<PassportAuthoriser['deviceCommitment']>[2],
+  Exclude<Parameters<NonNullable<PassportAuthoriser['withKeySession']>>[1], undefined>
+>;
+const sdkAuthoriser: Authoriser = hostedJubjubAuthoriser(authoriser, conversions);
+// @ts-expect-error The raw host authoriser cannot accept every SDK flow descriptor.
+const uncheckedAuthoriser: Authoriser = authoriser;
 const sdkSponsor: FeeSponsor = sponsor;
-const sdkGrant: GrantBookkeeping = grant;
-const sdkScope: GrantScopeInput = scope;
+const sdkGrant: GrantBookkeeping = toJubjubGrantBookkeeping(grant);
+// @ts-expect-error The host also represents grantee schemes this SDK does not implement.
+const uncheckedScope: GrantScopeInput = scope;
+const sdkScope: GrantScopeInput = toJubjubGrantScope(scope);
 const sdkNetwork: NetworkConfig = {
   ...hostNetwork,
   bindingId: 'acc-s3r1.1',
@@ -68,6 +90,8 @@ const mixedEntryWallet = createOrdinaryWallet({
 });
 
 void [
+  uncheckedAuthoriser,
+  uncheckedScope,
   sdkViewing,
   sdkAuthoriser,
   sdkSponsor,

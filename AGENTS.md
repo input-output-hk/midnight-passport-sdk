@@ -288,7 +288,7 @@ or a private ignored directory. Missing inputs, skipped tests and unimplemented
 cases never become qualified passes. Three matching foundation runs establish
 repeatability only for that declared scope, not release/provider acceptance.
 
-### Durable host-job transport checks (unreleased source)
+### Durable host-job transport checks (RC6 opt-in)
 
 Host-job integration is opt-in; do not switch the default browser demo to it or put
 its operator bearer token in browser storage. Read `docs/site/service-jobs.md` for
@@ -416,3 +416,25 @@ The harness checks installed SDK bytes, actual HTTP/process kills and synthetic
 hosted-consent refusals. Its fake chain and host never qualify native proofs,
 real passkey providers, registry provenance or full Lace. Do not add installs to
 fast required CI, delete unknown fixtures, or publish private install logs/locks.
+
+
+### Current published host consumer qualification
+
+Read `docs/site/consumer-integration.md`'s current published host section before
+`scripts/qualify-host-consumer.mjs prepare|run`. Use a fresh external private root,
+the nine actual RC6 tarballs, an independently verified release receipt/hash and
+an exact public host archive SHA-256/SRI. The dependency example is a tested
+consumer composition, not a workspace dependency upgrade or a full-wallet promise.
+Prepare installs exact registry versions with scripts/hooks disabled; optionally
+replay a supplied hash-pinned lock offline. Keep auth in temporary user configuration,
+never package.json, logs or committed files. Failed roots stay intact.
+
+`run` requires the externally recorded `CONSUMER_CONFIG_SHA256`. It rechecks all
+installed host/SDK bytes and physical runtimes before any host import and again
+at the end. Run `pnpm qualify run consumer-host-integrity --output <new-receipt>`
+under Nix for a source-fingerprinted outer receipt. The thirteen public-host protocol
+cases use a synthetic request transport, not signer handlers or a signer browser.
+Current wider host grant types require an explicit JubJub check; never cast or
+relabel a secp256k1 grantee. Consent needs `hostedJubjubAuthoriser` plus validated
+host constructors. Preserve unsupported rotation/withdrawal refusals. Source,
+actual published package, native and real-provider tiers remain distinct.

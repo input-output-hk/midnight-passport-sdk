@@ -18,6 +18,11 @@ import {
   UseCounter,
 } from './lace-contract/value-objects';
 import type { GrantScopeInput as LaceGrantScopeInput } from './lace-contract/grants';
+import {
+  toJubjubGrantScope,
+  toJubjubGrantBookkeeping,
+  jubjubGrantInbox,
+} from './jubjub-grant-scope';
 import type { GrantScopeInput as SDKGrantScopeInput } from '@input-output-hk/mn-passport-account';
 import { hostedJubjubAuthoriser } from '@input-output-hk/mn-passport-adapter-browser/hosted-jubjub';
 import { createHostedAccChain } from '@input-output-hk/mn-passport-adapter-midnight-js';
@@ -52,8 +57,10 @@ declare const laceSnapshotNonce: bigint;
 
 const sponsor: FeeSponsor = laceSponsor;
 const viewing: AccountViewingKey = laceViewing;
-const grantScope: SDKGrantScopeInput = laceGrantScope;
-const grantBookkeeping: GrantBookkeeping = laceGrantBookkeeping;
+const checkedGrantReader = jubjubGrantInbox(laceViewing);
+void checkedGrantReader;
+const grantScope: SDKGrantScopeInput = toJubjubGrantScope(laceGrantScope);
+const grantBookkeeping: GrantBookkeeping = toJubjubGrantBookkeeping(laceGrantBookkeeping);
 const network: NetworkConfig = {
   ...laceNetwork,
   bindingId: 'acc-s3r1.1',
@@ -138,7 +145,7 @@ const hostedAuthoriser: Authoriser = hostedJubjubAuthoriser(laceAuthoriser, {
   },
 });
 
-// Structural assignment compiles; runtime branding and consent still need the hosted adapter.
+// @ts-expect-error The narrower host consent union requires the explicit adapter above.
 const structuralAuthoriser: Authoriser = laceAuthoriser;
 // This difference needs a transaction pipeline adapter.
 // @ts-expect-error Lace proves a circuit preimage; the SDK proves a transaction.
