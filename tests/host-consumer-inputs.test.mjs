@@ -14,7 +14,12 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { hostConsumerHarness } from '../scripts/consumer/host-retained.mjs';
+import {
+  hostConsumerHarness,
+  retainedRuntimeIdentity,
+  installedTreeIdentity,
+  verifyRetainedHostConsumer,
+} from '../scripts/consumer/host-retained.mjs';
 import { tmpdir } from 'node:os';
 import {
   checkHostArchive,
@@ -43,7 +48,12 @@ function fixture() {
       },
     ]),
   );
-  const pkg = { name: '@laceio/sdk', version: hostVersion, exports };
+  const dependencies = {
+    '@midnight-ntwrk/compact-js': '3.0.0-rc.3',
+    '@midnight-ntwrk/compact-runtime': '0.20.0',
+    '@midnightntwrk/ledger-v9': '1.0.0-rc.5',
+  };
+  const pkg = { name: '@laceio/sdk', version: hostVersion, exports, dependencies };
   writeFileSync(join(source, 'package.json'), JSON.stringify(pkg));
   for (const name of ['experimental', 'midnight'])
     for (const ext of ['js', 'd.ts', 'cjs'])
@@ -62,6 +72,12 @@ function fixture() {
   cpSync(source, join(root, 'node_modules/@laceio/sdk'), { recursive: true });
   rmSync(source, { recursive: true });
   mkdirSync(join(source, 'dist'), { recursive: true });
+  for (const [name, version] of Object.entries(dependencies)) {
+    const target = join(root, 'node_modules', name);
+    mkdirSync(target, { recursive: true });
+    writeFileSync(join(target, 'package.json'), JSON.stringify({ name, version }));
+    writeFileSync(join(target, 'index.js'), '// runtime fixture');
+  }
   const files = releasePackageDirectories.map((dir) => {
     const name = '@input-output-hk/mn-passport-' + dir,
       file = dir + '.tgz';
@@ -234,7 +250,8 @@ test('retained run detects modified host code before spawning any host entry', (
       packageJsonSha256: consumerSha256('{}'),
       lockSha256: consumerSha256('test lock'),
       installed: auditHostConsumer(f.root, f.bundle, f.version, f.pin),
-      runtimeIdentity: [],
+      runtimeIdentity: retainedRuntimeIdentity(f.root, [f.pin.name]),
+      installedTree: installedTreeIdentity(f.root),
       nodeVersion: process.version,
     };
     const bytes = Buffer.from(JSON.stringify(config));
@@ -271,6 +288,46 @@ test('retained run detects modified host code before spawning any host entry', (
       { env, encoding: 'utf8', timeout: 15000 },
     );
     assert.match(changed.stderr, /external configuration SHA/);
+  } finally {
+    f.close();
+  }
+});
+
+test('retained verifier refuses changed runtime or transitive tooling bytes even with the original lock', () => {
+  const f = fixture(),
+    repository = fileURLToPath(new URL('..', import.meta.url));
+  try {
+    writeFileSync(join(f.root, 'package.json'), '{}');
+    writeFileSync(join(f.root, 'pnpm-lock.yaml'), 'fixed lock');
+    const tool = join(f.root, 'node_modules', 'tool');
+    mkdirSync(tool);
+    writeFileSync(join(tool, 'index.js'), 'tool');
+    const config = {
+      schemaVersion: 2,
+      prepareHarness: hostConsumerHarness(repository),
+      version: f.version,
+      pin: f.pin,
+      receiptSha256: f.receiptSha256,
+      manifestSha256: consumerSha256(readFileSync(join(f.bundle, 'manifest.json'))),
+      packageJsonSha256: consumerSha256('{}'),
+      lockSha256: consumerSha256('fixed lock'),
+      installed: auditHostConsumer(f.root, f.bundle, f.version, f.pin),
+      runtimeIdentity: retainedRuntimeIdentity(f.root, [f.pin.name]),
+      installedTree: installedTreeIdentity(f.root),
+      nodeVersion: process.version,
+    };
+    const data = JSON.stringify(config);
+    writeFileSync(join(f.root, 'host-consumer-inputs.json'), data);
+    const verify = () => verifyRetainedHostConsumer(f.root, consumerSha256(data), repository);
+    assert.deepEqual(verify(), config);
+    const runtime = join(f.root, 'node_modules/@midnight-ntwrk/compact-runtime/index.js');
+    writeFileSync(runtime, '// same version, altered runtime');
+    assert.throws(verify, /physical runtime tree changed/);
+    writeFileSync(runtime, '// runtime fixture');
+    assert.deepEqual(verify(), config);
+    writeFileSync(join(tool, 'index.js'), 'altered compiler tool');
+    assert.throws(verify, /installed dependency tree changed/);
+    assert.equal(readFileSync(join(f.root, 'pnpm-lock.yaml'), 'utf8'), 'fixed lock');
   } finally {
     f.close();
   }

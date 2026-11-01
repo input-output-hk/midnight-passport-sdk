@@ -9,16 +9,19 @@ import {
   symlinkSync,
   readFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import {
   runtimeTreeIdentity,
   verifyHostEntryReceipt,
   hostConsumerHarness,
   verifyRetainedHostConsumer,
+  installedTreeIdentity,
+  requireFreshHostOutputs,
 } from '../scripts/consumer/host-retained.mjs';
 import { consumerSha256 } from '../scripts/consumer-inputs.mjs';
-const repository = new URL('..', import.meta.url).pathname;
+const repository = fileURLToPath(new URL('..', import.meta.url));
 
 test('runtime identity binds physical paths, every runtime byte and file set, including WASM', () => {
   const root = mkdtempSync(join(tmpdir(), 'retained-runtime-'));
@@ -65,12 +68,25 @@ function receipt() {
     lockSha256: 'dd',
     entryChecks: entries.map((e) => ({ ...e, esm: 'passed', cjs: 'passed' })),
     runtimeIdentity: ['runtime'],
+    checks: [
+      'installed-versions',
+      'physical-runtime-identity',
+      'public-entry-types',
+      'esm-entries',
+      'cjs-entries',
+      'public-host-protocol',
+      'browser-build',
+    ],
     protocol: {
       kind: 'published-host-public-protocol',
       testsPassed: 13,
       cases: Array.from({ length: 13 }, (_, i) => 'case ' + i),
       fullCompatibility: false,
       realProvider: false,
+      syntheticTransport: true,
+      hostSignerHandlers: false,
+      signerPage: false,
+      nativeProof: false,
     },
     fullCompatibility: false,
     realProvider: false,
@@ -83,6 +99,15 @@ test('inner receipt cannot substitute entry targets, hashes, runtimes or duplica
   verifyHostEntryReceipt(entry, config);
   /** @type {Array<(e: ReturnType<typeof receipt>['entry']) => void>} */
   const changes = [
+    (e) => {
+      e.checks.pop();
+    },
+    (e) => {
+      e.protocol.nativeProof = true;
+    },
+    (e) => {
+      e.protocol.syntheticTransport = false;
+    },
     (e) => {
       assert.ok(e.entryChecks[0]);
       e.entryChecks[0].hashes.import = 'changed';
@@ -134,5 +159,70 @@ test('retained inputs reject a different preparation harness before loading inst
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('all installed tooling bytes and dependency links are retained', () => {
+  const root = mkdtempSync(join(tmpdir(), 'host-installed-tree-'));
+  try {
+    const mods = join(root, 'node_modules');
+    mkdirSync(mods);
+    const tool = join(mods, 'compiler');
+    mkdirSync(tool);
+    writeFileSync(join(tool, 'index.js'), 'tool');
+    symlinkSync('compiler', join(mods, 'tool'));
+    const before = installedTreeIdentity(root);
+    assert.equal(before.links, 1);
+    writeFileSync(join(tool, 'index.js'), 'tampered');
+    assert.notDeepEqual(installedTreeIdentity(root), before);
+    writeFileSync(join(tool, 'index.js'), 'tool');
+    assert.deepEqual(installedTreeIdentity(root), before);
+    symlinkSync(root, join(mods, 'escape'));
+    assert.throws(() => installedTreeIdentity(root), /escapes consumer/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('an interrupted output refuses the next host import without rerunning the failed fixture', () => {
+  const root = mkdtempSync(join(tmpdir(), 'host-interrupted-'));
+  try {
+    requireFreshHostOutputs(root);
+    for (const name of [
+      'public-entry.private.log',
+      'sdk-published-consumer.ts',
+      'public-protocol-receipt.json',
+      'sdk-consumer-browser',
+    ]) {
+      writeFileSync(join(root, name), 'retained failed output');
+      assert.throws(() => requireFreshHostOutputs(root), /preserve the earlier run/);
+      rmSync(join(root, name));
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('every relative harness import remains bound, including copied example paths', () => {
+  const hashes = hostConsumerHarness(repository);
+  /** @type {Record<string, string>} */
+  const mapped = {
+    'tests/fixtures/lace-published-consumer.ts:./jubjub-grant-scope':
+      'docs/examples/jubjub-grant-scope.ts',
+    'tests/fixtures/lace-published-runtime.js:./host-example/jubjub-grant-scope.js':
+      'docs/examples/jubjub-grant-scope.ts',
+  };
+  for (const file of Object.keys(hashes)) {
+    const bytes = readFileSync(join(repository, file), 'utf8');
+    for (const [, specifier] of bytes.matchAll(/(?:from|import)\s*['"](\.[^'"]+)['"]/g)) {
+      assert.ok(specifier);
+      const target = Object.hasOwn(mapped, file + ':' + specifier)
+        ? mapped[file + ':' + specifier]
+        : relative(
+            repository,
+            fileURLToPath(new URL(specifier, new URL(file, new URL('../', import.meta.url)))),
+          );
+      assert.ok(target && Object.hasOwn(hashes, target), file + ' imports unbound ' + target);
+    }
   }
 });

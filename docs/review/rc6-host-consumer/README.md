@@ -41,7 +41,8 @@ PR #256 received a fresh external review. The follow-up adds these checks before
 merging the completed consumer slice:
 
 - Schema 2 retains the preparation harness hashes, physical runtime paths, and
-  complete Compact/ledger package tree hashes, including WASM. Run refuses a
+  complete Compact/ledger package tree hashes, including WASM, plus a byte/link
+  snapshot of the entire installed dependency and tooling tree. Run refuses a
   different harness or runtime snapshot; prepare a fresh consumer after an update.
   The existing identity traversal already refused duplicate runtime copies. The
   snapshot adds detection of a moved or modified single copy; it does not authenticate
@@ -58,7 +59,9 @@ merging the completed consumer slice:
   TypeScript pass checks both the consumer declarations and the runnable example.
 - New tests cover runtime byte/path/file-set drift, symlinks, prepare/run harness
   mismatch, forged entry/hash/runtime evidence, duplicate protocol cases, and
-  malformed grant records. Documentation spelling and evidence-count spacing are
+  malformed grant records and legacy/modern inbox normalisation. Interrupted
+  outputs are refused before another import; transitive compiler/tooling drift and
+  all relative harness imports have regression checks. Documentation spelling and evidence-count spacing are
   corrected. No runtime package behaviour, consent, or value guard changes.
 
 Fresh schema-2 qualification results are recorded separately from the original

@@ -44,7 +44,7 @@ export function jubjubGrantInbox(
   return {
     openInbox: async (...args) => {
       const entries = await source.openInbox(...args);
-      for (const entry of entries) {
+      return entries.map((entry) => {
         if (entry?.kind === 'grant' && (!entry.record || typeof entry.record !== 'object'))
           throw new Error('malformed host grant record');
         if (
@@ -55,8 +55,12 @@ export function jubjubGrantInbox(
           entry.record.granteeScheme !== 'jubjub-schnorr'
         )
           throw new Error('this SDK grant inbox requires a JubJub grantee');
-      }
-      return entries;
+        if (entry?.kind === 'grant' && entry.record.part === 'grant' && 'granteeScheme' in entry.record) {
+          const { granteeScheme: _scheme, ...record } = entry.record;
+          return { ...entry, record };
+        }
+        return entry;
+      });
     },
   };
 }

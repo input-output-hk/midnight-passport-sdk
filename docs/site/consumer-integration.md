@@ -167,7 +167,8 @@ ledger/runtime into the ACC pipeline to suppress that warning.
 
 The verified prepare/run CLI uses schema 2. It pins the preparation harness and
 rechecks that same harness at run time, together with the physical paths and
-complete file hashes of the selected Compact/ledger runtime packages. A moved or
+complete file hashes of the selected Compact/ledger runtime packages, plus a
+byte/link snapshot of the full installed dependency and tooling tree. A moved or
 modified runtime, changed harness, or legacy schema requires a fresh scratch
 consumer. Existing schema-1 receipts remain historical records. Runtime snapshots
 detect drift; release signatures, the frozen lock, and registry integrity establish

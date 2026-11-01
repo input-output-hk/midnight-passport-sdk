@@ -19,6 +19,8 @@ import {
 import {
   hostConsumerHarness,
   retainedRuntimeIdentity,
+  installedTreeIdentity,
+  requireFreshHostOutputs,
   verifyRetainedHostConsumer,
   verifyHostEntryReceipt,
 } from './consumer/host-retained.mjs';
@@ -164,6 +166,7 @@ if (mode === 'prepare') {
     lockSha256: hash(join(root, 'pnpm-lock.yaml')),
     installed,
     runtimeIdentity,
+    installedTree: installedTreeIdentity(root),
     nodeVersion: process.version,
     packageManager,
   };
@@ -180,16 +183,12 @@ if (mode === 'prepare') {
     }),
   );
 } else {
-  const expected = process.env.CONSUMER_CONFIG_SHA256;
-  if (!/^[a-f0-9]{64}$/.test(expected ?? '') || hash(configFile) !== expected)
-    throw Error('retained host consumer requires its external configuration SHA-256');
-  const config = JSON.parse(readFileSync(configFile, 'utf8'));
-  const verify = () => verifyRetainedHostConsumer(root, expected ?? '', repository);
+  const expected = process.env.CONSUMER_CONFIG_SHA256 ?? '';
+  const verify = () => verifyRetainedHostConsumer(root, expected, repository);
+  const config = verify();
   const source = hostConsumerHarness(repository);
-  verify();
+  requireFreshHostOutputs(root);
   const receipt = join(root, 'public-entry-receipt.json');
-  if (existsSync(receipt) || existsSync(join(root, 'host-consumer-receipt.json')))
-    throw Error('host consumer output already exists; preserve the earlier run');
   Object.assign(env, {
     CONSUMER_ROOT: root,
     LACE_PACKAGE_VERSION: config.pin.version,
@@ -216,6 +215,7 @@ if (mode === 'prepare') {
     lockSha256: config.lockSha256,
     publicationReceiptSha256: config.receiptSha256,
     installed: config.installed,
+    installedTree: config.installedTree,
     runtimeSnapshot: Object.fromEntries(
       Object.entries(config.runtimeIdentity).map(([name, value]) => [
         name,

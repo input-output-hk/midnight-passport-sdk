@@ -11,6 +11,7 @@ import {
 } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { consumerSha256 } from './consumer-inputs.mjs';
+import { requireFreshHostOutputs } from './consumer/host-retained.mjs';
 import { releasePackageDirectories } from './release-package-list.mjs';
 import { checkMidnightRuntimeIdentity } from './check-midnight-runtime-identity.mjs';
 
@@ -19,6 +20,7 @@ const hostVersion = process.env.LACE_PACKAGE_VERSION;
 const sdkVersion = process.env.RELEASE_VERSION;
 if (!process.env.CONSUMER_ROOT || !hostVersion || !sdkVersion)
   throw new Error('set CONSUMER_ROOT, LACE_PACKAGE_VERSION and RELEASE_VERSION');
+requireFreshHostOutputs(root);
 const host = JSON.parse(readFileSync(join(root, 'node_modules/@laceio/sdk/package.json'), 'utf8'));
 if (host.name !== '@laceio/sdk' || host.version !== hostVersion)
   throw new Error('installed host package identity differs');

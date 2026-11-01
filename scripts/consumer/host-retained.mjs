@@ -1,7 +1,14 @@
 // Retained, authenticated consumer inputs. These checks execute no installed package code.
 import assert from 'node:assert/strict';
-import { lstatSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import {
+  existsSync,
+  lstatSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  realpathSync,
+} from 'node:fs';
+import { join, sep } from 'node:path';
 import { createHash } from 'node:crypto';
 import { consumerSha256, isExactConsumerVersion } from '../consumer-inputs.mjs';
 import { checkMidnightRuntimeIdentity } from '../check-midnight-runtime-identity.mjs';
@@ -55,6 +62,61 @@ export function runtimeTreeIdentity(root) {
   if (!files) throw Error('runtime package is empty');
   return { path: root, files, treeSha256: hash.digest('hex') };
 }
+/** Pin all installed executable/tooling inputs, not only the SDK and identity packages.
+ * Pnpm's internal links are recorded and must stay inside this consumer's node_modules.
+ * The snapshot detects drift after preparation; it does not replace registry signatures/SRI.
+ * @param {string} consumer
+ */
+export function installedTreeIdentity(consumer) {
+  const requested = join(consumer, 'node_modules');
+  if (lstatSync(requested).isSymbolicLink())
+    throw Error('consumer node_modules must not be a symlink');
+  const root = realpathSync(requested),
+    hash = createHash('sha256');
+  let files = 0,
+    links = 0;
+  /** @param {string} relative */
+  const walk = (relative) => {
+    const path = join(root, relative),
+      stat = lstatSync(path);
+    if (stat.isSymbolicLink()) {
+      const target = realpathSync(path);
+      if (target !== root && !target.startsWith(root + sep))
+        throw Error('installed dependency link escapes consumer');
+      hash.update('link\0' + relative + '\0' + readlinkSync(path) + '\n');
+      links++;
+    } else if (stat.isDirectory()) {
+      for (const name of readdirSync(path).sort()) walk(relative ? relative + '/' + name : name);
+    } else {
+      if (!stat.isFile()) throw Error('installed dependency contains a non-file');
+      hash.update('file\0' + relative + '\0' + consumerSha256(readFileSync(path)) + '\n');
+      files++;
+    }
+  };
+  walk('');
+  if (!files) throw Error('installed dependency tree is empty');
+  return { files, links, treeSha256: hash.digest('hex') };
+}
+
+const hostOutputs = Object.freeze([
+  'public-entry.private.log',
+  'public-entry-receipt.json',
+  'host-consumer-receipt.json',
+  'sdk-published-consumer.ts',
+  'jubjub-grant-scope.ts',
+  'host-example',
+  'sdk-published-runtime.mjs',
+  'public-protocol-receipt.json',
+  'sdk-consumer-browser',
+]);
+/** Failed and interrupted runs are retained too; refuse before any installed import.
+ * @param {string} root
+ */
+export function requireFreshHostOutputs(root) {
+  if (hostOutputs.some((file) => existsSync(join(root, file))))
+    throw Error('host consumer output already exists; preserve the earlier run');
+}
+
 /** @param {string} root @param {string[]} entries */
 export function retainedRuntimeIdentity(root, entries) {
   return Object.fromEntries(
@@ -104,6 +166,11 @@ export function verifyRetainedHostConsumer(root, expected, repository) {
     config.runtimeIdentity,
     'host consumer physical runtime tree changed',
   );
+  assert.deepEqual(
+    installedTreeIdentity(root),
+    config.installedTree,
+    'host consumer installed dependency tree changed',
+  );
   return config;
 }
 /** Inner evidence must name exactly the entries authenticated from the host archive.
@@ -133,6 +200,18 @@ export function verifyHostEntryReceipt(entry, config) {
   assert.ok(
     entry.protocol.cases.every((/** @type {unknown} */ c) => typeof c === 'string' && c.length),
   );
+  assert.deepEqual(entry.checks, [
+    'installed-versions',
+    'physical-runtime-identity',
+    'public-entry-types',
+    'esm-entries',
+    'cjs-entries',
+    'public-host-protocol',
+    'browser-build',
+  ]);
+  assert.equal(entry.protocol.syntheticTransport, true);
+  for (const field of ['hostSignerHandlers', 'signerPage', 'nativeProof'])
+    assert.equal(entry.protocol[field], false);
   for (const field of ['fullCompatibility', 'realProvider', 'localnet']) {
     assert.equal(entry[field], false);
     if (field !== 'localnet') assert.equal(entry.protocol[field], false);
