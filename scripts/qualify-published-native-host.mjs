@@ -15,13 +15,13 @@ import {
   writeFileSync,
   unlinkSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { verifyRetainedHostConsumer } from './consumer/host-retained.mjs';
 import { consumerSha256 } from './consumer-inputs.mjs';
 import { workspaceIdentity, verifyQualificationBinding } from './qualification/receipt.mjs';
 import { dedicatedIndexerReadiness } from './qualification/indexer-readiness.mjs';
+import { nativeLeasePath } from './qualification/native-lease.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const PROJECT = 'mn-passport-qual-20261023';
@@ -244,7 +244,7 @@ export async function runNativeHost() {
   /** @type {any[]|undefined} */ let scope;
   /** @type {any} */ let inner, finality;
   /** @type {Record<string,string>|undefined} */ let compiled;
-  const leasePath = join(tmpdir(), PROJECT + '-published-native.lock');
+  const leasePath = nativeLeasePath();
   const leaseBody =
     JSON.stringify({
       pid: process.pid,

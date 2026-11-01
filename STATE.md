@@ -6,58 +6,31 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/11/01. Historical entries below retain their original issue namespaces.
 
-## Active local native public-host slice — 2026/11/01
+## Local public-host native baseline passed — 2026/11/01
 
-PR #256 is merged at signed `d463b49` after exact-head CI and external/self-review;
-published consumer docs are verified at the matching Pages deployment. The next
-#81/#231 slice runs the actual public Passport module/store orchestration with
-RC6 registry packages, synthetic PRF identities, retained localnet proofs and key
-HTTP, populated holdings, read-grant issue/revoke, and SDK reopening/bookkeeping.
-The first signed attempt (`b84a1ce`) stopped before ACC deployment during
-asynchronous host-store initialisation: the public feature provider was missing.
-Its key/derivation preflight passed, the failed fixture is retained, and all three
-owned containers stopped with source unchanged. The corrected development
-composition includes `m.featureDev`; an isolated asynchronous startup probe passes.
-No native pass is claimed from that failed run. The next signed attempt
-(`7ae7893`) synchronised the sponsor, then our runner's immediate-dispatch assertion
-failed before any account record. Public action processing is asynchronous; an
-isolated observer probe confirms `idle` immediately, then `ceremony`/terminal state.
-The corrected runner subscribes before dispatch and bounds acceptance without
-redispatch. Both failed roots remain private, with unchanged source and owned cleanup.
-The third signed run (`1e8df1a`) reached real first deployment submission. Node logs
-show prompt mempool admission, repeated `HitBlockWeightLimit`, then intent TTL
-expiry; no account record/activation/funding/native pass. The 15 KB wave heuristic
-matches the reference but does not prove node inclusion. Retain that transaction's
-failed root. The harness now saves each balanced transaction privately before the
-host may submit and checks its runtime-reported cost against the live normal-class
-weight limits. Read-only inspection found mandatory block weight
-2,022,693,531,255 against max block weight2,000,000,000,000, exhausting all user
-headroom during session/committee catch-up. Require three distinct capacity-ready
-blocks before sponsor startup. This does not submit a second transaction or extend the TTL.
-Attempt4 (`4821ccc`) confirmed capacity recovery on three distinct blocks before
-sponsor startup. Its private capture saved the balanced deployment then refused
-before host submission: the capture imported the contract ledger decoder instead
-of the ledger runtime. Corrected to resolve the installed host ledger-v9 runtime;
-standalone decoding/cost inspection of retained bytes is read-only, never a replay.
-Attempt5 (`763ca3b`) created/activated the ACC, completed the sealed record and
-submitted the deposit; the harness then rejected its identifier. Ledger-v9 intent
-IDs are33bytes/66hex (00 discriminator plus32bytes), while transaction hashes are
-32bytes/64hex. The public helper's return is correct; the harness confused them.
-Corrected both acceptance guards and added a regression. Failed v5 remains failed;
-its deposit must not be repeated. No upstream return-shape bug is established.
-Attempt6 (`aab9829`) confirmed seven-unit funding and host chain-verified holdings,
-then read-grant validation refused before mutation: its scope requires explicit
-RP id. The fixture now supplies localhost, matching the synthetic credential.
-This keeps the upstream guard; v6 remains a retained failed full suite.
+PR #256 merged at signed d463b49; matching Pages deployment verified. The next
+#81/#231 native follow-up passed fourteen cases at clean signed dd5034e. Sixteen
+proof responses, eighteen sponsorships plus development deposit, nineteen successful
+canonical finalized transactions; same seven-unit holding through read-grant issue,
+rotation, SDK reopen/bookkeeping, host reconnect and revocation. Source/installed
+bytes matched before/after, owned node/prover/indexer stopped, all volumes and failed
+fixtures retained. See [review map](docs/review/public-host-native/README.md).
 
+Earlier failed runs exposed missing feature provider, asynchronous dispatch,
+retained node committee catch-up consuming all block weight, wrong capture import,
+33-byte intent vs32-byte hash confusion, and missing explicit grant RP id. Each was
+fixed without changing host packages, extending TTL, replaying deposits or weakening
+consent/value guards. Failed suites remain failed; one confirmed deposit was
+reconciled read-only. No private host implementation import or provider claim.
 
-It keeps SDK transaction ports read-only and preserves provider/hosted-mutation
-qualification as separate gates. No new package or image release.
-
-The runner and five offline resource/integrity/finality guards are being delivered
-locally on the current branch. A native pass is not yet recorded. Commit/sign source,
-run the opt-in `consumer-host-native` lane, then record actual outcomes and owned
-cleanup. Preserve every failed root and encrypted pending record; no automatic replay.
+Final self-review fixes the parent lease to a stable private user directory because
+Nix creates a different TMPDIR for each shell. Two actual-process tests establish
+exclusive acquisition across those directories and refusal of exposed/link paths.
+The native core/bootstrap bytes remain those in the exact signed receipt; this
+separate lease follow-up is not represented as another full native run at HEAD.
+Docs/evidence and Obsidian checkpoint are updated locally on the current branch;
+no native follow-up push, new package/image release, full Lace or hosted-SDK-mutation
+claim. Broad #81/#231 acceptance remains open.
 
 ## Current host review follow-up — 2026/11/01
 

@@ -1,0 +1,43 @@
+{
+  "nativeMeasuredSource": "dd5034eafac8ef3103059b7b436bf66cd73a8386",
+  "guardFollowupNativeRerun": false,
+  "fullGate": true,
+  "counts": {
+    "tests": 1043,
+    "pass": 1036,
+    "fail": 0,
+    "skipped": 7
+  },
+  "lint": true,
+  "format": true,
+  "build": true,
+  "allAppTypes": true,
+  "actualInstalledNativeCoreTypes": true,
+  "sourceFiles": {
+    "scripts/qualify-published-native-host.mjs": "7c9a8acb50b760fc2458634ccbc703e58644ba803b564575988ce904b7235fa8",
+    "scripts/qualification/native-lease.mjs": "202e7520f3dc1ed373b22c91523d3e02b5fb7b754dd87dcd108f74def2b906f8",
+    "tests/published-native-host.test.mjs": "a7cfcae5c9d3103d0e3534c3607b138e969b758cb086b3f5c9276eb75d3babb9",
+    "tests/fixtures/published-native-host.ts": "6b8d2945bfcbbeadb74c1a4eb18b74d23c6c2c42da07d80e744f9d8834f5d280",
+    "tests/fixtures/published-native-host-bootstrap.js": "0624f1f56e103cc6af623ebd8c338fb06adf3623f70be6f599ae664b6f5ceced"
+  },
+  "fullGateLogSha256": "e7ef2f5ae56975f2432f323269eb893c0e13fcfee0645d9fb98619709765c145",
+  "docs": {
+    "pages": 22,
+    "localLinksAndAnchors": 502,
+    "errors": [],
+    "generator": "Jekyll 4.4.1"
+  },
+  "selfReview": {
+    "blockingFindingsRemaining": 0,
+    "stableLeaseAcrossNixShells": true,
+    "unsafeLeaseDirectoriesRefused": true,
+    "noDepositReplay": true,
+    "canonicalFinalityAndStatusRequired": true,
+    "nativeCoreAndBootstrapMatchMeasuredSource": true,
+    "privateMaterialNotPublished": true,
+    "ownedCleanupVerified": true
+  },
+  "realProvider": false,
+  "fullLaceCompatibility": false,
+  "newRelease": false
+}

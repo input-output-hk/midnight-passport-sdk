@@ -23,6 +23,13 @@ It requires the explicit consent and JubJub-grantee adapters; raw authoriser and
 wider host grant scopes are not drop-in assignments. This does not change the
 RC6 artifacts or qualify full Lace/provider behaviour.
 
+The local native follow-up also passed fourteen public-module cases with nineteen
+canonical finalized transactions: create/activate, populated grant issue/rotation,
+SDK read/capability/bookkeeping crossover, reconnect and revocation. See the
+[native scope and limitations]({{ '/consumer-integration/' | relative_url }}#public-package-native-orchestration-lane).
+Synthetic PRF/localnet evidence does not qualify a signer browser/provider or native
+SDK hosted mutations. RC6 package and image bytes remain unchanged.
+
 ## Integration guide
 
 This preview lets Lace engineers evaluate the pinned Passport ACC binding, portable account

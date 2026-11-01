@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "runId": "2783080a-0165-4017-8fcb-e34af5e6085f",
+  "suite": "consumer-host-native",
+  "startedAt": "2026-11-01T13:13:13.117Z",
+  "source": {
+    "commit": "dd5034eafac8ef3103059b7b436bf66cd73a8386",
+    "dirty": false,
+    "workspaceSha256": "c65208c9425d12b7f1ad57ad8ce63b8360f453aad11513db47dfb3a3aec82e7a",
+    "fileCount": 1344
+  },
+  "binding": {
+    "id": "acc-s3r1.1",
+    "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "moduleSha256": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf"
+  },
+  "results": [
+    {
+      "id": "consumer-published-native-host",
+      "tier": "proof-localnet",
+      "outcome": "passed",
+      "elapsedMs": 488535,
+      "exitCode": 0,
+      "signal": null,
+      "stdoutSha256": "0481ead44cb5964eaee73116461e16b8c0753241bc93629d8dc28c772b64331d",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "outputBytes": 15496
+    }
+  ],
+  "allRequiredPassed": true,
+  "releaseQualified": false
+}

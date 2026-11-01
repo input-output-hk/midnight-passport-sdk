@@ -229,13 +229,24 @@ a local pack manifest establishes only the relationship to its supplied files.
 ## Public-package native orchestration lane
 
 The opt-in `consumer-host-native` lane exercises the actual public host module and
-its store actions on the retained dedicated localnet. Its source is being prepared
-locally; a typecheck or fast guard test alone is **not** a native qualification pass.
-Record the signed-source receipt before accepting the results. The latest local
-attempt reached first deployment submission but failed: node logs show repeated
-block-weight exclusion followed by intent TTL expiry. No native pass, activated
-account or funding is established by that attempt. Preserve it; increasing TTL
-alone does not resolve resource exclusion.
+its store actions on the retained dedicated localnet. Clean signed source
+`dd5034eafac8ef3103059b7b436bf66cd73a8386` passed **14 native cases** in 486,575 ms,
+with 16 proof responses and 19 independently checked successful transactions in
+canonical finalized blocks. Source/installed bytes matched before and after; all
+three owned containers stopped. See the
+[review map and exact receipts](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/public-host-native/README.md).
+
+| Boundary | Observed support | Still separate |
+| --- | --- | --- |
+| Public host module | Create/activate, seven-unit deposit, populated read grant/rotation, sign-in and revocation | Signer page, real provider, wider arms and full wallet integration |
+| Installed RC6 SDK | Same derivations, known-address reopen, qualified holding/grant, grantee seal and original-reader bookkeeping | Native SDK mutations through a hosted signer |
+| Revocation | Inactive tombstone, holding preserved, historical seal refused for fresh key | Historical plaintext erasure, compromised-identity or total-loss recovery |
+| Operator inputs | Canonical finality, verified keys, frozen source/installed bytes and owned cleanup | Production images and public-network acceptance |
+
+The later lease fix has a real cross-process regression with different Nix temporary
+directories. Native core/bootstrap bytes are unchanged; the receipt's measured source
+is preserved rather than relabelled as a full native run at a later docs/lease commit.
+A typecheck or fast guard test alone is **not** a native pass.
 
 The target stays fixed at nine SDK packages `0.1.0-rc6`, public
 `@laceio/sdk@0.1.2-canary.2`, and `acc-s3r1.1`. Start with the verified schema-2
@@ -305,7 +316,8 @@ uncertain transactions are retained privately. Each fee-balanced transaction is
 saved before the host may submit it, alongside public hashes/identifiers and the
 node runtime's cost/normal-class limits. An overweight transaction is refused before
 submission; passing this preflight alone does not establish block inclusion. They are never copied into the
-knowledge base or public evidence. A process lease prevents concurrent runs; if it
+knowledge base or public evidence. A process lease under `~/.midnight-passport-native-qualification/` prevents concurrent
+runs even when Nix gives each shell a different `TMPDIR`; if it
 survives a crash, inspect its PID and recorded source before operator cleanup.
 Never clear a lease or replace a request/fixture merely to force another attempt.
 Only sanitised receipts and public transaction/block hashes belong in the handover.

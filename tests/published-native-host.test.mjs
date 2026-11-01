@@ -1,8 +1,20 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync, realpathSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+  realpathSync,
+  readFileSync,
+  lstatSync,
+  chmodSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { inspect } from 'node:util';
+import { spawnSync } from 'node:child_process';
+import { nativeLeasePath } from '../scripts/qualification/native-lease.mjs';
 import { tmpdir } from 'node:os';
 import {
   nativeContainer,
@@ -25,6 +37,56 @@ function container() {
     Mounts: [{ Type: 'volume', Name: project + '_node-data', Destination: '/data' }],
   };
 }
+test('native lease is exclusive across processes with different Nix temporary directories', () => {
+  const home = mkdtempSync(join(tmpdir(), 'native-lease-process-'));
+  try {
+    const firstTemp = join(home, 'shell-a'),
+      secondTemp = join(home, 'shell-b');
+    mkdirSync(firstTemp);
+    mkdirSync(secondTemp);
+    const module = new URL('../scripts/qualification/native-lease.mjs', import.meta.url).href;
+    const source = `import {nativeLeasePath} from ${JSON.stringify(module)};
+      import {writeFileSync} from 'node:fs';
+      try { writeFileSync(nativeLeasePath(process.argv[1]), 'original-intent', {flag:'wx',mode:0o600}); }
+      catch (error) { if(error.code === 'EEXIST') process.exit(23); throw error; }`;
+    const run = (/** @type {string} */ temporary) =>
+      spawnSync(process.execPath, ['--input-type=module', '-e', source, home], {
+        env: { ...process.env, TMPDIR: temporary },
+        encoding: 'utf8',
+        timeout: 15000,
+      });
+    assert.equal(run(firstTemp).status, 0);
+    assert.equal(
+      run(secondTemp).status,
+      23,
+      'A different Nix shell must not acquire the same lease',
+    );
+    assert.equal(readFileSync(nativeLeasePath(home), 'utf8'), 'original-intent');
+    assert.equal(lstatSync(nativeLeasePath(home)).mode & 0o077, 0);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('native lease refuses an exposed or redirected directory without rewriting it', () => {
+  const home = mkdtempSync(join(tmpdir(), 'native-lease-owner-'));
+  try {
+    const target = join(home, '.midnight-passport-native-qualification');
+    mkdirSync(target, { mode: 0o755 });
+    chmodSync(target, 0o755);
+    assert.throws(() => nativeLeasePath(home), /private/);
+    assert.equal(lstatSync(target).mode & 0o777, 0o755);
+    rmSync(target, { recursive: true });
+    const elsewhere = join(home, 'elsewhere');
+    mkdirSync(elsewhere, { mode: 0o700 });
+    symlinkSync(elsewhere, target);
+    assert.throws(() => nativeLeasePath(home), /link/);
+    assert.ok(lstatSync(target).isSymbolicLink());
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test('native capacity refuses a current indexed node whose mandatory work consumes user headroom', () => {
   const live = {
     maxBlock: '2000000000000',

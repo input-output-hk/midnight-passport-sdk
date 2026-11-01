@@ -1,0 +1,29 @@
+{
+  "source": "dd5034eafac8ef3103059b7b436bf66cd73a8386",
+  "nativeOutcome": "passed",
+  "cases": 14,
+  "proofs": 16,
+  "sponsorships": 18,
+  "canonicalFinalizedTransactions": 19,
+  "elapsedMs": 486575,
+  "receiptHashes": {
+    "parent-receipt.json": "0481ead44cb5964eaee73116461e16b8c0753241bc93629d8dc28c772b64331d",
+    "suite-receipt.json": "f6ad48e82253ad27fc077f963a31414c0a9a42ca5350960326e10bf3a061804e",
+    "node-capacity.json": "bd2e85771b87d27db9208a5f727e179540f3a996a463bf33be39aaa3bda70883",
+    "balanced-transaction-manifest.json": "b08563a4d66e506b4794e215501747e43ce6a3bdbdd037f752886d165ad4faba"
+  },
+  "nativeSourceFiles": {
+    "tests/fixtures/published-native-host.ts": "6b8d2945bfcbbeadb74c1a4eb18b74d23c6c2c42da07d80e744f9d8834f5d280",
+    "tests/fixtures/published-native-host-bootstrap.js": "0624f1f56e103cc6af623ebd8c338fb06adf3623f70be6f599ae664b6f5ceced",
+    "docs/examples/jubjub-grant-scope.ts": "1eca254628da57b9bf2c726a583c36239d74e81a7cc8386c22af5807e910feae",
+    "scripts/qualify-published-native-host.mjs": "de30fd47b4b69024550467df5a017a00c6f416475f7790a2a0a3b5782763d9b5",
+    "tests/published-native-host.test.mjs": "1384a62de2335165b78256eee174508797853a0c7c61330fca625d25f34cf02b",
+    "scripts/qualification/catalog.mjs": "d5f2e9035e1427a0b69a333ae1f089cfa9a20498033ee973ba96509377bd7348"
+  },
+  "coreUnchangedInLeaseFollowup": true,
+  "realProvider": false,
+  "hostSignerPage": false,
+  "nativeSdkMutation": false,
+  "fullLaceCompatibility": false,
+  "newRelease": false
+}
