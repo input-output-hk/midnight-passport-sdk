@@ -231,13 +231,20 @@ a local pack manifest establishes only the relationship to its supplied files.
 The opt-in `consumer-host-native` lane exercises the actual public host module and
 its store actions on the retained dedicated localnet. Its source is being prepared
 locally; a typecheck or fast guard test alone is **not** a native qualification pass.
-Record the signed-source receipt before accepting the results.
+Record the signed-source receipt before accepting the results. The latest local
+attempt reached first deployment submission but failed: node logs show repeated
+block-weight exclusion followed by intent TTL expiry. No native pass, activated
+account or funding is established by that attempt. Preserve it; increasing TTL
+alone does not resolve resource exclusion.
 
 The target stays fixed at nine SDK packages `0.1.0-rc6`, public
 `@laceio/sdk@0.1.2-canary.2`, and `acc-s3r1.1`. Start with the verified schema-2
 consumer above and its independently recorded configuration hash. The runner checks
 all installed SDK/host bytes, dependency links, runtime trees, and compiler inputs
-before and after execution. The development composition includes the public
+before and after execution. Before any sponsor wallet starts, three distinct
+node blocks must leave normal-transaction weight headroom after mandatory work.
+A canonical, freshly indexed chain can still be unavailable for transactions while
+its session/committee maintenance catches up after downtime. The development composition includes the public
 `m.storageInMemory` and `m.featureDev` providers alongside the Passport module;
 the upstream base store needs the feature provider even when no optional blockchain
 feature is enabled. Production hosts should supply their upstream feature provider.
@@ -291,7 +298,10 @@ nix develop -c pnpm qualify run consumer-host-native \
 
 Commit and GPG/DCO-sign the harness first: dirty source is refused. Failed and
 interrupted roots, encrypted deployment records, synthetic key material, and
-uncertain transactions are retained privately. They are never copied into the
+uncertain transactions are retained privately. Each fee-balanced transaction is
+saved before the host may submit it, alongside public hashes/identifiers and the
+node runtime's cost/normal-class limits. An overweight transaction is refused before
+submission; passing this preflight alone does not establish block inclusion. They are never copied into the
 knowledge base or public evidence. A process lease prevents concurrent runs; if it
 survives a crash, inspect its PID and recorded source before operator cleanup.
 Never clear a lease or replace a request/fixture merely to force another attempt.

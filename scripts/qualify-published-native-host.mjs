@@ -70,6 +70,24 @@ export function nativeContainer(c, name) {
     ports: c.HostConfig.PortBindings,
   };
 }
+/** Conservative readiness: leave room for a maximum normal extrinsic after mandatory work.
+ * This is a precondition, not a guarantee of inclusion in a future block.
+ * @param {{maxBlock:string,maxNormal:string,baseExtrinsic:string,mandatory:string,operational:string}} values
+ */
+export function nativeBlockCapacity(values) {
+  /** @param {string} value */
+  const number = (value) => {
+    assert.match(value, /^(0|[1-9][0-9]*)$/);
+    return BigInt(value);
+  };
+  const maxBlock = number(values.maxBlock),
+    maxNormal = number(values.maxNormal),
+    baseExtrinsic = number(values.baseExtrinsic),
+    mandatory = number(values.mandatory),
+    operational = number(values.operational);
+  assert.ok(maxBlock > 0n && maxNormal > 0n && maxNormal + baseExtrinsic <= maxBlock);
+  return mandatory + operational + maxNormal + baseExtrinsic <= maxBlock;
+}
 /** @param {NodeJS.ProcessEnv} env */
 export function nativeScope(env) {
   assert.equal(env.IN_NIX_SHELL !== undefined, true, 'Use the pinned Nix shell');

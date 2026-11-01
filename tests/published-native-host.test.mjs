@@ -6,6 +6,7 @@ import { inspect } from 'node:util';
 import { tmpdir } from 'node:os';
 import {
   nativeContainer,
+  nativeBlockCapacity,
   nativeScope,
   nativeResult,
   nativeFinality,
@@ -24,6 +25,25 @@ function container() {
     Mounts: [{ Type: 'volume', Name: project + '_node-data', Destination: '/data' }],
   };
 }
+test('native capacity refuses a current indexed node whose mandatory work consumes user headroom', () => {
+  const live = {
+    maxBlock: '2000000000000',
+    maxNormal: '1299891843000',
+    baseExtrinsic: '108157000',
+    mandatory: '2022693531255',
+    operational: '0',
+  };
+  assert.equal(nativeBlockCapacity(live), false);
+  assert.equal(nativeBlockCapacity({ ...live, mandatory: '200000000000' }), true);
+  assert.equal(
+    nativeBlockCapacity({ ...live, mandatory: '200000000000', operational: '600000000000' }),
+    false,
+  );
+  for (const bad of ['-1', 'NaN', '1.5', '', '1e12'])
+    assert.throws(() => nativeBlockCapacity({ ...live, mandatory: bad }));
+  assert.throws(() => nativeBlockCapacity({ ...live, maxNormal: '3000000000000' }));
+});
+
 test('native control refuses a shared/default project, wrong identity, public port or foreign volume', () => {
   const good = container();
   assert.equal(nativeContainer(good, project + '-node-1').id, good.Id);

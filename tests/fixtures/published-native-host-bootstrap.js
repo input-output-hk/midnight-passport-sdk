@@ -29,7 +29,10 @@ assert.equal(source.keyDirSha256, createHash('sha256').update(keyDir).digest('he
 const { m } = await import('@laceio/sdk/experimental');
 const { PRF_LABEL_AUTHORISER, PRF_LABEL_ROOT, prfSalt } =
   await import('@input-output-hk/mn-passport-keys');
-const { defer } = createRequire(import.meta.resolve('@laceio/sdk/experimental'))('rxjs');
+const hostRequire = createRequire(import.meta.resolve('@laceio/sdk/experimental'));
+const { defer } = hostRequire('rxjs');
+const { ApiPromise, WsProvider } = hostRequire('@polkadot/api');
+const { ledger } = await import('@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1');
 const { loadBundle, createKeyServer } = await import(
   pathToFileURL(join(sdk, 'apps/passport-key-service/src/server.mjs'))
 );
@@ -190,7 +193,103 @@ const records = {
           : 'complete',
     ),
 };
+// Connect before constructing TTL-bound transactions; inspect only, never submit here.
+const relay = await ApiPromise.create({
+  provider: new WsProvider('ws://127.0.0.1:19954'),
+  noInitWarn: true,
+});
+const { nativeBlockCapacity } = await import(
+  pathToFileURL(join(sdk, 'scripts/qualify-published-native-host.mjs'))
+);
+async function waitForCapacity() {
+  const deadline = Date.now() + 20 * 60_000;
+  const samples = [];
+  let previous;
+  checkpoint('node-capacity-wait');
+  while (samples.length < 3) {
+    assert.ok(Date.now() < deadline, 'Node has no normal transaction headroom; no wallet started');
+    const hash = (await relay.rpc.chain.getHeader()).hash.toHex();
+    if (hash !== previous) {
+      previous = hash;
+      const blockWeight = await relay.query.system.blockWeight.at(hash);
+      const limits = relay.consts.system.blockWeights;
+      const values = {
+        maxBlock: limits.maxBlock.refTime.toString(),
+        maxNormal: limits.perClass.normal.maxExtrinsic.unwrap().refTime.toString(),
+        baseExtrinsic: limits.perClass.normal.baseExtrinsic.refTime.toString(),
+        mandatory: blockWeight.mandatory.refTime.toString(),
+        operational: blockWeight.operational.refTime.toString(),
+      };
+      if (nativeBlockCapacity(values)) samples.push({ hash, ...values });
+      else samples.length = 0;
+    }
+    if (samples.length < 3) await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  writeFileSync(
+    join(root, 'node-capacity.public.json'),
+    JSON.stringify({ samples }, null, 2) + '\n',
+    { flag: 'wx', mode: 0o600 },
+  );
+  checkpoint('node-capacity-ready', { blocks: samples.length });
+}
+async function retainBalanced(bytes, count) {
+  assert.ok(bytes instanceof Uint8Array && bytes.length > 0);
+  assert.ok(Number.isSafeInteger(count) && count > 0);
+  const name = 'balanced-' + String(count).padStart(4, '0');
+  writeFileSync(join(root, name + '.private.bin'), bytes, { flag: 'wx', mode: 0o600 });
+  const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
+  const cost = await relay.call.midnightRuntimeApi.getTransactionCost(
+    '0x' + Buffer.from(bytes).toString('hex'),
+  );
+  assert.ok(cost.isOk, 'Node refused transaction cost preflight; preserve balanced bytes');
+  const costWeight = cost.asOk.toBigInt();
+  // The runtime adds this storage-configured dispatch overhead to ledger gas.
+  const extra = await relay.query.midnight.configurableTransactionSizeWeight();
+  const overhead = extra.refTime.toBigInt();
+  const weight = costWeight + overhead;
+  const limits = relay.consts.system.blockWeights;
+  const maxExtrinsic = limits.perClass.normal.maxExtrinsic.unwrap().refTime.toBigInt();
+  const maxTotal = limits.perClass.normal.maxTotal.unwrap().refTime.toBigInt();
+  const baseExtrinsic = limits.perClass.normal.baseExtrinsic.refTime.toBigInt();
+  const baseBlock = limits.baseBlock.refTime.toBigInt();
+  const metadata = {
+    count,
+    sha256: createHash('sha256').update(bytes).digest('hex'),
+    bytes: bytes.length,
+    transactionHash: tx.transactionHash(),
+    identifiers: tx.identifiers(),
+    ttl: Array.from(tx.intents ?? [], ([segment, intent]) => ({
+      segment,
+      ttl: intent.ttl.toISOString(),
+      actions: intent.actions.length,
+    })),
+    costWeight: String(costWeight),
+    overhead: String(overhead),
+    weight: String(weight),
+    maxExtrinsic: String(maxExtrinsic),
+    maxTotal: String(maxTotal),
+    baseExtrinsic: String(baseExtrinsic),
+    baseBlock: String(baseBlock),
+  };
+  writeFileSync(join(root, name + '.public.json'), JSON.stringify(metadata, null, 2) + '\n', {
+    flag: 'wx',
+    mode: 0o600,
+  });
+  checkpoint('balanced-transaction-retained', {
+    count,
+    bytes: bytes.length,
+    sha256: metadata.sha256,
+    costWeight: String(costWeight),
+    overhead: String(overhead),
+    weight: String(weight),
+  });
+  assert.ok(
+    weight <= maxExtrinsic && weight + baseExtrinsic + baseBlock <= maxTotal,
+    'Balanced transaction exceeds normal-class node weight limits; refused before host submission',
+  );
+}
 try {
+  await waitForCapacity();
   const { runNativeHost } = await import('./compiled/native-core.js');
   const receipt = await runNativeHost({
     owner,
@@ -198,6 +297,7 @@ try {
     credentialId: Uint8Array.from(Buffer.from(material.owner.id, 'base64url')),
     records,
     readRecord,
+    retainBalanced,
     checkpoint,
   });
   assert.equal(draws.creations, 0);
@@ -214,6 +314,7 @@ try {
   );
   checkpoint('native-orchestration-complete', { testsPassed: receipt.testsPassed });
 } finally {
+  await relay.disconnect();
   await new Promise((resolve) => server.close(resolve));
 }
 

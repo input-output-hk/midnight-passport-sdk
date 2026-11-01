@@ -62,6 +62,7 @@ export interface NativeHostIO {
   credentialId: Uint8Array;
   records: m.AccountRecordStore;
   readRecord(): Promise<m.PassportAccountRecord | undefined>;
+  retainBalanced(bytes: Uint8Array, count: number): Promise<void>;
   checkpoint(stage: string, data?: Record<string, string | number | boolean>): void;
 }
 
@@ -87,6 +88,8 @@ export async function runNativeHost(io: NativeHostIO) {
     balanceAndSign: async (tx: Uint8Array) => {
       const result = await feeWallet.balanceAndSign(tx);
       sponsorships++;
+      // Persist before the public host can submit; a missing account record never proves no send.
+      await io.retainBalanced(result, sponsorships);
       io.checkpoint('fee-balanced', { count: sponsorships });
       return result;
     },

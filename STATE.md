@@ -24,6 +24,16 @@ failed before any account record. Public action processing is asynchronous; an
 isolated observer probe confirms `idle` immediately, then `ceremony`/terminal state.
 The corrected runner subscribes before dispatch and bounds acceptance without
 redispatch. Both failed roots remain private, with unchanged source and owned cleanup.
+The third signed run (`1e8df1a`) reached real first deployment submission. Node logs
+show prompt mempool admission, repeated `HitBlockWeightLimit`, then intent TTL
+expiry; no account record/activation/funding/native pass. The 15 KB wave heuristic
+matches the reference but does not prove node inclusion. Retain that transaction's
+failed root. The harness now saves each balanced transaction privately before the
+host may submit and checks its runtime-reported cost against the live normal-class
+weight limits. Read-only inspection found mandatory block weight
+2,022,693,531,255 against max block weight2,000,000,000,000, exhausting all user
+headroom during session/committee catch-up. Require three distinct capacity-ready
+blocks before sponsor startup. This does not submit a second transaction or extend the TTL.
 
 
 It keeps SDK transaction ports read-only and preserves provider/hosted-mutation
