@@ -34,6 +34,11 @@ weight limits. Read-only inspection found mandatory block weight
 2,022,693,531,255 against max block weight2,000,000,000,000, exhausting all user
 headroom during session/committee catch-up. Require three distinct capacity-ready
 blocks before sponsor startup. This does not submit a second transaction or extend the TTL.
+Attempt4 (`4821ccc`) confirmed capacity recovery on three distinct blocks before
+sponsor startup. Its private capture saved the balanced deployment then refused
+before host submission: the capture imported the contract ledger decoder instead
+of the ledger runtime. Corrected to resolve the installed host ledger-v9 runtime;
+standalone decoding/cost inspection of retained bytes is read-only, never a replay.
 
 
 It keeps SDK transaction ports read-only and preserves provider/hosted-mutation

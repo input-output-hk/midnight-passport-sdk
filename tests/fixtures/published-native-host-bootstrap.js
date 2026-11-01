@@ -32,7 +32,7 @@ const { PRF_LABEL_AUTHORISER, PRF_LABEL_ROOT, prfSalt } =
 const hostRequire = createRequire(import.meta.resolve('@laceio/sdk/experimental'));
 const { defer } = hostRequire('rxjs');
 const { ApiPromise, WsProvider } = hostRequire('@polkadot/api');
-const { ledger } = await import('@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1');
+const ledger = await import(pathToFileURL(hostRequire.resolve('@midnightntwrk/ledger-v9')));
 const { loadBundle, createKeyServer } = await import(
   pathToFileURL(join(sdk, 'apps/passport-key-service/src/server.mjs'))
 );
