@@ -265,7 +265,13 @@ export async function runBrowserSigner(env = process.env) {
         dapp = await serveBrowser(join(output, 'dist'));
         signerServer = await serveBrowser(join(output, 'dist'), dapp.origin);
         stage = 'launch';
-        browser = await chromium.launch({ executablePath: chrome, headless: true });
+        // This runner owns signal cleanup; Playwright's default handlers would race it.
+        browser = await chromium.launch({
+          executablePath: chrome,
+          headless: true,
+          handleSIGINT: false,
+          handleSIGTERM: false,
+        });
         browserVersion = browser.version();
         context = await browser.newContext();
         context.setDefaultTimeout(20000);
