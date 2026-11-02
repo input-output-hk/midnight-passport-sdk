@@ -44,3 +44,12 @@ owner submission receipts. It requires a dedicated encryption-key file, independ
 RPC token file and durable private mount. See [Host durability]({{ '/host-durability/' | relative_url }})
 for its authenticated RPC and qualification boundary. Existing v1 job/proving routes
 and the default demo composition do not automatically become durable.
+
+### Request-target validation
+
+The next source candidate refuses malformed request targets with a generic `400` before
+routing or wallet/prover work. Only origin-form paths are accepted; proxy-style absolute
+URLs and network-path authorities are unsupported. Host validation still runs first (`421`
+for an unknown Host). Raw-socket regression checks that malformed requests cannot terminate
+the process and that the same instance continues serving health requests. This corrects
+#260; released RC6 predates this source fix.
