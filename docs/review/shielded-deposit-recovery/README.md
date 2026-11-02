@@ -28,3 +28,14 @@ The dispatch fence intentionally has an unknown window before wallet invocation.
 proof cannot authorise a replay. Restoring an earlier journal revision or creating a new journal
 for a legacy request is unsupported. The host must retain the actual sender's records and use
 real canonical evidence with I/O deadlines; a matching inbox or truthy object cannot suffice.
+
+## Independent quality audit correction
+
+The bounded audit found that a post-admission host lookup/finality/storage exception could escape
+with a misleading pre-send error code. The runner now normalises journal reads and all port
+failures after dispatch admission to safe nonretryable `MutationUnsettled`; it never exports raw
+host diagnostics. Five targeted fault cases preserve original journal evidence, one sender effect,
+and the original receipt on later recovery. A sixth case covers intermediate clock regression.
+The pinned contract source only appends inbox entries; the exact-prefix guard matches that binding.
+Large-inbox/operator no-send/rollback follow-ups remain explicitly #269. No live proof or provider
+acceptance is inferred from these inspected/fast synthetic cases.

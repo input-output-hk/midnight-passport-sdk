@@ -139,3 +139,8 @@ of an entire valid backup. Sender-side durable ID deduplication is mandatory eve
 The operator recovery and rollback-fencing follow-up is [#269](https://github.com/input-output-hk/midnight-passport-sdk/issues/269); it is not implemented by this API.
 
 A missing or malformed post-submission account observation reports `MutationUnsettled`, preserving the submitted record. Reconcile the same request; it is not a pre-send account refusal.
+
+Post-admission sender lookup, finality, journal transition/read, and poll-sleep failures report
+safe `MutationUnsettled` errors with `retryable: false`. Private port diagnostics stay in the
+host's private records. Reconcile the original ID; these failures never establish a no-send result.
+Polling rejects an intermediate clock regression as well as a time before polling began.

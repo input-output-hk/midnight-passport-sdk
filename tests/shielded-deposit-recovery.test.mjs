@@ -158,7 +158,9 @@ test('unknown fenced dispatch cannot become a replacement sender invocation', ()
         throw Error('lost durable acknowledgement before wallet call');
       return ok;
     };
-    await assert.rejects(depositShielded(depositRequest, world.ports), /lost durable/);
+    await assert.rejects(depositShielded(depositRequest, world.ports), {
+      code: 'MutationUnsettled',
+    });
     const next = depositWorld(root);
     await assert.rejects(resumeShieldedDeposit(depositRequest, next.ports), /unknown/);
     assert.equal(next.stats().sends, 0);
@@ -247,10 +249,9 @@ test('ciphertext authentication and bound record codec refuse tampering or cross
     bytes[bytes.length - 1] = Number(bytes.at(-1)) ^ 1;
     record.ciphertext = bytes.toString('base64');
     writeFileSync(path, JSON.stringify(record), { mode: 0o600 });
-    await assert.rejects(
-      resumeShieldedDeposit(depositRequest, depositWorld(root).ports),
-      /Protected deposit journal/,
-    );
+    await assert.rejects(resumeShieldedDeposit(depositRequest, depositWorld(root).ports), {
+      code: 'MutationUnsettled',
+    });
   }));
 
 test('pre-admission storage failure or stale ciphertext never dispatches a value input', () =>
@@ -489,4 +490,100 @@ test('submitted read gaps remain unsettled original intent and resume without an
     assert.equal(world.stats().effects, 1);
     assert.equal((await resumeShieldedDeposit(depositRequest, world.ports)).txId, 'tx-original');
     assert.equal(world.stats().sends, 0);
+  }));
+
+for (const fault of [
+  'sender-lookup',
+  'finality',
+  'post-send-write',
+  'post-send-read',
+  'resume-read',
+])
+  test(
+    'post-admission ' + fault + ' failure retains original intent with safe unsettled error',
+    () =>
+      fixture(async (root) => {
+        const world = depositWorld(root);
+        const unsafe = Object.assign(Error('private-port-diagnostic'), { code: 'AccountNotFound' });
+        const recovery = { ...world.ports.recovery };
+        if (fault === 'sender-lookup' || fault === 'resume-read') {
+          const stopped = spawnSync(process.execPath, [child, root, 'send-exit'], {
+            encoding: 'utf8',
+            timeout: 10000,
+          });
+          assert.equal(stopped.status, 73);
+          if (fault === 'sender-lookup')
+            recovery.reconcileSender = async () => {
+              throw unsafe;
+            };
+          else
+            recovery.journal = {
+              ...recovery.journal,
+              read: async () => {
+                throw unsafe;
+              },
+            };
+        } else if (fault === 'finality')
+          recovery.confirmTransaction = async () => {
+            throw unsafe;
+          };
+        else if (fault === 'post-send-write')
+          recovery.journal = {
+            ...recovery.journal,
+            compareAndSwap: async (id, previous, next) => {
+              if (next.phase === 'submitted') throw unsafe;
+              return world.journal.compareAndSwap(id, previous, next);
+            },
+          };
+        else {
+          const read = world.journal.read;
+          recovery.journal = {
+            ...recovery.journal,
+            read: async (id) => {
+              const doc = await read(id);
+              if (doc?.phase === 'submitted') throw unsafe;
+              return doc;
+            },
+          };
+        }
+        await assert.rejects(
+          fault === 'sender-lookup' || fault === 'resume-read'
+            ? resumeShieldedDeposit(depositRequest, { ...world.ports, recovery })
+            : depositShielded(depositRequest, { ...world.ports, recovery }),
+          (error) => {
+            assert.ok(
+              error && typeof error === 'object' && 'code' in error && 'retryable' in error,
+            );
+            assert.equal(error.code, 'MutationUnsettled');
+            assert.equal(error.retryable, false);
+            assert.equal(String(error).includes('private-port'), false);
+            return true;
+          },
+        );
+        const original = await world.journal.read(depositRequest.requestId);
+        assert.ok(original && original.phase !== 'prepared');
+        assert.equal(world.stats().effects, 1);
+        assert.equal(
+          (await resumeShieldedDeposit(depositRequest, world.ports)).txId,
+          'tx-original',
+        );
+        assert.equal(world.stats().effects, 1);
+      }),
+  );
+
+test('middle-poll clock regression refuses while retaining original submitted intent', () =>
+  fixture(async (root) => {
+    const world = depositWorld(root);
+    world.finalized(false);
+    const ticks = [100, 100, 200, 150];
+    await assert.rejects(
+      depositShielded(depositRequest, {
+        ...world.ports,
+        confirmationMs: 1000,
+        now: () => ticks.shift() ?? 150,
+      }),
+      /clock/,
+    );
+    assert.equal((await world.journal.read(depositRequest.requestId))?.phase, 'submitted');
+    assert.equal(world.stats().effects, 1);
   }));

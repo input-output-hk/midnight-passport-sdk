@@ -2,7 +2,7 @@
   "scope": "additive journalled shielded deposit recovery",
   "base": "9466d8af0438251e50068deee80951625c18fdf9",
   "gate": {
-    "pass": 1074,
+    "pass": 1080,
     "fail": 0,
     "skipped": 7
   },
@@ -19,5 +19,14 @@
   "nativeProof": false,
   "realProvider": false,
   "publishedRelease": false,
-  "actualRandomisedSealing": true
+  "actualRandomisedSealing": true,
+  "recoveryCases": 26,
+  "postAdmissionPortFailureCases": [
+    "sender-lookup",
+    "finality",
+    "post-send-write",
+    "post-send-read",
+    "resume-read"
+  ],
+  "intermediateClockRegressionRefuses": true
 }

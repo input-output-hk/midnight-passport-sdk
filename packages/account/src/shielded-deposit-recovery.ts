@@ -81,6 +81,16 @@ const validTx = (v: unknown): v is string =>
 function fail(message: string): never {
   throw new PassportConnectorError('MutationUnsettled', message, { retryable: false });
 }
+/** A host port failure after the dispatch fence cannot masquerade as a pre-send refusal. */
+async function reconcilePort<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch {
+    return fail(
+      'Original deposit recovery evidence is unavailable; reconcile this request ID without resending.',
+    );
+  }
+}
 const fields = (v: unknown, keys: string[], required = keys): v is Record<string, unknown> =>
   !!v &&
   typeof v === 'object' &&
@@ -274,7 +284,7 @@ export async function runRecoverableShieldedDeposit(
   const initialTime = now();
   if (!Number.isSafeInteger(initialTime) || initialTime < 0)
     fail('Invalid deposit reconciliation clock.');
-  let doc = await recovery.journal.read(input.requestId);
+  let doc = await reconcilePort(() => recovery.journal.read(input.requestId));
   if (!doc) {
     if (resumeOnly)
       fail('Original deposit evidence is missing; do not create a replacement request.');
@@ -313,7 +323,7 @@ export async function runRecoverableShieldedDeposit(
     };
     validateShieldedDepositDocument(prepared);
     await recovery.journal.compareAndSwap(input.requestId, undefined, copy(prepared));
-    doc = await recovery.journal.read(input.requestId);
+    doc = await reconcilePort(() => recovery.journal.read(input.requestId));
   }
   for (let contention = 0; contention < 16; contention++) {
     if (!doc) fail('Original deposit journal is unavailable.');
@@ -336,7 +346,15 @@ export async function runRecoverableShieldedDeposit(
       )
         fail('Original pre-dispatch inbox evidence changed.');
       const dispatching = { ...doc, revision: doc.revision + 1, phase: 'dispatching' as const };
-      if (await recovery.journal.compareAndSwap(input.requestId, doc.revision, copy(dispatching))) {
+      if (
+        await reconcilePort(() =>
+          recovery.journal.compareAndSwap(
+            input.requestId,
+            dispatching.revision - 1,
+            copy(dispatching),
+          ),
+        )
+      ) {
         let txId: string;
         try {
           const result = await ports.sender.depositShielded({
@@ -358,37 +376,50 @@ export async function runRecoverableShieldedDeposit(
             'Original deposit dispatch is unknown; reconcile this request ID without resending.',
           );
         }
-        await recovery.journal.compareAndSwap(input.requestId, dispatching.revision, {
-          ...dispatching,
-          revision: dispatching.revision + 1,
-          phase: 'submitted',
-          txId,
-        });
+        await reconcilePort(() =>
+          recovery.journal.compareAndSwap(input.requestId, dispatching.revision, {
+            ...dispatching,
+            revision: dispatching.revision + 1,
+            phase: 'submitted',
+            txId,
+          }),
+        );
       }
-      doc = await recovery.journal.read(input.requestId);
+      doc = await reconcilePort(() => recovery.journal.read(input.requestId));
       continue;
     }
     if (doc.phase === 'dispatching') {
-      const outcome = await recovery.reconcileSender(copy(doc.intent), doc.intentSha256);
+      const original = copy(doc.intent),
+        digest = doc.intentSha256;
+      const outcome = await reconcilePort(() => recovery.reconcileSender(original, digest));
       if (
         outcome.kind !== 'submitted' ||
         outcome.intentSha256 !== doc.intentSha256 ||
         !validTx(outcome.txId)
       )
         fail('Original deposit dispatch remains unknown; do not resend.');
-      await recovery.journal.compareAndSwap(input.requestId, doc.revision, {
+      const submitted = {
         ...doc,
         revision: doc.revision + 1,
-        phase: 'submitted',
+        phase: 'submitted' as const,
         txId: outcome.txId,
-      });
-      doc = await recovery.journal.read(input.requestId);
+      };
+      await reconcilePort(() =>
+        recovery.journal.compareAndSwap(input.requestId, submitted.revision - 1, submitted),
+      );
+      doc = await reconcilePort(() => recovery.journal.read(input.requestId));
       continue;
     }
-    const started = now();
+    let started: number;
+    try {
+      started = now();
+    } catch {
+      return fail('Invalid deposit reconciliation clock.');
+    }
     if (!Number.isSafeInteger(started) || started < 0)
       fail('Invalid deposit reconciliation clock.');
     const deadline = started + confirmationMs;
+    let previousTime = started;
     let remainingPolls = Math.ceil(confirmationMs / pollMs) + 1;
     for (;;) {
       let current: ReturnType<typeof snapshot>;
@@ -413,37 +444,45 @@ export async function runRecoverableShieldedDeposit(
         fail('Original deposit inbox evidence is ambiguous.');
       if (matches.length === 1) {
         const inboxIndex = matches[0]!;
-        if (
-          (await recovery.confirmTransaction({
-            intent: copy(doc.intent),
-            intentSha256: doc.intentSha256,
-            txId: doc.txId!,
-            inboxIndex,
-          })) === true
-        ) {
+        const evidence = {
+          intent: copy(doc.intent),
+          intentSha256: doc.intentSha256,
+          txId: doc.txId!,
+          inboxIndex,
+        };
+        if ((await reconcilePort(() => recovery.confirmTransaction(evidence))) === true) {
           const result: ShieldedDepositResult = {
             txId: doc.txId!,
             inboxIndex,
             viewingKeyChanged: current.encKey !== doc.intent.encKey,
           };
-          await recovery.journal.compareAndSwap(input.requestId, doc.revision, {
+          const confirmed = {
             ...doc,
             revision: doc.revision + 1,
-            phase: 'confirmed',
+            phase: 'confirmed' as const,
             result,
-          });
-          doc = await recovery.journal.read(input.requestId);
+          };
+          await reconcilePort(() =>
+            recovery.journal.compareAndSwap(input.requestId, confirmed.revision - 1, confirmed),
+          );
+          doc = await reconcilePort(() => recovery.journal.read(input.requestId));
           break;
         }
       }
-      const time = now();
-      if (!Number.isSafeInteger(time) || time < started)
+      let time: number;
+      try {
+        time = now();
+      } catch {
+        return fail('Invalid deposit reconciliation clock.');
+      }
+      if (!Number.isSafeInteger(time) || time < previousTime)
         fail('Invalid deposit reconciliation clock.');
+      previousTime = time;
       if (time >= deadline || --remainingPolls <= 0)
         fail(
           'Original deposit transaction or exact inbox entry is unconfirmed; reconcile this request ID.',
         );
-      await ports.sleep(pollMs);
+      await reconcilePort(() => ports.sleep(pollMs));
     }
   }
   return fail('Deposit journal contention remains unsettled.');
