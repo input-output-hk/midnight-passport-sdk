@@ -26,6 +26,13 @@ window.qualification = q;
 if (location.pathname === '/signer/') {
   // PRF bytes never leave this lexical signer-origin closure; only scan counts are public.
   const protectedSecrets = new Set();
+  q.nonOpenerHellos = 0;
+  window.addEventListener('message', (event) => {
+    if (event.data?.type === 'hello' && event.source !== window.opener) {
+      q.nonOpenerHellos++;
+      q.nonOpenerOrigin = event.origin;
+    }
+  });
 
   const material = () => {
     const id = localStorage.getItem('passport-qualification-credential');

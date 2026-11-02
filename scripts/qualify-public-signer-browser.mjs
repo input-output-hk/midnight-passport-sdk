@@ -345,7 +345,7 @@ export async function runBrowserSigner(env = process.env) {
         cdp.on('WebAuthn.credentialAsserted', () => asserted++);
         stage = 'credential-enroll';
         await popup.locator('#start').click();
-        await popup.waitForFunction(() => /** @type {any} */ (globalThis).qualification.ready);
+        await popup.waitForFunction(() => /** @type {any} */ (globalThis).qualification?.ready);
         await check('same-origin non-opener hello cannot capture the signer port', async () => {
           const frameReady = popup.waitForEvent(
             'framenavigated',
@@ -363,7 +363,15 @@ export async function runBrowserSigner(env = process.env) {
           await frame.waitForFunction(
             () => /** @type {any} */ (globalThis).qualification?.attackSent,
           );
-          await new Promise((resolve) => setTimeout(resolve, 150));
+          await popup.waitForFunction(
+            () => /** @type {any} */ (globalThis).qualification.nonOpenerHellos === 1,
+          );
+          assert.equal(
+            await popup.evaluate(
+              () => /** @type {any} */ (globalThis).qualification.nonOpenerOrigin,
+            ),
+            dapp.origin,
+          );
           assert.deepEqual(
             await frame.evaluate(() => /** @type {any} */ (globalThis).qualification.attackReplies),
             [],
@@ -635,7 +643,7 @@ export async function runBrowserSigner(env = process.env) {
         await check('signer navigation does not replay completed chain work', async () => {
           const before = asserted;
           await popup.goto(signerServer.origin + '/signer/?navigated=1');
-          await popup.waitForFunction(() => /** @type {any} */ (globalThis).qualification.ready);
+          await popup.waitForFunction(() => /** @type {any} */ (globalThis).qualification?.ready);
           assert.equal(asserted, before);
           assert.equal(
             await popup.evaluate(
