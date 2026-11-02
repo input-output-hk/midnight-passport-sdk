@@ -153,3 +153,25 @@ test('an unconfirmed credit fails while the route keeps its reservation pending'
   });
   await assert.rejects(backend.fund(request), /not confirmed/);
 });
+
+test('funding backend rejects unsafe timing configuration before any wallet work', () => {
+  const forbidden = async () => {
+    throw Error('wallet must not start');
+  };
+  for (const value of [NaN, Infinity, -Infinity, 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])
+    assert.throws(
+      () => createWalletFundingBackend({ deployed: () => true, connect: forbidden, pollMs: value }),
+      /invalid funding confirmation window/,
+    );
+  for (const value of [NaN, Infinity, -Infinity, -1, 1.5, 2_147_483_648])
+    assert.throws(
+      () =>
+        createWalletFundingBackend({
+          deployed: () => true,
+          connect: forbidden,
+          pollMs: 1,
+          confirmationMs: value,
+        }),
+      /invalid funding confirmation window/,
+    );
+});

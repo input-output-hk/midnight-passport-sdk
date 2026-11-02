@@ -34,7 +34,14 @@ export function createWalletFundingBackend(
   const runExclusive = serial(8);
   const pollMs = options.pollMs ?? 2000;
   const confirmationMs = options.confirmationMs ?? 120_000;
-  if (pollMs < 1 || confirmationMs < pollMs) throw new Error('invalid funding confirmation window');
+  if (
+    !Number.isSafeInteger(pollMs) ||
+    !Number.isSafeInteger(confirmationMs) ||
+    pollMs < 1 ||
+    confirmationMs < pollMs ||
+    confirmationMs > 2_147_483_647
+  )
+    throw new Error('invalid funding confirmation window');
   const now = options.now ?? Date.now;
   const sleep = options.sleep ?? ((ms: number) => delay(ms));
 

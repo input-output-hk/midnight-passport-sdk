@@ -121,3 +121,36 @@ test('an unconfirmed shielded deposit preserves its transaction ID for reconcili
   await assert.rejects(depositShielded(request, ports), /tx-pending.*reconcile before retrying/);
   reader.secretKey.fill(0);
 });
+
+test('invalid deposit timing options refuse before chain, sealer or sender work', async () => {
+  const forbidden = async () => {
+    throw Error('side effect must not run');
+  };
+  for (const value of [NaN, Infinity, -Infinity, 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    await assert.rejects(
+      () =>
+        depositShielded(request, {
+          chain: { readAccount: forbidden },
+          sealCoin: forbidden,
+          sender: { depositShielded: forbidden },
+          sleep: forbidden,
+          pollMs: value,
+        }),
+      /Invalid deposit confirmation window/,
+    );
+  }
+  for (const value of [NaN, Infinity, -Infinity, -1, 1.5, 2_147_483_648]) {
+    await assert.rejects(
+      () =>
+        depositShielded(request, {
+          chain: { readAccount: forbidden },
+          sealCoin: forbidden,
+          sender: { depositShielded: forbidden },
+          sleep: forbidden,
+          pollMs: 1,
+          confirmationMs: value,
+        }),
+      /Invalid deposit confirmation window/,
+    );
+  }
+});
