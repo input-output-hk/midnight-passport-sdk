@@ -1,5 +1,6 @@
 // External browser-only qualification entry. Actual client/handlers, fake chain, virtual credential.
 import * as source from './prepared/handlers.mjs';
+import { assertNoSecretMaterial } from './secret-scan.mjs';
 import { createRemotePasskeySigner, createRemotePassportSeams } from '@laceio/sdk/experimental';
 import { hostedJubjubAuthoriser } from '@input-output-hk/mn-passport-adapter-browser/hosted-jubjub';
 import { addJubjubAuthorisingDevice } from '@input-output-hk/mn-passport-account';
@@ -23,6 +24,9 @@ const q = {
 };
 window.qualification = q;
 if (location.pathname === '/signer/') {
+  // PRF bytes never leave this lexical signer-origin closure; only scan counts are public.
+  const protectedSecrets = new Set();
+
   const material = () => {
     const id = localStorage.getItem('passport-qualification-credential');
     if (!id) throw Error('Virtual credential not enrolled');
@@ -35,7 +39,12 @@ if (location.pathname === '/signer/') {
         },
         get: async (options) => {
           q.assertions++;
-          return navigator.credentials.get(options);
+          const credential = await navigator.credentials.get(options);
+          const results = credential?.getClientExtensionResults()?.prf?.results;
+          for (const raw of [results?.first, results?.second])
+            if (raw) protectedSecrets.add(hex(new Uint8Array(raw)));
+          q.protectedRepresentations = protectedSecrets.size;
+          return credential;
         },
       },
     });
@@ -70,8 +79,40 @@ if (location.pathname === '/signer/') {
         stop?.();
       }
     };
+    q.scannedResponses = 0;
+    q.secretFailure = false;
+    const observedHandlers = Object.fromEntries(
+      Object.entries(handlers).map(([kind, handler]) => [
+        kind,
+        async (...args) => {
+          try {
+            const result = await handler(...args);
+            try {
+              assertNoSecretMaterial(result, [...protectedSecrets]);
+            } catch {
+              q.secretFailure = true;
+              throw Error('Declared signer secret guard failed');
+            }
+            q.scannedResponses++;
+            return result;
+          } catch (error) {
+            try {
+              assertNoSecretMaterial(
+                { code: error?.code, message: error?.message, details: error?.details },
+                [...protectedSecrets],
+              );
+            } catch {
+              q.secretFailure = true;
+              throw Error('Declared signer secret guard failed');
+            }
+            throw error;
+          }
+        },
+      ]),
+    );
+    stop?.();
     stop = source.serveSignerRequests({
-      handlers,
+      handlers: observedHandlers,
       rpId: 'localhost',
       assertOriginAllowed: (kind, origin) => {
         if (origin !== q.allowedOrigin || !q.originAllowed)
@@ -124,6 +165,7 @@ if (location.pathname === '/signer/') {
   if (localStorage.getItem('passport-qualification-credential')) start();
 } else {
   let client, seams, sdk, popup;
+  const retiredClients = [];
   const conversions = {
     account: source.AccAddress,
     epoch: source.DeviceEpoch,
@@ -133,9 +175,7 @@ if (location.pathname === '/signer/') {
       return structuredClone(v);
     },
   };
-  q.open = () => {
-    client = createRemotePasskeySigner({ signerUrl: q.signerUrl });
-    popup = client.open();
+  q.connectNow = () => {
     q.connecting = client
       .connect()
       .then(() => {
@@ -149,9 +189,85 @@ if (location.pathname === '/signer/') {
         return false;
       });
   };
+  q.open = () => {
+    if (client) retiredClients.push(client);
+    q.connected = false;
+    const actual = createRemotePasskeySigner({ signerUrl: q.signerUrl });
+    client = {
+      ...actual,
+      request: (kind, payload) => {
+        q.requests.push({ kind, outcome: payload?.outcome });
+        return actual.request(kind, payload);
+      },
+    };
+    popup = client.open();
+    if (!q.deferConnect) q.connectNow();
+  };
   document.querySelector('#start').onclick = q.open;
+  q.originIsolationProbe = () => {
+    try {
+      popup.localStorage.getItem('passport-qualification-credential');
+      return false;
+    } catch (error) {
+      return error.name === 'SecurityError';
+    }
+  };
+  if (new URLSearchParams(location.search).has('attack-hello')) {
+    const channel = new MessageChannel();
+    q.attackReplies = [];
+    channel.port1.onmessage = (event) => q.attackReplies.push(event.data?.type ?? 'reply');
+    q.closeAttack = () => channel.port1.close();
+    window.parent.postMessage({ type: 'hello' }, '*', [channel.port2]);
+    q.attackSent = true;
+  }
+  q.scopeProbe = (field) =>
+    sdk.withKeySession(
+      async () => {
+        const request = {
+          account: q.account,
+          circuit: 'add_device_with_jubjub',
+          args: [new Uint8Array(32).fill(0xdc)],
+          witnessValues: [],
+          authNonce: 0n,
+          useCounter: 1n,
+        };
+        if (field === 'account') request.account = 'ac'.repeat(32);
+        else if (field === 'circuit') request.circuit = 'remove_device_with_jubjub';
+        else if (field === 'commitment') request.args = [new Uint8Array(32)];
+        else throw Error('Unknown probe');
+        try {
+          await sdk.authorise(request);
+          return 'admitted';
+        } catch (error) {
+          return error.code;
+        }
+      },
+      { kind: 'add-device', account: q.account, commitmentHex: 'dc'.repeat(32) },
+    );
+  q.callbackFailure = async () => {
+    const failure = Object.assign(Error('controlled callback'), { code: 'controlled-callback' });
+    try {
+      await sdk.withKeySession(
+        async () => {
+          throw failure;
+        },
+        { kind: 'sign-in' },
+      );
+    } catch (error) {
+      return (
+        error === failure &&
+        q.requests.at(-1)?.kind === 'flow-close' &&
+        q.requests.at(-1)?.outcome === 'failed'
+      );
+    }
+    return false;
+  };
   q.request = (kind, payload) => client.request(kind, payload);
-  q.close = () => client.close();
+  q.close = () => {
+    client.close();
+    for (const previous of retiredClients) previous.close();
+    retiredClients.length = 0;
+  };
   q.signin = () => sdk.withKeySession(() => sdk.devicePublicKey(), { kind: 'sign-in' });
   q.scope = async (kind = 'sign-in') =>
     sdk.withKeySession(

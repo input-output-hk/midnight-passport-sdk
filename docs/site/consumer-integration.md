@@ -550,3 +550,13 @@ is checked before constructing the fee wallet. The shared pure proving bridge pr
 bytes, key location and binding inputs and rejects malformed port/results. Five fast injected-port
 tests run in required CI. These checks address #263's initial composition gap; they do not replace
 native proof/finality acceptance or relabel earlier native receipts as rerun evidence.
+
+### Browser navigation and reconnect boundary
+
+The opt-in public-source signer browser harness now checks isolated descriptor/account/circuit/
+commitment and window-source refusals, concurrent consent, failed callback teardown, signer
+navigation, and explicit fresh-client reconnect. Navigation is not a transaction cancellation or
+a no-send proof. Keep the original request/receipt for any uncertain chain work, discard stale
+transport ownership deliberately, and require fresh consent after connecting. Automated virtual
+credential continuity does not establish Google/iCloud restoration or production signer UI
+compatibility. Exact measured sources and receipts live in the browser qualification review map.

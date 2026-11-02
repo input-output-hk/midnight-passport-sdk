@@ -205,6 +205,10 @@ export async function runBrowserSigner(env = process.env) {
   );
   const entry = join(repository, 'tests/fixtures/public-signer-browser.js');
   copyFileSync(entry, join(output, 'main.js'));
+  copyFileSync(
+    join(repository, 'scripts/qualification/secret-scan.mjs'),
+    join(output, 'secret-scan.mjs'),
+  );
   cpSync(join(signer, 'bundle'), join(output, 'prepared'), {
     recursive: true,
     errorOnExist: true,
@@ -222,7 +226,7 @@ export async function runBrowserSigner(env = process.env) {
   );
   writeFileSync(
     join(output, 'vite.config.mjs'),
-    `import {defineConfig}from'vite';import wasm from'vite-plugin-wasm';import {createRequire}from'node:module';import {dirname,join}from'node:path';const r=createRequire(import.meta.resolve('@input-output-hk/mn-passport-keys'));const b=createRequire(${JSON.stringify(join(polyfills, 'package.json'))} );const p=createRequire(new URL('../node_modules/.pnpm/node_modules/resolve.cjs',import.meta.url));export default defineConfig({define:{global:'globalThis'},resolve:{alias:{[p.resolve('@midnightntwrk/ledger-v9')]:join(dirname(p.resolve('@midnightntwrk/ledger-v9')),'midnight_ledger_wasm_v9.js'),'@noble/curves/misc.js':r.resolve('@noble/curves/misc.js'),'process/browser':p.resolve('process/browser.js'),'events':b.resolve('events/'),'assert':b.resolve('assert/'),'stream':b.resolve('stream-browserify'),'buffer':p.resolve('buffer/'),'rxjs/operators':p.resolve('rxjs/operators'),'rxjs/fetch':p.resolve('rxjs/fetch'),'rxjs':p.resolve('rxjs')}},plugins:[wasm()],build:{target:'esnext'}});\n`,
+    `import {defineConfig}from'vite';import wasm from'vite-plugin-wasm';import {createRequire}from'node:module';import {dirname,join}from'node:path';const r=createRequire(import.meta.resolve('@input-output-hk/mn-passport-keys'));const b=createRequire(${JSON.stringify(join(polyfills, 'package.json'))} );const p=createRequire(new URL('../node_modules/.pnpm/node_modules/resolve.cjs',import.meta.url));export default defineConfig({define:{global:'globalThis'},resolve:{alias:{[p.resolve('@midnightntwrk/ledger-v9')]:join(dirname(p.resolve('@midnightntwrk/ledger-v9')),'midnight_ledger_wasm_v9.js'),'@noble/curves/misc.js':r.resolve('@noble/curves/misc.js'),'process/browser':p.resolve('process/browser.js'),'events':b.resolve('events/'),'assert':b.resolve('assert/'),'stream':b.resolve('stream-browserify'),'node:buffer':p.resolve('buffer/'),'buffer':p.resolve('buffer/'),'rxjs/operators':p.resolve('rxjs/operators'),'rxjs/fetch':p.resolve('rxjs/fetch'),'rxjs':p.resolve('rxjs')}},plugins:[wasm()],build:{target:'esnext'}});\n`,
     { flag: 'wx', mode: 0o600 },
   );
   /** @type {string[]} */
@@ -314,7 +318,9 @@ export async function runBrowserSigner(env = process.env) {
         await page.goto(dapp.origin + '/dapp/');
         await page.waitForFunction(() => /** @type {any} */ (globalThis).qualification?.ready);
         await page.evaluate((/** @type {string} */ url) => {
-          /** @type {any} */ (globalThis).qualification.signerUrl = url;
+          const q = /** @type {any} */ (globalThis).qualification;
+          q.signerUrl = url;
+          q.deferConnect = true;
         }, signerServer.origin + '/signer/');
         const popupPromise = context.waitForEvent('page');
         await page.locator('#start').click();
@@ -334,15 +340,48 @@ export async function runBrowserSigner(env = process.env) {
           },
         });
         virtualAuthenticator = true;
+        /** @type {{x:string,y:string}|undefined} */ let originalPoint;
         let asserted = 0;
         cdp.on('WebAuthn.credentialAsserted', () => asserted++);
         stage = 'credential-enroll';
         await popup.locator('#start').click();
-        await page.waitForFunction(
-          () => /** @type {any} */ (globalThis).qualification.connected,
-          {},
-          { timeout: 30000 },
-        );
+        await popup.waitForFunction(() => /** @type {any} */ (globalThis).qualification.ready);
+        await check('same-origin non-opener hello cannot capture the signer port', async () => {
+          const frameReady = popup.waitForEvent(
+            'framenavigated',
+            (/** @type {any} */ f) => f.url() === dapp.origin + '/dapp/?attack-hello=1',
+          );
+          await popup.evaluate((/** @type {string} */ origin) => {
+            const document = /** @type {any} */ (globalThis).document;
+            const frame = document.createElement('iframe');
+            frame.src = origin + '/dapp/?attack-hello=1';
+            frame.id = 'wrong-source';
+            document.body.append(frame);
+          }, dapp.origin);
+          const frame = await frameReady;
+          assert.ok(frame);
+          await frame.waitForFunction(
+            () => /** @type {any} */ (globalThis).qualification?.attackSent,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 150));
+          assert.deepEqual(
+            await frame.evaluate(() => /** @type {any} */ (globalThis).qualification.attackReplies),
+            [],
+          );
+          assert.equal(
+            await popup.evaluate(
+              () => /** @type {any} */ (globalThis).qualification.approvals.length,
+            ),
+            0,
+          );
+          assert.equal(asserted, 0);
+          await page.evaluate(() => /** @type {any} */ (globalThis).qualification.connectNow());
+          await page.waitForFunction(() => /** @type {any} */ (globalThis).qualification.connected);
+          await frame.evaluate(() => /** @type {any} */ (globalThis).qualification.closeAttack());
+          await popup.evaluate(() =>
+            /** @type {any} */ (globalThis).document.querySelector('#wrong-source')?.remove(),
+          );
+        });
         await check(
           'real popup completes cross-origin transferred-port handshake and virtual PRF',
           async () => {
@@ -351,6 +390,7 @@ export async function runBrowserSigner(env = process.env) {
               const p = await /** @type {any} */ (globalThis).qualification.signin();
               return { x: p.x.toString(), y: p.y.toString() };
             });
+            originalPoint = point;
             assert.match(point.x, /^\d+$/);
             assert.ok(asserted > 0);
             assert.equal(
@@ -451,6 +491,192 @@ export async function runBrowserSigner(env = process.env) {
             );
           },
         );
+        for (const [name, payload] of [
+          ['missing flow', {}],
+          [
+            'malformed account descriptor',
+            {
+              flow: {
+                kind: 'add-device',
+                account: 'not-an-account',
+                commitmentHex: 'dc'.repeat(32),
+              },
+            },
+          ],
+        ])
+          await check(name + ' is refused before PRF or chain work', async () => {
+            const before = asserted;
+            const code = await page.evaluate(async (/** @type {any} */ payload) => {
+              try {
+                await /** @type {any} */ (globalThis).qualification.request('flow-open', payload);
+                return 'admitted';
+              } catch (error) {
+                return /** @type {any} */ (error).code;
+              }
+            }, payload);
+            assert.equal(code, 'malformed-payload');
+            assert.equal(asserted, before);
+          });
+        for (const field of ['account', 'circuit', 'commitment'])
+          await check('approved flow refuses only changed ' + field, async () => {
+            assert.equal(
+              await page.evaluate(
+                (/** @type {string} */ field) =>
+                  /** @type {any} */ (globalThis).qualification.scopeProbe(field),
+                field,
+              ),
+              'flow-scope',
+            );
+            assert.equal(
+              await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
+              1,
+            );
+          });
+        await check('concurrent opening is busy before a second approval or PRF', async () => {
+          const before = asserted;
+          const approvals = await popup.evaluate(
+            () => /** @type {any} */ (globalThis).qualification.approvals.length,
+          );
+          await popup.evaluate(() => {
+            /** @type {any} */ (globalThis).qualification.holdApproval = true;
+          });
+          await page.evaluate(() => {
+            const q = /** @type {any} */ (globalThis).qualification;
+            q.pending = q
+              .request('flow-open', { flow: { kind: 'sign-in' } })
+              .then(() => 'admitted')
+              .catch((/** @type {any} */ e) => e.code);
+          });
+          await popup.waitForFunction(
+            () =>
+              typeof (/** @type {any} */ (globalThis).qualification.releaseApproval) === 'function',
+          );
+          const code = await page.evaluate(async () => {
+            try {
+              await /** @type {any} */ (globalThis).qualification.request('flow-open', {
+                flow: { kind: 'sign-in' },
+              });
+              return 'admitted';
+            } catch (error) {
+              return /** @type {any} */ (error).code;
+            }
+          });
+          assert.equal(code, 'signer-busy');
+          assert.equal(asserted, before);
+          assert.equal(
+            await popup.evaluate(
+              () => /** @type {any} */ (globalThis).qualification.approvals.length,
+            ),
+            approvals + 1,
+          );
+          await popup.evaluate(() => {
+            const q = /** @type {any} */ (globalThis).qualification;
+            q.decision = 'reject';
+            q.holdApproval = false;
+            q.releaseApproval();
+            q.releaseApproval = undefined;
+          });
+          assert.equal(
+            await page.evaluate(() => /** @type {any} */ (globalThis).qualification.pending),
+            'ceremony-cancelled',
+          );
+          await popup.evaluate(() => {
+            /** @type {any} */ (globalThis).qualification.decision = 'approve';
+          });
+        });
+        await check(
+          'callback failure closes failed flow and never replays chain work',
+          async () => {
+            assert.equal(
+              await page.evaluate(() =>
+                /** @type {any} */ (globalThis).qualification.callbackFailure(),
+              ),
+              true,
+            );
+            const code = await page.evaluate(async () => {
+              try {
+                await /** @type {any} */ (globalThis).qualification.request(
+                  'device-public-key',
+                  {},
+                );
+                return 'admitted';
+              } catch (error) {
+                return /** @type {any} */ (error).code;
+              }
+            });
+            assert.equal(code, 'key-session-required');
+            assert.equal(
+              await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
+              1,
+            );
+          },
+        );
+        await check(
+          'declared PRF encodings stay in signer origin across public responses',
+          async () => {
+            const scan = await popup.evaluate(() => {
+              const q = /** @type {any} */ (globalThis).qualification;
+              return {
+                scanned: q.scannedResponses,
+                secrets: q.protectedRepresentations,
+                failed: q.secretFailure,
+              };
+            });
+            assert.ok(scan.scanned > 0 && scan.secrets > 0);
+            assert.equal(scan.failed, false);
+            assert.equal(
+              await page.evaluate(() =>
+                /** @type {any} */ (globalThis).qualification.originIsolationProbe(),
+              ),
+              true,
+            );
+          },
+        );
+        await check('signer navigation does not replay completed chain work', async () => {
+          const before = asserted;
+          await popup.goto(signerServer.origin + '/signer/?navigated=1');
+          await popup.waitForFunction(() => /** @type {any} */ (globalThis).qualification.ready);
+          assert.equal(asserted, before);
+          assert.equal(
+            await popup.evaluate(
+              () => /** @type {any} */ (globalThis).qualification.approvals.length,
+            ),
+            0,
+          );
+          assert.equal(
+            await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
+            1,
+          );
+        });
+        await check(
+          'explicit fresh-client reconnect requires consent and preserves virtual device key',
+          async () => {
+            await page.evaluate(() => {
+              /** @type {any} */ (globalThis).qualification.deferConnect = false;
+            });
+            await page.locator('#start').click();
+            await page.waitForFunction(
+              () => /** @type {any} */ (globalThis).qualification.connected,
+            );
+            const before = asserted;
+            const point = await page.evaluate(async () => {
+              const p = await /** @type {any} */ (globalThis).qualification.signin();
+              return { x: p.x.toString(), y: p.y.toString() };
+            });
+            assert.deepEqual(point, originalPoint);
+            assert.ok(asserted > before);
+            assert.equal(
+              await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
+              1,
+            );
+            assert.equal(
+              await popup.evaluate(
+                () => /** @type {any} */ (globalThis).qualification.approvals.at(-1)?.flow?.kind,
+              ),
+              'sign-in',
+            );
+          },
+        );
         await check('expired browser session refuses a late operation', async () => {
           await page.evaluate(() => {
             const q = /** @type {any} */ (globalThis).qualification;
@@ -492,6 +718,7 @@ export async function runBrowserSigner(env = process.env) {
             );
             // Published SignerClosedError uses the ceremony-cancelled code.
             assert.equal(code, 'ceremony-cancelled');
+            await page.evaluate(() => /** @type {any} */ (globalThis).qualification.close());
             const later = await page.evaluate(async () => {
               try {
                 await /** @type {any} */ (globalThis).qualification.request(
@@ -570,6 +797,10 @@ export async function runBrowserSigner(env = process.env) {
           consumerSha256(readFileSync(entry)),
           consumerSha256(readFileSync(join(output, 'main.js'))),
         );
+        assert.equal(
+          consumerSha256(readFileSync(join(output, 'secret-scan.mjs'))),
+          consumerSha256(readFileSync(join(repository, 'scripts/qualification/secret-scan.mjs'))),
+        );
         assert.deepEqual(installedTreeIdentity(polyfills), polyfillIdentity);
         assert.equal(
           consumerSha256(readFileSync(join(polyfills, 'pnpm-lock.yaml'))),
@@ -586,8 +817,17 @@ export async function runBrowserSigner(env = process.env) {
           assets,
           browserVersion: browser.version(),
           chromeSha256,
-          frameworkIdentity,
-          playwrightIdentity,
+          frameworkIdentity: {
+            files: frameworkIdentity.files,
+            links: frameworkIdentity.links,
+            treeSha256: frameworkIdentity.treeSha256,
+            pathSha256: consumerSha256(frameworkIdentity.path),
+          },
+          playwrightIdentity: {
+            files: playwrightIdentity.files,
+            treeSha256: playwrightIdentity.treeSha256,
+            pathSha256: consumerSha256(playwrightIdentity.path),
+          },
           polyfillLockSha256,
           polyfillIdentity,
         };

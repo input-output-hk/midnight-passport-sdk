@@ -95,3 +95,27 @@ The runner disables Playwright's default SIGINT/SIGTERM handlers because it owns
 Earlier [interruption attempts](interruption-attempts.json) preserve the cleanup race that exposed
 this requirement. Their failed receipts and private logs remain retained; no attempt was relabelled.
 The original seven-case receipt remains historical and does not establish the corrected cases.
+
+## Additional automated browser boundaries (#258)
+
+The current harness adds missing/malformed flow descriptors, isolated account/circuit/commitment
+mismatches, overlap while the first consent callback is held, failed-callback session closure,
+actual non-opener `hello` from a frame at the **allowed dApp origin**, signer navigation, and an
+explicit fresh-client reconnect. The non-opener sends its port before the real opener connects;
+its lack of a reply alone is not the success criterion: the real opener must subsequently connect.
+
+Navigation does not settle an unknown transaction or provide automatic transport recovery. This
+fixture has no pending chain transaction during navigation. The host explicitly discards the old
+transport, connects a new client, and approves a fresh sign-in; the actual virtual device public
+key must remain the same. Retired clients close when the owned popup closes. This is same-browser
+virtual-credential continuity, not synced-provider restoration or recovery after device loss.
+
+PRF encodings stay in a lexical signer-origin closure. The observed handlers scan successful
+results and structured failures against those declared encodings; any scan refusal marks the
+whole lane failed. The dApp also exercises the browser's same-origin storage boundary. These
+bounded checks are not a universal proof that no encoding or side channel can disclose a secret.
+New public runtime identities hash path strings separately from framework/runtime content; old
+receipts remain immutable, including their original schema.
+
+Source changes require a fresh signed clean-source execution and receipt. Do not interpret these
+new cases as measured acceptance until the associated receipt is retained below.

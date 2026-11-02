@@ -10,7 +10,11 @@ export function assertNoSecretMaterial(value, forbiddenHex) {
     return {
       bytes,
       hex: hex.toLowerCase(),
-      encodings: [base64, base64.replace(/=+$/, ''), bytes.toString('base64url')],
+      encodings: [
+        base64,
+        base64.replace(/=+$/, ''),
+        base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
+      ],
     };
   });
   const seen = new WeakSet();

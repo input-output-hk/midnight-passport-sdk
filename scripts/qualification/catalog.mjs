@@ -113,7 +113,7 @@ export const SCENARIOS = Object.freeze({
     ],
     timeoutMs: 4 * 60000,
     establishes:
-      'Actual Chromium cross-origin popup/MessagePort, virtual WebAuthn PRF, published client and pinned public handlers. Independently verified authorising-only SDK signature against fake chain; eight established boundary cases. No native/browser combined proof, real provider, production page, reader delivery or full compatibility claim.',
+      'Actual Chromium cross-origin popup/MessagePort, virtual WebAuthn PRF, published client and pinned public handlers. Independently verified authorising-only SDK signature against fake chain; declared isolated scope, source, flow, concurrency, error, navigation and reconnect boundaries. No native/browser combined proof, real provider, production page, reader delivery or full compatibility claim.',
   },
   'consumer-public-signer-native': {
     tier: 'proof-localnet',
