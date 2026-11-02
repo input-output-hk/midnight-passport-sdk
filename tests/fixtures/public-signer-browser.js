@@ -93,7 +93,8 @@ if (location.pathname === '/signer/') {
     q.ready = true;
     status('Signer ready');
   };
-  q.allowedOrigin = new URL(document.referrer).origin;
+  q.allowedOrigin = globalThis.qualificationAllowedOrigin;
+  if (!q.allowedOrigin) throw Error('Explicit allowed origin missing');
   document.querySelector('#start').textContent = 'Enroll virtual credential';
   document.querySelector('#start').onclick = async () => {
     try {

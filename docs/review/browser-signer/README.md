@@ -59,3 +59,23 @@ Run only from committed clean source. Roots are never overwritten. Each case has
 owned contexts, Chrome and ephemeral static servers close in `finally`. Private credentials,
 raw logs and installed trees stay outside Git/Obsidian. Failed roots are evidence, not retries
 that can be renamed to a pass. The lane starts no wallet, chain, Docker or proof service.
+
+## PR267 review corrections
+
+The earlier seven-case receipt is historical. The updated harness pins the allowed dApp origin
+independently of the referrer and adds a real third-origin opener refusal. Its unsupported-flow
+case is explicitly an adapter-level refusal before a browser request, not signer-handler coverage.
+The copied prepared bundle is checked directly before build and at completion. Chrome identity
+now covers the full resolved framework/helper/resource tree, contained symlinks, launcher bytes
+and version; a changed Current framework target also refuses the run.
+
+The inner three-minute deadline and bounded parallel cleanup fit inside the four-minute outer
+scenario budget. Each cleanup result is retained independently. Failure receipts include the stage
+and completed cases, never partial success output. A flushed attempt-start record exists before
+building. Forced process-group termination can still prevent a final receipt; an incomplete start
+record is unqualified evidence, never a passed run. `PASSPORT_SIGNER_BROWSER_FAULT=interrupt-after-launch`
+is an opt-in owned-process SIGTERM control and must produce a failed receipt with cleanup results.
+
+Timing-option guards bound accepted numeric values. They do not impose an I/O timeout on injected
+chain/wallet calls or establish a well-behaved injected clock; host deadlines remain required under
+#234. This is separate from the browser runner's actual deadline/interrupt tests.

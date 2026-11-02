@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import {
   copyFileSync,
@@ -11,6 +12,9 @@ import {
   mkdirSync,
   readFileSync,
   realpathSync,
+  readdirSync,
+  lstatSync,
+  readlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { basename, dirname, extname, isAbsolute, join, resolve, sep } from 'node:path';
@@ -28,13 +32,23 @@ export function browserOutput(requested, consumer) {
   assert.equal(existsSync(requested), false, 'Keep successful and failed browser roots');
   return requested;
 }
-/** @param {string} root */
-async function serveBrowser(root) {
+/** @param {string} root @param {string} [allowedOrigin] */
+async function serveBrowser(root, allowedOrigin = '') {
   const server = createServer((req, res) => {
     try {
       const target = new URL(req.url ?? '/', 'http://localhost');
       if (!['GET', 'HEAD'].includes(req.method ?? '')) {
         res.writeHead(405).end();
+        return;
+      }
+      if (target.pathname === '/qualification-config.js') {
+        res.setHeader('content-type', 'text/javascript');
+        res.setHeader('cache-control', 'no-store');
+        res.end(
+          '(/** @type {any} */ (globalThis)).qualificationAllowedOrigin=' +
+            JSON.stringify(allowedOrigin) +
+            ';',
+        );
         return;
       }
       let file = resolve(root, '.' + decodeURIComponent(target.pathname));
@@ -72,20 +86,71 @@ async function serveBrowser(root) {
   };
 }
 /** Bound an async browser action; context shutdown cancels any remaining page work.
- * @template T @param {()=>Promise<T>} operation @param {number} [timeoutMs]
+ * @template T @param {()=>Promise<T>} operation @param {number} [timeoutMs] @param {AbortSignal} [signal]
  */
-export async function browserDeadline(operation, timeoutMs = 30000) {
+export async function browserDeadline(operation, timeoutMs = 30000, signal) {
   /** @type {NodeJS.Timeout|undefined} */ let timer;
+  /** @type {(()=>void)|undefined} */ let onAbort;
   try {
+    if (signal?.aborted) throw Error('Browser qualification interrupted');
     return await Promise.race([
       operation(),
+      new Promise((_, reject) => {
+        onAbort = () => reject(Error('Browser qualification interrupted'));
+        signal?.addEventListener('abort', onAbort, { once: true });
+      }),
       new Promise((_, reject) => {
         timer = setTimeout(() => reject(Error('Browser case deadline exceeded')), timeoutMs);
       }),
     ]);
   } finally {
     clearTimeout(timer);
+    if (onAbort) signal?.removeEventListener('abort', onAbort);
   }
+}
+/** Hash the actual framework, helpers and resources; bind internal symlinks without following them.
+ * @param {string} requested
+ */
+export function browserRuntimeIdentity(requested) {
+  const root = realpathSync(requested),
+    hash = createHash('sha256');
+  let files = 0,
+    links = 0;
+  /** @param {string} relative */
+  const walk = (relative) => {
+    const path = join(root, relative),
+      stat = lstatSync(path);
+    if (stat.isSymbolicLink()) {
+      const target = realpathSync(path);
+      assert.ok(target.startsWith(root + sep), 'Browser runtime link escapes its tree');
+      hash.update('link\0' + relative + '\0' + readlinkSync(path) + '\n');
+      links++;
+    } else if (stat.isDirectory())
+      for (const name of readdirSync(path).sort()) walk(relative ? relative + '/' + name : name);
+    else {
+      assert.ok(stat.isFile());
+      hash.update('file\0' + relative + '\0' + consumerSha256(readFileSync(path)) + '\n');
+      files++;
+    }
+  };
+  walk('');
+  assert.ok(files > 0);
+  return { path: root, files, links, treeSha256: hash.digest('hex') };
+}
+/** Close every owned resource even if another close rejects or hangs.
+ * @param {Array<{name:string,close:()=>Promise<unknown>}>} actions @param {number} [timeoutMs]
+ */
+export async function browserCleanup(actions, timeoutMs = 10000) {
+  return Promise.all(
+    actions.map(async (action) => {
+      try {
+        await browserDeadline(action.close, timeoutMs);
+        return { name: action.name, closed: true };
+      } catch (error) {
+        return { name: action.name, closed: false, errorSha256: consumerSha256(String(error)) };
+      }
+    }),
+  );
 }
 /** @param {NodeJS.ProcessEnv} [env] */
 export async function runBrowserSigner(env = process.env) {
@@ -101,6 +166,11 @@ export async function runBrowserSigner(env = process.env) {
   const chrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
   assert.ok(existsSync(chrome), 'This profile explicitly requires installed macOS Google Chrome');
   const chromeSha256 = consumerSha256(readFileSync(chrome));
+  const framework = join(
+    dirname(chrome),
+    '../Frameworks/Google Chrome Framework.framework/Versions/Current',
+  );
+  const frameworkIdentity = browserRuntimeIdentity(framework);
   const playwrightIdentity = runtimeTreeIdentity(
     dirname(require.resolve('playwright-core/package.json')),
   );
@@ -108,7 +178,26 @@ export async function runBrowserSigner(env = process.env) {
   const polyfillLockSha256 = consumerSha256(readFileSync(join(polyfills, 'pnpm-lock.yaml')));
   assert.equal(polyfillLockSha256, env.PASSPORT_SIGNER_BROWSER_POLYFILLS_SHA256);
   const polyfillIdentity = installedTreeIdentity(polyfills);
+  const fault = env.PASSPORT_SIGNER_BROWSER_FAULT ?? '';
+  assert.ok(['', 'interrupt-after-launch'].includes(fault));
   mkdirSync(output, { mode: 0o700 });
+  writeFileSync(
+    join(output, 'attempt-start.json'),
+    JSON.stringify(
+      {
+        kind: 'public-signer-browser-attempt',
+        source,
+        signerConfigSha256: pin,
+        consumerConfigSha256: input.consumer.configSha256,
+        fault,
+        outcome: 'started',
+        releaseQualified: false,
+      },
+      null,
+      2,
+    ) + '\n',
+    { flag: 'wx', mode: 0o600, flush: true },
+  );
   const entry = join(repository, 'tests/fixtures/public-signer-browser.js');
   copyFileSync(entry, join(output, 'main.js'));
   cpSync(join(signer, 'bundle'), join(output, 'prepared'), {
@@ -116,9 +205,14 @@ export async function runBrowserSigner(env = process.env) {
     errorOnExist: true,
     force: false,
   });
+  assert.deepEqual(
+    signerBundleTree(join(output, 'prepared')),
+    input.bundle,
+    'Copied signer bundle changed',
+  );
   writeFileSync(
     join(output, 'index.html'),
-    '<!doctype html><html><body><button id="start">Open signer</button><pre id="status"></pre><script type="module">import process from "process/browser";import {Buffer} from "buffer";globalThis.Buffer=Buffer;globalThis.process=process;await import("/main.js");</script></body></html>',
+    '<!doctype html><html><body><button id="start">Open signer</button><pre id="status"></pre><script src="/qualification-config.js"></script><script type="module">import process from "process/browser";import {Buffer} from "buffer";globalThis.Buffer=Buffer;globalThis.process=process;await import("/main.js");</script></body></html>',
     { flag: 'wx', mode: 0o600 },
   );
   writeFileSync(
@@ -128,10 +222,23 @@ export async function runBrowserSigner(env = process.env) {
   );
   /** @type {string[]} */
   const cases = [];
-  /** @type {any} */ let browser, dapp, signerServer, context, result;
+  /** @type {any} */ let browser;
+  /** @type {any} */ let dapp;
+  /** @type {any} */ let signerServer;
+  /** @type {any} */ let attackerServer;
+  /** @type {any} */ let context;
+  /** @type {any} */ let result;
   /** @type {string[]} */
   const pageErrors = [];
-  let stage = 'build';
+  let stage = 'build',
+    popupOpened = false,
+    virtualAuthenticator = false;
+  const aborted = new AbortController();
+  const interrupt = () => aborted.abort();
+  process.on('SIGTERM', interrupt);
+  process.on('SIGINT', interrupt);
+  let browserVersion;
+  /** @type {Awaited<ReturnType<typeof browserCleanup>>} */ let cleanup = [];
   let failureSha256,
     verdict = 'failed';
   /** @param {string} name @param {()=>Promise<void>} fn */
@@ -141,228 +248,311 @@ export async function runBrowserSigner(env = process.env) {
     cases.push(name);
   };
   try {
-    const build = execFileSync(
-      process.execPath,
-      [join(input.consumer.root, 'node_modules/vite/bin/vite.js'), 'build'],
-      { cwd: output, encoding: 'utf8', timeout: 120000, maxBuffer: 4 * 1024 * 1024 },
-    );
-    writeFileSync(join(output, 'build.private.log'), build, { flag: 'wx', mode: 0o600 });
-    const assets = signerBundleTree(join(output, 'dist'));
-    dapp = await serveBrowser(join(output, 'dist'));
-    signerServer = await serveBrowser(join(output, 'dist'));
-    browser = await chromium.launch({ executablePath: chrome, headless: true });
-    stage = 'launch';
-    context = await browser.newContext();
-    context.setDefaultTimeout(20000);
-    context.on('page', (/** @type {any} */ p) =>
-      p.on('pageerror', (/** @type {Error} */ error) =>
-        pageErrors.push(error.stack ?? error.message),
-      ),
-    );
-    /** @type {any} */ const page = await context.newPage();
-    stage = 'dapp-ready';
-    await page.goto(dapp.origin + '/dapp/');
-    await page.waitForFunction(() => /** @type {any} */ (globalThis).qualification?.ready);
-    await page.evaluate((/** @type {string} */ url) => {
-      /** @type {any} */ (globalThis).qualification.signerUrl = url;
-    }, signerServer.origin + '/signer/');
-    const popupPromise = context.waitForEvent('page');
-    await page.locator('#start').click();
-    /** @type {any} */ const popup = await popupPromise;
-    await popup.waitForLoadState();
-    const cdp = await context.newCDPSession(popup);
-    await cdp.send('WebAuthn.enable');
-    const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', {
-      options: {
-        protocol: 'ctap2',
-        transport: 'internal',
-        hasResidentKey: true,
-        hasUserVerification: true,
-        isUserVerified: true,
-        hasPrf: true,
-      },
-    });
-    let asserted = 0;
-    cdp.on('WebAuthn.credentialAsserted', () => asserted++);
-    stage = 'credential-enroll';
-    await popup.locator('#start').click();
-    await page.waitForFunction(
-      () => /** @type {any} */ (globalThis).qualification.connected,
-      {},
-      { timeout: 30000 },
-    );
-    await check(
-      'real popup completes cross-origin transferred-port handshake and virtual PRF',
+    await browserDeadline(
       async () => {
-        assert.notEqual(new URL(page.url()).origin, new URL(popup.url()).origin);
-        const point = await page.evaluate(async () => {
-          const p = await /** @type {any} */ (globalThis).qualification.signin();
-          return { x: p.x.toString(), y: p.y.toString() };
+        const build = execFileSync(
+          process.execPath,
+          [join(input.consumer.root, 'node_modules/vite/bin/vite.js'), 'build'],
+          { cwd: output, encoding: 'utf8', timeout: 120000, maxBuffer: 4 * 1024 * 1024 },
+        );
+        writeFileSync(join(output, 'build.private.log'), build, { flag: 'wx', mode: 0o600 });
+        const assets = signerBundleTree(join(output, 'dist'));
+        stage = 'serve';
+        dapp = await serveBrowser(join(output, 'dist'));
+        signerServer = await serveBrowser(join(output, 'dist'), dapp.origin);
+        stage = 'launch';
+        browser = await chromium.launch({ executablePath: chrome, headless: true });
+        browserVersion = browser.version();
+        context = await browser.newContext();
+        context.setDefaultTimeout(20000);
+        if (fault === 'interrupt-after-launch') process.kill(process.pid, 'SIGTERM');
+        context.on('page', (/** @type {any} */ p) =>
+          p.on('pageerror', (/** @type {Error} */ error) =>
+            pageErrors.push(error.stack ?? error.message),
+          ),
+        );
+        /** @type {any} */ const page = await context.newPage();
+        stage = 'dapp-ready';
+        await page.goto(dapp.origin + '/dapp/');
+        await page.waitForFunction(() => /** @type {any} */ (globalThis).qualification?.ready);
+        await page.evaluate((/** @type {string} */ url) => {
+          /** @type {any} */ (globalThis).qualification.signerUrl = url;
+        }, signerServer.origin + '/signer/');
+        const popupPromise = context.waitForEvent('page');
+        await page.locator('#start').click();
+        /** @type {any} */ const popup = await popupPromise;
+        popupOpened = true;
+        await popup.waitForLoadState();
+        const cdp = await context.newCDPSession(popup);
+        await cdp.send('WebAuthn.enable');
+        const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', {
+          options: {
+            protocol: 'ctap2',
+            transport: 'internal',
+            hasResidentKey: true,
+            hasUserVerification: true,
+            isUserVerified: true,
+            hasPrf: true,
+          },
         });
-        assert.match(point.x, /^\d+$/);
-        assert.ok(asserted > 0);
+        virtualAuthenticator = true;
+        let asserted = 0;
+        cdp.on('WebAuthn.credentialAsserted', () => asserted++);
+        stage = 'credential-enroll';
+        await popup.locator('#start').click();
+        await page.waitForFunction(
+          () => /** @type {any} */ (globalThis).qualification.connected,
+          {},
+          { timeout: 30000 },
+        );
+        await check(
+          'real popup completes cross-origin transferred-port handshake and virtual PRF',
+          async () => {
+            assert.notEqual(new URL(page.url()).origin, new URL(popup.url()).origin);
+            const point = await page.evaluate(async () => {
+              const p = await /** @type {any} */ (globalThis).qualification.signin();
+              return { x: p.x.toString(), y: p.y.toString() };
+            });
+            assert.match(point.x, /^\d+$/);
+            assert.ok(asserted > 0);
+            assert.equal(
+              await page.evaluate(() => localStorage.getItem('passport-qualification-credential')),
+              null,
+            );
+          },
+        );
+        await check('declined browser consent invokes no PRF or operation', async () => {
+          const before = asserted;
+          await popup.evaluate(() => {
+            /** @type {any} */ (globalThis).qualification.decision = 'reject';
+          });
+          const code = await page.evaluate(async () => {
+            try {
+              await /** @type {any} */ (globalThis).qualification.signin();
+              return 'admitted';
+            } catch (e) {
+              return /** @type {any} */ (e).code;
+            }
+          });
+          assert.equal(code, 'ceremony-cancelled');
+          assert.equal(asserted, before);
+          await popup.evaluate(() => {
+            /** @type {any} */ (globalThis).qualification.decision = 'approve';
+          });
+        });
+        await check('browser origin policy refuses before consent and PRF', async () => {
+          const before = asserted,
+            approvals = await popup.evaluate(
+              () => /** @type {any} */ (globalThis).qualification.approvals.length,
+            );
+          await popup.evaluate(() => {
+            /** @type {any} */ (globalThis).qualification.originAllowed = false;
+          });
+          const code = await page.evaluate(async () => {
+            try {
+              await /** @type {any} */ (globalThis).qualification.signin();
+              return 'admitted';
+            } catch (e) {
+              return /** @type {any} */ (e).code;
+            }
+          });
+          assert.equal(code, 'origin-denied');
+          assert.equal(asserted, before);
+          assert.equal(
+            await popup.evaluate(
+              () => /** @type {any} */ (globalThis).qualification.approvals.length,
+            ),
+            approvals,
+          );
+          await popup.evaluate(() => {
+            /** @type {any} */ (globalThis).qualification.originAllowed = true;
+          });
+        });
+        await check(
+          'installed SDK add-device verifies real browser-handler signature against fake chain',
+          async () => {
+            const exerciseResult = await page.evaluate(() =>
+              /** @type {any} */ (globalThis).qualification.exercise(),
+            );
+            assert.equal(exerciseResult.calls, 1);
+            assert.equal(exerciseResult.nextUseCounter, '1');
+            assert.equal(exerciseResult.readerDelivery, false);
+            const approval = await popup.evaluate(() =>
+              /** @type {any} */ (globalThis).qualification.approvals.at(-1),
+            );
+            assert.deepEqual(approval.flow, {
+              kind: 'add-device',
+              account: 'ab'.repeat(32),
+              commitmentHex: exerciseResult.commitmentHex,
+            });
+          },
+        );
+        await check(
+          'local SDK adapter refuses unsupported descriptors before browser request',
+          async () => {
+            const approvals = await popup.evaluate(
+                () => /** @type {any} */ (globalThis).qualification.approvals.length,
+              ),
+              before = asserted;
+            assert.equal(
+              await page.evaluate(() =>
+                /** @type {any} */ (globalThis).qualification.unsupported(),
+              ),
+              true,
+            );
+            assert.equal(
+              await popup.evaluate(
+                () => /** @type {any} */ (globalThis).qualification.approvals.length,
+              ),
+              approvals,
+            );
+            assert.equal(asserted, before);
+            assert.equal(
+              await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
+              1,
+            );
+          },
+        );
+        await check('expired browser session refuses a late operation', async () => {
+          await page.evaluate(() => {
+            const q = /** @type {any} */ (globalThis).qualification;
+            q.pending = q
+              .scope()
+              .then(() => 'admitted')
+              .catch((/** @type {any} */ e) => e.code);
+          });
+          await page.waitForFunction(() => /** @type {any} */ (globalThis).qualification.held);
+          await new Promise((resolve) => setTimeout(resolve, 1200));
+          const code = await page.evaluate(async () => {
+            const q = /** @type {any} */ (globalThis).qualification;
+            q.release();
+            return q.pending;
+          });
+          assert.equal(code, 'session-expired');
+        });
+        await check(
+          'popup closure rejects pending approval and later requests without operation',
+          async () => {
+            await popup.evaluate(() => {
+              /** @type {any} */ (globalThis).qualification.holdApproval = true;
+            });
+            await page.evaluate(() => {
+              const q = /** @type {any} */ (globalThis).qualification;
+              q.pending = q
+                .signin()
+                .then(() => 'admitted')
+                .catch((/** @type {any} */ e) => e.code);
+            });
+            await popup.waitForFunction(
+              () =>
+                typeof (/** @type {any} */ (globalThis).qualification.releaseApproval) ===
+                'function',
+            );
+            await popup.close();
+            const code = await page.evaluate(
+              () => /** @type {any} */ (globalThis).qualification.pending,
+            );
+            // Published SignerClosedError uses the ceremony-cancelled code.
+            assert.equal(code, 'ceremony-cancelled');
+            const later = await page.evaluate(async () => {
+              try {
+                await /** @type {any} */ (globalThis).qualification.request(
+                  'device-public-key',
+                  {},
+                );
+                return 'admitted';
+              } catch (e) {
+                return /** @type {any} */ (e).code;
+              }
+            });
+            assert.equal(later, 'ceremony-cancelled');
+            assert.equal(
+              await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
+              1,
+            );
+          },
+        );
+        await check('actual wrong opener origin is refused before consent and PRF', async () => {
+          attackerServer = await serveBrowser(join(output, 'dist'));
+          const attacker = await context.newPage();
+          await attacker.goto(attackerServer.origin + '/dapp/');
+          await attacker.waitForFunction(
+            () => /** @type {any} */ (globalThis).qualification?.ready,
+          );
+          await attacker.evaluate((/** @type {string} */ url) => {
+            const q = /** @type {any} */ (globalThis);
+            q.qualification.signerUrl = url;
+          }, signerServer.origin + '/signer/');
+          const opened = context.waitForEvent('page');
+          await attacker.locator('#start').click();
+          const deniedPopup = await opened;
+          await attacker.waitForFunction(
+            () => /** @type {any} */ (globalThis).qualification.connected,
+          );
+          const code = await attacker.evaluate(async () => {
+            try {
+              await /** @type {any} */ (globalThis).qualification.signin();
+              return 'admitted';
+            } catch (e) {
+              return /** @type {any} */ (e).code;
+            }
+          });
+          assert.equal(code, 'origin-denied');
+          assert.equal(
+            await deniedPopup.evaluate(
+              () => /** @type {any} */ (globalThis).qualification.approvals.length,
+            ),
+            0,
+          );
+          assert.equal(
+            await deniedPopup.evaluate(
+              () => /** @type {any} */ (globalThis).qualification.assertions,
+            ),
+            0,
+          );
+          assert.equal(
+            await attacker.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
+            0,
+          );
+          await attacker.evaluate(() => /** @type {any} */ (globalThis).qualification.close());
+          await attacker.close();
+        });
+        verifyPublicSigner(signer, pin, repository);
+        assert.deepEqual(signerBundleTree(join(output, 'prepared')), input.bundle);
+        assert.deepEqual(browserRuntimeIdentity(framework), frameworkIdentity);
+        assert.equal(browser.version(), browserVersion);
+        assert.deepEqual(signerBundleTree(join(output, 'dist')), assets);
         assert.equal(
-          await page.evaluate(() => localStorage.getItem('passport-qualification-credential')),
-          null,
+          consumerSha256(readFileSync(entry)),
+          consumerSha256(readFileSync(join(output, 'main.js'))),
         );
-      },
-    );
-    await check('declined browser consent invokes no PRF or operation', async () => {
-      const before = asserted;
-      await popup.evaluate(() => {
-        /** @type {any} */ (globalThis).qualification.decision = 'reject';
-      });
-      const code = await page.evaluate(async () => {
-        try {
-          await /** @type {any} */ (globalThis).qualification.signin();
-          return 'admitted';
-        } catch (e) {
-          return /** @type {any} */ (e).code;
-        }
-      });
-      assert.equal(code, 'ceremony-cancelled');
-      assert.equal(asserted, before);
-      await popup.evaluate(() => {
-        /** @type {any} */ (globalThis).qualification.decision = 'approve';
-      });
-    });
-    await check('browser origin policy refuses before consent and PRF', async () => {
-      const before = asserted,
-        approvals = await popup.evaluate(
-          () => /** @type {any} */ (globalThis).qualification.approvals.length,
-        );
-      await popup.evaluate(() => {
-        /** @type {any} */ (globalThis).qualification.originAllowed = false;
-      });
-      const code = await page.evaluate(async () => {
-        try {
-          await /** @type {any} */ (globalThis).qualification.signin();
-          return 'admitted';
-        } catch (e) {
-          return /** @type {any} */ (e).code;
-        }
-      });
-      assert.equal(code, 'origin-denied');
-      assert.equal(asserted, before);
-      assert.equal(
-        await popup.evaluate(() => /** @type {any} */ (globalThis).qualification.approvals.length),
-        approvals,
-      );
-      await popup.evaluate(() => {
-        /** @type {any} */ (globalThis).qualification.originAllowed = true;
-      });
-    });
-    await check(
-      'installed SDK add-device verifies real browser-handler signature against fake chain',
-      async () => {
-        result = await page.evaluate(() =>
-          /** @type {any} */ (globalThis).qualification.exercise(),
-        );
-        assert.equal(result.calls, 1);
-        assert.equal(result.nextUseCounter, '1');
-        assert.equal(result.readerDelivery, false);
-        const approval = await popup.evaluate(() =>
-          /** @type {any} */ (globalThis).qualification.approvals.at(-1),
-        );
-        assert.deepEqual(approval.flow, {
-          kind: 'add-device',
-          account: 'ab'.repeat(32),
-          commitmentHex: result.commitmentHex,
-        });
-      },
-    );
-    await check('unsupported browser-host consent remains refused without operation', async () => {
-      assert.equal(
-        await page.evaluate(() => /** @type {any} */ (globalThis).qualification.unsupported()),
-        true,
-      );
-      assert.equal(
-        await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
-        1,
-      );
-    });
-    await check('expired browser session refuses a late operation', async () => {
-      await page.evaluate(() => {
-        const q = /** @type {any} */ (globalThis).qualification;
-        q.pending = q
-          .scope()
-          .then(() => 'admitted')
-          .catch((/** @type {any} */ e) => e.code);
-      });
-      await page.waitForFunction(() => /** @type {any} */ (globalThis).qualification.held);
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-      const code = await page.evaluate(async () => {
-        const q = /** @type {any} */ (globalThis).qualification;
-        q.release();
-        return q.pending;
-      });
-      assert.equal(code, 'session-expired');
-    });
-    await check(
-      'popup closure rejects pending approval and later requests without operation',
-      async () => {
-        await popup.evaluate(() => {
-          /** @type {any} */ (globalThis).qualification.holdApproval = true;
-        });
-        await page.evaluate(() => {
-          const q = /** @type {any} */ (globalThis).qualification;
-          q.pending = q
-            .signin()
-            .then(() => 'admitted')
-            .catch((/** @type {any} */ e) => e.code);
-        });
-        await popup.waitForFunction(
-          () =>
-            typeof (/** @type {any} */ (globalThis).qualification.releaseApproval) === 'function',
-        );
-        await popup.close();
-        const code = await page.evaluate(
-          () => /** @type {any} */ (globalThis).qualification.pending,
-        );
-        // Published SignerClosedError uses the ceremony-cancelled code.
-        assert.equal(code, 'ceremony-cancelled');
-        const later = await page.evaluate(async () => {
-          try {
-            await /** @type {any} */ (globalThis).qualification.request('device-public-key', {});
-            return 'admitted';
-          } catch (e) {
-            return /** @type {any} */ (e).code;
-          }
-        });
-        assert.equal(later, 'ceremony-cancelled');
+        assert.deepEqual(installedTreeIdentity(polyfills), polyfillIdentity);
         assert.equal(
-          await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
-          1,
+          consumerSha256(readFileSync(join(polyfills, 'pnpm-lock.yaml'))),
+          polyfillLockSha256,
         );
+        assert.deepEqual(runtimeTreeIdentity(playwrightIdentity.path), playwrightIdentity);
+        assert.equal(consumerSha256(readFileSync(chrome)), chromeSha256);
+        assert.deepEqual(await workspaceIdentity(repository), source);
+        result = {
+          cases,
+          testsPassed: cases.length,
+          virtualAssertions: asserted,
+          chainCalls: 1,
+          assets,
+          browserVersion: browser.version(),
+          chromeSha256,
+          frameworkIdentity,
+          playwrightIdentity,
+          polyfillLockSha256,
+          polyfillIdentity,
+        };
       },
+      180000,
+      aborted.signal,
     );
-    verifyPublicSigner(signer, pin, repository);
-    assert.deepEqual(signerBundleTree(join(output, 'dist')), assets);
-    assert.equal(
-      consumerSha256(readFileSync(entry)),
-      consumerSha256(readFileSync(join(output, 'main.js'))),
-    );
-    assert.deepEqual(installedTreeIdentity(polyfills), polyfillIdentity);
-    assert.equal(
-      consumerSha256(readFileSync(join(polyfills, 'pnpm-lock.yaml'))),
-      polyfillLockSha256,
-    );
-    assert.deepEqual(runtimeTreeIdentity(playwrightIdentity.path), playwrightIdentity);
-    assert.equal(consumerSha256(readFileSync(chrome)), chromeSha256);
-    assert.deepEqual(await workspaceIdentity(repository), source);
     verdict = 'passed';
-    result = {
-      cases,
-      testsPassed: cases.length,
-      virtualAssertions: asserted,
-      chainCalls: 1,
-      assets,
-      browserVersion: browser.version(),
-      chromeSha256,
-      playwrightIdentity,
-      polyfillLockSha256,
-      polyfillIdentity,
-    };
+    stage = 'complete';
   } catch (error) {
     failureSha256 = consumerSha256(String(error));
     writeFileSync(
@@ -374,24 +564,34 @@ export async function runBrowserSigner(env = process.env) {
       },
     );
   } finally {
-    await context?.close();
-    await browser?.close();
-    await dapp?.close();
-    await signerServer?.close();
+    cleanup = await browserCleanup([
+      { name: 'context', close: async () => context?.close() },
+      { name: 'browser', close: async () => browser?.close() },
+      { name: 'dapp-server', close: async () => dapp?.close() },
+      { name: 'signer-server', close: async () => signerServer?.close() },
+      { name: 'attacker-server', close: async () => attackerServer?.close() },
+    ]);
+    if (cleanup.some((c) => !c.closed)) verdict = 'failed';
+    process.off('SIGTERM', interrupt);
+    process.off('SIGINT', interrupt);
   }
   const receipt = {
     schemaVersion: 1,
     kind: 'public-signer-browser',
+    fault,
     outcome: verdict,
     source,
     signerConfigSha256: pin,
     publicSource: input.source.commit,
     consumerConfigSha256: input.consumer.configSha256,
-    result,
+    completedCases: [...cases],
+    stage,
+    cleanup,
+    result: verdict === 'passed' ? result : undefined,
     failureSha256,
-    actualBrowser: true,
-    actualPopup: true,
-    virtualAuthenticator: true,
+    actualBrowser: Boolean(browser),
+    actualPopup: popupOpened,
+    virtualAuthenticator,
     realHandlers: true,
     simulatedWindowRouting: false,
     fakeChain: true,
