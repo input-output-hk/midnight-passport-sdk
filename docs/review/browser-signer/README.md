@@ -69,8 +69,8 @@ The copied prepared bundle is checked directly before build and at completion. C
 now covers the full resolved framework/helper/resource tree, contained symlinks, launcher bytes
 and version; a changed Current framework target also refuses the run.
 
-The inner three-minute deadline and bounded parallel cleanup fit inside the four-minute outer
-scenario budget. Each cleanup result is retained independently. Failure receipts include the stage
+The inner three-minute deadline and bounded independent cleanup fit inside the four-minute outer
+scenario budget. Each cleanup result is retained independently; context closes before Chrome so cleanup does not race itself. Five five-second close limits leave room within the outer budget. Failure receipts include the stage
 and completed cases, never partial success output. A flushed attempt-start record exists before
 building. Forced process-group termination can still prevent a final receipt; an incomplete start
 record is unqualified evidence, never a passed run. `PASSPORT_SIGNER_BROWSER_FAULT=interrupt-after-launch`

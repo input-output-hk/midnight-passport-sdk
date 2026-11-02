@@ -140,17 +140,21 @@ export function browserRuntimeIdentity(requested) {
 /** Close every owned resource even if another close rejects or hangs.
  * @param {Array<{name:string,close:()=>Promise<unknown>}>} actions @param {number} [timeoutMs]
  */
-export async function browserCleanup(actions, timeoutMs = 10000) {
-  return Promise.all(
-    actions.map(async (action) => {
-      try {
-        await browserDeadline(action.close, timeoutMs);
-        return { name: action.name, closed: true };
-      } catch (error) {
-        return { name: action.name, closed: false, errorSha256: consumerSha256(String(error)) };
-      }
-    }),
-  );
+export async function browserCleanup(actions, timeoutMs = 5000) {
+  /** @type {Array<{name:string,closed:boolean,errorSha256?:string}>} */ const results = [];
+  for (const action of actions) {
+    try {
+      await browserDeadline(action.close, timeoutMs);
+      results.push({ name: action.name, closed: true });
+    } catch (error) {
+      results.push({
+        name: action.name,
+        closed: false,
+        errorSha256: consumerSha256(String(error)),
+      });
+    }
+  }
+  return results;
 }
 /** @param {NodeJS.ProcessEnv} [env] */
 export async function runBrowserSigner(env = process.env) {
