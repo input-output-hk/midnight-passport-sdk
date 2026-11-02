@@ -171,6 +171,7 @@ export async function buildPublicSigner(options) {
   writeFileSync(
     entry,
     [
+      `export {createPasskeySessionKeySource} from ${JSON.stringify(join(source.root, 'packages/lib/passkey/src/session-key-source.ts'))};`,
       `export {createPassportSignerHandlers} from ${JSON.stringify(join(source.root, PUBLIC_SIGNER_SOURCE.module))};`,
       `export {serveSignerRequests} from ${JSON.stringify(join(source.root, PUBLIC_SIGNER_SOURCE.server))};`,
       `export {createAccountRecordStore,toAccountRecords} from ${JSON.stringify(join(source.root, 'packages/module/passport-account/src/store/account-record.ts'))};`,

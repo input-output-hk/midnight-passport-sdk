@@ -9,9 +9,9 @@ This is bounded independent review, not a security certification.
 | --- | --- | --- |
 | Malformed HTTP target terminates process | P1 | [#260](https://github.com/input-output-hk/midnight-passport-sdk/issues/260); fixed locally in GPG/DCO commit `ee3d71c`, raw socket survival regression, pending reviewed merge/release |
 | Same-ID shielded deposit cannot recover original confirmed result | P2 | [#261](https://github.com/input-output-hk/midnight-passport-sdk/issues/261); retain original intent/ciphertext/receipt, never blind replay; design/implementation pending |
-| Bootstrap wiring escapes type/port validation before native setup | P2 | [#263](https://github.com/input-output-hk/midnight-passport-sdk/issues/263); actual ESM/lookupKey failures justify early checks |
+| Bootstrap wiring escapes type/port validation before native setup | P2 | [#263](https://github.com/input-output-hk/midnight-passport-sdk/issues/263); initial shared proving bridge, offline HD/ledger preflight and early actual-prover validation implemented locally; five fast tests, optional real-consumer probe passed; native rerun not claimed |
 | Large duplicated lifecycle closures | P2 | [#264](https://github.com/input-output-hk/midnight-passport-sdk/issues/264); incremental operation extraction with two-arm invariant coverage, preserve crypto/consent/API |
-| Nonfinite timing values can make polling unbounded | P3 | [#234](https://github.com/input-output-hk/midnight-passport-sdk/issues/234), [#262](https://github.com/input-output-hk/midnight-passport-sdk/issues/262); finite safe integer/timer-range guards and no-side-effect tests in progress |
+| Nonfinite timing values can make polling unbounded | P3 | [#234](https://github.com/input-output-hk/midnight-passport-sdk/issues/234), [#262](https://github.com/input-output-hk/midnight-passport-sdk/issues/262); finite safe integer/timer-range guards and no-side-effect tests committed locally in `db41991` |
 
 The umbrella [#262](https://github.com/input-output-hk/midnight-passport-sdk/issues/262)
 tracks improvement acceptance. Existing broad trackers are reused rather than duplicated.

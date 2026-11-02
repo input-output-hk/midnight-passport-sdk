@@ -532,3 +532,21 @@ checks or relabel a circuit prover as a transaction prover.
 No fresh reader delivery, real popup, provider or full hosted lifecycle was qualified. #81
 and #231 remain open. Slow source preparation/install/native lanes stay opt-in; required
 CI only runs the cheap path/dependency/integrity/routing and result-profile guards.
+
+### Actual browser signer protocol lane
+
+The [browser signer recipe](../review/browser-signer/README.md) adds actual cross-origin Chromium
+pages, popup/MessagePort and virtual WebAuthn PRF to the public client/source-handler composition.
+It exercises authorising-only SDK enrollment against a fake chain, with independent signature
+verification and consent/expiry/closure checks. This first slice leaves additional browser
+adversarial/navigation/reconnect cases in #258. It does not qualify real providers, production
+signer UI, reader delivery, browser/native combined flows or full Lace compatibility.
+
+### Early native bootstrap validation
+
+The hosted native runner now checks the actual installed public host/ledger proving types and
+runs an offline HD ESM/check-decoder preflight before Docker starts. The actual hosted prover
+is checked before constructing the fee wallet. The shared pure proving bridge preserves serialized
+bytes, key location and binding inputs and rejects malformed port/results. Five fast injected-port
+tests run in required CI. These checks address #263's initial composition gap; they do not replace
+native proof/finality acceptance or relabel earlier native receipts as rerun evidence.
