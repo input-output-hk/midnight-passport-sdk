@@ -2,7 +2,11 @@
 
 Tracking [#258](https://github.com/input-output-hk/midnight-passport-sdk/issues/258), under
 [the stability plan](../../roadmap/stability-0.1.0-execution.md). This is the first bounded
-browser protocol slice. The final signed-source receipt is added after its run.
+browser protocol slice. [Signed-source receipt](receipt.json): **7 cases passed**, 4 virtual
+credential assertions, exactly 1 fake-chain SDK call. Measured source
+`1d076b99b0f98ec693c77a27a55eae0359fc2b31`, clean with verified GPG/DCO commit.
+Chrome `156.0.8078.76`, Playwright `1.63.0`; the receipt retains exact runtime and asset hashes.
+Later documentation commits are not new measured browser executions.
 
 ## What this lane exercises
 

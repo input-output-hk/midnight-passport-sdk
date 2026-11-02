@@ -535,7 +535,7 @@ CI only runs the cheap path/dependency/integrity/routing and result-profile guar
 
 ### Actual browser signer protocol lane
 
-The [browser signer recipe](../review/browser-signer/README.md) adds actual cross-origin Chromium
+The [browser signer recipe](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/browser-signer/README.md) adds actual cross-origin Chromium
 pages, popup/MessagePort and virtual WebAuthn PRF to the public client/source-handler composition.
 It exercises authorising-only SDK enrollment against a fake chain, with independent signature
 verification and consent/expiry/closure checks. This first slice leaves additional browser

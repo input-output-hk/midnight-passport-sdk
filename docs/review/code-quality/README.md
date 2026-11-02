@@ -32,3 +32,13 @@ Keep cheap deterministic tests in required CI and actual installs/browser/native
 PR259 measured substantive jobs23–50seconds; the longest two test shards exceed the30–45second
 target and should be tuned from actual timing data without removing coverage or integrity gates.
 Private synthetic state, wallets, witnesses and auth never enter caches or public reports.
+
+## Initial implementation acceptance
+
+The initial #263 implementation is in signed source `1d076b9`. An independent proposal was
+reviewed and applied, then its actual integrated files were tested again in the retained RC6
+consumer: public-host/ledger type contract, HD ESM/public-key derivation, actual ledger decoder,
+and baseline prover acceptance/refusal before fee-wallet construction all passed offline.
+The authenticated consumer config, lock, archives and physical installed tree were unchanged.
+No native proof, Docker start, funding or wallet was used for this check. Subsequent native runs
+must use fresh prepared signer inputs because the public-source builder recipe has changed.
