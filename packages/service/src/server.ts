@@ -54,10 +54,15 @@ export function createServer(config: HttpServiceConfig, routes: Route[]): Server
       // This server accepts origin-form paths, never proxy/authority targets. In particular,
       // a leading // must not replace the checked Host with an attacker-controlled authority.
       const target = req.url ?? '/';
-      if (!target.startsWith('/') || target.startsWith('//') || target.includes('\\'))
+      if (
+        !target.startsWith('/') ||
+        target.startsWith('//') ||
+        target.split('?')[0]!.includes('\\')
+      )
         throw new Error('invalid target');
-      url = new URL(target, `http://${host}`);
-      if (url.host.toLowerCase() !== host || url.hash) throw new Error('invalid target');
+      const base = new URL(`http://${host}`);
+      url = new URL(target, base);
+      if (url.origin !== base.origin || url.hash) throw new Error('invalid target');
     } catch {
       res.setHeader('connection', 'close');
       json(res, 400, { error: 'invalid request target' });
@@ -67,6 +72,11 @@ export function createServer(config: HttpServiceConfig, routes: Route[]): Server
       for (const route of routes) if (await route(req, res, url)) return;
       json(res, 404, { error: 'not found' });
     } catch (e) {
+      // A streaming route may fail after sending its status. Never write a second header block.
+      if (res.headersSent) {
+        res.destroy();
+        return;
+      }
       if (e instanceof HttpError) {
         // An oversized body may still be arriving; close the connection once the answer is out.
         if (e.status === 413) res.setHeader('connection', 'close');
