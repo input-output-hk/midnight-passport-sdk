@@ -79,3 +79,19 @@ is an opt-in owned-process SIGTERM control and must produce a failed receipt wit
 Timing-option guards bound accepted numeric values. They do not impose an I/O timeout on injected
 chain/wallet calls or establish a well-behaved injected clock; host deadlines remain required under
 #234. This is separate from the browser runner's actual deadline/interrupt tests.
+
+## Corrected exact-source acceptance
+
+[Current receipt](receipt-v2.json), source `2c9007a6d82e3baa69a75b300d8941eaad36f966`:
+**8 cases passed**, including an actual third-origin opener refusal. One case is explicitly a local
+adapter refusal before any browser request. Four virtual assertions, one independently verified
+fake-chain SDK call; all five owned resources closed. Chrome framework/helper/resource identity
+covers315 regular files and1 contained link as well as the launcher and version.
+
+[Owned SIGTERM control](interrupt-control.json) at the same clean signed source deliberately
+returns `outcome: failed`, no success result and no completed cases; all five cleanup actions
+succeed. This is a passed **failure-retention/cleanup control**, not a passed signer flow.
+The runner disables Playwright's default SIGINT/SIGTERM handlers because it owns ordered cleanup.
+Earlier [interruption attempts](interruption-attempts.json) preserve the cleanup race that exposed
+this requirement. Their failed receipts and private logs remain retained; no attempt was relabelled.
+The original seven-case receipt remains historical and does not establish the corrected cases.
