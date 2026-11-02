@@ -179,6 +179,10 @@ simulated-window protocol probe is distinct from native SDK add-device qualifica
 passkey-provider acceptance. Authorising-only enrollment transfers no viewing secret; unsupported
 hosted consent kinds remain refused. The default demo flow is unchanged.
 
+The next source candidate adds journalled shielded deposit continuation for library hosts. It
+preserves original ciphertext and never automatically replays an unknown dispatch; it does not
+add a shielded deposit button or endpoint to the demo. See the [engineer recovery contract](../site/shielded-deposit-recovery.md).
+
 The shared HTTP boundary now rejects empty fragments and normalised authority-like paths, emits
 only generic unexpected-error responses, and supports an explicit redacted route-failure callback.
 A streaming failure closes the response; it never proves an uncertain transaction was not sent.
