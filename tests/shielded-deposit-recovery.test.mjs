@@ -50,6 +50,9 @@ for (const [boundary, exit] of boundaries) {
           timeout: 10000,
         }),
       );
+      assert.equal(resumed.stats.seals, 0);
+      assert.equal(resumed.stats.sends, boundary === 'prepared-exit' ? 1 : 0);
+      assert.equal(resumed.stats.effects, 1);
       assert.deepEqual(resumed.result, {
         txId: 'tx-original',
         inboxIndex: 2,
