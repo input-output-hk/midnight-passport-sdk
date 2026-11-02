@@ -1,0 +1,10 @@
+{
+  "kind": "native-bootstrap-offline-preflight",
+  "hdDeclaredEsm": true,
+  "syntheticPublicKeys": true,
+  "actualLedgerCheckDecoder": true,
+  "malformedCheckRefused": true,
+  "nativeProof": false,
+  "wallet": false,
+  "network": false
+}
