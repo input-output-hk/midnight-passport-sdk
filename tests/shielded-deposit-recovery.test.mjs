@@ -31,6 +31,7 @@ const child = resolve('tests/fixtures/shielded-deposit-child.mjs');
   ['prepared-exit', 74],
   ['send-exit', 73],
   ['submitted-write-exit', 75],
+  ['submitted-record-exit', 78],
   ['confirmed-reply-exit', 76],
 ];
 for (const [boundary, exit] of boundaries) {
@@ -412,4 +413,60 @@ test('an admitted random ciphertext cannot be replaced under the same request ID
       doc.intent.entry,
     );
     assert.equal(world.stats().effects, 0);
+  }));
+
+test('actual process loss after dispatch fence stays unknown without sender evidence', () =>
+  fixture(async (root) => {
+    const stopped = spawnSync(process.execPath, [child, root, 'dispatch-fence-exit'], {
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+    assert.equal(stopped.status, 77);
+    const world = depositWorld(root);
+    await assert.rejects(resumeShieldedDeposit(depositRequest, world.ports), /unknown/);
+    assert.equal(world.stats().sends, 0);
+    assert.equal(world.stats().effects, 0);
+    assert.equal(world.stats().reconciles, 1);
+    assert.equal((await world.journal.read(depositRequest.requestId))?.phase, 'dispatching');
+  }));
+
+test('recovery preserves destination errors and the optional-field codec round trip', () =>
+  fixture(async (root) => {
+    const world = depositWorld(root),
+      read = world.ports.chain.readAccount;
+    const unsupported = {
+      ...world.ports,
+      chain: {
+        readAccount: async () => {
+          const view = await read(depositRequest.account);
+          assert.ok(view);
+          return { ...view, specVersion: 2 };
+        },
+      },
+    };
+    await assert.rejects(depositShielded(depositRequest, unsupported), {
+      code: 'BindingUnsupported',
+    });
+    const malformed = {
+      ...world.ports,
+      chain: {
+        readAccount: async () => {
+          const view = await read(depositRequest.account);
+          assert.ok(view);
+          return { ...view, encKey: new Uint8Array(31) };
+        },
+      },
+    };
+    await assert.rejects(depositShielded(depositRequest, malformed), {
+      code: 'EncryptionKeyMismatch',
+    });
+    const stopped = spawnSync(process.execPath, [child, root, 'prepared-exit'], {
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+    assert.equal(stopped.status, 74);
+    const doc = await world.journal.read(depositRequest.requestId);
+    assert.ok(doc);
+    const withUndefined = /** @type {any} */ ({ ...doc, txId: undefined, result: undefined });
+    assert.deepEqual(readShieldedDepositDocument(shieldedDepositDocumentBytes(withUndefined)), doc);
   }));

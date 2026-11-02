@@ -94,6 +94,7 @@ const canonical = (v: unknown): string => {
     return (
       '{' +
       Object.entries(v)
+        .filter(([, item]) => item !== undefined)
         .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
         .map(([k, v]) => JSON.stringify(k) + ':' + canonical(v))
         .join(',') +
@@ -210,14 +211,14 @@ export function readShieldedDepositDocument(bytes: Uint8Array): ShieldedDepositD
 }
 function snapshot(view: AccLedgerView | undefined) {
   if (!view) throw new PassportConnectorError('AccountNotFound', 'The destination ACC is absent.');
-  if (
-    view.specVersion !== 3 ||
-    !view.booted ||
-    view.encKey?.length !== 32 ||
-    !view.inboxEntries ||
-    view.inboxEntries.length > MAX_INBOX ||
-    view.inboxEntries.some((e) => e.length !== 192)
-  )
+  if (view.specVersion !== 3 || !view.booted || !view.encKey || !view.inboxEntries)
+    throw new PassportConnectorError(
+      'BindingUnsupported',
+      'The ACC cannot accept a shielded deposit.',
+    );
+  if (view.encKey.length !== 32)
+    throw new PassportConnectorError('EncryptionKeyMismatch', 'The ACC enc_key is malformed.');
+  if (view.inboxEntries.length > MAX_INBOX || view.inboxEntries.some((e) => e.length !== 192))
     fail('Deposit inbox snapshot is unavailable or malformed.');
   return { encKey: toHex(view.encKey), entries: view.inboxEntries.map(toHex) };
 }

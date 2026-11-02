@@ -16,7 +16,7 @@ Review in this order:
    service file byte store supplies atomic crash-durable private filesystem publication.
 4. `tests/shielded-deposit-recovery.test.mjs` and its synthetic world/child: actual randomised seal,
    encrypted disk and fresh process exits; one sender effect across loss boundaries. Conflict,
-   concurrency, exact-entry/prefix/finality, rotation, mutation, clock and corruption refusals.
+   concurrency, exact-entry/prefix/finality, rotation, mutation, clock and corruption refusals. Real exits include the dispatch-fence unknown and the durably saved submitted state.
 5. API/engineer/prototype/app docs: no native adapter, HTTP shielded faucet, demo funding change,
    real-provider acceptance, broad wallet lock or published RC6 export claim.
 

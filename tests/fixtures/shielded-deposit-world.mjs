@@ -63,6 +63,10 @@ export function depositWorld(root, mode = 'normal') {
     ) => {
       if (mode === 'submitted-write-exit' && next.phase === 'submitted') process.exit(75);
       const accepted = await journal.compareAndSwap(id, previous, next);
+      if (accepted && mode === 'dispatch-fence-exit' && next.phase === 'dispatching')
+        process.exit(77);
+      if (accepted && mode === 'submitted-record-exit' && next.phase === 'submitted')
+        process.exit(78);
       if (accepted && mode === 'prepared-exit' && next.phase === 'prepared') process.exit(74);
       if (accepted && mode === 'confirmed-reply-exit' && next.phase === 'confirmed')
         process.exit(76);

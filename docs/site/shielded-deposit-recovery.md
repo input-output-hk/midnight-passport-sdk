@@ -117,8 +117,23 @@ Do not place this state in GitHub cache or treat an unknown dispatch as disposab
 ## What is tested
 
 Deterministic fake sender/finality tests use actual randomised sealing, AES-GCM journal encryption,
-private filesystem revisions and fresh Node processes. Four process-loss boundaries preserve one
+private filesystem revisions and fresh Node processes. Six process-loss boundaries (five resumed results and one retained unknown) preserve one
 sender effect and the same original receipt. Additional tests cover concurrent admission, missing
 state, changed identity/context, noncanonical observations, absent finality, rotation and storage
 or ciphertext corruption. These tests do not establish native proof, real-provider, published-image
 or full Lace acceptance. See issues #261 and #266 for delivery/review state.
+
+### Operator follow-ups
+
+A sender exception, including a pre-send refusal such as a locked wallet, remains `dispatching`
+until independently reconciled. Raw sender errors are not reflected into public errors; retain
+private sender diagnostics. This version has no fenced no-send/abandon transition. A prepared
+intent invalidated by a key rotation also requires operator policy rather than re-sealing.
+
+The inbox bound applies to every observation. Later growth beyond65,536 entries can leave an
+original submitted deposit unconfirmed by this bounded helper; retain its ID and original state.
+It is not evidence for a replacement spend. Large-inbox evidence and fenced no-send recovery
+need separate qualification. Authentication detects corruption/context mismatch, not rollback
+of an entire valid backup. Sender-side durable ID deduplication is mandatory even with this journal.
+
+The operator recovery and rollback-fencing follow-up is [#269](https://github.com/input-output-hk/midnight-passport-sdk/issues/269); it is not implemented by this API.
