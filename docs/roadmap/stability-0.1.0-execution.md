@@ -36,7 +36,7 @@ unsupported hosted consent refusals remain unchanged.
 
 - PR259 merged with signed merge `a8a2785` after green exact-head CI and independent review.
 - PR265 fixes the confirmed malformed-target crash and subsequent reviewed host-normalisation
-  regression; follow the PR for its final merge state.
+  regression; merged with signed merge `4eb0666` after fresh independent review and green retargeted CI.
 - Signed local `db41991` bounds polling inputs; `1d076b9` delivers the initial browser and bootstrap
   validation slice. Browser evidence: seven cases, virtual credential, fake chain; full local
   gate and rendered documentation checks pass. No new release or real-provider acceptance.

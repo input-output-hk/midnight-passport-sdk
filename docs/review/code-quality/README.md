@@ -7,7 +7,7 @@ This is bounded independent review, not a security certification.
 
 | Finding | Priority | Backlog / disposition |
 | --- | --- | --- |
-| Malformed HTTP target terminates process | P1 | [#260](https://github.com/input-output-hk/midnight-passport-sdk/issues/260); fixed locally in GPG/DCO commit `ee3d71c`, raw socket survival regression, pending reviewed merge/release |
+| Malformed HTTP target terminates process | P1 | [#260](https://github.com/input-output-hk/midnight-passport-sdk/issues/260); fixed by reviewed PR265, signed merge `4eb0666`; raw socket survival regression; published RC6 predates the fix |
 | Same-ID shielded deposit cannot recover original confirmed result | P2 | [#261](https://github.com/input-output-hk/midnight-passport-sdk/issues/261); retain original intent/ciphertext/receipt, never blind replay; design/implementation pending |
 | Bootstrap wiring escapes type/port validation before native setup | P2 | [#263](https://github.com/input-output-hk/midnight-passport-sdk/issues/263); initial shared proving bridge, offline HD/ledger preflight and early actual-prover validation implemented locally; five fast tests, optional real-consumer probe passed; native rerun not claimed |
 | Large duplicated lifecycle closures | P2 | [#264](https://github.com/input-output-hk/midnight-passport-sdk/issues/264); incremental operation extraction with two-arm invariant coverage, preserve crypto/consent/API |
