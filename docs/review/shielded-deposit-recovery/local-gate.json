@@ -2,7 +2,7 @@
   "scope": "additive journalled shielded deposit recovery",
   "base": "9466d8af0438251e50068deee80951625c18fdf9",
   "gate": {
-    "pass": 1073,
+    "pass": 1074,
     "fail": 0,
     "skipped": 7
   },

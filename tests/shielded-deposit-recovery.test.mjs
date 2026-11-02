@@ -470,3 +470,23 @@ test('recovery preserves destination errors and the optional-field codec round t
     const withUndefined = /** @type {any} */ ({ ...doc, txId: undefined, result: undefined });
     assert.deepEqual(readShieldedDepositDocument(shieldedDepositDocumentBytes(withUndefined)), doc);
   }));
+
+test('submitted read gaps remain unsettled original intent and resume without another send', () =>
+  fixture(async (root) => {
+    const stopped = spawnSync(process.execPath, [child, root, 'submitted-record-exit'], {
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+    assert.equal(stopped.status, 78);
+    const world = depositWorld(root);
+    const gap = {
+      ...world.ports,
+      chain: { ...world.ports.chain, readAccount: async () => undefined },
+    };
+    await assert.rejects(resumeShieldedDeposit(depositRequest, gap), { code: 'MutationUnsettled' });
+    assert.equal((await world.journal.read(depositRequest.requestId))?.phase, 'submitted');
+    assert.equal(world.stats().sends, 0);
+    assert.equal(world.stats().effects, 1);
+    assert.equal((await resumeShieldedDeposit(depositRequest, world.ports)).txId, 'tx-original');
+    assert.equal(world.stats().sends, 0);
+  }));

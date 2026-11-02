@@ -97,7 +97,13 @@ export function encryptedShieldedDepositJournal(
   return {
     read,
     async compareAndSwap(requestId, expected, requested) {
-      const next = readShieldedDepositDocument(shieldedDepositDocumentBytes(requested));
+      const captured = shieldedDepositDocumentBytes(requested);
+      let next;
+      try {
+        next = readShieldedDepositDocument(captured);
+      } finally {
+        captured.fill(0);
+      }
       id(requestId);
       if (
         next.intent.requestId !== requestId ||

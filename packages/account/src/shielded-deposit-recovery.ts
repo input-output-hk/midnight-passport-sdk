@@ -391,9 +391,14 @@ export async function runRecoverableShieldedDeposit(
     const deadline = started + confirmationMs;
     let remainingPolls = Math.ceil(confirmationMs / pollMs) + 1;
     for (;;) {
-      const current = snapshot(
-        await ports.chain.readAccount(input.account, { includeInbox: true }),
-      );
+      let current: ReturnType<typeof snapshot>;
+      try {
+        current = snapshot(await ports.chain.readAccount(input.account, { includeInbox: true }));
+      } catch {
+        return fail(
+          'Original submitted deposit observation is unavailable; reconcile this request ID without resending.',
+        );
+      }
       if (
         current.entries.length < doc.intent.initialInbox.count ||
         prefix(current.entries, doc.intent.initialInbox.count) !== doc.intent.initialInbox.sha256

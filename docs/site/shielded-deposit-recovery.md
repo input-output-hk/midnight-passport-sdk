@@ -137,3 +137,5 @@ need separate qualification. Authentication detects corruption/context mismatch,
 of an entire valid backup. Sender-side durable ID deduplication is mandatory even with this journal.
 
 The operator recovery and rollback-fencing follow-up is [#269](https://github.com/input-output-hk/midnight-passport-sdk/issues/269); it is not implemented by this API.
+
+A missing or malformed post-submission account observation reports `MutationUnsettled`, preserving the submitted record. Reconcile the same request; it is not a pre-send account refusal.
