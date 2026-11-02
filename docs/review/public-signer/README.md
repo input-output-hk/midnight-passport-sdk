@@ -76,3 +76,15 @@ This is not a fresh reader-enrollment acceptance run. Creation/grants used the l
 only the SDK enrollment used remote handlers. Actual popup/transfer ownership, real providers,
 full hosted creation/rotation/withdrawals, both-arm remote signing, images and repeated full
 release qualification remain open. #81/#231 stay open for their broader acceptance criteria.
+
+## Independent review follow-ups
+
+[PR259](https://github.com/input-output-hk/midnight-passport-sdk/pull/259) received an independent
+Claude review. [#266](https://github.com/input-output-hk/midnight-passport-sdk/issues/266) tracks
+its bounded harness/evidence improvements. Earlier scope probes combine account/circuit and
+commitment mismatches; their pass does not independently prove each rejection path. The leak
+scanner checks specific encodings, not all binary/encoded secret representations. Six original
+integrity controls were operator-run; a committed replay command remains follow-up work.
+The public native parent receipt is a manually redacted projection of the private raw receipt,
+not a byte-identical raw output. Historical receipts stay immutable. Fresh qualification must
+record its own source and use the updated recipe; no claim here upgrades old evidence.

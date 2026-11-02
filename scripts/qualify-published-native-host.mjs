@@ -67,7 +67,10 @@ export function nativeContainer(c, name) {
     id: c.Id,
     image: c.Image,
     initiallyRunning: c.State.Running,
-    mounts: c.Mounts.map((/** @type {any} */ m) => ({ name: m.Name, destination: m.Destination })),
+    mounts: c.Mounts.map((/** @type {any} */ m) => ({
+      name: m.Name,
+      destination: m.Destination,
+    })),
     ports: c.HostConfig.PortBindings,
   };
 }
@@ -114,7 +117,11 @@ export function nativeScope(env) {
   assert.equal(existsSync(output), false, 'Retain completed, failed and uncertain native runs');
   assert.equal(lstatSync(keys).isSymbolicLink(), false);
   assert.equal(lstatSync(keys).isDirectory(), true);
-  return { consumer, output: join(consumer, basename(output)), keys: realpathSync(keys) };
+  return {
+    consumer,
+    output: join(consumer, basename(output)),
+    keys: realpathSync(keys),
+  };
 }
 /** @param {any} result */
 export function nativeResult(result, profile = 'public-module') {
@@ -212,7 +219,11 @@ export async function nativeFinality(account, hashes, options = {}) {
       assert.ok(row.contractActions?.some((/** @type {any} */ a) => a.address === account));
       assert.match(row.block.hash, /^[a-f0-9]{64}$/);
       assert.ok(Number.isSafeInteger(row.block.height) && row.block.height >= 1);
-      return { txHash: hash, blockHeight: row.block.height, blockHash: row.block.hash };
+      return {
+        txHash: hash,
+        blockHeight: row.block.height,
+        blockHash: row.block.hash,
+      };
     }),
   );
   const deadline = Date.now() + 120000;
@@ -364,6 +375,10 @@ export async function runNativeHost(profile = 'public-module') {
       copies.push(
         ['tests/fixtures/published-native-host.ts', 'native-baseline.ts'],
         ['tests/fixtures/public-signer-harness.js', 'public-signer-harness.js'],
+        ['scripts/qualification/native-hd.mjs', 'native-hd.mjs'],
+        ['scripts/qualification/native-proving-provider.mjs', 'native-proving-provider.mjs'],
+        ['tests/fixtures/native-bootstrap-preflight.js', 'native-preflight.mjs'],
+        ['tests/fixtures/native-proving-port.ts', 'native-proving-port.ts'],
         ['scripts/qualification/signer-windows.mjs', 'signer-windows.mjs'],
       );
     if (signer) copies[0] = ['tests/fixtures/public-signer-native.ts', 'native-core.ts'];
@@ -407,6 +422,32 @@ export async function runNativeHost(profile = 'public-module') {
       'typecheck.private.log',
       120000,
     );
+    if (signer) {
+      await command(
+        [
+          join(consumer, 'node_modules/typescript/bin/tsc'),
+          '--strict',
+          '--skipLibCheck',
+          '--target',
+          'ES2022',
+          '--module',
+          'NodeNext',
+          '--moduleResolution',
+          'NodeNext',
+          '--allowJs',
+          '--checkJs',
+          '--noEmit',
+          join(output, 'native-proving-port.ts'),
+        ],
+        'bootstrap-contract-typecheck.private.log',
+        120000,
+      );
+      await command(
+        [join(output, 'native-preflight.mjs')],
+        'bootstrap-preflight.private.log',
+        30000,
+      );
+    }
     compiled = Object.fromEntries(
       ['native-core.js', 'jubjub-grant-scope.js', ...(signer ? ['native-baseline.js'] : [])].map(
         (file) => [file, consumerSha256(readFileSync(join(output, 'compiled', file)))],
@@ -499,7 +540,11 @@ export async function runNativeHost(profile = 'public-module') {
   );
   assert.match(publication.source.commit, /^[a-f0-9]{40}$/);
   const receipt = {
-    runtime: { node: process.version, platform: process.platform, arch: process.arch },
+    runtime: {
+      node: process.version,
+      platform: process.platform,
+      arch: process.arch,
+    },
     publishedSdkSource: publication.source.commit,
     schemaVersion: 1,
     kind: signer ? 'verified-public-signer-native' : 'verified-published-host-native',

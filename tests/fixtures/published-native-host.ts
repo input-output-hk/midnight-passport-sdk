@@ -65,6 +65,10 @@ export interface HostedNativeContext {
   holdings(): Promise<void>;
 }
 export interface NativeHostIO {
+  /** Check actual hosted proof ports before constructing or starting the fee wallet. */
+  validateHostedProver?(
+    prover: Parameters<typeof m.createPassportAccountModule>[0]['prover'],
+  ): void;
   qualifyHosted?(context: HostedNativeContext): Promise<string[]>;
   owner: m.PasskeySessionKeySource;
   grantee: m.PasskeySessionKeySource;
@@ -92,6 +96,7 @@ export async function runNativeHost(io: NativeHostIO) {
       return result;
     },
   };
+  io.validateHostedProver?.(prover);
   const feeWallet = m.createDevSponsor({ ...NETWORK, seedHex: SEED, proofServerUrl });
   const sponsor = {
     balanceAndSign: async (tx: Uint8Array) => {

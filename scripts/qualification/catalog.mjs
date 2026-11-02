@@ -93,6 +93,20 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Actual published client/seams and pinned public-source handlers/server over native MessageChannel with simulated windows and synthetic PRF. SDK authorising-only add uses independently verified real signature against fake chain; denial/origin/scope/expiry/cancellation guards. No browser/provider/native acceptance.',
   },
+  'consumer-public-signer-browser': {
+    tier: 'published-consumer',
+    command: [node, 'scripts/qualify-public-signer-browser.mjs'],
+    requires: [
+      'PASSPORT_SIGNER_ROOT',
+      'PASSPORT_SIGNER_SHA256',
+      'PASSPORT_SIGNER_BROWSER_ROOT',
+      'PASSPORT_SIGNER_BROWSER_POLYFILLS',
+      'PASSPORT_SIGNER_BROWSER_POLYFILLS_SHA256',
+    ],
+    timeoutMs: 4 * 60000,
+    establishes:
+      'Actual Chromium cross-origin popup/MessagePort, virtual WebAuthn PRF, published client and pinned public handlers. Independently verified authorising-only SDK signature against fake chain; seven initial boundary cases. No native/browser combined proof, real provider, production page, reader delivery or full compatibility claim.',
+  },
   'consumer-public-signer-native': {
     tier: 'proof-localnet',
     command: [node, 'scripts/qualify-published-native-host.mjs', 'hosted-authorising'],
@@ -394,6 +408,7 @@ export const SUITES = Object.freeze({
   'consumer-host-native': ['consumer-published-native-host'],
   'consumer-signer-protocol': ['consumer-public-signer-protocol'],
   'consumer-signer-native': ['consumer-public-signer-native'],
+  'consumer-signer-browser': ['consumer-public-signer-browser'],
   release: [
     'binding-source',
     'contract-entries',

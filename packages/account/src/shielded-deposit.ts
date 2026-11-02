@@ -70,7 +70,13 @@ export async function depositShielded(
     throw new PassportConnectorError('InternalError', 'Invalid shielded deposit request.');
   const pollMs = ports.pollMs ?? 2_000;
   const confirmationMs = ports.confirmationMs ?? 120_000;
-  if (pollMs < 1 || confirmationMs < pollMs)
+  if (
+    !Number.isSafeInteger(pollMs) ||
+    !Number.isSafeInteger(confirmationMs) ||
+    pollMs < 1 ||
+    confirmationMs < pollMs ||
+    confirmationMs > 2_147_483_647
+  )
     throw new PassportConnectorError('InternalError', 'Invalid deposit confirmation window.');
   const now = ports.now ?? Date.now;
   const first = await ports.chain.readAccount(input.account, { includeInbox: true });

@@ -9,11 +9,10 @@ import {
   mkdirSync,
   lstatSync,
   renameSync,
-  realpathSync,
 } from 'node:fs';
 import { createHash, randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { dirname, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 assert.equal(process.env.PASSPORT_NATIVE_CHILD, '1');
@@ -99,7 +98,10 @@ const material = {
     root: randomBytes(32).toString('hex'),
   },
 };
-writeFileSync(privatePath, JSON.stringify(material) + '\n', { flag: 'wx', mode: 0o600 });
+writeFileSync(privatePath, JSON.stringify(material) + '\n', {
+  flag: 'wx',
+  mode: 0o600,
+});
 const draws = { owner: 0, grantee: 0, creations: 0 };
 function keySource(name) {
   const data = material[name],
@@ -157,7 +159,11 @@ async function readRecord() {
 async function writeRecord(record) {
   const iv = randomBytes(12);
   const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv, additionalData: new TextEncoder().encode('passport-native-record:v1') },
+    {
+      name: 'AES-GCM',
+      iv,
+      additionalData: new TextEncoder().encode('passport-native-record:v1'),
+    },
     await owner.recordKey(),
     new TextEncoder().encode(JSON.stringify(record)),
   );
@@ -237,7 +243,10 @@ async function retainBalanced(bytes, count) {
   assert.ok(bytes instanceof Uint8Array && bytes.length > 0);
   assert.ok(Number.isSafeInteger(count) && count > 0);
   const name = 'balanced-' + String(count).padStart(4, '0');
-  writeFileSync(join(root, name + '.private.bin'), bytes, { flag: 'wx', mode: 0o600 });
+  writeFileSync(join(root, name + '.private.bin'), bytes, {
+    flag: 'wx',
+    mode: 0o600,
+  });
   const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
   const cost = await relay.call.midnightRuntimeApi.getTransactionCost(
     '0x' + Buffer.from(bytes).toString('hex'),
@@ -302,31 +311,12 @@ if (source.profile === 'hosted-authorising') {
     root,
     forbiddenSecrets: [material.owner.device, material.owner.root],
   });
-  const hdRoot = realpathSync(
-    join(
-      dirname(hostRequire.resolve('@laceio/sdk/experimental')),
-      '../../..',
-      '@midnightntwrk/wallet-sdk-hd',
-    ),
+  const { loadNativeHdModule, nativeSponsorKeys } = await import('./native-hd.mjs');
+  const { createNativeProvingProvider } = await import('./native-proving-provider.mjs');
+  const sponsorKeys = nativeSponsorKeys(
+    await loadNativeHdModule(hostRequire.resolve('@laceio/sdk/experimental')),
+    ledger,
   );
-  const hdManifest = JSON.parse(readFileSync(join(hdRoot, 'package.json'), 'utf8'));
-  assert.equal(hdManifest.name, '@midnightntwrk/wallet-sdk-hd');
-  assert.equal(hdManifest.exports['.'].import, './dist/index.js');
-  const { HDWallet, Roles } = await import(
-    pathToFileURL(join(hdRoot, hdManifest.exports['.'].import)).href
-  );
-  const hd = HDWallet.fromSeed(Buffer.from('0'.repeat(63) + '1', 'hex'));
-  assert.equal(hd.type, 'seedOk');
-  const derived = hd.hdWallet.selectAccount(0).selectRoles([Roles.Zswap]).deriveKeysAt(0);
-  hd.hdWallet.clear();
-  assert.equal(derived.type, 'keysDerived');
-  const keys = ledger.ZswapSecretKeys.fromSeed(derived.keys[Roles.Zswap]);
-  const sponsorKeys = {
-    coinPublicKey: keys.coinPublicKey,
-    encryptionPublicKey: keys.encryptionPublicKey,
-  };
-  keys.clear();
-  derived.keys[Roles.Zswap].fill(0);
   const lookupKey = publicSource.createManifestKeyMaterialResolver({
     artefactUrl: 'http://127.0.0.1:18798/v1/zk/acc-s3r1.1',
     fetchBytes: async (url) => {
@@ -336,6 +326,9 @@ if (source.profile === 'hosted-authorising') {
     },
   });
   extension = {
+    validateHostedProver: (prover) => {
+      createNativeProvingProvider({ prover, lookupKey, parseCheckResult: ledger.parseCheckResult });
+    },
     remote: {
       authoriser: signerHarness.seams.authoriser,
       setDecision: signerHarness.setDecision,
@@ -353,11 +346,11 @@ if (source.profile === 'hosted-authorising') {
     sponsorKeys,
     proveTx: async (bytes, prover) => {
       const tx = ledger.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
-      const proving = {
-        prove: (...args) => prover.prove(...args),
-        check: async (...args) => ledger.parseCheckResult(await prover.check(...args)),
+      const proving = createNativeProvingProvider({
+        prover,
+        parseCheckResult: ledger.parseCheckResult,
         lookupKey,
-      };
+      });
       const proven = await tx.prove(proving, ledger.CostModel.initialCostModel());
       return { tx: proven.serialize(), provenance: 'remote' };
     },
@@ -419,13 +412,20 @@ try {
   writeFileSync(
     join(root, 'native-result.json'),
     JSON.stringify(
-      { ...receipt, draws, keyProfile: profile.name, keyCircuits: profile.circuits },
+      {
+        ...receipt,
+        draws,
+        keyProfile: profile.name,
+        keyCircuits: profile.circuits,
+      },
       null,
       2,
     ) + '\n',
     { flag: 'wx', mode: 0o600 },
   );
-  checkpoint('native-orchestration-complete', { testsPassed: receipt.testsPassed });
+  checkpoint('native-orchestration-complete', {
+    testsPassed: receipt.testsPassed,
+  });
 } finally {
   if (signerHarness) {
     await signerHarness.close();

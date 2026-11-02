@@ -1,0 +1,11 @@
+{
+  "consumerConfigSha256": "1a58b63b84c110ff745bdd270619a683a9bb45bb89a223401eef1f787b7df819",
+  "kind": "native-bootstrap-offline-preflight",
+  "hdDeclaredEsm": true,
+  "syntheticPublicKeys": true,
+  "actualLedgerCheckDecoder": true,
+  "malformedCheckRefused": true,
+  "nativeProof": false,
+  "wallet": false,
+  "network": false
+}

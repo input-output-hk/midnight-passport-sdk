@@ -1,0 +1,67 @@
+{
+  "attempts": [
+    {
+      "probe": "v17",
+      "outcome": "failed",
+      "source": "10f5e14b4f9c4599b758b5a934f08577c71d7530",
+      "fault": "interrupt-after-launch",
+      "stage": "launch",
+      "cleanup": [
+        {
+          "name": "context",
+          "closed": false,
+          "errorSha256": "25d53e860a5cc33e4227c69095af50b6d92b3e1a453a5afb7645acaca2566c68"
+        },
+        {
+          "name": "browser",
+          "closed": true
+        },
+        {
+          "name": "dapp-server",
+          "closed": true
+        },
+        {
+          "name": "signer-server",
+          "closed": true
+        },
+        {
+          "name": "attacker-server",
+          "closed": true
+        }
+      ],
+      "qualificationPassed": false
+    },
+    {
+      "probe": "v18",
+      "outcome": "failed",
+      "source": "34119854abcf7d932119853e8994f76dc3a13dc9",
+      "fault": "interrupt-after-launch",
+      "stage": "launch",
+      "cleanup": [
+        {
+          "name": "context",
+          "closed": false,
+          "errorSha256": "8a51ed1cd73a5394341ad284e65b3162ef1d6bd0b6f30128d0b3910be6b79eb4"
+        },
+        {
+          "name": "browser",
+          "closed": true
+        },
+        {
+          "name": "dapp-server",
+          "closed": true
+        },
+        {
+          "name": "signer-server",
+          "closed": true
+        },
+        {
+          "name": "attacker-server",
+          "closed": true
+        }
+      ],
+      "qualificationPassed": false
+    }
+  ],
+  "disposition": "Owned Chrome and servers closed; context close raced Playwright default signal handler. Fixed before final controls; failed roots retained."
+}
