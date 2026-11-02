@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "runId": "6481cb9d-c521-4692-b5ce-3a6405b1bd48",
+  "suite": "consumer-signer-protocol",
+  "startedAt": "2026-11-01T23:53:37.674Z",
+  "source": {
+    "commit": "ba3a1765d3dfa16c180a4807734e26a9a5745728",
+    "dirty": false,
+    "workspaceSha256": "fb930a03cd00f4edd0a76892cdb792919939061aed643017d1e3dda3644c226d",
+    "fileCount": 1360
+  },
+  "binding": {
+    "id": "acc-s3r1.1",
+    "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "moduleSha256": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf"
+  },
+  "results": [
+    {
+      "id": "consumer-public-signer-protocol",
+      "tier": "published-consumer",
+      "outcome": "passed",
+      "elapsedMs": 8648,
+      "exitCode": 0,
+      "signal": null,
+      "stdoutSha256": "34fe9069b52b6bd29998d74f22d0ff875b658dc04cc8eeda7e402a183ece28ca",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "outputBytes": 1081
+    }
+  ],
+  "allRequiredPassed": true,
+  "releaseQualified": false
+}

@@ -1,0 +1,345 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repository": "https://github.com/input-output-hk/lace-sdk.git",
+    "commit": "ce04076bbe70d8455c924d175cfcb7ee65844ae7",
+    "module": "packages/module/passport-account/src/remote/signer-handlers.ts",
+    "server": "packages/lib/passkey/src/remote/server.ts",
+    "generated": "packages/module/passport-account/src/acc/generated/index.js",
+    "moduleSha256": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf"
+  },
+  "closureFiles": 127,
+  "closureSha256": "842be69c397d233d4a5fa456199eae4a6c7b06ce063d8f7813ae33e9a795cb04",
+  "closureDigestEncoding": "SHA256 of UTF-8 JSON, recursively sorted keys, compact separators, no newline",
+  "signerConfigSha256": "7855d8f055a2a100d753266b2b46a8b171f983d833fe1fc317224b42a4d90f00",
+  "consumerConfigSha256": "1a58b63b84c110ff745bdd270619a683a9bb45bb89a223401eef1f787b7df819",
+  "builderSha256": "b89083fe9b2eb6a8b155d5c899894d422ccadae4934e5fb146b0485b85e2a5dd",
+  "entrySha256": "5878134b3efd5de3a29046e0f8d96070b77c40b6db5de26d71f9c6920239edc7",
+  "upstreamBuildAlias": {
+    "request": "@scure/bip39/wordlists/english.js",
+    "version": "2.2.0",
+    "mnemonicVersion": "1.6.0"
+  },
+  "extras": {
+    "packageSha256": "4cbfa0cd52cc1fa0408ac74aefb362ec62532c90fb237ae5b63f4a81416c0a2d",
+    "lockSha256": "a68439e459aba3e7717229df45345a142d0447360d8c95c435d1b9c095362107",
+    "tree": {
+      "files": 497,
+      "links": 9,
+      "treeSha256": "d6dd10d3f4d3cb58973952c78e793da6727b085e5d5d9dc7589adadb4704f121"
+    }
+  },
+  "externals": [
+    {
+      "name": "@midnight-ntwrk/compact-runtime",
+      "version": "0.20.0",
+      "sha256": "f59514c653cc7f267b44e898a11aa0f81f7fbc7418011cb3513ae4b7119ca10f",
+      "requirements": [
+        {
+          "importer": "packages/module/passport-account/src/acc/generated/index.js",
+          "range": "0.20.0"
+        }
+      ],
+      "entry": "dist/index.js"
+    },
+    {
+      "name": "@midnightntwrk/ledger-v9",
+      "version": "1.0.0-rc.5",
+      "sha256": "effa3b1ad14755663904500a5ababa86fd02bdd4c0f52b5bd73e94253e592675",
+      "requirements": [
+        {
+          "importer": "packages/module/passport-account/src/acc/maintenance-authority.ts",
+          "range": "1.0.0-rc.5"
+        }
+      ],
+      "entry": "midnight_ledger_wasm_v9_fs.js"
+    },
+    {
+      "name": "@noble/curves",
+      "version": "2.2.0",
+      "sha256": "28c6fd6157fe2d1c69ea4751844c3d8fe3ee1a496b4f10fb7b48a51c48857a21",
+      "requirements": [
+        {
+          "importer": "packages/module/passport-account/src/acc/envelopes.ts",
+          "range": "2.2.0"
+        },
+        {
+          "importer": "packages/module/passport-account/src/acc/inbox.ts",
+          "range": "2.2.0"
+        },
+        {
+          "importer": "packages/module/passport-account/src/acc/view-seal.ts",
+          "range": "2.2.0"
+        },
+        {
+          "importer": "packages/module/passport-account/src/acc/enc-keys.ts",
+          "range": "2.2.0"
+        }
+      ],
+      "entry": "ed25519.js"
+    },
+    {
+      "name": "@noble/curves",
+      "version": "2.2.0",
+      "sha256": "1afe7ddde9822da4e11357e5bc838de94af5252c11b83cf094c1b837062173cb",
+      "requirements": [
+        {
+          "importer": "packages/module/passport-account/src/acc/envelopes.ts",
+          "range": "2.2.0"
+        },
+        {
+          "importer": "packages/module/passport-account/src/acc/grant-rules.ts",
+          "range": "2.2.0"
+        }
+      ],
+      "entry": "misc.js"
+    },
+    {
+      "name": "@noble/curves",
+      "version": "2.2.0",
+      "sha256": "ebd20b0ca873941f2186ddb0dbffeed25dda749d182298fe5f0d58fb2c6bb486",
+      "requirements": [
+        {
+          "importer": "packages/module/passport-account/src/acc/grant-rules.ts",
+          "range": "2.2.0"
+        }
+      ],
+      "entry": "secp256k1.js"
+    },
+    {
+      "name": "rxjs",
+      "version": "7.8.2",
+      "sha256": "bde56ab43879fcb76c9be9176daeb7abf1a775deed1606d0e88d0ac3012f4886",
+      "requirements": [
+        {
+          "importer": "packages/module/passport-account/src/store/account-record.ts",
+          "range": "7.8.2"
+        },
+        {
+          "importer": "packages/module/passport-account/src/remote/creation-key-entries.ts",
+          "range": "7.8.2"
+        },
+        {
+          "importer": "packages/module/passport-account/src/remote/approved-read-keys.ts",
+          "range": "7.8.2"
+        },
+        {
+          "importer": "packages/module/passport-account/src/remote/retired-enc-keys.ts",
+          "range": "7.8.2"
+        },
+        {
+          "importer": "packages/contract/module/src/create-store.ts",
+          "range": "7.8.2"
+        },
+        {
+          "importer": "packages/contract/module/src/redux-persist-storage.ts",
+          "range": "7.8.2"
+        }
+      ],
+      "entry": "dist/cjs/index.js"
+    },
+    {
+      "name": "ts-custom-error",
+      "version": "3.3.1",
+      "sha256": "0aff6d547a7993a94157c639310ba6d538ed07dc47868e7045f0fb81f8e2e5a0",
+      "requirements": [
+        {
+          "importer": "packages/lib/util/src/errors.ts",
+          "range": "^3.3.1"
+        },
+        {
+          "importer": "packages/contract/passport/src/errors.ts",
+          "range": "3.3.1"
+        },
+        {
+          "importer": "packages/contract/module/src/assert-module-compatibility.ts",
+          "range": "3.3.1"
+        }
+      ],
+      "entry": "dist/custom-error.js"
+    },
+    {
+      "name": "@noble/ciphers",
+      "version": "2.2.0",
+      "sha256": "78a9d8f9e4061212370dd216debe1e8a0cc52b7f2f94325fe278af039f033e80",
+      "requirements": [
+        {
+          "importer": "packages/lib/vendor/src/seam-primitives.ts",
+          "range": "2.2.0"
+        }
+      ],
+      "entry": "chacha.js"
+    },
+    {
+      "name": "@noble/hashes",
+      "version": "1.8.0",
+      "sha256": "56d047c7e34cbba132f15057e07c81d13b826491cc186797d51ff797c8d02c41",
+      "requirements": [
+        {
+          "importer": "packages/lib/vendor/src/seam-primitives.ts",
+          "range": "1.8.0"
+        }
+      ],
+      "entry": "argon2.js"
+    },
+    {
+      "name": "@noble/hashes",
+      "version": "1.8.0",
+      "sha256": "02750cc9bc8f1a7716148021e3f602db0b662542e902d8c1b1107d4cdcd604dc",
+      "requirements": [
+        {
+          "importer": "packages/lib/crypto/src/value-objects/mnemonic.vo.ts",
+          "range": "^1.8.0"
+        },
+        {
+          "importer": "packages/lib/crypto/src/derive-symmetric-secret.ts",
+          "range": "^1.8.0"
+        },
+        {
+          "importer": "packages/lib/passkey/src/session-key-source.ts",
+          "range": "^1.8.0"
+        },
+        {
+          "importer": "packages/lib/passkey/src/ceremony.ts",
+          "range": "^1.8.0"
+        }
+      ],
+      "entry": "hkdf.js"
+    },
+    {
+      "name": "@noble/hashes",
+      "version": "1.8.0",
+      "sha256": "1e0e4081a255691a1bae9148d9c5795e3439980d4ecb346a5e62a9c7fb3764a4",
+      "requirements": [
+        {
+          "importer": "packages/lib/crypto/src/derive-symmetric-secret.ts",
+          "range": "^1.8.0"
+        }
+      ],
+      "entry": "hmac.js"
+    },
+    {
+      "name": "@noble/hashes",
+      "version": "1.8.0",
+      "sha256": "53b6dc30db76a7c4e4b9370049e7a3c01bbb5507d058c084e97ccb3ee050faa4",
+      "requirements": [
+        {
+          "importer": "packages/lib/crypto/src/value-objects/mnemonic.vo.ts",
+          "range": "^1.8.0"
+        },
+        {
+          "importer": "packages/lib/crypto/src/sha256.ts",
+          "range": "^1.8.0"
+        },
+        {
+          "importer": "packages/lib/crypto/src/derive-symmetric-secret.ts",
+          "range": "^1.8.0"
+        },
+        {
+          "importer": "packages/lib/passkey/src/session-key-source.ts",
+          "range": "^1.8.0"
+        },
+        {
+          "importer": "packages/lib/passkey/src/ceremony.ts",
+          "range": "^1.8.0"
+        }
+      ],
+      "entry": "sha2.js"
+    },
+    {
+      "name": "@noble/hashes",
+      "version": "1.8.0",
+      "sha256": "7edf19720c345e1cb76e8d3a9306f3344457d4e03576bbb0b3e1ffd0a42d0d30",
+      "requirements": [
+        {
+          "importer": "packages/lib/crypto/src/value-objects/mnemonic.vo.ts",
+          "range": "^1.8.0"
+        },
+        {
+          "importer": "packages/lib/crypto/src/derive-symmetric-secret.ts",
+          "range": "^1.8.0"
+        },
+        {
+          "importer": "packages/lib/passkey/src/ceremony.ts",
+          "range": "^1.8.0"
+        },
+        {
+          "importer": "packages/lib/vendor/src/seam-primitives.ts",
+          "range": "1.8.0"
+        }
+      ],
+      "entry": "utils.js"
+    },
+    {
+      "name": "@scure/bip39",
+      "version": "1.6.0",
+      "sha256": "235de6962eb13f08c4f720a95f59ebd9ceccefbbce3360fc4d147552d9c054ac",
+      "requirements": [
+        {
+          "importer": "packages/lib/crypto/src/value-objects/mnemonic.vo.ts",
+          "range": "^1.5.4"
+        }
+      ],
+      "entry": "index.js"
+    },
+    {
+      "name": "@scure/bip39",
+      "version": "2.2.0",
+      "sha256": "961d1c711e071b4a5bb698461cce45614cc487d9a45e99bb975a174f0ea2dbc4",
+      "requirements": [],
+      "entry": "wordlists/english.js"
+    }
+  ],
+  "bundle": {
+    "chunk-5HJHf6sp.mjs": {
+      "bytes": 8524,
+      "sha256": "2b9506b556c9f8c529f68555efebb603b68e7f83c7958a65c2b1c0d5142022fd"
+    },
+    "chunk-BHDVnrlf.mjs": {
+      "bytes": 2009,
+      "sha256": "02d742b56a08f3cf5cd663823dda624d6067f10f52ea2477a409e43b937fc24d"
+    },
+    "chunk-BJohB4LM.mjs": {
+      "bytes": 362,
+      "sha256": "12868b6994ebd4b0353f7ba95229d505a1d120b3945a089d1bb71beafc28957e"
+    },
+    "chunk-Bd3NBpuN.mjs": {
+      "bytes": 7748,
+      "sha256": "4d9c76ca218db2ec6385250402807dde922a72ec4e5ba53bc04366e18d4f4fbc"
+    },
+    "chunk-ByFznqei.mjs": {
+      "bytes": 9668,
+      "sha256": "026306bbc96e42c8705131e9dabb7350a29803886ae26a5482d4927463c34e67"
+    },
+    "chunk-CA3Q4XlB.mjs": {
+      "bytes": 967033,
+      "sha256": "326312a0dfe1d95c25358c307b0847bd7190c388c2faabfbfc11fdefbbeeea7d"
+    },
+    "chunk-CR80F8-S.mjs": {
+      "bytes": 3496,
+      "sha256": "6d8b0f20f8640e1f20bef468cda4a8720410a2e6e5ac7d979334d6483b2aca8a"
+    },
+    "chunk-CXXwjZy0.mjs": {
+      "bytes": 6462,
+      "sha256": "8d1d23da87cebe53a16ef1becbbc2e72e1a9ff8f560906d74e0a3af342807532"
+    },
+    "chunk-CdKbN7HF.mjs": {
+      "bytes": 29157,
+      "sha256": "bd22543cac5e5a49d8a1782d5152903c38ba26b0277f36caebdd8bdee610e235"
+    },
+    "chunk-DgZqgEOq.mjs": {
+      "bytes": 27233,
+      "sha256": "327024b6f5f71da7b9013c4d921c97f674f39906628d16f0e74bbc9dcaec9d21"
+    },
+    "chunk-DnLbdU3y.mjs": {
+      "bytes": 6984,
+      "sha256": "f7218fa47429bd98ed6d1b68f3b69e1cd48d9e03b5ae97d75d0243d1e9c379c2"
+    },
+    "handlers.mjs": {
+      "bytes": 167532,
+      "sha256": "73b23ad06cd4c2db0c42731f0b36d45a91fbed1c6fb51de8419b567069067535"
+    }
+  },
+  "fullUpstreamTypecheck": false,
+  "noPrivateSourceImport": true
+}

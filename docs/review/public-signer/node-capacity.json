@@ -1,0 +1,28 @@
+{
+  "samples": [
+    {
+      "hash": "0x7b832a611e5201eaca87ea75fdafe5fbd0f12dfa1405ded6f083eee242aa6d94",
+      "maxBlock": "2000000000000",
+      "maxNormal": "1299891843000",
+      "baseExtrinsic": "108157000",
+      "mandatory": "22513852852",
+      "operational": "0"
+    },
+    {
+      "hash": "0x35d307489c61cd6bc57c2d56aac7752acbbf0763b4c5a4521622ad06c6ac9b36",
+      "maxBlock": "2000000000000",
+      "maxNormal": "1299891843000",
+      "baseExtrinsic": "108157000",
+      "mandatory": "22513852852",
+      "operational": "0"
+    },
+    {
+      "hash": "0x6ccf89dc5ed6e5b0d513feaf2fb97bb7ae27faac4205b686c5c9cfe22e7aa6a3",
+      "maxBlock": "2000000000000",
+      "maxNormal": "1299891843000",
+      "baseExtrinsic": "108157000",
+      "mandatory": "22513852852",
+      "operational": "0"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "nativeMeasuredSource": "ba3a1765d3dfa16c180a4807734e26a9a5745728",
+  "fullGate": true,
+  "counts": {
+    "tests": 1048,
+    "pass": 1041,
+    "fail": 0,
+    "skipped": 7
+  },
+  "fullGateLogSha256": "cc44e8693b9db2c6db0e260373fca47f2a07624899742aaa40fb21f4f98e5284",
+  "lint": true,
+  "format": true,
+  "build": true,
+  "allAppTypes": true,
+  "actualInstalledNativeCoreTypes": true,
+  "sourceFiles": {
+    "scripts/consumer/public-signer-source.mjs": "b89083fe9b2eb6a8b155d5c899894d422ccadae4934e5fb146b0485b85e2a5dd",
+    "scripts/qualify-public-signer.mjs": "312a79f08178e307673a7827ec0ea06ca8f2b05d5cb07510255b0551e729bfa1",
+    "scripts/qualify-published-native-host.mjs": "3df9029a9ba9cbea3a24a5b5a503e0bda97ab54bd4f1defff0ee8382299d2402",
+    "scripts/qualification/signer-windows.mjs": "72cd84b6c6d8179a102d6752440a1011abfb1f807af1ef4d9795f697a7cdfe55",
+    "tests/fixtures/public-signer-harness.js": "662623071d6d0c2ede11178c58fb1503235a43b84072277232308d782551a471",
+    "tests/fixtures/public-signer-protocol.js": "dcc26961fca8a66243798f292ae36c77dabf34de9bc9eb894323d795c006449e",
+    "tests/fixtures/public-signer-native.ts": "3474091a2bf6274879b8da46199a4af06eb44faf91f2332807ba2926505a3b2f",
+    "tests/fixtures/published-native-host.ts": "60f6c9734fbc60b47cec1975ba5f2f78a7f48e045db5a2537a772cd8399cf97d",
+    "tests/fixtures/published-native-host-bootstrap.js": "6747e6304920664d1b535aa65723da05ea9985750c566d52ac421672459414f4",
+    "tests/host-consumer-inputs.test.mjs": "a50f902bd154342c9e6a66b383b0b6baa1d3424430339c27200e0038684a00f0",
+    "tests/published-native-host.test.mjs": "292befe0598e2e29bea036370bbe18d1c5f75d93b58d746323d61218f36ca80b",
+    "tests/public-signer-source.test.mjs": "52784cf74ecf3239c6ab8a5267fc0c0e5f3c3b3c61ce98e2aa8ba7ad32ae67ea"
+  },
+  "docs": {
+    "pages": 22,
+    "localLinksAndAnchors": 504,
+    "errors": [],
+    "generator": "Jekyll 4.4.1"
+  },
+  "selfReview": {
+    "blockingFindingsRemaining": 0,
+    "realHandlerNoMockReplies": true,
+    "circuitAndTransactionProverPortsBridged": true,
+    "lookupUsesPinnedUpstreamIntegrityResolver": true,
+    "losslessConsentAndUnsupportedRefusals": true,
+    "signatureIndependentlyVerified": true,
+    "readinessKillTestRaceFixed": true,
+    "attemptFailuresRetained": true,
+    "canonicalFinalityAndStatusRequired": true,
+    "noSecretMaterialInPublicReceipts": true,
+    "ownedComputeStopped": true,
+    "privateFixtureBackup": true,
+    "executableBytesMatchMeasuredSourceAfterDocs": true
+  },
+  "realProvider": false,
+  "fullLaceCompatibility": false,
+  "newRelease": false
+}

@@ -27,8 +27,14 @@ The local native follow-up also passed fourteen public-module cases with ninetee
 canonical finalized transactions: create/activate, populated grant issue/rotation,
 SDK read/capability/bookkeeping crossover, reconnect and revocation. See the
 [native scope and limitations]({{ '/consumer-integration/' | relative_url }}#public-package-native-orchestration-lane).
-Synthetic PRF/localnet evidence does not qualify a signer browser/provider or native
-SDK hosted mutations. RC6 package and image bytes remain unchanged.
+That historical lane kept SDK transaction ports read-only. A new local lane additionally
+passed **20 native cases /20 canonical finalized transactions**, including one RC6
+`addJubjubAuthorisingDevice` submission through real public-source signer handlers. Consent
+denial made no mutation; reconnect found both authorities and retained the exact holding.
+See [public-source signer scope]({{ '/consumer-integration/' | relative_url }}#public-source-signer-handlers).
+This adds signing authority only, with no reader/viewing-key delivery. Window routing and
+credentials are synthetic; creation/grants still use the local host signer. Browser/provider,
+full hosted lifecycle, images and full Lace compatibility remain unqualified. RC6 bytes are unchanged.
 
 ## Integration guide
 

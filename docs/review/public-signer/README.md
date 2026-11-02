@@ -47,4 +47,32 @@ Every build, protocol and native root is fresh. Keep failed roots, their origina
 sealed state. Run the full gate and GPG/DCO-sign source before native execution; recheck inputs
 before editing afterwards. Store only redacted public receipts here and in the Vault.
 
-Native acceptance is pending until an exact-source receipt is recorded below.
+## Accepted local evidence — 2026/11/02
+
+Signed source `ba3a1765d3dfa16c180a4807734e26a9a5745728` passed the native lane in
+512,236 ms: **20 cases, 20 successful canonical finalized transactions**, 17 proof responses,
+19 sponsorships plus the deposit. The SDK add-device call submitted exactly once, advanced the
+owner counter to 14, left the inbox unchanged and preserved the 7-unit shielded NIGHT holding.
+Host sign-in discovered both authorities. Real handler decisions were approve/reject/approve;
+only the approved add signed, and unsupported SDK flow kinds made no request. All source,
+compiled, installed and prepared input checks matched; all three owned containers stopped.
+
+- [Native parent/finality receipt](native-parent-receipt.json), [outer suite](native-suite-receipt.json).
+- [Actual protocol cases and hashed messages](protocol-result.json), [parent](protocol-parent-receipt.json), [suite](protocol-suite-receipt.json).
+- [Six integrity controls](integrity-controls.json), [source/build/dependency pins](source-inputs.json).
+- [Native transport receipt](native-transport-receipt.json), [capacity samples](node-capacity.json), [summary](qualification-summary.json).
+- [Failed attempts](failed-attempts.json): v1 stopped before wallet setup at an ESM import;
+  v2 retained a funded account but stopped before SDK sponsorship/submission at an incomplete
+  proving-provider shape. Neither failed full suite is relabelled or replayed. Original state
+  and protected private fixture backups are retained outside Git/Vault.
+
+The transaction proving bridge must supply ledger `lookupKey` with checked circuit assets and
+parse circuit `check` bytes into ledger check results. A `PassportProver` alone is a circuit
+port, and cannot be passed directly to `Transaction.prove`. This lane uses the pinned public
+upstream resolver for that bridge, without changing released package bytes.
+
+No reader registration or viewing secret was delivered: the entire inbox remained unchanged.
+This is not a fresh reader-enrollment acceptance run. Creation/grants used the local host signer;
+only the SDK enrollment used remote handlers. Actual popup/transfer ownership, real providers,
+full hosted creation/rotation/withdrawals, both-arm remote signing, images and repeated full
+release qualification remain open. #81/#231 stay open for their broader acceptance criteria.

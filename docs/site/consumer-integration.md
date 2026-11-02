@@ -512,3 +512,23 @@ are checked, with independent canonical finality and input/cleanup receipts. A n
 qualified only by its exact-source successful receipt, not its implementation or guard tests.
 Unsupported hosted rotation/withdrawal kinds remain refused; full Lace, signer-page/provider,
 P-256 remote signing and image qualification remain separate work.
+
+### Local accepted signer scope — 2026/11/02
+
+At signed source `ba3a1765d3dfa16c180a4807734e26a9a5745728`, the native lane passed 20 cases
+and independently verified 20 successful canonical finalized transactions. It exercised one
+RC6 authorising-only SDK enrollment through real handlers, rejected approval without mutation,
+reconnected the host with both authorities, and retained the same 7-unit holding and unchanged
+inbox. Protocol 12 cases and 6 integrity controls passed separately at that source. All prepared,
+installed, compiled and source inputs matched before/after; owned compute stopped.
+
+[Exact receipts and review map](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/rc5-publication-record/docs/review/public-signer/README.md)
+retain attempt failures separately. This is local evidence, and does not change published
+RC6 packages/images. The native transaction bridge needs ledger `lookupKey` plus parsed check
+results; a host circuit `PassportProver` alone does not satisfy `Transaction.prove`. Use verified
+circuit assets for that lookup, as the pinned upstream resolver does. Do not omit integrity
+checks or relabel a circuit prover as a transaction prover.
+
+No fresh reader delivery, real popup, provider or full hosted lifecycle was qualified. #81
+and #231 remain open. Slow source preparation/install/native lanes stay opt-in; required
+CI only runs the cheap path/dependency/integrity/routing and result-profile guards.
