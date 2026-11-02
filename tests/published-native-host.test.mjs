@@ -400,3 +400,43 @@ test('public native evidence drops unknown child fields and hashes filesystem lo
     source: { commit: 'test' },
   });
 });
+
+test('native parent identity is accepted by actual worker schema before any runtime activity', async () => {
+  const { nativeWorkerInputIdentity, nativeWorkerConfiguration } =
+    await import('../scripts/qualification/native-worker-inputs.mjs');
+  const keys = '/private/test-keys',
+    signer = { root: '/private/test-signer', sha256: 'ab'.repeat(32) };
+  /** @param {string} profile @param {{root:string,sha256:string}|undefined} signer */
+  const make = (profile, signer) =>
+    JSON.parse(
+      JSON.stringify({
+        kind: 'published-host-native-inputs',
+        profile,
+        ...nativeWorkerInputIdentity({ keys, signer }),
+      }),
+    );
+  const publicInput = make('public-module', undefined);
+  assert.deepEqual(nativeWorkerConfiguration(publicInput, { PASSPORT_KEY_DIR: keys }), {
+    keyDir: keys,
+    signerRoot: undefined,
+  });
+  const hostedInput = make('hosted-authorising', signer);
+  const env = {
+    PASSPORT_KEY_DIR: keys,
+    PASSPORT_SIGNER_ROOT: signer.root,
+    PASSPORT_SIGNER_SHA256: signer.sha256,
+  };
+  assert.deepEqual(nativeWorkerConfiguration(hostedInput, env), {
+    keyDir: keys,
+    signerRoot: signer.root,
+  });
+  assert.equal(JSON.stringify(hostedInput).includes('/private'), false);
+  for (const changed of [
+    { ...env, PASSPORT_KEY_DIR: '/private/other' },
+    { ...env, PASSPORT_SIGNER_ROOT: '/private/other' },
+    { ...env, PASSPORT_SIGNER_SHA256: 'cd'.repeat(32) },
+  ])
+    assert.throws(() => nativeWorkerConfiguration(hostedInput, changed));
+  const { keyDirectoryPathSha256: legacy, ...missing } = hostedInput;
+  assert.throws(() => nativeWorkerConfiguration({ ...missing, keyDirSha256: legacy }, env));
+});

@@ -24,6 +24,10 @@ import { dedicatedIndexerReadiness } from './qualification/indexer-readiness.mjs
 import { verifyPublicSigner } from './consumer/public-signer-source.mjs';
 import { nativeLeasePath } from './qualification/native-lease.mjs';
 import {
+  nativeWorkerInputIdentity,
+  nativeWorkerConfiguration,
+} from './qualification/native-worker-inputs.mjs';
+import {
   publicSignerIdentity,
   publicNativeResult,
   nativeEndIdentity,
@@ -380,6 +384,7 @@ export async function runNativeHost(profile = 'public-module') {
     /** @type {Array<[string,string]>} */ const copies = [
       ['tests/fixtures/published-native-host.ts', 'native-core.ts'],
       ['tests/fixtures/published-native-host-bootstrap.js', 'bootstrap.mjs'],
+      ['scripts/qualification/native-worker-inputs.mjs', 'native-worker-inputs.mjs'],
       ['docs/examples/jubjub-grant-scope.ts', 'jubjub-grant-scope.ts'],
     ];
     if (signer)
@@ -398,22 +403,19 @@ export async function runNativeHost(profile = 'public-module') {
     const sourceInputs = Object.fromEntries(
       copies.map(([, file]) => [file, consumerSha256(readFileSync(join(output, file)))]),
     );
+    const nativeInputs = {
+      kind: 'published-host-native-inputs',
+      profile,
+      ...nativeWorkerInputIdentity({ keys, signer }),
+      source: initial,
+      sourceInputs,
+      configSha256: pin,
+      compilerManifestSha256: binding.compilerManifestSha256,
+    };
+    nativeWorkerConfiguration(nativeInputs, env);
     writeFileSync(
       join(output, 'native-inputs.json'),
-      JSON.stringify(
-        {
-          kind: 'published-host-native-inputs',
-          profile,
-          signer: signerIdentity,
-          source: initial,
-          sourceInputs,
-          configSha256: pin,
-          keyDirectoryPathSha256: consumerSha256(keys),
-          compilerManifestSha256: binding.compilerManifestSha256,
-        },
-        null,
-        2,
-      ) + '\n',
+      JSON.stringify(nativeInputs, null, 2) + '\n',
       { flag: 'wx', mode: 0o600 },
     );
     await command(

@@ -1,5 +1,19 @@
 # Actual browser signer qualification
 
+Latest accepted local run: [19-case receipt](receipt-v3.json) at clean signed source
+`59cca013ace978c902a91984e1143116f558718d`, nine virtual assertions, exactly one independently
+verified fake-chain SDK call. All five created resources closed. [Owned interruption control](interrupt-control-v3.json)
+at the same source records four closed resources and an honestly absent attacker server;
+no success result or completed cases. Runtime path hashes are separate from content hashes.
+These are byte-identical code-produced public receipts, with no private runtime paths.
+
+[The earlier expanded attempt](failed-attempt-v24.json) stopped after 14 cases on a harness
+navigation readiness dereference. It closed all created resources and remains a failed attempt.
+The readiness wait now tolerates the new document's initial state. The non-opener probe also
+waits for observed delivery at the allowed origin before testing that the real opener connects.
+
+## Historical first browser slice
+
 Tracking [#258](https://github.com/input-output-hk/midnight-passport-sdk/issues/258), under
 [the stability plan](../../roadmap/stability-0.1.0-execution.md). This is the first bounded
 browser protocol slice. [Signed-source receipt](receipt.json): **7 cases passed**, 4 virtual

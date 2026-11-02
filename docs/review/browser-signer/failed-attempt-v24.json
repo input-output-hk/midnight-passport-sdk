@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "kind": "public-signer-browser",
+  "fault": "",
+  "outcome": "failed",
+  "source": {
+    "commit": "12d87a5d2c802af0768751f789f1d553d01f5d3e",
+    "dirty": false,
+    "workspaceSha256": "1cd86edaaf5027fcf1eeb8a13e1bb1bd48d1835420c5cc6d3590ceea505e1535",
+    "fileCount": 1402
+  },
+  "signerConfigSha256": "04368ca535eb239c24e3525cac64f2f9d035cc31b2f67b51ead7e8d47b70b0fb",
+  "publicSource": "ce04076bbe70d8455c924d175cfcb7ee65844ae7",
+  "consumerConfigSha256": "1a58b63b84c110ff745bdd270619a683a9bb45bb89a223401eef1f787b7df819",
+  "completedCases": [
+    "same-origin non-opener hello cannot capture the signer port",
+    "real popup completes cross-origin transferred-port handshake and virtual PRF",
+    "declined browser consent invokes no PRF or operation",
+    "browser origin policy refuses before consent and PRF",
+    "installed SDK add-device verifies real browser-handler signature against fake chain",
+    "local SDK adapter refuses unsupported descriptors before browser request",
+    "missing flow is refused before PRF or chain work",
+    "malformed account descriptor is refused before PRF or chain work",
+    "approved flow refuses only changed account",
+    "approved flow refuses only changed circuit",
+    "approved flow refuses only changed commitment",
+    "concurrent opening is busy before a second approval or PRF",
+    "callback failure closes failed flow and never replays chain work",
+    "declared PRF encodings stay in signer origin across public responses"
+  ],
+  "stage": "signer navigation does not replay completed chain work",
+  "cleanup": [
+    {
+      "name": "context",
+      "status": "closed",
+      "closed": true
+    },
+    {
+      "name": "browser",
+      "status": "closed",
+      "closed": true
+    },
+    {
+      "name": "dapp-server",
+      "status": "closed",
+      "closed": true
+    },
+    {
+      "name": "signer-server",
+      "status": "closed",
+      "closed": true
+    },
+    {
+      "name": "attacker-server",
+      "status": "not-created",
+      "closed": null
+    }
+  ],
+  "failureSha256": "7ad7022ce236597e5d8a838d98ccf92d974f274ea7ea6439f1723e5f41e3d4af",
+  "actualBrowser": true,
+  "actualPopup": true,
+  "virtualAuthenticator": true,
+  "realHandlers": true,
+  "simulatedWindowRouting": false,
+  "fakeChain": true,
+  "nativeProof": false,
+  "realProvider": false,
+  "productionSignerPage": false,
+  "releaseQualified": false
+}

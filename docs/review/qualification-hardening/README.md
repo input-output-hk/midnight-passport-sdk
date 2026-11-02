@@ -26,3 +26,12 @@ The browser fixture still requires #258's additional actual boundary cases. Curr
 uses the frozen external consumer and supplemental dependencies; historical prepared roots must
 not be repinned or reused with a changed builder. No installed package, binding, key or image
 has been replaced, and no release has been published.
+
+## Pre-merge audit correction
+
+The quality audit caught a producer/worker schema regression in the initial public-input rename.
+The actual bootstrap now reads the renamed key-directory identity and obtains its private signer
+root from the controlled worker environment, checking both root-path hash and config pin. The
+parent invokes the same validator before Docker startup. An offline producer/consumer regression
+covers both native profiles plus missing, changed, and legacy fields. Earlier native source
+receipts remain historical; this correction is not a new live native qualification.
