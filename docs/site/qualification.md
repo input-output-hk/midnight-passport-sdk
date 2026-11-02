@@ -259,3 +259,15 @@ for preparation, lock replay, retained evidence and consent refusals. It is opt-
 missing inputs, incomplete cases or a failed install cannot produce a pass.
 Native proof, authenticated registry, actual host and manual-provider evidence
 remain independent tiers.
+
+
+## Public signer tiers
+
+The [public-source signer lane]({{ '/consumer-integration/' | relative_url }}#public-source-signer-handlers)
+keeps source preparation, real-handler protocol, native SDK mutation and real browser/provider
+acceptance separate. `consumer-signer-protocol` uses actual MessageChannels and crypto, fake
+chain and simulated windows; `consumer-signer-native` adds one authorising-only SDK enrollment
+to the native public-host baseline. Its 20 cases/20 canonical transactions are local acceptance,
+not a new release or full hosted lifecycle. Denial/scope/expiry guards and byte tampering are
+checked. Existing failed fixtures and original identifiers stay retained. Slow lanes remain
+manual/opt-in, with cheap guards in ordinary CI; skips do not qualify as passes.

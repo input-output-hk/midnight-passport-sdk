@@ -372,7 +372,8 @@ test('killing an early host import retains a marker and refuses the next import'
     });
     const exit = new Promise((resolve) => child?.once('exit', resolve));
     const deadline = Date.now() + 8000;
-    while (!existsSync(flag)) {
+    // appendFileSync creates the file before writing; existence alone races SIGTERM.
+    while (!existsSync(flag) || readFileSync(flag, 'utf8') !== 'import\n') {
       assert.equal(child.exitCode, null, 'host smoke exited before its held import');
       assert.ok(Date.now() < deadline, 'held host import did not start');
       await new Promise((resolve) => setTimeout(resolve, 20));

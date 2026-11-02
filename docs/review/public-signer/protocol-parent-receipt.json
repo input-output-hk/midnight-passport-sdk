@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "kind": "verified-public-signer-protocol",
+  "outcome": "passed",
+  "source": {
+    "commit": "ba3a1765d3dfa16c180a4807734e26a9a5745728",
+    "dirty": false,
+    "workspaceSha256": "fb930a03cd00f4edd0a76892cdb792919939061aed643017d1e3dda3644c226d",
+    "fileCount": 1360
+  },
+  "signerConfigSha256": "7855d8f055a2a100d753266b2b46a8b171f983d833fe1fc317224b42a4d90f00",
+  "publicSource": "ce04076bbe70d8455c924d175cfcb7ee65844ae7",
+  "consumerConfigSha256": "1a58b63b84c110ff745bdd270619a683a9bb45bb89a223401eef1f787b7df819",
+  "harness": {
+    "tests/fixtures/public-signer-protocol.js": "dcc26961fca8a66243798f292ae36c77dabf34de9bc9eb894323d795c006449e",
+    "tests/fixtures/public-signer-harness.js": "662623071d6d0c2ede11178c58fb1503235a43b84072277232308d782551a471",
+    "scripts/qualification/signer-windows.mjs": "72cd84b6c6d8179a102d6752440a1011abfb1f807af1ef4d9795f697a7cdfe55"
+  },
+  "resultSha256": "95a86426807c6d0c70b62db5047af7d21b83776f4ca543b8fd8b2726f96d1c0f",
+  "nativeProof": false,
+  "realProvider": false,
+  "releaseQualified": false
+}

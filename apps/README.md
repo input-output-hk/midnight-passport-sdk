@@ -408,3 +408,9 @@ for the service UID. Published RC5 lacks this source feature.
 `remoteHostJobPorts` owner composition, explicit recovery, resource bounds and
 real HTTP/killed-process E2E commands. These tests use synthetic chain drivers,
 not native proofs or real passkey providers. Legacy callback jobs remain volatile.
+
+The opt-in public signer qualification harness is documented in
+[`consumer-integration`](../docs/site/consumer-integration.md#public-source-signer-handlers).
+It does not change the demo's default signer or enable unsupported hosted withdrawal/rotation
+consent. An authorising-only new device still needs a separately supported reader-delivery flow
+before it can view shielded holdings. Native acceptance requires an exact-source receipt.

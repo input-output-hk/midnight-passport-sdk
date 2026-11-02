@@ -1,0 +1,409 @@
+{
+  "schemaVersion": 1,
+  "kind": "public-signer-protocol",
+  "testsPassed": 12,
+  "cases": [
+    "authenticated hint comes from approved sign-in over real handlers",
+    "rejected SDK add-device cannot draw PRF sign or mutate chain",
+    "origin refusal happens before consent and PRF",
+    "SDK add-device uses exact consent and independently verified real signature",
+    "outside-session access is refused",
+    "add-device scope refuses public-key disclosure, wrong account, commitment and circuit",
+    "missing consent field and unknown flow are rejected before PRF",
+    "unsupported SDK flows and lossy conversion never reach transport",
+    "overlapping open is busy and does not draw another PRF",
+    "expiry refuses further signatures and closes held key session",
+    "WebAuthn cancellation refuses callback and a fresh approved session recovers",
+    "operation error is closed as failed without a chain mutation"
+  ],
+  "chainCalls": 1,
+  "draws": 9,
+  "realHandlers": true,
+  "nativeMessageChannel": true,
+  "simulatedWindowRouting": true,
+  "syntheticCredentials": true,
+  "fakeChain": true,
+  "nativeProof": false,
+  "signerPage": false,
+  "realProvider": false,
+  "fullCompatibility": false,
+  "requests": [
+    {
+      "kind": "flow-open",
+      "payloadSha256": "2bdb5eb529e7d316003d121e3d1aa26da99d695451da0e76b9b62c5161b1ea44",
+      "outcome": "completed",
+      "resultSha256": "eb045d78d273107348b0300c01d29b7552d622abbc6faf81b3ec55359aa9950c"
+    },
+    {
+      "kind": "device-public-key",
+      "payloadSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "outcome": "completed",
+      "resultSha256": "0a58e71508cebbc4ff7e0f2653dd7599bf5cd0c00bdeed20f92dbc507094abbe"
+    },
+    {
+      "kind": "flow-close",
+      "payloadSha256": "12be39fdea3651a12e0975c46c3d4981ae2def5381bc7b330109e36221bb43c4",
+      "outcome": "completed",
+      "resultSha256": "12be39fdea3651a12e0975c46c3d4981ae2def5381bc7b330109e36221bb43c4"
+    },
+    {
+      "kind": "flow-open",
+      "payloadSha256": "723a5ef6f805b7f91953aecf9dc89a16f03beab125d8fce9a6b0887b78aa4500",
+      "outcome": "failed",
+      "code": "ceremony-cancelled"
+    },
+    {
+      "kind": "flow-open",
+      "payloadSha256": "723a5ef6f805b7f91953aecf9dc89a16f03beab125d8fce9a6b0887b78aa4500",
+      "outcome": "failed",
+      "code": "origin-denied"
+    },
+    {
+      "kind": "flow-open",
+      "payloadSha256": "723a5ef6f805b7f91953aecf9dc89a16f03beab125d8fce9a6b0887b78aa4500",
+      "outcome": "completed",
+      "resultSha256": "eb045d78d273107348b0300c01d29b7552d622abbc6faf81b3ec55359aa9950c"
+    },
+    {
+      "kind": "authorise",
+      "payloadSha256": "049cb9e479ab698dbe12d7606fa744ab266d28b217328a48bfd76f39b6f3816e",
+      "outcome": "completed",
+      "resultSha256": "f239f9d8a7672d8e414a2d9c73ea516c2bf6eb505a1bcece68fa959d392f2a26"
+    },
+    {
+      "kind": "flow-close",
+      "payloadSha256": "12be39fdea3651a12e0975c46c3d4981ae2def5381bc7b330109e36221bb43c4",
+      "outcome": "completed",
+      "resultSha256": "12be39fdea3651a12e0975c46c3d4981ae2def5381bc7b330109e36221bb43c4"
+    },
+    {
+      "kind": "device-public-key",
+      "payloadSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "outcome": "failed",
+      "code": "key-session-required"
+    },
+    {
+      "kind": "flow-open",
+      "payloadSha256": "eca14b873cd1ffb5f48c524ba55d7b8a8a3467db082afbac44f01f626779cd22",
+      "outcome": "completed",
+      "resultSha256": "eb045d78d273107348b0300c01d29b7552d622abbc6faf81b3ec55359aa9950c"
+    },
+    {
+      "kind": "device-public-key",
+      "payloadSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "outcome": "failed",
+      "code": "flow-scope"
+    },
+    {
+      "kind": "authorise",
+      "payloadSha256": "27f554107f0f9c7e1b455e1fb6a1079092804949295a9e6c68ccb86e6c087a64",
+      "outcome": "failed",
+      "code": "flow-scope"
+    },
+    {
+      "kind": "authorise",
+      "payloadSha256": "b06136341625cdd42a7b204b0ac31d2a75069752029a9ae027b2dac73661963c",
+      "outcome": "failed",
+      "code": "flow-scope"
+    },
+    {
+      "kind": "authorise",
+      "payloadSha256": "42282dda4c0591d4ffbdc2f3685f2946c344d563f2ea2bbec599112f2813c74a",
+      "outcome": "failed",
+      "code": "flow-scope"
+    },
+    {
+      "kind": "flow-close",
+      "payloadSha256": "12be39fdea3651a12e0975c46c3d4981ae2def5381bc7b330109e36221bb43c4",
+      "outcome": "completed",
+      "resultSha256": "12be39fdea3651a12e0975c46c3d4981ae2def5381bc7b330109e36221bb43c4"
+    },
+    {
+      "kind": "flow-open",
+      "payloadSha256": "f3d771d233d5fe02c27017af1e837015cb1760b6e5edb41ec94aa7f5b55e337b",
+      "outcome": "failed",
+      "code": "malformed-payload"
+    },
+    {
+      "kind": "flow-open",
+      "payloadSha256": "2bdb5eb529e7d316003d121e3d1aa26da99d695451da0e76b9b62c5161b1ea44",
+      "outcome": "completed",
+      "resultSha256": "eb045d78d273107348b0300c01d29b7552d622abbc6faf81b3ec55359aa9950c"
+    },
+    {
+      "kind": "flow-open",
+      "payloadSha256": "2bdb5eb529e7d316003d121e3d1aa26da99d695451da0e76b9b62c5161b1ea44",
+      "outcome": "failed",
+      "code": "signer-busy"
+    },
+    {
+      "kind": "flow-close",
+      "payloadSha256": "12be39fdea3651a12e0975c46c3d4981ae2def5381bc7b330109e36221bb43c4",
+      "outcome": "completed",
+      "resultSha256": "12be39fdea3651a12e0975c46c3d4981ae2def5381bc7b330109e36221bb43c4"
+    },
+    {
+      "kind": "flow-open",
+      "payloadSha256": "2bdb5eb529e7d316003d121e3d1aa26da99d695451da0e76b9b62c5161b1ea44",
+      "outcome": "completed",
+      "resultSha256": "eb045d78d273107348b0300c01d29b7552d622abbc6faf81b3ec55359aa9950c"
+    },
+    {
+      "kind": "device-public-key",
+      "payloadSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "outcome": "failed",
+      "code": "session-expired"
+    },
+    {
+      "kind": "flow-close",
+      "payloadSha256": "7e6e26528b551ec617e766f82a9bca7a000d636930027f71fe1e5abb1a3beb24",
+      "outcome": "failed",
+      "code": "session-expired"
+    },
+    {
+      "kind": "flow-open",
+      "payloadSha256": "2bdb5eb529e7d316003d121e3d1aa26da99d695451da0e76b9b62c5161b1ea44",
+      "outcome": "failed",
+      "code": "ceremony-cancelled"
+    },
+    {
+      "kind": "flow-open",
+      "payloadSha256": "2bdb5eb529e7d316003d121e3d1aa26da99d695451da0e76b9b62c5161b1ea44",
+      "outcome": "completed",
+      "resultSha256": "eb045d78d273107348b0300c01d29b7552d622abbc6faf81b3ec55359aa9950c"
+    },
+    {
+      "kind": "device-public-key",
+      "payloadSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "outcome": "completed",
+      "resultSha256": "0a58e71508cebbc4ff7e0f2653dd7599bf5cd0c00bdeed20f92dbc507094abbe"
+    },
+    {
+      "kind": "flow-close",
+      "payloadSha256": "12be39fdea3651a12e0975c46c3d4981ae2def5381bc7b330109e36221bb43c4",
+      "outcome": "completed",
+      "resultSha256": "12be39fdea3651a12e0975c46c3d4981ae2def5381bc7b330109e36221bb43c4"
+    },
+    {
+      "kind": "flow-open",
+      "payloadSha256": "2bdb5eb529e7d316003d121e3d1aa26da99d695451da0e76b9b62c5161b1ea44",
+      "outcome": "completed",
+      "resultSha256": "eb045d78d273107348b0300c01d29b7552d622abbc6faf81b3ec55359aa9950c"
+    },
+    {
+      "kind": "flow-close",
+      "payloadSha256": "6dae3e78af96812dec775d76005ff42f14540c741deab4312dd80e072781cd0f",
+      "outcome": "completed",
+      "resultSha256": "6dae3e78af96812dec775d76005ff42f14540c741deab4312dd80e072781cd0f"
+    }
+  ],
+  "approvals": [
+    {
+      "kind": "flow-open",
+      "flow": {
+        "kind": "sign-in"
+      },
+      "origin": "https://passport-dapp.example",
+      "decision": "approve"
+    },
+    {
+      "kind": "flow-open",
+      "flow": {
+        "kind": "add-device",
+        "commitmentHex": "42eee14325d6671d551a4919f786d86cbac8680b77dc3a52b210016db2db6388",
+        "account": "abababababababababababababababababababababababababababababababab"
+      },
+      "origin": "https://passport-dapp.example",
+      "decision": "reject"
+    },
+    {
+      "kind": "flow-open",
+      "flow": {
+        "kind": "add-device",
+        "commitmentHex": "42eee14325d6671d551a4919f786d86cbac8680b77dc3a52b210016db2db6388",
+        "account": "abababababababababababababababababababababababababababababababab"
+      },
+      "origin": "https://passport-dapp.example",
+      "decision": "approve"
+    },
+    {
+      "kind": "flow-open",
+      "flow": {
+        "kind": "add-device",
+        "commitmentHex": "dcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdc",
+        "account": "abababababababababababababababababababababababababababababababab"
+      },
+      "origin": "https://passport-dapp.example",
+      "decision": "approve"
+    },
+    {
+      "kind": "flow-open",
+      "flow": {
+        "kind": "withdraw-shielded",
+        "account": "abababababababababababababababababababababababababababababababab"
+      },
+      "origin": "https://passport-dapp.example",
+      "decision": "approve"
+    },
+    {
+      "kind": "flow-open",
+      "flow": {
+        "kind": "sign-in"
+      },
+      "origin": "https://passport-dapp.example",
+      "decision": "approve"
+    },
+    {
+      "kind": "flow-open",
+      "flow": {
+        "kind": "sign-in"
+      },
+      "origin": "https://passport-dapp.example",
+      "decision": "approve"
+    },
+    {
+      "kind": "flow-open",
+      "flow": {
+        "kind": "sign-in"
+      },
+      "origin": "https://passport-dapp.example",
+      "decision": "approve"
+    },
+    {
+      "kind": "flow-open",
+      "flow": {
+        "kind": "sign-in"
+      },
+      "origin": "https://passport-dapp.example",
+      "decision": "approve"
+    },
+    {
+      "kind": "flow-open",
+      "flow": {
+        "kind": "sign-in"
+      },
+      "origin": "https://passport-dapp.example",
+      "decision": "approve"
+    }
+  ],
+  "origins": [
+    {
+      "kind": "flow-open",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "device-public-key",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-close",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-open",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-open",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-open",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "authorise",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-close",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "device-public-key",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-open",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "device-public-key",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "authorise",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "authorise",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "authorise",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-close",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-open",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-open",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-open",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-close",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-open",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "device-public-key",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-close",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-open",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-open",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "device-public-key",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-close",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-open",
+      "origin": "https://passport-dapp.example"
+    },
+    {
+      "kind": "flow-close",
+      "origin": "https://passport-dapp.example"
+    }
+  ],
+  "expired": 1,
+  "storageRevisions": 0,
+  "listenerCounts": {
+    "dapp": 0,
+    "signer": 0
+  }
+}

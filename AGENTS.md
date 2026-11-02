@@ -438,3 +438,31 @@ Current wider host grant types require an explicit JubJub check; never cast or
 relabel a secp256k1 grantee. Consent needs `hostedJubjubAuthoriser` plus validated
 host constructors. Preserve unsupported rotation/withdrawal refusals. Source,
 actual published package, native and real-provider tiers remain distinct.
+
+
+### Public host/native qualification (local, opt-in)
+
+Use `pnpm qualify plan consumer-host-native` and the
+[consumer integration guide](docs/site/consumer-integration.md#public-package-native-orchestration-lane).
+This lane uses the authenticated RC6/current-public-host consumer; it imports no
+private Lace implementation. It requires signed clean source, existing verified
+prover keys, fresh private output below the consumer root, and the stopped retained
+qualification stack. It starts/stops only owned IDs, preserves all volumes and
+failed/unknown fixtures, and forbids user sponsor-seed overrides. Never run a second
+genesis wallet alongside it or delete a stale lease without inspecting its owner.
+The actual host proves its operations; the SDK ports in this lane are read-only.
+Type/guard tests are not a live pass. Keep real-provider/page, native SDK hosted
+mutations, production image and full-compatibility qualification separate. Publish
+only public receipts/hashes; synthetic secrets and sealed record history stay private.
+
+### Public-source remote signer qualification
+
+Read `docs/review/public-signer/README.md` and the consumer guide before
+`consumer-signer-protocol` / `consumer-signer-native`. The public npm entry exports the client,
+not handlers: build the separately pinned **public** source with the audited builder. Do not
+import private implementation or cast unsupported consent to a different flow. Use fresh external
+supplemental-dependency/build/run roots and preserve every failure. Protocol uses real handlers/
+crypto/native MessageChannel, simulated windows and fake chain. Native adds one authorising-only
+SDK enrollment after the existing native baseline; no reader/viewing-key delivery. Do not claim
+browser/provider/full-hosted-lifecycle compatibility. Keep existing signed-source, capacity,
+lease, finality, retained unknowns and owned-resource cleanup requirements.

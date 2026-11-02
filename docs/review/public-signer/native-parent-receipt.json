@@ -1,0 +1,388 @@
+{
+  "runtime": {
+    "node": "v22.23.2",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "publishedSdkSource": "7848d3029de753727bb376e8dd90ca05cd132b55",
+  "schemaVersion": 1,
+  "kind": "verified-public-signer-native",
+  "signer": {
+    "configSha256": "7855d8f055a2a100d753266b2b46a8b171f983d833fe1fc317224b42a4d90f00",
+    "preparedRootSha256": "5f9e900545d27d7aff69b4b2f0ddf93ca9eb90b8cac02116a7ed075549ed6456"
+  },
+  "profile": "hosted-authorising",
+  "outcome": "passed",
+  "source": {
+    "commit": "ba3a1765d3dfa16c180a4807734e26a9a5745728",
+    "dirty": false,
+    "workspaceSha256": "fb930a03cd00f4edd0a76892cdb792919939061aed643017d1e3dda3644c226d",
+    "fileCount": 1360
+  },
+  "endSource": {
+    "commit": "ba3a1765d3dfa16c180a4807734e26a9a5745728",
+    "dirty": false,
+    "workspaceSha256": "fb930a03cd00f4edd0a76892cdb792919939061aed643017d1e3dda3644c226d",
+    "fileCount": 1360
+  },
+  "binding": {
+    "id": "acc-s3r1.1",
+    "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "moduleSha256": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf"
+  },
+  "consumer": {
+    "sdkVersion": "0.1.0-rc6",
+    "hostVersion": "0.1.2-canary.2",
+    "hostArchiveSha256": "97a8ddeef426e0245093e8be615ec523db9c8a5693a94d7e34fb61f9f29e4cb5",
+    "configSha256": "1a58b63b84c110ff745bdd270619a683a9bb45bb89a223401eef1f787b7df819",
+    "lockSha256": "ac813c2c8bb14947e26b49a1cc2c54aa60237b99fd9b34e8c335e7b54b668432",
+    "publicationReceiptSha256": "6d58c1f85ee6901764f9013ec91b727a9a91485a86061e8f531e10e464e47af1",
+    "installedTree": {
+      "files": 28762,
+      "links": 1157,
+      "treeSha256": "1a328047bc660de48673c7461cac82d094d2094e7eeb0b2e65d44d70d484cc01"
+    }
+  },
+  "compiled": {
+    "native-core.js": "b20b37b6babe404ffcfa2ba1bdd1558ed364c0ac1a82e54f3b49984e3fee65e2",
+    "jubjub-grant-scope.js": "aa16a92282fbe3136fc5c57392b9d5f9e1f95089a9dcb4f9af3592bca4bdc298",
+    "native-baseline.js": "e3c4c8142a16866b7972ce032391792affc44025492843acc7b3130a6a7582f6"
+  },
+  "containers": [
+    {
+      "name": "mn-passport-qual-20261023-node-1",
+      "id": "4211049e9a4313daaa0274bed2b01d04a8d96a2e2b934efc2b635fade8c78f39",
+      "image": "sha256:9040c346c27f569b72dfbbad9420cf38fc7cc6a13b38adf814a925bbe9311678",
+      "initiallyRunning": false,
+      "mounts": [
+        {
+          "name": "mn-passport-qual-20261023_node-data",
+          "destination": "/data"
+        }
+      ],
+      "ports": {
+        "9944/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "19954"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mn-passport-qual-20261023-proof-server-1",
+      "id": "80a2ab8ccb2dcc3a7bba699d3be4bca92157d9501bd8c42770bfa3ad9bf5adc4",
+      "image": "sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf",
+      "initiallyRunning": false,
+      "mounts": [],
+      "ports": {
+        "6300/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "16310"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mn-passport-qual-20261023-indexer-1",
+      "id": "305c46d175861d4d30a6a3239646606dc87ec9c87a4fedb8f51d413073598bda",
+      "image": "sha256:ecfec6a26b9f8f89b7531e8f7c390f841661fb079bdf0bc57fa2cf8bb3f99c2f",
+      "initiallyRunning": false,
+      "mounts": [
+        {
+          "name": "mn-passport-qual-20261023_indexer-canonical-20261028",
+          "destination": "/data"
+        }
+      ],
+      "ports": {
+        "8088/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "18098"
+          }
+        ]
+      }
+    }
+  ],
+  "cleanup": [
+    {
+      "id": "305c46d175861d4d30a6a3239646606dc87ec9c87a4fedb8f51d413073598bda",
+      "stopped": true
+    },
+    {
+      "id": "80a2ab8ccb2dcc3a7bba699d3be4bca92157d9501bd8c42770bfa3ad9bf5adc4",
+      "stopped": true
+    },
+    {
+      "id": "4211049e9a4313daaa0274bed2b01d04a8d96a2e2b934efc2b635fade8c78f39",
+      "stopped": true
+    }
+  ],
+  "elapsedMs": 512236,
+  "inner": {
+    "kind": "published-hosted-signer-native",
+    "cases": [
+      "public module creates and activates ACC",
+      "public development deposit funds shielded NIGHT",
+      "public module reads chain-confirmed funded holdings",
+      "public module issues and seals a bounded read grant",
+      "RC6 grantee opens the public-host sealed viewing capability",
+      "public module preserves holdings through grant rotation",
+      "unrelated key origin cannot reopen the populated public-host account",
+      "RC6 SDK known-address open authenticates public-host account and envelopes",
+      "RC6 SDK reads the same qualified holding and live grant",
+      "RC6 original reader recovers host-published grant bookkeeping",
+      "public module reconnects by sign-in after SDK reads",
+      "public module revokes read grant and reseals owner holdings",
+      "RC6 SDK observes revocation without losing or duplicating the holding",
+      "revoked historical read seal does not open the fresh viewing key",
+      "public module reconnects after hosted SDK enrollment",
+      "real public handlers authenticate the native owner",
+      "denied hosted SDK enrollment leaves canonical state unchanged",
+      "RC6 add-device proves sponsors and submits once through real handlers",
+      "hosted enrollment retains the exact funded holding",
+      "unsupported hosted SDK flows remain refused before transport"
+    ],
+    "testsPassed": 20,
+    "address": "3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43",
+    "grantId": "0304f83a8203ce9b08cfab2e8b12d7983b0715012cac81684b7e19ff778fc25e",
+    "depositTxId": "002afdb36ab73710a5f8f160e7e8de393043b24eb42eb677dd488ca5708d9a035e",
+    "depositTxHash": "70dbc06b8c82f2bc8ab904ec7344ae3a4739ee88b85a7b53533bc5841d75ce2a",
+    "confirmedContractActions": [
+      "b4991362570ec15e4f603d907b3fc38bac677df74a5d576fefff9140832fa460",
+      "9a505117ddde6d2995e11635157d34d3d4a7a448f08c776ac538b8b37dd81aac",
+      "594c6f1deab19cc87d867bc1b9419d4e9fc27b13ffb69d468daf1ddb97323823",
+      "e489ade830ef7fed8070f58a3de1b3d4a6e2f03575c5a4043d264ec1e88dac5a",
+      "99e80952e06b1d97498fc73280ba4bea4f721ecae0623103d10928a25a62e849",
+      "e6c5e0b85615c7426efda349a80c814a643554532099a921f8c49864efa09662",
+      "64ed0f7bd92a88c222f2b3f2892ca40998631283c383915a924cafa2aecff1f6",
+      "70dbc06b8c82f2bc8ab904ec7344ae3a4739ee88b85a7b53533bc5841d75ce2a",
+      "4958f3e7156bbc196a978281e66d80b5e53a35d50b181ca12be8d76694163096",
+      "4483389f824e0cae0235a0fb0c4f232241a9111cd1c1f1cff417830581e168f1",
+      "2e721dbc02eb42ccb08304289798a1042ed5fb8ad784ad67d82d83f01c0ecbeb",
+      "e4b8941998834796e3e6ef7ba4c1f83924aa09893dddc488b2e15a5dee918ee1",
+      "2228ed90d70f9eb81af4b80cd5890a94725c8425a017f6af282bb4402d228fa1",
+      "980481429a46d54508401a0a235eced4948ba88bdae206045f0229e7f44383da",
+      "fcee3d73e46b1853e4140dc0a7aec01690c5871984bcbc24b1926a7ff0532bdb",
+      "84cf3a6ff51fc81974587aba000bb251a38269fd07ead602a773c9c356d776fd",
+      "63191f8929b16c19e4ff3b0ddb65e8545ae236097ef260bbf50aa518922a3d99",
+      "811f73aab2993a07d8abc061fcdf9d1c16e579334062f60d502ff78118b3b316",
+      "bb3b9e74c3998d2f303a3f5875fc7fccb8cd2d4b5dd606cad3c25b7a2d57b7cd",
+      "8f4c09beafeccd8a8e86db673f9307d593f59acfe833cc24c318d4cfc6001989"
+    ],
+    "proofs": [
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/activate_initial_device_with_jubjub?vk=b33fa139d34231f6ba1144a4ac3e947b35e679e8e91d31b554d7ff916932931e",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "midnight/zswap/output",
+        "bytes": 4860
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/deposit_shielded?vk=18caf9ffc1ea3271c340f97ee5433598b796a64fadcc1fb7bb5c65868574d328",
+        "bytes": 5420
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/rotate_enc_key_with_jubjub?vk=15238b09168c63a597c7d47cfe3b732fa126257bdf6b0558229d98feb5cb2322",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/issue_grant_with_jubjub?vk=008fa78514089341d53ead256a5f8878eb630d3f60741f3bc6bd34d41a84b2f7",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/rotate_enc_key_with_jubjub?vk=15238b09168c63a597c7d47cfe3b732fa126257bdf6b0558229d98feb5cb2322",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/revoke_grant_with_jubjub?vk=2acbb4bf271df28b6fb6ed20d931a10a51975d661dd917b8855c41f8dffac289",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:3232df29ce28ddb00fb222c0ae08ec480c8595b27addd281d7bb7e2b363ebd43/add_device_with_jubjub?vk=8bcb83e10f7ad25fc65e28f3fdb918eaf0f8755f6a0eb7416052c6153ea80408",
+        "bytes": 5772
+      }
+    ],
+    "sponsorships": 19,
+    "holding": {
+      "value": "7",
+      "color": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "syntheticCredentials": true,
+    "keyOriginDerivationMatched": true,
+    "nativeProof": true,
+    "hostPublicModule": true,
+    "sdkReadOnly": false,
+    "hostSignerHandlers": true,
+    "signerPage": false,
+    "realProvider": false,
+    "fullCompatibility": false,
+    "authorisingOnly": true,
+    "readerDelivery": false,
+    "draws": {
+      "owner": 18,
+      "grantee": 6,
+      "creations": 0
+    },
+    "keyProfile": "jubjub-owner-v1",
+    "keyCircuits": [
+      "activate_initial_device_with_jubjub",
+      "add_device_with_jubjub",
+      "append_inbox_with_jubjub",
+      "deposit_shielded",
+      "deposit_unshielded",
+      "issue_grant_with_jubjub",
+      "remove_device_with_jubjub",
+      "revoke_all_grants_with_jubjub",
+      "revoke_grant_with_jubjub",
+      "rotate_enc_key_with_jubjub"
+    ]
+  },
+  "finality": {
+    "finalizedHeight": 22385,
+    "finalizedHash": "613e2cae039dbda7c5dd1ec7ddc05984f1f81010ee7c6fca78238ad1f59ac984",
+    "transactions": [
+      {
+        "txHash": "b4991362570ec15e4f603d907b3fc38bac677df74a5d576fefff9140832fa460",
+        "blockHeight": 22311,
+        "blockHash": "dcf04df5c2157e6a51e88cb75a1323f0d73d6ec22d35cb6e4f0893347a9fcdfb"
+      },
+      {
+        "txHash": "9a505117ddde6d2995e11635157d34d3d4a7a448f08c776ac538b8b37dd81aac",
+        "blockHeight": 22314,
+        "blockHash": "f94474c7b93ad71b42328e717f0171017fff3b49806722bf732474c0b85e5cd5"
+      },
+      {
+        "txHash": "594c6f1deab19cc87d867bc1b9419d4e9fc27b13ffb69d468daf1ddb97323823",
+        "blockHeight": 22317,
+        "blockHash": "6958415dee52a4464959e1bb493baf9e82c002b195282652e093775ae35c084e"
+      },
+      {
+        "txHash": "e489ade830ef7fed8070f58a3de1b3d4a6e2f03575c5a4043d264ec1e88dac5a",
+        "blockHeight": 22320,
+        "blockHash": "e452b854b1bf7f25e9d866e4dbf486604e542a6903fbd0c89bc87a31fa078ce8"
+      },
+      {
+        "txHash": "99e80952e06b1d97498fc73280ba4bea4f721ecae0623103d10928a25a62e849",
+        "blockHeight": 22323,
+        "blockHash": "1e309a80ac21b24ece2aac2c155e07e7a8c0b4b2ef23b589265c3404d9c638b4"
+      },
+      {
+        "txHash": "e6c5e0b85615c7426efda349a80c814a643554532099a921f8c49864efa09662",
+        "blockHeight": 22327,
+        "blockHash": "9992a409133b69baea0f425d8127a44c5186e9e0fe673347bcbc8b892e3b638e"
+      },
+      {
+        "txHash": "64ed0f7bd92a88c222f2b3f2892ca40998631283c383915a924cafa2aecff1f6",
+        "blockHeight": 22331,
+        "blockHash": "1b8f56c32b331991db026fa26b19676896db9b29bb1125a41b88957f23cfd4cb"
+      },
+      {
+        "txHash": "70dbc06b8c82f2bc8ab904ec7344ae3a4739ee88b85a7b53533bc5841d75ce2a",
+        "blockHeight": 22335,
+        "blockHash": "c8c277f588c29c1fcb28d3c9c7ea23018ce34cd0c2efdbba54f9092539aed2b0"
+      },
+      {
+        "txHash": "4958f3e7156bbc196a978281e66d80b5e53a35d50b181ca12be8d76694163096",
+        "blockHeight": 22340,
+        "blockHash": "c65c9344ee4b19fb93e204b157beb228b96b785b37aac1b88f69a200e691c4f1"
+      },
+      {
+        "txHash": "4483389f824e0cae0235a0fb0c4f232241a9111cd1c1f1cff417830581e168f1",
+        "blockHeight": 22344,
+        "blockHash": "d6cf99f3307ba43bed804759c7bab34ec4cce3f3f295ab078558e172a80df7b5"
+      },
+      {
+        "txHash": "2e721dbc02eb42ccb08304289798a1042ed5fb8ad784ad67d82d83f01c0ecbeb",
+        "blockHeight": 22348,
+        "blockHash": "c2d586d9efddd8ac693718c4560908949fb112bb5dd4dad5eba58f2916075b88"
+      },
+      {
+        "txHash": "e4b8941998834796e3e6ef7ba4c1f83924aa09893dddc488b2e15a5dee918ee1",
+        "blockHeight": 22352,
+        "blockHash": "17c866854cddfb4834d3adc804b5ac70406be7a1b6549b8a73bae46dd74f2dd9"
+      },
+      {
+        "txHash": "2228ed90d70f9eb81af4b80cd5890a94725c8425a017f6af282bb4402d228fa1",
+        "blockHeight": 22356,
+        "blockHash": "54985e53b33467411e232e5c64d6444efdfb688234d8a0e7c961c2b647c725dc"
+      },
+      {
+        "txHash": "980481429a46d54508401a0a235eced4948ba88bdae206045f0229e7f44383da",
+        "blockHeight": 22360,
+        "blockHash": "54529aa0524519a3dde58bb166c12cd50e2cac3959fe6198260f09b5a609b335"
+      },
+      {
+        "txHash": "fcee3d73e46b1853e4140dc0a7aec01690c5871984bcbc24b1926a7ff0532bdb",
+        "blockHeight": 22364,
+        "blockHash": "c2e46be374cb7df6c13ca6169cf338312bfcf7599da88834be2e417e1b18112c"
+      },
+      {
+        "txHash": "84cf3a6ff51fc81974587aba000bb251a38269fd07ead602a773c9c356d776fd",
+        "blockHeight": 22369,
+        "blockHash": "98859b98b16890ceb124a736a0b53f862f5a48535c3d3abd5da97236983565d8"
+      },
+      {
+        "txHash": "63191f8929b16c19e4ff3b0ddb65e8545ae236097ef260bbf50aa518922a3d99",
+        "blockHeight": 22373,
+        "blockHash": "a5afec35f6ab09a30bd8e8b8eba56a2cf873e835218f1b47242d2cf5d96a3d3d"
+      },
+      {
+        "txHash": "811f73aab2993a07d8abc061fcdf9d1c16e579334062f60d502ff78118b3b316",
+        "blockHeight": 22377,
+        "blockHash": "892326e45b85a06884b8cba2218d61efda464d876688ace44edaa33346dbd9fb"
+      },
+      {
+        "txHash": "bb3b9e74c3998d2f303a3f5875fc7fccb8cd2d4b5dd606cad3c25b7a2d57b7cd",
+        "blockHeight": 22381,
+        "blockHash": "ba7907c0f7cc92c68895476f230b720fcc531e9e075fa021c4faec803060e2ad"
+      },
+      {
+        "txHash": "8f4c09beafeccd8a8e86db673f9307d593f59acfe833cc24c318d4cfc6001989",
+        "blockHeight": 22385,
+        "blockHash": "613e2cae039dbda7c5dd1ec7ddc05984f1f81010ee7c6fca78238ad1f59ac984"
+      }
+    ]
+  },
+  "releaseQualified": false,
+  "realProvider": false,
+  "fullCompatibility": false
+}

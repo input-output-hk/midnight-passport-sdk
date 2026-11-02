@@ -1,0 +1,364 @@
+{
+  "runtime": {
+    "node": "v22.23.2",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "publishedSdkSource": "7848d3029de753727bb376e8dd90ca05cd132b55",
+  "schemaVersion": 1,
+  "kind": "verified-published-host-native",
+  "outcome": "passed",
+  "source": {
+    "commit": "dd5034eafac8ef3103059b7b436bf66cd73a8386",
+    "dirty": false,
+    "workspaceSha256": "c65208c9425d12b7f1ad57ad8ce63b8360f453aad11513db47dfb3a3aec82e7a",
+    "fileCount": 1344
+  },
+  "endSource": {
+    "commit": "dd5034eafac8ef3103059b7b436bf66cd73a8386",
+    "dirty": false,
+    "workspaceSha256": "c65208c9425d12b7f1ad57ad8ce63b8360f453aad11513db47dfb3a3aec82e7a",
+    "fileCount": 1344
+  },
+  "binding": {
+    "id": "acc-s3r1.1",
+    "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "moduleSha256": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf"
+  },
+  "consumer": {
+    "sdkVersion": "0.1.0-rc6",
+    "hostVersion": "0.1.2-canary.2",
+    "hostArchiveSha256": "97a8ddeef426e0245093e8be615ec523db9c8a5693a94d7e34fb61f9f29e4cb5",
+    "configSha256": "1a58b63b84c110ff745bdd270619a683a9bb45bb89a223401eef1f787b7df819",
+    "lockSha256": "ac813c2c8bb14947e26b49a1cc2c54aa60237b99fd9b34e8c335e7b54b668432",
+    "publicationReceiptSha256": "6d58c1f85ee6901764f9013ec91b727a9a91485a86061e8f531e10e464e47af1",
+    "installedTree": {
+      "files": 28762,
+      "links": 1157,
+      "treeSha256": "1a328047bc660de48673c7461cac82d094d2094e7eeb0b2e65d44d70d484cc01"
+    }
+  },
+  "compiled": {
+    "native-core.js": "986dae9270508e0bbc5cdcb94580057ebcb2606d47079b187565ef069ba5f5e0",
+    "jubjub-grant-scope.js": "aa16a92282fbe3136fc5c57392b9d5f9e1f95089a9dcb4f9af3592bca4bdc298"
+  },
+  "containers": [
+    {
+      "name": "mn-passport-qual-20261023-node-1",
+      "id": "4211049e9a4313daaa0274bed2b01d04a8d96a2e2b934efc2b635fade8c78f39",
+      "image": "sha256:9040c346c27f569b72dfbbad9420cf38fc7cc6a13b38adf814a925bbe9311678",
+      "initiallyRunning": false,
+      "mounts": [
+        {
+          "name": "mn-passport-qual-20261023_node-data",
+          "destination": "/data"
+        }
+      ],
+      "ports": {
+        "9944/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "19954"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mn-passport-qual-20261023-proof-server-1",
+      "id": "80a2ab8ccb2dcc3a7bba699d3be4bca92157d9501bd8c42770bfa3ad9bf5adc4",
+      "image": "sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf",
+      "initiallyRunning": false,
+      "mounts": [],
+      "ports": {
+        "6300/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "16310"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mn-passport-qual-20261023-indexer-1",
+      "id": "305c46d175861d4d30a6a3239646606dc87ec9c87a4fedb8f51d413073598bda",
+      "image": "sha256:ecfec6a26b9f8f89b7531e8f7c390f841661fb079bdf0bc57fa2cf8bb3f99c2f",
+      "initiallyRunning": false,
+      "mounts": [
+        {
+          "name": "mn-passport-qual-20261023_indexer-canonical-20261028",
+          "destination": "/data"
+        }
+      ],
+      "ports": {
+        "8088/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "18098"
+          }
+        ]
+      }
+    }
+  ],
+  "cleanup": [
+    {
+      "id": "305c46d175861d4d30a6a3239646606dc87ec9c87a4fedb8f51d413073598bda",
+      "stopped": true
+    },
+    {
+      "id": "80a2ab8ccb2dcc3a7bba699d3be4bca92157d9501bd8c42770bfa3ad9bf5adc4",
+      "stopped": true
+    },
+    {
+      "id": "4211049e9a4313daaa0274bed2b01d04a8d96a2e2b934efc2b635fade8c78f39",
+      "stopped": true
+    }
+  ],
+  "elapsedMs": 486575,
+  "inner": {
+    "kind": "published-host-native-orchestration",
+    "cases": [
+      "public module creates and activates ACC",
+      "public development deposit funds shielded NIGHT",
+      "public module reads chain-confirmed funded holdings",
+      "public module issues and seals a bounded read grant",
+      "RC6 grantee opens the public-host sealed viewing capability",
+      "public module preserves holdings through grant rotation",
+      "unrelated key origin cannot reopen the populated public-host account",
+      "RC6 SDK known-address open authenticates public-host account and envelopes",
+      "RC6 SDK reads the same qualified holding and live grant",
+      "RC6 original reader recovers host-published grant bookkeeping",
+      "public module reconnects by sign-in after SDK reads",
+      "public module revokes read grant and reseals owner holdings",
+      "RC6 SDK observes revocation without losing or duplicating the holding",
+      "revoked historical read seal does not open the fresh viewing key"
+    ],
+    "testsPassed": 14,
+    "address": "dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd",
+    "grantId": "1f66973c14b1c2e776b0cc470a3f77d9bc377a4d19e98114fdb547ea6ef706fd",
+    "depositTxId": "00da41012432700785cd1c5374e585fcce79025a8d17425803da00d921bc9fbfe6",
+    "depositTxHash": "896867999980970a3e30d873a08209ea4e3dd71bd65b5bfb0ad3bd5771425dc6",
+    "confirmedContractActions": [
+      "5995e184ed28ebed72f565fbb38671743e1612a70ce8c880520baad5302d2ccd",
+      "d1f6da628051c1b0909e81fd5c41fcff6bdcbec61c95ac9eb6b7f4e7c31bcb01",
+      "fe721cb6e17531243a52ab769d96bb8a6ce13795efac9d14e718150184c3d73e",
+      "10c9d3268e236908dfa47ed63b1a88be8d8bb1338fa9dbfe0d5b42a84ba9cae1",
+      "16e0f2db867a7010fb506c346478e8a7a926860c99d92bed48bcb3004f9492fe",
+      "98534c45e47e32a1b666d38706206e9c26d9cabf0220e05e2d9faf165239a217",
+      "1ff14223dfe5adcebe444b1a06eff9fd88897b71286ebfe9741b985575f9f9f4",
+      "896867999980970a3e30d873a08209ea4e3dd71bd65b5bfb0ad3bd5771425dc6",
+      "306c1f5b91b1527e2d94d2625c2f3827d5896565a7ad3ac1aed0f4ad51ca6be8",
+      "ee9c78e1de0869f74d5d2bc9dc966eb3d17dc19dabe592700da23b013cd9f22f",
+      "ed8e90befe51318f4ddd6537295b78d8564cbe255074caf41c54b9a1d4460bfc",
+      "79865028409049f047d529b47306358ced3657d9a316df7691c29a64503b45bd",
+      "777b7a58f185b0f5b049adbd2984eb362ba68bae6320409d346cc96c2039a916",
+      "0efd6505df53f5940ce628d04dc432110211d4c99c071aa998b122ddf673daee",
+      "f07e39d290e6c74fc2e3b6a7478d4432a37b79256c06a77e20ba1fbb55f8caf9",
+      "8aaa7722a78fa8547c1ef601c6d3cee7747bf546177c0f30e49da8f7b8d84a31",
+      "098670f1d856d75948a9b882c46c123905aef230081348a94af67f164cb1ba6d",
+      "41d298ea21f72cfcb6ee99fb6e58a86ac4c899ab60af08ba4ed022f2c863241f",
+      "833747beb8539420e4294dbbcef50060346890e0819fdf3cb7c054f2b45ca8c8"
+    ],
+    "proofs": [
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/activate_initial_device_with_jubjub?vk=b33fa139d34231f6ba1144a4ac3e947b35e679e8e91d31b554d7ff916932931e",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "midnight/zswap/output",
+        "bytes": 4860
+      },
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/deposit_shielded?vk=18caf9ffc1ea3271c340f97ee5433598b796a64fadcc1fb7bb5c65868574d328",
+        "bytes": 5420
+      },
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/rotate_enc_key_with_jubjub?vk=15238b09168c63a597c7d47cfe3b732fa126257bdf6b0558229d98feb5cb2322",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/issue_grant_with_jubjub?vk=008fa78514089341d53ead256a5f8878eb630d3f60741f3bc6bd34d41a84b2f7",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/rotate_enc_key_with_jubjub?vk=15238b09168c63a597c7d47cfe3b732fa126257bdf6b0558229d98feb5cb2322",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/append_inbox_with_jubjub?vk=c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601",
+        "bytes": 5772
+      },
+      {
+        "keyLocation": "contract:dcb34f9980224d0ec28278dec197e55b2d9b3e59f16aab18d21dd1cb992502fd/revoke_grant_with_jubjub?vk=2acbb4bf271df28b6fb6ed20d931a10a51975d661dd917b8855c41f8dffac289",
+        "bytes": 5772
+      }
+    ],
+    "sponsorships": 18,
+    "holding": {
+      "value": "7",
+      "color": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "syntheticCredentials": true,
+    "keyOriginDerivationMatched": true,
+    "nativeProof": true,
+    "hostPublicModule": true,
+    "sdkReadOnly": true,
+    "hostSignerHandlers": false,
+    "signerPage": false,
+    "realProvider": false,
+    "fullCompatibility": false,
+    "draws": {
+      "owner": 14,
+      "grantee": 5,
+      "creations": 0
+    },
+    "keyProfile": "jubjub-owner-v1",
+    "keyCircuits": [
+      "activate_initial_device_with_jubjub",
+      "add_device_with_jubjub",
+      "append_inbox_with_jubjub",
+      "deposit_shielded",
+      "deposit_unshielded",
+      "issue_grant_with_jubjub",
+      "remove_device_with_jubjub",
+      "revoke_all_grants_with_jubjub",
+      "revoke_grant_with_jubjub",
+      "rotate_enc_key_with_jubjub"
+    ]
+  },
+  "finality": {
+    "finalizedHeight": 22203,
+    "finalizedHash": "3f54335a8939c6e158a390ec84d81f4e9ac7de9a8bb7cd1412efc4789cb97fc6",
+    "transactions": [
+      {
+        "txHash": "5995e184ed28ebed72f565fbb38671743e1612a70ce8c880520baad5302d2ccd",
+        "blockHeight": 22133,
+        "blockHash": "a1aeb1331e838f3c75aa8c2614ccaeabb0901c0728a0ae3ab6671966c04ec1fd"
+      },
+      {
+        "txHash": "d1f6da628051c1b0909e81fd5c41fcff6bdcbec61c95ac9eb6b7f4e7c31bcb01",
+        "blockHeight": 22136,
+        "blockHash": "5b0057e139a99b0a5eda00d6a64e4289ae6db77f771a6df3701a578f97560eda"
+      },
+      {
+        "txHash": "fe721cb6e17531243a52ab769d96bb8a6ce13795efac9d14e718150184c3d73e",
+        "blockHeight": 22139,
+        "blockHash": "d1c8458cd9e5356b20cabe8eca232fa6a0d1612f03bf562090f6e54721ebe494"
+      },
+      {
+        "txHash": "10c9d3268e236908dfa47ed63b1a88be8d8bb1338fa9dbfe0d5b42a84ba9cae1",
+        "blockHeight": 22142,
+        "blockHash": "3aa17f7c9c8f09861adc87f7c9850a0749b70db51f7cd79c2a5cd126595c18b0"
+      },
+      {
+        "txHash": "16e0f2db867a7010fb506c346478e8a7a926860c99d92bed48bcb3004f9492fe",
+        "blockHeight": 22145,
+        "blockHash": "61da4d9bc807b8235b06dd206ff1b27b419863cd000e2ebaf22c259e3f9c1feb"
+      },
+      {
+        "txHash": "98534c45e47e32a1b666d38706206e9c26d9cabf0220e05e2d9faf165239a217",
+        "blockHeight": 22149,
+        "blockHash": "087722698ddb96775427172bf35192e5194b64f444c070b2d59766ad655f1c04"
+      },
+      {
+        "txHash": "1ff14223dfe5adcebe444b1a06eff9fd88897b71286ebfe9741b985575f9f9f4",
+        "blockHeight": 22153,
+        "blockHash": "3505f5e1cdd2b530f2d1afbb566f1a09e20aad033dbca43a8d465bec0f569e13"
+      },
+      {
+        "txHash": "896867999980970a3e30d873a08209ea4e3dd71bd65b5bfb0ad3bd5771425dc6",
+        "blockHeight": 22157,
+        "blockHash": "5a5a8ae1434372016b63cf4514a234fc2a3b878d959d88e420c3cb7c7c8a5f33"
+      },
+      {
+        "txHash": "306c1f5b91b1527e2d94d2625c2f3827d5896565a7ad3ac1aed0f4ad51ca6be8",
+        "blockHeight": 22162,
+        "blockHash": "5aef2f41474e4f2fb50e86088e8348584440f8d3acf198d73dd214098f255449"
+      },
+      {
+        "txHash": "ee9c78e1de0869f74d5d2bc9dc966eb3d17dc19dabe592700da23b013cd9f22f",
+        "blockHeight": 22166,
+        "blockHash": "1f6fe612cc46920a1f41f806520e6585e634fc1d2ac1001ea7e1dde332a82dbe"
+      },
+      {
+        "txHash": "ed8e90befe51318f4ddd6537295b78d8564cbe255074caf41c54b9a1d4460bfc",
+        "blockHeight": 22170,
+        "blockHash": "82255fdb058bbd7ad9253f952358f3d48260b71e551edddeb315862bf2de84e9"
+      },
+      {
+        "txHash": "79865028409049f047d529b47306358ced3657d9a316df7691c29a64503b45bd",
+        "blockHeight": 22174,
+        "blockHash": "2942cfba831e11e48fa984472d9694133c633e74af4b886ab1940834dabb75d6"
+      },
+      {
+        "txHash": "777b7a58f185b0f5b049adbd2984eb362ba68bae6320409d346cc96c2039a916",
+        "blockHeight": 22178,
+        "blockHash": "0314b946cb9ea2bb41143b5434120588b2bf4d815b786016062e8f8f30824644"
+      },
+      {
+        "txHash": "0efd6505df53f5940ce628d04dc432110211d4c99c071aa998b122ddf673daee",
+        "blockHeight": 22182,
+        "blockHash": "c5692fc37b5726f7a7b422f38fa8fa0738860b04ba24b0dcfd42f65cb4953505"
+      },
+      {
+        "txHash": "f07e39d290e6c74fc2e3b6a7478d4432a37b79256c06a77e20ba1fbb55f8caf9",
+        "blockHeight": 22186,
+        "blockHash": "76c2952accfec37575610b34225e3a40305000ed938c2879dfdb1d007368b213"
+      },
+      {
+        "txHash": "8aaa7722a78fa8547c1ef601c6d3cee7747bf546177c0f30e49da8f7b8d84a31",
+        "blockHeight": 22191,
+        "blockHash": "ab19b90a08b184398d66083e23eb1aab2088e5226c1511157d56f1c54d5a314c"
+      },
+      {
+        "txHash": "098670f1d856d75948a9b882c46c123905aef230081348a94af67f164cb1ba6d",
+        "blockHeight": 22195,
+        "blockHash": "990d1856ac41cba6b2820410bb029f0fa78b75f565fe1ac905e27d15e3c5219b"
+      },
+      {
+        "txHash": "41d298ea21f72cfcb6ee99fb6e58a86ac4c899ab60af08ba4ed022f2c863241f",
+        "blockHeight": 22199,
+        "blockHash": "a2f3da09281368db64484891c6980f2fc40a617f784e2502b576d131c1bbda12"
+      },
+      {
+        "txHash": "833747beb8539420e4294dbbcef50060346890e0819fdf3cb7c054f2b45ca8c8",
+        "blockHeight": 22203,
+        "blockHash": "3f54335a8939c6e158a390ec84d81f4e9ac7de9a8bb7cd1412efc4789cb97fc6"
+      }
+    ]
+  },
+  "releaseQualified": false,
+  "realProvider": false,
+  "fullCompatibility": false
+}

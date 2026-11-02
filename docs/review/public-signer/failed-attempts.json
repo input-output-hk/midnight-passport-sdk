@@ -1,0 +1,64 @@
+[
+  {
+    "attempt": 1,
+    "source": {
+      "commit": "149dfc5ecbe8b0b6360577e9d08dd7aa7caa9f7c",
+      "dirty": false,
+      "workspaceSha256": "ea63e2d421a84c6bcc0ae967744b3a3c393ba4bd12bff46f5f0488a155c1dde5",
+      "fileCount": 1360
+    },
+    "outcome": "failed",
+    "elapsedMs": 30973,
+    "classification": "import-only HD entry loaded through require; before wallet setup",
+    "sdkSubmitMarkers": 0,
+    "baselineBalancedTransactions": 0,
+    "fundedStateRetained": false,
+    "cleanup": [
+      {
+        "id": "305c46d175861d4d30a6a3239646606dc87ec9c87a4fedb8f51d413073598bda",
+        "stopped": true
+      },
+      {
+        "id": "80a2ab8ccb2dcc3a7bba699d3be4bca92157d9501bd8c42770bfa3ad9bf5adc4",
+        "stopped": true
+      },
+      {
+        "id": "4211049e9a4313daaa0274bed2b01d04a8d96a2e2b934efc2b635fade8c78f39",
+        "stopped": true
+      }
+    ],
+    "relabelledAsPass": false,
+    "replayed": false
+  },
+  {
+    "attempt": 2,
+    "source": {
+      "commit": "9d54c6beba460efea5510a42bf4e3299cdccace2",
+      "dirty": false,
+      "workspaceSha256": "c4a7187962a7779775c1d944462e7f032ac814a61d785b3e18626204fa73170b",
+      "fileCount": 1360
+    },
+    "outcome": "failed",
+    "elapsedMs": 573098,
+    "classification": "circuit-level PassportProver passed to Transaction.prove without lookupKey; before SDK sponsorship or submission",
+    "sdkSubmitMarkers": 0,
+    "baselineBalancedTransactions": 18,
+    "fundedStateRetained": true,
+    "cleanup": [
+      {
+        "id": "305c46d175861d4d30a6a3239646606dc87ec9c87a4fedb8f51d413073598bda",
+        "stopped": true
+      },
+      {
+        "id": "80a2ab8ccb2dcc3a7bba699d3be4bca92157d9501bd8c42770bfa3ad9bf5adc4",
+        "stopped": true
+      },
+      {
+        "id": "4211049e9a4313daaa0274bed2b01d04a8d96a2e2b934efc2b635fade8c78f39",
+        "stopped": true
+      }
+    ],
+    "relabelledAsPass": false,
+    "replayed": false
+  }
+]

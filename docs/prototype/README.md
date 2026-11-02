@@ -172,3 +172,9 @@ the repository so that accounts can be reopened later. After a chain reset, dele
 protected owner coordinator and demo published-bookkeeping fallback. Default owner
 buttons still require reconciliation after an interruption. Keep the original
 reader/journal: another enrolled reader cannot invent missing grant openings.
+
+The [public signer qualification lane](../site/consumer-integration.md#public-source-signer-handlers)
+checks the installed RC6 client against separately pinned public upstream handlers. Its
+simulated-window protocol probe is distinct from native SDK add-device qualification and real
+passkey-provider acceptance. Authorising-only enrollment transfers no viewing secret; unsupported
+hosted consent kinds remain refused. The default demo flow is unchanged.

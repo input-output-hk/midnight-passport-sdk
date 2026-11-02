@@ -648,3 +648,22 @@ send. Legacy/v1 sponsor balance/submit routes now share the wallet queue with
 proof/deploy work: requests can wait or return 503 at capacity. Reconcile remains
 asynchronous, and pre-host no-send repair stays deferred. See the service-job
 runbook for original-ID recovery and controlled operator topology.
+
+
+## Current public signer handlers — local 2026/11/02
+
+Installed RC6 and `@laceio/sdk@0.1.2-canary.2`, separately pinned public handler source
+`ce04076bbe70d8455c924d175cfcb7ee65844ae7`. Source/package provenance is not inferred.
+
+| Evidence | Qualified scope | Remaining limit |
+| --- | --- | --- |
+| Protocol 12 cases +6integrity controls at signed ba3a176 | Real handlers/server/client, native MessageChannel, independently checked signature, denial/origin/scope/expiry/cancellation | Fake chain, simulated windows and credentials; no real provider/page |
+| Native 20 cases /20 canonical finalized transactions at signed ba3a176 | Existing host creation/funding/grant baseline plus one SDK authorising-only add over real handlers; reconnect, unchanged inbox and7-unit holding | Creation/grants use local host signer; no reader delivery, full hosted lifecycle, P-256 remote or image acceptance |
+| Full local gate | 1,041 passed /7 existing conditional skips /0 failures; app types and public installed consumer types pass | No new release or repeated full release-suite claim |
+
+The proving bridge supplies checked `lookupKey` material and parses circuit check bytes.
+It does not treat a circuit prover as a transaction prover. Unsupported hosted rotation and
+withdrawal consent remains refused, and exact-value shielded spending guards are unchanged.
+
+[Review map and exact receipts](review/public-signer/README.md). #81/#231 remain open for
+broader integration, browser/provider and repeatability acceptance. RC6 artifacts are unchanged.

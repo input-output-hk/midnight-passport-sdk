@@ -6,6 +6,32 @@
 > ([midnightntwrk/passport](https://github.com/midnightntwrk/passport/issues)).
 > Last updated: 2026/11/01. Historical entries below retain their original issue namespaces.
 
+## Local public-host native baseline passed — 2026/11/01
+
+PR #256 merged at signed d463b49; matching Pages deployment verified. The next
+#81/#231 native follow-up passed fourteen cases at clean signed dd5034e. Sixteen
+proof responses, eighteen sponsorships plus development deposit, nineteen successful
+canonical finalized transactions; same seven-unit holding through read-grant issue,
+rotation, SDK reopen/bookkeeping, host reconnect and revocation. Source/installed
+bytes matched before/after, owned node/prover/indexer stopped, all volumes and failed
+fixtures retained. See [review map](docs/review/public-host-native/README.md).
+
+Earlier failed runs exposed missing feature provider, asynchronous dispatch,
+retained node committee catch-up consuming all block weight, wrong capture import,
+33-byte intent vs32-byte hash confusion, and missing explicit grant RP id. Each was
+fixed without changing host packages, extending TTL, replaying deposits or weakening
+consent/value guards. Failed suites remain failed; one confirmed deposit was
+reconciled read-only. No private host implementation import or provider claim.
+
+Final self-review fixes the parent lease to a stable private user directory because
+Nix creates a different TMPDIR for each shell. Two actual-process tests establish
+exclusive acquisition across those directories and refusal of exposed/link paths.
+The native core/bootstrap bytes remain those in the exact signed receipt; this
+separate lease follow-up is not represented as another full native run at HEAD.
+Docs/evidence and Obsidian checkpoint are updated locally on the current branch;
+no native follow-up push, new package/image release, full Lace or hosted-SDK-mutation
+claim. Broad #81/#231 acceptance remains open.
+
 ## Current host review follow-up — 2026/11/01
 
 PR #256 publishes the completed #81/#231 consumer slice. External review follow-ups

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "source": "ba3a1765d3dfa16c180a4807734e26a9a5745728",
+  "signerConfigSha256": "7855d8f055a2a100d753266b2b46a8b171f983d833fe1fc317224b42a4d90f00",
+  "testsPassed": 6,
+  "cases": [
+    "original prepared source and dependencies verify",
+    "wrong external pin refused before imports",
+    "bundle byte tamper refused before imports",
+    "entry byte tamper refused before imports",
+    "config byte tamper refused before imports",
+    "original bytes still verify after independent tamper controls"
+  ],
+  "originalConfigUnchanged": true,
+  "untrustedCodeExecuted": false
+}

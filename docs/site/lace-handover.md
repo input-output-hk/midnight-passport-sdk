@@ -23,6 +23,19 @@ It requires the explicit consent and JubJub-grantee adapters; raw authoriser and
 wider host grant scopes are not drop-in assignments. This does not change the
 RC6 artifacts or qualify full Lace/provider behaviour.
 
+The local native follow-up also passed fourteen public-module cases with nineteen
+canonical finalized transactions: create/activate, populated grant issue/rotation,
+SDK read/capability/bookkeeping crossover, reconnect and revocation. See the
+[native scope and limitations]({{ '/consumer-integration/' | relative_url }}#public-package-native-orchestration-lane).
+That historical lane kept SDK transaction ports read-only. A new local lane additionally
+passed **20 native cases /20 canonical finalized transactions**, including one RC6
+`addJubjubAuthorisingDevice` submission through real public-source signer handlers. Consent
+denial made no mutation; reconnect found both authorities and retained the exact holding.
+See [public-source signer scope]({{ '/consumer-integration/' | relative_url }}#public-source-signer-handlers).
+This adds signing authority only, with no reader/viewing-key delivery. Window routing and
+credentials are synthetic; creation/grants still use the local host signer. Browser/provider,
+full hosted lifecycle, images and full Lace compatibility remain unqualified. RC6 bytes are unchanged.
+
 ## Integration guide
 
 This preview lets Lace engineers evaluate the pinned Passport ACC binding, portable account

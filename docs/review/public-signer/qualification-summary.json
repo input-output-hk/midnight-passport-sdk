@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "nativeSource": "ba3a1765d3dfa16c180a4807734e26a9a5745728",
+  "sdkVersion": "0.1.0-rc6",
+  "hostVersion": "0.1.2-canary.2",
+  "publicHandlerSource": "ce04076bbe70d8455c924d175cfcb7ee65844ae7",
+  "nativeCases": 20,
+  "canonicalSuccessfulFinalizedTransactions": 20,
+  "proofResponses": 17,
+  "sponsorships": 19,
+  "sdkSubmissions": 1,
+  "nativeElapsedMs": 512236,
+  "protocolCases": 12,
+  "integrityControls": 6,
+  "holding": {
+    "value": "7",
+    "color": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "ownerNextUseCounter": "14",
+  "authorisingOnly": true,
+  "readerDelivery": false,
+  "inboxUnchanged": true,
+  "creationAndGrantsUseLocalHostSigner": true,
+  "nativeRemoteRequests": 7,
+  "approvals": [
+    "approve",
+    "reject",
+    "approve"
+  ],
+  "sourceAndInstalledInputsUnchanged": true,
+  "ownedContainersStopped": true,
+  "realMessageChannel": true,
+  "simulatedWindowRouting": true,
+  "syntheticCredentials": true,
+  "signerPage": false,
+  "realProvider": false,
+  "fullCompatibility": false,
+  "releaseQualified": false,
+  "packagesOrImagesChanged": false
+}
