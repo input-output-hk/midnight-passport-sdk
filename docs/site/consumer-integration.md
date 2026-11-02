@@ -522,7 +522,7 @@ reconnected the host with both authorities, and retained the same 7-unit holding
 inbox. Protocol 12 cases and 6 integrity controls passed separately at that source. All prepared,
 installed, compiled and source inputs matched before/after; owned compute stopped.
 
-[Exact receipts and review map](https://github.com/input-output-hk/midnight-passport-sdk/blob/codex/rc5-publication-record/docs/review/public-signer/README.md)
+[Exact receipts and review map](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/public-signer/README.md)
 retain attempt failures separately. This is local evidence, and does not change published
 RC6 packages/images. The native transaction bridge needs ledger `lookupKey` plus parsed check
 results; a host circuit `PassportProver` alone does not satisfy `Transaction.prove`. Use verified

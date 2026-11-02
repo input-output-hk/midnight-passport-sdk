@@ -42,3 +42,10 @@ and baseline prover acceptance/refusal before fee-wallet construction all passed
 The authenticated consumer config, lock, archives and physical installed tree were unchanged.
 No native proof, Docker start, funding or wallet was used for this check. Subsequent native runs
 must use fresh prepared signer inputs because the public-source builder recipe has changed.
+
+Independent Claude PR review follow-ups are consolidated in
+[#266](https://github.com/input-output-hk/midnight-passport-sdk/issues/266). The PR265 review
+identified a host-normalisation regression in the initial URL fix; signed `de8c82f` fixes it,
+keeps query backslashes, and contains post-header route failures. Full local checks and exact-head
+CI pass; fresh independent review found no blocking defect. Further HTTP edge-case assertions and
+redacted operator diagnostics are tracked rather than represented as completed coverage.

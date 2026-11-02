@@ -31,3 +31,15 @@ cleanup exact owned processes only. GPG/DCO and independent review before eligib
 discovery/naming#20/#247, browser proving#241, dApp/agent grants#242 and network value routes#243.
 Authorising-only enrollment delivers no reader/viewing secret. Exact-value withdrawals and
 unsupported hosted consent refusals remain unchanged.
+
+## First execution results
+
+- PR259 merged with signed merge `a8a2785` after green exact-head CI and independent review.
+- PR265 fixes the confirmed malformed-target crash and subsequent reviewed host-normalisation
+  regression; follow the PR for its final merge state.
+- Signed local `db41991` bounds polling inputs; `1d076b9` delivers the initial browser and bootstrap
+  validation slice. Browser evidence: seven cases, virtual credential, fake chain; full local
+  gate and rendered documentation checks pass. No new release or real-provider acceptance.
+- Additional independent PR-review improvements: [#266](https://github.com/input-output-hk/midnight-passport-sdk/issues/266).
+  Prioritise isolated consent probes, emitted dependency requirements and reproducible public
+  receipts before widening the qualified surface. #261's original deposit recovery remains open.
