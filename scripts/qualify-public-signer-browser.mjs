@@ -23,6 +23,7 @@ import { verifyPublicSigner, signerBundleTree } from './consumer/public-signer-s
 import { installedTreeIdentity, runtimeTreeIdentity } from './consumer/host-retained.mjs';
 import { consumerSha256 } from './consumer-inputs.mjs';
 import { workspaceIdentity } from './qualification/receipt.mjs';
+import { BrowserOwnership } from './qualification/browser-ownership.mjs';
 const repository = resolve(import.meta.dirname, '..');
 /** @param {string} requested @param {string} consumer */
 export function browserOutput(requested, consumer) {
@@ -237,18 +238,28 @@ export async function runBrowserSigner(env = process.env) {
   let stage = 'build',
     popupOpened = false,
     virtualAuthenticator = false;
+  const ownership = new BrowserOwnership([
+    'context',
+    'browser',
+    'dapp-server',
+    'signer-server',
+    'attacker-server',
+  ]);
   const aborted = new AbortController();
   const interrupt = () => aborted.abort();
   process.on('SIGTERM', interrupt);
   process.on('SIGINT', interrupt);
   let browserVersion;
-  /** @type {Awaited<ReturnType<typeof browserCleanup>>} */ let cleanup = [];
+  /** @type {Awaited<ReturnType<BrowserOwnership['cleanup']>>} */ let cleanup = [];
+  let settledStage, settledCases;
   let failureSha256,
     verdict = 'failed';
   /** @param {string} name @param {()=>Promise<void>} fn */
   const check = async (name, fn) => {
+    ownership.guard();
     stage = name;
-    await browserDeadline(fn);
+    await browserDeadline(fn, 30000, aborted.signal);
+    ownership.guard();
     cases.push(name);
   };
   try {
@@ -262,18 +273,35 @@ export async function runBrowserSigner(env = process.env) {
         writeFileSync(join(output, 'build.private.log'), build, { flag: 'wx', mode: 0o600 });
         const assets = signerBundleTree(join(output, 'dist'));
         stage = 'serve';
-        dapp = await serveBrowser(join(output, 'dist'));
-        signerServer = await serveBrowser(join(output, 'dist'), dapp.origin);
+        dapp = await ownership.acquire(
+          'dapp-server',
+          () => serveBrowser(join(output, 'dist')),
+          (s) => s.close(),
+        );
+        signerServer = await ownership.acquire(
+          'signer-server',
+          () => serveBrowser(join(output, 'dist'), dapp.origin),
+          (s) => s.close(),
+        );
         stage = 'launch';
         // This runner owns signal cleanup; Playwright's default handlers would race it.
-        browser = await chromium.launch({
-          executablePath: chrome,
-          headless: true,
-          handleSIGINT: false,
-          handleSIGTERM: false,
-        });
+        browser = await ownership.acquire(
+          'browser',
+          () =>
+            chromium.launch({
+              executablePath: chrome,
+              headless: true,
+              handleSIGINT: false,
+              handleSIGTERM: false,
+            }),
+          (b) => b.close(),
+        );
         browserVersion = browser.version();
-        context = await browser.newContext();
+        context = await ownership.acquire(
+          'context',
+          () => browser.newContext(),
+          (c) => c.close(),
+        );
         context.setDefaultTimeout(20000);
         if (fault === 'interrupt-after-launch') process.kill(process.pid, 'SIGTERM');
         context.on('page', (/** @type {any} */ p) =>
@@ -483,7 +511,11 @@ export async function runBrowserSigner(env = process.env) {
           },
         );
         await check('actual wrong opener origin is refused before consent and PRF', async () => {
-          attackerServer = await serveBrowser(join(output, 'dist'));
+          attackerServer = await ownership.acquire(
+            'attacker-server',
+            () => serveBrowser(join(output, 'dist')),
+            (s) => s.close(),
+          );
           const attacker = await context.newPage();
           await attacker.goto(attackerServer.origin + '/dapp/');
           await attacker.waitForFunction(
@@ -527,6 +559,8 @@ export async function runBrowserSigner(env = process.env) {
           await attacker.evaluate(() => /** @type {any} */ (globalThis).qualification.close());
           await attacker.close();
         });
+        ownership.guard();
+        stage = 'final-integrity';
         verifyPublicSigner(signer, pin, repository);
         assert.deepEqual(signerBundleTree(join(output, 'prepared')), input.bundle);
         assert.deepEqual(browserRuntimeIdentity(framework), frameworkIdentity);
@@ -564,6 +598,10 @@ export async function runBrowserSigner(env = process.env) {
     verdict = 'passed';
     stage = 'complete';
   } catch (error) {
+    ownership.settled = true;
+    aborted.abort();
+    settledStage = stage;
+    settledCases = [...cases];
     failureSha256 = consumerSha256(String(error));
     writeFileSync(
       join(output, 'failure.private.log'),
@@ -574,14 +612,8 @@ export async function runBrowserSigner(env = process.env) {
       },
     );
   } finally {
-    cleanup = await browserCleanup([
-      { name: 'context', close: async () => context?.close() },
-      { name: 'browser', close: async () => browser?.close() },
-      { name: 'dapp-server', close: async () => dapp?.close() },
-      { name: 'signer-server', close: async () => signerServer?.close() },
-      { name: 'attacker-server', close: async () => attackerServer?.close() },
-    ]);
-    if (cleanup.some((c) => !c.closed)) verdict = 'failed';
+    cleanup = await ownership.cleanup();
+    if (cleanup.some((c) => c.closed === false)) verdict = 'failed';
     process.off('SIGTERM', interrupt);
     process.off('SIGINT', interrupt);
   }
@@ -594,8 +626,8 @@ export async function runBrowserSigner(env = process.env) {
     signerConfigSha256: pin,
     publicSource: input.source.commit,
     consumerConfigSha256: input.consumer.configSha256,
-    completedCases: [...cases],
-    stage,
+    completedCases: settledCases ?? [...cases],
+    stage: settledStage ?? stage,
     cleanup,
     result: verdict === 'passed' ? result : undefined,
     failureSha256,

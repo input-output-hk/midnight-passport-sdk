@@ -86,7 +86,7 @@ chain/wallet calls or establish a well-behaved injected clock; host deadlines re
 **8 cases passed**, including an actual third-origin opener refusal. One case is explicitly a local
 adapter refusal before any browser request. Four virtual assertions, one independently verified
 fake-chain SDK call; all five owned resources closed. Chrome framework/helper/resource identity
-covers315 regular files and1 contained link as well as the launcher and version.
+covers 315 regular files and 1 contained link as well as the launcher and version.
 
 [Owned SIGTERM control](interrupt-control.json) at the same clean signed source deliberately
 returns `outcome: failed`, no success result and no completed cases; all five cleanup actions

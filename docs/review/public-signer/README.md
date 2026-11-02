@@ -88,3 +88,39 @@ integrity controls were operator-run; a committed replay command remains follow-
 The public native parent receipt is a manually redacted projection of the private raw receipt,
 not a byte-identical raw output. Historical receipts stay immutable. Fresh qualification must
 record its own source and use the updated recipe; no claim here upgrades old evidence.
+
+## Reproducible evidence hardening (#266)
+
+The current source isolates account, circuit, and commitment negative probes. The bounded leak
+guard covers declared hex/base64/base64url strings, numeric byte arrays, ArrayBuffer/DataView and
+typed views. It refuses cyclic, unsupported, and oversized payloads; this is not a universal
+non-disclosure proof. Every emitted source dependency requires an audited range or lock pin;
+the build wordlist alias has an explicit independent `2.2.0` requirement.
+
+After preparing a **fresh** signer root with the current builder, run:
+
+```sh
+PASSPORT_SIGNER_ROOT=/absolute/prepared-signer \
+PASSPORT_SIGNER_SHA256=<externally-recorded-config-sha256> \
+PASSPORT_SIGNER_INTEGRITY_ROOT=/absolute/consumer/signer-integrity-new \
+nix develop -c pnpm qualify run consumer-public-signer-integrity --output /absolute/new-outer-receipt.json
+```
+
+The runner preserves six mutated copies and proves rejection before any bundle import, then
+rechecks the untouched original and installed consumer. Failed controls remain evidence, not a
+pass. Do not copy a directory that contains the output root itself or change an old trusted root.
+
+New native runs project public child facts in code, export the raw child receipt's SHA-256, and
+retain private raw evidence separately. `preparedRootPathSha256` and
+`keyDirectoryPathSha256` identify path strings, **not** artifact content. The independently
+checked manifest, compiler, installed tree, source closure, and bundle hashes bind content.
+Final source-read failure marks the run failed while retaining cleanup and the parent receipt;
+publication metadata is checked and cached before any native effects. These changes do not
+rewrite or upgrade historical manual projections or qualify a new native run.
+
+Browser ownership records distinguish absent, pending, open, and closed resources. A late
+acquisition after timeout/interruption is immediately closed and cannot continue into another
+acquisition. Pending/failed cleanup makes the run fail; an absent resource is not claimed closed.
+The receipt snapshots the failure stage and completed cases; final byte checks have a distinct
+`final-integrity` stage. Framework hashing and synchronous OS/filesystem calls remain subject to
+an external process deadline; they cannot be interrupted by a JavaScript timer.

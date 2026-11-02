@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   signerDependencyRange,
+  validateSignerExternal,
   signerRelativeFile,
   signerBundleTree,
   verifyPublicSigner,
@@ -18,6 +19,7 @@ import {
 
 test('public source resolver rejects escapes and dependency ranges do not admit a wrong release', () => {
   assert.throws(() => signerRelativeFile('/source', '/source/../private/handler.ts'));
+  assert.throws(() => signerRelativeFile('/source/repo', '/source'));
   assert.throws(() => signerRelativeFile('/source', '/source/node_modules/handler.ts'));
   assert.equal(signerDependencyRange('^1.8.0', '2.2.0'), false);
   assert.equal(signerDependencyRange('^0.2.1', '0.3.0'), false);
@@ -81,4 +83,27 @@ test('simulated window routing respects target origins and retains native Messag
   channel.port1.close();
   channel.port2.close();
   assert.deepEqual(w.listenerCounts(), { dapp: 0, signer: 0 });
+});
+
+test('emitted signer imports cannot bypass a missing or mismatched public dependency requirement', () => {
+  assert.throws(
+    () => validateSignerExternal({ name: 'undeclared', version: '9.9.9', requirements: [] }),
+    /no public range/,
+  );
+  assert.throws(
+    () =>
+      validateSignerExternal({
+        name: 'declared',
+        version: '2.2.0',
+        requirements: [{ range: '^1.8.0' }],
+      }),
+    /violates/,
+  );
+  assert.doesNotThrow(() =>
+    validateSignerExternal({
+      name: 'wordlist',
+      version: '2.2.0',
+      requirements: [{ range: '2.2.0' }],
+    }),
+  );
 });

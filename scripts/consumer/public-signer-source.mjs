@@ -22,7 +22,7 @@ export const PUBLIC_SIGNER_SOURCE = Object.freeze({
   module: 'packages/module/passport-account/src/remote/signer-handlers.ts',
   server: 'packages/lib/passkey/src/remote/server.ts',
   generated: 'packages/module/passport-account/src/acc/generated/index.js',
-  moduleSha256: '0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf',
+  generatedSha256: '0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf',
 });
 /** @param {Uint8Array|string} bytes */
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -33,7 +33,10 @@ const git = (directory, args) =>
 export function signerRelativeFile(root, file) {
   assert.ok(isAbsolute(file));
   const path = relative(root, file);
-  assert.ok(path && !path.startsWith('../') && !isAbsolute(path), 'Source path escaped its root');
+  assert.ok(
+    path && path !== '..' && !path.startsWith('../') && !isAbsolute(path),
+    'Source path escaped its root',
+  );
   assert.ok(
     !path.split('/').includes('node_modules'),
     'Source must not traverse installed packages',
@@ -80,7 +83,7 @@ export function publicSignerSource(requested) {
     files.set(path, metadata);
     return bytes;
   };
-  assert.equal(hash(read(PUBLIC_SIGNER_SOURCE.generated)), PUBLIC_SIGNER_SOURCE.moduleSha256);
+  assert.equal(hash(read(PUBLIC_SIGNER_SOURCE.generated)), PUBLIC_SIGNER_SOURCE.generatedSha256);
   return { root, files, read };
 }
 /** Only the simple dependency ranges present in this pinned graph are admitted.
@@ -100,6 +103,20 @@ export function signerDependencyRange(range, version) {
       ? a.minor === b.minor && (b.minor === 0 ? a.patch === b.patch : a.patch >= b.patch)
       : a.minor > b.minor || (a.minor === b.minor && a.patch >= b.patch))
   );
+}
+/** Every emitted dependency needs a declared range or independently pinned build/lock requirement.
+ * @param {{name:string,version:string,requirements:{range:string}[]}} external
+ */
+export function validateSignerExternal(external) {
+  assert.ok(
+    external.requirements.length > 0,
+    'Emitted dependency has no public range or lock requirement: ' + external.name,
+  );
+  for (const requirement of external.requirements)
+    assert.ok(
+      signerDependencyRange(requirement.range, external.version),
+      'Live installed dependency violates public source requirement: ' + external.name,
+    );
 }
 /** @param {string} root */
 export function signerBundleTree(root) {
@@ -304,7 +321,13 @@ export async function buildPublicSigner(options) {
             upstreamLock.packages['node_modules/' + name]?.version;
           const previous = externalRecords.get(physical);
           const requirements = previous?.requirements ?? [];
-          if (range && importer && id !== '@scure/bip39/wordlists/english.js')
+          if (id === '@scure/bip39/wordlists/english.js')
+            requirements.push({
+              importer: 'apps/lace-sdk/tsdown.config.ts',
+              range: '2.2.0',
+              basis: 'pinned upstream build alias',
+            });
+          else if (range && importer)
             requirements.push({ importer: signerRelativeFile(source.root, importer), range });
           externalRecords.set(physical, {
             name: pkg.name,
@@ -353,11 +376,7 @@ export async function buildPublicSigner(options) {
           'Unresolved or unaudited import survived signer bundling: ' + id,
         );
         const external = externalRecords.get(id);
-        for (const requirement of external.requirements)
-          assert.ok(
-            signerDependencyRange(requirement.range, external.version),
-            'Live installed dependency violates the public source range: ' + external.name,
-          );
+        validateSignerExternal(external);
         emitted.add(id);
       }
   const record = {

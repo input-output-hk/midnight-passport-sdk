@@ -371,3 +371,32 @@ test('hosted native acceptance cannot relabel the read-only baseline or claim re
   assert.throws(() => nativeResult({ ...hosted, readerDelivery: true }, 'hosted-authorising'));
   assert.throws(() => nativeResult({ ...hosted, proofs: result().proofs }, 'hosted-authorising'));
 });
+
+test('public native evidence drops unknown child fields and hashes filesystem locations', async () => {
+  const { publicSignerIdentity, publicNativeResult, nativeEndIdentity } =
+    await import('../scripts/qualification/native-public-receipt.mjs');
+  const child = {
+    ...result(),
+    secret: 'never-export',
+    privatePath: '/private/user/root',
+    cases: ['private-case-label'],
+  };
+  const projected = publicNativeResult(child);
+  const signer = publicSignerIdentity({ root: '/private/user/root', sha256: 'ab'.repeat(32) });
+  const text = JSON.stringify({ projected, signer });
+  for (const raw of ['never-export', '/private/user/root', 'private-case-label'])
+    assert.equal(text.includes(raw), false);
+  assert.ok(projected && signer);
+  assert.equal(projected.depositTxId, child.depositTxId);
+  assert.match(signer.preparedRootPathSha256, /^[a-f0-9]{64}$/);
+  assert.throws(() => publicNativeResult({ ...child, address: '/private/user/root' }));
+  const failed = await nativeEndIdentity(async () => {
+    throw Error('/private/end-identity');
+  });
+  assert.ok(failed.failureSha256);
+  assert.match(failed.failureSha256, /^[a-f0-9]{64}$/);
+  assert.equal(JSON.stringify(failed).includes('/private'), false);
+  assert.deepEqual(await nativeEndIdentity(async () => ({ commit: 'test' })), {
+    source: { commit: 'test' },
+  });
+});

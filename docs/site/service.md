@@ -53,3 +53,18 @@ URLs and network-path authorities are unsupported. Host validation still runs fi
 for an unknown Host). Raw-socket regression checks that malformed requests cannot terminate
 the process and that the same instance continues serving health requests. This corrects
 #260; released RC6 predates this source fix.
+
+## HTTP route failures and diagnostics
+
+The service accepts origin-form paths only. It refuses literal fragments (including an empty
+`#`), authority-form targets, backslashes in the path, and paths that normalise to a leading
+`//` before routing. Host and JSON-body guards still run first; query bytes are preserved for
+routes. A failure after response headers are sent destroys that response: clients may observe a
+connection reset or incomplete body, and must reconcile an uncertain mutation's original ID.
+The server cannot replace an already-started stream with a JSON error.
+
+Unexpected route errors return generic `500` JSON. Applications may set
+`onRouteError({ status, headersSent })` in `createServer`'s configuration to record these explicit
+redacted facts. The callback receives no error text, request URL, body, header, or wallet state.
+Callback failure does not affect the response. Expected `HttpError` messages remain the route's
+public API; route implementations must keep those messages safe to disclose.

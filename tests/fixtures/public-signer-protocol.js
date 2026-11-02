@@ -246,7 +246,7 @@ try {
               sdk.authorise({
                 account: 'ac'.repeat(32),
                 circuit: 'add_device_with_jubjub',
-                args: [new Uint8Array(32)],
+                args: [new Uint8Array(32).fill(0xdc)],
                 witnessValues: [],
                 authNonce: 0n,
                 useCounter: 1n,
@@ -259,7 +259,7 @@ try {
                 sdk.authorise({
                   account,
                   circuit,
-                  args: [new Uint8Array(32)],
+                  args: [new Uint8Array(32).fill(circuit === 'add_device_with_jubjub' ? 0 : 0xdc)],
                   witnessValues: [],
                   authNonce: 0n,
                   useCounter: 1n,

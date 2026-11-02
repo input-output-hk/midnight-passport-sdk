@@ -33,6 +33,7 @@ export async function runPublicSigner(env = process.env) {
     ['tests/fixtures/public-signer-protocol.js', 'protocol.mjs'],
     ['tests/fixtures/public-signer-harness.js', 'public-signer-harness.js'],
     ['scripts/qualification/signer-windows.mjs', 'signer-windows.mjs'],
+    ['scripts/qualification/secret-scan.mjs', 'secret-scan.mjs'],
   ];
   /** @type {Record<string,string>} */
   const harness = {};

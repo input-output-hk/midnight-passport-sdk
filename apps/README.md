@@ -414,3 +414,11 @@ The opt-in public signer qualification harness is documented in
 It does not change the demo's default signer or enable unsupported hosted withdrawal/rotation
 consent. An authorising-only new device still needs a separately supported reader-delivery flow
 before it can view shielded holdings. Native acceptance requires an exact-source receipt.
+
+### Redacted HTTP diagnostics
+
+The shared server exposes the optional `onRouteError({ status, headersSent })` configuration
+callback. Unexpected failures return generic `500` JSON; no raw exception is exported. After
+headers are sent the response is destroyed, so clients reconcile uncertain original mutation IDs
+rather than interpreting an incomplete stream as proof that nothing was sent. See the service
+engineer guide for origin-form request-target rules.

@@ -23,6 +23,11 @@ import { workspaceIdentity, verifyQualificationBinding } from './qualification/r
 import { dedicatedIndexerReadiness } from './qualification/indexer-readiness.mjs';
 import { verifyPublicSigner } from './consumer/public-signer-source.mjs';
 import { nativeLeasePath } from './qualification/native-lease.mjs';
+import {
+  publicSignerIdentity,
+  publicNativeResult,
+  nativeEndIdentity,
+} from './qualification/native-public-receipt.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const PROJECT = 'mn-passport-qual-20261023';
@@ -277,6 +282,12 @@ export async function runNativeHost(profile = 'public-module') {
   const disk = statfsSync(dirname(output));
   assert.ok(disk.bavail * disk.bsize >= 15 * 1024 ** 3);
   assert.ok(Number(docker(['info', '--format', '{{.MemTotal}}'])) >= 24 * 1024 ** 3);
+  const leasePath = nativeLeasePath();
+  const publication = JSON.parse(
+    readFileSync(join(consumer, 'bundle/publication-receipt.json'), 'utf8'),
+  );
+  assert.match(publication.source.commit, /^[a-f0-9]{40}$/);
+  const signerIdentity = publicSignerIdentity(signer);
   mkdirSync(output, { mode: 0o700 });
   const startedAt = Date.now();
   /** @type {any[]} */ const started = [];
@@ -287,8 +298,8 @@ export async function runNativeHost(profile = 'public-module') {
   /** @type {string|undefined} */ let failure;
   /** @type {any[]|undefined} */ let scope;
   /** @type {any} */ let inner, finality;
+  /** @type {string|undefined} */ let innerSha256;
   /** @type {Record<string,string>|undefined} */ let compiled;
-  const leasePath = nativeLeasePath();
   const leaseBody =
     JSON.stringify({
       pid: process.pid,
@@ -380,6 +391,7 @@ export async function runNativeHost(profile = 'public-module') {
         ['tests/fixtures/native-bootstrap-preflight.js', 'native-preflight.mjs'],
         ['tests/fixtures/native-proving-port.ts', 'native-proving-port.ts'],
         ['scripts/qualification/signer-windows.mjs', 'signer-windows.mjs'],
+        ['scripts/qualification/secret-scan.mjs', 'secret-scan.mjs'],
       );
     if (signer) copies[0] = ['tests/fixtures/public-signer-native.ts', 'native-core.ts'];
     for (const [source, target] of copies) copyFileSync(join(ROOT, source), join(output, target));
@@ -392,11 +404,11 @@ export async function runNativeHost(profile = 'public-module') {
         {
           kind: 'published-host-native-inputs',
           profile,
-          signer,
+          signer: signerIdentity,
           source: initial,
           sourceInputs,
           configSha256: pin,
-          keyDirSha256: consumerSha256(keys),
+          keyDirectoryPathSha256: consumerSha256(keys),
           compilerManifestSha256: binding.compilerManifestSha256,
         },
         null,
@@ -484,7 +496,9 @@ export async function runNativeHost(profile = 'public-module') {
     });
     assert.equal(health.ok, true);
     await command([join(output, 'bootstrap.mjs')], 'native-worker.private.log', 60 * 60000);
-    inner = JSON.parse(readFileSync(join(output, 'native-result.json'), 'utf8'));
+    const innerBytes = readFileSync(join(output, 'native-result.json'));
+    innerSha256 = consumerSha256(innerBytes);
+    inner = JSON.parse(innerBytes.toString());
     nativeResult(inner, profile);
     if (signer) verifyPublicSigner(signer.root, signer.sha256, ROOT);
     finality = await nativeFinality(inner.address, inner.confirmedContractActions);
@@ -533,12 +547,19 @@ export async function runNativeHost(profile = 'public-module') {
     process.off('SIGTERM', interrupt);
     process.off('SIGINT', interrupt);
   }
-  const end = await workspaceIdentity(ROOT);
-  if (interrupted || JSON.stringify(end) !== JSON.stringify(initial)) verdict = 'failed';
-  const publication = JSON.parse(
-    readFileSync(join(consumer, 'bundle/publication-receipt.json'), 'utf8'),
-  );
-  assert.match(publication.source.commit, /^[a-f0-9]{40}$/);
+  const endIdentity = await nativeEndIdentity(() => workspaceIdentity(ROOT));
+  const end = endIdentity.source;
+  if (interrupted || endIdentity.failureSha256 || JSON.stringify(end) !== JSON.stringify(initial))
+    verdict = 'failed';
+  failure ??= endIdentity.failureSha256;
+  // Preserve raw child evidence privately, even when its validation/projection fails.
+  let innerPublic;
+  try {
+    innerPublic = publicNativeResult(inner);
+  } catch (error) {
+    verdict = 'failed';
+    failure ??= consumerSha256(String(error));
+  }
   const receipt = {
     runtime: {
       node: process.version,
@@ -548,7 +569,7 @@ export async function runNativeHost(profile = 'public-module') {
     publishedSdkSource: publication.source.commit,
     schemaVersion: 1,
     kind: signer ? 'verified-public-signer-native' : 'verified-published-host-native',
-    signer,
+    signer: signerIdentity,
     profile,
     outcome: verdict,
     source: initial,
@@ -567,7 +588,8 @@ export async function runNativeHost(profile = 'public-module') {
     containers: scope,
     cleanup,
     elapsedMs: Date.now() - startedAt,
-    inner,
+    inner: innerPublic,
+    innerSha256,
     finality,
     failureSha256: failure,
     releaseQualified: false,

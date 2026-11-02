@@ -110,3 +110,42 @@ test('browser runtime identity binds resources and contained links, refusing an 
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('late browser acquisition is closed after settlement without claiming absent resources closed', async () => {
+  const { BrowserOwnership } = await import('../scripts/qualification/browser-ownership.mjs');
+  const owner = new BrowserOwnership(['late', 'absent']);
+  /** @type {((value:unknown)=>void)|undefined} */ let release;
+  let closed = 0;
+  const acquisition = owner.acquire(
+    'late',
+    () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    async () => {
+      closed++;
+    },
+  );
+  const refused = assert.rejects(acquisition, /settled/);
+  const report = await owner.cleanup(20);
+  assert.deepEqual(
+    report.map((r) => [r.status, r.closed]),
+    [
+      ['pending', false],
+      ['not-created', null],
+    ],
+  );
+  assert.throws(() => owner.guard(), /settled/);
+  assert.ok(release);
+  release('resource');
+  await refused;
+  assert.equal(closed, 1);
+  const final = await owner.cleanup();
+  assert.deepEqual(
+    final.map((r) => [r.status, r.closed]),
+    [
+      ['closed', true],
+      ['not-created', null],
+    ],
+  );
+});
