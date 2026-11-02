@@ -49,7 +49,20 @@ export function createServer(config: HttpServiceConfig, routes: Route[]): Server
       json(res, 415, { error: 'the request body must be application/json' });
       return;
     }
-    const url = new URL(req.url ?? '/', `http://${host}`);
+    let url: URL;
+    try {
+      // This server accepts origin-form paths, never proxy/authority targets. In particular,
+      // a leading // must not replace the checked Host with an attacker-controlled authority.
+      const target = req.url ?? '/';
+      if (!target.startsWith('/') || target.startsWith('//') || target.includes('\\'))
+        throw new Error('invalid target');
+      url = new URL(target, `http://${host}`);
+      if (url.host.toLowerCase() !== host || url.hash) throw new Error('invalid target');
+    } catch {
+      res.setHeader('connection', 'close');
+      json(res, 400, { error: 'invalid request target' });
+      return;
+    }
     try {
       for (const route of routes) if (await route(req, res, url)) return;
       json(res, 404, { error: 'not found' });
