@@ -1,0 +1,21 @@
+{
+  "scope": "additive journalled shielded deposit recovery",
+  "base": "9466d8af0438251e50068deee80951625c18fdf9",
+  "gate": {
+    "pass": 1070,
+    "fail": 0,
+    "skipped": 7
+  },
+  "actualRandomizedSealing": true,
+  "actualEncryptedFilesystemCAS": true,
+  "actualProcessRestartBoundaries": [
+    "prepared",
+    "send-before-reply",
+    "before-submitted-write",
+    "confirmed-before-reply"
+  ],
+  "senderAndFinality": "synthetic",
+  "nativeProof": false,
+  "realProvider": false,
+  "publishedRelease": false
+}
