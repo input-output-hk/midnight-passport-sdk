@@ -1,6 +1,14 @@
 # Actual browser signer qualification
 
-Latest accepted local run: [strengthened 19-case receipt](receipt-v4.json) at GPG/DCO-signed
+Latest accepted local run: [19-case receipt](receipt-v5.json) at signed clean
+`fb3104db2c77691ace7e62118970f6f9911e9e80`, nine virtual assertions, one independently
+verified fake-chain SDK call, all five owned resources closed. [Same-source interruption control](interrupt-control-v5.json)
+is intentionally failed with four resources closed and one never created. No success result.
+The declared-secret guard now also inspects four base64 character alignments for labels joined
+to an encoded envelope, tolerates trailing encoding bits, and accepts harmless shared object
+references while refusing actual cycles. These remain bounded declared-encoding checks.
+
+Earlier strengthened local run: [strengthened 19-case receipt](receipt-v4.json) at GPG/DCO-signed
 `c95aafd71f1b1bba0d9e8838d1e30d5ec5c26399`, nine virtual assertions and one independently
 verified fake-chain SDK call. All five created resources closed. Each scope refusal has an
 unchanged-call positive baseline. The navigation control actively issues an old-port request,
@@ -162,3 +170,18 @@ between late acquisition and cleanup. Fast tests cover rejection, stalls, late a
 concurrent cleanup without double close. The same deadline helper bounds actions and cleanup.
 The exact-source v4 receipts at the top establish this strengthened scope locally. Historical
 receipts retain their narrower controls and original bytes.
+
+## Final review adjudication
+
+The later review's labelled-base64 gap and shared-reference false refusal are corrected and
+covered by fast regression tests plus the latest same-source live lane above. Unsupported
+object prototypes and scan/depth/node budgets fail closed. The control does not claim universal
+protection against transformed encodings or side channels.
+
+A pending acquisition at cleanup is deliberately reported `closed: false` and makes the run
+failed; it is not an absent resource or a cleanup pass. Late resolution still invokes owned close
+exactly once. An acquisition that never resolves cannot be reported as closed by a bounded runner.
+Retain the failed receipt and inspect the owner; never relabel it after the fact.
+
+The public integration names are retained to identify the user-requested compatibility boundary;
+no vendor-specific cryptographic recipe or unsupported capability is implied.

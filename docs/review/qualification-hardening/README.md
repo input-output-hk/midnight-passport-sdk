@@ -1,6 +1,14 @@
 # Qualification hardening — #266
 
-Latest strengthened controls at signed clean `c95aafd71f1b1bba0d9e8838d1e30d5ec5c26399`:
+Latest exact-source controls at signed clean `fb3104db2c77691ace7e62118970f6f9911e9e80`:
+[protocol parent](protocol-parent-v3.json), [12 cases](protocol-result-v3.json),
+[valid-copy plus six intended tamper refusals](integrity-controls-v3.json), and
+[19-case browser plus owned interruption control](../browser-signer/README.md).
+The final declared-secret guard covers labelled base64 character alignments and harmless shared
+references, with explicit limits. [Verification summary](verification-v3.json) separates full
+combined fast checks from live fake-chain/virtual-browser controls; no native rerun or release.
+
+Earlier strengthened controls at signed clean `c95aafd71f1b1bba0d9e8838d1e30d5ec5c26399`:
 [protocol parent](protocol-parent-v2.json), [12 cases](protocol-result-v2.json),
 [valid-copy baseline plus six reason-checked tamper controls](integrity-controls-v2.json), and
 [browser 19 cases plus interruption control](../browser-signer/README.md). Fresh prepared signer
@@ -57,3 +65,10 @@ These changes require a fresh prepared signer root and new signed clean-source p
 and integrity receipts. Historical receipts above remain unchanged. Native schema guards are
 tested offline; no fresh native proof, wallet, Docker image or real-provider run is inferred.
 Public signer old-port navigation/liveness remains explicitly #272.
+
+Remaining reviewed operational/cost concerns are deliberately separated: original fenced
+unknowns and concurrent loser observations remain safe `MutationUnsettled` (#269); a sender
+exception or initial journal read failure cannot establish no earlier send. A losing prepared
+observation may require explicit same-ID reconciliation after another writer progresses. Raw
+diagnostics stay private. Key-source session budgets remain #245, persisted envelope/namespace
+consolidation #273, and trusted larger-inbox evidence #269. These do not authorise blind replay.

@@ -674,7 +674,7 @@ broader integration, browser/provider and repeatability acceptance. RC6 artifact
   ciphertext/intent, strict dispatch fence and canonical original-transaction confirmation. No
   native shielded sender/finality adapter or HTTP shielded faucet is qualified. Exact-value
   shielded withdrawals remain mandatory. Fenced no-send/rollback/large-inbox follow-ups: #269.
-- Public signer browser: 19 cases at signed `c95aafd`, virtual PRF/fake chain, positive scope
+- Public signer browser: 19 cases at signed `fb3104d`, virtual PRF/fake chain, positive scope
   baselines and active old-port navigation control. Navigation can strand a request until close;
   explicit fresh-client consent does not replay it. #272 tracks host liveness semantics.
 - Protocol12, baseline plus six tamper refusals, and owned interruption control use the same source
@@ -682,3 +682,7 @@ broader integration, browser/provider and repeatability acceptance. RC6 artifact
   restoration, production UI, reader delivery or full Lace acceptance is claimed.
 - Source HTTP telemetry now isolates asynchronous rejections/stalls as well as synchronous throws.
   Package/image versions remain RC6; these source changes require a later explicit release.
+
+Protected-record consolidation and checked store namespaces remain #273; this source requires
+dedicated confidential stores. Key-session prompt budgets remain #245. These limits must not
+be confused with native or provider qualification.
