@@ -334,6 +334,7 @@ export async function runRecoverableShieldedDeposit(
   }
   // Preserve a validated sender/lookup ID even when its durable transition acknowledgement fails.
   let knownTxId: string | undefined;
+  let polling: { deadline: number; previousTime: number; remaining: number } | undefined;
   try {
     for (let contention = 0; contention < 16; contention++) {
       if (!doc) fail('Original deposit journal is unavailable.');
@@ -438,18 +439,35 @@ export async function runRecoverableShieldedDeposit(
         doc = await reconcilePort(() => recovery.journal.read(input.requestId));
         continue;
       }
-      let started: number;
-      try {
-        started = now();
-      } catch {
-        return fail('Invalid deposit reconciliation clock.');
+      if (!polling) {
+        let started: number;
+        try {
+          started = now();
+        } catch {
+          return fail('Invalid deposit reconciliation clock.');
+        }
+        if (!Number.isSafeInteger(started) || started < 0)
+          fail('Invalid deposit reconciliation clock.');
+        polling = {
+          deadline: started + confirmationMs,
+          previousTime: started,
+          remaining: Math.ceil(confirmationMs / pollMs) + 1,
+        };
       }
-      if (!Number.isSafeInteger(started) || started < 0)
-        fail('Invalid deposit reconciliation clock.');
-      const deadline = started + confirmationMs;
-      let previousTime = started;
-      let remainingPolls = Math.ceil(confirmationMs / pollMs) + 1;
       for (;;) {
+        let time: number;
+        try {
+          time = now();
+        } catch {
+          return fail('Invalid deposit reconciliation clock.');
+        }
+        if (!Number.isSafeInteger(time) || time < polling.previousTime)
+          fail('Invalid deposit reconciliation clock.');
+        polling.previousTime = time;
+        if (time > polling.deadline || polling.remaining-- <= 0)
+          fail(
+            'Original deposit transaction or exact inbox entry is unconfirmed; reconcile this request ID.',
+          );
         let current: ReturnType<typeof snapshot>;
         try {
           current = snapshot(await ports.chain.readAccount(input.account, { includeInbox: true }));
@@ -497,16 +515,7 @@ export async function runRecoverableShieldedDeposit(
             break;
           }
         }
-        let time: number;
-        try {
-          time = now();
-        } catch {
-          return fail('Invalid deposit reconciliation clock.');
-        }
-        if (!Number.isSafeInteger(time) || time < previousTime)
-          fail('Invalid deposit reconciliation clock.');
-        previousTime = time;
-        if (time >= deadline || --remainingPolls <= 0)
+        if (time >= polling.deadline || polling.remaining <= 0)
           fail(
             'Original deposit transaction or exact inbox entry is unconfirmed; reconcile this request ID.',
           );

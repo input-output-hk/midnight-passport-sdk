@@ -166,3 +166,9 @@ protected retained state or the original sender's durable records.
 Sender transaction IDs are opaque bounded public identifiers (1–256 characters). Alphanumeric
 characters and `:._~+/%=-` punctuation are supported, including dotted and base64 forms; invalid
 reply text is not exposed as an identifier. Hosts retain original raw sender diagnostics privately.
+
+The confirmation deadline and observation count belong to the invocation's first submitted-state
+poll, not each CAS contention round. A lost confirmation acknowledgement cannot reset either
+budget. A regressing clock conservatively reports unsettled with the original IDs; it does not
+permanently invalidate the request. Reconcile that same ID when the observation source is healthy.
+Hosts that need elapsed-time clocks should inject a safe-integer monotonic clock and still bound I/O.

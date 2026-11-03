@@ -805,3 +805,41 @@ test('conflicting retained transaction cannot replace an observed sender ID or r
     assert.equal(world.stats().sends, 1);
     assert.equal(world.stats().effects, 1);
   }));
+
+test('confirmation CAS contention cannot reset the original deadline or observation budget', async () => {
+  for (const frozen of [false, true])
+    await fixture(async (root) => {
+      const world = depositWorld(root);
+      let time = 0,
+        acknowledgements = 0;
+      const recovery = { ...world.ports.recovery };
+      recovery.journal = {
+        ...recovery.journal,
+        compareAndSwap: async (id, previous, next) => {
+          if (next.phase === 'confirmed') {
+            acknowledgements++;
+            if (!frozen) time += 3;
+            return false;
+          }
+          return world.journal.compareAndSwap(id, previous, next);
+        },
+      };
+      await assert.rejects(
+        depositShielded(depositRequest, {
+          ...world.ports,
+          recovery,
+          now: () => time,
+          sleep: async (ms) => {
+            time += ms;
+          },
+          confirmationMs: 4,
+          pollMs: 1,
+        }),
+        /unconfirmed/,
+      );
+      assert.equal(acknowledgements, frozen ? 5 : 2);
+      assert.equal((await world.journal.read(depositRequest.requestId))?.phase, 'submitted');
+      assert.equal(world.stats().sends, 1);
+      assert.equal(world.stats().effects, 1);
+    });
+});
