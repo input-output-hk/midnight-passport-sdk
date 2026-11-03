@@ -1,0 +1,61 @@
+pragma language_version 0.27;
+import CompactStandardLibrary;
+
+// Reference business contract: collect one configured price to a merchant's
+// UserAddress and count accepted payments. The user keeps a separate ACC.
+// This contract never stores a signing key or bypasses the ACC grant gate.
+contract Account {
+  circuit withdraw_unshielded_with_grant_jubjub(
+    color: Bytes<32>, amount: Uint<128>, recipient: UserAddress,
+    pk: JubjubPoint, origin_hash: Bytes<32>, slot: Uint<8>, scope_salt: Bytes<32>,
+    recipient_kind: Uint<8>, pinned_recipient: Bytes<32>, max_coin_value: Uint<128>,
+    spent_prev: Uint<128>, sig_r: JubjubPoint, sig_s: Field, grind_nonce: Uint<64>
+  ): [];
+}
+
+export struct PaymentAuthorization {
+  pk: JubjubPoint;
+  origin_hash: Bytes<32>;
+  slot: Uint<8>;
+  scope_salt: Bytes<32>;
+  max_coin_value: Uint<128>;
+  spent_prev: Uint<128>;
+  sig_r: JubjubPoint;
+  sig_s: Field;
+  grind_nonce: Uint<64>;
+}
+
+export ledger asset: Bytes<32>;
+export ledger merchant: UserAddress;
+export ledger price: Uint<128>;
+export ledger payer: Account;
+export ledger capacity: Uint<64>;
+export ledger payments: Uint<64>;
+
+// The deployer verifies this particular ACC build and maintenance policy.
+// An interface alone is not an assertion that an arbitrary callee is an ACC.
+constructor(account: Account, color: Bytes<32>, recipient: UserAddress,
+            unit_price: Uint<128>, payment_limit: Uint<64>) {
+  assert(disclose(unit_price) > 0, "merchant price must be positive");
+  assert(disclose(payment_limit) > 0, "merchant capacity must be positive");
+  payer = disclose(account);
+  asset = disclose(color);
+  merchant = disclose(recipient);
+  price = disclose(unit_price);
+  capacity = disclose(payment_limit);
+  payments = 0;
+}
+
+export circuit pay(approval: PaymentAuthorization): [] {
+  // Increment before the nested call to make failure atomicity observable.
+  // If the ACC rejects, admission must reject this increment too.
+  payments = (payments + 1) as Uint<64>;
+  payer.withdraw_unshielded_with_grant_jubjub(
+    asset, price, merchant, disclose(approval.pk), disclose(approval.origin_hash),
+    disclose(approval.slot), disclose(approval.scope_salt), 1 as Uint<8>, merchant.bytes,
+    disclose(approval.max_coin_value), disclose(approval.spent_prev),
+    disclose(approval.sig_r), disclose(approval.sig_s), disclose(approval.grind_nonce));
+  // Deliberately after the sub-call: native admission must roll both states
+  // back if the merchant refuses a payment beyond its configured capacity.
+  assert(payments <= capacity, "merchant payment limit reached");
+}

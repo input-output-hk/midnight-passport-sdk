@@ -1,5 +1,26 @@
 # Compatibility matrix
 
+## Application-to-ACC local candidate — 2026/11/04
+
+The local partner tranche adds a verified compiler-dependency export to the
+existing contract package and a constructor-pinned merchant reference that calls
+the ACC. It uses `acc-s3r1.1` unchanged, Compact 0.35.0 and runtime 0.20.0; the caller
+uses default v2 encoding for forwarded JubJub points. No additional account build
+or package is introduced. These additions are **not in published RC6**.
+
+| Layer | Local candidate acceptance | Still unqualified |
+| --- | --- | --- |
+| Compiler export | Independent manifest pin, four generated files and all 52circuits' bundled inputs; tamper and existing-output refusal | Publisher provenance from an unsigned local candidate bundle |
+| Merchant client | Public typed account helper, caller commitment, fixed policy, explicit review and actual software signature | Real provider prompt budgets or hosted consent for this new example |
+| Installed application | Four packed public packages; actual caller compilation and generated ACC execution with positive/refusal controls | Native proof/node admission, merchant wallet credit and native atomicity |
+| Wider adoption | Layered package consumption with host-owned orchestration | Arbitrary callee registration, full Lace, generic dApp connection or recovery |
+
+See the [partner guide](site/partner-integration.md),
+[runnable example](../examples/application-acc/README.md) and
+[execution plan](partner-adoption-plan.md). Exact receipts and review results live
+in [the review map](review/partner-contracts/README.md); do not infer a passed run
+from a case definition. Existing published release limits below remain in force.
+
 > **Status:** published preview RC6 · local qualification updated 2026/10/30. Releases are lockstep across the
 > `@input-output-hk/mn-passport-*` packages. The binding data is pinned in
 > `packages/contract/acc-binding-v2.generated.json` and the generated registry.

@@ -4,6 +4,14 @@ title: Demo use cases
 permalink: /use-cases/
 ---
 
+## Library integration beyond the demo
+
+The [partner contract guide]({{ '/partner-integration/' | relative_url }}) describes
+application→ACC composition using the installed contract/assets and account helpers.
+Its local candidate merchant example is an engineer recipe, not a new demo button
+or a published RC6 capability. Native proof/node and real-provider acceptance remain
+separate. Partners can also reuse the contract/assets without adopting our demo UI.
+
 This catalogue describes the controls available in the local demo on `passport-acc-prototype`.
 It is an evaluation guide for engineers, not a claim that every flow is qualified with every
 passkey provider or with Lace. The pinned contract is `acc-s3r1.1` from upstream `6458ed5`.
