@@ -1,7 +1,7 @@
 import { PassportConnectorError } from './errors.js';
 import type { Chain, ShieldedCoin } from './ports/index.js';
 
-import { depositInput } from './shielded-deposit-validation.js';
+import { depositInput, validDepositTransactionId } from './shielded-deposit-validation.js';
 import {
   runRecoverableShieldedDeposit,
   type ShieldedDepositRecovery,
@@ -98,32 +98,40 @@ export async function depositShielded(
       'EncryptionKeyMismatch',
       'The ACC enc_key changed before deposit.',
     );
-  const { txId } = await ports.sender.depositShielded({
-    requestId: input.requestId,
-    account: input.account,
-    coin,
-    entry,
-  });
-  if (!txId)
-    throw new PassportConnectorError('InternalError', 'The sender returned no transaction ID.');
-  const deadline = now() + confirmationMs;
-  for (;;) {
-    const current = await ports.chain.readAccount(input.account, { includeInbox: true });
-    const index = current?.inboxEntries?.findIndex(
-      (candidate, position) => position >= initialInboxCount && same(candidate, entry),
-    );
-    if (index !== undefined && index >= 0) {
-      return {
-        txId,
-        inboxIndex: index,
-        viewingKeyChanged: !current?.encKey || !same(current.encKey, encKey),
-      };
-    }
-    if (now() >= deadline)
-      throw new PassportConnectorError(
-        'InternalError',
-        `Deposit ${txId} was submitted but its ACC inbox entry is unconfirmed; reconcile before retrying.`,
+  // After invoking a value-bearing sender, every failure is conservatively unsettled.
+  // This one-shot path has no retained ciphertext to support an automatic retry.
+  let txId: string | undefined;
+  try {
+    const reply = await ports.sender.depositShielded({
+      requestId: input.requestId,
+      account: input.account,
+      coin,
+      entry,
+    });
+    if (!validDepositTransactionId(reply?.txId)) throw new Error('Unusable sender transaction ID');
+    txId = reply.txId;
+    const deadline = now() + confirmationMs;
+    for (;;) {
+      const current = await ports.chain.readAccount(input.account, { includeInbox: true });
+      const index = current?.inboxEntries?.findIndex(
+        (candidate, position) => position >= initialInboxCount && same(candidate, entry),
       );
-    await ports.sleep(pollMs);
+      if (index !== undefined && index >= 0)
+        return {
+          txId,
+          inboxIndex: index,
+          viewingKeyChanged: !current?.encKey || !same(current.encKey, encKey),
+        };
+      if (now() >= deadline) throw new Error('Original deposit is unconfirmed');
+      await ports.sleep(pollMs);
+    }
+  } catch {
+    throw new PassportConnectorError(
+      'MutationUnsettled',
+      txId
+        ? `Deposit ${txId} is unsettled; reconcile before retrying. Retain request ${input.requestId} and do not resend.`
+        : `Deposit outcome is unknown. Retain request ${input.requestId} and sender evidence; do not resend.`,
+      { retryable: false },
+    );
   }
 }

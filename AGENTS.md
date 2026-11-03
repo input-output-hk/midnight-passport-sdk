@@ -479,3 +479,10 @@ or browser/native combined proof is established. New receipts export path digest
 runtime paths. An interrupted run must retain its failure stage and honest resource states.
 The native parent/worker input schema is checked offline before Docker starts; never confuse
 redacted path identity with the worker's private runtime path supplied in its controlled environment.
+
+The strengthened 2026/11/03 browser receipt also admits an unchanged in-scope authorisation
+before each isolated refusal. Its navigation probe issues an actual old-port request; the pinned
+public host leaves it pending until close. Explicit fresh-client consent never replays it. Read
+#272 and the review map before claiming navigation recovery. Copied-root integrity controls
+require a valid-copy baseline and the intended rejection reason. Latest same-source interruption
+control closes all created resources and preserves an honestly absent attacker server.

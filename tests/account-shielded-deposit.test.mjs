@@ -118,7 +118,11 @@ test('an unconfirmed shielded deposit preserves its transaction ID for reconcili
     pollMs: 1,
     confirmationMs: 2,
   };
-  await assert.rejects(depositShielded(request, ports), /tx-pending.*reconcile before retrying/);
+  await assert.rejects(depositShielded(request, ports), {
+    code: 'MutationUnsettled',
+    retryable: false,
+    message: /tx-pending.*reconcile before retrying/,
+  });
   reader.secretKey.fill(0);
 });
 
@@ -152,5 +156,44 @@ test('invalid deposit timing options refuse before chain, sealer or sender work'
         }),
       /Invalid deposit confirmation window/,
     );
+  }
+});
+
+test('one-shot sender uncertainty and later port failures are nonretryable and keep original identity', async () => {
+  const key = x25519.getPublicKey(new Uint8Array(32).fill(9));
+  for (const fault of ['sender', 'reply', 'read', 'sleep']) {
+    let sends = 0;
+    /** @type {import('../packages/account/dist/index.js').ShieldedDepositPorts} */
+    const ports = {
+      chain: {
+        readAccount: async (_address, options) => {
+          if (sends && fault === 'read') throw Error('private observer diagnostic');
+          return ledger(key, options?.includeInbox ? [] : undefined);
+        },
+      },
+      sealCoin: sealInboxCoin,
+      sender: {
+        depositShielded: async () => {
+          sends++;
+          if (fault === 'sender') throw Error('private sender diagnostic');
+          return { txId: fault === 'reply' ? '' : 'tx-retained' };
+        },
+      },
+      sleep: async () => {
+        throw Error('private sleep diagnostic');
+      },
+      pollMs: 1,
+      confirmationMs: 2,
+    };
+    await assert.rejects(depositShielded(request, ports), (error) => {
+      assert.ok(error && typeof error === 'object' && 'code' in error && 'retryable' in error);
+      assert.equal(error.code, 'MutationUnsettled');
+      assert.equal(error.retryable, false);
+      assert.ok(String(error).includes(request.requestId));
+      assert.equal(String(error).includes('private'), false);
+      if (fault === 'read' || fault === 'sleep') assert.ok(String(error).includes('tx-retained'));
+      return true;
+    });
+    assert.equal(sends, 1);
   }
 });

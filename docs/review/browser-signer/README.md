@@ -1,5 +1,14 @@
 # Actual browser signer qualification
 
+Latest accepted local run: [strengthened 19-case receipt](receipt-v4.json) at GPG/DCO-signed
+`c95aafd71f1b1bba0d9e8838d1e30d5ec5c26399`, nine virtual assertions and one independently
+verified fake-chain SDK call. All five created resources closed. Each scope refusal has an
+unchanged-call positive baseline. The navigation control actively issues an old-port request,
+observes it remains pending through fresh-client consent, and requires rejection on popup close.
+[Owned interruption control](interrupt-control-v4.json) at the same clean source records four
+closed resources, one never created, and no success result. Both are code-produced public receipts.
+These results do not qualify native proof, real providers, restoration or full Lace compatibility.
+
 Historical accepted local run: [19-case receipt](receipt-v3.json) at clean signed source
 `59cca013ace978c902a91984e1143116f558718d`, nine virtual assertions, exactly one independently
 verified fake-chain SDK call. All five created resources closed. [Owned interruption control](interrupt-control-v3.json)
@@ -151,4 +160,5 @@ is an explicit interoperability limitation tracked in [#272](https://github.com/
 Owned cleanup now marks a resource closing before awaiting it and shares the close promise
 between late acquisition and cleanup. Fast tests cover rejection, stalls, late acquisition and
 concurrent cleanup without double close. The same deadline helper bounds actions and cleanup.
-Fresh exact-source receipts are required before calling these strengthened controls accepted.
+The exact-source v4 receipts at the top establish this strengthened scope locally. Historical
+receipts retain their narrower controls and original bytes.

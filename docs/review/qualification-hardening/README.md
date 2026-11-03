@@ -1,5 +1,13 @@
 # Qualification hardening — #266
 
+Latest strengthened controls at signed clean `c95aafd71f1b1bba0d9e8838d1e30d5ec5c26399`:
+[protocol parent](protocol-parent-v2.json), [12 cases](protocol-result-v2.json),
+[valid-copy baseline plus six reason-checked tamper controls](integrity-controls-v2.json), and
+[browser 19 cases plus interruption control](../browser-signer/README.md). Fresh prepared signer
+config `de5b721f81a6a670eda0e793a4e209f935de145600a462629b7c238a9940d6dd`; frozen RC6 consumer
+config remains unchanged. These public receipts contain no runtime filesystem paths.
+The historical evidence below is retained without relabelling.
+
 Signed measured source `47938b5644a402f5d59922dd9174c871f5635a43`.
 [Verification](verification.json): full gate 1,060 passed, seven conditional skips, zero failures;
 Jekyll 22 pages/504 local links with no errors. This documentation commit does not change

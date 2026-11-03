@@ -30,3 +30,8 @@ export function depositInput(input: ShieldedDepositRequest, ports: ShieldedDepos
     confirmationMs,
   };
 }
+
+/** Sender IDs are opaque, bounded public identifiers; do not embed arbitrary reply text. */
+export function validDepositTransactionId(value: unknown): value is string {
+  return typeof value === 'string' && /^[a-zA-Z0-9:_-]{1,256}$/.test(value);
+}

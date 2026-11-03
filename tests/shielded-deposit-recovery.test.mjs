@@ -269,7 +269,10 @@ test('pre-admission storage failure or stale ciphertext never dispatches a value
         },
       },
     };
-    await assert.rejects(depositShielded(depositRequest, storeFailure), /storage not acknowledged/);
+    await assert.rejects(depositShielded(depositRequest, storeFailure), {
+      code: 'MutationUnsettled',
+      retryable: false,
+    });
     assert.equal(world.stats().sends, 0);
     const stale = { ...world.ports, sealCoin: async () => fromHex(world.readLedger().entries[0]) };
     await assert.rejects(depositShielded(depositRequest, stale), /existing inbox entry/);
@@ -586,4 +589,114 @@ test('middle-poll clock regression refuses while retaining original submitted in
     );
     assert.equal((await world.journal.read(depositRequest.requestId))?.phase, 'submitted');
     assert.equal(world.stats().effects, 1);
+  }));
+
+test('non-boolean dispatch acknowledgements cannot authorise a sender effect', async () => {
+  for (const acknowledgement of [{ stored: false }, 'false', 1, undefined, null])
+    await fixture(async (root) => {
+      const world = depositWorld(root),
+        journal = world.ports.recovery.journal;
+      /** @type {import('../packages/account/dist/index.js').ShieldedDepositPorts} */
+      const ports = {
+        ...world.ports,
+        recovery: {
+          ...world.ports.recovery,
+          journal: {
+            ...journal,
+            compareAndSwap: async (id, previous, next) =>
+              next.phase === 'dispatching'
+                ? /** @type {any} */ (acknowledgement)
+                : journal.compareAndSwap(id, previous, next),
+          },
+        },
+      };
+      await assert.rejects(depositShielded(depositRequest, ports), {
+        code: 'MutationUnsettled',
+        retryable: false,
+      });
+      assert.equal(world.stats().sends, 0);
+      assert.equal(world.stats().effects, 0);
+      assert.equal((await world.journal.read(depositRequest.requestId))?.phase, 'prepared');
+    });
+});
+
+test('malformed sender lookups retain unknown fence without raw exceptions or resends', async () => {
+  for (const reply of [undefined, null, false, 1, 'submitted', [], {}])
+    await fixture(async (root) => {
+      const stopped = spawnSync(process.execPath, [child, root, 'dispatch-fence-exit'], {
+        encoding: 'utf8',
+        timeout: 10000,
+      });
+      assert.equal(stopped.status, 77);
+      const world = depositWorld(root),
+        ports = {
+          ...world.ports,
+          recovery: {
+            ...world.ports.recovery,
+            reconcileSender: async () => /** @type {any} */ (reply),
+          },
+        };
+      await assert.rejects(resumeShieldedDeposit(depositRequest, ports), {
+        code: 'MutationUnsettled',
+        retryable: false,
+      });
+      assert.equal(world.stats().sends, 0);
+      assert.equal(world.stats().effects, 0);
+      assert.equal((await world.journal.read(depositRequest.requestId))?.phase, 'dispatching');
+    });
+});
+
+test('initial journal admission failures retain prepared evidence without leaking diagnostics', async () => {
+  for (const persisted of [false, true])
+    await fixture(async (root) => {
+      const world = depositWorld(root);
+      const journal = world.ports.recovery.journal;
+      /** @type {import('../packages/account/dist/index.js').ShieldedDepositPorts} */
+      const ports = {
+        ...world.ports,
+        recovery: {
+          ...world.ports.recovery,
+          journal: {
+            ...journal,
+            compareAndSwap: async (id, previous, next) => {
+              if (persisted) await journal.compareAndSwap(id, previous, next);
+              throw Error('/private/host/journal ENOSPC');
+            },
+          },
+        },
+      };
+      await assert.rejects(depositShielded(depositRequest, ports), (error) => {
+        assert.ok(error && typeof error === 'object' && 'code' in error && 'retryable' in error);
+        assert.equal(error.code, 'MutationUnsettled');
+        assert.equal(error.retryable, false);
+        assert.equal(String(error).includes('/private'), false);
+        return true;
+      });
+      assert.equal(world.stats().sends, 0);
+      assert.equal(
+        (await world.journal.read(depositRequest.requestId))?.phase,
+        persisted ? 'prepared' : undefined,
+      );
+    });
+});
+
+test('throwing initial clock refuses before any host work without raw diagnostics', () =>
+  fixture(async (root) => {
+    const world = depositWorld(root);
+    await assert.rejects(
+      depositShielded(depositRequest, {
+        ...world.ports,
+        now: () => {
+          throw Error('/private/host/clock');
+        },
+      }),
+      (error) => {
+        assert.ok(error && typeof error === 'object' && 'code' in error);
+        assert.equal(error.code, 'MutationUnsettled');
+        assert.equal(String(error).includes('/private'), false);
+        return true;
+      },
+    );
+    assert.equal(world.stats().sends, 0);
+    assert.equal(await world.journal.read(depositRequest.requestId), undefined);
   }));

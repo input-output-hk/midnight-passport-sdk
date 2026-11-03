@@ -144,3 +144,9 @@ Post-admission sender lookup, finality, journal transition/read, and poll-sleep 
 safe `MutationUnsettled` errors with `retryable: false`. Private port diagnostics stay in the
 host's private records. Reconcile the original ID; these failures never establish a no-send result.
 Polling rejects an intermediate clock regression as well as a time before polling began.
+
+Malformed sender lookup replies and non-boolean dispatch-CAS acknowledgements also refuse with
+`MutationUnsettled`. Only a literal `true` CAS acknowledgement authorises the sender; a truthy
+object is insufficient. The unjournalled one-shot path reports sender uncertainty and later
+observation failures as nonretryable `MutationUnsettled`, retaining the original request ID and
+any valid transaction ID in the public error. This does not add automatic recovery to that path.
