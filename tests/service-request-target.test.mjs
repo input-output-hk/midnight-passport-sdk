@@ -130,3 +130,41 @@ test('unexpected route errors return generic JSON and only explicit redacted cal
     await new Promise((resolve) => server.close(resolve));
   }
 });
+
+test('async error telemetry rejection or stall cannot terminate or delay the service', async () => {
+  let attempts = 0;
+  const server = createServer(
+    {
+      host: '127.0.0.1',
+      corsOrigin: 'http://localhost:5173',
+      onRouteError: async () => {
+        if (++attempts === 1) {
+          await Promise.resolve();
+          throw Error('private async telemetry failure');
+        }
+        await new Promise(() => {});
+      },
+    },
+    [
+      async () => {
+        throw Error('private route failure');
+      },
+    ],
+  );
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  try {
+    for (let i = 0; i < 3; i++) {
+      const response = await rawRequest(address.port, '/failure');
+      assert.match(String(response), /^HTTP\/1\.1 500 /);
+      assert.match(String(response), /internal service error/);
+      assert.equal(String(response).includes('private'), false);
+    }
+    assert.equal(attempts, 3);
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});

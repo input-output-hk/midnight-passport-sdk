@@ -35,3 +35,17 @@ root from the controlled worker environment, checking both root-path hash and co
 parent invokes the same validator before Docker startup. An offline producer/consumer regression
 covers both native profiles plus missing, changed, and legacy fields. Earlier native source
 receipts remain historical; this correction is not a new live native qualification.
+
+## Independent review corrections — 2026/11/03
+
+Fresh Claude review at integrated `fd57fba` reported no blocking defect, with verified follow-ups:
+positive in-scope baselines, copied-root acceptance before six reason-specific tamper refusals,
+bigint/embedded-base64 declared secret checks, async telemetry isolation, and single-owner late
+cleanup. Source input identity now shares one signer projection between private-worker validation
+and public receipts; repeated resolver calls do not duplicate public dependency requirements.
+The output containment check resolves its parent before comparing paths.
+
+These changes require a fresh prepared signer root and new signed clean-source protocol, browser
+and integrity receipts. Historical receipts above remain unchanged. Native schema guards are
+tested offline; no fresh native proof, wallet, Docker image or real-provider run is inferred.
+Public signer old-port navigation/liveness remains explicitly #272.

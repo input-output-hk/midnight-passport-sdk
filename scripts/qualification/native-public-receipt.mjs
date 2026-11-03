@@ -1,15 +1,7 @@
 // Explicit public projection. Unknown child fields and filesystem locations never leave the run.
 import assert from 'node:assert/strict';
 import { consumerSha256 } from '../consumer-inputs.mjs';
-/** @param {{root:string,sha256:string}|undefined} signer */
-export function publicSignerIdentity(signer) {
-  if (!signer) return undefined;
-  assert.match(signer.sha256, /^[a-f0-9]{64}$/);
-  return {
-    configSha256: signer.sha256,
-    preparedRootPathSha256: consumerSha256(signer.root),
-  };
-}
+export { nativeSignerInputIdentity as publicSignerIdentity } from './native-worker-inputs.mjs';
 /** @param {any} inner */
 export function publicNativeResult(inner) {
   if (!inner) return undefined;

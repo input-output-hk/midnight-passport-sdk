@@ -5,13 +5,17 @@ import { createHash } from 'node:crypto';
 const consumerSha256 = (/** @type {string} */ value) =>
   createHash('sha256').update(value).digest('hex');
 
+/** @param {{root:string,sha256:string}|undefined} signer */
+export function nativeSignerInputIdentity(signer) {
+  if (!signer) return undefined;
+  assert.match(signer.sha256, /^[a-f0-9]{64}$/);
+  return { configSha256: signer.sha256, preparedRootPathSha256: consumerSha256(signer.root) };
+}
 /** @param {{keys:string,signer?:{root:string,sha256:string}|undefined}} options */
 export function nativeWorkerInputIdentity({ keys, signer }) {
   return {
     keyDirectoryPathSha256: consumerSha256(keys),
-    signer: signer
-      ? { configSha256: signer.sha256, preparedRootPathSha256: consumerSha256(signer.root) }
-      : undefined,
+    signer: nativeSignerInputIdentity(signer),
   };
 }
 /** Validate the actual producer schema before imports, HTTP, wallet or chain activity.

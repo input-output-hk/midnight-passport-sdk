@@ -24,6 +24,8 @@ import { installedTreeIdentity, runtimeTreeIdentity } from './consumer/host-reta
 import { consumerSha256 } from './consumer-inputs.mjs';
 import { workspaceIdentity } from './qualification/receipt.mjs';
 import { BrowserOwnership } from './qualification/browser-ownership.mjs';
+import { browserDeadline } from './qualification/browser-deadline.mjs';
+export { browserDeadline } from './qualification/browser-deadline.mjs';
 const repository = resolve(import.meta.dirname, '..');
 /** @param {string} requested @param {string} consumer */
 export function browserOutput(requested, consumer) {
@@ -86,29 +88,6 @@ async function serveBrowser(root, allowedOrigin = '') {
     },
   };
 }
-/** Bound an async browser action; context shutdown cancels any remaining page work.
- * @template T @param {()=>Promise<T>} operation @param {number} [timeoutMs] @param {AbortSignal} [signal]
- */
-export async function browserDeadline(operation, timeoutMs = 30000, signal) {
-  /** @type {NodeJS.Timeout|undefined} */ let timer;
-  /** @type {(()=>void)|undefined} */ let onAbort;
-  try {
-    if (signal?.aborted) throw Error('Browser qualification interrupted');
-    return await Promise.race([
-      operation(),
-      new Promise((_, reject) => {
-        onAbort = () => reject(Error('Browser qualification interrupted'));
-        signal?.addEventListener('abort', onAbort, { once: true });
-      }),
-      new Promise((_, reject) => {
-        timer = setTimeout(() => reject(Error('Browser case deadline exceeded')), timeoutMs);
-      }),
-    ]);
-  } finally {
-    clearTimeout(timer);
-    if (onAbort) signal?.removeEventListener('abort', onAbort);
-  }
-}
 /** Hash the actual framework, helpers and resources; bind internal symlinks without following them.
  * @param {string} requested
  */
@@ -137,25 +116,6 @@ export function browserRuntimeIdentity(requested) {
   walk('');
   assert.ok(files > 0);
   return { path: root, files, links, treeSha256: hash.digest('hex') };
-}
-/** Close every owned resource even if another close rejects or hangs.
- * @param {Array<{name:string,close:()=>Promise<unknown>}>} actions @param {number} [timeoutMs]
- */
-export async function browserCleanup(actions, timeoutMs = 5000) {
-  /** @type {Array<{name:string,closed:boolean,errorSha256?:string}>} */ const results = [];
-  for (const action of actions) {
-    try {
-      await browserDeadline(action.close, timeoutMs);
-      results.push({ name: action.name, closed: true });
-    } catch (error) {
-      results.push({
-        name: action.name,
-        closed: false,
-        errorSha256: consumerSha256(String(error)),
-      });
-    }
-  }
-  return results;
 }
 /** @param {NodeJS.ProcessEnv} [env] */
 export async function runBrowserSigner(env = process.env) {
@@ -640,22 +600,47 @@ export async function runBrowserSigner(env = process.env) {
             );
           },
         );
-        await check('signer navigation does not replay completed chain work', async () => {
-          const before = asserted;
-          await popup.goto(signerServer.origin + '/signer/?navigated=1');
-          await popup.waitForFunction(() => /** @type {any} */ (globalThis).qualification?.ready);
-          assert.equal(asserted, before);
-          assert.equal(
-            await popup.evaluate(
-              () => /** @type {any} */ (globalThis).qualification.approvals.length,
-            ),
-            0,
-          );
-          assert.equal(
-            await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
-            1,
-          );
-        });
+        await check(
+          'signer navigation leaves the old transport inert until explicit fresh-client reconnect',
+          async () => {
+            const before = asserted;
+            await popup.goto(signerServer.origin + '/signer/?navigated=1');
+            await popup.waitForFunction(() => /** @type {any} */ (globalThis).qualification?.ready);
+            // The pinned public client has no navigation/port-close timeout. Measure this
+            // limitation instead of claiming an automatic refusal. Observe an actual old-port
+            // request, keep it pending through fresh-client reconnect, and settle it at popup close.
+            await page.evaluate(() => {
+              const q = /** @type {any} */ (globalThis).qualification;
+              q.navigationOutcome = 'pending';
+              q.navigationPending = q
+                .request('flow-open', { flow: { kind: 'sign-in' } })
+                .then(() => {
+                  q.navigationOutcome = 'admitted';
+                })
+                .catch((/** @type {any} */ error) => {
+                  q.navigationOutcome = error.code;
+                });
+            });
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            assert.equal(
+              await page.evaluate(
+                () => /** @type {any} */ (globalThis).qualification.navigationOutcome,
+              ),
+              'pending',
+            );
+            assert.equal(asserted, before);
+            assert.equal(
+              await popup.evaluate(
+                () => /** @type {any} */ (globalThis).qualification.approvals.length,
+              ),
+              0,
+            );
+            assert.equal(
+              await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
+              1,
+            );
+          },
+        );
         await check(
           'explicit fresh-client reconnect requires consent and preserves virtual device key',
           async () => {
@@ -672,6 +657,12 @@ export async function runBrowserSigner(env = process.env) {
               return { x: p.x.toString(), y: p.y.toString() };
             });
             assert.deepEqual(point, originalPoint);
+            assert.equal(
+              await page.evaluate(
+                () => /** @type {any} */ (globalThis).qualification.navigationOutcome,
+              ),
+              'pending',
+            );
             assert.ok(asserted > before);
             assert.equal(
               await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
@@ -727,6 +718,15 @@ export async function runBrowserSigner(env = process.env) {
             // Published SignerClosedError uses the ceremony-cancelled code.
             assert.equal(code, 'ceremony-cancelled');
             await page.evaluate(() => /** @type {any} */ (globalThis).qualification.close());
+            await page.evaluate(
+              () => /** @type {any} */ (globalThis).qualification.navigationPending,
+            );
+            assert.equal(
+              await page.evaluate(
+                () => /** @type {any} */ (globalThis).qualification.navigationOutcome,
+              ),
+              'ceremony-cancelled',
+            );
             const later = await page.evaluate(async () => {
               try {
                 await /** @type {any} */ (globalThis).qualification.request(

@@ -6,7 +6,6 @@ import { test } from 'node:test';
 import {
   browserOutput,
   browserDeadline,
-  browserCleanup,
   browserRuntimeIdentity,
 } from '../scripts/qualify-public-signer-browser.mjs';
 
@@ -45,31 +44,32 @@ test('browser action deadline rejects stalled work and preserves original errors
 
 test('cleanup attempts all owned resources and records rejection or deadline without raw errors', async () => {
   /** @type {string[]} */ const visited = [];
-  const report = await browserCleanup(
-    [
-      {
-        name: 'reject',
-        close: async () => {
-          visited.push('reject');
-          throw Error('private failure');
-        },
+  const { BrowserOwnership } = await import('../scripts/qualification/browser-ownership.mjs');
+  const actions = [
+    {
+      name: 'reject',
+      close: async () => {
+        visited.push('reject');
+        throw Error('private failure');
       },
-      {
-        name: 'hang',
-        close: () => {
-          visited.push('hang');
-          return new Promise(() => {});
-        },
+    },
+    {
+      name: 'hang',
+      close: () => {
+        visited.push('hang');
+        return new Promise(() => {});
       },
-      {
-        name: 'last',
-        close: async () => {
-          visited.push('last');
-        },
+    },
+    {
+      name: 'last',
+      close: async () => {
+        visited.push('last');
       },
-    ],
-    5,
-  );
+    },
+  ];
+  const owner = new BrowserOwnership(actions.map((a) => a.name));
+  for (const action of actions) await owner.acquire(action.name, async () => null, action.close);
+  const report = await owner.cleanup(5);
   assert.deepEqual(visited, ['reject', 'hang', 'last']);
   assert.deepEqual(
     report.map((r) => r.closed),
@@ -148,4 +148,36 @@ test('late browser acquisition is closed after settlement without claiming absen
       ['not-created', null],
     ],
   );
+});
+
+test('late acquisition and overlapping cleanup share exactly one close', async () => {
+  const { BrowserOwnership } = await import('../scripts/qualification/browser-ownership.mjs');
+  const owner = new BrowserOwnership(['late']);
+  /** @type {{acquired?:()=>void,finish?:()=>void}} */ const controls = {};
+  let closes = 0;
+  const pending = owner.acquire(
+    'late',
+    () =>
+      new Promise((resolve) => {
+        controls.acquired = () => resolve(null);
+      }),
+    async () => {
+      closes++;
+      await new Promise((resolve) => {
+        controls.finish = () => resolve(null);
+      });
+    },
+  );
+  const refused = assert.rejects(pending, /settled/);
+  await owner.cleanup();
+  assert.ok(controls.acquired);
+  controls.acquired();
+  await new Promise((resolve) => setImmediate(resolve));
+  const cleanup = owner.cleanup();
+  assert.equal(closes, 1);
+  assert.ok(controls.finish);
+  controls.finish();
+  await refused;
+  assert.equal((await cleanup)[0]?.status, 'closed');
+  assert.equal(closes, 1);
 });

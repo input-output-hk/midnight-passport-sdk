@@ -99,7 +99,7 @@ export const SCENARIOS = Object.freeze({
     requires: ['PASSPORT_SIGNER_ROOT', 'PASSPORT_SIGNER_SHA256', 'PASSPORT_SIGNER_INTEGRITY_ROOT'],
     timeoutMs: 4 * 60000,
     establishes:
-      'Six preserved copied-root tamper controls rejected before any bundle import. Original signer and installed consumer reverified. No browser, native proof or provider claim.',
+      'Unmodified copied root accepted, then six preserved copied-root tamper controls refused for their expected reasons before any bundle import. Original signer and installed consumer reverified. No browser, native proof or provider claim.',
   },
   'consumer-public-signer-browser': {
     tier: 'published-consumer',

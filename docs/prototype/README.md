@@ -186,3 +186,9 @@ add a shielded deposit button or endpoint to the demo. See the [engineer recover
 The shared HTTP boundary now rejects empty fragments and normalised authority-like paths, emits
 only generic unexpected-error responses, and supports an explicit redacted route-failure callback.
 A streaming failure closes the response; it never proves an uncertain transaction was not sent.
+
+The optional shared HTTP `onRouteError` callback accepts synchronous or asynchronous telemetry.
+Neither throws, rejections nor stalled telemetry change/delay the public response. The public
+signer browser qualification also documents a pinned-host navigation limitation: an old-port
+request can remain pending until close; fresh-client consent does not replay it. See the
+[consumer boundary](../site/consumer-integration.md#browser-navigation-and-reconnect-boundary).

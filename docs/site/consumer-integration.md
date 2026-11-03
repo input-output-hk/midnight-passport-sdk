@@ -538,8 +538,8 @@ CI only runs the cheap path/dependency/integrity/routing and result-profile guar
 The [browser signer recipe](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/browser-signer/README.md) adds actual cross-origin Chromium
 pages, popup/MessagePort and virtual WebAuthn PRF to the public client/source-handler composition.
 It exercises authorising-only SDK enrollment against a fake chain, with independent signature
-verification and consent/expiry/closure checks. This first slice leaves additional browser
-adversarial/navigation/reconnect cases in #258. It does not qualify real providers, production
+verification and consent/expiry/closure checks. The review map retains exact-source expanded
+adversarial/navigation/reconnect evidence for #258. It does not qualify real providers, production
 signer UI, reader delivery, browser/native combined flows or full Lace compatibility.
 
 ### Early native bootstrap validation
@@ -560,3 +560,10 @@ a no-send proof. Keep the original request/receipt for any uncertain chain work,
 transport ownership deliberately, and require fresh consent after connecting. Automated virtual
 credential continuity does not establish Google/iCloud restoration or production signer UI
 compatibility. Exact measured sources and receipts live in the browser qualification review map.
+
+The pinned public remote client does not detect same-window signer navigation or time out a
+request over the retired port. That promise can remain pending until explicit close or popup
+closure. Our strengthened control actively issues such a request and verifies separate fresh-
+client consent and no replay; it does not repair the public host. See [#272](https://github.com/input-output-hk/midnight-passport-sdk/issues/272).
+A host must retain uncertain operation IDs and define its own liveness/disposal policy; a timeout
+or navigation alone never authorises a replacement send.

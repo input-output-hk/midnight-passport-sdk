@@ -1,6 +1,6 @@
 # Actual browser signer qualification
 
-Latest accepted local run: [19-case receipt](receipt-v3.json) at clean signed source
+Historical accepted local run: [19-case receipt](receipt-v3.json) at clean signed source
 `59cca013ace978c902a91984e1143116f558718d`, nine virtual assertions, exactly one independently
 verified fake-chain SDK call. All five created resources closed. [Owned interruption control](interrupt-control-v3.json)
 at the same source records four closed resources and an honestly absent attacker server;
@@ -131,5 +131,24 @@ bounded checks are not a universal proof that no encoding or side channel can di
 New public runtime identities hash path strings separately from framework/runtime content; old
 receipts remain immutable, including their original schema.
 
-Source changes require a fresh signed clean-source execution and receipt. Do not interpret these
-new cases as measured acceptance until the associated receipt is retained below.
+Source changes require a fresh signed clean-source execution and receipt. The historical
+19-case receipt above predates the stronger positive scope and active old-transport controls;
+it must not be used as evidence for those added checks.
+
+## Claude review corrections — 2026/11/03
+
+Each isolated scope probe first admits the unchanged authorisation under the same descriptor
+and key session, then changes exactly one field. The secret guard also checks declared big-/little-
+endian integers, decimal strings, and base64 envelopes with the secret at any byte offset. These
+are bounded declared encodings, not a universal confidentiality proof.
+
+The navigation control now makes a real request over the retired port. The pinned public client
+leaves this pending after same-window navigation; it has no navigation detector or request timeout.
+The test observes pending status without approval/PRF/chain replay, connects a separate client
+with fresh consent, then requires the original pending promise to reject at popup closure. This
+is an explicit interoperability limitation tracked in [#272](https://github.com/input-output-hk/midnight-passport-sdk/issues/272), not automatic recovery or a no-send proof.
+
+Owned cleanup now marks a resource closing before awaiting it and shares the close promise
+between late acquisition and cleanup. Fast tests cover rejection, stalls, late acquisition and
+concurrent cleanup without double close. The same deadline helper bounds actions and cleanup.
+Fresh exact-source receipts are required before calling these strengthened controls accepted.

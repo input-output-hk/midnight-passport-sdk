@@ -1,6 +1,7 @@
 // A timed-out async acquisition can resolve after cleanup starts. It must never escape ownership.
 import { consumerSha256 } from '../consumer-inputs.mjs';
-/** @typedef {{name:string,status:'not-created'|'pending'|'open'|'closed'|'close-failed'|'acquisition-failed',close?:()=>Promise<unknown>,errorSha256?:string}} Resource */
+import { browserDeadline } from './browser-deadline.mjs';
+/** @typedef {{name:string,status:'not-created'|'pending'|'open'|'closing'|'closed'|'close-failed'|'acquisition-failed',close?:()=>Promise<unknown>,closing?:Promise<void>,errorSha256?:string}} Resource */
 export class BrowserOwnership {
   /** @param {string[]} names */
   constructor(names) {
@@ -37,23 +38,22 @@ export class BrowserOwnership {
   }
   /** @param {Resource} resource @param {number} [timeoutMs] */
   async closeResource(resource, timeoutMs = 5000) {
+    if (resource.status === 'closing') return resource.closing;
     if (resource.status !== 'open' || !resource.close) return;
-    /** @type {NodeJS.Timeout|undefined} */ let timer;
-    try {
-      await Promise.race([
-        resource.close(),
-        new Promise((_, reject) => {
-          timer = setTimeout(() => reject(Error('Resource cleanup deadline exceeded')), timeoutMs);
-        }),
-      ]);
-      resource.status = 'closed';
-    } catch (error) {
-      resource.status = 'close-failed';
-      resource.errorSha256 = consumerSha256(String(error));
-    } finally {
-      clearTimeout(timer);
-    }
+    resource.status = 'closing';
+    const close = resource.close;
+    resource.closing = (async () => {
+      try {
+        await browserDeadline(close, timeoutMs);
+        resource.status = 'closed';
+      } catch (error) {
+        resource.status = 'close-failed';
+        resource.errorSha256 = consumerSha256(String(error));
+      }
+    })();
+    await resource.closing;
   }
+
   /** @param {number} [timeoutMs] */
   async cleanup(timeoutMs = 5000) {
     this.settled = true;

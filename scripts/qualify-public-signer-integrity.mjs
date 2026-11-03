@@ -31,7 +31,7 @@ export async function runSignerIntegrity(env = process.env) {
   assert.match(basename(output), /^signer-integrity-[a-z0-9-]+$/);
   assert.equal(existsSync(output), false, 'Preserve every prior control root');
   assert.ok(
-    !resolve(output).startsWith(realpathSync(root) + '/'),
+    !join(realpathSync(dirname(output)), basename(output)).startsWith(realpathSync(root) + '/'),
     'Control root must not be inside its input',
   );
   mkdirSync(output, { mode: 0o700 });
@@ -46,8 +46,14 @@ export async function runSignerIntegrity(env = process.env) {
     'bundle-link',
   ];
   let outcome = 'failed',
-    failureSha256;
+    failureSha256,
+    unmodifiedCopyAccepted = false;
   try {
+    // Prove the same copying procedure can accept an unchanged root before testing mutations.
+    const baseline = join(output, 'baseline');
+    cpSync(root, baseline, { recursive: true, errorOnExist: true, force: false });
+    verifyPublicSigner(baseline, pin, repository);
+    unmodifiedCopyAccepted = true;
     for (const name of controls) {
       const copy = join(output, name);
       cpSync(root, copy, { recursive: true, errorOnExist: true, force: false });
@@ -69,12 +75,21 @@ export async function runSignerIntegrity(env = process.env) {
       } catch (e) {
         error = e;
       }
+      const reason =
+        name === 'config'
+          ? /Public signer configuration pin changed/
+          : name === 'entry'
+            ? /Public signer entry bytes changed/
+            : name === 'bundle-link'
+              ? /Signer bundle must not contain links/
+              : /Public signer bundle bytes changed/;
+      const rejected = error instanceof Error && reason.test(error.message);
       cases.push({
         name,
-        rejected: Boolean(error),
+        rejected,
         failureSha256: error ? consumerSha256(String(error)) : undefined,
       });
-      assert.ok(error, 'Changed signer input was accepted');
+      assert.ok(rejected, 'Changed signer input was accepted or rejected for an unrelated reason');
     }
     verifyPublicSigner(root, pin, repository);
     assert.deepEqual(await workspaceIdentity(repository), source);
@@ -91,6 +106,8 @@ export async function runSignerIntegrity(env = process.env) {
     outcome,
     cases,
     failureSha256,
+    unmodifiedCopyAccepted,
+    rejectionReasonsChecked: true,
     importedBundle: false,
     nativeProof: false,
     realProvider: false,

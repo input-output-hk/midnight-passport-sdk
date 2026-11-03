@@ -423,7 +423,7 @@ change; see [the recovery contract](../docs/site/shielded-deposit-recovery.md).
 ### Redacted HTTP diagnostics
 
 The shared server exposes the optional `onRouteError({ status, headersSent })` configuration
-callback. Unexpected failures return generic `500` JSON; no raw exception is exported. After
+callback (synchronous or async; failures are isolated and never awaited). Unexpected failures return generic `500` JSON; no raw exception is exported. After
 headers are sent the response is destroyed, so clients reconcile uncertain original mutation IDs
 rather than interpreting an incomplete stream as proof that nothing was sent. See the service
 engineer guide for origin-form request-target rules.

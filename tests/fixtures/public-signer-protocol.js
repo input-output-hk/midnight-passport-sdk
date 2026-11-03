@@ -240,6 +240,15 @@ try {
     async () => {
       await sdk.withKeySession(
         async () => {
+          const baseline = await sdk.authorise({
+            account,
+            circuit: 'add_device_with_jubjub',
+            args: [new Uint8Array(32).fill(0xdc)],
+            witnessValues: [],
+            authNonce: 0n,
+            useCounter: 1n,
+          });
+          assert.ok(baseline, 'The unchanged call must pass under the same scope');
           await refused(() => sdk.devicePublicKey(), 'flow-scope');
           await refused(
             () =>

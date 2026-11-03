@@ -10,6 +10,7 @@ export function assertNoSecretMaterial(value, forbiddenHex) {
     return {
       bytes,
       hex: hex.toLowerCase(),
+      integers: [BigInt('0x' + hex), BigInt('0x' + Buffer.from(bytes).reverse().toString('hex'))],
       encodings: [
         base64,
         base64.replace(/=+$/, ''),
@@ -32,8 +33,21 @@ export function assertNoSecretMaterial(value, forbiddenHex) {
   const text = (text) => {
     charge(Buffer.byteLength(text));
     for (const secret of secrets) {
-      if (text.toLowerCase().includes(secret.hex) || secret.encodings.some((e) => text.includes(e)))
+      if (
+        text.toLowerCase().includes(secret.hex) ||
+        secret.encodings.some((e) => text.includes(e)) ||
+        secret.integers.some((v) => text.includes(v.toString()))
+      )
         failure();
+    }
+    // Decode complete base64 tokens before comparison: a secret may start at any byte offset.
+    for (const match of text.matchAll(/[A-Za-z0-9+/_-]{22,}={0,2}/g)) {
+      const token = match[0].replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '');
+      if (token.length % 4 === 1) continue;
+      const decoded = Buffer.from(token, 'base64');
+      if (decoded.toString('base64').replace(/=+$/, '') !== token) continue;
+      charge(decoded.length);
+      if (secrets.some((secret) => decoded.includes(secret.bytes))) failure();
     }
   };
   /** @param {Uint8Array} input */
@@ -50,11 +64,12 @@ export function assertNoSecretMaterial(value, forbiddenHex) {
       text(input);
       return;
     }
-    if (
-      input === null ||
-      input === undefined ||
-      ['boolean', 'number', 'bigint'].includes(typeof input)
-    )
+    if (typeof input === 'bigint') {
+      charge(input.toString().length);
+      if (secrets.some((secret) => secret.integers.includes(input))) failure();
+      return;
+    }
+    if (input === null || input === undefined || ['boolean', 'number'].includes(typeof input))
       return;
     if (typeof input !== 'object') return failure();
     if (seen.has(input)) return failure();

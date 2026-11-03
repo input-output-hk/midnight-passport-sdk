@@ -9,7 +9,7 @@ export interface HttpServiceConfig {
   readonly onRouteError?: (event: {
     readonly status: number;
     readonly headersSent: boolean;
-  }) => void;
+  }) => void | Promise<void>;
 }
 
 /** Methods that carry no body and change nothing; every other method must send JSON. */
@@ -80,9 +80,13 @@ export function createServer(config: HttpServiceConfig, routes: Route[]): Server
       json(res, 404, { error: 'not found' });
     } catch (e) {
       try {
-        config.onRouteError?.({
-          status: e instanceof HttpError ? e.status : 500,
-          headersSent: res.headersSent,
+        void Promise.resolve(
+          config.onRouteError?.({
+            status: e instanceof HttpError ? e.status : 500,
+            headersSent: res.headersSent,
+          }),
+        ).catch(() => {
+          /* Async telemetry failure is isolated too; never delay the HTTP response. */
         });
       } catch {
         /* Observability must not change routing or expose the original failure. */

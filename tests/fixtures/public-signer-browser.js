@@ -238,6 +238,9 @@ if (location.pathname === '/signer/') {
           authNonce: 0n,
           useCounter: 1n,
         };
+        // An unchanged call must succeed under the very same descriptor/session first.
+        const baseline = await sdk.authorise(request);
+        if (!baseline) throw Error('In-scope authorisation missing');
         if (field === 'account') request.account = 'ac'.repeat(32);
         else if (field === 'circuit') request.circuit = 'remove_device_with_jubjub';
         else if (field === 'commitment') request.args = [new Uint8Array(32)];

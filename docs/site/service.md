@@ -66,5 +66,6 @@ The server cannot replace an already-started stream with a JSON error.
 Unexpected route errors return generic `500` JSON. Applications may set
 `onRouteError({ status, headersSent })` in `createServer`'s configuration to record these explicit
 redacted facts. The callback receives no error text, request URL, body, header, or wallet state.
-Callback failure does not affect the response. Expected `HttpError` messages remain the route's
+Synchronous callback throws and asynchronous rejections are isolated; the server never awaits
+telemetry, so a stalled callback cannot delay the response. Expected `HttpError` messages remain the route's
 public API; route implementations must keep those messages safe to disclose.

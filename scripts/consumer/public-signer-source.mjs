@@ -320,15 +320,25 @@ export async function buildPublicSigner(options) {
             declared?.devDependencies?.[name] ??
             upstreamLock.packages['node_modules/' + name]?.version;
           const previous = externalRecords.get(physical);
+          /** @type {Array<{importer:string,range:string,basis?:string}>} */
           const requirements = previous?.requirements ?? [];
-          if (id === '@scure/bip39/wordlists/english.js')
-            requirements.push({
-              importer: 'apps/lace-sdk/tsdown.config.ts',
-              range: '2.2.0',
-              basis: 'pinned upstream build alias',
-            });
-          else if (range && importer)
-            requirements.push({ importer: signerRelativeFile(source.root, importer), range });
+          const requirement =
+            id === '@scure/bip39/wordlists/english.js'
+              ? {
+                  importer: 'apps/lace-sdk/tsdown.config.ts',
+                  range: '2.2.0',
+                  basis: 'pinned upstream build alias',
+                }
+              : range && importer
+                ? { importer: signerRelativeFile(source.root, importer), range }
+                : undefined;
+          if (
+            requirement &&
+            !requirements.some(
+              (r) => r.importer === requirement.importer && r.range === requirement.range,
+            )
+          )
+            requirements.push(requirement);
           externalRecords.set(physical, {
             name: pkg.name,
             version: pkg.version,
@@ -437,7 +447,11 @@ export function verifyPublicSigner(root, expected, repository) {
     hash(readFileSync(import.meta.filename)),
     'Signer preparation recipe changed; use a fresh root',
   );
-  assert.equal(input.entrySha256, hash(readFileSync(join(root, 'source-entry.ts'))));
+  assert.equal(
+    input.entrySha256,
+    hash(readFileSync(join(root, 'source-entry.ts'))),
+    'Public signer entry bytes changed',
+  );
   verifyRetainedHostConsumer(input.consumer.root, input.consumer.configSha256, repository);
   const source = publicSignerSource(input.source.root);
   for (const file of input.source.closure) {
