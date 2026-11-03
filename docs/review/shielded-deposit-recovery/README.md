@@ -52,3 +52,11 @@ and four one-shot sender/observer failures. No resend, no-send transition or nat
 Broader journal/codec consolidation stays separate from this safety change: changing persisted
 canonical ordering or authenticated bytes needs its own migration design. Pre-send fenced
 unknowns and rollback policy remain #269; key-source session UX remains #245.
+
+The follow-up exact-head review also identified raw exceptions from initial admission CAS and
+the initial clock port. Both now refuse safely; tests cover a write failing before and after
+persistence and a throwing admission clock. Re-reading the account before dispatch is deliberate:
+sealing and durable preparation can yield while the key changes. Each observed inbox prefix must
+be rechecked because this port provides no trustworthy observation-height cache key. Do not
+remove either check as an optimisation. The prior-record journal read validates immutable intent
+and legal phase transitions; ciphertext-only byte-store CAS cannot replace it.

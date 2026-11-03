@@ -1,4 +1,4 @@
-// Synthetic restart world: real randomized sealing/encrypted disk journal, fake sender/finality.
+// Synthetic restart world: real randomised sealing/encrypted disk journal, fake sender/finality.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';

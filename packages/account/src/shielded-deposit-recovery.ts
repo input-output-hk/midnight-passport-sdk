@@ -279,7 +279,13 @@ export async function runRecoverableShieldedDeposit(
     fail('Authenticated deposit recovery ports are required.');
   const pins = copy(recovery.pins),
     now = ports.now ?? Date.now;
-  const initialTime = now();
+  // Validate clock admission before even reading retained state; this is not the poll start.
+  let initialTime: number;
+  try {
+    initialTime = now();
+  } catch {
+    fail('Invalid deposit reconciliation clock.');
+  }
   if (!Number.isSafeInteger(initialTime) || initialTime < 0)
     fail('Invalid deposit reconciliation clock.');
   let doc = await reconcilePort(() => recovery.journal.read(input.requestId));
@@ -320,7 +326,9 @@ export async function runRecoverableShieldedDeposit(
       phase: 'prepared',
     };
     validateShieldedDepositDocument(prepared);
-    await recovery.journal.compareAndSwap(input.requestId, undefined, copy(prepared));
+    await reconcilePort(() =>
+      recovery.journal.compareAndSwap(input.requestId, undefined, copy(prepared)),
+    );
     doc = await reconcilePort(() => recovery.journal.read(input.requestId));
   }
   for (let contention = 0; contention < 16; contention++) {
@@ -368,7 +376,7 @@ export async function runRecoverableShieldedDeposit(
             intentSha256: doc.intentSha256,
           });
           if (!validDepositTransactionId(result.txId))
-            return fail('The original sender result is unavailable; reconcile this request ID.');
+            throw new Error('Unusable original sender transaction ID');
           txId = result.txId;
         } catch {
           return fail(
