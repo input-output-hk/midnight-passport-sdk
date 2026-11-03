@@ -39,3 +39,16 @@ and the original receipt on later recovery. A sixth case covers intermediate clo
 The pinned contract source only appends inbox entries; the exact-prefix guard matches that binding.
 Large-inbox/operator no-send/rollback follow-ups remain explicitly #269. No live proof or provider
 acceptance is inferred from these inspected/fast synthetic cases.
+
+## Claude review hardening — 2026/11/03
+
+The independent review of `d15d17f` reported no blocking defect. We nevertheless tightened
+the public host-port boundary: only literal boolean `true` admits dispatch, malformed sender
+lookup results retain the unknown fence, and uncertain one-shot outcomes use nonretryable
+`MutationUnsettled` with original IDs instead of raw host errors. Targeted regressions exercise
+five invalid CAS acknowledgements, seven malformed lookup shapes after an actual process exit,
+and four one-shot sender/observer failures. No resend, no-send transition or native adapter was added.
+
+Broader journal/codec consolidation stays separate from this safety change: changing persisted
+canonical ordering or authenticated bytes needs its own migration design. Pre-send fenced
+unknowns and rollback policy remain #269; key-source session UX remains #245.

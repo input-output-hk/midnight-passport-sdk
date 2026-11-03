@@ -587,3 +587,58 @@ test('middle-poll clock regression refuses while retaining original submitted in
     assert.equal((await world.journal.read(depositRequest.requestId))?.phase, 'submitted');
     assert.equal(world.stats().effects, 1);
   }));
+
+test('non-boolean dispatch acknowledgements cannot authorise a sender effect', async () => {
+  for (const acknowledgement of [{ stored: false }, 'false', 1, undefined, null])
+    await fixture(async (root) => {
+      const world = depositWorld(root),
+        journal = world.ports.recovery.journal;
+      /** @type {import('../packages/account/dist/index.js').ShieldedDepositPorts} */
+      const ports = {
+        ...world.ports,
+        recovery: {
+          ...world.ports.recovery,
+          journal: {
+            ...journal,
+            compareAndSwap: async (id, previous, next) =>
+              next.phase === 'dispatching'
+                ? /** @type {any} */ (acknowledgement)
+                : journal.compareAndSwap(id, previous, next),
+          },
+        },
+      };
+      await assert.rejects(depositShielded(depositRequest, ports), {
+        code: 'MutationUnsettled',
+        retryable: false,
+      });
+      assert.equal(world.stats().sends, 0);
+      assert.equal(world.stats().effects, 0);
+      assert.equal((await world.journal.read(depositRequest.requestId))?.phase, 'prepared');
+    });
+});
+
+test('malformed sender lookups retain unknown fence without raw exceptions or resends', async () => {
+  for (const reply of [undefined, null, false, 1, 'submitted', [], {}])
+    await fixture(async (root) => {
+      const stopped = spawnSync(process.execPath, [child, root, 'dispatch-fence-exit'], {
+        encoding: 'utf8',
+        timeout: 10000,
+      });
+      assert.equal(stopped.status, 77);
+      const world = depositWorld(root),
+        ports = {
+          ...world.ports,
+          recovery: {
+            ...world.ports.recovery,
+            reconcileSender: async () => /** @type {any} */ (reply),
+          },
+        };
+      await assert.rejects(resumeShieldedDeposit(depositRequest, ports), {
+        code: 'MutationUnsettled',
+        retryable: false,
+      });
+      assert.equal(world.stats().sends, 0);
+      assert.equal(world.stats().effects, 0);
+      assert.equal((await world.journal.read(depositRequest.requestId))?.phase, 'dispatching');
+    });
+});

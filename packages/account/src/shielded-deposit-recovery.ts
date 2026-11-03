@@ -2,7 +2,7 @@ import { utf8ToBytes } from '@noble/hashes/utils.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
-import { depositInput } from './shielded-deposit-validation.js';
+import { depositInput, validDepositTransactionId } from './shielded-deposit-validation.js';
 import type { AccLedgerView } from './ports/index.js';
 import type {
   ShieldedDepositPorts,
@@ -76,8 +76,6 @@ export const SHIELDED_DEPOSIT_DOCUMENT_LIMIT = 8_192;
 const HEX = /^[0-9a-f]{64}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const MAX_INBOX = 65_536;
-const validTx = (v: unknown): v is string =>
-  typeof v === 'string' && /^[a-zA-Z0-9:_-]{1,256}$/.test(v);
 function fail(message: string): never {
   throw new PassportConnectorError('MutationUnsettled', message, { retryable: false });
 }
@@ -179,7 +177,7 @@ export function validateShieldedDepositDocument(
   )
     fail('Invalid protected shielded deposit identity.');
   const submitted = value.phase === 'submitted' || value.phase === 'confirmed';
-  if (submitted ? !validTx(value.txId) : value.txId !== undefined)
+  if (submitted ? !validDepositTransactionId(value.txId) : value.txId !== undefined)
     fail('Invalid original deposit transaction.');
   if (value.phase === 'confirmed') {
     if (
@@ -346,15 +344,16 @@ export async function runRecoverableShieldedDeposit(
       )
         fail('Original pre-dispatch inbox evidence changed.');
       const dispatching = { ...doc, revision: doc.revision + 1, phase: 'dispatching' as const };
-      if (
-        await reconcilePort(() =>
-          recovery.journal.compareAndSwap(
-            input.requestId,
-            dispatching.revision - 1,
-            copy(dispatching),
-          ),
-        )
-      ) {
+      const fenceAccepted = await reconcilePort(() =>
+        recovery.journal.compareAndSwap(
+          input.requestId,
+          dispatching.revision - 1,
+          copy(dispatching),
+        ),
+      );
+      if (typeof fenceAccepted !== 'boolean')
+        fail('Original dispatch fence acknowledgement is unavailable; do not send.');
+      if (fenceAccepted === true) {
         let txId: string;
         try {
           const result = await ports.sender.depositShielded({
@@ -368,7 +367,7 @@ export async function runRecoverableShieldedDeposit(
             entry: fromHex(doc.intent.entry),
             intentSha256: doc.intentSha256,
           });
-          if (!validTx(result.txId))
+          if (!validDepositTransactionId(result.txId))
             return fail('The original sender result is unavailable; reconcile this request ID.');
           txId = result.txId;
         } catch {
@@ -393,9 +392,12 @@ export async function runRecoverableShieldedDeposit(
         digest = doc.intentSha256;
       const outcome = await reconcilePort(() => recovery.reconcileSender(original, digest));
       if (
+        !outcome ||
+        typeof outcome !== 'object' ||
+        Array.isArray(outcome) ||
         outcome.kind !== 'submitted' ||
         outcome.intentSha256 !== doc.intentSha256 ||
-        !validTx(outcome.txId)
+        !validDepositTransactionId(outcome.txId)
       )
         fail('Original deposit dispatch remains unknown; do not resend.');
       const submitted = {
