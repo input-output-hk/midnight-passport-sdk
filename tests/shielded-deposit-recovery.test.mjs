@@ -747,3 +747,61 @@ test('known sender or lookup transaction ID survives failed submitted acknowledg
         assert.equal(world.stats().sends, source === 'sender' ? 1 : 0);
       });
 });
+
+test('a transient submitted CAS miss retains the direct sender ID without a lagging lookup', () =>
+  fixture(async (root) => {
+    const world = depositWorld(root);
+    let missed = false,
+      lookups = 0;
+    const recovery = { ...world.ports.recovery };
+    recovery.reconcileSender = async () => {
+      lookups++;
+      return { kind: 'unknown' };
+    };
+    recovery.journal = {
+      ...recovery.journal,
+      compareAndSwap: async (id, previous, next) => {
+        if (next.phase === 'submitted' && !missed) {
+          missed = true;
+          return false;
+        }
+        return world.journal.compareAndSwap(id, previous, next);
+      },
+    };
+    const result = await depositShielded(depositRequest, { ...world.ports, recovery });
+    assert.equal(result.txId, 'tx-original');
+    assert.equal((await world.journal.read(depositRequest.requestId))?.txId, 'tx-original');
+    assert.equal(lookups, 0);
+    assert.equal(world.stats().sends, 1);
+    assert.equal(world.stats().effects, 1);
+  }));
+
+test('conflicting retained transaction cannot replace an observed sender ID or reach finality', () =>
+  fixture(async (root) => {
+    const world = depositWorld(root);
+    let finality = 0;
+    const recovery = { ...world.ports.recovery };
+    recovery.confirmTransaction = async () => {
+      finality++;
+      return true;
+    };
+    recovery.journal = {
+      ...recovery.journal,
+      compareAndSwap: async (id, previous, next) => {
+        if (next.phase === 'submitted') {
+          await world.journal.compareAndSwap(id, previous, { ...next, txId: 'tx-unrelated' });
+          return false;
+        }
+        return world.journal.compareAndSwap(id, previous, next);
+      },
+    };
+    await assert.rejects(depositShielded(depositRequest, { ...world.ports, recovery }), (error) => {
+      assert.ok(error && typeof error === 'object' && 'code' in error);
+      assert.equal(error.code, 'MutationUnsettled');
+      assert.ok(String(error).includes('tx-original'));
+      return true;
+    });
+    assert.equal(finality, 0);
+    assert.equal(world.stats().sends, 1);
+    assert.equal(world.stats().effects, 1);
+  }));

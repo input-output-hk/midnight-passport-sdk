@@ -2,7 +2,7 @@
   "scope": "additive journalled shielded deposit recovery",
   "base": "9466d8af0438251e50068deee80951625c18fdf9",
   "gate": {
-    "pass": 1086,
+    "pass": 1089,
     "fail": 0,
     "skipped": 7
   },
@@ -20,7 +20,7 @@
   "realProvider": false,
   "publishedRelease": false,
   "actualRandomisedSealing": true,
-  "recoveryCases": 31,
+  "recoveryCases": 33,
   "postAdmissionPortFailureCases": [
     "sender-lookup",
     "finality",
@@ -33,5 +33,7 @@
   "malformedLookupRetainsUnknown": true,
   "oneShotPostDispatchUncertainty": "nonretryable MutationUnsettled with original IDs",
   "initialJournalAndClockFailureRedacted": true,
-  "knownTxIdRetainedOnFailedAcknowledgement": true
+  "knownTxIdRetainedOnFailedAcknowledgement": true,
+  "knownSenderIdPinsFurtherTransitions": true,
+  "opaqueTransactionIds": "bounded alphanumeric and :._~+/%=- punctuation"
 }

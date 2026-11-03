@@ -66,3 +66,9 @@ acknowledgement failed. The runner now retains a validated sender/lookup ID in a
 errors, including false acknowledgements followed by unknown lookup. Four targeted cases cover
 throw/false acknowledgements from direct sender and process-restart lookup, with original
 request/transaction IDs, no raw diagnostics and no additional sender effect.
+
+The final ID-consistency correction pins an observed sender/lookup ID through subsequent reads.
+A transient submitted-CAS miss can persist that same ID without a lagging lookup, and a conflicting
+retained ID refuses before finality. Regressions verify both with one sender effect. Separate
+namespace/record-layer consolidation is tracked in #273; current dedicated stores fail closed
+when miscomposed rather than reinterpreting another journal's ciphertext.

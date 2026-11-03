@@ -40,14 +40,15 @@ export function assertNoSecretMaterial(value, forbiddenHex) {
       )
         failure();
     }
-    // Decode complete base64 tokens before comparison: a secret may start at any byte offset.
+    // A text label can join a base64 envelope without a separator. Inspect all four
+    // character alignments; tolerate trailing encoding bits rather than skipping the run.
     for (const match of text.matchAll(/[A-Za-z0-9+/_-]{22,}={0,2}/g)) {
-      const token = match[0].replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '');
-      if (token.length % 4 === 1) continue;
-      const decoded = Buffer.from(token, 'base64');
-      if (decoded.toString('base64').replace(/=+$/, '') !== token) continue;
-      charge(decoded.length);
-      if (secrets.some((secret) => decoded.includes(secret.bytes))) failure();
+      const token = match[0].replace(/-/g, '+').replace(/_/g, '/');
+      for (let offset = 0; offset < 4; offset++) {
+        const decoded = Buffer.from(token.slice(offset), 'base64');
+        charge(decoded.length);
+        if (secrets.some((secret) => decoded.includes(secret.bytes))) failure();
+      }
     }
   };
   /** @param {Uint8Array} input */
@@ -74,28 +75,36 @@ export function assertNoSecretMaterial(value, forbiddenHex) {
     if (typeof input !== 'object') return failure();
     if (seen.has(input)) return failure();
     seen.add(input);
-    if (
-      input instanceof ArrayBuffer ||
-      (typeof SharedArrayBuffer !== 'undefined' && input instanceof SharedArrayBuffer)
-    ) {
-      binary(new Uint8Array(input));
-      return;
-    }
-    if (ArrayBuffer.isView(input)) {
-      binary(new Uint8Array(input.buffer, input.byteOffset, input.byteLength));
-      return;
-    }
-    if (Array.isArray(input)) {
-      if (input.every((v) => Number.isInteger(v) && v >= 0 && v <= 255))
-        binary(Uint8Array.from(input));
-      else for (const item of input) walk(item, depth + 1);
-      return;
-    }
-    if (Object.getPrototypeOf(input) !== Object.prototype && Object.getPrototypeOf(input) !== null)
-      return failure();
-    for (const [key, item] of Object.entries(input)) {
-      text(key);
-      walk(item, depth + 1);
+    try {
+      if (
+        input instanceof ArrayBuffer ||
+        (typeof SharedArrayBuffer !== 'undefined' && input instanceof SharedArrayBuffer)
+      ) {
+        binary(new Uint8Array(input));
+        return;
+      }
+      if (ArrayBuffer.isView(input)) {
+        binary(new Uint8Array(input.buffer, input.byteOffset, input.byteLength));
+        return;
+      }
+      if (Array.isArray(input)) {
+        if (input.every((v) => Number.isInteger(v) && v >= 0 && v <= 255))
+          binary(Uint8Array.from(input));
+        else for (const item of input) walk(item, depth + 1);
+        return;
+      }
+      if (
+        Object.getPrototypeOf(input) !== Object.prototype &&
+        Object.getPrototypeOf(input) !== null
+      )
+        return failure();
+      for (const [key, item] of Object.entries(input)) {
+        text(key);
+        walk(item, depth + 1);
+      }
+    } finally {
+      // Reject active recursion cycles; harmless shared objects may be scanned again.
+      seen.delete(input);
     }
   };
   walk(value, 0);

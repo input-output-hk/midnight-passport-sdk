@@ -86,3 +86,28 @@ test('base64 envelopes are scanned at every byte offset with both alphabets and 
     }
   }
 });
+
+test('text labels or trailing noncanonical encoding bits cannot hide a base64 envelope', () => {
+  const asymmetric = '7f' + 'e3'.repeat(30) + 'a5';
+  const bytes = Buffer.from(asymmetric, 'hex');
+  for (const prefix of ['', 'v', 'v1', 'tag', 'version'])
+    for (const suffix of ['', '_tag', '-tail', 'A'])
+      for (const offset of [0, 1, 2]) {
+        const envelope = Buffer.concat([Buffer.alloc(offset, 1), bytes, Buffer.from([2])]).toString(
+          'base64url',
+        );
+        assert.throws(
+          () => assertNoSecretMaterial({ encoded: prefix + envelope + suffix }, [asymmetric]),
+          /Secret material detected/,
+        );
+      }
+});
+
+test('shared public objects are accepted while active cycles remain refused', () => {
+  const publicEntry = { commitment: new Uint8Array(32).fill(2) };
+  assert.doesNotThrow(() =>
+    assertNoSecretMaterial({ first: publicEntry, second: publicEntry }, [secret]),
+  );
+  Object.assign(publicEntry, { self: publicEntry });
+  assert.throws(() => assertNoSecretMaterial(publicEntry, [secret]));
+});
