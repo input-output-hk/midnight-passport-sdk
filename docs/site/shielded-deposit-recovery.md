@@ -150,3 +150,9 @@ Malformed sender lookup replies and non-boolean dispatch-CAS acknowledgements al
 object is insufficient. The unjournalled one-shot path reports sender uncertainty and later
 observation failures as nonretryable `MutationUnsettled`, retaining the original request ID and
 any valid transaction ID in the public error. This does not add automatic recovery to that path.
+
+If the sender or read-only lookup returns a valid transaction ID but the submitted-state write
+or subsequent observation fails, the safe error also retains that original request/transaction
+ID. Preserve it in the host's private reconciliation record. A later empty sender lookup cannot
+prove the send did not happen. Durable sender records remain mandatory; a public error is not
+a replacement journal and this helper never fabricates a missing submitted revision.

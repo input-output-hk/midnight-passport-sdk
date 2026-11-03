@@ -331,169 +331,188 @@ export async function runRecoverableShieldedDeposit(
     );
     doc = await reconcilePort(() => recovery.journal.read(input.requestId));
   }
-  for (let contention = 0; contention < 16; contention++) {
-    if (!doc) fail('Original deposit journal is unavailable.');
-    checkIdentity(doc, input, pins);
-    doc = copy(doc);
-    if (doc.phase === 'confirmed') return copy(doc.result!);
-    if (doc.phase === 'prepared') {
-      const current = snapshot(
-        await ports.chain.readAccount(input.account, { includeInbox: true }),
-      );
-      if (current.encKey !== doc.intent.encKey)
-        throw new PassportConnectorError(
-          'EncryptionKeyMismatch',
-          'The ACC enc_key changed before original deposit dispatch.',
+  // Preserve a validated sender/lookup ID even when its durable transition acknowledgement fails.
+  let knownTxId: string | undefined;
+  try {
+    for (let contention = 0; contention < 16; contention++) {
+      if (!doc) fail('Original deposit journal is unavailable.');
+      checkIdentity(doc, input, pins);
+      doc = copy(doc);
+      if (doc.txId && !knownTxId) knownTxId = doc.txId;
+      if (doc.phase === 'confirmed') return copy(doc.result!);
+      if (doc.phase === 'prepared') {
+        const current = snapshot(
+          await ports.chain.readAccount(input.account, { includeInbox: true }),
         );
-      if (
-        current.entries.length < doc.intent.initialInbox.count ||
-        prefix(current.entries, doc.intent.initialInbox.count) !== doc.intent.initialInbox.sha256 ||
-        current.entries.includes(doc.intent.entry)
-      )
-        fail('Original pre-dispatch inbox evidence changed.');
-      const dispatching = { ...doc, revision: doc.revision + 1, phase: 'dispatching' as const };
-      const fenceAccepted = await reconcilePort(() =>
-        recovery.journal.compareAndSwap(
-          input.requestId,
-          dispatching.revision - 1,
-          copy(dispatching),
-        ),
-      );
-      if (typeof fenceAccepted !== 'boolean')
-        fail('Original dispatch fence acknowledgement is unavailable; do not send.');
-      if (fenceAccepted === true) {
-        let txId: string;
-        try {
-          const result = await ports.sender.depositShielded({
-            requestId: input.requestId,
-            account: input.account,
-            coin: {
-              nonce: fromHex(doc.intent.nonce),
-              color: fromHex(doc.intent.color),
-              value: BigInt(doc.intent.amount),
-            },
-            entry: fromHex(doc.intent.entry),
-            intentSha256: doc.intentSha256,
-          });
-          if (!validDepositTransactionId(result.txId))
-            throw new Error('Unusable original sender transaction ID');
-          txId = result.txId;
-        } catch {
-          return fail(
-            'Original deposit dispatch is unknown; reconcile this request ID without resending.',
+        if (current.encKey !== doc.intent.encKey)
+          throw new PassportConnectorError(
+            'EncryptionKeyMismatch',
+            'The ACC enc_key changed before original deposit dispatch.',
           );
-        }
-        await reconcilePort(() =>
-          recovery.journal.compareAndSwap(input.requestId, dispatching.revision, {
-            ...dispatching,
-            revision: dispatching.revision + 1,
-            phase: 'submitted',
-            txId,
-          }),
+        if (
+          current.entries.length < doc.intent.initialInbox.count ||
+          prefix(current.entries, doc.intent.initialInbox.count) !==
+            doc.intent.initialInbox.sha256 ||
+          current.entries.includes(doc.intent.entry)
+        )
+          fail('Original pre-dispatch inbox evidence changed.');
+        const dispatching = { ...doc, revision: doc.revision + 1, phase: 'dispatching' as const };
+        const fenceAccepted = await reconcilePort(() =>
+          recovery.journal.compareAndSwap(
+            input.requestId,
+            dispatching.revision - 1,
+            copy(dispatching),
+          ),
         );
-      }
-      doc = await reconcilePort(() => recovery.journal.read(input.requestId));
-      continue;
-    }
-    if (doc.phase === 'dispatching') {
-      const original = copy(doc.intent),
-        digest = doc.intentSha256;
-      const outcome = await reconcilePort(() => recovery.reconcileSender(original, digest));
-      if (
-        !outcome ||
-        typeof outcome !== 'object' ||
-        Array.isArray(outcome) ||
-        outcome.kind !== 'submitted' ||
-        outcome.intentSha256 !== doc.intentSha256 ||
-        !validDepositTransactionId(outcome.txId)
-      )
-        fail('Original deposit dispatch remains unknown; do not resend.');
-      const submitted = {
-        ...doc,
-        revision: doc.revision + 1,
-        phase: 'submitted' as const,
-        txId: outcome.txId,
-      };
-      await reconcilePort(() =>
-        recovery.journal.compareAndSwap(input.requestId, submitted.revision - 1, submitted),
-      );
-      doc = await reconcilePort(() => recovery.journal.read(input.requestId));
-      continue;
-    }
-    let started: number;
-    try {
-      started = now();
-    } catch {
-      return fail('Invalid deposit reconciliation clock.');
-    }
-    if (!Number.isSafeInteger(started) || started < 0)
-      fail('Invalid deposit reconciliation clock.');
-    const deadline = started + confirmationMs;
-    let previousTime = started;
-    let remainingPolls = Math.ceil(confirmationMs / pollMs) + 1;
-    for (;;) {
-      let current: ReturnType<typeof snapshot>;
-      try {
-        current = snapshot(await ports.chain.readAccount(input.account, { includeInbox: true }));
-      } catch {
-        return fail(
-          'Original submitted deposit observation is unavailable; reconcile this request ID without resending.',
-        );
-      }
-      if (
-        current.entries.length < doc.intent.initialInbox.count ||
-        prefix(current.entries, doc.intent.initialInbox.count) !== doc.intent.initialInbox.sha256
-      )
-        fail('Original deposit inbox history is unavailable or reordered.');
-      const originalEntry = doc.intent.entry;
-      const matches = current.entries.flatMap((e, index) => (e === originalEntry ? [index] : []));
-      if (
-        matches.length > 1 ||
-        (matches.length === 1 && matches[0]! < doc.intent.initialInbox.count)
-      )
-        fail('Original deposit inbox evidence is ambiguous.');
-      if (matches.length === 1) {
-        const inboxIndex = matches[0]!;
-        const evidence = {
-          intent: copy(doc.intent),
-          intentSha256: doc.intentSha256,
-          txId: doc.txId!,
-          inboxIndex,
-        };
-        if ((await reconcilePort(() => recovery.confirmTransaction(evidence))) === true) {
-          const result: ShieldedDepositResult = {
-            txId: doc.txId!,
-            inboxIndex,
-            viewingKeyChanged: current.encKey !== doc.intent.encKey,
-          };
-          const confirmed = {
-            ...doc,
-            revision: doc.revision + 1,
-            phase: 'confirmed' as const,
-            result,
-          };
+        if (typeof fenceAccepted !== 'boolean')
+          fail('Original dispatch fence acknowledgement is unavailable; do not send.');
+        if (fenceAccepted === true) {
+          let txId: string;
+          try {
+            const result = await ports.sender.depositShielded({
+              requestId: input.requestId,
+              account: input.account,
+              coin: {
+                nonce: fromHex(doc.intent.nonce),
+                color: fromHex(doc.intent.color),
+                value: BigInt(doc.intent.amount),
+              },
+              entry: fromHex(doc.intent.entry),
+              intentSha256: doc.intentSha256,
+            });
+            if (!validDepositTransactionId(result.txId))
+              throw new Error('Unusable original sender transaction ID');
+            txId = result.txId;
+            knownTxId = txId;
+          } catch {
+            return fail(
+              'Original deposit dispatch is unknown; reconcile this request ID without resending.',
+            );
+          }
           await reconcilePort(() =>
-            recovery.journal.compareAndSwap(input.requestId, confirmed.revision - 1, confirmed),
+            recovery.journal.compareAndSwap(input.requestId, dispatching.revision, {
+              ...dispatching,
+              revision: dispatching.revision + 1,
+              phase: 'submitted',
+              txId,
+            }),
           );
-          doc = await reconcilePort(() => recovery.journal.read(input.requestId));
-          break;
         }
+        doc = await reconcilePort(() => recovery.journal.read(input.requestId));
+        continue;
       }
-      let time: number;
+      if (doc.phase === 'dispatching') {
+        const original = copy(doc.intent),
+          digest = doc.intentSha256;
+        const outcome = await reconcilePort(() => recovery.reconcileSender(original, digest));
+        if (
+          !outcome ||
+          typeof outcome !== 'object' ||
+          Array.isArray(outcome) ||
+          outcome.kind !== 'submitted' ||
+          outcome.intentSha256 !== doc.intentSha256 ||
+          !validDepositTransactionId(outcome.txId)
+        )
+          fail('Original deposit dispatch remains unknown; do not resend.');
+        knownTxId ??= outcome.txId;
+        const submitted = {
+          ...doc,
+          revision: doc.revision + 1,
+          phase: 'submitted' as const,
+          txId: outcome.txId,
+        };
+        await reconcilePort(() =>
+          recovery.journal.compareAndSwap(input.requestId, submitted.revision - 1, submitted),
+        );
+        doc = await reconcilePort(() => recovery.journal.read(input.requestId));
+        continue;
+      }
+      let started: number;
       try {
-        time = now();
+        started = now();
       } catch {
         return fail('Invalid deposit reconciliation clock.');
       }
-      if (!Number.isSafeInteger(time) || time < previousTime)
+      if (!Number.isSafeInteger(started) || started < 0)
         fail('Invalid deposit reconciliation clock.');
-      previousTime = time;
-      if (time >= deadline || --remainingPolls <= 0)
-        fail(
-          'Original deposit transaction or exact inbox entry is unconfirmed; reconcile this request ID.',
-        );
-      await reconcilePort(() => ports.sleep(pollMs));
+      const deadline = started + confirmationMs;
+      let previousTime = started;
+      let remainingPolls = Math.ceil(confirmationMs / pollMs) + 1;
+      for (;;) {
+        let current: ReturnType<typeof snapshot>;
+        try {
+          current = snapshot(await ports.chain.readAccount(input.account, { includeInbox: true }));
+        } catch {
+          return fail(
+            'Original submitted deposit observation is unavailable; reconcile this request ID without resending.',
+          );
+        }
+        if (
+          current.entries.length < doc.intent.initialInbox.count ||
+          prefix(current.entries, doc.intent.initialInbox.count) !== doc.intent.initialInbox.sha256
+        )
+          fail('Original deposit inbox history is unavailable or reordered.');
+        const originalEntry = doc.intent.entry;
+        const matches = current.entries.flatMap((e, index) => (e === originalEntry ? [index] : []));
+        if (
+          matches.length > 1 ||
+          (matches.length === 1 && matches[0]! < doc.intent.initialInbox.count)
+        )
+          fail('Original deposit inbox evidence is ambiguous.');
+        if (matches.length === 1) {
+          const inboxIndex = matches[0]!;
+          const evidence = {
+            intent: copy(doc.intent),
+            intentSha256: doc.intentSha256,
+            txId: doc.txId!,
+            inboxIndex,
+          };
+          if ((await reconcilePort(() => recovery.confirmTransaction(evidence))) === true) {
+            const result: ShieldedDepositResult = {
+              txId: doc.txId!,
+              inboxIndex,
+              viewingKeyChanged: current.encKey !== doc.intent.encKey,
+            };
+            const confirmed = {
+              ...doc,
+              revision: doc.revision + 1,
+              phase: 'confirmed' as const,
+              result,
+            };
+            await reconcilePort(() =>
+              recovery.journal.compareAndSwap(input.requestId, confirmed.revision - 1, confirmed),
+            );
+            doc = await reconcilePort(() => recovery.journal.read(input.requestId));
+            break;
+          }
+        }
+        let time: number;
+        try {
+          time = now();
+        } catch {
+          return fail('Invalid deposit reconciliation clock.');
+        }
+        if (!Number.isSafeInteger(time) || time < previousTime)
+          fail('Invalid deposit reconciliation clock.');
+        previousTime = time;
+        if (time >= deadline || --remainingPolls <= 0)
+          fail(
+            'Original deposit transaction or exact inbox entry is unconfirmed; reconcile this request ID.',
+          );
+        await reconcilePort(() => ports.sleep(pollMs));
+      }
     }
+    return fail('Deposit journal contention remains unsettled.');
+  } catch (error) {
+    if (knownTxId) {
+      const message =
+        error instanceof PassportConnectorError && error.code === 'MutationUnsettled'
+          ? error.message
+          : 'Original deposit reconciliation is unsettled.';
+      fail(
+        `${message} Retain original request ${input.requestId} and transaction ${knownTxId}; do not resend.`,
+      );
+    }
+    throw error;
   }
-  return fail('Deposit journal contention remains unsettled.');
 }
