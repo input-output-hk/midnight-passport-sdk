@@ -178,3 +178,7 @@ checks the installed RC6 client against separately pinned public upstream handle
 simulated-window protocol probe is distinct from native SDK add-device qualification and real
 passkey-provider acceptance. Authorising-only enrollment transfers no viewing secret; unsupported
 hosted consent kinds remain refused. The default demo flow is unchanged.
+
+The next source candidate adds journalled shielded deposit continuation for library hosts. It
+preserves original ciphertext and never automatically replays an unknown dispatch; it does not
+add a shielded deposit button or endpoint to the demo. See the [engineer recovery contract](../site/shielded-deposit-recovery.md).

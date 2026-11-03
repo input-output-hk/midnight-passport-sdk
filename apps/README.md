@@ -414,3 +414,8 @@ The opt-in public signer qualification harness is documented in
 It does not change the demo's default signer or enable unsupported hosted withdrawal/rotation
 consent. An authorising-only new device still needs a separately supported reader-delivery flow
 before it can view shielded holdings. Native acceptance requires an exact-source receipt.
+
+Shielded deposit recovery is a next-candidate library composition with protected host storage and
+read-only original sender/finality evidence. The demo funding service still exposes unshielded
+deposits. No new service, wallet, token, policy or environment variable is enabled by that library
+change; see [the recovery contract](../docs/site/shielded-deposit-recovery.md).

@@ -2,6 +2,23 @@ export * from './codec.js';
 export * from './errors.js';
 export * from './holdings.js';
 export * from './shielded-deposit.js';
+export {
+  resumeShieldedDeposit,
+  shieldedDepositIntentHash,
+  shieldedDepositPinsHash,
+  validateShieldedDepositDocument,
+  readShieldedDepositDocument,
+  shieldedDepositDocumentBytes,
+  SHIELDED_DEPOSIT_DOCUMENT_LIMIT,
+} from './shielded-deposit-recovery.js';
+export type {
+  ShieldedDepositPins,
+  ShieldedDepositIntent,
+  ShieldedDepositDocument,
+  ShieldedDepositJournal,
+  ShieldedDepositRecovery,
+  RecoverableShieldedDepositPorts,
+} from './shielded-deposit-recovery.js';
 export * from './grant-scope.js';
 export * from './grant-opening-check.js';
 export * from './grant-holder.js';
