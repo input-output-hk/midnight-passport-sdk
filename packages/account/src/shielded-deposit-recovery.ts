@@ -79,7 +79,7 @@ const MAX_INBOX = 65_536;
 function fail(message: string): never {
   throw new PassportConnectorError('MutationUnsettled', message, { retryable: false });
 }
-/** A host port failure after the dispatch fence cannot masquerade as a pre-send refusal. */
+/** A journal failure cannot prove absence of an earlier send; keep host diagnostics private. */
 async function reconcilePort<T>(operation: () => Promise<T>): Promise<T> {
   try {
     return await operation();
@@ -89,6 +89,7 @@ async function reconcilePort<T>(operation: () => Promise<T>): Promise<T> {
     );
   }
 }
+// This codec owns validation of untrusted parsed JSON; unknown is narrowed before field access.
 const fields = (v: unknown, keys: string[], required = keys): v is Record<string, unknown> =>
   !!v &&
   typeof v === 'object' &&
@@ -338,7 +339,13 @@ export async function runRecoverableShieldedDeposit(
       if (!doc) fail('Original deposit journal is unavailable.');
       checkIdentity(doc, input, pins);
       doc = copy(doc);
-      if (doc.txId && !knownTxId) knownTxId = doc.txId;
+      if (doc.txId) {
+        if (knownTxId && knownTxId !== doc.txId)
+          fail('Retained deposit transaction differs from the original observed sender result.');
+        knownTxId = doc.txId;
+      }
+      if (knownTxId && doc.phase === 'prepared')
+        fail('An observed deposit transaction cannot return to prepared dispatch admission.');
       if (doc.phase === 'confirmed') return copy(doc.result!);
       if (doc.phase === 'prepared') {
         const current = snapshot(
@@ -404,7 +411,11 @@ export async function runRecoverableShieldedDeposit(
       if (doc.phase === 'dispatching') {
         const original = copy(doc.intent),
           digest = doc.intentSha256;
-        const outcome = await reconcilePort(() => recovery.reconcileSender(original, digest));
+        // A transaction returned for this exact invocation is stronger than a lagging lookup.
+        // Retry only its journal transition, never the wallet call or a different transaction.
+        const outcome = knownTxId
+          ? { kind: 'submitted', intentSha256: digest, txId: knownTxId }
+          : await reconcilePort(() => recovery.reconcileSender(original, digest));
         if (
           !outcome ||
           typeof outcome !== 'object' ||

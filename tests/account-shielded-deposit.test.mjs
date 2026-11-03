@@ -197,3 +197,28 @@ test('one-shot sender uncertainty and later port failures are nonretryable and k
     assert.equal(sends, 1);
   }
 });
+
+test('opaque sender IDs retain dotted and base64 punctuation without altering the result', async () => {
+  const key = x25519.getPublicKey(new Uint8Array(32).fill(9));
+  for (const txId of ['v1.tx:alpha_beta-9', 'v1.+/digest==', 'tx~percent%20id']) {
+    /** @type {Uint8Array|undefined} */ let entry;
+    /** @type {import('../packages/account/dist/index.js').ShieldedDepositPorts} */
+    const ports = {
+      chain: {
+        readAccount: async (_address, options) =>
+          ledger(key, options?.includeInbox ? (entry ? [entry] : []) : undefined),
+      },
+      sealCoin: sealInboxCoin,
+      sender: {
+        depositShielded: async (call) => {
+          entry = call.entry;
+          return { txId };
+        },
+      },
+      sleep: async () => {},
+      pollMs: 1,
+    };
+    const result = await depositShielded(request, ports);
+    assert.equal(result.txId, txId);
+  }
+});

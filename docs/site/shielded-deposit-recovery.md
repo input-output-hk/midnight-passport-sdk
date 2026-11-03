@@ -130,7 +130,7 @@ until independently reconciled. Raw sender errors are not reflected into public 
 private sender diagnostics. This version has no fenced no-send/abandon transition. A prepared
 intent invalidated by a key rotation also requires operator policy rather than re-sealing.
 
-The inbox bound applies to every observation. Later growth beyond65,536 entries can leave an
+The inbox bound applies to every observation. Later growth beyond 65,536 entries can leave an
 original submitted deposit unconfirmed by this bounded helper; retain its ID and original state.
 It is not evidence for a replacement spend. Large-inbox evidence and fenced no-send recovery
 need separate qualification. Authentication detects corruption/context mismatch, not rollback
@@ -156,3 +156,13 @@ or subsequent observation fails, the safe error also retains that original reque
 ID. Preserve it in the host's private reconciliation record. A later empty sender lookup cannot
 prove the send did not happen. Durable sender records remain mandatory; a public error is not
 a replacement journal and this helper never fabricates a missing submitted revision.
+
+Within an invocation, an observed sender/lookup transaction ID pins all later journal transitions.
+A transient submitted-CAS miss retries only the original transition using that known ID, without
+requiring a lagging lookup and without another wallet call. A conflicting retained transaction
+refuses before finality; the error keeps the first observed ID. Process restarts still require
+protected retained state or the original sender's durable records.
+
+Sender transaction IDs are opaque bounded public identifiers (1–256 characters). Alphanumeric
+characters and `:._~+/%=-` punctuation are supported, including dotted and base64 forms; invalid
+reply text is not exposed as an identifier. Hosts retain original raw sender diagnostics privately.
