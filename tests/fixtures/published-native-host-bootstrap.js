@@ -1,5 +1,6 @@
 // Child of the audited opt-in native runner. Private fixture material never leaves this root.
 import assert from 'node:assert/strict';
+import { nativeWorkerConfiguration } from './native-worker-inputs.mjs';
 import {
   createReadStream,
   readFileSync,
@@ -24,8 +25,8 @@ const keyDir = process.env.PASSPORT_KEY_DIR;
 assert.ok(sdk && keyDir);
 assert.equal(lstatSync(keyDir).isSymbolicLink(), false);
 const source = JSON.parse(readFileSync(join(root, 'native-inputs.json'), 'utf8'));
-assert.equal(source.kind, 'published-host-native-inputs');
-assert.equal(source.keyDirSha256, createHash('sha256').update(keyDir).digest('hex'));
+const runtime = nativeWorkerConfiguration(source, process.env);
+assert.equal(runtime.keyDir, keyDir);
 const { m } = await import('@laceio/sdk/experimental');
 const { PRF_LABEL_AUTHORISER, PRF_LABEL_ROOT, prfSalt } =
   await import('@input-output-hk/mn-passport-keys');
@@ -303,7 +304,7 @@ let extension = {};
 if (source.profile === 'hosted-authorising') {
   const { createPublicSignerHarness } = await import('./public-signer-harness.js');
   const publicSource = await import(
-    pathToFileURL(join(source.signer.root, 'bundle/handlers.mjs')).href
+    pathToFileURL(join(runtime.signerRoot, 'bundle/handlers.mjs')).href
   );
   signerHarness = await createPublicSignerHarness({
     source: publicSource,

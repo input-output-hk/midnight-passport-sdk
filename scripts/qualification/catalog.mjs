@@ -93,6 +93,14 @@ export const SCENARIOS = Object.freeze({
     establishes:
       'Actual published client/seams and pinned public-source handlers/server over native MessageChannel with simulated windows and synthetic PRF. SDK authorising-only add uses independently verified real signature against fake chain; denial/origin/scope/expiry/cancellation guards. No browser/provider/native acceptance.',
   },
+  'consumer-public-signer-integrity': {
+    tier: 'published-consumer',
+    command: [node, 'scripts/qualify-public-signer-integrity.mjs'],
+    requires: ['PASSPORT_SIGNER_ROOT', 'PASSPORT_SIGNER_SHA256', 'PASSPORT_SIGNER_INTEGRITY_ROOT'],
+    timeoutMs: 4 * 60000,
+    establishes:
+      'Unmodified copied root accepted, then six preserved copied-root tamper controls refused for their expected reasons before any bundle import. Original signer and installed consumer reverified. No browser, native proof or provider claim.',
+  },
   'consumer-public-signer-browser': {
     tier: 'published-consumer',
     command: [node, 'scripts/qualify-public-signer-browser.mjs'],
@@ -105,7 +113,7 @@ export const SCENARIOS = Object.freeze({
     ],
     timeoutMs: 4 * 60000,
     establishes:
-      'Actual Chromium cross-origin popup/MessagePort, virtual WebAuthn PRF, published client and pinned public handlers. Independently verified authorising-only SDK signature against fake chain; seven initial boundary cases. No native/browser combined proof, real provider, production page, reader delivery or full compatibility claim.',
+      'Actual Chromium cross-origin popup/MessagePort, virtual WebAuthn PRF, published client and pinned public handlers. Independently verified authorising-only SDK signature against fake chain; declared isolated scope, source, flow, concurrency, error, navigation and reconnect boundaries. No native/browser combined proof, real provider, production page, reader delivery or full compatibility claim.',
   },
   'consumer-public-signer-native': {
     tier: 'proof-localnet',

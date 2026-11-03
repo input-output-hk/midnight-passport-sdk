@@ -23,6 +23,9 @@ import { verifyPublicSigner, signerBundleTree } from './consumer/public-signer-s
 import { installedTreeIdentity, runtimeTreeIdentity } from './consumer/host-retained.mjs';
 import { consumerSha256 } from './consumer-inputs.mjs';
 import { workspaceIdentity } from './qualification/receipt.mjs';
+import { BrowserOwnership } from './qualification/browser-ownership.mjs';
+import { browserDeadline } from './qualification/browser-deadline.mjs';
+export { browserDeadline } from './qualification/browser-deadline.mjs';
 const repository = resolve(import.meta.dirname, '..');
 /** @param {string} requested @param {string} consumer */
 export function browserOutput(requested, consumer) {
@@ -85,29 +88,6 @@ async function serveBrowser(root, allowedOrigin = '') {
     },
   };
 }
-/** Bound an async browser action; context shutdown cancels any remaining page work.
- * @template T @param {()=>Promise<T>} operation @param {number} [timeoutMs] @param {AbortSignal} [signal]
- */
-export async function browserDeadline(operation, timeoutMs = 30000, signal) {
-  /** @type {NodeJS.Timeout|undefined} */ let timer;
-  /** @type {(()=>void)|undefined} */ let onAbort;
-  try {
-    if (signal?.aborted) throw Error('Browser qualification interrupted');
-    return await Promise.race([
-      operation(),
-      new Promise((_, reject) => {
-        onAbort = () => reject(Error('Browser qualification interrupted'));
-        signal?.addEventListener('abort', onAbort, { once: true });
-      }),
-      new Promise((_, reject) => {
-        timer = setTimeout(() => reject(Error('Browser case deadline exceeded')), timeoutMs);
-      }),
-    ]);
-  } finally {
-    clearTimeout(timer);
-    if (onAbort) signal?.removeEventListener('abort', onAbort);
-  }
-}
 /** Hash the actual framework, helpers and resources; bind internal symlinks without following them.
  * @param {string} requested
  */
@@ -136,25 +116,6 @@ export function browserRuntimeIdentity(requested) {
   walk('');
   assert.ok(files > 0);
   return { path: root, files, links, treeSha256: hash.digest('hex') };
-}
-/** Close every owned resource even if another close rejects or hangs.
- * @param {Array<{name:string,close:()=>Promise<unknown>}>} actions @param {number} [timeoutMs]
- */
-export async function browserCleanup(actions, timeoutMs = 5000) {
-  /** @type {Array<{name:string,closed:boolean,errorSha256?:string}>} */ const results = [];
-  for (const action of actions) {
-    try {
-      await browserDeadline(action.close, timeoutMs);
-      results.push({ name: action.name, closed: true });
-    } catch (error) {
-      results.push({
-        name: action.name,
-        closed: false,
-        errorSha256: consumerSha256(String(error)),
-      });
-    }
-  }
-  return results;
 }
 /** @param {NodeJS.ProcessEnv} [env] */
 export async function runBrowserSigner(env = process.env) {
@@ -204,6 +165,10 @@ export async function runBrowserSigner(env = process.env) {
   );
   const entry = join(repository, 'tests/fixtures/public-signer-browser.js');
   copyFileSync(entry, join(output, 'main.js'));
+  copyFileSync(
+    join(repository, 'scripts/qualification/secret-scan.mjs'),
+    join(output, 'secret-scan.mjs'),
+  );
   cpSync(join(signer, 'bundle'), join(output, 'prepared'), {
     recursive: true,
     errorOnExist: true,
@@ -221,7 +186,7 @@ export async function runBrowserSigner(env = process.env) {
   );
   writeFileSync(
     join(output, 'vite.config.mjs'),
-    `import {defineConfig}from'vite';import wasm from'vite-plugin-wasm';import {createRequire}from'node:module';import {dirname,join}from'node:path';const r=createRequire(import.meta.resolve('@input-output-hk/mn-passport-keys'));const b=createRequire(${JSON.stringify(join(polyfills, 'package.json'))} );const p=createRequire(new URL('../node_modules/.pnpm/node_modules/resolve.cjs',import.meta.url));export default defineConfig({define:{global:'globalThis'},resolve:{alias:{[p.resolve('@midnightntwrk/ledger-v9')]:join(dirname(p.resolve('@midnightntwrk/ledger-v9')),'midnight_ledger_wasm_v9.js'),'@noble/curves/misc.js':r.resolve('@noble/curves/misc.js'),'process/browser':p.resolve('process/browser.js'),'events':b.resolve('events/'),'assert':b.resolve('assert/'),'stream':b.resolve('stream-browserify'),'buffer':p.resolve('buffer/'),'rxjs/operators':p.resolve('rxjs/operators'),'rxjs/fetch':p.resolve('rxjs/fetch'),'rxjs':p.resolve('rxjs')}},plugins:[wasm()],build:{target:'esnext'}});\n`,
+    `import {defineConfig}from'vite';import wasm from'vite-plugin-wasm';import {createRequire}from'node:module';import {dirname,join}from'node:path';const r=createRequire(import.meta.resolve('@input-output-hk/mn-passport-keys'));const b=createRequire(${JSON.stringify(join(polyfills, 'package.json'))} );const p=createRequire(new URL('../node_modules/.pnpm/node_modules/resolve.cjs',import.meta.url));export default defineConfig({define:{global:'globalThis'},resolve:{alias:{[p.resolve('@midnightntwrk/ledger-v9')]:join(dirname(p.resolve('@midnightntwrk/ledger-v9')),'midnight_ledger_wasm_v9.js'),'@noble/curves/misc.js':r.resolve('@noble/curves/misc.js'),'process/browser':p.resolve('process/browser.js'),'events':b.resolve('events/'),'assert':b.resolve('assert/'),'stream':b.resolve('stream-browserify'),'node:buffer':p.resolve('buffer/'),'buffer':p.resolve('buffer/'),'rxjs/operators':p.resolve('rxjs/operators'),'rxjs/fetch':p.resolve('rxjs/fetch'),'rxjs':p.resolve('rxjs')}},plugins:[wasm()],build:{target:'esnext'}});\n`,
     { flag: 'wx', mode: 0o600 },
   );
   /** @type {string[]} */
@@ -237,18 +202,28 @@ export async function runBrowserSigner(env = process.env) {
   let stage = 'build',
     popupOpened = false,
     virtualAuthenticator = false;
+  const ownership = new BrowserOwnership([
+    'context',
+    'browser',
+    'dapp-server',
+    'signer-server',
+    'attacker-server',
+  ]);
   const aborted = new AbortController();
   const interrupt = () => aborted.abort();
   process.on('SIGTERM', interrupt);
   process.on('SIGINT', interrupt);
   let browserVersion;
-  /** @type {Awaited<ReturnType<typeof browserCleanup>>} */ let cleanup = [];
+  /** @type {Awaited<ReturnType<BrowserOwnership['cleanup']>>} */ let cleanup = [];
+  let settledStage, settledCases;
   let failureSha256,
     verdict = 'failed';
   /** @param {string} name @param {()=>Promise<void>} fn */
   const check = async (name, fn) => {
+    ownership.guard();
     stage = name;
-    await browserDeadline(fn);
+    await browserDeadline(fn, 30000, aborted.signal);
+    ownership.guard();
     cases.push(name);
   };
   try {
@@ -262,18 +237,35 @@ export async function runBrowserSigner(env = process.env) {
         writeFileSync(join(output, 'build.private.log'), build, { flag: 'wx', mode: 0o600 });
         const assets = signerBundleTree(join(output, 'dist'));
         stage = 'serve';
-        dapp = await serveBrowser(join(output, 'dist'));
-        signerServer = await serveBrowser(join(output, 'dist'), dapp.origin);
+        dapp = await ownership.acquire(
+          'dapp-server',
+          () => serveBrowser(join(output, 'dist')),
+          (s) => s.close(),
+        );
+        signerServer = await ownership.acquire(
+          'signer-server',
+          () => serveBrowser(join(output, 'dist'), dapp.origin),
+          (s) => s.close(),
+        );
         stage = 'launch';
         // This runner owns signal cleanup; Playwright's default handlers would race it.
-        browser = await chromium.launch({
-          executablePath: chrome,
-          headless: true,
-          handleSIGINT: false,
-          handleSIGTERM: false,
-        });
+        browser = await ownership.acquire(
+          'browser',
+          () =>
+            chromium.launch({
+              executablePath: chrome,
+              headless: true,
+              handleSIGINT: false,
+              handleSIGTERM: false,
+            }),
+          (b) => b.close(),
+        );
         browserVersion = browser.version();
-        context = await browser.newContext();
+        context = await ownership.acquire(
+          'context',
+          () => browser.newContext(),
+          (c) => c.close(),
+        );
         context.setDefaultTimeout(20000);
         if (fault === 'interrupt-after-launch') process.kill(process.pid, 'SIGTERM');
         context.on('page', (/** @type {any} */ p) =>
@@ -286,7 +278,9 @@ export async function runBrowserSigner(env = process.env) {
         await page.goto(dapp.origin + '/dapp/');
         await page.waitForFunction(() => /** @type {any} */ (globalThis).qualification?.ready);
         await page.evaluate((/** @type {string} */ url) => {
-          /** @type {any} */ (globalThis).qualification.signerUrl = url;
+          const q = /** @type {any} */ (globalThis).qualification;
+          q.signerUrl = url;
+          q.deferConnect = true;
         }, signerServer.origin + '/signer/');
         const popupPromise = context.waitForEvent('page');
         await page.locator('#start').click();
@@ -306,15 +300,56 @@ export async function runBrowserSigner(env = process.env) {
           },
         });
         virtualAuthenticator = true;
+        /** @type {{x:string,y:string}|undefined} */ let originalPoint;
         let asserted = 0;
         cdp.on('WebAuthn.credentialAsserted', () => asserted++);
         stage = 'credential-enroll';
         await popup.locator('#start').click();
-        await page.waitForFunction(
-          () => /** @type {any} */ (globalThis).qualification.connected,
-          {},
-          { timeout: 30000 },
-        );
+        await popup.waitForFunction(() => /** @type {any} */ (globalThis).qualification?.ready);
+        await check('same-origin non-opener hello cannot capture the signer port', async () => {
+          const frameReady = popup.waitForEvent(
+            'framenavigated',
+            (/** @type {any} */ f) => f.url() === dapp.origin + '/dapp/?attack-hello=1',
+          );
+          await popup.evaluate((/** @type {string} */ origin) => {
+            const document = /** @type {any} */ (globalThis).document;
+            const frame = document.createElement('iframe');
+            frame.src = origin + '/dapp/?attack-hello=1';
+            frame.id = 'wrong-source';
+            document.body.append(frame);
+          }, dapp.origin);
+          const frame = await frameReady;
+          assert.ok(frame);
+          await frame.waitForFunction(
+            () => /** @type {any} */ (globalThis).qualification?.attackSent,
+          );
+          await popup.waitForFunction(
+            () => /** @type {any} */ (globalThis).qualification.nonOpenerHellos === 1,
+          );
+          assert.equal(
+            await popup.evaluate(
+              () => /** @type {any} */ (globalThis).qualification.nonOpenerOrigin,
+            ),
+            dapp.origin,
+          );
+          assert.deepEqual(
+            await frame.evaluate(() => /** @type {any} */ (globalThis).qualification.attackReplies),
+            [],
+          );
+          assert.equal(
+            await popup.evaluate(
+              () => /** @type {any} */ (globalThis).qualification.approvals.length,
+            ),
+            0,
+          );
+          assert.equal(asserted, 0);
+          await page.evaluate(() => /** @type {any} */ (globalThis).qualification.connectNow());
+          await page.waitForFunction(() => /** @type {any} */ (globalThis).qualification.connected);
+          await frame.evaluate(() => /** @type {any} */ (globalThis).qualification.closeAttack());
+          await popup.evaluate(() =>
+            /** @type {any} */ (globalThis).document.querySelector('#wrong-source')?.remove(),
+          );
+        });
         await check(
           'real popup completes cross-origin transferred-port handshake and virtual PRF',
           async () => {
@@ -323,6 +358,7 @@ export async function runBrowserSigner(env = process.env) {
               const p = await /** @type {any} */ (globalThis).qualification.signin();
               return { x: p.x.toString(), y: p.y.toString() };
             });
+            originalPoint = point;
             assert.match(point.x, /^\d+$/);
             assert.ok(asserted > 0);
             assert.equal(
@@ -423,6 +459,223 @@ export async function runBrowserSigner(env = process.env) {
             );
           },
         );
+        for (const [name, payload] of [
+          ['missing flow', {}],
+          [
+            'malformed account descriptor',
+            {
+              flow: {
+                kind: 'add-device',
+                account: 'not-an-account',
+                commitmentHex: 'dc'.repeat(32),
+              },
+            },
+          ],
+        ])
+          await check(name + ' is refused before PRF or chain work', async () => {
+            const before = asserted;
+            const code = await page.evaluate(async (/** @type {any} */ payload) => {
+              try {
+                await /** @type {any} */ (globalThis).qualification.request('flow-open', payload);
+                return 'admitted';
+              } catch (error) {
+                return /** @type {any} */ (error).code;
+              }
+            }, payload);
+            assert.equal(code, 'malformed-payload');
+            assert.equal(asserted, before);
+          });
+        for (const field of ['account', 'circuit', 'commitment'])
+          await check('approved flow refuses only changed ' + field, async () => {
+            assert.equal(
+              await page.evaluate(
+                (/** @type {string} */ field) =>
+                  /** @type {any} */ (globalThis).qualification.scopeProbe(field),
+                field,
+              ),
+              'flow-scope',
+            );
+            assert.equal(
+              await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
+              1,
+            );
+          });
+        await check('concurrent opening is busy before a second approval or PRF', async () => {
+          const before = asserted;
+          const approvals = await popup.evaluate(
+            () => /** @type {any} */ (globalThis).qualification.approvals.length,
+          );
+          await popup.evaluate(() => {
+            /** @type {any} */ (globalThis).qualification.holdApproval = true;
+          });
+          await page.evaluate(() => {
+            const q = /** @type {any} */ (globalThis).qualification;
+            q.pending = q
+              .request('flow-open', { flow: { kind: 'sign-in' } })
+              .then(() => 'admitted')
+              .catch((/** @type {any} */ e) => e.code);
+          });
+          await popup.waitForFunction(
+            () =>
+              typeof (/** @type {any} */ (globalThis).qualification.releaseApproval) === 'function',
+          );
+          const code = await page.evaluate(async () => {
+            try {
+              await /** @type {any} */ (globalThis).qualification.request('flow-open', {
+                flow: { kind: 'sign-in' },
+              });
+              return 'admitted';
+            } catch (error) {
+              return /** @type {any} */ (error).code;
+            }
+          });
+          assert.equal(code, 'signer-busy');
+          assert.equal(asserted, before);
+          assert.equal(
+            await popup.evaluate(
+              () => /** @type {any} */ (globalThis).qualification.approvals.length,
+            ),
+            approvals + 1,
+          );
+          await popup.evaluate(() => {
+            const q = /** @type {any} */ (globalThis).qualification;
+            q.decision = 'reject';
+            q.holdApproval = false;
+            q.releaseApproval();
+            q.releaseApproval = undefined;
+          });
+          assert.equal(
+            await page.evaluate(() => /** @type {any} */ (globalThis).qualification.pending),
+            'ceremony-cancelled',
+          );
+          await popup.evaluate(() => {
+            /** @type {any} */ (globalThis).qualification.decision = 'approve';
+          });
+        });
+        await check(
+          'callback failure closes failed flow and never replays chain work',
+          async () => {
+            assert.equal(
+              await page.evaluate(() =>
+                /** @type {any} */ (globalThis).qualification.callbackFailure(),
+              ),
+              true,
+            );
+            const code = await page.evaluate(async () => {
+              try {
+                await /** @type {any} */ (globalThis).qualification.request(
+                  'device-public-key',
+                  {},
+                );
+                return 'admitted';
+              } catch (error) {
+                return /** @type {any} */ (error).code;
+              }
+            });
+            assert.equal(code, 'key-session-required');
+            assert.equal(
+              await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
+              1,
+            );
+          },
+        );
+        await check(
+          'declared PRF encodings stay in signer origin across public responses',
+          async () => {
+            const scan = await popup.evaluate(() => {
+              const q = /** @type {any} */ (globalThis).qualification;
+              return {
+                scanned: q.scannedResponses,
+                secrets: q.protectedRepresentations,
+                failed: q.secretFailure,
+              };
+            });
+            assert.ok(scan.scanned > 0 && scan.secrets > 0);
+            assert.equal(scan.failed, false);
+            assert.equal(
+              await page.evaluate(() =>
+                /** @type {any} */ (globalThis).qualification.originIsolationProbe(),
+              ),
+              true,
+            );
+          },
+        );
+        await check(
+          'signer navigation leaves the old transport inert until explicit fresh-client reconnect',
+          async () => {
+            const before = asserted;
+            await popup.goto(signerServer.origin + '/signer/?navigated=1');
+            await popup.waitForFunction(() => /** @type {any} */ (globalThis).qualification?.ready);
+            // The pinned public client has no navigation/port-close timeout. Measure this
+            // limitation instead of claiming an automatic refusal. Observe an actual old-port
+            // request, keep it pending through fresh-client reconnect, and settle it at popup close.
+            await page.evaluate(() => {
+              const q = /** @type {any} */ (globalThis).qualification;
+              q.navigationOutcome = 'pending';
+              q.navigationPending = q
+                .request('flow-open', { flow: { kind: 'sign-in' } })
+                .then(() => {
+                  q.navigationOutcome = 'admitted';
+                })
+                .catch((/** @type {any} */ error) => {
+                  q.navigationOutcome = error.code;
+                });
+            });
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            assert.equal(
+              await page.evaluate(
+                () => /** @type {any} */ (globalThis).qualification.navigationOutcome,
+              ),
+              'pending',
+            );
+            assert.equal(asserted, before);
+            assert.equal(
+              await popup.evaluate(
+                () => /** @type {any} */ (globalThis).qualification.approvals.length,
+              ),
+              0,
+            );
+            assert.equal(
+              await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
+              1,
+            );
+          },
+        );
+        await check(
+          'explicit fresh-client reconnect requires consent and preserves virtual device key',
+          async () => {
+            await page.evaluate(() => {
+              /** @type {any} */ (globalThis).qualification.deferConnect = false;
+            });
+            await page.locator('#start').click();
+            await page.waitForFunction(
+              () => /** @type {any} */ (globalThis).qualification.connected,
+            );
+            const before = asserted;
+            const point = await page.evaluate(async () => {
+              const p = await /** @type {any} */ (globalThis).qualification.signin();
+              return { x: p.x.toString(), y: p.y.toString() };
+            });
+            assert.deepEqual(point, originalPoint);
+            assert.equal(
+              await page.evaluate(
+                () => /** @type {any} */ (globalThis).qualification.navigationOutcome,
+              ),
+              'pending',
+            );
+            assert.ok(asserted > before);
+            assert.equal(
+              await page.evaluate(() => /** @type {any} */ (globalThis).qualification.calls),
+              1,
+            );
+            assert.equal(
+              await popup.evaluate(
+                () => /** @type {any} */ (globalThis).qualification.approvals.at(-1)?.flow?.kind,
+              ),
+              'sign-in',
+            );
+          },
+        );
         await check('expired browser session refuses a late operation', async () => {
           await page.evaluate(() => {
             const q = /** @type {any} */ (globalThis).qualification;
@@ -464,6 +717,16 @@ export async function runBrowserSigner(env = process.env) {
             );
             // Published SignerClosedError uses the ceremony-cancelled code.
             assert.equal(code, 'ceremony-cancelled');
+            await page.evaluate(() => /** @type {any} */ (globalThis).qualification.close());
+            await page.evaluate(
+              () => /** @type {any} */ (globalThis).qualification.navigationPending,
+            );
+            assert.equal(
+              await page.evaluate(
+                () => /** @type {any} */ (globalThis).qualification.navigationOutcome,
+              ),
+              'ceremony-cancelled',
+            );
             const later = await page.evaluate(async () => {
               try {
                 await /** @type {any} */ (globalThis).qualification.request(
@@ -483,7 +746,11 @@ export async function runBrowserSigner(env = process.env) {
           },
         );
         await check('actual wrong opener origin is refused before consent and PRF', async () => {
-          attackerServer = await serveBrowser(join(output, 'dist'));
+          attackerServer = await ownership.acquire(
+            'attacker-server',
+            () => serveBrowser(join(output, 'dist')),
+            (s) => s.close(),
+          );
           const attacker = await context.newPage();
           await attacker.goto(attackerServer.origin + '/dapp/');
           await attacker.waitForFunction(
@@ -527,6 +794,8 @@ export async function runBrowserSigner(env = process.env) {
           await attacker.evaluate(() => /** @type {any} */ (globalThis).qualification.close());
           await attacker.close();
         });
+        ownership.guard();
+        stage = 'final-integrity';
         verifyPublicSigner(signer, pin, repository);
         assert.deepEqual(signerBundleTree(join(output, 'prepared')), input.bundle);
         assert.deepEqual(browserRuntimeIdentity(framework), frameworkIdentity);
@@ -535,6 +804,10 @@ export async function runBrowserSigner(env = process.env) {
         assert.equal(
           consumerSha256(readFileSync(entry)),
           consumerSha256(readFileSync(join(output, 'main.js'))),
+        );
+        assert.equal(
+          consumerSha256(readFileSync(join(output, 'secret-scan.mjs'))),
+          consumerSha256(readFileSync(join(repository, 'scripts/qualification/secret-scan.mjs'))),
         );
         assert.deepEqual(installedTreeIdentity(polyfills), polyfillIdentity);
         assert.equal(
@@ -552,8 +825,17 @@ export async function runBrowserSigner(env = process.env) {
           assets,
           browserVersion: browser.version(),
           chromeSha256,
-          frameworkIdentity,
-          playwrightIdentity,
+          frameworkIdentity: {
+            files: frameworkIdentity.files,
+            links: frameworkIdentity.links,
+            treeSha256: frameworkIdentity.treeSha256,
+            pathSha256: consumerSha256(frameworkIdentity.path),
+          },
+          playwrightIdentity: {
+            files: playwrightIdentity.files,
+            treeSha256: playwrightIdentity.treeSha256,
+            pathSha256: consumerSha256(playwrightIdentity.path),
+          },
           polyfillLockSha256,
           polyfillIdentity,
         };
@@ -564,6 +846,10 @@ export async function runBrowserSigner(env = process.env) {
     verdict = 'passed';
     stage = 'complete';
   } catch (error) {
+    ownership.settled = true;
+    aborted.abort();
+    settledStage = stage;
+    settledCases = [...cases];
     failureSha256 = consumerSha256(String(error));
     writeFileSync(
       join(output, 'failure.private.log'),
@@ -574,14 +860,8 @@ export async function runBrowserSigner(env = process.env) {
       },
     );
   } finally {
-    cleanup = await browserCleanup([
-      { name: 'context', close: async () => context?.close() },
-      { name: 'browser', close: async () => browser?.close() },
-      { name: 'dapp-server', close: async () => dapp?.close() },
-      { name: 'signer-server', close: async () => signerServer?.close() },
-      { name: 'attacker-server', close: async () => attackerServer?.close() },
-    ]);
-    if (cleanup.some((c) => !c.closed)) verdict = 'failed';
+    cleanup = await ownership.cleanup();
+    if (cleanup.some((c) => c.closed === false)) verdict = 'failed';
     process.off('SIGTERM', interrupt);
     process.off('SIGINT', interrupt);
   }
@@ -594,8 +874,8 @@ export async function runBrowserSigner(env = process.env) {
     signerConfigSha256: pin,
     publicSource: input.source.commit,
     consumerConfigSha256: input.consumer.configSha256,
-    completedCases: [...cases],
-    stage,
+    completedCases: settledCases ?? [...cases],
+    stage: settledStage ?? stage,
     cleanup,
     result: verdict === 'passed' ? result : undefined,
     failureSha256,

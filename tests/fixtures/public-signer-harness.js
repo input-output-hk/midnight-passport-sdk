@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createRemotePasskeySigner, createRemotePassportSeams } from '@laceio/sdk/experimental';
+import { assertNoSecretMaterial } from './secret-scan.mjs';
 import { createSignerWindowPair, SIGNER_DAPP_ORIGIN, SIGNER_URL } from './signer-windows.mjs';
 const { of, defer } = createRequire(import.meta.resolve('@laceio/sdk/experimental'))('rxjs');
 const digest = (value) =>
@@ -81,25 +82,7 @@ export async function createPublicSignerHarness({
     ...(timers ? { timers } : {}),
   });
   const raw = createRemotePasskeySigner({ signerUrl: SIGNER_URL, host: windows.dappHost });
-  const scan = (value) => {
-    const text =
-      JSON.stringify(value, (_, v) =>
-        typeof v === 'bigint'
-          ? `${v}n`
-          : v instanceof Uint8Array
-            ? Buffer.from(v).toString('hex')
-            : v,
-      ) ?? '';
-    for (const secret of forbiddenSecrets) {
-      assert.equal(
-        text.toLowerCase().includes(secret.toLowerCase()),
-        false,
-        'PRF secret crossed the signer protocol',
-      );
-      const array = JSON.stringify([...Buffer.from(secret, 'hex')]);
-      assert.equal(text.includes(array), false, 'PRF bytes crossed the signer protocol');
-    }
-  };
+  const scan = (value) => assertNoSecretMaterial(value, forbiddenSecrets);
   const client = {
     ...raw,
     request: async (kind, payload) => {
@@ -112,6 +95,12 @@ export async function createPublicSignerHarness({
         Object.assign(record, { outcome: 'completed', resultSha256: digest(result) });
         return result;
       } catch (error) {
+        scan({
+          code: error?.code,
+          name: error?.name,
+          message: error?.message,
+          details: error?.details,
+        });
         Object.assign(record, {
           outcome: 'failed',
           code: typeof error?.code === 'string' ? error.code : error?.name,

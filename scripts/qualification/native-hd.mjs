@@ -11,6 +11,10 @@ export async function loadNativeHdModule(hostEntry) {
   assert.equal(manifest.exports['.'].import, './dist/index.js');
   return import(pathToFileURL(join(root, manifest.exports['.'].import)).href);
 }
+export const STANDALONE_SPONSOR_PUBLIC_KEYS = Object.freeze({
+  coinPublicKey: '1bd4f827be97ff013c4a702e4b08f30ec378728a54670cf7cc92cb9b1a14eff6',
+  encryptionPublicKey: 'b62e630a030171b5e11af2487f0103e650cc703f284d0a478b2a3abdf9715b70',
+});
 /** Public standalone genesis seed only; this is not a user-wallet derivation API.
  * @param {{HDWallet:{fromSeed(seed:Uint8Array):any},Roles:{Zswap:any}}} hdModule
  * @param {{ZswapSecretKeys:{fromSeed(seed:Uint8Array):{coinPublicKey:string,encryptionPublicKey:string,clear():void}}}} ledger
@@ -28,6 +32,10 @@ export function nativeSponsorKeys(hdModule, ledger) {
     keys = ledger.ZswapSecretKeys.fromSeed(derived.keys[hdModule.Roles.Zswap]);
     assert.match(keys.coinPublicKey, /^[a-f0-9]{64}$/);
     assert.match(keys.encryptionPublicKey, /^[a-f0-9]{64}$/);
+    assert.deepEqual(
+      { coinPublicKey: keys.coinPublicKey, encryptionPublicKey: keys.encryptionPublicKey },
+      STANDALONE_SPONSOR_PUBLIC_KEYS,
+    );
     return {
       coinPublicKey: keys.coinPublicKey,
       encryptionPublicKey: keys.encryptionPublicKey,

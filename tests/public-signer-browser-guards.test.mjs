@@ -6,7 +6,6 @@ import { test } from 'node:test';
 import {
   browserOutput,
   browserDeadline,
-  browserCleanup,
   browserRuntimeIdentity,
 } from '../scripts/qualify-public-signer-browser.mjs';
 
@@ -45,31 +44,32 @@ test('browser action deadline rejects stalled work and preserves original errors
 
 test('cleanup attempts all owned resources and records rejection or deadline without raw errors', async () => {
   /** @type {string[]} */ const visited = [];
-  const report = await browserCleanup(
-    [
-      {
-        name: 'reject',
-        close: async () => {
-          visited.push('reject');
-          throw Error('private failure');
-        },
+  const { BrowserOwnership } = await import('../scripts/qualification/browser-ownership.mjs');
+  const actions = [
+    {
+      name: 'reject',
+      close: async () => {
+        visited.push('reject');
+        throw Error('private failure');
       },
-      {
-        name: 'hang',
-        close: () => {
-          visited.push('hang');
-          return new Promise(() => {});
-        },
+    },
+    {
+      name: 'hang',
+      close: () => {
+        visited.push('hang');
+        return new Promise(() => {});
       },
-      {
-        name: 'last',
-        close: async () => {
-          visited.push('last');
-        },
+    },
+    {
+      name: 'last',
+      close: async () => {
+        visited.push('last');
       },
-    ],
-    5,
-  );
+    },
+  ];
+  const owner = new BrowserOwnership(actions.map((a) => a.name));
+  for (const action of actions) await owner.acquire(action.name, async () => null, action.close);
+  const report = await owner.cleanup(5);
   assert.deepEqual(visited, ['reject', 'hang', 'last']);
   assert.deepEqual(
     report.map((r) => r.closed),
@@ -109,4 +109,75 @@ test('browser runtime identity binds resources and contained links, refusing an 
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('late browser acquisition is closed after settlement without claiming absent resources closed', async () => {
+  const { BrowserOwnership } = await import('../scripts/qualification/browser-ownership.mjs');
+  const owner = new BrowserOwnership(['late', 'absent']);
+  /** @type {((value:unknown)=>void)|undefined} */ let release;
+  let closed = 0;
+  const acquisition = owner.acquire(
+    'late',
+    () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    async () => {
+      closed++;
+    },
+  );
+  const refused = assert.rejects(acquisition, /settled/);
+  const report = await owner.cleanup(20);
+  assert.deepEqual(
+    report.map((r) => [r.status, r.closed]),
+    [
+      ['pending', false],
+      ['not-created', null],
+    ],
+  );
+  assert.throws(() => owner.guard(), /settled/);
+  assert.ok(release);
+  release('resource');
+  await refused;
+  assert.equal(closed, 1);
+  const final = await owner.cleanup();
+  assert.deepEqual(
+    final.map((r) => [r.status, r.closed]),
+    [
+      ['closed', true],
+      ['not-created', null],
+    ],
+  );
+});
+
+test('late acquisition and overlapping cleanup share exactly one close', async () => {
+  const { BrowserOwnership } = await import('../scripts/qualification/browser-ownership.mjs');
+  const owner = new BrowserOwnership(['late']);
+  /** @type {{acquired?:()=>void,finish?:()=>void}} */ const controls = {};
+  let closes = 0;
+  const pending = owner.acquire(
+    'late',
+    () =>
+      new Promise((resolve) => {
+        controls.acquired = () => resolve(null);
+      }),
+    async () => {
+      closes++;
+      await new Promise((resolve) => {
+        controls.finish = () => resolve(null);
+      });
+    },
+  );
+  const refused = assert.rejects(pending, /settled/);
+  await owner.cleanup();
+  assert.ok(controls.acquired);
+  controls.acquired();
+  await new Promise((resolve) => setImmediate(resolve));
+  const cleanup = owner.cleanup();
+  assert.equal(closes, 1);
+  assert.ok(controls.finish);
+  controls.finish();
+  await refused;
+  assert.equal((await cleanup)[0]?.status, 'closed');
+  assert.equal(closes, 1);
 });

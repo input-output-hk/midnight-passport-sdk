@@ -1,0 +1,100 @@
+{
+  "source": {
+    "commit": "47938b5644a402f5d59922dd9174c871f5635a43",
+    "dirty": false,
+    "workspaceSha256": "e9b7d5775b12449d1e5b34d4e534046dd6dc6b040afd63311be9a058a3986cc7",
+    "fileCount": 1396
+  },
+  "gate": {
+    "pass": 1060,
+    "fail": 0,
+    "skipped": 7
+  },
+  "docs": {
+    "pages": 22,
+    "localLinksAndAnchors": 504,
+    "errors": []
+  },
+  "protocolCases": 12,
+  "integrityControls": 6,
+  "browser": {
+    "cases": [
+      "real popup completes cross-origin transferred-port handshake and virtual PRF",
+      "declined browser consent invokes no PRF or operation",
+      "browser origin policy refuses before consent and PRF",
+      "installed SDK add-device verifies real browser-handler signature against fake chain",
+      "local SDK adapter refuses unsupported descriptors before browser request",
+      "expired browser session refuses a late operation",
+      "popup closure rejects pending approval and later requests without operation",
+      "actual wrong opener origin is refused before consent and PRF"
+    ],
+    "testsPassed": 8,
+    "virtualAssertions": 4,
+    "chainCalls": 1,
+    "cleanup": [
+      {
+        "name": "context",
+        "status": "closed",
+        "closed": true
+      },
+      {
+        "name": "browser",
+        "status": "closed",
+        "closed": true
+      },
+      {
+        "name": "dapp-server",
+        "status": "closed",
+        "closed": true
+      },
+      {
+        "name": "signer-server",
+        "status": "closed",
+        "closed": true
+      },
+      {
+        "name": "attacker-server",
+        "status": "closed",
+        "closed": true
+      }
+    ],
+    "rawReceiptSha256": "cd0c0cb839d9542f8d6e1dfb8a0658f7302ff15e267975c6057701dd91de11a9"
+  },
+  "interruptControl": {
+    "outcome": "failed",
+    "stage": "launch",
+    "completedCases": [],
+    "cleanup": [
+      {
+        "name": "context",
+        "status": "closed",
+        "closed": true
+      },
+      {
+        "name": "browser",
+        "status": "closed",
+        "closed": true
+      },
+      {
+        "name": "dapp-server",
+        "status": "closed",
+        "closed": true
+      },
+      {
+        "name": "signer-server",
+        "status": "closed",
+        "closed": true
+      },
+      {
+        "name": "attacker-server",
+        "status": "not-created",
+        "closed": null
+      }
+    ],
+    "rawReceiptSha256": "acbbdbb2af07b59b443222ee51f9d776366e3f3c42ac38aaef7ec8c3e0552505"
+  },
+  "browserSummaryIsExplicitProjection": true,
+  "nativeRerun": false,
+  "realProvider": false,
+  "releaseQualified": false
+}

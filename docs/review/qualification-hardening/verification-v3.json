@@ -1,0 +1,30 @@
+{
+  "source": {
+    "commit": "fb3104db2c77691ace7e62118970f6f9911e9e80",
+    "dirty": false,
+    "workspaceSha256": "9771ec0fda897aab77496ab060d9a38c0321b87af33a545195ac1ba95b9b1b48",
+    "fileCount": 1435
+  },
+  "gate": {
+    "pass": 1102,
+    "fail": 0,
+    "skipped": 7
+  },
+  "gateScope": "combined code tree immediately before its signed commit; live controls at that clean signed source",
+  "docs": {
+    "pages": 23,
+    "localLinksAndAnchors": 523,
+    "errors": []
+  },
+  "protocolCases": 12,
+  "integrityControls": 6,
+  "unmodifiedCopyAccepted": true,
+  "rejectionReasonsChecked": true,
+  "browserCases": 19,
+  "virtualAssertions": 9,
+  "fakeChainCalls": 1,
+  "interruptionOutcome": "intentional failed receipt with all created resources closed",
+  "nativeRerun": false,
+  "realProvider": false,
+  "releaseQualified": false
+}

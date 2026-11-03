@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "verified-public-signer-protocol",
+  "outcome": "passed",
+  "source": {
+    "commit": "c95aafd71f1b1bba0d9e8838d1e30d5ec5c26399",
+    "dirty": false,
+    "workspaceSha256": "a3fb6e8713563f62db26cb9426f761379c66f0f5f83df4d0f7629e6966e7b3ee",
+    "fileCount": 1430
+  },
+  "signerConfigSha256": "de5b721f81a6a670eda0e793a4e209f935de145600a462629b7c238a9940d6dd",
+  "publicSource": "ce04076bbe70d8455c924d175cfcb7ee65844ae7",
+  "consumerConfigSha256": "1a58b63b84c110ff745bdd270619a683a9bb45bb89a223401eef1f787b7df819",
+  "harness": {
+    "tests/fixtures/public-signer-protocol.js": "d22a0a4f1bb8dc6e671ca001ef577cb68603318a8f9a81c2d8a624706807e436",
+    "tests/fixtures/public-signer-harness.js": "ff7993369c94d84df86c98e47753cec928a5ce2e10c1d1bfe5fd8313b113eb8e",
+    "scripts/qualification/signer-windows.mjs": "72cd84b6c6d8179a102d6752440a1011abfb1f807af1ef4d9795f697a7cdfe55",
+    "scripts/qualification/secret-scan.mjs": "fc32765b0d7d9dbad140019a81db5cd6a56a5418bebea424cadc62483776c946"
+  },
+  "resultSha256": "2c7621144170b04fe1b47ebbcd6d7077388274f300b8fc2bf3737841b3b5eb0a",
+  "nativeProof": false,
+  "realProvider": false,
+  "releaseQualified": false
+}

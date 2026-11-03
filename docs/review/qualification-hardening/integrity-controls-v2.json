@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "kind": "public-signer-integrity-controls",
+  "source": {
+    "commit": "c95aafd71f1b1bba0d9e8838d1e30d5ec5c26399",
+    "dirty": false,
+    "workspaceSha256": "a3fb6e8713563f62db26cb9426f761379c66f0f5f83df4d0f7629e6966e7b3ee",
+    "fileCount": 1430
+  },
+  "signerConfigSha256": "de5b721f81a6a670eda0e793a4e209f935de145600a462629b7c238a9940d6dd",
+  "consumerConfigSha256": "1a58b63b84c110ff745bdd270619a683a9bb45bb89a223401eef1f787b7df819",
+  "outcome": "passed",
+  "cases": [
+    {
+      "name": "config",
+      "rejected": true,
+      "failureSha256": "058d115cb025876c61ab1eb99ddff0417ffb6d00e28eb2cf3b80941d3558f179"
+    },
+    {
+      "name": "entry",
+      "rejected": true,
+      "failureSha256": "bf37cd5d3167e03b4e37be8ee78e83a5a59ebfaf12fd200dc2978c07ca061664"
+    },
+    {
+      "name": "bundle-content",
+      "rejected": true,
+      "failureSha256": "fc4d909906d73fde3e87c1d6cb7115a2ed5a664c63fea33d5c527b90484ec80b"
+    },
+    {
+      "name": "bundle-missing",
+      "rejected": true,
+      "failureSha256": "1d40fb742fe448f6b523facf36295688e95593f042f7c3e72f54beaedceb4b89"
+    },
+    {
+      "name": "bundle-extra",
+      "rejected": true,
+      "failureSha256": "0b45eed29fa40eacb37bcd952196aac02370fedf4b2be69f59ec390dd20d96ba"
+    },
+    {
+      "name": "bundle-link",
+      "rejected": true,
+      "failureSha256": "46f892ccda2d02d5977a2e49449eeec6d06454ad692bf1f5b3d0ad8797bff0d7"
+    }
+  ],
+  "unmodifiedCopyAccepted": true,
+  "rejectionReasonsChecked": true,
+  "importedBundle": false,
+  "nativeProof": false,
+  "realProvider": false,
+  "releaseQualified": false
+}

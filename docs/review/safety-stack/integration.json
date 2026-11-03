@@ -1,0 +1,27 @@
+{
+  "kind": "local-safety-stack-integration",
+  "deliveryTarget": "passport-acc-prototype",
+  "lowerPR": 268,
+  "lowerHead": "d15d17f4e5df48fa554ed135dfa3a3f97336b2a3",
+  "upperPR": 270,
+  "upperPreviousHead": "bf9d04dd658ec026249dee7ac870117afe991a0f",
+  "implementationIndexTreeBeforeReceiptFiles": "0aa86b4e68e1722187b307349e0ac5452ab54eb6",
+  "conflictsResolved": [
+    "apps/README.md",
+    "docs/prototype/README.md"
+  ],
+  "implementationBlobsUnchanged": {
+    "qualificationFiles": 35,
+    "recoveryFiles": 13
+  },
+  "gate": {
+    "pass": 1087,
+    "fail": 0,
+    "skipped": 7
+  },
+  "browserMeasuredSource": "59cca013ace978c902a91984e1143116f558718d",
+  "browserCases": 19,
+  "freshClaudeReview": "pending availability; not approved",
+  "nativeProofRerun": false,
+  "releasePublished": false
+}

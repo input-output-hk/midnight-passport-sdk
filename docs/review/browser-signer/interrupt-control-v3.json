@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "kind": "public-signer-browser",
+  "fault": "interrupt-after-launch",
+  "outcome": "failed",
+  "source": {
+    "commit": "59cca013ace978c902a91984e1143116f558718d",
+    "dirty": false,
+    "workspaceSha256": "ca364b00be72b0e7fd78f47c30274c0ecf79cc730725c0259ceadda3cd6c69cb",
+    "fileCount": 1402
+  },
+  "signerConfigSha256": "04368ca535eb239c24e3525cac64f2f9d035cc31b2f67b51ead7e8d47b70b0fb",
+  "publicSource": "ce04076bbe70d8455c924d175cfcb7ee65844ae7",
+  "consumerConfigSha256": "1a58b63b84c110ff745bdd270619a683a9bb45bb89a223401eef1f787b7df819",
+  "completedCases": [],
+  "stage": "launch",
+  "cleanup": [
+    {
+      "name": "context",
+      "status": "closed",
+      "closed": true
+    },
+    {
+      "name": "browser",
+      "status": "closed",
+      "closed": true
+    },
+    {
+      "name": "dapp-server",
+      "status": "closed",
+      "closed": true
+    },
+    {
+      "name": "signer-server",
+      "status": "closed",
+      "closed": true
+    },
+    {
+      "name": "attacker-server",
+      "status": "not-created",
+      "closed": null
+    }
+  ],
+  "failureSha256": "174cc90b88e23f72b00aceb354357ff1f19c0cecd5a23685d2bc8ce2f848a122",
+  "actualBrowser": true,
+  "actualPopup": false,
+  "virtualAuthenticator": false,
+  "realHandlers": true,
+  "simulatedWindowRouting": false,
+  "fakeChain": true,
+  "nativeProof": false,
+  "realProvider": false,
+  "productionSignerPage": false,
+  "releaseQualified": false
+}

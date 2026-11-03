@@ -1,5 +1,36 @@
 # Actual browser signer qualification
 
+Latest accepted local run: [19-case receipt](receipt-v5.json) at signed clean
+`fb3104db2c77691ace7e62118970f6f9911e9e80`, nine virtual assertions, one independently
+verified fake-chain SDK call, all five owned resources closed. [Same-source interruption control](interrupt-control-v5.json)
+is intentionally failed with four resources closed and one never created. No success result.
+The declared-secret guard now also inspects four base64 character alignments for labels joined
+to an encoded envelope, tolerates trailing encoding bits, and accepts harmless shared object
+references while refusing actual cycles. These remain bounded declared-encoding checks.
+
+Earlier strengthened local run: [strengthened 19-case receipt](receipt-v4.json) at GPG/DCO-signed
+`c95aafd71f1b1bba0d9e8838d1e30d5ec5c26399`, nine virtual assertions and one independently
+verified fake-chain SDK call. All five created resources closed. Each scope refusal has an
+unchanged-call positive baseline. The navigation control actively issues an old-port request,
+observes it remains pending through fresh-client consent, and requires rejection on popup close.
+[Owned interruption control](interrupt-control-v4.json) at the same clean source records four
+closed resources, one never created, and no success result. Both are code-produced public receipts.
+These results do not qualify native proof, real providers, restoration or full Lace compatibility.
+
+Historical accepted local run: [19-case receipt](receipt-v3.json) at clean signed source
+`59cca013ace978c902a91984e1143116f558718d`, nine virtual assertions, exactly one independently
+verified fake-chain SDK call. All five created resources closed. [Owned interruption control](interrupt-control-v3.json)
+at the same source records four closed resources and an honestly absent attacker server;
+no success result or completed cases. Runtime path hashes are separate from content hashes.
+These are byte-identical code-produced public receipts, with no private runtime paths.
+
+[The earlier expanded attempt](failed-attempt-v24.json) stopped after 14 cases on a harness
+navigation readiness dereference. It closed all created resources and remains a failed attempt.
+The readiness wait now tolerates the new document's initial state. The non-opener probe also
+waits for observed delivery at the allowed origin before testing that the real opener connects.
+
+## Historical first browser slice
+
 Tracking [#258](https://github.com/input-output-hk/midnight-passport-sdk/issues/258), under
 [the stability plan](../../roadmap/stability-0.1.0-execution.md). This is the first bounded
 browser protocol slice. [Signed-source receipt](receipt.json): **7 cases passed**, 4 virtual
@@ -86,7 +117,7 @@ chain/wallet calls or establish a well-behaved injected clock; host deadlines re
 **8 cases passed**, including an actual third-origin opener refusal. One case is explicitly a local
 adapter refusal before any browser request. Four virtual assertions, one independently verified
 fake-chain SDK call; all five owned resources closed. Chrome framework/helper/resource identity
-covers315 regular files and1 contained link as well as the launcher and version.
+covers 315 regular files and 1 contained link as well as the launcher and version.
 
 [Owned SIGTERM control](interrupt-control.json) at the same clean signed source deliberately
 returns `outcome: failed`, no success result and no completed cases; all five cleanup actions
@@ -95,3 +126,62 @@ The runner disables Playwright's default SIGINT/SIGTERM handlers because it owns
 Earlier [interruption attempts](interruption-attempts.json) preserve the cleanup race that exposed
 this requirement. Their failed receipts and private logs remain retained; no attempt was relabelled.
 The original seven-case receipt remains historical and does not establish the corrected cases.
+
+## Additional automated browser boundaries (#258)
+
+The current harness adds missing/malformed flow descriptors, isolated account/circuit/commitment
+mismatches, overlap while the first consent callback is held, failed-callback session closure,
+actual non-opener `hello` from a frame at the **allowed dApp origin**, signer navigation, and an
+explicit fresh-client reconnect. The non-opener sends its port before the real opener connects;
+its lack of a reply alone is not the success criterion: the real opener must subsequently connect.
+
+Navigation does not settle an unknown transaction or provide automatic transport recovery. This
+fixture has no pending chain transaction during navigation. The host explicitly discards the old
+transport, connects a new client, and approves a fresh sign-in; the actual virtual device public
+key must remain the same. Retired clients close when the owned popup closes. This is same-browser
+virtual-credential continuity, not synced-provider restoration or recovery after device loss.
+
+PRF encodings stay in a lexical signer-origin closure. The observed handlers scan successful
+results and structured failures against those declared encodings; any scan refusal marks the
+whole lane failed. The dApp also exercises the browser's same-origin storage boundary. These
+bounded checks are not a universal proof that no encoding or side channel can disclose a secret.
+New public runtime identities hash path strings separately from framework/runtime content; old
+receipts remain immutable, including their original schema.
+
+Source changes require a fresh signed clean-source execution and receipt. The historical
+19-case receipt above predates the stronger positive scope and active old-transport controls;
+it must not be used as evidence for those added checks.
+
+## Claude review corrections — 2026/11/03
+
+Each isolated scope probe first admits the unchanged authorisation under the same descriptor
+and key session, then changes exactly one field. The secret guard also checks declared big-/little-
+endian integers, decimal strings, and base64 envelopes with the secret at any byte offset. These
+are bounded declared encodings, not a universal confidentiality proof.
+
+The navigation control now makes a real request over the retired port. The pinned public client
+leaves this pending after same-window navigation; it has no navigation detector or request timeout.
+The test observes pending status without approval/PRF/chain replay, connects a separate client
+with fresh consent, then requires the original pending promise to reject at popup closure. This
+is an explicit interoperability limitation tracked in [#272](https://github.com/input-output-hk/midnight-passport-sdk/issues/272), not automatic recovery or a no-send proof.
+
+Owned cleanup now marks a resource closing before awaiting it and shares the close promise
+between late acquisition and cleanup. Fast tests cover rejection, stalls, late acquisition and
+concurrent cleanup without double close. The same deadline helper bounds actions and cleanup.
+The exact-source v4 receipts at the top establish this strengthened scope locally. Historical
+receipts retain their narrower controls and original bytes.
+
+## Final review adjudication
+
+The later review's labelled-base64 gap and shared-reference false refusal are corrected and
+covered by fast regression tests plus the latest same-source live lane above. Unsupported
+object prototypes and scan/depth/node budgets fail closed. The control does not claim universal
+protection against transformed encodings or side channels.
+
+A pending acquisition at cleanup is deliberately reported `closed: false` and makes the run
+failed; it is not an absent resource or a cleanup pass. Late resolution still invokes owned close
+exactly once. An acquisition that never resolves cannot be reported as closed by a bounded runner.
+Retain the failed receipt and inspect the owner; never relabel it after the fact.
+
+The public integration names are retained to identify the user-requested compatibility boundary;
+no vendor-specific cryptographic recipe or unsupported capability is implied.

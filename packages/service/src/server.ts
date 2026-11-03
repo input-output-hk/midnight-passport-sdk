@@ -5,6 +5,11 @@ import { HttpError, json, type Route } from './http.js';
 export interface HttpServiceConfig {
   readonly host: string;
   readonly corsOrigin: string;
+  /** Redacted route-failure facts only. Errors, URLs, bodies and headers are never passed. */
+  readonly onRouteError?: (event: {
+    readonly status: number;
+    readonly headersSent: boolean;
+  }) => void | Promise<void>;
 }
 
 /** Methods that carry no body and change nothing; every other method must send JSON. */
@@ -57,12 +62,14 @@ export function createServer(config: HttpServiceConfig, routes: Route[]): Server
       if (
         !target.startsWith('/') ||
         target.startsWith('//') ||
+        target.includes('#') ||
         target.split('?')[0]!.includes('\\')
       )
         throw new Error('invalid target');
       const base = new URL(`http://${host}`);
       url = new URL(target, base);
-      if (url.origin !== base.origin || url.hash) throw new Error('invalid target');
+      if (url.origin !== base.origin || url.pathname.startsWith('//') || url.hash)
+        throw new Error('invalid target');
     } catch {
       res.setHeader('connection', 'close');
       json(res, 400, { error: 'invalid request target' });
@@ -72,6 +79,18 @@ export function createServer(config: HttpServiceConfig, routes: Route[]): Server
       for (const route of routes) if (await route(req, res, url)) return;
       json(res, 404, { error: 'not found' });
     } catch (e) {
+      try {
+        void Promise.resolve(
+          config.onRouteError?.({
+            status: e instanceof HttpError ? e.status : 500,
+            headersSent: res.headersSent,
+          }),
+        ).catch(() => {
+          /* Async telemetry failure is isolated too; never delay the HTTP response. */
+        });
+      } catch {
+        /* Observability must not change routing or expose the original failure. */
+      }
       // A streaming route may fail after sending its status. Never write a second header block.
       if (res.headersSent) {
         res.destroy();
@@ -82,7 +101,7 @@ export function createServer(config: HttpServiceConfig, routes: Route[]): Server
         if (e.status === 413) res.setHeader('connection', 'close');
         json(res, e.status, { error: e.message });
       } else {
-        json(res, 500, { error: e instanceof Error ? e.message : String(e) });
+        json(res, 500, { error: 'internal service error' });
       }
     }
   });

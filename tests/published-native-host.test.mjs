@@ -371,3 +371,72 @@ test('hosted native acceptance cannot relabel the read-only baseline or claim re
   assert.throws(() => nativeResult({ ...hosted, readerDelivery: true }, 'hosted-authorising'));
   assert.throws(() => nativeResult({ ...hosted, proofs: result().proofs }, 'hosted-authorising'));
 });
+
+test('public native evidence drops unknown child fields and hashes filesystem locations', async () => {
+  const { publicSignerIdentity, publicNativeResult, nativeEndIdentity } =
+    await import('../scripts/qualification/native-public-receipt.mjs');
+  const child = {
+    ...result(),
+    secret: 'never-export',
+    privatePath: '/private/user/root',
+    cases: ['private-case-label'],
+  };
+  const projected = publicNativeResult(child);
+  const signer = publicSignerIdentity({ root: '/private/user/root', sha256: 'ab'.repeat(32) });
+  const text = JSON.stringify({ projected, signer });
+  for (const raw of ['never-export', '/private/user/root', 'private-case-label'])
+    assert.equal(text.includes(raw), false);
+  assert.ok(projected && signer);
+  assert.equal(projected.depositTxId, child.depositTxId);
+  assert.match(signer.preparedRootPathSha256, /^[a-f0-9]{64}$/);
+  assert.throws(() => publicNativeResult({ ...child, address: '/private/user/root' }));
+  const failed = await nativeEndIdentity(async () => {
+    throw Error('/private/end-identity');
+  });
+  assert.ok(failed.failureSha256);
+  assert.match(failed.failureSha256, /^[a-f0-9]{64}$/);
+  assert.equal(JSON.stringify(failed).includes('/private'), false);
+  assert.deepEqual(await nativeEndIdentity(async () => ({ commit: 'test' })), {
+    source: { commit: 'test' },
+  });
+});
+
+test('native parent identity is accepted by actual worker schema before any runtime activity', async () => {
+  const { nativeWorkerInputIdentity, nativeWorkerConfiguration } =
+    await import('../scripts/qualification/native-worker-inputs.mjs');
+  const keys = '/private/test-keys',
+    signer = { root: '/private/test-signer', sha256: 'ab'.repeat(32) };
+  /** @param {string} profile @param {{root:string,sha256:string}|undefined} signer */
+  const make = (profile, signer) =>
+    JSON.parse(
+      JSON.stringify({
+        kind: 'published-host-native-inputs',
+        profile,
+        ...nativeWorkerInputIdentity({ keys, signer }),
+      }),
+    );
+  const publicInput = make('public-module', undefined);
+  assert.deepEqual(nativeWorkerConfiguration(publicInput, { PASSPORT_KEY_DIR: keys }), {
+    keyDir: keys,
+    signerRoot: undefined,
+  });
+  const hostedInput = make('hosted-authorising', signer);
+  const env = {
+    PASSPORT_KEY_DIR: keys,
+    PASSPORT_SIGNER_ROOT: signer.root,
+    PASSPORT_SIGNER_SHA256: signer.sha256,
+  };
+  assert.deepEqual(nativeWorkerConfiguration(hostedInput, env), {
+    keyDir: keys,
+    signerRoot: signer.root,
+  });
+  assert.equal(JSON.stringify(hostedInput).includes('/private'), false);
+  for (const changed of [
+    { ...env, PASSPORT_KEY_DIR: '/private/other' },
+    { ...env, PASSPORT_SIGNER_ROOT: '/private/other' },
+    { ...env, PASSPORT_SIGNER_SHA256: 'cd'.repeat(32) },
+  ])
+    assert.throws(() => nativeWorkerConfiguration(hostedInput, changed));
+  const { keyDirectoryPathSha256: legacy, ...missing } = hostedInput;
+  assert.throws(() => nativeWorkerConfiguration({ ...missing, keyDirSha256: legacy }, env));
+});
