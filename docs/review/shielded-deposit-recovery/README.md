@@ -60,3 +60,9 @@ sealing and durable preparation can yield while the key changes. Each observed i
 be rechecked because this port provides no trustworthy observation-height cache key. Do not
 remove either check as an optimisation. The prior-record journal read validates immutable intent
 and legal phase transitions; ciphertext-only byte-store CAS cannot replace it.
+
+A further review identified loss of an observed transaction ID when the submitted-state CAS
+acknowledgement failed. The runner now retains a validated sender/lookup ID in all later safe
+errors, including false acknowledgements followed by unknown lookup. Four targeted cases cover
+throw/false acknowledgements from direct sender and process-restart lookup, with original
+request/transaction IDs, no raw diagnostics and no additional sender effect.

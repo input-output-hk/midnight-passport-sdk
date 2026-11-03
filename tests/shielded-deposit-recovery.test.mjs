@@ -700,3 +700,50 @@ test('throwing initial clock refuses before any host work without raw diagnostic
     assert.equal(world.stats().sends, 0);
     assert.equal(await world.journal.read(depositRequest.requestId), undefined);
   }));
+
+test('known sender or lookup transaction ID survives failed submitted acknowledgement and missing later lookup', async () => {
+  for (const source of ['sender', 'lookup'])
+    for (const fault of ['throw', 'false'])
+      await fixture(async (root) => {
+        if (source === 'lookup') {
+          const stopped = spawnSync(process.execPath, [child, root, 'send-exit'], {
+            encoding: 'utf8',
+            timeout: 10000,
+          });
+          assert.equal(stopped.status, 73);
+        }
+        const world = depositWorld(root),
+          recovery = { ...world.ports.recovery };
+        recovery.journal = {
+          ...recovery.journal,
+          compareAndSwap: async (id, previous, next) => {
+            if (next.phase === 'submitted') {
+              if (fault === 'throw') throw Error('/private/host/failed-ack');
+              return false;
+            }
+            return world.journal.compareAndSwap(id, previous, next);
+          },
+        };
+        if (source === 'sender') recovery.reconcileSender = async () => ({ kind: 'unknown' });
+        const ports = { ...world.ports, recovery };
+        await assert.rejects(
+          source === 'sender'
+            ? depositShielded(depositRequest, ports)
+            : resumeShieldedDeposit(depositRequest, ports),
+          (error) => {
+            assert.ok(
+              error && typeof error === 'object' && 'code' in error && 'retryable' in error,
+            );
+            assert.equal(error.code, 'MutationUnsettled');
+            assert.equal(error.retryable, false);
+            assert.ok(String(error).includes('tx-original'));
+            assert.ok(String(error).includes(depositRequest.requestId));
+            assert.equal(String(error).includes('/private'), false);
+            return true;
+          },
+        );
+        assert.equal((await world.journal.read(depositRequest.requestId))?.phase, 'dispatching');
+        assert.equal(world.stats().effects, 1);
+        assert.equal(world.stats().sends, source === 'sender' ? 1 : 0);
+      });
+});
