@@ -12,7 +12,7 @@ or package is introduced. These additions are **not in published RC6**.
 | --- | --- | --- |
 | Compiler export | Independent manifest pin, four generated files and all 52circuits' bundled inputs; tamper and existing-output refusal | Publisher provenance from an unsigned local candidate bundle |
 | Merchant client | Public typed account helper, caller commitment, fixed policy, explicit review and actual software signature | Real provider prompt budgets or hosted consent for this new example |
-| Installed application | Four packed public packages; actual caller compilation and generated ACC execution with positive/refusal controls | Native proof/node admission, merchant wallet credit and native atomicity |
+| Installed application | Four packed SDK packages (public exports); actual caller compilation and generated ACC execution with positive/refusal controls | Native proof/node admission, merchant wallet credit and native atomicity |
 | Wider adoption | Layered package consumption with host-owned orchestration | Arbitrary callee registration, full Lace, generic dApp connection or recovery |
 
 See the [partner guide](site/partner-integration.md),

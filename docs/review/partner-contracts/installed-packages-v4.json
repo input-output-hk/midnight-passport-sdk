@@ -1,0 +1,33 @@
+{
+  "version": "0.1.0-dev.20261103",
+  "packages": [
+    {
+      "name": "@input-output-hk/mn-passport-protocol",
+      "version": "0.1.0-dev.20261103",
+      "tarballSha256": "e683399b9f2e57e06ba7d73a4e1f18d5ce0f0f7da04a8447f45e7505b16ea2a5",
+      "files": 30,
+      "filesSha256": "ffdb01521167cdf631faf72f8ef1f8051880d2e99b0203114bf28aceb1149992"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-account",
+      "version": "0.1.0-dev.20261103",
+      "tarballSha256": "c4a9bdeabcfff040af65a129ba22118bcd47269b19c3b24884fe8b62edf0a6b3",
+      "files": 162,
+      "filesSha256": "fbd4ef4d19d446a4b719d57aef2ac2e1cfe6a44d6208251d54d484fcd9c1a410"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-keys",
+      "version": "0.1.0-dev.20261103",
+      "tarballSha256": "9bdb515d9e9b16e5649a3c0ec9cbf48571b71614c4f769deea0c745d80ebe611",
+      "files": 54,
+      "filesSha256": "36697e17c4e83601e3336dbde7f8ed253576a0698c32ba33f23c369b854e42f3"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-contract",
+      "version": "0.1.0-dev.20261103",
+      "tarballSha256": "e2d0ae10ca5650582160c0af5098fde4834811884ab8f6b50d8ddbe6f3ce59e5",
+      "files": 37,
+      "filesSha256": "502f681ae146f5d71a9e854a1ad14cf314471a047e964a3cb02ee43d50984f5b"
+    }
+  ]
+}
