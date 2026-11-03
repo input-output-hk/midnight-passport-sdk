@@ -72,3 +72,8 @@ A transient submitted-CAS miss can persist that same ID without a lagging lookup
 retained ID refuses before finality. Regressions verify both with one sender effect. Separate
 namespace/record-layer consolidation is tracked in #273; current dedicated stores fail closed
 when miscomposed rather than reinterpreting another journal's ciphertext.
+
+The final timing review found that confirmation CAS contention could restart the poll window.
+One invocation now shares its first submitted-state deadline and observation count across all
+contention rounds. A regression covers both advancing and frozen clocks with repeated lost
+confirmation acknowledgements, original submitted evidence, one sender effect and bounded work.
