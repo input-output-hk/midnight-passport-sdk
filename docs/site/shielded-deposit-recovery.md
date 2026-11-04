@@ -157,7 +157,9 @@ records on every read and blocks dispatch transitions. This is narrower than the
 unresolved; only original canonical evidence confirms it. The panel retains the original request
 and any validated transaction ID, with fixed status codes/copy. Raw error messages, causes,
 journal plaintext, nonce, entry and key material never enter it. Status identifiers still need
-host access/retention controls. A failed display callback cannot change a confirmed result.
+host access/retention controls. A failed display callback cannot change a confirmed result. After confirmation, the panel keeps
+that historical outcome and receipt; `latestAttempt` separately shows a later declined or failed
+check. Render both rather than presenting a check failure as loss of the earlier confirmation.
 
 Hosts must supply their own UI, durable original-request registry, pinned sender/finality ports,
 credential/account isolation, bounded I/O and wallet queue. The controller's busy flag only

@@ -12,13 +12,17 @@ Review in this order:
 3. Transaction-ID retention after a failed submitted write; original identity check before a
    retained transaction enters the panel; no reflection of private diagnostics.
 4. `tests/fixtures/reviewed-deposit-cases.mjs`: emitted strict public-import example, actual
-   AES-GCM/private filesystem revisions, synthetic chain/wallet/finality/approval,17cases.
+   AES-GCM/private filesystem revisions, synthetic chain/wallet/finality/approval,20cases.
 5. `tests/partner-recipes.test.mjs`: compile/execute the example. Clear inherited Node test context
    for the child runner and require its positive test count and zero failures; no silent no-op.
 6. Engineer example README and `docs/site/shielded-deposit-recovery.md`: host obligations,
    uncertainty copy, separate journal/wallet approval and historical receipt semantics.
 7. `docs/research/upstream-passport-2026-11-04.md`: owner-requested read-only upstream sub-agent
    research, exact sources/status and proposed backlog mapping, not imported behavior/evidence.
+
+First independent review atd9306ee found one P2: a failed later reconciliation could hide an
+already confirmed panel receipt. The follow-up separates the historical confirmed outcome from
+`latestAttempt` and adds denial/review-error/key-error regressions. Final re-review is required.
 
 Validation results and exact reviewed head are recorded in the final receipt after review. No
 native/provider/installed-registry/image acceptance follows from source recipe execution. All

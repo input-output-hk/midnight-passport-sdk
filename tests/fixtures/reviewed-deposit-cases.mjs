@@ -379,3 +379,44 @@ test('stale prepared revision during reconciliation cannot regain dispatch admis
     f.cleanup();
   }
 });
+
+for (const failure of ['decline', 'review-error', 'key-error']) {
+  test(`later ${failure} preserves confirmed outcome separately from the latest attempt`, async () => {
+    const f = world();
+    try {
+      let later = false;
+      f.input.approve = async (review) => {
+        f.reviews.push(review);
+        if (later && failure === 'review-error') throw Error('private approval error');
+        return !(later && failure === 'decline');
+      };
+      const session = f.input.journalKeySource.withSession;
+      f.input.journalKeySource.withSession = async (work) => {
+        if (later && failure === 'key-error') throw Error('private journal key error');
+        return session(work);
+      };
+      const controller = f.controller();
+      const original = await controller.start();
+      assert.equal(original.state, 'confirmed');
+      later = true;
+      const check = await controller.reconcile();
+      assert.equal(check.state, 'confirmed');
+      assert.deepEqual(check.receipt, original.receipt);
+      assert.equal(check.txId, original.txId);
+      assert.equal(check.code, 'DepositConfirmed');
+      assert.equal(check.latestAttempt.state, failure === 'key-error' ? 'unresolved' : 'declined');
+      assert.equal(Object.isFrozen(check.latestAttempt), true);
+      assert.deepEqual(controller.status(), check);
+      assert.deepEqual(await controller.start(), check);
+      assert.equal(f.w.stats().sends, 1);
+      assert.equal(f.w.stats().effects, 1);
+      assert.deepEqual(
+        f.reviews.map((r) => r.action),
+        ['start', 'reconcile'],
+      );
+      assert.equal(JSON.stringify(check).includes('private'), false);
+    } finally {
+      f.cleanup();
+    }
+  });
+}

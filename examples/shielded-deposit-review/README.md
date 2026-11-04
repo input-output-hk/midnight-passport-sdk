@@ -66,7 +66,9 @@ needs separately reviewed host/operator policy; this example has no “force ret
 A confirmed status returns the original historical receipt, not a current balance or guarantee
 that its viewing key is still active. Observer exceptions, including rejected promises, are
 contained and do not turn a confirmed deposit into failure or trigger any resend. A later declined
-review concerns only that new attempt; preserve earlier outcome evidence.
+review concerns only that new attempt. After confirmation, `state`/`code`/`receipt` retain the
+historical confirmed outcome; `latestAttempt` separately reports a later in-progress, declined or
+unsuccessful check. Render these separately so a check failure never hides the prior receipt.
 
 ## Host obligations and limits
 
@@ -104,5 +106,5 @@ runs its emitted JavaScript with real AES-GCM/private filesystem revisions and s
 chain, finality and approval UI. It covers denial/throw/non-boolean decisions, mutation and
 concurrent approval, locked/cancel-looking sender errors after the fence, unknown and known
 transaction outcomes, lost sender response, failed submitted publication, missing/prepared
-records, changed private intent and synchronous/asynchronous observer failure. This is source
+records, changed private intent and synchronous/asynchronous observer failure, and retained confirmation after later review/key failure. This is source
 composition acceptance, not installed registry, native wallet, browser-provider or image acceptance.

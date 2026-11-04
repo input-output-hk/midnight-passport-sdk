@@ -43,6 +43,8 @@ export interface DepositStatus {
   readonly message: string;
   readonly txId?: string;
   readonly receipt?: Readonly<ShieldedDepositResult>;
+  /** A later attempt cannot erase an already confirmed historical outcome. */
+  readonly latestAttempt?: Readonly<Pick<DepositStatus, 'state' | 'code' | 'message'>>;
 }
 
 const hex = (bytes: Uint8Array) =>
@@ -167,15 +169,27 @@ export function reviewedDepositOperations(input: {
     'AwaitingReview',
     'Review the original deposit before unlocking its protected journal.',
   );
+  let confirmed: Readonly<DepositStatus> | undefined;
   const publish = (next: Readonly<DepositStatus>) => {
-    status = next;
+    if (next.state === 'confirmed') confirmed = next;
+    status =
+      confirmed && next.state !== 'confirmed'
+        ? Object.freeze({
+            ...confirmed,
+            latestAttempt: Object.freeze({
+              state: next.state,
+              code: next.code,
+              message: next.message,
+            }),
+          })
+        : next;
     // A display/logging failure cannot change the deposit outcome or trigger a replacement send.
     try {
-      void Promise.resolve(observer?.(next)).catch(() => {});
+      void Promise.resolve(observer?.(status)).catch(() => {});
     } catch {
       /* Observer diagnostics belong to the host. */
     }
-    return next;
+    return status;
   };
   const remember = (value: unknown) => {
     if (validTx(value)) {
