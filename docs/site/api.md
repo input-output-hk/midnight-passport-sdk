@@ -211,3 +211,12 @@ unknown dispatch. The existing unjournalled API remains one-shot only. Read the
 [recovery contract and host recipe]({{ '/shielded-deposit-recovery/' | relative_url }}) before
 implementing storage, sender lookup or canonical transaction confirmation. These exports are not
 in published RC6, and no shielded HTTP funding endpoint or native recovered-deposit pass is claimed.
+
+## Candidate capability and configuration APIs
+
+The next local candidate adds lightweight `contract/capabilities` and
+`contract/capabilities.json` entries plus `account/preflight`. These identify
+packaged circuits versus implemented flows and inspect four existing sealed-owner
+configurations before any key ceremony. They are absent from RC6. See the
+[capability guide]({{ '/capabilities/' | relative_url }}) for signatures, adoption
+layers, both supported owner arms and runtime validation that always remains.

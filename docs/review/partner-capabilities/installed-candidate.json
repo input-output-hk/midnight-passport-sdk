@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.0-dev.20261104.capabilities.3",
+  "packages": [
+    {
+      "name": "@input-output-hk/mn-passport-protocol",
+      "version": "0.1.0-dev.20261104.capabilities.3",
+      "tarballSha256": "721776b62ecca9e11412cdc135f3c859007620139643ffc467a017c535dd522c",
+      "files": 30,
+      "filesSha256": "438b2d11d580b88a99fc8d52a45655c3cbd2aad8d3b7cf141af5b16016b60e60"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-account",
+      "version": "0.1.0-dev.20261104.capabilities.3",
+      "tarballSha256": "01f93391f4d040dd108ef54194830af2ae713f073e66bfff49a2f04f9f529a7e",
+      "files": 166,
+      "filesSha256": "ffd36978eaede59d7d7e82bc8f6ddedd9749f7d0e39ca3bf38c00a415708de7c"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-contract",
+      "version": "0.1.0-dev.20261104.capabilities.3",
+      "tarballSha256": "39a63f88d3fad9df5226cb0fa01126cf46e3e152d2147b9d2b1d5785108b2f5b",
+      "files": 46,
+      "filesSha256": "3ed3c6bd4be1d7b5801334bfbdb6314ae4dce542b2d07609eaf0e41d055076f9"
+    }
+  ],
+  "strictTypeScript": true,
+  "lightweightImportsWithoutCompactRuntime": true,
+  "typedRecipeExecuted": true,
+  "circuits": 118,
+  "heavyRuntimeOrCeremonyInvoked": false,
+  "registryPublication": false,
+  "native": false,
+  "browserProvider": false
+}
