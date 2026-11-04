@@ -150,7 +150,7 @@ test('native readiness requires the actual owned port and a live dedicated netwo
     ...original,
     State: { Running: true },
     NetworkSettings: {
-      Ports: structuredClone(original.HostConfig.PortBindings),
+      Ports: { ...structuredClone(original.HostConfig.PortBindings), '30333/tcp': null },
       Networks: {
         [project + '_midnight']: { IPAddress: '172.19.0.3', EndpointID: 'ef'.repeat(32) },
       },
@@ -174,6 +174,23 @@ test('native readiness requires the actual owned port and a live dedicated netwo
     /detached/,
   );
   assert.throws(() => nativeRunningContainer({ ...running, Id: 'ff'.repeat(32) }, expected));
+  assert.throws(
+    () =>
+      nativeRunningContainer(
+        {
+          ...running,
+          NetworkSettings: {
+            ...running.NetworkSettings,
+            Ports: {
+              ...running.NetworkSettings.Ports,
+              '30333/tcp': [{ HostIp: '127.0.0.1', HostPort: '30333' }],
+            },
+          },
+        },
+        expected,
+      ),
+    /ports are not live/,
+  );
 });
 
 test('native entry requires explicit localnet opt-in and fresh private consumer child output', () => {

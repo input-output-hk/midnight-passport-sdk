@@ -375,8 +375,16 @@ try {
   const snapshot = async () => {
     const g = await read(),
       a = await accountState();
-    const state = await providers.publicDataProvider.queryContractState(merchant.address);
+    const [state, wrongState, custodyState] = await Promise.all(
+      [merchant.address, wrongMerchant.address, accountAddress].map((address) =>
+        providers.publicDataProvider.queryContractState(address),
+      ),
+    );
+    assert.ok(state && wrongState && custodyState);
     return {
+      accountStateSha256: sha(custodyState.serialize()),
+      applicationStateSha256: sha(state.serialize()),
+      wrongApplicationStateSha256: sha(wrongState.serialize()),
       balance: String(a.unshielded_balances.lookup(color)),
       nonce: String(g.grant.nonce),
       spentCommit: hex(g.grant.spentCommit),

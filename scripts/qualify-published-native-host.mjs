@@ -94,7 +94,12 @@ export function nativeRunningContainer(current, expected) {
   assert.deepEqual(actual.mounts, expected.mounts);
   assert.deepEqual(actual.ports, expected.ports);
   assert.equal(actual.initiallyRunning, true);
-  assert.deepEqual(current.NetworkSettings?.Ports, expected.ports, 'Owned ports are not live');
+  const boundPorts = Object.fromEntries(
+    Object.entries(current.NetworkSettings?.Ports ?? {}).filter(
+      ([, bindings]) => Array.isArray(bindings) && bindings.length > 0,
+    ),
+  );
+  assert.deepEqual(boundPorts, expected.ports, 'Owned ports are not live');
   const network = current.NetworkSettings?.Networks?.[PROJECT + '_midnight'];
   assert.ok(
     network && typeof network.IPAddress === 'string' && network.IPAddress.length > 0,

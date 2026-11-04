@@ -24,7 +24,10 @@ delay. The attempt was interrupted before any wallet started. Signed fix
 constructor and grant-opening material before effects, and waits for a spendable
 exact-value NIGHT UTXO. It also checks all 52 deployed verifier keys and retired
 maintenance authority. Installed declaration checking and the full local gate pass;
-independent review of the complete corrected worker is pending.
+a second independent review of the complete corrected worker found one remaining
+coverage gap: the wrong-caller check also needs the wrong merchant's state. The
+follow-up snapshots full serialized state for the ACC and both merchants. Final
+review of that correction is pending.
 
 The first attempt retains an explicit interrupted failure, unchanged source/runtime
 fingerprints and confirmed cleanup. It is not a successful run. The second attempt
