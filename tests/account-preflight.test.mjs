@@ -33,7 +33,7 @@ function complete(scheme = 'p256-webauthn') {
       decodeDevicePublicKey: forbidden,
       decodeP256DevicePublicKey: forbidden,
     },
-    records: { read: forbidden, write: forbidden },
+    records: { exists: forbidden, read: forbidden, write: forbidden },
     grants: { readActiveGrantIds: forbidden, readActiveGrantSnapshot: forbidden },
     grantCommitments: { readGrantCommitment: forbidden },
     grantJournal: {
@@ -193,4 +193,30 @@ test('class methods are supported; accessors and reflected exception diagnostics
   assert.equal(reads, 0);
   assert.ok(paths(result).includes('chain.call'));
   assert.equal(JSON.stringify(result).includes('private diagnostic'), false);
+});
+
+test('both owner arms detect missing record existence before issue or pending recovery', () => {
+  for (const scheme of /** @type {const} */ (['p256-webauthn', 'jubjub-schnorr'])) {
+    const { exists: _, ...records } = complete(scheme).records;
+    for (const operation of /** @type {const} */ (['issue-grant', 'recover-pending-grants'])) {
+      const report = inspectAccountConfiguration(
+        { ...complete(scheme), records },
+        { operation, grantRead: false },
+      );
+      assert.equal(report.status, 'configuration-incomplete');
+      assert.ok(paths(report).includes('records.exists'));
+    }
+  }
+});
+
+test('pending recovery conservatively checks read sealing without opening the journal', () => {
+  for (const scheme of /** @type {const} */ (['p256-webauthn', 'jubjub-schnorr'])) {
+    const { sealView: _, ...viewingKey } = complete(scheme).viewingKey;
+    const report = inspectAccountConfiguration(
+      { ...complete(scheme), viewingKey },
+      { operation: 'recover-pending-grants' },
+    );
+    assert.equal(report.status, 'configuration-incomplete');
+    assert.ok(paths(report).includes('viewingKey.sealView'));
+  }
 });

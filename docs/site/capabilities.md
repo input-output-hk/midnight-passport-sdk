@@ -85,8 +85,8 @@ runtime guards. Call it before opening/signing; do not treat it as permission to
 | --- | --- |
 | `withdraw-unshielded` | Owner key-session/authoriser and opening methods, chain object or loader, network identity and immutable binding/manifest pins. |
 | `withdraw-shielded` | Qualified held-coin selection in addition to the common owner checks. Runtime still requires an exact-value coin. |
-| `issue-grant` | Local record access, live grant snapshot/commitments, durable staging/loading/publication journal, trusted host origin and sealed bookkeeping. Explicit `grantRead` is required. Read grants additionally require holdings, read-grant targets and complete mixed-reader delivery/rotation methods. |
-| `recover-pending-grants` | Publication prerequisites plus `grantJournal.pending` enumeration. A journal that can stage a new grant does not necessarily support recovery. |
+| `issue-grant` | Local record existence/read/write access, live grant snapshot/commitments, durable staging/loading/publication journal, trusted host origin and sealed bookkeeping. Explicit `grantRead` is required. Read grants additionally require holdings, read-grant targets and complete mixed-reader delivery/rotation methods. |
+| `recover-pending-grants` | Publication prerequisites plus `grantJournal.pending` enumeration and `viewingKey.sealView` for possible pending read grants. A journal that can stage a new grant does not necessarily support recovery. |
 
 The function returns either `configuration-incomplete` with public actionable member
 paths, or `runtime-validation-required` with no configuration issues. **There is no

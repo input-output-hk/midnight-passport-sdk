@@ -131,6 +131,7 @@ export function inspectAccountConfiguration(
   }
   if (request.operation === 'issue-grant' || request.operation === 'recover-pending-grants') {
     for (const path of [
+      'records.exists',
       'records.read',
       'records.write',
       'grants.readActiveGrantIds',
@@ -142,8 +143,11 @@ export function inspectAccountConfiguration(
       'viewingKey.sealGrant',
     ])
       method(path);
-    if (request.operation === 'recover-pending-grants') method('grantJournal.pending');
-    else {
+    if (request.operation === 'recover-pending-grants') {
+      method('grantJournal.pending');
+      // Pending enumeration can return read grants; do not inspect private staged records here.
+      method('viewingKey.sealView');
+    } else {
       text('grantOrigin');
       if (typeof request.grantRead !== 'boolean')
         add('MissingValue', 'grantRead', 'Choose read or non-read grant issue explicitly.');
