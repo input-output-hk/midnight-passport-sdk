@@ -47,8 +47,9 @@ canonical indexer container then reported running with saved port declarations b
 no actual network attachment/published endpoint. Canonical indexer readiness blocked
 wallet setup. Reattaching the owned endpoint restored connectivity, but Desktop had
 also automatically restarted the historical archived indexer, which subsequently
-occupied the same host port. Stopping that pre-existing process requires owner
-approval under the workspace resource rules; its container and database must remain.
+occupied the same host port. The owner chose to leave that archived indexer running
+and finish local preparation. Its container and database remain untouched; native
+execution is deferred and the prepared third attempt must not start automatically.
 
 Readiness must establish both **the actual owned container endpoint** and current
 canonical finalized chain data. Saved `HostConfig.PortBindings`, HTTP 200, a running
@@ -59,3 +60,24 @@ Native payment/recipient credit, expiry, replay/revocation, module substitution 
 post-call failure remain unqualified until a fresh source-bound run succeeds. A
 construction refusal is not a node rejection or evidence that a malicious proof was
 submitted. Public packages, images, Pages and RC6 remain unchanged.
+
+## Local preparation finished — 2026-11-04
+
+The owner decision resolves the resource question: leave the archived indexer
+running. The local implementation, independent review corrections, caller artifacts,
+installed consumer, source/input pins and retained failure receipts are prepared.
+All commits carry verified GPG signatures, DCO sign-off and the assistance trailer.
+The Obsidian checkpoint identifies the private prepared run and recovery bundle.
+
+No qualification wallet, proof or transaction started in either failed preflight.
+All three run-owned containers stopped, the stable lease was released and owned
+review worktrees were removed. All state volumes and failed/unknown fixtures remain.
+The third attempt is prepared only. Before future live qualification, resolve the
+port conflict under an explicit operator decision, then revalidate the current
+signed source, input hashes, resource ownership, canonical readiness and capacity.
+A new source identity must be recorded if the checkout changes. Do not reuse an old
+run output, reset the chain or replay an uncertain intent.
+
+Local preparation is finished; #275's native acceptance and the broader goal remain
+incomplete. There is no new release, package publication, image or published Pages
+update from this work.

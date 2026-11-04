@@ -75,5 +75,12 @@
   "realProvider": false,
   "fullLaceCompatibility": false,
   "published": false,
-  "pending": "Owner approval to stop the auto-restarted archived indexer occupying canonical host port18098; preserve its container and database"
+  "pending": "Native acceptance is deferred: the owner chose to leave the archived indexer running on port 18098. Preserve all containers, database volumes and failed fixtures; do not launch the prepared run automatically.",
+  "operatorDecision": {
+    "date": "2026-11-04",
+    "archivedIndexer": "leave running",
+    "localPreparation": "finished",
+    "nativeExecution": "deferred",
+    "automaticRetry": false
+  }
 }
