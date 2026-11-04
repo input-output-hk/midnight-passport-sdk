@@ -18,6 +18,7 @@ import { nativeLeasePath } from '../scripts/qualification/native-lease.mjs';
 import { tmpdir } from 'node:os';
 import {
   nativeContainer,
+  nativeRunningContainer,
   nativeBlockCapacity,
   nativeScope,
   nativeResult,
@@ -140,6 +141,39 @@ test('native control refuses a shared/default project, wrong identity, public po
     change(altered);
     assert.throws(() => nativeContainer(altered, project + '-node-1'));
   }
+});
+
+test('native readiness requires the actual owned port and a live dedicated network endpoint', () => {
+  const original = container(),
+    expected = nativeContainer(original, project + '-node-1');
+  const running = {
+    ...original,
+    State: { Running: true },
+    NetworkSettings: {
+      Ports: structuredClone(original.HostConfig.PortBindings),
+      Networks: {
+        [project + '_midnight']: { IPAddress: '172.19.0.3', EndpointID: 'ef'.repeat(32) },
+      },
+    },
+  };
+  assert.equal(nativeRunningContainer(running, expected).id, expected.id);
+  assert.throws(
+    () =>
+      nativeRunningContainer(
+        { ...running, NetworkSettings: { ...running.NetworkSettings, Ports: { '9944/tcp': [] } } },
+        expected,
+      ),
+    /ports are not live/,
+  );
+  assert.throws(
+    () =>
+      nativeRunningContainer(
+        { ...running, NetworkSettings: { ...running.NetworkSettings, Networks: {} } },
+        expected,
+      ),
+    /detached/,
+  );
+  assert.throws(() => nativeRunningContainer({ ...running, Id: 'ff'.repeat(32) }, expected));
 });
 
 test('native entry requires explicit localnet opt-in and fresh private consumer child output', () => {

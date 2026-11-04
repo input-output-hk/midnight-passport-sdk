@@ -83,6 +83,26 @@ export function nativeContainer(c, name) {
     ports: c.HostConfig.PortBindings,
   };
 }
+/** Saved port declarations do not establish a live network attachment after a Desktop restart.
+ * Validate the actual owned endpoint before using HTTP readiness as evidence.
+ * @param {any} current @param {ReturnType<typeof nativeContainer>} expected
+ */
+export function nativeRunningContainer(current, expected) {
+  const actual = nativeContainer(current, expected.name);
+  assert.equal(actual.id, expected.id);
+  assert.equal(actual.image, expected.image);
+  assert.deepEqual(actual.mounts, expected.mounts);
+  assert.deepEqual(actual.ports, expected.ports);
+  assert.equal(actual.initiallyRunning, true);
+  assert.deepEqual(current.NetworkSettings?.Ports, expected.ports, 'Owned ports are not live');
+  const network = current.NetworkSettings?.Networks?.[PROJECT + '_midnight'];
+  assert.ok(
+    network && typeof network.IPAddress === 'string' && network.IPAddress.length > 0,
+    'Owned container is detached from the dedicated network',
+  );
+  assert.match(network.EndpointID ?? '', /^[a-f0-9]{64}$/);
+  return actual;
+}
 /** Conservative readiness: leave room for a maximum normal extrinsic after mandatory work.
  * This is a precondition, not a guarantee of inclusion in a future block.
  * @param {{maxBlock:string,maxNormal:string,baseExtrinsic:string,mandatory:string,operational:string}} values
@@ -487,6 +507,8 @@ export async function runNativeHost(profile = 'public-module') {
         started.push(c);
         docker(['start', c.id]);
       }
+    for (const c of scope ?? [])
+      nativeRunningContainer(JSON.parse(docker(['inspect', c.id]))[0], c);
     const deadline = Date.now() + 10 * 60000;
     while (!(await dedicatedIndexerReadiness()).ready) {
       assert.equal(interrupted, false);
