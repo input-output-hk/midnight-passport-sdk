@@ -126,3 +126,49 @@ the immediate claiming contract, not the browser, fee payer, root or a particula
 circuit. The signature covers the ACC withdrawal, not unrelated application data.
 No total-loss recovery, full Lace compatibility, account upgrade, external-chain
 asset or partial shielded-spend capability is added.
+
+### Opt-in native worker
+
+`qualify-native.mjs` is the local qualification worker, not a browser helper or
+published package entry point. Its operator must first prepare a fresh external
+consumer with the four candidate archives, matched Midnight.js/wallet dependencies,
+the generated merchant artifacts and verified existing ACC prover keys. It also
+requires separately pinned public reference `wallet.ts` and `wave-deploy.ts`
+helpers. The wallet helper must use the consumer's artifact registry; the wave
+helper must retain maintenance material before submission and perform no automatic
+submission retry. These reference helpers are infrastructure, not portable APIs.
+
+The parent must hold the stable native qualification lease, verify clean signed
+source and installed/runtime bytes, inspect the retained dedicated container IDs,
+check capacity and `dedicatedIndexerReadiness()` before starting the worker, then
+verify canonical node finality for every submitted contract action. The worker
+requires an independently supplied SHA-256 for `native-config.private.json`; its
+`files` map pins worker/helper/installed/artifact inputs and `output` selects a new
+`native-run-*` directory. Existing outputs are refused. Source and inputs remain
+frozen until the parent finishes its end audit and owned-resource cleanup.
+
+The worker uses the dedicated chain's public genesis funding wallet and a separate
+fresh recipient wallet. It retains finalized bytes before sends, splits an exact
+12-unit NIGHT input, deposits it, and attempts a 4-unit merchant payment. It checks
+the ACC debit, application count and recipient wallet credit separately. Wrong
+caller/signature, replay, revocation and the post-call business guard record the
+actual failure stage. An unreturned submission remains unknown; rerunning under a
+new output is not reconciliation. Private credentials, LevelDB, exact transactions
+and failed roots must stay outside Git/Obsidian. Export only reviewed public
+addresses, hashes, counts and bounded outcomes.
+
+Until a source-bound native receipt is recorded, this worker adds no proof-backed
+acceptance claim. Expiry waits for indexed chain time; module fingerprint substitution is a
+construction refusal. Artifact inputs are pinned before wallet startup and checked
+again at the end. A business guard rejected during construction is not a malicious
+proof admitted or rejected by the node. Stop only owned workers/container IDs and retain all volumes.
+
+The worker's grant preparation requires the live active-ID roster and current time.
+Activation salt, owner/grantee identities, constructor encryption bytes and grant
+openings are retained privately before the corresponding effects. Exact NIGHT
+funding waits for a spendable 12-unit UTXO, rather than a fixed indexer delay.
+Check the copied worker against the installed declaration files before live work
+(`tsc --allowJs --checkJs --noEmit --skipLibCheck --strict false --noImplicitAny false
+--target ES2022 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions
+qualify-native.mjs`). The portable `prepare-payment.mjs` has the stricter independent
+check described above; the worker's dynamic circuit dispatch is a qualification seam.

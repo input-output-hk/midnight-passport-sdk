@@ -49,5 +49,12 @@ safety source until this tranche is reviewed/pushed/merged. No release was made.
 The first two retained independent consumers failed on fixture state wrapping and
 grant-issue challenge shape, then were corrected in fresh roots. No failure was
 rewritten to a pass. Source-native proof/node and merchant wallet credit remain
-pending under #275; disk is below the existing 15 GiB qualification guard. Existing
+pending under #275; at that run disk was below the existing 15 GiB guard. Existing
 keys, unknown transactions, historical fixtures and unrelated stacks were preserved.
+
+## Native preparation and resource boundary
+
+Capacity has been restored. See the [native preparation and restart incident](native-preparation.md)
+for the caller-only keys, worker review corrections, installed declaration check and
+two honestly failed attempts before wallet startup. Native acceptance remains pending;
+the archived indexer must not silently substitute for the owned canonical endpoint.
