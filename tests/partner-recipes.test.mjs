@@ -110,7 +110,7 @@ test('public-import host and journal examples compile strictly and emitted recip
       },
     },
   );
-  assert.match(reviewed.stdout, /# tests 20/);
+  assert.match(reviewed.stdout, /# tests 22/);
   assert.match(reviewed.stdout, /# fail 0/);
 
   const result = await exec(

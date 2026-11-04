@@ -71,17 +71,19 @@ test('fromHex refuses odd lengths, non-hex characters, whitespace and a doubled 
   }
 });
 
-test('the fromHex error quotes at most 16 characters of the input, so a long secret is not echoed whole', () => {
-  const long = `zz${'ab'.repeat(40)}`;
-  assert.throws(
-    () => a.fromHex(long),
-    (e) => {
-      const message = /** @type {Error} */ (e).message;
-      assert.equal(message, `invalid hex: ${long.slice(0, 16)}…`);
-      assert.ok(!message.includes(long));
-      return true;
-    },
-  );
+test('fromHex errors never reflect malformed secrets or their prefixes', () => {
+  for (const secret of ['synthetic-secret', `zz${'ab'.repeat(40)}`, `${'ab'.repeat(32)}g0`]) {
+    assert.throws(
+      () => a.fromHex(secret),
+      (error) => {
+        const message = /** @type {Error} */ (error).message;
+        assert.equal(message, 'invalid hex');
+        assert.equal(message.includes(secret), false);
+        assert.equal(message.includes(secret.slice(0, 16)), false);
+        return true;
+      },
+    );
+  }
 });
 
 test('a record goes on the wire as bare lower-case hex, with the status and without extra members', async () => {

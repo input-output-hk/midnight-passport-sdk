@@ -1,7 +1,7 @@
 # Upstream Passport review — 4 November 2026
 
 Read-only sub-agent research requested by the owner. This records adoption candidates, not release
-acceptance. No upstream changes were imported, no issues edited, and no native environment touched.
+acceptance. No upstream commits were imported, no issues edited, and no native environment touched.
 
 ## Sources and scope
 
@@ -55,6 +55,21 @@ negative controls where missing; do not copy reference clients wholesale. Assert
 randomness/key use/submission and errors that do not reflect pasted secrets. Map to #237/#238/#262;
 create a separate focused issue only for an uncovered implementation gap. Proposed199 behavior
 must remain attributed as proposed even when independently appropriate for our SDK.
+
+### Concrete local gaps found during the follow-up audit
+
+The bounded inspection confirmed two implementation gaps. The public account `fromHex` error
+included the first16input characters (and its old test required that disclosure). Direct shielded
+deposit admission used `.slice()` on Uint8Array inputs, which aliases Node Buffers: mutation during
+a held chain/journal read could change admitted coin bytes. Local fixes now use a fixed codec error
+and independent byte snapshots at admission. Regressions cover ordinary arrays and Buffers,
+one-shot/journalled deposits and same-ID resume before protected journal I/O. The host review
+example uses the same owned-byte rule. These changes need no binding or persisted-format change.
+Map the bounded fixes to #246/#230/#237/#262; they do not complete the broader input audit.
+
+Other sampled grant/opening/keyring/coin parser boundaries already validate exact lengths and
+scope; this is not comprehensive cryptographic or real-provider acceptance. No actual secrets or
+native transactions were used to establish either counterexample.
 
 ### Refresh upstream evidence attribution
 

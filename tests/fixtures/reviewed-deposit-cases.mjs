@@ -94,59 +94,65 @@ for (const decision of [false, undefined, 'yes', new Error('private review diagn
   });
 }
 
-test('immutable review binds original amount/account/coin/pins and captured sender while approval awaits', async () => {
-  const f = world();
-  try {
-    /** @type {(approved:boolean)=>void} */
-    let release = (/** @type {boolean} */ _approved) => {
-      throw Error('review not pending');
-    };
-    f.input.approve = async (review) => {
-      f.reviews.push(review);
-      assert.equal(Object.isFrozen(review), true);
-      assert.equal(Object.isFrozen(review.pins), true);
-      assert.throws(() => {
-        review.account = 'cd'.repeat(32);
-      }, TypeError);
-      assert.throws(() => {
-        review.pins.networkId = 'other';
-      }, TypeError);
-      return new Promise((r) => {
-        release = r;
-      });
-    };
-    const controller = f.controller();
-    const pending = controller.start();
-    f.input.originalRequest.amount = 999n;
-    f.input.originalRequest.account = 'cd'.repeat(32);
-    f.input.originalRequest.color.fill(8);
-    f.input.originalRequest.nonce.fill(9);
-    f.input.pins.networkId = 'other';
-    f.input.senderPorts.sender.depositShielded = async () => {
-      throw Error('switched sender');
-    };
-    const busy = await controller.reconcile();
-    assert.equal(busy.state, 'busy');
-    assert.equal(f.reviews.length, 1);
-    assert.equal(f.keyStats.sessions, 0);
-    release(true);
-    const result = await pending;
-    assert.equal(result.state, 'confirmed');
-    const saved = JSON.parse(readFileSync(join(f.root, 'sender.json'), 'utf8'));
-    assert.equal(saved.request.account, depositRequest.account);
-    assert.equal(saved.request.coin.value, '27');
-    assert.equal(saved.request.coin.color, '02'.repeat(32));
-    assert.equal(saved.request.coin.nonce, '03'.repeat(32));
-    assert.ok(f.reviews[0]);
-    assert.equal(f.reviews[0].amountBaseUnits, '27');
-    assert.equal(f.reviews[0].mayInvokeSender, true);
-    assert.equal(f.reviews[0].keyPurpose, 'unlock-protected-deposit-journal');
-    assert.equal(f.w.stats().sends, 1);
-    assert.equal(Object.isFrozen(result.receipt), true);
-  } finally {
-    f.cleanup();
-  }
-});
+for (const bufferBacked of [false, true]) {
+  test(`immutable review binds original amount/account/coin/pins and captured sender (Buffer=${bufferBacked})`, async () => {
+    const f = world();
+    try {
+      if (bufferBacked) {
+        f.input.originalRequest.color = Buffer.from(depositRequest.color);
+        f.input.originalRequest.nonce = Buffer.from(depositRequest.nonce);
+      }
+      /** @type {(approved:boolean)=>void} */
+      let release = (/** @type {boolean} */ _approved) => {
+        throw Error('review not pending');
+      };
+      f.input.approve = async (review) => {
+        f.reviews.push(review);
+        assert.equal(Object.isFrozen(review), true);
+        assert.equal(Object.isFrozen(review.pins), true);
+        assert.throws(() => {
+          review.account = 'cd'.repeat(32);
+        }, TypeError);
+        assert.throws(() => {
+          review.pins.networkId = 'other';
+        }, TypeError);
+        return new Promise((r) => {
+          release = r;
+        });
+      };
+      const controller = f.controller();
+      const pending = controller.start();
+      f.input.originalRequest.amount = 999n;
+      f.input.originalRequest.account = 'cd'.repeat(32);
+      f.input.originalRequest.color.fill(8);
+      f.input.originalRequest.nonce.fill(9);
+      f.input.pins.networkId = 'other';
+      f.input.senderPorts.sender.depositShielded = async () => {
+        throw Error('switched sender');
+      };
+      const busy = await controller.reconcile();
+      assert.equal(busy.state, 'busy');
+      assert.equal(f.reviews.length, 1);
+      assert.equal(f.keyStats.sessions, 0);
+      release(true);
+      const result = await pending;
+      assert.equal(result.state, 'confirmed');
+      const saved = JSON.parse(readFileSync(join(f.root, 'sender.json'), 'utf8'));
+      assert.equal(saved.request.account, depositRequest.account);
+      assert.equal(saved.request.coin.value, '27');
+      assert.equal(saved.request.coin.color, '02'.repeat(32));
+      assert.equal(saved.request.coin.nonce, '03'.repeat(32));
+      assert.ok(f.reviews[0]);
+      assert.equal(f.reviews[0].amountBaseUnits, '27');
+      assert.equal(f.reviews[0].mayInvokeSender, true);
+      assert.equal(f.reviews[0].keyPurpose, 'unlock-protected-deposit-journal');
+      assert.equal(f.w.stats().sends, 1);
+      assert.equal(Object.isFrozen(result.receipt), true);
+    } finally {
+      f.cleanup();
+    }
+  });
+}
 
 for (const name of ['Error', 'AbortError', 'NotAllowedError']) {
   test(`post-fence ${name} stays unresolved even with no visible sender effect`, async () => {
@@ -420,3 +426,19 @@ for (const failure of ['decline', 'review-error', 'key-error']) {
     }
   });
 }
+
+test('non-byte JavaScript coin inputs cannot become constructor-length zero bytes', () => {
+  const f = world();
+  try {
+    for (const field of ['color', 'nonce']) {
+      const original = f.input.originalRequest;
+      f.input.originalRequest = { ...original, [field]: '32' };
+      assert.throws(() => f.controller(), /Invalid original deposit bytes/);
+      f.input.originalRequest = original;
+    }
+    assert.equal(f.keyStats.sessions, 0);
+    assert.equal(f.w.stats().sends, 0);
+  } finally {
+    f.cleanup();
+  }
+});

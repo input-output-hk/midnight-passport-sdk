@@ -70,11 +70,16 @@ export function reviewedDepositOperations(input: {
   readonly approve: (review: Readonly<DepositReview>) => Promise<boolean>;
   readonly onStatus?: (status: Readonly<DepositStatus>) => void | Promise<void>;
 }) {
+  if (
+    !(input.originalRequest.color instanceof Uint8Array) ||
+    !(input.originalRequest.nonce instanceof Uint8Array)
+  )
+    throw new Error('Invalid original deposit bytes.');
   const original = {
     account: input.originalRequest.account,
     requestId: input.originalRequest.requestId,
-    color: input.originalRequest.color.slice(),
-    nonce: input.originalRequest.nonce.slice(),
+    color: new Uint8Array(input.originalRequest.color),
+    nonce: new Uint8Array(input.originalRequest.nonce),
     amount: input.originalRequest.amount,
   };
   if (

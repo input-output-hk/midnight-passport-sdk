@@ -181,7 +181,9 @@ original entry and can set `viewingKeyChanged`; earlier viewing envelopes may be
 confirmed result is the original historical receipt, not a fresh holdings or current-key report.
 The remaining key-rotation/on-chain execution race is still the sender/contract adapter's concern.
 
-Same-ID changed account, amount, color, nonce, network or binding refuses before further work.
+Admission copies coin bytes into owned Uint8Arrays before asynchronous chain or journal work,
+including when a Node caller supplies Buffer inputs. Later caller mutation cannot change the
+admitted coin. Same-ID changed account, amount, color, nonce, network or binding refuses before further work.
 Confirmation timers and poll counts are bounded, and invalid/regressing clocks refuse. The host
 must impose I/O deadlines on injected calls; the library cannot cancel a port that never settles.
 All failures retain the original journal and sender IDs. No automatic new-ID retry is provided.

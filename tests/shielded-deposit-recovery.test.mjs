@@ -542,7 +542,7 @@ for (const fault of [
           const read = world.journal.read;
           recovery.journal = {
             ...recovery.journal,
-            read: async (id) => {
+            read: async (/** @type {string} */ id) => {
               const doc = await read(id);
               if (doc?.phase === 'submitted') throw unsafe;
               return doc;
@@ -843,3 +843,124 @@ test('confirmation CAS contention cannot reset the original deadline or observat
       assert.equal(world.stats().effects, 1);
     });
 });
+
+function latch() {
+  /** @type {()=>void} */ let release = () => {};
+  const promise = new Promise((resolve) => {
+    release = () => resolve(undefined);
+  });
+  return { promise, release };
+}
+
+for (const journalled of [false, true]) {
+  for (const bufferBacked of [false, true]) {
+    test(`deposit snapshots coin bytes before chain I/O (journalled=${journalled}, Buffer=${bufferBacked})`, () =>
+      fixture(async (root) => {
+        const world = depositWorld(root),
+          entered = latch(),
+          gate = latch();
+        const request = {
+          ...depositRequest,
+          color: bufferBacked
+            ? Buffer.from(depositRequest.color)
+            : new Uint8Array(depositRequest.color),
+          nonce: bufferBacked
+            ? Buffer.from(depositRequest.nonce)
+            : new Uint8Array(depositRequest.nonce),
+        };
+        const read = world.ports.chain.readAccount;
+        let first = true;
+        const ports = {
+          ...world.ports,
+          chain: {
+            readAccount: async (/** @type {Parameters<typeof read>} */ ...args) => {
+              if (first) {
+                first = false;
+                entered.release();
+                await gate.promise;
+              }
+              return read(...args);
+            },
+          },
+        };
+        // A one-shot caller deliberately has no recovery journal.
+        if (!journalled) delete (/** @type {Partial<typeof ports>} */ (ports).recovery);
+        const pending = depositShielded(request, ports);
+        try {
+          await entered.promise;
+          request.color.fill(8);
+          request.nonce.fill(9);
+        } finally {
+          gate.release();
+        }
+        const result = await pending;
+        assert.equal(result.txId, 'tx-original');
+        const sent = JSON.parse(readFileSync(join(root, 'sender.json'), 'utf8'));
+        assert.equal(sent.request.coin.color, toHex(depositRequest.color));
+        assert.equal(sent.request.coin.nonce, toHex(depositRequest.nonce));
+        if (journalled) {
+          const doc = await world.journal.read(depositRequest.requestId);
+          assert.ok(doc);
+          assert.equal(doc.intent.color, toHex(depositRequest.color));
+          assert.equal(doc.intent.nonce, toHex(depositRequest.nonce));
+          assert.deepEqual(
+            await openInboxCoin(new Uint8Array(32).fill(9), fromHex(doc.intent.entry)),
+            {
+              nonce: depositRequest.nonce,
+              color: depositRequest.color,
+              value: depositRequest.amount,
+            },
+          );
+        }
+        assert.equal(world.stats().sends, 1);
+        assert.equal(world.stats().effects, 1);
+      }));
+  }
+}
+
+test(
+  'same-ID resume snapshots Buffer coin bytes before protected journal I/O',
+  { timeout: 5000 },
+  () =>
+    fixture(async (root) => {
+      const world = depositWorld(root);
+      const original = await depositShielded(depositRequest, world.ports);
+      const entered = latch(),
+        gate = latch();
+      const request = {
+        ...depositRequest,
+        color: Buffer.from(depositRequest.color),
+        nonce: Buffer.from(depositRequest.nonce),
+      };
+      const read = world.journal.read;
+      let first = true;
+      const ports = {
+        ...world.ports,
+        recovery: {
+          ...world.ports.recovery,
+          journal: {
+            ...world.journal,
+            read: async (/** @type {string} */ id) => {
+              if (first) {
+                first = false;
+                entered.release();
+                await gate.promise;
+              }
+              return read(id);
+            },
+          },
+        },
+      };
+      const before = world.stats();
+      const pending = resumeShieldedDeposit(request, ports);
+      try {
+        await entered.promise;
+        request.color.fill(8);
+        request.nonce.fill(9);
+      } finally {
+        gate.release();
+      }
+      assert.deepEqual(await pending, original);
+      assert.deepEqual(world.stats(), before);
+    }),
+);
