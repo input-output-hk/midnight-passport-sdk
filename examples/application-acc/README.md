@@ -158,6 +158,17 @@ and failed roots must stay outside Git/Obsidian. Export only reviewed public
 addresses, hashes, counts and bounded outcomes.
 
 Until a source-bound native receipt is recorded, this worker adds no proof-backed
-acceptance claim. Expiry and tamper controls remain explicit separate cases; a
-business guard rejected during construction is not a malicious proof admitted or
-rejected by the node. Stop only owned workers/container IDs and retain all volumes.
+acceptance claim. Expiry waits for indexed chain time; module fingerprint substitution is a
+construction refusal. Artifact inputs are pinned before wallet startup and checked
+again at the end. A business guard rejected during construction is not a malicious
+proof admitted or rejected by the node. Stop only owned workers/container IDs and retain all volumes.
+
+The worker's grant preparation requires the live active-ID roster and current time.
+Activation salt, owner/grantee identities, constructor encryption bytes and grant
+openings are retained privately before the corresponding effects. Exact NIGHT
+funding waits for a spendable 12-unit UTXO, rather than a fixed indexer delay.
+Check the copied worker against the installed declaration files before live work
+(`tsc --allowJs --checkJs --noEmit --skipLibCheck --strict false --noImplicitAny false
+--target ES2022 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions
+qualify-native.mjs`). The portable `prepare-payment.mjs` has the stricter independent
+check described above; the worker's dynamic circuit dispatch is a qualification seam.

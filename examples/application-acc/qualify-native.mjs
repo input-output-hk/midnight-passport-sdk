@@ -7,7 +7,6 @@ import { createHash, randomBytes } from 'node:crypto';
 import { appendFileSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { setTimeout as delay } from 'node:timers/promises';
 
 assert.equal(process.env.IN_NIX_SHELL !== undefined, true);
 assert.equal(process.env.PASSPORT_MERCHANT_NATIVE, '1');
@@ -19,7 +18,7 @@ const root = resolve(import.meta.dirname);
 const sha = (value) => createHash('sha256').update(value).digest('hex');
 const configBytes = readFileSync(join(root, 'native-config.private.json'));
 assert.equal(sha(configBytes), process.env.PASSPORT_MERCHANT_CONFIG_SHA256);
-const config = JSON.parse(configBytes);
+const config = JSON.parse(configBytes.toString('utf8'));
 for (const [file, pin] of Object.entries(config.files))
   assert.equal(sha(readFileSync(join(root, file))), pin, `Changed input: ${file}`);
 const output = join(root, config.output);
@@ -73,7 +72,7 @@ try {
     import('./wave-deploy.ts'),
     import('rxjs'),
   ]);
-  const app = await import(pathToFileURL(join(root, 'managed/merchant/contract/index.js')));
+  const app = await import(pathToFileURL(join(root, 'managed/merchant/contract/index.js')).href);
   const pure = acc.pureCircuits;
   const signer = (secret) =>
     recipeJubjubAuthoriser(
@@ -86,7 +85,13 @@ try {
       },
       pure,
     );
-  const material = { owner: hex(rnd()), grantee: hex(rnd()), merchantSeed: hex(rnd()) };
+  const material = {
+    owner: hex(rnd()),
+    grantee: hex(rnd()),
+    merchantSeed: hex(rnd()),
+    bootSalt: hex(rnd()),
+    encryptionKey: hex(rnd()),
+  };
   writeFileSync(join(output, 'identities.private.json'), stringify(material) + '\n', {
     flag: 'wx',
     mode: 0o600,
@@ -113,6 +118,8 @@ try {
   };
   const submit = providers.midnightProvider.submitTx.bind(providers.midnightProvider);
   providers.midnightProvider.submitTx = async (tagged) => {
+    assert.equal(tagged.version, 'v9');
+    if (tagged.version !== 'v9') throw Error('Only ledger-v9 is qualified');
     const tx = tagged.tx,
       data = tx.serialize(),
       hash = tx.transactionHash();
@@ -137,7 +144,7 @@ try {
     }),
     CompiledContract.withCompiledFileAssets(join(root, 'managed/account')),
   );
-  const bootSalt = rnd();
+  const bootSalt = bytes(material.bootSalt);
   stage = 'account-deploy';
   const accountAddress = await wave.deployAccountInWaves(providers, accountCompiled, {
     firstArm: 'jubjub',
@@ -146,20 +153,30 @@ try {
     retireAuthority: true,
     args: [
       pure.derive_boot_commitment_with_jubjub(bootSalt, ownerKey),
-      rnd(),
+      bytes(material.encryptionKey),
       pure.compute_public_point_with_jubjub(13n),
       new Uint8Array(64),
       60n,
     ],
   });
-  event('account-deployed', { accountAddress });
+  const accountInitial = await providers.publicDataProvider.queryContractState(accountAddress);
+  assert.ok(accountInitial);
+  const nativeLedger = await import('@midnightntwrk/ledger-v9');
+  const installedState = nativeLedger.ContractState.deserialize(accountInitial.serialize());
+  assert.equal(installedState.operations().length, 52);
+  for (const [id, expected] of Object.entries(acc.expectedVk))
+    assert.equal(sha(installedState.operation(id).verifierKey), expected);
+  assert.deepEqual(installedState.maintenanceAuthority.committee, []);
+  assert.equal(installedState.maintenanceAuthority.threshold, 1);
+  event('account-deployed', { accountAddress, verifiedOperations: 52, maintenanceRetired: true });
   const accountState = async () => {
     const state = await providers.publicDataProvider.queryContractState(accountAddress);
     assert.ok(state);
     return acc.ledger(state.data);
   };
+  // Dynamic circuit dispatch is limited to this pinned generated binding.
   const callAccount = (circuitId, ...args) =>
-    submitCallTx(providers, {
+    /** @type {(...params:any[])=>Promise<any>} */ (submitCallTx)(providers, {
       compiledContract: accountCompiled,
       contractAddress: accountAddress,
       circuitId,
@@ -187,6 +204,7 @@ try {
           grind,
         ),
     });
+    if (signature.scheme !== 'jubjub-schnorr') throw Error('Wrong authorisation arm');
     const result = await callAccount(
       `${operation}_with_jubjub`,
       ...args,
@@ -200,8 +218,8 @@ try {
     return result;
   };
   // Split the public genesis coin before depositing exact NIGHT; never use a fee-only sponsor.
-  const { UnshieldedAddress } = await import('@midnightntwrk/wallet-sdk-address-format');
-  const ownRecipient = new UnshieldedAddress(Buffer.from(wallet.userAddressBytes(funding)));
+  const ownState = await Rx.firstValueFrom(funding.wallet.state());
+  const ownRecipient = ownState.unshielded.address;
   const recipe = await funding.wallet.transferTransaction(
     [
       {
@@ -219,10 +237,22 @@ try {
     flag: 'wx',
     mode: 0o600,
   });
-  event('night-split-before-send', { hash: split.transactionHash?.() ?? sha(split.serialize()) });
+  event('night-split-before-send', { bytesSha256: sha(split.serialize()) });
   const splitId = await funding.wallet.submitTransaction(split);
   event('night-split-submitted', { id: splitId });
-  await delay(15_000);
+  await Rx.firstValueFrom(
+    funding.wallet.state().pipe(
+      Rx.filter(
+        (state) =>
+          state.isSynced &&
+          state.unshielded.availableCoins.some(
+            ({ utxo }) => utxo.type === hex(color) && utxo.value === 12n,
+          ),
+      ),
+      Rx.timeout(120_000),
+    ),
+  );
+  event('exact-night-input-observed', { amount: '12' });
   await callAccount('deposit_unshielded', color, 12n);
   assert.equal((await accountState()).unshielded_balances.lookup(color), 12n);
   const modules = new Map([[accountAddress, acc]]);
@@ -258,12 +288,14 @@ try {
     wrongMerchant: wrongMerchant.address,
     recipient: hex(recipient),
   });
-  const grant = await prepareJubjubGrant(
+  let grant = await prepareJubjubGrant(
     {
       account: accountAddress,
       origin: 'localhost',
-      slot: 0,
-      scopeSalt: rnd(),
+      nowSeconds: Math.floor(Date.now() / 1000),
+      activeGrantIds: Array.from((await accountState()).grants)
+        .filter(([, row]) => row.active)
+        .map(([id]) => hex(id)),
       scope: {
         grantee: { scheme: 'jubjub-schnorr', publicKey: await grantee.devicePublicKeyHex() },
         operations: ['withdraw-unshielded'],
@@ -278,6 +310,10 @@ try {
     },
     pure,
   );
+  writeFileSync(join(output, 'grant-opening.private.json'), stringify(grant) + '\n', {
+    flag: 'wx',
+    mode: 0o600,
+  });
   await ownerCall(
     'issue_grant',
     [bytes(grant.grantId), ...grant.scopeArgs, grant.scopeSalt],
@@ -378,6 +414,16 @@ try {
     () => merchant.deployed.callTx.pay({ ...first.approval, sig_s: first.approval.sig_s + 1n }),
     /invalid grant signature|range error/,
   );
+  modules.set(accountAddress, { ...acc, expectedVk: {} });
+  try {
+    await refused(
+      'module verifier fingerprint substitution',
+      () => merchant.deployed.callTx.pay(first.approval),
+      /resolved module carries no verifier key fingerprint/,
+    );
+  } finally {
+    modules.set(accountAddress, acc);
+  }
   await merchant.deployed.callTx.pay(first.approval);
   assert.equal((await accountState()).unshielded_balances.lookup(color), 8n);
   assert.equal((await snapshot()).payments, '1');
@@ -413,6 +459,61 @@ try {
     () => merchant.deployed.callTx.pay(second.approval),
     /not active|inactive|revoked/,
   );
+  const expiresAt = Math.floor(Date.now() / 1000) + 90;
+  grant = prepareJubjubGrant(
+    {
+      account: accountAddress,
+      origin: 'localhost',
+      nowSeconds: Math.floor(Date.now() / 1000),
+      activeGrantIds: Array.from((await accountState()).grants)
+        .filter(([, row]) => row.active)
+        .map(([id]) => hex(id)),
+      scope: {
+        grantee: { scheme: 'jubjub-schnorr', publicKey: granteePublicKey },
+        operations: ['withdraw-unshielded'],
+        color: hex(color),
+        recipient: { kind: 'user-address', value: hex(recipient) },
+        maxCoinValue: '12',
+        perCallCap: '4',
+        cap: '12',
+        expiresAt,
+        caller: merchant.address,
+      },
+    },
+    pure,
+  );
+  writeFileSync(join(output, 'expiry-grant-opening.private.json'), stringify(grant) + '\n', {
+    flag: 'wx',
+    mode: 0o600,
+  });
+  await ownerCall(
+    'issue_grant',
+    [bytes(grant.grantId), ...grant.scopeArgs, grant.scopeSalt],
+    [bytes(grant.grantId), grant.scopeDigest],
+  );
+  const expiryApproval = await prepareWithKey('0');
+  const deadline = Date.now() + 180_000;
+  for (;;) {
+    const response = await fetch(process.env.MN_INDEXER_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ query: '{block{hash height timestamp}}' }),
+      signal: AbortSignal.timeout(5000),
+    });
+    assert.equal(response.ok, true);
+    const body = await response.json();
+    assert.equal(body.errors, undefined);
+    const timestamp = body.data?.block?.timestamp;
+    assert.equal(typeof timestamp, 'number');
+    if (timestamp >= expiresAt * 1000) break;
+    assert.ok(Date.now() < deadline, 'Indexed chain time did not reach the grant expiry');
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  await refused(
+    'expired grant on indexed chain time',
+    () => merchant.deployed.callTx.pay(expiryApproval.approval),
+    /grant expired/,
+  );
   for (const [file, pin] of Object.entries(config.files))
     assert.equal(sha(readFileSync(join(root, file))), pin);
   writeFileSync(
@@ -430,7 +531,6 @@ try {
       realProvider: false,
       fullCompatibility: false,
       limitations: [
-        'Expiry and artifact/module tamper require separate controls',
         'Build refusals are not node rejections',
         'No malicious bypass of the post-call guard was submitted',
       ],
@@ -445,6 +545,20 @@ try {
   });
   throw error;
 } finally {
-  await recipientWallet?.wallet.stop();
-  await funding?.wallet.stop();
+  const cleanup = await Promise.allSettled(
+    [recipientWallet, funding].filter(Boolean).map((context) => context.wallet.stop()),
+  );
+  writeFileSync(
+    join(output, 'wallet-cleanup.private.json'),
+    stringify(
+      cleanup.map((entry) => ({
+        stopped: entry.status === 'fulfilled',
+      })),
+    ) + '\n',
+    { flag: 'wx', mode: 0o600 },
+  );
+  assert.ok(
+    cleanup.every((entry) => entry.status === 'fulfilled'),
+    'A qualification wallet did not stop',
+  );
 }
