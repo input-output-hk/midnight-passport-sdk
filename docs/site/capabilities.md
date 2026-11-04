@@ -128,3 +128,49 @@ fund `10`, withdraw `1`, verify ACC `9` **and** recipient credit `1` after sync,
 all in smallest units. Inspecting configuration or refreshing an ACC balance does
 not establish recipient credit. Preserve original request/transaction IDs when an
 outcome is uncertain; never obtain a fresh pass by replaying under a new ID.
+
+## Plan proof keys before opening the key source
+
+The candidate account preflight entry also exports `getAccountProofRequirements`.
+It describes a **set** of proof circuits and required pure helpers for each of the
+four covered operations, including helper methods enforced by connector guards.
+It is not a transaction count, deployment plan, prompt budget or proof benchmark.
+Explicit read-grant issue includes inbox publication and viewing-key rotation for
+a mixed reader roster. Pending publication recovery needs the inbox prover only;
+it never plans a second issue proof. Shielded withdrawal still requires an exact-value coin.
+
+```ts
+import { getAccountProofRequirements } from '@input-output-hk/mn-passport-account/preflight';
+import { inspectAccProofProfile } from '@input-output-hk/mn-passport-contract/capabilities';
+
+const requirements = getAccountProofRequirements('jubjub-schnorr', {
+  operation: 'issue-grant', grantRead: true,
+});
+// profileAnswer and manifestAnswer are parsed /v1/profile and /v1/manifest JSON
+// from the host's chosen endpoint. Fetch them before requesting any key ceremony.
+const coverage = inspectAccProofProfile(
+  profileAnswer, manifestAnswer, requirements.proofCircuits,
+);
+// coverage.status: 'profile-incomplete' or 'profile-covers-request'
+// coverage.evidence is always 'advertised-metadata-only'.
+```
+
+Coverage checks the packaged binding/manifest identity, explicit prover **and**
+verifier names, and malformed/duplicate/unknown lists. It does not trust a profile
+name or `ready: true`. In particular, the actual `jubjub-owner-v1` profile includes
+grant issue/append/rotation, but **does not include either owner withdrawal prover**.
+All 52 verifier keys remain advertised in that profile; this does not make missing
+provers available. P-256 owner calls likewise require their matching prover set.
+
+A materialized `ports.binding` is now inspected for the planned pure-helper methods
+without calling them. Lazy binding/chain loaders remain uncalled and require later
+validation. `inspectHostProofs` in the typed host example composes both reports;
+unknown authoriser arms or absent grant read intent never fall back to another plan.
+
+This is an early configuration refusal, **not artifact verification**: authenticate
+the endpoint, independently pin/check the manifest and every consumed file, and
+handle stale/missing downloads and proof failures at runtime. Creation/deployment,
+a caller application's own keys and real-provider approval are separate requirements.
+For application→ACC grant spending, explicitly request
+`withdraw_unshielded_with_grant_jubjub` plus the caller's independent artifacts;
+owner-flow plans do not describe a grant holder or custom outgoing ACC bundle.

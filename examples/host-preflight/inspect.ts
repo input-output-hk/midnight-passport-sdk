@@ -1,9 +1,11 @@
 import {
   ACC_CAPABILITIES,
   getAccCircuitCapability,
+  inspectAccProofProfile,
 } from '@input-output-hk/mn-passport-contract/capabilities';
 import {
   inspectAccountConfiguration,
+  getAccountProofRequirements,
   type AccountPreflightRequest,
 } from '@input-output-hk/mn-passport-account/preflight';
 import type { PassportPorts } from '@input-output-hk/mn-passport-account/ports';
@@ -12,9 +14,9 @@ import type { PassportPorts } from '@input-output-hk/mn-passport-account/ports';
 export function inspectHost(ports: Partial<PassportPorts>, request: AccountPreflightRequest) {
   const configuration = inspectAccountConfiguration(ports, request);
   const arm =
-    ports.authoriser?.scheme === 'jubjub-schnorr'
+    configuration.ownerScheme === 'jubjub-schnorr'
       ? 'jubjub'
-      : ports.authoriser?.scheme === 'p256-webauthn'
+      : configuration.ownerScheme === 'p256-webauthn'
         ? 'p256'
         : undefined;
   const circuit =
@@ -26,4 +28,23 @@ export function inspectHost(ports: Partial<PassportPorts>, request: AccountPrefl
         )
       : undefined;
   return { binding: ACC_CAPABILITIES.binding, configuration, circuit };
+}
+
+/** Supply parsed /v1/profile and /v1/manifest answers from the chosen key endpoint. */
+export function inspectHostProofs(
+  ports: Partial<PassportPorts>,
+  request: AccountPreflightRequest,
+  profile: unknown,
+  manifest: unknown,
+) {
+  const host = inspectHost(ports, request);
+  const scheme = host.configuration.ownerScheme;
+  if (
+    (scheme !== 'p256-webauthn' && scheme !== 'jubjub-schnorr') ||
+    (request.operation === 'issue-grant' && typeof request.grantRead !== 'boolean')
+  )
+    return { ...host, requirements: undefined, proofProfile: undefined };
+  const requirements = getAccountProofRequirements(scheme, request);
+  const proofProfile = inspectAccProofProfile(profile, manifest, requirements.proofCircuits);
+  return { ...host, requirements, proofProfile };
 }

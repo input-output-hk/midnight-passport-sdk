@@ -722,3 +722,22 @@ full Lace/provider compatibility. k256 remains experimental artifact/binding onl
 shielded withdrawal remains exact-value. Other implemented owner flows and sender
 or grant-holder APIs retain their own runtime checks outside this finite preflight
 profile. See [capability guide](site/capabilities.md).
+
+
+### Expanded local partner preflight and journal-session recipe
+
+The candidate proof planner covers the same four sealed-owner operations and both
+owner arms, including inbox/rotation proof sets for read-grant issue and publication
+only for pending recovery. Key-profile checks use real endpoint response shapes,
+explicit requested names and packaged binding pins. All-verifier coverage or a
+profile name cannot stand in for a missing prover; no artifact-integrity/native
+claim follows. Materialized pure-helper presence is inspected; lazy loaders never run.
+
+Actual WebAuthn-adapter + AES-GCM filesystem-journal regressions measure the synthetic
+cold unwrapped/wrapped PRF assertion baseline10/1, held creation outputs0 and later
+same-ID continuation1. Failure/refusal cases release sessions without resending
+unknown dispatches. These are credential API call counts with a software authenticator,
+not visible prompts or provider restoration. Host consent, sender wallet approval,
+bounded I/O and unrelated-operation isolation remain host obligations. The example
+adds no signal/timeout API, background unlock or complete session isolation. See
+issues245/232/269 and the engineer recovery guide. RC6 remains unchanged.

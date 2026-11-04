@@ -1,3 +1,11 @@
+import {
+  ACCOUNT_PREFLIGHT_BINDING,
+  getAccountProofRequirements,
+  type SupportedOwnerScheme,
+} from './proof-requirements.js';
+export { ACCOUNT_PREFLIGHT_BINDING, getAccountProofRequirements } from './proof-requirements.js';
+export type { AccountProofRequirements, SupportedOwnerScheme } from './proof-requirements.js';
+
 /**
  * Advisory configuration inspection for an existing sealed owner account. No port, loader,
  * getter or key ceremony is invoked. This does not replace any flow's runtime guards.
@@ -20,13 +28,15 @@ export interface AccountConfigurationIssue {
 export interface AccountConfigurationReport {
   readonly profile: 'sealed-owner-v1';
   readonly operation: AccountPreflightOperation;
+  /** Safe inspected scheme; a host need not read an accessor on the original port again. */
+  readonly ownerScheme?: SupportedOwnerScheme;
   readonly status: 'configuration-incomplete' | 'runtime-validation-required';
   readonly issues: readonly AccountConfigurationIssue[];
   /** Always nonempty, even when every inspected member is configured. */
   readonly runtimeChecks: readonly string[];
 }
 
-const MANIFEST = '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f';
+const MANIFEST = ACCOUNT_PREFLIGHT_BINDING.manifestSha256;
 const OPERATIONS: readonly string[] = [
   'withdraw-unshielded',
   'withdraw-shielded',
@@ -126,6 +136,16 @@ export function inspectAccountConfiguration(
       'binding',
       'Configure a binding object or lazy loader; bytes and pure helpers remain runtime checks.',
     );
+  if (
+    binding !== null &&
+    typeof binding === 'object' &&
+    (scheme === 'p256-webauthn' || scheme === 'jubjub-schnorr') &&
+    OPERATIONS.includes(request.operation) &&
+    (request.operation !== 'issue-grant' || typeof request.grantRead === 'boolean')
+  ) {
+    for (const name of getAccountProofRequirements(scheme, request).pureHelpers)
+      method(`binding.pureCircuits.${name}`);
+  }
   if (typeof at(ports, 'chain') !== 'function') {
     method('chain.readAccount');
     method('chain.call');
@@ -174,6 +194,7 @@ export function inspectAccountConfiguration(
   return Object.freeze({
     profile: 'sealed-owner-v1',
     operation: request.operation,
+    ...((scheme === 'p256-webauthn' || scheme === 'jubjub-schnorr') && { ownerScheme: scheme }),
     status: issues.length ? 'configuration-incomplete' : 'runtime-validation-required',
     issues: Object.freeze(issues),
     runtimeChecks: Object.freeze([

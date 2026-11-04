@@ -88,3 +88,15 @@ operator/resource qualification remain explicit. No unbounded-input guarantee.
 
 {% include durability-boundary.md %}
 
+
+
+## Candidate operation/profile preflight
+
+The local candidate `account/preflight` entry plans exact owner-operation proof
+sets. `contract/capabilities` exposes `inspectAccProofProfile` to compare those
+sets with parsed `/v1/profile` and `/v1/manifest` answers. In particular, all verifier
+keys do not supply an absent withdrawal prover in `jubjub-owner-v1`. See the
+[capability guide]({{ '/capabilities/#plan-proof-keys-before-opening-the-key-source' | relative_url }})
+and runnable metadata CLI. Coverage is advertised metadata only; independent
+manifest/key hashes, the caller application's keys, native admission and provider
+approval remain separate. These additive helpers are absent from RC6.

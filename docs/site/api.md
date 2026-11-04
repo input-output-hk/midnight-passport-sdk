@@ -220,3 +220,13 @@ packaged circuits versus implemented flows and inspect four existing sealed-owne
 configurations before any key ceremony. They are absent from RC6. See the
 [capability guide]({{ '/capabilities/' | relative_url }}) for signatures, adoption
 layers, both supported owner arms and runtime validation that always remains.
+
+
+The same candidate entries expose `getAccountProofRequirements` and
+`inspectAccProofProfile`: plan the exact key set, then inspect the chosen key
+endpoint's profile/manifest JSON before a ceremony. Materialized binding helper
+methods are also checked; lazy modules remain deferred. Advertised coverage is
+never an artifact-integrity or operational-readiness guarantee. The strict
+shielded-deposit [session composition]({{ '/shielded-deposit-recovery/#bound-one-approved-journal-session' | relative_url }})
+keeps a single approved journal invocation inside the same source instance's
+session, with later same-ID continuation requiring a fresh independent unlock.

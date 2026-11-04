@@ -57,3 +57,6 @@ export function getAccCircuitCapability(
 ): AccCircuitCapability | undefined {
   return ACC_CAPABILITIES.circuits.find((entry) => entry.name === name && entry.kind === kind);
 }
+
+export { inspectAccProofProfile } from './proof-profile.js';
+export type { AccProofProfileIssue, AccProofProfileReport } from './proof-profile.js';

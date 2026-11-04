@@ -82,13 +82,54 @@ const ports = {
   ...senderPorts,
   recovery: { pins, journal, ...evidencePorts },
 };
-const receipt = await depositShielded(originalRequest, ports);
+const receipt = await journalKeySource.withSession(() =>
+  depositShielded(originalRequest, ports),
+);
 // Later, after a lost response or restart: same ID/account/coin/pins, retained original journal.
-const sameReceipt = await resumeShieldedDeposit(originalRequest, ports);
+const sameReceipt = await journalKeySource.withSession(() =>
+  resumeShieldedDeposit(originalRequest, ports),
+);
 ```
 
 This sketch does not provide a native sender/finality adapter. Never substitute an unconditional
 `true` confirmation or a balance-only probe in a production host.
+
+## Bound one approved journal session
+
+The **same `journalKeySource` instance** passed to `encryptedShieldedDepositJournal`
+wraps each complete `depositShielded` or same-ID `resumeShieldedDeposit` invocation
+above. Nested journal calls then reuse its active operation session. Obtain host
+consent for that original account/network/intent first, and keep the value-bearing
+wallet's independent signing/approval. An outer PRF session grants neither account
+spending authority nor sender assets.
+
+A deterministic regression uses the actual `webauthnPasskey` adapter, actual encrypted
+filesystem journal and deposit helper with a software authenticator/fake sender and
+finality. Its cold baseline measures **10 PRF credential assertions** without the
+outer session and **1** with it. Creation/enrollment contributes a separate signed
+assertion; a fresh client may also need credential identification. When PRF outputs
+are returned at creation, the first wrapped operation uses **0** additional PRF
+assertions. A later independent same-ID continuation requires **1** fresh assertion.
+These count API calls, not user-visible prompts or real Google/iCloud behavior.
+
+Success, callback failure, unknown sender outcomes, PRF cancellation, wrong credential
+and missing PRF all release the operation session. A later invocation must unlock
+again. Read-only reconciliation with no sender evidence stays `dispatching`/unknown,
+never a replacement send. The regression also checks zeroed derived journal-key
+buffers and protected disk revisions. It does not qualify a native sender/provider.
+
+**Lifetime trade-off:** wrapping the complete invocation keeps PRF material live
+through wallet/proof/confirmation waits until the last session user exits. Bound
+injected I/O and obtain consent before entering. Do not overlap unrelated operations
+on the same WebAuthn source: the current adapter shares overlapping sessions and
+this example does not make them account-isolated. It adds no background unlock,
+long-lived secret cache, wallet lock or cancellation/timeouts to the deposit API.
+Broad session isolation/provider qualification remain #245/#232; operator no-send
+fencing remains #269. Do not wrap unrelated ACC operations just to reduce counts.
+
+The [strict composition example](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/shielded-deposit-session/approved-deposit.ts)
+constructs the journal and both methods around one captured key-source instance.
+It expects reviewed sender, protected storage and finality ports supplied by the host.
 
 ## Confirmation, limits and privacy
 

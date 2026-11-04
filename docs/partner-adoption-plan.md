@@ -101,3 +101,23 @@ This is a bounded contribution to #237/#238, not closure of their wider provider
 complete operation negotiation and reproducible native recipe requirements.
 The #275 native goal remains blocked per owner resource decision. Keep PR276/277
 heads frozen for review; continue this slice locally on the existing primary branch.
+
+
+### Expanded local tranche after PR276/277 merge
+
+Both PRs are merged into passport-acc-prototype. The owner requested a larger
+coherent local tranche. Extend #237/#238 with exact operation proof/helper plans,
+key-endpoint advertised-profile checks, materialized helper inspection and a bounded
+metadata CLI, plus strict executable public-import examples. The related #245
+journal-session follow-up uses the actual adapter/encrypted deposit composition,
+counts PRF assertions separately from enrollment/wallet effects, and preserves
+same-ID reconciliation and the current concurrent-source isolation limitations.
+
+Fast CI compiles examples against the declared public export map, checks real
+HTTP metadata/refusals and runs the emitted composition with synthetic wallet/finality.
+No installs, giant key generation or native proofs in required CI. Fresh installed
+candidate checks, full local gate, GPG/DCO/Assisted commits and independent review
+remain required. Keep the current primary branch, integrate the merged prototype
+history locally, preserve other resources and retained unknowns, and update Vault.
+Native #275 remains deferred under the archived-indexer decision; do not substitute
+this preparation/configuration work for native merchant credit/admission acceptance.
