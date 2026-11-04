@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "implementation": "f8f1a6989185bfd468514e43692f6677d3a90d3d",
+  "authoredImplementation": "492b9d3b890d548457c12bc4e4d90c14b6a61de0",
+  "base": "b61891baf83c5169e791479004facda484b8bde5",
+  "mergedPrs": [
+    276,
+    277
+  ],
+  "binding": "acc-s3r1.1",
+  "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "fullLocalGate": {
+    "passed": 1163,
+    "existingSkipped": 7,
+    "failed": 0,
+    "lint": true,
+    "format": true,
+    "build": true,
+    "applicationTypes": true
+  },
+  "focusedTestsPassed": 62,
+  "independentReview": {
+    "head": "f8f1a6989185bfd468514e43692f6677d3a90d3d",
+    "status": "no actionable bugs relative to prototype base"
+  },
+  "profileCoverage": {
+    "operations": 4,
+    "ownerArms": 2,
+    "evidence": "advertised metadata only",
+    "materializedHelpersInspected": true,
+    "lazyLoadersInvoked": false
+  },
+  "journalSession": {
+    "adapter": "actual webauthnPasskey",
+    "authenticator": "software fixture",
+    "journal": "actual AES-GCM filesystem revisions",
+    "senderFinality": "synthetic",
+    "coldUnwrappedPrfAssertions": 10,
+    "coldWrappedPrfAssertions": 1,
+    "creationHeldPrfAssertions": 0,
+    "laterResumePrfAssertions": 1,
+    "assertionsAreVisiblePrompts": false,
+    "unknownWithoutSenderRecordResent": false,
+    "sessionScopeIsolationImplemented": false
+  },
+  "candidate": {
+    "version": "0.1.0-dev.20261104.partner.1",
+    "packagesInstalled": 9,
+    "filesAudited": 555,
+    "frozenOfflineLockReplay": true,
+    "preAndPostBytesMatch": true,
+    "strictExamples": 2
+  },
+  "resources": {
+    "mergedCompilerBranchRemoved": true,
+    "archivedIndexerRetained": true,
+    "otherWorktreesUntouched": true,
+    "nativeContainersStarted": false,
+    "reviewCheckoutRemoved": true
+  },
+  "nativeMerchantAdmission": false,
+  "realProvider": false,
+  "fullLace": false,
+  "registryPublished": false
+}
