@@ -26,8 +26,11 @@ exact-value NIGHT UTXO. It also checks all 52 deployed verifier keys and retired
 maintenance authority. Installed declaration checking and the full local gate pass;
 a second independent review of the complete corrected worker found one remaining
 coverage gap: the wrong-caller check also needs the wrong merchant's state. The
-follow-up snapshots full serialized state for the ACC and both merchants. Final
-review of that correction is pending.
+follow-up snapshots full serialized state for the ACC and both merchants. Final review of that correction and the endpoint guard at
+`5b68dd8bf9ab9e7a8d8635ac5a30d2e0e61fb227` found no actionable regression;
+the targeted guard suite passed 13 cases. The final full local gate passed
+**1,123 TAP tests / seven existing skips / zero failures**, plus the other required
+script/type gates. [Verification](native-verification.json) preserves the measured source.
 
 The first attempt retains an explicit interrupted failure, unchanged source/runtime
 fingerprints and confirmed cleanup. It is not a successful run. The second attempt

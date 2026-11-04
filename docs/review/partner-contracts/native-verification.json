@@ -1,0 +1,79 @@
+{
+  "kind": "application-acc-native-preparation",
+  "sourceCommit": "5b68dd8bf9ab9e7a8d8635ac5a30d2e0e61fb227",
+  "gpgVerified": true,
+  "dcoSigned": true,
+  "localGate": {
+    "outcome": "passed",
+    "tapPassed": 1123,
+    "existingSkips": 7,
+    "failures": 0,
+    "otherRequiredScriptAndTypeGates": "passed"
+  },
+  "installedWorkerDeclarations": {
+    "outcome": "passed",
+    "strict": false,
+    "portablePaymentHelperStrictCheck": "retained from compiler/offline tranche"
+  },
+  "independentReview": {
+    "agent": "Codex CLI (owner-authorized Claude quota fallback)",
+    "reviewedCorrectionCommit": "5b68dd8bf9ab9e7a8d8635ac5a30d2e0e61fb227",
+    "initialFindings": 3,
+    "workerFollowupFindings": 1,
+    "endpointFindings": 1,
+    "allFindingsAddressed": true,
+    "finalActionableFindings": 0,
+    "targetedGuardTestsPassed": 13
+  },
+  "callerCompilation": {
+    "compiler": "0.35.0",
+    "runtime": "0.20.0",
+    "zkir": "2.0",
+    "newCircuits": 1,
+    "proverBytes": 552574,
+    "verifierBytes": 1351,
+    "compilerManifestSha256": "de7dcb99a015a71219dfa404fb07c0769192f8d4bd72a521543174af00d502bd",
+    "accKeysRegenerated": 0,
+    "existingAccProversVerified": 5
+  },
+  "consumer": {
+    "sdkPackages": 4,
+    "version": "0.1.0-dev.20261103",
+    "privatelyPinnedInputFiles": 21661,
+    "thirdAttemptPrepared": true,
+    "thirdAttemptStarted": false
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "outcome": "failed",
+      "sourceCommit": "cdc363b4db5cad8390200465dc8015139b754afb",
+      "endIdentityMatches": true,
+      "interrupted": true,
+      "ownedContainersStopped": 3,
+      "leaseReleased": true,
+      "walletsStarted": 0,
+      "nativeProofs": 0,
+      "transactionsSubmitted": 0,
+      "stateVolumesPreserved": true
+    },
+    {
+      "attempt": 2,
+      "outcome": "failed",
+      "sourceCommit": "a880456bcd731a441eb3bf1a3bd33052e28bfe9e",
+      "endIdentityMatches": true,
+      "interrupted": false,
+      "ownedContainersStopped": 3,
+      "leaseReleased": true,
+      "walletsStarted": 0,
+      "nativeProofs": 0,
+      "transactionsSubmitted": 0,
+      "stateVolumesPreserved": true
+    }
+  ],
+  "nativePaymentAcceptance": false,
+  "realProvider": false,
+  "fullLaceCompatibility": false,
+  "published": false,
+  "pending": "Owner approval to stop the auto-restarted archived indexer occupying canonical host port18098; preserve its container and database"
+}
