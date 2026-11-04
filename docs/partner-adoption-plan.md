@@ -121,3 +121,13 @@ remain required. Keep the current primary branch, integrate the merged prototype
 history locally, preserve other resources and retained unknowns, and update Vault.
 Native #275 remains deferred under the archived-indexer decision; do not substitute
 this preparation/configuration work for native merchant credit/admission acceptance.
+
+## Dated upstream research
+
+The owner-requested [4 November upstream review](research/upstream-passport-2026-11-04.md)
+compares current Passport/spec proposals with our immutable binding and existing backlog.
+It recommends expanding #244's requirements map and auditing public input contracts next.
+Guardian refresh and quorum reader envelopes need an explicit profile decision; upstream
+experiments and native receipts are not acceptance of our published packages. Keep the shared
+Midnight stack reserved for the other session and native #275 deferred until the owner resolves
+that environment. Local deposit-consent/reconciliation work can proceed independently.

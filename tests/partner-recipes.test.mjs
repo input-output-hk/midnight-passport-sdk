@@ -43,6 +43,7 @@ writeFileSync(
 const cleanEnv = { ...process.env };
 delete cleanEnv.NODE_OPTIONS;
 delete cleanEnv.NODE_PATH;
+delete cleanEnv.NODE_TEST_CONTEXT;
 const cli = join(repository, 'examples/host-preflight/check-key-endpoint.mjs');
 
 /** @param {string[]} args */
@@ -65,6 +66,7 @@ test('public-import host and journal examples compile strictly and emitted recip
     [
       join(repository, 'examples/host-preflight/inspect.ts'),
       join(repository, 'examples/shielded-deposit-session/approved-deposit.ts'),
+      join(repository, 'examples/shielded-deposit-review/reviewed-deposit.ts'),
     ],
     {
       target: ts.ScriptTarget.ES2022,
@@ -93,6 +95,24 @@ test('public-import host and journal examples compile strictly and emitted recip
   );
   assert.equal(program.emit().emitSkipped, false);
   writeFileSync(join(scratch, 'compiled/package.json'), '{"type":"module"}');
+  const reviewed = await exec(
+    process.execPath,
+    ['--import', resolver, '--test', join(repository, 'tests/fixtures/reviewed-deposit-cases.mjs')],
+    {
+      timeout: 30000,
+      maxBuffer: 131072,
+      env: {
+        ...cleanEnv,
+        PASSPORT_REVIEWED_RECIPE: join(
+          scratch,
+          'compiled/shielded-deposit-review/reviewed-deposit.js',
+        ),
+      },
+    },
+  );
+  assert.match(reviewed.stdout, /# tests 17/);
+  assert.match(reviewed.stdout, /# fail 0/);
+
   const result = await exec(
     process.execPath,
     [

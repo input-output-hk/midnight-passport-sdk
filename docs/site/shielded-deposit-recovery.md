@@ -131,6 +131,41 @@ The [strict composition example](https://github.com/input-output-hk/midnight-pas
 constructs the journal and both methods around one captured key-source instance.
 It expects reviewed sender, protected storage and finality ports supplied by the host.
 
+## Review and check an uncertain deposit
+
+The [reviewed host example](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/shielded-deposit-review)
+adds a typed private review and a redacted operation panel around the candidate APIs. It captures
+one original request/coin/pins, requires fresh explicit approval before each journal unlock, and
+separates **Start deposit** from **Check original deposit**. A local `status()` snapshot has no
+key, network or wallet work. This is an example for trusted host composition, not a new SDK
+consent API or shielded browser-demo feature.
+
+Show the trusted host origin, sender wallet, network/binding, destination ACC, request ID, color
+and base-unit amount before approval. Explain that the PRF ceremony unlocks a protected journal;
+the sender wallet separately approves spending. The nonce and sealed journal intent stay private.
+Declining this review performs no new key/sender work and says nothing about an earlier attempt.
+
+Use this copy for any post-fence uncertainty, including a wallet error that appears to describe a
+pre-send cancellation or locked wallet:
+
+> Outcome unresolved. Retain this request and original sender records; reconcile the same intent.
+> Do not resend or allocate a replacement request ID.
+
+The example's explicit `reconcile()` action cannot call the sender. It refuses absent/prepared
+records on every read and blocks dispatch transitions. This is narrower than the general SDK
+`resumeShieldedDeposit`, which can dispatch a prepared original request. Unknown lookup stays
+unresolved; only original canonical evidence confirms it. The panel retains the original request
+and any validated transaction ID, with fixed status codes/copy. Raw error messages, causes,
+journal plaintext, nonce, entry and key material never enter it. Status identifiers still need
+host access/retention controls. A failed display callback cannot change a confirmed result.
+
+Hosts must supply their own UI, durable original-request registry, pinned sender/finality ports,
+credential/account isolation, bounded I/O and wallet queue. The controller's busy flag only
+serializes its own calls; it is not a distributed lock or rollback fence. No new-ID retry,
+prepared-state override, cancellation/rollback or operator no-send certificate is provided.
+The demo funding button remains unshielded; #246's broader owner-circuit consent work and
+#269's fenced no-send recovery remain open.
+
 ## Confirmation, limits and privacy
 
 Confirmation requires exactly one byte-identical original entry at or after the **original** inbox
