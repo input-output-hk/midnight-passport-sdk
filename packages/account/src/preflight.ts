@@ -106,11 +106,15 @@ export function inspectAccountConfiguration(
     'authoriser.devicePublicKeyHex',
     'authoriser.authorise',
     'authoriser.withKeySession',
-    'viewingKey.readerPublicKey',
     'viewingKey.openInbox',
   ])
     method(path);
   if (scheme === 'p256-webauthn') method('authoriser.deviceBinding');
+  if (
+    scheme === 'jubjub-schnorr' ||
+    (request.operation === 'issue-grant' && request.grantRead === true)
+  )
+    method('viewingKey.readerPublicKey');
   if (scheme === 'jubjub-schnorr') {
     method('directory.get');
     method('directory.put');
@@ -131,23 +135,24 @@ export function inspectAccountConfiguration(
   }
   if (request.operation === 'issue-grant' || request.operation === 'recover-pending-grants') {
     for (const path of [
-      'records.exists',
       'records.read',
       'records.write',
       'grants.readActiveGrantIds',
-      'grants.readActiveGrantSnapshot',
       'grantCommitments.readGrantCommitment',
-      'grantJournal.stage',
       'grantJournal.load',
       'grantJournal.markPublished',
       'viewingKey.sealGrant',
     ])
       method(path);
+    if (scheme === 'jubjub-schnorr' || request.operation === 'issue-grant')
+      method('records.exists');
     if (request.operation === 'recover-pending-grants') {
       method('grantJournal.pending');
       // Pending enumeration can return read grants; do not inspect private staged records here.
       method('viewingKey.sealView');
     } else {
+      method('grantJournal.stage');
+      method('grants.readActiveGrantSnapshot');
       text('grantOrigin');
       if (typeof request.grantRead !== 'boolean')
         add('MissingValue', 'grantRead', 'Choose read or non-read grant issue explicitly.');

@@ -203,8 +203,12 @@ test('both owner arms detect missing record existence before issue or pending re
         { ...complete(scheme), records },
         { operation, grantRead: false },
       );
-      assert.equal(report.status, 'configuration-incomplete');
-      assert.ok(paths(report).includes('records.exists'));
+      const needsExists = scheme === 'jubjub-schnorr' || operation === 'issue-grant';
+      assert.equal(paths(report).includes('records.exists'), needsExists);
+      assert.equal(
+        report.status,
+        needsExists ? 'configuration-incomplete' : 'runtime-validation-required',
+      );
     }
   }
 });
@@ -219,4 +223,52 @@ test('pending recovery conservatively checks read sealing without opening the jo
     assert.equal(report.status, 'configuration-incomplete');
     assert.ok(paths(report).includes('viewingKey.sealView'));
   }
+});
+
+test('recovery-only hosts need no issue staging or issue-time snapshot methods', () => {
+  for (const scheme of /** @type {const} */ (['p256-webauthn', 'jubjub-schnorr'])) {
+    const base = complete(scheme);
+    const { stage: _, ...grantJournal } = base.grantJournal;
+    const { readActiveGrantSnapshot: __, ...grants } = base.grants;
+    const ports = { ...base, grantJournal, grants };
+    const recovery = inspectAccountConfiguration(ports, { operation: 'recover-pending-grants' });
+    assert.equal(recovery.status, 'runtime-validation-required');
+    const issue = inspectAccountConfiguration(ports, {
+      operation: 'issue-grant',
+      grantRead: false,
+    });
+    assert.ok(paths(issue).includes('grantJournal.stage'));
+    assert.ok(paths(issue).includes('grants.readActiveGrantSnapshot'));
+  }
+});
+
+test('active P-256 withdrawals do not require the creation/rotation reader public key method', () => {
+  const base = complete();
+  const { readerPublicKey: _, ...viewingKey } = base.viewingKey;
+  for (const operation of /** @type {const} */ ([
+    'withdraw-unshielded',
+    'withdraw-shielded',
+    'recover-pending-grants',
+  ])) {
+    assert.equal(
+      inspectAccountConfiguration({ ...base, viewingKey }, { operation }).status,
+      'runtime-validation-required',
+    );
+  }
+  assert.ok(
+    paths(
+      inspectAccountConfiguration(
+        { ...base, viewingKey },
+        { operation: 'issue-grant', grantRead: true },
+      ),
+    ).includes('viewingKey.readerPublicKey'),
+  );
+  assert.ok(
+    paths(
+      inspectAccountConfiguration(
+        { ...complete('jubjub-schnorr'), viewingKey },
+        { operation: 'withdraw-unshielded' },
+      ),
+    ).includes('viewingKey.readerPublicKey'),
+  );
 });
