@@ -83,3 +83,21 @@ original unknown IDs and failed fixtures. Do not reset chains to obtain a pass.
 
 Public engineering instructions belong in this repository. The Midnight Obsidian
 milestone checkpoint retains decisions, redacted receipts and explicit next steps.
+
+## Next local slice: capability/configuration contract (#237/#238)
+
+The next independent local tranche generates one machine-readable inventory from
+all 52 proof circuits and 66 pure helpers, pins the unchanged binding, and exports
+it through the contract package without loading the generated ACC. A separate
+account subpath inspects four existing sealed-owner configurations before ceremonies:
+unshielded/shielded withdrawals, grant issue and pending publication recovery, on
+both P-256 and JubJub. It never calls ports/loaders or claims live readiness.
+
+Acceptance: drift-checked package/static JSON and typed data, explicit artifact vs
+flow/evidence labels, actionable missing member paths, no implicit read-grant or
+k256 fallback, exact-value shielded limits, strict external-package example,
+full local gate and independent review. No new package or private host import.
+This is a bounded contribution to #237/#238, not closure of their wider provider,
+complete operation negotiation and reproducible native recipe requirements.
+The #275 native goal remains blocked per owner resource decision. Keep PR276/277
+heads frozen for review; continue this slice locally on the existing primary branch.

@@ -707,3 +707,18 @@ broader integration, browser/provider and repeatability acceptance. RC6 artifact
 Protected-record consolidation and checked store namespaces remain #273; this source requires
 dedicated confidential stores. Key-session prompt budgets remain #245. These limits must not
 be confused with native or provider qualification.
+
+### Local candidate: machine-readable capabilities and owner configuration preflight
+
+`contract/capabilities` and `contract/capabilities.json` describe the pinned 52 proof
+circuits/66 pure helpers, independently of host adoption. `account/preflight` checks
+configured methods/pins for four existing sealed-owner operations on P-256 and
+JubJub; no methods, accessors, lazy imports or key ceremonies run. A complete report
+still requires runtime validation, including binding/profile verification, active
+owner, grant openings, balances, proofs, submission/finality and recipient credit.
+
+These are additive local candidate entries, absent from RC6, not proof of live or
+full Lace/provider compatibility. k256 remains experimental artifact/binding only;
+shielded withdrawal remains exact-value. Other implemented owner flows and sender
+or grant-holder APIs retain their own runtime checks outside this finite preflight
+profile. See [capability guide](site/capabilities.md).

@@ -11,7 +11,12 @@
     "./bindings/acc-s3r1.1": {
       "types": "./generated/acc-s3r1.1/index.d.ts",
       "default": "./generated/acc-s3r1.1/index.js"
-    }
+    },
+    "./capabilities": {
+      "types": "./dist/capabilities.d.ts",
+      "default": "./dist/capabilities.js"
+    },
+    "./capabilities.json": "./resources/acc-s3r1.1.capabilities.json"
   },
   "bin": {
     "mn-passport-restore-keys": "bin/restore-acc-keys.mjs",

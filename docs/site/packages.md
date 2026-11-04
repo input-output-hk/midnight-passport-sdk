@@ -58,6 +58,11 @@ orchestration. The [partner contract guide]({{ '/partner-integration/' | relativ
 also describes a **local candidate** compiler-dependency export and application→ACC
 reference. This adds no new npm package and is not yet part of published RC6.
 
+The local candidate also adds `contract/capabilities` (lightweight typed inventory),
+`contract/capabilities.json` (the same inventory for non-JavaScript consumers), and
+`account/preflight` (configuration inspection before a key ceremony). These are subpaths
+of existing packages, not new packages. See [capability and configuration checks]({{ '/capabilities/' | relative_url }}); published RC6 does not include them.
+
 For a first connection and a minimal browser host, follow [Install and connect]({{ '/getting-started/' | relative_url }}).
 
 The nine RC6 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their
