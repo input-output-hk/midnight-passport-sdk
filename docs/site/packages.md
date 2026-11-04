@@ -53,6 +53,11 @@ nine implemented packages. Existing RC1 package records remain historical artifa
 
 ## What an integrator installs
 
+Partners may adopt the compiled ACC/assets layer while retaining their own account
+orchestration. The [partner contract guide]({{ '/partner-integration/' | relative_url }})
+also describes a **local candidate** compiler-dependency export and application→ACC
+reference. This adds no new npm package and is not yet part of published RC6.
+
 For a first connection and a minimal browser host, follow [Install and connect]({{ '/getting-started/' | relative_url }}).
 
 The nine RC6 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their

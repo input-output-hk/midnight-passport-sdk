@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-04",
+  "source": "69a2c11b5d754d58bb2499999127344b28a6ee03",
+  "release": false,
+  "localCandidateVersion": "0.1.0-dev.20261103",
+  "signing": "GPG verified; DCO Signed-off-by; Assisted-by: AI",
+  "review": {
+    "reviewer": "Codex CLI",
+    "targetCommit": "69a2c11b5d754d58bb2499999127344b28a6ee03",
+    "result": "no actionable bugs; scope consistent with documented limitations",
+    "fallback": "explicitly owner-authorized after Claude weekly quota exhaustion"
+  },
+  "fullGate": {
+    "outcome": "passed",
+    "packageTap": {
+      "passed": 851,
+      "skipped": 5,
+      "failed": 0
+    },
+    "appTap": {
+      "passed": 271,
+      "skipped": 2,
+      "failed": 0
+    },
+    "lintFormatBuildAndAppTypes": "passed"
+  },
+  "fastAddedCases": 25,
+  "compiledOfflineCases": 8,
+  "installedPackageFilesChecked": 283,
+  "exportedFiles": 161,
+  "dependencyFilesCheckedByHarness": 160,
+  "docs": {
+    "pages": 24,
+    "linksAndAnchors": 547,
+    "errors": 0
+  },
+  "nativeProofs": 0,
+  "nodeTransactions": 0,
+  "providerCeremonies": 0,
+  "diskGuard": {
+    "minimumGiB": 15,
+    "observedFreeGiBApprox": 2.1,
+    "nativeStarted": false
+  },
+  "failuresRetained": [
+    {
+      "attempt": "consumer-v1",
+      "reason": "fixture wrapped ChargedState as StateValue; failed receipt retained"
+    },
+    {
+      "attempt": "consumer-v2",
+      "reason": "fixture used complete issuance arguments instead of the signed scope digest; failed receipt retained"
+    }
+  ],
+  "futureAcceptance": [
+    "native admission, atomicity and merchant wallet credit",
+    "actual provider/two-browser acceptance",
+    "actual Lace package adoption",
+    "multi-user application registration/consent beyond the constructor-pinned reference"
+  ]
+}

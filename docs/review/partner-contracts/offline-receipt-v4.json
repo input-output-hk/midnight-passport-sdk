@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "tier": "compiled-offline",
+  "outcome": "passed",
+  "bindingId": "acc-s3r1.1",
+  "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "packageVersions": {
+    "@input-output-hk/mn-passport-protocol": "0.1.0-dev.20261103",
+    "@input-output-hk/mn-passport-account": "0.1.0-dev.20261103",
+    "@input-output-hk/mn-passport-keys": "0.1.0-dev.20261103",
+    "@input-output-hk/mn-passport-contract": "0.1.0-dev.20261103"
+  },
+  "merchantModuleSha256": "777aaabd9bd70b28e2928f1179738f43a5e52138afc9bd422c86e507b4043dfc",
+  "harnessSha256": "298381f2d0a861cd85c095d968100a6442e438deb7009f9457b7695da55507fb",
+  "clientSha256": "390008683edb1cf9694608cbdf8de5bfff09e02577ada3bff3c036568671bb0c",
+  "verifiedDependencyFiles": 160,
+  "completedCases": [
+    "positive payment executes real ACC sub-call and increments merchant count",
+    "wrong caller refuses without committing either original state",
+    "invalid signature refuses without committing either original state",
+    "expired refuses without committing either original state",
+    "revoked refuses without committing either original state",
+    "module substitution refuses without committing either original state",
+    "replay cannot debit or count twice",
+    "merchant capacity failure after ACC execution commits neither candidate state"
+  ],
+  "nativeProofs": 0,
+  "nodeTransactions": 0,
+  "providerCeremonies": 0
+}

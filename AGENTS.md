@@ -235,6 +235,28 @@ ACC's strict `wa-json134` profile remains a compatibility limit for real passkey
 
 ## 8. Rules for coding agents working on this branch
 
+### Product adoption direction — 2026/11/04
+
+The primary outcome is reusable account packages for Lace and other partners,
+adoptable by layer. Follow [the partner plan](docs/partner-adoption-plan.md) and
+issue275 for application-contract→deployed ACC integration. Do not make outgoing
+custom ACC builds or replacement of Lace orchestration a prerequisite for package
+reuse. Keep partner business logic, host consent and credential ownership explicit.
+
+The new local `mn-passport-export-compact` command exports a verified compiler
+dependency from the candidate contract package. It is not in published RC6. The
+[reference application](examples/application-acc/README.md) uses installed public
+packages, a constructor-pinned ACC and fixed merchant policy. Its compiler/offline
+checks are opt-in and establish no native proof, wallet credit or provider support.
+Use fresh external consumer roots; preserve failures and their original receipts.
+Do not start native qualification below the existing15GiB free-disk guard, regenerate
+all ACC keys unnecessarily or touch unrelated Docker resources to free capacity.
+
+Use independent Codex CLI review when Claude is quota-limited; the owner explicitly
+authorized this fallback. Bind review to the exact committed head and re-review
+substantive fixes. The signing, full local gate and hosted CI requirements below
+still apply. Keep the current primary branch and Obsidian checkpoint updated.
+
 ### Next milestone working agreement — 2026/10/20
 
 Continue on the branch already checked out; the owner explicitly requested the current
