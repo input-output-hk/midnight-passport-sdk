@@ -203,7 +203,7 @@ is described in the durability guide. No legacy automatic retry is claimed.
 
 `mn-passport-adapter-service` additionally exports `remoteHostJobs`, `remoteHostJobId` and `remoteHostJobPorts` for the opt-in authenticated `/v1/host-jobs` protocol. The reference service explicitly enables it with private job configuration, sharing the host executor, sponsor queue and deployment policy. Client and service must both support the public identity hash; RC6 publishes the opt-in client and backend; the default demo retains its existing composition. GET is read-only; explicit approved resume never recreates a missing job. See the [service jobs runbook]({{ '/service-jobs/' | relative_url }}) for composition, settings, use cases and restart-test scope.
 
-### Journalled shielded deposit continuation (next candidate)
+### Journalled shielded deposit continuation (RC7)
 
 The additive `ports.recovery` composition retains the exact original deposit intent and randomised
 entry. `resumeShieldedDeposit` refuses missing original evidence and never automatically re-sends an

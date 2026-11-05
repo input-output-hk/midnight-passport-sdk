@@ -6,7 +6,7 @@ permalink: /shielded-deposit-recovery/
 
 # Recover the original shielded deposit
 
-**Next source candidate; these recovery exports are absent from published RC6.** This is a
+**Published in RC7; these recovery exports are absent from historical RC6.** This is a
 library orchestration boundary over host-supplied storage, wallet and finality ports. It is
 not a shielded faucet endpoint or a native qualified sender adapter. The demo funding button
 continues to make unshielded deposits. Exact-value shielded withdrawal rules are unchanged.
@@ -134,7 +134,7 @@ It expects reviewed sender, protected storage and finality ports supplied by the
 ## Review and check an uncertain deposit
 
 The [reviewed host example](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/shielded-deposit-review)
-adds a typed private review and a redacted operation panel around the candidate APIs. It captures
+adds a typed private review and a redacted operation panel around the RC7 APIs. It captures
 one original request/coin/pins, requires fresh explicit approval before each journal unlock, and
 separates **Start deposit** from **Check original deposit**. A local `status()` snapshot has no
 key, network or wallet work. This is an example for trusted host composition, not a new SDK
