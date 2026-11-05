@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { globSync, readFileSync } from 'node:fs';
 import { createServer } from 'vite';
 import { chromium, type BrowserContext, type Page } from 'playwright-core';
+import { MidnightBech32m, UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
 
 const appRoot = fileURLToPath(new URL('../', import.meta.url));
 const origin = 'http://localhost:5173';
@@ -24,6 +25,8 @@ const output =
 const cases: { arm: string; name: string }[] = [];
 const failures: string[] = [];
 const pageErrors: string[] = [];
+const credentialFailureCodes: string[] = [];
+const ceremonyPurposesByArm: Record<string, string[]> = {};
 const repoRoot = resolve(appRoot, '../..');
 const started = Date.now();
 const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
@@ -41,6 +44,10 @@ const runtimeIdentity = () => {
         'apps/passport-dapp/index.html',
         'apps/passport-dapp/vite.config.ts',
         'packages/*/dist/**/*.js',
+        'packages/*/package.json',
+        'packages/contract/generated/acc-s3r1.1/*.js',
+        'packages/contract/resources/acc-s3r1.1.capabilities.json',
+        'pnpm-lock.yaml',
       ],
       { cwd: repoRoot },
     ),
@@ -100,7 +107,12 @@ const serverOptions: Parameters<typeof createServer>[0] = {
   ],
 };
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
+let browserVersion: string | undefined;
 let outcome = 'failed';
+async function observeCredentialAccess(page: Page): Promise<void> {
+  await page.addScriptTag({ type: 'module', url: `${origin}/e2e/fixtures/credential-observer.ts` });
+}
+
 try {
   ownedCache = await mkdtemp(resolve(tmpdir(), 'passport-demo-vite-'));
   server = await createServer({ ...serverOptions, cacheDir: ownedCache });
@@ -113,6 +125,7 @@ try {
     headless: true,
     ...(process.env.CHROME_BIN && { executablePath: process.env.CHROME_BIN }),
   });
+  browserVersion = browser.version();
   for (const arm of ['p256', 'jubjub'] as const) {
     const state: FixtureState = {
       nonce: 0,
@@ -128,6 +141,9 @@ try {
     let unknownFunding = false;
     let unknownWithdrawal = false;
     let serviceUnavailable = false;
+    let staleOwnerReads = false;
+    let staleReadCount = 0;
+    let rejectNextDialog = false;
     const contexts: BrowserContext[] = [];
     const fixture = (action: string, request: Record<string, unknown>) => {
       calls.push(action);
@@ -178,7 +194,11 @@ try {
             const accepted = fixture(action, data);
             await route.fulfill({
               status: accepted ? 200 : 409,
-              json: accepted ? state : { code: 'GrantRevoked' },
+              json: accepted
+                ? action === 'state' && staleOwnerReads
+                  ? { ...state, nonce: state.nonce + (staleReadCount++ % 2) }
+                  : state
+                : { code: 'GrantRevoked' },
             });
           }
         } else if (url.origin === 'http://localhost:8787') {
@@ -261,13 +281,17 @@ try {
         pageErrors.push(error.message);
       });
       page.on('dialog', (dialog) => {
-        void dialog.accept();
+        if (rejectNextDialog) {
+          rejectNextDialog = false;
+          void dialog.dismiss();
+        } else void dialog.accept();
       });
       await page.goto(`${origin}/?mockPasskey&fixtureArm=${arm}`);
       await page
         .locator('#status')
         .filter({ hasText: /^Ready\./ })
         .waitFor();
+      await observeCredentialAccess(page);
       return page;
     };
     const done = (name: string) => {
@@ -276,15 +300,28 @@ try {
     };
     const waitStatus = async (page: Page, expected: RegExp) => {
       try {
-        await page.locator('#status').filter({ hasText: expected }).waitFor({ timeout: 20_000 });
+        await page.waitForFunction(
+          () => !document.querySelector('#log .run[data-state="running"]'),
+          undefined,
+          { timeout: 20_000 },
+        );
+        assert.match(await page.locator('#status').innerText(), expected);
       } catch (error) {
+        const codes = await page
+          .evaluate(
+            () =>
+              (window as unknown as { __passportPurposeFailureCodes?: string[] })
+                .__passportPurposeFailureCodes ?? [],
+          )
+          .catch(() => [] as string[]);
+        credentialFailureCodes.push(...codes);
         console.error('Journey status:', await page.locator('#status').innerText());
         console.error('Fixture/browser errors:', failures, pageErrors);
         throw error;
       }
-      await page.waitForFunction(() => !document.querySelector('#log .run[data-state="running"]'));
     };
     const approve = async (page: Page, action: string) => {
+      await page.bringToFront();
       // Each authenticated action is declined first: no handler, credential or driver effect.
       const beforeCalls = calls.length;
       const beforeCredential = await page.evaluate(() =>
@@ -339,6 +376,7 @@ try {
         .locator('#status')
         .filter({ hasText: /^Ready\./ })
         .waitFor();
+      await observeCredentialAccess(owner);
       await approve(owner, 'open');
       await waitStatus(owner, /is reopened/);
       await owner.locator('#open-address').fill(address);
@@ -388,7 +426,20 @@ try {
       await approve(owner, 'withdraw');
       await waitStatus(owner, /failed\./);
       assert.equal(calls.filter((c) => c === 'withdraw').length, withdrawals);
+      const wrongNetwork = MidnightBech32m.encode(
+        'preview',
+        new UnshieldedAddress(Buffer.alloc(32, 7)),
+      ).asString();
+      await owner.locator('#withdraw-recipient').fill(wrongNetwork);
+      await approve(owner, 'withdraw');
+      await waitStatus(owner, /failed\./);
+      assert.equal(calls.filter((c) => c === 'withdraw').length, withdrawals);
       await owner.locator('#withdraw-recipient').fill(recipient);
+      rejectNextDialog = true;
+      await approve(owner, 'withdraw');
+      await waitStatus(owner, /cancelled before signing/i);
+      assert.equal(rejectNextDialog, false, 'the exact withdrawal review must have appeared');
+      assert.equal(calls.filter((c) => c === 'withdraw').length, withdrawals);
       await approve(owner, 'withdraw');
       await waitStatus(owner, /Withdrawal confirmed/);
       assert.equal(state.night, 9);
@@ -408,6 +459,11 @@ try {
       await waitStatus(owner, /failed\./);
       assert.equal(calls.filter((c) => c === 'enroll').length, enrollments);
       await owner.locator('#handoff-input').fill(handoff);
+      staleOwnerReads = true;
+      await approve(owner, 'enrollDevice');
+      await waitStatus(owner, /failed\./);
+      assert.equal(calls.filter((c) => c === 'enroll').length, enrollments);
+      staleOwnerReads = false;
       await approve(owner, 'enrollDevice');
       await waitStatus(owner, /Joining device confirmed/);
       await approve(joiner, 'openAt');
@@ -438,6 +494,12 @@ try {
         .fill(await owner.locator('#grant-opening-output').inputValue());
       await holder.locator('#grant-spend-amount').fill('1');
       await holder.locator('#grant-spent-prev').fill('0');
+      const beforeDeclinedSpend = calls.filter((c) => c === 'spend').length;
+      rejectNextDialog = true;
+      await approve(holder, 'spendGrant');
+      await waitStatus(holder, /failed\./);
+      assert.equal(rejectNextDialog, false, 'the exact grant spend review must have appeared');
+      assert.equal(calls.filter((c) => c === 'spend').length, beforeDeclinedSpend);
       await approve(holder, 'spendGrant');
       await waitStatus(holder, /Grant spend .*confirmed/);
       await owner.locator('#revoke-grant-id').fill(grantId);
@@ -486,6 +548,32 @@ try {
       done('balance service outage is visible without signing');
       assert.equal(failures.length, 0, failures.join(', '));
       assert.equal(pageErrors.length, 0, pageErrors.join(', '));
+      const observedPurposes = new Set<string>();
+      for (const context of contexts)
+        for (const page of context.pages()) {
+          const observations = await page.evaluate(
+            () =>
+              (
+                window as unknown as {
+                  __passportPurposeObservations: { purpose: string; attempt: number }[];
+                }
+              ).__passportPurposeObservations,
+          );
+          assert.ok(
+            observations.length > 0,
+            'each profile must exercise observed credential purposes',
+          );
+          for (const observation of observations) observedPurposes.add(observation.purpose);
+        }
+      for (const purpose of [
+        'create',
+        'verify-created',
+        'identify',
+        'derive-keys',
+        ...(arm === 'p256' ? ['sign'] : []),
+      ])
+        assert.ok(observedPurposes.has(purpose), `missing observed ${purpose} access for ${arm}`);
+      ceremonyPurposesByArm[arm] = [...observedPurposes].sort();
     } finally {
       for (const context of contexts) await context.close();
     }
@@ -533,9 +621,13 @@ try {
         manifestSha256: manifest,
         sourceCommit,
         dirty,
+        nodeVersion: process.version,
+        browserVersion,
         runtimeSha256: initialRuntimeIdentity,
         elapsedMs: Date.now() - started,
         cases,
+        credentialFailureCodes,
+        ceremonyPurposesByArm,
         actual: [
           'Chromium DOM/actions',
           'mock WebAuthn credential API',

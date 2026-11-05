@@ -905,3 +905,19 @@ body[data-busy] .btn:disabled {
   width: 100%;
   margin-block: 0.5rem;
 }
+.ceremony-notice {
+  position: fixed;
+  z-index: 50;
+  inset-block-start: 0.75rem;
+  inset-inline: 0.75rem;
+  max-width: 44rem;
+  max-height: 40vh;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+  overflow: auto;
+  color: var(--text);
+  background: var(--surface);
+  border: 2px solid var(--midnight-blue);
+  border-radius: 0.5rem;
+  box-shadow: 0 0.25rem 1rem rgb(0 0 0 / 20%);
+}

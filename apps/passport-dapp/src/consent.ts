@@ -130,6 +130,11 @@ export async function reviewDemoAction(
 
 export function finishDemoConsent(): void {
   active = undefined;
+  const notice = document.getElementById('ceremony-purpose');
+  if (notice) {
+    notice.hidden = true;
+    notice.dataset.ready = 'false';
+  }
 }
 
 /** All actual browser accesses, including profile retries, pass through this purpose display. */
@@ -141,15 +146,24 @@ export async function beforeDemoCeremony(ceremony: Readonly<PasskeyCeremony>): P
       'Approve the demo operation before using a passkey.',
     );
   const text = `${FLOWS[consent.action].title}: ${CEREMONIES[ceremony.purpose]} Attempt ${ceremony.attempt}.`;
-  document.getElementById('ceremony-purpose')!.textContent = text;
+  const notice = document.getElementById('ceremony-purpose')!;
+  notice.textContent = text;
+  notice.hidden = false;
+  notice.dataset.purpose = ceremony.purpose;
+  notice.dataset.attempt = String(ceremony.attempt);
+  notice.dataset.ready = 'false';
   traceOperation('consent.ceremony', {
     action: consent.action,
     flowId: consent.id,
     purpose: ceremony.purpose,
     attempt: ceremony.attempt,
   });
-  // Give the application explanation a paint before native UI can cover the page.
-  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  // The first rAF is before paint; its promise continuation would still be before paint.
+  // Cross a second frame so the visible explanation has a rendering opportunity first.
+  await new Promise<void>((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+  );
   if (active !== consent)
     throw new PassportConnectorError('UserCancelled', 'The operation approval ended.');
+  notice.dataset.ready = 'true';
 }
