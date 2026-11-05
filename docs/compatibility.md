@@ -1,5 +1,23 @@
 # Compatibility matrix
 
+## Consent/demo/browser next-preview candidate — 2026/11/05
+
+After merged PR278 (`7a077d9`), the local candidate adds optional typed
+`beforeCeremony` purposes to the WebAuthn adapter and forwards them through browser
+composition. Existing API calls remain compatible; this hook does not add account
+authority or replace host consent. The demo requires operation review before key
+access and explicit permanent maintenance-retirement acknowledgement for creation.
+The proof-plan panel is advisory only. The binding, key recipes and nine-package
+set are unchanged; no ephemeral session-grant workflow is enabled.
+
+A new actual-Chromium lane exercises all existing demo buttons across both owner-arm
+selections using mock credentials and synthetic account/chain/wallet drivers.
+It establishes UI/consent behavior, not native contract enforcement or Google/iCloud
+acceptance. Its source/runtime receipt is separate from the signed `eb240f6` native
+merchant evidence below and published RC6 artifacts. See [the use-case evidence map](site/use-case-coverage.md)
+and release tracker [#282](https://github.com/input-output-hk/midnight-passport-sdk/issues/282).
+
+
 ## Application-to-ACC local candidate — 2026/11/05
 
 The local partner tranche adds a verified compiler-dependency export to the

@@ -9,13 +9,16 @@ import { deriveSymmetricSecret, seedFromRoot } from '@input-output-hk/mn-passpor
 import { p256 as p256Curve } from '@noble/curves/nist.js';
 import { browserPasskey } from './passkey.js';
 import { passkeyPrf, type PasskeyPrfOutputs } from './prf.js';
+import type { PasskeyCeremonyOptions } from './ceremony.js';
 
 /** Browser implementation of the account's credential, PRF and P-256 authoriser ports. */
-export function webauthnPasskey(opts: {
-  rpId: string;
-  origin: string;
-  credentials?: CredentialsContainer;
-}): { credentials: CredentialPort; prf: PrfKeySource; p256: Authoriser } {
+export function webauthnPasskey(
+  opts: PasskeyCeremonyOptions & {
+    rpId: string;
+    origin: string;
+    credentials?: CredentialsContainer;
+  },
+): { credentials: CredentialPort; prf: PrfKeySource; p256: Authoriser } {
   const seam = browserPasskey(opts);
   const known = new Map<string, PasskeyCredential>();
   let current: PasskeyCredential | undefined;
@@ -70,6 +73,7 @@ export function webauthnPasskey(opts: {
             return passkeyPrf({
               credentialId,
               rpId: opts.rpId,
+              beforeCeremony: opts.beforeCeremony,
               ...(opts.credentials && { credentials: opts.credentials }),
               ...(current && { created: current }),
             });

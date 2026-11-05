@@ -21,6 +21,7 @@ import type {
 } from '@input-output-hk/mn-passport-account/ports';
 import type { GrantPublicationJournal } from '@input-output-hk/mn-passport-account';
 import { webauthnPasskey } from '@input-output-hk/mn-passport-adapter-webauthn';
+import type { PasskeyCeremonyOptions } from '@input-output-hk/mn-passport-adapter-webauthn';
 import {
   recipeDeviceKeyring,
   recipeEncryptionKey,
@@ -35,7 +36,7 @@ export interface BrowserPassportConfig {
   readonly arm?: 'p256' | 'jubjub';
   readonly network: NetworkConfig;
   readonly binding: Lazy<MidnightBinding>;
-  readonly passkey: {
+  readonly passkey: PasskeyCeremonyOptions & {
     readonly rpId: string;
     readonly origin: string;
     readonly credentials?: CredentialsContainer;

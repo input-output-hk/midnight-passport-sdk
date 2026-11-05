@@ -16,6 +16,7 @@ import { demoValueCall } from './value-call.js';
 import { parseGrantHandoff } from './grant-handoff.js';
 import { BINDING_ID, MANIFEST_SHA256, ORIGIN, RP_ID, SERVICE_URL } from './connector.js';
 import { tracedFetch } from './operation-trace.js';
+import { beforeDemoCeremony } from './consent.js';
 
 /** A holder never opens the owner ACC; its own passkey signs the scoped grant challenge. */
 export async function spendDemoGrant(
@@ -89,6 +90,7 @@ export async function spendDemoGrant(
   const passkey = webauthnPasskey({
     rpId: RP_ID,
     origin: ORIGIN,
+    beforeCeremony: beforeDemoCeremony,
     ...(credentials && { credentials }),
   });
   await passkey.credentials.identify();

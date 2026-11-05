@@ -20,6 +20,17 @@ This audit covers issues #25, #205, #79, #161 and #81. It does not authorise a p
 | #81 runtime flow and report | Native Lace hosted creation, hosted sign-in and SDK authorising-only device addition have confirmed localnet results in the consumer report. The device test checks live commitment, two devices, nonce and subsequent healed sign-in. | Passed for those exact flows; no full compatibility claim. |
 | Signed local delivery | GPG signatures, DCO sign-offs and `Assisted-by: AI` trailers on commits; full repository gate before each commit. | Preserved; no push/PR/publication. |
 
+## Next preview consent/demo slice — 2026-11-05
+
+#279 (synthetic Playwright journeys), #280 (capability/demo/docs map) and bounded
+#246 corrections are in milestone 0.1.0; #282 owns final actual release verification.
+The new tests must not close #232 provider acceptance or #245 broader concurrent
+session isolation/prompt budgets. Local expiring JubJub delegation is separate
+#281 / 0.2.0 and not implemented. PR278 is merged as `7a077d9`; its native receipts
+retain their original executed source. Current publication stays RC6 until the
+next signed artifact and registry/image/Pages receipts exist.
+
+
 ## Intentional integration limits
 
 The generic SDK create flow needs validation requests excluded from Lace's creation scope;

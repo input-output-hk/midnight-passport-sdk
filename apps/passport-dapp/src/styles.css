@@ -871,3 +871,53 @@ body[data-busy] .btn:disabled {
     margin-left: 0;
   }
 }
+/* Operation review remains readable with keyboard focus and long ACC addresses. */
+#consent-dialog {
+  max-width: min(42rem, 90vw);
+  max-height: 85vh;
+  overflow: auto;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  color: var(--text);
+  background: var(--surface);
+}
+#consent-dialog::backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+.consent-details {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.consent-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+#capability-report {
+  max-width: 100%;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+#capability-operation {
+  width: 100%;
+  margin-block: 0.5rem;
+}
+.ceremony-notice {
+  position: fixed;
+  z-index: 50;
+  inset-block-start: 0.75rem;
+  inset-inline: 0.75rem;
+  max-width: 44rem;
+  max-height: 40vh;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+  overflow: auto;
+  color: var(--text);
+  background: var(--surface);
+  border: 2px solid var(--midnight-blue);
+  border-radius: 0.5rem;
+  box-shadow: 0 0.25rem 1rem rgb(0 0 0 / 20%);
+}

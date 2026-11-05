@@ -170,3 +170,38 @@ aggregate 3 s. This workflow is carried into the foundation PR so dependent PRs
 also use the bounded lanes. These are observed runs, not a universal cold-cache
 timing guarantee; proof/outage matrices remain opt-in.
 
+
+## Candidate deterministic demo browser lane — 2026-11-05
+
+PR checks now include a separate `demo_browser` job and require its success in the
+existing aggregate gate. It runs actual runner Chrome, fresh package outputs and
+26 grouped scenarios across both owner-arm selections using synthetic connector,
+chain and wallet drivers. The real UI, mock credential API, consent hooks, handoff
+parsing and public capability planner execute. Each authenticated action is also
+declined before its successful attempt. No key generation, native proof, browser
+download, credential/provider access or Docker stack is needed. Job summaries retain
+the explicit scope/fingerprint receipt; no private mock state is exported.
+
+It reuses the frozen dependency cache and builds outputs freshly. The target stays
+30–45 seconds per warm job, subject to actual hosted measurement after push. Slow
+native/provider lanes remain separate. `pnpm test:coverage` is an opt-in Node/V8
+package-only measurement, not added to fast required jobs or an arbitrary threshold.
+
+### Workflow expression validation
+
+For workflow changes, validate schema/expressions locally with `actionlint` from
+the repository-pinned nixpkgs, in addition to the Node gate:
+
+```sh
+nix shell --inputs-from . nixpkgs#actionlint \
+  -c actionlint -shellcheck= -pyflakes=
+```
+
+This command disables optional shell/Python linters; it still validates workflow
+structure and expression contexts. An initial RC7 PR attempt put `runner.temp` in
+job-level `env`, where it is unavailable. GitHub rejected the workflow before any
+core job ran. The correction resolves the receipt path in both runner steps.
+The failed run is retained; a green list containing only image jobs is not a
+passing full gate. Require every named core component and the relevant image
+checks at the current head. The key-image path filter is unchanged: no key/contract
+inputs changed in this UI tranche, so its absence is expected, not a waived test.

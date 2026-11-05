@@ -1,0 +1,102 @@
+---
+layout: default
+title: Use-case coverage and release evidence
+permalink: /use-case-coverage/
+---
+
+## Current published release versus candidate
+
+Published **RC6** remains the installation baseline until a new signed release
+exists. The candidate adds ceremony-purpose hooks, consistent demo operation review,
+advisory proof plans and a deterministic browser-journey lane. The application→ACC
+merchant recipe also has its separately pinned local native receipt. A candidate
+source check is not evidence that those changes are already on the registry.
+
+## Supported evaluation use cases
+
+| Use case | Public API / demo | Automated success and corner cases | Evidence boundary |
+| --- | --- | --- | --- |
+| Create and reopen an ACC | `createPassportAccounts`; Create/Open/Open by ACC address | SDK tests: pins, missing PRF, wrong credentials, interrupted publication. Browser: decline before credentials, permanent-retirement acknowledgement, create/reload/reopen/address | Browser lane uses a synthetic account API. Separate full virtual-authenticator and source-native lanes establish their declared real integration scope |
+| Inspect public state and rosters | `state`, `deviceRoster`, `grantRoster`; refresh/read buttons | API parsing/snapshot tests; actual UI updates without ceremony | Public reads do not establish private reader or spend authority |
+| View chain-matched shielded holdings | `readShieldedHoldings`; Read shielded holdings | Opening/commitment/refusal tests, both-arm populated native receipts; browser renders synthetic matched coins after viewing review | No shielded deposit/withdrawal button or arbitrary coin/change support |
+| Fund and withdraw localnet NIGHT | `remoteFaucet`, `withdrawUnshielded`; Fund/Withdraw/Refresh wallet balance | Policy/request-ID/value-route tests; browser ten→one→nine, invalid recipient, replayed funding ID, unknown result and service outage | Browser balances are synthetic. Funding/native receipts separately qualify only declared standalone assets and exact source/image boundaries |
+| Rotate viewing keys | `rotateViewingKey`; Rotate sealed viewing key | Incomplete/stale readers and grants refuse; native populated lifecycle; browser viewing review before preparation, exact review, result and later reopen | Multiple transactions are not atomic. Unknown effects need reconciliation; one entry removal is not complete compromised-key revocation |
+| Enroll/remove an entry | `addDevice`, `removeDevice`; public handoff and owner controls | Handoff validation and fingerprint, survivor/refusal SDK/native tests; browser independent contexts, malformed handoff, enroll/open/remove | Synthetic browser connector does not enforce real on-chain membership. Native receipts cover actual supported reader delivery separately |
+| Issue/use/revoke/recover grants | `issueGrant`, `spendUnshieldedWithGrant`, `revokeGrant`, bookkeeping recovery; grant controls | SDK caps, expiry, wrong holder, state changes, openings and revocation; browser prepare/issue/export/spend/revoke/refuse/recover | Browser holder settlement is simulated. Recovery cannot invent an unpublished opening or a lost grantee key |
+| Connect the separate HD wallet | WebAuthn `passkeySeed`, wallet SDK host; Connect/Refresh wallet | Credential pinning and seed-policy tests; browser actual mock PRF plus simulated wallet balances; independent native wallet reconnect/credit evidence | Refresh needs no new passkey. Provider restoration of the same credential/PRF is unqualified here |
+| Plan operation proving requirements | `contract/capabilities`, `account/preflight`; SDK capabilities panel | Catalog drift, tamper, exact method/profile tests; browser operation/read-grant changes with no credential or driver calls | Advisory metadata only: no claim of host/key-endpoint readiness, ownership, available funds or proof success |
+| Compose an application→ACC payment | `mn-passport-export-compact`, merchant client example; engineer recipe link | Installed/compiler/offline checks; native positive payment and seven construction refusals | JubJub unshielded caller-pinned scope only; no browser merchant button, arbitrary contract acceptance or production privacy claim |
+| Review/resume a shielded deposit | `depositShielded`, protected journal and reviewed host example | Real encryption/filesystem revisions, captured original inputs, refusal, unknown and reconciliation tests | Host recipe, not a demo funding endpoint. Synthetic sender/finality tests do not establish native submission acceptance |
+
+These are mapped tests, not exhaustive coverage of every parameter, circuit,
+interleaving or provider. The 52 proof/66 pure circuit inventory does not imply
+52 fully supported typed/browser workflows.
+
+## Run deterministic browser journeys
+
+With locked dependencies, Chrome and built SDK packages:
+
+```sh
+nix develop -c pnpm run build
+nix develop -c pnpm test:demo-browser
+```
+
+No running demo, Docker, sponsor wallet or provider credential is needed. The
+runner owns a Vite server on an ephemeral loopback port and fresh Chromium
+contexts. Browser requests to the passkey origin `http://localhost:5173` are routed
+to that private server; they never contact or alter an existing demo on that port.
+All service requests are intercepted. Unexpected network access fails the test.
+
+The actual DOM/actions, development mock credential API, ceremony hooks, handoff
+validation and public proof-plan APIs run. Account orchestration, chain enforcement,
+funding, grant settlement and wallet balances are explicitly synthetic. Both selected
+owner arms run the same journeys; this does not qualify either real proof arm.
+Every authenticated action is declined first and checked for no driver/credential
+effect, then exercised through its declared positive/refusal scenario.
+
+The fresh JSON receipt under ignored `review/` records completed cases, runtime
+fingerprint, source, duration, evidence tier and owned cleanup. A failed run remains
+failed with its completed prefix. Set `PASSPORT_DEMO_JOURNEY_OUTPUT` to a fresh
+path to retain a specific receipt, or `PASSPORT_DEMO_JOURNEY_SCREENSHOTS` for initial
+desktop/mobile screenshots. No mock key or storage dump is exported.
+
+PR CI runs this lane in a separate job alongside package/app/type checks. It uses
+the existing locked dependencies and runner Chrome; no browser download, large key
+generation or native proof is added. The 30–45-second warm-job target still needs
+hosted timing evidence. Native proof/restart and actual provider qualification
+remain independent slower lanes; follow the [qualification guide]({{ '/qualification/' | relative_url }}).
+
+## Quantitative package coverage
+
+```sh
+nix develop -c pnpm test:coverage
+# Optional fresh output directory after the build:
+nix develop -c node scripts/test-coverage.mjs /private/new-coverage-directory
+```
+
+This opt-in command uses Node's built-in V8 coverage and produces `tests.tap`,
+`lcov.info` and `summary.json` under a fresh ignored review directory. It measures
+**loaded package `dist` JavaScript in the root Node test suite**, not unimported
+files, TypeScript source statement coverage, application/UI coverage, contract
+constraint coverage or real-provider completeness. It records source, dirty state,
+runtime version and pass/fail/skip counts. No percentage substitutes for use-case
+or native evidence. The report is outside required fast CI; no arbitrary threshold
+has been imposed before a useful baseline exists.
+
+The initial 5 November development measurement covered 133 loaded files:
+95.47% lines, 94.14% functions and 84.50% branches (958 passed, five skips).
+It was measured on a dirty candidate tree and is a diagnostic baseline, not a
+signed release acceptance receipt. Use the final review/release record for the
+exact shipped source. The broader full gate also runs app tests, so its test count
+is different from this package-only measurement.
+
+## Explicit remaining work
+
+[#279](https://github.com/input-output-hk/midnight-passport-sdk/issues/279) and
+[#280](https://github.com/input-output-hk/midnight-passport-sdk/issues/280) track this
+candidate's browser/demo/docs slice; [#246](https://github.com/input-output-hk/midnight-passport-sdk/issues/246)
+tracks broader host consent. Real provider/two-browser acceptance (#232), stronger
+cross-operation session isolation (#245), total-loss recovery (#240), partial
+shielded change (#201), general connection (#242) and additional networks (#243)
+retain their own requirements. [RC7 tracker #282](https://github.com/input-output-hk/midnight-passport-sdk/issues/282)
+requires actual package/image/Pages verification before publication is reported.

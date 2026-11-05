@@ -22,7 +22,9 @@
     "prototype:dapp": "pnpm --filter passport-dapp dev",
     "prototype:e2e": "pnpm --filter passport-dapp e2e",
     "demo": "node scripts/demo.mjs",
-    "qualify": "node scripts/qualify.mjs"
+    "qualify": "node scripts/qualify.mjs",
+    "test:demo-browser": "pnpm --filter passport-dapp test:browser",
+    "test:coverage": "pnpm run build && node scripts/test-coverage.mjs"
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.20.0",

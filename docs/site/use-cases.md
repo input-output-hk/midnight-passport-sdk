@@ -4,6 +4,23 @@ title: Demo use cases
 permalink: /use-cases/
 ---
 
+## Candidate consent and capability inspection
+
+The next preview adds an operation review before key access, an explicit permanent
+maintenance-authority retirement acknowledgement for creation, and a visible purpose
+before every actual passkey API access. Existing exact transaction/device/grant
+reviews remain separate. Cancel before approval to stop key use; after submission,
+inspect/reconcile the original intent rather than assuming cancellation rolled back
+funds. See [consent]({{ '/consent/' | relative_url }}).
+
+**SDK capabilities and proof plans** lets an engineer inspect required proof/helper
+names for the selected arm and existing sealed-account operation. It invokes no
+credential or chain/prover port and cannot certify readiness. Merchant and reviewed
+deposit links lead to runnable engineer recipes, not unsupported transfer buttons.
+The [coverage map]({{ '/use-case-coverage/' | relative_url }}) distinguishes the new
+synthetic browser journeys from native/provider evidence and the current RC6 release.
+
+
 ## Library integration beyond the demo
 
 The [partner contract guide]({{ '/partner-integration/' | relative_url }}) describes

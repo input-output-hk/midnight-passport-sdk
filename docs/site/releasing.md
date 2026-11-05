@@ -4,6 +4,16 @@ title: Releasing packages
 permalink: /releasing/
 ---
 
+## Next RC7 candidate
+
+[RC7 preparation notes]({{ '/release-notes-rc7/' | relative_url }}) and
+[tracker #282](https://github.com/input-output-hk/midnight-passport-sdk/issues/282)
+state the next supported-subset release scope. Local nine-tarball installation,
+key restoration and clean-build reproducibility are preparation checks; they do
+not verify an actual registry publication. Keep RC6 as the published installation
+baseline until the signed source/tag, independent review, exact-head CI, publisher,
+package visibility/hashes, image digests/startup and Pages checks have passed.
+
 ## Current RC6 artefacts and verification
 
 `0.1.0-rc6` publishes the same nine private GitHub npm packages, distribution tag

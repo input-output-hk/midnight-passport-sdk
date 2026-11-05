@@ -17,8 +17,32 @@ const record = {
 
 async function start(config = testConfig()) {
   const server = createServer(config, [registryRoute(config)]);
-  await new Promise<void>((r) => server.listen(0, r));
-  return { base: `http://localhost:${(server.address() as AddressInfo).port}`, server, config };
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+  return { base: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, server, config };
+}
+
+// Keep endpoint family and owned lifetime deterministic under parallel app/browser jobs.
+const stops = new WeakMap<ReturnType<typeof createServer>, Promise<void>>();
+function stop(server: ReturnType<typeof createServer>): Promise<void> {
+  let pending = stops.get(server);
+  if (!pending) {
+    pending = new Promise<void>((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+    stops.set(server, pending);
+  }
+  return pending;
+}
+async function registryFetch(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (error) {
+    const cause = (error as { cause?: { code?: string; errors?: { code?: string }[] } }).cause;
+    const codes = [cause?.code, ...(cause?.errors?.map((item) => item.code) ?? [])].filter(Boolean);
+    throw new Error(`Registry test connection failed (${codes.join(',') || 'unreported cause'})`, {
+      cause: error,
+    });
+  }
 }
 
 test('malformed ids or bodies are refused with 400', async (t) => {
@@ -26,7 +50,7 @@ test('malformed ids or bodies are refused with 400', async (t) => {
   try {
     assert.equal(
       (
-        await fetch(`${base}/accounts/undeployed/zz`, {
+        await registryFetch(`${base}/accounts/undeployed/zz`, {
           method: 'PUT',
           headers: JSON_TYPE,
           body: JSON.stringify(record),
@@ -37,7 +61,7 @@ test('malformed ids or bodies are refused with 400', async (t) => {
     );
     assert.equal(
       (
-        await fetch(`${base}/accounts/undeployed/0a0b`, {
+        await registryFetch(`${base}/accounts/undeployed/0a0b`, {
           method: 'PUT',
           headers: JSON_TYPE,
           body: JSON.stringify({ ...record, credentialId: '0c' }),
@@ -48,7 +72,7 @@ test('malformed ids or bodies are refused with 400', async (t) => {
     );
     assert.equal(
       (
-        await fetch(`${base}/accounts/undeployed/0a0b`, {
+        await registryFetch(`${base}/accounts/undeployed/0a0b`, {
           method: 'PUT',
           headers: JSON_TYPE,
           body: JSON.stringify({ ...record, status: 'x' }),
@@ -59,7 +83,7 @@ test('malformed ids or bodies are refused with 400', async (t) => {
     );
     assert.equal(
       (
-        await fetch(`${base}/accounts/undeployed/0a0`, {
+        await registryFetch(`${base}/accounts/undeployed/0a0`, {
           method: 'PUT',
           headers: JSON_TYPE,
           body: JSON.stringify({ ...record, credentialId: '0a0' }),
@@ -69,59 +93,59 @@ test('malformed ids or bodies are refused with 400', async (t) => {
       'odd-length credential ID in PUT',
     );
     assert.equal(
-      (await fetch(`${base}/accounts/undeployed/0a0`)).status,
+      (await registryFetch(`${base}/accounts/undeployed/0a0`)).status,
       400,
       'odd-length credential ID in GET',
     );
   } finally {
-    server.close();
+    await stop(server);
   }
 });
 
 test('identical deployed re-PUT returns 204', async (t) => {
   const { base, server, config } = await start();
   try {
-    const put1 = await fetch(`${base}/accounts/undeployed/0a0b`, {
+    const put1 = await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     assert.equal(put1.status, 204);
-    const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
+    const put2 = await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     assert.equal(put2.status, 204);
-    const get = await fetch(`${base}/accounts/undeployed/0a0b`);
+    const get = await registryFetch(`${base}/accounts/undeployed/0a0b`);
     assert.equal(get.status, 200);
     assert.deepEqual(await get.json(), record);
   } finally {
-    server.close();
+    await stop(server);
   }
 });
 
 test('deployed to active transition returns 204 and updates status', async (t) => {
   const { base, server, config } = await start();
   try {
-    await fetch(`${base}/accounts/undeployed/0a0b`, {
+    await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     const transitioned = { ...record, status: 'active' as const };
-    const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
+    const put2 = await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(transitioned),
     });
     assert.equal(put2.status, 204);
-    const get = await fetch(`${base}/accounts/undeployed/0a0b`);
+    const get = await registryFetch(`${base}/accounts/undeployed/0a0b`);
     assert.equal(get.status, 200);
     const retrieved = (await get.json()) as typeof record;
     assert.equal(retrieved.status, 'active');
   } finally {
-    server.close();
+    await stop(server);
   }
 });
 
@@ -129,19 +153,19 @@ test('identical active re-PUT returns 204', async (t) => {
   const { base, server, config } = await start();
   try {
     const activeRecord = { ...record, status: 'active' as const };
-    await fetch(`${base}/accounts/undeployed/0a0b`, {
+    await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(activeRecord),
     });
-    const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
+    const put2 = await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(activeRecord),
     });
     assert.equal(put2.status, 204);
   } finally {
-    server.close();
+    await stop(server);
   }
 });
 
@@ -149,118 +173,118 @@ test('active to deployed transition returns 409 and record stays active', async 
   const { base, server, config } = await start();
   try {
     const activeRecord = { ...record, status: 'active' as const };
-    await fetch(`${base}/accounts/undeployed/0a0b`, {
+    await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(activeRecord),
     });
     const transition = { ...record, status: 'deployed' as const };
-    const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
+    const put2 = await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(transition),
     });
     assert.equal(put2.status, 409);
-    const get = await fetch(`${base}/accounts/undeployed/0a0b`);
+    const get = await registryFetch(`${base}/accounts/undeployed/0a0b`);
     const retrieved = (await get.json()) as typeof record;
     assert.equal(retrieved.status, 'active', 'record should remain active');
   } finally {
-    server.close();
+    await stop(server);
   }
 });
 
 test('different address over existing record returns 409 and GET is unchanged', async (t) => {
   const { base, server, config } = await start();
   try {
-    await fetch(`${base}/accounts/undeployed/0a0b`, {
+    await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     const changed = { ...record, address: 'cd'.repeat(32) };
-    const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
+    const put2 = await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(changed),
     });
     assert.equal(put2.status, 409);
-    const get = await fetch(`${base}/accounts/undeployed/0a0b`);
+    const get = await registryFetch(`${base}/accounts/undeployed/0a0b`);
     const retrieved = (await get.json()) as typeof record;
     assert.equal(retrieved.address, record.address, 'original address should be unchanged');
   } finally {
-    server.close();
+    await stop(server);
   }
 });
 
 test('different salt over existing record returns 409', async (t) => {
   const { base, server, config } = await start();
   try {
-    await fetch(`${base}/accounts/undeployed/0a0b`, {
+    await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     const changed = { ...record, salt: '05'.repeat(32) };
-    const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
+    const put2 = await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(changed),
     });
     assert.equal(put2.status, 409);
   } finally {
-    server.close();
+    await stop(server);
   }
 });
 
 test('deployed to active with changed salt returns 409', async (t) => {
   const { base, server, config } = await start();
   try {
-    await fetch(`${base}/accounts/undeployed/0a0b`, {
+    await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     const changed = { ...record, status: 'active' as const, salt: '05'.repeat(32) };
-    const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
+    const put2 = await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(changed),
     });
     assert.equal(put2.status, 409);
   } finally {
-    server.close();
+    await stop(server);
   }
 });
 
 test('same credential on testnet returns 204, with undeployed untouched', async (t) => {
   const { base, server, config } = await start();
   try {
-    await fetch(`${base}/accounts/undeployed/0a0b`, {
+    await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
-    const putTestnet = await fetch(`${base}/accounts/testnet/0a0b`, {
+    const putTestnet = await registryFetch(`${base}/accounts/testnet/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
     assert.equal(putTestnet.status, 204);
-    const get1 = await fetch(`${base}/accounts/undeployed/0a0b`);
-    const get2 = await fetch(`${base}/accounts/testnet/0a0b`);
+    const get1 = await registryFetch(`${base}/accounts/undeployed/0a0b`);
+    const get2 = await registryFetch(`${base}/accounts/testnet/0a0b`);
     assert.equal(get1.status, 200);
     assert.equal(get2.status, 200);
     assert.deepEqual(await get1.json(), record);
     assert.deepEqual(await get2.json(), record);
   } finally {
-    server.close();
+    await stop(server);
   }
 });
 
 test('identical record with different key order returns 204', async (t) => {
   const { base, server, config } = await start();
   try {
-    await fetch(`${base}/accounts/undeployed/0a0b`, {
+    await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(record),
@@ -276,40 +300,40 @@ test('identical record with different key order returns 204', async (t) => {
         credentialId: record.credentialId,
       }),
     );
-    const put2 = await fetch(`${base}/accounts/undeployed/0a0b`, {
+    const put2 = await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(reordered),
     });
     assert.equal(put2.status, 204);
   } finally {
-    server.close();
+    await stop(server);
   }
 });
 
 test('409 persists after a restart', async (t) => {
   const first = await start();
   try {
-    await fetch(`${first.base}/accounts/undeployed/0a0b`, {
+    await registryFetch(`${first.base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
-    first.server.close();
+    await stop(first.server);
     const second = await start(first.config);
     try {
       const changed = { ...record, address: 'cd'.repeat(32) };
-      const put2 = await fetch(`${second.base}/accounts/undeployed/0a0b`, {
+      const put2 = await registryFetch(`${second.base}/accounts/undeployed/0a0b`, {
         method: 'PUT',
         headers: JSON_TYPE,
         body: JSON.stringify(changed),
       });
       assert.equal(put2.status, 409);
     } finally {
-      second.server.close();
+      await stop(second.server);
     }
   } finally {
-    first.server.close();
+    await stop(first.server);
   }
 });
 
@@ -320,13 +344,13 @@ test('corrupt registry file returns 500, excludes file contents, and leaves file
   const fileContentsBefore = readFileSync(config.registryFile, 'utf8');
   const { base, server } = await start(config);
   try {
-    const get = await fetch(`${base}/accounts/undeployed/0a0b`);
+    const get = await registryFetch(`${base}/accounts/undeployed/0a0b`);
     assert.equal(get.status, 500);
     const body = (await get.json()) as { error: string };
     assert.equal(body.error, 'registry file unreadable');
     const fileContentsAfterGet = readFileSync(config.registryFile, 'utf8');
     assert.equal(fileContentsAfterGet, fileContentsBefore, 'file unchanged after GET');
-    const put = await fetch(`${base}/accounts/undeployed/0a0b`, {
+    const put = await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(record),
@@ -335,28 +359,28 @@ test('corrupt registry file returns 500, excludes file contents, and leaves file
     const fileContentsAfterPut = readFileSync(config.registryFile, 'utf8');
     assert.equal(fileContentsAfterPut, fileContentsBefore, 'file unchanged after PUT');
   } finally {
-    server.close();
+    await stop(server);
   }
 });
 
 test('records survive a restart', async (t) => {
   const first = await start();
   try {
-    await fetch(`${first.base}/accounts/undeployed/0a0b`, {
+    await registryFetch(`${first.base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
       headers: JSON_TYPE,
       body: JSON.stringify(record),
     });
-    first.server.close();
+    await stop(first.server);
     const second = await start(first.config);
     try {
-      const get = await fetch(`${second.base}/accounts/undeployed/0a0b`);
+      const get = await registryFetch(`${second.base}/accounts/undeployed/0a0b`);
       assert.equal(get.status, 200);
       assert.deepEqual(await get.json(), record);
     } finally {
-      second.server.close();
+      await stop(second.server);
     }
   } finally {
-    first.server.close();
+    await stop(first.server);
   }
 });
