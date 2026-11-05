@@ -451,3 +451,10 @@ See [session setup and threat model](../docs/site/jubjub-sessions.md). The featu
 is a source preview after RC7, not a change to published RC7 artifacts. Browser
 journeys cover software credentials, actual session signing and synthetic chain
 effects; native proof/provider qualification remains separate.
+
+Session-enabled authenticated/value actions require browser Web Locks and serialize
+same-origin tabs in one browser profile. Public reads and immediate local Lock
+remain available. Unknown issue/spend/revocation records have independent public
+operation UUIDs; stale display writes cannot erase them, and settled records stop
+old tabs reopening completed fences. Never clear these records to retry an effect.
+Cross-device coordination and durable operator reconciliation remain host concerns.

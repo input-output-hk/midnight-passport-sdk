@@ -36,6 +36,7 @@ import { showDemoCapabilities } from './capabilities.js';
 import { createDemoSession } from './session.js';
 import { unlockDemoSessionKey } from './session-key.js';
 import { sessionCheckpoint } from './session-checkpoint.js';
+import { demoOperationGuard } from './operation-guard.js';
 
 installShim();
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
@@ -63,13 +64,24 @@ const ui = createUi(
   },
   ARM,
   {
-    before: (action) =>
-      reviewDemoAction(action, {
+    before: async (action) => {
+      const approved = await reviewDemoAction(action, {
         network,
         arm: ARM,
         account: account?.address,
         target: ui.knownAddress(),
-      }),
+      });
+      if (
+        approved &&
+        ['withdraw', 'startSession', 'spendGrant', 'fund'].includes(action) &&
+        session.snapshot().status === 'blocked'
+      )
+        throw new Error(
+          'Reconcile the original session transaction before another transfer or session.',
+        );
+      return approved;
+    },
+    run: demoOperationGuard(network, BINDING_ID, navigator.locks),
     after: finishDemoConsent,
   },
 );
@@ -109,9 +121,11 @@ const session = createDemoSession({
       cap,
       spent,
       txHash,
+      intentId,
     } = snapshot;
     document.getElementById('session-state')!.textContent =
       `${phase.toUpperCase()}. ` +
+      (intentId ? `Intent ${intentId}. ` : '') +
       (grantId ? `Grant ${grantId}. ` : '') +
       (address ? `ACC ${address}. ` : '') +
       (expiresAt ? `Expires ${new Date(expiresAt).toISOString()}. ` : '') +
@@ -134,6 +148,7 @@ const session = createDemoSession({
       cap,
       spent,
       txHash,
+      intentId,
     });
   },
 });

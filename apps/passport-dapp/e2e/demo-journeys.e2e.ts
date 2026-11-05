@@ -156,6 +156,7 @@ try {
     let unknownFunding = false;
     let unknownWithdrawal = false;
     let unknownSession = false;
+    let unknownRevocation = false;
     let holdSessionSpend: (() => Promise<void>) | undefined;
     let serviceUnavailable = false;
     let staleOwnerReads = false;
@@ -195,128 +196,133 @@ try {
       }
       return true;
     };
-    const newPage = async () => {
-      const context = await browser!.newContext({ serviceWorkers: 'block' });
-      contexts.push(context);
-      await context.route('**/*', async (route) => {
-        const request = route.request();
-        const url = new URL(request.url());
-        if (url.origin === origin && url.pathname === '/__demo-fixture') {
-          const data = request.postDataJSON() as Record<string, unknown>;
-          const action = String(data.action);
-          if (action === 'spend' && holdSessionSpend) {
-            fixture(action, data);
-            await holdSessionSpend();
-            await route.fulfill({ json: state });
-          } else if (action === 'spend' && unknownSession) {
-            fixture(action, data); // Realistic fake: effect occurred, acknowledgement was lost.
-            await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
-          } else if (action === 'withdraw' && unknownWithdrawal) {
-            calls.push('withdraw-unknown');
-            await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
-          } else {
-            const accepted = fixture(action, data);
-            await route.fulfill({
-              status: accepted ? 200 : 409,
-              json: accepted
-                ? action === 'state' && staleOwnerReads
-                  ? { ...state, nonce: state.nonce + (staleReadCount++ % 2) }
-                  : state
-                : { code: 'GrantRevoked' },
-            });
-          }
-        } else if (url.origin === 'http://localhost:8787') {
-          if (url.pathname === '/v1/demo/funding') {
-            if (serviceUnavailable) {
+    const newPage = async (existing?: BrowserContext) => {
+      const context = existing ?? (await browser!.newContext({ serviceWorkers: 'block' }));
+      if (!existing) {
+        contexts.push(context);
+        await context.route('**/*', async (route) => {
+          const request = route.request();
+          const url = new URL(request.url());
+          if (url.origin === origin && url.pathname === '/__demo-fixture') {
+            const data = request.postDataJSON() as Record<string, unknown>;
+            const action = String(data.action);
+            if (action === 'spend' && holdSessionSpend) {
+              fixture(action, data);
+              await holdSessionSpend();
+              await route.fulfill({ json: state });
+            } else if (action === 'spend' && unknownSession) {
+              fixture(action, data); // Realistic fake: effect occurred, acknowledgement was lost.
+              await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
+            } else if (action === 'revoke' && unknownRevocation) {
+              fixture(action, data);
+              await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
+            } else if (action === 'withdraw' && unknownWithdrawal) {
+              calls.push('withdraw-unknown');
+              await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
+            } else {
+              const accepted = fixture(action, data);
               await route.fulfill({
-                status: 503,
-                json: { error: 'Synthetic service unavailable' },
+                status: accepted ? 200 : 409,
+                json: accepted
+                  ? action === 'state' && staleOwnerReads
+                    ? { ...state, nonce: state.nonce + (staleReadCount++ % 2) }
+                    : state
+                  : { code: 'GrantRevoked' },
               });
-              return;
             }
-            if (request.method() === 'POST') {
-              const data = request.postDataJSON();
-              fundingIds.push(data.requestId);
-              if (unknownFunding) {
+          } else if (url.origin === 'http://localhost:8787') {
+            if (url.pathname === '/v1/demo/funding') {
+              if (serviceUnavailable) {
                 await route.fulfill({
                   status: 503,
-                  json: { error: 'Synthetic funding outcome unknown; reconcile original ID' },
+                  json: { error: 'Synthetic service unavailable' },
                 });
                 return;
               }
-              if (!fundedIds.has(data.requestId)) {
-                state.night += 10;
-                fundedIds.set(data.requestId, state.night);
+              if (request.method() === 'POST') {
+                const data = request.postDataJSON();
+                fundingIds.push(data.requestId);
+                if (unknownFunding) {
+                  await route.fulfill({
+                    status: 503,
+                    json: { error: 'Synthetic funding outcome unknown; reconcile original ID' },
+                  });
+                  return;
+                }
+                if (!fundedIds.has(data.requestId)) {
+                  state.night += 10;
+                  fundedIds.set(data.requestId, state.night);
+                }
+                await route.fulfill({
+                  json: {
+                    ...data,
+                    amount: '10',
+                    txId: '70'.repeat(32),
+                    creditedBalance: String(fundedIds.get(data.requestId)),
+                  },
+                });
+              } else if (url.searchParams.has('accountAddress')) {
+                await route.fulfill({
+                  json: {
+                    accountAddress: address,
+                    balances: { night: String(state.night), fundedAsset: String(state.night) },
+                  },
+                });
+              } else {
+                await route.fulfill({
+                  json: { assets: [{ color: night, amount: '10' }], balanceAssetColor: night },
+                });
               }
+            } else if (url.pathname === '/v1/demo/value-call') {
+              const body = request.postDataJSON();
+              assert.equal(body.circuit, 'withdraw_unshielded_with_grant_jubjub');
+              const accepted = fixture('spend', { amount: body.args[1].$bigint });
+              if (holdSessionSpend) await holdSessionSpend();
               await route.fulfill({
-                json: {
-                  ...data,
-                  amount: '10',
-                  txId: '70'.repeat(32),
-                  creditedBalance: String(fundedIds.get(data.requestId)),
-                },
+                status: !accepted || unknownSession ? 503 : 200,
+                json:
+                  !accepted || unknownSession
+                    ? { error: 'Synthetic session outcome unknown' }
+                    : { txHash: state.txHash },
               });
-            } else if (url.searchParams.has('accountAddress')) {
+            } else if (url.pathname === '/v1/config' || url.pathname === '/config') {
               await route.fulfill({
                 json: {
-                  accountAddress: address,
-                  balances: { night: String(state.night), fundedAsset: String(state.night) },
+                  networkId: 'undeployed',
+                  bindingId: 'acc-s3r1.1',
+                  manifestSha256: manifest,
+                  serviceApiVersion: '1.0.0',
+                  artefactUrl: 'http://localhost:8787/v1/zk/acc-s3r1.1',
+                  indexerUri: 'http://localhost:18088',
+                  indexerWsUri: 'ws://localhost:18088',
+                  nodeUri: 'ws://localhost:19944',
+                  proofServerUri: 'http://localhost:16300',
+                  zkBaseUrl: 'http://localhost:8787/v1/zk/acc-s3r1.1',
+                  coinPublicKey: '80'.repeat(32),
+                  encryptionPublicKey: '90'.repeat(32),
                 },
               });
             } else {
-              await route.fulfill({
-                json: { assets: [{ color: night, amount: '10' }], balanceAssetColor: night },
-              });
+              failures.push(`unhandled-service:${url.pathname}`);
+              await route.abort();
             }
-          } else if (url.pathname === '/v1/demo/value-call') {
-            const body = request.postDataJSON();
-            assert.equal(body.circuit, 'withdraw_unshielded_with_grant_jubjub');
-            const accepted = fixture('spend', { amount: body.args[1].$bigint });
-            if (holdSessionSpend) await holdSessionSpend();
-            await route.fulfill({
-              status: !accepted || unknownSession ? 503 : 200,
-              json:
-                !accepted || unknownSession
-                  ? { error: 'Synthetic session outcome unknown' }
-                  : { txHash: state.txHash },
-            });
-          } else if (url.pathname === '/v1/config' || url.pathname === '/config') {
-            await route.fulfill({
-              json: {
-                networkId: 'undeployed',
-                bindingId: 'acc-s3r1.1',
-                manifestSha256: manifest,
-                serviceApiVersion: '1.0.0',
-                artefactUrl: 'http://localhost:8787/v1/zk/acc-s3r1.1',
-                indexerUri: 'http://localhost:18088',
-                indexerWsUri: 'ws://localhost:18088',
-                nodeUri: 'ws://localhost:19944',
-                proofServerUri: 'http://localhost:16300',
-                zkBaseUrl: 'http://localhost:8787/v1/zk/acc-s3r1.1',
-                coinPublicKey: '80'.repeat(32),
-                encryptionPublicKey: '90'.repeat(32),
-              },
-            });
+          } else if (url.origin === origin) {
+            // Raw requests go only to our owned Vite server; no existing localhost app is touched.
+            const response = await route.fetch({ url: `${base}${url.pathname}${url.search}` });
+            await route.fulfill({ response });
           } else {
-            failures.push(`unhandled-service:${url.pathname}`);
+            // Fonts and browser telemetry are not needed; unexpected network access fails the run.
+            if (!['fonts.googleapis.com', 'fonts.gstatic.com'].includes(url.hostname))
+              failures.push(`unhandled-network:${url.hostname}`);
             await route.abort();
           }
-        } else if (url.origin === origin) {
-          // Raw requests go only to our owned Vite server; no existing localhost app is touched.
-          const response = await route.fetch({ url: `${base}${url.pathname}${url.search}` });
-          await route.fulfill({ response });
-        } else {
-          // Fonts and browser telemetry are not needed; unexpected network access fails the run.
-          if (!['fonts.googleapis.com', 'fonts.gstatic.com'].includes(url.hostname))
-            failures.push(`unhandled-network:${url.hostname}`);
-          await route.abort();
-        }
-      });
-      await context.addInitScript(() => {
-        const nativeNow = Date.now;
-        const clock = window as unknown as { __sessionClockOffset?: number };
-        Date.now = () => nativeNow() + (clock.__sessionClockOffset ?? 0);
-      });
+        });
+        await context.addInitScript(() => {
+          const nativeNow = Date.now;
+          const clock = window as unknown as { __sessionClockOffset?: number };
+          Date.now = () => nativeNow() + (clock.__sessionClockOffset ?? 0);
+        });
+      }
       const page = await context.newPage();
       page.on('pageerror', (error) => {
         pageErrors.push(error.message);
@@ -416,6 +422,7 @@ try {
         await owner.setViewportSize({ width: 1280, height: 900 });
       }
       await owner.locator('#create').click();
+      await owner.locator('#consent-dialog').waitFor({ state: 'visible' });
       assert.ok(await owner.locator('#consent-continue').isDisabled());
       await owner.locator('#consent-cancel').click();
       await waitStatus(owner, /declined before passkey/);
@@ -619,6 +626,11 @@ try {
       await owner.locator('#withdraw-amount').fill('1');
       await owner.locator('#session-cap').fill('2');
       await owner.locator('#session-per-call').fill('1');
+      const staleTab = await newPage(owner.context());
+      await approve(staleTab, 'open');
+      await waitStatus(staleTab, /opened/);
+      await staleTab.locator('#withdraw-recipient').fill(recipient);
+      await staleTab.locator('#withdraw-amount').fill('1');
       const countCredentials = () =>
         owner.evaluate(
           () =>
@@ -677,6 +689,16 @@ try {
       };
       await approve(owner, 'withdraw');
       await spendObserved;
+      const sendsBeforeConcurrent = calls.filter((c) => c === 'withdraw' || c === 'spend').length;
+      await staleTab.bringToFront();
+      await staleTab.locator('#withdraw').click();
+      await waitStatus(staleTab, /failed\./, /Another Passport tab is handling an operation/);
+      assert.equal(
+        calls.filter((c) => c === 'withdraw' || c === 'spend').length,
+        sendsBeforeConcurrent,
+      );
+      await owner.bringToFront();
+      done('real browser Web Locks refuse a second shared-storage tab while an effect is pending');
       assert.ok(
         await owner.locator('#endSession').isEnabled(),
         'explicit lock is available while an operation is running',
@@ -753,6 +775,28 @@ try {
       await waitStatus(owner, /failed\./, /Synthetic session outcome unknown/);
       const sendsAfterUnknown = calls.filter((c) => c === 'spend' || c === 'withdraw').length;
       unknownSession = false;
+      const stalePrompts = await staleTab.evaluate(
+        () =>
+          (window as unknown as { __passportPurposeObservations: unknown[] })
+            .__passportPurposeObservations.length,
+      );
+      await approve(staleTab, 'withdraw');
+      await waitStatus(staleTab, /failed\./, /Reconcile the original session transaction/);
+      await staleTab.locator('#endSession').click();
+      await waitStatus(staleTab, /Local session locked/);
+      assert.equal(
+        calls.filter((c) => c === 'spend' || c === 'withdraw').length,
+        sendsAfterUnknown,
+      );
+      assert.equal(
+        await staleTab.evaluate(
+          () =>
+            (window as unknown as { __passportPurposeObservations: unknown[] })
+              .__passportPurposeObservations.length,
+        ),
+        stalePrompts,
+      );
+      done('stale tab cannot bypass or erase an independent unknown-spend fence');
       await approve(owner, 'withdraw');
       await waitStatus(owner, /failed\./, /Reconcile the original session transaction/);
       assert.equal(
@@ -779,6 +823,32 @@ try {
         'page reload retains uncertainty fence',
       );
       done('lost session spend acknowledgement blocks retry and owner fallback across page reload');
+      const revoker = await newPage();
+      await approve(revoker, 'create');
+      await waitStatus(revoker, /created/);
+      await revoker.locator('#withdraw-recipient').fill(recipient);
+      await approve(revoker, 'startSession');
+      await waitStatus(revoker, /JubJub session active/);
+      const revokeCalls = calls.filter((c) => c === 'revoke').length;
+      unknownRevocation = true;
+      await approve(revoker, 'revokeSession');
+      await waitStatus(revoker, /failed\./, /Synthetic fixture refusal/);
+      unknownRevocation = false;
+      await approve(revoker, 'revokeSession');
+      await waitStatus(revoker, /failed\./, /Reconcile/);
+      await archiveObservations(revoker, arm);
+      await revoker.reload();
+      await revoker
+        .locator('#status')
+        .filter({ hasText: /^Ready\./ })
+        .waitFor();
+      await observeCredentialAccess(revoker);
+      await approve(revoker, 'open');
+      await waitStatus(revoker, /opened/);
+      await approve(revoker, 'revokeSession');
+      await waitStatus(revoker, /failed\./, /Reconcile/);
+      assert.equal(calls.filter((c) => c === 'revoke').length, revokeCalls + 1);
+      done('uncertain revocation is never replayed and remains fenced across reload');
 
       assert.equal(failures.length, 0, failures.join(', '));
       assert.equal(pageErrors.length, 0, pageErrors.join(', '));
@@ -878,6 +948,7 @@ try {
           'handoff parsing',
           'capability/proof planner',
           'PRF-derived bounded session controller and generated JubJub signature/holder guards',
+          'shared-origin Web Locks and independent public intent records across real tabs',
         ],
         simulated: ['account API', 'chain', 'funding', 'grant settlement', 'wallet balances'],
         nativeProofs: false,

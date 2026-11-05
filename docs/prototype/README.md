@@ -203,3 +203,9 @@ dispose the signer, not its chain grant. Unknown effects retain a public reload
 fence. See [the session guide](../site/jubjub-sessions.md) for the setup,
 derivation and qualification limits. This is local source work, absent from
 published RC7; no new full Lace/provider/native qualification is claimed.
+
+The session source increment coordinates authenticated/value actions across
+same-profile tabs using browser Web Locks. Missing coordination refuses new
+mutations. Public per-intent issue/spend/revocation records survive stale-tab
+metadata writes and reloads; confirmed records prevent stale uncertainty revival.
+This does not coordinate separate browsers/devices or replace host durable jobs.

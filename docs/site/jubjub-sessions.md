@@ -132,14 +132,35 @@ copied authority, subject to transaction validity and chain time. JavaScript
 cannot guarantee erasure of engine temporaries, and this is not hardware-backed
 session-key isolation or an independent security audit.
 
+## Multiple tabs and browser requirements
+
+Authenticated and value-moving demo actions are coordinated using **browser Web
+Locks**, across tabs in the same origin, browser profile, network and binding.
+The lock covers the review through operation completion; a second tab receives a
+visible refusal rather than another credential ceremony or a replacement send.
+Public state/roster reads, connected-wallet refresh and immediate local Lock remain
+available. A browser without this coordination API refuses authenticated/value
+actions; there is no timed localStorage lease or silent uncoordinated fallback.
+
+Sessions reread public checkpoints before authority decisions. Each issue, spend
+and revocation has a fresh public operation UUID and its own pending record,
+written before any effect. Stale tabs cannot clear another intent by overwriting
+the display metadata. A confirmed/no-send result stores a settled record; this
+prevents a late stale-tab write from resurrecting the completed uncertainty fence.
+Settled public history is retained, not silently garbage-collected. Storage errors
+fail closed before a new effect. These are same-profile browser controls, not
+cross-device coordination or a replacement for a durable production host journal.
+
 ## Interrupted or uncertain operations
 
-A pending issue/spend is checkpointed **before** its transport effect. A lost
+A pending issue/spend/revocation is checkpointed **before** its transport effect. A lost
 response or failed post-issue confirmation locks the key and blocks another
 session or owner-fallback withdrawal. Reload retains this uncertainty fence.
-Public checkpoints contain only status, account/grant IDs, expiry, asset,
-recipient, caps, spent total and an available transaction hash. No PRF, seed,
+Public checkpoints contain only status, a public operation UUID, account/grant IDs,
+expiry, asset, recipient, caps, spent total and an available transaction hash. No PRF, seed,
 signing key, session child ID, grant salt/opening or witness is stored there.
+An uncertain revocation also stays fenced across reload; it cannot be submitted
+again just because the local key is already locked.
 
 Inspect the operation log, original transaction IDs, owner grant roster and
 retained owner journal. Use existing operator inspection/reconciliation for the
@@ -168,6 +189,7 @@ responses and public checkpoint restart behavior. Generated ACC pure circuits
 are used for actual key derivation, grant commitments and JubJub signing guards.
 Chromium exercises the real controls, PRF-capable software credentials, session
 controller and holder signing path with synthetic owner/ledger/funding drivers,
-including critical passkey step-up, lock, expiry, reload and no fallback after an
-uncertain spend. These tests do not produce or verify a native transaction proof,
+including critical passkey step-up, lock, expiry, reload, actual same-profile
+two-tab exclusion, independent unknown-spend fences and no repeated uncertain
+revocation. Missing browser coordination fails closed. These tests do not produce or verify a native transaction proof,
 move real funds, validate Google/iCloud restore or qualify a partner integration.

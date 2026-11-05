@@ -15,7 +15,14 @@ export interface DemoSessionKey {
 }
 export interface DemoSessionSnapshot {
   readonly status:
-    'locked' | 'authorizing' | 'active' | 'spending' | 'expired' | 'blocked' | 'revoked';
+    | 'locked'
+    | 'authorizing'
+    | 'active'
+    | 'spending'
+    | 'revoking'
+    | 'expired'
+    | 'blocked'
+    | 'revoked';
   readonly account?: string;
   readonly grantId?: string;
   readonly expiresAt?: number;
@@ -25,6 +32,7 @@ export interface DemoSessionSnapshot {
   readonly cap?: string;
   readonly spent: string;
   readonly txHash?: string;
+  readonly intentId?: string;
 }
 export interface DemoSessionPorts {
   readonly now?: () => number;
@@ -46,6 +54,8 @@ export interface DemoSessionPorts {
   readonly checkpoint?: {
     read(): DemoSessionSnapshot | undefined;
     write(snapshot: DemoSessionSnapshot): void;
+    begin(snapshot: DemoSessionSnapshot): void;
+    settle(snapshot: DemoSessionSnapshot): void;
   };
 }
 
@@ -57,7 +67,7 @@ export function createDemoSession(ports: DemoSessionPorts) {
   let state: DemoSessionSnapshot = retained
     ? Object.freeze({
         ...retained,
-        status: ['authorizing', 'spending', 'blocked'].includes(retained.status)
+        status: ['authorizing', 'spending', 'revoking', 'blocked'].includes(retained.status)
           ? 'blocked'
           : retained.status === 'revoked'
             ? 'revoked'
@@ -94,17 +104,59 @@ export function createDemoSession(ports: DemoSessionPorts) {
     key = undefined;
     cancellation.abort();
   };
+  const uncertain = (value: DemoSessionSnapshot) =>
+    ['authorizing', 'spending', 'revoking', 'blocked'].includes(value.status);
+  const sync = () => {
+    const saved = ports.checkpoint?.read();
+    if (!saved) return;
+    if (busy) {
+      if (saved.intentId !== state.intentId) {
+        revision++;
+        dispose();
+        state = Object.freeze({ ...state, status: 'blocked' });
+        ports.checkpoint?.write(state);
+        ports.changed(state);
+      }
+      return;
+    }
+    const foreign = saved.intentId !== state.intentId;
+    if (
+      (uncertain(saved) && (foreign || state.status !== 'blocked')) ||
+      (!uncertain(saved) && (foreign || state.status === 'blocked'))
+    ) {
+      revision++;
+      dispose();
+      state = Object.freeze({
+        ...saved,
+        status: uncertain(saved) ? 'blocked' : saved.status === 'revoked' ? 'revoked' : 'locked',
+      });
+      ports.changed(state);
+    }
+  };
+  const begin = (patch: Partial<DemoSessionSnapshot>) => {
+    state = Object.freeze({ ...state, ...patch, intentId: crypto.randomUUID() });
+    ports.checkpoint?.begin(state);
+    ports.changed(state);
+  };
+  const settle = (next: DemoSessionSnapshot) => {
+    state = Object.freeze(next);
+    ports.checkpoint?.settle(state);
+    ports.changed(state);
+  };
   const lock = () => {
+    sync();
+    const owned = !!key || busy;
     revision++;
     dispose();
     if (state.status !== 'revoked')
-      publish({
-        status: ['blocked', 'spending', 'authorizing'].includes(state.status)
-          ? 'blocked'
-          : 'locked',
-      });
+      if (owned) publish({ status: uncertain(state) ? 'blocked' : 'locked' });
+      else {
+        state = Object.freeze({ ...state, status: uncertain(state) ? 'blocked' : 'locked' });
+        ports.changed(state);
+      }
   };
   const tick = () => {
+    sync();
     if (
       state.status === 'active' ||
       state.status === 'spending' ||
@@ -150,6 +202,7 @@ export function createDemoSession(ports: DemoSessionPorts) {
       origin: string,
       options: FlowOptions = {},
     ) {
+      tick();
       if (busy) throw new Error('A session operation is already running.');
       if (state.grantId || state.status === 'blocked')
         throw new Error(
@@ -191,7 +244,7 @@ export function createDemoSession(ports: DemoSessionPorts) {
         // Do not attribute a prior revocation/transfer hash to a new uncertain issue.
         state = { status: 'locked', spent: '0' };
         opening = undefined;
-        publish({
+        begin({
           status: 'authorizing',
           account: account.address,
           expiresAt,
@@ -244,13 +297,11 @@ export function createDemoSession(ports: DemoSessionPorts) {
         )
           throw new Error('Confirmed session grant differs from the approved scope.');
         opening = Object.freeze({ ...opening });
-        publish({ status: 'active' });
+        settle({ ...state, status: 'active' });
       } catch (error) {
         dispose();
-        publish({
-          status: issueAttempted ? 'blocked' : 'locked',
-          ...(issueAttempted && submittedIds(error)),
-        });
+        if (issueAttempted) publish({ status: 'blocked', ...submittedIds(error) });
+        else settle({ ...state, status: 'locked' });
         throw error;
       } finally {
         busy = false;
@@ -283,7 +334,7 @@ export function createDemoSession(ports: DemoSessionPorts) {
       try {
         const { txHash: _previousHash, ...currentGrant } = state;
         state = currentGrant;
-        publish({ status: 'spending' });
+        begin({ status: 'spending' });
         current(version);
         const result = await ports.spend(
           opening!,
@@ -293,12 +344,13 @@ export function createDemoSession(ports: DemoSessionPorts) {
           cancellation.signal,
         );
         // Capture a confirmed effect even if a local lock/expiry happened while it settled.
-        publish({
+        const usable = revision === version && tick().status === 'spending';
+        settle({
+          ...state,
           spent: result.spentTotal.toString(),
           txHash: result.txHash,
-          ...(revision !== version && { status: 'locked' }),
+          status: usable ? 'active' : 'locked',
         });
-        if (revision === version && tick().status === 'spending') publish({ status: 'active' });
         return result;
       } catch (error) {
         revision++;
@@ -311,6 +363,7 @@ export function createDemoSession(ports: DemoSessionPorts) {
       }
     },
     async revoke(account: PassportAccount, options: FlowOptions = {}) {
+      tick();
       if (busy) throw new Error('A session operation is already running.');
       if (!state.grantId || state.account !== account.address || !account.revokeGrant)
         throw new Error(
@@ -318,17 +371,27 @@ export function createDemoSession(ports: DemoSessionPorts) {
         );
       if (state.status === 'blocked')
         throw new Error(
-          'Reconcile the original uncertain issue or spend before revoking through this session control. Use the owner grant roster and operator inspection with the original IDs.',
+          'Reconcile the original uncertain issue, spend or revocation before revoking through this session control. Use the owner grant roster and operator inspection with the original IDs.',
         );
       lock();
       busy = true;
       try {
-        const result = await account.revokeGrant(state.grantId, options);
-        state = Object.freeze({ status: 'revoked', spent: state.spent, txHash: result.txHash });
+        const { txHash: _previousHash, ...grant } = state;
+        state = grant;
+        begin({ status: 'revoking' });
+        const result = await account.revokeGrant(state.grantId!, options);
+        const revoked: DemoSessionSnapshot = {
+          status: 'revoked',
+          spent: state.spent,
+          txHash: result.txHash,
+          ...(state.intentId && { intentId: state.intentId }),
+        };
         opening = undefined;
-        ports.checkpoint?.write(state);
-        ports.changed(state);
+        settle(revoked);
         return result;
+      } catch (error) {
+        publish({ status: 'blocked', ...submittedIds(error) });
+        throw error;
       } finally {
         busy = false;
       }

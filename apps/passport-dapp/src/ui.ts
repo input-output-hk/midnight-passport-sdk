@@ -106,7 +106,11 @@ const formatAmount = (v: bigint) => v.toLocaleString('en-GB');
 export function createUi(
   header: EvidenceHeader,
   arm: 'p256' | 'jubjub' = 'p256',
-  consent?: { before(action: ActionId): Promise<boolean>; after(): void },
+  consent?: {
+    before(action: ActionId): Promise<boolean>;
+    after(): void;
+    run?(action: ActionId, operation: () => Promise<void>): Promise<void>;
+  },
 ) {
   const log = new EventLog();
   const buttons = Object.fromEntries(ACTIONS.map((a) => [a, byId<HTMLButtonElement>(a)])) as Record<
@@ -761,13 +765,17 @@ export function createUi(
         }
         log.start(action);
         try {
-          if (consent && !(await consent.before(action))) {
-            status('Operation declined before passkey access or submission.');
+          const execute = async () => {
+            if (consent && !(await consent.before(action))) {
+              status('Operation declined before passkey access or submission.');
+              log.finish();
+              return;
+            }
+            await fn();
             log.finish();
-            return;
-          }
-          await fn();
-          log.finish();
+          };
+          if (consent?.run) await consent.run(action, execute);
+          else await execute();
         } catch (e) {
           const err = plainError(e, header.serviceUrl);
           log.fail(err);

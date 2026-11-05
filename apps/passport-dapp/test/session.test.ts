@@ -5,6 +5,19 @@ import { createDemoSession, type DemoSessionPorts } from '../src/session.ts';
 import { sessionCheckpoint } from '../src/session-checkpoint.ts';
 import type { GrantHandoff } from '../src/grant-handoff.ts';
 
+const namespace = 'passport-demo:session:v1:undeployed:acc-s3r1.1';
+function memoryStorage(memory: Map<string, string>) {
+  return {
+    get length() {
+      return memory.size;
+    },
+    key: (index: number) => [...memory.keys()][index] ?? null,
+    getItem: (key: string) => memory.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      memory.set(key, value);
+    },
+  };
+}
 const scope = {
   operations: ['withdraw-unshielded'] as const,
   color: '00'.repeat(32),
@@ -249,16 +262,7 @@ test('scope substitution after issue is refused and leaves the original grant id
 
 test('reload keeps public grant identity, locks active sessions and fences interrupted sends', async () => {
   const memory = new Map<string, string>();
-  const checkpoint = sessionCheckpoint(
-    {
-      getItem: (k) => memory.get(k) ?? null,
-      setItem: (k, v) => {
-        memory.set(k, v);
-      },
-    },
-    'undeployed',
-    'acc-s3r1.1',
-  );
+  const checkpoint = sessionCheckpoint(memoryStorage(memory), 'undeployed', 'acc-s3r1.1');
   const f = fixture();
   (f.ports as { checkpoint: typeof checkpoint }).checkpoint = checkpoint;
   const session = createDemoSession(f.ports);
@@ -288,21 +292,17 @@ test('reload keeps public grant identity, locks active sessions and fences inter
     assert.doesNotMatch(text, /scopeSalt|sessionId|authoriser|secret|seed/);
 });
 
-test('malformed public checkpoints fail closed and writes cannot persist key fields', () => {
-  let saved = '{"status":"active","spent":"0","privateKey":"bad"}';
-  const checkpoint = sessionCheckpoint(
-    {
-      getItem: () => saved,
-      setItem: (_k, v) => {
-        saved = v;
-      },
-    },
-    'undeployed',
-    'acc-s3r1.1',
-  );
+test('malformed checkpoints fail closed; new writes whitelist fields and cannot erase an old unknown', () => {
+  const memory = new Map([[namespace, '{"status":"active","spent":"0","privateKey":"bad"}']]);
+  const checkpoint = sessionCheckpoint(memoryStorage(memory), 'undeployed', 'acc-s3r1.1');
   assert.equal(checkpoint.read()!.status, 'blocked');
+  assert.throws(() => checkpoint.write({ status: 'locked', spent: '0' }));
+  memory.set(namespace, '{"status":"locked","spent":"0"}');
   checkpoint.write({ status: 'locked', spent: '0', privateKey: 'bad' } as never);
-  assert.doesNotMatch(saved, /privateKey/);
+  assert.doesNotMatch(memory.get(namespace)!, /privateKey/);
+  memory.set(namespace, '{"status":"blocked","spent":"0"}');
+  checkpoint.write({ status: 'locked', spent: '0' });
+  assert.equal(checkpoint.read()!.status, 'blocked');
 });
 
 test('expiry while a send is pending retains an uncertainty fence until its original result settles', async () => {
@@ -360,18 +360,107 @@ test('new pending effects never inherit old transaction hashes and submitted SDK
 
 test('public uncertainty checkpoints normalize supported uppercase transaction hashes', () => {
   const hash = 'AB'.repeat(33);
-  let saved = JSON.stringify({ status: 'blocked', spent: '0', txHash: hash });
-  const checkpoint = sessionCheckpoint(
-    {
-      getItem: () => saved,
-      setItem: (_k, v) => {
-        saved = v;
-      },
-    },
+  const memory = new Map([
+    [namespace, JSON.stringify({ status: 'blocked', spent: '0', txHash: hash })],
+  ]);
+  const checkpoint = sessionCheckpoint(memoryStorage(memory), 'undeployed', 'acc-s3r1.1');
+  assert.equal(checkpoint.read()!.txHash, hash.toLowerCase());
+  memory.set(namespace, JSON.stringify({ status: 'blocked', spent: '0', txHash: 'a'.repeat(65) }));
+  assert.equal(checkpoint.read()!.txHash, undefined);
+});
+
+function sharedTabs() {
+  const memory = new Map<string, string>();
+  const a = fixture(),
+    b = fixture();
+  (a.ports as { checkpoint: ReturnType<typeof sessionCheckpoint> }).checkpoint = sessionCheckpoint(
+    memoryStorage(memory),
     'undeployed',
     'acc-s3r1.1',
   );
-  assert.equal(checkpoint.read()!.txHash, hash.toLowerCase());
-  saved = JSON.stringify({ status: 'blocked', spent: '0', txHash: 'a'.repeat(65) });
-  assert.equal(checkpoint.read()!.txHash, undefined);
+  (b.ports as { checkpoint: ReturnType<typeof sessionCheckpoint> }).checkpoint = sessionCheckpoint(
+    memoryStorage(memory),
+    'undeployed',
+    'acc-s3r1.1',
+  );
+  return { a, b, memory };
+}
+
+test('a stale second tab cannot erase or bypass an independent unknown-spend record', async () => {
+  const { a, b, memory } = sharedTabs();
+  await a.start();
+  a.failSpend();
+  await assert.rejects(a.session.spend(a.account, transfer));
+  b.session.lock();
+  assert.equal(b.session.snapshot().status, 'blocked');
+  assert.equal(b.session.matches(b.account, transfer), false);
+  await assert.rejects(b.start(), /Revoke/);
+  b.ports.checkpoint!.write({ status: 'locked', spent: '0' });
+  assert.equal(createDemoSession(b.ports).snapshot().status, 'blocked');
+  assert.ok([...memory.keys()].some((key) => key.includes(':intent:')));
+});
+
+test('settled intent tombstones refuse stale blocked writes without resurrecting an uncertainty fence', async () => {
+  const { a, b } = sharedTabs();
+  await a.start();
+  let release!: () => void;
+  a.setSpend(
+    () =>
+      new Promise<void>((r) => {
+        release = r;
+      }),
+  );
+  const spending = a.session.spend(a.account, transfer);
+  const stale = b.session.snapshot();
+  assert.equal(stale.status, 'blocked');
+  release();
+  await spending;
+  b.ports.checkpoint!.write(stale);
+  b.session.lock();
+  assert.notEqual(a.ports.checkpoint!.read()!.status, 'blocked');
+  assert.equal(a.session.snapshot().spent, '1');
+});
+
+test('uncertain revocation is fenced before submission and cannot be retried by another tab or reload', async () => {
+  const { a, b } = sharedTabs();
+  await a.start();
+  let attempts = 0;
+  a.account.revokeGrant = async () => {
+    attempts++;
+    throw Object.assign(Error('revocation outcome unknown'), { txHash: 'EE'.repeat(32) });
+  };
+  await assert.rejects(a.session.revoke(a.account), /unknown/);
+  assert.equal(a.session.snapshot().status, 'blocked');
+  assert.equal(a.session.snapshot().txHash, 'ee'.repeat(32));
+  await assert.rejects(a.session.revoke(a.account), /Reconcile/);
+  await assert.rejects(b.session.revoke(b.account), /Reconcile/);
+  await assert.rejects(createDemoSession(a.ports).revoke(a.account), /Reconcile/);
+  assert.equal(attempts, 1);
+});
+
+test('a foreign unresolved record during observation cannot be settled using another operation’s result', async () => {
+  const { a, memory } = sharedTabs();
+  await a.start();
+  let release!: () => void;
+  a.setSpend(
+    () =>
+      new Promise<void>((r) => {
+        release = r;
+      }),
+  );
+  const sending = a.session.spend(a.account, transfer);
+  const own = a.session.snapshot().intentId;
+  const foreign = '00000000-0000-4000-8000-000000000000';
+  memory.set(
+    `${namespace}:intent:${foreign}`,
+    JSON.stringify({
+      phase: 'pending',
+      snapshot: { status: 'blocked', spent: '0', intentId: foreign },
+    }),
+  );
+  assert.equal(a.session.snapshot().intentId, own);
+  release();
+  await sending;
+  assert.equal(a.ports.checkpoint!.read()!.intentId, foreign);
+  assert.equal(a.ports.checkpoint!.read()!.status, 'blocked');
 });

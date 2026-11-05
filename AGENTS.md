@@ -58,7 +58,10 @@ open account's passkey. Matching unshielded withdrawals use a separate PRF-deriv
 child under an expiring grant; critical owner actions still use a fresh passkey.
 Hidden tab/pagehide/reload/expiry locks the key; local lock is not chain revocation.
 Renew by revoking the prior known grant. Unknown issue/spend fences survive reload:
-do not clear site data to retry. The session feature is not in published RC7 and
+do not clear site data to retry. Browser Web Locks serialize authenticated/value
+actions across same-profile tabs; missing coordination refuses those actions.
+Independent per-intent public records retain issue/spend/revocation unknowns;
+stale tabs cannot clear them by overwriting display metadata. The session feature is not in published RC7 and
 has no native proof/provider qualification yet. Existing browser tests also cover
 these controls through real generated signing guards and synthetic chain drivers.
 
