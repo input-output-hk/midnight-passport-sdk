@@ -62,3 +62,28 @@ provenance audit of the original exported client.
 Implementation prepared locally after merged PR #285. Native acceptance is
 pending a clean signed run and independent review. Do not infer it from the fast
 infrastructure tests or prior merchant/session browser evidence.
+
+## First native attempt: retained decode failure
+
+Signed `73c1eb5` deployed the faucet and all52ACC entries (maintenance retired),
+then stopped before activation/deposit/session issue. A `ChargedState` created by
+the reference client's physical WASM runtime was passed to the SDK workspace's
+generated decoder, which belongs to a different runtime instance. The eleven
+submitted originals and private fixture are retained; no automatic retry or
+continuation occurs. Both wallets and all three owned containers stopped, the
+lease was released, and all62key pins/source/runtime/reference inputs were
+independently reverified unchanged after failure. The suite remains **FAIL**.
+
+The source fix decodes host state using the matching host generated module for
+both account and grant reads, while portable SDK helpers consume only neutral
+bytes/bigints. The generated module bytes must match the SDK pin. Source lanes
+with separate dependency trees must respect this boundary even when package
+versions match. A fresh signed/reviewed run is required for session acceptance.
+End-input verification now runs for failures as well as successful workers.
+
+A separate read-only reconciliation restarted only this run's original node and
+indexer, checked every retained transaction binary against its pre-send hash and
+confirmed all11original transactions SUCCESS on the canonical finalized chain.
+No wallet/proof/send was started and no transaction was replayed. Both restarted
+owned containers stopped again; the lease was released. This reconciles deployment
+only and does not turn the failed session suite into acceptance.

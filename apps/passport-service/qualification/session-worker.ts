@@ -73,6 +73,9 @@ const reference = (name: string) => import(pathToFileURL(join(contract, name)).h
 const wallet = await reference('src/node/wallet.ts');
 const wave = await reference('src/wallet/wave-deploy.ts');
 const setup = await reference('src/node/setup.ts');
+// Decode foreign WASM state with the generated module from the SAME physical host runtime.
+// Pure SDK helpers exchange only byte arrays/bigints; never feed a host ChargedState to them.
+const nativeBinding = await reference('contracts/managed/account/contract/index.js');
 const { submitCallTx, deployContract } = await load('@midnight-ntwrk/midnight-js-contracts');
 const ledger = await load('@midnightntwrk/ledger-v9');
 const pure = binding.pureCircuits;
@@ -253,7 +256,7 @@ try {
     const readLedger = async (acc: string) => {
       assert.equal(acc, address);
       const state = await providers.publicDataProvider.queryContractState(acc);
-      return state ? binding.ledger(state.data) : undefined;
+      return state ? nativeBinding.ledger(state.data) : undefined;
     };
     const call = async (request: CallRequest) => {
       assert.equal(request.address, address);
@@ -295,7 +298,7 @@ try {
     };
     const grants = createMidnightGrantSource({
       network,
-      binding,
+      binding: nativeBinding,
       openings: {
         readReadPublicKey: async (_acc, id) => journal.get(id)?.bookkeeping.readPublicKey,
       },

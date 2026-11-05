@@ -110,6 +110,7 @@ export async function runNativeSessions(env = process.env) {
       ),
     ),
   ]);
+  /** @type {Array<{circuit:string,kind:string,sha256:string}>} */
   const verifiedKeys = [];
   for (const [circuit, pins] of Object.entries(/** @type {Record<string,any>} */ (keys.circuits))) {
     for (const kind of used.has(circuit) ? ['prover', 'verifier'] : ['verifier']) {
@@ -130,6 +131,11 @@ export async function runNativeSessions(env = process.env) {
     packageSha256: await fileHash(join(contract, 'package.json')),
     lockSha256: await fileHash(join(contract, 'package-lock.json')),
   };
+  assert.equal(
+    reference.generated,
+    await fileHash(join(ROOT, 'packages/contract/generated/acc-s3r1.1/index.js')),
+    'Host generated binding differs from the SDK pin',
+  );
   const runId = randomBytes(8).toString('hex'),
     project = sessionProject(runId);
   mkdirSync(output, { mode: 0o700 });
@@ -185,6 +191,33 @@ export async function runNativeSessions(env = process.env) {
     verdict,
   };
   save('parent-receipt.private.json', receipt);
+  const verifyEndInputs = async () => {
+    assert.deepEqual(
+      await workspaceIdentity(ROOT),
+      source,
+      'Source/runtime drifted during qualification.',
+    );
+    assert.deepEqual(installedTreeIdentity(contract), reference.dependencies);
+    assert.deepEqual(sessionDependencyIdentity(ROOT), reference.sdkDependencies);
+    assert.deepEqual(
+      runtimeTreeIdentity(join(contract, 'contracts/managed/faucet')),
+      reference.faucet,
+    );
+    assert.deepEqual(runtimeTreeIdentity(join(contract, 'src')), reference.sources);
+    for (const pin of verifiedKeys)
+      assert.equal(
+        await fileHash(join(contract, `contracts/managed/account/keys/${pin.circuit}.${pin.kind}`)),
+        pin.sha256,
+      );
+    assert.equal(
+      await fileHash(join(contract, 'contracts/managed/account/contract/index.js')),
+      reference.generated,
+    );
+    assert.equal(await fileHash(manifest), reference.manifestSha256);
+    assert.equal(await fileHash(join(contract, 'package.json')), reference.packageSha256);
+    assert.equal(await fileHash(join(contract, 'package-lock.json')), reference.lockSha256);
+    receipt.endInputsUnchanged = true;
+  };
   try {
     // Inspection must succeed before creating anything. Never pull a moving tag implicitly.
     const images = specifications.map(([service, image]) => ({
@@ -344,30 +377,7 @@ export async function runNativeSessions(env = process.env) {
     const result = JSON.parse(readFileSync(join(output, 'session-receipt.json'), 'utf8'));
     assert.equal(result.verdict, 'PASS');
     assert.deepEqual(result.arms.map((/** @type {any} */ a) => a.arm).sort(), ['jubjub', 'p256']);
-    assert.deepEqual(
-      await workspaceIdentity(ROOT),
-      source,
-      'Source/runtime drifted during qualification.',
-    );
-    assert.deepEqual(installedTreeIdentity(contract), reference.dependencies);
-    assert.deepEqual(sessionDependencyIdentity(ROOT), reference.sdkDependencies);
-    assert.deepEqual(
-      runtimeTreeIdentity(join(contract, 'contracts/managed/faucet')),
-      reference.faucet,
-    );
-    assert.deepEqual(runtimeTreeIdentity(join(contract, 'src')), reference.sources);
-    for (const pin of verifiedKeys)
-      assert.equal(
-        await fileHash(join(contract, `contracts/managed/account/keys/${pin.circuit}.${pin.kind}`)),
-        pin.sha256,
-      );
-    assert.equal(
-      await fileHash(join(contract, 'contracts/managed/account/contract/index.js')),
-      reference.generated,
-    );
-    assert.equal(await fileHash(manifest), reference.manifestSha256);
-    assert.equal(await fileHash(join(contract, 'package.json')), reference.packageSha256);
-    assert.equal(await fileHash(join(contract, 'package-lock.json')), reference.lockSha256);
+    await verifyEndInputs();
     receipt.resultSha256 = await fileHash(join(output, 'session-receipt.json'));
     verdict = 'PASS';
   } catch (error) {
@@ -388,6 +398,15 @@ export async function runNativeSessions(env = process.env) {
         receipt.cleanup.stopped.push(c.id);
       } catch {
         receipt.cleanup.incomplete = true;
+      }
+    }
+    if (!receipt.endInputsUnchanged) {
+      try {
+        await verifyEndInputs();
+      } catch (error) {
+        receipt.endInputErrorSha256 = createHash('sha256').update(String(error)).digest('hex');
+        receipt.verdict = 'FAIL';
+        verdict = 'FAIL';
       }
     }
     const lock = JSON.parse(readFileSync(lease, 'utf8'));
