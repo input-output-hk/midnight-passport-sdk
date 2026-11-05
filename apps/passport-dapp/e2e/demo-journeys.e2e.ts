@@ -298,14 +298,31 @@ try {
       cases.push({ arm, name });
       console.log(`PASS ${arm}: ${name}`);
     };
-    const waitStatus = async (page: Page, expected: RegExp) => {
+    const waitStatus = async (page: Page, expected: RegExp, expectedError?: RegExp) => {
       try {
         await page.waitForFunction(
           () => !document.querySelector('#log .run[data-state="running"]'),
           undefined,
           { timeout: 20_000 },
         );
+        const codes = await page.evaluate(
+          () =>
+            (window as unknown as { __passportPurposeFailureCodes?: string[] })
+              .__passportPurposeFailureCodes ?? [],
+        );
+        assert.deepEqual(
+          codes,
+          [],
+          'unexpected credential observer failure, even in a negative scenario',
+        );
         assert.match(await page.locator('#status').innerText(), expected);
+        if (expectedError)
+          assert.match(
+            (
+              await page.locator('#log .run').first().locator('.error-message').allTextContents()
+            ).join('\n'),
+            expectedError,
+          );
       } catch (error) {
         const codes = await page
           .evaluate(
@@ -424,7 +441,11 @@ try {
       await owner.locator('#withdraw-recipient').fill('invalid-recipient');
       const withdrawals = calls.filter((c) => c === 'withdraw').length;
       await approve(owner, 'withdraw');
-      await waitStatus(owner, /failed\./);
+      await waitStatus(
+        owner,
+        /failed\./,
+        /Enter a valid unshielded Midnight address for undeployed/,
+      );
       assert.equal(calls.filter((c) => c === 'withdraw').length, withdrawals);
       const wrongNetwork = MidnightBech32m.encode(
         'preview',
@@ -432,7 +453,11 @@ try {
       ).asString();
       await owner.locator('#withdraw-recipient').fill(wrongNetwork);
       await approve(owner, 'withdraw');
-      await waitStatus(owner, /failed\./);
+      await waitStatus(
+        owner,
+        /failed\./,
+        /Enter a valid unshielded Midnight address for undeployed/,
+      );
       assert.equal(calls.filter((c) => c === 'withdraw').length, withdrawals);
       await owner.locator('#withdraw-recipient').fill(recipient);
       rejectNextDialog = true;
@@ -456,12 +481,12 @@ try {
       await owner.locator('#handoff-input').fill('{}');
       const enrollments = calls.filter((c) => c === 'enroll').length;
       await approve(owner, 'enrollDevice');
-      await waitStatus(owner, /failed\./);
+      await waitStatus(owner, /failed\./, /handoff does not match|joining-device JSON/i);
       assert.equal(calls.filter((c) => c === 'enroll').length, enrollments);
       await owner.locator('#handoff-input').fill(handoff);
       staleOwnerReads = true;
       await approve(owner, 'enrollDevice');
-      await waitStatus(owner, /failed\./);
+      await waitStatus(owner, /failed\./, /ACC roster changed while preparing enrollment/);
       assert.equal(calls.filter((c) => c === 'enroll').length, enrollments);
       staleOwnerReads = false;
       await approve(owner, 'enrollDevice');
@@ -497,7 +522,7 @@ try {
       const beforeDeclinedSpend = calls.filter((c) => c === 'spend').length;
       rejectNextDialog = true;
       await approve(holder, 'spendGrant');
-      await waitStatus(holder, /failed\./);
+      await waitStatus(holder, /failed\./, /Spend declined/);
       assert.equal(rejectNextDialog, false, 'the exact grant spend review must have appeared');
       assert.equal(calls.filter((c) => c === 'spend').length, beforeDeclinedSpend);
       await approve(holder, 'spendGrant');
@@ -507,7 +532,7 @@ try {
       await waitStatus(owner, /is revoked/);
       const balance = state.night;
       await approve(holder, 'spendGrant');
-      await waitStatus(holder, /failed\./);
+      await waitStatus(holder, /failed\./, /Synthetic grant refused/);
       assert.equal(state.night, balance);
       await approve(owner, 'recoverGrants');
       await waitStatus(owner, /Published 0 pending grants/);
@@ -527,17 +552,17 @@ try {
 
       unknownFunding = true;
       await owner.locator('#fund').click();
-      await waitStatus(owner, /failed\./);
+      await waitStatus(owner, /failed\./, /Synthetic funding outcome unknown/);
       const original = fundingIds.at(-1)!;
       await owner.locator('#fund').click();
-      await waitStatus(owner, /failed\./);
+      await waitStatus(owner, /failed\./, /Synthetic funding outcome unknown/);
       assert.equal(fundingIds.at(-1), original);
       assert.equal(fundingIds.filter((id) => id === original).length, 2);
       unknownFunding = false;
       done('uncertain funding retains the original request ID across explicit retry');
       unknownWithdrawal = true;
       await approve(owner, 'withdraw');
-      await waitStatus(owner, /failed\./);
+      await waitStatus(owner, /failed\./, /Synthetic fixture refusal/);
       await owner.waitForTimeout(100);
       assert.equal(calls.filter((c) => c === 'withdraw-unknown').length, 1);
       unknownWithdrawal = false;
@@ -562,6 +587,15 @@ try {
           assert.ok(
             observations.length > 0,
             'each profile must exercise observed credential purposes',
+          );
+          assert.deepEqual(
+            await page.evaluate(
+              () =>
+                (window as unknown as { __passportPurposeFailureCodes?: string[] })
+                  .__passportPurposeFailureCodes ?? [],
+            ),
+            [],
+            'no profile may hide an observer rejection in an expected UI failure',
           );
           for (const observation of observations) observedPurposes.add(observation.purpose);
         }
