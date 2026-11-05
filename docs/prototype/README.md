@@ -209,3 +209,8 @@ same-profile tabs using browser Web Locks. Missing coordination refuses new
 mutations. Public per-intent issue/spend/revocation records survive stale-tab
 metadata writes and reloads; confirmed records prevent stale uncertainty revival.
 This does not coordinate separate browsers/devices or replace host durable jobs.
+
+The [native session qualification map](../review/native-sessions/README.md) describes
+an isolated opt-in lane for the consented JubJub source increment. Both synthetic
+owner arms use the actual controller/SDK and a fresh faucet token. Native proof,
+browser consent, real-provider and published-artifact acceptance are separate.

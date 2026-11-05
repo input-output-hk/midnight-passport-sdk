@@ -193,3 +193,14 @@ including critical passkey step-up, lock, expiry, reload, actual same-profile
 two-tab exclusion, independent unknown-spend fences and no repeated uncertain
 revocation. Missing browser coordination fails closed. These tests do not produce or verify a native transaction proof,
 move real funds, validate Google/iCloud restore or qualify a partner integration.
+
+## Native qualification lane
+
+Operators can run the opt-in `consented-sessions-native` suite using the
+[engineer review map](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/native-sessions/README.md).
+It uses fresh ports/volumes, actual source session/grant APIs and both synthetic
+owner arms; it never controls a retained/default localnet. It waits for actual
+10-minute expiry and canonical native finality. Its fresh faucet asset is not an
+additional NIGHT funding qualification. Implementation/fast checks alone are not
+native acceptance. Provider, Chromium, native and released-artifact tiers remain
+separate; consult the recorded source/receipt before claiming support.

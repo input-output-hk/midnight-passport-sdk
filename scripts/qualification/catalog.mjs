@@ -1,6 +1,20 @@
 // Scope is explicit: a passing simulator test does not qualify recovery or a release.
 const node = process.execPath;
 export const SCENARIOS = Object.freeze({
+  'consented-sessions-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-sessions.mjs'],
+    requires: [
+      'PASSPORT_SESSION_NATIVE',
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_SESSION_ROOT',
+    ],
+    timeoutMs: 70 * 60000,
+    establishes:
+      'Fresh isolated chain, both synthetic owner arms and actual demo session controller: scoped child withdrawal, recipient credit, copied-key revocation, renewal and real ten-minute expiry. Native SDK pre-proof refusals are distinct from malicious proof/node rejection. No retained/default stack control, provider, browser/native combination or released-artifact qualification.',
+  },
   'binding-source': {
     tier: 'source-comparison',
     command: [node, 'scripts/qualification/run-binding-audit.mjs'],
@@ -393,6 +407,7 @@ export const SUITES = Object.freeze({
   'host-job-lifecycle-image-native': ['host-job-lifecycle-image-native'],
   'host-jobs-native': ['host-jobs-native'],
   'host-jobs-image-native': ['host-jobs-image-native'],
+  'consented-sessions-native': ['consented-sessions-native'],
   foundation: ['binding-source', 'contract-entries', 'reader-guards'],
   browser: ['virtual-authenticator'],
   localnet: ['localnet-night'],

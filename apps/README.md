@@ -458,3 +458,12 @@ remain available. Unknown issue/spend/revocation records have independent public
 operation UUIDs; stale display writes cannot erase them, and settled records stop
 old tabs reopening completed fences. Never clear these records to retry an effect.
 Cross-device coordination and durable operator reconciliation remain host concerns.
+
+### Isolated native session qualification
+
+`pnpm qualify plan consented-sessions-native` documents the opt-in session lane.
+See [the review map](../docs/review/native-sessions/README.md) for the exact command,
+source/key/readiness guards, private evidence and owned cleanup. It allocates fresh
+ports 19964/18108/16320 and preserves retained/default localnets. Do not replay a
+failed/unknown run. Native acceptance is pending; browser consent and real-provider
+acceptance remain distinct.

@@ -1,13 +1,13 @@
 // A responding indexer can serve a stale database after node/VM interruption.
 // Qualification may build with a wallet only after observing node finality in that indexer.
-/** @param {{fetch?:typeof fetch,now?:()=>number}} [options] */
+/** @param {{fetch?:typeof fetch,now?:()=>number,nodeUrl?:string,indexerUrl?:string}} [options] */
 export async function dedicatedIndexerReadiness(options = {}) {
   /** @param {unknown} v @returns {v is Record<string,unknown>} */
   const object = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
   const request = options.fetch ?? fetch;
   const now = options.now ?? Date.now;
-  const node = 'http://127.0.0.1:19954';
-  const indexer = 'http://127.0.0.1:18098/api/v4/graphql';
+  const node = options.nodeUrl ?? 'http://127.0.0.1:19954';
+  const indexer = options.indexerUrl ?? 'http://127.0.0.1:18098/api/v4/graphql';
   /** @param {string} url @param {unknown} body */
   const post = async (url, body) => {
     const response = await request(url, {

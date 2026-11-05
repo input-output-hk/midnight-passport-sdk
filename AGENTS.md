@@ -557,3 +557,13 @@ public host leaves it pending until close. Explicit fresh-client consent never r
 #272 and the review map before claiming navigation recovery. Copied-root integrity controls
 require a valid-copy baseline and the intended rejection reason. Latest same-source interruption
 control closes all created resources and preserves an honestly absent attacker server.
+
+### Isolated session qualification — 2026/11/05
+
+Read `docs/review/native-sessions/README.md` before the opt-in
+`consented-sessions-native` suite. It owns a fresh random project and fresh volumes
+on ports19964/18108/16320; never stop/reconfigure archived/default indexers or reuse
+their volume/endpoint. The stable wallet lease is shared with older lanes. Retain
+failed/unknown roots and transaction bytes; source/runtime/reference/key pins must
+match at the end. Native synthetic credentials/faucet-token tests do not establish
+real providers, NIGHT funding, browser/native combination or released packages.
