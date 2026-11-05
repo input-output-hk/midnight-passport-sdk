@@ -87,3 +87,20 @@ confirmed all11original transactions SUCCESS on the canonical finalized chain.
 No wallet/proof/send was started and no transaction was replayed. Both restarted
 owned containers stopped again; the lease was released. This reconciles deployment
 only and does not turn the failed session suite into acceptance.
+
+## Second attempt: retained recipient-observation timeout
+
+Signed `77a1323` passed the corrected decode boundary, created both sealed owner
+profiles, deposited12fresh faucet units per ACC and confirmed scoped2-unit
+withdrawals for both owner arms. JubJub additionally passed native revocation and
+distinct-child renewal. The P-256 session recorded spent2/original transaction,
+but its live recipient wallet view timed out. This full suite remains **FAIL**;
+all43original transactions/private fixtures are retained, with unchanged end-input
+hashes, both wallets/all3ownedcontainers stopped and the lease released.
+
+The next source uses the existing `confirmedCredit` observer helper. Only after
+independent canonical SUCCESS of the **original** withdrawal may it stop/recreate
+the same recipient observer and re-observe the balance. It preserves the seed,
+address and transaction hash; there is no sender/prover/retry call in that recovery
+step. Failure to confirm the original or to observe after one reconnect fails the
+run. A new full suite uses a fresh root/chain; the old suite is not relabeled.

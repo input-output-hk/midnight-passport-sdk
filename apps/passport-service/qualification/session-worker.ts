@@ -40,6 +40,7 @@ import {
 } from '../../../scripts/qualification/session-profile.mjs';
 import { dedicatedIndexerReadiness } from '../../../scripts/qualification/indexer-readiness.mjs';
 import { confirmOriginalFunding } from '../../../examples/application-acc/native-funding.mjs';
+import { confirmedCredit } from '../../../examples/application-acc/native-observation.mjs';
 
 const root = process.argv[2]!;
 assert.ok(root && isAbsolute(root));
@@ -89,6 +90,7 @@ let funding: any,
   recipient: any,
   proofs = 0,
   proofAttempts = 0,
+  recipientObserverReconnects = 0,
   attempts = 0;
 const transactions: Array<{
   ordinal: number;
@@ -461,12 +463,36 @@ try {
     assert.equal(session.matches(account, { ...transfer, amount: '3' }), false);
     assert.equal(session.matches(account, { ...transfer, recipient: '91'.repeat(32) }), false);
     assert.deepEqual({ ownerSigns, childDerivations, proofs, attempts }, before);
-    await session.spend(account, transfer);
+    const withdrawal = await session.spend(account, transfer);
     assert.equal(ownerSigns, before.ownerSigns);
     assert.equal(childDerivations, before.childDerivations);
     assert.ok(proofs > before.proofs && attempts > before.attempts);
     assert.equal(session.snapshot().spent, '2');
-    await balance(recipient, 2n);
+    const originalWithdrawal = transactions.at(-1)!;
+    assert.equal(
+      withdrawal.txHash.length === 66 && withdrawal.txHash.startsWith('00')
+        ? withdrawal.txHash.slice(2)
+        : withdrawal.txHash,
+      originalWithdrawal.hash,
+    );
+    const credit = await confirmedCredit({
+      wait: () => balance(recipient, 2n),
+      confirm: () => finality(originalWithdrawal.hash),
+      event: () =>
+        publicEvent({
+          sessionArm: arm,
+          stage: 'confirmed-original-withdrawal-observer-reconnect',
+          txHash: originalWithdrawal.hash,
+        }),
+      reconnect: async () => {
+        await recipient.wallet.stop();
+        recipient = undefined;
+        recipient = await wallet.createWallet(recipientSeed);
+        assert.equal(hex(wallet.userAddressBytes(recipient)), recipientAddress);
+        recipientObserverReconnects++;
+      },
+    });
+    assert.equal(BigInt(credit.state.unshielded.balances[color]), 2n);
     assert.equal(
       (await readLedger(address))!.unshielded_balances.lookup(Buffer.from(color, 'hex')),
       10n,
@@ -618,6 +644,7 @@ try {
     proofAttempts,
     submissions: attempts,
     retainedBeforeSend: transactions.length,
+    recipientObserverReconnects,
     canonicalFinality: confirmed,
     syntheticCredentials: true,
     syntheticAssetNotNight: true,
@@ -629,6 +656,7 @@ try {
       'Two actual ten-minute demo sessions per arm; expiry refusal is SDK pre-proof against indexed native chain time, not a malicious proof/node rejection.',
       'Native value path uses the hosted Chain port directly; browser HTTP/consent/lock-loss behavior is separately covered by Chromium tests.',
       'Dedicated faucet token, not an additional NIGHT funding qualification.',
+      'A stale live recipient view may require a cold reconnect after the original withdrawal is independently finalized; this is never another send.',
       'Source packages, not registry/image acceptance.',
     ],
   };
