@@ -186,3 +186,22 @@ It reuses the frozen dependency cache and builds outputs freshly. The target sta
 30–45 seconds per warm job, subject to actual hosted measurement after push. Slow
 native/provider lanes remain separate. `pnpm test:coverage` is an opt-in Node/V8
 package-only measurement, not added to fast required jobs or an arbitrary threshold.
+
+### Workflow expression validation
+
+For workflow changes, validate schema/expressions locally with `actionlint` from
+the repository-pinned nixpkgs, in addition to the Node gate:
+
+```sh
+nix shell --inputs-from . nixpkgs#actionlint \
+  -c actionlint -shellcheck= -pyflakes=
+```
+
+This command disables optional shell/Python linters; it still validates workflow
+structure and expression contexts. An initial RC7 PR attempt put `runner.temp` in
+job-level `env`, where it is unavailable. GitHub rejected the workflow before any
+core job ran. The correction resolves the receipt path in both runner steps.
+The failed run is retained; a green list containing only image jobs is not a
+passing full gate. Require every named core component and the relevant image
+checks at the current head. The key-image path filter is unchanged: no key/contract
+inputs changed in this UI tranche, so its absence is expected, not a waived test.

@@ -113,16 +113,19 @@ jobs:
     timeout-minutes: 5
     env:
       CHROME_BIN: /usr/bin/google-chrome
-      PASSPORT_DEMO_JOURNEY_OUTPUT: ${{ runner.temp }}/demo-journeys.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/prepare-workspace
       - name: Fresh package outputs
         run: pnpm exec tsc -b tsconfig.build.json
       - name: Actual Chromium UI with isolated synthetic account and chain drivers
+        env:
+          PASSPORT_DEMO_JOURNEY_OUTPUT: ${{ runner.temp }}/demo-journeys.json
         run: pnpm test:demo-browser
       - name: Retain declared browser scope in job summary
         if: always()
+        env:
+          PASSPORT_DEMO_JOURNEY_OUTPUT: ${{ runner.temp }}/demo-journeys.json
         run: |
           if test -f "$PASSPORT_DEMO_JOURNEY_OUTPUT"; then
             cat "$PASSPORT_DEMO_JOURNEY_OUTPUT" >> "$GITHUB_STEP_SUMMARY"

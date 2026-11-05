@@ -321,6 +321,11 @@ witnesses, giant prover keys or private source snapshots into it.
     && pnpm --filter passport-dapp exec tsc --noEmit -p .'
   ```
 
+- **Workflow edits.** In addition to the full Node gate, run the pinned-nixpkgs
+  `actionlint` command in [CI policy](docs/ci.md#workflow-expression-validation)
+  before pushing. Require every core check to exist and pass at the current head;
+  image-only green checks cannot stand in for a workflow that failed to start.
+
 - **Commits.** Use conventional commits, made with `git commit -S -s` (GPG signature plus DCO
   sign-off), and end the message with an `Assisted-by: AI` trailer. Never add a `Co-Authored-By`
   trailer that names a model. Check `git log --format='%h %G?' -1` shows `G` after each commit.
