@@ -156,7 +156,10 @@ Before deployment, `native-funding.mjs` verifies the original successful transac
 against canonical finalized node data and waits for that exact intent/output in the
 fresh wallet's available set. A matching amount or larger balance is insufficient.
 It rechecks the same input after deployment, deposits it, and attempts a 4-unit
-merchant payment. It never creates or resubmits a funding split. It checks
+merchant payment. It never creates or resubmits a funding split. Before invoking the sender it inspects the
+finalized deposit and requires the exact original input identity, value and owner,
+with no additional NIGHT inputs. Merely seeing the coin available cannot constrain
+wallet selection. A rejected finalized intent is retained without sending. It checks
 the ACC debit, application count and recipient wallet credit separately. Wrong
 caller/signature, replay, revocation and the post-call business guard record the
 actual failure stage. An unreturned submission remains unknown; rerunning under a

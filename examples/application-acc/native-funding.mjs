@@ -122,3 +122,27 @@ export async function confirmOriginalFunding(hash, { post }) {
     finalizedHash: finalized.result.slice(2),
   });
 }
+
+/** Inspect the finalized transaction BEFORE invoking the sender. Availability does not constrain
+ * a wallet's coin selection; reject a different or additional NIGHT input, even at equal value.
+ * @param {{intents:Map<number,{guaranteedUnshieldedOffer?:{inputs:readonly {value:bigint,owner:any,type:string,intentHash:string,outputNo:number}[]}|undefined,fallibleUnshieldedOffer?:{inputs:readonly {value:bigint,owner:any,type:string,intentHash:string,outputNo:number}[]}|undefined}>|undefined}} transaction
+ * @param {Readonly<FundingInput>} expected
+ * @param {(key:any)=>string} addressFromKey The pinned ledger's public-key→address codec.
+ */
+export function assertOriginalFundingSpend(transaction, expected, addressFromKey) {
+  const nightInputs = [];
+  for (const intent of transaction.intents?.values() ?? []) {
+    for (const offer of [intent.guaranteedUnshieldedOffer, intent.fallibleUnshieldedOffer]) {
+      for (const input of offer?.inputs ?? []) {
+        if (input.type === expected.color) nightInputs.push(input);
+      }
+    }
+  }
+  assert.equal(nightInputs.length, 1, 'Finalized deposit must spend only the original NIGHT input');
+  const input = nightInputs[0];
+  assert.ok(input);
+  assert.equal(input.value, expected.amount);
+  assert.equal(input.intentHash, expected.intentHash);
+  assert.equal(input.outputNo, expected.outputNo);
+  assert.equal(addressFromKey(input.owner), expected.owner);
+}

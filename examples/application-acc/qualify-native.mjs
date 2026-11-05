@@ -48,11 +48,16 @@ let funding,
   recipientWallet,
   stage = 'inputs',
   submissions = 0,
+  retainedTransactions = 0,
   proofs = 0;
 const cases = [];
 try {
-  const { originalFundingInput, hasOriginalFundingInput, confirmOriginalFunding } =
-    await import('./native-funding.mjs');
+  const {
+    originalFundingInput,
+    hasOriginalFundingInput,
+    confirmOriginalFunding,
+    assertOriginalFundingSpend,
+  } = await import('./native-funding.mjs');
   const [
     acc,
     { prepareJubjubGrant },
@@ -154,6 +159,7 @@ try {
   });
   const providers = await wallet.createProviders(funding);
   const transactions = [];
+  let fundingDepositPending = false;
   const proof = providers.proofProvider.proveTx.bind(providers.proofProvider);
   providers.proofProvider.proveTx = async (...args) => {
     stage = 'prove';
@@ -169,13 +175,23 @@ try {
     const tx = tagged.tx,
       data = tx.serialize(),
       hash = tx.transactionHash();
-    const ordinal = ++submissions;
+    const ordinal = ++retainedTransactions;
     writeFileSync(join(output, `submitted-${ordinal}.private.bin`), data, {
       flag: 'wx',
       mode: 0o600,
     });
     event('submission-retained-before-send', { ordinal, hash, bytesSha256: sha(data) });
+    if (fundingDepositPending) {
+      stage = 'funding-input-guard';
+      assertOriginalFundingSpend(tx, fundingInput, nativeLedger.addressFromKey);
+      event('original-funding-spend-bound', {
+        hash,
+        intentHash: fundingInput.intentHash,
+        outputNo: fundingInput.outputNo,
+      });
+    }
     stage = 'node-submit';
+    submissions++;
     const id = await submit(tagged);
     transactions.push({ hash, id });
     event('node-submit-returned', { ordinal, hash, id });
@@ -264,7 +280,12 @@ try {
   };
   // Recheck this exact retained output after deployment, not a matching amount from another intent.
   await waitForOriginalFunding();
-  await callAccount('deposit_unshielded', color, 12n);
+  fundingDepositPending = true;
+  try {
+    await callAccount('deposit_unshielded', color, 12n);
+  } finally {
+    fundingDepositPending = false;
+  }
   assert.equal((await accountState()).unshielded_balances.lookup(color), 12n);
   const modules = new Map([[accountAddress, acc]]);
   const moduleProvider = {
@@ -542,6 +563,7 @@ try {
       cases,
       proofs,
       submissions,
+      retainedTransactions,
       account: accountAddress,
       application: merchant.address,
       recipient: hex(recipient),

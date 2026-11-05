@@ -9,6 +9,7 @@ import {
   originalFundingInput,
   hasOriginalFundingInput,
   confirmOriginalFunding,
+  assertOriginalFundingSpend,
 } from '../examples/application-acc/native-funding.mjs';
 const owner = '11'.repeat(32),
   hash = '22'.repeat(32),
@@ -227,4 +228,52 @@ test('worker rejects a changed funding helper before evaluating it or creating a
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+function spendingTransaction() {
+  return {
+    intents: new Map([
+      [1, { fallibleUnshieldedOffer: { inputs: [{ ...coin, owner: 'public-signing-key' }] } }],
+    ]),
+  };
+}
+const addressFromKey = (/** @type {unknown} */ key) => {
+  assert.equal(key, 'public-signing-key');
+  return owner;
+};
+
+test('finalized spend binds original identity independently of wallet availability', () => {
+  assert.doesNotThrow(() =>
+    assertOriginalFundingSpend(spendingTransaction(), input, addressFromKey),
+  );
+});
+for (const changed of [
+  { value: 13n },
+  { type: '66'.repeat(32) },
+  { intentHash: '77'.repeat(32) },
+  { outputNo: 1 },
+  { owner: 'different-signing-key' },
+]) {
+  test(`pre-submit guard refuses a substituted finalized input: ${Object.keys(changed)[0]}`, () => {
+    const tx = spendingTransaction(),
+      entry = tx.intents.get(1);
+    assert.ok(entry);
+    entry.fallibleUnshieldedOffer.inputs[0] = { ...coin, owner: 'public-signing-key', ...changed };
+    let sends = 0;
+    assert.throws(() => {
+      assertOriginalFundingSpend(tx, input, addressFromKey);
+      sends++;
+    });
+    assert.equal(sends, 0);
+  });
+}
+
+test('missing or additional NIGHT inputs refuse before a send', () => {
+  const tx = spendingTransaction(),
+    entry = tx.intents.get(1);
+  assert.ok(entry);
+  entry.fallibleUnshieldedOffer.inputs.push({ ...coin, owner: 'public-signing-key', outputNo: 1 });
+  assert.throws(() => assertOriginalFundingSpend(tx, input, addressFromKey), /only the original/);
+  entry.fallibleUnshieldedOffer.inputs = [];
+  assert.throws(() => assertOriginalFundingSpend(tx, input, addressFromKey), /only the original/);
 });
