@@ -219,8 +219,11 @@ for (const helper of ['native-funding.mjs', 'native-observation.mjs'])
         files: { [helper]: '00'.repeat(32) },
       });
       writeFileSync(join(root, 'native-config.private.json'), config);
+      // CI runs Node directly. Supply this worker's environment contract explicitly;
+      // the changed-input assertion stops it before imports, wallets or native effects.
       const env = {
         ...process.env,
+        IN_NIX_SHELL: 'impure',
         PASSPORT_MERCHANT_NATIVE: '1',
         MN_NETWORK_ID: 'undeployed',
         PASSPORT_MERCHANT_CONFIG_SHA256: createHash('sha256').update(config).digest('hex'),
