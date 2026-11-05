@@ -1,0 +1,994 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.0-rc7",
+  "distTag": "next",
+  "verifiedAt": "2026-11-05T15:30:56.361525+00:00",
+  "releaseUrl": "https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc7",
+  "source": {
+    "repository": "https://github.com/input-output-hk/midnight-passport-sdk",
+    "commit": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+    "mergeCommit": "08973c695e8ac4f59fc86c46fd900d570f337988",
+    "pullRequests": [
+      278,
+      283
+    ],
+    "tags": [
+      {
+        "tag": "sdk-v0.1.0-rc7",
+        "tagObject": "e5c3b0ef1fc89a06be9d24a3ef7d9ebd2fc96b5a",
+        "source": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+        "verified": true,
+        "dco": true
+      },
+      {
+        "tag": "keys-v0.1.0-rc7",
+        "tagObject": "699de21dd267cd737750ac225d8838a8cc9822c6",
+        "source": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+        "verified": true,
+        "dco": true
+      },
+      {
+        "tag": "service-v0.1.0-rc7",
+        "tagObject": "2f2676f18579f16b2d15e63459033a4fb00ffc17",
+        "source": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+        "verified": true,
+        "dco": true
+      },
+      {
+        "tag": "funding-v0.1.0-rc7",
+        "tagObject": "ddf32cc765eea86f10127eb8d3edca8d09bc4e57",
+        "source": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+        "verified": true,
+        "dco": true
+      }
+    ],
+    "signerFingerprint": "68177A52E5E37FDCF31DAEF04BEFC05538080D6E",
+    "gpgAndDcoVerified": true
+  },
+  "binding": {
+    "id": "acc-s3r1.1",
+    "passportSource": "6458ed5fe6a4843912328bbf11112b97e33abf45",
+    "compact": "0.35.0",
+    "language": "0.27.0",
+    "runtime": "0.20.0",
+    "accountApi": "1.0.0-pre.0",
+    "serviceApi": "1.0.0-pre.0",
+    "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f"
+  },
+  "packages": [
+    {
+      "name": "@input-output-hk/mn-passport-protocol",
+      "version": "0.1.0-rc7",
+      "visibility": "private",
+      "sha256": "c62ee6b3bb9f3be861f218827151ecc7b04bdb773bf6c4b702e6a636d010601a",
+      "integrity": "sha512-VEquWZ1pKiMvLrHai0GWBxtmVtRwKSNuVfjqu0ZJv8HFVIJDR3Mx0AzUH6fq97piZWDyTXPEwq59d5+m1jctZA==",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-protocol",
+      "distTag": "next",
+      "file": "input-output-hk-mn-passport-protocol-0.1.0-rc7.tgz",
+      "attestations": [
+        {
+          "repository": "midnight-passport-sdk",
+          "verified": true,
+          "sourceDigestRequired": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+          "verificationSha256": "1aa9d240ff1a7f3f0f61ab77a6160448270e8d70e5f735b5cea8bc23fa99f955"
+        },
+        {
+          "repository": "midnight-passport-sdk-publisher",
+          "verified": true,
+          "sourceDigestRequired": null,
+          "verificationSha256": "194eabe682e1887d35fa750886e868433afb4fb2fcf7e66ac8682055865462c2"
+        }
+      ],
+      "localArchiveSha256": "2a1d723e6f4ef9fe432e25c8c63a9bafdb9b1a9ab492a3776b79b75a38b0b392",
+      "decompressedArchiveMatches": true,
+      "gzipOnlyDifference": {
+        "offset": 9,
+        "localOS": 19,
+        "registryOS": 3
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-account",
+      "version": "0.1.0-rc7",
+      "visibility": "private",
+      "sha256": "06bfb35884bace93b15a158170921db63881bbcbf764a5b4cb257078725af152",
+      "integrity": "sha512-BpV0F86O4wBfooLVTUQmi+5fRMcbltamkqKKh3fWfj2gRgOmNfV/9BpGJO/F54T2cV+uG6Wjo1OpY6q8pUpDjA==",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-account",
+      "distTag": "next",
+      "file": "input-output-hk-mn-passport-account-0.1.0-rc7.tgz",
+      "attestations": [
+        {
+          "repository": "midnight-passport-sdk",
+          "verified": true,
+          "sourceDigestRequired": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+          "verificationSha256": "1aa9d240ff1a7f3f0f61ab77a6160448270e8d70e5f735b5cea8bc23fa99f955"
+        },
+        {
+          "repository": "midnight-passport-sdk-publisher",
+          "verified": true,
+          "sourceDigestRequired": null,
+          "verificationSha256": "194eabe682e1887d35fa750886e868433afb4fb2fcf7e66ac8682055865462c2"
+        }
+      ],
+      "localArchiveSha256": "6286fda4dfeae6b6702f7a5b5f26a4c09469904cdda35b877bebe2901729fd51",
+      "decompressedArchiveMatches": true,
+      "gzipOnlyDifference": {
+        "offset": 9,
+        "localOS": 19,
+        "registryOS": 3
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-midnight-js",
+      "version": "0.1.0-rc7",
+      "visibility": "private",
+      "sha256": "4e6384aa2f75776316eaedd442fa783b5298d0a0366ccb5985ac7e17e005ffb8",
+      "integrity": "sha512-8aufIdYhhMnA84J6ND5e6BFtJKal2paRV/AXdskQ+t4U9NYVytBEA+hajwWn1Wpsjyulippgk2CbuGDNOVfKxw==",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-adapter-midnight-js",
+      "distTag": "next",
+      "file": "input-output-hk-mn-passport-adapter-midnight-js-0.1.0-rc7.tgz",
+      "attestations": [
+        {
+          "repository": "midnight-passport-sdk",
+          "verified": true,
+          "sourceDigestRequired": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+          "verificationSha256": "1aa9d240ff1a7f3f0f61ab77a6160448270e8d70e5f735b5cea8bc23fa99f955"
+        },
+        {
+          "repository": "midnight-passport-sdk-publisher",
+          "verified": true,
+          "sourceDigestRequired": null,
+          "verificationSha256": "194eabe682e1887d35fa750886e868433afb4fb2fcf7e66ac8682055865462c2"
+        }
+      ],
+      "localArchiveSha256": "ca15dbef9bb3d60e7e1603acfda7c38f2889088998bbfb2b023f165734eed8d3",
+      "decompressedArchiveMatches": true,
+      "gzipOnlyDifference": {
+        "offset": 9,
+        "localOS": 19,
+        "registryOS": 3
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-keys",
+      "version": "0.1.0-rc7",
+      "visibility": "private",
+      "sha256": "cbeaf9bb15bdd5ac2ba29f3d5c2ff20ee140a7f8a39b6795600426f79a580b31",
+      "integrity": "sha512-q7HtQD/zC60PG8X0LTeFE328zpsJi41gXncjiNEsGuSEXxydKCIYRjeh5jPx3hAD6UIBtXERZ6evTEpF3rlz3w==",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-keys",
+      "distTag": "next",
+      "file": "input-output-hk-mn-passport-keys-0.1.0-rc7.tgz",
+      "attestations": [
+        {
+          "repository": "midnight-passport-sdk",
+          "verified": true,
+          "sourceDigestRequired": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+          "verificationSha256": "1aa9d240ff1a7f3f0f61ab77a6160448270e8d70e5f735b5cea8bc23fa99f955"
+        },
+        {
+          "repository": "midnight-passport-sdk-publisher",
+          "verified": true,
+          "sourceDigestRequired": null,
+          "verificationSha256": "194eabe682e1887d35fa750886e868433afb4fb2fcf7e66ac8682055865462c2"
+        }
+      ],
+      "localArchiveSha256": "b5fdd8afa6957c410fc0577c957ca511527686144c9097e992736048f9a97cf4",
+      "decompressedArchiveMatches": true,
+      "gzipOnlyDifference": {
+        "offset": 9,
+        "localOS": 19,
+        "registryOS": 3
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-webauthn",
+      "version": "0.1.0-rc7",
+      "visibility": "private",
+      "sha256": "0bb52e987dfefc8e3570058623a09afc4fc09de165ff43d48060d4cdf17553c9",
+      "integrity": "sha512-gVoOaqC3GU8lGcMfd4eDLZOKpXfJD/yETB0nQoEXsCbbzkxwZVWGkQ41wA5Ade/EcCT4fY3Nk9GqLLqTlsav2A==",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-adapter-webauthn",
+      "distTag": "next",
+      "file": "input-output-hk-mn-passport-adapter-webauthn-0.1.0-rc7.tgz",
+      "attestations": [
+        {
+          "repository": "midnight-passport-sdk",
+          "verified": true,
+          "sourceDigestRequired": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+          "verificationSha256": "1aa9d240ff1a7f3f0f61ab77a6160448270e8d70e5f735b5cea8bc23fa99f955"
+        },
+        {
+          "repository": "midnight-passport-sdk-publisher",
+          "verified": true,
+          "sourceDigestRequired": null,
+          "verificationSha256": "194eabe682e1887d35fa750886e868433afb4fb2fcf7e66ac8682055865462c2"
+        }
+      ],
+      "localArchiveSha256": "a4119cee8f265795e692b186bf025d28bb07da0a28f51c936c5b4dfa37abc2a5",
+      "decompressedArchiveMatches": true,
+      "gzipOnlyDifference": {
+        "offset": 9,
+        "localOS": 19,
+        "registryOS": 3
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-service",
+      "version": "0.1.0-rc7",
+      "visibility": "private",
+      "sha256": "bff99da634ec42a624f7cf2a13cdec37ea2b6df72c759bdb77a4e02404465ce5",
+      "integrity": "sha512-3VkZ9GJSpi2Ize9/houD2kWXtLIG7IFpGieVteTArWG/WTkfV6tV1wj6uB5Uc8Dixomnpo4Uy4d/WrmPSIcbFA==",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-adapter-service",
+      "distTag": "next",
+      "file": "input-output-hk-mn-passport-adapter-service-0.1.0-rc7.tgz",
+      "attestations": [
+        {
+          "repository": "midnight-passport-sdk",
+          "verified": true,
+          "sourceDigestRequired": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+          "verificationSha256": "1aa9d240ff1a7f3f0f61ab77a6160448270e8d70e5f735b5cea8bc23fa99f955"
+        },
+        {
+          "repository": "midnight-passport-sdk-publisher",
+          "verified": true,
+          "sourceDigestRequired": null,
+          "verificationSha256": "194eabe682e1887d35fa750886e868433afb4fb2fcf7e66ac8682055865462c2"
+        }
+      ],
+      "localArchiveSha256": "6daf6e7ff4897e01967fc2984cdf8b8125b256d523f118f268f54c4698ac87ec",
+      "decompressedArchiveMatches": true,
+      "gzipOnlyDifference": {
+        "offset": 9,
+        "localOS": 19,
+        "registryOS": 3
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-contract",
+      "version": "0.1.0-rc7",
+      "visibility": "private",
+      "sha256": "b08e075a4d358775dafc5b2d0e34187abebe1e755265d81f072a87be76fafaf4",
+      "integrity": "sha512-vIrSsqsJkZKYpEffGCI0Vcb9hVjyskQm8Zn7nNnBNA522+31sFSvCwDCWSaQBmLH3zT3qW64dIUlMc8Zw38R9w==",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-contract",
+      "distTag": "next",
+      "file": "input-output-hk-mn-passport-contract-0.1.0-rc7.tgz",
+      "attestations": [
+        {
+          "repository": "midnight-passport-sdk",
+          "verified": true,
+          "sourceDigestRequired": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+          "verificationSha256": "1aa9d240ff1a7f3f0f61ab77a6160448270e8d70e5f735b5cea8bc23fa99f955"
+        },
+        {
+          "repository": "midnight-passport-sdk-publisher",
+          "verified": true,
+          "sourceDigestRequired": null,
+          "verificationSha256": "194eabe682e1887d35fa750886e868433afb4fb2fcf7e66ac8682055865462c2"
+        }
+      ],
+      "localArchiveSha256": "ebe30db857b79638eaf0ee50bbb14fd0525fbc9abca8ffc298b2963d0add9227",
+      "decompressedArchiveMatches": true,
+      "gzipOnlyDifference": {
+        "offset": 9,
+        "localOS": 19,
+        "registryOS": 3
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-browser",
+      "version": "0.1.0-rc7",
+      "visibility": "private",
+      "sha256": "b1062649eb547e30bf2d5ffc6a9e3c83378ed9129fcaecb950db13413d4f164c",
+      "integrity": "sha512-K3reVfoLsXjzV4AX7Yykx0I9g2ycoGalgjPmBOWcF5uDyY2fvBg7hmgQ8xd3UFpLvIp9hEW2wjKuQdv/OeaXcw==",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-adapter-browser",
+      "distTag": "next",
+      "file": "input-output-hk-mn-passport-adapter-browser-0.1.0-rc7.tgz",
+      "attestations": [
+        {
+          "repository": "midnight-passport-sdk",
+          "verified": true,
+          "sourceDigestRequired": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+          "verificationSha256": "1aa9d240ff1a7f3f0f61ab77a6160448270e8d70e5f735b5cea8bc23fa99f955"
+        },
+        {
+          "repository": "midnight-passport-sdk-publisher",
+          "verified": true,
+          "sourceDigestRequired": null,
+          "verificationSha256": "194eabe682e1887d35fa750886e868433afb4fb2fcf7e66ac8682055865462c2"
+        }
+      ],
+      "localArchiveSha256": "29b3378ff7aea8d30837919373bf05e7709a5cad0b7ab90ba17f0af8c1586ca5",
+      "decompressedArchiveMatches": true,
+      "gzipOnlyDifference": {
+        "offset": 9,
+        "localOS": 19,
+        "registryOS": 3
+      }
+    },
+    {
+      "name": "@input-output-hk/mn-passport-service",
+      "version": "0.1.0-rc7",
+      "visibility": "private",
+      "sha256": "73aa1a825aafd1527d7c770a812149c59b3e88ec8baa57c5fc3d5a8aa47d75bc",
+      "integrity": "sha512-IYsE99gAyav+ON09AYlXCizPFqYVZR4tJ5h+CaFEvWn+6MSSia71kAZ2LMg177xmYq8sneQFKm5D3pS796c2+Q==",
+      "url": "https://github.com/orgs/input-output-hk/packages/npm/package/mn-passport-service",
+      "distTag": "next",
+      "file": "input-output-hk-mn-passport-service-0.1.0-rc7.tgz",
+      "attestations": [
+        {
+          "repository": "midnight-passport-sdk",
+          "verified": true,
+          "sourceDigestRequired": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+          "verificationSha256": "1aa9d240ff1a7f3f0f61ab77a6160448270e8d70e5f735b5cea8bc23fa99f955"
+        },
+        {
+          "repository": "midnight-passport-sdk-publisher",
+          "verified": true,
+          "sourceDigestRequired": null,
+          "verificationSha256": "194eabe682e1887d35fa750886e868433afb4fb2fcf7e66ac8682055865462c2"
+        }
+      ],
+      "localArchiveSha256": "8f93aba78d80b610dc00012611623d401100d6edc86c565cc44bb1721c2d0198",
+      "decompressedArchiveMatches": true,
+      "gzipOnlyDifference": {
+        "offset": 9,
+        "localOS": 19,
+        "registryOS": 3
+      }
+    }
+  ],
+  "packageVisibility": "private",
+  "registry": "https://npm.pkg.github.com",
+  "npmjsPublished": false,
+  "images": [
+    {
+      "name": "keys",
+      "repository": "ghcr.io/input-output-hk/midnight-passport-keys",
+      "version": "0.1.0-rc7",
+      "digest": "sha256:d59d552c9a51694130a71b1f0346c5bb91a12b9c273d15e846f66548515c42c7",
+      "runtimeDigest": "sha256:d59d552c9a51694130a71b1f0346c5bb91a12b9c273d15e846f66548515c42c7",
+      "configDigest": "sha256:5b072d000c41b9b883f78dc2d9a93ef662e888393a8aaaaf1a604616bd84b844",
+      "immutableRef": "ghcr.io/input-output-hk/midnight-passport-keys@sha256:d59d552c9a51694130a71b1f0346c5bb91a12b9c273d15e846f66548515c42c7",
+      "commitTag": "sha-bbf883d9aecb",
+      "platform": "linux/amd64",
+      "user": "10001:10001",
+      "visibility": "public",
+      "manifestAndConfigHashesVerified": true,
+      "versionAndCommitAliasesMatch": true,
+      "labels": {
+        "org.opencontainers.image.description": "Pinned Midnight Passport ACC key restore and HTTP service",
+        "org.opencontainers.image.source": "https://github.com/input-output-hk/midnight-passport-sdk"
+      },
+      "pulledByDigest": true,
+      "localImageId": "sha256:d59d552c9a51694130a71b1f0346c5bb91a12b9c273d15e846f66548515c42c7",
+      "registryConfigDigest": "sha256:5b072d000c41b9b883f78dc2d9a93ef662e888393a8aaaaf1a604616bd84b844",
+      "runtimeConfigAndLayersMatch": true,
+      "startupRefusalsPassed": false,
+      "localExecutionPlatform": "linux/amd64 emulated on ARM64 macOS Docker host"
+    },
+    {
+      "name": "service",
+      "repository": "ghcr.io/input-output-hk/midnight-passport-service",
+      "version": "0.1.0-rc7",
+      "digest": "sha256:49bd2fbd8233f3868bc0918705c56ddf81f6d2c7c0ee570d30d7ab53eaa57a4f",
+      "runtimeDigest": "sha256:49bd2fbd8233f3868bc0918705c56ddf81f6d2c7c0ee570d30d7ab53eaa57a4f",
+      "configDigest": "sha256:66c582163e25181cd510e2d72131b4e30690644fcecb6942d67dda0860df8813",
+      "immutableRef": "ghcr.io/input-output-hk/midnight-passport-service@sha256:49bd2fbd8233f3868bc0918705c56ddf81f6d2c7c0ee570d30d7ab53eaa57a4f",
+      "commitTag": "sha-bbf883d9aecb",
+      "platform": "linux/amd64",
+      "user": "10001:10001",
+      "visibility": "public",
+      "manifestAndConfigHashesVerified": true,
+      "versionAndCommitAliasesMatch": true,
+      "labels": {
+        "org.opencontainers.image.description": "Pinned Passport ACC proving and sponsorship service",
+        "org.opencontainers.image.source": "https://github.com/input-output-hk/midnight-passport-sdk"
+      },
+      "pulledByDigest": true,
+      "localImageId": "sha256:49bd2fbd8233f3868bc0918705c56ddf81f6d2c7c0ee570d30d7ab53eaa57a4f",
+      "registryConfigDigest": "sha256:66c582163e25181cd510e2d72131b4e30690644fcecb6942d67dda0860df8813",
+      "runtimeConfigAndLayersMatch": true,
+      "startupRefusalsPassed": true,
+      "localExecutionPlatform": "linux/amd64 emulated on ARM64 macOS Docker host"
+    },
+    {
+      "name": "funding",
+      "repository": "ghcr.io/input-output-hk/midnight-passport-funding",
+      "version": "0.1.0-rc7",
+      "digest": "sha256:77827206b4f6839b7f82fd8513d06adcffe85d7ebbe192e3465b6f61620579e3",
+      "runtimeDigest": "sha256:77827206b4f6839b7f82fd8513d06adcffe85d7ebbe192e3465b6f61620579e3",
+      "configDigest": "sha256:5c7df18fcd524a0834309d42dfde66864c25d91e13db89c6e0dbdbc85839618a",
+      "immutableRef": "ghcr.io/input-output-hk/midnight-passport-funding@sha256:77827206b4f6839b7f82fd8513d06adcffe85d7ebbe192e3465b6f61620579e3",
+      "commitTag": "sha-bbf883d9aecb",
+      "platform": "linux/amd64",
+      "user": "10001:10001",
+      "visibility": "public",
+      "manifestAndConfigHashesVerified": true,
+      "versionAndCommitAliasesMatch": true,
+      "labels": {
+        "org.opencontainers.image.description": "Pinned Passport ACC funding service",
+        "org.opencontainers.image.source": "https://github.com/input-output-hk/midnight-passport-sdk"
+      },
+      "pulledByDigest": true,
+      "localImageId": "sha256:77827206b4f6839b7f82fd8513d06adcffe85d7ebbe192e3465b6f61620579e3",
+      "registryConfigDigest": "sha256:5c7df18fcd524a0834309d42dfde66864c25d91e13db89c6e0dbdbc85839618a",
+      "runtimeConfigAndLayersMatch": true,
+      "startupRefusalsPassed": true,
+      "localExecutionPlatform": "linux/amd64 emulated on ARM64 macOS Docker host"
+    }
+  ],
+  "publicationWorkflows": [
+    {
+      "conclusion": "success",
+      "databaseId": 42053377619,
+      "headSha": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+      "name": "Check SDK release",
+      "status": "completed",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/42053377619"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 42053385108,
+      "headSha": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+      "name": "Publish Passport key service image",
+      "status": "completed",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/42053385108"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 42053391385,
+      "headSha": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+      "name": "Publish Passport service image",
+      "status": "completed",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/42053391385"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 42053398905,
+      "headSha": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+      "name": "Publish Passport funding service image",
+      "status": "completed",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/42053398905"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 42054047233,
+      "headSha": "3db6bc1f9fbf85acf0e0baf1487a0f9f69c80ab3",
+      "name": "Publish private SDK release",
+      "status": "completed",
+      "url": "https://github.com/input-output-hk/midnight-passport-sdk-publisher/actions/runs/42054047233"
+    }
+  ],
+  "checks": {
+    "fullLocalGate": {
+      "source": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+      "passed": 1232,
+      "existingConditionalSkips": 7,
+      "failed": 0,
+      "lintFormatBuildAppTypes": true,
+      "logSha256": "eb0301733c13cee2fbe617e2674126073e4541484fda793c59671881f4f505ed"
+    },
+    "independentReview": {
+      "source": "d26a60675208b4d726bc7b9552da9e829b725777",
+      "finalActionableFindings": 0,
+      "verifiedFindingsFixed": 3,
+      "reviewSha256": "a7e558ef6c59e624b1953c64bdbd415ad3c7fbb6d1d78160070591de643a2662",
+      "releaseSourceDelta": "workflow-context validation and documentation only; packages/apps/scripts/tests unchanged"
+    },
+    "hostedPullRequestGate": {
+      "head": "bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e",
+      "coreRun": 42052754580,
+      "coreJobs": 12,
+      "relevantImageRuns": [
+        42052684653,
+        42052685010
+      ],
+      "allSelected14ChecksSucceeded": true,
+      "initialInvalidContextRunRetained": 42049467557,
+      "supersededCorrectedRunRetained": 42052684627,
+      "keyImagePathFilterNotApplicable": true,
+      "browserJobSeconds": 65,
+      "fastCiTargetSeconds": "30\u201345",
+      "browserTargetMet": false,
+      "timingFollowup": 271
+    },
+    "actualBrowserUI": {
+      "source": "d26a60675208b4d726bc7b9552da9e829b725777",
+      "cases": 26,
+      "outcome": "passed",
+      "runtimeSha256": "30f49715d0fbce73d36a3e910893e3c66771ffb5e7df4175d1a6fdffb4da6cfd",
+      "browserVersion": "156.0.8078.80",
+      "credentialFailureCodes": [],
+      "resourcesClosed": true,
+      "tier": "browser-ui-synthetic-connector",
+      "nativeProofs": false,
+      "realProvider": false,
+      "receiptSha256": "7a786fb792b5f4f981a1c3532d558acb24b0abf8d58f5719c6d0357c899e4b88"
+    },
+    "packageCoverage": {
+      "source": "4d985f5257200ea32a81de953e057776bc726bd5",
+      "loadedPackageJsFiles": 133,
+      "linesPercent": 95.47,
+      "functionsPercent": 94.14,
+      "branchesPercent": 84.56,
+      "passed": 959,
+      "skipped": 5,
+      "scope": "loaded package dist JavaScript in root Node tests, not app/all-file/contract/provider completeness"
+    },
+    "cleanBuildReproducibility": {
+      "packages": 9,
+      "matchingSha256": true,
+      "logSha256": "19867da785aac4a69cb507bd972e2b3c6350c596ede14929cb297e83b9badd47"
+    },
+    "directAuthenticatedRegistryInstall": {
+      "version": "0.1.0-rc7",
+      "packages": {
+        "@input-output-hk/mn-passport-protocol": "0.1.0-rc7",
+        "@input-output-hk/mn-passport-account": "0.1.0-rc7",
+        "@input-output-hk/mn-passport-adapter-midnight-js": "0.1.0-rc7",
+        "@input-output-hk/mn-passport-keys": "0.1.0-rc7",
+        "@input-output-hk/mn-passport-adapter-webauthn": "0.1.0-rc7",
+        "@input-output-hk/mn-passport-adapter-service": "0.1.0-rc7",
+        "@input-output-hk/mn-passport-contract": "0.1.0-rc7",
+        "@input-output-hk/mn-passport-adapter-browser": "0.1.0-rc7",
+        "@input-output-hk/mn-passport-service": "0.1.0-rc7"
+      },
+      "actualRegistryResolution": true,
+      "installedEntrypoints": true,
+      "physicalRuntimeIdentity": true,
+      "installScriptsDisabled": true,
+      "temporaryAuthFileRemoved": true,
+      "lockSha256": "83da01f4c3d9a9c960446170cfe782ff95c6566fbf802457ae32985d0e0ab083",
+      "fullLace": false,
+      "realProvider": false
+    },
+    "actualRegistryPackedConsumer": {
+      "packages": 9,
+      "passed": true,
+      "runtimeIdentityTypesBrowserHostJobsAndSingleKeyRestore": true,
+      "logSha256": "1d3b27339c07459bafa0731395ab817561fe4e68200eb5e561c94a1336230314"
+    },
+    "installedCompilerDependencyExport": {
+      "passed": true,
+      "logSha256": "98130d6d1618ec079bdb4195d94525a6c5ba8adfa7a6f80d1b15fd76e7fac707"
+    },
+    "keyImageHttpAndRestoration": {
+      "image": "ghcr.io/input-output-hk/midnight-passport-keys@sha256:d59d552c9a51694130a71b1f0346c5bb91a12b9c273d15e846f66548515c42c7",
+      "network": "isolated-loopback-no-chain",
+      "profile": {
+        "name": "jubjub-owner-v1",
+        "circuits": [
+          "activate_initial_device_with_jubjub",
+          "add_device_with_jubjub",
+          "append_inbox_with_jubjub",
+          "deposit_shielded",
+          "deposit_unshielded",
+          "issue_grant_with_jubjub",
+          "remove_device_with_jubjub",
+          "revoke_all_grants_with_jubjub",
+          "revoke_grant_with_jubjub",
+          "rotate_enc_key_with_jubjub"
+        ],
+        "verifierCircuits": [
+          "activate_initial_device_with_jubjub",
+          "activate_initial_device_with_k256",
+          "activate_initial_device_with_p256",
+          "add_device_with_jubjub",
+          "add_device_with_k256",
+          "add_device_with_p256",
+          "append_inbox_with_jubjub",
+          "append_inbox_with_k256",
+          "append_inbox_with_p256",
+          "deposit_shielded",
+          "deposit_unshielded",
+          "issue_grant_with_jubjub",
+          "issue_grant_with_k256",
+          "issue_grant_with_p256",
+          "publish_recovery_session_with_jubjub",
+          "publish_recovery_session_with_k256",
+          "publish_recovery_session_with_p256",
+          "recover_cancel_with_jubjub",
+          "recover_cancel_with_k256",
+          "recover_cancel_with_p256",
+          "recover_finalise",
+          "recover_submit",
+          "remove_device_with_jubjub",
+          "remove_device_with_k256",
+          "remove_device_with_p256",
+          "revoke_all_grants_with_jubjub",
+          "revoke_all_grants_with_k256",
+          "revoke_all_grants_with_p256",
+          "revoke_grant_with_jubjub",
+          "revoke_grant_with_k256",
+          "revoke_grant_with_p256",
+          "rotate_enc_key_with_jubjub",
+          "rotate_enc_key_with_k256",
+          "rotate_enc_key_with_p256",
+          "withdraw_shielded_to_contract_with_grant_jubjub",
+          "withdraw_shielded_to_contract_with_grant_k256",
+          "withdraw_shielded_to_contract_with_grant_p256",
+          "withdraw_shielded_to_contract_with_jubjub",
+          "withdraw_shielded_to_contract_with_k256",
+          "withdraw_shielded_to_contract_with_p256",
+          "withdraw_shielded_with_grant_jubjub",
+          "withdraw_shielded_with_grant_k256",
+          "withdraw_shielded_with_grant_p256",
+          "withdraw_shielded_with_jubjub",
+          "withdraw_shielded_with_k256",
+          "withdraw_shielded_with_p256",
+          "withdraw_unshielded_with_grant_jubjub",
+          "withdraw_unshielded_with_grant_k256",
+          "withdraw_unshielded_with_grant_p256",
+          "withdraw_unshielded_with_jubjub",
+          "withdraw_unshielded_with_k256",
+          "withdraw_unshielded_with_p256"
+        ]
+      },
+      "freshRestoration": true,
+      "allSelectedProverHashesVerified": true,
+      "all52VerifierHashesVerified": true,
+      "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+      "keyManifestMatchesPackage": true,
+      "rangeAndCors": true,
+      "unselectedProver404": true,
+      "files": [
+        {
+          "name": "activate_initial_device_with_jubjub.prover",
+          "size": 24648297,
+          "sha256": "6b9571e641ff826dd381550d14e3c445f28efad59890c1cd8a50b27a9517995a"
+        },
+        {
+          "name": "activate_initial_device_with_jubjub.verifier",
+          "size": 2313,
+          "sha256": "b33fa139d34231f6ba1144a4ac3e947b35e679e8e91d31b554d7ff916932931e"
+        },
+        {
+          "name": "activate_initial_device_with_k256.verifier",
+          "size": 2745,
+          "sha256": "7e579319659b7f310c87c553b37ed0c3531e7c4558e76e7de0b8aa96916a8551"
+        },
+        {
+          "name": "activate_initial_device_with_p256.verifier",
+          "size": 2745,
+          "sha256": "042ef4684a953bd2a2b3a246a517b999c5fa77e2c5a9851b4d55fed5db092ccd"
+        },
+        {
+          "name": "add_device_with_jubjub.prover",
+          "size": 49291628,
+          "sha256": "f109ee0aa3ea0b3cd61b70f50ab2e3f272810d29794b26de8ff458b12d36df1d"
+        },
+        {
+          "name": "add_device_with_jubjub.verifier",
+          "size": 2313,
+          "sha256": "8bcb83e10f7ad25fc65e28f3fdb918eaf0f8755f6a0eb7416052c6153ea80408"
+        },
+        {
+          "name": "add_device_with_k256.verifier",
+          "size": 2745,
+          "sha256": "959e4057137caaf8e2febb8f4a6fdb3d5073d852247ca4dc12c84e2698fd9a86"
+        },
+        {
+          "name": "add_device_with_p256.verifier",
+          "size": 2745,
+          "sha256": "7414477f52366b4098bb5347879fcad174595148b19d853ffa65d4d84d48913f"
+        },
+        {
+          "name": "append_inbox_with_jubjub.prover",
+          "size": 98574819,
+          "sha256": "6dff5362bd05631680267d83cdab67b5506597a7c851d6053cafa5332225c3e5"
+        },
+        {
+          "name": "append_inbox_with_jubjub.verifier",
+          "size": 2313,
+          "sha256": "c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601"
+        },
+        {
+          "name": "append_inbox_with_k256.verifier",
+          "size": 2745,
+          "sha256": "73e67013fa3e37fc0877ab8432be6614fc5835b2c1e79c835e2c8cc40e7be157"
+        },
+        {
+          "name": "append_inbox_with_p256.verifier",
+          "size": 2745,
+          "sha256": "52779a258276ea8c217de9e307d5611c8589fc1c715cdde466f14472736303f9"
+        },
+        {
+          "name": "deposit_shielded.prover",
+          "size": 11278212,
+          "sha256": "0c63768a2206101b86d8bfc49f7a55d3cdd230afa6a28f61964f160082a519cb"
+        },
+        {
+          "name": "deposit_shielded.verifier",
+          "size": 2121,
+          "sha256": "18caf9ffc1ea3271c340f97ee5433598b796a64fadcc1fb7bb5c65868574d328"
+        },
+        {
+          "name": "deposit_unshielded.prover",
+          "size": 446790,
+          "sha256": "d8409e37efa3f142a8c9fb44a7a4c25397312317f9cf28f1243c1bba887f56a3"
+        },
+        {
+          "name": "deposit_unshielded.verifier",
+          "size": 1353,
+          "sha256": "bb4421a5909564377d15f0756299bef99740089b842e8d9796ad2d3d75831de9"
+        },
+        {
+          "name": "issue_grant_with_jubjub.prover",
+          "size": 98581064,
+          "sha256": "d21b34197c0db7ea29626faa3b5d65e959c67fd3d1e28b450f5cb3515ede67a0"
+        },
+        {
+          "name": "issue_grant_with_jubjub.verifier",
+          "size": 2313,
+          "sha256": "008fa78514089341d53ead256a5f8878eb630d3f60741f3bc6bd34d41a84b2f7"
+        },
+        {
+          "name": "issue_grant_with_k256.verifier",
+          "size": 2745,
+          "sha256": "2c87005a33fa262204b01791f72b616d4b01c78d0f1b00d75942c87abff89b7b"
+        },
+        {
+          "name": "issue_grant_with_p256.verifier",
+          "size": 2745,
+          "sha256": "75cfd2a144aa4135075fb8eefa3f0aece57efea745c19cc687f1b388db85ef82"
+        },
+        {
+          "name": "publish_recovery_session_with_jubjub.verifier",
+          "size": 2313,
+          "sha256": "40a747a1ff4e2c2a8ff095b4900e80b32ba3b12936164f8f3ecb6178d980a16c"
+        },
+        {
+          "name": "publish_recovery_session_with_k256.verifier",
+          "size": 2889,
+          "sha256": "95d63f64ed223e13b995f39ec7d2ef630336aabe31aa4d3beaf47467cf5c7854"
+        },
+        {
+          "name": "publish_recovery_session_with_p256.verifier",
+          "size": 2889,
+          "sha256": "181a530e7af949f811f392aea988cffe471219406c36e57c8c283d647417731c"
+        },
+        {
+          "name": "recover_cancel_with_jubjub.verifier",
+          "size": 2313,
+          "sha256": "07ee83659226bdec4843a3ef75d62fd77e506492ff5cb43e174592f30644c0c7"
+        },
+        {
+          "name": "recover_cancel_with_k256.verifier",
+          "size": 2889,
+          "sha256": "fbb2b207720149ad54ba0a9a8f1b25add0edbb2d11ae2a8222af7ac875d16109"
+        },
+        {
+          "name": "recover_cancel_with_p256.verifier",
+          "size": 2889,
+          "sha256": "931442529db8c6ee84ef25d582b068c6acd0f92577d180d8f44284ea767e618f"
+        },
+        {
+          "name": "recover_finalise.verifier",
+          "size": 1593,
+          "sha256": "67cdf364b9ae2905ca8b73cccd6a987eaa4cab83786da19065df88940c9999d2"
+        },
+        {
+          "name": "recover_submit.verifier",
+          "size": 2313,
+          "sha256": "87f7ef22c8393dff30624ab0b1ce61a666662546395088da2d7127d74b236c9c"
+        },
+        {
+          "name": "remove_device_with_jubjub.prover",
+          "size": 98575409,
+          "sha256": "1975015ef62a2eb946a9960c4d84372dfcf12ffaeb64789a8ed764cf81deef93"
+        },
+        {
+          "name": "remove_device_with_jubjub.verifier",
+          "size": 2313,
+          "sha256": "98b87b827e778a90e5012b99465b7c7cfcc00c5ee859bfbcfeec1da657698be0"
+        },
+        {
+          "name": "remove_device_with_k256.verifier",
+          "size": 2745,
+          "sha256": "e1c2c52b3f6d52fb7bef2b40505ba28c4531f0922ac0916bcf56b1b942210fee"
+        },
+        {
+          "name": "remove_device_with_p256.verifier",
+          "size": 2745,
+          "sha256": "07cc0794c5aaac46ec7832129caff43c7e1c81c24fa034962b48fb06b62c3efc"
+        },
+        {
+          "name": "revoke_all_grants_with_jubjub.prover",
+          "size": 49291293,
+          "sha256": "41b2ceb329c890fc29baafc3d9d3bf65276f4d14ea12451b1b368768e046bf66"
+        },
+        {
+          "name": "revoke_all_grants_with_jubjub.verifier",
+          "size": 2313,
+          "sha256": "acf69db5f77b0663f995bbd91a752b4a8be80f89d1a5ea6132d890648a532610"
+        },
+        {
+          "name": "revoke_all_grants_with_k256.verifier",
+          "size": 2745,
+          "sha256": "ddbf3dfd380a258065fff743888e392fa39422fcf54e7046624ce042688932d2"
+        },
+        {
+          "name": "revoke_all_grants_with_p256.verifier",
+          "size": 2745,
+          "sha256": "594eb9482fc3c024957afd19b0207e393bf2df62e70c75a6c4aa7b6b59d465eb"
+        },
+        {
+          "name": "revoke_grant_with_jubjub.prover",
+          "size": 49292461,
+          "sha256": "882036c4b1086fea1f402bbc9efb308d5387d1a63e92a7bab30f4b93c3e74883"
+        },
+        {
+          "name": "revoke_grant_with_jubjub.verifier",
+          "size": 2313,
+          "sha256": "2acbb4bf271df28b6fb6ed20d931a10a51975d661dd917b8855c41f8dffac289"
+        },
+        {
+          "name": "revoke_grant_with_k256.verifier",
+          "size": 2745,
+          "sha256": "963df4303ca470476ce4ac0635aba911f1d61774ebd323d843dfe1385bae05cd"
+        },
+        {
+          "name": "revoke_grant_with_p256.verifier",
+          "size": 2745,
+          "sha256": "48829cf7ec8401b6e54bc639d3c9baf03495ecdf921e74021c3fe91fc2d38fa8"
+        },
+        {
+          "name": "rotate_enc_key_with_jubjub.prover",
+          "size": 49291116,
+          "sha256": "659e1c4830023cee599a696fd4037f9a77dbac082eca35b490e84833b8b88be5"
+        },
+        {
+          "name": "rotate_enc_key_with_jubjub.verifier",
+          "size": 2313,
+          "sha256": "15238b09168c63a597c7d47cfe3b732fa126257bdf6b0558229d98feb5cb2322"
+        },
+        {
+          "name": "rotate_enc_key_with_k256.verifier",
+          "size": 2745,
+          "sha256": "5389d0d3d845bd94ef91bed9d501be4449a060d0def2336d4b7baedf6f410213"
+        },
+        {
+          "name": "rotate_enc_key_with_p256.verifier",
+          "size": 2745,
+          "sha256": "4b649df25e091e5ae49bf7b89e36a227e1a2f5ab13adacc22ce2c1a06926591f"
+        },
+        {
+          "name": "withdraw_shielded_to_contract_with_grant_jubjub.verifier",
+          "size": 2313,
+          "sha256": "043259fa82b5d28b7dbf76e96d23300e3bcbccb7985ffd6255f7aae09e0430ac"
+        },
+        {
+          "name": "withdraw_shielded_to_contract_with_grant_k256.verifier",
+          "size": 2745,
+          "sha256": "3d1e50b8350fd91446f2564e5abf7e7d4119bb13438ff21bc18a5d6f853e2de5"
+        },
+        {
+          "name": "withdraw_shielded_to_contract_with_grant_p256.verifier",
+          "size": 2745,
+          "sha256": "4be4b73b787c905b669ca5016b0f25bc702310b4e448482e520054216f6fdf0e"
+        },
+        {
+          "name": "withdraw_shielded_to_contract_with_jubjub.verifier",
+          "size": 2313,
+          "sha256": "80de79cc371eecbcede1cac34aa729abc5e5e0b58da8683fa585bb8242cf6cf2"
+        },
+        {
+          "name": "withdraw_shielded_to_contract_with_k256.verifier",
+          "size": 2745,
+          "sha256": "aafb9d7c641bcc7a9eb79c0e7db18ab40721cb1dff480013a9ffe92eb8821c5d"
+        },
+        {
+          "name": "withdraw_shielded_to_contract_with_p256.verifier",
+          "size": 2745,
+          "sha256": "8a53f9c55fc22caef6eb27880cca12230a6b77464db6121e3c7f76e0c6db30e6"
+        },
+        {
+          "name": "withdraw_shielded_with_grant_jubjub.verifier",
+          "size": 2313,
+          "sha256": "1697a967dbf464b0b3dca05d4208f30ae0a4d84ed132be082c2ebd55f949df99"
+        },
+        {
+          "name": "withdraw_shielded_with_grant_k256.verifier",
+          "size": 2745,
+          "sha256": "a856c3cc48db59b965518975870e5b62f2ab2516bebb20329b2e19cd18b661b7"
+        },
+        {
+          "name": "withdraw_shielded_with_grant_p256.verifier",
+          "size": 2745,
+          "sha256": "50eb4f5e705dc0d15f788f44ea7822828f257a6a977df77e5135636945042aca"
+        },
+        {
+          "name": "withdraw_shielded_with_jubjub.verifier",
+          "size": 2313,
+          "sha256": "81036722d686c1d6296e1a123118680d0240a96ce021da12f702101e4a7c554b"
+        },
+        {
+          "name": "withdraw_shielded_with_k256.verifier",
+          "size": 2745,
+          "sha256": "67f60dc3ed608b79c03cc635d09b327edf5d68774aa6576453b7a0003739b473"
+        },
+        {
+          "name": "withdraw_shielded_with_p256.verifier",
+          "size": 2745,
+          "sha256": "d6adc1feaabc78edb925b901ed7ff2d22a1da102b7686f8ab4a4bc552d8e4c26"
+        },
+        {
+          "name": "withdraw_unshielded_with_grant_jubjub.verifier",
+          "size": 2313,
+          "sha256": "b4e90d3b372189aabec6f9d5dc346f4ae5757e6dc91e7f9af6f5f7a83b513e87"
+        },
+        {
+          "name": "withdraw_unshielded_with_grant_k256.verifier",
+          "size": 2745,
+          "sha256": "3e0698c18fead34537a3fca985a515778e840be7bda9f69889071e0edde34413"
+        },
+        {
+          "name": "withdraw_unshielded_with_grant_p256.verifier",
+          "size": 2745,
+          "sha256": "0e0800a7594733b079f1c88f27855fe6af44d858c6ee0ae69bec4281aa26b4b5"
+        },
+        {
+          "name": "withdraw_unshielded_with_jubjub.verifier",
+          "size": 2313,
+          "sha256": "265a64198c2baf14b79ffdc57362c173cd0e13257e1627acae55c6cc821118c4"
+        },
+        {
+          "name": "withdraw_unshielded_with_k256.verifier",
+          "size": 2745,
+          "sha256": "a0d7624f9f25ad695511dc169d4daa9f25853f0af35bbea375f4fdb12fc943b6"
+        },
+        {
+          "name": "withdraw_unshielded_with_p256.verifier",
+          "size": 2745,
+          "sha256": "a4b8fd3383755f6f110a2b94fe97ab48a0dadd652043b200c30eb93e81fdc209"
+        }
+      ],
+      "nativeProofs": false,
+      "fundMovement": false
+    },
+    "ownedImageResourceCleanup": {
+      "ownedKeyContainerRemoved": true,
+      "ownedAnonymousKeyVolumesRemoved": true,
+      "unrelatedIndexersUntouchedAndRunning": true,
+      "retainedOriginalQualificationVolumesUntouched": true,
+      "fundMovement": false
+    },
+    "localDocumentation": {
+      "pages": 28,
+      "localLinksAndAnchors": 762,
+      "errors": [],
+      "generator": "Jekyll4.4.1",
+      "staticCatalogMatchesPackage": true,
+      "scope": "local RC7 publication site; actual Pages verification pending"
+    },
+    "publishedDocumentationVerification": "Recorded separately in signed pages-verification.json release asset after Pages deploy; local rendering alone does not establish publication.",
+    "nativeQualification": "Historical executed eb240f6 application\u2192ACC receipt and historical RC6 host/native receipts retain their original pins. No fresh native proof or funds lifecycle on RC7 images; no real-provider test in this release slice."
+  },
+  "limitations": [
+    "Exact-value shielded withdrawals only; no partial spends/change settlement (#201).",
+    "No total-loss recovery (#240) or complete compromised-key revocation guarantee (#229).",
+    "No full Lace or production signer-page compatibility; browser/native/source tiers remain separate (#81/#242/#272).",
+    "Real Google/iCloud sync, restoration and broad two-browser acceptance remain unqualified (#232).",
+    "Operation-scoped PRF reuse is not cross-operation isolation (#245); expiring local JubJub session grants remain proposed (#281, 0.2.0).",
+    "Unknown durable effects retain original IDs and require reconciliation; no automatic replacement send (#230/#269).",
+    "NIGHT funding qualified only for standalone undeployed network (#243).",
+    "Merchant recipe: configured ACC, JubJub unshielded caller-pinned grant, no arbitrary contracts or production privacy claim (#275).",
+    "Images Linux/amd64 only; require explicit deployment policy and Linux-prepared mounts.",
+    "Browser CI job65seconds exceeds30\u201345second target (#271)."
+  ],
+  "deferredIssues": [
+    201,
+    229,
+    230,
+    232,
+    240,
+    242,
+    243,
+    245,
+    246,
+    269,
+    271,
+    272,
+    275,
+    281
+  ]
+}

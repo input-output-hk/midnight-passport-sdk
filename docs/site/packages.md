@@ -23,7 +23,7 @@ responsibility, reserved `core` and `connect` for later work, and retired three 
 
 The table names each package in the source tree. “Active” means it exports an implementation;
 it does not mean every feature in the original vision is finished. Only the nine active packages
-are packed for RC6.
+are packed for RC7.
 
 | Package (`@input-output-hk/mn-passport-*`) | Purpose and place in the vision | Current implementation |
 | --- | --- | --- |
@@ -48,30 +48,30 @@ placeholders. The current source has extracted the server and chain HTTP handler
 `ChainBackend`; the demo still owns the wallet, network, key cache and directory. The original
 vision also includes higher-level `core`, `connect`, and `agent` entry libraries for the Passport app,
 dApps, and agents. A host should not have to import every adapter. The five placeholders are now
-private workspace packages and are excluded by both release allowlists, so RC6 packs
+private workspace packages and are excluded by both release allowlists, so RC7 packs
 nine implemented packages. Existing RC1 package records remain historical artifacts.
 
 ## What an integrator installs
 
 Partners may adopt the compiled ACC/assets layer while retaining their own account
 orchestration. The [partner contract guide]({{ '/partner-integration/' | relative_url }})
-also describes a **local candidate** compiler-dependency export and application→ACC
-reference. This adds no new npm package and is not yet part of published RC6.
+also describes the **RC7** compiler-dependency export and application→ACC
+reference. This adds no new npm package; the export is published in RC7, not RC6.
 
-The local candidate also adds `contract/capabilities` (lightweight typed inventory),
+RC7 also adds `contract/capabilities` (lightweight typed inventory),
 `contract/capabilities.json` (the same inventory for non-JavaScript consumers), and
 `account/preflight` (configuration inspection before a key ceremony). These are subpaths
-of existing packages, not new packages. See [capability and configuration checks]({{ '/capabilities/' | relative_url }}); published RC6 does not include them.
+of existing packages, not new packages. See [capability and configuration checks]({{ '/capabilities/' | relative_url }}); published RC6 does not include them. Use RC7 for these exports.
 
 For a first connection and a minimal browser host, follow [Install and connect]({{ '/getting-started/' | relative_url }}).
 
-The nine RC6 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their
-`0.1.0-rc6` release uses the `next` distribution tag and requires package read access. Install the
+The nine RC7 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their
+`0.1.0-rc7` release uses the `next` distribution tag and requires package read access. Install the
 entrypoints your code imports; their declared dependencies bring in the supporting packages. A
 browser host using the account API and packaged binding can start with:
 
 ```sh
-npm install --save-exact @input-output-hk/mn-passport-account@0.1.0-rc6 @input-output-hk/mn-passport-adapter-browser@0.1.0-rc6 @input-output-hk/mn-passport-contract@0.1.0-rc6
+npm install --save-exact @input-output-hk/mn-passport-account@0.1.0-rc7 @input-output-hk/mn-passport-adapter-browser@0.1.0-rc7 @input-output-hk/mn-passport-contract@0.1.0-rc7
 ```
 
 ## Dependency direction

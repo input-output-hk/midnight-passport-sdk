@@ -132,22 +132,22 @@ files or a shared filesystem lock without a transactional implementation.
 
 The source has focused policy and backend tests. On the local `undeployed` network, this process deposited 10 units of a faucet-minted non-native unshielded asset into a
 live `spec_version = 3` ACC and observed the credited balance. Repeating the same request ID
-returned the same transaction ID and balance. Historical RC2 evidence is retained below; use the RC5 image in the next section.
+returned the same transaction ID and balance. Historical RC2 evidence is retained below; use the current RC7 image in the next section.
 
 ## Container image
 
 The [funding image workflow](../../.github/workflows/publish-funding-image.yml) publishes
 `ghcr.io/input-output-hk/midnight-passport-funding:<version>` and a commit-SHA tag after a
-signed `funding-v<version>` tag or an authorised workflow dispatch. Release `0.1.0-rc6` also has
-`sha-7848d3029de7`; its immutable digest is
-`sha256:08958777f20fa0dcda448926d2c4d65897bf1f364fe54d2462c86ee2438b7076`.
-The published GHCR package is public. Pin this RC6 digest when deploying. It includes the
+signed `funding-v<version>` tag or an authorised workflow dispatch. Release `0.1.0-rc7` also has
+`sha-bbf883d9aecb`; its immutable digest is
+`sha256:77827206b4f6839b7f82fd8513d06adcffe85d7ebbe192e3465b6f61620579e3`.
+The published GHCR package is public. Pin this RC7 digest when deploying. It includes the
 localnet NIGHT preparation path and passed current startup/refusal checks on Linux/amd64
-(emulated on the local ARM64 host). A fresh native deposit was not repeated on RC6.
+(emulated on the local ARM64 host). A fresh native deposit was not repeated on RC7.
 The historical RC5 image passed a deposit from zero to ten smallest NIGHT units and
 an identical-request replay without a second transfer. Its
 [RC5 publication receipt](../../docs/release/rc5-publication-receipt.json) retains those transactions;
-the [RC6 signed receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc6/rc6-publication-receipt.json)
+the [RC7 signed receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc7/rc7-publication-receipt.json)
 records current package/image checks. NIGHT remains qualified only on `undeployed`;
 dedicated non-localnet wallet configuration does not extend that qualification.
 The image contains the SDK application, not the 11 GiB proving tree, any wallet seed, or tokens.
@@ -179,7 +179,7 @@ docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" \
   -e MN_INDEXER_URL=http://host.docker.internal:18088/api/v4/graphql \
   -e MN_INDEXER_WS_URL=ws://host.docker.internal:18088/api/v4/graphql/ws \
   -e MN_PROOF_SERVER_URL=http://host.docker.internal:16300 \
-  ghcr.io/input-output-hk/midnight-passport-funding@sha256:08958777f20fa0dcda448926d2c4d65897bf1f364fe54d2462c86ee2438b7076
+  ghcr.io/input-output-hk/midnight-passport-funding@sha256:77827206b4f6839b7f82fd8513d06adcffe85d7ebbe192e3465b6f61620579e3
 ```
 
 The earlier RC2 Linux image build and mounted-tree run succeeded on `undeployed`: an image-backed

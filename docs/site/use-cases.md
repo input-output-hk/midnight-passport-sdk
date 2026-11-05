@@ -4,9 +4,9 @@ title: Demo use cases
 permalink: /use-cases/
 ---
 
-## Candidate consent and capability inspection
+## RC7 consent and capability inspection
 
-The next preview adds an operation review before key access, an explicit permanent
+RC7 adds an operation review before key access, an explicit permanent
 maintenance-authority retirement acknowledgement for creation, and a visible purpose
 before every actual passkey API access. Existing exact transaction/device/grant
 reviews remain separate. Cancel before approval to stop key use; after submission,
@@ -18,15 +18,14 @@ names for the selected arm and existing sealed-account operation. It invokes no
 credential or chain/prover port and cannot certify readiness. Merchant and reviewed
 deposit links lead to runnable engineer recipes, not unsupported transfer buttons.
 The [coverage map]({{ '/use-case-coverage/' | relative_url }}) distinguishes the new
-synthetic browser journeys from native/provider evidence and the current RC6 release.
+synthetic browser journeys from native/provider evidence and the current RC7 release.
 
 
 ## Library integration beyond the demo
 
 The [partner contract guide]({{ '/partner-integration/' | relative_url }}) describes
 application→ACC composition using the installed contract/assets and account helpers.
-Its local candidate merchant example is an engineer recipe, not a new demo button
-or a published RC6 capability. Native proof/node and real-provider acceptance remain
+Its RC7 merchant example is an engineer recipe, not a new demo button. Native proof/node and real-provider acceptance remain
 separate. Partners can also reuse the contract/assets without adopting our demo UI.
 
 This catalogue describes the controls available in the local demo on `passport-acc-prototype`.

@@ -4,11 +4,10 @@ title: Consent and passkey purposes
 permalink: /consent/
 ---
 
-## Candidate increment and host responsibility
+## RC7 increment and host responsibility
 
-This page describes the next preview candidate, after published RC6. The new
-`beforeCeremony` option is not present in RC6. Use the reviewed candidate until
-the next release notes name published packages. Hosts retain their own consent
+The optional `beforeCeremony` hook is published in `0.1.0-rc7`; it is absent from
+RC6. Use matching RC7 packages and backend versions. Hosts retain their own consent
 policy; installing the adapter does not supply an application transaction review.
 
 There are two decisions: permission to use a key for a stated purpose, and approval

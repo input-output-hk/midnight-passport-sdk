@@ -4,17 +4,30 @@ title: Releasing packages
 permalink: /releasing/
 ---
 
-## Next RC7 candidate
+## Current RC7 artifacts and verification
 
-[RC7 preparation notes]({{ '/release-notes-rc7/' | relative_url }}) and
-[tracker #282](https://github.com/input-output-hk/midnight-passport-sdk/issues/282)
-state the next supported-subset release scope. Local nine-tarball installation,
-key restoration and clean-build reproducibility are preparation checks; they do
-not verify an actual registry publication. Keep RC6 as the published installation
-baseline until the signed source/tag, independent review, exact-head CI, publisher,
-package visibility/hashes, image digests/startup and Pages checks have passed.
+The [RC7 release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc7)
+publishes the same nine implemented private GitHub npm packages at `0.1.0-rc7`
+(`next`) and three public Linux/amd64 backend images. The signed
+[publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc7/rc7-publication-receipt.json)
+and `SHA256SUMS` record actual registry bytes, source/publisher attestations,
+installation, image manifests and runtime checks. Source is GPG/DCO-signed
+`bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e`, merged through PR283.
+Use matching RC7 clients/backends. [RC7 notes]({{ '/release-notes-rc7/' | relative_url }})
+state the limits; browser, source-native and real-provider evidence remain distinct.
 
-## Current RC6 artefacts and verification
+| Image (`ghcr.io/input-output-hk/`) | Version | Immutable digest |
+| --- | --- | --- |
+| `midnight-passport-keys` | `0.1.0-rc7` | `sha256:d59d552c9a51694130a71b1f0346c5bb91a12b9c273d15e846f66548515c42c7` |
+| `midnight-passport-service` | `0.1.0-rc7` | `sha256:49bd2fbd8233f3868bc0918705c56ddf81f6d2c7c0ee570d30d7ab53eaa57a4f` |
+| `midnight-passport-funding` | `0.1.0-rc7` | `sha256:77827206b4f6839b7f82fd8513d06adcffe85d7ebbe192e3465b6f61620579e3` |
+
+Deploy by immutable digest. Service/funding require Linux-prepared reference
+mounts and durable private operator configuration. Key-profile HTTP/restore and
+startup refusal checks do not establish a fresh native funds lifecycle on these
+images. Real-provider restore and full Lace qualification remain open.
+
+## Historical RC6 artifacts and verification
 
 `0.1.0-rc6` publishes the same nine private GitHub npm packages, distribution tag
 `next`, and three public Linux/amd64 images. The [release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc6)
@@ -127,4 +140,4 @@ Their [earlier qualification record](https://github.com/input-output-hk/midnight
 remains available for audits. Use the [service](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-service/README.md),
 [funding](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md)
 and [key](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-key-service/README.md)
-image guides for RC6 mount, wallet and network requirements.
+image guides for current mount, wallet and network requirements.

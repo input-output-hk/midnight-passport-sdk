@@ -205,3 +205,14 @@ The failed run is retained; a green list containing only image jobs is not a
 passing full gate. Require every named core component and the relevant image
 checks at the current head. The key-image path filter is unchanged: no key/contract
 inputs changed in this UI tranche, so its absence is expected, not a waived test.
+
+### RC7 measured PR timing
+
+Replacement run42052754580 at signed bbf883d passed every required component.
+Warm core jobs took6–45seconds except the synthetic browser lane at65seconds
+(47seconds of actual UI execution plus preparation/cleanup). Relevant image checks
+took26seconds(service) and41seconds(funding). The30–45second goal is therefore
+**not met by the browser job**. Keep this visible in #271; do not hide the excess,
+weaken ceremony assertions or put native proof/key generation into fast PR CI.
+Signed-tag release/publisher reproducibility and image restoration remain slower
+release gates, outside the fast development target.
