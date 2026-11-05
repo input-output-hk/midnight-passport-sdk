@@ -85,6 +85,7 @@ files.save('recipient-private.json', { seed: recipientSeed });
 let funding: any,
   recipient: any,
   proofs = 0,
+  proofAttempts = 0,
   attempts = 0;
 const transactions: Array<{
   ordinal: number;
@@ -101,10 +102,13 @@ const arms: Array<{
   expiresAt: number;
   grantId: string;
 }> = [];
-const checkpoint = () => files.save('effects-private.json', { proofs, attempts, transactions });
+const checkpoint = () =>
+  files.save('effects-private.json', { proofs, proofAttempts, attempts, transactions });
 const wire = (providers: any) => {
   const prove = providers.proofProvider.proveTx.bind(providers.proofProvider);
   providers.proofProvider.proveTx = async (...args: any[]) => {
+    proofAttempts++;
+    checkpoint();
     const result = await prove(...args);
     proofs++;
     checkpoint();
@@ -474,11 +478,11 @@ try {
     );
     const intent = { ...handoff, amount: '1', spentPrev: '2' };
     const refusal = async (work: () => Promise<unknown>, expected: RegExp | { code: string }) => {
-      const counts = { proofs, attempts, ownerSigns, childDerivations };
+      const counts = { proofs, proofAttempts, attempts, ownerSigns, childDerivations };
       const state = await providers.publicDataProvider.queryContractState(address);
       const digest = hash(state.serialize());
       await assert.rejects(work, expected);
-      assert.deepEqual({ proofs, attempts, ownerSigns, childDerivations }, counts);
+      assert.deepEqual({ proofs, proofAttempts, attempts, ownerSigns, childDerivations }, counts);
       assert.equal(
         hash((await providers.publicDataProvider.queryContractState(address)).serialize()),
         digest,
@@ -608,6 +612,7 @@ try {
     sourceCommit: parent.source.commit,
     arms,
     proofs,
+    proofAttempts,
     submissions: attempts,
     retainedBeforeSend: transactions.length,
     canonicalFinality: confirmed,
@@ -630,6 +635,7 @@ try {
   files.save('worker-failure.json', {
     errorSha256: createHash('sha256').update(String(error)).digest('hex'),
     proofs,
+    proofAttempts,
     attempts,
   });
   throw error;

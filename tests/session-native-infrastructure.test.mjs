@@ -1,5 +1,5 @@
 import test from 'node:test';
-import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
@@ -7,6 +7,7 @@ import {
   sessionContainer,
   sessionProject,
   sessionDependencyIdentity,
+  sessionOutputPath,
   SESSION_ENDPOINTS,
 } from '../scripts/qualification/session-profile.mjs';
 import { dedicatedIndexerReadiness } from '../scripts/qualification/indexer-readiness.mjs';
@@ -115,6 +116,55 @@ test('native session dependency pins detect executable drift and refuse arbitrar
     );
     symlinkSync('../packages/account', join(modules, 'workspace'));
     assert.equal(sessionDependencyIdentity(root).workspaceLinks, 1);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('native session evidence cannot overwrite or live inside frozen source inputs', () => {
+  const root = mkdtempSync(join(tmpdir(), 'session-output-test-'));
+  try {
+    const sdk = join(root, 'sdk'),
+      reference = join(root, 'reference');
+    mkdirSync(sdk);
+    mkdirSync(reference);
+    assert.equal(
+      sessionOutputPath(join(root, 'new-run'), [sdk, reference]),
+      join(realpathSync(root), 'new-run'),
+    );
+    for (const path of [sdk, join(sdk, 'private-run'), reference, root])
+      assert.throws(() => sessionOutputPath(path, [sdk, reference]), /overlaps frozen inputs/);
+    assert.throws(() => sessionOutputPath('relative-run', [sdk]), /must be absolute/);
+    symlinkSync(sdk, join(root, 'alias'));
+    assert.throws(
+      () => sessionOutputPath(join(root, 'alias', 'run'), [sdk]),
+      /overlaps frozen inputs/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('package-local executable dependency substitutions change native input pins', () => {
+  const root = mkdtempSync(join(tmpdir(), 'session-local-dependencies-'));
+  try {
+    const modules = join(root, 'node_modules'),
+      local = join(root, 'apps', 'passport-service', 'node_modules');
+    mkdirSync(modules);
+    mkdirSync(local, { recursive: true });
+    for (const name of ['tsx-a', 'tsx-b']) {
+      mkdirSync(join(modules, name));
+      writeFileSync(join(modules, name, 'index.js'), name);
+    }
+    const link = join(local, 'tsx');
+    symlinkSync('../../../node_modules/tsx-a', link);
+    const first = sessionDependencyIdentity(root);
+    rmSync(link);
+    symlinkSync('../../../node_modules/tsx-b', link);
+    assert.notEqual(sessionDependencyIdentity(root).treeSha256, first.treeSha256);
+    rmSync(link);
+    symlinkSync(tmpdir(), link);
+    assert.throws(() => sessionDependencyIdentity(root), /escapes the frozen workspace/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -11,11 +11,12 @@ import {
   writeFileSync,
   openSync,
   closeSync,
+  fsyncSync,
   unlinkSync,
   realpathSync,
   statfsSync,
 } from 'node:fs';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { workspaceIdentity, verifyQualificationBinding } from './receipt.mjs';
@@ -28,6 +29,7 @@ import {
   sessionProject,
   sessionContainer,
   sessionDependencyIdentity,
+  sessionOutputPath,
 } from './session-profile.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
@@ -79,9 +81,9 @@ export async function runNativeSessions(env = process.env) {
     'NODE_PATH',
   ])
     assert.equal(env[name], undefined, 'Do not import private sponsor or runtime overrides.');
-  const output = env.PASSPORT_SESSION_ROOT ?? '';
-  assert.ok(isAbsolute(output) && !existsSync(output));
   const contract = realpathSync(env.PASSPORT_CONTRACT_DIR ?? '');
+  const output = sessionOutputPath(env.PASSPORT_SESSION_ROOT ?? '', [ROOT, contract]);
+  assert.equal(existsSync(output), false, 'Keep every previous run intact');
   const source = await workspaceIdentity(ROOT);
   assert.equal(source.dirty, false, 'Freeze and sign the source before native proving.');
   assert.equal(
@@ -136,6 +138,7 @@ export async function runNativeSessions(env = process.env) {
   const lease = nativeLeasePath();
   const fd = openSync(lease, 'wx', 0o600);
   writeFileSync(fd, JSON.stringify({ runId, pid: process.pid, project, root: output }));
+  fsyncSync(fd);
   closeSync(fd);
   const specifications = /** @type {const} */ ([
     ['node', 'midnightntwrk/midnight-node:2.1.0-rc.4'],
@@ -375,7 +378,7 @@ export async function runNativeSessions(env = process.env) {
     clearTimeout(timer);
     clearTimeout(hardStop);
     receipt.verdict = verdict;
-    receipt.cleanup = { stopped: [], retainedVolumes: true, unrelatedResourcesChanged: false };
+    receipt.cleanup = { stopped: [], retainedVolumes: true, unrelatedResourcesControlled: 0 };
     for (const c of [...owned].reverse()) {
       try {
         const current = JSON.parse(docker(['inspect', c.id]))[0];
@@ -393,10 +396,15 @@ export async function runNativeSessions(env = process.env) {
       unlinkSync(lease);
       receipt.cleanup.leaseReleased = true;
     }
+    if (receipt.cleanup.incomplete) {
+      verdict = 'FAIL';
+      receipt.verdict = 'FAIL';
+    }
     save('parent-receipt.private.json', receipt);
     process.removeListener('SIGINT', interrupt);
     process.removeListener('SIGTERM', interrupt);
   }
+  assert.equal(verdict, 'PASS', 'Native run or owned cleanup did not complete');
   return receipt;
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

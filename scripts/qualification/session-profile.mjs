@@ -1,8 +1,15 @@
 // Native-session infrastructure is isolated from all retained localnets. No side effects.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import {
+  existsSync,
+  lstatSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  realpathSync,
+} from 'node:fs';
+import { join, relative, sep, dirname, basename, isAbsolute } from 'node:path';
 export const SESSION_PORTS = Object.freeze({ node: 19964, indexer: 18108, prover: 16320 });
 export const SESSION_ENDPOINTS = Object.freeze({
   nodeUrl: 'http://127.0.0.1:19964',
@@ -63,10 +70,9 @@ export function sessionDependencyIdentity(workspace) {
   let files = 0,
     links = 0,
     workspaceLinks = 0;
-  /** @param {string} name */
-  const walk = (name) => {
-    const path = join(modules, name),
-      stat = lstatSync(path);
+  /** @param {string} path @param {string} name */
+  const walk = (path, name) => {
+    const stat = lstatSync(path);
     if (stat.isSymbolicLink()) {
       const target = realpathSync(path);
       if (target !== modules && !target.startsWith(modules + sep)) {
@@ -87,7 +93,7 @@ export function sessionDependencyIdentity(workspace) {
       hash.update(`link\0${name}\0${readlinkSync(path)}\n`);
       links++;
     } else if (stat.isDirectory()) {
-      for (const entry of readdirSync(path).sort()) walk(name ? name + '/' + entry : entry);
+      for (const entry of readdirSync(path).sort()) walk(join(path, entry), name + '/' + entry);
     } else {
       assert.ok(stat.isFile(), 'Dependency input is not a regular file');
       hash.update(
@@ -96,7 +102,32 @@ export function sessionDependencyIdentity(workspace) {
       files++;
     }
   };
-  walk('');
+  walk(modules, 'node_modules');
+  for (const parent of ['packages', 'apps']) {
+    if (!existsSync(join(root, parent))) continue;
+    for (const entry of readdirSync(join(root, parent)).sort()) {
+      const local = join(root, parent, entry, 'node_modules');
+      if (!existsSync(local)) continue;
+      assert.ok(!lstatSync(local).isSymbolicLink(), 'Local dependency root must not be a symlink');
+      walk(local, `${parent}/${entry}/node_modules`);
+    }
+  }
   assert.ok(files > 0);
   return { files, links, workspaceLinks, treeSha256: hash.digest('hex') };
+}
+
+/** Require a new canonical output outside every frozen input tree.
+ * @param {string} requested @param {string[]} inputs
+ */
+export function sessionOutputPath(requested, inputs) {
+  assert.ok(isAbsolute(requested), 'Native session output must be absolute');
+  const output = join(realpathSync(dirname(requested)), basename(requested));
+  for (const input of inputs) {
+    const root = realpathSync(input);
+    assert.ok(
+      output !== root && !output.startsWith(root + sep) && !root.startsWith(output + sep),
+      'Native output overlaps frozen inputs',
+    );
+  }
+  return output;
 }
