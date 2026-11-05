@@ -222,7 +222,7 @@ configurations before any key ceremony. They are published in RC7 and absent fro
 layers, both supported owner arms and runtime validation that always remains.
 
 
-The same candidate entries expose `getAccountProofRequirements` and
+The same RC7 entries expose `getAccountProofRequirements` and
 `inspectAccProofProfile`: plan the exact key set, then inspect the chosen key
 endpoint's profile/manifest JSON before a ceremony. Materialized binding helper
 methods are also checked; lazy modules remain deferred. Advertised coverage is
