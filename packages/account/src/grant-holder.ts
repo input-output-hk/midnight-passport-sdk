@@ -283,6 +283,12 @@ export async function spendUnshieldedWithGrant(
         'GrantRosterUnsettled',
         'The grant changed before submission.',
       );
+    checkUnshieldedGrant(
+      intent,
+      latest,
+      pure,
+      (ports.nowSeconds ?? (() => Math.floor(Date.now() / 1000)))(),
+    );
     if (options.signal?.aborted)
       throw new PassportConnectorError('Aborted', 'Grant spend cancelled.');
     const tx = await chain.call({

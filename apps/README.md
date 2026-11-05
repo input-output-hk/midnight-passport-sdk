@@ -434,3 +434,27 @@ callback (synchronous or async; failures are isolated and never awaited). Unexpe
 headers are sent the response is destroyed, so clients reconcile uncertain original mutation IDs
 rather than interpreting an incomplete stream as proof that nothing was sent. See the service
 engineer guide for origin-form request-target rules.
+
+## Source demo increment: consented JubJub sessions
+
+After opening/funding an ACC, set the withdrawal asset and recipient. Under
+**Consented JubJub session**, choose 10/15/30 minutes and caps, then approve the
+exact scope and fresh owner passkey ceremonies. Matching unshielded withdrawals
+use the PRF-derived child without another credential access. Owner administration
+and outside-scope spending still require fresh passkey consent. Hiding the tab,
+reload, expiry and local lock dispose the signer; only chain expiry/revocation
+ends copied authority. Public checkpoint metadata retains unknown submission
+fences across reloads; never clear it to replay a transfer. No session private
+key or grant opening is persisted.
+
+See [session setup and threat model](../docs/site/jubjub-sessions.md). The feature
+is a source preview after RC7, not a change to published RC7 artifacts. Browser
+journeys cover software credentials, actual session signing and synthetic chain
+effects; native proof/provider qualification remains separate.
+
+Session-enabled authenticated/value actions require browser Web Locks and serialize
+same-origin tabs in one browser profile. Public reads and immediate local Lock
+remain available. Unknown issue/spend/revocation records have independent public
+operation UUIDs; stale display writes cannot erase them, and settled records stop
+old tabs reopening completed fences. Never clear these records to retry an effect.
+Cross-device coordination and durable operator reconciliation remain host concerns.

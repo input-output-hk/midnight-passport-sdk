@@ -230,3 +230,17 @@ never an artifact-integrity or operational-readiness guarantee. The strict
 shielded-deposit [session composition]({{ '/shielded-deposit-recovery/#bound-one-approved-journal-session' | relative_url }})
 keeps a single approved journal invocation inside the same source instance's
 session, with later same-ID continuation requiring a fresh independent unlock.
+
+
+## Source preview: bounded session authoriser
+
+The source increment after RC7 adds `createSessionJubjubAuthoriser` and
+`SessionKeyContext` to `mn-passport-keys`. The helper derives a separate grant
+child through `PrfKeySource.deriveSecret`, restricts its signing port to the
+pinned account's unshielded grant-holder circuit, and returns a public key,
+authoriser and disposer. It does not issue a grant or enroll an owner. Its
+`expiresAt` is epoch **milliseconds**, whereas `GrantScopeInput.expiresAt` is
+seconds. Existing owner key derivation is unchanged. See the
+[session guide]({{ '/jubjub-sessions/' | relative_url }}) for authority, host
+composition, consent, lifecycle and evidence limits. This export is absent from
+the currently published `0.1.0-rc7` package.

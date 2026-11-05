@@ -51,8 +51,19 @@ reach an existing demo. This is UI/consent coverage, not native proof/provider
 acceptance. Both owner-arm selections run. Receipts use fresh ignored `review/`
 paths. `nix develop -c pnpm test:coverage` separately records loaded-package
 JavaScript line/function/branch coverage; it is outside fast required CI.
-Longer-lived local JubJub session grants remain a proposed opt-in feature (#281),
-not another silently enrolled owner or a current demo capability.
+The local source after RC7 adds opt-in **Consented JubJub session** controls (#281).
+Read [the session guide](docs/site/jubjub-sessions.md). Set the withdrawal asset and
+recipient, choose 10/15/30 minutes and caps, then authorize the session with the
+open account's passkey. Matching unshielded withdrawals use a separate PRF-derived
+child under an expiring grant; critical owner actions still use a fresh passkey.
+Hidden tab/pagehide/reload/expiry locks the key; local lock is not chain revocation.
+Renew by revoking the prior known grant. Unknown issue/spend fences survive reload:
+do not clear site data to retry. Browser Web Locks serialize authenticated/value
+actions across same-profile tabs; missing coordination refuses those actions.
+Independent per-intent public records retain issue/spend/revocation unknowns;
+stale tabs cannot clear them by overwriting display metadata. The session feature is not in published RC7 and
+has no native proof/provider qualification yet. Existing browser tests also cover
+these controls through real generated signing guards and synthetic chain drivers.
 
 ## 1. What you need
 

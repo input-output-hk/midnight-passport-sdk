@@ -104,7 +104,24 @@ const account = (credentialId: Uint8Array) => ({
   },
   async issueGrant(scope: GrantScopeInput) {
     await sign();
-    const s = await call('issue', { scope });
+    let grantId: string | undefined;
+    if (scope.expiresAt !== null) {
+      const { pureCircuits: pure } =
+        await import('@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1');
+      const { grantOriginHash, granteePoint } =
+        await import('@input-output-hk/mn-passport-account');
+      const bytes = Uint8Array.from(ADDRESS.match(/../g)!, (b) => parseInt(b, 16));
+      grantId = Array.from(
+        pure.derive_grant_id_with_jubjub(
+          { bytes },
+          granteePoint(scope.grantee.publicKey),
+          grantOriginHash(RP_ID),
+          0n,
+        ),
+        (b) => b.toString(16).padStart(2, '0'),
+      ).join('');
+    }
+    const s = await call('issue', { scope, ...(grantId && { grantId }) });
     return {
       ...tx(s),
       grantId: s.grant!.id,
@@ -167,6 +184,7 @@ export async function exportDemoGrantOpening() {
     maxCoinValue: scope.maxCoinValue,
     perCallCap: scope.perCallCap,
     cap: scope.cap,
+    ...(scope.expiresAt !== null && { expiresAt: scope.expiresAt }),
   };
 }
 export function installShim(): void {

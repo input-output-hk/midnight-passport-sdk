@@ -127,3 +127,15 @@ See [Qualification and safety boundaries]({{ '/qualification/' | relative_url }}
 An engineer running a trusted host/BFF can submit an immutable call/deploy job,
 observe bounded status, reconnect after a lost proxy reply and explicitly resume
 the original approved identity after a service restart. The [service-job guide]({{ '/service-jobs/' | relative_url }}) gives setup, expected outcomes and the eight-case transport restart matrix. This is a separate opt-in API; the demo owner buttons retain their existing composition. RC6 exports the separate opt-in host-job API. Missing host records stay unknown, completed expiry does not recycle IDs, and no automatic retry or replacement transaction is created. Real passkey providers, native proofs and full Lace integration keep their separate evidence requirements.
+
+## Source preview after RC7: bounded authenticated session
+
+Use **Authorize JubJub session** after selecting the withdrawal recipient and
+asset. Explicitly approve caps and 10/15/30 minute absolute expiry. A matching
+unshielded withdrawal then uses a PRF-derived child JubJub signer with transfer
+consent and no new credential access. Rotation, devices, grant administration,
+HD-wallet derivation and transfers outside scope keep fresh passkey paths.
+**Lock local session** disposes the key; **Revoke session grant** confirms chain
+revocation with the owner. Reload does not restore the key and preserves uncertain
+submission fences. See the [session guide]({{ '/jubjub-sessions/' | relative_url }}).
+This increment is absent from published RC7; native/provider acceptance is pending.

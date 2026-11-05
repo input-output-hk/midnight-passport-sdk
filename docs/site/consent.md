@@ -98,20 +98,18 @@ Hosts should not share that adapter across unrelated approved operations. Broade
 session isolation and prompt-budget qualification remain
 [#245](https://github.com/input-output-hk/midnight-passport-sdk/issues/245).
 
-## A local JubJub session signer is a separate feature
+## Source preview: opt-in JubJub sessions
 
-A P-256 owner can approve a limited grant to a local JubJub signer. Such delegation
-must define permitted operations, asset/recipient/caller constraints, caps and a
-short on-chain expiry, plus renewal, locking and revocation. It is not currently
-implemented as a session workflow in this demo.
+The local source after RC7 adds an explicitly approved, PRF-derived session child
+with a recipient/asset-pinned, capped grant and a mandatory 10–30 minute chain
+expiry (15 minutes by default). Eligible unshielded withdrawals retain exact
+transfer consent and use JubJub without another passkey. Owner administration,
+wallet derivation and outside-scope transfers retain fresh passkey paths.
 
-Enrolling a local signer as another owner gives independent owner authority.
-A browser login flag does not constrain that authority on chain. Local key disposal
-is not grant revocation, and browser compromise can use a live local signer.
-Neither that key nor the ACC viewing secret is an HD-wallet recovery seed.
-The proposed opt-in workflow is
-[#281](https://github.com/input-output-hk/midnight-passport-sdk/issues/281), milestone
-`0.2.0`; RC7 does not silently enable it.
+Read the [session guide]({{ '/jubjub-sessions/' | relative_url }}) for setup,
+authority rules, key derivation, locking/revocation, uncertainty handling and
+evidence limits. Local disposal is not chain revocation; a child is not enrolled
+as an unrestricted owner. This source capability is **absent from published RC7**.
 
 See the [use-case evidence map]({{ '/use-case-coverage/' | relative_url }}) for what
 the automated browser tests establish. Google/iCloud synchronization and restoration

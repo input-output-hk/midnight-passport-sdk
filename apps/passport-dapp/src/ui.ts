@@ -51,6 +51,9 @@ export interface WalletView {
 }
 
 const ACTIONS: readonly ActionId[] = [
+  'startSession',
+  'endSession',
+  'revokeSession',
   'create',
   'open',
   'openAt',
@@ -103,7 +106,11 @@ const formatAmount = (v: bigint) => v.toLocaleString('en-GB');
 export function createUi(
   header: EvidenceHeader,
   arm: 'p256' | 'jubjub' = 'p256',
-  consent?: { before(action: ActionId): Promise<boolean>; after(): void },
+  consent?: {
+    before(action: ActionId): Promise<boolean>;
+    after(): void;
+    run?(action: ActionId, operation: () => Promise<void>): Promise<void>;
+  },
 ) {
   const log = new EventLog();
   const buttons = Object.fromEntries(ACTIONS.map((a) => [a, byId<HTMLButtonElement>(a)])) as Record<
@@ -188,6 +195,9 @@ export function createUi(
   // --- buttons -----------------------------------------------------------------------------
   const renderButtons = () => {
     const busy = log.current !== undefined;
+    buttons.startSession.disabled = busy || !account || assetsByColor.size === 0;
+    buttons.endSession.disabled = false;
+    buttons.revokeSession.disabled = busy || !account;
     buttons.create.disabled = busy || !ready;
     buttons.open.disabled = busy || !ready;
     buttons.openAt.disabled = busy || !ready || !/^[0-9a-f]{64}$/.test(knownAddress.value.trim());
@@ -741,16 +751,31 @@ export function createUi(
     on(action: ActionId, fn: () => Promise<void>) {
       const button = buttons[action];
       button.addEventListener('click', async () => {
-        if (log.current) return;
+        if (log.current) {
+          if (action === 'endSession') {
+            // An emergency local lock must work during a long issue/proof/settlement.
+            // Keep the original operation log/IDs and end its remaining credential consent.
+            try {
+              await fn();
+            } finally {
+              consent?.after();
+            }
+          }
+          return;
+        }
         log.start(action);
         try {
-          if (consent && !(await consent.before(action))) {
-            status('Operation declined before passkey access or submission.');
+          const execute = async () => {
+            if (consent && !(await consent.before(action))) {
+              status('Operation declined before passkey access or submission.');
+              log.finish();
+              return;
+            }
+            await fn();
             log.finish();
-            return;
-          }
-          await fn();
-          log.finish();
+          };
+          if (consent?.run) await consent.run(action, execute);
+          else await execute();
         } catch (e) {
           const err = plainError(e, header.serviceUrl);
           log.fail(err);
@@ -855,6 +880,7 @@ export function createUi(
     selectedFundingAsset() {
       return assetsByColor.get(fundingSelect.value);
     },
+    withdrawalCallLimit: () => assetsByColor.get(withdrawalSelect.value)?.amount ?? '0',
     withdrawalInput() {
       return {
         color: withdrawalSelect.value,

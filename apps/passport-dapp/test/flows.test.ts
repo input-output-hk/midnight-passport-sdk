@@ -24,6 +24,9 @@ import {
 import { shorten } from '../src/ui.ts';
 
 const ACTIONS: readonly ActionId[] = [
+  'startSession',
+  'endSession',
+  'revokeSession',
   'create',
   'open',
   'openAt',
@@ -83,6 +86,7 @@ test('prompts per action, with and without an account open', () => {
 test('the prompt table has an entry for each action and nothing the actions do not use', () => {
   assert.deepEqual(Object.keys(PASSKEY_PROMPTS).sort(), [
     'create',
+    'endSession',
     'enrollDevice',
     'exportGrant',
     'fund',
@@ -97,9 +101,11 @@ test('the prompt table has an entry for each action and nothing the actions do n
     'refresh',
     'removeDevice',
     'revokeGrant',
+    'revokeSession',
     'roster',
     'rotate',
     'spendGrant',
+    'startSession',
     'walletRefresh',
     'walletWithAccount',
     'walletWithoutAccount',
@@ -112,7 +118,8 @@ test('the prompt table has an entry for each action and nothing the actions do n
       assert.ok(
         Number.isInteger(min) &&
           min >=
-            (action === 'fund' ||
+            (action === 'endSession' ||
+            action === 'fund' ||
             action === 'refresh' ||
             action === 'walletRefresh' ||
             action === 'roster' ||

@@ -107,3 +107,18 @@ cross-operation session isolation (#245), total-loss recovery (#240), partial
 shielded change (#201), general connection (#242) and additional networks (#243)
 retain their own requirements. [RC7 tracker #282](https://github.com/input-output-hk/midnight-passport-sdk/issues/282)
 requires actual package/image/Pages verification before publication is reported.
+
+## Local source session increment after RC7
+
+The extended Chromium journey runs the session controls for both owner-arm
+selections: initial/exact-scope refusal, PRF child derivation, expiring grant
+authorization, no-credential matching withdrawal, fresh-passkey critical rotation,
+local lock, owner revocation, reload, absolute expiry, and lost acknowledgement
+with no automatic retry or owner fallback across reload. The controller and
+generated JubJub signature/holder guards are real; owner/chain/wallet drivers
+remain synthetic. Portable tests additionally cover concurrency, clock rollback,
+scope/cap/context mismatch, key disposal and checkpoint guards.
+
+The immutable RC7 release evidence above is unchanged. These source tests are not
+native proof acceptance, provider synchronization/restoration or full Lace
+compatibility. See [session scope and safety]({{ '/jubjub-sessions/' | relative_url }}).
