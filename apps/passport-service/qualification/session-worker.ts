@@ -263,6 +263,10 @@ try {
     const call = async (request: CallRequest) => {
       assert.equal(request.address, address);
       if (request.signal?.aborted) throw Error('Cancelled before native call');
+      // The reference Level provider scopes IDs under a mutable contract address.
+      // This worker serializes calls; reselect on EVERY call, including A -> B -> A.
+      await providers.privateStateProvider.setContractAddress(request.address);
+      assert.notEqual(await providers.privateStateProvider.get(`session-${arm}`), undefined);
       return submitCallTx(providers, {
         compiledContract: compiled,
         contractAddress: address,

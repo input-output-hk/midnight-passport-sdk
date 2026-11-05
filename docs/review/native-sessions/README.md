@@ -104,3 +104,16 @@ the same recipient observer and re-observe the balance. It preserves the seed,
 address and transaction hash; there is no sender/prover/retry call in that recovery
 step. Failure to confirm the original or to observe after one reconnect fails the
 run. A new full suite uses a fresh root/chain; the old suite is not relabeled.
+
+## Cross-account private-state scope
+
+The third attempt at `363ff62` was deliberately stopped during deployment after
+four retained submissions, before session/value setup. Source inspection of the
+pinned reference Level provider showed its current contract address is mutable:
+private-state keys are `contractAddress:privateStateId`. A serialized worker that
+returns to ACC-A after ACC-B must reselect ACC-A before reading/proving its call.
+The worker now selects and verifies the expected private-state ID on every call.
+No concurrent transaction flow shares that mutable scope. The eventual expiry
+checks intentionally revisit the first ACC after the second to qualify this path.
+The stopped attempt remainsFAIL, all end inputs matched, all owned containers
+stopped and the lease was released. Originals and volumes remain retained.
