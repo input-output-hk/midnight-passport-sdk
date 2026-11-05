@@ -51,3 +51,16 @@ wallet reconnect establishes no real passkey-provider recovery or full Lace supp
 The continuation's actual acceptance must be recorded after execution. Existing
 published packages, images, Pages and RC6 remain unchanged. All amounts above are
 smallest base units, not whole NIGHT. Exact-value shielded guards are unchanged.
+
+
+## Continuation result
+
+The [separate continuation](native-acceptance.json) passed at reviewed signed
+`eb240f6`. Its new payment credited a new recipient **4 base** units, ACC **8→4** and new
+merchant **0→1**; all seven refusal cases left serialized state snapshots unchanged.
+All **16 original** and **6 continuation** transactions reached canonical finality. The live
+credit view passed directly in the continuation. Automatic reconnect sequencing
+therefore has unit coverage; the original cold-wallet credit recovery remains a
+separate live read-only receipt, not an exercised automatic-timeout branch.
+The original failed full suite has not been relabeled. All owned compute stopped,
+all volumes remain, and the archived indexer’s original running state is restored.

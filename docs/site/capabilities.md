@@ -21,7 +21,7 @@ no packages or runtime dependencies and do not change the immutable ACC binding.
 | Compose an existing sealed owner account | `account/preflight` | Missing configured methods and immutable network pins for the four covered flow checks below. No key ceremony or network call. |
 | Use a typed owner or grant-bearer flow | Account API plus the catalog's `support` field | The named SDK flow exists and has repository test definitions. |
 | Claim proof-backed integration | Exact-source [qualification receipts]({{ '/qualification/' | relative_url }}) and [compatibility matrix](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/compatibility.md) | Only the environment, source, operations and failure boundaries actually measured. |
-| Use application business logic with an existing ACC | [Partner contract guide]({{ '/partner-integration/' | relative_url }}) | Application→ACC is the primary reference. Native merchant acceptance is still pending. Custom outgoing ACC bundles are optional. |
+| Use application business logic with an existing ACC | [Partner contract guide]({{ '/partner-integration/' | relative_url }}) | Application→ACC is the primary reference. Local installed-candidate native JubJub unshielded payment/credit is recorded in the guide; real-provider and malicious-proof acceptance remain separate. Custom outgoing ACC bundles are optional. |
 
 ## Read the machine-readable catalog
 

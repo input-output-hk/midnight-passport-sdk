@@ -21,7 +21,7 @@ npm package by default.
 | Order | Outcome | Tracking and remaining boundary |
 | --- | --- | --- |
 | 0 | Land the already reviewed safety/qualification tranche | PR #268 and PR #270 merged. PR #270 signed merge 64d324e follows owner-authorized Codex CLI fallback review, 13 green hosted checks and the full local gate; Pages succeeded. Bounded issues #258/#261/#266 closed with follow-ups retained. |
-| 1 | Application contract calls an existing user's ACC using our package | #275: verified compiler dependency export, useful fixed-price merchant example, real compiled execution and installed-package acceptance. Native proof/admission remains a separate required evidence tier. |
+| 1 | Application contract calls an existing user's ACC using our package | #275: verified compiler dependency export, useful fixed-price merchant example, real compiled execution and installed-package acceptance. Local native proof/admission, wallet credit and eight scoped cases are recorded at signed `eb240f6`; publication and broader provider/malicious-proof tiers remain separate. |
 | 2 | Integrators know exactly which layers and operations they can adopt | #237/#238/#81: generated circuit inventory versus typed/host/proof/browser/provider support, executable recipes, pinned installed consumers. Additional account builds need their own decoder/assets/compatibility policy. |
 | 3 | Consent and recovery remain understandable and safe | #245/#246: operation-scoped sessions and explicit prompts; #230/#239/#269: retained original intent, grant openings and safe uncertain-send/backup handling. #274 read retry is optional resilience. |
 | 4 | Partner environments are repeatably operable | #234/#235/#236/#231: key/service profiles, resource and failure controls, registry permissions, images, clean installed-consumer runs and declared release gates. |
@@ -99,7 +99,7 @@ k256 fallback, exact-value shielded limits, strict external-package example,
 full local gate and independent review. No new package or private host import.
 This is a bounded contribution to #237/#238, not closure of their wider provider,
 complete operation negotiation and reproducible native recipe requirements.
-The #275 native goal remains blocked per owner resource decision. Keep PR276/277
+**Historical state on 4 November:** the #275 native goal was blocked by the then-current owner resource decision. Keep PR276/277
 heads frozen for review; continue this slice locally on the existing primary branch.
 
 
@@ -119,7 +119,7 @@ No installs, giant key generation or native proofs in required CI. Fresh install
 candidate checks, full local gate, GPG/DCO/Assisted commits and independent review
 remain required. Keep the current primary branch, integrate the merged prototype
 history locally, preserve other resources and retained unknowns, and update Vault.
-Native #275 remains deferred under the archived-indexer decision; do not substitute
+**Historical state on 4 November:** native #275 was deferred under the archived-indexer decision; do not substitute
 this preparation/configuration work for native merchant credit/admission acceptance.
 
 ## Dated upstream research
@@ -128,6 +128,34 @@ The owner-requested [4 November upstream review](research/upstream-passport-2026
 compares current Passport/spec proposals with our immutable binding and existing backlog.
 It recommends expanding #244's requirements map and auditing public input contracts next.
 Guardian refresh and quorum reader envelopes need an explicit profile decision; upstream
-experiments and native receipts are not acceptance of our published packages. Keep the shared
-Midnight stack reserved for the other session and native #275 deferred until the owner resolves
-that environment. Local deposit-consent/reconciliation work can proceed independently.
+experiments and native receipts are not acceptance of our published packages. That review preceded the owner’s 5 November authorization to use the dedicated qualification stack. The native result below supersedes the old environment deferral; the archived indexer’s prior running state is restored.
+
+
+## Current local acceptance and next slice — 2026-11-05
+
+[Native receipt](review/partner-contracts/native-acceptance.json) and
+[review map](review/partner-contracts/README.md): installed candidate
+`0.1.0-dev.20261105.merchant.5`, signed source `eb240f6`, passed all eight scoped
+cases. A proof-backed merchant→ACC JubJub grant payment credited a distinct wallet
+4 base units, advanced the merchant counter once and reduced the existing ACC
+from 8 to 4. All six continuation transactions and all sixteen original
+transactions were independently canonical/finalized. Seven negative cases refused
+construction with unchanged full ACC/both-merchant snapshots and zero proof/send
+calls; this does not qualify a malicious proof bypass or node rollback rejection.
+
+The first original payment at `23b1d73` was already successful: ACC12→8,
+merchant1, original recipient4. Its live observation timeout remains a failed
+full suite and is separately reconciled. The continuation creates a new merchant,
+grant, recipient and payment intent; it never retries that payment or deposits
+again. Both original and continuation evidence remain retained. All owned compute
+stopped, lease released, archived indexer restored and every volume preserved.
+
+Next independent milestone slice: expand #244’s upstream requirements map
+(P5′/P11–P16) and #237/#238/#262’s public-input/proof-profile audit using the
+[upstream research](research/upstream-passport-2026-11-04.md). Keep fixture-backed
+native recipes and explicit asset/authoriser/provider support levels. Under
+#231/#274, retain the intermittent live wallet-observation limitation and safe
+reconnect/reconciliation behavior; this qualifier correction is not an upstream
+wallet SDK fix. Review/merge the coherent local tranche before publishing a new
+RC. #232/#240/#242 real-provider/recovery/connection work and #201 partial shielded
+spends remain separate. Published RC6, images and Pages are unchanged.

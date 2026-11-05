@@ -1,0 +1,69 @@
+{
+  "existingAccProvers": [
+    {
+      "name": "deposit_unshielded",
+      "size": 446790,
+      "sha256": "d8409e37efa3f142a8c9fb44a7a4c25397312317f9cf28f1243c1bba887f56a3"
+    },
+    {
+      "name": "activate_initial_device_with_jubjub",
+      "size": 24648297,
+      "sha256": "6b9571e641ff826dd381550d14e3c445f28efad59890c1cd8a50b27a9517995a"
+    },
+    {
+      "name": "issue_grant_with_jubjub",
+      "size": 98581064,
+      "sha256": "d21b34197c0db7ea29626faa3b5d65e959c67fd3d1e28b450f5cb3515ede67a0"
+    },
+    {
+      "name": "withdraw_unshielded_with_grant_jubjub",
+      "size": 98578931,
+      "sha256": "df111e31b1818f79acec90bc43252b7f1a76f0b24137637618ee8d5a20b237f7"
+    },
+    {
+      "name": "revoke_grant_with_jubjub",
+      "size": 49292461,
+      "sha256": "882036c4b1086fea1f402bbc9efb308d5387d1a63e92a7bab30f4b93c3e74883"
+    }
+  ],
+  "reusedCallerArtifacts": {
+    "contract/index.d.ts": {
+      "sha256": "60ac38590d0c82bcc88d13b615c22a5ae776b7d4c1e51fb9ffa8760257b982fb",
+      "size": 2422
+    },
+    "contract/index.js": {
+      "sha256": "277757b2536e8ba0df8f08147cf5d8253658d2cde97ba2fa6377249b98a1b84b",
+      "size": 47964
+    },
+    "contract/index.js.map": {
+      "sha256": "1cc5042ee3e6d0dda1b3e06179852a562223cbc9444a057aa653774dd996e53c",
+      "size": 1537
+    },
+    "compiler/contract-info.json": {
+      "sha256": "fce083ccad4217e7b3c01abd1a8ec5d590ecc9132ece33b963fa2d99c847315e",
+      "size": 7588
+    },
+    "compiler/contract-manifest.json": {
+      "sha256": "de7dcb99a015a71219dfa404fb07c0769192f8d4bd72a521543174af00d502bd",
+      "size": 1571
+    },
+    "keys/pay.prover": {
+      "sha256": "c6ad8005c776f72047adaf2c9f795fd1484c951de710465bee281496baccd98e",
+      "size": 552574
+    },
+    "keys/pay.verifier": {
+      "sha256": "61dd582ceed24d1f9dcb9055846b89c779b48372cbf3befaaa363156a53f9a3b",
+      "size": 1351
+    },
+    "zkir/pay.bzkir": {
+      "sha256": "82167c9a2c3383012538cb96472fb44a38aae2ff0662147d6806dad0ae97fd15",
+      "size": 579
+    },
+    "zkir/pay.zkir": {
+      "sha256": "1b1e9c6641201a0b71a6665a633f74d7c1c4f709dbf4cb8905e93bc4ca16ee9e",
+      "size": 9405
+    }
+  },
+  "accKeysRegenerated": 0,
+  "callerKeysRegenerated": 0
+}
