@@ -4,13 +4,14 @@ title: Use-case coverage and release evidence
 permalink: /use-case-coverage/
 ---
 
-## Current published release versus candidate
+## Current published release and evidence tiers
 
-Published **RC6** remains the installation baseline until a new signed release
-exists. The candidate adds ceremony-purpose hooks, consistent demo operation review,
+Published **RC7** adds ceremony-purpose hooks, consistent demo operation review,
 advisory proof plans and a deterministic browser-journey lane. The application→ACC
-merchant recipe also has its separately pinned local native receipt. A candidate
-source check is not evidence that those changes are already on the registry.
+merchant recipe retains its separately pinned local native receipt. The
+[release record]({{ '/release-notes-rc7/' | relative_url }}) verifies actual package
+publication; neither publication nor a source check requalifies every native or
+real-provider flow.
 
 ## Supported evaluation use cases
 
@@ -90,11 +91,17 @@ signed release acceptance receipt. Use the final review/release record for the
 exact shipped source. The broader full gate also runs app tests, so its test count
 is different from this package-only measurement.
 
+A later clean signed-source package measurement (`4d985f5`) covered the same 133
+files: **95.47% lines, 94.14% functions, 84.56% branches**, with 959 passed and five
+skips. Subsequent UI/test/workflow/documentation fixes do not widen that measurement
+scope. The RC7 full package/application gate passes 1,232 tests with seven existing
+skips; neither figure establishes exhaustive case or provider coverage.
+
 ## Explicit remaining work
 
 [#279](https://github.com/input-output-hk/midnight-passport-sdk/issues/279) and
 [#280](https://github.com/input-output-hk/midnight-passport-sdk/issues/280) track this
-candidate's browser/demo/docs slice; [#246](https://github.com/input-output-hk/midnight-passport-sdk/issues/246)
+RC7 browser/demo/docs slice; [#246](https://github.com/input-output-hk/midnight-passport-sdk/issues/246)
 tracks broader host consent. Real provider/two-browser acceptance (#232), stronger
 cross-operation session isolation (#245), total-loss recovery (#240), partial
 shielded change (#201), general connection (#242) and additional networks (#243)

@@ -11,9 +11,9 @@ account orchestration. Packaging a circuit does not mean the account library has
 flow for it, and a typed flow does not mean a particular wallet/provider can run it.
 Use separate checks for those decisions.
 
-**Local candidate, not published RC6:** the subpaths on this page are additive work
-for the next iteration. Do not install `0.1.0-rc6` and expect these exports. They add
-no packages or runtime dependencies and do not change the immutable ACC binding.
+**Published in RC7:** these additive subpaths are absent from `0.1.0-rc6`.
+Install matching `0.1.0-rc7` packages. They add no packages or runtime dependencies
+and do not change the immutable ACC binding.
 
 | Decision | API or evidence | What it establishes |
 | --- | --- | --- |
@@ -120,7 +120,7 @@ profile is not a complete support negotiation protocol or full Lace compatibilit
 [The typed host inspection example](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/host-preflight/inspect.ts)
 composes the two lightweight entries without importing a browser implementation or
 the generated contract runtime. Compile it in the host with strict TypeScript and
-actual candidate package versions. Keep UI, account discovery, consent, wallet
+actual package versions. Keep UI, account discovery, consent, wallet
 identity and submission orchestration in the host.
 
 For a real transfer, continue with the [fund/withdraw recipe]({{ '/use-cases/' | relative_url }}):
@@ -131,7 +131,7 @@ outcome is uncertain; never obtain a fresh pass by replaying under a new ID.
 
 ## Plan proof keys before opening the key source
 
-The candidate account preflight entry also exports `getAccountProofRequirements`.
+The RC7 account preflight entry also exports `getAccountProofRequirements`.
 It describes a **set** of proof circuits and required pure helpers for each of the
 four covered operations, including helper methods enforced by connector guards.
 It is not a transaction count, deployment plan, prompt budget or proof benchmark.

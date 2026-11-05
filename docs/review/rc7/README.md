@@ -1,10 +1,10 @@
-# RC7 release preparation review map
+# RC7 release and review map
 
 Tracking: [release #282](https://github.com/input-output-hk/midnight-passport-sdk/issues/282),
 [browser #279](https://github.com/input-output-hk/midnight-passport-sdk/issues/279),
 [demo/docs #280](https://github.com/input-output-hk/midnight-passport-sdk/issues/280),
 and existing consent/session/qualification #246/#245/#231/#236.
-Published RC6 remains unchanged until the RC7 publication record exists.
+RC7 publication is recorded separately in `docs/release/rc7-publication-receipt.json`; historical native and RC6 receipts retain their original pins.
 
 ## Review order
 
@@ -41,7 +41,7 @@ not measured real-provider prompts.
 A second independent review found one test weakness: an expected `failed.` UI
 status could mask an observer rejection. The current correction requires empty
 observer failure lists on every outcome/profile and checks intended refusal
-messages. Final independent review and hosted CI must confirm the candidate head.
+messages. The final independent exact-d26 review reported no actionable findings and independently passed all 26 browser cases.
 
 Preserved synthetic controls demonstrate the assertions rather than just their
 happy path:
@@ -65,7 +65,7 @@ connection cause, so no production HTTP defect is asserted. The test fixture now
 binds/requests one explicit IPv4 loopback endpoint, awaits idempotent owned-server
 shutdown and records redacted socket error codes without retrying. Eight fixed
 fresh-process runs, four parallel workers, passed all 104 registry cases. The
-complete gate must still pass after this test-only correction.
+complete gate passed after this test-only correction (1,232 passes / seven existing skips).
 
 ## Package, image and evidence boundaries
 
@@ -86,3 +86,21 @@ signed SDK/three-image tags, existing private publisher, actual package visibili
 and SHA/SRI/provenance, authenticated installation, immutable image digests/startup,
 and published Pages must all be recorded. Release notes and the compatibility map
 must link the actual final receipt. No preparation check substitutes for that gate.
+
+## Final signed source and publication
+
+Release source is GPG/DCO-signed `bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e`,
+merged through PR283. Its only change after final d26 runtime review is the workflow
+context correction and validation instructions. Initial run42049467557 failed before
+jobs because job-level `env` cannot use `runner.temp`. Step-level env fixes it;
+pinned actionlint accepts all workflows and rejects the preserved original.
+The first corrected run was superseded by a PR-description edit; its cancellation
+and aggregate failure are retained. Replacement42052754580 passed all12corejobs;
+42052684653/42052685010 passed the two path-relevant image checks. Key-image absence
+is expected from unchanged key/contract path filters. No gate was waived.
+
+The source release check42053377619 additionally passed full gates, packed install,
+reproducibility and provenance. Registry publication and pulled-image checks are
+in the signed publication receipt; documentation records do not change package
+payloads or requalify historical native proofs. Public release attachments contain
+hashes and public receipts only, never private package tarballs or wallet state.

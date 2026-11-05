@@ -1,17 +1,23 @@
 ---
 layout: default
-title: Preview RC7 candidate
+title: Preview RC7 release
 permalink: /release-notes-rc7/
 ---
 
-## 0.1.0-rc7 — preparation, not publication
+## 0.1.0-rc7 — supported-subset preview
 
-This is the next preview release candidate for Lace and other partner evaluation.
-**RC6 remains published** until the signed release, private package versions,
-image digests and publication receipt are verified. Follow
-[#282](https://github.com/input-output-hk/midnight-passport-sdk/issues/282) for that gate.
-The planned release contains the same nine implemented packages and three backend
-images; no empty scaffold or additional package is introduced.
+[Release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc7)
+· [Signed publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc7/rc7-publication-receipt.json)
+· [Installation]({{ '/getting-started/' | relative_url }})
+
+RC7 publishes nine implemented private GitHub Packages at **`0.1.0-rc7`**, distribution
+tag **`next`**, and three public Linux/amd64 backend images. The release source is
+GPG/DCO-signed `bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e`; PR283 merged it into
+`passport-acc-prototype`. No empty scaffold or additional package is introduced.
+The release receipt records actual package SHA-256/SRI, private visibility,
+source/publisher provenance, clean installation and immutable image digests.
+Documentation-only publication records follow that source; they do not change its
+package bytes or repin historical native receipts.
 
 ## Changes since RC6
 
@@ -68,7 +74,7 @@ available through the typed account API.
 
 ## Evaluation and installation
 
-After publication is verified, install exact matching `0.1.0-rc7` versions through
+Install exact matching `0.1.0-rc7` versions through
 the private GitHub Packages registry. The [installation guide]({{ '/getting-started/' | relative_url }})
 describes scoped registry configuration and access credentials outside source.
 The [package map]({{ '/packages/' | relative_url }}) explains which layers a partner
@@ -93,8 +99,21 @@ See [consent]({{ '/consent/' | relative_url }}) and
 | Durable effects | Default demo owner actions retain the original composition. Opt-in journals/jobs do not authorize replay of an unknown send; operator fencing/rollback policy remains explicit (#230/#269) |
 | Assets and networks | NIGHT funding is qualified on the standalone `undeployed` network only; additional networks/assets require separate acceptance (#243) |
 | Merchant recipe | One configured verified payer ACC and JubJub unshielded grant; disclosed forwarding fields, not arbitrary contract acceptance or a production privacy protocol (#275) |
-| Images | Intended backend publication remains Linux/amd64. Actual release digests/startup checks must be recorded before this page claims publication |
+| Images | Linux/amd64 only. Pulled-image startup refusals and key HTTP/restoration checks are distinct from historical source-native flows; no fresh RC7-image native funds lifecycle is claimed |
 
 Concrete fund-loss, broken-installation or artifact-integrity regressions block
 publication. Open feature/interoperability issues remain documented limitations of
 this supported-subset preview rather than an implicit promise of a complete product.
+
+## Release checks
+
+- Full local lint/format/build/package/app/type gate: **1,232 passed, seven existing skips, zero failures**.
+- Independent exact-source Codex review: all three verified P2 findings fixed; final review clean.
+- Complete hosted PR gate: 12 core checks plus the two path-relevant image checks passed. The original invalid-context startup and superseded run remain recorded.
+- Actual Chromium UI: 26 grouped cases across both owner-arm selections, with per-access visible purpose and rendering checks. Account/chain/wallet drivers are synthetic.
+- Nine packed packages: clean installation, runtime/types/browser build, host-job smoke, single-circuit restore and two-build reproducibility. Actual registry archives additionally require private visibility, SHA/SRI and both attestations.
+- The signed receipt and release assets give the measured registry/image checks. Published Pages verification is recorded separately; no package publish is inferred from a local build.
+
+See [use-case coverage]({{ '/use-case-coverage/' | relative_url }}) for test scope,
+including measured loaded-JavaScript coverage. See [releasing]({{ '/releasing/' | relative_url }})
+for image pins and credential-safe package access.

@@ -203,26 +203,26 @@ is described in the durability guide. No legacy automatic retry is claimed.
 
 `mn-passport-adapter-service` additionally exports `remoteHostJobs`, `remoteHostJobId` and `remoteHostJobPorts` for the opt-in authenticated `/v1/host-jobs` protocol. The reference service explicitly enables it with private job configuration, sharing the host executor, sponsor queue and deployment policy. Client and service must both support the public identity hash; RC6 publishes the opt-in client and backend; the default demo retains its existing composition. GET is read-only; explicit approved resume never recreates a missing job. See the [service jobs runbook]({{ '/service-jobs/' | relative_url }}) for composition, settings, use cases and restart-test scope.
 
-### Journalled shielded deposit continuation (next candidate)
+### Journalled shielded deposit continuation (RC7)
 
 The additive `ports.recovery` composition retains the exact original deposit intent and randomised
 entry. `resumeShieldedDeposit` refuses missing original evidence and never automatically re-sends an
 unknown dispatch. The existing unjournalled API remains one-shot only. Read the
 [recovery contract and host recipe]({{ '/shielded-deposit-recovery/' | relative_url }}) before
 implementing storage, sender lookup or canonical transaction confirmation. These exports are not
-in published RC6, and no shielded HTTP funding endpoint or native recovered-deposit pass is claimed.
+in published RC6; use RC7 for these additions. No shielded HTTP funding endpoint or native recovered-deposit pass is claimed.
 
-## Candidate capability and configuration APIs
+## RC7 capability and configuration APIs
 
-The next local candidate adds lightweight `contract/capabilities` and
+RC7 adds lightweight `contract/capabilities` and
 `contract/capabilities.json` entries plus `account/preflight`. These identify
 packaged circuits versus implemented flows and inspect four existing sealed-owner
-configurations before any key ceremony. They are absent from RC6. See the
+configurations before any key ceremony. They are published in RC7 and absent from RC6. See the
 [capability guide]({{ '/capabilities/' | relative_url }}) for signatures, adoption
 layers, both supported owner arms and runtime validation that always remains.
 
 
-The same candidate entries expose `getAccountProofRequirements` and
+The same RC7 entries expose `getAccountProofRequirements` and
 `inspectAccProofProfile`: plan the exact key set, then inspect the chosen key
 endpoint's profile/manifest JSON before a ceremony. Materialized binding helper
 methods are also checked; lazy modules remain deferred. Advertised coverage is

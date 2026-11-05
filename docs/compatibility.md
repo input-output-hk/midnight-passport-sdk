@@ -1,8 +1,8 @@
 # Compatibility matrix
 
-## Consent/demo/browser next-preview candidate — 2026/11/05
+## RC7 published preview — 2026/11/05
 
-After merged PR278 (`7a077d9`), the local candidate adds optional typed
+After merged PR278 and PR283, RC7 adds optional typed
 `beforeCeremony` purposes to the WebAuthn adapter and forwards them through browser
 composition. Existing API calls remain compatible; this hook does not add account
 authority or replace host consent. The demo requires operation review before key
@@ -14,17 +14,17 @@ A new actual-Chromium lane exercises all existing demo buttons across both owner
 selections using mock credentials and synthetic account/chain/wallet drivers.
 It establishes UI/consent behavior, not native contract enforcement or Google/iCloud
 acceptance. Its source/runtime receipt is separate from the signed `eb240f6` native
-merchant evidence below and published RC6 artifacts. See [the use-case evidence map](site/use-case-coverage.md)
+merchant evidence below and historical RC6 artifacts. See [the use-case evidence map](site/use-case-coverage.md)
 and release tracker [#282](https://github.com/input-output-hk/midnight-passport-sdk/issues/282).
 
 
-## Application-to-ACC local candidate — 2026/11/05
+## Application-to-ACC qualification — 2026/11/05
 
 The local partner tranche adds a verified compiler-dependency export to the
 existing contract package and a constructor-pinned merchant reference that calls
 the ACC. It uses `acc-s3r1.1` unchanged, Compact 0.35.0 and runtime 0.20.0; the caller
 uses default v2 encoding for forwarded JubJub points. No additional account build
-or package is introduced. These additions are **not in published RC6**.
+or package is introduced. These additions ship in RC7 and are **not in historical RC6**. The native receipt below keeps its original executed source/package pins.
 
 | Layer | Local candidate acceptance | Still unqualified |
 | --- | --- | --- |
@@ -40,16 +40,16 @@ See the [partner guide](site/partner-integration.md),
 in [the review map](review/partner-contracts/README.md); do not infer a passed run
 from a case definition. Existing published release limits below remain in force. The [native receipt](review/partner-contracts/native-acceptance.json) distinguishes the failed original full suite (with a separately confirmed payment/credit) from the successful continuation using a separate intent. No successful payment was retried. The archived indexer’s prior running state was restored; qualification compute stopped and all volumes remain.
 
-> **Status:** published preview RC6 · local qualification updated 2026/10/30. Releases are lockstep across the
+> **Status:** published preview RC7 · local qualification updated 2026/10/30. Releases are lockstep across the
 > `@input-output-hk/mn-passport-*` packages. The binding data is pinned in
 > `packages/contract/acc-binding-v2.generated.json` and the generated registry.
 
 The historical [RC5 publication receipt](release/rc5-publication-receipt.json) records the signed source,
-private registry hashes/attestations, and published image digests. The current RC6 release keeps the exact-value
+private registry hashes/attestations, and published image digests. The current RC7 release keeps the exact-value
 shielded withdrawal guard. Partial spends (#201), complete typed circuit coverage (#82) and
 remaining live/value-host evidence (#202) are deferred; no full Lace compatibility is claimed.
 
-The current [RC6 signed publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc6/rc6-publication-receipt.json)
+The current [RC7 signed publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc7/rc7-publication-receipt.json)
 records actual registry hashes/SRI, private package visibility, attestations,
 installation and image checks. Earlier evidence below remains source/version specific.
 
@@ -93,7 +93,7 @@ They do not update the earlier native proof/image pins, revalidate an actual Lac
 release, qualify a provider, establish registry provenance, or change published
 RC5. Exact-value shielded withdrawal guards and all existing release limits remain.
 
-## RC6 preview release boundary
+## Historical RC6 preview release boundary
 
 SDK `0.1.0-rc6` retains binding `acc-s3r1.1`, source `6458ed5`, Compact 0.35.0,
 runtime 0.20.0 and account/service API `1.0.0-pre.0`. It adds opt-in durability,
@@ -110,6 +110,7 @@ sources; they are not relabelled as fresh provider or released-image acceptance.
 | `0.1.0-rc4` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 | `0.1.0-rc5` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 | `0.1.0-rc6` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
+| `0.1.0-rc7` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 
 The package registry supports only `acc-s3r1.1`. The older provisional
 `0.0.0-prototype.1` binding is retired. The separate `acc-45721e1` key bundle
@@ -125,6 +126,7 @@ Compact runtime.
 | `0.1.0-rc4` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 | `0.1.0-rc5` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 | `0.1.0-rc6` | `1.0.0-pre.0` | `1.0.0-pre.0` |
+| `0.1.0-rc7` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 
 The local demo service was not a published SDK package in RC1. The service API
 constant names the versioned client wire types; the current prototype browser
@@ -447,6 +449,7 @@ The account API and the service wire types are versioned separately.
 | `0.1.0-rc4` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 | `0.1.0-rc5` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 | `0.1.0-rc6` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
+| `0.1.0-rc7` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 
 RC1 had eight implementations and five empty scaffolds. RC4 and RC5 contain nine
 implemented packages, adding the service library and excluding the scaffolds.
@@ -760,3 +763,14 @@ not visible prompts or provider restoration. Host consent, sender wallet approva
 bounded I/O and unrelated-operation isolation remain host obligations. The example
 adds no signal/timeout API, background unlock or complete session isolation. See
 issues245/232/269 and the engineer recovery guide. RC6 remains unchanged.
+
+## RC7 publication evidence boundary
+
+Signed source `bbf883d9aecba1ae7b1c5bfc0e13af09bc42c59e` publishes all nine packages
+at `0.1.0-rc7` with `next` and private GitHub Packages visibility. The three GHCR
+images remain public Linux/amd64. Actual registry-byte SHA/SRI and attestations,
+authenticated installation, image aliases/digests/configs and pulled-image startup/key
+HTTP checks are in the signed RC7 receipt. Historical source-native and RC6
+consumer/host receipts keep their original pins; publication does not rerun them.
+All full Lace/provider, recovery, exact-value shielded and session limitations
+above remain. Local expiring JubJub grants are #281 / 0.2.0, not a new owner authority.

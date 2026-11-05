@@ -21,9 +21,9 @@ shell.
 - [`docs/site/getting-started.md`](docs/site/getting-started.md): library installation and a minimal browser host.
 - [`docs/site/use-cases.md`](docs/site/use-cases.md): demo prerequisites, actions and expected results.
 
-## Next preview candidate: consent and reproducible browser journeys
+## RC7: consent and reproducible browser journeys
 
-The candidate adds a review before every key-using action. **Create account** requires
+RC7 adds a review before every key-using action. **Create account** requires
 explicit acknowledgement that the demo permanently retires maintenance authority
 (the ACC cannot later be upgraded). The page explains each ensuing credential
 creation/verification, identification, PRF unlock or P-256 signature before browser
@@ -276,8 +276,8 @@ issue275 for application-contract→deployed ACC integration. Do not make outgoi
 custom ACC builds or replacement of Lace orchestration a prerequisite for package
 reuse. Keep partner business logic, host consent and credential ownership explicit.
 
-The new local `mn-passport-export-compact` command exports a verified compiler
-dependency from the candidate contract package. It is not in published RC6. The
+The RC7 `mn-passport-export-compact` command exports a verified compiler
+dependency from the published contract package. It is absent from historical RC6. The
 [reference application](examples/application-acc/README.md) uses installed public
 packages, a constructor-pinned ACC and fixed merchant policy. Its compiler/offline
 checks are opt-in and establish no native proof, wallet credit or provider support.

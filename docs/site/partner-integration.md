@@ -42,14 +42,14 @@ Upstream records both [ACC-as-callee experiments](https://github.com/midnightntw
 and [caller-bound grant spends](https://github.com/midnightntwrk/passport/blob/fc19e471536febb2133f20e817847251622dcdf5/contract/GRANTS-CALLER.md).
 Those recorded upstream runs do not qualify a new SDK integration by themselves.
 
-## Compiler dependency export — local candidate
+## Compiler dependency export — RC7
 
-`mn-passport-export-compact` is new local candidate functionality under
+`mn-passport-export-compact` is published in RC7 under
 [#275](https://github.com/input-output-hk/midnight-passport-sdk/issues/275).
-It is **not in the published `0.1.0-rc6` package**. Evaluate the checked candidate
-tarball; do not expect the command to appear by reinstalling RC6.
+It is **not in the older `0.1.0-rc6` package**. Install the exact `0.1.0-rc7`
+contract package and verify the signed publication receipt.
 
-From a consumer with the candidate `mn-passport-contract` package installed and the
+From a consumer with the RC7 `mn-passport-contract` package installed and the
 repository's pinned Nix shell active:
 
 ```sh
@@ -86,7 +86,7 @@ forward curve-point arguments. Both sides use Compact 0.35.0/runtime 0.20.0.
 
 The [application example](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/application-acc)
 contains the Compact source, a client preparation helper and an executable offline
-consumer check. Until merged, use the local example in the reviewed candidate tree.
+consumer check. Use the matching `sdk-v0.1.0-rc7` source example.
 
 Its deployer configures **one verified ACC**, an asset, a decoded merchant
 `UserAddress`, a positive price and payment capacity. `pay(approval)` invokes that
@@ -151,7 +151,6 @@ provider acceptance remain pending unless explicitly recorded for the exact buil
 
 The [adoption execution plan](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/partner-adoption-plan.md)
 orders remaining work: real consumer adoption, precise capabilities, consent and
-recovery, reproducible operations and provider qualification. Existing RC6 remains
-published; exact-value shielded withdrawals, entry-removal and total-loss recovery
+recovery, reproducible operations and provider qualification. RC7 is the current published preview; exact-value shielded withdrawals, entry-removal and total-loss recovery
 limitations remain unchanged. See [qualification]({{ '/qualification/' | relative_url }})
 and [consumer integration]({{ '/consumer-integration/' | relative_url }}).

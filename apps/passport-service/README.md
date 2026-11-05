@@ -11,9 +11,9 @@ rate limits at the gateway, and set `PASSPORT_MAX_DEPLOYS` to an operator-approv
 
 The [image workflow](../../.github/workflows/publish-service-image.yml) builds and smoke-tests
 `ghcr.io/input-output-hk/midnight-passport-service:<version>` from a signed `service-v<version>`
-tag on `passport-acc-prototype`, or an authorised workflow dispatch. Release `0.1.0-rc6` and its
-`sha-7848d3029de7` tag share immutable digest
-`sha256:79eefc9f079e7382d593a492cb640635900886002c240afba5568c57791fb279`. Pin that digest when deploying. The image contains the SDK application;
+tag on `passport-acc-prototype`, or an authorised workflow dispatch. Release `0.1.0-rc7` and its
+`sha-bbf883d9aecb` tag share immutable digest
+`sha256:49bd2fbd8233f3868bc0918705c56ddf81f6d2c7c0ee570d30d7ab53eaa57a4f`. Pin that digest when deploying. The image contains the SDK application;
 it contains no proving keys, compiled ACC export, sponsor seed, or account registry.
 
 Prepare the pinned Passport revision `6458ed5` export **on Linux** with Compact 0.35.0 and its
@@ -35,7 +35,7 @@ network as the localnet or use the host-published ports. The four `MN_*_URL` val
 the export's patched reference client configuration. `PASSPORT_PUBLIC_*_URL` values are the
 browser-reachable endpoints returned by `/v1/config`; set them whenever the service connects
 through container-only hostnames or a private network. The browser needs direct access to the
-node and indexer endpoints. Run the published RC5 digest:
+node and indexer endpoints. Run the published RC7 digest:
 
 ```sh
 docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" \
@@ -52,12 +52,12 @@ docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" \
   -e PASSPORT_PUBLIC_INDEXER_URL=http://localhost:18088/api/v4/graphql \
   -e PASSPORT_PUBLIC_INDEXER_WS_URL=ws://localhost:18088/api/v4/graphql/ws \
   -e PASSPORT_PUBLIC_PROOF_SERVER_URL=http://localhost:16300 \
-  ghcr.io/input-output-hk/midnight-passport-service@sha256:79eefc9f079e7382d593a492cb640635900886002c240afba5568c57791fb279
+  ghcr.io/input-output-hk/midnight-passport-service@sha256:49bd2fbd8233f3868bc0918705c56ddf81f6d2c7c0ee570d30d7ab53eaa57a4f
 ```
 
 The Docker build smoke checks the non-root user, missing-export refusal, non-standalone
 startup refusal without a dedicated seed, and refusal of a manifest hash outside the package pin.
-The current RC6 digest passed startup/refusal smoke checks on Linux/amd64
+The current RC7 digest passed startup/refusal smoke checks on Linux/amd64
 (emulated on the local ARM64 host). A fresh native lifecycle was not repeated on it.
 The historical RC5 digest passed startup refusals and a mounted-tree localnet run with a fresh
 JubJub ACC: ten deployment waves, activation, chain read and reopen. Together with the published

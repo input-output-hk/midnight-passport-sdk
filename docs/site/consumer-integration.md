@@ -6,11 +6,19 @@ permalink: /consumer-integration/
 
 This guide covers the supported Passport integration boundary for #79 and #81.
 The October 20 assessments below are historical, version-pinned host evidence.
-The RC6 preview includes their supported additions plus later durability and installed-consumer work;
+The historical RC6 preview includes their supported additions plus later durability and installed-consumer work;
 see the [RC6 release status]({{ "/release-notes-rc6/" | relative_url }}). The [historical report](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/lace-consumer-report.md)
 retains its original source pins and transactions. Current authorised source pins,
 private diagnostics and detailed receipts remain in the owner's private handover.
 A public package install and a private source test are separate evidence.
+
+## Current release and pinned qualification
+
+RC7 is the current published preview. Start with the [RC7 handover]({{ '/lace-handover/' | relative_url }})
+and [installation guide]({{ '/getting-started/' | relative_url }}). The host/native
+qualification below deliberately retains its measured RC6 package and source pins.
+Do not substitute RC7 into those receipts or infer that publishing RC7 repeats
+native, full Lace or provider acceptance.
 
 ## Current published host and RC6 — 2026/10/30
 
