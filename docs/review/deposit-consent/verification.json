@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "implementation": "1e2d21913580ed721f8d9dbcd5c588d8f125971e",
+  "base": "799afd7c47e1728e26019904785c5faad83f0ff5",
+  "binding": "acc-s3r1.1",
+  "scope": "trusted-host public-import example; owned deposit input bytes and malformed-hex diagnostic privacy; no new SDK export or persisted format",
+  "fullLocalGate": {
+    "passed": 1168,
+    "existingSkipped": 7,
+    "failed": 0,
+    "lint": true,
+    "format": true,
+    "build": true,
+    "applicationTypes": true
+  },
+  "emittedRecipe": {
+    "casesPassed": 22,
+    "strictTypes": true,
+    "actualAesGcm": true,
+    "actualPrivateFileRevisions": true,
+    "senderChainFinalityApproval": "synthetic",
+    "publicExports": "workspace declared export map; not installed-registry acceptance"
+  },
+  "invariants": {
+    "freshConsentBeforeJournalUnlock": true,
+    "capturedOriginalRequest": true,
+    "reconcileCanInvokeSender": false,
+    "reconcileCanDispatchPrepared": false,
+    "confirmedReceiptSurvivesLaterFailure": true,
+    "rawDiagnosticsInPanel": false
+  },
+  "sourceHashes": {
+    "examples/shielded-deposit-review/reviewed-deposit.ts": "8d7abad841c26241b5d76a33bbb1ce5b617cccfb5eee203071549847dcbf4336",
+    "packages/account/src/shielded-deposit-validation.ts": "03b6f5edbda11bd9501ff57093634b3be2d0242d4e3c97f00d5ddd5796e821da",
+    "packages/account/src/codec.ts": "f84054536e3c25478de2d9b18abe975b9f573a971a32bfd5b681ea9e08dcd467",
+    "tests/fixtures/reviewed-deposit-cases.mjs": "ee005ecfcaa94b986802440306d13d4404b74ebba52fbe4e103dcbdef21ced26",
+    "tests/shielded-deposit-recovery.test.mjs": "8a35d6992cc7735a126663137aee698af7727a5fa6e481368222d1e50f26f1ca",
+    "docs/research/upstream-passport-2026-11-04.md": "e6fc9022803a918358261a3ea5003276036f2ae2dff7a453136744dfc2110ab0"
+  },
+  "independentReview": {
+    "firstHead": "d9306eeb36817a9711bdc894ea660838075f5f88",
+    "firstFinding": "confirmed receipt hidden by a later failed attempt",
+    "secondHead": "d90ff88385b5071dccf6a4d51377ade9973f9ba6",
+    "secondFinding": "Buffer.slice alias during host approval",
+    "fixedIn": "1e2d21913580ed721f8d9dbcd5c588d8f125971e",
+    "finalStatus": "no actionable regressions",
+    "finalHead": "1e2d21913580ed721f8d9dbcd5c588d8f125971e",
+    "isolatedOfflineLockedDependencies": true,
+    "freshBuildAndFocused51Passed": true
+  },
+  "nativeQualification": false,
+  "realProviderQualification": false,
+  "sharedMidnightStackTouched": false,
+  "pushed": false,
+  "published": false,
+  "remaining": [
+    "broad #246 owner-circuit consent",
+    "#245 cross-operation credential/session isolation",
+    "#269 operator fenced no-send and rollback policy",
+    "#275 native merchant acceptance deferred by owner",
+    "upstream requirements/input audit #244/#237/#238/#262"
+  ],
+  "focusedTestsPassed": 51,
+  "upstreamSubagent": {
+    "passportMain": "fc19e471536febb2133f20e817847251622dcdf5",
+    "sdkMain": "cd1f26d658f268acc2f6df5e383bf2601cbe3055",
+    "readOnly": true,
+    "concreteCounterexamples": [
+      "public deposit Buffer alias across async reads",
+      "malformed hex prefix disclosure"
+    ],
+    "runtimeChangesImportedFromUpstreamCommits": false
+  },
+  "resources": {
+    "ownedReviewCheckoutsRemoved": true,
+    "sharedMidnightStackTouched": false,
+    "nativeWalletProofSubmissionStarted": false,
+    "originalUnknownsOrPrivateFixturesDeleted": false
+  }
+}

@@ -118,6 +118,29 @@ and application state before reporting success. Never treat a timeout as no send
 - The supported high-level holder arm here is JubJub. P-256 owner flows and other
   distributed circuits retain their separate support status.
 
+## Recorded local native result — 2026-11-05
+
+The [redacted native receipt](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/partner-contracts/native-acceptance.json)
+records signed source `eb240f6` and four installed candidate packages at
+`0.1.0-dev.20261105.merchant.5`. Until this local tranche is merged, use that
+receipt in the reviewed checkout. This is not a new published release.
+
+The proof-backed composed payment credited a fresh merchant wallet **4 base units
+of NIGHT**, changed the reused ACC from 8 to 4 and incremented the merchant count
+once. Six transactions reached canonical finality. Wrong caller, invalid signature,
+module-fingerprint substitution, replay, revocation, indexed-chain expiry and the
+business guard after the ACC sub-call refused during construction. Full serialized
+ACC/both-merchant snapshots remained unchanged; those cases sent no transaction
+and prove no malicious-proof bypass or node rollback behavior.
+
+A preceding payment was already successful (ACC12→8, original merchant1,
+recipient4), but its live balance observation timed out. The failed full suite was
+preserved and reconciled read-only. The passing continuation used a new merchant,
+grant, recipient and payment intent; it did not repeat that successful payment or
+fund the ACC again. A wallet timeout is not evidence of no send. Software wallet
+reconnect is not passkey-provider recovery or full Lace compatibility. The exact
+binding, caller-only key hashes and installed-byte audit are in the review map.
+
 ## Acceptance and next steps
 
 Fast export and payment-preparation guards belong in required CI. Actual compiler

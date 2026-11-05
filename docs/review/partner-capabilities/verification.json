@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "implementation": "d02f444e2f0f50cf57d2a5d3fcec8e3f62e59997",
+  "base": "f2b61f06205246c9492b662cde95f0d7076233fb",
+  "binding": "acc-s3r1.1",
+  "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "fullLocalGate": {
+    "passed": 1136,
+    "existingSkipped": 7,
+    "failed": 0,
+    "lint": true,
+    "format": true,
+    "build": true,
+    "applicationTypes": true
+  },
+  "catalog": {
+    "proofCircuits": 52,
+    "pureHelpers": 66,
+    "schemaVersion": 1,
+    "resourceSha256": "7665eb3fa60054d5b93995356d869799781e985506e6e2d0cdfdbf5f0171fd8b"
+  },
+  "preflight": {
+    "profile": "sealed-owner-v1",
+    "arms": [
+      "p256-webauthn",
+      "jubjub-schnorr"
+    ],
+    "operations": [
+      "withdraw-unshielded",
+      "withdraw-shielded",
+      "issue-grant",
+      "recover-pending-grants"
+    ],
+    "invokesPortsOrLoaders": false,
+    "runtimeQualification": false
+  },
+  "candidate": {
+    "version": "0.1.0-dev.20261104.capabilities.3",
+    "packagesPacked": 9,
+    "packagesInstalledAndAudited": 3,
+    "filesAudited": 242,
+    "tarballManifestSha256": "b290f4de125d8a3a8399b5b15787dfcb665d7e65e9cc79e12b0f119efac47c13",
+    "strictTypeScript": true,
+    "recipeExecuted": true,
+    "registryWrite": false
+  },
+  "independentReview": {
+    "initialImplementation": "e553606fa65c3cba8d9ac67566b98d1d44707168",
+    "initialFindings": 2,
+    "fixedIn": "2082564254526af1eb9e7415656099573edef326",
+    "finalStatus": "no actionable regressions",
+    "secondFindings": 2,
+    "secondFix": "d02f444e2f0f50cf57d2a5d3fcec8e3f62e59997",
+    "finalImplementation": "d02f444e2f0f50cf57d2a5d3fcec8e3f62e59997",
+    "focusedTestsPassed": 13,
+    "buildAndLintPassed": true
+  },
+  "nativeMerchant": "blocked-owner-deferred-live-run",
+  "nativeAdmission": false,
+  "browserProvider": false,
+  "fullLaceCompatibility": false,
+  "releasePublished": false
+}

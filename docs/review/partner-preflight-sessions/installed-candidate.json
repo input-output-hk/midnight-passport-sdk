@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "implementation": "f8f1a6989185bfd468514e43692f6677d3a90d3d",
+  "version": "0.1.0-dev.20261104.partner.1",
+  "manifestSha256": "bcf8b606825a984bdba5a778b3b32d1cddf87b010f47635e8942898314d2c781",
+  "packages": [
+    {
+      "name": "@input-output-hk/mn-passport-protocol",
+      "version": "0.1.0-dev.20261104.partner.1",
+      "tarballSha256": "8a7ba5bb7ba8a4f4714693fdaf793a5d07b55f061170157a723e96af3d84f1ec",
+      "files": 30,
+      "filesSha256": "aea06db7cf3454575536a4ff64ac32b91d29495fbe937d7cebd35bd2047a19d2"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-account",
+      "version": "0.1.0-dev.20261104.partner.1",
+      "tarballSha256": "6ac9f8a3f4f6ad7922cd6cb0fc8c13937daeee3e94ed81abb29f8195685c284f",
+      "files": 170,
+      "filesSha256": "4288a9d5e098dabc2b465f352095f878777add55292803d0f74b6d10bad15b3b"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-midnight-js",
+      "version": "0.1.0-dev.20261104.partner.1",
+      "tarballSha256": "5b499b6c408810decc35a1aedbeb52e5d9e8ce8896fa6bd68fd6152adb25971c",
+      "files": 31,
+      "filesSha256": "876dc27dc5a3c64331b13482d50cf01a93aa5f0c2559fdef4265b4de9b9b1888"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-keys",
+      "version": "0.1.0-dev.20261104.partner.1",
+      "tarballSha256": "f019396b039191b388d50cbe54627c72d0ef19a8adfbf395932a991658dd1e47",
+      "files": 54,
+      "filesSha256": "a3623b74f525e4f7e38f67873fa35c449ed7dd6d6c279af88039fbc88fffbc09"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-webauthn",
+      "version": "0.1.0-dev.20261104.partner.1",
+      "tarballSha256": "7df977c9fb8afe373f4da786fa1e6cf6b10a383db3ce8f1c10be7d48cf2e314e",
+      "files": 26,
+      "filesSha256": "16ab1afb77df2a591644cef82e192b60762f83bcf9e2a45ca05e777cf405e174"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-service",
+      "version": "0.1.0-dev.20261104.partner.1",
+      "tarballSha256": "0a4c562d815666dcab159f8ee6e409583ca926f8782121317bce0f78b593db8e",
+      "files": 62,
+      "filesSha256": "635eee4b5bd67accdb8777f43d8c96ec4e24c93fb057db8aafe5a202fbb4d05b"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-contract",
+      "version": "0.1.0-dev.20261104.partner.1",
+      "tarballSha256": "06b3b7ed3eba568109ebb4fdb87dd8bf06ab182a4698ff951cc299813cf92d91",
+      "files": 50,
+      "filesSha256": "4b7c18c36d4fe29d4dc7f4cb326e7db7f886bc518c30e06c4d2c6bee92208bab"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-adapter-browser",
+      "version": "0.1.0-dev.20261104.partner.1",
+      "tarballSha256": "6eac11efff836aae73a2bfa028c13f1a366f45a510773d20d497ff006e80edf1",
+      "files": 30,
+      "filesSha256": "d07e1de80a57e56937725766a08cf5371b405464c3800f770f34d7d7db9947eb"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-service",
+      "version": "0.1.0-dev.20261104.partner.1",
+      "tarballSha256": "4100b787c9c73e859f722c64f65db0cd62507d0597ee60ae4b9ebe49d40528c0",
+      "files": 102,
+      "filesSha256": "552a9cc75c3ea08f3858d09f687dc906e7b93a4f8f79b2d67ddb2648b668dd37"
+    }
+  ],
+  "filesAudited": 555,
+  "lockSha256": "01505b3be1148f02d174c708604411af1f8a9e69fe5d64e139177a6ccdec0b15",
+  "offlineFrozenLockReplay": true,
+  "strictPublicImportExamples": 2,
+  "sessionTestsPassed": 9,
+  "baselineColdPrfAssertions": 10,
+  "wrappedColdPrfAssertions": 1,
+  "laterIndependentResumePrfAssertions": 1,
+  "heldCreateOutputPrfAssertions": 0,
+  "emittedRecipe": {
+    "kind": "emitted-public-import-recipe",
+    "sameIdPreserved": true,
+    "senderEffects": 1,
+    "prfAssertionsPerOperation": [
+      1,
+      1
+    ],
+    "native": false,
+    "realProvider": false
+  },
+  "metadata": [
+    {
+      "profile": "all",
+      "status": "profile-covers-request",
+      "requests": 2,
+      "missingProver": false
+    },
+    {
+      "profile": "jubjub-owner-v1",
+      "status": "profile-incomplete",
+      "requests": 2,
+      "missingProver": true
+    }
+  ],
+  "metadataFixtureOnly": true,
+  "compactImportForbiddenInMetadataCli": true,
+  "preAndPostByteAuditMatched": true,
+  "registryPublication": false,
+  "nativeProof": false,
+  "realProvider": false,
+  "fullLace": false
+}

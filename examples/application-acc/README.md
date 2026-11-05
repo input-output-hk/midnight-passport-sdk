@@ -148,8 +148,21 @@ requires an independently supplied SHA-256 for `native-config.private.json`; its
 frozen until the parent finishes its end audit and owned-resource cleanup.
 
 The worker uses the dedicated chain's public genesis funding wallet and a separate
-fresh recipient wallet. It retains finalized bytes before sends, splits an exact
-12-unit NIGHT input, deposits it, and attempts a 4-unit merchant payment. It checks
+fresh recipient wallet. Supply a separately retained original transfer as
+`funding-transfer.private.bin`, include its hash in `config.files`, and set
+`config.fundingTransaction` to that filename. It must contain exactly one owned
+12-base-unit NIGHT output in a single unshielded offer. Keep it outside Git/Vault.
+Before deployment, `native-funding.mjs` verifies the original successful transaction
+against canonical finalized node data and waits for that exact intent/output in the
+fresh wallet's available set. A matching amount or larger balance is insufficient. The SDK view's owner is Bech32;
+compare it with `keystore.getBech32Address().asString()` from the same key source.
+The retained ledger output and finalized spend use raw address hex, verified
+independently with the ledger codec. Do not compare the two string formats directly.
+It rechecks the same input after deployment, deposits it, and attempts a 4-unit
+merchant payment. It never creates or resubmits a funding split. Before invoking the sender it inspects the
+finalized deposit and requires the exact original input identity, value and owner,
+with no additional NIGHT inputs. Merely seeing the coin available cannot constrain
+wallet selection. A rejected finalized intent is retained without sending. It checks
 the ACC debit, application count and recipient wallet credit separately. Wrong
 caller/signature, replay, revocation and the post-call business guard record the
 actual failure stage. An unreturned submission remains unknown; rerunning under a
@@ -172,3 +185,39 @@ Check the copied worker against the installed declaration files before live work
 --target ES2022 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions
 qualify-native.mjs`). The portable `prepare-payment.mjs` has the stricter independent
 check described above; the worker's dynamic circuit dispatch is a qualification seam.
+
+
+### Funding observation incident — 2026-11-05
+
+The first resumed native run deployed/activated the ACC, then timed out waiting for
+its live funding wallet to expose a self-transfer's12-unit output. Read-only
+reconciliation proved that original transfer successful in a canonical finalized
+block; a fresh wallet view found the exact output spendable. No second split was
+sent. All original binaries, IDs, identities, failed roots and chain volumes remain.
+
+The qualifier now separates funding preparation from the effect-bearing merchant
+run. Pin the original serialized transfer, use a fresh wallet instance, require
+canonical successful finality and match owner/color/value/intentHash/outputNo.
+Absent, forked, stale or already-spent evidence refuses; it is not permission to
+resplit, clear pending history or reuse a request ID. This is a qualification
+fixture boundary, not a generic wallet recovery or SDK balance-refresh guarantee.
+Its deterministic funding evidence/identity controls run in fast tests; native
+payment acceptance still requires the complete source-bound live receipt.
+
+### Confirmation and observer recovery
+
+Retain the original serialized payment and its approval before sending. If a live
+recipient view times out, `native-observation.mjs` checks the original payment's
+canonical finalized success before stopping and reconnecting only that observer.
+It has no sender port. A second timeout or unavailable original outcome remains a
+failure; reconnect never submits another payment.
+
+The worker also has a deliberately narrow continuation for the retained
+post-payment observation incident. It checks original clean shutdown, all 16
+original transaction bytes and canonical outcomes, then the deployed keys,
+maintenance authority, live owner counter, ACC balance and old merchant counters.
+It creates a separate merchant/grant/recipient/payment intent against the existing
+ACC. It does not replay the successful payment or repeat funding. See the
+[incident and configuration](../../docs/review/partner-contracts/native-observation-incident.md).
+This local qualification mode is not a published recovery API, real-provider test
+or permission to rerun an unknown transaction.

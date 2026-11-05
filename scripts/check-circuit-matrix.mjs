@@ -19,6 +19,11 @@ const profileSource = readFileSync(
   'utf8',
 );
 const destination = resolve(root, 'docs/site/circuits.md');
+const bindingInfo = JSON.parse(
+  readFileSync(resolve(root, 'packages/contract/acc-binding-v2.generated.json'), 'utf8'),
+);
+if (bindingInfo.id !== binding || bindingInfo.manifestSha256 !== manifest.compilerManifestSha256)
+  throw new Error('binding identity and compiler manifest differ');
 const source = ts.createSourceFile('index.d.ts', declarations, ts.ScriptTarget.Latest, true);
 
 /** @param {string} typeName */
@@ -98,6 +103,12 @@ function evidence(name, isPure) {
     return ['typed flow', 'tests/account-unshielded-withdrawal.test.mjs'];
   if (/^(withdraw_unshielded_with_jubjub|challenge_withdraw_unshielded_with_jubjub)$/.test(name))
     return ['typed flow', 'tests/account-jubjub.test.mjs'];
+  if (
+    /^(withdraw_unshielded_with_grant_jubjub|challenge_withdraw_unshielded_with_grant_jubjub)$/.test(
+      name,
+    )
+  )
+    return ['holder flow', 'tests/account-grant-holder.test.mjs'];
   if (name === 'deposit_shielded')
     return ['sender port', 'tests/account-shielded-deposit.test.mjs'];
   if (/^(issue_grant_with_jubjub|challenge_issue_grant_with_jubjub)$/.test(name))
@@ -166,6 +177,7 @@ for (const [name, inputs] of [...pure.entries()].sort(([left], [right]) =>
   left.localeCompare(right),
 ))
   inventory.push({ name, isPure: true, inputs });
+const capabilities = [];
 for (const { name, isPure, inputs } of inventory) {
   const [authority, consent, owner] = policy(name, isPure);
   const [status, test] = evidence(name, isPure);
@@ -173,6 +185,20 @@ for (const { name, isPure, inputs } of inventory) {
     throw new Error(`missing circuit evidence for ${name}: ${test}`);
   const witness = !isPure && name.includes('withdraw_shielded') ? 'held_coin' : '—';
   const keys = isPure ? 'inline' : profile.includes(name) ? 'all + jubjub-owner-v1' : 'all';
+  capabilities.push({
+    name,
+    kind: isPure ? 'pure' : 'proof',
+    scheme: scheme(name),
+    maturity: scheme(name) === 'k256' ? 'experimental' : 'preview',
+    inputs,
+    witnesses: witness === '—' ? [] : [witness],
+    authority,
+    consent,
+    flowOwner: owner,
+    support: status,
+    testEvidence: test === '—' ? [] : [test],
+    keyProfiles: isPure ? [] : profile.includes(name) ? ['all', 'jubjub-owner-v1'] : ['all'],
+  });
   rows.push(
     `| \`${name}\` | ${isPure ? 'pure' : 'proof'} | ${scheme(name)} | ${cell(inputs.join(', ') || '—')} | ${witness} | ${authority} | ${consent} | ${keys} | ${owner} | ${status} | ${test} |`,
   );
@@ -188,16 +214,47 @@ permalink: /circuits/
 
 Generated from the pinned \`${binding}\` binding (manifest SHA-256 \`${manifest.compilerManifestSha256}\`). The generated TypeScript declarations supply the exact argument names and types. Every one of the ${pinned.length} proof circuits and ${pure.size} pure helpers appears below. The \`held_coin\` witness is required by shielded withdrawal paths; other circuit inputs are shown directly in the generated signature.
 
-**Status:** \`typed flow\` means the account package has a tested typed call path for this circuit; \`service flow\` means the standalone funding service has a tested call path; \`sender port\` means the account package seals and confirms a deposit but the host must supply a value-bearing sender wallet that proves and submits it; \`key helper\` means the portable key recipe tests the pure helper. \`artifact only\` and \`binding only\` mean the bytes or callable generated helper are packaged, with no typed account flow yet. The funding service completed a local node-backed non-native unshielded deposit. The shielded sender port completed a local node-backed non-native deposit using the pinned upstream wallet; the funding service does not expose that path yet. These labels are release limits, not claims that all 52 circuits are ready for applications. The key service's \`all\` profile serves every proof circuit; \`jubjub-owner-v1\` serves the marked subset.
+The same inventory is available as [JSON](../assets/acc-s3r1.1.capabilities.json) and through the candidate contract package's lightweight \`./capabilities\` entry. See [configuration preflight](../capabilities/) for the supported owner-flow checks. These additive APIs are local candidate work, not part of published RC6.
+
+**Status:** \`typed flow\` means the account package has a tested typed call path for this circuit; \`holder flow\` means the account package exposes a tested grant-bearer call path; \`service flow\` means the standalone funding service has a tested call path; \`sender port\` means the account package seals and confirms a deposit but the host must supply a value-bearing sender wallet that proves and submits it; \`key helper\` means the portable key recipe tests the pure helper. \`artifact only\` and \`binding only\` mean the bytes or callable generated helper are packaged, with no typed account flow yet. The funding service completed a local node-backed non-native unshielded deposit. The shielded sender port completed a local node-backed non-native deposit using the pinned upstream wallet; the funding service does not expose that path yet. These labels are release limits, not claims that all 52 circuits are ready for applications. The key service's \`all\` profile serves every proof circuit; \`jubjub-owner-v1\` serves the marked subset.
 
 ${rows.join('\n')}
 `;
-const expected = await prettier.format(raw, { filepath: destination });
-if (process.argv.includes('--write')) {
-  writeFileSync(destination, expected);
-  console.log(`wrote ${pinned.length} proof and ${pure.size} pure circuit rows`);
-} else if (readFileSync(destination, 'utf8') !== expected) {
-  throw new Error('ACC capability matrix is stale; run check-circuit-matrix.mjs --write');
-} else {
-  console.log(`ACC capability matrix covers ${pinned.length} proof and ${pure.size} pure circuits`);
+const catalog = {
+  schemaVersion: 1,
+  binding: {
+    id: binding,
+    sourceRevision: bindingInfo.source.revision,
+    compilerManifestSha256: manifest.compilerManifestSha256,
+    moduleSha256: bindingInfo.module.js.sha256,
+    compiler: bindingInfo.toolchain.compiler,
+    runtime: bindingInfo.toolchain.runtime,
+  },
+  evidencePolicy: {
+    testEvidence:
+      'Repository test definitions; not evidence of a live run or provider compatibility.',
+    native: 'Consult exact-source review receipts; never infer native admission from this catalog.',
+    browser: 'Consult exact-source browser/provider receipts; no full Lace compatibility claim.',
+    shieldedWithdrawal: 'Exact-value selected coin only; no partial spend or change.',
+    k256: 'Experimental binding/artifacts only; no supported account authoriser.',
+  },
+  circuits: capabilities,
+};
+const json = `${JSON.stringify(catalog, null, 2)}\n`;
+const generated = `// Generated by scripts/check-circuit-matrix.mjs; do not edit.\nimport type { AccCapabilityCatalog } from './capabilities.js';\nexport const catalog: AccCapabilityCatalog = ${JSON.stringify(catalog, null, 2)};\n`;
+const outputs = new Map([
+  [destination, raw],
+  [resolve(root, `packages/contract/resources/${binding}.capabilities.json`), json],
+  [resolve(root, `docs/site/assets/${binding}.capabilities.json`), json],
+  [resolve(root, 'packages/contract/src/capabilities.generated.ts'), generated],
+]);
+for (const [path, content] of outputs) {
+  const expected = await prettier.format(content, {
+    ...(await prettier.resolveConfig(path)),
+    filepath: path,
+  });
+  if (process.argv.includes('--write')) writeFileSync(path, expected);
+  else if (!existsSync(path) || readFileSync(path, 'utf8') !== expected)
+    throw new Error('ACC capabilities are stale; run check-circuit-matrix.mjs --write');
 }
+console.log(`ACC capabilities cover ${pinned.length} proof and ${pure.size} pure circuits`);

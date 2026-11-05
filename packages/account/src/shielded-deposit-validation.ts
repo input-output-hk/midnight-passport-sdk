@@ -25,7 +25,7 @@ export function depositInput(input: ShieldedDepositRequest, ports: ShieldedDepos
   )
     throw new PassportConnectorError('InternalError', 'Invalid deposit confirmation window.');
   return {
-    input: { ...input, color: input.color.slice(), nonce: input.nonce.slice() },
+    input: { ...input, color: new Uint8Array(input.color), nonce: new Uint8Array(input.nonce) },
     pollMs,
     confirmationMs,
   };

@@ -19,6 +19,10 @@
     "./testing": {
       "types": "./dist/testing/index.d.ts",
       "default": "./dist/testing/index.js"
+    },
+    "./preflight": {
+      "types": "./dist/preflight.d.ts",
+      "default": "./dist/preflight.js"
     }
   },
   "files": [

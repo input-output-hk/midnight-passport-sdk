@@ -1,0 +1,36 @@
+{
+  "version": "0.1.0-dev.20261105.merchant.5",
+  "packages": [
+    {
+      "name": "@input-output-hk/mn-passport-protocol",
+      "version": "0.1.0-dev.20261105.merchant.5",
+      "tarballSha256": "eb44fd755238d312b4698c524d9d8cb9b0f138a7435b6ecd1b524bb52159edc1",
+      "files": 30,
+      "filesSha256": "adb3864fc0857a3dc93625870f3e6dd01589f507b4ae278b567203733872d953"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-account",
+      "version": "0.1.0-dev.20261105.merchant.5",
+      "tarballSha256": "381760675b2b397c1c713dc9988f7fbb59b8184e9d3606a24f98e76bb452cb9b",
+      "files": 170,
+      "filesSha256": "036278efb89de8e0353ba7b3dc8f68282c98398a469ccc3b82cc4a03b8bc6d73"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-keys",
+      "version": "0.1.0-dev.20261105.merchant.5",
+      "tarballSha256": "9f91a3229f802ebce79e64200420ffe49d7c7a82ed5f328ec8f512b74466006e",
+      "files": 54,
+      "filesSha256": "69266c6fd42e540ac7325e1937258006b54cb43b20e7c7e590bfaace3f46589d"
+    },
+    {
+      "name": "@input-output-hk/mn-passport-contract",
+      "version": "0.1.0-dev.20261105.merchant.5",
+      "tarballSha256": "afd6a2bafb56fd542fa7b90cbb426256186a31e39cde2df7c466c6057c346433",
+      "files": 50,
+      "filesSha256": "8b05541d9c2b5c63b5879cad086b2b86f0d6a6df39427b69dff4f1da6dd3d7f9"
+    }
+  ],
+  "files": 304,
+  "lockSha256": "364c715090b95230940e844067e0b7469fee089d08d4de8309b3e1a0e784fb58",
+  "native": false
+}

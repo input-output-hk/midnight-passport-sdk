@@ -82,13 +82,91 @@ const ports = {
   ...senderPorts,
   recovery: { pins, journal, ...evidencePorts },
 };
-const receipt = await depositShielded(originalRequest, ports);
+const receipt = await journalKeySource.withSession(() =>
+  depositShielded(originalRequest, ports),
+);
 // Later, after a lost response or restart: same ID/account/coin/pins, retained original journal.
-const sameReceipt = await resumeShieldedDeposit(originalRequest, ports);
+const sameReceipt = await journalKeySource.withSession(() =>
+  resumeShieldedDeposit(originalRequest, ports),
+);
 ```
 
 This sketch does not provide a native sender/finality adapter. Never substitute an unconditional
 `true` confirmation or a balance-only probe in a production host.
+
+## Bound one approved journal session
+
+The **same `journalKeySource` instance** passed to `encryptedShieldedDepositJournal`
+wraps each complete `depositShielded` or same-ID `resumeShieldedDeposit` invocation
+above. Nested journal calls then reuse its active operation session. Obtain host
+consent for that original account/network/intent first, and keep the value-bearing
+wallet's independent signing/approval. An outer PRF session grants neither account
+spending authority nor sender assets.
+
+A deterministic regression uses the actual `webauthnPasskey` adapter, actual encrypted
+filesystem journal and deposit helper with a software authenticator/fake sender and
+finality. Its cold baseline measures **10 PRF credential assertions** without the
+outer session and **1** with it. Creation/enrollment contributes a separate signed
+assertion; a fresh client may also need credential identification. When PRF outputs
+are returned at creation, the first wrapped operation uses **0** additional PRF
+assertions. A later independent same-ID continuation requires **1** fresh assertion.
+These count API calls, not user-visible prompts or real Google/iCloud behavior.
+
+Success, callback failure, unknown sender outcomes, PRF cancellation, wrong credential
+and missing PRF all release the operation session. A later invocation must unlock
+again. Read-only reconciliation with no sender evidence stays `dispatching`/unknown,
+never a replacement send. The regression also checks zeroed derived journal-key
+buffers and protected disk revisions. It does not qualify a native sender/provider.
+
+**Lifetime trade-off:** wrapping the complete invocation keeps PRF material live
+through wallet/proof/confirmation waits until the last session user exits. Bound
+injected I/O and obtain consent before entering. Do not overlap unrelated operations
+on the same WebAuthn source: the current adapter shares overlapping sessions and
+this example does not make them account-isolated. It adds no background unlock,
+long-lived secret cache, wallet lock or cancellation/timeouts to the deposit API.
+Broad session isolation/provider qualification remain #245/#232; operator no-send
+fencing remains #269. Do not wrap unrelated ACC operations just to reduce counts.
+
+The [strict composition example](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/examples/shielded-deposit-session/approved-deposit.ts)
+constructs the journal and both methods around one captured key-source instance.
+It expects reviewed sender, protected storage and finality ports supplied by the host.
+
+## Review and check an uncertain deposit
+
+The [reviewed host example](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/shielded-deposit-review)
+adds a typed private review and a redacted operation panel around the candidate APIs. It captures
+one original request/coin/pins, requires fresh explicit approval before each journal unlock, and
+separates **Start deposit** from **Check original deposit**. A local `status()` snapshot has no
+key, network or wallet work. This is an example for trusted host composition, not a new SDK
+consent API or shielded browser-demo feature.
+
+Show the trusted host origin, sender wallet, network/binding, destination ACC, request ID, color
+and base-unit amount before approval. Explain that the PRF ceremony unlocks a protected journal;
+the sender wallet separately approves spending. The nonce and sealed journal intent stay private.
+Declining this review performs no new key/sender work and says nothing about an earlier attempt.
+
+Use this copy for any post-fence uncertainty, including a wallet error that appears to describe a
+pre-send cancellation or locked wallet:
+
+> Outcome unresolved. Retain this request and original sender records; reconcile the same intent.
+> Do not resend or allocate a replacement request ID.
+
+The example's explicit `reconcile()` action cannot call the sender. It refuses absent/prepared
+records on every read and blocks dispatch transitions. This is narrower than the general SDK
+`resumeShieldedDeposit`, which can dispatch a prepared original request. Unknown lookup stays
+unresolved; only original canonical evidence confirms it. The panel retains the original request
+and any validated transaction ID, with fixed status codes/copy. Raw error messages, causes,
+journal plaintext, nonce, entry and key material never enter it. Status identifiers still need
+host access/retention controls. A failed display callback cannot change a confirmed result. After confirmation, the panel keeps
+that historical outcome and receipt; `latestAttempt` separately shows a later declined or failed
+check. Render both rather than presenting a check failure as loss of the earlier confirmation.
+
+Hosts must supply their own UI, durable original-request registry, pinned sender/finality ports,
+credential/account isolation, bounded I/O and wallet queue. The controller's busy flag only
+serializes its own calls; it is not a distributed lock or rollback fence. No new-ID retry,
+prepared-state override, cancellation/rollback or operator no-send certificate is provided.
+The demo funding button remains unshielded; #246's broader owner-circuit consent work and
+#269's fenced no-send recovery remain open.
 
 ## Confirmation, limits and privacy
 
@@ -103,7 +181,9 @@ original entry and can set `viewingKeyChanged`; earlier viewing envelopes may be
 confirmed result is the original historical receipt, not a fresh holdings or current-key report.
 The remaining key-rotation/on-chain execution race is still the sender/contract adapter's concern.
 
-Same-ID changed account, amount, color, nonce, network or binding refuses before further work.
+Admission copies coin bytes into owned Uint8Arrays before asynchronous chain or journal work,
+including when a Node caller supplies Buffer inputs. Later caller mutation cannot change the
+admitted coin. Same-ID changed account, amount, color, nonce, network or binding refuses before further work.
 Confirmation timers and poll counts are bounded, and invalid/regressing clocks refuse. The host
 must impose I/O deadlines on injected calls; the library cannot cancel a port that never settles.
 All failures retain the original journal and sender IDs. No automatic new-ID retry is provided.

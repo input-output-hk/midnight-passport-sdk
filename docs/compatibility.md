@@ -1,6 +1,6 @@
 # Compatibility matrix
 
-## Application-to-ACC local candidate — 2026/11/04
+## Application-to-ACC local candidate — 2026/11/05
 
 The local partner tranche adds a verified compiler-dependency export to the
 existing contract package and a constructor-pinned merchant reference that calls
@@ -12,14 +12,15 @@ or package is introduced. These additions are **not in published RC6**.
 | --- | --- | --- |
 | Compiler export | Independent manifest pin, four generated files and all 52circuits' bundled inputs; tamper and existing-output refusal | Publisher provenance from an unsigned local candidate bundle |
 | Merchant client | Public typed account helper, caller commitment, fixed policy, explicit review and actual software signature | Real provider prompt budgets or hosted consent for this new example |
-| Installed application | Four packed SDK packages (public exports); actual caller compilation and generated ACC execution with positive/refusal controls | Native proof/node admission, merchant wallet credit and native atomicity |
+| Installed application | Four packed SDK packages (public exports), caller compilation, actual generated ACC execution and eight compiled controls | Registry/publisher provenance for these local candidates |
+| Native merchant | Proof-backed JubJub unshielded application→ACC payment, distinct recipient credit, both contract states and canonical finality at signed `eb240f6`; seven construction refusals leave full snapshots unchanged | Malicious proof bypass/node rejection, real provider/browser flow, other grantee arms and shielded composition |
 | Wider adoption | Layered package consumption with host-owned orchestration | Arbitrary callee registration, full Lace, generic dApp connection or recovery |
 
 See the [partner guide](site/partner-integration.md),
 [runnable example](../examples/application-acc/README.md) and
 [execution plan](partner-adoption-plan.md). Exact receipts and review results live
 in [the review map](review/partner-contracts/README.md); do not infer a passed run
-from a case definition. Existing published release limits below remain in force.
+from a case definition. Existing published release limits below remain in force. The [native receipt](review/partner-contracts/native-acceptance.json) distinguishes the failed original full suite (with a separately confirmed payment/credit) from the successful continuation using a separate intent. No successful payment was retried. The archived indexer’s prior running state was restored; qualification compute stopped and all volumes remain.
 
 > **Status:** published preview RC6 · local qualification updated 2026/10/30. Releases are lockstep across the
 > `@input-output-hk/mn-passport-*` packages. The binding data is pinned in
@@ -707,3 +708,37 @@ broader integration, browser/provider and repeatability acceptance. RC6 artifact
 Protected-record consolidation and checked store namespaces remain #273; this source requires
 dedicated confidential stores. Key-session prompt budgets remain #245. These limits must not
 be confused with native or provider qualification.
+
+### Local candidate: machine-readable capabilities and owner configuration preflight
+
+`contract/capabilities` and `contract/capabilities.json` describe the pinned 52 proof
+circuits/66 pure helpers, independently of host adoption. `account/preflight` checks
+configured methods/pins for four existing sealed-owner operations on P-256 and
+JubJub; no methods, accessors, lazy imports or key ceremonies run. A complete report
+still requires runtime validation, including binding/profile verification, active
+owner, grant openings, balances, proofs, submission/finality and recipient credit.
+
+These are additive local candidate entries, absent from RC6, not proof of live or
+full Lace/provider compatibility. k256 remains experimental artifact/binding only;
+shielded withdrawal remains exact-value. Other implemented owner flows and sender
+or grant-holder APIs retain their own runtime checks outside this finite preflight
+profile. See [capability guide](site/capabilities.md).
+
+
+### Expanded local partner preflight and journal-session recipe
+
+The candidate proof planner covers the same four sealed-owner operations and both
+owner arms, including inbox/rotation proof sets for read-grant issue and publication
+only for pending recovery. Key-profile checks use real endpoint response shapes,
+explicit requested names and packaged binding pins. All-verifier coverage or a
+profile name cannot stand in for a missing prover; no artifact-integrity/native
+claim follows. Materialized pure-helper presence is inspected; lazy loaders never run.
+
+Actual WebAuthn-adapter + AES-GCM filesystem-journal regressions measure the synthetic
+cold unwrapped/wrapped PRF assertion baseline10/1, held creation outputs0 and later
+same-ID continuation1. Failure/refusal cases release sessions without resending
+unknown dispatches. These are credential API call counts with a software authenticator,
+not visible prompts or provider restoration. Host consent, sender wallet approval,
+bounded I/O and unrelated-operation isolation remain host obligations. The example
+adds no signal/timeout API, background unlock or complete session isolation. See
+issues245/232/269 and the engineer recovery guide. RC6 remains unchanged.

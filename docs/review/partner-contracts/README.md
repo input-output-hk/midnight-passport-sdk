@@ -58,3 +58,40 @@ Capacity has been restored. See the [native preparation and restart incident](na
 for the caller-only keys, worker review corrections, installed declaration check and
 two honestly failed attempts before wallet startup. Native acceptance remains pending;
 the archived indexer must not silently substitute for the owned canonical endpoint.
+
+The [native observation incident](native-observation-incident.md) records an actual
+successful composed payment and read-only wallet-credit recovery at signed source
+`23b1d73`. The original full suite remains failed; remaining negative-case acceptance
+and the distinct continuation must be recorded after execution.
+
+
+## Native local acceptance — 2026-11-05
+
+[Acceptance receipt](native-acceptance.json), [installed byte audit](native-installed-packages.json)
+and [reused proving assets](native-artifacts.json) record reviewed signed source
+`eb240f6203b8a089e989397d6ae9e1e6a51f3516`. The full local gate passed **1,220 tests**,
+seven existing skips and zero failures; isolated Codex CLI review found no
+remaining actionable regression and **52 focused cases** passed.
+
+All eight cases in the native lane completed. The positive payment used actual proofs,
+node admission, canonical finality and a distinct merchant wallet credit of **4 base**
+units. The existing ACC changed **8→4** and new merchant payments **0→1**. Six transactions
+were retained before sending and independently finalized; six fulfilled `proveTx`
+requests do not count individual root/callee circuit proofs. All seven negative
+cases refused at build, before proving/submission; full ACC and both merchant
+state hashes remained unchanged. There was no malicious bypass submission or
+node rejection/rollback qualification.
+
+The [original incident](native-observation-incident.md) remains a failed full
+suite at `23b1d73` with a separately successful original payment/credit. The passing
+continuation checks all **16 original** canonical outcomes before a **separate** intent
+using new merchant/grantee/recipient/grant. No original payment/deposit was retried.
+The new live recipient view passed directly; automatic reconnect sequencing has
+unit coverage, while actual cold credit recovery has its separate read-only run.
+
+End source identity and all **21,877 pinned** inputs match. Both wallets stopped,
+all **3 owned** containers stopped, the stable lease was released and the archived
+indexer’s initial running state/image/mounts were restored. All chain/key volumes,
+original failed fixtures, serialized transactions and earlier unknowns remain.
+No ACC key regeneration, upstream binding upgrade, registry release, image/Pages
+publication, real-provider/full-Lace or partial-shielded claim is made.

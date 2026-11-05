@@ -1,0 +1,359 @@
+{
+  "schemaVersion": 1,
+  "kind": "application-to-acc-native-localnet",
+  "date": "2026-11-05",
+  "outcome": "passed-with-retained-failed-predecessors",
+  "sourceCommit": "eb240f6203b8a089e989397d6ae9e1e6a51f3516",
+  "bindingId": "acc-s3r1.1",
+  "bindingSourceCommit": "6458ed5fe6a4843912328bbf11112b97e33abf45",
+  "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "toolchain": {
+    "compact": "0.35.0",
+    "runtime": "0.20.0",
+    "callerZkir": "2.0",
+    "accZkir": "3.1",
+    "ledger": "1.0.0-rc.5",
+    "midnightJs": "5.0.0-rc.2",
+    "walletFacade": "5.0.0-rc.0"
+  },
+  "localGate": {
+    "passed": 1220,
+    "existingSkipped": 7,
+    "failed": 0,
+    "lintFormatBuildAndApplicationTypes": "passed"
+  },
+  "independentReview": {
+    "agent": "Codex CLI",
+    "sourceCommit": "eb240f6203b8a089e989397d6ae9e1e6a51f3516",
+    "baseCommit": "23b1d73f096b3d98108f13d9c70b4aad2e2e2703",
+    "actionableFindings": 0,
+    "isolatedOfflineInstallFreshBuild": true,
+    "focusedCasesPassed": 52
+  },
+  "consumer": {
+    "version": "0.1.0-dev.20261105.merchant.5",
+    "installedCorePackages": 4,
+    "installedFilesAudited": 304,
+    "frozenOfflineLockReplay": true,
+    "workerDeclarationCheck": true,
+    "paymentHelperStrictDeclarationCheck": true,
+    "compiledOfflineCasesPassed": 8,
+    "pinnedInputs": 21877,
+    "configSha256": "8eee3d1399cea825c5099715720729dabb89de257de00e7dfbcbd2c6843ce562"
+  },
+  "originalPayment": {
+    "sourceCommit": "23b1d73f096b3d98108f13d9c70b4aad2e2e2703",
+    "fullSuiteOutcome": "failed-observation-timeout",
+    "canonicalFinality": {
+      "hash": "8493abfb6ace52dda3ec77fdfcc3e04391194bcd4ea0845419e139b35f568314",
+      "height": 22738,
+      "status": "SUCCESS",
+      "blockMatches": true,
+      "belowFinalized": true
+    },
+    "coldWallet": {
+      "synced": true,
+      "creditBaseUnits": "4",
+      "pendingCoins": 0
+    },
+    "accBalanceBaseUnits": "8",
+    "merchantPayments": "1",
+    "wrongMerchantPayments": "0",
+    "all16OriginalTransactionsReconciled": [
+      {
+        "txHash": "3423252bc540e03a06783dd818f52944a1b8f07563e65fb65d226d4d4475966c",
+        "blockHash": "4077a677623597983681097ba5f888c08a23a2b8ec7d3d2fe4ad14ffe3d41bf2",
+        "blockHeight": 22670,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "d7f0d5f9b9a28fe60679cab5071dc084cc09e47206b1b0b96c306eab2f99de01",
+        "blockHash": "37c19a60a260bd2e640854aef3f7c0476f3b4c52ccb28d9eb7548bbc1729a9ca",
+        "blockHeight": 22673,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "fb5e22d8d3227ea66a093f2876a61766a0c4b973dc8729c6a8791df84d46f01e",
+        "blockHash": "83d70533c1c865677899ebecb345475a5b051e4dd7ea97108f9cc8c770a0c0aa",
+        "blockHeight": 22676,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "d5fc4271b4a48bc455af510704eb9e9b2f342d312e4a47971575a07350c62a60",
+        "blockHash": "7e637f05b3a76b258ed2e3e04a1d6db9cc9de5a55ac1ba1da961160b0488a0bc",
+        "blockHeight": 22679,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "29315a8783454ff7699754b0d83629a2d05db15ecdbec0e63cfc6cd2f0c87086",
+        "blockHash": "989723a9d2c933588c1643be1999cdb7094e4c2c41ea4891c4a689faf1311c83",
+        "blockHeight": 22682,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "33a78d89a70a25baead2548bfe019e4d8459ebe7a49bba5762d3a4a21a5fcf37",
+        "blockHash": "abea128c0faacc1f0f27aac19c5ac72b1dd6848cfd4ba8a702d86a9adb823a4a",
+        "blockHeight": 22685,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "a440782af4c2a986ffe9626d4ae25d620f0e22fad9faf880656fd13a6825201a",
+        "blockHash": "22de46dc1647bb08803f4411f6dff2f704dd9102182a3a9187801709f265b0b7",
+        "blockHeight": 22688,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "e02a4fb347c2cee5275dbb10833910b2e48acc7d42e6de8744beb36164cdd65a",
+        "blockHash": "8b4c09dc7f7624ae35cefae0d8e075da1922463b2df60333bb4ee898c939e9d0",
+        "blockHeight": 22691,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "261f03b5d166bfb41dcac84903d5524d390675c386026df663178ddebd0000bf",
+        "blockHash": "d5f8dfdd3a1098cc4924c18563f2c50e0c9ab138f6fcdfe90751b30b3ed91236",
+        "blockHeight": 22694,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "c54cd0e84bf155545f844307742d9799b3bb3e27bf078d017d4e7fa1e7da1831",
+        "blockHash": "b212f2ac39658b8218ec9d57737817543cdce6fdeb1386935fc90177c7f5098e",
+        "blockHeight": 22697,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "513d62c6df1700cf894032ab6c8160a7f19ef66ade9b82d2ae8bab160924e909",
+        "blockHash": "a0967eeef54b4c37c79b8cbc626afc08c84ea088dc0c6967a29e11e6170a9129",
+        "blockHeight": 22701,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "4465afa8603aa52640db58a0c83fe445356d55f30a9585bf54652b9b66ed7ba8",
+        "blockHash": "59351ef096a1068df1c809ff4a66eb9b872314396bf3f4c20a43064c7ca90b19",
+        "blockHeight": 22705,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "f6cdf06534102247b8fdf6ecf1cdca1c321c55f4c3d359869600875d0f71d603",
+        "blockHash": "2f76af1495cb68773272a43a32aa63c791e389dff82208ddbff87a69e6ecc0b0",
+        "blockHeight": 22725,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "0311725baf21036a6dce80a71ce861025f2d30580feff0098f0e1def9f5466f0",
+        "blockHash": "56359b1d56677ea6da351ccf63881e8326c5df4935561957d2e823bea67545b5",
+        "blockHeight": 22728,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "db8b989cf759aeb50423fff07afdaa2da28553dee175a7e782fa3f04e3a37465",
+        "blockHash": "e712b85e43b6851315b010a46e58f3d23242a73160daeca1c35a576e636af4d6",
+        "blockHeight": 22733,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      },
+      {
+        "txHash": "8493abfb6ace52dda3ec77fdfcc3e04391194bcd4ea0845419e139b35f568314",
+        "blockHash": "2fed473f5f97379a892a48b34c588e61e2a792a950aaf969ce19a3ef40f4d18a",
+        "blockHeight": 22738,
+        "finalizedHeight": "22777",
+        "finalizedHash": "289af79d3877c56b7fcd4626da305d5932ef30f755556c29cf91b6a1e77012c2"
+      }
+    ],
+    "originalFixturePreserved": true,
+    "paymentRetried": false
+  },
+  "separateContinuation": {
+    "accountReused": true,
+    "originalOwnerCounterChecked": "1",
+    "newMerchantGranteeRecipientGrant": true,
+    "newDepositTransactions": 0,
+    "startingAccBalanceBaseUnits": "8",
+    "finalAccBalanceBaseUnits": "4",
+    "newRecipientCreditBaseUnits": "4",
+    "merchantPayments": "1",
+    "submittedTransactions": 6,
+    "retainedBeforeSend": 6,
+    "fulfilledProveTxRequests": 6,
+    "proofRequestCountIsNotIndividualCircuitProofCount": true,
+    "observerReconnected": false,
+    "cases": [
+      {
+        "label": "wrong immediate caller",
+        "outcome": "refused",
+        "stage": "build",
+        "proofs": 0,
+        "submissions": 0,
+        "errorSha256": "74a1c28749107fe4374bf112951102b6347127cc2b266c848e9ea475ea8116a8"
+      },
+      {
+        "label": "invalid grant signature",
+        "outcome": "refused",
+        "stage": "build",
+        "proofs": 0,
+        "submissions": 0,
+        "errorSha256": "10835412c8b9e1d12f511c74a132afa05060f17e58a8f4f9cd8fad3c7502012d"
+      },
+      {
+        "label": "module verifier fingerprint substitution",
+        "outcome": "refused",
+        "stage": "build",
+        "proofs": 0,
+        "submissions": 0,
+        "errorSha256": "c0d7a434d5952e362f714834fc4b456ae8147085e68063d3bd1c9a0a77e5a5ca"
+      },
+      {
+        "label": "payment and distinct merchant wallet credit",
+        "outcome": "confirmed",
+        "amount": "4"
+      },
+      {
+        "label": "replayed authorization",
+        "outcome": "refused",
+        "stage": "build",
+        "proofs": 0,
+        "submissions": 0,
+        "errorSha256": "ed910b8e572f8b350156587e9ab4f96509e4617361bb74d762a4f1cb951616f2"
+      },
+      {
+        "label": "business guard after ACC subcall",
+        "outcome": "refused",
+        "stage": "build",
+        "proofs": 0,
+        "submissions": 0,
+        "errorSha256": "71803fc2b12383de5af99fdcff6f21cfce56aebced0709b5082012a0cb0f4bd0"
+      },
+      {
+        "label": "revoked grant",
+        "outcome": "refused",
+        "stage": "build",
+        "proofs": 0,
+        "submissions": 0,
+        "errorSha256": "7cccaa2e345d32b19572ff1ea3902c245e8f723422bc48547deedaec40131a4d"
+      },
+      {
+        "label": "expired grant on indexed chain time",
+        "outcome": "refused",
+        "stage": "build",
+        "proofs": 0,
+        "submissions": 0,
+        "errorSha256": "d7e0ef4e9fa07d0f7730970d4149417ec682ee25333ea9ec244cc13d77795001"
+      }
+    ],
+    "canonicalFinality": [
+      {
+        "finalizedHeight": 22833,
+        "finalizedHash": "4d5235e455381e1070b9a99c2ee091c9e9d8d5cb4beeb8e32bd5b651b97d9d50",
+        "transactions": [
+          {
+            "txHash": "3f1d66ce54f0e216aec2380446904563ac4817ceddb5bc4a2110eb13c0f9258b",
+            "blockHeight": 22781,
+            "blockHash": "806d01a77973b2551c4188d123d5d0db1a33ae7c9eb3c017c51f1c0719350522"
+          }
+        ]
+      },
+      {
+        "finalizedHeight": 22833,
+        "finalizedHash": "4d5235e455381e1070b9a99c2ee091c9e9d8d5cb4beeb8e32bd5b651b97d9d50",
+        "transactions": [
+          {
+            "txHash": "7ac42bb05b8132d609b0328da72f06b37bbea548d137ba1dff11b214f7b320a3",
+            "blockHeight": 22784,
+            "blockHash": "fc48cde30d8ea9bbe8d60d0b0dec79e13d454aac05180ef47394d4cece871e51"
+          }
+        ]
+      },
+      {
+        "finalizedHeight": 22833,
+        "finalizedHash": "4d5235e455381e1070b9a99c2ee091c9e9d8d5cb4beeb8e32bd5b651b97d9d50",
+        "transactions": [
+          {
+            "txHash": "61bfc86823411a327a87b930a6e171b500498d6a1a954e6551f625a79a0a1829",
+            "blockHeight": 22789,
+            "blockHash": "2318797c3136a68a18a3a79ae43e9e44fe2b2c7b7a57328e3deeeb78c913a406"
+          }
+        ]
+      },
+      {
+        "finalizedHeight": 22833,
+        "finalizedHash": "4d5235e455381e1070b9a99c2ee091c9e9d8d5cb4beeb8e32bd5b651b97d9d50",
+        "transactions": [
+          {
+            "txHash": "161a165c64633c3594b7977f00862793b153c8eacf0c73e4bfda0f9184f3b725",
+            "blockHeight": 22794,
+            "blockHash": "c169496d73ae68c06ec6a690a55c1218a95a2d26e19eac4b2cbe7f99209a3e95"
+          }
+        ]
+      },
+      {
+        "finalizedHeight": 22833,
+        "finalizedHash": "4d5235e455381e1070b9a99c2ee091c9e9d8d5cb4beeb8e32bd5b651b97d9d50",
+        "transactions": [
+          {
+            "txHash": "48127c0eeecd92ba12a9796fbb52fd42d967180d08a74a1fd32d0340549e98e3",
+            "blockHeight": 22815,
+            "blockHash": "e8b522fc4af6be945d1ac669b3a61c135676b7f55781665e59c06001cc3a0145"
+          }
+        ]
+      },
+      {
+        "finalizedHeight": 22833,
+        "finalizedHash": "4d5235e455381e1070b9a99c2ee091c9e9d8d5cb4beeb8e32bd5b651b97d9d50",
+        "transactions": [
+          {
+            "txHash": "ef550009e981316f4bd84277ece536603404bbf2e88724bac4603cf245985cda",
+            "blockHeight": 22820,
+            "blockHash": "111a82832669cf99de5c61da1260492dfb2c626fd6096bf3fc6e6544aab5fc57"
+          }
+        ]
+      }
+    ]
+  },
+  "invariants": {
+    "deployedAccVerifierKeysChecked": 52,
+    "maintenanceAuthorityRetired": true,
+    "failedCasesCompareFullAccAndBothMerchantStates": true,
+    "originalFundingExactInputGuardPassedBeforeNodeSend": true,
+    "newFundingSplits": 0,
+    "accProverKeysRegenerated": 0,
+    "privateFixturesAndPriorUnknownsRetained": true,
+    "sourceAndAllPinnedInputsUnchangedAtEnd": true
+  },
+  "cleanup": {
+    "walletsStopped": 2,
+    "ownedContainersStopped": 3,
+    "leaseReleased": true,
+    "archivedIndexerPriorRunningStateRestored": true,
+    "archivedImageAndMountsUnchanged": true,
+    "volumesDeleted": 0,
+    "unrelatedResourcesChanged": 0
+  },
+  "sourceHashes": {
+    "examples/application-acc/qualify-native.mjs": "ae0ca9871ed9ef31e47ff4d8ecd69d5068f354e0737c3200505896ca09965d1b",
+    "examples/application-acc/native-funding.mjs": "1541c481b922705c93992a027cdbc5b5505c0e133ff508d33df68176950156f7",
+    "examples/application-acc/native-observation.mjs": "d4f4a8abde7a0414e0d5500fe146fa1b17b7a284cc59d9045ec8d02ef311d4e9",
+    "examples/application-acc/prepare-payment.mjs": "390008683edb1cf9694608cbdf8de5bfff09e02577ada3bff3c036568671bb0c",
+    "examples/application-acc/contracts/merchant.compact": "5a5bd72b27f4e1a46cfcfeda726ac8297a1d7d95de24fd4857c843c8380ed9cc"
+  },
+  "limitations": [
+    "Local candidate packages, not a registry release; RC6, published images and Pages unchanged.",
+    "JubJub unshielded grant composition only; software owner/grantee keys and synthetic wallet seeds.",
+    "Seven negative cases refuse during construction with zero proveTx calls and zero submissions; no malicious proof bypass or node rollback rejection is qualified.",
+    "The original full suite remains failed; its confirmed payment/credit is separately reconciled, never replayed.",
+    "The continuation live credit view passed directly. Automatic timeout/reconnect sequencing has unit coverage; the original cold reconnect has a separate live read-only receipt.",
+    "No real WebAuthn/PRF provider, browser/native combination, total-loss recovery, full Lace, or partial shielded spend claim."
+  ]
+}
