@@ -3,6 +3,9 @@
 import type { PassportStep } from '@input-output-hk/mn-passport-protocol';
 
 export type ActionId =
+  | 'startSession'
+  | 'endSession'
+  | 'revokeSession'
   | 'create'
   | 'open'
   | 'openAt'
@@ -38,6 +41,9 @@ export type PromptCount = number | readonly [min: number, max: number];
  * - Wallet: 1 with an account open (pinned to its passkey), 2 without (pick, then PRF).
  */
 export const PASSKEY_PROMPTS = {
+  startSession: 1,
+  endSession: 0,
+  revokeSession: 1,
   create: [2, 3],
   open: [1, 2],
   openAt: [1, 2],
@@ -90,6 +96,24 @@ export interface FlowDef {
 const read: StageDef = { id: 'read', label: 'Read the account from the chain' };
 
 export const FLOWS: Record<ActionId, FlowDef> = {
+  startSession: {
+    title: 'Authorize JubJub session',
+    summary:
+      'Review a fixed recipient, asset, caps and 10–30 minute expiry. Your owner passkey issues a scoped grant for a separate PRF-derived session signer.',
+    stages: [{ id: 'authorize', label: 'Derive session key and issue the expiring grant' }],
+  },
+  endSession: {
+    title: 'Lock local session',
+    summary:
+      'Dispose the local session key immediately. This does not revoke its on-chain grant or undo a submitted transaction.',
+    stages: [{ id: 'lock', label: 'Dispose the local signing key' }],
+  },
+  revokeSession: {
+    title: 'Revoke session grant',
+    summary:
+      'Lock the local key, then use a fresh owner passkey ceremony to revoke the grant on chain.',
+    stages: [{ id: 'revoke', label: 'Approve and confirm grant revocation' }],
+  },
   create: {
     title: 'Create account',
     summary: `Creates a passkey, deploys a Passport account for it (about ${DEPLOY_ESTIMATE_S / 60} min, fees sponsored) and installs the passkey as its first device.`,
@@ -273,6 +297,9 @@ export const FLOWS: Record<ActionId, FlowDef> = {
  * at the event's own time. Every other step is noted on the running stage with its duration.
  */
 export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep, string>>>> = {
+  startSession: {},
+  endSession: {},
+  revokeSession: {},
   create: {
     'passkey.create': 'passkey',
     'passkey.prf': 'prf',

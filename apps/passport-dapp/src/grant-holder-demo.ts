@@ -13,7 +13,8 @@ import {
 } from '@input-output-hk/mn-passport-keys';
 import { accModule } from './acc-module.js';
 import { demoValueCall } from './value-call.js';
-import { parseGrantHandoff } from './grant-handoff.js';
+import { parseGrantHandoff, type GrantHandoff } from './grant-handoff.js';
+import type { Authoriser } from '@input-output-hk/mn-passport-account/ports';
 import { BINDING_ID, MANIFEST_SHA256, ORIGIN, RP_ID, SERVICE_URL } from './connector.js';
 import { tracedFetch } from './operation-trace.js';
 import { beforeDemoCeremony } from './consent.js';
@@ -37,37 +38,7 @@ export async function spendDemoGrant(
   const handoff = parseGrantHandoff(text, networkId);
   if (!/^[1-9][0-9]*$/.test(amount) || !/^(0|[1-9][0-9]*)$/.test(spentPrev))
     throw new Error('Enter canonical positive amount and prior spent total.');
-  const config = await fetchCheckedV1Config(
-    SERVICE_URL,
-    {
-      networkId,
-      bindingId: BINDING_ID,
-      manifestSha256: MANIFEST_SHA256,
-      artefactUrl: `${SERVICE_URL}/v1/zk/${BINDING_ID}`,
-    },
-    { fetch: tracedFetch },
-  );
-  const source = createMidnightGrantSource({
-    network: {
-      networkId,
-      bindingId: BINDING_ID,
-      indexerUrl: config.indexerUri,
-      indexerWsUrl: config.indexerWsUri,
-    },
-    binding: accModule,
-    openings: { readReadPublicKey: async () => undefined },
-  });
-  const pure = accModule.pureCircuits;
-  const capabilities = pure as unknown as Record<string, unknown>;
-  if (
-    typeof pure.compute_public_point_with_jubjub !== 'function' ||
-    typeof pure.derive_device_entry_with_jubjub !== 'function' ||
-    typeof capabilities.derive_grant_spent_commit !== 'function' ||
-    typeof capabilities.challenge_withdraw_unshielded_with_grant_jubjub !== 'function' ||
-    typeof capabilities.derive_grant_id_with_jubjub !== 'function' ||
-    typeof capabilities.derive_grant_object_commit !== 'function'
-  )
-    throw new Error('The pinned ACC binding lacks the grant-holder circuits.');
+  const { source, pure } = await demoGrantContext(networkId);
   const intent = {
     account: handoff.account,
     grantId: handoff.grantId,
@@ -107,4 +78,67 @@ export async function spendDemoGrant(
     grantee,
     review,
   });
+}
+
+async function demoGrantContext(networkId: string) {
+  const config = await fetchCheckedV1Config(
+    SERVICE_URL,
+    {
+      networkId,
+      bindingId: BINDING_ID,
+      manifestSha256: MANIFEST_SHA256,
+      artefactUrl: `${SERVICE_URL}/v1/zk/${BINDING_ID}`,
+    },
+    { fetch: tracedFetch },
+  );
+  const source = createMidnightGrantSource({
+    network: {
+      networkId,
+      bindingId: BINDING_ID,
+      indexerUrl: config.indexerUri,
+      indexerWsUrl: config.indexerWsUri,
+    },
+    binding: accModule,
+    openings: { readReadPublicKey: async () => undefined },
+  });
+  const pure = accModule.pureCircuits;
+  const capabilities = pure as unknown as Record<string, unknown>;
+  if (
+    typeof pure.compute_public_point_with_jubjub !== 'function' ||
+    typeof pure.derive_device_entry_with_jubjub !== 'function' ||
+    typeof capabilities.derive_grant_spent_commit !== 'function' ||
+    typeof capabilities.challenge_withdraw_unshielded_with_grant_jubjub !== 'function' ||
+    typeof capabilities.derive_grant_id_with_jubjub !== 'function' ||
+    typeof capabilities.derive_grant_object_commit !== 'function'
+  )
+    throw new Error('The pinned ACC binding lacks the grant-holder circuits.');
+  return { source, pure };
+}
+
+/** Session spends reuse the scoped holder path and never access browser credentials. */
+export async function spendDemoSessionGrant(
+  handoff: GrantHandoff,
+  grantee: Authoriser,
+  amount: string,
+  spentPrev: string,
+  signal: AbortSignal,
+) {
+  const { source, pure } = await demoGrantContext(handoff.networkId);
+  // The app has already displayed and approved these exact transfer fields.
+  return spendUnshieldedWithGrant(
+    { ...handoff, amount, spentPrev },
+    {
+      pure: pure as unknown as UnshieldedGrantCallPure,
+      source,
+      chain: {
+        call: (request) => demoValueCall(SERVICE_URL, request),
+        readAccount: async () => {
+          throw new Error('Session holder cannot read owner state.');
+        },
+      },
+      grantee,
+      review: async () => !signal.aborted,
+    },
+    { signal },
+  );
 }

@@ -174,6 +174,20 @@ test('declined review and a grant changed after review submit no transaction', a
   );
   assert.equal(calls, 0);
   state = { ...live };
+  let clock = 1000;
+  await assert.rejects(
+    spendUnshieldedWithGrant(intent, {
+      ...base,
+      nowSeconds: () => clock,
+      review: async () => {
+        clock = 2000;
+        return true;
+      },
+    }),
+    { code: 'GrantScopeInvalid' },
+  );
+  assert.equal(calls, 0, 'expiry during a slow review must refuse before submission');
+  state = { ...live };
   await assert.rejects(
     spendUnshieldedWithGrant(intent, {
       ...base,

@@ -11,19 +11,16 @@ const amount = (name: string, value: string): bigint => {
 };
 
 /** The demo exposes one purposefully narrow grant: fixed recipient, asset and spend caps. */
-export function fixedUnshieldedGrant(
+export function fixedUnshieldedGrantLimits(
   networkId: string,
   input: {
-    grantee: string;
     color: string;
     recipient: string;
     perCallCap: string;
     cap: string;
     maxDemoCall: string;
   },
-): GrantScopeInput {
-  if (!/^[0-9a-f]{64}$/.test(input.grantee)) throw new Error('Enter a JubJub grantee public key.');
-  granteePoint(input.grantee);
+): Omit<GrantScopeInput, 'grantee' | 'expiresAt'> {
   if (!/^[0-9a-f]{64}$/.test(input.color)) throw new Error('Select a valid asset.');
   const perCall = amount('Per-call cap', input.perCallCap);
   const total = amount('Total cap', input.cap);
@@ -40,13 +37,24 @@ export function fixedUnshieldedGrant(
     throw new Error(`Enter an unshielded Midnight recipient for ${networkId}.`);
   }
   return {
-    grantee: { scheme: 'jubjub-schnorr', publicKey: input.grantee },
     operations: ['withdraw-unshielded'],
     color: input.color,
     recipient: { kind: 'user-address', value: recipient },
     maxCoinValue: input.cap,
     perCallCap: input.perCallCap,
     cap: input.cap,
+  };
+}
+
+export function fixedUnshieldedGrant(
+  networkId: string,
+  input: Parameters<typeof fixedUnshieldedGrantLimits>[1] & { grantee: string },
+): GrantScopeInput {
+  if (!/^[0-9a-f]{64}$/.test(input.grantee)) throw new Error('Enter a JubJub grantee public key.');
+  granteePoint(input.grantee);
+  return {
+    ...fixedUnshieldedGrantLimits(networkId, input),
+    grantee: { scheme: 'jubjub-schnorr', publicKey: input.grantee },
     expiresAt: null,
   };
 }

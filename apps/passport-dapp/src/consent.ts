@@ -4,6 +4,10 @@ import { FLOWS, type ActionId } from './flows.js';
 import { traceOperation } from './operation-trace.js';
 
 const PURPOSES: Partial<Record<ActionId, string>> = {
+  startSession:
+    'Unlock a separate PRF-derived JubJub session key with this account’s passkey. Review the exact recipient, asset, caps and absolute expiry before owner signatures issue its on-chain grant. Eligible withdrawals use JubJub without more passkey prompts. Critical owner operations still require a fresh passkey ceremony. Session keys stay in page memory only; locking the page is not chain revocation.',
+  revokeSession:
+    'Lock the local session key, then use fresh owner passkey approval to revoke its grant on chain. Confirmed and already-submitted transfers cannot be undone.',
   create:
     'Create and verify a new passkey, unlock its local signing/reader keys, deploy and activate a sponsored ACC, and publish sealed viewing keys. This demo permanently retires maintenance authority: the account cannot later be upgraded. Keep access to this passkey; the demo provides no total-loss recovery.',
   open: 'Identify your passkey and unlock the reader keys needed to open this ACC. This does not approve a withdrawal or connect the separate HD wallet. Interrupted creation may need further signed activation or sealed-key publication.',
@@ -34,7 +38,7 @@ const PURPOSES: Partial<Record<ActionId, string>> = {
   wallet:
     'Derive the separate built-in HD wallet seed from this passkey’s PRF and sync its balances. This is not the ACC viewing secret, fee sponsor wallet or a recovery mechanism. The demo wallet is read-only.',
   withdraw:
-    'Review the exact network, ACC, recipient, asset and base-unit amount before signing an unshielded withdrawal. Reader-key derivation and P-256 signing are separate purposes. A timeout after submission does not mean no transfer.',
+    'An active, matching session uses its scoped JubJub grant after the exact transfer review. Outside its scope, or when you select owner approval, a fresh passkey is required. Review the exact network, ACC, recipient, asset and base-unit amount before signing an unshielded withdrawal. Reader-key derivation and P-256 signing are separate purposes. A timeout after submission does not mean no transfer.',
 };
 
 const CEREMONIES: Record<PasskeyCeremony['purpose'], string> = {

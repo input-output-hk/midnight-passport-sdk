@@ -8,3 +8,4 @@ export { sealInboxCoin } from './inbox-coin.js';
 export * from './mutation-journal.js';
 
 export * from './shielded-deposit-journal.js';
+export * from './session-authoriser.js';

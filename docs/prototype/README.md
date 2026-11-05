@@ -192,3 +192,14 @@ Neither throws, rejections nor stalled telemetry change/delay the public respons
 signer browser qualification also documents a pinned-host navigation limitation: an old-port
 request can remain pending until close; fresh-client consent does not replay it. See the
 [consumer boundary](../site/consumer-integration.md#browser-navigation-and-reconnect-boundary).
+
+## Source increment after RC7: consented sessions
+
+The demo now offers an opt-in 10–30 minute (default 15) PRF-derived JubJub child
+with an owner-approved fixed-recipient/asset, capped, expiring grant. Matching
+unshielded withdrawals use transfer consent without another passkey; critical
+owner actions keep fresh passkey paths. Local lock, hiding the tab and reload
+dispose the signer, not its chain grant. Unknown effects retain a public reload
+fence. See [the session guide](../site/jubjub-sessions.md) for the setup,
+derivation and qualification limits. This is local source work, absent from
+published RC7; no new full Lace/provider/native qualification is claimed.

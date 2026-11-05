@@ -499,6 +499,50 @@
           </li>
         </ul>
       </section>
+      <section class="panel" aria-labelledby="session-title">
+        <h2 id="session-title">Consented JubJub session</h2>
+        <p>
+          Use the withdrawal asset and recipient above for a capped, expiring grant. The session
+          authorizes only unshielded transfers to that recipient. Owner administration always uses a
+          fresh passkey. Your account is not given another owner.
+        </p>
+        <label for="session-minutes">Absolute session lifetime</label>
+        <select id="session-minutes">
+          <option value="10">10 minutes</option>
+          <option value="15" selected>15 minutes</option>
+          <option value="30">30 minutes</option>
+        </select>
+        <label for="session-per-call">Per-transfer cap (smallest units)</label>
+        <input id="session-per-call" type="text" inputmode="numeric" value="1" />
+        <label for="session-cap">Total session cap (smallest units)</label>
+        <input id="session-cap" type="text" inputmode="numeric" value="5" />
+        <label
+          ><input id="session-use" type="checkbox" checked /> Use an active matching session for
+          withdrawals</label
+        >
+        <p id="session-state" role="status" aria-live="polite">
+          Locked. No session key is retained.
+        </p>
+        <button id="startSession" class="btn btn-secondary" type="button" disabled>
+          Authorize JubJub session
+        </button>
+        <p id="startSession-prompts" class="prompts"></p>
+        <p id="startSession-desc" class="action-desc"></p>
+        <button id="endSession" class="btn btn-secondary" type="button">Lock local session</button>
+        <p id="endSession-prompts" class="prompts"></p>
+        <p id="endSession-desc" class="action-desc"></p>
+        <button id="revokeSession" class="btn btn-secondary" type="button" disabled>
+          Revoke session grant
+        </button>
+        <p id="revokeSession-prompts" class="prompts"></p>
+        <p id="revokeSession-desc" class="action-desc"></p>
+        <p>
+          Local lock, hidden tab, reload or expiry disposes the local key. A copied key can still
+          exercise the grant until on-chain expiry or confirmed revocation. Never rely on a browser
+          timer to revoke chain authority. Renew by revoking the previous grant, then approving a
+          new one.
+        </p>
+      </section>
       <section class="panel" aria-labelledby="capability-title">
         <h2 id="capability-title">SDK capabilities and proof plans</h2>
         <p id="capability-summary"></p>

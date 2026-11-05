@@ -19,9 +19,9 @@ import {
 } from './connector.js';
 import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS, knownAccAddress } from './flows.js';
 import { withdrawalRequest } from './withdrawal.js';
-import { fixedUnshieldedGrant } from './grant-input.js';
+import { fixedUnshieldedGrant, fixedUnshieldedGrantLimits } from './grant-input.js';
 import { prepareGranteePasskey } from './grantee-passkey.js';
-import { spendDemoGrant } from './grant-holder-demo.js';
+import { spendDemoGrant, spendDemoSessionGrant } from './grant-holder-demo.js';
 import { parseGrantHandoff } from './grant-handoff.js';
 import { MidnightBech32m, UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
 import { Buffer } from 'buffer';
@@ -33,6 +33,9 @@ import { readWalletBalances } from './wallet/balances.js';
 import { walletSeed } from './wallet/seed.js';
 import { beforeDemoCeremony, finishDemoConsent, reviewDemoAction } from './consent.js';
 import { showDemoCapabilities } from './capabilities.js';
+import { createDemoSession } from './session.js';
+import { unlockDemoSessionKey } from './session-key.js';
+import { sessionCheckpoint } from './session-checkpoint.js';
 
 installShim();
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
@@ -89,6 +92,65 @@ let devWallet: DevWallet | undefined;
 let account: PassportAccount | undefined;
 let balanceAssetColor: string | undefined;
 const fundingUrl = new URL('/v1/demo/funding', SERVICE_URL);
+const session = createDemoSession({
+  checkpoint: sessionCheckpoint(localStorage, network, BINDING_ID),
+  unlock: unlockDemoSessionKey,
+  opening: exportDemoGrantOpening,
+  spend: spendDemoSessionGrant,
+  changed(snapshot) {
+    const {
+      status: phase,
+      account: address,
+      grantId,
+      expiresAt,
+      color,
+      recipient,
+      perCallCap,
+      cap,
+      spent,
+      txHash,
+    } = snapshot;
+    document.getElementById('session-state')!.textContent =
+      `${phase.toUpperCase()}. ` +
+      (grantId ? `Grant ${grantId}. ` : '') +
+      (address ? `ACC ${address}. ` : '') +
+      (expiresAt ? `Expires ${new Date(expiresAt).toISOString()}. ` : '') +
+      (cap
+        ? `Spent ${spent} / ${cap}; per transfer ${perCallCap}. Asset ${color}; recipient ${recipient}. `
+        : '') +
+      (phase === 'blocked'
+        ? 'Reconcile the original transaction before any retry; the local key is locked.'
+        : phase === 'locked' || phase === 'expired'
+          ? 'Local key disposed. Any chain grant remains until expiry or confirmed revocation.'
+          : '');
+    traceOperation('session.state', {
+      phase,
+      accountAddress: address,
+      grantId,
+      expiresAt,
+      color,
+      recipient,
+      perCallCap,
+      cap,
+      spent,
+      txHash,
+    });
+  },
+});
+const sessionUse = () => (document.getElementById('session-use') as HTMLInputElement).checked;
+setInterval(() => {
+  const current = session.snapshot();
+  const countdown = document.getElementById('session-title')!;
+  countdown.textContent =
+    current.status === 'active' && current.expiresAt
+      ? `Consented JubJub session — ${Math.max(0, Math.ceil((current.expiresAt - Date.now()) / 60_000))} min remaining`
+      : 'Consented JubJub session';
+}, 1000);
+window.addEventListener('pagehide', () => session.lock());
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) session.lock();
+});
+
 async function refreshAccountBalances(
   address: string,
 ): Promise<{ night: string; fundedAsset: string } | undefined> {
@@ -153,6 +215,7 @@ const connector = async () => {
   return (api ??= await descriptor.connect(network));
 };
 const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult) => {
+  session.lock();
   account = a;
   stage('read');
   const state = await a.state();
@@ -782,6 +845,52 @@ ui.on('fund', async () => {
     `Passport account balance: ${result.creditedBalance} ${asset.color === '00'.repeat(32) ? 'NIGHT smallest units' : 'test token units'}. Transaction ${result.txId.slice(0, 12)}…`,
   );
 });
+ui.on('startSession', async () => {
+  const current = account;
+  if (!current?.credentialId) throw new Error('Open your passkey-backed ACC first.');
+  const input = ui.withdrawalInput();
+  const minutes = Number((document.getElementById('session-minutes') as HTMLSelectElement).value);
+  // Validate asset, recipient and limits before any credential access.
+  const scope = fixedUnshieldedGrantLimits(network, {
+    ...input,
+    perCallCap: (document.getElementById('session-per-call') as HTMLInputElement).value,
+    cap: (document.getElementById('session-cap') as HTMLInputElement).value,
+    maxDemoCall: ui.withdrawalCallLimit(),
+  });
+  if (!Number.isInteger(minutes) || minutes < 10 || minutes > 30)
+    throw new Error('Choose 10–30 minutes.');
+  if (
+    !window.confirm(
+      `Authorize a scoped JubJub session?\n\nACC: ${current.address}\nNetwork: ${network}\nAsset: ${scope.color}\nRecipient: ${input.recipient}\nPer transfer: ${scope.perCallCap}\nTotal cap: ${scope.cap} smallest units\nAbsolute lifetime: ${minutes} minutes from authorization start (including proving).\n\nUnlock with the account passkey, then approve owner signatures to issue the grant. No owner or read authority is delegated. Critical actions still require your passkey. A copied key may spend until chain expiry or confirmed revocation.`,
+    )
+  ) {
+    status('Session authorization declined before passkey access.');
+    return;
+  }
+  await session.start(current, scope, minutes, RP_ID, { onEvent });
+  status(
+    'JubJub session active. Matching withdrawals need transfer consent, with no new passkey prompt.',
+  );
+});
+ui.on('endSession', async () => {
+  session.lock();
+  status(
+    'Local session locked. Its on-chain grant is not revoked; already-submitted effects still require reconciliation.',
+  );
+});
+ui.on('revokeSession', async () => {
+  if (!account) throw new Error('Open the issuing ACC first.');
+  const snapshot = session.snapshot();
+  if (
+    !window.confirm(
+      `Revoke session grant ${snapshot.grantId ?? '(unknown; reconcile the original issue)'} for ACC ${account.address}?\n\nThis requires fresh owner passkey approval and does not undo transfers.`,
+    )
+  )
+    return;
+  const result = await session.revoke(account, { onEvent });
+  record('sessionRevoked', { grantId: snapshot.grantId, txHash: result.txHash });
+  status('Session grant revoked on chain. Authorize a new session to renew.');
+});
 ui.on('withdraw', async () => {
   if (!account?.withdrawUnshielded || !balanceAssetColor)
     throw new Error('Open a supported Passport account and enable localnet balances first.');
@@ -817,8 +926,14 @@ ui.on('withdraw', async () => {
     recipientHex: transfer.recipient,
     freshBalance,
   });
+  if (session.snapshot().status === 'blocked')
+    throw new Error(
+      'Reconcile the original session transaction and revoke its grant before another withdrawal. No owner fallback is allowed.',
+    );
+  const useSession = sessionUse() && session.matches(current, transfer);
+  const route = useSession ? 'scoped JubJub session (no passkey prompt)' : 'fresh owner passkey';
   const confirmed = window.confirm(
-    `Withdraw from Passport ACC?\n\nNetwork: ${network}\nACC: ${current.address}\nAsset color: ${transfer.color}\nAmount: ${transfer.amount} smallest units\nFresh ACC balance: ${freshBalance}\nRecipient: ${input.recipient.trim()}\n\nConfirm this destination and amount before the passkey prompt.`,
+    `Authorization: ${route}\n\nWithdraw from Passport ACC?\n\nNetwork: ${network}\nACC: ${current.address}\nAsset color: ${transfer.color}\nAmount: ${transfer.amount} smallest units\nFresh ACC balance: ${freshBalance}\nRecipient: ${input.recipient.trim()}\n\nConfirm this destination, amount and authorization route before signing.`,
   );
   if (!confirmed) {
     status('Withdrawal cancelled before signing.');
@@ -826,8 +941,15 @@ ui.on('withdraw', async () => {
     return;
   }
   stage('submit');
-  status('Confirm the owner withdrawal with your passkey; proving and submission may take time…');
-  const result = await withdrawUnshielded(transfer, { onEvent });
+  status(
+    useSession
+      ? 'Signing the scoped withdrawal with the active JubJub session…'
+      : 'Confirm the owner withdrawal with your passkey; proving and submission may take time…',
+  );
+  // A failed/unknown session spend never falls back to an owner send.
+  const result = useSession
+    ? { ...(await session.spend(current, transfer)), nextUseCounter: undefined }
+    : await withdrawUnshielded(transfer, { onEvent });
   record('withdrawal', {
     accountAddress: current.address,
     networkId: network,
@@ -843,7 +965,10 @@ ui.on('withdraw', async () => {
     ...transfer,
     recipientAddress: input.recipient.trim(),
     txHash: result.txHash,
-    nextUseCounter: result.nextUseCounter.toString(),
+    authorization: route,
+    ...(result.nextUseCounter !== undefined && {
+      nextUseCounter: result.nextUseCounter.toString(),
+    }),
   });
   const after = await ui.attempt('read', async () => {
     const state = await current.state();

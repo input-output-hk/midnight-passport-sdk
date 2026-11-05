@@ -26,6 +26,7 @@ export interface GrantHandoff {
   readonly maxCoinValue: string;
   readonly perCallCap: string;
   readonly cap: string;
+  readonly expiresAt?: number;
 }
 
 export function grantHandoffFromOpening(
@@ -42,7 +43,7 @@ export function grantHandoffFromOpening(
     !context.withdrawUnshielded ||
     context.perCallCap.toString() !== scope.perCallCap ||
     context.cap.toString() !== scope.cap ||
-    context.expiresAt !== 0n ||
+    context.expiresAt !== BigInt(scope.expiresAt ?? 0) ||
     scope.read === true ||
     scope.operations.length !== 1 ||
     scope.operations[0] !== 'withdraw-unshielded' ||
@@ -68,6 +69,7 @@ export function grantHandoffFromOpening(
     maxCoinValue: scope.maxCoinValue,
     perCallCap: scope.perCallCap,
     cap: scope.cap,
+    ...(scope.expiresAt !== null && { expiresAt: scope.expiresAt }),
   };
 }
 
@@ -98,7 +100,10 @@ export function parseGrantHandoff(text: string, networkId: string): GrantHandoff
     'scopeSalt',
     'slot',
   ];
+  if (value.expiresAt !== undefined) fields.push('expiresAt');
   if (
+    (value.expiresAt !== undefined &&
+      (!Number.isSafeInteger(value.expiresAt) || (value.expiresAt as number) <= 0)) ||
     Object.keys(value).sort().join(',') !== fields.sort().join(',') ||
     value.kind !== 'mn-passport-unshielded-grant-v1' ||
     value.networkId !== networkId ||

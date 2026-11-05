@@ -101,3 +101,29 @@ test('revoked or changed grants cannot be exported as a current opening', () => 
     ),
   );
 });
+
+test('explicit expiry is authenticated and survives a strict handoff without weakening legacy imports', () => {
+  const expiresAt = 2_000;
+  const handoff = grantHandoffFromOpening(
+    { ...staged, scope: { ...staged.scope, expiresAt } },
+    live,
+    { ...context, expiresAt: BigInt(expiresAt) },
+    'undeployed',
+    pure,
+  );
+  assert.equal(handoff.expiresAt, expiresAt);
+  assert.deepEqual(parseGrantHandoff(JSON.stringify(handoff), 'undeployed'), handoff);
+  assert.throws(() =>
+    grantHandoffFromOpening(
+      { ...staged, scope: { ...staged.scope, expiresAt } },
+      live,
+      context,
+      'undeployed',
+      pure,
+    ),
+  );
+  for (const expiry of [0, -1, 1.1, '2000', null])
+    assert.throws(() =>
+      parseGrantHandoff(JSON.stringify({ ...handoff, expiresAt: expiry }), 'undeployed'),
+    );
+});

@@ -51,6 +51,9 @@ export interface WalletView {
 }
 
 const ACTIONS: readonly ActionId[] = [
+  'startSession',
+  'endSession',
+  'revokeSession',
   'create',
   'open',
   'openAt',
@@ -188,6 +191,9 @@ export function createUi(
   // --- buttons -----------------------------------------------------------------------------
   const renderButtons = () => {
     const busy = log.current !== undefined;
+    buttons.startSession.disabled = busy || !account || assetsByColor.size === 0;
+    buttons.endSession.disabled = busy;
+    buttons.revokeSession.disabled = busy || !account;
     buttons.create.disabled = busy || !ready;
     buttons.open.disabled = busy || !ready;
     buttons.openAt.disabled = busy || !ready || !/^[0-9a-f]{64}$/.test(knownAddress.value.trim());
@@ -855,6 +861,7 @@ export function createUi(
     selectedFundingAsset() {
       return assetsByColor.get(fundingSelect.value);
     },
+    withdrawalCallLimit: () => assetsByColor.get(withdrawalSelect.value)?.amount ?? '0',
     withdrawalInput() {
       return {
         color: withdrawalSelect.value,

@@ -27,6 +27,21 @@ const failures: string[] = [];
 const pageErrors: string[] = [];
 const credentialFailureCodes: string[] = [];
 const ceremonyPurposesByArm: Record<string, string[]> = {};
+const archivedPurposes: Record<string, string[]> = {};
+async function archiveObservations(page: Page, arm: string) {
+  const saved = await page.evaluate(() => {
+    const w = window as unknown as {
+      __passportPurposeObservations?: { purpose: string }[];
+      __passportPurposeFailureCodes?: string[];
+    };
+    return {
+      purposes: (w.__passportPurposeObservations ?? []).map((o) => o.purpose),
+      failures: w.__passportPurposeFailureCodes ?? [],
+    };
+  });
+  assert.deepEqual(saved.failures, [], 'reload must not hide any credential observer failure');
+  (archivedPurposes[arm] ??= []).push(...saved.purposes);
+}
 const repoRoot = resolve(appRoot, '../..');
 const started = Date.now();
 const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
@@ -140,6 +155,7 @@ try {
     const fundedIds = new Map<string, number>();
     let unknownFunding = false;
     let unknownWithdrawal = false;
+    let unknownSession = false;
     let serviceUnavailable = false;
     let staleOwnerReads = false;
     let staleReadCount = 0;
@@ -161,7 +177,7 @@ try {
       if (action === 'remove') state.entries = state.entries.filter((e) => e !== request.target);
       if (action === 'issue')
         state.grant = {
-          id: grantId,
+          id: typeof request.grantId === 'string' ? request.grantId : grantId,
           active: true,
           scope: request.scope as Record<string, unknown>,
           spent: 0,
@@ -187,7 +203,10 @@ try {
         if (url.origin === origin && url.pathname === '/__demo-fixture') {
           const data = request.postDataJSON() as Record<string, unknown>;
           const action = String(data.action);
-          if (action === 'withdraw' && unknownWithdrawal) {
+          if (action === 'spend' && unknownSession) {
+            fixture(action, data); // Realistic fake: effect occurred, acknowledgement was lost.
+            await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
+          } else if (action === 'withdraw' && unknownWithdrawal) {
             calls.push('withdraw-unknown');
             await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
           } else {
@@ -275,6 +294,11 @@ try {
             failures.push(`unhandled-network:${url.hostname}`);
           await route.abort();
         }
+      });
+      await context.addInitScript(() => {
+        const nativeNow = Date.now;
+        const clock = window as unknown as { __sessionClockOffset?: number };
+        Date.now = () => nativeNow() + (clock.__sessionClockOffset ?? 0);
       });
       const page = await context.newPage();
       page.on('pageerror', (error) => {
@@ -388,6 +412,7 @@ try {
       await approve(owner, 'create');
       await waitStatus(owner, /is created/);
       done('acknowledged creation and purpose display');
+      await archiveObservations(owner, arm);
       await owner.reload();
       await owner
         .locator('#status')
@@ -571,9 +596,148 @@ try {
       await owner.locator('#refresh').click();
       await waitStatus(owner, /refreshed|unavailable|failed/i);
       done('balance service outage is visible without signing');
+      serviceUnavailable = false;
+      await owner.bringToFront();
+      await owner.locator('#withdraw-recipient').fill(recipient);
+      await owner.locator('#withdraw-amount').fill('1');
+      await owner.locator('#session-cap').fill('2');
+      await owner.locator('#session-per-call').fill('1');
+      const countCredentials = () =>
+        owner.evaluate(
+          () =>
+            (window as unknown as { __passportPurposeObservations: unknown[] })
+              .__passportPurposeObservations.length,
+        );
+      rejectNextDialog = true;
+      await approve(owner, 'startSession');
+      await waitStatus(owner, /authorization declined before passkey/);
+      const beforeAuthorize = await countCredentials();
+      await approve(owner, 'startSession');
+      await waitStatus(owner, /JubJub session active/);
+      assert.ok(
+        (await countCredentials()) > beforeAuthorize,
+        'session issue must freshly access the owner passkey',
+      );
+      assert.equal(state.grant?.scope.expiresAt !== null, true);
+      assert.ok(Number(state.grant?.scope.expiresAt) > Date.now() / 1000);
+      const beforeSessionSpend = await countCredentials();
+      const ownerSendsBefore = calls.filter((c) => c === 'withdraw').length;
+      await approve(owner, 'withdraw');
+      await waitStatus(owner, /Withdrawal confirmed/);
+      assert.equal(
+        await countCredentials(),
+        beforeSessionSpend,
+        'matching session withdrawal uses no credential API',
+      );
+      assert.equal(
+        calls.filter((c) => c === 'withdraw').length,
+        ownerSendsBefore,
+        'session uses holder circuit, not owner path',
+      );
+      assert.equal(state.grant?.spent, 1);
+      done(
+        'consented PRF child session issues an expiring grant and signs without another passkey',
+      );
+      const beforeCritical = await countCredentials();
+      await approve(owner, 'rotate');
+      await waitStatus(owner, /confirmed its new sealed viewing secret/);
+      assert.ok(
+        (await countCredentials()) > beforeCritical,
+        'critical rotation requires a fresh passkey despite an active session',
+      );
+      done('critical owner rotation cannot reuse the cached session signer');
+      await owner.locator('#endSession').click();
+      await waitStatus(owner, /Local session locked/);
+      assert.ok(state.grant?.active, 'local lock is not chain revocation');
+      const beforeAfterLock = await countCredentials();
+      await approve(owner, 'withdraw');
+      await waitStatus(owner, /Withdrawal confirmed/);
+      assert.ok(
+        (await countCredentials()) > beforeAfterLock,
+        'local lock restores owner passkey authorization',
+      );
+      await approve(owner, 'revokeSession');
+      await waitStatus(owner, /Session grant revoked on chain/);
+      assert.equal(state.grant?.active, false);
+      done('local lock erases authority locally and a fresh owner ceremony revokes the grant');
+      await approve(owner, 'startSession');
+      await waitStatus(owner, /JubJub session active/);
+      await owner.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); // visible page: no lock
+      await owner.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide')));
+      assert.match(await owner.locator('#session-state').innerText(), /LOCKED/);
+      const storedSession = await owner.evaluate(() =>
+        localStorage.getItem('passport-demo:session:v1:undeployed:acc-s3r1.1'),
+      );
+      assert.ok(
+        storedSession && !/scopeSalt|sessionId|private|authoriser|seed|secret/.test(storedSession),
+        'only public metadata is retained',
+      );
+      await archiveObservations(owner, arm);
+      await owner.reload();
+      await owner
+        .locator('#status')
+        .filter({ hasText: /^Ready\./ })
+        .waitFor();
+      await observeCredentialAccess(owner);
+      assert.match(await owner.locator('#session-state').innerText(), /LOCKED/);
+      await approve(owner, 'open');
+      await waitStatus(owner, /opened/);
+      await approve(owner, 'revokeSession');
+      await waitStatus(owner, /Session grant revoked on chain/);
+      done('pagehide/reload retains public grant metadata without restoring a signing session');
+      await owner.locator('#withdraw-recipient').fill(recipient);
+      await owner.locator('#withdraw-amount').fill('1');
+      await approve(owner, 'startSession');
+      await waitStatus(owner, /JubJub session active/);
+      await owner.evaluate(() => {
+        (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 16 * 60_000;
+      });
+      await owner.waitForFunction(() =>
+        document.getElementById('session-state')!.textContent!.includes('EXPIRED'),
+      );
+      await owner.evaluate(() => {
+        (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 0;
+      });
+      await approve(owner, 'revokeSession');
+      await waitStatus(owner, /Session grant revoked on chain/);
+      done('absolute session expiry disposes the signer and requires fresh owner authorization');
+      await approve(owner, 'startSession');
+      await waitStatus(owner, /JubJub session active/);
+      unknownSession = true;
+      await approve(owner, 'withdraw');
+      await waitStatus(owner, /failed\./, /Synthetic session outcome unknown/);
+      const sendsAfterUnknown = calls.filter((c) => c === 'spend' || c === 'withdraw').length;
+      unknownSession = false;
+      await approve(owner, 'withdraw');
+      await waitStatus(owner, /failed\./, /Reconcile the original session transaction/);
+      assert.equal(
+        calls.filter((c) => c === 'spend' || c === 'withdraw').length,
+        sendsAfterUnknown,
+        'unknown session never falls back or retries',
+      );
+      await archiveObservations(owner, arm);
+      await owner.reload();
+      await owner
+        .locator('#status')
+        .filter({ hasText: /^Ready\./ })
+        .waitFor();
+      await observeCredentialAccess(owner);
+      assert.match(await owner.locator('#session-state').innerText(), /BLOCKED/);
+      await approve(owner, 'open');
+      await waitStatus(owner, /opened/);
+      await owner.locator('#withdraw-recipient').fill(recipient);
+      await approve(owner, 'withdraw');
+      await waitStatus(owner, /failed\./, /Reconcile the original session transaction/);
+      assert.equal(
+        calls.filter((c) => c === 'spend' || c === 'withdraw').length,
+        sendsAfterUnknown,
+        'page reload retains uncertainty fence',
+      );
+      done('lost session spend acknowledgement blocks retry and owner fallback across page reload');
+
       assert.equal(failures.length, 0, failures.join(', '));
       assert.equal(pageErrors.length, 0, pageErrors.join(', '));
-      const observedPurposes = new Set<string>();
+      const observedPurposes = new Set<string>(archivedPurposes[arm] ?? []);
       for (const context of contexts)
         for (const page of context.pages()) {
           const observations = await page.evaluate(
@@ -668,6 +832,7 @@ try {
           'ceremony hooks',
           'handoff parsing',
           'capability/proof planner',
+          'PRF-derived bounded session controller and generated JubJub signature/holder guards',
         ],
         simulated: ['account API', 'chain', 'funding', 'grant settlement', 'wallet balances'],
         nativeProofs: false,
