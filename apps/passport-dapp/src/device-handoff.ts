@@ -1,4 +1,5 @@
 import { webauthnPasskey, webauthnPolicy } from '@input-output-hk/mn-passport-adapter-webauthn';
+import type { PasskeyCeremonyOptions } from '@input-output-hk/mn-passport-adapter-webauthn';
 import {
   recipeDeviceKeyring,
   recipeJubjubAuthoriser,
@@ -55,12 +56,18 @@ export async function prepareDeviceHandoff(
   accountAddress: string,
   networkId: string,
   arm: 'p256' | 'jubjub',
-  options: { bindingId: string; rpId: string; origin: string; credentials?: CredentialsContainer },
+  options: PasskeyCeremonyOptions & {
+    bindingId: string;
+    rpId: string;
+    origin: string;
+    credentials?: CredentialsContainer;
+  },
 ): Promise<WireHandoff> {
   if (!ADDRESS.test(accountAddress)) throw new Error('Enter the target ACC address first.');
   const passkey = webauthnPasskey({
     rpId: options.rpId,
     origin: options.origin,
+    beforeCeremony: options.beforeCeremony,
     ...(options.credentials && { credentials: options.credentials }),
   });
   await passkey.credentials.create({ name: 'Midnight Passport joining device' });

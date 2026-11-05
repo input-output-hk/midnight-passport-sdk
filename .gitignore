@@ -9,6 +9,7 @@ lib/
 
 # Test / coverage
 coverage/
+/review/
 .cache/
 *.lcov
 .nyc_output/

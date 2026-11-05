@@ -159,3 +159,19 @@ reconnect/reconciliation behavior; this qualifier correction is not an upstream
 wallet SDK fix. Review/merge the coherent local tranche before publishing a new
 RC. #232/#240/#242 real-provider/recovery/connection work and #201 partial shielded
 spends remain separate. Published RC6, images and Pages are unchanged.
+
+## Owner-approved RC7 finalization — 2026-11-05
+
+PR278 is merged as `7a077d9`. The owner approved implementing the audit follow-ups
+to finalize the next preview. #282 tracks the release; #279 (synthetic Playwright
+journeys), #280 (capability/demo/docs alignment), and the bounded #246 consent
+corrections belong to 0.1.0. Existing #245 cross-operation isolation/provider
+prompt budgets remain broader than this correction. Longer-lived local JubJub
+delegation is separate #281 / 0.2.0; no new owner enrollment or default session
+behavior is enabled. The release remains the nine implemented packages and three
+images, with exact-value shielded guards and explicit provider/recovery limits.
+
+This supersedes the first tranche's historical no-release instruction only for
+the explicitly approved release preparation. Actual publication requires the signed
+source/review, full local/hosted checks, installed artifact/integrity verification
+and exact versions/digests in #282/#236; no preparation receipt is publication.

@@ -21,6 +21,39 @@ shell.
 - [`docs/site/getting-started.md`](docs/site/getting-started.md): library installation and a minimal browser host.
 - [`docs/site/use-cases.md`](docs/site/use-cases.md): demo prerequisites, actions and expected results.
 
+## Next preview candidate: consent and reproducible browser journeys
+
+The candidate adds a review before every key-using action. **Create account** requires
+explicit acknowledgement that the demo permanently retires maintenance authority
+(the ACC cannot later be upgraded). The page explains each ensuing credential
+creation/verification, identification, PRF unlock or P-256 signature before browser
+access. A later exact transaction/device/grant review remains separate. Counts vary
+by provider, retries and transaction count; do not promise one prompt for P-256.
+Declining the initial review starts no credential or account action. Cancellation
+cannot undo submitted effects; preserve original IDs and reconcile unknowns.
+
+**SDK capabilities and proof plans** is advisory public-package inspection. It does
+not load a credential or call a prover, and does not certify runtime readiness.
+See [consent](docs/site/consent.md) and the
+[use-case evidence map](docs/site/use-case-coverage.md).
+
+Run all existing action-button journeys with synthetic credentials and a synthetic
+account/chain driver, without a running demo or Docker:
+
+```sh
+nix develop -c pnpm run build
+nix develop -c pnpm test:demo-browser
+```
+
+Chrome must be installed (`CHROME_BIN` may select it). The runner owns an ephemeral
+Vite server and fresh browser contexts; intercepted localhost:5173 requests never
+reach an existing demo. This is UI/consent coverage, not native proof/provider
+acceptance. Both owner-arm selections run. Receipts use fresh ignored `review/`
+paths. `nix develop -c pnpm test:coverage` separately records loaded-package
+JavaScript line/function/branch coverage; it is outside fast required CI.
+Longer-lived local JubJub session grants remain a proposed opt-in feature (#281),
+not another silently enrolled owner or a current demo capability.
+
 ## 1. What you need
 
 | Requirement                                                                                                     | Why                                                                                                         |

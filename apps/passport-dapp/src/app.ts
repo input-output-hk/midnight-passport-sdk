@@ -31,6 +31,8 @@ import { createUi } from './ui.js';
 import type { DevWallet, DevWalletConnectedApi } from './wallet/dev-wallet.js';
 import { readWalletBalances } from './wallet/balances.js';
 import { walletSeed } from './wallet/seed.js';
+import { beforeDemoCeremony, finishDemoConsent, reviewDemoAction } from './consent.js';
+import { showDemoCapabilities } from './capabilities.js';
 
 installShim();
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
@@ -57,6 +59,16 @@ const ui = createUi(
     ...(apiVersion !== undefined && { apiVersion }),
   },
   ARM,
+  {
+    before: (action) =>
+      reviewDemoAction(action, {
+        network,
+        arm: ARM,
+        account: account?.address,
+        target: ui.knownAddress(),
+      }),
+    after: finishDemoConsent,
+  },
 );
 if (ARM === 'jubjub') {
   const note = document.getElementById('key-note');
@@ -70,6 +82,7 @@ if (recoveryNote)
     ' Keep the original passkey: another enrolled reader cannot recover its grant openings. If an owner operation is interrupted, reconcile its transactions before retrying.';
 const { status, stage, record, event: onEvent } = ui;
 setOperationTraceSink(ui.trace);
+showDemoCapabilities(ARM);
 
 let api: PassportConnectorAPI | undefined;
 let devWallet: DevWallet | undefined;
@@ -277,6 +290,7 @@ ui.on('prepareJoiner', async () => {
     bindingId: BINDING_ID,
     rpId: RP_ID,
     origin: ORIGIN,
+    beforeCeremony: beforeDemoCeremony,
   });
   ui.showHandoff(handoff);
   record('joiningDevicePublicHandoff', {
@@ -325,7 +339,11 @@ ui.on('prepareGrantee', async () => {
   const target = knownAccAddress(ui.knownAddress());
   stage('passkey');
   status('Creating a separate grant-holder passkey and deriving its public JubJub key…');
-  const publicKey = await prepareGranteePasskey({ rpId: RP_ID, origin: ORIGIN });
+  const publicKey = await prepareGranteePasskey({
+    rpId: RP_ID,
+    origin: ORIGIN,
+    beforeCeremony: beforeDemoCeremony,
+  });
   ui.showGranteePublicKey(publicKey);
   record('granteePublicKey', { accountAddress: target, publicKey });
   traceOperation('grant.holder.prepared', { accountAddress: target, publicKey });
@@ -870,7 +888,11 @@ async function connectBuiltInWallet(): Promise<void> {
       ? "Confirm with this account's passkey to derive the wallet seed (PRF)…"
       : 'Choose your passkey, then confirm again to derive the wallet seed (PRF)…',
   );
-  const seed = await walletSeed({ rpId: RP_ID, accountCredentialId: account?.credentialId });
+  const seed = await walletSeed({
+    rpId: RP_ID,
+    accountCredentialId: account?.credentialId,
+    beforeCeremony: beforeDemoCeremony,
+  });
   traceOperation('wallet.seed.derived', {
     source: 'passkey PRF (Lace recipe v1)',
     accountPinned: !!account,

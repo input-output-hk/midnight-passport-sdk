@@ -15,6 +15,7 @@ import {
 } from './webauthn.js';
 import { holdCreatePrf } from './create-prf.js';
 import { lacePrfSalts, PRF_UNSUPPORTED_AT_CREATE, wrongPasskey } from './prf.js';
+import { beforePasskeyCeremony, type PasskeyCeremonyOptions } from './ceremony.js';
 
 /** WebAuthn L3 `hints`, which TypeScript's DOM lib does not declare yet. */
 type CreationOptionsWithHints = PublicKeyCredentialCreationOptions & {
@@ -22,11 +23,13 @@ type CreationOptionsWithHints = PublicKeyCredentialCreationOptions & {
 };
 
 /** wa-json134 passkeys; the private key never leaves the authenticator (spec §4.4). */
-export function browserPasskey(opts: {
-  rpId: string;
-  origin: string;
-  credentials?: CredentialsContainer;
-}): PasskeySeam {
+export function browserPasskey(
+  opts: PasskeyCeremonyOptions & {
+    rpId: string;
+    origin: string;
+    credentials?: CredentialsContainer;
+  },
+): PasskeySeam {
   const policy = webauthnPolicy(opts.rpId, opts.origin);
   const container = () => opts.credentials ?? navigator.credentials;
   // Chromium deliberately adds this GREASE member to roughly one in five assertions. The
@@ -41,6 +44,7 @@ export function browserPasskey(opts: {
   const getCanonical = async (
     publicKey: PublicKeyCredentialRequestOptions,
     credentialId?: Uint8Array,
+    purpose: 'verify-created' | 'identify' | 'sign' = 'identify',
   ): Promise<{ id: Uint8Array; proof: WebAuthnAssertion }> => {
     const challenge = publicKey.challenge;
     const expected = clientDataJSON(
@@ -50,6 +54,7 @@ export function browserPasskey(opts: {
       policy.origin,
     );
     for (let attempt = 0; attempt < 5; attempt++) {
+      await beforePasskeyCeremony(opts, purpose, attempt + 1);
       const got = (await container().get({ publicKey })) as PublicKeyCredential | null;
       if (!got)
         throw new PassportConnectorError('UserCancelled', 'The passkey prompt was cancelled.');
@@ -86,6 +91,7 @@ export function browserPasskey(opts: {
   const assertion = async (
     credentialId: Uint8Array,
     challenge: Uint8Array,
+    purpose: 'verify-created' | 'sign',
   ): Promise<WebAuthnAssertion> => {
     return (
       await getCanonical(
@@ -96,6 +102,7 @@ export function browserPasskey(opts: {
           allowCredentials: [{ type: 'public-key', id: new Uint8Array(credentialId) }],
         },
         credentialId,
+        purpose,
       )
     ).proof;
   };
@@ -130,6 +137,7 @@ export function browserPasskey(opts: {
           // PRF only for credentials created with the extension, and some evaluate it right away.
           extensions: { prf: { eval: lacePrfSalts() } },
         };
+        await beforePasskeyCeremony(opts, 'create');
         const credential = (await container().create({
           publicKey: options,
         })) as PublicKeyCredential | null;
@@ -170,7 +178,7 @@ export function browserPasskey(opts: {
         // Enrolment probe: one throwaway assertion proves this authenticator produces the exact
         // wa-json134 material (flags, 37-byte authData, origin, ES256) before anything is deployed.
         const challenge = crypto.getRandomValues(new Uint8Array(32));
-        const probe = await assertion(credentialId, challenge);
+        const probe = await assertion(credentialId, challenge, 'verify-created');
         try {
           assertionMaterial(challenge, policy, publicKey, probe);
         } catch (e) {
@@ -221,7 +229,7 @@ export function browserPasskey(opts: {
           challenge,
           credential.policy,
           credential.publicKey,
-          await assertion(credential.credentialId, challenge),
+          await assertion(credential.credentialId, challenge, 'sign'),
         );
         return { authenticator_data: material.authenticator_data, sig: material.sig };
       } catch (e) {

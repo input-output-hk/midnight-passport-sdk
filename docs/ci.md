@@ -170,3 +170,19 @@ aggregate 3 s. This workflow is carried into the foundation PR so dependent PRs
 also use the bounded lanes. These are observed runs, not a universal cold-cache
 timing guarantee; proof/outage matrices remain opt-in.
 
+
+## Candidate deterministic demo browser lane — 2026-11-05
+
+PR checks now include a separate `demo_browser` job and require its success in the
+existing aggregate gate. It runs actual runner Chrome, fresh package outputs and
+26 grouped scenarios across both owner-arm selections using synthetic connector,
+chain and wallet drivers. The real UI, mock credential API, consent hooks, handoff
+parsing and public capability planner execute. Each authenticated action is also
+declined before its successful attempt. No key generation, native proof, browser
+download, credential/provider access or Docker stack is needed. Job summaries retain
+the explicit scope/fingerprint receipt; no private mock state is exported.
+
+It reuses the frozen dependency cache and builds outputs freshly. The target stays
+30–45 seconds per warm job, subject to actual hosted measurement after push. Slow
+native/provider lanes remain separate. `pnpm test:coverage` is an opt-in Node/V8
+package-only measurement, not added to fast required jobs or an arbitrary threshold.

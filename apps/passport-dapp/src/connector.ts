@@ -27,6 +27,7 @@ import { tracedFetch } from './operation-trace.js';
 import { browserAccountRecords, browserGrantJournal } from './grant-journal.js';
 import { demoValueCall } from './value-call.js';
 import { grantHandoffFromOpening, type GrantHandoff } from './grant-handoff.js';
+import { beforeDemoCeremony } from './consent.js';
 
 export const SERVICE_URL = import.meta.env.VITE_PASSPORT_SERVICE_URL ?? 'http://localhost:8787';
 /** The artefact manifest hash this build pins (R18); the service's /v1/config is checked against it. */
@@ -162,7 +163,7 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
     arm: ARM,
     network,
     binding: async () => (await import('./acc-module.js')).accModule,
-    passkey: { rpId: RP_ID, origin: ORIGIN },
+    passkey: { rpId: RP_ID, origin: ORIGIN, beforeCeremony: beforeDemoCeremony },
     prover: remoteV1Prover(SERVICE_URL, { fetch: tracedFetch }),
     sponsor,
     sponsorKeys: config,

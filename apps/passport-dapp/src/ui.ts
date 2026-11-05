@@ -100,7 +100,11 @@ export const shorten = (value: string, head = 8, tail = 6): string =>
 
 const formatAmount = (v: bigint) => v.toLocaleString('en-GB');
 
-export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256') {
+export function createUi(
+  header: EvidenceHeader,
+  arm: 'p256' | 'jubjub' = 'p256',
+  consent?: { before(action: ActionId): Promise<boolean>; after(): void },
+) {
   const log = new EventLog();
   const buttons = Object.fromEntries(ACTIONS.map((a) => [a, byId<HTMLButtonElement>(a)])) as Record<
     ActionId,
@@ -164,9 +168,9 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
   const renderPrompts = () => {
     for (const action of ACTIONS) {
       byId(`${action}-prompts`).textContent =
-        action === 'create' || action === 'open' || action === 'openAt'
-          ? 'Passkey prompts vary by provider and account state.'
-          : promptLabel(promptsFor(action, !!account));
+        promptsFor(action, !!account) === 0
+          ? promptLabel(0)
+          : 'Passkey prompts vary by purpose, provider and transaction count.';
     }
   };
 
@@ -740,6 +744,11 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
         if (log.current) return;
         log.start(action);
         try {
+          if (consent && !(await consent.before(action))) {
+            status('Operation declined before passkey access or submission.');
+            log.finish();
+            return;
+          }
           await fn();
           log.finish();
         } catch (e) {
@@ -747,6 +756,7 @@ export function createUi(header: EvidenceHeader, arm: 'p256' | 'jubjub' = 'p256'
           log.fail(err);
           status(`${FLOWS[action].title} failed. ${err.hint} (${err.code})`);
         } finally {
+          consent?.after();
           // The button was disabled while the action ran, which drops focus: give it back.
           if (document.activeElement === document.body && !button.disabled) button.focus();
         }

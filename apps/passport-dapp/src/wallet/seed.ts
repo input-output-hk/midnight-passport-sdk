@@ -1,7 +1,8 @@
 import { PassportConnectorError, toPassportError } from '@input-output-hk/mn-passport-account';
 import { passkeySeed } from '@input-output-hk/mn-passport-adapter-webauthn';
+import type { PasskeyCeremonyOptions } from '@input-output-hk/mn-passport-adapter-webauthn';
 
-export interface WalletSeedOptions {
+export interface WalletSeedOptions extends PasskeyCeremonyOptions {
   rpId: string;
   /**
    * The open account's credential id. When set, the PRF ceremony is pinned to it
@@ -16,6 +17,9 @@ export interface WalletSeedOptions {
 async function pickPasskey(opts: WalletSeedOptions): Promise<Uint8Array> {
   let picked: PublicKeyCredential | null;
   try {
+    await opts.beforeCeremony?.(
+      Object.freeze({ purpose: 'identify', rpId: opts.rpId, attempt: 1 }),
+    );
     picked = (await (opts.credentials ?? navigator.credentials).get({
       publicKey: {
         challenge: crypto.getRandomValues(new Uint8Array(32)),
@@ -41,5 +45,10 @@ async function pickPasskey(opts: WalletSeedOptions): Promise<Uint8Array> {
  */
 export async function walletSeed(opts: WalletSeedOptions): Promise<Uint8Array> {
   const credentialId = opts.accountCredentialId ?? (await pickPasskey(opts));
-  return passkeySeed({ credentialId, rpId: opts.rpId, credentials: opts.credentials });
+  return passkeySeed({
+    credentialId,
+    rpId: opts.rpId,
+    credentials: opts.credentials,
+    beforeCeremony: opts.beforeCeremony,
+  });
 }

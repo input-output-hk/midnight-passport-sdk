@@ -29,7 +29,8 @@ export type ActionId =
 export type PromptCount = number | readonly [min: number, max: number];
 
 /**
- * Passkey prompts per action: the one place to change them.
+ * Historical prompt estimates retained for legacy fixture tests. Nonzero values are NOT
+ * current budgets: the sealed demo displays purposes and provider-dependent notices instead.
  * - Create: 2 (create, verify) when the provider returns PRF at creation, as Google Password
  *   Manager is expected to; otherwise 3 (create, verify, PRF).
  * - Current sealed accounts vary with the provider and publication state; the UI shows a
@@ -317,7 +318,8 @@ export interface PlainError {
 }
 
 const HINTS: Readonly<Record<string, string>> = {
-  UserCancelled: 'The passkey step did not complete. Nothing was submitted.',
+  UserCancelled:
+    'The passkey step did not complete. Earlier transactions may already have been submitted; inspect the operation log and reconcile before retrying.',
   UnsupportedAuthenticator:
     'This passkey cannot derive keys (no PRF support). Use a passkey saved in Google Password Manager or iCloud Keychain.',
   AccountNotFound:

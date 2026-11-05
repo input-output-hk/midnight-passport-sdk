@@ -1,5 +1,10 @@
 # Flows
 
+## Candidate operation review
+
+The next preview starts every key-using action with an explicit operation review; creation requires acknowledgement of permanent maintenance-authority retirement. Before each actual browser access the page displays its purpose: create, verify the new credential, identify, derive keys (PRF), or sign an ACC transaction. Read preparation may precede the later exact transaction review, but follows the initial viewing/key-use approval. Public refresh does not unlock a key. Provider/retry/multi-transaction counts vary; the legacy counts below are not current promises. See [consent](../site/consent.md) and [the use-case/test evidence map](../site/use-case-coverage.md).
+
+
 The current browser composition is in `packages/adapter-browser/src/compose.ts`, with the
 P-256 account flow in `packages/account/src/connector.ts`. The older diagrams below document
 the **historical deterministic-key P-256 prototype** and its recorded X8/X9 runs. The current

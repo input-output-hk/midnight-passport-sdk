@@ -10,6 +10,13 @@ lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](.
 | `passport-funding-service` | Separate wallet-backed process for an authenticated, allowlisted unshielded deposit into a deployed ACC. See its [operations guide](passport-funding-service/README.md). |
 | `passport-dapp`    | The harness at `http://localhost:5173`: create and reopen a Passport account with a passkey, and fund the open ACC when launched with `demo up --funding`. Both arms seal a random ACC viewing secret; roster-safe rotation still needs chain-backed sources. The built-in wallet is separate from the ACC. |
 
+## Candidate consent and browser regression
+
+Every key-using demo action now has an operation review before access. Creation explicitly acknowledges permanent maintenance-authority retirement. The typed WebAuthn `beforeCeremony` hook shows each actual access purpose; exact transaction reviews remain separate, and cancelled/unknown submissions are never described as rolled back. The capability panel inspects proof plans only, not readiness.
+
+Run `nix develop -c pnpm run build` then `nix develop -c pnpm test:demo-browser` for isolated Chromium journeys across both owner-arm selections. This lane needs Chrome but no Docker/provider/live service. It uses the actual UI and mock credential API with synthetic connector/chain/wallet drivers. It owns an ephemeral server and intercepts all requests; it never changes a running demo. See [the use-case evidence map](../docs/site/use-case-coverage.md), [consent guide](../docs/site/consent.md) and separate native/provider recipes.
+
+
 ## Documentation
 
 The prototype's overview, the demo script, the flows, the key derivation and the limitations are in

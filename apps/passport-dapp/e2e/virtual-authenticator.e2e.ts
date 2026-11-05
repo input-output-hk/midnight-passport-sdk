@@ -14,6 +14,13 @@ const browser = await chromium.launch({
   ...(process.env.CHROME_BIN && { executablePath: process.env.CHROME_BIN }),
 });
 
+async function approveAction(page: Page, name: string): Promise<void> {
+  await page.getByRole('button', { name, exact: true }).click();
+  await page.locator('#consent-dialog').waitFor({ state: 'visible' });
+  if (name === 'Create account') await page.locator('#consent-retirement-ack').check();
+  await page.getByRole('button', { name: 'Approve operation', exact: true }).click();
+}
+
 async function waitForStatus(page: Page, success: RegExp, timeout: number) {
   await Promise.race([
     page.locator('#status').filter({ hasText: success }).waitFor({ timeout }),
@@ -98,7 +105,7 @@ async function withAuthenticator(
 
 try {
   await withAuthenticator(false, async (page, _context, events) => {
-    await page.getByRole('button', { name: 'Create account' }).click();
+    await approveAction(page, 'Create account');
     await page
       .locator('#status')
       .filter({ hasText: /UnsupportedAuthenticator/ })
@@ -121,7 +128,7 @@ try {
         configurable: true,
       });
     })()`);
-    await page.getByRole('button', { name: 'Create account' }).click();
+    await approveAction(page, 'Create account');
     await page
       .locator('#status')
       .filter({ hasText: /UserCancelled/ })
@@ -135,7 +142,7 @@ try {
   if (process.env.PASSPORT_VIRTUAL_E2E_FULL === '1') {
     await withAuthenticator(true, async (page, _context, events) => {
       console.log('virtual authenticator: starting full create');
-      await page.getByRole('button', { name: 'Create account' }).click();
+      await approveAction(page, 'Create account');
       console.log(
         'virtual authenticator: clicked create',
         await page.locator('#status').innerText(),
@@ -159,13 +166,13 @@ try {
       assert.match(accountAddress ?? '', /^[0-9a-f]{64}$/);
 
       page.once('dialog', (dialog) => dialog.accept());
-      await page.getByRole('button', { name: 'Rotate sealed viewing key' }).click();
+      await approveAction(page, 'Rotate sealed viewing key');
       await waitForStatus(page, /confirmed its new sealed viewing secret/, 240_000);
       assert.ok(events.asserted > afterCreateAssertions, 'rotation required owner assertions');
       const afterFirstRotationAssertions = events.asserted;
 
       await page.reload();
-      await page.getByRole('button', { name: 'Open with passkey' }).click();
+      await approveAction(page, 'Open with passkey');
       await waitForStatus(page, /is reopened/, 120_000);
       assert.ok(events.asserted > afterFirstRotationAssertions, 'reopen used WebAuthn');
 
@@ -199,7 +206,7 @@ try {
           },
         });
       })()`);
-      await page.getByRole('button', { name: 'Connect built-in wallet' }).click();
+      await approveAction(page, 'Connect built-in wallet');
       await page
         .locator('#status')
         .filter({ hasText: /AccountNotFound/ })
@@ -214,7 +221,7 @@ try {
         delete window.__passportOriginalGet;
       })()`);
       const beforeWalletAssertions = events.asserted;
-      await page.getByRole('button', { name: 'Connect built-in wallet' }).click();
+      await approveAction(page, 'Connect built-in wallet');
       await page.locator('#wallet-facts').waitFor({ state: 'visible', timeout: 120_000 });
       assert.equal(
         events.asserted,
@@ -223,7 +230,7 @@ try {
       );
       const afterWalletAssertions = events.asserted;
       page.once('dialog', (dialog) => dialog.accept());
-      await page.getByRole('button', { name: 'Rotate sealed viewing key' }).click();
+      await approveAction(page, 'Rotate sealed viewing key');
       await waitForStatus(page, /confirmed its new sealed viewing secret/, 240_000);
       assert.ok(
         events.asserted > afterWalletAssertions,

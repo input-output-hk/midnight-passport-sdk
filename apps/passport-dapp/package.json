@@ -10,7 +10,8 @@
     "build": "../../experiments/acc-0.35/guard.sh && vite build",
     "test": "node --import tsx --test test/*.test.ts && node --import tsx e2e/seed-policy.e2e.ts && node --import tsx e2e/network-pin.e2e.ts && node --import tsx e2e/mock-passkey.e2e.ts && node --import tsx e2e/runtime-identity.e2e.ts",
     "e2e": "../../experiments/acc-0.35/guard.sh && node --import tsx e2e/mvp.e2e.ts",
-    "virtual-authenticator": "../../experiments/acc-0.35/guard.sh && node --import tsx e2e/virtual-authenticator.e2e.ts"
+    "virtual-authenticator": "../../experiments/acc-0.35/guard.sh && node --import tsx e2e/virtual-authenticator.e2e.ts",
+    "test:browser": "node --import tsx e2e/demo-journeys.e2e.ts"
   },
   "dependencies": {
     "@input-output-hk/mn-passport-account": "workspace:*",

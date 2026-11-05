@@ -12,6 +12,7 @@ import {
   seedFromRoot,
 } from '@input-output-hk/mn-passport-keys';
 import { equalBytes } from './webauthn.js';
+import { beforePasskeyCeremony, type PasskeyCeremonyOptions } from './ceremony.js';
 
 /** Creation refused: the provider the passkey was saved in cannot evaluate PRF. */
 export const PRF_UNSUPPORTED_AT_CREATE =
@@ -53,7 +54,7 @@ export interface PasskeyPrfOutputs {
   readonly root: Uint8Array;
 }
 
-export interface PasskeyPrfOptions {
+export interface PasskeyPrfOptions extends PasskeyCeremonyOptions {
   credentialId: Uint8Array;
   rpId: string;
   credentials?: CredentialsContainer | undefined;
@@ -89,6 +90,7 @@ export async function passkeyPrf(opts: PasskeyPrfOptions): Promise<PasskeyPrfOut
   }
   let credential: PublicKeyCredential | null;
   try {
+    await beforePasskeyCeremony(opts, 'derive-keys');
     credential = (await (opts.credentials ?? navigator.credentials).get({
       publicKey: {
         challenge: crypto.getRandomValues(new Uint8Array(32)),

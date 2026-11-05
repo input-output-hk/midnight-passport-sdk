@@ -9,6 +9,10 @@ Midnight Passport gives an application a passkey controlled Account Custody Cont
 > **Preview RC6:** The nine implemented packages are published at `0.1.0-rc6` with private GitHub Packages access; three Linux/amd64 backend images are available on GHCR. ACC binding `acc-s3r1.1` remains pinned to Passport revision `6458ed5`. Shielded withdrawals require an exact-value coin; partial spends remain rejected. Synthetic hosted tests do not establish full Lace compatibility. Start with the [release notes]({{ '/release-notes-rc6/' | relative_url }}) and [Packages]({{ '/packages/' | relative_url }}).
 
 
+**Next preview candidate:** [consent and passkey purposes]({{ '/consent/' | relative_url }})
+and the [use-case coverage map]({{ '/use-case-coverage/' | relative_url }}) describe
+local changes after RC6. They are not new published package claims.
+
 ## Start here
 
 Start with [Install and connect]({{ '/getting-started/' | relative_url }}) for authenticated

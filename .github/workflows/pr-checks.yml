@@ -107,6 +107,27 @@ jobs:
           pnpm run test:apps
           node --test apps/passport-key-service/test/*.test.mjs
 
+  demo_browser:
+    name: Demo UI journeys (synthetic credentials)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CHROME_BIN: /usr/bin/google-chrome
+      PASSPORT_DEMO_JOURNEY_OUTPUT: ${{ runner.temp }}/demo-journeys.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/prepare-workspace
+      - name: Fresh package outputs
+        run: pnpm exec tsc -b tsconfig.build.json
+      - name: Actual Chromium UI with isolated synthetic account and chain drivers
+        run: pnpm test:demo-browser
+      - name: Retain declared browser scope in job summary
+        if: always()
+        run: |
+          if test -f "$PASSPORT_DEMO_JOURNEY_OUTPUT"; then
+            cat "$PASSPORT_DEMO_JOURNEY_OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   package_tests:
     name: Package tests (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
@@ -129,7 +150,7 @@ jobs:
   build-lint-test:
     name: Lint, format, build, and test
     if: always()
-    needs: [lint_checks, build_types, app_tests, package_tests]
+    needs: [lint_checks, build_types, app_tests, package_tests, demo_browser]
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
@@ -139,8 +160,10 @@ jobs:
           TYPES_RESULT: ${{ needs.build_types.result }}
           APPS_RESULT: ${{ needs.app_tests.result }}
           PACKAGES_RESULT: ${{ needs.package_tests.result }}
+          BROWSER_RESULT: ${{ needs.demo_browser.result }}
         run: |
           test "$LINT_RESULT" = success
           test "$TYPES_RESULT" = success
           test "$APPS_RESULT" = success
           test "$PACKAGES_RESULT" = success
+          test "$BROWSER_RESULT" = success
