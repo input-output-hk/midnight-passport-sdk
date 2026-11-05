@@ -44,7 +44,7 @@ export function sessionCheckpoint(
             return invalid();
         if (
           v.txHash !== undefined &&
-          (typeof v.txHash !== 'string' || !/^[0-9a-f]{64}(?:[0-9a-f]{2})?$/.test(v.txHash))
+          (typeof v.txHash !== 'string' || !/^[0-9a-f]{64}(?:[0-9a-f]{2})?$/i.test(v.txHash))
         )
           return invalid();
         for (const field of ['cap', 'perCallCap'])
@@ -58,7 +58,10 @@ export function sessionCheckpoint(
           (!Number.isSafeInteger(v.expiresAt) || (v.expiresAt as number) <= 0)
         )
           return invalid();
-        return v as unknown as DemoSessionSnapshot;
+        return {
+          ...v,
+          ...(typeof v.txHash === 'string' && { txHash: v.txHash.toLowerCase() }),
+        } as unknown as DemoSessionSnapshot;
       } catch {
         return invalid();
       }

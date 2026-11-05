@@ -1,3 +1,4 @@
+import { PassportConnectorError } from '@input-output-hk/mn-passport-account';
 import type { CallRequest, TxResult } from '@input-output-hk/mn-passport-account/ports';
 import { tracedFetch } from './operation-trace.js';
 
@@ -29,10 +30,22 @@ export async function demoValueCall(serviceUrl: string, request: CallRequest): P
   const body = (await response.json()) as Record<string, unknown>;
   if (!response.ok)
     throw new Error(typeof body.error === 'string' ? body.error : 'Value call failed.');
-  if (typeof body.txHash !== 'string' || !/^[0-9a-f]{64,66}$/i.test(body.txHash))
+  if (typeof body.txHash !== 'string' || !/^[0-9a-f]{64}(?:[0-9a-f]{2})?$/i.test(body.txHash))
     throw new Error('The value service returned an invalid transaction ID.');
   return {
-    txHash: body.txHash,
+    txHash: body.txHash.toLowerCase(),
     ...(typeof body.blockHeight === 'number' && { blockHeight: body.blockHeight }),
   };
+}
+
+/** Lock stops new sends, but must not discard the acknowledgement of a started value request. */
+export function demoSessionValueCall(serviceUrl: string, request: CallRequest): Promise<TxResult> {
+  if (request.signal?.aborted)
+    return Promise.reject(
+      new PassportConnectorError('Aborted', 'Session locked before value submission.'),
+    );
+  const { signal: _localKeyLifetime, ...observedRequest } = request;
+  // The service may prove and submit after POST acceptance. Observe its response even if
+  // the key is disposed meanwhile; a real transport loss still leaves the session blocked.
+  return demoValueCall(serviceUrl, observedRequest);
 }

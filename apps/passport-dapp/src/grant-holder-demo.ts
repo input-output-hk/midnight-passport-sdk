@@ -12,7 +12,7 @@ import {
   type JubjubDeviceCircuits,
 } from '@input-output-hk/mn-passport-keys';
 import { accModule } from './acc-module.js';
-import { demoValueCall } from './value-call.js';
+import { demoValueCall, demoSessionValueCall } from './value-call.js';
 import { parseGrantHandoff, type GrantHandoff } from './grant-handoff.js';
 import type { Authoriser } from '@input-output-hk/mn-passport-account/ports';
 import { BINDING_ID, MANIFEST_SHA256, ORIGIN, RP_ID, SERVICE_URL } from './connector.js';
@@ -131,7 +131,7 @@ export async function spendDemoSessionGrant(
       pure: pure as unknown as UnshieldedGrantCallPure,
       source,
       chain: {
-        call: (request) => demoValueCall(SERVICE_URL, request),
+        call: (request) => demoSessionValueCall(SERVICE_URL, request),
         readAccount: async () => {
           throw new Error('Session holder cannot read owner state.');
         },

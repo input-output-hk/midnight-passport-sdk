@@ -79,7 +79,9 @@ export function createDemoSession(ports: DemoSessionPorts) {
       ...(typeof value.grantId === 'string' &&
         /^[0-9a-f]{64}$/.test(value.grantId) && { grantId: value.grantId }),
       ...(typeof value.txHash === 'string' &&
-        /^[0-9a-f]{64}(?:[0-9a-f]{2})?$/.test(value.txHash) && { txHash: value.txHash }),
+        /^[0-9a-f]{64}(?:[0-9a-f]{2})?$/i.test(value.txHash) && {
+          txHash: value.txHash.toLowerCase(),
+        }),
     };
   };
   const publish = (patch: Partial<DemoSessionSnapshot>) => {

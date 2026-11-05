@@ -89,15 +89,11 @@ export async function spendDemoSessionGrant(
       source: { readGrantSpendContext: read },
       chain: {
         readAccount: async () => undefined,
-        call: async () => {
-          const response = await fetch('/__demo-fixture', {
-            method: 'POST',
-            body: JSON.stringify({ action: 'spend', amount }),
-          });
-          if (!response.ok) throw Error('Synthetic session outcome unknown');
-          const state = await response.json();
-          return { txHash: state.txHash };
-        },
+        call: async (request) =>
+          (await import('../../src/value-call.ts')).demoSessionValueCall(
+            'http://localhost:8787',
+            request,
+          ),
       },
       review: async () => !signal.aborted,
     },

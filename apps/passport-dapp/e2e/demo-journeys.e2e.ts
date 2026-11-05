@@ -268,6 +268,18 @@ try {
                 json: { assets: [{ color: night, amount: '10' }], balanceAssetColor: night },
               });
             }
+          } else if (url.pathname === '/v1/demo/value-call') {
+            const body = request.postDataJSON();
+            assert.equal(body.circuit, 'withdraw_unshielded_with_grant_jubjub');
+            const accepted = fixture('spend', { amount: body.args[1].$bigint });
+            if (holdSessionSpend) await holdSessionSpend();
+            await route.fulfill({
+              status: !accepted || unknownSession ? 503 : 200,
+              json:
+                !accepted || unknownSession
+                  ? { error: 'Synthetic session outcome unknown' }
+                  : { txHash: state.txHash },
+            });
           } else if (url.pathname === '/v1/config' || url.pathname === '/config') {
             await route.fulfill({
               json: {

@@ -350,10 +350,28 @@ test('new pending effects never inherit old transaction hashes and submitted SDK
   submitted.account.issueGrant = async () => {
     throw Object.assign(Error('publication uncertain'), {
       grantId: 'ff'.repeat(32),
-      txHash: 'ee'.repeat(32),
+      txHash: 'EE'.repeat(32),
     });
   };
   await assert.rejects(submitted.start());
   assert.equal(submitted.session.snapshot().grantId, 'ff'.repeat(32));
   assert.equal(submitted.session.snapshot().txHash, 'ee'.repeat(32));
+});
+
+test('public uncertainty checkpoints normalize supported uppercase transaction hashes', () => {
+  const hash = 'AB'.repeat(33);
+  let saved = JSON.stringify({ status: 'blocked', spent: '0', txHash: hash });
+  const checkpoint = sessionCheckpoint(
+    {
+      getItem: () => saved,
+      setItem: (_k, v) => {
+        saved = v;
+      },
+    },
+    'undeployed',
+    'acc-s3r1.1',
+  );
+  assert.equal(checkpoint.read()!.txHash, hash.toLowerCase());
+  saved = JSON.stringify({ status: 'blocked', spent: '0', txHash: 'a'.repeat(65) });
+  assert.equal(checkpoint.read()!.txHash, undefined);
 });
