@@ -40,12 +40,14 @@ export function originalFundingInput(transaction, owner) {
 /** A larger balance, another12-unit coin or an unsynchronised snapshot is insufficient.
  * @param {{isSynced:boolean,unshielded:{availableCoins:readonly {utxo:{value:bigint,owner:string,type:string,intentHash:string,outputNo:number}}[]}}} state
  * @param {Readonly<FundingInput>} expected
+ * @param {string} walletOwnerBech32 Derived from the SAME keystore as expected.owner; SDK view
+ * owners are Bech32, whereas the retained ledger output and pre-submit guard use raw address hex.
  */
-export function hasOriginalFundingInput(state, expected) {
+export function hasOriginalFundingInput(state, expected, walletOwnerBech32) {
   if (state.isSynced !== true) return false;
   const matches = state.unshielded.availableCoins.filter(
     ({ utxo }) =>
-      utxo.owner === expected.owner &&
+      utxo.owner === walletOwnerBech32 &&
       utxo.type === expected.color &&
       utxo.value === expected.amount &&
       utxo.intentHash === expected.intentHash &&

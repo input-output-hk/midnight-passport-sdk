@@ -11,7 +11,10 @@ import {
   confirmOriginalFunding,
   assertOriginalFundingSpend,
 } from '../examples/application-acc/native-funding.mjs';
-const owner = '11'.repeat(32),
+// Public deterministic localnet address vector, not a credential or private key.
+const walletOwnerBech32 =
+  'mn_addr_undeployed1h3ssm5ru2t6eqy4g3she78zlxn96e36ms6pq996aduvmateh9p9sk96u7s';
+const owner = 'bc610dd07c52f59012a88c2f9f1c5f34cbacc75b868202975d6f19beaf37284b',
   hash = '22'.repeat(32),
   intentHash = '33'.repeat(32),
   block = '44'.repeat(32),
@@ -32,14 +35,16 @@ function transfer() {
 }
 const input = originalFundingInput(transfer(), owner);
 const coin = { value: 12n, owner, type: color, intentHash, outputNo: 0 };
+const walletCoin = { ...coin, owner: walletOwnerBech32 };
 
 test('retained transfer selects an immutable exact original output identity', () => {
   assert.deepEqual(input, { hash, intentHash, outputNo: 0, owner, color, amount: 12n });
   assert.equal(Object.isFrozen(input), true);
   assert.equal(
     hasOriginalFundingInput(
-      { isSynced: true, unshielded: { availableCoins: [{ utxo: coin }] } },
+      { isSynced: true, unshielded: { availableCoins: [{ utxo: walletCoin }] } },
       input,
+      walletOwnerBech32,
     ),
     true,
   );
@@ -55,8 +60,12 @@ for (const changed of [
   test(`another coin cannot stand in for the original funding input: ${Object.keys(changed)[0]}`, () => {
     assert.equal(
       hasOriginalFundingInput(
-        { isSynced: true, unshielded: { availableCoins: [{ utxo: { ...coin, ...changed } }] } },
+        {
+          isSynced: true,
+          unshielded: { availableCoins: [{ utxo: { ...walletCoin, ...changed } }] },
+        },
         input,
+        walletOwnerBech32,
       ),
       false,
     );
@@ -65,21 +74,30 @@ for (const changed of [
 
 test('missing, unsynchronised and duplicate observations never select a replacement', () => {
   assert.equal(
-    hasOriginalFundingInput({ isSynced: true, unshielded: { availableCoins: [] } }, input),
+    hasOriginalFundingInput(
+      { isSynced: true, unshielded: { availableCoins: [] } },
+      input,
+      walletOwnerBech32,
+    ),
     false,
   );
   assert.equal(
     hasOriginalFundingInput(
-      { isSynced: false, unshielded: { availableCoins: [{ utxo: coin }] } },
+      { isSynced: false, unshielded: { availableCoins: [{ utxo: walletCoin }] } },
       input,
+      walletOwnerBech32,
     ),
     false,
   );
   assert.throws(
     () =>
       hasOriginalFundingInput(
-        { isSynced: true, unshielded: { availableCoins: [{ utxo: coin }, { utxo: coin }] } },
+        {
+          isSynced: true,
+          unshielded: { availableCoins: [{ utxo: walletCoin }, { utxo: walletCoin }] },
+        },
         input,
+        walletOwnerBech32,
       ),
     /Ambiguous/,
   );
@@ -276,4 +294,22 @@ test('missing or additional NIGHT inputs refuse before a send', () => {
   assert.throws(() => assertOriginalFundingSpend(tx, input, addressFromKey), /only the original/);
   entry.fallibleUnshieldedOffer.inputs = [];
   assert.throws(() => assertOriginalFundingSpend(tx, input, addressFromKey), /only the original/);
+});
+
+test('wallet Bech32 ownership and ledger hex ownership are kept distinct', () => {
+  const state = { isSynced: true, unshielded: { availableCoins: [{ utxo: walletCoin }] } };
+  assert.equal(hasOriginalFundingInput(state, input, walletOwnerBech32), true);
+  assert.equal(hasOriginalFundingInput(state, input, owner), false);
+});
+
+test('a wallet owner address from another network cannot match this fixture', () => {
+  const state = {
+    isSynced: true,
+    unshielded: {
+      availableCoins: [
+        { utxo: { ...walletCoin, owner: walletOwnerBech32.replace('undeployed', 'preprod') } },
+      ],
+    },
+  };
+  assert.equal(hasOriginalFundingInput(state, input, walletOwnerBech32), false);
 });

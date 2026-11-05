@@ -143,10 +143,13 @@ try {
     },
   });
   event('original-funding-canonical', fundingFinality);
+  const fundingWalletOwnerBech32 = funding.unshieldedKeystore.getBech32Address().asString();
   const waitForOriginalFunding = () =>
     Rx.firstValueFrom(
       funding.wallet.state().pipe(
-        Rx.filter((state) => hasOriginalFundingInput(state, fundingInput)),
+        Rx.filter((state) =>
+          hasOriginalFundingInput(state, fundingInput, fundingWalletOwnerBech32),
+        ),
         Rx.timeout(120000),
       ),
     );

@@ -154,7 +154,10 @@ fresh recipient wallet. Supply a separately retained original transfer as
 12-base-unit NIGHT output in a single unshielded offer. Keep it outside Git/Vault.
 Before deployment, `native-funding.mjs` verifies the original successful transaction
 against canonical finalized node data and waits for that exact intent/output in the
-fresh wallet's available set. A matching amount or larger balance is insufficient.
+fresh wallet's available set. A matching amount or larger balance is insufficient. The SDK view's owner is Bech32;
+compare it with `keystore.getBech32Address().asString()` from the same key source.
+The retained ledger output and finalized spend use raw address hex, verified
+independently with the ledger codec. Do not compare the two string formats directly.
 It rechecks the same input after deployment, deposits it, and attempts a 4-unit
 merchant payment. It never creates or resubmits a funding split. Before invoking the sender it inspects the
 finalized deposit and requires the exact original input identity, value and owner,
