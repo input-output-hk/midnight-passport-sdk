@@ -51,6 +51,8 @@ let funding,
   proofs = 0;
 const cases = [];
 try {
+  const { originalFundingInput, hasOriginalFundingInput, confirmOriginalFunding } =
+    await import('./native-funding.mjs');
   const [
     acc,
     { prepareJubjubGrant },
@@ -73,6 +75,7 @@ try {
     import('rxjs'),
   ]);
   const app = await import(pathToFileURL(join(root, 'managed/merchant/contract/index.js')).href);
+  const nativeLedger = await import('@midnightntwrk/ledger-v9');
   const pure = acc.pureCircuits;
   const signer = (secret) =>
     recipeJubjubAuthoriser(
@@ -106,6 +109,49 @@ try {
   await wallet.syncWallet(recipientWallet, 'fresh merchant recipient');
   const recipient = wallet.userAddressBytes(recipientWallet),
     color = new Uint8Array(32);
+  // A transfer to this same wallet may be finalized while its live view still reserves inputs.
+  // Use a cold view of a separately retained transfer; never resubmit it or infer no send.
+  assert.equal(config.fundingTransaction, 'funding-transfer.private.bin');
+  assert.match(config.files[config.fundingTransaction] ?? '', /^[0-9a-f]{64}$/);
+  const fundingBytes = readFileSync(join(root, config.fundingTransaction));
+  assert.equal(sha(fundingBytes), config.files[config.fundingTransaction]);
+  const fundingTransaction = nativeLedger.Transaction.deserialize(
+    'signature',
+    'proof',
+    'binding',
+    fundingBytes,
+  );
+  const fundingInput = originalFundingInput(
+    fundingTransaction,
+    hex(wallet.userAddressBytes(funding)),
+  );
+  const fundingFinality = await confirmOriginalFunding(fundingInput.hash, {
+    post: async (url, body) => {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(15000),
+      });
+      assert.equal(response.ok, true);
+      return response.json();
+    },
+  });
+  event('original-funding-canonical', fundingFinality);
+  const waitForOriginalFunding = () =>
+    Rx.firstValueFrom(
+      funding.wallet.state().pipe(
+        Rx.filter((state) => hasOriginalFundingInput(state, fundingInput)),
+        Rx.timeout(120000),
+      ),
+    );
+  await waitForOriginalFunding();
+  event('original-funding-spendable', {
+    txHash: fundingInput.hash,
+    intentHash: fundingInput.intentHash,
+    outputNo: fundingInput.outputNo,
+    amount: '12',
+  });
   const providers = await wallet.createProviders(funding);
   const transactions = [];
   const proof = providers.proofProvider.proveTx.bind(providers.proofProvider);
@@ -161,7 +207,6 @@ try {
   });
   const accountInitial = await providers.publicDataProvider.queryContractState(accountAddress);
   assert.ok(accountInitial);
-  const nativeLedger = await import('@midnightntwrk/ledger-v9');
   const installedState = nativeLedger.ContractState.deserialize(accountInitial.serialize());
   assert.equal(installedState.operations().length, 52);
   for (const [id, expected] of Object.entries(acc.expectedVk))
@@ -217,42 +262,8 @@ try {
     ownerCounter++;
     return result;
   };
-  // Split the public genesis coin before depositing exact NIGHT; never use a fee-only sponsor.
-  const ownState = await Rx.firstValueFrom(funding.wallet.state());
-  const ownRecipient = ownState.unshielded.address;
-  const recipe = await funding.wallet.transferTransaction(
-    [
-      {
-        type: 'unshielded',
-        outputs: [{ type: hex(color), receiverAddress: ownRecipient, amount: 12n }],
-      },
-    ],
-    { ttl: new Date(Date.now() + 60_000) },
-  );
-  const signed = await funding.wallet.signRecipe(recipe, (payload) =>
-    funding.unshieldedKeystore.signDataAsync(payload),
-  );
-  const split = await funding.wallet.finalizeRecipe(signed);
-  writeFileSync(join(output, 'night-split.private.bin'), split.serialize(), {
-    flag: 'wx',
-    mode: 0o600,
-  });
-  event('night-split-before-send', { bytesSha256: sha(split.serialize()) });
-  const splitId = await funding.wallet.submitTransaction(split);
-  event('night-split-submitted', { id: splitId });
-  await Rx.firstValueFrom(
-    funding.wallet.state().pipe(
-      Rx.filter(
-        (state) =>
-          state.isSynced &&
-          state.unshielded.availableCoins.some(
-            ({ utxo }) => utxo.type === hex(color) && utxo.value === 12n,
-          ),
-      ),
-      Rx.timeout(120_000),
-    ),
-  );
-  event('exact-night-input-observed', { amount: '12' });
+  // Recheck this exact retained output after deployment, not a matching amount from another intent.
+  await waitForOriginalFunding();
   await callAccount('deposit_unshielded', color, 12n);
   assert.equal((await accountState()).unshielded_balances.lookup(color), 12n);
   const modules = new Map([[accountAddress, acc]]);
@@ -535,6 +546,12 @@ try {
       application: merchant.address,
       recipient: hex(recipient),
       transactions,
+      funding: {
+        ...fundingFinality,
+        intentHash: fundingInput.intentHash,
+        outputNo: fundingInput.outputNo,
+        amount: '12',
+      },
       final: await snapshot(),
       realProvider: false,
       fullCompatibility: false,
@@ -546,7 +563,7 @@ try {
     { flag: 'wx', mode: 0o600 },
   );
 } catch (error) {
-  event('failed', { stage, errorSha256: sha(String(error)) });
+  event('failed', { phase: stage, errorSha256: sha(String(error)) });
   writeFileSync(join(output, 'failure.private.txt'), String(error.stack ?? error), {
     flag: 'wx',
     mode: 0o600,

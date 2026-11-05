@@ -81,3 +81,27 @@ run output, reset the chain or replay an uncertain intent.
 Local preparation is finished; #275's native acceptance and the broader goal remain
 incomplete. There is no new release, package publication, image or published Pages
 update from this work.
+
+
+## Owner resumed execution — 2026-11-05
+
+The owner superseded the shared-stack reservation and authorized proceeding. A new
+consumer at signed sourcea6f4df6audited4candidate packages/304files, replayed its
+lock offline and pinned21,852inputs. The first new preflight safely refused a
+detached canonical indexer; only that stopped owned endpoint was reattached, with
+container/image/volume identities preserved. Epoch catch-up reached zero and three
+capacity blocks passed before wallets started.
+
+The next attempt deployed/activated the full ACC, then timed out waiting for its
+live wallet to expose an exact12-unit NIGHT self-transfer. Wallets and owned
+containers stopped cleanly. Original transaction
+`df2af397821615276fb196d9c447c1cad0b466672552e3f7c6078f4cded825c3`
+was independently found SUCCESS in canonical finalized block22580; a fresh read-only
+wallet view found its12-unit output available. No second transfer was submitted.
+This establishes funding reconciliation, not merchant payment acceptance.
+
+The revised fixture pins that original transfer, confirms canonical success and
+matches its exact output in a fresh wallet before any new deployment. It does not
+resplit, replay a send, clear an uncertain pending record or substitute another
+coin. All earlier failed/prepared roots stay immutable. Final native acceptance
+and exact reviewed source will be recorded separately after the full run succeeds.
