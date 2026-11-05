@@ -203,3 +203,21 @@ resplit, clear pending history or reuse a request ID. This is a qualification
 fixture boundary, not a generic wallet recovery or SDK balance-refresh guarantee.
 Its deterministic funding evidence/identity controls run in fast tests; native
 payment acceptance still requires the complete source-bound live receipt.
+
+### Confirmation and observer recovery
+
+Retain the original serialized payment and its approval before sending. If a live
+recipient view times out, `native-observation.mjs` checks the original payment's
+canonical finalized success before stopping and reconnecting only that observer.
+It has no sender port. A second timeout or unavailable original outcome remains a
+failure; reconnect never submits another payment.
+
+The worker also has a deliberately narrow continuation for the retained
+post-payment observation incident. It checks original clean shutdown, all 16
+original transaction bytes and canonical outcomes, then the deployed keys,
+maintenance authority, live owner counter, ACC balance and old merchant counters.
+It creates a separate merchant/grant/recipient/payment intent against the existing
+ACC. It does not replay the successful payment or repeat funding. See the
+[incident and configuration](../../docs/review/partner-contracts/native-observation-incident.md).
+This local qualification mode is not a published recovery API, real-provider test
+or permission to rerun an unknown transaction.

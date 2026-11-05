@@ -7,6 +7,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { appendFileSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { serialize } from 'node:v8';
 
 assert.equal(process.env.IN_NIX_SHELL !== undefined, true);
 assert.equal(process.env.PASSPORT_MERCHANT_NATIVE, '1');
@@ -21,6 +22,23 @@ assert.equal(sha(configBytes), process.env.PASSPORT_MERCHANT_CONFIG_SHA256);
 const config = JSON.parse(configBytes.toString('utf8'));
 for (const [file, pin] of Object.entries(config.files))
   assert.equal(sha(readFileSync(join(root, file))), pin, `Changed input: ${file}`);
+for (const file of ['native-funding.mjs', 'native-observation.mjs', 'prepare-payment.mjs'])
+  assert.match(config.files[file] ?? '', /^[0-9a-f]{64}$/, `Unpinned helper: ${file}`);
+if (config.resumeFrom !== undefined) {
+  assert.equal(config.resumeFrom, 'prior-native-run-v1');
+  for (const name of [
+    'operations.private.jsonl',
+    'parent-receipt.private.json',
+    'wallet-cleanup.private.json',
+    'identities.private.json',
+    ...Array.from({ length: 16 }, (_, i) => `submitted-${i + 1}.private.bin`),
+  ])
+    assert.match(
+      config.files[`${config.resumeFrom}/${name}`] ?? '',
+      /^[0-9a-f]{64}$/,
+      `Unpinned original: ${name}`,
+    );
+}
 const output = join(root, config.output);
 assert.match(config.output, /^native-run-[a-z0-9-]+$/);
 mkdirSync(output, { mode: 0o700 });
@@ -58,6 +76,26 @@ try {
     confirmOriginalFunding,
     assertOriginalFundingSpend,
   } = await import('./native-funding.mjs');
+  const { merchantContinuation, confirmedCredit } = await import('./native-observation.mjs');
+  let continuation;
+  const priorFinality = [];
+  if (config.resumeFrom !== undefined) {
+    assert.equal(config.resumeFrom, 'prior-native-run-v1');
+    const prior = (name) => JSON.parse(readFileSync(join(root, config.resumeFrom, name), 'utf8'));
+    continuation = merchantContinuation({
+      events: readFileSync(join(root, config.resumeFrom, 'operations.private.jsonl'), 'utf8')
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line)),
+      parent: prior('parent-receipt.private.json'),
+      walletCleanup: prior('wallet-cleanup.private.json'),
+      source: config.resumeSourceCommit,
+    });
+    for (let i = 0; i < continuation.transactions.length; i++) {
+      const data = readFileSync(join(root, config.resumeFrom, `submitted-${i + 1}.private.bin`));
+      assert.equal(sha(data), continuation.transactions[i].hash);
+    }
+  }
   const [
     acc,
     { prepareJubjubGrant },
@@ -100,6 +138,13 @@ try {
     bootSalt: hex(rnd()),
     encryptionKey: hex(rnd()),
   };
+  if (continuation) {
+    const prior = JSON.parse(
+      readFileSync(join(root, config.resumeFrom, 'identities.private.json'), 'utf8'),
+    );
+    assert.match(prior.owner, /^[0-9a-f]{64}$/);
+    material.owner = prior.owner;
+  }
   writeFileSync(join(output, 'identities.private.json'), stringify(material) + '\n', {
     flag: 'wx',
     mode: 0o600,
@@ -114,6 +159,7 @@ try {
   await wallet.syncWallet(recipientWallet, 'fresh merchant recipient');
   const recipient = wallet.userAddressBytes(recipientWallet),
     color = new Uint8Array(32);
+  if (continuation) assert.notEqual(hex(recipient), continuation.originalRecipient);
   // A transfer to this same wallet may be finalized while its live view still reserves inputs.
   // Use a cold view of a separately retained transfer; never resubmit it or infer no send.
   assert.equal(config.fundingTransaction, 'funding-transfer.private.bin');
@@ -153,13 +199,36 @@ try {
         Rx.timeout(120000),
       ),
     );
-  await waitForOriginalFunding();
-  event('original-funding-spendable', {
-    txHash: fundingInput.hash,
-    intentHash: fundingInput.intentHash,
-    outputNo: fundingInput.outputNo,
-    amount: '12',
-  });
+  if (!continuation) await waitForOriginalFunding();
+  if (continuation) {
+    stage = 'original-payment-reconciliation';
+    for (const original of continuation.transactions)
+      priorFinality.push(
+        await confirmOriginalFunding(original.hash, {
+          post: async (url, body) => {
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(body),
+              signal: AbortSignal.timeout(15000),
+            });
+            assert.equal(response.ok, true);
+            return response.json();
+          },
+        }),
+      );
+    event('original-transactions-canonical', {
+      count: continuation.transactions.length,
+      source: config.resumeSourceCommit,
+    });
+  }
+  if (!continuation)
+    event('original-funding-spendable', {
+      txHash: fundingInput.hash,
+      intentHash: fundingInput.intentHash,
+      outputNo: fundingInput.outputNo,
+      amount: '12',
+    });
   const providers = await wallet.createProviders(funding);
   const transactions = [];
   let fundingDepositPending = false;
@@ -211,19 +280,21 @@ try {
   );
   const bootSalt = bytes(material.bootSalt);
   stage = 'account-deploy';
-  const accountAddress = await wave.deployAccountInWaves(providers, accountCompiled, {
-    firstArm: 'jubjub',
-    privateStateId: 'merchant-account',
-    initialPrivateState: {},
-    retireAuthority: true,
-    args: [
-      pure.derive_boot_commitment_with_jubjub(bootSalt, ownerKey),
-      bytes(material.encryptionKey),
-      pure.compute_public_point_with_jubjub(13n),
-      new Uint8Array(64),
-      60n,
-    ],
-  });
+  const accountAddress =
+    continuation?.account ??
+    (await wave.deployAccountInWaves(providers, accountCompiled, {
+      firstArm: 'jubjub',
+      privateStateId: 'merchant-account',
+      initialPrivateState: {},
+      retireAuthority: true,
+      args: [
+        pure.derive_boot_commitment_with_jubjub(bootSalt, ownerKey),
+        bytes(material.encryptionKey),
+        pure.compute_public_point_with_jubjub(13n),
+        new Uint8Array(64),
+        60n,
+      ],
+    }));
   const accountInitial = await providers.publicDataProvider.queryContractState(accountAddress);
   assert.ok(accountInitial);
   const installedState = nativeLedger.ContractState.deserialize(accountInitial.serialize());
@@ -232,7 +303,11 @@ try {
     assert.equal(sha(installedState.operation(id).verifierKey), expected);
   assert.deepEqual(installedState.maintenanceAuthority.committee, []);
   assert.equal(installedState.maintenanceAuthority.threshold, 1);
-  event('account-deployed', { accountAddress, verifiedOperations: 52, maintenanceRetired: true });
+  event(continuation ? 'account-reused' : 'account-deployed', {
+    accountAddress,
+    verifiedOperations: 52,
+    maintenanceRetired: true,
+  });
   const accountState = async () => {
     const state = await providers.publicDataProvider.queryContractState(accountAddress);
     assert.ok(state);
@@ -247,8 +322,40 @@ try {
       privateStateId: 'merchant-account',
       args,
     });
-  await callAccount('activate_initial_device_with_jubjub', ownerKey, bootSalt);
-  let ownerCounter = 0n;
+  if (!continuation) await callAccount('activate_initial_device_with_jubjub', ownerKey, bootSalt);
+  let ownerCounter = continuation?.ownerCounter ?? 0n;
+  if (continuation) {
+    await providers.privateStateProvider.setContractAddress(accountAddress);
+    await providers.privateStateProvider.set('merchant-account', {});
+    const current = await accountState();
+    assert.equal(current.unshielded_balances.lookup(color), continuation.expectedBalance);
+    assert.equal(
+      current.devices.member(
+        pure.derive_device_entry_with_jubjub(
+          { bytes: bytes(accountAddress) },
+          ownerKey,
+          current.device_epoch,
+          ownerCounter,
+        ),
+      ),
+      true,
+      'Retained owner counter is not live',
+    );
+    for (const address of [continuation.originalMerchant, continuation.originalWrongMerchant]) {
+      const previous = await providers.publicDataProvider.queryContractState(address);
+      assert.ok(previous);
+      assert.equal(
+        app.ledger(previous.data).payments,
+        address === continuation.originalMerchant ? 1n : 0n,
+      );
+    }
+    event('continuation-state-verified', {
+      account: accountAddress,
+      balance: '8',
+      originalPayments: '1',
+      freshPaymentIntent: true,
+    });
+  }
   const ownerCall = async (operation, args, challengeArgs = args) => {
     const authNonce = (await accountState()).auth_nonce;
     const signature = await owner.authorise({
@@ -281,15 +388,18 @@ try {
     ownerCounter++;
     return result;
   };
-  // Recheck this exact retained output after deployment, not a matching amount from another intent.
-  await waitForOriginalFunding();
-  fundingDepositPending = true;
-  try {
-    await callAccount('deposit_unshielded', color, 12n);
-  } finally {
-    fundingDepositPending = false;
+  const startingBalance = continuation?.expectedBalance ?? 12n;
+  if (!continuation) {
+    // Recheck the exact retained output after deployment, never an equal replacement.
+    await waitForOriginalFunding();
+    fundingDepositPending = true;
+    try {
+      await callAccount('deposit_unshielded', color, 12n);
+    } finally {
+      fundingDepositPending = false;
+    }
+    assert.equal((await accountState()).unshielded_balances.lookup(color), 12n);
   }
-  assert.equal((await accountState()).unshielded_balances.lookup(color), 12n);
   const modules = new Map([[accountAddress, acc]]);
   const moduleProvider = {
     resolve: (address) => (modules.has(address) ? async () => modules.get(address) : undefined),
@@ -447,6 +557,10 @@ try {
     event('negative-case', cases.at(-1));
   };
   const first = await prepareWithKey('0');
+  writeFileSync(join(output, 'first-approval.private.bin'), serialize(first), {
+    flag: 'wx',
+    mode: 0o600,
+  });
   await refused(
     'wrong immediate caller',
     () => wrongMerchant.deployed.callTx.pay(first.approval),
@@ -468,17 +582,44 @@ try {
     modules.set(accountAddress, acc);
   }
   await merchant.deployed.callTx.pay(first.approval);
-  assert.equal((await accountState()).unshielded_balances.lookup(color), 8n);
+  assert.equal((await accountState()).unshielded_balances.lookup(color), startingBalance - 4n);
   assert.equal((await snapshot()).payments, '1');
-  const credit = await Rx.firstValueFrom(
-    recipientWallet.wallet.state().pipe(
-      Rx.filter(
-        (state) => state.isSynced && BigInt(state.unshielded.balances[hex(color)] ?? 0n) === 4n,
+  stage = 'merchant-credit';
+  const waitForCredit = () =>
+    Rx.firstValueFrom(
+      recipientWallet.wallet.state().pipe(
+        Rx.filter(
+          (state) => state.isSynced && BigInt(state.unshielded.balances[hex(color)] ?? 0n) === 4n,
+        ),
+        Rx.timeout(120_000),
       ),
-      Rx.timeout(120_000),
-    ),
-  );
-  assert.equal(BigInt(credit.unshielded.balances[hex(color)]), 4n);
+    );
+  const credit = await confirmedCredit({
+    wait: waitForCredit,
+    confirm: async () => {
+      const original = transactions.at(-1);
+      assert.ok(original);
+      return confirmOriginalFunding(original.hash, {
+        post: async (url, body) => {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(15000),
+          });
+          assert.equal(response.ok, true);
+          return response.json();
+        },
+      });
+    },
+    event: () => event('confirmed-payment-observer-reconnect'),
+    reconnect: async () => {
+      await recipientWallet.wallet.stop();
+      recipientWallet = undefined;
+      recipientWallet = await wallet.createWallet(material.merchantSeed);
+    },
+  });
+  assert.equal(BigInt(credit.state.unshielded.balances[hex(color)]), 4n);
   cases.push({
     label: 'payment and distinct merchant wallet credit',
     outcome: 'confirmed',
@@ -567,6 +708,17 @@ try {
       proofs,
       submissions,
       retainedTransactions,
+      startingBalance: String(startingBalance),
+      observerReconnected: credit.reconnected,
+      continuation: continuation
+        ? {
+            source: config.resumeSourceCommit,
+            originalTransactions: continuation.transactions,
+            originalFinality: priorFinality,
+            originalMerchant: continuation.originalMerchant,
+            originalPaymentRetried: false,
+          }
+        : null,
       account: accountAddress,
       application: merchant.address,
       recipient: hex(recipient),

@@ -202,51 +202,52 @@ test('invalid original hash refuses before any network call', async () => {
   assert.equal(e.calls.length, 0);
 });
 
-test('worker rejects a changed funding helper before evaluating it or creating a native output', () => {
-  const root = mkdtempSync(join(tmpdir(), 'passport-funding-guard-'));
-  try {
-    writeFileSync(
-      join(root, 'worker.mjs'),
-      readFileSync(resolve('examples/application-acc/qualify-native.mjs')),
-    );
-    writeFileSync(
-      join(root, 'native-funding.mjs'),
-      `import {writeFileSync} from 'node:fs';writeFileSync(${JSON.stringify(join(root, 'unexpected-helper-evaluation'))},'bad');throw Error('tampered helper evaluated');`,
-    );
-    const config = JSON.stringify({
-      output: 'native-run-fixture',
-      files: { 'native-funding.mjs': '00'.repeat(32) },
-    });
-    writeFileSync(join(root, 'native-config.private.json'), config);
-    const env = {
-      ...process.env,
-      PASSPORT_MERCHANT_NATIVE: '1',
-      MN_NETWORK_ID: 'undeployed',
-      PASSPORT_MERCHANT_CONFIG_SHA256: createHash('sha256').update(config).digest('hex'),
-    };
-    for (const key of [
-      'NODE_OPTIONS',
-      'NODE_PATH',
-      'PASSPORT_SPONSOR_SEED',
-      'PASSPORT_SPONSOR_SEED_FILE',
-      'WALLET_SEED',
-    ])
-      delete (/** @type {Record<string,string|undefined>} */ (env)[key]);
-    const child = spawnSync(process.execPath, [join(root, 'worker.mjs')], {
-      env,
-      cwd: root,
-      encoding: 'utf8',
-      timeout: 10000,
-    });
-    assert.equal(child.error, undefined);
-    assert.equal(child.status, 1);
-    assert.equal(existsSync(join(root, 'unexpected-helper-evaluation')), false);
-    assert.equal(existsSync(join(root, 'native-run-fixture')), false);
-    assert.match(child.stderr, /Changed input: native-funding.mjs/);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+for (const helper of ['native-funding.mjs', 'native-observation.mjs'])
+  test(`worker rejects changed ${helper} before evaluation or native output creation`, () => {
+    const root = mkdtempSync(join(tmpdir(), 'passport-funding-guard-'));
+    try {
+      writeFileSync(
+        join(root, 'worker.mjs'),
+        readFileSync(resolve('examples/application-acc/qualify-native.mjs')),
+      );
+      writeFileSync(
+        join(root, helper),
+        `import {writeFileSync} from 'node:fs';writeFileSync(${JSON.stringify(join(root, 'unexpected-helper-evaluation'))},'bad');throw Error('tampered helper evaluated');`,
+      );
+      const config = JSON.stringify({
+        output: 'native-run-fixture',
+        files: { [helper]: '00'.repeat(32) },
+      });
+      writeFileSync(join(root, 'native-config.private.json'), config);
+      const env = {
+        ...process.env,
+        PASSPORT_MERCHANT_NATIVE: '1',
+        MN_NETWORK_ID: 'undeployed',
+        PASSPORT_MERCHANT_CONFIG_SHA256: createHash('sha256').update(config).digest('hex'),
+      };
+      for (const key of [
+        'NODE_OPTIONS',
+        'NODE_PATH',
+        'PASSPORT_SPONSOR_SEED',
+        'PASSPORT_SPONSOR_SEED_FILE',
+        'WALLET_SEED',
+      ])
+        delete (/** @type {Record<string,string|undefined>} */ (env)[key]);
+      const child = spawnSync(process.execPath, [join(root, 'worker.mjs')], {
+        env,
+        cwd: root,
+        encoding: 'utf8',
+        timeout: 10000,
+      });
+      assert.equal(child.error, undefined);
+      assert.equal(child.status, 1);
+      assert.equal(existsSync(join(root, 'unexpected-helper-evaluation')), false);
+      assert.equal(existsSync(join(root, 'native-run-fixture')), false);
+      assert.ok(child.stderr.includes(`Changed input: ${helper}`));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 
 function spendingTransaction() {
   return {

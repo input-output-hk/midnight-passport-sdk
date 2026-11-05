@@ -58,3 +58,8 @@ Capacity has been restored. See the [native preparation and restart incident](na
 for the caller-only keys, worker review corrections, installed declaration check and
 two honestly failed attempts before wallet startup. Native acceptance remains pending;
 the archived indexer must not silently substitute for the owned canonical endpoint.
+
+The [native observation incident](native-observation-incident.md) records an actual
+successful composed payment and read-only wallet-credit recovery at signed source
+`23b1d73`. The original full suite remains failed; remaining negative-case acceptance
+and the distinct continuation must be recorded after execution.
