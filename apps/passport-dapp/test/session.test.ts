@@ -324,3 +324,36 @@ test('expiry while a send is pending retains an uncertainty fence until its orig
   assert.equal(f.session.snapshot().status, 'locked');
   assert.equal(f.session.snapshot().spent, '1');
 });
+
+test('new pending effects never inherit old transaction hashes and submitted SDK identities are retained', async () => {
+  const f = fixture();
+  await f.start();
+  await f.session.spend(f.account, transfer);
+  f.failSpend();
+  await assert.rejects(f.session.spend(f.account, transfer));
+  assert.equal(
+    f.session.snapshot().txHash,
+    undefined,
+    'unknown second spend is not identified by the first transfer hash',
+  );
+  const renewal = fixture();
+  await renewal.start();
+  await renewal.session.revoke(renewal.account);
+  renewal.failIssue();
+  await assert.rejects(renewal.start());
+  assert.equal(
+    renewal.session.snapshot().txHash,
+    undefined,
+    'unknown renewed issue cannot inherit revocation hash',
+  );
+  const submitted = fixture();
+  submitted.account.issueGrant = async () => {
+    throw Object.assign(Error('publication uncertain'), {
+      grantId: 'ff'.repeat(32),
+      txHash: 'ee'.repeat(32),
+    });
+  };
+  await assert.rejects(submitted.start());
+  assert.equal(submitted.session.snapshot().grantId, 'ff'.repeat(32));
+  assert.equal(submitted.session.snapshot().txHash, 'ee'.repeat(32));
+});

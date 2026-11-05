@@ -7,7 +7,10 @@ import {
   spendUnshieldedWithGrant,
 } from '../packages/account/dist/index.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
-import { recipeJubjubAuthoriser } from '../packages/keys/dist/index.js';
+import {
+  recipeJubjubAuthoriser,
+  createSessionJubjubAuthoriser,
+} from '../packages/keys/dist/index.js';
 
 const hex = (/** @type {Uint8Array} */ bytes) => Buffer.from(bytes).toString('hex');
 const account = '12'.repeat(32);
@@ -203,4 +206,59 @@ test('declined review and a grant changed after review submit no transaction', a
     },
   );
   assert.equal(calls, 1, 'one submitted call with uncertain settlement needs reconciliation');
+});
+
+test('real expiring session authoriser preserves a confirmed grant spend after lock during settlement', async () => {
+  const child = new Uint8Array(32);
+  child[0] = 7;
+  /** @type {import('../packages/account/dist/ports/index.js').PrfKeySource} */
+  const source = {
+    withSession: (work) => work(),
+    deviceSecret: async () => {
+      throw Error('owner requested');
+    },
+    deriveSecret: async () => child,
+  };
+  const session = await createSessionJubjubAuthoriser(
+    source,
+    pureCircuits,
+    {
+      account,
+      networkId: 'undeployed',
+      bindingId: 'acc-s3r1.1',
+      origin,
+      sessionId: 'ab'.repeat(32),
+      expiresAt: 1_900_000,
+    },
+    () => 1_000_000,
+  );
+  let submitted = false;
+  const result = await spendUnshieldedWithGrant(intent, {
+    pure: pureCircuits,
+    grantee: session.authoriser,
+    source: {
+      readGrantSpendContext: async () =>
+        submitted
+          ? {
+              ...live,
+              nonce: 3n,
+              spentCommit: pureCircuits.derive_grant_spent_commit(Buffer.from(salt, 'hex'), 7n),
+            }
+          : live,
+    },
+    chain: {
+      readAccount: async () => undefined,
+      call: async () => {
+        submitted = true;
+        session.dispose();
+        return { txHash: 'ab'.repeat(32) };
+      },
+    },
+    review: async () => true,
+    nowSeconds: () => 1000,
+    attempts: 1,
+  });
+  assert.equal(result.spentTotal, 7n);
+  assert.equal(result.txHash, 'ab'.repeat(32));
+  await assert.rejects(session.authoriser.devicePublicKey(), /locked or expired/);
 });

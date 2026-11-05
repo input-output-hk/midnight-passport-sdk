@@ -116,8 +116,11 @@ unchanged; this session flow does not support shielded spending.
 The page additionally checks account, network, binding, grantee, origin, exact
 scope and expiry against the confirmed grant opening. It has one session
 operation at a time, a non-sliding wall deadline plus monotonic elapsed deadline,
-and cancellation checks. Local lock cannot cancel a transaction already submitted;
-a subsequently confirmed result is still recorded.
+and cancellation checks. The explicit Lock control remains available while an operation runs and ends its
+remaining credential approval. It cannot cancel an already-open provider dialog or
+undo a submitted transaction; a subsequently confirmed result is still recorded.
+A new pending attempt clears old transaction hashes, and any SDK-reported original
+submission IDs are retained for reconciliation.
 
 Local key disposal is **not on-chain revocation**. A browser exploit can use or
 copy a live key within its grant scope. On-chain expiry/revocation bounds that

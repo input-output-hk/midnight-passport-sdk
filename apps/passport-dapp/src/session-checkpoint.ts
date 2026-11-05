@@ -36,12 +36,17 @@ export function sessionCheckpoint(
           !/^(0|[1-9][0-9]*)$/.test(v.spent)
         )
           return invalid();
-        for (const field of ['account', 'grantId', 'color', 'recipient', 'txHash'])
+        for (const field of ['account', 'grantId', 'color', 'recipient'])
           if (
             v[field] !== undefined &&
             (typeof v[field] !== 'string' || !/^[0-9a-f]{64}$/.test(v[field] as string))
           )
             return invalid();
+        if (
+          v.txHash !== undefined &&
+          (typeof v.txHash !== 'string' || !/^[0-9a-f]{64}(?:[0-9a-f]{2})?$/.test(v.txHash))
+        )
+          return invalid();
         for (const field of ['cap', 'perCallCap'])
           if (
             v[field] !== undefined &&

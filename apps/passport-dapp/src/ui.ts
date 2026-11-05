@@ -192,7 +192,7 @@ export function createUi(
   const renderButtons = () => {
     const busy = log.current !== undefined;
     buttons.startSession.disabled = busy || !account || assetsByColor.size === 0;
-    buttons.endSession.disabled = busy;
+    buttons.endSession.disabled = false;
     buttons.revokeSession.disabled = busy || !account;
     buttons.create.disabled = busy || !ready;
     buttons.open.disabled = busy || !ready;
@@ -747,7 +747,18 @@ export function createUi(
     on(action: ActionId, fn: () => Promise<void>) {
       const button = buttons[action];
       button.addEventListener('click', async () => {
-        if (log.current) return;
+        if (log.current) {
+          if (action === 'endSession') {
+            // An emergency local lock must work during a long issue/proof/settlement.
+            // Keep the original operation log/IDs and end its remaining credential consent.
+            try {
+              await fn();
+            } finally {
+              consent?.after();
+            }
+          }
+          return;
+        }
         log.start(action);
         try {
           if (consent && !(await consent.before(action))) {

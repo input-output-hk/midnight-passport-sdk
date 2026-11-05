@@ -72,6 +72,16 @@ export function createDemoSession(ports: DemoSessionPorts) {
   let lastWall = 0;
   let lastMono = 0;
   let cancellation = new AbortController();
+  const submittedIds = (error: unknown) => {
+    if (!error || typeof error !== 'object') return {};
+    const value = error as { grantId?: unknown; txHash?: unknown };
+    return {
+      ...(typeof value.grantId === 'string' &&
+        /^[0-9a-f]{64}$/.test(value.grantId) && { grantId: value.grantId }),
+      ...(typeof value.txHash === 'string' &&
+        /^[0-9a-f]{64}(?:[0-9a-f]{2})?$/.test(value.txHash) && { txHash: value.txHash }),
+    };
+  };
   const publish = (patch: Partial<DemoSessionSnapshot>) => {
     state = Object.freeze({ ...state, ...patch });
     ports.checkpoint?.write(state);
@@ -176,6 +186,9 @@ export function createDemoSession(ports: DemoSessionPorts) {
       busy = true;
       let issueAttempted = false;
       try {
+        // Do not attribute a prior revocation/transfer hash to a new uncertain issue.
+        state = { status: 'locked', spent: '0' };
+        opening = undefined;
         publish({
           status: 'authorizing',
           account: account.address,
@@ -232,7 +245,10 @@ export function createDemoSession(ports: DemoSessionPorts) {
         publish({ status: 'active' });
       } catch (error) {
         dispose();
-        publish({ status: issueAttempted ? 'blocked' : 'locked' });
+        publish({
+          status: issueAttempted ? 'blocked' : 'locked',
+          ...(issueAttempted && submittedIds(error)),
+        });
         throw error;
       } finally {
         busy = false;
@@ -263,6 +279,8 @@ export function createDemoSession(ports: DemoSessionPorts) {
       busy = true;
       const version = revision;
       try {
+        const { txHash: _previousHash, ...currentGrant } = state;
+        state = currentGrant;
         publish({ status: 'spending' });
         current(version);
         const result = await ports.spend(
@@ -283,7 +301,8 @@ export function createDemoSession(ports: DemoSessionPorts) {
       } catch (error) {
         revision++;
         dispose();
-        publish({ status: 'blocked' });
+        const { txHash } = submittedIds(error);
+        publish({ status: 'blocked', ...(txHash && { txHash }) });
         throw error; // No fallback owner send and no automatic retry, including lost responses.
       } finally {
         busy = false;

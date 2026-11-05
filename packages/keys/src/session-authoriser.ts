@@ -97,7 +97,12 @@ export async function createSessionJubjubAuthoriser(
       scheme: 'jubjub-schnorr',
       devicePublicKey: signer.devicePublicKey,
       devicePublicKeyHex: signer.devicePublicKeyHex,
-      withKeySession: signer.withKeySession,
+      // A holder's operation also includes submission and settlement observation. Locking
+      // must stop later key uses, without hiding a result already confirmed by the chain.
+      async withKeySession(operation) {
+        check();
+        return operation();
+      },
       async authorise(request) {
         check();
         if (

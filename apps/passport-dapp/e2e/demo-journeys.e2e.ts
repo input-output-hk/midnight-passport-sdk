@@ -156,6 +156,7 @@ try {
     let unknownFunding = false;
     let unknownWithdrawal = false;
     let unknownSession = false;
+    let holdSessionSpend: (() => Promise<void>) | undefined;
     let serviceUnavailable = false;
     let staleOwnerReads = false;
     let staleReadCount = 0;
@@ -203,7 +204,11 @@ try {
         if (url.origin === origin && url.pathname === '/__demo-fixture') {
           const data = request.postDataJSON() as Record<string, unknown>;
           const action = String(data.action);
-          if (action === 'spend' && unknownSession) {
+          if (action === 'spend' && holdSessionSpend) {
+            fixture(action, data);
+            await holdSessionSpend();
+            await route.fulfill({ json: state });
+          } else if (action === 'spend' && unknownSession) {
             fixture(action, data); // Realistic fake: effect occurred, acknowledgement was lost.
             await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
           } else if (action === 'withdraw' && unknownWithdrawal) {
@@ -646,6 +651,34 @@ try {
         'critical rotation requires a fresh passkey despite an active session',
       );
       done('critical owner rotation cannot reuse the cached session signer');
+      let releaseHeldSpend!: () => void;
+      let observeHeldSpend!: () => void;
+      const heldSpend = new Promise<void>((r) => {
+        releaseHeldSpend = r;
+      });
+      const spendObserved = new Promise<void>((r) => {
+        observeHeldSpend = r;
+      });
+      holdSessionSpend = () => {
+        observeHeldSpend();
+        return heldSpend;
+      };
+      await approve(owner, 'withdraw');
+      await spendObserved;
+      assert.ok(
+        await owner.locator('#endSession').isEnabled(),
+        'explicit lock is available while an operation is running',
+      );
+      await owner.locator('#endSession').click();
+      assert.match(await owner.locator('#session-state').innerText(), /BLOCKED/);
+      releaseHeldSpend();
+      await waitStatus(owner, /Withdrawal confirmed/);
+      holdSessionSpend = undefined;
+      assert.match(await owner.locator('#session-state').innerText(), /LOCKED/);
+      assert.match(await owner.locator('#session-state').innerText(), /Spent 2/);
+      done(
+        'immediate lock during settlement retains a confirmed transfer and keeps the signer locked',
+      );
       await owner.locator('#endSession').click();
       await waitStatus(owner, /Local session locked/);
       assert.ok(state.grant?.active, 'local lock is not chain revocation');
