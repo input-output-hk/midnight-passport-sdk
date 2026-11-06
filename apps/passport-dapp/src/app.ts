@@ -53,7 +53,12 @@ const apiVersion = injected()?.apiVersion;
 
 // Presentation (buttons, progress, event log, cards, evidence) lives in ui.ts; this file keeps the
 // connector calls. `stage` moves the progress bar and the log to the next step of the action.
-const workspace = createDemoWorkspace();
+const workspace = createDemoWorkspace({
+  networkId: network,
+  bindingId: BINDING_ID,
+  serviceUrl: SERVICE_URL,
+  manifestSha256: MANIFEST_SHA256,
+});
 const ui = createUi(
   {
     note:

@@ -724,6 +724,18 @@ try {
       await owner.locator('#activity-toggle').click();
       assert.equal(await owner.locator('#activity-panel').isVisible(), true);
       assert.ok((await owner.locator('.workspace-center').evaluate((e) => e.clientWidth)) < wide);
+      await click(owner, '#nav-settings');
+      assert.equal(
+        await owner
+          .locator('#settings-developer-tools')
+          .evaluate((e) => (e as HTMLDetailsElement).open),
+        false,
+      );
+      await owner.locator('#settings-developer-tools > summary').click();
+      assert.match(await owner.locator('#demo-configuration').innerText(), new RegExp(manifest));
+      assert.match(await owner.locator('#demo-configuration').innerText(), /acc-s3r1.1/);
+      assert.equal(await owner.locator('#demo-configuration input').count(), 0);
+      await owner.locator('#settings-developer-tools > summary').click();
       await owner.locator('#nav-overview').click();
       done('five workspaces separate settings and Audit without credentials or connector effects');
 

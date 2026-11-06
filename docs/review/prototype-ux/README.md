@@ -59,7 +59,8 @@ regression. Its focused tests ran, but its sandbox could not access the Nix daem
 for full builds/browser journeys. Main Nix qualification supplies executable
 coverage. The optional React/wallet review at98de6d9 found two P2 response/error-boundary gaps.
 Follow-up refuses non-record balances and normalizes connected-property getters;
-regressions also cover hostile error metadata. A mobile overflow assertion exposed
+regressions also cover hostile error metadata and the initial status-response
+property boundary. Settings exposes read-only build pins, not editable secrets. A mobile overflow assertion exposed
 long external addresses/advertisements; responsive wrapping was added. Final
 re-review and exact-head browser receipts must cover these corrections.
 Final receipts, findings/fixes and signature verification belong to the dated

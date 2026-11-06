@@ -30,7 +30,7 @@ actual provider acceptance remains distinct from local synthetic qualification.
 | [#291](https://github.com/input-output-hk/midnight-passport-sdk/issues/291) | Settings and dedicated redacted Audit | Implemented locally; existing action nodes and intent guards preserved. |
 | [#292](https://github.com/input-output-hk/midnight-passport-sdk/issues/292) | Optional React example and white-label composition | Local development example uses public snapshots and StrictMode; validation/review applies. No React dependency in SDK packages. |
 | [#293](https://github.com/input-output-hk/midnight-passport-sdk/issues/293) | Bounded optional Lace Wallet connector | Implemented locally against the inspected public4.0.x/4.1.x read subset; synthetic acceptance only, no actual provider claim. |
-| [#294](https://github.com/input-output-hk/midnight-passport-sdk/issues/294) | Browser/accessibility journeys, docs and handover | Per-slice checks; final milestone qualification pending. |
+| [#294](https://github.com/input-output-hk/midnight-passport-sdk/issues/294) | Browser/accessibility journeys, docs and handover | Local browser/unit/docs qualification and independent review recorded in the review map/checkpoint; hosted timing and actual providers remain separate. |
 
 Issues remain open until review and integration. Local implementation is not a
 published release or a change to the deployed documentation site.

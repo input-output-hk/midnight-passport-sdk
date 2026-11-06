@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   discoverWalletProviders,
   connectWalletReader,
+  WalletReaderError,
 } from '../packages/adapter-browser/dist/wallet.js';
 const id = '10000000-0000-0000-0000-000000000001';
 const color = 'ab'.repeat(32);
@@ -222,4 +223,48 @@ test('connected method getters and hostile error metadata never escape as privat
     code: 'WalletRequestFailed',
     message: 'WalletRequestFailed',
   });
+});
+
+test('initial connection status response getters are normalized before exposing a reader', async () => {
+  const f = fixture();
+  f.api.getConnectionStatus = async () => {
+    const response = { status: 'connected', networkId: 'undeployed' };
+    Object.defineProperty(response, 'status', {
+      get() {
+        throw new Error('private status details');
+      },
+    });
+    return response;
+  };
+  await assert.rejects(connectWalletReader(candidate(f.registry), f.options), {
+    code: 'WalletRequestFailed',
+    message: 'WalletRequestFailed',
+  });
+});
+
+test('hostile error prototype traps and modified known errors cannot expose provider data', async () => {
+  const modified = new WalletReaderError('PermissionRejected');
+  modified.message = 'private extension details';
+  for (const error of [
+    modified,
+    new Proxy(
+      {},
+      {
+        getPrototypeOf() {
+          throw new Error('private prototype details');
+        },
+      },
+    ),
+  ]) {
+    const f = fixture();
+    f.initial.connect = async () => {
+      throw error;
+    };
+    await assert.rejects(connectWalletReader(candidate(f.registry), f.options), (failure) => {
+      assert.ok(failure instanceof WalletReaderError);
+      assert.equal(failure.message, failure.code);
+      assert.doesNotMatch(failure.message, /private/);
+      return true;
+    });
+  }
 });

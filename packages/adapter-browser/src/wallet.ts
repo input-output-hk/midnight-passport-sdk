@@ -113,18 +113,31 @@ export async function connectWalletReader(
     try {
       return await run();
     } catch (error) {
-      if (error instanceof WalletReaderError) throw error;
+      let code: WalletReaderErrorCode = 'WalletRequestFailed';
       try {
-        if (object(error) && error.type === 'DAppConnectorAPIError') {
+        if (
+          error instanceof WalletReaderError &&
+          [
+            'ProviderUnavailable',
+            'UnsupportedAPI',
+            'PermissionRejected',
+            'Disconnected',
+            'NetworkMismatch',
+            'InvalidWalletResponse',
+            'WalletRequestFailed',
+          ].includes(error.code)
+        )
+          code = error.code;
+        else if (object(error) && error.type === 'DAppConnectorAPIError') {
           if (error.code === 'Rejected' || error.code === 'PermissionRejected')
-            return Promise.reject(new WalletReaderError('PermissionRejected'));
-          if (error.code === 'Disconnected')
-            return Promise.reject(new WalletReaderError('Disconnected'));
+            code = 'PermissionRejected';
+          else if (error.code === 'Disconnected') code = 'Disconnected';
         }
       } catch {
-        /* Untrusted error getters are also normalized. */
+        /* Includes hostile error getters and prototype traps. */
       }
-      throw new WalletReaderError('WalletRequestFailed');
+      // Construct our own public error; never preserve provider messages, causes or properties.
+      throw new WalletReaderError(code);
     }
   };
   assertCurrent();
@@ -146,14 +159,15 @@ export async function connectWalletReader(
       balances: getUnshieldedBalances as () => Promise<unknown>,
     };
   });
-  const checkStatus = async () => {
-    assertCurrent();
-    const result = await request(() => status.call(api));
-    assertCurrent();
-    if (!object(result) || result.status !== 'connected')
-      throw new WalletReaderError('Disconnected');
-    if (result.networkId !== networkId) throw new WalletReaderError('NetworkMismatch');
-  };
+  const checkStatus = () =>
+    request(async () => {
+      assertCurrent();
+      const result = await request(() => status.call(api));
+      assertCurrent();
+      if (!object(result) || result.status !== 'connected')
+        throw new WalletReaderError('Disconnected');
+      if (result.networkId !== networkId) throw new WalletReaderError('NetworkMismatch');
+    });
   await checkStatus();
   return Object.freeze({
     async read(): Promise<WalletSnapshot> {

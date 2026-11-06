@@ -36,7 +36,8 @@ deployed site remain separate from this local work.
   select and review an optional [Lace Wallet connection]({{ '/lace-wallet/' | relative_url }}).
   Their snapshots remain separate; no ACC permission follows either connection.
 - **Advanced · Developer tools:** advisory SDK capabilities/proof plans, the mock
-  naming adapter and prototype limits. Configuration is not made editable and
+  naming adapter, read-only network/binding/service/manifest build pins and prototype
+  limits. These inputs do not certify live readiness or integrity. Configuration is not made editable and
   there is no operator-token field.
 
 Security sections and Advanced start closed. Device/holder preparation mirrors

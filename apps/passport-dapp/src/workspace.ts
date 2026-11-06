@@ -13,7 +13,12 @@ const byId = (id: string): HTMLElement => {
 };
 const panelOf = (id: string) => byId(id).closest<HTMLElement>('section')!;
 
-export function createDemoWorkspace() {
+export function createDemoWorkspace(config: {
+  readonly networkId: string;
+  readonly bindingId: string;
+  readonly serviceUrl: string;
+  readonly manifestSha256: string;
+}) {
   const main = byId('main');
   const nav = node('nav');
   nav.className = 'workspace-nav';
@@ -174,6 +179,30 @@ export function createDemoWorkspace() {
   advanced.id = 'settings-developer-tools';
   advanced.className = 'panel';
   advanced.append(node('summary', 'Advanced · Developer tools'));
+  const configuration = node('section');
+  configuration.id = 'demo-configuration';
+  configuration.className = 'panel';
+  configuration.append(node('h3', 'Build configuration · read only'));
+  const pins = node('dl');
+  for (const [label, value] of [
+    ['Network', config.networkId],
+    ['ACC binding', config.bindingId],
+    ['Passport service', config.serviceUrl],
+    ['Pinned manifest SHA-256', config.manifestSha256],
+  ]) {
+    const term = node('dt', label);
+    const definition = node('dd', value);
+    definition.className = 'value';
+    pins.append(term, definition);
+  }
+  configuration.append(
+    pins,
+    node(
+      'p',
+      'These are build inputs, not a live service-readiness or artifact-integrity check. Change operator configuration outside this page; no token or secret belongs here.',
+    ),
+  );
+  advanced.append(configuration);
   advanced.append(
     panelOf('capability-title'),
     panelOf('name-service-title'),
