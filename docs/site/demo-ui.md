@@ -29,9 +29,10 @@ deployed site remain separate from this local work.
 
 ### Start from Overview
 
-Two matching cards separate **Create a new account** from **Open your account**.
-Both explain the action before its button. **Have an account address?** expands
-inside the Open card for the less common **Open by ACC address** flow. Paste the
+One compact **Your Passport account** panel groups both entry actions.
+**Open with passkey** is the primary action; **Create account** is secondary.
+A shared notice explains passkey approval. **Have an account address?** expands
+below the actions for the less common **Open by ACC address** flow. Paste the
 64-character lowercase hexadecimal account address and use an enrolled passkey;
 an address alone grants no access and cannot recover a lost passkey. Expanding
 this option or entering an address starts no credential or account operation.

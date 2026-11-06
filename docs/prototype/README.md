@@ -241,8 +241,9 @@ wallet connection. Scoped JubJub transfers still require a separately approved
 grant; critical owner actions keep fresh passkey approval. No secret persists
 across reload or local lock, and unknown intents retain their original fences.
 
-Overview offers two matching cards: **Create a new account** and **Open your
-account**. The latter contains **Have an account address?** for the advanced
+Overview offers one compact **Your Passport account** panel with **Open with
+passkey** as the primary action and **Create account** as secondary. Below them,
+**Have an account address?** reveals the advanced
 address-based opening flow. The address still requires an enrolled passkey; it
 is not account recovery. Navigation/disclosure changes preserve the address draft
 and start no credential or transaction. Activity starts collapsed with its trigger

@@ -765,10 +765,30 @@ try {
       ]);
       assert.equal(await owner.locator('#activity-panel').isVisible(), false);
       assert.equal(await owner.locator('#activity-toggle').getAttribute('aria-expanded'), 'false');
-      assert.deepEqual(await owner.locator('.overview-choice > h3').allTextContents(), [
-        'Create a new account',
-        'Open your account',
-      ]);
+      assert.equal(await owner.locator('.overview-welcome').count(), 1);
+      assert.equal(
+        await owner.locator('.overview-welcome > h3').textContent(),
+        'Your Passport account',
+      );
+      assert.deepEqual(
+        (await owner.locator('.overview-choices button').allTextContents()).map((text) =>
+          text.trim(),
+        ),
+        ['Open with passkey', 'Create account'],
+      );
+      assert.ok(
+        await owner.locator('#open').evaluate((button) => button.classList.contains('btn-primary')),
+      );
+      assert.ok(
+        await owner
+          .locator('#create')
+          .evaluate(
+            (button) =>
+              button.classList.contains('btn-secondary') &&
+              !button.classList.contains('btn-primary'),
+          ),
+      );
+      assert.equal(await owner.locator('.overview-welcome > .overview-note').count(), 1);
       assert.equal(await owner.locator('#open-address').isVisible(), false);
       await owner.locator('#overview-open-address > summary').click();
       assert.equal(await owner.locator('#open-address').isVisible(), true);
@@ -781,16 +801,14 @@ try {
       await owner.locator('#nav-overview').click();
       assert.equal(await owner.locator('#open-address').inputValue(), address);
       assert.equal(await owner.locator('#open-address').isVisible(), false);
-      const choiceBounds = await owner.locator('.overview-choice').evaluateAll((cards) =>
-        cards.map((card) => {
-          const bounds = card.getBoundingClientRect();
-          const button = card.querySelector(':scope > button')!.getBoundingClientRect();
-          return { height: bounds.height, buttonY: button.y, buttonWidth: button.width };
+      const choiceBounds = await owner.locator('.overview-choices button').evaluateAll((buttons) =>
+        buttons.map((button) => {
+          const bounds = button.getBoundingClientRect();
+          return { y: bounds.y, width: bounds.width };
         }),
       );
-      assert.ok(Math.abs(choiceBounds[0]!.height - choiceBounds[1]!.height) < 2);
-      assert.ok(Math.abs(choiceBounds[0]!.buttonY - choiceBounds[1]!.buttonY) < 2);
-      assert.ok(Math.abs(choiceBounds[0]!.buttonWidth - choiceBounds[1]!.buttonWidth) < 2);
+      assert.ok(Math.abs(choiceBounds[0]!.y - choiceBounds[1]!.y) < 2);
+      assert.ok(Math.abs(choiceBounds[0]!.width - choiceBounds[1]!.width) < 2);
       if (process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS && arm === 'p256') {
         const screenshots = process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS;
         await mkdir(screenshots, { recursive: true });
@@ -813,7 +831,7 @@ try {
         null,
       );
       done(
-        'Overview has two clear choices; optional address disclosure preserves draft and starts no credential or account action',
+        'Overview has one compact entry panel; optional address disclosure preserves draft and starts no credential or account action',
       );
       assert.deepEqual(
         await owner

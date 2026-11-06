@@ -73,27 +73,36 @@ export function createDemoWorkspace(config: {
     for (const id of ids) list.append(byId(id).closest('li')!);
     parent.append(list);
   };
-  actions(views.overview, ['create', 'open']);
-  const choices = views.overview.querySelector<HTMLUListElement>('.actions')!;
-  choices.classList.add('overview-choices');
-  for (const [id, title] of [
-    ['create', 'Create a new account'],
-    ['open', 'Open your account'],
-  ] as const) {
-    const card = byId(id).closest<HTMLLIElement>('li')!;
-    card.classList.add('overview-choice');
-    const description = byId(`${id}-desc`);
-    card.prepend(node('h3', title), description);
+  const welcome = node('section');
+  welcome.className = 'overview-welcome';
+  welcome.setAttribute('aria-labelledby', 'overview-welcome-title');
+  const welcomeTitle = node('h3', 'Your Passport account');
+  welcomeTitle.id = 'overview-welcome-title';
+  welcome.append(
+    welcomeTitle,
+    node('p', 'Open your account with its passkey, or create a new account to get started.'),
+  );
+  views.overview.append(welcome);
+  actions(welcome, ['open', 'create']);
+  welcome.querySelector('.actions')!.classList.add('overview-choices');
+  // Keep the action-specific descriptions available to assistive technology;
+  // the shared panel explains passkey approval once visually.
+  for (const id of ['open', 'create']) {
+    byId(`${id}-desc`).classList.add('sr-only');
+    byId(`${id}-prompts`).classList.add('sr-only');
   }
+  const passkeyNote = node(
+    'p',
+    'Passkey approval required. Each request is explained before you approve it.',
+  );
+  passkeyNote.className = 'overview-note';
+  welcome.append(passkeyNote);
   const openByAddress = node('details');
   openByAddress.id = 'overview-open-address';
   openByAddress.className = 'overview-advanced';
   openByAddress.append(node('summary', 'Have an account address?'));
   actions(openByAddress, ['openAt']);
-  byId('open').closest('li')!.append(openByAddress);
-  const passkeyNote = node('p', 'Each passkey request is explained before you approve it.');
-  passkeyNote.className = 'overview-note';
-  views.overview.append(passkeyNote);
+  welcome.append(openByAddress);
   const account = panelOf('account-title');
   const wallet = panelOf('wallet-title');
   const accountPages = createAccountWorkspace(views.account, account, (page) => {

@@ -265,9 +265,7 @@ export function createUi(
     withdrawalRecipient.disabled = busy || !account;
     buttons.withdraw.closest('li')?.toggleAttribute('hidden', assetsByColor.size === 0);
     copyButton.disabled = busy || (log.runs.length === 0 && log.traceEntries.length === 0);
-    // With an account open, rotating is the next thing to show; before that, creating is.
-    buttons.create.classList.toggle('btn-primary', !account);
-    buttons.create.classList.toggle('btn-secondary', !!account);
+    // Entry actions keep their stable primary/secondary hierarchy.
     buttons.rotate.classList.toggle('btn-primary', !!account);
     buttons.rotate.classList.toggle('btn-secondary', !account);
     byId('rotate-needs').hidden = !!account;

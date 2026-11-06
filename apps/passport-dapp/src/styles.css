@@ -1002,22 +1002,27 @@ main.workspace-shell[data-activity='collapsed'] {
 .workspace-shell .actions {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
 }
-.workspace-shell .overview-choices {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: stretch;
-}
-.overview-choice {
+.overview-welcome {
+  max-width: 42rem;
   padding: 1.5rem;
   border: 1px solid var(--border);
   border-radius: 0.75rem;
   background: var(--surface);
-  gap: 1rem;
+  display: grid;
+  gap: 1.25rem;
 }
-.overview-choice h3 {
+.overview-welcome h3 {
   font-size: 1.15rem;
 }
-.overview-choice > .action-desc {
-  min-height: 3lh;
+.overview-welcome > p {
+  color: var(--dim);
+}
+.workspace-shell .overview-choices {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.overview-choices .action {
+  position: relative;
 }
 .overview-advanced {
   border-block-start: 1px solid var(--border);
@@ -1104,9 +1109,6 @@ main.workspace-shell[data-activity='collapsed'] {
 @media (max-width: 900px) {
   .workspace-shell .overview-choices {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .overview-choice > .action-desc {
-    min-height: 0;
   }
   .activity-panel {
     display: none;
