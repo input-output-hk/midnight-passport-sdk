@@ -24,6 +24,7 @@ export function installLaceWallet(networkId: string, changed: (connected: boolea
   label.htmlFor = 'lace-wallet-provider';
   const select = element('select');
   select.id = label.htmlFor;
+  select.className = 'action-input';
   const discover = element('button', 'Find Lace Wallet');
   discover.id = 'lace-wallet-discover';
   const connect = element('button', 'Connect Lace Wallet');
@@ -41,6 +42,7 @@ export function installLaceWallet(networkId: string, changed: (connected: boolea
     'Not connected. Choose Find Lace Wallet to inspect compatible advertisements.',
   );
   status.id = 'lace-wallet-status';
+  status.className = 'value';
   status.setAttribute('role', 'status');
   controls.append(
     element('h4', 'External Lace Wallet'),
@@ -64,6 +66,7 @@ export function installLaceWallet(networkId: string, changed: (connected: boolea
   );
   const snapshot = element('p', 'No external wallet balance loaded.');
   snapshot.id = 'lace-wallet-snapshot';
+  snapshot.className = 'value';
   panel.append(snapshot, refresh);
   wallet.append(panel);
   const dialog = element('dialog');
@@ -73,6 +76,7 @@ export function installLaceWallet(networkId: string, changed: (connected: boolea
   const title = element('h2', 'Review wallet connection');
   title.id = 'lace-wallet-review-title';
   const description = element('p');
+  description.className = 'consent-details';
   const approve = element('button', 'Continue to wallet');
   approve.id = 'lace-wallet-approve';
   const cancel = element('button', 'Cancel connection');

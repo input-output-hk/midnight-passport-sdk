@@ -57,7 +57,11 @@ Independent CLI review found and local signed fixes address:
 The latest independent shell re-review at signed `b320ce1` found no actionable
 regression. Its focused tests ran, but its sandbox could not access the Nix daemon
 for full builds/browser journeys. Main Nix qualification supplies executable
-coverage. The optional React/wallet tranche requires its own exact-head review.
+coverage. The optional React/wallet review at98de6d9 found two P2 response/error-boundary gaps.
+Follow-up refuses non-record balances and normalizes connected-property getters;
+regressions also cover hostile error metadata. A mobile overflow assertion exposed
+long external addresses/advertisements; responsive wrapping was added. Final
+re-review and exact-head browser receipts must cover these corrections.
 Final receipts, findings/fixes and signature verification belong to the dated
 Obsidian checkpoint/evidence packet; do not relabel earlier runs as a new head.
 

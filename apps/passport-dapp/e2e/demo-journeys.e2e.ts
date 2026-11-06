@@ -592,6 +592,18 @@ try {
         recipientBeforeExternal,
       );
       assert.match((await external.locator('#account-empty').textContent()) ?? '', /No account/);
+      await external.setViewportSize({ width: 390, height: 844 });
+      assert.ok(
+        await external.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        'external-wallet long address must fit mobile',
+      );
+      await click(external, '#nav-settings');
+      assert.ok(
+        await external.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        'provider advertisements and controls must fit mobile',
+      );
+      await external.setViewportSize({ width: 1280, height: 900 });
+      await click(external, '#nav-wallet');
       await fixtureCall('setLaceFixtureMode', 'wrong-network');
       await click(external, '#lace-wallet-refresh');
       await click(external, '#nav-settings');

@@ -884,7 +884,8 @@ body[data-busy] .btn:disabled {
 }
 /* Operation review remains readable with keyboard focus and long ACC addresses. */
 #consent-dialog,
-#ceremony-dialog {
+#ceremony-dialog,
+#lace-wallet-review {
   max-width: min(42rem, 90vw);
   max-height: 85vh;
   overflow: auto;
@@ -894,7 +895,8 @@ body[data-busy] .btn:disabled {
   background: var(--surface);
 }
 #consent-dialog::backdrop,
-#ceremony-dialog::backdrop {
+#ceremony-dialog::backdrop,
+#lace-wallet-review::backdrop {
   background: rgb(0 0 0 / 65%);
 }
 .consent-details {
@@ -1093,4 +1095,24 @@ main.workspace-shell[data-activity='collapsed'] {
   .workspace-nav button {
     font-size: 0.9rem;
   }
+}
+
+#lace-wallet-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  min-width: 0;
+}
+#lace-wallet-controls > h4,
+#lace-wallet-controls > label,
+#lace-wallet-status {
+  flex-basis: 100%;
+}
+#lace-wallet-provider {
+  min-width: 0;
+  max-width: 100%;
+}
+#lace-wallet-review button {
+  min-height: 44px;
+  margin: 0.5rem;
 }

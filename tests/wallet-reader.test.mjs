@@ -183,3 +183,43 @@ test('forget during an in-flight read refuses its late snapshot and never revoke
   release({ [color]: 5n });
   await assert.rejects(read, { code: 'Disconnected' });
 });
+
+test('Map/Date and other unsupported balance objects are unavailable, never an empty wallet', async () => {
+  for (const invalid of [new Map(), new Date(), [], Object.create({ inherited: true })]) {
+    const f = fixture();
+    f.api.getUnshieldedBalances = async () => invalid;
+    const reader = await connectWalletReader(candidate(f.registry), f.options);
+    await assert.rejects(reader.read(), { code: 'InvalidWalletResponse' });
+  }
+  const f = fixture();
+  f.state.balances = Object.create(null);
+  const reader = await connectWalletReader(candidate(f.registry), f.options);
+  assert.deepEqual((await reader.read()).unshieldedBalances, {});
+});
+
+test('connected method getters and hostile error metadata never escape as private provider errors', async () => {
+  const f = fixture();
+  Object.defineProperty(f.api, 'getConnectionStatus', {
+    get() {
+      throw new Error('private provider data');
+    },
+  });
+  await assert.rejects(connectWalletReader(candidate(f.registry), f.options), {
+    code: 'WalletRequestFailed',
+    message: 'WalletRequestFailed',
+  });
+  const g = fixture();
+  g.initial.connect = async () => {
+    throw Object.create(null, {
+      type: {
+        get() {
+          throw new Error('secret getter');
+        },
+      },
+    });
+  };
+  await assert.rejects(connectWalletReader(candidate(g.registry), g.options), {
+    code: 'WalletRequestFailed',
+    message: 'WalletRequestFailed',
+  });
+});

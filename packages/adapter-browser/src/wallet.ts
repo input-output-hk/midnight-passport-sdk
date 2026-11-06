@@ -114,10 +114,15 @@ export async function connectWalletReader(
       return await run();
     } catch (error) {
       if (error instanceof WalletReaderError) throw error;
-      if (object(error) && error.type === 'DAppConnectorAPIError') {
-        if (error.code === 'Rejected' || error.code === 'PermissionRejected')
-          throw new WalletReaderError('PermissionRejected');
-        if (error.code === 'Disconnected') throw new WalletReaderError('Disconnected');
+      try {
+        if (object(error) && error.type === 'DAppConnectorAPIError') {
+          if (error.code === 'Rejected' || error.code === 'PermissionRejected')
+            return Promise.reject(new WalletReaderError('PermissionRejected'));
+          if (error.code === 'Disconnected')
+            return Promise.reject(new WalletReaderError('Disconnected'));
+        }
+      } catch {
+        /* Untrusted error getters are also normalized. */
       }
       throw new WalletReaderError('WalletRequestFailed');
     }
@@ -125,17 +130,22 @@ export async function connectWalletReader(
   assertCurrent();
   const api = await request(() => pin!.connect.call(pin!.initial, networkId));
   assertCurrent();
-  if (
-    !object(api) ||
-    typeof api.getConnectionStatus !== 'function' ||
-    typeof api.getUnshieldedAddress !== 'function' ||
-    typeof api.getUnshieldedBalances !== 'function'
-  )
-    throw new WalletReaderError('UnsupportedAPI');
-  // Capture only the methods this facade uses; never expose the raw connected API.
-  const status = api.getConnectionStatus as () => Promise<unknown>;
-  const address = api.getUnshieldedAddress as () => Promise<unknown>;
-  const balances = api.getUnshieldedBalances as () => Promise<unknown>;
+  // Inspect each untrusted property exactly once inside the same coarse-error boundary.
+  const { status, address, balances } = await request(async () => {
+    if (!object(api)) throw new WalletReaderError('UnsupportedAPI');
+    const { getConnectionStatus, getUnshieldedAddress, getUnshieldedBalances } = api;
+    if (
+      typeof getConnectionStatus !== 'function' ||
+      typeof getUnshieldedAddress !== 'function' ||
+      typeof getUnshieldedBalances !== 'function'
+    )
+      throw new WalletReaderError('UnsupportedAPI');
+    return {
+      status: getConnectionStatus as () => Promise<unknown>,
+      address: getUnshieldedAddress as () => Promise<unknown>,
+      balances: getUnshieldedBalances as () => Promise<unknown>,
+    };
+  });
   const checkStatus = async () => {
     assertCurrent();
     const result = await request(() => status.call(api));
@@ -151,7 +161,12 @@ export async function connectWalletReader(
         await checkStatus();
         const [a, b] = await request(() => Promise.all([address.call(api), balances.call(api)]));
         await checkStatus();
-        if (!object(a) || !text(a.unshieldedAddress, 512) || !object(b))
+        if (
+          !object(a) ||
+          !text(a.unshieldedAddress, 512) ||
+          !object(b) ||
+          ![null, Object.prototype].includes(Object.getPrototypeOf(b))
+        )
           throw new WalletReaderError('InvalidWalletResponse');
         let valid = false;
         try {
