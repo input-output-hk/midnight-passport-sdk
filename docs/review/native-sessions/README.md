@@ -117,3 +117,20 @@ No concurrent transaction flow shares that mutable scope. The eventual expiry
 checks intentionally revisit the first ACC after the second to qualify this path.
 The stopped attempt remainsFAIL, all end inputs matched, all owned containers
 stopped and the lease was released. Originals and volumes remain retained.
+
+## Fourth attempt: retained setup-mint observation timeout
+
+The fourth full attempt at `f8bcb0a` passed the first arm through renewal and created
+both ACCs, then timed out observing the P-256 setup mint in the live standalone
+wallet. Its38original submissions and private fixtures remain retained; no second
+mint/deposit is permitted as an observation fix. The parent remainsFAIL, with
+unchanged end inputs, complete owned cleanup and lease release.
+
+The source now confirms the exact original mint before one cold refresh of the
+same public standalone wallet, with unchanged unshielded/encryption public keys.
+Both account and faucet transaction providers are rebound to that fresh wallet;
+private state is read from its existing persistent store and is never reset. Mint
+calls use the current provider directly rather than a deployed handle that might
+retain the old stopped wallet. The refresh path contains no mint, proof or send.
+Recipient and standalone-wallet refresh counts are recorded separately. A fresh
+full run is still required; earlier failed suites remain failed.

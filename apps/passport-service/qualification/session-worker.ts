@@ -91,6 +91,7 @@ let funding: any,
   proofs = 0,
   proofAttempts = 0,
   recipientObserverReconnects = 0,
+  fundingWalletReconnects = 0,
   attempts = 0;
 const transactions: Array<{
   ordinal: number;
@@ -223,11 +224,12 @@ try {
   await wallet.syncWallet(funding, 'isolated-session-public-genesis');
   recipient = await wallet.createWallet(recipientSeed);
   await wallet.syncWallet(recipient, 'isolated-session-recipient');
-  const providers = wire(await wallet.createProviders(funding));
+  let providers = wire(await wallet.createProviders(funding));
   const compiled = setup.compiledAccountContract();
   const recipientAddress = hex(wallet.userAddressBytes(recipient));
   const sponsorAddress = wallet.userAddressBytes(funding);
-  const faucetProviders = wire(
+  const sponsorEncryptionPublicKey = providers.walletProvider.getEncryptionPublicKey();
+  let faucetProviders = wire(
     await wallet.createProviders(funding, join(contract, 'contracts/managed/faucet')),
   );
   const faucet = await deployContract(faucetProviders, {
@@ -394,7 +396,23 @@ try {
     const colorDomain = rnd();
     const color = hex(ledger.encodeRawTokenType(ledger.rawTokenType(colorDomain, faucetAddress)));
     // A dedicated exact-value synthetic asset avoids sharing any NIGHT fixture or sponsor UTXO.
-    await faucet.callTx.mint_unshielded(colorDomain, 12n, { bytes: sponsorAddress });
+    // Build through the CURRENT provider after any earlier wallet refresh, rather than
+    // a deployed handle retaining an old stopped wallet. Private state is never reset.
+    await faucetProviders.privateStateProvider.setContractAddress(faucetAddress);
+    assert.notEqual(await faucetProviders.privateStateProvider.get('session-faucet'), undefined);
+    const mint = await submitCallTx(faucetProviders, {
+      compiledContract: setup.compiledFaucetContract(),
+      contractAddress: faucetAddress,
+      circuitId: 'mint_unshielded',
+      privateStateId: 'session-faucet',
+      args: [colorDomain, 12n, { bytes: sponsorAddress }],
+    });
+    const originalMint = transactions.at(-1)!;
+    const mintId = mint.public.txHash ?? mint.public.txId;
+    assert.equal(
+      mintId.length === 66 && mintId.startsWith('00') ? mintId.slice(2) : mintId,
+      originalMint.hash,
+    );
     const Rx = await load('rxjs');
     const balance = async (context: any, amount: bigint) =>
       Rx.firstValueFrom(
@@ -405,7 +423,29 @@ try {
           Rx.timeout(120000),
         ),
       );
-    await balance(funding, 12n);
+    await confirmedCredit({
+      wait: () => balance(funding, 12n),
+      confirm: () => finality(originalMint.hash),
+      event: () =>
+        publicEvent({
+          sessionArm: arm,
+          stage: 'confirmed-original-mint-funding-wallet-refresh',
+          txHash: originalMint.hash,
+        }),
+      reconnect: async () => {
+        await funding.wallet.stop();
+        funding = undefined;
+        funding = await wallet.createWallet('0'.repeat(63) + '1');
+        await wallet.syncWallet(funding, 'same-public-genesis-wallet-after-confirmed-mint');
+        assert.equal(hex(wallet.userAddressBytes(funding)), hex(sponsorAddress));
+        providers = wire(await wallet.createProviders(funding));
+        assert.equal(providers.walletProvider.getEncryptionPublicKey(), sponsorEncryptionPublicKey);
+        faucetProviders = wire(
+          await wallet.createProviders(funding, join(contract, 'contracts/managed/faucet')),
+        );
+        fundingWalletReconnects++;
+      },
+    });
     await chain.call({
       address,
       circuit: 'deposit_unshielded',
@@ -649,6 +689,7 @@ try {
     submissions: attempts,
     retainedBeforeSend: transactions.length,
     recipientObserverReconnects,
+    fundingWalletReconnects,
     canonicalFinality: confirmed,
     syntheticCredentials: true,
     syntheticAssetNotNight: true,
@@ -660,6 +701,7 @@ try {
       'Two actual ten-minute demo sessions per arm; expiry refusal is SDK pre-proof against indexed native chain time, not a malicious proof/node rejection.',
       'Native value path uses the hosted Chain port directly; browser HTTP/consent/lock-loss behavior is separately covered by Chromium tests.',
       'Dedicated faucet token, not an additional NIGHT funding qualification.',
+      'A stale setup mint view may require a canonical-original-bound refresh of the same standalone wallet/providers, without another mint or private-state reset.',
       'A stale live recipient view may require a cold reconnect after the original withdrawal is independently finalized; this is never another send.',
       'Source packages, not registry/image acceptance.',
     ],
