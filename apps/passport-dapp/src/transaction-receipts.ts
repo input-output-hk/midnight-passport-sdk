@@ -70,3 +70,7 @@ export function transactionReceipts(storage: Store, networkId: string, bindingId
     },
   };
 }
+
+/** No receipt write can be required to stop signing or refresh already-public wallet balances. */
+export const receiptStorageRequired = (action: string) =>
+  !['refresh', 'roster', 'grantRoster', 'walletRefresh', 'endSession'].includes(action);

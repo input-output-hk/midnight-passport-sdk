@@ -2523,6 +2523,106 @@ try {
         'private holdings arriving after owner lock are not displayed and cause no fallback credential access',
       );
 
+      await fullOwner.evaluate(() => {
+        (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 0;
+      });
+      await approve(fullOwner, 'unlockOwner');
+      await waitStatus(fullOwner, /Account unlocked/);
+      await fill(fullOwner, '#withdraw-recipient', recipient);
+      await fill(fullOwner, '#withdraw-amount', '1');
+      await approve(fullOwner, 'startSession');
+      await waitStatus(fullOwner, /JubJub session active/);
+      await approve(fullOwner, 'wallet');
+      await waitStatus(fullOwner, /wallet connected through/);
+      const beforeStorageFaultCredentials = await ownerCredentials();
+      const beforeStorageFaultRotations = calls.filter((call) => call === 'rotate').length;
+      await fullOwner.evaluate(() => {
+        const set = Storage.prototype.setItem;
+        (window as unknown as { __restoreReceiptSet: () => void }).__restoreReceiptSet = () => {
+          Storage.prototype.setItem = set;
+        };
+        Storage.prototype.setItem = function (key, value) {
+          if (key.startsWith('passport-demo:transaction-receipt:v1:'))
+            throw Error('Synthetic receipt quota');
+          return set.call(this, key, value);
+        };
+      });
+      await click(fullOwner, '#rotate');
+      await waitStatus(fullOwner, /failed\./, /Synthetic receipt quota/);
+      await click(fullOwner, '#walletRefresh');
+      await waitStatus(fullOwner, /snapshot refreshed/);
+      await click(fullOwner, '#endSession');
+      await waitStatus(fullOwner, /Local session locked/);
+      assert.equal(await ownerCredentials(), beforeStorageFaultCredentials);
+      assert.equal(calls.filter((call) => call === 'rotate').length, beforeStorageFaultRotations);
+      await fullOwner.evaluate(() => {
+        (window as unknown as { __restoreReceiptSet: () => void }).__restoreReceiptSet();
+      });
+      done(
+        'receipt quota refuses new owner work but cannot block idle local lock or public wallet refresh',
+      );
+
+      await approve(fullOwner, 'unlockOwner');
+      await waitStatus(fullOwner, /Account unlocked/);
+      await approve(fullOwner, 'revokeSession');
+      await waitStatus(fullOwner, /Session grant revoked on chain/);
+      await approve(fullOwner, 'startSession');
+      await waitStatus(fullOwner, /JubJub session active/);
+      let releaseStorageFault!: () => void, observeStorageFault!: () => void;
+      const storageFaultWait = new Promise<void>((resolve) => {
+        releaseStorageFault = resolve;
+      });
+      const storageFaultObserved = new Promise<void>((resolve) => {
+        observeStorageFault = resolve;
+      });
+      heldOwnerAction = 'rotate';
+      holdOwnerReceipt = () => {
+        observeStorageFault();
+        return storageFaultWait;
+      };
+      await approve(fullOwner, 'rotate');
+      await storageFaultObserved;
+      const storageFaultHash = state.txHash;
+      await fullOwner.evaluate(() => {
+        const get = Storage.prototype.getItem;
+        (window as unknown as { __restoreReceiptGet: () => void }).__restoreReceiptGet = () => {
+          Storage.prototype.getItem = get;
+        };
+        Storage.prototype.getItem = function (key) {
+          if (
+            key.startsWith('passport-demo:transaction-receipt:v1:') ||
+            key.startsWith('passport-demo:session:v1:')
+          )
+            throw Error('Synthetic unreadable storage');
+          return get.call(this, key);
+        };
+      });
+      releaseStorageFault();
+      await waitStatus(fullOwner, /Transaction receipt storage failed.*Copy Audit/);
+      assert.match((await fullOwner.locator('#routine-status').textContent())!, /locked/);
+      await fullOwner.evaluate(() => {
+        (window as unknown as { __restoreReceiptGet: () => void }).__restoreReceiptGet();
+      });
+      heldOwnerAction = undefined;
+      holdOwnerReceipt = undefined;
+      await fullOwner.locator('#nav-audit').click();
+      const faultTraceDetails = fullOwner
+        .locator('details')
+        .filter({ has: fullOwner.locator('#trace') });
+      if (!(await faultTraceDetails.evaluate((element) => (element as HTMLDetailsElement).open)))
+        await faultTraceDetails.locator('summary').click();
+      await fullOwner
+        .locator('#trace')
+        .filter({ hasText: storageFaultHash })
+        .waitFor({ state: 'visible' });
+      const credentialsAfterStorageFailure = await ownerCredentials();
+      await click(fullOwner, '#rotate');
+      await waitStatus(fullOwner, /Transaction receipt storage failed.*Copy Audit/);
+      assert.equal(await ownerCredentials(), credentialsAfterStorageFailure);
+      done(
+        'receipt persistence failure locks both local key families and preserves the acknowledgement plus Audit warning despite unreadable checkpoints',
+      );
+
       assert.equal(failures.length, 0, failures.join(', '));
       assert.equal(pageErrors.length, 0, pageErrors.join(', '));
       const observedPurposes = new Set<string>(archivedPurposes[arm] ?? []);

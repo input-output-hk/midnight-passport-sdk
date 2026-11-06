@@ -100,9 +100,10 @@ export function createDemoSession(ports: DemoSessionPorts) {
     ports.changed(state);
   };
   const dispose = () => {
-    key?.dispose();
+    const previous = key;
     key = undefined;
     cancellation.abort();
+    previous?.dispose();
   };
   const uncertain = (value: DemoSessionSnapshot) =>
     ['authorizing', 'spending', 'revoking', 'blocked'].includes(value.status);
@@ -143,11 +144,29 @@ export function createDemoSession(ports: DemoSessionPorts) {
     ports.checkpoint?.settle(state);
     ports.changed(state);
   };
+  const syncSafely = () => {
+    try {
+      sync();
+      return true;
+    } catch {
+      if (state.status === 'blocked' && !key) return false;
+      revision++;
+      dispose();
+      state = Object.freeze({ ...state, status: 'blocked' });
+      try {
+        ports.changed(state);
+      } catch {
+        /* A presentation failure cannot retain the key. */
+      }
+      return false;
+    }
+  };
   const lock = () => {
-    sync();
     const owned = !!key || busy;
     revision++;
+    // Local disposal precedes every fallible storage read/write and observer.
     dispose();
+    if (!syncSafely()) return;
     if (state.status !== 'revoked')
       if (owned) publish({ status: uncertain(state) ? 'blocked' : 'locked' });
       else {
@@ -156,7 +175,7 @@ export function createDemoSession(ports: DemoSessionPorts) {
       }
   };
   const tick = () => {
-    sync();
+    syncSafely();
     if (
       state.status === 'active' ||
       state.status === 'spending' ||

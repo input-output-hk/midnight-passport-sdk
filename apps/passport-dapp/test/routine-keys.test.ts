@@ -223,3 +223,21 @@ test('full authentication reproduces the same owner and disposes its previous ge
     f.outputs.every((o) => o.root.every((b) => b === 0) && o.authoriser.every((b) => b === 0)),
   );
 });
+
+test('a failing routine observer cannot interrupt key disposal or later observers', async () => {
+  const f = fixture();
+  let fail = false,
+    notified = false;
+  f.keys.subscribe(() => {
+    if (fail) throw Error('storage observer');
+  });
+  f.keys.subscribe(() => {
+    if (fail) notified = true;
+  });
+  await f.keys.unlock(account, 15, 'localhost', 'http://localhost:5173', true);
+  const owner = f.keys.ownerSession(account)!;
+  fail = true;
+  assert.doesNotThrow(() => f.keys.lock());
+  assert.equal(notified, true);
+  assert.throws(() => owner.check(), /locked/);
+});

@@ -60,7 +60,13 @@ export function createRoutineKeys(ports: {
   const listeners = new Set<(snapshot: RoutineState) => void>();
   const publish = (next: RoutineState) => {
     state = Object.freeze(next);
-    for (const listener of listeners) listener(state);
+    for (const listener of listeners) {
+      try {
+        listener(state);
+      } catch {
+        /* Observers cannot prevent key disposal or later observers. */
+      }
+    }
   };
   const lock = (status: 'locked' | 'expired' = 'locked') => {
     revision++;
@@ -131,7 +137,11 @@ export function createRoutineKeys(ports: {
     snapshot: tick,
     subscribe(listener: (snapshot: RoutineState) => void) {
       listeners.add(listener);
-      listener(tick());
+      try {
+        listener(tick());
+      } catch {
+        /* Initial presentation is an observer too. */
+      }
       return () => {
         listeners.delete(listener);
       };

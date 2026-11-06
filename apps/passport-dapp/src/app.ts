@@ -53,7 +53,8 @@ import {
   OWNER_ACTIONS,
 } from './routine-access.js';
 import { authenticateOwnerAccount, routeAuthenticatedAccount } from './owner-access.js';
-import { transactionReceipts } from './transaction-receipts.js';
+import { transactionReceipts, receiptStorageRequired } from './transaction-receipts.js';
+import { completeLocalCleanup } from './local-cleanup.js';
 const retainedTransactions = transactionReceipts(localStorage, NETWORK_ID, BINDING_ID);
 let receiptStorageFailed = false;
 
@@ -90,7 +91,7 @@ const ui = createUi(
   ARM,
   {
     before: async (action) => {
-      if (!['refresh', 'roster', 'grantRoster'].includes(action)) {
+      if (receiptStorageRequired(action)) {
         if (receiptStorageFailed)
           throw Error(
             'Copy Audit before leaving: transaction receipt persistence failed. Restore storage before another key operation.',
@@ -121,6 +122,10 @@ const ui = createUi(
     after: () => {
       finishRoutineReview();
       finishDemoConsent();
+      if (receiptStorageFailed)
+        ui.status(
+          'Transaction receipt storage failed. Local keys are locked. Copy Audit before leaving; restore storage before another key operation.',
+        );
     },
   },
 );
@@ -142,21 +147,36 @@ if (recoveryNote)
   recoveryNote.textContent +=
     ' Keep the original passkey: another enrolled reader cannot recover its grant openings. If an owner operation is interrupted, reconcile its transactions before retrying.';
 const { status, stage, record } = ui;
+function lockAllLocalKeys() {
+  return completeLocalCleanup([() => routineKeys.lock(), () => session.lock()]);
+}
 const onEvent = (event: PassportEvent) => {
-  // Record in memory first, even if durable browser storage subsequently fails.
-  ui.event(event);
+  let receipt: ReturnType<typeof retainedTransactions.observe>;
+  let failed = false;
+  // Durable receipt capture must be independent of rendering and other observers.
   try {
-    const receipt = retainedTransactions.observe(event);
-    if (receipt) traceOperation('account.transaction.submitted', { ...receipt });
+    receipt = retainedTransactions.observe(event);
   } catch {
-    receiptStorageFailed = true;
-    routineKeys.lock();
-    finishDemoConsent();
-    ui.note(
-      'Transaction receipt storage failed. Copy Audit before leaving; further key operations are blocked.',
-    );
+    failed = receiptStorageFailed = true;
+    completeLocalCleanup([() => routineKeys.lock(), () => session.lock(), finishDemoConsent]);
+  }
+  try {
+    ui.event(event);
+  } catch {
+    /* The immutable receipt and key cleanup still stand. */
+  }
+  if (receipt) traceOperation('account.transaction.submitted', { ...receipt });
+  if (failed) {
+    try {
+      ui.note(
+        'Transaction receipt storage failed. Copy Audit before leaving; further key operations are blocked.',
+      );
+    } catch {
+      /* Cleanup has already completed independently. */
+    }
   }
 };
+
 /** Record public receipts before a best-effort indexer refresh can fail or outlive a lease. */
 async function refreshAfterReceipt<T>(
   receipt: {
@@ -276,15 +296,9 @@ routineKeys.subscribe((snapshot) => {
 });
 setInterval(() => routineKeys.snapshot(), 1000);
 document.getElementById('lock-routine')!.addEventListener('click', () => routineKeys.lock());
-window.addEventListener('pagehide', () => {
-  routineKeys.lock();
-  session.lock();
-});
+window.addEventListener('pagehide', lockAllLocalKeys);
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    routineKeys.lock();
-    session.lock();
-  }
+  if (document.hidden) lockAllLocalKeys();
 });
 
 async function refreshAccountBalances(
@@ -1128,8 +1142,11 @@ ui.on('startSession', async () => {
   );
 });
 ui.on('endSession', async () => {
-  routineKeys.lock();
-  session.lock();
+  const complete = lockAllLocalKeys();
+  if (!complete)
+    ui.note(
+      'Local key cleanup ran, but its checkpoint or presentation failed. Preserve Audit before leaving.',
+    );
   status(
     'Local session locked. Its on-chain grant is not revoked; already-submitted effects still require reconciliation.',
   );

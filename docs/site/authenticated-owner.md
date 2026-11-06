@@ -86,7 +86,10 @@ before finality/composite completion. The demo retains these public references i
 local records and restores them into Audit after reload. A submitted reference is not proof
 of finality. Multi-transaction rotations can stop on expiry after earlier effects; inspect
 the original IDs rather than replaying. Storage failure blocks further key actions and
-asks you to copy Audit; records are never silently evicted. Companion enrollment records
+asks you to copy Audit; records are never silently evicted. Local lock and public
+wallet refresh remain available without a receipt write. Independent cleanup and
+receipt capture cannot be interrupted by a failing UI observer; unreadable session
+checkpoints dispose the local signer and retain a blocked state. Companion enrollment records
 also retain any earlier `rotationTxHash`.
 The demo records completed owner receipts before its best-effort post-operation refresh; an indexer
 failure cannot erase the transaction reference or trigger another submission.

@@ -464,3 +464,28 @@ test('a foreign unresolved record during observation cannot be settled using ano
   assert.equal(a.ports.checkpoint!.read()!.intentId, foreign);
   assert.equal(a.ports.checkpoint!.read()!.status, 'blocked');
 });
+
+test('session lock disposes its key before unreadable storage and failing presentation', async () => {
+  const f = fixture();
+  await f.start();
+  Object.assign(f.ports, {
+    checkpoint: {
+      read: () => {
+        throw Error('unreadable');
+      },
+      write: () => {
+        throw Error('unwritable');
+      },
+      begin: () => {},
+      settle: () => {},
+    },
+    changed: () => {
+      throw Error('renderer');
+    },
+  });
+  assert.doesNotThrow(() => f.session.lock());
+  assert.equal(f.counters().disposed, 1);
+  assert.equal(f.session.snapshot().status, 'blocked');
+  await assert.rejects(f.session.spend(f.account, transfer), /Reconcile|blocked|outside/);
+  assert.equal(f.counters().spends, 0);
+});

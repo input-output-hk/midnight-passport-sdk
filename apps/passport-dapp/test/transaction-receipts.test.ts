@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { transactionReceipts } from '../src/transaction-receipts.js';
+import { transactionReceipts, receiptStorageRequired } from '../src/transaction-receipts.js';
 import type { PassportEvent } from '@input-output-hk/mn-passport-protocol';
 const event: PassportEvent = {
   id: 'one',
@@ -59,4 +59,11 @@ test('receipt errors preserve prior references and refuse corrupt identities and
   const [key, raw] = before[0]!;
   f.data.set(key, raw.replace('ab'.repeat(32), 'cd'.repeat(32)));
   assert.throws(() => f.journal.load(), /mismatch/);
+});
+
+test('local lock and public wallet refresh never require receipt storage; owner operations do', () => {
+  for (const action of ['endSession', 'walletRefresh', 'refresh', 'roster', 'grantRoster'])
+    assert.equal(receiptStorageRequired(action), false, action);
+  for (const action of ['unlockOwner', 'rotate', 'withdraw', 'startSession', 'enrollDevice'])
+    assert.equal(receiptStorageRequired(action), true, action);
 });
