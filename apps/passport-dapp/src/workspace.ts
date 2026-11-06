@@ -57,7 +57,10 @@ export function createDemoWorkspace(config: {
     button.id = `nav-${id}`;
     button.setAttribute('aria-controls', view.id);
     buttons[id] = button;
-    nav.append(button);
+    const group = node('div');
+    group.className = 'workspace-nav-group';
+    group.append(button);
+    nav.append(group);
   }
   // Keep relocated controls in the document: the existing UI intentionally resolves stable
   // IDs while composing later panels. Detaching a whole account card would hide its children.
@@ -249,6 +252,16 @@ export function createDemoWorkspace(config: {
   const settingsPages = createSettingsWorkspace(views.settings, (page) => {
     if (selected === 'settings') history.replaceState(null, '', `#settings/${page}`);
   });
+  const submenus = new Map<WorkspaceId, HTMLElement>([
+    ['account', accountPages.navigation],
+    ['settings', settingsPages.navigation],
+  ]);
+  for (const [id, submenu] of submenus) {
+    submenu.id = `nav-${id}-submenu`;
+    submenu.classList.add('workspace-submenu');
+    buttons[id].setAttribute('aria-controls', `${views[id].id} ${submenu.id}`);
+    buttons[id].after(submenu);
+  }
   const quick = node('p');
   quick.className = 'quick-access-summary';
   const quickStatus = node('span', 'Quick actions locked');
@@ -353,6 +366,11 @@ export function createDemoWorkspace(config: {
       views[view].hidden = view !== id;
       if (view === id) buttons[view].setAttribute('aria-current', 'page');
       else buttons[view].removeAttribute('aria-current');
+      const submenu = submenus.get(view);
+      if (submenu) {
+        submenu.hidden = view !== id;
+        buttons[view].setAttribute('aria-expanded', String(view === id));
+      }
     }
     if (id === 'audit') expanded = false;
     views[id].querySelector('.workspace-heading')!.append(toggle);

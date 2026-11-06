@@ -25,6 +25,7 @@ export function createAccountWorkspace(
   const nav = element('div');
   nav.className = 'account-tabs';
   nav.setAttribute('role', 'tablist');
+  nav.setAttribute('aria-orientation', 'vertical');
   nav.setAttribute('aria-label', 'Passport account operations');
   root.append(context, nav);
   const tabs = {} as Record<AccountPage, HTMLButtonElement>;
@@ -64,9 +65,9 @@ export function createAccountWorkspace(
     tabs[id].addEventListener('keydown', (event) => {
       const index = order.indexOf(id);
       const next =
-        event.key === 'ArrowRight'
+        event.key === 'ArrowDown' || event.key === 'ArrowRight'
           ? order[(index + 1) % order.length]
-          : event.key === 'ArrowLeft'
+          : event.key === 'ArrowUp' || event.key === 'ArrowLeft'
             ? order[(index + order.length - 1) % order.length]
             : event.key === 'Home'
               ? order[0]
@@ -139,5 +140,5 @@ export function createAccountWorkspace(
     pages[id].append(panel);
   }
   select('balances', false);
-  return { select, selected: () => selected };
+  return { navigation: nav, select, selected: () => selected };
 }

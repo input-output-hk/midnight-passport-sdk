@@ -43,6 +43,7 @@ export function createSettingsWorkspace(root: HTMLElement, onChange: (page: Sett
   for (const [page, button] of buttons) button.addEventListener('click', () => select(page));
   select('security', false, false);
   return {
+    navigation: nav,
     select,
     selected: () => selected,
     valid: (page: string): page is SettingsPage => Object.hasOwn(names, page),

@@ -756,7 +756,7 @@ try {
       done(
         'two white-label Activity hosts render shared public snapshots with independent cleanup and no replay',
       );
-      assert.deepEqual(await owner.locator('.workspace-nav button').allTextContents(), [
+      assert.deepEqual(await owner.locator('.workspace-nav-group > button').allTextContents(), [
         'Overview',
         'Passport account',
         'Midnight wallet',
@@ -859,6 +859,10 @@ try {
         'Wallet connections',
         'Developer tools',
       ]);
+      assert.equal(await owner.locator('#nav-settings + .settings-nav').isVisible(), true);
+      assert.equal(await owner.locator('#nav-settings').getAttribute('aria-expanded'), 'true');
+      assert.equal(await owner.locator('#nav-account-submenu').isVisible(), false);
+      assert.equal(await owner.locator('#workspace-settings > .settings-nav').count(), 0);
       assert.equal(await owner.locator('[data-settings-page]:visible').count(), 1);
       assert.equal(await owner.locator('#workspace-settings > details').count(), 0);
       for (const page of ['sessions', 'grants', 'wallets', 'developer', 'security']) {
@@ -894,6 +898,8 @@ try {
         'Settings submenus preserve public drafts, deep-link safely and fit mobile without credential effects',
       );
       await owner.locator('#nav-audit').click();
+      assert.equal(await owner.locator('#nav-settings-submenu').isVisible(), false);
+      assert.equal(await owner.locator('#nav-settings').getAttribute('aria-expanded'), 'false');
       assert.equal(await owner.locator('#activity-panel').isVisible(), false);
       const wide = await owner.locator('.workspace-center').evaluate((e) => e.clientWidth);
       await owner.locator('#activity-toggle').click();
@@ -914,10 +920,17 @@ try {
         'Deposit',
         'Withdraw',
       ]);
+      assert.equal(await owner.locator('#nav-account + .account-tabs').isVisible(), true);
+      assert.equal(await owner.locator('#nav-account').getAttribute('aria-expanded'), 'true');
+      assert.equal(await owner.locator('#workspace-account > .account-tabs').count(), 0);
+      assert.equal(
+        await owner.locator('.account-tabs').getAttribute('aria-orientation'),
+        'vertical',
+      );
       assert.equal(await owner.locator('#account-page-balances').isVisible(), true);
       assert.equal(await owner.locator('#fund').isVisible(), false);
       await owner.locator('#account-tab-balances').focus();
-      await owner.keyboard.press('ArrowRight');
+      await owner.keyboard.press('ArrowDown');
       assert.equal(
         await owner.locator('#account-tab-deposit').getAttribute('aria-selected'),
         'true',
@@ -933,7 +946,7 @@ try {
         await owner.locator('#account-tab-balances').getAttribute('aria-selected'),
         'true',
       );
-      await owner.keyboard.press('ArrowLeft');
+      await owner.keyboard.press('ArrowUp');
       assert.equal(
         await owner.locator('#account-tab-withdraw').getAttribute('aria-selected'),
         'true',
@@ -947,7 +960,7 @@ try {
         null,
       );
       done(
-        'account tabs support keyboard navigation and mobile layout without an account, credentials or implicit actions',
+        'nested account navigation supports vertical keyboard navigation and mobile layout without an account, credentials or implicit actions',
       );
       const deepLinked = await newPage(undefined, false, '#account/deposit');
       assert.equal(await deepLinked.locator('#nav-account').getAttribute('aria-current'), 'page');

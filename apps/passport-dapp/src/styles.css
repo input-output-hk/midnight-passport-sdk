@@ -945,6 +945,33 @@ main.workspace-shell[data-activity='collapsed'] {
   display: grid;
   gap: 0.5rem;
 }
+.workspace-nav-group {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.workspace-nav-group > button[aria-expanded]::after {
+  content: '›';
+  float: inline-end;
+  margin-inline-start: 0.5rem;
+}
+.workspace-nav-group > button[aria-expanded='true']::after {
+  transform: rotate(90deg);
+}
+.workspace-submenu {
+  display: grid;
+  gap: 0.25rem;
+  margin-inline-start: 0.8rem;
+  padding-inline-start: 0.5rem;
+  border-inline-start: 1px solid var(--border);
+}
+.workspace-submenu[hidden] {
+  display: none;
+}
+.workspace-nav .workspace-submenu button {
+  font-size: 0.875rem;
+  padding: 0.5rem;
+}
 .workspace-nav button {
   min-height: 44px;
   padding: 0.65rem 0.8rem;
@@ -1126,6 +1153,9 @@ main.workspace-shell[data-activity='collapsed'] {
   .workspace-nav button {
     font-size: 0.9rem;
   }
+  .workspace-nav-group:has(.workspace-submenu:not([hidden])) {
+    flex-basis: 100%;
+  }
 }
 
 #lace-wallet-controls {
@@ -1302,24 +1332,7 @@ main.workspace-shell[data-activity='collapsed'] {
   border-radius: 10px;
   background: var(--surface-2);
 }
-.account-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border);
-}
-.account-tabs [role='tab'] {
-  min-height: 44px;
-  padding: 0.55rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-}
-.account-tabs [aria-selected='true'] {
+.workspace-nav .account-tabs [aria-selected='true'] {
   color: var(--heading);
   background: var(--accent-soft);
   border-color: var(--accent);
@@ -1364,26 +1377,8 @@ main.workspace-shell[data-activity='collapsed'] {
   margin-bottom: 0.75rem;
 }
 
-.settings-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  border-block-end: 1px solid var(--border);
-  padding-block-end: 1rem;
-}
-.settings-nav button {
-  min-height: 44px;
-  padding: 0.65rem 0.9rem;
-  border: 1px solid var(--border);
-  border-radius: 0.6rem;
-  background: var(--surface);
-  color: var(--heading);
-  font: inherit;
-  cursor: pointer;
-}
-.settings-nav button[aria-current='page'] {
+.workspace-nav .settings-nav button[aria-current='page'] {
   border-color: var(--accent);
-  background: var(--accent-soft);
 }
 [data-settings-page][hidden] {
   display: none;

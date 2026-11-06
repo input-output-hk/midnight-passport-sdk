@@ -22,10 +22,16 @@ deployed site remain separate from this local work.
 | Workspace | What belongs here |
 | --- | --- |
 | **Overview** | Create an account, open with a passkey, or open a known ACC address with an enrolled passkey. No name or profile creation. |
-| **Passport account** | **Balances**, **Deposit** and **Withdraw** tabs. The selected ACC/network stays visible; each operation has its own form. Amounts retain their original units and unavailable/stale states. |
+| **Passport account** | **Balances**, **Deposit** and **Withdraw** submenu under its left navigation entry. The selected ACC/network stays visible; each operation has its own form. Amounts retain their original units and unavailable/stale states. |
 | **Midnight wallet** | Separate built-in HD and optional external Lace Wallet views: addresses, balances, freshness and **Refresh wallet balance**. **Manage wallet connections** opens Settings. |
 | **Audit** | Timed operation stages, full redacted request/response trace, public evidence JSON and **Copy full log**. |
 | **Settings** | Devices, quick actions, permissions, wallet connections and developer subpages. |
+
+Only the active parent shows its submenu. Switching workspaces preserves the
+selected child and form drafts; it never starts an operation. Existing
+`#account/<page>` and `#settings/<page>` deep links still select the matching
+parent and child. The main workspace contains the selected content without a
+duplicate horizontal menu.
 
 ### Start from Overview
 
@@ -53,8 +59,11 @@ actual passkey request still have their own blocking review.
   explicit unshielded Midnight recipient. The subsequent review chooses the
   applicable scoped-session or fresh-owner route; selecting a tab grants nothing.
 
-The open ACC/network stays above the tabs. Keyboard users can use Left/Right,
-Home/End within the tab row. Mobile keeps the same three tabs and a single form.
+The open ACC/network stays above the selected form. **Balances**, **Deposit** and
+**Withdraw** appear beneath **Passport account** in the left navigation. Keyboard
+users can use Up/Down and Home/End within this vertical submenu; Left/Right also
+remain supported. On mobile the active submenu stays under its parent in the
+top navigation, with one form at a time.
 `#account/deposit` and `#account/withdraw` open those views without starting an
 operation. Form values and the selected tab survive navigation to another
 workspace in the same page; reloading does not restore a signing key or draft.
@@ -64,7 +73,7 @@ progress and results stay in Activity. Tabs never resubmit, sign, refresh or can
 
 ### Settings
 
-Settings uses separate submenu pages: **Devices & passkeys**, **Quick actions**,
+Settings pages appear beneath **Settings** in the left navigation: **Devices & passkeys**, **Quick actions**,
 **Permissions**, **Wallet connections** and **Developer tools**. One page is
 visible at a time; navigation preserves drafts and starts no account action.
 For example, `#settings/sessions` opens Quick actions, and `#settings/wallets`
