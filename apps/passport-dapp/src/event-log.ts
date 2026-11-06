@@ -45,6 +45,7 @@ export class EventLog {
   readonly traceEntries: OperationTraceEntry[] = [];
   private readonly listeners = new Set<() => void>();
   private readonly traceStarts = new WeakMap<LogRun, number>();
+  private readonly traceEnds = new WeakMap<LogRun, number>();
 
   constructor(private readonly now: () => number = Date.now) {}
 
@@ -198,6 +199,7 @@ export class EventLog {
       kind: 'action.error',
       details: { action: run.action, code: error.code },
     });
+    this.traceEnds.set(run, this.traceEntries.length);
     this.emit();
   }
 
@@ -213,6 +215,7 @@ export class EventLog {
       kind: 'action.end',
       details: { action: run.action, durationMs: run.endedAt - run.startedAt },
     });
+    this.traceEnds.set(run, this.traceEntries.length);
     this.emit();
   }
 
@@ -265,8 +268,7 @@ export class EventLog {
   traceOf(run: LogRun): readonly OperationTraceEntry[] {
     const from = this.traceStarts.get(run);
     if (from === undefined) return [];
-    const next = this.runs[this.runs.indexOf(run) + 1];
-    const to = next ? this.traceStarts.get(next) : undefined;
+    const to = this.traceEnds.get(run);
     return this.traceEntries.slice(from, to);
   }
 

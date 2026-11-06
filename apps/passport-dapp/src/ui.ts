@@ -18,11 +18,9 @@ import {
   promptsFor,
 } from './flows.js';
 import { evidenceJson } from './evidence.js';
-import { progressView, segmentGrow, operationStatus } from './progress.js';
-import {
-  createActivityStore,
-  type OperationReferences,
-} from '@input-output-hk/mn-passport-account/interaction';
+import { progressView, segmentGrow } from './progress.js';
+import { createActivityStore } from '@input-output-hk/mn-passport-account/interaction';
+import { demoActivityObservation } from './activity-observations.js';
 import type { OperationTraceEntry } from './operation-trace.js';
 
 export interface EvidenceHeader {
@@ -266,77 +264,12 @@ export function createUi(
 
   // --- progress ----------------------------------------------------------------------------
   const renderActivity = () => {
-    const run = log.last;
-    const references: { -readonly [K in keyof OperationReferences]: OperationReferences[K] } = {};
-    const collect = (data: Record<string, unknown>) => {
-      for (const [source, target] of [
-        ['flowId', 'flowId'],
-        ['intentId', 'intentId'],
-        ['requestId', 'requestId'],
-        ['txId', 'transactionId'],
-        ['txHash', 'transactionId'],
-      ] as const) {
-        const value = data[source];
-        if (typeof value === 'string' && value.length > 0 && value.length <= 1024)
-          references[target] = value;
-      }
-      for (const key of ['body', 'result']) {
-        const nested = data[key];
-        if (typeof nested === 'object' && nested !== null && !Array.isArray(nested))
-          collect(nested as Record<string, unknown>);
-      }
-    };
-    const runTrace = run ? log.traceOf(run) : [];
-    for (const entry of runTrace) collect(entry.details);
-    const declined =
-      run &&
-      run.state !== 'running' &&
-      (run.error?.code === 'UserCancelled' ||
-        runTrace.some(
-          (entry) => entry.kind === 'action.declined' || /cancelled$/i.test(entry.kind),
-        ));
-    const lastSessionState = [...runTrace]
-      .reverse()
-      .find((entry) => entry.kind === 'session.state');
-    const uncertain =
-      run?.error &&
-      (lastSessionState?.details.phase === 'blocked' ||
-        /unknown|pending|FundingRejected|reconcile|SessionBlocked/i.test(run.error.code));
-    const phase = uncertain
-      ? ('unknown' as const)
-      : declined
-        ? ('cancelled' as const)
-        : run?.state === 'done'
-          ? ('succeeded' as const)
-          : run?.state;
-    const operation =
-      run && phase
-        ? operationStatus(run, log.stagesOf(run), Date.now(), {
-            id: `operation-${log.runs.length}`,
-            phase,
-            references,
-          })
-        : undefined;
-    activity.replace(
-      {
-        ...(operation && { operation }),
-        journey: [
-          {
-            id: 'account',
-            title: 'Create or open Passport account',
-            phase: account ? 'done' : 'current',
-          },
-          { id: 'access', title: 'Review security and access in Settings', phase: 'optional' },
-          {
-            id: 'wallet',
-            title: 'Connect a separate Midnight wallet',
-            phase: wallet.unshieldedAddress ? 'done' : 'optional',
-          },
-        ],
-      },
-      activity.getSnapshot().revision,
-    );
-    return operation;
+    const observation = demoActivityObservation(log, Date.now(), {
+      accountOpen: !!account,
+      walletConnected: !!wallet.unshieldedAddress,
+    });
+    activity.replace(observation, activity.getSnapshot().revision);
+    return observation.operation;
   };
   let segmentsFor: LogRun | undefined;
   let segmentFills: HTMLElement[] = [];

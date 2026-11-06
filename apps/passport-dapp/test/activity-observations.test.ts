@@ -1,0 +1,93 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { EventLog } from '../src/event-log.ts';
+import { demoActivityObservation } from '../src/activity-observations.ts';
+
+const facts = { accountOpen: true, walletConnected: false };
+const fail = (log: EventLog) =>
+  log.fail({
+    code: 'Error',
+    message: 'read or acknowledgement failed',
+    hint: 'Inspect original state',
+  });
+const session = (log: EventLog, phase: string, intentId: string) =>
+  log.trace({
+    at: new Date(1000).toISOString(),
+    kind: 'session.state',
+    details: { phase, intentId },
+  });
+
+test('a late blocked intent cannot relabel or replace the references of a finished attempt', () => {
+  const log = new EventLog(() => 1000);
+  log.start('withdraw');
+  fail(log);
+  const before = demoActivityObservation(log, 1000, facts);
+  session(log, 'blocked', 'unrelated-late-intent');
+  assert.deepEqual(demoActivityObservation(log, 1000, facts), before);
+  assert.equal(log.traceJSON().at(-1)?.details.intentId, 'unrelated-late-intent');
+});
+
+test('an unrelated timer intent arriving during a public read stays outside that operation', () => {
+  const log = new EventLog(() => 1000);
+  log.start('refresh');
+  session(log, 'blocked', 'foreign-intent');
+  fail(log);
+  const operation = demoActivityObservation(log, 1000, facts).operation!;
+  assert.equal(operation.phase, 'failed');
+  assert.equal(operation.references.intentId, undefined);
+});
+
+test('a refused withdrawal cannot borrow an imported blocked intent without its own begin', () => {
+  const log = new EventLog(() => 1000);
+  log.start('withdraw');
+  session(log, 'blocked', 'foreign-intent');
+  fail(log);
+  const operation = demoActivityObservation(log, 1000, facts).operation!;
+  assert.equal(operation.phase, 'failed');
+  assert.equal(operation.references.intentId, undefined);
+});
+
+test('unknown issue, spend and revoke keep their controller begin identity despite foreign updates', () => {
+  for (const [action, phase] of [
+    ['startSession', 'authorizing'],
+    ['withdraw', 'spending'],
+    ['revokeSession', 'revoking'],
+  ] as const) {
+    const log = new EventLog(() => 1000);
+    log.start(action);
+    session(log, phase, 'owned-intent');
+    session(log, 'blocked', 'foreign-intent');
+    session(log, 'blocked', 'owned-intent');
+    fail(log);
+    const operation = demoActivityObservation(log, 1000, facts).operation!;
+    assert.equal(operation.phase, 'unknown');
+    assert.equal(operation.references.intentId, 'owned-intent');
+  }
+});
+
+test('foreign blocked updates cannot turn a known local intent into an unknown send', () => {
+  const log = new EventLog(() => 1000);
+  log.start('withdraw');
+  session(log, 'spending', 'owned-intent');
+  session(log, 'active', 'owned-intent');
+  session(log, 'blocked', 'foreign-intent');
+  fail(log);
+  const operation = demoActivityObservation(log, 1000, facts).operation!;
+  assert.equal(operation.phase, 'failed');
+  assert.equal(operation.references.intentId, 'owned-intent');
+});
+
+test('exact review cancellation remains cancelled and never advances optional wallet authority', () => {
+  const log = new EventLog(() => 1000);
+  log.start('issueGrant');
+  log.trace({ at: new Date(1000).toISOString(), kind: 'grant.issue.cancelled', details: {} });
+  log.finish();
+  const snapshot = demoActivityObservation(log, 1000, {
+    accountOpen: false,
+    walletConnected: true,
+  });
+  assert.equal(snapshot.operation?.phase, 'cancelled');
+  assert.equal(snapshot.journey[0]?.phase, 'current');
+  assert.equal(snapshot.journey[1]?.phase, 'optional');
+  assert.equal(snapshot.journey[2]?.phase, 'done');
+});
