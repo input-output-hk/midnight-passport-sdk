@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { EventLog } from '../src/event-log.ts';
-import { demoActivityObservation } from '../src/activity-observations.ts';
+import { demoActivityObservation, operationForRun } from '../src/activity-observations.ts';
 
 const facts = { accountOpen: true, walletConnected: false };
 const fail = (log: EventLog) =>
@@ -90,4 +90,31 @@ test('exact review cancellation remains cancelled and never advances optional wa
   assert.equal(snapshot.journey[0]?.phase, 'current');
   assert.equal(snapshot.journey[1]?.phase, 'optional');
   assert.equal(snapshot.journey[2]?.phase, 'done');
+});
+
+test('historical Audit rows retain their outcome and ID after newer actions, alongside raw attempts', () => {
+  const log = new EventLog(() => 1000);
+  const cancelled = log.start('create');
+  log.trace({ at: new Date(1000).toISOString(), kind: 'action.declined', details: {} });
+  log.finish();
+  const uncertain = log.start('fund');
+  log.trace({
+    at: new Date(1000).toISOString(),
+    kind: 'funding.intent',
+    details: { requestId: 'original-request' },
+  });
+  log.fail({ code: 'FundingRejected', message: 'Unconfirmed', hint: 'Reconcile' });
+  log.start('refresh');
+  log.finish();
+  assert.equal(operationForRun(log, cancelled, 1000).phase, 'cancelled');
+  assert.equal(operationForRun(log, cancelled, 1000).id, 'operation-1');
+  assert.equal(operationForRun(log, uncertain, 1000).phase, 'unknown');
+  assert.equal(operationForRun(log, uncertain, 1000).id, 'operation-2');
+  assert.equal(operationForRun(log, uncertain, 1000).references.requestId, 'original-request');
+  assert.equal(log.toJSON()[0]?.result, 'done', 'raw legacy attempt state is preserved');
+  assert.equal(
+    log.toJSON()[1]?.result,
+    'failed',
+    'raw failure is not rewritten to invent finality',
+  );
 });

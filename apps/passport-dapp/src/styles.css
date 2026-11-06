@@ -594,6 +594,17 @@ body[data-busy] .btn:disabled {
   color: var(--err);
 }
 
+.run[data-state='unknown'] .run-meta,
+.step[data-state='unknown'] .step-result {
+  color: var(--err);
+}
+.step[data-state='unknown'] .marker {
+  background: var(--err);
+}
+.step[data-state='cancelled'] .step-result {
+  color: var(--dim);
+}
+
 .steps {
   border: 1px solid var(--border);
   border-radius: 8px;

@@ -220,7 +220,7 @@ export class EventLog {
   }
 
   /** The evidence rows: the same runs and steps the page shows. */
-  toJSON(): unknown[] {
+  toJSON(): Record<string, unknown>[] {
     const iso = (t: number | undefined) =>
       t === undefined ? undefined : new Date(t).toISOString();
     const span = (a: number, b: number | undefined) => (b === undefined ? undefined : b - a);

@@ -3,27 +3,21 @@ import type {
   ActivityObservation,
   OperationReferences,
 } from '@input-output-hk/mn-passport-account/interaction';
-import type { EventLog } from './event-log.js';
+import type { EventLog, LogRun } from './event-log.js';
 import { operationStatus } from './progress.js';
 
-export function demoActivityObservation(
-  log: EventLog,
-  now: number,
-  facts: {
-    readonly accountOpen: boolean;
-    readonly walletConnected: boolean;
-  },
-): ActivityObservation {
-  const run = log.last;
-  const trace = run ? log.traceOf(run) : [];
+export function operationForRun(log: EventLog, run: LogRun, now: number) {
+  const index = log.runs.indexOf(run);
+  if (index < 0) throw new TypeError('Operation does not belong to this log.');
+  const trace = log.traceOf(run);
   // Only a controller begin transition belonging to this action can establish its session
   // intent. Timer/imported blocked states must not lend an unrelated intent to a public read.
   const beginPhase =
-    run?.action === 'startSession'
+    run.action === 'startSession'
       ? 'authorizing'
-      : run?.action === 'withdraw'
+      : run.action === 'withdraw'
         ? 'spending'
-        : run?.action === 'revokeSession'
+        : run.action === 'revokeSession'
           ? 'revoking'
           : undefined;
   const sessionIntent =
@@ -61,30 +55,37 @@ export function demoActivityObservation(
   };
   for (const entry of ownTrace) collect(entry.details);
   const declined =
-    run &&
     run.state !== 'running' &&
     (run.error?.code === 'UserCancelled' ||
       ownTrace.some((entry) => entry.kind === 'action.declined' || /cancelled$/i.test(entry.kind)));
   const lastSessionState = [...ownTrace].reverse().find((entry) => entry.kind === 'session.state');
   const uncertain =
-    run?.error &&
+    run.error &&
     (lastSessionState?.details.phase === 'blocked' ||
       /unknown|pending|FundingRejected|reconcile|SessionBlocked/i.test(run.error.code));
   const phase = uncertain
     ? ('unknown' as const)
     : declined
       ? ('cancelled' as const)
-      : run?.state === 'done'
+      : run.state === 'done'
         ? ('succeeded' as const)
-        : run?.state;
-  const operation =
-    run && phase
-      ? operationStatus(run, log.stagesOf(run), now, {
-          id: `operation-${log.runs.length}`,
-          phase,
-          references,
-        })
-      : undefined;
+        : run.state;
+  return operationStatus(run, log.stagesOf(run), now, {
+    id: `operation-${index + 1}`,
+    phase,
+    references,
+  });
+}
+
+export function demoActivityObservation(
+  log: EventLog,
+  now: number,
+  facts: {
+    readonly accountOpen: boolean;
+    readonly walletConnected: boolean;
+  },
+): ActivityObservation {
+  const operation = log.last ? operationForRun(log, log.last, now) : undefined;
   return {
     ...(operation && { operation }),
     journey: [

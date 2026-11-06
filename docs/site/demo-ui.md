@@ -85,6 +85,12 @@ reloads and tabs. Never clear site data or generate a new request ID to retry an
 uncertain transfer. Read [session safety]({{ '/jubjub-sessions/' | relative_url }})
 and the [funding/operator guide]({{ '/service/' | relative_url }}).
 
+Audit rows use the same observed outcomes as Activity, including cancellation and
+uncertainty. Exported runs retain the raw legacy attempt `result` and add `outcome`
+for that derived presentation phase. Neither is a proof of ledger finality. Later
+background events remain in the full trace without being attributed to an ended
+attempt; session intents require a matching controller begin in their own action.
+
 ## Reuse without adopting this demo
 
 | Layer | Responsibility |
