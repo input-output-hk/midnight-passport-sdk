@@ -3,6 +3,7 @@
 import { webauthnPasskey } from '@input-output-hk/mn-passport-adapter-webauthn';
 import type { FlowOptions, GrantScopeInput } from '@input-output-hk/mn-passport-protocol';
 import { beforeDemoCeremony } from '../../src/consent.ts';
+import type { AuthenticatedJubjubOwner } from '@input-output-hk/mn-passport-keys';
 import { routineKeys, checkRoutineReview } from '../../src/routine-access.ts';
 
 export const SERVICE_URL = 'http://localhost:8787';
@@ -15,6 +16,7 @@ export const ARM =
   new URL(location.href).searchParams.get('fixtureArm') === 'jubjub' ? 'jubjub' : 'p256';
 const ADDRESS = 'a1'.repeat(32);
 interface State {
+  ownerPublicKey?: string;
   nonce: number;
   epoch: number;
   entries: string[];
@@ -57,107 +59,139 @@ async function sign(): Promise<void> {
   await p256Signature();
 }
 const tx = (s: State) => ({ txHash: s.txHash, nextUseCounter: BigInt(s.nonce) });
-const account = (credentialId: Uint8Array) => ({
-  address: ADDRESS,
-  networkId: NETWORK_ID,
-  bindingId: BINDING_ID,
-  credentialId,
-  async state() {
-    const s = await call('state');
-    return {
-      specVersion: 1,
-      booted: true,
-      authNonce: BigInt(s.nonce),
-      deviceEpoch: BigInt(s.epoch),
-      entryCount: s.entries.length,
-    };
-  },
-  async deviceRoster() {
-    const s = await call('state');
-    return { authNonce: BigInt(s.nonce), deviceEpoch: BigInt(s.epoch), commitments: s.entries };
-  },
-  async grantRoster() {
-    const s = await call('state');
-    return {
-      authNonce: BigInt(s.nonce),
-      generation: BigInt(s.nonce),
-      entries: s.grant ? [{ id: s.grant.id, active: s.grant.active, read: false }] : [],
-    };
-  },
-  async readShieldedHoldings() {
-    checkRoutineReview();
-    if (
-      !routineKeys.matches({
+const account = (credentialId: Uint8Array, owner?: AuthenticatedJubjubOwner) => {
+  const signAccount = owner
+    ? async () => {
+        owner.check();
+        await owner.authoriser.devicePublicKey();
+      }
+    : sign;
+  const unlockAccount = owner
+    ? async () => {
+        owner.check();
+      }
+    : unlock;
+  return {
+    scheme: owner
+      ? ('jubjub-schnorr' as const)
+      : ARM === 'p256'
+        ? ('p256-webauthn' as const)
+        : ('jubjub-schnorr' as const),
+    address: ADDRESS,
+    networkId: NETWORK_ID,
+    bindingId: BINDING_ID,
+    credentialId,
+    async state() {
+      const s = await call('state');
+      return {
+        specVersion: 1,
+        booted: true,
+        authNonce: BigInt(s.nonce),
+        deviceEpoch: BigInt(s.epoch),
+        entryCount: s.entries.length,
+      };
+    },
+    async deviceRoster() {
+      const s = await call('state');
+      return { authNonce: BigInt(s.nonce), deviceEpoch: BigInt(s.epoch), commitments: s.entries };
+    },
+    async grantRoster() {
+      const s = await call('state');
+      return {
+        authNonce: BigInt(s.nonce),
+        generation: BigInt(s.nonce),
+        entries: s.grant ? [{ id: s.grant.id, active: s.grant.active, read: false }] : [],
+      };
+    },
+    async readShieldedHoldings() {
+      checkRoutineReview();
+      if (
+        !routineKeys.matches({
+          address: ADDRESS,
+          networkId: NETWORK_ID,
+          bindingId: BINDING_ID,
+          credentialId,
+        })
+      )
+        await unlockAccount();
+      await call('holdings');
+      return [
+        {
+          inboxIndex: 2,
+          coin: { color: new Uint8Array(32), value: 2n, nonce: new Uint8Array(32) },
+        },
+      ];
+    },
+    async rotateViewingKey() {
+      await signAccount();
+      const s = await call('rotate');
+      return { ...tx(s), droppedDeviceEntries: [], unsealedGrantIds: [], sealedReadGrants: [] };
+    },
+    async addDevice(_reader: { devicePublicKey: string }) {
+      const currentOwner = routineKeys.ownerSession({
         address: ADDRESS,
         networkId: NETWORK_ID,
         bindingId: BINDING_ID,
         credentialId,
-      })
-    )
-      await unlock();
-    await call('holdings');
-    return [
-      { inboxIndex: 2, coin: { color: new Uint8Array(32), value: 2n, nonce: new Uint8Array(32) } },
-    ];
-  },
-  async rotateViewingKey() {
-    await sign();
-    const s = await call('rotate');
-    return { ...tx(s), droppedDeviceEntries: [], unsealedGrantIds: [], sealedReadGrants: [] };
-  },
-  async addDevice(_reader: unknown) {
-    await sign();
-    const s = await call('enroll');
-    return { ...tx(s), commitmentHex: '20'.repeat(32) };
-  },
-  async removeDevice(target: string) {
-    await sign();
-    const s = await call('remove', { target });
-    return { ...tx(s), rotationTxHash: '30'.repeat(32) };
-  },
-  async issueGrant(scope: GrantScopeInput) {
-    await sign();
-    let grantId: string | undefined;
-    if (scope.expiresAt !== null) {
-      const { pureCircuits: pure } =
-        await import('@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1');
-      const { grantOriginHash, granteePoint } =
-        await import('@input-output-hk/mn-passport-account');
-      const bytes = Uint8Array.from(ADDRESS.match(/../g)!, (b) => parseInt(b, 16));
-      grantId = Array.from(
-        pure.derive_grant_id_with_jubjub(
-          { bytes },
-          granteePoint(scope.grantee.publicKey),
-          grantOriginHash(RP_ID),
-          0n,
-        ),
-        (b) => b.toString(16).padStart(2, '0'),
-      ).join('');
-    }
-    const s = await call('issue', { scope, ...(grantId && { grantId }) });
-    return {
-      ...tx(s),
-      grantId: s.grant!.id,
-      slot: 0,
-      scopeDigest: '40'.repeat(32),
-      status: 'active' as const,
-    };
-  },
-  async recoverPendingGrants() {
-    await unlock();
-    await call('recover');
-    return { published: [], unsettledGrantIds: [] };
-  },
-  async revokeGrant(grantId: string) {
-    await sign();
-    const s = await call('revoke', { grantId });
-    return { ...tx(s), grantId, status: 'revoked' as const };
-  },
-  async withdrawUnshielded(request: { amount: string }, _options?: FlowOptions) {
-    await sign();
-    return tx(await call('withdraw', { amount: request.amount }));
-  },
-});
+      });
+      if (!owner && currentOwner?.publicKey === _reader.devicePublicKey) {
+        await signAccount();
+        const s = await call('enroll-owner', { publicKey: currentOwner.publicKey });
+        return { ...tx(s), commitmentHex: currentOwner.publicKey };
+      }
+      await signAccount();
+      const s = await call('enroll');
+      return { ...tx(s), commitmentHex: '20'.repeat(32) };
+    },
+    async removeDevice(target: string) {
+      await signAccount();
+      const s = await call('remove', { target });
+      return { ...tx(s), rotationTxHash: '30'.repeat(32) };
+    },
+    async issueGrant(scope: GrantScopeInput) {
+      await signAccount();
+      let grantId: string | undefined;
+      if (scope.expiresAt !== null) {
+        const { pureCircuits: pure } =
+          await import('@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1');
+        const { grantOriginHash, granteePoint } =
+          await import('@input-output-hk/mn-passport-account');
+        const bytes = Uint8Array.from(ADDRESS.match(/../g)!, (b) => parseInt(b, 16));
+        grantId = Array.from(
+          pure.derive_grant_id_with_jubjub(
+            { bytes },
+            granteePoint(scope.grantee.publicKey),
+            grantOriginHash(RP_ID),
+            0n,
+          ),
+          (b) => b.toString(16).padStart(2, '0'),
+        ).join('');
+      }
+      const s = await call('issue', { scope, ...(grantId && { grantId }) });
+      return {
+        ...tx(s),
+        grantId: s.grant!.id,
+        slot: 0,
+        scopeDigest: '40'.repeat(32),
+        status: 'active' as const,
+      };
+    },
+    async recoverPendingGrants() {
+      await unlockAccount();
+      await call('recover');
+      return { published: [], unsettledGrantIds: [] };
+    },
+    async revokeGrant(grantId: string) {
+      await signAccount();
+      const s = await call('revoke', { grantId });
+      return { ...tx(s), grantId, status: 'revoked' as const };
+    },
+    async withdrawUnshielded(request: { amount: string }, _options?: FlowOptions) {
+      await signAccount();
+      return tx(await call('withdraw', { amount: request.amount }));
+    },
+  };
+};
 const api = {
   async createAccount(options: { retireAuthority: boolean }) {
     if (options.retireAuthority !== true)
@@ -186,7 +220,8 @@ const api = {
   },
 };
 export async function exportDemoGrantOpening() {
-  await unlock();
+  checkRoutineReview();
+  if (!routineKeys.snapshot().ownerVerified) await unlock();
   const s = await call('state');
   const scope = s.grant!.scope;
   return {
@@ -205,6 +240,20 @@ export async function exportDemoGrantOpening() {
     perCallCap: scope.perCallCap,
     cap: scope.cap,
     ...(scope.expiresAt !== null && { expiresAt: scope.expiresAt }),
+  };
+}
+export async function connect(_network: string, owner: AuthenticatedJubjubOwner) {
+  return {
+    ...api,
+    openAccountAt: async (address: string) => {
+      owner.check();
+      const s = await call('state');
+      if (address !== ADDRESS || (ARM === 'p256' && s.ownerPublicKey !== owner.publicKey))
+        throw Object.assign(new Error('Synthetic owner is not enrolled'), {
+          code: 'NotAuthorised',
+        });
+      return account(owner.context.credentialId, owner);
+    },
   };
 }
 export function installShim(): void {

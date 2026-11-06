@@ -25,6 +25,7 @@ import { shorten } from '../src/ui.ts';
 
 const ACTIONS: readonly ActionId[] = [
   'unlockRoutine',
+  'unlockOwner',
   'startSession',
   'endSession',
   'revokeSession',
@@ -107,6 +108,7 @@ test('the prompt table has an entry for each action and nothing the actions do n
     'rotate',
     'spendGrant',
     'startSession',
+    'unlockOwner',
     'unlockRoutine',
     'walletRefresh',
     'walletWithAccount',

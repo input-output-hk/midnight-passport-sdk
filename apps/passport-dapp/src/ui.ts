@@ -21,7 +21,7 @@ import { evidenceJson } from './evidence.js';
 import { progressView, segmentGrow } from './progress.js';
 import { createActivityStore } from '@input-output-hk/mn-passport-account/interaction';
 import { demoActivityObservation, operationForRun } from './activity-observations.js';
-import { routineKeys } from './routine-access.js';
+import { routineKeys, OWNER_ACTIONS } from './routine-access.js';
 import type { OperationTraceEntry } from './operation-trace.js';
 
 export interface EvidenceHeader {
@@ -55,6 +55,7 @@ export interface WalletView {
 
 const ACTIONS: readonly ActionId[] = [
   'unlockRoutine',
+  'unlockOwner',
   'startSession',
   'endSession',
   'revokeSession',
@@ -183,7 +184,8 @@ export function createUi(
         account &&
         routineKeys.snapshot().status === 'active' &&
         routineKeys.snapshot().account === account.address &&
-        ['holdings', 'wallet'].includes(action)
+        (['holdings', 'wallet'].includes(action) ||
+          (routineKeys.snapshot().ownerVerified && OWNER_ACTIONS.includes(action)))
           ? 'Uses unlocked keys · no new passkey request'
           : ['create', 'open', 'openAt'].includes(action)
             ? 'Passkey approval required'
@@ -208,6 +210,7 @@ export function createUi(
   const renderButtons = () => {
     const busy = log.current !== undefined;
     buttons.unlockRoutine.disabled = busy || !account;
+    buttons.unlockOwner.disabled = busy || !account;
     buttons.startSession.disabled = busy || !account || assetsByColor.size === 0;
     buttons.endSession.disabled = false;
     buttons.revokeSession.disabled = busy || !account;

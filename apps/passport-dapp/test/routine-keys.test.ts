@@ -194,10 +194,31 @@ test('a late PRF result cannot reinstall a lease after lock and its outputs are 
   });
   f.hold(() => pending);
   const unlock = f.keys.unlock(account, 15, 'localhost', 'http://localhost:5173');
+  while (!f.unlocks()) await new Promise<void>((resolve) => setImmediate(resolve));
   f.keys.lock();
   release();
   await assert.rejects(unlock, /cancelled/);
   assert.equal(f.keys.snapshot().status, 'locked');
+  assert.equal(f.outputs.length, 1, 'the actual delayed PRF output must be observed and erased');
+  assert.ok(
+    f.outputs.every((o) => o.root.every((b) => b === 0) && o.authoriser.every((b) => b === 0)),
+  );
+});
+
+test('full authentication reproduces the same owner and disposes its previous generation on renewal and expiry', async () => {
+  const f = fixture();
+  await f.keys.unlock(account, 10, 'localhost', 'http://localhost:5173', true);
+  const first = f.keys.ownerSession(account)!;
+  const publicKey = first.publicKey;
+  f.keys.verifyOwner(account);
+  assert.equal(f.keys.snapshot().ownerVerified, true);
+  await f.keys.unlock(account, 15, 'localhost', 'http://localhost:5173', true);
+  assert.equal(f.keys.ownerSession(account)!.publicKey, publicKey);
+  await assert.rejects(first.authoriser.devicePublicKey(), /locked/);
+  const current = f.keys.ownerSession(account)!;
+  f.time(1_800_001, 901_001);
+  await assert.rejects(current.authoriser.devicePublicKey(), /locked or expired/);
+  assert.equal(f.keys.ownerSession(account), undefined);
   assert.ok(
     f.outputs.every((o) => o.root.every((b) => b === 0) && o.authoriser.every((b) => b === 0)),
   );

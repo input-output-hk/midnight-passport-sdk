@@ -21,6 +21,23 @@ shell.
 - [`docs/site/getting-started.md`](docs/site/getting-started.md): library installation and a minimal browser host.
 - [`docs/site/use-cases.md`](docs/site/use-cases.md): demo prerequisites, actions and expected results.
 
+## Latest local owner-authentication policy
+
+The owner's latest instruction supersedes the older critical-operation passkey rule
+below for **Unlock account** mode. Read `docs/site/authenticated-owner.md`.
+Use the existing deterministic Lace PRF-output-1 JubJub owner, not a random-context
+scoped child. Explicit first-time P-256 companion enrollment grants durable FULL
+ownership; local 10/15/30-minute expiry does not revoke it. Verify the live entry and
+unique sealed reader before exposing authenticated owner operations. All implemented
+owner operations can then reuse JubJub, including device/key/grant administration;
+exact operation consent still applies. Reading-only/scoped-grant mode remains separate.
+Keep pending enrollment attempts, original IDs, scope/expiry and unknown-transaction
+fences. Never silently enroll/replay on an uncertain result, switch a stale approved
+owner action to P-256, or clear a user journal. Original P-256 directory/counter state
+must remain independent. Key/SDK tests and synthetic browser evidence do not qualify
+new native/provider/full Lace behavior. Never enroll an owner on a real user account
+through automated tests; the demo user approves that durable change themselves.
+
 ## RC7: consent and reproducible browser journeys
 
 RC7 adds a review before every key-using action. **Create account** requires

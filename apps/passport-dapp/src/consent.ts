@@ -4,6 +4,8 @@ import { FLOWS, type ActionId } from './flows.js';
 import { traceOperation } from './operation-trace.js';
 
 const PURPOSES: Partial<Record<ActionId, string>> = {
+  unlockOwner:
+    'Use this account’s passkey PRF to unlock its deterministic JubJub OWNER key for 10–30 minutes. It has full account authority: transfers, device changes, key rotation and issuing or revoking permissions. On an existing P-256 account, first enrollment requires a separate explicit review and passkey signatures. The on-chain owner does not expire with the browser session; lock, hidden tab, page exit and timeout only clear local key material. Every operation still requires its own review.',
   unlockRoutine:
     'Use the open account’s passkey PRF to unlock routine reading and built-in wallet keys for the selected 10–30 minute lifetime. Keep these only in this page’s memory and derive a separate JubJub key. This does not add an owner or grant spending permission. Device changes, key rotation, and issuing/revoking permissions still require fresh passkey approval. Lock, hidden tab, page exit or expiry discards the routine key material.',
   startSession:
@@ -59,6 +61,7 @@ interface ConsentContext {
   readonly account?: string | undefined;
   readonly target?: string | undefined;
   readonly routineUnlocked?: boolean;
+  readonly ownerUnlocked?: boolean;
 }
 
 /** Selection flows must not imply that an already-open ACC is the one being approved. */
@@ -94,12 +97,33 @@ export async function reviewDemoAction(
   context: ConsentContext,
 ): Promise<boolean> {
   finishDemoConsent();
+  const ownerPurpose: Partial<Record<ActionId, string>> = {
+    holdings: 'Decrypt and chain-verify private holdings.',
+    wallet: 'Connect the separate built-in HD wallet; this does not change ACC ownership.',
+    issueGrant: 'Review the holder, asset, recipient, caps and expiry before issuing a permission.',
+    exportGrant: 'Export the selected encrypted-journal grant opening, not a private signing key.',
+    revokeGrant: 'Review and revoke the selected permission; confirmed transfers cannot be undone.',
+    recoverGrants: 'Reconcile staged grant bookkeeping using the original records and intents.',
+    enrollDevice:
+      'Review the new owner’s keys and live roster before delivering sealed keys and enrolling it.',
+    removeDevice:
+      'Review the exact entry, holdings and survivors before key rotation and removal. Earlier plaintext remains known.',
+    rotate:
+      'Review the live devices, holdings and read grants before resealing and rotating viewing keys.',
+    withdraw:
+      'Review the exact network, account, recipient, asset and smallest-unit amount. Existing grant and unknown-transaction fences remain enforced.',
+    startSession:
+      'Review and issue a separately scoped transfer permission for its own holder, caps and expiry.',
+    revokeSession: 'Lock the local grant signer and revoke its on-chain permission after review.',
+  };
   const purpose =
-    context.routineUnlocked && (action === 'holdings' || action === 'wallet')
-      ? action === 'holdings'
-        ? 'Use the account’s explicitly unlocked reader keys to read and verify private holdings. This action uses no new passkey request and grants no spending permission.'
-        : 'Use the explicitly unlocked keys to connect the separate built-in Midnight wallet. This action uses no new passkey request and grants no ACC spending permission.'
-      : PURPOSES[action];
+    context.ownerUnlocked && ownerPurpose[action]
+      ? `Use the authenticated JubJub owner with no new passkey request. ${ownerPurpose[action]}`
+      : context.routineUnlocked && (action === 'holdings' || action === 'wallet')
+        ? action === 'holdings'
+          ? 'Use the account’s explicitly unlocked reader keys to read and verify private holdings. This action uses no new passkey request and grants no spending permission.'
+          : 'Use the explicitly unlocked keys to connect the separate built-in Midnight wallet. This action uses no new passkey request and grants no ACC spending permission.'
+        : PURPOSES[action];
   if (!purpose) return true; // Public reads/funding never authorize a passkey ceremony.
   const dialog = document.getElementById('consent-dialog') as HTMLDialogElement;
   const title = document.getElementById('consent-title')!;
@@ -111,7 +135,7 @@ export async function reviewDemoAction(
   const accountReview = reviewedAccount(action, context);
   title.textContent = FLOWS[action].title;
   details.textContent =
-    `Network: ${context.network}\nOwner arm: ${context.arm}\n` +
+    `Network: ${context.network}\nOwner arm: ${context.ownerUnlocked ? 'authenticated JubJub owner' : context.arm}\n` +
     `ACC: ${accountReview.label}\n\n${purpose}\n\nPrompts vary by provider, retry and transaction count. Cancelling stops future work; it cannot roll back a submitted transaction.`;
   retirement.hidden = action !== 'create';
   acknowledgement.checked = false;

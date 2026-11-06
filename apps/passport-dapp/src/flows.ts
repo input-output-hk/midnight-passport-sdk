@@ -3,6 +3,7 @@
 import type { PassportStep } from '@input-output-hk/mn-passport-protocol';
 
 export type ActionId =
+  | 'unlockOwner'
   | 'unlockRoutine'
   | 'startSession'
   | 'endSession'
@@ -42,6 +43,7 @@ export type PromptCount = number | readonly [min: number, max: number];
  * - Wallet: 1 with an account open (pinned to its passkey), 2 without (pick, then PRF).
  */
 export const PASSKEY_PROMPTS = {
+  unlockOwner: 1,
   unlockRoutine: 1,
   startSession: 1,
   endSession: 0,
@@ -98,6 +100,15 @@ export interface FlowDef {
 const read: StageDef = { id: 'read', label: 'Read the account from the chain' };
 
 export const FLOWS: Record<ActionId, FlowDef> = {
+  unlockOwner: {
+    title: 'Unlock account',
+    summary:
+      'Authenticate a deterministic JubJub owner for all account operations. Existing P-256 accounts need explicit one-time enrollment. Local timeout does not revoke that owner.',
+    stages: [
+      { id: 'unlock', label: 'Unlock the passkey PRF' },
+      { id: 'verify', label: 'Verify or enroll the JubJub owner' },
+    ],
+  },
   unlockRoutine: {
     title: 'Unlock quick actions',
     summary:
@@ -306,6 +317,7 @@ export const FLOWS: Record<ActionId, FlowDef> = {
  */
 export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep, string>>>> = {
   unlockRoutine: {},
+  unlockOwner: {},
   startSession: {},
   endSession: {},
   revokeSession: {},

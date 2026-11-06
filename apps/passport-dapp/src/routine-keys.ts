@@ -8,17 +8,22 @@ import {
   READER_SECRET_DOMAIN,
   type JubjubDeviceCircuits,
   type SessionKeyContext,
+  createAuthenticatedJubjubOwner,
+  type AuthenticatedJubjubOwner,
 } from '@input-output-hk/mn-passport-keys';
 
 export type RoutineAccount = Pick<
   PassportAccount,
   'address' | 'networkId' | 'bindingId' | 'credentialId'
->;
+> &
+  Partial<Pick<PassportAccount, 'scheme'>>;
 export interface RoutineState {
   readonly status: 'locked' | 'unlocking' | 'active' | 'expired';
   readonly account?: string;
   readonly expiresAt?: number;
   readonly publicKey?: string;
+  readonly authority?: 'routine' | 'owner';
+  readonly ownerVerified?: boolean;
 }
 export interface RoutineContext {
   readonly account: string;
@@ -45,6 +50,7 @@ export function createRoutineKeys(ports: {
   let bound: RoutineContext | undefined;
   let seed: Uint8Array | undefined;
   let reader: Uint8Array | undefined;
+  let owner: AuthenticatedJubjubOwner | undefined;
   let origin = '';
   let revision = 0,
     deadline = 0,
@@ -61,6 +67,8 @@ export function createRoutineKeys(ports: {
     seed?.fill(0);
     reader?.fill(0);
     seed = reader = undefined;
+    owner?.dispose();
+    owner = undefined;
     for (const child of children) child.dispose();
     children.clear();
     bound = undefined;
@@ -139,7 +147,13 @@ export function createRoutineKeys(ports: {
       const context = contextOf(account);
       return !!context && matches(context);
     },
-    async unlock(account: RoutineAccount, minutes: number, rpId: string, pageOrigin: string) {
+    async unlock(
+      account: RoutineAccount,
+      minutes: number,
+      rpId: string,
+      pageOrigin: string,
+      fullOwner = false,
+    ) {
       const context = contextOf(account);
       if (
         !context ||
@@ -158,19 +172,30 @@ export function createRoutineKeys(ports: {
       const expiresAt = wall + minutes * 60_000;
       publish({ status: 'unlocking', account: context.account });
       let candidate: Uint8Array | undefined;
+      let candidateOwner: AuthenticatedJubjubOwner | undefined;
       try {
+        const pure = await ports.pure();
+        if (version !== revision) throw new Error('Quick-actions unlock was cancelled.');
         const output = await ports.unlock(
           { ...account, credentialId: context.credentialId.slice() },
           rpId,
         );
         try {
           candidate = seedFromRoot(output.root);
+          if (fullOwner)
+            candidateOwner = createAuthenticatedJubjubOwner({
+              context,
+              authoriser: output.authoriser,
+              walletSeed: candidate,
+              pure,
+              companionReader: account.scheme !== 'jubjub-schnorr',
+              check: () => check(context, version),
+            });
         } finally {
           output.root.fill(0);
           output.authoriser.fill(0);
         }
         if (version !== revision) throw new Error('Quick-actions unlock was cancelled.');
-        const pure = await ports.pure();
         if (version !== revision || now() >= expiresAt || mono() >= monotonic + minutes * 60_000)
           throw new Error('Quick-actions unlock was cancelled or expired.');
         const localSeed = candidate;
@@ -179,20 +204,22 @@ export function createRoutineKeys(ports: {
           deviceSecret: source.deviceSecret,
           deriveSecret: async (params) => deriveSymmetricSecret(localSeed, params),
         };
-        const child = await createSessionJubjubAuthoriser(
-          initialSource,
-          pure,
-          {
-            ...context,
-            origin: pageOrigin,
-            sessionId:
-              crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', ''),
-            expiresAt,
-          },
-          now,
-        );
+        const child = candidateOwner
+          ? undefined
+          : await createSessionJubjubAuthoriser(
+              initialSource,
+              pure,
+              {
+                ...context,
+                origin: pageOrigin,
+                sessionId:
+                  crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', ''),
+                expiresAt,
+              },
+              now,
+            );
         if (version !== revision || now() >= expiresAt || mono() >= monotonic + minutes * 60_000) {
-          child.dispose();
+          child?.dispose();
           throw new Error('Quick-actions unlock was cancelled or expired.');
         }
         seed = candidate;
@@ -207,19 +234,33 @@ export function createRoutineKeys(ports: {
         deadline = monotonic + minutes * 60_000;
         lastWall = wall;
         lastMono = monotonic;
-        children.add(child);
+        owner = candidateOwner;
+        candidateOwner = undefined;
+        if (child) children.add(child);
         publish({
           status: 'active',
           account: context.account,
           expiresAt,
-          publicKey: child.publicKey,
+          publicKey: owner?.publicKey ?? child!.publicKey,
+          authority: owner ? 'owner' : 'routine',
         });
       } catch (error) {
         if (version === revision) lock();
         throw error;
       } finally {
         candidate?.fill(0);
+        candidateOwner?.dispose();
       }
+    },
+    ownerSession(account: RoutineAccount) {
+      const context = contextOf(account);
+      return context && matches(context) ? owner : undefined;
+    },
+    verifyOwner(account: RoutineAccount) {
+      const context = contextOf(account);
+      if (!context || !matches(context) || !owner)
+        throw new Error('Authenticated owner is locked.');
+      publish({ ...state, ownerVerified: true });
     },
     viewer(request: RoutineContext): Pick<AccountViewingKey, 'openInbox'> | undefined {
       const context = Object.freeze({ ...request, credentialId: request.credentialId.slice() });
@@ -274,7 +315,7 @@ export function createRoutineKeys(ports: {
       try {
         check(pinned, version);
         children.add(key);
-        publish({ ...state, publicKey: key.publicKey });
+        publish({ ...state, publicKey: owner?.publicKey ?? key.publicKey });
         return {
           publicKey: key.publicKey,
           dispose: key.dispose,

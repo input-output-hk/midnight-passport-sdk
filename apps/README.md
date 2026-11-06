@@ -517,3 +517,18 @@ No ACC permission, recipient autofill, signing or transfer follows connection.
 Forget invalidates locally; extension permissions must be managed in the wallet.
 The new adapter-browser/wallet subpath is absent from published RC7. Both-arm
 synthetic browser cases qualify UI refusals, not an installed Lace extension.
+
+
+### Authenticated full owner (local source)
+
+Open the ACC, then Settings → Quick actions → **Unlock account**. Approve the pinned
+PRF unlock and, on first P-256 use, explicit companion-owner enrollment. The stable
+JubJub key uses Lace PRF output one; all implemented owner operations can then reuse
+it for 10/15/30 minutes, including administration and permissions. No critical-action
+passkey step-up is imposed in this owner-approved mode. Exact operation reviews remain.
+**Unlock reading only** retains the earlier limited cache/grant behavior described
+above. Local timeout is not removal of the durable full owner; a connected built-in
+wallet also has a separate lifetime. Preserve pending enrollment markers and original
+Audit IDs; no automatic replay after uncertainty. See
+[owner authentication](../docs/site/authenticated-owner.md). Source-only preview;
+no new provider/native/full Lace or published-package acceptance.

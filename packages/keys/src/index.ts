@@ -9,3 +9,4 @@ export * from './mutation-journal.js';
 
 export * from './shielded-deposit-journal.js';
 export * from './session-authoriser.js';
+export * from './authenticated-owner.js';

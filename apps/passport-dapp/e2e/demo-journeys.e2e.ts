@@ -90,6 +90,7 @@ const runtimeIdentity = () => {
 };
 const initialRuntimeIdentity = runtimeIdentity();
 interface FixtureState {
+  ownerPublicKey?: string;
   nonce: number;
   epoch: number;
   entries: string[];
@@ -240,9 +241,24 @@ try {
           state.grant.spent + Number(request.amount) > Number(state.grant.scope.cap))
       )
         return false;
-      if (['rotate', 'enroll', 'remove', 'issue', 'revoke', 'withdraw', 'spend'].includes(action))
+      if (
+        [
+          'rotate',
+          'enroll',
+          'enroll-owner',
+          'remove',
+          'issue',
+          'revoke',
+          'withdraw',
+          'spend',
+        ].includes(action)
+      )
         state.nonce++;
       state.txHash = state.nonce.toString(16).padStart(64, '0');
+      if (action === 'enroll-owner') {
+        state.ownerPublicKey = String(request.publicKey);
+        state.entries.push(state.ownerPublicKey);
+      }
       if (action === 'rotate') state.epoch++;
       if (action === 'enroll') state.entries.push(target);
       if (action === 'remove') state.entries = state.entries.filter((e) => e !== request.target);
@@ -2149,6 +2165,99 @@ try {
       await waitStatus(revoker, /failed\./, /Reconcile/);
       assert.equal(calls.filter((c) => c === 'revoke').length, revokeCalls + 1);
       done('uncertain revocation is never replayed and remains fenced across reload');
+
+      const fullOwner = await newPage();
+      await approve(fullOwner, 'create');
+      await waitStatus(fullOwner, /created/);
+      const ownerCredentials = () =>
+        fullOwner.evaluate(
+          () =>
+            (window as unknown as { __passportPurposeObservations: unknown[] })
+              .__passportPurposeObservations.length,
+        );
+      const initialEnrollments = calls.filter((c) => c === 'enroll-owner').length;
+      if (arm === 'p256') {
+        rejectNextDialog = true;
+        await approve(fullOwner, 'unlockOwner');
+        await waitStatus(fullOwner, /failed\./, /Owner enrollment declined/);
+        assert.equal(calls.filter((c) => c === 'enroll-owner').length, initialEnrollments);
+        done('full owner enrollment is explicit; declining creates no on-chain owner');
+      }
+      await approve(fullOwner, 'unlockOwner');
+      await waitStatus(fullOwner, /Account unlocked/);
+      const publicOwner = await fullOwner.locator('#authenticated-owner-key').textContent();
+      assert.match(publicOwner!, /^[0-9a-f]{64}$/);
+      assert.equal(
+        calls.filter((c) => c === 'enroll-owner').length,
+        initialEnrollments + (arm === 'p256' ? 1 : 0),
+      );
+      const authenticatedCredentials = await ownerCredentials();
+      await approve(fullOwner, 'holdings');
+      await waitStatus(fullOwner, /Verified 1 shielded/);
+      await approve(fullOwner, 'wallet');
+      await waitStatus(fullOwner, /wallet connected through/);
+      await approve(fullOwner, 'rotate');
+      await waitStatus(fullOwner, /confirmed its new sealed/);
+      await fill(fullOwner, '#handoff-input', handoff);
+      await approve(fullOwner, 'enrollDevice');
+      await waitStatus(fullOwner, /Joining device confirmed/);
+      await fill(fullOwner, '#remove-commitment', target);
+      await approve(fullOwner, 'removeDevice');
+      await waitStatus(fullOwner, /selected entry is absent/i);
+      await fill(fullOwner, '#grant-grantee', publicOwner!);
+      await fill(fullOwner, '#grant-recipient', recipient);
+      await fill(fullOwner, '#grant-per-call', '1');
+      await fill(fullOwner, '#grant-cap', '2');
+      await approve(fullOwner, 'issueGrant');
+      await waitStatus(fullOwner, /Grant.*confirmed|Grant.*active|Grant.*issued/i);
+      await fill(fullOwner, '#revoke-grant-id', state.grant!.id);
+      await approve(fullOwner, 'revokeGrant');
+      await waitStatus(fullOwner, /revoked/i);
+      await fill(fullOwner, '#withdraw-recipient', recipient);
+      await fill(fullOwner, '#withdraw-amount', '1');
+      await approve(fullOwner, 'withdraw');
+      await waitStatus(fullOwner, /Withdrawal confirmed/);
+      assert.equal(
+        await ownerCredentials(),
+        authenticatedCredentials,
+        'all owner operations must reuse the authenticated JubJub owner',
+      );
+      done(
+        'authenticated deterministic JubJub owner performs readings, wallet connection, rotation, enrollment, removal, grants and transfer without new credential access',
+      );
+      const rotationsBeforeExpiry = calls.filter((c) => c === 'rotate').length;
+      await click(fullOwner, '#rotate');
+      await fullOwner.locator('#consent-dialog').waitFor({ state: 'visible' });
+      await fullOwner.evaluate(() => {
+        (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 31 * 60_000;
+      });
+      await click(fullOwner, '#consent-continue');
+      await waitStatus(fullOwner, /failed\./, /locked or expired/);
+      await fullOwner.evaluate(() => {
+        (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 0;
+      });
+      assert.equal(calls.filter((c) => c === 'rotate').length, rotationsBeforeExpiry);
+      assert.equal(await ownerCredentials(), authenticatedCredentials);
+      done(
+        'expired full-owner approval cannot fall back to a passkey or submit owner administration',
+      );
+      const enrollmentsAfterFirstUnlock = calls.filter((c) => c === 'enroll-owner').length;
+      await approve(fullOwner, 'unlockOwner');
+      await waitStatus(fullOwner, /Account unlocked/);
+      assert.equal(await fullOwner.locator('#authenticated-owner-key').textContent(), publicOwner);
+      assert.equal(calls.filter((c) => c === 'enroll-owner').length, enrollmentsAfterFirstUnlock);
+      assert.equal(
+        await ownerCredentials(),
+        authenticatedCredentials + 1,
+        'reauthentication needs only the pinned PRF unlock, not enrollment',
+      );
+      await click(fullOwner, '#lock-routine');
+      await approve(fullOwner, 'rotate');
+      await waitStatus(fullOwner, /confirmed its new sealed/);
+      assert.ok((await ownerCredentials()) > authenticatedCredentials + 1);
+      done(
+        'reauthentication restores the same owner without enrollment; local lock returns to explicitly reviewed passkey access',
+      );
 
       assert.equal(failures.length, 0, failures.join(', '));
       assert.equal(pageErrors.length, 0, pageErrors.join(', '));

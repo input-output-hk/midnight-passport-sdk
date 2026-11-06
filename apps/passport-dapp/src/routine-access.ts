@@ -13,9 +13,29 @@ export const routineKeys = createRoutineKeys({
 // UI actions are serialized. Bind a passkey-free review to its exact lease until
 // the operation finishes; expiry must refuse, never silently choose a new key path.
 let reviewedLease: (() => void) | undefined;
+export const OWNER_ACTIONS = [
+  'holdings',
+  'wallet',
+  'roster',
+  'grantRoster',
+  'issueGrant',
+  'exportGrant',
+  'revokeGrant',
+  'recoverGrants',
+  'enrollDevice',
+  'removeDevice',
+  'rotate',
+  'withdraw',
+  'startSession',
+  'revokeSession',
+];
 export function beginRoutineReview(account: RoutineAccount | undefined, action: string) {
   reviewedLease =
-    account && ['holdings', 'wallet'].includes(action) ? routineKeys.lease(account) : undefined;
+    account &&
+    (['holdings', 'wallet'].includes(action) ||
+      (routineKeys.ownerSession(account) && OWNER_ACTIONS.includes(action)))
+      ? routineKeys.lease(account)
+      : undefined;
   return !!reviewedLease;
 }
 export function checkRoutineReview() {

@@ -525,11 +525,10 @@
         </ul>
       </section>
       <section id="routine-controls" class="routine-controls" aria-labelledby="routine-title">
-        <h4 id="routine-title">Unlock once for routine actions</h4>
+        <h4 id="routine-title">Account authentication</h4>
         <p>
-          Read private holdings and connect your built-in wallet without repeatedly using your
-          passkey. A separate JubJub key handles transfers only after you approve its recipient,
-          asset and limits below.
+          Unlock the deterministic JubJub owner to use all account operations without repeated
+          passkey requests. First use on a P-256 account needs explicit owner enrollment.
         </p>
         <label for="routine-minutes">Keep unlocked for</label>
         <select id="routine-minutes" class="action-input">
@@ -537,25 +536,44 @@
           <option value="15" selected>15 minutes</option>
           <option value="30">30 minutes</option>
         </select>
-        <p id="routine-status" role="status">Quick actions are locked.</p>
+        <p id="routine-status" role="status">Account keys are locked.</p>
+        <details>
+          <summary>Owner public key</summary>
+          <code id="authenticated-owner-key">Not unlocked</code>
+        </details>
         <button
-          id="unlockRoutine"
+          id="unlockOwner"
           class="btn btn-primary"
           type="button"
-          aria-describedby="unlockRoutine-desc unlockRoutine-prompts"
           disabled
+          aria-describedby="unlockOwner-desc unlockOwner-prompts"
         >
-          Unlock quick actions
+          Unlock account
+        </button>
+        <p id="unlockOwner-prompts" class="prompts"></p>
+        <p id="unlockOwner-desc" class="action-desc"></p>
+        <button id="lock-routine" class="btn btn-secondary" type="button">Lock account keys</button>
+        <p>
+          Local timeout or lock clears this browser’s keys. The full owner remains on chain until
+          removed. Operation reviews still apply. An already-connected Midnight wallet has its own
+          lifetime.
+        </p>
+        <h4>Reading-only alternative</h4>
+        <p>
+          Unlock only reading and wallet material. Account administration then keeps the passkey
+          path; transfers may use a separately approved scoped permission.
+        </p>
+        <button
+          id="unlockRoutine"
+          class="btn btn-secondary"
+          type="button"
+          disabled
+          aria-describedby="unlockRoutine-desc unlockRoutine-prompts"
+        >
+          Unlock reading only
         </button>
         <p id="unlockRoutine-prompts" class="prompts"></p>
         <p id="unlockRoutine-desc" class="action-desc"></p>
-        <button id="lock-routine" class="btn btn-secondary" type="button">
-          Lock quick actions
-        </button>
-        <p>
-          Critical account changes still require your passkey. Locking local keys does not revoke a
-          transfer permission already on chain.
-        </p>
       </section>
       <section class="panel session-panel" aria-labelledby="session-title">
         <h4 id="session-title">Transfer permission</h4>

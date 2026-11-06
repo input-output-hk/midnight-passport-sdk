@@ -17,6 +17,7 @@ import {
   SERVICE_URL,
   installShim,
   exportDemoGrantOpening,
+  connect as connectAccount,
 } from './connector.js';
 import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS, knownAccAddress } from './flows.js';
 import { withdrawalRequest } from './withdrawal.js';
@@ -48,7 +49,9 @@ import {
   beginRoutineReview,
   checkRoutineReview,
   finishRoutineReview,
+  OWNER_ACTIONS,
 } from './routine-access.js';
+import { authenticateOwnerAccount, routeAuthenticatedAccount } from './owner-access.js';
 
 installShim();
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
@@ -90,6 +93,7 @@ const ui = createUi(
         account: account?.address,
         target: ui.knownAddress(),
         routineUnlocked,
+        ownerUnlocked: !!routineKeys.snapshot().ownerVerified && OWNER_ACTIONS.includes(action),
       });
       if (approved) checkRoutineReview();
       if (
@@ -135,6 +139,8 @@ showDemoNameService(createMockNameService(network), network);
 let api: PassportConnectorAPI | undefined;
 let devWallet: DevWallet | undefined;
 let account: PassportAccount | undefined;
+let primaryAccount: PassportAccount | undefined;
+let authenticatedAccount: PassportAccount | undefined;
 let balanceAssetColor: string | undefined;
 const fundingUrl = new URL('/v1/demo/funding', SERVICE_URL);
 let sessionUsesRoutine = false;
@@ -187,10 +193,17 @@ const session = createDemoSession({
 const sessionUse = () => (document.getElementById('session-use') as HTMLInputElement).checked;
 setInterval(() => updateSessionClock(session.snapshot()), 1000);
 routineKeys.subscribe((snapshot) => {
+  if (snapshot.status !== 'active' || !snapshot.ownerVerified) authenticatedAccount = undefined;
   ui.refreshPrompts();
+  document.getElementById('authenticated-owner-key')!.textContent =
+    snapshot.authority === 'owner' ? snapshot.publicKey! : 'Not unlocked';
   document.getElementById('routine-status')!.textContent =
     snapshot.status === 'active'
-      ? `Unlocked until ${new Date(snapshot.expiresAt!).toLocaleTimeString()}. Reading and wallet connection need no new passkey. Transfers require a separate permission.`
+      ? snapshot.authority === 'owner'
+        ? snapshot.ownerVerified
+          ? `Authenticated until ${new Date(snapshot.expiresAt!).toLocaleTimeString()}. All account owner operations use the deterministic JubJub key, with no new passkey request.`
+          : 'Verifying the deterministic JubJub owner. First enrollment may require passkey signatures.'
+        : `Unlocked until ${new Date(snapshot.expiresAt!).toLocaleTimeString()}. Reading and wallet connection need no new passkey. Transfers require a separate permission.`
       : `Quick actions ${snapshot.status}. Unlock with your account passkey to continue.`;
   document.getElementById('routine-summary')!.textContent =
     snapshot.status === 'active' ? 'Quick actions unlocked' : `Quick actions ${snapshot.status}`;
@@ -279,7 +292,9 @@ const connector = async () => {
 };
 const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult) => {
   session.lock();
-  account = a;
+  primaryAccount = a;
+  authenticatedAccount = undefined;
+  account = routeAuthenticatedAccount(a, () => authenticatedAccount, checkRoutineReview);
   stage('read');
   const state = await a.state();
   record(how, { address: a.address, binding: a.bindingId, state, ...(lastTx && { lastTx }) });
@@ -373,6 +388,49 @@ ui.on('unlockRoutine', async () => {
     expiresAt: routineKeys.snapshot().expiresAt,
     publicKey: routineKeys.snapshot().publicKey,
   });
+});
+ui.on('unlockOwner', async () => {
+  const primary = primaryAccount;
+  if (!primary) throw new Error('Open a Passport account first.');
+  try {
+    await routineKeys.unlock(
+      primary,
+      Number((document.getElementById('routine-minutes') as HTMLSelectElement).value),
+      RP_ID,
+      ORIGIN,
+      true,
+    );
+    const owner = routineKeys.ownerSession(primary)!;
+    stage('verify');
+    const api = await connectAccount(network, owner);
+    const authenticated = await authenticateOwnerAccount({
+      primary,
+      owner,
+      storage: localStorage,
+      options: { onEvent },
+      open: () => api.openAccountAt!(primary.address, { onEvent }),
+      confirm: async (publicKey, readerPublicKey) =>
+        window.confirm(
+          `Enable this deterministic JubJub key as a FULL owner of your Passport account?\n\nAccount: ${primary.address}\nOwner key: ${publicKey}\nReader key: ${readerPublicKey}\n\nIt can transfer assets, change devices, rotate keys, and issue or revoke permissions, just like your passkey. Local timeout only clears this browser's key. The on-chain owner remains until removed. This first enrollment needs passkey signatures.`,
+        ),
+      trace: traceOperation,
+    });
+    owner.check();
+    authenticatedAccount = authenticated;
+    routineKeys.verifyOwner(primary);
+    record('authenticatedOwner', {
+      accountAddress: primary.address,
+      publicKey: owner.publicKey,
+      readerPublicKey: owner.readerPublicKey,
+      expiresAt: routineKeys.snapshot().expiresAt,
+    });
+    status(
+      'Account unlocked. All account operations can use the deterministic JubJub owner until local lock or expiry.',
+    );
+  } catch (error) {
+    routineKeys.lock();
+    throw error;
+  }
 });
 ui.on('refresh', async () => {
   if (!account) throw new Error('Open a Passport account before refreshing it.');
@@ -628,7 +686,7 @@ ui.on('revokeGrant', async () => {
   ui.showGrantRoster(current.address, before);
   const approved = window.confirm(
     `Revoke this ACC grant?\n\nACC: ${current.address}\nNetwork: ${network}\n` +
-      `Grant ID: ${grantId}\nGeneration: ${before.generation}\n\nConfirm before the passkey prompt.`,
+      `Grant ID: ${grantId}\nGeneration: ${before.generation}\n\nConfirm before signing.`,
   );
   if (!approved) {
     status('Grant revocation cancelled before signing.');

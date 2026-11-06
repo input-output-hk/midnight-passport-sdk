@@ -248,3 +248,16 @@ is not account recovery. Navigation/disclosure changes preserve the address draf
 and start no credential or transaction. Activity starts collapsed with its trigger
 beside the workspace title; approved credential requests reveal their explanation
 before access and retain their separate blocking consent dialog.
+
+
+## Authenticated owner policy update (local source)
+
+The owner approved full use of the deterministic Lace PRF-1 JubJub owner while
+explicitly authenticated. **Settings → Quick actions → Unlock account** verifies an
+existing JubJub owner or explicitly enrolls a P-256 companion once. All implemented
+owner operations, including device/key/permission changes, then use that key without
+fresh passkey requests; exact action reviews remain. This supersedes the earlier
+critical-operation step-up rule for this mode only. **Unlock reading only** preserves
+the restricted cache/grant alternative. Local expiry clears memory, not the durable
+chain owner. Read [the full authority/lifetime guide](../site/authenticated-owner.md).
+No new native/provider/full Lace qualification or published package change is implied.

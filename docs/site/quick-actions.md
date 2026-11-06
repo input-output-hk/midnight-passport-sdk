@@ -3,6 +3,14 @@ layout: default
 title: Quick actions and passkey approval
 permalink: /quick-actions/
 ---
+**Updated local-source policy:** [Unlock account]({{ '/authenticated-owner/' | relative_url }})
+authenticates a deterministic JubJub **full owner** for all implemented owner operations.
+That mode does not require a fresh passkey for administration or permission changes.
+The older reading-only/scoped-session mode below retains its passkey fallback; its
+child key is not a full owner. Operation reviews, local expiry and unknown-intent
+fences remain. These additions are not in published RC7.
+
+
 
 **Source preview after RC7.** Quick actions keeps explicitly approved routine key
 material in this page's memory for **10, 15 or 30 minutes**. It does not turn a

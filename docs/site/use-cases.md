@@ -3,6 +3,14 @@ layout: default
 title: Demo use cases
 permalink: /use-cases/
 ---
+**Updated local-source policy:** [Unlock account]({{ '/authenticated-owner/' | relative_url }})
+authenticates a deterministic JubJub **full owner** for all implemented owner operations.
+That mode does not require a fresh passkey for administration or permission changes.
+The older reading-only/scoped-session mode below retains its passkey fallback; its
+child key is not a full owner. Operation reviews, local expiry and unknown-intent
+fences remain. These additions are not in published RC7.
+
+
 
 ## Local source navigation
 

@@ -3,6 +3,14 @@ layout: default
 title: Prototype workspaces and host controls
 permalink: /demo-ui/
 ---
+**Updated local-source policy:** [Unlock account]({{ '/authenticated-owner/' | relative_url }})
+authenticates a deterministic JubJub **full owner** for all implemented owner operations.
+That mode does not require a fresh passkey for administration or permission changes.
+The older reading-only/scoped-session mode below retains its passkey fallback; its
+child key is not a full owner. Operation reviews, local expiry and unknown-intent
+fences remain. These additions are not in published RC7.
+
+
 
 **Local source after RC7.** The redesigned prototype demonstrates how the existing
 Passport packages can be composed. It does not add an npm UI package, change the
@@ -72,7 +80,7 @@ JubJub grant with fresh owner approval. See [the guide]({{ '/quick-actions/' | r
 - **Quick actions → Transfer permission:** choose 10/15/30 minutes and caps, authorize an expiring JubJub
   grant, lock the local key or revoke the grant. Choose the asset/recipient in
   **Passport account** first; Settings displays the draft target separately from recorded session scope, and the actual
-  authorization still reviews its exact scope. Critical owner operations always
+  authorization still reviews its exact scope. Without an authenticated full owner, critical owner operations
   require fresh passkey consent.
 - **Advanced access · manual grants:** holder preparation, roster, issue, export,
   spend, revoke and recovery. This is a separate advanced demonstration, not
