@@ -23,7 +23,7 @@ const messages: Record<DemoSessionSnapshot['status'], readonly [string, string]>
   authorizing: ['Authorizing session', 'Review the passkey requests in the consent dialog.'],
   active: [
     'Ready for quick transfers',
-    'Matching unshielded transfers use this session after your transfer review.',
+    'Available for matching unshielded transfers when enabled below. Each transfer needs your review.',
   ],
   spending: ['Transfer in progress', 'Wait for confirmation. Do not send a replacement transfer.'],
   revoking: ['Revoking permission', 'The local key is locked. Wait for on-chain confirmation.'],

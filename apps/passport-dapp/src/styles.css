@@ -1246,3 +1246,11 @@ main.workspace-shell[data-activity='collapsed'] {
 #session-clock[hidden] {
   display: none;
 }
+
+#workspace-settings .actions {
+  align-items: start;
+}
+.session-panel .fact dd,
+.wallet-snapshot .fact dd {
+  overflow-wrap: anywhere;
+}

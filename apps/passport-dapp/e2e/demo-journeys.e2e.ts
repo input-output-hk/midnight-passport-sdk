@@ -1466,11 +1466,19 @@ try {
       if (process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS && arm === 'p256') {
         const folder = process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS;
         await mkdir(folder, { recursive: true });
-        await owner.screenshot({ path: resolve(folder, 'sessions-mobile.png'), fullPage: true });
+        // Capture the actual panel, not an extremely long, expanded Settings page.
+        await owner.emulateMedia({ colorScheme: 'dark' });
+        await owner
+          .locator('#settings-sessions')
+          .screenshot({ path: resolve(folder, 'sessions-mobile.png') });
         await owner.setViewportSize({ width: 1440, height: 1000 });
-        await owner.screenshot({ path: resolve(folder, 'sessions-desktop.png'), fullPage: true });
+        await owner
+          .locator('#settings-sessions')
+          .screenshot({ path: resolve(folder, 'sessions-desktop.png') });
         await owner.emulateMedia({ colorScheme: 'light' });
-        await owner.screenshot({ path: resolve(folder, 'sessions-light.png'), fullPage: true });
+        await owner
+          .locator('#settings-sessions')
+          .screenshot({ path: resolve(folder, 'sessions-light.png') });
         await owner.emulateMedia({ colorScheme: 'dark' });
       }
       await owner.setViewportSize({ width: 1280, height: 900 });
