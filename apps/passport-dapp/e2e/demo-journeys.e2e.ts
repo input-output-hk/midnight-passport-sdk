@@ -1287,6 +1287,8 @@ try {
       await fill(owner, '#withdraw-amount', '1');
       await fill(owner, '#withdraw-recipient', 'invalid-recipient');
       const withdrawals = calls.filter((c) => c === 'withdraw').length;
+      const beforeInvalidRecipient = await credentialsUsed();
+      await owner.setViewportSize({ width: 390, height: 844 });
       await approve(owner, 'withdraw');
       await waitStatus(
         owner,
@@ -1294,6 +1296,16 @@ try {
         /Enter a valid unshielded Midnight address for undeployed/,
       );
       assert.equal(calls.filter((c) => c === 'withdraw').length, withdrawals);
+      assert.equal(await credentialsUsed(), beforeInvalidRecipient);
+      assert.equal(
+        await owner.locator('#activity-sheet').evaluate((e) => (e as HTMLDialogElement).open),
+        true,
+      );
+      await owner.locator('#activity-close').click();
+      await owner.setViewportSize({ width: 1280, height: 900 });
+      done(
+        'early failure before any credential ceremony reveals its mobile result without signing or sending',
+      );
       const phaseBeforeBackground = await owner
         .locator('.operation-status')
         .getAttribute('data-phase');
@@ -1694,6 +1706,9 @@ try {
 
       const beforeSessionSpend = await countCredentials();
       const ownerSendsBefore = calls.filter((c) => c === 'withdraw').length;
+      if (await owner.locator('#activity-panel').isVisible())
+        await owner.locator('#activity-toggle').click();
+      await owner.setViewportSize({ width: 390, height: 844 });
       await approve(owner, 'withdraw');
       await waitStatus(owner, /Withdrawal confirmed/);
       assert.equal(
@@ -1707,8 +1722,18 @@ try {
         'session uses holder circuit, not owner path',
       );
       assert.equal(state.grant?.spent, 1);
+      assert.equal(
+        await owner.locator('#activity-sheet').evaluate((e) => (e as HTMLDialogElement).open),
+        true,
+      );
+      assert.match(
+        await owner.locator('#activity-sheet .operation-status').innerText(),
+        /Completed/,
+      );
+      await owner.locator('#activity-close').click();
+      await owner.setViewportSize({ width: 1280, height: 900 });
       done(
-        'consented PRF child session issues an expiring grant and signs without another passkey',
+        'consented PRF child session signs without another passkey and shows its mobile result from collapsed Activity',
       );
       const beforeCritical = await countCredentials();
       await approve(owner, 'rotate');

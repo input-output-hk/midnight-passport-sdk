@@ -838,6 +838,7 @@ export function createUi(
           return;
         }
         log.start(action);
+        document.dispatchEvent(new Event('passport:operation-started'));
         try {
           const execute = async () => {
             if (consent && !(await consent.before(action))) {
@@ -850,8 +851,6 @@ export function createUi(
               log.finish();
               return;
             }
-            if (promptsFor(action, !!account) === 0)
-              document.dispatchEvent(new Event('passport:present-public-operation'));
             await fn();
             log.finish();
           };
@@ -870,6 +869,7 @@ export function createUi(
           status(`${FLOWS[action].title} attempt failed. ${explanation} (${err.code})`);
         } finally {
           consent?.after();
+          document.dispatchEvent(new Event('passport:operation-finished'));
           // The button was disabled while the action ran, which drops focus: give it back.
           if (document.activeElement === document.body && !button.disabled) button.focus();
         }

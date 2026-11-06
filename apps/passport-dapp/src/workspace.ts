@@ -395,21 +395,34 @@ export function createDemoWorkspace(config: {
     accountPages.select(accountPage as AccountPage, false);
   show(Object.hasOwn(names, hash ?? '') ? (hash as WorkspaceId) : 'overview', false);
   // Presentation events never approve a credential or invoke an account command.
-  document.addEventListener('passport:present-public-operation', () => {
+  let presentedCredential = false;
+  document.addEventListener('passport:operation-started', () => {
+    presentedCredential = false;
+    if (!mobile.matches) expanded = true;
+    updateActivity();
+  });
+  document.addEventListener('passport:operation-finished', () => {
+    const phase = content.querySelector<HTMLElement>('.operation-status')?.dataset.phase;
+    if (
+      !mobile.matches ||
+      presentedCredential ||
+      !['succeeded', 'failed', 'unknown'].includes(phase ?? '')
+    )
+      return;
     if (document.querySelector('dialog[open]:not(#activity-sheet)')) return;
-    if (mobile.matches) {
-      if (!sheet.open) {
-        sheet.append(content);
-        sheet.returnValue = '';
-        sheet.showModal();
-        close.focus();
-      }
-      // Public results stay readable until dismissed, unlike an automatic credential sheet.
-      ceremonySheet = false;
-    } else expanded = true;
+    if (!sheet.open) {
+      sheet.append(content);
+      sheet.returnValue = '';
+      sheet.showModal();
+      close.focus();
+    }
+    // Results without a credential ceremony stay readable, including session withdrawals
+    // and early failures. Never infer the actual path from a static prompt estimate.
+    ceremonySheet = false;
     updateActivity();
   });
   document.addEventListener('passport:present-ceremony', () => {
+    presentedCredential = true;
     if (document.querySelector('dialog[open]:not(#activity-sheet)')) return;
     if (mobile.matches) {
       if (!sheet.open) {

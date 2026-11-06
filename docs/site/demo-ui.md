@@ -115,9 +115,13 @@ progress value. A cancelled attempt does not imply that earlier effects rolled b
 Desktop has a collapsible right **Activity** panel: **Current operation** first,
 then **Your journey**. It starts collapsed so idle Overview has no empty side
 panel; its trigger sits alongside the workspace title. Each approved credential
-call still reveals Activity before browser access. Public reads, funding and
-other actions without credential access also reveal Activity; on mobile their
-sheet stays open so results and errors can be read before dismissal. Its compact summary links to the matching Audit run. Audit
+call still reveals Activity before browser access. Starting any action reveals
+desktop Activity. On mobile, an operation with no credential ceremony opens its
+result sheet after completion or failure, including a session withdrawal or an
+error before the first ceremony; it stays open until dismissed. Cancelled reviews
+do not open another sheet. Progress can be opened using Activity while waiting.
+These choices follow the actual lifecycle, not estimated passkey counts.
+Its compact summary links to the matching Audit run. Audit
 starts with Activity collapsed to provide more room for exchanges. The journey
 keeps a separate wallet connection optional; it is not a condition for ACC
 ownership or access.
