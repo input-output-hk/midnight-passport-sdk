@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventLog } from '../src/event-log.ts';
 import { FLOWS, type ActionId } from '../src/flows.ts';
-import { RUNNING_FILL_CAP, progressView, segmentGrow } from '../src/progress.ts';
+import { RUNNING_FILL_CAP, progressView, segmentGrow, operationStatus } from '../src/progress.ts';
 
 /** A log on a settable clock, and the view of its latest run at `at`. */
 function setup() {
@@ -274,4 +274,21 @@ test('a backwards browser clock at attempt end is clamped only in progress, not 
   assert.equal(view.label, 'Open with passkey finished in 0.0 s.');
   assert.equal(run.endedAt, 90000);
   assert.equal(run.steps[0]?.endedAt, 90000);
+});
+
+test('Activity preserves an unknown attempt identity and does not infer finality from a failed log row', () => {
+  const s = setup();
+  const run = s.log.start('fund');
+  s.clock(5000);
+  s.log.fail({ code: 'FundingRejected', message: 'Could not confirm', hint: 'Reconcile first' });
+  const view = operationStatus(run, s.log.stagesOf(run), 100000, {
+    id: 'operation-1',
+    phase: 'unknown',
+    references: { requestId: 'original-funding-request' },
+  });
+  assert.equal(view.phase, 'unknown');
+  assert.equal(view.id, 'operation-1');
+  assert.equal(view.references.requestId, 'original-funding-request');
+  assert.equal(run.state, 'failed', 'raw attempt result is separate from transaction finality');
+  assert.equal(view.elapsedMs, 5000);
 });

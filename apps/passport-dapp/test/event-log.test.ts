@@ -26,6 +26,41 @@ const error = (code = 'InternalError'): PlainError => ({
   hint: `what ${code} means`,
 });
 
+test('Audit correlation uses append positions, preserving original IDs across skewed clocks', () => {
+  const { log, at } = make(100000);
+  const first = log.start('fund');
+  log.trace({
+    at: new Date(1000).toISOString(),
+    kind: 'funding.intent',
+    details: { requestId: 'original-1' },
+  });
+  log.fail(error('FundingRejected'));
+  at(-1000);
+  const second = log.start('refresh');
+  log.trace({
+    at: new Date(9999999).toISOString(),
+    kind: 'http.response',
+    details: { requestId: 'read-2' },
+  });
+  log.finish();
+  assert.deepEqual(
+    log
+      .traceOf(first)
+      .filter((entry) => entry.details.requestId)
+      .map((entry) => entry.details.requestId),
+    ['original-1'],
+  );
+  assert.deepEqual(
+    log
+      .traceOf(second)
+      .filter((entry) => entry.details.requestId)
+      .map((entry) => entry.details.requestId),
+    ['read-2'],
+  );
+  assert.equal(log.traceOf(first).at(-1)?.kind, 'action.error');
+  assert.equal(log.traceOf(second)[0]?.kind, 'action.start');
+});
+
 test('a run starts with its first stage, timed from the clock', () => {
   const { log } = make(5_000);
   const run = log.start('create');

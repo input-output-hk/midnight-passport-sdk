@@ -136,3 +136,7 @@ service event's own duration or use a single host observation clock for estimate
 The [UX milestone](https://github.com/input-output-hk/midnight-passport-sdk/milestone/3)
 tracks delivery. `lace-sdk` integration is outside it; the separate Lace Wallet
 connection must be capability- and network-checked before any claim of support.
+
+The local [demo workspace and DOM controls]({{ "/demo-ui/" | relative_url }}) now
+compose these snapshots. Their browser evidence is separate from the pure model
+tests; optional React and Lace Wallet adapters remain tracked work.

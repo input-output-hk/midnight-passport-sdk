@@ -3,7 +3,8 @@
 ## Approved UX implementation milestone
 
 See the [execution map](ux-milestone.md) for the current local naming/interaction
-slice and the pending responsive shell, Settings, Audit and optional host wiring.
+slice, responsive shell/Settings/Audit implementation and pending optional host wiring.
+Read the [workspace guide](../site/demo-ui.md) for the current action locations.
 These source additions are not in published RC7. Existing launch and safety rules
 in this guide remain in force.
 

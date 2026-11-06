@@ -1,5 +1,11 @@
 # Demo script
 
+The local source after RC7 groups these actions into Overview, Passport account,
+Midnight wallet, Audit and Settings. Devices/sessions/grants/connections are in
+Settings; capability/name diagnostics are under Advanced. Read the
+[workspace guide](../site/demo-ui.md) before presenting the new layout.
+
+
 > The current sealed-account flow is described below. For environment setup, NIGHT funding and
 > verified handover status, use the [engineering handover](../site/handover.md) and
 > [AGENTS.md](../../AGENTS.md).

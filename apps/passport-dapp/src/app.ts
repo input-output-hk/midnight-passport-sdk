@@ -39,6 +39,8 @@ import { sessionCheckpoint } from './session-checkpoint.js';
 import { demoOperationGuard } from './operation-guard.js';
 import { createMockNameService } from './mock-name-service.js';
 import { showDemoNameService } from './name-service.js';
+import { createDemoWorkspace } from './workspace.js';
+import { ActivityPanel } from './activity-controls.js';
 
 installShim();
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
@@ -50,6 +52,7 @@ const apiVersion = injected()?.apiVersion;
 
 // Presentation (buttons, progress, event log, cards, evidence) lives in ui.ts; this file keeps the
 // connector calls. `stage` moves the progress bar and the log to the next step of the action.
+const workspace = createDemoWorkspace();
 const ui = createUi(
   {
     note:
@@ -87,6 +90,7 @@ const ui = createUi(
     after: finishDemoConsent,
   },
 );
+ActivityPanel(workspace.activityRoot, ui.activity, (id) => workspace.showAudit(id));
 if (ARM === 'jubjub') {
   const note = document.getElementById('key-note');
   if (note)
@@ -140,6 +144,12 @@ const session = createDemoSession({
         : phase === 'locked' || phase === 'expired'
           ? 'Local key disposed. Any chain grant remains until expiry or confirmed revocation.'
           : '');
+    const safetyNotice = document.getElementById('operation-safety-notice')!;
+    safetyNotice.hidden = phase !== 'blocked';
+    safetyNotice.textContent =
+      phase === 'blocked'
+        ? `A session operation needs reconciliation${intentId ? ` (original intent ${intentId})` : ''}. The local key is locked. Do not retry a transfer; inspect Settings → Sessions and Audit.`
+        : '';
     traceOperation('session.state', {
       phase,
       accountAddress: address,

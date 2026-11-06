@@ -11,6 +11,13 @@ unchanged transfer recipient. These synthetic fixtures do not qualify a live
 name provider, registration, name ownership or account deployment. See
 [naming adapters]({{ '/names/' | relative_url }}).
 
+The source [workspace/Activity increment]({{ '/demo-ui/' | relative_url }}) adds
+real navigation through the existing journeys, desktop collapse/Audit links,
+mobile sheet focus/Escape, separate mobile passkey consent, public Audit export,
+unknown-ID retention during navigation, active-spend navigation and independent
+white-label renderer cleanup. These remain synthetic connector/credential tests;
+they do not widen native or real-provider acceptance.
+
 ## Current published release and evidence tiers
 
 Published **RC7** adds ceremony-purpose hooks, consistent demo operation review,
@@ -73,6 +80,13 @@ the existing locked dependencies and runner Chrome; no browser download, large k
 generation or native proof is added. The 30–45-second warm-job target still needs
 hosted timing evidence. Native proof/restart and actual provider qualification
 remain independent slower lanes; follow the [qualification guide]({{ '/qualification/' | relative_url }}).
+
+Local default runs both arms. CI now uses two complete owner-arm jobs rather than
+one serial browser job; `PASSPORT_DEMO_JOURNEY_ARM=p256` or `jubjub` selects a
+single profile and any other explicit value refuses. The final required
+**Lint, format, build, and test** check still requires the whole matrix to pass.
+Sharding does not skip scenarios, change the package cache trust model or turn
+local timings into hosted performance evidence.
 
 ## Quantitative package coverage
 

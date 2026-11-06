@@ -4,6 +4,17 @@ title: Demo use cases
 permalink: /use-cases/
 ---
 
+## Local source navigation
+
+The local prototype after RC7 has **Overview, Passport account, Midnight wallet,
+Audit and Settings**. Create/open in Overview; fund/withdraw in Passport account;
+refresh wallet balances in Midnight wallet. Devices, sessions, manual grants and
+wallet connection setup live in Settings. Developer tools and the mock name
+lookup are under its closed Advanced section. Full logs/copy are in Audit.
+See [workspace and Activity controls]({{ '/demo-ui/' | relative_url }}). These UI
+changes are not in published RC7.
+
+
 ## RC7 consent and capability inspection
 
 RC7 adds an operation review before key access, an explicit permanent

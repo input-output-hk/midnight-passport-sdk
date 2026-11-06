@@ -18,7 +18,11 @@ import {
   promptsFor,
 } from './flows.js';
 import { evidenceJson } from './evidence.js';
-import { progressView, segmentGrow } from './progress.js';
+import { progressView, segmentGrow, operationStatus } from './progress.js';
+import {
+  createActivityStore,
+  type OperationReferences,
+} from '@input-output-hk/mn-passport-account/interaction';
 import type { OperationTraceEntry } from './operation-trace.js';
 
 export interface EvidenceHeader {
@@ -113,6 +117,7 @@ export function createUi(
   },
 ) {
   const log = new EventLog();
+  const activity = createActivityStore();
   const buttons = Object.fromEntries(ACTIONS.map((a) => [a, byId<HTMLButtonElement>(a)])) as Record<
     ActionId,
     HTMLButtonElement
@@ -260,10 +265,82 @@ export function createUi(
   };
 
   // --- progress ----------------------------------------------------------------------------
+  const renderActivity = () => {
+    const run = log.last;
+    const references: { -readonly [K in keyof OperationReferences]: OperationReferences[K] } = {};
+    const collect = (data: Record<string, unknown>) => {
+      for (const [source, target] of [
+        ['flowId', 'flowId'],
+        ['intentId', 'intentId'],
+        ['requestId', 'requestId'],
+        ['txId', 'transactionId'],
+        ['txHash', 'transactionId'],
+      ] as const) {
+        const value = data[source];
+        if (typeof value === 'string' && value.length > 0 && value.length <= 1024)
+          references[target] = value;
+      }
+      for (const key of ['body', 'result']) {
+        const nested = data[key];
+        if (typeof nested === 'object' && nested !== null && !Array.isArray(nested))
+          collect(nested as Record<string, unknown>);
+      }
+    };
+    if (run) for (const entry of log.traceOf(run)) collect(entry.details);
+    const declined =
+      run &&
+      run.state !== 'running' &&
+      (run.error?.code === 'UserCancelled' ||
+        log
+          .traceOf(run)
+          .some((entry) => entry.kind === 'action.declined' || /cancelled$/i.test(entry.kind)));
+    const phase = declined
+      ? ('cancelled' as const)
+      : run?.error &&
+          /unknown|pending|FundingRejected|reconcile|SessionBlocked/i.test(run.error.code)
+        ? ('unknown' as const)
+        : run?.state === 'done'
+          ? ('succeeded' as const)
+          : run?.state;
+    const operation =
+      run && phase
+        ? operationStatus(run, log.stagesOf(run), Date.now(), {
+            id: `operation-${log.runs.length}`,
+            phase,
+            references,
+          })
+        : undefined;
+    activity.replace(
+      {
+        ...(operation && { operation }),
+        journey: [
+          {
+            id: 'account',
+            title: 'Create or open Passport account',
+            phase: account ? 'done' : 'current',
+          },
+          { id: 'access', title: 'Review security and access in Settings', phase: 'optional' },
+          {
+            id: 'wallet',
+            title: 'Connect a separate Midnight wallet',
+            phase: wallet.unshieldedAddress ? 'done' : 'optional',
+          },
+        ],
+      },
+      activity.getSnapshot().revision,
+    );
+    return operation;
+  };
   let segmentsFor: LogRun | undefined;
   let segmentFills: HTMLElement[] = [];
   const renderProgress = () => {
+    const operation = renderActivity();
     const run = log.last;
+    progressEl.hidden = !run;
+    progressLabel.hidden = !run;
+    elapsedEl.hidden = !run;
+    byId('activity-title').hidden = !run;
+    progressEl.closest('section')?.classList.toggle('is-idle', !run);
     if (!run) {
       progressEl.replaceChildren();
       progressEl.setAttribute('aria-valuetext', 'No action has run yet');
@@ -289,18 +366,30 @@ export function createUi(
       );
     }
     const view = progressView(run, stages, Date.now());
+    const stopped = operation?.phase === 'cancelled' || operation?.phase === 'unknown';
+    const lastStage = stages.findIndex((stage) => stage.id === run.steps.at(-1)?.id);
     view.segments.forEach((segmentView, i) => {
       const fill = segmentFills[i];
       const segment = fill?.parentElement;
       if (!segment || !fill) return;
-      segment.dataset.state = segmentView.state;
-      fill.style.width = `${segmentView.width}%`;
+      segment.dataset.state =
+        stopped && i === lastStage
+          ? operation.phase === 'unknown'
+            ? 'indeterminate'
+            : 'cancelled'
+          : segmentView.state;
+      fill.style.width = `${stopped && i === lastStage ? (operation.phase === 'unknown' ? 100 : 0) : segmentView.width}%`;
     });
     elapsedEl.textContent = formatClock(view.elapsedMs);
-    const label = view.label;
+    const label =
+      operation?.phase === 'cancelled'
+        ? `${run.title} attempt cancelled. Earlier effects may remain; inspect Audit.`
+        : operation?.phase === 'unknown'
+          ? `${run.title} outcome is not confirmed. Keep the original IDs and reconcile in Audit.`
+          : view.label;
     progressLabel.textContent = label;
     progressEl.setAttribute('aria-valuetext', label);
-    if (run.state === 'done') progressEl.setAttribute('aria-valuenow', '100');
+    if (operation?.phase === 'succeeded') progressEl.setAttribute('aria-valuenow', '100');
     else progressEl.removeAttribute('aria-valuenow');
   };
 
@@ -375,6 +464,7 @@ export function createUi(
       let parts = runEls.get(run);
       if (!parts) {
         const root = el('li', 'run');
+        root.id = `audit-operation-${log.runs.indexOf(run) + 1}`;
         const head = el('div', 'run-head');
         const title = el('h3', 'run-title', run.title);
         const meta = el('span', 'run-meta');
@@ -667,6 +757,7 @@ export function createUi(
   renderEvidence();
 
   return {
+    activity,
     status,
     knownAddress: () => knownAddress.value,
     handoffJson: () => handoffInput.value,
@@ -768,6 +859,11 @@ export function createUi(
           const execute = async () => {
             if (consent && !(await consent.before(action))) {
               status('Operation declined before passkey access or submission.');
+              log.trace({
+                at: new Date().toISOString(),
+                kind: 'action.declined',
+                details: { action },
+              });
               log.finish();
               return;
             }

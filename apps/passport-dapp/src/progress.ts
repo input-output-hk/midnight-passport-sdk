@@ -6,6 +6,8 @@ import { formatClock, formatDuration, type StageDef } from './flows.js';
 import {
   createOperationStatus,
   stageWeight,
+  type OperationPhase,
+  type OperationReferences,
 } from '@input-output-hk/mn-passport-account/interaction';
 export { RUNNING_FILL_CAP } from '@input-output-hk/mn-passport-account/interaction';
 
@@ -28,16 +30,22 @@ export interface ProgressView {
 /** How much of the bar a stage takes: known durations get wider segments, at least 1. */
 export const segmentGrow = (stage: StageDef): number => stageWeight(stage);
 
-export function progressView(run: LogRun, stages: readonly StageDef[], now: number): ProgressView {
+export function operationStatus(
+  run: LogRun,
+  stages: readonly StageDef[],
+  now: number,
+  options?: { id: string; phase: OperationPhase; references: OperationReferences },
+) {
   // Log rows retain original client/service timestamps for Audit. A transition can close a
   // client-stamped step with a service-stamped time (or vice versa); those clocks need not
   // agree. Clamp only the presentation interval, never rewrite the raw event or stop polling
   // an already-submitted operation because of wall-clock skew.
-  const status = createOperationStatus(
+  return createOperationStatus(
     {
-      id: run.action,
+      id: options?.id ?? run.action,
       title: run.title,
-      phase: run.state === 'done' ? 'succeeded' : run.state,
+      phase: options?.phase ?? (run.state === 'done' ? 'succeeded' : run.state),
+      ...(options && { references: options.references }),
       startedAt: run.startedAt,
       ...(run.endedAt !== undefined && { endedAt: Math.max(run.startedAt, run.endedAt) }),
       stages: stages.map((stage) => {
@@ -54,6 +62,10 @@ export function progressView(run: LogRun, stages: readonly StageDef[], now: numb
     },
     now,
   );
+}
+
+export function progressView(run: LogRun, stages: readonly StageDef[], now: number): ProgressView {
+  const status = operationStatus(run, stages, now);
   let label = '';
   const segments = stages.map((stage, i): SegmentView => {
     const step = run.steps.find((s) => s.id === stage.id);

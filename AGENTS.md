@@ -74,9 +74,9 @@ browser tests cover these controls with real signing guards and synthetic driver
 Follow [the execution map](docs/prototype/ux-milestone.md) and milestone #3, issues
 #287–#294. The optional `account/interaction` subpath supplies public immutable
 presentation models; existing demo progress consumes its arithmetic. It starts
-no credential, timer or transaction. The redesigned shell/Settings/Audit and
-optional React/Lace Wallet wiring have separate acceptance gates; do not imply
-they are delivered by adding a model. Keep the current branch, blocking consent,
+no credential, timer or transaction. The local demo now composes five workspaces,
+Settings, dedicated Audit and responsive Activity controls; read [the UI guide](docs/site/demo-ui.md).
+Optional React/Lace Wallet wiring has separate acceptance gates. Keep the current branch, blocking consent,
 session/unknown-intent fences and running user demo intact. No `lace-sdk` work or
 new native/full Lace claim in this milestone. These exports are absent from RC7.
 

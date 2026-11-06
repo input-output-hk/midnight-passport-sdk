@@ -3,10 +3,11 @@
 ## Local prototype UX milestone
 
 The [execution map](../docs/prototype/ux-milestone.md) tracks the approved
-Settings/Activity/Audit redesign. The current local slice provides a read-only
-mock name adapter and consumes portable `account/interaction` progress arithmetic.
-It does not yet replace the runtime layout or introduce React/Lace Wallet support.
-Both additions are source after RC7; keep existing launch commands and durable
+Settings/Activity/Audit redesign. The local demo composes five workspaces, a
+responsive Activity panel/sheet and a dedicated Audit workspace using portable
+`account/interaction` models. [The UI guide](../docs/site/demo-ui.md) maps every
+action to its new location. React/Lace Wallet support remains a separate task.
+These changes are source after RC7; keep existing launch commands and durable
 operation state. Optional host renderers must not initiate account actions while
 rendering, subscribing or cleaning up a presentation control.
 

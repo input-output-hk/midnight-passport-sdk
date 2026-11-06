@@ -44,6 +44,7 @@ export class EventLog {
   readonly runs: LogRun[] = [];
   readonly traceEntries: OperationTraceEntry[] = [];
   private readonly listeners = new Set<() => void>();
+  private readonly traceStarts = new WeakMap<LogRun, number>();
 
   constructor(private readonly now: () => number = Date.now) {}
 
@@ -87,6 +88,7 @@ export class EventLog {
       events: [],
     };
     this.runs.push(run);
+    this.traceStarts.set(run, this.traceEntries.length);
     this.traceEntries.push({
       at: new Date(run.startedAt).toISOString(),
       kind: 'action.start',
@@ -257,6 +259,15 @@ export class EventLog {
   /** A chronological public-field request/response and operation trace. */
   traceJSON(): readonly OperationTraceEntry[] {
     return this.traceEntries;
+  }
+
+  /** Public trace slice by append position, never by incomparable client/service clocks. */
+  traceOf(run: LogRun): readonly OperationTraceEntry[] {
+    const from = this.traceStarts.get(run);
+    if (from === undefined) return [];
+    const next = this.runs[this.runs.indexOf(run) + 1];
+    const to = next ? this.traceStarts.get(next) : undefined;
+    return this.traceEntries.slice(from, to);
   }
 
   trace(entry: OperationTraceEntry): void {
