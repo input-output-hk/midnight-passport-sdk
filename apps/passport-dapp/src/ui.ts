@@ -170,16 +170,16 @@ export function createUi(
 
   // The action cards: prompt counts and summaries come from flows.ts only.
   for (const action of ACTIONS) byId(`${action}-desc`).textContent = FLOWS[action].summary;
-  if (arm === 'jubjub') {
-    byId('create-desc').textContent =
-      'Creates a passkey, deploys a JubJub Passport account, and seals a random viewing secret to this device.';
-    byId('open-desc').textContent =
-      'Reopens the JubJub account with its passkey and checks its sealed viewing secret against the live ACC.';
-  }
+  byId('create-desc').textContent =
+    'Set up an account secured by a new passkey. The demo service pays the network fees.';
+  byId('open-desc').textContent = 'Use the passkey you previously registered for this account.';
+  byId('openAt-desc').textContent =
+    'You still need an enrolled passkey. An address alone cannot grant access or recover a lost passkey.';
   const renderPrompts = () => {
     for (const action of ACTIONS) {
-      byId(`${action}-prompts`).textContent =
-        promptsFor(action, !!account) === 0
+      byId(`${action}-prompts`).textContent = ['create', 'open', 'openAt'].includes(action)
+        ? 'Passkey approval required'
+        : promptsFor(action, !!account) === 0
           ? promptLabel(0)
           : 'Passkey prompts vary by purpose, provider and transaction count.';
     }

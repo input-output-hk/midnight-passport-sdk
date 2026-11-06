@@ -431,7 +431,7 @@ try {
       await page
         .locator('#status')
         .filter({ hasText: /^Ready\./ })
-        .waitFor()
+        .waitFor({ state: 'attached' })
         .catch(async (error: unknown) => {
           console.error(
             'Startup errors:',
@@ -734,6 +734,58 @@ try {
         'Audit',
         'Settings',
       ]);
+      assert.equal(await owner.locator('#activity-panel').isVisible(), false);
+      assert.equal(await owner.locator('#activity-toggle').getAttribute('aria-expanded'), 'false');
+      assert.deepEqual(await owner.locator('.overview-choice > h3').allTextContents(), [
+        'Create a new account',
+        'Open your account',
+      ]);
+      assert.equal(await owner.locator('#open-address').isVisible(), false);
+      await owner.locator('#overview-open-address > summary').click();
+      assert.equal(await owner.locator('#open-address').isVisible(), true);
+      await owner.locator('#open-address').fill('not-an-address');
+      assert.equal(await owner.locator('#openAt').isDisabled(), true);
+      await owner.locator('#open-address').fill(address);
+      assert.equal(await owner.locator('#openAt').isEnabled(), true);
+      await owner.locator('#overview-open-address > summary').click();
+      await owner.locator('#nav-wallet').click();
+      await owner.locator('#nav-overview').click();
+      assert.equal(await owner.locator('#open-address').inputValue(), address);
+      assert.equal(await owner.locator('#open-address').isVisible(), false);
+      const choiceBounds = await owner.locator('.overview-choice').evaluateAll((cards) =>
+        cards.map((card) => {
+          const bounds = card.getBoundingClientRect();
+          const button = card.querySelector(':scope > button')!.getBoundingClientRect();
+          return { height: bounds.height, buttonY: button.y, buttonWidth: button.width };
+        }),
+      );
+      assert.ok(Math.abs(choiceBounds[0]!.height - choiceBounds[1]!.height) < 2);
+      assert.ok(Math.abs(choiceBounds[0]!.buttonY - choiceBounds[1]!.buttonY) < 2);
+      assert.ok(Math.abs(choiceBounds[0]!.buttonWidth - choiceBounds[1]!.buttonWidth) < 2);
+      if (process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS && arm === 'p256') {
+        const screenshots = process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS;
+        await mkdir(screenshots, { recursive: true });
+        await owner.emulateMedia({ colorScheme: 'dark' });
+        await owner.screenshot({
+          path: resolve(screenshots, 'overview-idle-desktop.png'),
+          fullPage: true,
+        });
+        await owner.setViewportSize({ width: 390, height: 844 });
+        assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+        await owner.screenshot({
+          path: resolve(screenshots, 'overview-idle-mobile.png'),
+          fullPage: true,
+        });
+        await owner.setViewportSize({ width: 1280, height: 900 });
+      }
+      assert.equal(calls.length, 0);
+      assert.equal(
+        await owner.evaluate(() => localStorage.getItem('passport-dev:mock-passkey:v1')),
+        null,
+      );
+      done(
+        'Overview has two clear choices; optional address disclosure preserves draft and starts no credential or account action',
+      );
       assert.deepEqual(
         await owner
           .locator('#activity-content .operation-status > h2, #activity-content .journey > h2')
@@ -1073,7 +1125,7 @@ try {
       await owner
         .locator('#status')
         .filter({ hasText: /^Ready\./ })
-        .waitFor();
+        .waitFor({ state: 'attached' });
       await observeCredentialAccess(owner);
       // Simulate the exact recognized Chromium variant once; a retry needs another approval.
       await owner.addScriptTag({ type: 'module', url: `${origin}/e2e/fixtures/profile-retry.ts` });
@@ -1749,7 +1801,7 @@ try {
       await owner
         .locator('#status')
         .filter({ hasText: /^Ready\./ })
-        .waitFor();
+        .waitFor({ state: 'attached' });
       await observeCredentialAccess(owner);
       assert.match(await readSessionState(owner), /locked/);
       await approve(owner, 'open');
@@ -1841,7 +1893,7 @@ try {
       await owner
         .locator('#status')
         .filter({ hasText: /^Ready\./ })
-        .waitFor();
+        .waitFor({ state: 'attached' });
       await observeCredentialAccess(owner);
       assert.match(await readSessionState(owner), /blocked/);
       await approve(owner, 'open');
@@ -1873,7 +1925,7 @@ try {
       await revoker
         .locator('#status')
         .filter({ hasText: /^Ready\./ })
-        .waitFor();
+        .waitFor({ state: 'attached' });
       await observeCredentialAccess(revoker);
       await approve(revoker, 'open');
       await waitStatus(revoker, /opened/);

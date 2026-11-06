@@ -19,6 +19,17 @@ deployed site remain separate from this local work.
 | **Audit** | Timed operation stages, full redacted request/response trace, public evidence JSON and **Copy full log**. |
 | **Settings** | Security and access, wallet connections, and closed-by-default advanced developer tools. |
 
+### Start from Overview
+
+Two matching cards separate **Create a new account** from **Open your account**.
+Both explain the action before its button. **Have an account address?** expands
+inside the Open card for the less common **Open by ACC address** flow. Paste the
+64-character lowercase hexadecimal account address and use an enrolled passkey;
+an address alone grants no access and cannot recover a lost passkey. Expanding
+this option or entering an address starts no credential or account operation.
+The draft stays intact when navigating within the page. Setup details and every
+actual passkey request still have their own blocking review.
+
 ### Passport account operations
 
 - **Balances** shows the ACC’s unshielded balances and **Refresh ACC state**.
@@ -102,7 +113,9 @@ Cancelled attempts and unknown outcomes never expose a completed 100-percent
 progress value. A cancelled attempt does not imply that earlier effects rolled back.
 
 Desktop has a collapsible right **Activity** panel: **Current operation** first,
-then **Your journey**. Its compact summary links to the matching Audit run. Audit
+then **Your journey**. It starts collapsed so idle Overview has no empty side
+panel; its trigger sits alongside the workspace title. Each approved credential
+call still reveals Activity before browser access. Its compact summary links to the matching Audit run. Audit
 starts with Activity collapsed to provide more room for exchanges. The journey
 keeps a separate wallet connection optional; it is not a condition for ACC
 ownership or access.

@@ -231,3 +231,13 @@ The post-RC7 session lane passes at signed `b5eeff8` for both software owner
 arms. See the [exact native source receipt](../review/native-sessions/README.md).
 It includes real ten-minute expiry, original-hash observer recovery and cleanup;
 NIGHT, browser/provider and published-artifact claims keep their separate evidence.
+
+## Overview layout (source preview)
+
+Overview offers two matching cards: **Create a new account** and **Open your
+account**. The latter contains **Have an account address?** for the advanced
+address-based opening flow. The address still requires an enrolled passkey; it
+is not account recovery. Navigation/disclosure changes preserve the address draft
+and start no credential or transaction. Activity starts collapsed with its trigger
+beside the workspace title; approved credential requests reveal their explanation
+before access and retain their separate blocking consent dialog.

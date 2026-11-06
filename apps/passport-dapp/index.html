@@ -77,10 +77,8 @@
     <main id="main" class="container layout">
       <section class="intro" aria-label="About this demo">
         <p>
-          Create a Passport smart account with a passkey, reopen it after a reload, and connect a
-          wallet seeded from the same passkey. You can also open a known ACC by address with an
-          enrolled passkey. The service proves and sponsors every transaction on the Midnight
-          network this build is pinned to.
+          Your Passport account starts with a passkey. Create one here, or open an account you
+          already use. You can connect a separate Midnight wallet afterwards.
         </p>
       </section>
 
@@ -112,7 +110,7 @@
             <p class="action-desc" id="open-desc"></p>
           </li>
           <li class="action">
-            <label for="open-address">Known Passport ACC address</label>
+            <label for="open-address">Passport account address</label>
             <input
               id="open-address"
               class="action-input"
@@ -122,8 +120,11 @@
               autocapitalize="off"
               spellcheck="false"
               placeholder="64 lowercase hex characters"
-              aria-describedby="openAt-desc"
+              aria-describedby="open-address-format openAt-desc"
             />
+            <p class="action-desc" id="open-address-format">
+              Paste the 64-character lowercase hexadecimal address shared by the account owner.
+            </p>
             <button
               id="openAt"
               class="btn btn-secondary"

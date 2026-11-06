@@ -46,7 +46,10 @@ export function createDemoWorkspace(config: {
     heading.id = `workspace-${id}-title`;
     heading.tabIndex = -1;
     view.setAttribute('aria-labelledby', heading.id);
-    view.append(heading);
+    const titleRow = node('div');
+    titleRow.className = 'workspace-heading';
+    titleRow.append(heading);
+    view.append(titleRow);
     views[id] = view;
     const button = node('button', names[id]);
     button.type = 'button';
@@ -69,7 +72,27 @@ export function createDemoWorkspace(config: {
     for (const id of ids) list.append(byId(id).closest('li')!);
     parent.append(list);
   };
-  actions(views.overview, ['create', 'open', 'openAt']);
+  actions(views.overview, ['create', 'open']);
+  const choices = views.overview.querySelector<HTMLUListElement>('.actions')!;
+  choices.classList.add('overview-choices');
+  for (const [id, title] of [
+    ['create', 'Create a new account'],
+    ['open', 'Open your account'],
+  ] as const) {
+    const card = byId(id).closest<HTMLLIElement>('li')!;
+    card.classList.add('overview-choice');
+    const description = byId(`${id}-desc`);
+    card.prepend(node('h3', title), description);
+  }
+  const openByAddress = node('details');
+  openByAddress.id = 'overview-open-address';
+  openByAddress.className = 'overview-advanced';
+  openByAddress.append(node('summary', 'Have an account address?'));
+  actions(openByAddress, ['openAt']);
+  byId('open').closest('li')!.append(openByAddress);
+  const passkeyNote = node('p', 'Each passkey request is explained before you approve it.');
+  passkeyNote.className = 'overview-note';
+  views.overview.append(passkeyNote);
   const account = panelOf('account-title');
   const wallet = panelOf('wallet-title');
   const accountPages = createAccountWorkspace(views.account, account, (page) => {
@@ -274,7 +297,7 @@ export function createDemoWorkspace(config: {
   });
   document.body.append(sheet);
   const mobile = matchMedia('(max-width: 900px)');
-  let expanded = true;
+  let expanded = false;
   let ceremonySheet = false;
   let selected: WorkspaceId = 'overview';
   const updateActivity = () => {
@@ -306,6 +329,7 @@ export function createDemoWorkspace(config: {
       else buttons[view].removeAttribute('aria-current');
     }
     if (id === 'audit') expanded = false;
+    views[id].querySelector('.workspace-heading')!.append(toggle);
     history.replaceState(
       null,
       '',
@@ -363,7 +387,7 @@ export function createDemoWorkspace(config: {
   const purpose = byId('ceremony-purpose');
   operationDetails.append(purpose, safetyNotice, progress);
   content.append(operationDetails);
-  center.append(toggle, ...Object.values(views));
+  center.append(...Object.values(views));
   main.replaceChildren(nav, center, activity);
   main.classList.add('workspace-shell');
   const [hash, accountPage] = location.hash.slice(1).split('/');

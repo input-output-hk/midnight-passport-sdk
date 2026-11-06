@@ -160,7 +160,9 @@ the network, ACC, asset, amount and destination for explicit confirmation before
 consent. It logs the confirmed transaction and rereads the ACC balance. The built-in wallet only
 reads addresses and balances; receiving an asset there does not give this demo wallet a send button.
 After an indeterminate submit error, inspect the live ACC and recipient before trying again.
-The page also has **Open by ACC address**: paste the public 64-character lowercase ACC address and
+Overview has separate **Create a new account** and **Open your account** cards.
+Activity starts collapsed; its button sits beside the workspace title.
+In the Open card, expand **Have an account address?** for **Open by ACC address**: paste the public 64-character lowercase ACC address and
 choose an already-enrolled passkey. This verifies its live device entry and sealed viewing key
 without relying on the local directory hint. It cannot discover an unknown address or recover a
 lost passkey. The requested and verified addresses appear in the operation trace.
