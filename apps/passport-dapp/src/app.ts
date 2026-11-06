@@ -456,6 +456,7 @@ ui.on('issueGrant', async () => {
   );
   if (!approved) {
     status('Grant issue cancelled before signing.');
+    traceOperation('grant.issue.cancelled', { accountAddress: current.address });
     return;
   }
   stage('submit');
@@ -497,6 +498,7 @@ ui.on('exportGrant', async () => {
   );
   if (!approved) {
     status('Grant opening export cancelled.');
+    traceOperation('grant.export.cancelled', { accountAddress: current.address, grantId });
     return;
   }
   stage('export');
@@ -529,6 +531,11 @@ ui.on('spendGrant', async () => {
           'Confirm before the grantee passkey prompt.',
       );
       if (approved) stage('submit');
+      else
+        traceOperation('grant.spend.cancelled', {
+          accountAddress: fields.account,
+          grantId: fields.grantId,
+        });
       return approved;
     },
   );
@@ -564,6 +571,7 @@ ui.on('revokeGrant', async () => {
   );
   if (!approved) {
     status('Grant revocation cancelled before signing.');
+    traceOperation('grant.revoke.cancelled', { accountAddress: current.address, grantId });
     return;
   }
   stage('submit');
@@ -637,7 +645,10 @@ ui.on('enrollDevice', async () => {
       `Joiner fingerprint: ${handoff.fingerprint}\n\n` +
       'Compare the fingerprint with the joining browser before consenting.',
   );
-  if (!approved) throw new Error('Device enrollment was cancelled before signing.');
+  if (!approved) {
+    traceOperation('account.device.enrollmentCancelled', { accountAddress: current.address });
+    throw new Error('Device enrollment was cancelled before signing.');
+  }
   stage('submit');
   const enrolled = await addDevice(reader, { onEvent });
   stage('read');
@@ -893,6 +904,7 @@ ui.on('startSession', async () => {
     )
   ) {
     status('Session authorization declined before passkey access.');
+    traceOperation('session.authorize.cancelled', { accountAddress: current.address });
     return;
   }
   await session.start(current, scope, minutes, RP_ID, { onEvent });
@@ -913,8 +925,14 @@ ui.on('revokeSession', async () => {
     !window.confirm(
       `Revoke session grant ${snapshot.grantId ?? '(unknown; reconcile the original issue)'} for ACC ${account.address}?\n\nThis requires fresh owner passkey approval and does not undo transfers.`,
     )
-  )
+  ) {
+    status('Session grant revocation cancelled before signing.');
+    traceOperation('session.revoke.cancelled', {
+      accountAddress: account.address,
+      grantId: snapshot.grantId,
+    });
     return;
+  }
   const result = await session.revoke(account, { onEvent });
   record('sessionRevoked', { grantId: snapshot.grantId, txHash: result.txHash });
   status('Session grant revoked on chain. Authorize a new session to renew.');

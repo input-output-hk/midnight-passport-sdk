@@ -286,19 +286,26 @@ export function createUi(
           collect(nested as Record<string, unknown>);
       }
     };
-    if (run) for (const entry of log.traceOf(run)) collect(entry.details);
+    const runTrace = run ? log.traceOf(run) : [];
+    for (const entry of runTrace) collect(entry.details);
     const declined =
       run &&
       run.state !== 'running' &&
       (run.error?.code === 'UserCancelled' ||
-        log
-          .traceOf(run)
-          .some((entry) => entry.kind === 'action.declined' || /cancelled$/i.test(entry.kind)));
-    const phase = declined
-      ? ('cancelled' as const)
-      : run?.error &&
-          /unknown|pending|FundingRejected|reconcile|SessionBlocked/i.test(run.error.code)
-        ? ('unknown' as const)
+        runTrace.some(
+          (entry) => entry.kind === 'action.declined' || /cancelled$/i.test(entry.kind),
+        ));
+    const lastSessionState = [...runTrace]
+      .reverse()
+      .find((entry) => entry.kind === 'session.state');
+    const uncertain =
+      run?.error &&
+      (lastSessionState?.details.phase === 'blocked' ||
+        /unknown|pending|FundingRejected|reconcile|SessionBlocked/i.test(run.error.code));
+    const phase = uncertain
+      ? ('unknown' as const)
+      : declined
+        ? ('cancelled' as const)
         : run?.state === 'done'
           ? ('succeeded' as const)
           : run?.state;

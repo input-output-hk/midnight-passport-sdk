@@ -943,9 +943,28 @@ try {
       await fill(owner, '#grant-recipient', recipient);
       await fill(owner, '#grant-per-call', '1');
       await fill(owner, '#grant-cap', '2');
+      const issuesBeforeDecline = calls.filter((c) => c === 'issue').length;
+      const credentialsBeforeGrantDecline = await credentialsUsed();
+      rejectNextDialog = true;
+      await approve(owner, 'issueGrant');
+      await waitStatus(owner, /Grant issue cancelled before signing/);
+      assert.equal(
+        await owner.locator('.operation-status').getAttribute('data-phase'),
+        'cancelled',
+      );
+      assert.equal(await owner.locator('#progress').getAttribute('aria-valuenow'), null);
+      assert.equal(calls.filter((c) => c === 'issue').length, issuesBeforeDecline);
+      assert.equal(await credentialsUsed(), credentialsBeforeGrantDecline);
       await approve(owner, 'issueGrant');
       await waitStatus(owner, /Grant .*active|grant.*issued/i);
       await fill(owner, '#export-grant-id', grantId);
+      rejectNextDialog = true;
+      await approve(owner, 'exportGrant');
+      await waitStatus(owner, /Grant opening export cancelled/);
+      assert.equal(
+        await owner.locator('.operation-status').getAttribute('data-phase'),
+        'cancelled',
+      );
       await approve(owner, 'exportGrant');
       await waitStatus(owner, /Opening ready/);
       await fill(
@@ -964,6 +983,19 @@ try {
       await approve(holder, 'spendGrant');
       await waitStatus(holder, /Grant spend .*confirmed/);
       await fill(owner, '#revoke-grant-id', grantId);
+      const revocationsBeforeDecline = calls.filter((c) => c === 'revoke').length;
+      rejectNextDialog = true;
+      await approve(owner, 'revokeGrant');
+      await waitStatus(owner, /Grant revocation cancelled before signing/);
+      assert.equal(
+        await owner.locator('.operation-status').getAttribute('data-phase'),
+        'cancelled',
+      );
+      assert.equal(calls.filter((c) => c === 'revoke').length, revocationsBeforeDecline);
+      assert.equal(state.grant?.active, true);
+      done(
+        'declining exact issue, export and revoke reviews reports cancellation without grant mutations',
+      );
       await approve(owner, 'revokeGrant');
       await waitStatus(owner, /is revoked/);
       const balance = state.night;
@@ -1070,6 +1102,10 @@ try {
       rejectNextDialog = true;
       await approve(owner, 'startSession');
       await waitStatus(owner, /authorization declined before passkey/);
+      assert.equal(
+        await owner.locator('.operation-status').getAttribute('data-phase'),
+        'cancelled',
+      );
       const beforeAuthorize = await countCredentials();
       await approve(owner, 'startSession');
       await waitStatus(owner, /JubJub session active/);
@@ -1161,6 +1197,20 @@ try {
         (await countCredentials()) > beforeAfterLock,
         'local lock restores owner passkey authorization',
       );
+      const revokesBeforeSessionDecline = calls.filter((c) => c === 'revoke').length;
+      const credentialsBeforeSessionDecline = await countCredentials();
+      rejectNextDialog = true;
+      await approve(owner, 'revokeSession');
+      await waitStatus(owner, /Session grant revocation cancelled before signing/);
+      assert.equal(
+        await owner.locator('.operation-status').getAttribute('data-phase'),
+        'cancelled',
+      );
+      assert.equal(calls.filter((c) => c === 'revoke').length, revokesBeforeSessionDecline);
+      assert.equal(await countCredentials(), credentialsBeforeSessionDecline);
+      done(
+        'declined exact session authorization and revocation reviews are cancelled without owner-key or grant effects',
+      );
       await approve(owner, 'revokeSession');
       await waitStatus(owner, /Session grant revoked on chain/);
       assert.equal(state.grant?.active, false);
@@ -1211,6 +1261,22 @@ try {
       unknownSession = true;
       await approve(owner, 'withdraw');
       await waitStatus(owner, /failed\./, /Synthetic session outcome unknown/);
+      assert.equal(await owner.locator('.operation-status').getAttribute('data-phase'), 'unknown');
+      assert.equal(await owner.locator('#progress').getAttribute('aria-valuenow'), null);
+      assert.equal(await owner.locator('#operation-safety-notice').isVisible(), true);
+      const unknownSessionIntent = (await readSessionState(owner)).match(/Intent ([^ ]+)\./)?.[1];
+      assert.ok(unknownSessionIntent);
+      assert.ok(
+        (await owner.locator('.activity-references').textContent())?.includes(unknownSessionIntent),
+      );
+      assert.ok(
+        (await owner.locator('#operation-safety-notice').textContent())?.includes(
+          unknownSessionIntent,
+        ),
+      );
+      done(
+        'lost session acknowledgement is an unknown outcome with its original intent and persistent safety notice',
+      );
       const sendsAfterUnknown = calls.filter((c) => c === 'spend' || c === 'withdraw').length;
       unknownSession = false;
       const stalePrompts = await staleTab.evaluate(
