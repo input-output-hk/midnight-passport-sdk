@@ -2210,6 +2210,11 @@ try {
       await fullOwner.locator('#authenticated-owner-key').locator('..').locator('summary').click();
       await fullOwner.setViewportSize({ width: 1280, height: 900 });
       done('authenticated owner public-key disclosure fits the mobile workspace');
+      assert.ok(
+        !(await fullOwner.locator('#workspace-settings').innerText()).includes(
+          'administration still requires your passkey',
+        ),
+      );
       const ownerDialogs: string[] = [];
       fullOwner.on('dialog', (dialog) => ownerDialogs.push(dialog.message()));
       const authenticatedCredentials = await ownerCredentials();

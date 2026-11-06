@@ -118,7 +118,7 @@ export const FLOWS: Record<ActionId, FlowDef> = {
   startSession: {
     title: 'Authorize JubJub session',
     summary:
-      'Your passkey approves the recipient, limits and expiry. This adds a scoped signing permission, not another owner.',
+      'Your owner key approves the recipient, limits and expiry. This adds a scoped signing permission, not another owner.',
     stages: [{ id: 'authorize', label: 'Derive session key and issue the expiring grant' }],
   },
   endSession: {
@@ -130,7 +130,7 @@ export const FLOWS: Record<ActionId, FlowDef> = {
   revokeSession: {
     title: 'Revoke session grant',
     summary:
-      'Lock the local key and use your owner passkey to revoke the grant. Permission ends when revocation is confirmed on chain.',
+      'Lock the local key and use your owner key to revoke the grant. Permission ends when revocation is confirmed on chain.',
     stages: [{ id: 'revoke', label: 'Approve and confirm grant revocation' }],
   },
   create: {
@@ -213,7 +213,7 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       'Unlock the owner journal, verify the active grant against the chain, and hand its opening directly to the named grantee.',
     stages: [
       { id: 'review', label: 'Verify active grant and owner journal' },
-      { id: 'export', label: 'Unlock the sealed opening with the owner passkey' },
+      { id: 'export', label: 'Open the sealed opening with authenticated owner keys' },
     ],
   },
   spendGrant: {
@@ -247,7 +247,7 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       'Review the joiner fingerprint, then sign and confirm its ACC entry and sealed key delivery.',
     stages: [
       { id: 'review', label: 'Validate handoff and read live roster' },
-      { id: 'submit', label: 'Sign with owner passkey and enroll' },
+      { id: 'submit', label: 'Sign with the selected owner and enroll' },
       read,
     ],
   },

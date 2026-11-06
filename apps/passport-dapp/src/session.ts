@@ -327,7 +327,7 @@ export function createDemoSession(ports: DemoSessionPorts) {
       if (busy) throw new Error('A session operation is already running.');
       if (!this.matches(account, transfer))
         throw new Error(
-          'This transfer is outside the active session scope. Review it with your owner passkey.',
+          'This transfer is outside the active session scope. Review it separately with your owner key.',
         );
       busy = true;
       const version = revision;
