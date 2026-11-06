@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sessionAssetName, sessionPresentation } from '../src/session-view.js';
+import {
+  sessionAssetName,
+  sessionPresentation,
+  sessionRecipientAddress,
+} from '../src/session-view.js';
+import { MidnightBech32m, UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
 import type { DemoSessionSnapshot } from '../src/session.js';
 
 test('asset labels identify NIGHT exactly and do not relabel unknown assets', () => {
@@ -8,6 +13,18 @@ test('asset labels identify NIGHT exactly and do not relabel unknown assets', ()
   assert.match(sessionAssetName('01'.repeat(32)), /^Token /);
   assert.ok(!sessionAssetName('01'.repeat(32)).includes('NIGHT'));
   assert.equal(sessionAssetName(), 'Not selected');
+});
+
+test('a recorded recipient is displayed on the pinned network without changing its payload', () => {
+  const payload = '07'.repeat(32);
+  const address = sessionRecipientAddress(payload, 'undeployed');
+  assert.match(address, /^mn_addr_undeployed1/);
+  assert.equal(
+    MidnightBech32m.parse(address).decode(UnshieldedAddress, 'undeployed').hexString,
+    payload,
+  );
+  assert.notEqual(sessionRecipientAddress(payload, 'mainnet'), address);
+  assert.equal(sessionRecipientAddress('unavailable', 'undeployed'), 'unavailable');
 });
 
 test('local lock and local expiry retain the on-chain grant warning', () => {

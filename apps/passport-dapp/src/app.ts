@@ -144,7 +144,7 @@ const session = createDemoSession({
       txHash,
       intentId,
     } = snapshot;
-    renderSessionState(snapshot);
+    renderSessionState(snapshot, network);
     const safetyNotice = document.getElementById('operation-safety-notice')!;
     safetyNotice.hidden = phase !== 'blocked';
     safetyNotice.textContent =

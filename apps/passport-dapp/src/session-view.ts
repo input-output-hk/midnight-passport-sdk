@@ -1,11 +1,22 @@
 /** Demo presentation only. A displayed deadline or form edit never changes grant authority. */
 import type { DemoSessionSnapshot } from './session.js';
+import { Buffer } from 'buffer';
+import { MidnightBech32m, UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
 
 export const sessionAssetName = (color?: string) =>
   !color ? 'Not selected' : color === '00'.repeat(32) ? 'NIGHT' : `Token ${shortId(color)}`;
 
 const shortId = (value: string) =>
   value.length > 28 ? `${value.slice(0, 12)}…${value.slice(-8)}` : value;
+
+/** The controller stores the canonical payload; display its address on the pinned demo network. */
+export function sessionRecipientAddress(recipient: string, networkId: string): string {
+  if (!/^[0-9a-f]{64}$/.test(recipient)) return recipient;
+  return MidnightBech32m.encode(
+    networkId,
+    new UnshieldedAddress(Buffer.from(recipient, 'hex')),
+  ).asString();
+}
 
 const messages: Record<DemoSessionSnapshot['status'], readonly [string, string]> = {
   locked: ['Locked on this device', 'No local signing key is available.'],
@@ -70,7 +81,7 @@ export function renderSessionDraft(color: string, recipient: string) {
   ]);
 }
 
-export function renderSessionState(snapshot: DemoSessionSnapshot) {
+export function renderSessionState(snapshot: DemoSessionSnapshot, networkId: string) {
   const status = document.getElementById('session-state')!;
   status.dataset.status = snapshot.status;
   status.dataset.intentId = snapshot.intentId ?? '';
@@ -80,16 +91,16 @@ export function renderSessionState(snapshot: DemoSessionSnapshot) {
   status.replaceChildren(heading, text);
   if (presentation.grantNotice) status.append(element('p', presentation.grantNotice));
   const scope = document.getElementById('session-current-scope')!;
+  const recipient = snapshot.recipient
+    ? sessionRecipientAddress(snapshot.recipient, networkId)
+    : undefined;
   scope.hidden = !snapshot.color;
   facts(
     scope,
     snapshot.color
       ? [
           ['Recorded asset', sessionAssetName(snapshot.color)],
-          [
-            'Authorized recipient',
-            snapshot.recipient ? shortId(snapshot.recipient) : 'Not recorded',
-          ],
+          ['Recorded recipient', recipient ? shortId(recipient) : 'Not recorded'],
           [
             'Spent / total limit',
             `${snapshot.spent} / ${snapshot.cap ?? 'Not recorded'} smallest units`,
@@ -106,7 +117,8 @@ export function renderSessionState(snapshot: DemoSessionSnapshot) {
     ['Original intent', snapshot.intentId],
     ['Transaction', snapshot.txHash],
     ['Asset identifier', snapshot.color],
-    ['Recipient address', snapshot.recipient],
+    ['Recipient address', recipient],
+    ['Recipient payload (hex)', snapshot.recipient],
     [
       'Recorded deadline (UTC)',
       snapshot.expiresAt ? new Date(snapshot.expiresAt).toISOString() : undefined,
