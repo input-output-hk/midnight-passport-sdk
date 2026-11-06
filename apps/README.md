@@ -465,5 +465,6 @@ Cross-device coordination and durable operator reconciliation remain host concer
 See [the review map](../docs/review/native-sessions/README.md) for the exact command,
 source/key/readiness guards, private evidence and owned cleanup. It allocates fresh
 ports 19964/18108/16320 and preserves retained/default localnets. Do not replay a
-failed/unknown run. Native acceptance is pending; browser consent and real-provider
-acceptance remain distinct.
+failed/unknown run. Source `b5eeff8` passes the declared both-arm software/native
+profile; see its receipt for exact cases and observation recovery counts. Browser
+consent, real providers and released artifacts remain separate tiers.

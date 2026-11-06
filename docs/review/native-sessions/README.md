@@ -1,38 +1,79 @@
-# Native consented-session qualification (#281)
+# Native consented session qualification (#281)
 
-## Scope and review map
+## Status and supported scope
 
-This lane exercises the actual demo session controller with source SDK packages,
-the pinned ACC, real proofs and a new isolated localnet. Credentials/PRF and owner
-consent are software fixtures; Chromium consent/provider behavior is a separate
-lane. No full Lace, real-provider, published image or registry acceptance follows.
+The fifth full run passes at signed source **`b5eeff81767a167a007ee9eb2e32c2e883f068b9`**, after merged PR285.
+[The public receipt](qualification.json) binds the executed source, key pins,
+infrastructure images, canonical transactions and cleanup. This is a **source
+preview after RC7**, not a registry release or an update to published RC7 images.
 
-- `scripts/qualification/live-sessions.mjs`: source/reference/key pins, stable
-  lease, fresh Docker project and volumes, resource/capacity checks, retained
-  receipts and owned cleanup. Ports 19964/18108/16320; no retained stack control.
-- `session-profile.mjs`: closed resource identities and actual endpoint checks.
-- `apps/passport-service/qualification/session-worker.ts`: both owner arms,
-  sealed SDK creation, 52 deployed verifier fingerprints/retired maintenance,
-  exact faucet-token deposit, actual session grant/withdrawal/recipient credit,
-  copied-key revocation, new-child renewal and real ten-minute expiry.
-- `tests/session-native-infrastructure.test.mjs`: shared-resource, wrong-volume,
-  substituted-image, detached endpoint and opt-in boundary regressions.
-- Existing browser session tests cover consent dialogs, Web Locks, hidden tabs,
-  local lock during HTTP acknowledgement and unknown-send/revocation fences.
+Both software owner arms use the actual demo session controller, PRF-derived
+JubJub helper and SDK holder API against the unchanged `acc-s3r1.1` contract.
+The host supplies real proving, balancing and submission. Credentials/PRF are
+software fixtures. The fresh faucet asset is **not NIGHT**. Browser consent,
+HTTP acknowledgement, real providers and published artifacts remain separate tiers.
 
-Both sessions use the demo's production 10-minute minimum. No synthetic clock,
-shortened production expiry or sleep-based transaction confirmation is used.
-Indexed chain time must pass the renewed expiry before expiry checks. Refusals
-are SDK checks against live native state **before proving**, not malicious-proof
-submissions or node-rejection/rollback qualification. The test asset is a fresh
-faucet token, not NIGHT; existing NIGHT funding evidence remains separate.
+| Measurement | Result |
+| --- | --- |
+| Checked native groups | 9 per owner arm; 18 total |
+| Proving requests fulfilled | 49; not a count of individual circuit proofs |
+| Submitted originals | 49; every retained binary hash checked and every transaction independently canonical/finalized SUCCESS |
+| ACC deployment | All 52 verifier fingerprints checked for each ACC; maintenance retired |
+| Used key inputs | 10 prover and all 52 verifier files matched the pinned manifest; no key generation |
+| Balance checks | Deposit 12, scoped withdrawal 2, ACC 10, distinct recipient credit 2 per asset, in smallest units |
+| Recipient observer reconnects | 1, after original-hash canonical confirmation |
+| Standalone wallet refreshes | 0 in this passed run; see the separate setup-mint incident below |
+| Cleanup | Both active wallets and all three owned containers stopped; lease released; all volumes/private fixtures retained |
+| Unrelated resources | Original default/archived indexer identities and running states unchanged |
 
-## Run
+The two additional expiry groups wait for **real ten-minute deadlines** and indexed
+chain time, check local lock/SDK refusal, then reclaim the expired slot through
+fresh owner authorization. They revisit ACC-A after ACC-B. No production timeout
+is shortened and no synthetic clock supplies native expiry evidence.
 
-Freeze a clean GPG-signed source after building. The complete local gate and an
-independent review are required before treating evidence as acceptance. Use the
-verified existing full reference export; do not regenerate all ACC keys. At least
-15 GiB free disk, 24 GiB Docker memory and cached pinned images are required.
+## What the groups exercise
+
+1. Full deployment and SDK sealed owner profile creation.
+2. Exact twelve-unit faucet-token setup deposit.
+3. Owner-approved ten-minute grant to the derived child.
+4. A scoped withdrawal and distinct recipient credit, with no further owner
+   signature or PRF derivation.
+5. Wrong-recipient and stale-opening refusals with unchanged state and zero new
+   proof attempts/submissions.
+6. Local lock, fresh-owner revocation and copied-child refusal against live state.
+7. Fresh-owner renewal with a different child key and grant ID.
+8. Actual deadline, local lock and expiry refusal using indexed chain time.
+9. Fresh-owner revocation of the expired grant to reclaim its slot.
+
+Negative grant controls refuse in the **SDK before proving**. This is not a test
+of malicious proofs being submitted/rejected by the node. The source lane calls
+the hosted Chain port directly; it does not establish a browser/native combined
+flow, production FIDO/provider acceptance, full Lace, total-loss recovery or
+partial shielded spending. The exact-value shielded guard is unchanged.
+
+## Review map
+
+- `scripts/qualification/live-sessions.mjs`: clean signed source, runtime/reference/
+  key pins, fresh resources, stable lease, readiness, end audits and owned cleanup.
+- `session-profile.mjs`: strict resource identity, actual endpoint, external output
+  and root/package-local dependency guards.
+- `apps/passport-service/qualification/session-worker.ts`: actual controller/SDK,
+  both owner arms, retained pre-send bytes, balances, lifecycle and expiry.
+- `tests/session-native-infrastructure.test.mjs`: unowned resource, substituted
+  image/volume, detached endpoint, dependency and output-overlap regressions.
+- Existing Chromium journeys separately cover consent, Web Locks, hidden tabs,
+  lock during HTTP acknowledgement and unknown issue/spend/revocation fences.
+
+The full local gate passes **1,262 tests**, seven existing skips, zero failures.
+Independent Codex CLI reviews cover the initial implementation and every substantive
+fix. Initial cleanup/dependency findings were corrected and re-reviewed. Public
+receipts remain explicit about their source and evidence tier.
+
+## Run it
+
+Build and run the required local gate, then freeze a clean GPG-signed checkout.
+Use the verified reference export, cached pinned images, at least 15 GiB free disk
+and 24 GiB Docker memory. Do not regenerate every ACC key when the cache is valid.
 
 ```sh
 PASSPORT_SESSION_NATIVE=1 PASSPORT_RC_LOCALNET=1 MN_NETWORK_ID=undeployed \
@@ -42,95 +83,65 @@ nix develop -c pnpm qualify run consented-sessions-native \
   --output /absolute/private/new-summary.json
 ```
 
-The parent refuses occupied ports, an existing output, user sponsor seeds, runtime
-overrides, mismatched keys, dirty source and an existing stable native wallet
-lease. It never pulls an image implicitly. A listener on a retained port is not
-reused. Only containers created by this run are stopped, by exact verified ID.
-Fresh chain/indexer volumes and every failed/unknown transaction remain retained.
-Read `parent-receipt.private.json` as the authoritative run verdict: a worker PASS
-alone does not establish end-input verification or cleanup. A partial receipt or
-lost acknowledgement must be reconciled using its original retained transactions;
-never rerun that directory, clear pending state or replay a value transfer.
+The runner allocates a random fresh project and volumes on 19964/18108/16320.
+It refuses occupied ports, existing evidence roots, source/reference overlap,
+user sponsor seeds, runtime overrides, mismatched keys and an existing stable
+wallet lease. It never pulls a moving image implicitly. Only exact verified
+run-owned containers are stopped. It preserves archived/default stacks and all
+failed/unknown fixtures. The slow lane stays outside required fast CI.
 
-All roots/logs/identities/openings/journals/transaction binaries stay private. Copy
-only explicitly reviewed public summaries into docs or Obsidian. The parent's
-reference source/dependency identities are drift detectors, not an independent
-provenance audit of the original exported client.
+`parent-receipt.private.json` is authoritative: worker PASS alone is insufficient.
+End source/dist/dependency/reference/key checks and complete cleanup must pass.
+Do not build/edit/install during the run. Inspect original hashes after interruption;
+never clear pending state, repeat a transfer or relabel a failed directory as a pass.
+Private logs, seeds, openings, journals, transaction binaries and wallet state stay
+outside Git and the public vault packet. Only reviewed public summaries are copied.
 
-## Status
+## Host integration lessons
 
-Implementation prepared locally after merged PR #285. Native acceptance is
-pending a clean signed run and independent review. Do not infer it from the fast
-infrastructure tests or prior merchant/session browser evidence.
+**Decode in the matching physical runtime.** Equal package versions and generated
+bytes do not make two WASM `ChargedState` instances interchangeable. The host
+module decodes host state; the SDK receives neutral bytes/bigints/ledger fields.
+The host generated module must still match the SDK binding pin. Grant reads that
+consume host state use that matching decoder too.
 
-## First native attempt: retained decode failure
+**Select private-state scope on every serialized call.** The reference Level
+provider holds a mutable address and keys data by `address:privateStateId`. The
+worker selects the requested ACC and checks its stored state before each call,
+including A→B→A. Use independent providers or serialize access to a shared mutable
+provider; never reset a missing private state to obtain a pass.
 
-Signed `73c1eb5` deployed the faucet and all52ACC entries (maintenance retired),
-then stopped before activation/deposit/session issue. A `ChargedState` created by
-the reference client's physical WASM runtime was passed to the SDK workspace's
-generated decoder, which belongs to a different runtime instance. The eleven
-submitted originals and private fixture are retained; no automatic retry or
-continuation occurs. Both wallets and all three owned containers stopped, the
-lease was released, and all62key pins/source/runtime/reference inputs were
-independently reverified unchanged after failure. The suite remains **FAIL**.
+**A cached wallet balance is not transaction finality.** On a timeout, the worker
+requires canonical finalized SUCCESS of the exact retained original before one
+same-address observer/standalone-wallet refresh. Those refresh callbacks do not
+mint, prove or send. Standalone refresh rebinds account/faucet providers to the same
+wallet public keys, preserving existing private state. A deployed handle bound to
+a stopped wallet is not reused. Failure to confirm or observe still fails the run.
+The passed run exercised 1 recipient reconnect(s) and 0 standalone
+refresh(es). Where a branch was not invoked, source review and separate cold-view
+reconciliation do not become an end-to-end native pass for that branch.
 
-The source fix decodes host state using the matching host generated module for
-both account and grant reads, while portable SDK helpers consume only neutral
-bytes/bigints. The generated module bytes must match the SDK pin. Source lanes
-with separate dependency trees must respect this boundary even when package
-versions match. A fresh signed/reviewed run is required for session acceptance.
-End-input verification now runs for failures as well as successful workers.
+Real browser wallet reconnection may need fresh consent/PRF access. First refresh
+the wallet view; if still stale, reload/reopen the account and reconnect the built-in
+wallet through its consent flow. Preserve the original operation hash and inspect
+it before any new transfer. Never clear site data to retry an uncertain send.
 
-A separate read-only reconciliation restarted only this run's original node and
-indexer, checked every retained transaction binary against its pre-send hash and
-confirmed all11original transactions SUCCESS on the canonical finalized chain.
-No wallet/proof/send was started and no transaction was replayed. Both restarted
-owned containers stopped again; the lease was released. This reconciles deployment
-only and does not turn the failed session suite into acceptance.
+## Retained earlier attempts
 
-## Second attempt: retained recipient-observation timeout
+| Attempt/source | Outcome and separately reconciled originals |
+| --- | --- |
+| v1 / `73c1eb5` | Failed after deployment: physical WASM decoder mismatch, before activation/value/session issue. All 11 originals finalized. |
+| v2 / `77a1323` | Failed on P-256 recipient live-view timeout after both original withdrawals. All 43 originals finalized; cold recipient showed 2 per asset and ACCs 10. |
+| v3 / `363ff62` | Deliberately stopped during deployment to fix private-state scope. All 4 originals finalized, including the same hash whose acknowledgement was lost. |
+| v4 / `f8bcb0a` | Failed observing a P-256 setup mint. All 38 originals finalized; a cold standalone view found its original 12-unit output. |
 
-Signed `77a1323` passed the corrected decode boundary, created both sealed owner
-profiles, deposited12fresh faucet units per ACC and confirmed scoped2-unit
-withdrawals for both owner arms. JubJub additionally passed native revocation and
-distinct-child renewal. The P-256 session recorded spent2/original transaction,
-but its live recipient wallet view timed out. This full suite remains **FAIL**;
-all43original transactions/private fixtures are retained, with unchanged end-input
-hashes, both wallets/all3ownedcontainers stopped and the lease released.
+These histories remain **FAIL**. The [historical reconciliation](prior-originals.json)
+retains all 96 original finality records. Their binaries matched pre-send hashes;
+no send was replayed. Reconciliation only read chain/observer state, then stopped
+its owned resources and released the lease. Private roots and volumes remain.
+Some old private diagnostic scope labels said `no-wallet`; v2/v4 actually used
+cold wallet observers. Their cleanup and reviewed public summaries record that
+fact. No proof or transaction was created by those inspections.
 
-The next source uses the existing `confirmedCredit` observer helper. Only after
-independent canonical SUCCESS of the **original** withdrawal may it stop/recreate
-the same recipient observer and re-observe the balance. It preserves the seed,
-address and transaction hash; there is no sender/prover/retry call in that recovery
-step. Failure to confirm the original or to observe after one reconnect fails the
-run. A new full suite uses a fresh root/chain; the old suite is not relabeled.
-
-## Cross-account private-state scope
-
-The third attempt at `363ff62` was deliberately stopped during deployment after
-four retained submissions, before session/value setup. Source inspection of the
-pinned reference Level provider showed its current contract address is mutable:
-private-state keys are `contractAddress:privateStateId`. A serialized worker that
-returns to ACC-A after ACC-B must reselect ACC-A before reading/proving its call.
-The worker now selects and verifies the expected private-state ID on every call.
-No concurrent transaction flow shares that mutable scope. The eventual expiry
-checks intentionally revisit the first ACC after the second to qualify this path.
-The stopped attempt remainsFAIL, all end inputs matched, all owned containers
-stopped and the lease was released. Originals and volumes remain retained.
-
-## Fourth attempt: retained setup-mint observation timeout
-
-The fourth full attempt at `f8bcb0a` passed the first arm through renewal and created
-both ACCs, then timed out observing the P-256 setup mint in the live standalone
-wallet. Its38original submissions and private fixtures remain retained; no second
-mint/deposit is permitted as an observation fix. The parent remainsFAIL, with
-unchanged end inputs, complete owned cleanup and lease release.
-
-The source now confirms the exact original mint before one cold refresh of the
-same public standalone wallet, with unchanged unshielded/encryption public keys.
-Both account and faucet transaction providers are rebound to that fresh wallet;
-private state is read from its existing persistent store and is never reset. Mint
-calls use the current provider directly rather than a deployed handle that might
-retain the old stopped wallet. The refresh path contains no mint, proof or send.
-Recipient and standalone-wallet refresh counts are recorded separately. A fresh
-full run is still required; earlier failed suites remain failed.
+Published RC7 remains unchanged. Candidate installation, actual registry/images,
+Pages publication and broader partner/provider acceptance are separate release gates.

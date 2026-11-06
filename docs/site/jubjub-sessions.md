@@ -10,9 +10,10 @@ This is the **local source increment after RC7**, tracked in
 [#281](https://github.com/input-output-hk/midnight-passport-sdk/issues/281).
 It is not part of the published `0.1.0-rc7` packages or images. The existing
 `acc-s3r1.1` binding already supports the grants used here; no contract or owner
-migration is required. Native session proof/node and real-provider acceptance are
-still separate qualification gates. Synthetic browser results do not establish
-full Lace compatibility.
+migration is required. Source `b5eeff8` has native qualification for both
+software owner arms, using the actual controller/SDK and a fresh test asset.
+Real providers, browser/native combined, registry/images and full Lace remain
+unqualified. Published RC7 does not gain this feature from a source test.
 
 The demo lets a user explicitly approve a narrow, short-lived spending session.
 Authentication alone does not grant spending authority. The account owner must
@@ -204,3 +205,20 @@ owner arms; it never controls a retained/default localnet. It waits for actual
 additional NIGHT funding qualification. Implementation/fast checks alone are not
 native acceptance. Provider, Chromium, native and released-artifact tiers remain
 separate; consult the recorded source/receipt before claiming support.
+
+## Measured native source evidence
+
+The isolated source run passes nine groups per owner arm: creation, scoped grant,
+withdrawal and recipient credit, copied-key revocation, distinct-child renewal,
+real ten-minute expiry and expired-slot reclamation. All submitted originals are
+independently canonical/finalized; used key hashes and end inputs match. Read the
+[exact receipt and limits](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/native-sessions/README.md).
+Software pre-proof refusals do not demonstrate malicious-proof node rejection.
+The source lane uses the hosted Chain port directly and a faucet token, not an
+additional NIGHT or real-browser/provider qualification.
+
+A wallet view can lag a confirmed withdrawal. Refresh its balance; if needed,
+reload/reopen and reconnect the built-in wallet through its normal consent flow.
+Preserve and inspect the original transaction hash before another transfer.
+The native observer recovery confirms that original before reconnecting; it never
+resends. A session child cannot derive the independent wallet seed.

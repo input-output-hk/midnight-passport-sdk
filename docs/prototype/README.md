@@ -214,3 +214,8 @@ The [native session qualification map](../review/native-sessions/README.md) desc
 an isolated opt-in lane for the consented JubJub source increment. Both synthetic
 owner arms use the actual controller/SDK and a fresh faucet token. Native proof,
 browser consent, real-provider and published-artifact acceptance are separate.
+
+The post-RC7 session lane passes at signed `b5eeff8` for both software owner
+arms. See the [exact native source receipt](../review/native-sessions/README.md).
+It includes real ten-minute expiry, original-hash observer recovery and cleanup;
+NIGHT, browser/provider and published-artifact claims keep their separate evidence.

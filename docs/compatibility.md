@@ -1,5 +1,24 @@
 # Compatibility matrix
 
+## Consented session source preview — 2026/11/06
+
+Signed `b5eeff8` passes native source qualification for the actual session
+controller/holder and both software owner arms. This qualification changes no ACC
+binding, existing owner/wallet derivation or published RC7 artifact. See the [receipt and review map](review/native-sessions/README.md).
+
+| Layer | Qualified scope | Remaining boundary |
+| --- | --- | --- |
+| Session key/controller | PRF-context child, fixed-recipient capped unshielded grant, revoke/renew, actual ten-minute expiry | Software credentials; no provider or cross-device authority claim |
+| Native host | 49 canonical/finalized originals, real recipient credit, 52 verifier fingerprints per ACC, 62 used key-file hashes, owned cleanup | Direct hosted Chain port, faucet asset; no browser/native combined or new NIGHT acceptance |
+| Failure controls | Live native ledger reads; wrong recipient, stale opening, revoked/expired refusal before proving | No malicious-proof/node rejection qualification |
+| Observation recovery | Original-hash canonical confirmation before recipient reconnect; separate standalone mint reconciliation | Passed run: 1 recipient and 0 standalone refreshes; unused branches keep their narrower evidence |
+| Release/partner | Reusable portable ports with host-owned orchestration | No new registry/images, full Lace, total-loss recovery or partial shielded spending |
+
+Earlier failed/stopped histories remain failed, with 96 originals separately
+reconciled without replay. The exact-value shielded guard is retained. Browser
+consent/Web Locks evidence remains separate from this source lane.
+
+
 ## RC7 published preview — 2026/11/05
 
 After merged PR278 and PR283, RC7 adds optional typed

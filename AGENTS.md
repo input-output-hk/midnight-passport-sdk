@@ -62,8 +62,10 @@ do not clear site data to retry. Browser Web Locks serialize authenticated/value
 actions across same-profile tabs; missing coordination refuses those actions.
 Independent per-intent public records retain issue/spend/revocation unknowns;
 stale tabs cannot clear them by overwriting display metadata. The session feature is not in published RC7 and
-has no native proof/provider qualification yet. Existing browser tests also cover
-these controls through real generated signing guards and synthetic chain drivers.
+has native source qualification at `b5eeff8` for both software owner arms,
+with the actual controller/SDK, a fresh faucet asset and real expiry. Provider,
+browser/native combined and released-artifact acceptance remain separate. Existing
+browser tests cover these controls with real signing guards and synthetic drivers.
 
 ## 1. What you need
 
@@ -562,7 +564,7 @@ control closes all created resources and preserves an honestly absent attacker s
 
 Read `docs/review/native-sessions/README.md` before the opt-in
 `consented-sessions-native` suite. It owns a fresh random project and fresh volumes
-on ports19964/18108/16320; never stop/reconfigure archived/default indexers or reuse
+on ports 19964/18108/16320; never stop/reconfigure archived/default indexers or reuse
 their volume/endpoint. The stable wallet lease is shared with older lanes. Retain
 failed/unknown roots and transaction bytes; source/runtime/reference/key pins must
 match at the end. Native synthetic credentials/faucet-token tests do not establish

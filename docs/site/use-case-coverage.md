@@ -122,3 +122,18 @@ scope/cap/context mismatch, key disposal and checkpoint guards.
 The immutable RC7 release evidence above is unchanged. These source tests are not
 native proof acceptance, provider synchronization/restoration or full Lace
 compatibility. See [session scope and safety]({{ '/jubjub-sessions/' | relative_url }}).
+
+## Native source session qualification after RC7
+
+A separate isolated run uses the actual controller, session key helper and holder
+against native proofs: both software owner arms, fixed-recipient withdrawal and
+recipient credit, copied-key revocation, distinct-child renewal, real ten-minute
+expiry and expired-slot reclamation. The [session guide]({{ '/jubjub-sessions/' | relative_url }})
+and its linked receipt pin the executed source, all originals, used key hashes and
+cleanup. Browser consent/HTTP behavior is still a separate synthetic-chain lane.
+These SDK refusals before proving do not establish malicious-proof node rejection.
+
+The run confirms an original transfer before reconnecting a stale wallet observer.
+A stale display is not permission to resend. Refresh, then use the normal consented
+wallet reconnect flow and original-hash inspection. Source qualification does not
+add this feature to published RC7, qualify a real PRF provider or prove full Lace.
