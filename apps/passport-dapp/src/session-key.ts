@@ -15,7 +15,7 @@ import { routineKeys } from './routine-access.js';
 /** Pin the PRF ceremony to the open account; discard both raw PRF outputs immediately. */
 export async function unlockDemoSessionKey(account: PassportAccount, context: SessionKeyContext) {
   const retained = await routineKeys.sessionKey(account, context);
-  if (retained) return retained;
+  if (retained) return { ...retained, routineBound: true };
   if (!account.credentialId) throw new Error('A passkey-backed account is required.');
   const outputs = await passkeyPrf({
     credentialId: account.credentialId,
@@ -23,7 +23,7 @@ export async function unlockDemoSessionKey(account: PassportAccount, context: Se
     beforeCeremony: beforeDemoCeremony,
   });
   try {
-    return await createSessionJubjubAuthoriser(
+    const key = await createSessionJubjubAuthoriser(
       {
         withSession: (work) => work(),
         deviceSecret: async () => {
@@ -41,6 +41,7 @@ export async function unlockDemoSessionKey(account: PassportAccount, context: Se
       accModule.pureCircuits as JubjubDeviceCircuits,
       context,
     );
+    return { ...key, routineBound: false };
   } finally {
     outputs.authoriser.fill(0);
     outputs.root.fill(0);

@@ -1970,8 +1970,38 @@ try {
       await waitStatus(owner, /Session grant revoked on chain/);
       assert.equal(state.grant?.active, false);
       done('local lock erases authority locally and a fresh owner ceremony revokes the grant');
+      await approve(owner, 'unlockRoutine');
+      await waitStatus(owner, /Quick actions unlocked/);
       await approve(owner, 'startSession');
       await waitStatus(owner, /JubJub session active/);
+      await click(owner, '#lock-routine');
+      assert.equal(await readSessionState(owner), 'locked');
+      assert.equal(state.grant?.active, true, 'local cache lock does not revoke the chain grant');
+      await approve(owner, 'revokeSession');
+      await waitStatus(owner, /Session grant revoked on chain/);
+      done(
+        'routine cache lock disposes its derived grant signer while leaving chain revocation explicit',
+      );
+      await approve(owner, 'startSession');
+      await waitStatus(owner, /JubJub session active/);
+      const independentScope = await owner.locator('#session-current-scope').innerText();
+      const beforeDeclinedRoutine = await countCredentials();
+      await approve(owner, 'unlockRoutine');
+      await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+      await click(owner, '#ceremony-cancel');
+      await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+      assert.equal(await countCredentials(), beforeDeclinedRoutine);
+      assert.equal(await readSessionState(owner), 'active');
+      await approve(owner, 'unlockRoutine');
+      await waitStatus(owner, /Quick actions unlocked/);
+      assert.equal(await readSessionState(owner), 'active');
+      await click(owner, '#lock-routine');
+      assert.equal(await readSessionState(owner), 'active');
+      assert.equal(await owner.locator('#session-current-scope').innerText(), independentScope);
+      assert.equal(state.grant?.active, true);
+      done(
+        'cancelled or successful routine unlock and cache lock preserve an independently authorized grant signer',
+      );
       await owner.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); // visible page: no lock
       await owner.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide')));
       assert.match(await readSessionState(owner), /locked/);

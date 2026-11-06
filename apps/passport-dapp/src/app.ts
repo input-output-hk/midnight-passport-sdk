@@ -137,9 +137,14 @@ let devWallet: DevWallet | undefined;
 let account: PassportAccount | undefined;
 let balanceAssetColor: string | undefined;
 const fundingUrl = new URL('/v1/demo/funding', SERVICE_URL);
+let sessionUsesRoutine = false;
 const session = createDemoSession({
   checkpoint: sessionCheckpoint(localStorage, network, BINDING_ID),
-  unlock: unlockDemoSessionKey,
+  unlock: async (account, context) => {
+    const key = await unlockDemoSessionKey(account, context);
+    sessionUsesRoutine = key.routineBound;
+    return key;
+  },
   opening: exportDemoGrantOpening,
   spend: spendDemoSessionGrant,
   changed(snapshot) {
@@ -156,6 +161,7 @@ const session = createDemoSession({
       txHash,
       intentId,
     } = snapshot;
+    if (!['active', 'spending', 'authorizing'].includes(phase)) sessionUsesRoutine = false;
     renderSessionState(snapshot, network);
     const safetyNotice = document.getElementById('operation-safety-notice')!;
     safetyNotice.hidden = phase !== 'blocked';
@@ -189,6 +195,7 @@ routineKeys.subscribe((snapshot) => {
   document.getElementById('routine-summary')!.textContent =
     snapshot.status === 'active' ? 'Quick actions unlocked' : `Quick actions ${snapshot.status}`;
   if (
+    sessionUsesRoutine &&
     snapshot.status !== 'active' &&
     ['active', 'spending', 'authorizing'].includes(session.snapshot().status)
   )

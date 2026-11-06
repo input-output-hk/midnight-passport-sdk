@@ -25,8 +25,11 @@ wallet connection or a login into unrestricted ACC spending authority.
 5. Each matching withdrawal has an exact transfer review and uses the scoped
    JubJub signer. The recipient, asset, per-transfer and total caps are enforced.
    A failed or uncertain spend never falls back to an owner transfer.
-6. **Lock quick actions** clears the routine cache and locks local grant signers.
-   Hidden tab, page exit and expiry do the same. Reload never restores a secret.
+6. **Lock quick actions** clears the routine cache and its derived grant signers.
+   A transfer session authorized independently has its own **Lock on this device**
+   control; unlocking or locking the routine cache does not replace that session.
+   Hidden tab and page exit lock both. Each session also enforces its own expiry.
+   Reload never restores a secret.
 
 ## Which key is used?
 
