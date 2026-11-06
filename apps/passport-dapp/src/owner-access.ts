@@ -145,6 +145,12 @@ export function routeAuthenticatedAccount(
 ): PassportAccount {
   return new Proxy(primary, {
     get(target, property) {
+      // These methods read public ledger data only. They need no owner material and
+      // remain available to reconcile an already submitted effect after local lock.
+      if (['state', 'deviceRoster', 'grantRoster'].includes(String(property))) {
+        const read = Reflect.get(target, property);
+        return typeof read === 'function' ? read.bind(target) : read;
+      }
       const current = selected() ?? target;
       const value = Reflect.get(current, property);
       if (typeof value !== 'function') return value;

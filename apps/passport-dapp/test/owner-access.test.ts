@@ -149,3 +149,47 @@ test('a submitted enrollment with a lost response reconciles through live openin
   assert.equal(reconciled.unapprovedField, undefined);
   assert.equal(sends, 1);
 });
+
+test('public receipt reconciliation reads survive lease loss without authorising another owner action', async () => {
+  let valid = true;
+  let selected: PassportAccount | undefined;
+  const reads: string[] = [];
+  const primary = {
+    state: async () => {
+      reads.push('state');
+      return { authNonce: 2n };
+    },
+    deviceRoster: async () => {
+      reads.push('devices');
+      return {};
+    },
+    grantRoster: async () => {
+      reads.push('grants');
+      return {};
+    },
+    rotateViewingKey: async () => {
+      throw Error('no passkey fallback');
+    },
+  } as unknown as PassportAccount;
+  selected = {
+    rotateViewingKey: async () => {
+      valid = false;
+      selected = undefined;
+      return { txHash: 'ab'.repeat(32) };
+    },
+  } as unknown as PassportAccount;
+  const routed = routeAuthenticatedAccount(
+    primary,
+    () => selected,
+    () => {
+      if (!valid) throw Error('expired');
+    },
+  );
+  const receipt = await routed.rotateViewingKey!();
+  await routed.state();
+  await routed.deviceRoster!();
+  await routed.grantRoster!();
+  assert.equal(receipt.txHash, 'ab'.repeat(32));
+  assert.deepEqual(reads, ['state', 'devices', 'grants']);
+  assert.throws(() => routed.rotateViewingKey!(), /expired/);
+});

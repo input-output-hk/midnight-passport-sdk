@@ -131,6 +131,27 @@ if (recoveryNote)
   recoveryNote.textContent +=
     ' Keep the original passkey: another enrolled reader cannot recover its grant openings. If an owner operation is interrupted, reconcile its transactions before retrying.';
 const { status, stage, record, event: onEvent } = ui;
+/** Record public receipts before a best-effort indexer refresh can fail or outlive a lease. */
+async function refreshAfterReceipt<T>(
+  receipt: {
+    action: string;
+    accountAddress: string;
+    txHash?: string;
+    txIds?: readonly string[];
+    grantId?: string;
+  },
+  read: () => Promise<T>,
+): Promise<T | undefined> {
+  record('accountOperationReceipt', receipt);
+  traceOperation('account.operation.receipt', receipt);
+  const refreshed = await ui.attempt('read', read);
+  if (refreshed === undefined)
+    status(
+      `Transaction receipt retained${receipt.txHash ? ` (${receipt.txHash.slice(0, 12)}…)` : ''}. Live state could not be refreshed. Inspect Audit and refresh the account before another operation; do not resubmit this transaction.`,
+    );
+  return refreshed;
+}
+
 setOperationTraceSink(ui.trace);
 installLaceWallet(network, ui.showExternalWalletConnection);
 showDemoCapabilities(ARM);
@@ -584,8 +605,16 @@ ui.on('issueGrant', async () => {
   }
   stage('submit');
   const result = await current.issueGrant(scope, { onEvent });
-  stage('read');
-  const after = await current.grantRoster();
+  const after = await refreshAfterReceipt(
+    {
+      action: 'issueGrant',
+      accountAddress: current.address,
+      txHash: result.txHash,
+      grantId: result.grantId,
+    },
+    () => current.grantRoster!(),
+  );
+  if (!after) return;
   if (!after.entries.some((entry) => entry.id === result.grantId && entry.active))
     throw new Error('The issued grant is not active in the live roster.');
   ui.showGrantRoster(current.address, after);
@@ -699,8 +728,11 @@ ui.on('revokeGrant', async () => {
   }
   stage('submit');
   const result = await current.revokeGrant(grantId, { onEvent });
-  stage('read');
-  const after = await current.grantRoster();
+  const after = await refreshAfterReceipt(
+    { action: 'revokeGrant', accountAddress: current.address, txHash: result.txHash, grantId },
+    () => current.grantRoster!(),
+  );
+  if (!after) return;
   if (!after.entries.some((entry) => entry.id === grantId && !entry.active))
     throw new Error('The grant revocation did not appear in the live roster.');
   ui.showGrantRoster(current.address, after);
@@ -723,8 +755,15 @@ ui.on('recoverGrants', async () => {
   stage('recover');
   status('Checking staged openings against the live ACC and resuming publication…');
   const result = await current.recoverPendingGrants({ onEvent });
-  stage('read');
-  const roster = await current.grantRoster();
+  const roster = await refreshAfterReceipt(
+    {
+      action: 'recoverGrants',
+      accountAddress: current.address,
+      txIds: result.published.flatMap((grant) => grant.appendTxHashes),
+    },
+    () => current.grantRoster!(),
+  );
+  if (!roster) return;
   ui.showGrantRoster(current.address, roster);
   const publicResult = {
     accountAddress: current.address,
@@ -774,8 +813,12 @@ ui.on('enrollDevice', async () => {
   }
   stage('submit');
   const enrolled = await addDevice(reader, { onEvent });
-  stage('read');
-  const [after, nextState] = await Promise.all([readRoster(), current.state()]);
+  const refreshed = await refreshAfterReceipt(
+    { action: 'enrollDevice', accountAddress: current.address, txHash: enrolled.txHash },
+    () => Promise.all([readRoster(), current.state()]),
+  );
+  if (!refreshed) return;
+  const [after, nextState] = refreshed;
   if (!after.commitments.includes(enrolled.commitmentHex))
     throw new Error('The joining device entry is absent from the confirmed ACC roster.');
   ui.showAccount({
@@ -833,8 +876,17 @@ ui.on('removeDevice', async () => {
     'Rotating sealed keys and removing the selected device; this takes multiple transactions…',
   );
   const removed = await current.removeDevice(target, { onEvent });
-  stage('read');
-  const [after, nextState] = await Promise.all([current.deviceRoster(), current.state()]);
+  const refreshed = await refreshAfterReceipt(
+    {
+      action: 'removeDevice',
+      accountAddress: current.address,
+      txHash: removed.txHash,
+      txIds: [removed.rotationTxHash, removed.txHash],
+    },
+    () => Promise.all([current.deviceRoster!(), current.state()]),
+  );
+  if (!refreshed) return;
+  const [after, nextState] = refreshed;
   if (
     after.commitments.includes(target) ||
     after.commitments.length !== before.commitments.length - 1
@@ -896,10 +948,13 @@ ui.on('rotate', async () => {
   stage('submit');
   status('Sealing a new viewing secret to verified readers, then signing and confirming rotation…');
   const rotated = await current.rotateViewingKey({ onEvent });
+  const after = await refreshAfterReceipt(
+    { action: 'rotate', accountAddress: current.address, txHash: rotated.txHash },
+    () => current.state(),
+  );
+  if (!after) return;
   if (rotated.droppedDeviceEntries.length || rotated.unsealedGrantIds.length)
     throw new Error('Rotation reported an incomplete reader delivery; inspect the event log.');
-  stage('read');
-  const after = await current.state();
   if (after.authNonce <= before.authNonce)
     throw new Error('The ACC did not confirm a newer authorisation nonce.');
   ui.showAccount({

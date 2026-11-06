@@ -228,6 +228,9 @@ try {
     let unknownSession = false;
     let unknownRevocation = false;
     let holdSessionSpend: (() => Promise<void>) | undefined;
+    let heldOwnerAction: string | undefined;
+    let holdOwnerReceipt: (() => Promise<void>) | undefined;
+    let receiptReadUnavailable = false;
     let serviceUnavailable = false;
     let staleOwnerReads = false;
     let staleReadCount = 0;
@@ -292,7 +295,9 @@ try {
             if (url.origin === origin && url.pathname === '/__demo-fixture') {
               const data = request.postDataJSON() as Record<string, unknown>;
               const action = String(data.action);
-              if (action === 'spend' && holdSessionSpend) {
+              if (action === 'state' && receiptReadUnavailable) {
+                await route.fulfill({ status: 503, json: { code: 'IndexerUnavailable' } });
+              } else if (action === 'spend' && holdSessionSpend) {
                 fixture(action, data);
                 await holdSessionSpend();
                 await route.fulfill({ json: state });
@@ -307,6 +312,7 @@ try {
                 await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
               } else {
                 const accepted = fixture(action, data);
+                if (action === heldOwnerAction && holdOwnerReceipt) await holdOwnerReceipt();
                 await route.fulfill({
                   status: accepted ? 200 : 409,
                   json: accepted
@@ -2319,6 +2325,90 @@ try {
       done(
         'reauthentication restores the same owner without enrollment; local lock returns to explicitly reviewed passkey access',
       );
+
+      for (const scenario of ['rotate', 'removeDevice', 'revokeGrant', 'indexer-outage']) {
+        await approve(fullOwner, 'unlockOwner');
+        await waitStatus(fullOwner, /Account unlocked/);
+        if (scenario === 'removeDevice') {
+          await fill(fullOwner, '#handoff-input', handoff);
+          await approve(fullOwner, 'enrollDevice');
+          await waitStatus(fullOwner, /Joining device confirmed/);
+          await fill(fullOwner, '#remove-commitment', target);
+        }
+        if (scenario === 'revokeGrant') {
+          await approve(fullOwner, 'issueGrant');
+          await waitStatus(fullOwner, /Grant.*active/i);
+          await fill(fullOwner, '#revoke-grant-id', state.grant!.id);
+        }
+        let releaseReceipt!: () => void;
+        let observeReceipt!: () => void;
+        const heldReceipt = new Promise<void>((resolve) => {
+          releaseReceipt = resolve;
+        });
+        const receiptObserved = new Promise<void>((resolve) => {
+          observeReceipt = resolve;
+        });
+        const action = scenario === 'indexer-outage' ? 'rotate' : scenario;
+        heldOwnerAction =
+          action === 'removeDevice' ? 'remove' : action === 'revokeGrant' ? 'revoke' : action;
+        holdOwnerReceipt = () => {
+          observeReceipt();
+          return heldReceipt;
+        };
+        const originalCalls = calls.filter((call) => call === heldOwnerAction).length;
+        const credentialsBefore = await ownerCredentials();
+        await approve(fullOwner, action);
+        await receiptObserved;
+        const originalHash = state.txHash;
+        await fullOwner.evaluate(() => {
+          (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset =
+            31 * 60_000;
+        });
+        await fullOwner
+          .locator('#routine-status')
+          .filter({ hasText: /expired/ })
+          .waitFor({ state: 'attached' });
+        receiptReadUnavailable = scenario === 'indexer-outage';
+        releaseReceipt();
+        await waitStatus(
+          fullOwner,
+          scenario === 'rotate'
+            ? /confirmed its new sealed/
+            : scenario === 'removeDevice'
+              ? /selected entry is absent/
+              : scenario === 'revokeGrant'
+                ? /revoked on chain/
+                : /Transaction receipt retained/,
+        );
+        receiptReadUnavailable = false;
+        assert.equal(calls.filter((call) => call === heldOwnerAction).length, originalCalls + 1);
+        assert.equal(await ownerCredentials(), credentialsBefore);
+        heldOwnerAction = undefined;
+        holdOwnerReceipt = undefined;
+        await fullOwner.evaluate(() => {
+          (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 0;
+        });
+        await fullOwner.locator('#nav-audit').click();
+        const evidenceDetails = fullOwner
+          .locator('details')
+          .filter({ has: fullOwner.locator('#evidence') });
+        if (!(await evidenceDetails.getAttribute('open'))) {
+          // Empty-string open attributes need a property check rather than truthiness.
+          if (!(await evidenceDetails.evaluate((element) => (element as HTMLDetailsElement).open)))
+            await evidenceDetails.locator('summary').click();
+        }
+        await fullOwner
+          .locator('#evidence')
+          .filter({ hasText: originalHash })
+          .waitFor({ state: 'visible' });
+        assert.match(
+          (await fullOwner.locator('#evidence').textContent())!,
+          /accountOperationReceipt/,
+        );
+        done(
+          `confirmed owner ${scenario} retains its original receipt after local expiry without another signer or submission`,
+        );
+      }
 
       assert.equal(failures.length, 0, failures.join(', '));
       assert.equal(pageErrors.length, 0, pageErrors.join(', '));

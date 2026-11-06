@@ -80,7 +80,10 @@ Public enrollment attempt IDs and transaction references persist for reconciliat
 
 An approved owner operation whose lease expires stops without silently switching to
 P-256. A transaction already submitted may settle after local lock; keep its original
-IDs. Uncertain grants/transfers retain their existing fences. Shielded withdrawals
+IDs. Public state/device/grant-roster reads remain available after lock for reconciliation.
+The demo records owner receipts before its best-effort post-operation refresh; an indexer
+failure cannot erase the transaction reference or trigger another submission.
+Uncertain grants/transfers retain their existing fences. Shielded withdrawals
 retain the exact-value guard; full ownership does not enable partial spends.
 
 ## Engineer integration
