@@ -2,6 +2,20 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { resolvePassportName } from '@input-output-hk/mn-passport-account/names';
 import { createMockNameService } from '../src/mock-name-service.ts';
+import { nameLookupMessage } from '../src/name-service.ts';
+
+test('injected external naming adapters are not described as synthetic mock records', () => {
+  assert.match(nameLookupMessage('mock', true), /Mock record found.*Synthetic ACC/);
+  assert.match(
+    nameLookupMessage('external', true),
+    /Provider record found.*ownership is not verified/,
+  );
+  assert.doesNotMatch(nameLookupMessage('external', true), /mock|synthetic/i);
+  for (const mode of ['mock', 'external'] as const) {
+    assert.match(nameLookupMessage(mode, false), /Name not found/);
+    assert.doesNotMatch(nameLookupMessage(mode, false), /mock|synthetic/i);
+  }
+});
 
 test('mock adapter supplies isolated synthetic fixtures through the public SDK interface', async () => {
   const mock = createMockNameService('undeployed');

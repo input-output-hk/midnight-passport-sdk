@@ -1,5 +1,15 @@
 # Passport prototype: apps
 
+## Local prototype UX milestone
+
+The [execution map](../docs/prototype/ux-milestone.md) tracks the approved
+Settings/Activity/Audit redesign. The current local slice provides a read-only
+mock name adapter and consumes portable `account/interaction` progress arithmetic.
+It does not yet replace the runtime layout or introduce React/Lace Wallet support.
+Both additions are source after RC7; keep existing launch commands and durable
+operation state. Optional host renderers must not initiate account actions while
+rendering, subscribing or cleaning up a presentation control.
+
 Local source after RC7 adds a read-only **Name service · mock adapter** panel.
 It composes `account/names` with an app-owned in-memory `PassportNameService`.
 Try `alice.passport.test` or `bob.passport.test`; these synthetic records are

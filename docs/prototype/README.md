@@ -1,5 +1,12 @@
 # Midnight Passport DApp prototype
 
+## Approved UX implementation milestone
+
+See the [execution map](ux-milestone.md) for the current local naming/interaction
+slice and the pending responsive shell, Settings, Audit and optional host wiring.
+These source additions are not in published RC7. Existing launch and safety rules
+in this guide remain in force.
+
 The local source after RC7 also has a read-only, app-owned mock naming adapter.
 See [naming-service interfaces, replacement and demo limits](../site/names.md).
 It is independent of onboarding and never authorizes or redirects a transfer.

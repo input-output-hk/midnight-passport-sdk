@@ -4,6 +4,14 @@ import {
   type PassportNameService,
 } from '@input-output-hk/mn-passport-account/names';
 
+/** Provider metadata describes the hint; neither mode establishes ownership on chain. */
+export const nameLookupMessage = (mode: 'mock' | 'external', found: boolean): string =>
+  !found
+    ? 'Name not found in this provider namespace and network.'
+    : mode === 'mock'
+      ? 'Mock record found. Synthetic ACC address only; not verified on chain or usable for transfers here.'
+      : 'Provider record found. ACC address hint only; ownership is not verified on chain or usable for transfers here.';
+
 /** Example host wiring. Replace the injected adapter, not the SDK or lookup control. */
 export function showDemoNameService(service: PassportNameService, networkId: string): () => void {
   const form = document.getElementById('name-service-form') as HTMLFormElement;
@@ -11,6 +19,12 @@ export function showDemoNameService(service: PassportNameService, networkId: str
   const button = document.getElementById('name-service-resolve') as HTMLButtonElement;
   const status = document.getElementById('name-service-status')!;
   const output = document.getElementById('name-service-result')!;
+  if (service.provider.mode === 'external') {
+    document.getElementById('name-service-title')!.textContent = 'Name service · provider adapter';
+    document.getElementById('name-service-help')!.textContent =
+      'Read-only provider lookup. The address is a hint, not a proof of name ownership. No name is registered, passkey requested or transfer destination changed.';
+    input.value = '';
+  }
   let revision = 0;
   let busy = false;
   const submit = (event: Event) => {
@@ -24,9 +38,7 @@ export function showDemoNameService(service: PassportNameService, networkId: str
     void resolvePassportName(service, { name: input.value, networkId })
       .then((record) => {
         if (revision !== current) return;
-        status.textContent = record
-          ? 'Mock record found. Synthetic ACC address only; not verified on chain or usable for transfers here.'
-          : 'Name not found in this mock namespace and network.';
+        status.textContent = nameLookupMessage(record?.mode ?? service.provider.mode, !!record);
         output.textContent = record ? JSON.stringify(record, null, 2) : '';
       })
       .catch((error: unknown) => {

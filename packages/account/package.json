@@ -27,6 +27,10 @@
     "./names": {
       "types": "./dist/names.d.ts",
       "default": "./dist/names.js"
+    },
+    "./interaction": {
+      "types": "./dist/interaction.d.ts",
+      "default": "./dist/interaction.js"
     }
   },
   "files": [

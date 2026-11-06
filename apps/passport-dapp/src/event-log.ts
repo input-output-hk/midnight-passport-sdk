@@ -48,8 +48,12 @@ export class EventLog {
   constructor(private readonly now: () => number = Date.now) {}
 
   /** Called after every change. */
-  subscribe(listener: () => void): void {
-    this.listeners.add(listener);
+  subscribe(listener: () => void): () => void {
+    const registration = () => listener();
+    this.listeners.add(registration);
+    return () => {
+      this.listeners.delete(registration);
+    };
   }
 
   /** The run in progress, if any. */
