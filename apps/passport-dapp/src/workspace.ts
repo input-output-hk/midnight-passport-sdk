@@ -395,6 +395,20 @@ export function createDemoWorkspace(config: {
     accountPages.select(accountPage as AccountPage, false);
   show(Object.hasOwn(names, hash ?? '') ? (hash as WorkspaceId) : 'overview', false);
   // Presentation events never approve a credential or invoke an account command.
+  document.addEventListener('passport:present-public-operation', () => {
+    if (document.querySelector('dialog[open]:not(#activity-sheet)')) return;
+    if (mobile.matches) {
+      if (!sheet.open) {
+        sheet.append(content);
+        sheet.returnValue = '';
+        sheet.showModal();
+        close.focus();
+      }
+      // Public results stay readable until dismissed, unlike an automatic credential sheet.
+      ceremonySheet = false;
+    } else expanded = true;
+    updateActivity();
+  });
   document.addEventListener('passport:present-ceremony', () => {
     if (document.querySelector('dialog[open]:not(#activity-sheet)')) return;
     if (mobile.matches) {

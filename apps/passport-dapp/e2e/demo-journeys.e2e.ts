@@ -1175,11 +1175,27 @@ try {
         ['grantRoster', /grant/i],
       ] as const) {
         const before = await owner.locator('#ceremony-purpose').innerText();
+        if (await owner.locator('#activity-panel').isVisible())
+          await owner.locator('#activity-toggle').click();
         await click(owner, `#${action}`);
         await waitStatus(owner, status);
+        assert.equal(await owner.locator('#activity-panel').isVisible(), true);
         assert.equal(await owner.locator('#ceremony-purpose').innerText(), before);
       }
-      done('public state and rosters need no ceremony');
+      await owner.setViewportSize({ width: 390, height: 844 });
+      const beforePublicRead = await credentialsUsed();
+      await click(owner, '#refresh');
+      await waitStatus(owner, /Account|ACC|refreshed/i);
+      assert.equal(
+        await owner.locator('#activity-sheet').evaluate((e) => (e as HTMLDialogElement).open),
+        true,
+      );
+      assert.equal(await credentialsUsed(), beforePublicRead);
+      await owner.locator('#activity-close').click();
+      await owner.setViewportSize({ width: 1280, height: 900 });
+      done(
+        'public reads reveal Activity without a ceremony; mobile results stay readable until dismissed',
+      );
       if (await owner.locator('#activity-panel').isVisible())
         await owner.locator('#activity-toggle').click();
       assert.equal(await owner.locator('#activity-panel').isVisible(), false);

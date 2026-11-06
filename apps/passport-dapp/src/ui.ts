@@ -850,6 +850,8 @@ export function createUi(
               log.finish();
               return;
             }
+            if (promptsFor(action, !!account) === 0)
+              document.dispatchEvent(new Event('passport:present-public-operation'));
             await fn();
             log.finish();
           };
