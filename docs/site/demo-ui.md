@@ -14,10 +14,33 @@ deployed site remain separate from this local work.
 | Workspace | What belongs here |
 | --- | --- |
 | **Overview** | Create an account, open with a passkey, or open a known ACC address with an enrolled passkey. No name or profile creation. |
-| **Passport account** | ACC state and balances, read shielded holdings, fund the ACC, withdraw to a Midnight user address. Amounts retain their original units and unavailable/stale states. |
+| **Passport account** | **Balances**, **Deposit** and **Withdraw** tabs. The selected ACC/network stays visible; each operation has its own form. Amounts retain their original units and unavailable/stale states. |
 | **Midnight wallet** | Separate built-in HD and optional external Lace Wallet views: addresses, balances, freshness and **Refresh wallet balance**. **Manage wallet connections** opens Settings. |
 | **Audit** | Timed operation stages, full redacted request/response trace, public evidence JSON and **Copy full log**. |
 | **Settings** | Security and access, wallet connections, and closed-by-default advanced developer tools. |
+
+### Passport account operations
+
+- **Balances** shows the ACC’s unshielded balances and **Refresh ACC state**.
+  Contract counters, binding and last-transaction details are expandable. A failed
+  balance refresh labels prior amounts as old snapshots; unavailable balances do
+  not mean zero. **Shielded holdings** has a separate explicit read action and
+  passkey consent; merely opening this tab never unlocks the sealed inbox.
+- **Deposit** shows one asset selector and the funding action. The configured
+  fixed deposit comes from the **demo funding wallet**, not your connected wallet.
+  The tab explains when funding is unavailable instead of offering a new route.
+- **Withdraw** shows one form for the asset, amount in smallest units and an
+  explicit unshielded Midnight recipient. The subsequent review chooses the
+  applicable scoped-session or fresh-owner route; selecting a tab grants nothing.
+
+The open ACC/network stays above the tabs. Keyboard users can use Left/Right,
+Home/End within the tab row. Mobile keeps the same three tabs and a single form.
+`#account/deposit` and `#account/withdraw` open those views without starting an
+operation. Form values and the selected tab survive navigation to another
+workspace in the same page; reloading does not restore a signing key or draft.
+Settings → Sessions’ target shortcut opens **Withdraw** and focuses the recipient.
+During pending or unknown transfers, navigation keeps original IDs and guards;
+progress and results stay in Activity. Tabs never resubmit, sign, refresh or cancel.
 
 ### Settings
 

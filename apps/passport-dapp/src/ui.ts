@@ -514,11 +514,44 @@ export function createUi(
     byId('account-empty').hidden = !!account;
     const list = byId('account-facts');
     list.hidden = !account;
+    const context = byId('account-action-context');
+    context.hidden = !account;
+    byId('account-context-empty').hidden = !!account;
+    byId('account-state-details').hidden = !account;
+    byId('account-balances-empty').hidden = !account || !!accountBalances;
     if (!account) return;
     const { address, networkId, bindingId, state, lastTx } = account;
+    renderFacts(context, [
+      { label: 'Passport ACC', value: shorten(address, 10, 8), full: address, copy: address },
+      { label: 'Network', value: networkId },
+    ]);
     renderFacts(list, [
       { label: 'Address', value: shorten(address, 10, 8), full: address, copy: address },
       { label: 'Network', value: networkId },
+      ...(accountBalances?.address === address
+        ? [
+            {
+              label: 'NIGHT (Passport ACC)',
+              value: accountBalances.night ?? accountBalances.error ?? 'Reading…',
+              hint: accountBalances.error
+                ? 'Latest refresh unavailable. Any displayed amount is a prior snapshot, not a new balance.'
+                : 'Unshielded balance in smallest units.',
+            },
+            ...(accountBalances.color === '00'.repeat(32)
+              ? []
+              : [
+                  {
+                    label: `Test token ${shorten(accountBalances.color, 6, 4)}`,
+                    value: accountBalances.fundedAsset ?? accountBalances.error ?? 'Reading…',
+                    hint: accountBalances.error
+                      ? 'Latest refresh unavailable. Any displayed amount is a prior snapshot, not a new balance.'
+                      : 'Unshielded balance in smallest units.',
+                  },
+                ]),
+          ]
+        : []),
+    ]);
+    renderFacts(byId('account-state-facts'), [
       { label: 'Spec version', value: String(state.specVersion) },
       { label: 'Activated', value: state.booted ? 'Yes' : 'No' },
       { label: 'Auth nonce', value: state.authNonce.toString() },
@@ -529,24 +562,6 @@ export function createUi(
         hint: 'Entries in the device set, not a device count (erratum 8).',
       },
       { label: 'Binding', value: bindingId },
-      ...(accountBalances?.address === address
-        ? [
-            {
-              label: 'NIGHT (Passport ACC)',
-              value: accountBalances.night ?? accountBalances.error ?? 'Reading…',
-              hint: 'Unshielded balance in smallest units.',
-            },
-            ...(accountBalances.color === '00'.repeat(32)
-              ? []
-              : [
-                  {
-                    label: `Test token ${shorten(accountBalances.color, 6, 4)}`,
-                    value: accountBalances.fundedAsset ?? accountBalances.error ?? 'Reading…',
-                    hint: 'Unshielded balance in smallest units.',
-                  },
-                ]),
-          ]
-        : []),
       lastTx
         ? {
             label: 'Last transaction',

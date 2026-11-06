@@ -6,7 +6,12 @@ The [execution map](../docs/prototype/ux-milestone.md) tracks the approved
 Settings/Activity/Audit redesign. The local demo composes five workspaces, a
 responsive Activity panel/sheet and a dedicated Audit workspace using portable
 `account/interaction` models. [The UI guide](../docs/site/demo-ui.md) maps every
-action to its new location. The [optional React host example](../docs/site/react-example.md) uses synthetic
+action to its new location. **Passport account** now uses **Balances / Deposit /
+Withdraw** tabs: refresh/shielded reads stay with balances, one transfer form is
+shown at a time, and the open ACC/network remains visible. Contract counters are
+expandable. Deposit uses the configured demo funding wallet; navigation never
+starts a transfer or credential request. Form values survive same-page tab and
+workspace changes; Settings’ session-target shortcut opens Withdraw. The [optional React host example](../docs/site/react-example.md) uses synthetic
 public snapshots only; actual Lace Wallet connection remains a separate task.
 These changes are source after RC7; keep existing launch commands and durable
 operation state. Optional host renderers must not initiate account actions while

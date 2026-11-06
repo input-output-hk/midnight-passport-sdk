@@ -333,8 +333,13 @@ ui.on('refresh', async () => {
   });
   const balancesRead = balanceAssetColor
     ? await ui.attempt('balances', async () => {
-        await refreshAccountBalances(current.address);
-        return true;
+        try {
+          await refreshAccountBalances(current.address);
+          return true;
+        } catch (error) {
+          ui.showAccountBalanceError(current.address);
+          throw error;
+        }
       })
     : undefined;
   status(

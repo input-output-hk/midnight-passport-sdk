@@ -1254,3 +1254,73 @@ main.workspace-shell[data-activity='collapsed'] {
 .wallet-snapshot .fact dd {
   overflow-wrap: anywhere;
 }
+
+/* Account task navigation: one form at a time; operation progress remains in Activity. */
+.account-context {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.account-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.account-tabs [role='tab'] {
+  min-height: 44px;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.account-tabs [aria-selected='true'] {
+  color: var(--heading);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.account-page {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.account-page[hidden] {
+  display: none;
+}
+.workspace-shell .account-actions {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 42rem;
+  margin-top: 1rem;
+}
+.account-transfer > h3 {
+  font-size: 1.3rem;
+}
+.account-transfer > p {
+  max-width: 65ch;
+}
+.account-transfer .action {
+  gap: 0.65rem;
+}
+.account-transfer .action label:not(:first-child) {
+  margin-top: 0.65rem;
+}
+.account-transfer .action > .btn,
+.account-page .account-actions .btn {
+  align-self: start;
+}
+#account-page-balances .panel > .account-actions {
+  margin-block: 1rem;
+}
+#account-state-details {
+  margin-block: 1rem;
+}
+#account-page-balances .panel > h3 {
+  margin-bottom: 0.75rem;
+}

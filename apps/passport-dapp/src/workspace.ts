@@ -1,3 +1,4 @@
+import { createAccountWorkspace, type AccountPage } from './account-workspace.js';
 import { renderSessionDraft } from './session-view.js';
 
 /** Demo-owned layout and navigation. Moving existing nodes keeps action state and IDs intact. */
@@ -71,8 +72,9 @@ export function createDemoWorkspace(config: {
   actions(views.overview, ['create', 'open', 'openAt']);
   const account = panelOf('account-title');
   const wallet = panelOf('wallet-title');
-  move('account', account);
-  actions(views.account, ['refresh', 'holdings', 'fund', 'withdraw']);
+  const accountPages = createAccountWorkspace(views.account, account, (page) => {
+    if (selected === 'account') history.replaceState(null, '', `#account/${page}`);
+  });
   move('wallet', wallet);
 
   const security = node('details');
@@ -304,7 +306,11 @@ export function createDemoWorkspace(config: {
       else buttons[view].removeAttribute('aria-current');
     }
     if (id === 'audit') expanded = false;
-    history.replaceState(null, '', `#${id}`);
+    history.replaceState(
+      null,
+      '',
+      id === 'account' ? `#account/${accountPages.selected()}` : `#${id}`,
+    );
     updateActivity();
     if (focus) byId(`workspace-${id}-title`).focus();
     scope();
@@ -340,6 +346,7 @@ export function createDemoWorkspace(config: {
   manage.addEventListener('click', () => show('settings'));
   editScope.addEventListener('click', () => {
     show('account');
+    accountPages.select('withdraw');
     byId('withdraw-recipient').focus();
   });
   const safetyNotice = node('p');
@@ -359,8 +366,10 @@ export function createDemoWorkspace(config: {
   center.append(toggle, ...Object.values(views));
   main.replaceChildren(nav, center, activity);
   main.classList.add('workspace-shell');
-  const hash = location.hash.slice(1);
-  show(Object.hasOwn(names, hash) ? (hash as WorkspaceId) : 'overview', false);
+  const [hash, accountPage] = location.hash.slice(1).split('/');
+  if (hash === 'account' && ['balances', 'deposit', 'withdraw'].includes(accountPage ?? ''))
+    accountPages.select(accountPage as AccountPage, false);
+  show(Object.hasOwn(names, hash ?? '') ? (hash as WorkspaceId) : 'overview', false);
   // Presentation events never approve a credential or invoke an account command.
   document.addEventListener('passport:present-ceremony', () => {
     if (document.querySelector('dialog[open]:not(#activity-sheet)')) return;

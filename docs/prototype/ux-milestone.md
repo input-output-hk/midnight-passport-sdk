@@ -38,6 +38,10 @@ published release or a change to the deployed documentation site.
 ## Approved information architecture
 
 - Left navigation: **Overview, Passport account, Midnight wallet, Audit, Settings**.
+- Passport account uses **Balances / Deposit / Withdraw** tabs, a shared open-ACC
+  identity and one operation form at a time. Contract state is expandable; refresh
+  and explicit shielded reads stay in Balances. Tab/keyboard/deep-link navigation
+  never starts or cancels a transaction or credential request and preserves forms.
 - Main workspace: selected user task and balances. Owner feedback on2026-11-06
   moves all operation progress, results and transient explanations into Activity.
   Estimated progress never implies confirmation.

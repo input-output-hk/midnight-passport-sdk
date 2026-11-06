@@ -29,7 +29,7 @@ supports this flow, with fresh PRF unlocks for owner operations.
 
 1. Create/open your ACC, connect the built-in wallet if it is the destination, and
    fund the ACC. Amounts are **smallest units**, not whole NIGHT.
-2. In the withdrawal form select an asset and enter the recipient. The session
+2. In **Passport account → Withdraw**, select an asset and enter the recipient. The session
    uses those exact fields, not the separate manual-grant form.
 3. In **Settings → Sessions → Configure a new session**, choose 10, 15 (default), or 30 minutes, a
    per-transfer cap and a total cap. Choose **Authorize JubJub session**.

@@ -137,6 +137,7 @@ let outcome = 'failed';
 async function reveal(page: Page, selector: string): Promise<void> {
   const location = await page.locator(selector).evaluate((element) => ({
     view: element.closest<HTMLElement>('[data-workspace]')?.dataset.workspace,
+    accountPage: element.closest<HTMLElement>('[data-account-page]')?.dataset.accountPage,
     details: [...(element.closest('[data-workspace]')?.querySelectorAll('details') ?? [])]
       .filter((details) => details.contains(element))
       .map((details) => details.id),
@@ -146,6 +147,13 @@ async function reveal(page: Page, selector: string): Promise<void> {
     (await page.locator(`#nav-${location.view}`).getAttribute('aria-current')) !== 'page'
   ) {
     await page.locator(`#nav-${location.view}`).click();
+  }
+  if (
+    location.accountPage &&
+    (await page.locator(`#account-tab-${location.accountPage}`).getAttribute('aria-selected')) !==
+      'true'
+  ) {
+    await page.locator(`#account-tab-${location.accountPage}`).click();
   }
   for (const id of location.details) {
     if (
@@ -250,7 +258,7 @@ try {
       }
       return true;
     };
-    const newPage = async (existing?: BrowserContext, reactExample = false) => {
+    const newPage = async (existing?: BrowserContext, reactExample = false, fragment = '') => {
       const context = existing ?? (await browser!.newContext({ serviceWorkers: 'block' }));
       if (!existing) {
         contexts.push(context);
@@ -419,7 +427,7 @@ try {
         await page.locator('#react-revision').filter({ hasText: 'Revision 0' }).waitFor();
         return page;
       }
-      await page.goto(`${origin}/?mockPasskey&fixtureArm=${arm}`);
+      await page.goto(`${origin}/?mockPasskey&fixtureArm=${arm}${fragment}`);
       await page
         .locator('#status')
         .filter({ hasText: /^Ready\./ })
@@ -776,6 +784,68 @@ try {
       await owner.locator('#settings-developer-tools > summary').click();
       await owner.locator('#nav-overview').click();
       done('five workspaces separate settings and Audit without credentials or connector effects');
+      await click(owner, '#nav-account');
+      assert.deepEqual(await owner.locator('.account-tabs button').allTextContents(), [
+        'Balances',
+        'Deposit',
+        'Withdraw',
+      ]);
+      assert.equal(await owner.locator('#account-page-balances').isVisible(), true);
+      assert.equal(await owner.locator('#fund').isVisible(), false);
+      await owner.locator('#account-tab-balances').focus();
+      await owner.keyboard.press('ArrowRight');
+      assert.equal(
+        await owner.locator('#account-tab-deposit').getAttribute('aria-selected'),
+        'true',
+      );
+      assert.equal(await owner.evaluate(() => document.activeElement?.id), 'account-tab-deposit');
+      await owner.keyboard.press('End');
+      assert.equal(await owner.locator('#account-page-withdraw').isVisible(), true);
+      assert.equal(await owner.locator('#account-page-balances').isVisible(), false);
+      assert.equal(await owner.locator('#account-page-deposit').isVisible(), false);
+      assert.equal(await owner.locator('#withdraw').isEnabled(), false);
+      await owner.keyboard.press('Home');
+      assert.equal(
+        await owner.locator('#account-tab-balances').getAttribute('aria-selected'),
+        'true',
+      );
+      await owner.keyboard.press('ArrowLeft');
+      assert.equal(
+        await owner.locator('#account-tab-withdraw').getAttribute('aria-selected'),
+        'true',
+      );
+      await owner.setViewportSize({ width: 390, height: 844 });
+      assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      await owner.setViewportSize({ width: 1280, height: 900 });
+      assert.equal(calls.length, 0);
+      assert.equal(
+        await owner.evaluate(() => localStorage.getItem('passport-dev:mock-passkey:v1')),
+        null,
+      );
+      done(
+        'account tabs support keyboard navigation and mobile layout without an account, credentials or implicit actions',
+      );
+      const deepLinked = await newPage(undefined, false, '#account/deposit');
+      assert.equal(await deepLinked.locator('#nav-account').getAttribute('aria-current'), 'page');
+      assert.equal(
+        await deepLinked.locator('#account-tab-deposit').getAttribute('aria-selected'),
+        'true',
+      );
+      assert.equal(await deepLinked.locator('#fund').isEnabled(), false);
+      await deepLinked.close();
+      const unknownTab = await newPage(undefined, false, '#account/unknown');
+      assert.equal(
+        await unknownTab.locator('#account-tab-balances').getAttribute('aria-selected'),
+        'true',
+      );
+      await unknownTab.close();
+      await owner.bringToFront();
+      assert.equal(calls.length, 0);
+      done(
+        'account operation deep links restore presentation only; unknown subpages fall back to balances',
+      );
+      await owner.locator('#nav-overview').click();
+
       assert.equal(await owner.locator('.workspace-center #progress').count(), 0);
       assert.equal(await owner.locator('.workspace-center #status').count(), 0);
       assert.equal(await owner.locator('.workspace-center #ceremony-purpose').count(), 0);
@@ -1078,6 +1148,64 @@ try {
         .locator('.value')
         .getAttribute('title');
       assert.ok(recipient);
+      const beforeAccountNavigation = calls.length;
+      await fill(owner, '#withdraw-recipient', recipient);
+      await fill(owner, '#withdraw-amount', '3');
+      for (const tab of ['deposit', 'balances', 'withdraw'])
+        await owner.locator(`#account-tab-${tab}`).click();
+      assert.equal(await owner.locator('#withdraw-amount').inputValue(), '3');
+      assert.equal(await owner.locator('#withdraw-recipient').inputValue(), recipient);
+      assert.equal(await owner.locator('#withdraw').isVisible(), true);
+      assert.equal(await owner.locator('#fund').isVisible(), false);
+      assert.ok(
+        (await owner.locator('#account-action-context .value').first().getAttribute('title')) ===
+          address,
+      );
+      await owner.locator('#nav-wallet').click();
+      await owner.locator('#nav-account').click();
+      assert.equal(
+        await owner.locator('#account-tab-withdraw').getAttribute('aria-selected'),
+        'true',
+      );
+      assert.equal(await owner.locator('#withdraw-amount').inputValue(), '3');
+      await owner.locator('#account-tab-balances').click();
+      assert.equal(
+        await owner
+          .locator('#account-state-details')
+          .evaluate((node) => (node as HTMLDetailsElement).open),
+        false,
+      );
+      assert.equal(await owner.locator('#account-state-facts').isVisible(), false);
+      await owner.locator('#account-state-details > summary').click();
+      assert.match(await owner.locator('#account-state-facts').innerText(), /Auth nonce/);
+      await owner.locator('#account-state-details > summary').click();
+      assert.equal(calls.length, beforeAccountNavigation);
+      done(
+        'account forms preserve their values across tabs/workspaces; identity stays visible and technical state remains inspectable',
+      );
+      if (process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS && arm === 'p256') {
+        const folder = process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS;
+        await mkdir(folder, { recursive: true });
+        for (const theme of ['dark', 'light'] as const) {
+          await owner.emulateMedia({ colorScheme: theme });
+          for (const tab of ['balances', 'deposit', 'withdraw']) {
+            await owner.locator(`#account-tab-${tab}`).click();
+            await owner.locator('#workspace-account').screenshot({
+              path: resolve(folder, `account-${tab}-${theme}.png`),
+              style: '.mock-banner { position: static !important; }',
+            });
+          }
+        }
+        await owner.setViewportSize({ width: 390, height: 844 });
+        assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+        await owner.locator('#workspace-account').screenshot({
+          path: resolve(folder, 'account-withdraw-mobile.png'),
+          style: '.mock-banner { position: static !important; }',
+        });
+        await owner.setViewportSize({ width: 1280, height: 900 });
+      }
+      await fill(owner, '#withdraw-amount', '1');
+
       await click(owner, '#fund');
       await waitStatus(owner, /account balance: 10/);
       const successfulFundingId = fundingIds.at(-1)!;
@@ -1398,7 +1526,9 @@ try {
       serviceUnavailable = true;
       await click(owner, '#refresh');
       await waitStatus(owner, /refreshed|unavailable|failed/i);
-      done('balance service outage is visible without signing');
+      await reveal(owner, '#account-facts');
+      assert.match(await owner.locator('#account-facts').innerText(), /Latest refresh unavailable/);
+      done('balance service outage labels prior snapshots without signing or inferring zero');
       serviceUnavailable = false;
       await owner.bringToFront();
       await fill(owner, '#withdraw-recipient', recipient);
@@ -1437,6 +1567,12 @@ try {
       assert.match(await owner.locator('#session-current-scope').innerText(), /NIGHT/);
       assert.equal(await owner.locator('#session-state').getAttribute('data-status'), 'active');
       const recordedScope = await owner.locator('#session-current-scope').innerText();
+      await click(owner, '#session-edit-target');
+      assert.equal(
+        await owner.locator('#account-tab-withdraw').getAttribute('aria-selected'),
+        'true',
+      );
+      assert.equal(await owner.evaluate(() => document.activeElement?.id), 'withdraw-recipient');
       const credentialsBeforeInspection = await countCredentials();
       const callsBeforeInspection = calls.length;
       await fill(owner, '#withdraw-recipient', recipient + 'draft');
@@ -1538,14 +1674,19 @@ try {
       );
       await owner.bringToFront();
       done('real browser Web Locks refuse a second shared-storage tab while an effect is pending');
-      for (const view of ['audit', 'wallet', 'settings'])
+      for (const view of ['audit', 'wallet', 'settings', 'account'])
         await owner.locator(`#nav-${view}`).click();
+      for (const tab of ['balances', 'deposit', 'withdraw'])
+        await owner.locator(`#account-tab-${tab}`).click();
+      assert.equal(await owner.locator('#withdraw').isEnabled(), false);
       assert.equal(
         calls.filter((c) => c === 'withdraw' || c === 'spend').length,
         sendsBeforeConcurrent,
       );
       assert.equal(await owner.locator('.operation-status').getAttribute('data-phase'), 'running');
-      done('navigation during a pending spend preserves the operation and sends no replacement');
+      done(
+        'workspace/account-tab navigation during a pending spend preserves the operation and sends no replacement',
+      );
       assert.ok(
         await owner.locator('#endSession').isEnabled(),
         'explicit lock is available while an operation is running',

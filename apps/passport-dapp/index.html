@@ -756,11 +756,19 @@
 
       <div class="cards">
         <section class="panel" aria-labelledby="account-title">
-          <h2 id="account-title">Passport account</h2>
+          <h2 id="account-title">Account balances</h2>
           <p class="empty" id="account-empty">
             No account open. Create one, or open an existing one with your passkey.
           </p>
           <dl class="facts" id="account-facts" hidden></dl>
+          <p id="account-balances-empty" class="hint" hidden>
+            Unshielded balances are unavailable in this configuration. Account state does not imply
+            a zero balance.
+          </p>
+          <details id="account-state-details" hidden>
+            <summary>Contract state &amp; transaction details</summary>
+            <dl id="account-state-facts" class="facts"></dl>
+          </details>
           <h3>Joining device handoff</h3>
           <p class="empty" id="handoff-empty">
             Prepare a new passkey in a second browser to get a public handoff.
