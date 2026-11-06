@@ -1,3 +1,4 @@
+import { renderSessionState, updateSessionClock } from './session-view.js';
 import { PassportConnectorError } from '@input-output-hk/mn-passport-account';
 import { fetchServiceConfig } from '@input-output-hk/mn-passport-adapter-service';
 import type {
@@ -96,7 +97,13 @@ const ui = createUi(
     after: finishDemoConsent,
   },
 );
-ActivityPanel(workspace.activityRoot, ui.activity, (id) => workspace.showAudit(id));
+ActivityPanel(
+  workspace.activityRoot,
+  ui.activity,
+  (id) => workspace.showAudit(id),
+  {},
+  workspace.operationDetails,
+);
 if (ARM === 'jubjub') {
   const note = document.getElementById('key-note');
   if (note)
@@ -137,20 +144,7 @@ const session = createDemoSession({
       txHash,
       intentId,
     } = snapshot;
-    document.getElementById('session-state')!.textContent =
-      `${phase.toUpperCase()}. ` +
-      (intentId ? `Intent ${intentId}. ` : '') +
-      (grantId ? `Grant ${grantId}. ` : '') +
-      (address ? `ACC ${address}. ` : '') +
-      (expiresAt ? `Expires ${new Date(expiresAt).toISOString()}. ` : '') +
-      (cap
-        ? `Spent ${spent} / ${cap}; per transfer ${perCallCap}. Asset ${color}; recipient ${recipient}. `
-        : '') +
-      (phase === 'blocked'
-        ? 'Reconcile the original transaction before any retry; the local key is locked.'
-        : phase === 'locked' || phase === 'expired'
-          ? 'Local key disposed. Any chain grant remains until expiry or confirmed revocation.'
-          : '');
+    renderSessionState(snapshot, network);
     const safetyNotice = document.getElementById('operation-safety-notice')!;
     safetyNotice.hidden = phase !== 'blocked';
     safetyNotice.textContent =
@@ -173,14 +167,7 @@ const session = createDemoSession({
   },
 });
 const sessionUse = () => (document.getElementById('session-use') as HTMLInputElement).checked;
-setInterval(() => {
-  const current = session.snapshot();
-  const countdown = document.getElementById('session-title')!;
-  countdown.textContent =
-    current.status === 'active' && current.expiresAt
-      ? `Consented JubJub session — ${Math.max(0, Math.ceil((current.expiresAt - Date.now()) / 60_000))} min remaining`
-      : 'Consented JubJub session';
-}, 1000);
+setInterval(() => updateSessionClock(session.snapshot()), 1000);
 window.addEventListener('pagehide', () => session.lock());
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) session.lock();
@@ -346,8 +333,13 @@ ui.on('refresh', async () => {
   });
   const balancesRead = balanceAssetColor
     ? await ui.attempt('balances', async () => {
-        await refreshAccountBalances(current.address);
-        return true;
+        try {
+          await refreshAccountBalances(current.address);
+          return true;
+        } catch (error) {
+          ui.showAccountBalanceError(current.address);
+          throw error;
+        }
       })
     : undefined;
   status(

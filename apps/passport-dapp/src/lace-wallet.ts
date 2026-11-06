@@ -42,7 +42,7 @@ export function installLaceWallet(networkId: string, changed: (connected: boolea
     'Not connected. Choose Find Lace Wallet to inspect compatible advertisements.',
   );
   status.id = 'lace-wallet-status';
-  status.className = 'value';
+  status.className = 'hint';
   status.setAttribute('role', 'status');
   controls.append(
     element('h4', 'External Lace Wallet'),
@@ -64,9 +64,9 @@ export function installLaceWallet(networkId: string, changed: (connected: boolea
       'Read-only display in this demo. Connecting does not open, enroll into, fund, or grant viewing/spending access to a Passport ACC.',
     ),
   );
-  const snapshot = element('p', 'No external wallet balance loaded.');
+  const snapshot = element('div', 'No external wallet balance loaded.');
   snapshot.id = 'lace-wallet-snapshot';
-  snapshot.className = 'value';
+  snapshot.className = 'wallet-snapshot';
   panel.append(snapshot, refresh);
   wallet.append(panel);
   const dialog = element('dialog');
@@ -118,13 +118,43 @@ export function installLaceWallet(networkId: string, changed: (connected: boolea
     unavailable();
     const view = await active.read();
     if (generation !== token || reader !== active) return;
-    const amounts = Object.entries(view.unshieldedBalances)
-      .map(
-        ([color, amount]) =>
-          `${color === '00'.repeat(32) ? 'NIGHT' : color}: ${amount.toString()} smallest units`,
-      )
-      .join('; ');
-    snapshot.textContent = `${view.unshieldedAddress} · ${amounts || 'No unshielded tokens reported'} · Read ${new Date().toISOString()}. Wallet-reported snapshot; no continuous synchronization or finality guarantee.`;
+    const balances = element('dl');
+    balances.className = 'facts';
+    for (const [color, amount] of Object.entries(view.unshieldedBalances)) {
+      const row = element('div');
+      row.className = 'fact';
+      const label =
+        color === '00'.repeat(32) ? 'NIGHT' : `Token ${color.slice(0, 8)}…${color.slice(-6)}`;
+      row.append(element('dt', label), element('dd', `${amount.toString()} smallest units`));
+      balances.append(row);
+    }
+    const exact = element('details');
+    exact.append(element('summary', 'Exact address & token identifiers'));
+    const identifiers = element('dl');
+    identifiers.className = 'facts exact-values';
+    for (const [label, value] of [
+      ['Unshielded address', view.unshieldedAddress],
+      ...Object.entries(view.unshieldedBalances).map(([color, amount]) => [
+        color,
+        `${amount.toString()} smallest units`,
+      ]),
+    ]) {
+      const row = element('div');
+      row.className = 'fact';
+      row.append(element('dt', label), element('dd', value));
+      identifiers.append(row);
+    }
+    exact.append(identifiers);
+    snapshot.replaceChildren(
+      ...(balances.childElementCount
+        ? [balances]
+        : [element('p', 'No unshielded tokens reported')]),
+      element(
+        'p',
+        `Read ${new Date().toISOString()}. Wallet-reported snapshot; no continuous synchronization or finality guarantee.`,
+      ),
+      exact,
+    );
     traceOperation('wallet.external.snapshot', {
       networkId,
       unshieldedAddress: view.unshieldedAddress,

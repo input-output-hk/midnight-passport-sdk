@@ -38,13 +38,23 @@ published release or a change to the deployed documentation site.
 ## Approved information architecture
 
 - Left navigation: **Overview, Passport account, Midnight wallet, Audit, Settings**.
-- Main workspace: selected user task; the existing staged deployment progress bar
-  stays here during setup. Estimated progress never implies confirmation.
-- Collapsible right **Activity** panel: **Current operation first**, then **Your
+- Passport account uses **Balances / Deposit / Withdraw** tabs, a shared open-ACC
+  identity and one operation form at a time. Contract state is expandable; refresh
+  and explicit shielded reads stay in Balances. Tab/keyboard/deep-link navigation
+  never starts or cancels a transaction or credential request and preserves forms.
+- Main workspace: selected user task and balances. Owner feedback on2026-11-06
+  moves all operation progress, results and transient explanations into Activity.
+  Estimated progress never implies confirmation.
+- Collapsible right **Activity** panel: **Current operation first** with staged
+  progress/results/notices, then **Your
   journey**. Compact operation summary links to Audit. Audit starts with the
   panel collapsed. Mobile uses an Activity sheet with focus containment/return.
 - **Settings → Security & access**: devices/passkeys, bounded sessions, advanced
-  manual grants. **Wallet connections** separates built-in and optional Lace
+  manual grants. Sessions separates current local signer/recorded grant scope from
+  the next session's draft target and grouped smallest-unit limits. Local Lock and
+  confirmed on-chain Revoke remain distinct; exact IDs stay inspectable. Other
+  Settings actions use separate cards; external Lace balances use structured facts.
+  **Wallet connections** separates built-in and optional Lace
   Wallet sources. **Advanced**, collapsed initially, contains developer tools,
   network/binding pins, service/capability/proving diagnostics and the mock naming
   adapter. Do not invent editable operator configuration or token inputs.

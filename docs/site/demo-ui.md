@@ -14,10 +14,33 @@ deployed site remain separate from this local work.
 | Workspace | What belongs here |
 | --- | --- |
 | **Overview** | Create an account, open with a passkey, or open a known ACC address with an enrolled passkey. No name or profile creation. |
-| **Passport account** | ACC state and balances, read shielded holdings, fund the ACC, withdraw to a Midnight user address. Amounts retain their original units and unavailable/stale states. |
+| **Passport account** | **Balances**, **Deposit** and **Withdraw** tabs. The selected ACC/network stays visible; each operation has its own form. Amounts retain their original units and unavailable/stale states. |
 | **Midnight wallet** | Separate built-in HD and optional external Lace Wallet views: addresses, balances, freshness and **Refresh wallet balance**. **Manage wallet connections** opens Settings. |
 | **Audit** | Timed operation stages, full redacted request/response trace, public evidence JSON and **Copy full log**. |
 | **Settings** | Security and access, wallet connections, and closed-by-default advanced developer tools. |
+
+### Passport account operations
+
+- **Balances** shows the ACC’s unshielded balances and **Refresh ACC state**.
+  Contract counters, binding and last-transaction details are expandable. A failed
+  balance refresh labels prior amounts as old snapshots; unavailable balances do
+  not mean zero. **Shielded holdings** has a separate explicit read action and
+  passkey consent; merely opening this tab never unlocks the sealed inbox.
+- **Deposit** shows one asset selector and the funding action. The configured
+  fixed deposit comes from the **demo funding wallet**, not your connected wallet.
+  The tab explains when funding is unavailable instead of offering a new route.
+- **Withdraw** shows one form for the asset, amount in smallest units and an
+  explicit unshielded Midnight recipient. The subsequent review chooses the
+  applicable scoped-session or fresh-owner route; selecting a tab grants nothing.
+
+The open ACC/network stays above the tabs. Keyboard users can use Left/Right,
+Home/End within the tab row. Mobile keeps the same three tabs and a single form.
+`#account/deposit` and `#account/withdraw` open those views without starting an
+operation. Form values and the selected tab survive navigation to another
+workspace in the same page; reloading does not restore a signing key or draft.
+Settings → Sessions’ target shortcut opens **Withdraw** and focuses the recipient.
+During pending or unknown transfers, navigation keeps original IDs and guards;
+progress and results stay in Activity. Tabs never resubmit, sign, refresh or cancel.
 
 ### Settings
 
@@ -26,7 +49,7 @@ deployed site remain separate from this local work.
   roster details stay with these controls.
 - **Sessions:** choose 10/15/30 minutes and caps, authorize an expiring JubJub
   grant, lock the local key or revoke the grant. Choose the asset/recipient in
-  **Passport account** first; Settings displays the current target, and the actual
+  **Passport account** first; Settings displays the draft target separately from recorded session scope, and the actual
   authorization still reviews its exact scope. Critical owner operations always
   require fresh passkey consent.
 - **Advanced access · manual grants:** holder preparation, roster, issue, export,
@@ -40,6 +63,28 @@ deployed site remain separate from this local work.
   limits. These inputs do not certify live readiness or integrity. Configuration is not made editable and
   there is no operator-token field.
 
+### Read a session at a glance
+
+**Settings → Sessions** separates **Current session** from **Configure a new
+session**. The status explains whether the local signer is ready, locked,
+expired, pending or blocked. A recorded grant keeps its own asset, recipient and
+spent/total limits; editing the withdrawal form changes only the next session's
+draft target. NIGHT is named explicitly; other assets retain their token identity.
+Limits are in smallest units, not whole NIGHT. Exact addresses, asset identifiers,
+grant/intent/transaction IDs and the UTC deadline remain selectable under details.
+
+**Lock on this device** immediately disposes the local key. **End on-chain
+permission** requests revocation with fresh passkey consent and waits for chain
+confirmation. A local countdown does not establish chain expiry or revocation.
+Blocked outcomes retain the original intent and prohibit retry; consult Audit and
+the operator reconciliation procedure. These are presentation changes, not new
+authorization or recovery behavior.
+
+Other Settings actions have separate cards and labeled controls. The external
+Lace Wallet panel shows asset balances, a read timestamp and exact-identifier
+details instead of a single address/balance paragraph. An unavailable read clears
+the preceding snapshot; it never invents a zero balance.
+
 Security sections and Advanced start closed. Device/holder preparation mirrors
 the explicit **Target Passport ACC address** used by Open by address; changing
 that public input does not open, authorize or switch the active account. It is
@@ -47,7 +92,9 @@ disabled while an operation runs. A name lookup never fills it or a recipient.
 
 ## Progress and Activity
 
-The existing weighted, staged progress bar stays in the center during work.
+The weighted, staged progress bar, operation result and transient explanations
+live together in **Activity → Current operation**. The selected workspace keeps
+its task controls and balances; completed results never take over another workspace.
 Time estimates stop below completion; unknown/unestimated progress is not a
 confirmation percentage. Service/client clock differences are clamped for
 presentation only; original events and IDs remain available in Audit.
@@ -68,7 +115,11 @@ values, pending callbacks and transaction guards remain intact.
 
 Passkey consent is a **different blocking dialog**, before every actual credential
 request and retry. It prevents background navigation and Activity interaction.
-The native provider dialog follows only after explicit approval. Cancelling an
+The native provider dialog follows only after explicit approval. Before each
+credential call, the explanation is revealed in Activity and must be visible.
+On mobile an automatically opened Activity sheet closes when the operation ends;
+a sheet the user opened remains theirs to close. The blocking review dialog stays
+separate and is never replaced by an Activity message. Cancelling an
 attempt cannot undo earlier submissions. See [consent]({{ '/consent/' | relative_url }}).
 
 ## Uncertain results and evidence
@@ -76,8 +127,9 @@ attempt cannot undo earlier submissions. See [consent]({{ '/consent/' | relative
 An unknown funding/submission outcome keeps the original public request, flow or
 intent references. A stopped/failed attempt is not proof of failed chain effects.
 The summary asks for reconciliation and links to Audit; navigation never creates
-a replacement request. A blocked session also displays a persistent safety notice
-outside Settings, including its known original intent ID.
+a replacement request. A blocked session retains its original intent ID and reconciliation notice in
+Activity. When the panel is collapsed, its trigger says **Needs attention**; the
+underlying transaction fence remains enforced.
 
 Audit is public history for **this page**, not an immutable chain history or a
 replacement for durable journals. Reload does not recreate its entire display
@@ -141,3 +193,12 @@ mock WebAuthn remain distinct from native proofs and real-provider acceptance.
 [Milestone](https://github.com/input-output-hk/midnight-passport-sdk/milestone/3)
 and [#294](https://github.com/input-output-hk/midnight-passport-sdk/issues/294)
 track final review, documentation and evidence.
+
+
+## Why passkey prompts differ from the upstream demo
+
+See the [prompt comparison]({{ '/passkey-prompts/' | relative_url }}). Our default
+P-256 owner signs individual circuit challenges in the authenticator; upstream
+v5.2 derives a JubJub signer for one action. Reader PRF, wallet PRF, enrollment
+compatibility and browser-profile retries are separate sources of requests.
+Moving messages changes presentation, not the credential calls or their approvals.

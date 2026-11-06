@@ -29,20 +29,20 @@ supports this flow, with fresh PRF unlocks for owner operations.
 
 1. Create/open your ACC, connect the built-in wallet if it is the destination, and
    fund the ACC. Amounts are **smallest units**, not whole NIGHT.
-2. In the withdrawal form select an asset and enter the recipient. The session
+2. In **Passport account → Withdraw**, select an asset and enter the recipient. The session
    uses those exact fields, not the separate manual-grant form.
-3. Under **Consented JubJub session**, choose 10, 15 (default), or 30 minutes, a
+3. In **Settings → Sessions → Configure a new session**, choose 10, 15 (default), or 30 minutes, a
    per-transfer cap and a total cap. Choose **Authorize JubJub session**.
 4. Review permission to use the passkey, then the exact account/network/asset/
    recipient/caps/lifetime. Declining starts no credential access. Approve the PRF
    unlock and the owner signatures needed to issue and publish the grant.
-5. Check the active grant ID, absolute expiry, remaining-time heading and spend
-   totals. The lifetime starts before key derivation and proving; slow setup
+5. Check **Current session** for status, recorded scope, local time remaining and
+   spend totals. Expand **Exact identifiers & recorded deadline** for the full
+   grant ID and UTC deadline. Draft form edits do not alter this permission. The lifetime starts before key derivation and proving; slow setup
    consumes it. Activity does not extend it.
 6. Withdraw within the scope. The exact-transfer dialog identifies the scoped
    JubJub route. It still requires user confirmation but no passkey ceremony.
-7. To use the owner path explicitly, uncheck **Use an active matching session for
-   withdrawals**. Transfers outside the active grant also display the fresh owner
+7. To use the owner path explicitly, uncheck **Use a matching active session for withdrawals**. Transfers outside the active grant also display the fresh owner
    passkey route before signing. There is never automatic owner fallback after a
    failed or uncertain session send.
 8. **Lock local session** clears the page's key. **Revoke session grant** locks it

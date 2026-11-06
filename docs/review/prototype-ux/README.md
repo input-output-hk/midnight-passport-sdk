@@ -17,7 +17,8 @@ This is a local source increment, not RC7 publication or full Lace acceptance.
    observations, explicit time, subscriptions and stale presentation-write check.
    No credential, transaction, DOM, Node, React or timer dependency.
 4. `apps/passport-dapp/src/workspace.ts` and `activity-controls.ts`: move existing
-   controls into five workspaces; central staged progress; operation-first Activity,
+   controls into five workspaces; operation-first Activity with staged progress,
+   results and explanations (owner follow-up replaces the initial central bar),
    independent white-label mounting, mobile sheet/focus, Settings and wide Audit.
 5. `activity-observations.ts`, `event-log.ts`, `flows.ts`, `progress.ts`, `ui.ts`:
    match traces/intents to their own attempt, clamp mixed clocks only for display,

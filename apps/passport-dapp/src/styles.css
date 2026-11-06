@@ -921,20 +921,12 @@ body[data-busy] .btn:disabled {
   margin-block: 0.5rem;
 }
 .ceremony-notice {
-  position: fixed;
-  z-index: 50;
-  inset-block-start: 0.75rem;
-  inset-inline: 0.75rem;
-  max-width: 44rem;
-  max-height: 40vh;
-  margin: 0 auto;
-  padding: 0.75rem 1rem;
-  overflow: auto;
+  padding: 0.75rem;
   color: var(--text);
   background: var(--surface);
   border: 2px solid var(--midnight-blue);
   border-radius: 0.5rem;
-  box-shadow: 0 0.25rem 1rem rgb(0 0 0 / 20%);
+  overflow-wrap: anywhere;
 }
 
 #session-state {
@@ -1115,4 +1107,220 @@ main.workspace-shell[data-activity='collapsed'] {
 #lace-wallet-review button {
   min-height: 44px;
   margin: 0.5rem;
+}
+
+.activity-operation-details {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.activity-operation-details > *,
+.activity-operation-details .status,
+.activity-operation-details .progress-label {
+  margin-block-end: 0.75rem;
+}
+.activity-operation-details .panel-head[hidden] {
+  display: none;
+}
+#activity-toggle.has-attention {
+  border-color: var(--err);
+}
+
+/* Human-readable Settings: draft controls, retained permission and local key are distinct. */
+.session-panel,
+.session-card,
+.form-field,
+.wallet-snapshot,
+#name-service-form {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.session-panel {
+  gap: 1.25rem;
+}
+.session-panel > h2 {
+  margin-bottom: 0;
+  font-size: 1.35rem;
+}
+.section-intro {
+  max-width: 65ch;
+  color: var(--muted);
+}
+.session-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  margin: 0;
+  background: var(--surface-2);
+}
+.session-card > legend {
+  font-weight: 600;
+  padding-inline: 0.35rem;
+}
+.eyebrow {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+#session-state {
+  display: grid;
+  gap: 0.5rem;
+  border-inline-start: 3px solid var(--border-strong);
+  padding-inline-start: 0.8rem;
+}
+#session-state h3 {
+  font-size: 1.15rem;
+}
+#session-state[data-status='active'] {
+  border-color: var(--ok);
+}
+#session-state[data-status='blocked'] {
+  border-color: var(--err);
+}
+.session-limits,
+.session-management {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 1rem;
+  min-width: 0;
+}
+.form-field {
+  align-content: start;
+  gap: 0.45rem;
+}
+.form-field label {
+  font-weight: 500;
+}
+.session-card > .btn {
+  justify-self: start;
+}
+.checkbox-field {
+  display: flex;
+  align-items: start;
+  gap: 0.65rem;
+  min-height: 44px;
+  padding-block: 0.5rem;
+}
+.checkbox-field input {
+  flex: 0 0 auto;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0.25rem 0 0;
+}
+.session-security p + p {
+  margin-top: 0.75rem;
+}
+.exact-values :is(dt, dd) {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+#workspace-settings .actions > .action {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+#workspace-settings .action label {
+  margin-block-start: 0.4rem;
+}
+#workspace-settings > details > label {
+  display: block;
+  margin-block: 0.75rem 0.4rem;
+}
+#workspace-settings > details > input {
+  margin-block-end: 1rem;
+}
+#name-service-form {
+  max-width: 38rem;
+  margin-block: 1rem;
+}
+#name-service-form .btn {
+  justify-self: start;
+}
+.wallet-snapshot {
+  margin-block: 1rem;
+}
+#session-current-scope[hidden],
+#session-record[hidden],
+#session-clock[hidden] {
+  display: none;
+}
+
+#workspace-settings .actions {
+  align-items: start;
+}
+.session-panel .fact dd,
+.wallet-snapshot .fact dd {
+  overflow-wrap: anywhere;
+}
+
+/* Account task navigation: one form at a time; operation progress remains in Activity. */
+.account-context {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.account-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.account-tabs [role='tab'] {
+  min-height: 44px;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.account-tabs [aria-selected='true'] {
+  color: var(--heading);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.account-page {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.account-page[hidden] {
+  display: none;
+}
+.workspace-shell .account-actions {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 42rem;
+  margin-top: 1rem;
+}
+.account-transfer > h3 {
+  font-size: 1.3rem;
+}
+.account-transfer > p {
+  max-width: 65ch;
+}
+.account-transfer .action {
+  gap: 0.65rem;
+}
+.account-transfer .action label:not(:first-child) {
+  margin-top: 0.65rem;
+}
+.account-transfer .action > .btn,
+.account-page .account-actions .btn {
+  align-self: start;
+}
+#account-page-balances .panel > .account-actions {
+  margin-block: 1rem;
+}
+#account-state-details {
+  margin-block: 1rem;
+}
+#account-page-balances .panel > h3 {
+  margin-bottom: 0.75rem;
 }

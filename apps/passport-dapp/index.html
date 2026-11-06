@@ -239,7 +239,11 @@
               aria-describedby="issueGrant-desc"
             />
             <label for="grant-asset">Asset this grant can withdraw</label>
-            <select id="grant-asset" aria-describedby="issueGrant-desc"></select>
+            <select
+              id="grant-asset"
+              class="action-input"
+              aria-describedby="issueGrant-desc"
+            ></select>
             <label for="grant-recipient">Fixed recipient unshielded Midnight address</label>
             <input
               id="grant-recipient"
@@ -464,7 +468,7 @@
           </li>
           <li class="action" hidden>
             <label for="fund-asset">Asset to deposit</label>
-            <select id="fund-asset" aria-describedby="fund-desc"></select>
+            <select id="fund-asset" class="action-input" aria-describedby="fund-desc"></select>
             <button
               id="fund"
               class="btn btn-secondary"
@@ -479,7 +483,11 @@
           </li>
           <li class="action" hidden>
             <label for="withdraw-asset">Asset to withdraw</label>
-            <select id="withdraw-asset" aria-describedby="withdraw-desc"></select>
+            <select
+              id="withdraw-asset"
+              class="action-input"
+              aria-describedby="withdraw-desc"
+            ></select>
             <label for="withdraw-amount">Amount in smallest units</label>
             <input
               id="withdraw-amount"
@@ -515,49 +523,148 @@
           </li>
         </ul>
       </section>
-      <section class="panel" aria-labelledby="session-title">
-        <h2 id="session-title">Consented JubJub session</h2>
-        <p>
-          Choose the withdrawal asset and recipient in Passport account for a capped, expiring
-          grant. The session authorizes only unshielded transfers to that recipient. Owner
-          administration always uses a fresh passkey. Your account is not given another owner.
+      <section class="panel session-panel" aria-labelledby="session-title">
+        <h2 id="session-title">Quick transfer session</h2>
+        <p class="section-intro">
+          Approve a temporary permission for unshielded transfers to one recipient. Account
+          administration still requires your passkey.
         </p>
-        <label for="session-minutes">Absolute session lifetime</label>
-        <select id="session-minutes">
-          <option value="10">10 minutes</option>
-          <option value="15" selected>15 minutes</option>
-          <option value="30">30 minutes</option>
-        </select>
-        <label for="session-per-call">Per-transfer cap (smallest units)</label>
-        <input id="session-per-call" type="text" inputmode="numeric" value="1" />
-        <label for="session-cap">Total session cap (smallest units)</label>
-        <input id="session-cap" type="text" inputmode="numeric" value="5" />
-        <label
-          ><input id="session-use" type="checkbox" checked /> Use an active matching session for
+
+        <section class="session-card" aria-labelledby="session-status-title">
+          <h3 id="session-status-title" class="eyebrow">Current session</h3>
+          <div id="session-state" role="status" aria-live="polite"></div>
+          <p id="session-clock" class="hint" hidden></p>
+          <dl
+            id="session-current-scope"
+            class="facts"
+            aria-label="Recorded session scope"
+            hidden
+          ></dl>
+          <details id="session-record" hidden>
+            <summary>Exact identifiers &amp; recorded deadline</summary>
+            <dl id="session-identifiers" class="facts exact-values"></dl>
+          </details>
+        </section>
+
+        <fieldset class="session-card session-setup">
+          <legend>Configure a new session</legend>
+          <p class="hint">
+            These draft settings do not change an existing grant. Review the exact scope before
+            authorizing.
+          </p>
+          <dl id="session-target-summary" class="facts" aria-label="New session target"></dl>
+          <button id="session-edit-target" class="btn btn-ghost" type="button">
+            Choose withdrawal asset and recipient
+          </button>
+          <details>
+            <summary>Review exact draft target</summary>
+            <dl id="session-target-exact" class="facts exact-values"></dl>
+          </details>
+          <div class="session-limits">
+            <div class="form-field">
+              <label for="session-minutes">Session duration</label>
+              <select
+                id="session-minutes"
+                class="action-input"
+                aria-describedby="session-duration-help"
+              >
+                <option value="10">10 minutes</option>
+                <option value="15" selected>15 minutes</option>
+                <option value="30">30 minutes</option>
+              </select>
+              <p id="session-duration-help" class="hint">
+                Starts at authorization, including proving time.
+              </p>
+            </div>
+            <div class="form-field">
+              <label for="session-per-call">Per-transfer limit</label>
+              <input
+                id="session-per-call"
+                class="action-input"
+                type="text"
+                inputmode="numeric"
+                value="1"
+                aria-describedby="session-units"
+              />
+            </div>
+            <div class="form-field">
+              <label for="session-cap">Total session limit</label>
+              <input
+                id="session-cap"
+                class="action-input"
+                type="text"
+                inputmode="numeric"
+                value="5"
+                aria-describedby="session-units"
+              />
+            </div>
+          </div>
+          <p id="session-units" class="hint">
+            Both limits use the selected asset’s smallest units, not whole tokens.
+          </p>
+          <button
+            id="startSession"
+            class="btn btn-primary"
+            type="button"
+            aria-describedby="startSession-prompts startSession-desc"
+            disabled
+          >
+            Authorize JubJub session
+          </button>
+          <p id="startSession-prompts" class="prompts"></p>
+          <p id="startSession-desc" class="action-desc"></p>
+        </fieldset>
+
+        <label class="checkbox-field"
+          ><input id="session-use" type="checkbox" checked /> Use a matching active session for
           withdrawals</label
         >
-        <p id="session-state" role="status" aria-live="polite">
-          Locked. No session key is retained.
+        <p class="hint">
+          Each transfer still needs your review. Other withdrawals require fresh owner approval;
+          uncertain session transfers cannot fall back to it.
         </p>
-        <button id="startSession" class="btn btn-secondary" type="button" disabled>
-          Authorize JubJub session
-        </button>
-        <p id="startSession-prompts" class="prompts"></p>
-        <p id="startSession-desc" class="action-desc"></p>
-        <button id="endSession" class="btn btn-secondary" type="button">Lock local session</button>
-        <p id="endSession-prompts" class="prompts"></p>
-        <p id="endSession-desc" class="action-desc"></p>
-        <button id="revokeSession" class="btn btn-secondary" type="button" disabled>
-          Revoke session grant
-        </button>
-        <p id="revokeSession-prompts" class="prompts"></p>
-        <p id="revokeSession-desc" class="action-desc"></p>
-        <p>
-          Local lock, hidden tab, reload or expiry disposes the local key. A copied key can still
-          exercise the grant until on-chain expiry or confirmed revocation. Never rely on a browser
-          timer to revoke chain authority. Renew by revoking the previous grant, then approving a
-          new one.
-        </p>
+
+        <div class="session-management">
+          <section class="session-card" aria-labelledby="session-lock-title">
+            <h3 id="session-lock-title">Lock on this device</h3>
+            <p id="endSession-desc" class="action-desc"></p>
+            <button
+              id="endSession"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="endSession-desc endSession-prompts"
+            >
+              Lock local session
+            </button>
+            <p id="endSession-prompts" class="prompts"></p>
+          </section>
+          <section class="session-card" aria-labelledby="session-revoke-title">
+            <h3 id="session-revoke-title">End on-chain permission</h3>
+            <p id="revokeSession-desc" class="action-desc"></p>
+            <button
+              id="revokeSession"
+              class="btn btn-secondary"
+              type="button"
+              aria-describedby="revokeSession-desc revokeSession-prompts"
+              disabled
+            >
+              Revoke session grant
+            </button>
+            <p id="revokeSession-prompts" class="prompts"></p>
+          </section>
+        </div>
+        <details class="session-security">
+          <summary>How session keys and permissions work</summary>
+          <p>
+            A separate PRF-derived JubJub key receives a scoped grant, not ACC ownership or viewing
+            access. Local lock, a hidden tab, reload or expiry disposes that local key.
+          </p>
+          <p>
+            A copied key may still exercise the grant until on-chain expiry or confirmed revocation.
+            A browser timer does not revoke chain authority. To renew, revoke the previous known
+            grant before approving a new one.
+          </p>
+        </details>
       </section>
       <section class="panel" aria-labelledby="capability-title">
         <h2 id="capability-title">SDK capabilities and proof plans</h2>
@@ -567,13 +674,13 @@
           readiness check.
         </p>
         <label for="capability-operation">Existing sealed-account operation</label>
-        <select id="capability-operation">
+        <select id="capability-operation" class="action-input">
           <option value="withdraw-unshielded">Unshielded withdrawal</option>
           <option value="withdraw-shielded">Exact-value shielded withdrawal (SDK only)</option>
           <option value="issue-grant">Issue a scoped grant</option>
           <option value="recover-pending-grants">Recover pending grant publication</option>
         </select>
-        <label
+        <label class="checkbox-field"
           ><input id="capability-read-grant" type="checkbox" /> Include read access when issuing a
           grant</label
         >
@@ -602,6 +709,7 @@
           <label for="name-service-name">Exact name</label>
           <input
             id="name-service-name"
+            class="action-input"
             name="name"
             value="alice.passport.test"
             maxlength="256"
@@ -648,11 +756,19 @@
 
       <div class="cards">
         <section class="panel" aria-labelledby="account-title">
-          <h2 id="account-title">Passport account</h2>
+          <h2 id="account-title">Account balances</h2>
           <p class="empty" id="account-empty">
             No account open. Create one, or open an existing one with your passkey.
           </p>
           <dl class="facts" id="account-facts" hidden></dl>
+          <p id="account-balances-empty" class="hint" hidden>
+            Unshielded balances are unavailable in this configuration. Account state does not imply
+            a zero balance.
+          </p>
+          <details id="account-state-details" hidden>
+            <summary>Contract state &amp; transaction details</summary>
+            <dl id="account-state-facts" class="facts"></dl>
+          </details>
           <h3>Joining device handoff</h3>
           <p class="empty" id="handoff-empty">
             Prepare a new passkey in a second browser to get a public handoff.

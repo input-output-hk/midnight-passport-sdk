@@ -99,19 +99,19 @@ export const FLOWS: Record<ActionId, FlowDef> = {
   startSession: {
     title: 'Authorize JubJub session',
     summary:
-      'Review a fixed recipient, asset, caps and 10–30 minute expiry. Your owner passkey issues a scoped grant for a separate PRF-derived session signer.',
+      'Your passkey approves the recipient, limits and expiry. This adds a scoped signing permission, not another owner.',
     stages: [{ id: 'authorize', label: 'Derive session key and issue the expiring grant' }],
   },
   endSession: {
     title: 'Lock local session',
     summary:
-      'Dispose the local session key immediately. This does not revoke its on-chain grant or undo a submitted transaction.',
+      'Stop signing here immediately. The on-chain grant remains until expiry or confirmed revocation; submitted transfers are not undone.',
     stages: [{ id: 'lock', label: 'Dispose the local signing key' }],
   },
   revokeSession: {
     title: 'Revoke session grant',
     summary:
-      'Lock the local key, then use a fresh owner passkey ceremony to revoke the grant on chain.',
+      'Lock the local key and use your owner passkey to revoke the grant. Permission ends when revocation is confirmed on chain.',
     stages: [{ id: 'revoke', label: 'Approve and confirm grant revocation' }],
   },
   create: {
