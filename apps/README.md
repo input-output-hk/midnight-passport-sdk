@@ -457,7 +457,7 @@ engineer guide for origin-form request-target rules.
 ## Source demo increment: consented JubJub sessions
 
 After opening/funding an ACC, set the withdrawal asset and recipient. Under
-**Consented JubJub session**, choose 10/15/30 minutes and caps, then approve the
+**Settings → Sessions → Configure a new session**, choose 10/15/30 minutes and caps, then approve the
 exact scope and fresh owner passkey ceremonies. Matching unshielded withdrawals
 use the PRF-derived child without another credential access. Owner administration
 and outside-scope spending still require fresh passkey consent. Hiding the tab,
@@ -465,6 +465,13 @@ reload, expiry and local lock dispose the signer; only chain expiry/revocation
 ends copied authority. Public checkpoint metadata retains unknown submission
 fences across reloads; never clear it to replay a transfer. No session private
 key or grant opening is persisted.
+
+The **Current session** card reports retained scope separately from draft target
+and limit inputs. Exact public IDs and the recorded UTC deadline stay under
+details; unknown outcomes still require reconciliation. Separate local Lock and
+on-chain Revoke cards explain their different effects. Settings action cards,
+capability/name form fields and external Lace balance facts use the same readable
+spacing; no credential count, signer policy or SDK package export changes.
 
 See [session setup and threat model](../docs/site/jubjub-sessions.md). The feature
 is a source preview after RC7, not a change to published RC7 artifacts. Browser

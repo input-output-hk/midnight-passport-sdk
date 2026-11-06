@@ -46,7 +46,11 @@ published release or a change to the deployed documentation site.
   journey**. Compact operation summary links to Audit. Audit starts with the
   panel collapsed. Mobile uses an Activity sheet with focus containment/return.
 - **Settings → Security & access**: devices/passkeys, bounded sessions, advanced
-  manual grants. **Wallet connections** separates built-in and optional Lace
+  manual grants. Sessions separates current local signer/recorded grant scope from
+  the next session's draft target and grouped smallest-unit limits. Local Lock and
+  confirmed on-chain Revoke remain distinct; exact IDs stay inspectable. Other
+  Settings actions use separate cards; external Lace balances use structured facts.
+  **Wallet connections** separates built-in and optional Lace
   Wallet sources. **Advanced**, collapsed initially, contains developer tools,
   network/binding pins, service/capability/proving diagnostics and the mock naming
   adapter. Do not invent editable operator configuration or token inputs.

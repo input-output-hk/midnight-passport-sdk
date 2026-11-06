@@ -158,7 +158,7 @@ async function reveal(page: Page, selector: string): Promise<void> {
 }
 async function readSessionState(page: Page): Promise<string> {
   await reveal(page, '#session-state');
-  return page.locator('#session-state').innerText();
+  return (await page.locator('#session-state').getAttribute('data-status')) ?? '';
 }
 async function click(page: Page, selector: string): Promise<void> {
   await reveal(page, selector);
@@ -597,7 +597,7 @@ try {
       await click(external, '#nav-wallet');
       assert.match(
         await external.locator('#lace-wallet-snapshot').innerText(),
-        /NIGHT: 5 smallest units/,
+        /NIGHT[\s\S]*5 smallest units/,
       );
       assert.equal(
         await external.locator('#withdraw-recipient').inputValue(),
@@ -1432,6 +1432,54 @@ try {
       );
       assert.equal(state.grant?.scope.expiresAt !== null, true);
       assert.ok(Number(state.grant?.scope.expiresAt) > Date.now() / 1000);
+      await reveal(owner, '#session-state');
+      assert.match(await owner.locator('#session-state').innerText(), /Ready for quick transfers/);
+      assert.match(await owner.locator('#session-current-scope').innerText(), /NIGHT/);
+      assert.equal(await owner.locator('#session-state').getAttribute('data-status'), 'active');
+      const recordedScope = await owner.locator('#session-current-scope').innerText();
+      const credentialsBeforeInspection = await countCredentials();
+      const callsBeforeInspection = calls.length;
+      await fill(owner, '#withdraw-recipient', recipient + 'draft');
+      await reveal(owner, '#session-target-summary');
+      assert.match(await owner.locator('#session-target-summary').innerText(), /NIGHT/);
+      assert.ok(
+        !(await owner.locator('#session-target-summary').innerText()).includes('00'.repeat(32)),
+      );
+      assert.equal(
+        await owner.locator('#session-current-scope').innerText(),
+        recordedScope,
+        'editing a draft target must not relabel the existing permission',
+      );
+      await owner.locator('#session-record > summary').click();
+      assert.ok((await owner.locator('#session-identifiers').innerText()).includes(recipient));
+      assert.ok(
+        (await owner.locator('#session-identifiers').innerText()).includes('00'.repeat(32)),
+      );
+      await owner.locator('#session-record > summary').click();
+      await fill(owner, '#withdraw-recipient', recipient);
+      await reveal(owner, '#session-minutes');
+      await owner.setViewportSize({ width: 390, height: 844 });
+      assert.ok(
+        await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        'session labels, limits and exact values must fit mobile',
+      );
+      if (process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS && arm === 'p256') {
+        const folder = process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS;
+        await mkdir(folder, { recursive: true });
+        await owner.screenshot({ path: resolve(folder, 'sessions-mobile.png'), fullPage: true });
+        await owner.setViewportSize({ width: 1440, height: 1000 });
+        await owner.screenshot({ path: resolve(folder, 'sessions-desktop.png'), fullPage: true });
+        await owner.emulateMedia({ colorScheme: 'light' });
+        await owner.screenshot({ path: resolve(folder, 'sessions-light.png'), fullPage: true });
+        await owner.emulateMedia({ colorScheme: 'dark' });
+      }
+      await owner.setViewportSize({ width: 1280, height: 900 });
+      assert.equal(await countCredentials(), credentialsBeforeInspection);
+      assert.equal(calls.length, callsBeforeInspection);
+      done(
+        'readable session scope distinguishes draft settings from active authority; exact IDs and mobile inspection never sign or send',
+      );
+
       const beforeSessionSpend = await countCredentials();
       const ownerSendsBefore = calls.filter((c) => c === 'withdraw').length;
       await approve(owner, 'withdraw');
@@ -1495,12 +1543,15 @@ try {
         'explicit lock is available while an operation is running',
       );
       await click(owner, '#endSession');
-      assert.match(await readSessionState(owner), /BLOCKED/);
+      assert.match(await readSessionState(owner), /blocked/);
       releaseHeldSpend();
       await waitStatus(owner, /Withdrawal confirmed/);
       holdSessionSpend = undefined;
-      assert.match(await readSessionState(owner), /LOCKED/);
-      assert.match(await readSessionState(owner), /Spent 2/);
+      assert.match(await readSessionState(owner), /locked/);
+      assert.match(
+        await owner.locator('#session-current-scope').innerText(),
+        /2 \/ 2 smallest units/,
+      );
       done(
         'immediate lock during settlement retains a confirmed transfer and keeps the signer locked',
       );
@@ -1536,7 +1587,7 @@ try {
       await waitStatus(owner, /JubJub session active/);
       await owner.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); // visible page: no lock
       await owner.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide')));
-      assert.match(await readSessionState(owner), /LOCKED/);
+      assert.match(await readSessionState(owner), /locked/);
       const storedSession = await owner.evaluate(() =>
         localStorage.getItem('passport-demo:session:v1:undeployed:acc-s3r1.1'),
       );
@@ -1551,7 +1602,7 @@ try {
         .filter({ hasText: /^Ready\./ })
         .waitFor();
       await observeCredentialAccess(owner);
-      assert.match(await readSessionState(owner), /LOCKED/);
+      assert.match(await readSessionState(owner), /locked/);
       await approve(owner, 'open');
       await waitStatus(owner, /opened/);
       await approve(owner, 'revokeSession');
@@ -1564,8 +1615,8 @@ try {
       await owner.evaluate(() => {
         (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 16 * 60_000;
       });
-      await owner.waitForFunction(() =>
-        document.getElementById('session-state')!.textContent!.includes('EXPIRED'),
+      await owner.waitForFunction(
+        () => document.getElementById('session-state')!.dataset.status === 'expired',
       );
       await owner.evaluate(() => {
         (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 0;
@@ -1589,7 +1640,10 @@ try {
       assert.equal(await owner.locator('#operation-safety-notice').isVisible(), false);
       await owner.locator('#activity-toggle').click();
       assert.equal(await owner.locator('#operation-safety-notice').isVisible(), true);
-      const unknownSessionIntent = (await readSessionState(owner)).match(/Intent ([^ ]+)\./)?.[1];
+      await readSessionState(owner);
+      const unknownSessionIntent = await owner
+        .locator('#session-state')
+        .getAttribute('data-intent-id');
       assert.ok(unknownSessionIntent);
       assert.ok(
         (await owner.locator('.activity-references').textContent())?.includes(unknownSessionIntent),
@@ -1640,7 +1694,7 @@ try {
         .filter({ hasText: /^Ready\./ })
         .waitFor();
       await observeCredentialAccess(owner);
-      assert.match(await readSessionState(owner), /BLOCKED/);
+      assert.match(await readSessionState(owner), /blocked/);
       await approve(owner, 'open');
       await waitStatus(owner, /opened/);
       await fill(owner, '#withdraw-recipient', recipient);

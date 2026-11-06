@@ -26,7 +26,7 @@ deployed site remain separate from this local work.
   roster details stay with these controls.
 - **Sessions:** choose 10/15/30 minutes and caps, authorize an expiring JubJub
   grant, lock the local key or revoke the grant. Choose the asset/recipient in
-  **Passport account** first; Settings displays the current target, and the actual
+  **Passport account** first; Settings displays the draft target separately from recorded session scope, and the actual
   authorization still reviews its exact scope. Critical owner operations always
   require fresh passkey consent.
 - **Advanced access · manual grants:** holder preparation, roster, issue, export,
@@ -39,6 +39,28 @@ deployed site remain separate from this local work.
   naming adapter, read-only network/binding/service/manifest build pins and prototype
   limits. These inputs do not certify live readiness or integrity. Configuration is not made editable and
   there is no operator-token field.
+
+### Read a session at a glance
+
+**Settings → Sessions** separates **Current session** from **Configure a new
+session**. The status explains whether the local signer is ready, locked,
+expired, pending or blocked. A recorded grant keeps its own asset, recipient and
+spent/total limits; editing the withdrawal form changes only the next session's
+draft target. NIGHT is named explicitly; other assets retain their token identity.
+Limits are in smallest units, not whole NIGHT. Exact addresses, asset identifiers,
+grant/intent/transaction IDs and the UTC deadline remain selectable under details.
+
+**Lock on this device** immediately disposes the local key. **End on-chain
+permission** requests revocation with fresh passkey consent and waits for chain
+confirmation. A local countdown does not establish chain expiry or revocation.
+Blocked outcomes retain the original intent and prohibit retry; consult Audit and
+the operator reconciliation procedure. These are presentation changes, not new
+authorization or recovery behavior.
+
+Other Settings actions have separate cards and labeled controls. The external
+Lace Wallet panel shows asset balances, a read timestamp and exact-identifier
+details instead of a single address/balance paragraph. An unavailable read clears
+the preceding snapshot; it never invents a zero balance.
 
 Security sections and Advanced start closed. Device/holder preparation mirrors
 the explicit **Target Passport ACC address** used by Open by address; changing

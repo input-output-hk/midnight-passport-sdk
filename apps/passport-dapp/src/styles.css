@@ -1124,3 +1124,125 @@ main.workspace-shell[data-activity='collapsed'] {
 #activity-toggle.has-attention {
   border-color: var(--err);
 }
+
+/* Human-readable Settings: draft controls, retained permission and local key are distinct. */
+.session-panel,
+.session-card,
+.form-field,
+.wallet-snapshot,
+#name-service-form {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.session-panel {
+  gap: 1.25rem;
+}
+.session-panel > h2 {
+  margin-bottom: 0;
+  font-size: 1.35rem;
+}
+.section-intro {
+  max-width: 65ch;
+  color: var(--muted);
+}
+.session-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  margin: 0;
+  background: var(--surface-2);
+}
+.session-card > legend {
+  font-weight: 600;
+  padding-inline: 0.35rem;
+}
+.eyebrow {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+#session-state {
+  display: grid;
+  gap: 0.5rem;
+  border-inline-start: 3px solid var(--border-strong);
+  padding-inline-start: 0.8rem;
+}
+#session-state h3 {
+  font-size: 1.15rem;
+}
+#session-state[data-status='active'] {
+  border-color: var(--ok);
+}
+#session-state[data-status='blocked'] {
+  border-color: var(--err);
+}
+.session-limits,
+.session-management {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 1rem;
+  min-width: 0;
+}
+.form-field {
+  align-content: start;
+  gap: 0.45rem;
+}
+.form-field label {
+  font-weight: 500;
+}
+.session-card > .btn {
+  justify-self: start;
+}
+.checkbox-field {
+  display: flex;
+  align-items: start;
+  gap: 0.65rem;
+  min-height: 44px;
+  padding-block: 0.5rem;
+}
+.checkbox-field input {
+  flex: 0 0 auto;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0.25rem 0 0;
+}
+.session-security p + p {
+  margin-top: 0.75rem;
+}
+.exact-values :is(dt, dd) {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+#workspace-settings .actions > .action {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+#workspace-settings .action label {
+  margin-block-start: 0.4rem;
+}
+#workspace-settings > details > label {
+  display: block;
+  margin-block: 0.75rem 0.4rem;
+}
+#workspace-settings > details > input {
+  margin-block-end: 1rem;
+}
+#name-service-form {
+  max-width: 38rem;
+  margin-block: 1rem;
+}
+#name-service-form .btn {
+  justify-self: start;
+}
+.wallet-snapshot {
+  margin-block: 1rem;
+}
+#session-current-scope[hidden],
+#session-record[hidden],
+#session-clock[hidden] {
+  display: none;
+}

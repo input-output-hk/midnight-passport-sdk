@@ -1,3 +1,5 @@
+import { renderSessionDraft } from './session-view.js';
+
 /** Demo-owned layout and navigation. Moving existing nodes keeps action state and IDs intact. */
 export type WorkspaceId = 'overview' | 'account' | 'wallet' | 'audit' | 'settings';
 
@@ -95,17 +97,11 @@ export function createDemoWorkspace(config: {
   sessions.append(node('summary', 'Sessions'), session);
   session.classList.remove('panel');
   move('settings', sessions);
-  const sessionScope = node('p');
-  sessionScope.id = 'session-target-summary';
-  session.prepend(sessionScope);
-  const editScope = node('button', 'Choose withdrawal asset and recipient');
-  editScope.type = 'button';
-  editScope.className = 'btn btn-ghost';
-  sessionScope.after(editScope);
+  const editScope = byId('session-edit-target');
   const scope = () => {
     const asset = byId('withdraw-asset') as HTMLSelectElement;
     const recipient = byId('withdraw-recipient') as HTMLInputElement;
-    sessionScope.textContent = `Session target: asset ${asset.value || 'not selected'}; recipient ${recipient.value || 'not selected'}. Review the exact scope before authorizing.`;
+    renderSessionDraft(asset.value, recipient.value);
   };
   byId('withdraw-asset').addEventListener('change', scope);
   byId('withdraw-recipient').addEventListener('input', scope);
