@@ -54,6 +54,7 @@ export function operationForRun(log: EventLog, run: LogRun, now: number) {
     }
   };
   for (const entry of ownTrace) collect(entry.details);
+  if (run.error?.submission) references.transactionId = run.error.submission.txHash;
   const declined =
     run.state !== 'running' &&
     (run.error?.code === 'UserCancelled' ||
@@ -61,7 +62,8 @@ export function operationForRun(log: EventLog, run: LogRun, now: number) {
   const lastSessionState = [...ownTrace].reverse().find((entry) => entry.kind === 'session.state');
   const uncertain =
     run.error &&
-    (lastSessionState?.details.phase === 'blocked' ||
+    (run.error.submission !== undefined ||
+      lastSessionState?.details.phase === 'blocked' ||
       /unknown|pending|FundingRejected|reconcile|SessionBlocked/i.test(run.error.code));
   const phase = uncertain
     ? ('unknown' as const)
