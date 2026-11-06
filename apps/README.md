@@ -7,7 +7,7 @@ Settings/Activity/Audit redesign. The local demo composes five workspaces, a
 responsive Activity panel/sheet and a dedicated Audit workspace using portable
 `account/interaction` models. [The UI guide](../docs/site/demo-ui.md) maps every
 action to its new location. **Passport account** now uses **Balances / Deposit /
-Withdraw** tabs: refresh/shielded reads stay with balances, one transfer form is
+Withdraw** pages: refresh/shielded reads stay with balances, one transfer form is
 shown at a time, and the open ACC/network remains visible. Contract counters are
 expandable. Deposit uses the configured demo funding wallet; navigation never
 starts a transfer or credential request. Form values survive same-page tab and
@@ -162,7 +162,11 @@ reads addresses and balances; receiving an asset there does not give this demo w
 After an indeterminate submit error, inspect the live ACC and recipient before trying again.
 Overview has one compact **Your Passport account** panel: **Open with passkey**
 is primary and **Create account** is secondary.
-Settings uses submenu pages rather than top-level accordions. **Quick actions**
+All four multi-page workspaces use consistent page links in a persistent left rail.
+Midnight wallet separates Built-in wallet and Lace Wallet. Audit separates Event log,
+Requests & responses and Export JSON. Content and navigation scroll independently;
+on compact screens use Menu to open the navigation drawer. Settings uses submenu
+pages rather than top-level accordions. **Quick actions**
 explicitly unlocks routine reader/wallet material for10/15/30minutes, derives
 JubJub grant children without repeated PRF prompts, and keeps critical owner
 operations on the fresh-passkey path. A grant still needs separate owner approval;
@@ -204,8 +208,8 @@ the target. If any opening or holding cannot be verified, removal stops. The ope
 multiple transactions; after an uncertain result, inspect the live roster and inbox before
 retrying. Clearing browser storage loses the local grant openings.
 
-Expand **Operation trace (requests and responses)** to inspect the chronological public-field
-trace. **Copy full log** includes that trace, Passport events (including deploy waves), account
+Choose **Audit → Requests & responses** to inspect the chronological public-field
+trace. **Event log** and **Export JSON** have their own Audit pages. **Copy full log** includes that trace, Passport events (including deploy waves), account
 state and built-in wallet addresses and balances; raw transaction bodies and secret material are
 excluded. Start a fresh page session before create/open if you need the complete sequence.
 

@@ -22,16 +22,46 @@ deployed site remain separate from this local work.
 | Workspace | What belongs here |
 | --- | --- |
 | **Overview** | Create an account, open with a passkey, or open a known ACC address with an enrolled passkey. No name or profile creation. |
-| **Passport account** | **Balances**, **Deposit** and **Withdraw** submenu under its left navigation entry. The selected ACC/network stays visible; each operation has its own form. Amounts retain their original units and unavailable/stale states. |
-| **Midnight wallet** | Separate built-in HD and optional external Lace Wallet views: addresses, balances, freshness and **Refresh wallet balance**. **Manage wallet connections** opens Settings. |
-| **Audit** | Timed operation stages, full redacted request/response trace, public evidence JSON and **Copy full log**. |
+| **Passport account** | **Balances**, **Deposit** and **Withdraw** pages under its left navigation entry. The selected ACC/network stays visible; each operation has its own form. Amounts retain their original units and unavailable/stale states. |
+| **Midnight wallet** | **Built-in wallet** and **Lace Wallet** pages: addresses, balances, freshness and **Refresh wallet balance**. **Manage wallet connections** opens Settings. |
+| **Audit** | **Event log**, **Requests & responses** and **Export JSON** pages, with **Copy full log** on every page. |
 | **Settings** | Devices, quick actions, permissions, wallet connections and developer subpages. |
 
-Only the active parent shows its submenu. Switching workspaces preserves the
-selected child and form drafts; it never starts an operation. Existing
-`#account/<page>` and `#settings/<page>` deep links still select the matching
-parent and child. The main workspace contains the selected content without a
-duplicate horizontal menu.
+### Stable navigation
+
+All desktop groups stay visible in the left rail, so selecting a page never moves
+other menu entries. Navigation and content scroll independently; changing content
+cannot resize or scroll the navigation rail. Page focus uses `preventScroll`.
+The active page has a clear outline and `aria-current="page"`; navigation uses
+ordinary links: Tab or optional arrow/Home/End keys move focus; Enter activates
+the focused page. Moving focus alone never changes the selected page. A **Skip to
+content** link bypasses navigation. There is no application-style ARIA menu.
+
+On compact screens **Menu · current section** opens a modal navigation drawer.
+Escape/Close restores the menu button; choosing a destination closes the drawer
+and focuses its heading. The content viewport keeps the same position and size.
+The same navigation nodes move between layouts; controls are never duplicated.
+Passkey consent and the separate Activity sheet remain blocking dialogs.
+
+Page selection preserves drafts and starts no account, wallet or network action.
+`#account/<page>`, `#wallet/<page>`, `#audit/<page>` and `#settings/<page>` deep links
+restore presentation only. Unknown child routes use the section's initial page.
+
+These choices follow [WAI's navigation guidance](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/examples/disclosure-navigation/)
+and [the browser focus API](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus).
+Synthetic keyboard/layout tests do not establish assistive-technology certification.
+
+### Wallet and Audit pages
+
+- **Midnight wallet → Built-in wallet** shows the separate passkey-derived HD wallet
+  and its explicit balance refresh. **Lace Wallet** shows the external wallet snapshot
+  and explicit external refresh. **Manage wallet connections** opens Settings;
+  navigating to either page never connects or reads a wallet.
+- **Audit → Event log** shows timed operations. **Requests & responses** shows the
+  full redacted trace directly. **Export JSON** shows public evidence JSON.
+  **Copy full log** is available on every Audit page and still copies the full
+  redacted record, not just the current page. Activity's Audit links open the
+  matching event in Event log, including cancelled and unknown outcomes.
 
 ### Start from Overview
 
@@ -61,9 +91,8 @@ actual passkey request still have their own blocking review.
 
 The open ACC/network stays above the selected form. **Balances**, **Deposit** and
 **Withdraw** appear beneath **Passport account** in the left navigation. Keyboard
-users can use Up/Down and Home/End within this vertical submenu; Left/Right also
-remain supported. On mobile the active submenu stays under its parent in the
-top navigation, with one form at a time.
+users can use Tab/Enter or Up/Down and Home/End within this submenu; Left/Right
+also remain supported. On mobile, choose the page in the navigation drawer.
 `#account/deposit` and `#account/withdraw` open those views without starting an
 operation. Form values and the selected tab survive navigation to another
 workspace in the same page; reloading does not restore a signing key or draft.

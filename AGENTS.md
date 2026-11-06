@@ -100,6 +100,18 @@ Lock/hidden/page-exit/expiry disposes the routine cache and its grant children;
 this does not revoke a chain grant or disconnect an already running wallet.
 Keep source-native, browser/synthetic and real-provider evidence separate.
 
+### Stable navigation follow-up (local source)
+
+Read `docs/site/demo-ui.md`. All four multi-page workspaces use one shared page-link
+controller; wallet has Built-in/Lace pages and Audit has Event log/Requests/Export.
+Desktop groups remain visible with independent navigation/content scrolling. On
+compact screens open Menu before clicking navigation; its modal drawer owns the
+same DOM nodes and restores focus. Use `[data-workspace-page]`/`aria-labelledby`
+to find the actual page control in browser journeys. Audit trace/JSON are pages,
+not details/summary disclosures. Navigation never starts credential/account/wallet
+work. Keep stable viewport geometry, drafts, deep links, explicit consent and
+unknown-intent fences; test actual pointer/keyboard navigation, not hidden mutations.
+
 ### Approved UX milestone (local source)
 
 Follow [the execution map](docs/prototype/ux-milestone.md) and milestone #3, issues

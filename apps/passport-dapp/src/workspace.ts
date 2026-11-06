@@ -1,6 +1,8 @@
 import { createAccountWorkspace, type AccountPage } from './account-workspace.js';
 import { renderSessionDraft } from './session-view.js';
 import { createSettingsWorkspace } from './settings-workspace.js';
+import { createWorkspacePages } from './workspace-pages.js';
+import { createNavigationDrawer } from './navigation-drawer.js';
 
 /** Demo-owned layout and navigation. Moving existing nodes keeps action state and IDs intact. */
 export type WorkspaceId = 'overview' | 'account' | 'wallet' | 'audit' | 'settings';
@@ -29,6 +31,11 @@ export function createDemoWorkspace(config: {
   nav.setAttribute('aria-label', 'Main navigation');
   const center = node('div');
   center.className = 'workspace-center';
+  center.id = 'workspace-content';
+  center.tabIndex = -1;
+  const skip = document.querySelector<HTMLAnchorElement>('.skip-link')!;
+  skip.href = '#workspace-content';
+  skip.textContent = 'Skip to content';
   const names: Record<WorkspaceId, string> = {
     overview: 'Overview',
     account: 'Passport account',
@@ -109,9 +116,28 @@ export function createDemoWorkspace(config: {
   const account = panelOf('account-title');
   const wallet = panelOf('wallet-title');
   const accountPages = createAccountWorkspace(views.account, account, (page) => {
-    if (selected === 'account') history.replaceState(null, '', `#account/${page}`);
+    routePage('account', page);
   });
-  move('wallet', wallet);
+  const builtIn = node('section');
+  builtIn.id = 'wallet-page-builtin';
+  builtIn.append(wallet);
+  const lace = node('section');
+  lace.id = 'wallet-page-lace';
+  const walletNote = node(
+    'p',
+    'These wallets are separate from your Passport account. A wallet connection grants no account permissions.',
+  );
+  views.wallet.append(walletNote, builtIn, lace);
+  const walletPages = createWorkspacePages(views.wallet, {
+    label: 'Midnight wallet pages',
+    className: 'wallet-nav',
+    initial: 'builtin' as 'builtin' | 'lace',
+    pages: {
+      builtin: { label: 'Built-in wallet', controlId: 'wallet-tab-builtin', section: builtIn },
+      lace: { label: 'Lace Wallet', controlId: 'wallet-tab-lace', section: lace },
+    },
+    onChange: (page) => routePage('wallet', page),
+  });
 
   const security = node('section');
   security.id = 'settings-devices';
@@ -207,7 +233,7 @@ export function createDemoWorkspace(config: {
   manage.id = 'manage-wallet-connections';
   manage.className = 'btn btn-secondary';
   manage.type = 'button';
-  wallet.append(manage);
+  views.wallet.insertBefore(manage, builtIn);
   const advanced = node('section');
   advanced.id = 'settings-developer-tools';
   advanced.className = 'panel';
@@ -250,18 +276,8 @@ export function createDemoWorkspace(config: {
   }
   views.settings.append(advanced);
   const settingsPages = createSettingsWorkspace(views.settings, (page) => {
-    if (selected === 'settings') history.replaceState(null, '', `#settings/${page}`);
+    routePage('settings', page);
   });
-  const submenus = new Map<WorkspaceId, HTMLElement>([
-    ['account', accountPages.navigation],
-    ['settings', settingsPages.navigation],
-  ]);
-  for (const [id, submenu] of submenus) {
-    submenu.id = `nav-${id}-submenu`;
-    submenu.classList.add('workspace-submenu');
-    buttons[id].setAttribute('aria-controls', `${views[id].id} ${submenu.id}`);
-    buttons[id].after(submenu);
-  }
   const quick = node('p');
   quick.className = 'quick-access-summary';
   const quickStatus = node('span', 'Quick actions locked');
@@ -280,15 +296,67 @@ export function createDemoWorkspace(config: {
 
   const progress = panelOf('activity-title');
   const auditLog = node('section');
+  auditLog.id = 'audit-page-events';
   auditLog.className = 'panel';
+  const auditToolbar = node('div');
+  auditToolbar.className = 'workspace-toolbar';
+  auditToolbar.append(byId('copy'));
+  views.audit.append(auditToolbar);
   auditLog.append(byId('log-title').parentElement!, byId('log-empty'), byId('log'));
-  move('audit', auditLog);
-  for (const id of ['trace', 'evidence']) move('audit', byId(id).closest('details')!);
+  const auditSections = { events: auditLog } as Record<
+    'events' | 'requests' | 'export',
+    HTMLElement
+  >;
+  for (const [id, contentId, title] of [
+    ['requests', 'trace', 'Requests & responses'],
+    ['export', 'evidence', 'Export JSON'],
+  ] as const) {
+    const original = byId(contentId).closest('details')!;
+    const section = node('section');
+    section.id = `audit-page-${id}`;
+    section.className = 'panel evidence';
+    section.append(node('h3', title));
+    for (const child of [...original.children])
+      if (child.tagName !== 'SUMMARY') section.append(child);
+    original.remove();
+    auditSections[id] = section;
+  }
   const auditNote = node(
     'p',
-    'Public operation history for this page. Full exchanges are redacted; durable unknown-intent guards remain separate and survive reload. Navigation never retries a transaction.',
+    'Review operation history, redacted requests and responses, or export the full public log. Navigation never retries a transaction.',
   );
-  views.audit.insertBefore(auditNote, auditLog);
+  views.audit.append(auditNote, ...Object.values(auditSections));
+  const auditPages = createWorkspacePages(views.audit, {
+    label: 'Audit pages',
+    className: 'audit-nav',
+    initial: 'events' as 'events' | 'requests' | 'export',
+    pages: {
+      events: { label: 'Event log', controlId: 'audit-tab-events', section: auditSections.events },
+      requests: {
+        label: 'Requests & responses',
+        controlId: 'audit-tab-requests',
+        section: auditSections.requests,
+      },
+      export: {
+        label: 'Export JSON',
+        controlId: 'audit-tab-export',
+        section: auditSections.export,
+      },
+    },
+    onChange: (page) => routePage('audit', page),
+  });
+  const pagesByWorkspace = {
+    account: accountPages,
+    wallet: walletPages,
+    audit: auditPages,
+    settings: settingsPages,
+  };
+  for (const [id, pages] of Object.entries(pagesByWorkspace)) {
+    const submenu = pages.navigation;
+    submenu.id = `nav-${id}-submenu`;
+    submenu.classList.add('workspace-submenu');
+    buttons[id as WorkspaceId].after(submenu);
+  }
   const activity = node('aside');
   activity.id = 'activity-panel';
   activity.className = 'panel activity-panel';
@@ -339,6 +407,8 @@ export function createDemoWorkspace(config: {
   let expanded = false;
   let ceremonySheet = false;
   let selected: WorkspaceId = 'overview';
+  const scrollPositions = new Map<WorkspaceId, number>();
+  let navigationDrawer: ReturnType<typeof createNavigationDrawer> | undefined;
   const updateActivity = () => {
     main.dataset.activity = expanded && !mobile.matches ? 'expanded' : 'collapsed';
     activity.hidden = mobile.matches || !expanded;
@@ -361,32 +431,33 @@ export function createDemoWorkspace(config: {
     toggle.setAttribute('aria-controls', mobile.matches ? sheet.id : activity.id);
   };
   const show = (id: WorkspaceId, focus = true) => {
+    if (selected !== id) scrollPositions.set(selected, center.scrollTop);
     selected = id;
     for (const view of Object.keys(views) as WorkspaceId[]) {
       views[view].hidden = view !== id;
       if (view === id) buttons[view].setAttribute('aria-current', 'page');
       else buttons[view].removeAttribute('aria-current');
-      const submenu = submenus.get(view);
-      if (submenu) {
-        submenu.hidden = view !== id;
-        buttons[view].setAttribute('aria-expanded', String(view === id));
-      }
+      if (view !== 'overview') pagesByWorkspace[view].setActive(view === id);
     }
     if (id === 'audit') expanded = false;
     views[id].querySelector('.workspace-heading')!.append(toggle);
     history.replaceState(
       null,
       '',
-      id === 'account'
-        ? `#account/${accountPages.selected()}`
-        : id === 'settings'
-          ? `#settings/${settingsPages.selected()}`
-          : `#${id}`,
+      id === 'overview' ? '#overview' : `#${id}/${pagesByWorkspace[id].selected()}`,
     );
     updateActivity();
-    if (focus) byId(`workspace-${id}-title`).focus();
+    center.scrollTop = scrollPositions.get(id) ?? 0;
+    navigationDrawer?.label(names[id]);
+    if (focus) byId(`workspace-${id}-title`).focus({ preventScroll: true });
     scope();
+    document.dispatchEvent(new Event('passport:workspace-selected'));
   };
+  function routePage(id: Exclude<WorkspaceId, 'overview'>, _page: string) {
+    show(id, false);
+    center.scrollTop = 0;
+    scrollPositions.set(id, 0);
+  }
   for (const id of Object.keys(names) as WorkspaceId[])
     buttons[id].addEventListener('click', () => show(id));
   const closeSheet = (reason = '') => {
@@ -441,9 +512,21 @@ export function createDemoWorkspace(config: {
   center.append(...Object.values(views));
   main.replaceChildren(nav, center, activity);
   main.classList.add('workspace-shell');
+  document.body.classList.add('workspace-app');
+  navigationDrawer = createNavigationDrawer(main, nav, mobile, () => {
+    byId(`workspace-${selected}-title`).focus({ preventScroll: true });
+  });
+  skip.addEventListener('click', (event) => {
+    event.preventDefault();
+    center.focus({ preventScroll: true });
+  });
   const [hash, accountPage] = location.hash.slice(1).split('/');
-  if (hash === 'account' && ['balances', 'deposit', 'withdraw'].includes(accountPage ?? ''))
-    accountPages.select(accountPage as AccountPage, false);
+  if (hash === 'account' && accountPage && accountPages.valid(accountPage))
+    accountPages.select(accountPage, false);
+  if (hash === 'wallet' && accountPage && walletPages.valid(accountPage))
+    walletPages.select(accountPage, false, false);
+  if (hash === 'audit' && accountPage && auditPages.valid(accountPage))
+    auditPages.select(accountPage, false, false);
   if (hash === 'settings' && accountPage && settingsPages.valid(accountPage))
     settingsPages.select(accountPage, false, false);
   show(Object.hasOwn(names, hash ?? '') ? (hash as WorkspaceId) : 'overview', false);
@@ -503,7 +586,9 @@ export function createDemoWorkspace(config: {
     selected: () => selected,
     showAudit(operationId: string) {
       closeSheet('audit');
+      auditPages.select('events', false, false);
       show('audit');
+      navigationDrawer?.closeForNavigation();
       const entry = document.getElementById(`audit-${operationId}`);
       entry?.scrollIntoView({ block: 'nearest' });
     },

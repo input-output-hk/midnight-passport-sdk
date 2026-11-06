@@ -474,10 +474,17 @@ export function createUi(
       })),
       trace: log.traceJSON(),
     });
+  const auditVisible = (element: HTMLElement, details: HTMLDetailsElement | null) =>
+    details
+      ? details.open
+      : !element.closest<HTMLElement>('[data-workspace-page]')?.hidden &&
+        !element.closest<HTMLElement>('[data-workspace]')?.hidden;
   const renderEvidence = () => {
-    if (evidenceDetails?.open) evidenceEl.textContent = fullLog();
-    if (traceDetails?.open) traceEl.textContent = JSON.stringify(log.traceJSON(), null, 2);
+    if (auditVisible(evidenceEl, evidenceDetails)) evidenceEl.textContent = fullLog();
+    if (auditVisible(traceEl, traceDetails))
+      traceEl.textContent = JSON.stringify(log.traceJSON(), null, 2);
   };
+  document.addEventListener('passport:workspace-selected', renderEvidence);
   evidenceDetails?.addEventListener('toggle', renderEvidence);
   traceDetails?.addEventListener('toggle', renderEvidence);
 

@@ -133,43 +133,57 @@ const serverOptions: Parameters<typeof createServer>[0] = {
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 let browserVersion: string | undefined;
 let outcome = 'failed';
-// Exercise actual navigation and native disclosure controls before interacting with a field.
-// This does not call account methods, edit hidden state or bypass consent.
+// Use actual navigation, including the mobile drawer; never reveal content by mutating hidden state.
+async function openNavigation(page: Page): Promise<void> {
+  await page.waitForFunction(() => {
+    const nav = document.querySelector('.workspace-nav');
+    return matchMedia('(max-width: 900px)').matches
+      ? nav?.parentElement?.id === 'navigation-sheet'
+      : nav?.parentElement?.id === 'main';
+  });
+  if (await page.locator('#navigation-toggle').isVisible()) {
+    if (
+      !(await page
+        .locator('#navigation-sheet')
+        .evaluate((item) => (item as HTMLDialogElement).open))
+    )
+      await page.locator('#navigation-toggle').click();
+    await page.locator('#navigation-sheet').waitFor({ state: 'visible' });
+  }
+}
+async function navClick(page: Page, selector: string): Promise<void> {
+  await openNavigation(page);
+  await page.locator(selector).click();
+}
 async function reveal(page: Page, selector: string): Promise<void> {
   const location = await page.locator(selector).evaluate((element) => ({
+    inNavigation: !!element.closest('.workspace-nav'),
     view: element.closest<HTMLElement>('[data-workspace]')?.dataset.workspace,
-    accountPage: element.closest<HTMLElement>('[data-account-page]')?.dataset.accountPage,
-    settingsPage: element.closest<HTMLElement>('[data-settings-page]')?.dataset.settingsPage,
+    control: element.closest('[data-workspace-page]')?.getAttribute('aria-labelledby'),
     details: [...(element.closest('[data-workspace]')?.querySelectorAll('details') ?? [])]
       .filter((details) => details.contains(element))
       .map((details) => details.id),
   }));
+  if (location.inNavigation) {
+    await openNavigation(page);
+    return;
+  }
   if (
+    location.control &&
+    (await page.locator(`#${location.control}`).getAttribute('aria-current')) !== 'page'
+  )
+    await navClick(page, `#${location.control}`);
+  else if (
     location.view &&
     (await page.locator(`#nav-${location.view}`).getAttribute('aria-current')) !== 'page'
-  ) {
-    await page.locator(`#nav-${location.view}`).click();
-  }
-  if (
-    location.accountPage &&
-    (await page.locator(`#account-tab-${location.accountPage}`).getAttribute('aria-selected')) !==
-      'true'
-  ) {
-    await page.locator(`#account-tab-${location.accountPage}`).click();
-  }
-  if (
-    location.settingsPage &&
-    (await page.locator(`#settings-tab-${location.settingsPage}`).getAttribute('aria-current')) !==
-      'page'
   )
-    await page.locator(`#settings-tab-${location.settingsPage}`).click();
+    await navClick(page, `#nav-${location.view}`);
   for (const id of location.details) {
     if (
       id &&
       !(await page.locator(`#${id}`).evaluate((element) => (element as HTMLDetailsElement).open))
-    ) {
+    )
       await page.locator(`#${id} > summary`).click();
-    }
   }
 }
 async function readSessionState(page: Page): Promise<string> {
@@ -631,7 +645,7 @@ try {
         .locator('#lace-wallet-status')
         .filter({ hasText: 'Connected for this page' })
         .waitFor();
-      await click(external, '#nav-wallet');
+      await click(external, '#wallet-tab-lace');
       assert.match(
         await external.locator('#lace-wallet-snapshot').innerText(),
         /NIGHT[\s\S]*5 smallest units/,
@@ -763,6 +777,131 @@ try {
         'Audit',
         'Settings',
       ]);
+      const menuPositions = () =>
+        owner.locator('.workspace-nav-group > button').evaluateAll((items) => {
+          const nav = document.querySelector<HTMLElement>('.workspace-nav')!;
+          return items.map(
+            (item) =>
+              item.getBoundingClientRect().top - nav.getBoundingClientRect().top + nav.scrollTop,
+          );
+        });
+      const originalMenuPositions = await menuPositions();
+      const contentTop = await owner
+        .locator('.workspace-center')
+        .evaluate((item) => item.getBoundingClientRect().top);
+      for (const control of [
+        '#account-tab-deposit',
+        '#wallet-tab-lace',
+        '#audit-tab-requests',
+        '#settings-tab-developer',
+        '#nav-overview',
+      ]) {
+        await navClick(owner, control);
+        const current = await menuPositions();
+        assert.ok(
+          current.every((top, index) => Math.abs(top - originalMenuPositions[index]!) < 1),
+          'navigation row positions must not change with the selected page',
+        );
+        assert.equal(
+          await owner
+            .locator('.workspace-center')
+            .evaluate((item) => item.getBoundingClientRect().top),
+          contentTop,
+        );
+        assert.equal(
+          await owner.evaluate(() => scrollY),
+          0,
+          'navigation must not scroll the document',
+        );
+      }
+      for (const id of ['account', 'wallet', 'audit', 'settings'])
+        assert.equal(await owner.locator(`#nav-${id}-submenu`).isVisible(), true);
+      await navClick(owner, '#wallet-tab-builtin');
+      assert.equal(await owner.locator('#wallet-page-builtin').isVisible(), true);
+      assert.equal(await owner.locator('#wallet-page-lace').isVisible(), false);
+      await navClick(owner, '#wallet-tab-lace');
+      assert.equal(await owner.locator('#lace-wallet-view').isVisible(), true);
+      assert.equal(await owner.locator('#wallet-page-builtin').isVisible(), false);
+      for (const id of ['events', 'requests', 'export']) {
+        await navClick(owner, `#audit-tab-${id}`);
+        assert.equal(await owner.locator(`#audit-page-${id}`).isVisible(), true);
+        assert.equal(
+          await owner.locator('#workspace-audit [data-workspace-page]:visible').count(),
+          1,
+        );
+        assert.equal(await owner.locator('.workspace-submenu [aria-current="page"]').count(), 1);
+        assert.equal(await owner.evaluate(() => location.hash), `#audit/${id}`);
+      }
+      await navClick(owner, '#nav-overview');
+      assert.equal(calls.length, 0);
+      done(
+        'persistent navigation keeps parent positions and document scroll stable; wallet and Audit use consistent side-effect-free page links',
+      );
+
+      await owner.setViewportSize({ width: 390, height: 844 });
+      await owner.locator('#navigation-toggle').waitFor({ state: 'visible' });
+      assert.equal(await owner.locator('#navigation-toggle').isVisible(), true);
+      assert.equal(await owner.locator('.workspace-nav').isVisible(), false);
+      const compactTop = await owner
+        .locator('.workspace-center')
+        .evaluate((item) => item.getBoundingClientRect().top);
+      await owner.locator('#navigation-toggle').click();
+      assert.equal(await owner.locator('#navigation-sheet').isVisible(), true);
+      assert.equal(await owner.evaluate(() => document.activeElement?.id), 'navigation-close');
+      await owner.keyboard.press('Shift+Tab');
+      assert.equal(
+        await owner.evaluate(() => document.activeElement?.id),
+        'settings-tab-developer',
+      );
+      await owner.keyboard.press('Tab');
+      assert.equal(await owner.evaluate(() => document.activeElement?.id), 'navigation-close');
+      await owner.keyboard.press('Escape');
+      await owner.locator('#navigation-sheet').waitFor({ state: 'hidden' });
+      await owner.waitForFunction(() => document.activeElement?.id === 'navigation-toggle');
+      await navClick(owner, '#wallet-tab-lace');
+      await owner.locator('#navigation-sheet').waitFor({ state: 'hidden' });
+      await owner.waitForFunction(() => document.activeElement?.id === 'workspace-wallet-title');
+      assert.equal(await owner.locator('#lace-wallet-view').isVisible(), true);
+      assert.equal(
+        await owner
+          .locator('.workspace-center')
+          .evaluate((item) => item.getBoundingClientRect().top),
+        compactTop,
+      );
+      assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      await owner.locator('#navigation-toggle').click();
+      await owner.setViewportSize({ width: 1280, height: 900 });
+      await owner.locator('#navigation-sheet').waitFor({ state: 'hidden' });
+      assert.equal(await owner.locator('main > .workspace-nav').count(), 1);
+      assert.equal(await owner.locator('#navigation-sheet .workspace-nav').count(), 0);
+      assert.equal(await owner.locator('.workspace-nav').count(), 1);
+      await owner.locator('#wallet-tab-lace').focus();
+      await owner.setViewportSize({ width: 390, height: 844 });
+      await owner.locator('#navigation-toggle').waitFor({ state: 'visible' });
+      await owner.waitForFunction(() => document.activeElement?.id === 'navigation-toggle');
+      await owner.setViewportSize({ width: 1280, height: 900 });
+      await owner.waitForFunction(() => document.activeElement?.id === 'workspace-wallet-title');
+
+      await navClick(owner, '#nav-overview');
+      assert.equal(calls.length, 0);
+      done(
+        'compact navigation drawer contains focus, returns focus on cancel or navigation, and resizes without duplicating controls or shifting content',
+      );
+      for (const [fragment, control] of [
+        ['#wallet/lace', '#wallet-tab-lace'],
+        ['#audit/requests', '#audit-tab-requests'],
+        ['#wallet/unknown', '#wallet-tab-builtin'],
+        ['#audit/unknown', '#audit-tab-events'],
+      ]) {
+        const linked = await newPage(undefined, false, fragment);
+        assert.equal(await linked.locator(control!).getAttribute('aria-current'), 'page');
+        await linked.close();
+      }
+      await owner.bringToFront();
+      assert.equal(calls.length, 0);
+      done(
+        'wallet and Audit deep links select presentation only, with safe fallback for unknown subpages',
+      );
       assert.equal(await owner.locator('#activity-panel').isVisible(), false);
       assert.equal(await owner.locator('#activity-toggle').getAttribute('aria-expanded'), 'false');
       assert.equal(await owner.locator('.overview-welcome').count(), 1);
@@ -797,8 +936,8 @@ try {
       await owner.locator('#open-address').fill(address);
       assert.equal(await owner.locator('#openAt').isEnabled(), true);
       await owner.locator('#overview-open-address > summary').click();
-      await owner.locator('#nav-wallet').click();
-      await owner.locator('#nav-overview').click();
+      await navClick(owner, '#nav-wallet');
+      await navClick(owner, '#nav-overview');
       assert.equal(await owner.locator('#open-address').inputValue(), address);
       assert.equal(await owner.locator('#open-address').isVisible(), false);
       const choiceBounds = await owner.locator('.overview-choices button').evaluateAll((buttons) =>
@@ -842,7 +981,7 @@ try {
       assert.equal(await owner.locator('#capability-operation').isVisible(), false);
       assert.equal(await owner.locator('#session-minutes').isVisible(), false);
       for (const view of ['account', 'wallet', 'audit', 'settings', 'overview']) {
-        await owner.locator(`#nav-${view}`).click();
+        await navClick(owner, `#nav-${view}`);
         assert.equal(await owner.locator(`#workspace-${view}`).isVisible(), true);
         assert.equal(await owner.locator('.workspace-view:visible').count(), 1);
       }
@@ -851,8 +990,8 @@ try {
         await owner.evaluate(() => localStorage.getItem('passport-dev:mock-passkey:v1')),
         null,
       );
-      await owner.locator('#nav-settings').click();
-      assert.deepEqual(await owner.locator('.settings-nav button').allTextContents(), [
+      await navClick(owner, '#nav-settings');
+      assert.deepEqual(await owner.locator('.settings-nav a').allTextContents(), [
         'Devices & passkeys',
         'Quick actions',
         'Permissions',
@@ -860,21 +999,21 @@ try {
         'Developer tools',
       ]);
       assert.equal(await owner.locator('#nav-settings + .settings-nav').isVisible(), true);
-      assert.equal(await owner.locator('#nav-settings').getAttribute('aria-expanded'), 'true');
-      assert.equal(await owner.locator('#nav-account-submenu').isVisible(), false);
+      assert.equal(await owner.locator('#nav-settings').getAttribute('aria-expanded'), null);
+      assert.equal(await owner.locator('#nav-account-submenu').isVisible(), true);
       assert.equal(await owner.locator('#workspace-settings > .settings-nav').count(), 0);
       assert.equal(await owner.locator('[data-settings-page]:visible').count(), 1);
       assert.equal(await owner.locator('#workspace-settings > details').count(), 0);
       for (const page of ['sessions', 'grants', 'wallets', 'developer', 'security']) {
-        await owner.locator(`#settings-tab-${page}`).click();
+        await navClick(owner, `#settings-tab-${page}`);
         assert.equal(await owner.locator('[data-settings-page]:visible').count(), 1);
         assert.equal(await owner.evaluate(() => location.hash), `#settings/${page}`);
       }
       await owner.locator('#joiner-account-address').fill(address);
-      await owner.locator('#settings-tab-grants').click();
+      await navClick(owner, '#settings-tab-grants');
       assert.equal(await owner.locator('#grantee-account-address').inputValue(), address);
-      await owner.locator('#settings-tab-wallets').click();
-      await owner.locator('#settings-tab-security').click();
+      await navClick(owner, '#settings-tab-wallets');
+      await navClick(owner, '#settings-tab-security');
       assert.equal(await owner.locator('#joiner-account-address').inputValue(), address);
       await owner.setViewportSize({ width: 390, height: 844 });
       assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -897,9 +1036,9 @@ try {
       done(
         'Settings submenus preserve public drafts, deep-link safely and fit mobile without credential effects',
       );
-      await owner.locator('#nav-audit').click();
-      assert.equal(await owner.locator('#nav-settings-submenu').isVisible(), false);
-      assert.equal(await owner.locator('#nav-settings').getAttribute('aria-expanded'), 'false');
+      await navClick(owner, '#nav-audit');
+      assert.equal(await owner.locator('#nav-settings-submenu').isVisible(), true);
+      assert.equal(await owner.locator('#nav-settings').getAttribute('aria-expanded'), null);
       assert.equal(await owner.locator('#activity-panel').isVisible(), false);
       const wide = await owner.locator('.workspace-center').evaluate((e) => e.clientWidth);
       await owner.locator('#activity-toggle').click();
@@ -907,49 +1046,55 @@ try {
       assert.ok((await owner.locator('.workspace-center').evaluate((e) => e.clientWidth)) < wide);
       await click(owner, '#nav-settings');
       assert.equal(await owner.locator('#demo-configuration').isVisible(), false);
-      await owner.locator('#settings-tab-developer').click();
+      await navClick(owner, '#settings-tab-developer');
       assert.match(await owner.locator('#demo-configuration').innerText(), new RegExp(manifest));
       assert.match(await owner.locator('#demo-configuration').innerText(), /acc-s3r1.1/);
       assert.equal(await owner.locator('#demo-configuration input').count(), 0);
-      await owner.locator('#settings-tab-security').click();
-      await owner.locator('#nav-overview').click();
+      await navClick(owner, '#settings-tab-security');
+      await navClick(owner, '#nav-overview');
       done('five workspaces separate settings and Audit without credentials or connector effects');
-      await click(owner, '#nav-account');
-      assert.deepEqual(await owner.locator('.account-tabs button').allTextContents(), [
+      await click(owner, '#account-tab-balances');
+      assert.deepEqual(await owner.locator('.account-tabs a').allTextContents(), [
         'Balances',
         'Deposit',
         'Withdraw',
       ]);
       assert.equal(await owner.locator('#nav-account + .account-tabs').isVisible(), true);
-      assert.equal(await owner.locator('#nav-account').getAttribute('aria-expanded'), 'true');
+      assert.equal(await owner.locator('#nav-account').getAttribute('aria-expanded'), null);
       assert.equal(await owner.locator('#workspace-account > .account-tabs').count(), 0);
-      assert.equal(
-        await owner.locator('.account-tabs').getAttribute('aria-orientation'),
-        'vertical',
-      );
+      assert.equal(await owner.locator('.account-tabs').getAttribute('role'), null);
       assert.equal(await owner.locator('#account-page-balances').isVisible(), true);
       assert.equal(await owner.locator('#fund').isVisible(), false);
       await owner.locator('#account-tab-balances').focus();
       await owner.keyboard.press('ArrowDown');
       assert.equal(
-        await owner.locator('#account-tab-deposit').getAttribute('aria-selected'),
-        'true',
+        await owner.locator('#account-tab-balances').getAttribute('aria-current'),
+        'page',
+      );
+      assert.equal(await owner.locator('#account-tab-deposit').getAttribute('aria-current'), null);
+      await owner.keyboard.press('Enter');
+      assert.equal(
+        await owner.locator('#account-tab-deposit').getAttribute('aria-current'),
+        'page',
       );
       assert.equal(await owner.evaluate(() => document.activeElement?.id), 'account-tab-deposit');
       await owner.keyboard.press('End');
+      await owner.keyboard.press('Enter');
       assert.equal(await owner.locator('#account-page-withdraw').isVisible(), true);
       assert.equal(await owner.locator('#account-page-balances').isVisible(), false);
       assert.equal(await owner.locator('#account-page-deposit').isVisible(), false);
       assert.equal(await owner.locator('#withdraw').isEnabled(), false);
       await owner.keyboard.press('Home');
+      await owner.keyboard.press('Enter');
       assert.equal(
-        await owner.locator('#account-tab-balances').getAttribute('aria-selected'),
-        'true',
+        await owner.locator('#account-tab-balances').getAttribute('aria-current'),
+        'page',
       );
       await owner.keyboard.press('ArrowUp');
+      await owner.keyboard.press('Enter');
       assert.equal(
-        await owner.locator('#account-tab-withdraw').getAttribute('aria-selected'),
-        'true',
+        await owner.locator('#account-tab-withdraw').getAttribute('aria-current'),
+        'page',
       );
       await owner.setViewportSize({ width: 390, height: 844 });
       assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -960,20 +1105,20 @@ try {
         null,
       );
       done(
-        'nested account navigation supports vertical keyboard navigation and mobile layout without an account, credentials or implicit actions',
+        'consistent account page links support arrow keyboard navigation and mobile layout without an account, credentials or implicit actions',
       );
       const deepLinked = await newPage(undefined, false, '#account/deposit');
       assert.equal(await deepLinked.locator('#nav-account').getAttribute('aria-current'), 'page');
       assert.equal(
-        await deepLinked.locator('#account-tab-deposit').getAttribute('aria-selected'),
-        'true',
+        await deepLinked.locator('#account-tab-deposit').getAttribute('aria-current'),
+        'page',
       );
       assert.equal(await deepLinked.locator('#fund').isEnabled(), false);
       await deepLinked.close();
       const unknownTab = await newPage(undefined, false, '#account/unknown');
       assert.equal(
-        await unknownTab.locator('#account-tab-balances').getAttribute('aria-selected'),
-        'true',
+        await unknownTab.locator('#account-tab-balances').getAttribute('aria-current'),
+        'page',
       );
       await unknownTab.close();
       await owner.bringToFront();
@@ -981,7 +1126,7 @@ try {
       done(
         'account operation deep links restore presentation only; unknown subpages fall back to balances',
       );
-      await owner.locator('#nav-overview').click();
+      await navClick(owner, '#nav-overview');
 
       assert.equal(await owner.locator('.workspace-center #progress').count(), 0);
       assert.equal(await owner.locator('.workspace-center #status').count(), 0);
@@ -1071,7 +1216,7 @@ try {
       assert.equal(await owner.locator('#workspace-audit').isVisible(), true);
       assert.equal(await owner.locator('#audit-operation-1').count(), 1);
       assert.equal(await owner.locator('#activity-panel').isVisible(), false);
-      await owner.locator('#nav-overview').click();
+      await navClick(owner, '#nav-overview');
       await owner.locator('#activity-toggle').click();
       done(
         'blocking consent prevents background navigation; cancelled attempt links to its original Audit entry',
@@ -1085,7 +1230,7 @@ try {
       await owner.waitForFunction(() => document.activeElement?.id === 'workspace-audit-title');
       assert.equal(calls.length, 0);
       await owner.setViewportSize({ width: 1280, height: 900 });
-      await owner.locator('#nav-overview').click();
+      await navClick(owner, '#nav-overview');
       await owner.locator('#activity-toggle').click();
       done(
         'mobile operation-to-Audit navigation closes the sheet and focuses the destination without account effects',
@@ -1310,7 +1455,7 @@ try {
       await fill(owner, '#withdraw-recipient', recipient);
       await fill(owner, '#withdraw-amount', '3');
       for (const tab of ['deposit', 'balances', 'withdraw'])
-        await owner.locator(`#account-tab-${tab}`).click();
+        await navClick(owner, `#account-tab-${tab}`);
       assert.equal(await owner.locator('#withdraw-amount').inputValue(), '3');
       assert.equal(await owner.locator('#withdraw-recipient').inputValue(), recipient);
       assert.equal(await owner.locator('#withdraw').isVisible(), true);
@@ -1319,14 +1464,14 @@ try {
         (await owner.locator('#account-action-context .value').first().getAttribute('title')) ===
           address,
       );
-      await owner.locator('#nav-wallet').click();
-      await owner.locator('#nav-account').click();
+      await navClick(owner, '#nav-wallet');
+      await navClick(owner, '#nav-account');
       assert.equal(
-        await owner.locator('#account-tab-withdraw').getAttribute('aria-selected'),
-        'true',
+        await owner.locator('#account-tab-withdraw').getAttribute('aria-current'),
+        'page',
       );
       assert.equal(await owner.locator('#withdraw-amount').inputValue(), '3');
-      await owner.locator('#account-tab-balances').click();
+      await navClick(owner, '#account-tab-balances');
       assert.equal(
         await owner
           .locator('#account-state-details')
@@ -1347,7 +1492,7 @@ try {
         for (const theme of ['dark', 'light'] as const) {
           await owner.emulateMedia({ colorScheme: theme });
           for (const tab of ['balances', 'deposit', 'withdraw']) {
-            await owner.locator(`#account-tab-${tab}`).click();
+            await navClick(owner, `#account-tab-${tab}`);
             await owner.locator('#workspace-account').screenshot({
               path: resolve(folder, `account-${tab}-${theme}.png`),
               style: '.mock-banner { position: static !important; }',
@@ -1559,9 +1704,8 @@ try {
       done('completed operation results stay in collapsible Activity when changing workspace');
 
       const beforeAudit = calls.length;
-      await owner.locator('#nav-audit').click();
-      const traceDetails = owner.locator('details').filter({ has: owner.locator('#trace') });
-      await traceDetails.locator('summary').click();
+      await navClick(owner, '#nav-audit');
+      await reveal(owner, '#trace');
       await owner
         .locator('#trace')
         .filter({ hasText: /http.request|funding.intent/ })
@@ -1773,8 +1917,7 @@ try {
         new RegExp(original),
       );
       const beforeUnknownNavigation = fundingIds.length;
-      for (const view of ['audit', 'settings', 'account'])
-        await owner.locator(`#nav-${view}`).click();
+      for (const view of ['audit', 'settings', 'account']) await navClick(owner, `#nav-${view}`);
       assert.equal(
         fundingIds.length,
         beforeUnknownNavigation,
@@ -1852,8 +1995,8 @@ try {
       const recordedScope = await owner.locator('#session-current-scope').innerText();
       await click(owner, '#session-edit-target');
       assert.equal(
-        await owner.locator('#account-tab-withdraw').getAttribute('aria-selected'),
-        'true',
+        await owner.locator('#account-tab-withdraw').getAttribute('aria-current'),
+        'page',
       );
       assert.equal(await owner.evaluate(() => document.activeElement?.id), 'withdraw-recipient');
       const credentialsBeforeInspection = await countCredentials();
@@ -1971,9 +2114,9 @@ try {
       await owner.bringToFront();
       done('real browser Web Locks refuse a second shared-storage tab while an effect is pending');
       for (const view of ['audit', 'wallet', 'settings', 'account'])
-        await owner.locator(`#nav-${view}`).click();
+        await navClick(owner, `#nav-${view}`);
       for (const tab of ['balances', 'deposit', 'withdraw'])
-        await owner.locator(`#account-tab-${tab}`).click();
+        await navClick(owner, `#account-tab-${tab}`);
       assert.equal(await owner.locator('#withdraw').isEnabled(), false);
       assert.equal(
         calls.filter((c) => c === 'withdraw' || c === 'spend').length,
@@ -2110,7 +2253,7 @@ try {
         await owner.locator('#activity-toggle').innerText(),
         /Needs attention|Hide Activity/,
       );
-      await owner.locator('#nav-audit').click();
+      await navClick(owner, '#nav-audit');
       assert.match(await owner.locator('#activity-toggle').innerText(), /Needs attention/);
       assert.equal(await owner.locator('#operation-safety-notice').isVisible(), false);
       await owner.locator('#activity-toggle').click();
@@ -2419,15 +2562,8 @@ try {
         await fullOwner.evaluate(() => {
           (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 0;
         });
-        await fullOwner.locator('#nav-audit').click();
-        const evidenceDetails = fullOwner
-          .locator('details')
-          .filter({ has: fullOwner.locator('#evidence') });
-        if (!(await evidenceDetails.getAttribute('open'))) {
-          // Empty-string open attributes need a property check rather than truthiness.
-          if (!(await evidenceDetails.evaluate((element) => (element as HTMLDetailsElement).open)))
-            await evidenceDetails.locator('summary').click();
-        }
+        await navClick(fullOwner, '#nav-audit');
+        await reveal(fullOwner, '#evidence');
         await fullOwner
           .locator('#evidence')
           .filter({ hasText: originalHash })
@@ -2494,12 +2630,8 @@ try {
         .filter({ hasText: /^Ready/ })
         .waitFor({ state: 'attached' });
       await observeCredentialAccess(fullOwner);
-      await fullOwner.locator('#nav-audit').click();
-      await fullOwner
-        .locator('details')
-        .filter({ has: fullOwner.locator('#trace') })
-        .locator('summary')
-        .click();
+      await navClick(fullOwner, '#nav-audit');
+      await reveal(fullOwner, '#trace');
       await fullOwner
         .locator('#trace')
         .filter({ hasText: partialHash })
@@ -2636,12 +2768,8 @@ try {
       });
       heldOwnerAction = undefined;
       holdOwnerReceipt = undefined;
-      await fullOwner.locator('#nav-audit').click();
-      const faultTraceDetails = fullOwner
-        .locator('details')
-        .filter({ has: fullOwner.locator('#trace') });
-      if (!(await faultTraceDetails.evaluate((element) => (element as HTMLDetailsElement).open)))
-        await faultTraceDetails.locator('summary').click();
+      await navClick(fullOwner, '#nav-audit');
+      await reveal(fullOwner, '#trace');
       await fullOwner
         .locator('#trace')
         .filter({ hasText: storageFaultHash })

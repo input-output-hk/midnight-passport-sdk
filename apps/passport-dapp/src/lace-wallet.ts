@@ -17,7 +17,7 @@ const element = <K extends keyof HTMLElementTagNameMap>(tag: K, text?: string) =
 export function installLaceWallet(networkId: string, changed: (connected: boolean) => void) {
   const registry = () => (window as unknown as { midnight?: unknown }).midnight;
   const settings = document.getElementById('settings-wallet-connections')!;
-  const wallet = document.getElementById('workspace-wallet')!;
+  const wallet = document.getElementById('wallet-page-lace')!;
   const controls = element('div');
   controls.id = 'lace-wallet-controls';
   const label = element('label', 'Lace Wallet advertisement (self-reported)');
