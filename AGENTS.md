@@ -80,6 +80,26 @@ Optional React/Lace Wallet wiring has separate acceptance gates. Keep the curren
 session/unknown-intent fences and running user demo intact. No `lace-sdk` work or
 new native/full Lace claim in this milestone. These exports are absent from RC7.
 
+### Optional React host example (local source)
+
+Read [the React example guide](docs/site/react-example.md). The development-only
+`/examples/react-activity.html` entry uses synthetic public snapshots under
+StrictMode. Hook/renderers import without mounting a browser app; foundation
+packages gain no React dependency. React/ReactDOM and types are app dev-only,
+pinned past the dependency cooldown. After dependency edits run the full frozen
+workspace install so sibling optional-peer links remain valid. Use the existing
+demo server or a separate free frontend port for the synthetic example; actual
+passkeys still need their canonical origin. No SSR/React Native/lace-sdk claim.
+
+### Optional external Lace Wallet (local source)
+
+Read [the connector guide](docs/site/lace-wallet.md). Settings → Wallet connections
+has explicit discovery, selection and review; the public4.0.x/4.1.x read subset
+only. Wallet-reported unshielded balances stay separate from the built-in wallet
+and ACC. No credential, ACC authority or value operation follows a connection.
+Forget is local, not permission revocation. Tests inject an owned synthetic
+provider; never operate a real user extension during automated qualification.
+
 ### Local naming adapter example (after RC7)
 
 The **Name service · mock adapter** panel resolves `alice.passport.test` and

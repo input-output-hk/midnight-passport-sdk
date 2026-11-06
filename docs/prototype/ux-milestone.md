@@ -17,8 +17,8 @@ still being able to inspect public requests, responses and uncertain operations.
 
 Deliver the approved navigation/workspace/Activity composition, keeping the
 existing account API and all safety gates. No new product decision blocks the
-first slice. Public connector capabilities need verification before enabling a
-Lace Wallet path; that verification is an implementation task, not an assumption.
+first slice. The optional Lace Wallet path uses an inspected public connector read subset;
+actual provider acceptance remains distinct from local synthetic qualification.
 
 ## Delivery map
 
@@ -28,8 +28,8 @@ Lace Wallet path; that verification is an implementation task, not an assumption
 | [#289](https://github.com/input-output-hk/midnight-passport-sdk/issues/289) | Portable operation/journey snapshots and subscriptions | Implemented in source with arithmetic consumed by the existing demo; validation/review required at the signed head. |
 | [#290](https://github.com/input-output-hk/midnight-passport-sdk/issues/290) | Responsive workspace and Activity controls | Implemented locally; both-arm browser/focus/uncertainty qualification and signed review apply. |
 | [#291](https://github.com/input-output-hk/midnight-passport-sdk/issues/291) | Settings and dedicated redacted Audit | Implemented locally; existing action nodes and intent guards preserved. |
-| [#292](https://github.com/input-output-hk/midnight-passport-sdk/issues/292) | Optional React example and white-label composition | Pending; no React dependency added to core packages. |
-| [#293](https://github.com/input-output-hk/midnight-passport-sdk/issues/293) | Bounded optional Lace Wallet connector | Pending verification of the public connector contract and network capabilities. |
+| [#292](https://github.com/input-output-hk/midnight-passport-sdk/issues/292) | Optional React example and white-label composition | Local development example uses public snapshots and StrictMode; validation/review applies. No React dependency in SDK packages. |
+| [#293](https://github.com/input-output-hk/midnight-passport-sdk/issues/293) | Bounded optional Lace Wallet connector | Implemented locally against the inspected public4.0.x/4.1.x read subset; synthetic acceptance only, no actual provider claim. |
 | [#294](https://github.com/input-output-hk/midnight-passport-sdk/issues/294) | Browser/accessibility journeys, docs and handover | Per-slice checks; final milestone qualification pending. |
 
 Issues remain open until review and integration. Local implementation is not a

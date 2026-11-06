@@ -41,6 +41,7 @@ import { createMockNameService } from './mock-name-service.js';
 import { showDemoNameService } from './name-service.js';
 import { createDemoWorkspace } from './workspace.js';
 import { ActivityPanel } from './activity-controls.js';
+import { installLaceWallet } from './lace-wallet.js';
 
 installShim();
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
@@ -103,6 +104,7 @@ if (recoveryNote)
     ' Keep the original passkey: another enrolled reader cannot recover its grant openings. If an owner operation is interrupted, reconcile its transactions before retrying.';
 const { status, stage, record, event: onEvent } = ui;
 setOperationTraceSink(ui.trace);
+installLaceWallet(network, ui.showExternalWalletConnection);
 showDemoCapabilities(ARM);
 showDemoNameService(createMockNameService(network), network);
 

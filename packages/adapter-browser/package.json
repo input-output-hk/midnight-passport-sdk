@@ -15,6 +15,10 @@
     "./hosted-jubjub": {
       "types": "./dist/hosted-jubjub-authoriser.d.ts",
       "default": "./dist/hosted-jubjub-authoriser.js"
+    },
+    "./wallet": {
+      "types": "./dist/wallet.d.ts",
+      "default": "./dist/wallet.js"
     }
   },
   "files": [

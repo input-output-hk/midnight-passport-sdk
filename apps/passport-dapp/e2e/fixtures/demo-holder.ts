@@ -34,6 +34,10 @@ export async function spendDemoGrant(
   });
   if (!response.ok) throw new Error('Synthetic grant refused');
   const state = await response.json();
+  if (state.grantUnsettled) {
+    const { SubmittedGrantSpendError } = await import('@input-output-hk/mn-passport-account');
+    throw new SubmittedGrantSpendError(state.txHash);
+  }
   return {
     txHash: state.txHash,
     grantId: handoff.grantId,

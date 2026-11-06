@@ -61,12 +61,16 @@ const runtimeIdentity = () => {
         'apps/passport-dapp/src/**/*.{ts,css}',
         'apps/passport-dapp/e2e/**/*.ts',
         'apps/passport-dapp/index.html',
+        'apps/passport-dapp/examples/**/*.html',
         'apps/passport-dapp/vite.config.ts',
         'packages/*/dist/**/*.js',
         'packages/*/package.json',
         'packages/contract/generated/acc-s3r1.1/*.js',
         'packages/contract/resources/acc-s3r1.1.capabilities.json',
         'pnpm-lock.yaml',
+        'node_modules/.pnpm/react@*/node_modules/react/**/*.js',
+        'node_modules/.pnpm/react-dom@*/node_modules/react-dom/**/*.js',
+        'node_modules/.pnpm/scheduler@*/node_modules/scheduler/**/*.js',
       ],
       { cwd: repoRoot },
     ),
@@ -204,6 +208,7 @@ try {
     const fundedIds = new Map<string, number>();
     let unknownFunding = false;
     let unknownWithdrawal = false;
+    let unsettledGrantSpend = false;
     let unknownSession = false;
     let unknownRevocation = false;
     let holdSessionSpend: (() => Promise<void>) | undefined;
@@ -245,7 +250,7 @@ try {
       }
       return true;
     };
-    const newPage = async (existing?: BrowserContext) => {
+    const newPage = async (existing?: BrowserContext, reactExample = false) => {
       const context = existing ?? (await browser!.newContext({ serviceWorkers: 'block' }));
       if (!existing) {
         contexts.push(context);
@@ -276,7 +281,11 @@ try {
                   json: accepted
                     ? action === 'state' && staleOwnerReads
                       ? { ...state, nonce: state.nonce + (staleReadCount++ % 2) }
-                      : state
+                      : {
+                          ...state,
+                          ...(action === 'spend' &&
+                            unsettledGrantSpend && { grantUnsettled: true }),
+                        }
                     : { code: 'GrantRevoked' },
                 });
               }
@@ -395,6 +404,21 @@ try {
           void dialog.dismiss();
         } else void dialog.accept();
       });
+      if (reactExample) {
+        // Install before any example code; a regression cannot open a real credential prompt.
+        await page.addInitScript({
+          content: `
+          window.__reactCredentialCalls = 0;
+          Object.defineProperty(navigator, 'credentials', { configurable: true, value: {
+            async create() { window.__reactCredentialCalls++; throw Error('Unexpected credential access'); },
+            async get() { window.__reactCredentialCalls++; throw Error('Unexpected credential access'); }
+          }});
+        `,
+        });
+        await page.goto(`${origin}/examples/react-activity.html`);
+        await page.locator('#react-revision').filter({ hasText: 'Revision 0' }).waitFor();
+        return page;
+      }
       await page.goto(`${origin}/?mockPasskey&fixtureArm=${arm}`);
       await page
         .locator('#status')
@@ -475,6 +499,154 @@ try {
     };
     try {
       const owner = await newPage();
+      const react = await newPage(undefined, true);
+      const beforeReactCalls = calls.length;
+      assert.equal(await react.locator('#react-runtime').innerText(), 'React 19.3.1');
+      assert.deepEqual(await react.locator('.theme-a h3').allTextContents(), [
+        'Current operation',
+        'Your journey',
+      ]);
+      assert.deepEqual(await react.locator('.theme-b h3').allTextContents(), [
+        'Your journey',
+        'Current operation',
+      ]);
+      await react.locator('#react-publish').click();
+      await react.locator('#react-revision').filter({ hasText: 'Revision 1' }).waitFor();
+      assert.equal(await react.locator('[data-phase="unknown"]').count(), 2);
+      await react.locator('#react-toggle').click();
+      assert.equal(await react.locator('.theme-a').count(), 0);
+      await react.locator('#react-toggle').click();
+      assert.match(
+        await react.locator('.theme-a .intent').innerText(),
+        /original-synthetic-intent/,
+      );
+      assert.equal(await react.locator('#react-revision').innerText(), 'Revision 1');
+      await react.locator('.theme-b [data-action="audit"]').click();
+      await react
+        .locator('#react-audit-output')
+        .filter({ hasText: 'synthetic-operation' })
+        .waitFor();
+      assert.equal(await react.locator('#react-revision').innerText(), 'Revision 1');
+      await react.locator('#react-resolve').click();
+      await react.locator('#react-revision').filter({ hasText: 'Revision 2' }).waitFor();
+      assert.equal(await react.locator('[data-phase="succeeded"]').count(), 2);
+      assert.equal(
+        await react.evaluate(
+          () => (window as unknown as { __reactCredentialCalls: number }).__reactCredentialCalls,
+        ),
+        0,
+      );
+      assert.equal(calls.length, beforeReactCalls);
+      await react.close();
+      await owner.bringToFront();
+      done(
+        'optional React StrictMode hosts use public snapshots without credential access, command replay or SDK effects',
+      );
+      const external = await newPage();
+      const externalCallsBefore = calls.length;
+      const recipientBeforeExternal = await external.locator('#withdraw-recipient').inputValue();
+      await click(external, '#lace-wallet-discover');
+      assert.match(await external.locator('#lace-wallet-status').innerText(), /No compatible/);
+      await external.evaluate(async () => {
+        const path = '/e2e/fixtures/lace-provider.ts';
+        const fixture = await import(/* @vite-ignore */ path);
+        fixture.installLaceFixture();
+      });
+      const fixtureCall = async (method: string, value?: string) =>
+        external.evaluate(
+          async ({ method, value }) => {
+            const path = '/e2e/fixtures/lace-provider.ts';
+            const fixture = await import(/* @vite-ignore */ path);
+            return fixture[method](value);
+          },
+          { method, value },
+        );
+      await click(external, '#lace-wallet-discover');
+      assert.equal(await external.locator('#lace-wallet-provider option').count(), 3);
+      assert.equal(await external.locator('#lace-wallet-connect').isDisabled(), true);
+      assert.equal(await external.locator('#lace-wallet-controls img').count(), 0);
+      await select(external, '#lace-wallet-provider', '10000000-0000-0000-0000-000000000001');
+      await click(external, '#lace-wallet-connect');
+      await external.keyboard.press('Tab');
+      assert.equal(
+        await external.evaluate(() => document.activeElement?.id),
+        'lace-wallet-approve',
+      );
+      await external.keyboard.press('Shift+Tab');
+      assert.equal(await external.evaluate(() => document.activeElement?.id), 'lace-wallet-cancel');
+      await external.keyboard.press('Escape');
+      assert.deepEqual(await fixtureCall('laceFixtureCalls'), []);
+      await click(external, '#lace-wallet-connect');
+      await external.locator('#lace-wallet-approve').click();
+      await external
+        .locator('#lace-wallet-status')
+        .filter({ hasText: 'Connected for this page' })
+        .waitFor();
+      await click(external, '#nav-wallet');
+      assert.match(
+        await external.locator('#lace-wallet-snapshot').innerText(),
+        /NIGHT: 5 smallest units/,
+      );
+      assert.equal(
+        await external.locator('#withdraw-recipient').inputValue(),
+        recipientBeforeExternal,
+      );
+      assert.match((await external.locator('#account-empty').textContent()) ?? '', /No account/);
+      await fixtureCall('setLaceFixtureMode', 'wrong-network');
+      await click(external, '#lace-wallet-refresh');
+      await click(external, '#nav-settings');
+      await external
+        .locator('#lace-wallet-status')
+        .filter({ hasText: 'NetworkMismatch' })
+        .waitFor();
+      assert.match(
+        (await external.locator('#lace-wallet-snapshot').textContent()) ?? '',
+        /Balance unavailable/,
+      );
+      await fixtureCall('setLaceFixtureMode', 'reject');
+      await click(external, '#lace-wallet-connect');
+      await external.locator('#lace-wallet-approve').click();
+      await external
+        .locator('#lace-wallet-status')
+        .filter({ hasText: 'PermissionRejected' })
+        .waitFor();
+      assert.doesNotMatch(
+        await external.locator('#lace-wallet-status').innerText(),
+        /private detail/,
+      );
+      await fixtureCall('setLaceFixtureMode', 'delay');
+      await click(external, '#lace-wallet-connect');
+      await external.locator('#lace-wallet-approve').click();
+      await external.locator('#lace-wallet-status').filter({ hasText: 'Waiting for' }).waitFor();
+      await click(external, '#lace-wallet-forget');
+      await fixtureCall('releaseLaceFixture');
+      await external.waitForTimeout(30);
+      assert.match(await external.locator('#lace-wallet-status').innerText(), /forgotten/);
+      await fixtureCall('setLaceFixtureMode', 'ready');
+      await click(external, '#lace-wallet-connect');
+      const connectCountBeforeReplacement = (
+        (await fixtureCall('laceFixtureCalls')) as string[]
+      ).filter((c) => c === 'connect').length;
+      await fixtureCall('replaceLaceFixture');
+      await external.locator('#lace-wallet-approve').click();
+      await external
+        .locator('#lace-wallet-status')
+        .filter({ hasText: 'ProviderUnavailable' })
+        .waitFor();
+      assert.equal(
+        ((await fixtureCall('laceFixtureCalls')) as string[]).filter((c) => c === 'connect').length,
+        connectCountBeforeReplacement,
+      );
+      assert.equal(
+        await external.evaluate(() => localStorage.getItem('passport-dev:mock-passkey:v1')),
+        null,
+      );
+      assert.equal(calls.length, externalCallsBefore, 'wallet reads must not call the ACC driver');
+      await external.close();
+      await owner.bringToFront();
+      done(
+        'optional Lace Wallet has explicit review, separate read-only balances, network/rejection/replacement refusals and late-result forget fencing',
+      );
       const controlChecks = await owner.evaluate(async () => {
         const path = '/e2e/fixtures/activity-controls-check.ts';
         const module = (await import(/* @vite-ignore */ path)) as {
@@ -613,6 +785,10 @@ try {
       );
       assert.equal(await owner.locator('#progress').getAttribute('aria-valuenow'), null);
       assert.match(await owner.locator('#progress-label').innerText(), /attempt cancelled/);
+      assert.match(
+        (await owner.locator('#audit-operation-1 .run-meta').textContent()) ?? '',
+        /Cancelled attempt/,
+      );
       await owner.locator('[data-control="operation-audit-link"]').click();
       assert.equal(await owner.locator('#workspace-audit').isVisible(), true);
       assert.equal(await owner.locator('#audit-operation-1').count(), 1);
@@ -837,6 +1013,28 @@ try {
         /Enter a valid unshielded Midnight address for undeployed/,
       );
       assert.equal(calls.filter((c) => c === 'withdraw').length, withdrawals);
+      const phaseBeforeBackground = await owner
+        .locator('.operation-status')
+        .getAttribute('data-phase');
+      const refsBeforeBackground = await owner.locator('.activity-references').textContent();
+      const callsBeforeBackground = calls.length;
+      await owner.evaluate(async () => {
+        const path = '/src/operation-trace.ts';
+        const module = (await import(/* @vite-ignore */ path)) as {
+          traceOperation(kind: string, details: Record<string, unknown>): void;
+        };
+        module.traceOperation('session.state', {
+          phase: 'blocked',
+          intentId: 'background-not-this-operation',
+        });
+      });
+      assert.equal(
+        await owner.locator('.operation-status').getAttribute('data-phase'),
+        phaseBeforeBackground,
+      );
+      assert.equal(await owner.locator('.activity-references').textContent(), refsBeforeBackground);
+      assert.equal(calls.length, callsBeforeBackground);
+      done('background telemetry cannot relabel a finished attempt or borrow its intent reference');
       const wrongNetwork = MidnightBech32m.encode(
         'preview',
         new UnshieldedAddress(Buffer.alloc(32, 7)),
@@ -887,7 +1085,7 @@ try {
         const text = (window as unknown as { __copiedPublicAudit: string }).__copiedPublicAudit;
         const result = JSON.parse(text) as {
           account: { address: string };
-          runs: unknown[];
+          runs: { result: string; outcome: string }[];
           trace: unknown[];
         };
         const forbidden =
@@ -899,11 +1097,15 @@ try {
           runs: result.runs.length,
           trace: result.trace.length,
           forbidden,
+          hasCancellation: result.runs.some(
+            (run) => run.result === 'done' && run.outcome === 'cancelled',
+          ),
         };
       });
       assert.equal(copied.account, address);
       assert.ok(copied.runs > 0 && copied.trace > 0);
       assert.equal(copied.forbidden, false);
+      assert.equal(copied.hasCancellation, true);
       assert.equal(calls.length, beforeAudit);
       done(
         'dedicated Audit renders and copies public exchanges without secrets, a real clipboard write or connector effects',
@@ -982,6 +1184,22 @@ try {
       assert.equal(calls.filter((c) => c === 'spend').length, beforeDeclinedSpend);
       await approve(holder, 'spendGrant');
       await waitStatus(holder, /Grant spend .*confirmed/);
+      await fill(holder, '#grant-spent-prev', '1');
+      unsettledGrantSpend = true;
+      await approve(holder, 'spendGrant');
+      await waitStatus(holder, /failed\./, /submitted/);
+      unsettledGrantSpend = false;
+      assert.equal(await holder.locator('.operation-status').getAttribute('data-phase'), 'unknown');
+      assert.match(await holder.locator('.operation-status').innerText(), new RegExp(state.txHash));
+      await click(holder, '#nav-audit');
+      assert.match(
+        await holder.locator('#log .run').first().locator('.run-meta').innerText(),
+        /Outcome unknown/,
+      );
+      done(
+        'submitted grant spend with unsettled roster preserves its hash and unknown outcome in Activity and Audit',
+      );
+
       await fill(owner, '#revoke-grant-id', grantId);
       const revocationsBeforeDecline = calls.filter((c) => c === 'revoke').length;
       rejectNextDialog = true;
@@ -1048,6 +1266,10 @@ try {
       assert.equal(await owner.locator('.operation-status').getAttribute('data-phase'), 'unknown');
       assert.equal(await owner.locator('#progress').getAttribute('aria-valuenow'), null);
       assert.match(await owner.locator('#progress-label').innerText(), /not confirmed/);
+      assert.match(
+        (await owner.locator('#log .run').first().locator('.run-meta').textContent()) ?? '',
+        /Outcome unknown/,
+      );
       assert.match(
         (await owner.locator('.activity-references').textContent()) ?? '',
         new RegExp(original),

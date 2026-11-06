@@ -155,6 +155,7 @@ export function createDemoWorkspace() {
   }
   const connections = node('section');
   connections.className = 'panel';
+  connections.id = 'settings-wallet-connections';
   connections.append(node('h3', 'Wallet connections'));
   connections.append(
     node(
@@ -178,6 +179,13 @@ export function createDemoWorkspace() {
     panelOf('name-service-title'),
     panelOf('notes-title'),
   );
+  if (import.meta.env.DEV) {
+    const example = node('a', 'Optional React host example · synthetic observations only');
+    example.href = '/examples/react-activity.html';
+    example.target = '_blank';
+    example.rel = 'noopener';
+    advanced.append(example);
+  }
   views.settings.append(advanced);
   oldActions.remove();
 

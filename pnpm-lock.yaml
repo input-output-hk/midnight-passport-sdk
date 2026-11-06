@@ -87,9 +87,21 @@ importers:
         specifier: 7.8.2
         version: 7.8.2
     devDependencies:
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
       playwright-core:
         specifier: 1.63.0
         version: 1.63.0
+      react:
+        specifier: 19.3.1
+        version: 19.3.1
+      react-dom:
+        specifier: 19.3.1
+        version: 19.3.1(react@19.3.1)
       tsx:
         specifier: 4.23.15
         version: 4.23.15
@@ -181,7 +193,7 @@ importers:
         version: 5.0.0-rc.2
       '@midnight-ntwrk/midnight-js-indexer-public-data-provider':
         specifier: 5.0.0-rc.2
-        version: 5.0.0-rc.2
+        version: 5.0.0-rc.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@midnight-ntwrk/midnight-js-network-id':
         specifier: 5.0.0-rc.2
         version: 5.0.0-rc.2
@@ -215,7 +227,7 @@ importers:
         version: 5.0.0-rc.2
       '@midnight-ntwrk/midnight-js-indexer-public-data-provider':
         specifier: 5.0.0-rc.2
-        version: 5.0.0-rc.2
+        version: 5.0.0-rc.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@midnight-ntwrk/midnight-js-network-id':
         specifier: 5.0.0-rc.2
         version: 5.0.0-rc.2
@@ -992,6 +1004,14 @@ packages:
   '@types/object-inspect@1.13.0':
     resolution: {integrity: sha512-lwGTVESDDV+XsQ1pH4UifpJ1f7OtXzQ6QBOX2Afq2bM/T3oOt8hF6exJMjjIjtEWeAN2YAo25J7HxWh97CCz9w==}
 
+  '@types/react-dom@19.3.0':
+    resolution: {integrity: sha512-ZI7bU42mZXXKHn/qNLEw2IrbiINU7X5+vfgdixBHkCNpYWXjKgfQ/P+uyGb5CjOLB9UcnTeg3rylQtV2hym44Q==}
+    peerDependencies:
+      '@types/react': ^19.3.0
+
+  '@types/react@19.3.0':
+    resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
+
   '@wry/caches@1.0.1':
     resolution: {integrity: sha512-bXuaUNLVVkD20wcGBWRyo7j9N3TxePEWFZj2Y+r9OoUzfqmavM84+mFykRicNsBqatba5JLay1t48wxaXaWnlA==}
     engines: {node: '>=8'}
@@ -1023,6 +1043,9 @@ packages:
 
   cross-fetch@4.1.0:
     resolution: {integrity: sha512-uKm5PU+MHTootlWEY+mZ4vvXoCn4fLQxT9dSc1sXVMSFkINTJVN8cAQROpwcKm8bJ/c7rgZVIBWzH5T78sNZZw==}
+
+  csstype@3.2.3:
+    resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
   data-uri-to-buffer@4.0.1:
     resolution: {integrity: sha512-0R9ikRb668HB7QDxT1vkpuUBtqc53YyAwMwGeUFKRojY/NWKvdZ+9UYtRfGmhqNbRkTSVpMbmyhXipFFv2cb/A==}
@@ -1301,6 +1324,15 @@ packages:
   quick-format-unescaped@4.0.4:
     resolution: {integrity: sha512-tYC1Q1hgyRuHgloV/YXs2w15unPVh8qfu/qCTfhTYamaw7fyhumKa2yGpdSo87vY32rIclj+4fWYQXUMs9EHvg==}
 
+  react-dom@19.3.1:
+    resolution: {integrity: sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==}
+    peerDependencies:
+      react: ^19.3.1
+
+  react@19.3.1:
+    resolution: {integrity: sha512-QNhWdt7nrgVWWQG58QuGsAR3jv3Hbe4mb4vz7w2csnHavciZJgda1CPNaldF6eVxv90ud3jUXpKlHL69gO38yw==}
+    engines: {node: '>=0.10.0'}
+
   real-require@1.0.0:
     resolution: {integrity: sha512-P4nbQYQfePJxRSmY+v/KINxVucm4NF3p3s7pJveMTtom52FR4YGltUQLB8idDXwDDWW+eYrWDFbuzUnjoWHF7g==}
 
@@ -1318,6 +1350,9 @@ packages:
 
   scale-ts@1.6.1:
     resolution: {integrity: sha512-PBMc2AWc6wSEqJYBDPcyCLUj9/tMKnLX70jLOSndMtcUoLQucP/DM0vnQo1wJAYjTrQiq8iG9rD0q6wFzgjH7g==}
+
+  scheduler@0.28.0:
+    resolution: {integrity: sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw==}
 
   smoldot@2.0.26:
     resolution: {integrity: sha512-F+qYmH4z2s2FK+CxGj8moYcd1ekSIKH8ywkdqlOz88Dat35iB1DIYL11aILN46YSGMzQW/lbJNS307zBSDN5Ig==}
@@ -1435,7 +1470,7 @@ packages:
 
 snapshots:
 
-  '@apollo/client@4.3.2(graphql-ws@6.3.0(graphql@17.0.2)(ws@8.22.0))(graphql@17.0.2)(rxjs@7.8.2)':
+  '@apollo/client@4.3.2(graphql-ws@6.3.0(graphql@17.0.2)(ws@8.22.0))(graphql@17.0.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rxjs@7.8.2)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@17.0.2)
       '@wry/caches': 1.0.1
@@ -1448,6 +1483,8 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       graphql-ws: 6.3.0(graphql@17.0.2)(ws@8.22.0)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
 
   '@effect/platform@0.96.3(effect@3.22.2)':
     dependencies:
@@ -1589,9 +1626,9 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@midnight-ntwrk/midnight-js-indexer-public-data-provider@5.0.0-rc.2':
+  '@midnight-ntwrk/midnight-js-indexer-public-data-provider@5.0.0-rc.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@apollo/client': 4.3.2(graphql-ws@6.3.0(graphql@17.0.2)(ws@8.22.0))(graphql@17.0.2)(rxjs@7.8.2)
+      '@apollo/client': 4.3.2(graphql-ws@6.3.0(graphql@17.0.2)(ws@8.22.0))(graphql@17.0.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rxjs@7.8.2)
       '@graphql-typed-document-node/core': 3.2.0(graphql@17.0.2)
       '@midnight-ntwrk/midnight-js-network-id': 5.0.0-rc.2
       '@midnight-ntwrk/midnight-js-protocol': 5.0.0-rc.2
@@ -2303,6 +2340,14 @@ snapshots:
 
   '@types/object-inspect@1.13.0': {}
 
+  '@types/react-dom@19.3.0(@types/react@19.3.0)':
+    dependencies:
+      '@types/react': 19.3.0
+
+  '@types/react@19.3.0':
+    dependencies:
+      csstype: 3.2.3
+
   '@wry/caches@1.0.1':
     dependencies:
       tslib: 2.8.1
@@ -2335,6 +2380,8 @@ snapshots:
       node-fetch: 2.7.0
     transitivePeerDependencies:
       - encoding
+
+  csstype@3.2.3: {}
 
   data-uri-to-buffer@4.0.1: {}
 
@@ -2578,6 +2625,13 @@ snapshots:
 
   quick-format-unescaped@4.0.4: {}
 
+  react-dom@19.3.1(react@19.3.1):
+    dependencies:
+      react: 19.3.1
+      scheduler: 0.28.0
+
+  react@19.3.1: {}
+
   real-require@1.0.0: {}
 
   rolldown@1.2.12:
@@ -2609,6 +2663,8 @@ snapshots:
 
   scale-ts@1.6.1:
     optional: true
+
+  scheduler@0.28.0: {}
 
   smoldot@2.0.26:
     dependencies:

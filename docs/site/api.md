@@ -14,6 +14,10 @@ provides immutable public operation/journey snapshots and a presentation store
 for host-owned controls. It has no DOM, framework, credential or transaction
 access, and is also source-only after RC7.
 
+The optional [wallet reader]({{ '/lace-wallet/' | relative_url }}) is a separate
+`adapter-browser/wallet` source subpath. It supplies no ACC ownership, viewing or
+spending permission and exposes no transfer/signing methods.
+
 The public flow is `createPassportAccounts(ports): PassportConnectorAPI` from `mn-passport-account`. The interfaces are in `mn-passport-protocol`; adapter authors import the contracts from `mn-passport-account/ports`. Source links below point to the exact prototype API.
 
 ```ts

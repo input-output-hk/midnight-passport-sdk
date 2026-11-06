@@ -138,6 +138,7 @@ export function createUi(
   let ready = true;
   let account: AccountView | undefined;
   let wallet: WalletView = {};
+  let externalWalletConnected = false;
   let fundingAsset: { color: string; amount: string } | undefined;
   let assetsByColor = new Map<string, { color: string; amount: string }>();
   const fundingSelect = byId<HTMLSelectElement>('fund-asset');
@@ -266,7 +267,7 @@ export function createUi(
   const renderActivity = () => {
     const observation = demoActivityObservation(log, Date.now(), {
       accountOpen: !!account,
-      walletConnected: !!wallet.unshieldedAddress,
+      walletConnected: !!wallet.unshieldedAddress || externalWalletConnected,
     });
     activity.replace(observation, activity.getSnapshot().revision);
     return observation.operation;
@@ -985,6 +986,10 @@ export function createUi(
       if (account?.address !== address || !accountBalances) return;
       accountBalances = { ...accountBalances, error: 'Unavailable' };
       renderAccount();
+    },
+    showExternalWalletConnection(connected: boolean) {
+      externalWalletConnected = connected;
+      renderActivity();
     },
     showWallet(view: WalletView) {
       wallet = { ...wallet, ...view };

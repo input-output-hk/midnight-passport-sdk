@@ -15,7 +15,7 @@ deployed site remain separate from this local work.
 | --- | --- |
 | **Overview** | Create an account, open with a passkey, or open a known ACC address with an enrolled passkey. No name or profile creation. |
 | **Passport account** | ACC state and balances, read shielded holdings, fund the ACC, withdraw to a Midnight user address. Amounts retain their original units and unavailable/stale states. |
-| **Midnight wallet** | The separate, read-only built-in HD wallet: addresses, balances, freshness and **Refresh wallet balance**. **Manage wallet connections** opens Settings. |
+| **Midnight wallet** | Separate built-in HD and optional external Lace Wallet views: addresses, balances, freshness and **Refresh wallet balance**. **Manage wallet connections** opens Settings. |
 | **Audit** | Timed operation stages, full redacted request/response trace, public evidence JSON and **Copy full log**. |
 | **Settings** | Security and access, wallet connections, and closed-by-default advanced developer tools. |
 
@@ -32,9 +32,9 @@ deployed site remain separate from this local work.
 - **Advanced access · manual grants:** holder preparation, roster, issue, export,
   spend, revoke and recovery. This is a separate advanced demonstration, not
   automatic permissions for a connected wallet.
-- **Wallet connections:** connect the built-in wallet. External Lace Wallet
-  connection remains a separate tracked adapter task; no unsupported provider is
-  presented as connected.
+- **Wallet connections:** connect the built-in wallet, or explicitly discover,
+  select and review an optional [Lace Wallet connection]({{ '/lace-wallet/' | relative_url }}).
+  Their snapshots remain separate; no ACC permission follows either connection.
 - **Advanced · Developer tools:** advisory SDK capabilities/proof plans, the mock
   naming adapter and prototype limits. Configuration is not made editable and
   there is no operator-token field.
@@ -90,6 +90,9 @@ uncertainty. Exported runs retain the raw legacy attempt `result` and add `outco
 for that derived presentation phase. Neither is a proof of ledger finality. Later
 background events remain in the full trace without being attributed to an ended
 attempt; session intents require a matching controller begin in their own action.
+Validated submitted-grant transaction hashes stay visible with an unknown outcome
+until reconciliation. The same roster error before submission is a distinct failed
+attempt; an error code alone does not establish whether funds moved.
 
 ## Reuse without adopting this demo
 
@@ -108,8 +111,9 @@ transaction safeguards must remain accurate. Rendering, subscribing, remounting
 or cleanup must not send a command. Two hosts can consume one public store with
 independent themes, labels and cleanup.
 
-An optional React consumer example is tracked in
-[#292](https://github.com/input-output-hk/midnight-passport-sdk/issues/292).
+The optional [React consumer example]({{ '/react-example/' | relative_url }})
+demonstrates public-store wiring and StrictMode without an account or credential.
+Its hook, HTML renderers and synthetic browser entry are separate modules.
 The main packages stay framework-neutral. React Native needs separate platform
 adapters and qualification. `lace-sdk` integration is outside this milestone;
 Lace Wallet is a separate connection and grants no automatic ACC ownership,

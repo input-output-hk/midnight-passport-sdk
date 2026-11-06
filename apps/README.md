@@ -6,7 +6,8 @@ The [execution map](../docs/prototype/ux-milestone.md) tracks the approved
 Settings/Activity/Audit redesign. The local demo composes five workspaces, a
 responsive Activity panel/sheet and a dedicated Audit workspace using portable
 `account/interaction` models. [The UI guide](../docs/site/demo-ui.md) maps every
-action to its new location. React/Lace Wallet support remains a separate task.
+action to its new location. The [optional React host example](../docs/site/react-example.md) uses synthetic
+public snapshots only; actual Lace Wallet connection remains a separate task.
 These changes are source after RC7; keep existing launch commands and durable
 operation state. Optional host renderers must not initiate account actions while
 rendering, subscribing or cleaning up a presentation control.
@@ -486,3 +487,14 @@ ports 19964/18108/16320 and preserves retained/default localnets. Do not replay 
 failed/unknown run. Source `b5eeff8` passes the declared both-arm software/native
 profile; see its receipt for exact cases and observation recovery counts. Browser
 consent, real providers and released artifacts remain separate tiers.
+
+
+### Optional external Lace Wallet (local source)
+
+See [the source connector guide](../docs/site/lace-wallet.md). Settings → Wallet
+connections explicitly discovers/selects/reviews a public connector advertisement.
+Only address/unshielded balances are read, in a separate external-wallet card.
+No ACC permission, recipient autofill, signing or transfer follows connection.
+Forget invalidates locally; extension permissions must be managed in the wallet.
+The new adapter-browser/wallet subpath is absent from published RC7. Both-arm
+synthetic browser cases qualify UI refusals, not an installed Lace extension.
