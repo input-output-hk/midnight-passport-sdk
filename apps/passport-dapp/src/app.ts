@@ -6,6 +6,7 @@ import type {
   PassportConnectorAPI,
   PassportConnectorDescriptor,
   PassportTxResult,
+  PassportEvent,
 } from '@input-output-hk/mn-passport-protocol';
 import {
   ARM,
@@ -52,6 +53,9 @@ import {
   OWNER_ACTIONS,
 } from './routine-access.js';
 import { authenticateOwnerAccount, routeAuthenticatedAccount } from './owner-access.js';
+import { transactionReceipts } from './transaction-receipts.js';
+const retainedTransactions = transactionReceipts(localStorage, NETWORK_ID, BINDING_ID);
+let receiptStorageFailed = false;
 
 installShim();
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
@@ -86,6 +90,13 @@ const ui = createUi(
   ARM,
   {
     before: async (action) => {
+      if (!['refresh', 'roster', 'grantRoster'].includes(action)) {
+        if (receiptStorageFailed)
+          throw Error(
+            'Copy Audit before leaving: transaction receipt persistence failed. Restore storage before another key operation.',
+          );
+        retainedTransactions.assertWritable();
+      }
       const routineUnlocked = beginRoutineReview(account, action);
       const approved = await reviewDemoAction(action, {
         network,
@@ -130,7 +141,22 @@ const recoveryNote = document.getElementById('key-note');
 if (recoveryNote)
   recoveryNote.textContent +=
     ' Keep the original passkey: another enrolled reader cannot recover its grant openings. If an owner operation is interrupted, reconcile its transactions before retrying.';
-const { status, stage, record, event: onEvent } = ui;
+const { status, stage, record } = ui;
+const onEvent = (event: PassportEvent) => {
+  // Record in memory first, even if durable browser storage subsequently fails.
+  ui.event(event);
+  try {
+    const receipt = retainedTransactions.observe(event);
+    if (receipt) traceOperation('account.transaction.submitted', { ...receipt });
+  } catch {
+    receiptStorageFailed = true;
+    routineKeys.lock();
+    finishDemoConsent();
+    ui.note(
+      'Transaction receipt storage failed. Copy Audit before leaving; further key operations are blocked.',
+    );
+  }
+};
 /** Record public receipts before a best-effort indexer refresh can fail or outlive a lease. */
 async function refreshAfterReceipt<T>(
   receipt: {
@@ -153,6 +179,15 @@ async function refreshAfterReceipt<T>(
 }
 
 setOperationTraceSink(ui.trace);
+try {
+  for (const receipt of retainedTransactions.load())
+    traceOperation('account.transaction.retained', { ...receipt });
+} catch {
+  receiptStorageFailed = true;
+  ui.note(
+    'Stored transaction receipts need inspection. Further key operations are blocked; preserve site data.',
+  );
+}
 installLaceWallet(network, ui.showExternalWalletConnection);
 showDemoCapabilities(ARM);
 showDemoNameService(createMockNameService(network), network);
@@ -502,6 +537,7 @@ ui.on('holdings', async () => {
   status('Opening the sealed ACC inbox and checking coin commitments against the chain…');
   stage('verify');
   const verified = await read({ onEvent });
+  checkRoutineReview();
   const coins = verified.map((holding) => ({
     inboxIndex: holding.inboxIndex,
     color: Array.from(holding.coin.color, (byte) => byte.toString(16).padStart(2, '0')).join(''),
@@ -655,6 +691,7 @@ ui.on('exportGrant', async () => {
   }
   stage('export');
   const handoff = await exportDemoGrantOpening(current.address, grantId);
+  checkRoutineReview();
   ui.showGrantHandoff(handoff);
   record('grantOpeningExported', { accountAddress: current.address, grantId });
   traceOperation('account.grants.openingExported', { accountAddress: current.address, grantId });

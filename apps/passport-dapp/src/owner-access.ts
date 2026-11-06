@@ -32,6 +32,7 @@ export async function authenticateOwnerAccount(input: {
         publicKey: string;
         readerPublicKey: string;
         txHash?: string;
+        rotationTxHash?: string;
         commitmentHex?: string;
       }
     | undefined;
@@ -55,6 +56,9 @@ export async function authenticateOwnerAccount(input: {
       publicKey: previous.publicKey,
       readerPublicKey: previous.readerPublicKey,
       ...(typeof previous.txHash === 'string' && { txHash: previous.txHash }),
+      ...(typeof previous.rotationTxHash === 'string' && {
+        rotationTxHash: previous.rotationTxHash,
+      }),
       ...(typeof previous.commitmentHex === 'string' && { commitmentHex: previous.commitmentHex }),
     };
   }
@@ -116,12 +120,18 @@ export async function authenticateOwnerAccount(input: {
   );
   storage.setItem(
     key,
-    JSON.stringify({ ...record, txHash: result.txHash, commitmentHex: result.commitmentHex }),
+    JSON.stringify({
+      ...record,
+      txHash: result.txHash,
+      ...(result.rotationTxHash && { rotationTxHash: result.rotationTxHash }),
+      commitmentHex: result.commitmentHex,
+    }),
   );
   // A confirmation alone does not authenticate this browser: verify its live entry and inbox.
   input.trace('owner.enrollment.confirmed', {
     attemptId,
     txHash: result.txHash,
+    ...(result.rotationTxHash && { rotationTxHash: result.rotationTxHash }),
     commitmentHex: result.commitmentHex,
   });
   const account = await verify();
@@ -131,6 +141,7 @@ export async function authenticateOwnerAccount(input: {
       ...record,
       state: 'verified',
       txHash: result.txHash,
+      ...(result.rotationTxHash && { rotationTxHash: result.rotationTxHash }),
       commitmentHex: result.commitmentHex,
     }),
   );

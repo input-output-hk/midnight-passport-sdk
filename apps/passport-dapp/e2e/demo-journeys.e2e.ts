@@ -2410,6 +2410,119 @@ try {
         );
       }
 
+      await approve(fullOwner, 'unlockOwner');
+      await waitStatus(fullOwner, /Account unlocked/);
+      await fullOwner.evaluate(() => {
+        (window as unknown as { __partialOwnerRotation: boolean }).__partialOwnerRotation = true;
+      });
+      let releasePartial!: () => void;
+      let observePartial!: () => void;
+      const partialWait = new Promise<void>((resolve) => {
+        releasePartial = resolve;
+      });
+      const partialObserved = new Promise<void>((resolve) => {
+        observePartial = resolve;
+      });
+      heldOwnerAction = 'rotation-tail';
+      holdOwnerReceipt = () => {
+        observePartial();
+        return partialWait;
+      };
+      const rotatesBeforePartial = calls.filter((call) => call === 'rotate').length;
+      const credentialsBeforePartial = await ownerCredentials();
+      await approve(fullOwner, 'rotate');
+      await partialObserved;
+      const partialHash = state.txHash;
+      assert.ok(
+        await fullOwner.evaluate(
+          (hash) =>
+            Object.keys(localStorage).some(
+              (key) =>
+                key.startsWith('passport-demo:transaction-receipt:v1:') && key.endsWith(hash),
+            ),
+          partialHash,
+        ),
+      );
+      await fullOwner.evaluate(() => {
+        (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 31 * 60_000;
+      });
+      await fullOwner
+        .locator('#routine-status')
+        .filter({ hasText: /expired/ })
+        .waitFor({ state: 'attached' });
+      releasePartial();
+      await waitStatus(fullOwner, /failed\./, /locked|expired/);
+      assert.equal(await ownerCredentials(), credentialsBeforePartial);
+      assert.equal(calls.filter((call) => call === 'rotate').length, rotatesBeforePartial + 1);
+      heldOwnerAction = undefined;
+      holdOwnerReceipt = undefined;
+      await archiveObservations(fullOwner, arm);
+      await fullOwner.reload();
+      await fullOwner
+        .locator('#status')
+        .filter({ hasText: /^Ready/ })
+        .waitFor({ state: 'attached' });
+      await observeCredentialAccess(fullOwner);
+      await fullOwner.locator('#nav-audit').click();
+      await fullOwner
+        .locator('details')
+        .filter({ has: fullOwner.locator('#trace') })
+        .locator('summary')
+        .click();
+      await fullOwner
+        .locator('#trace')
+        .filter({ hasText: partialHash })
+        .waitFor({ state: 'visible' });
+      assert.match(
+        (await fullOwner.locator('#trace').textContent())!,
+        /account.transaction.retained/,
+      );
+      assert.equal(calls.filter((call) => call === 'rotate').length, rotatesBeforePartial + 1);
+      done(
+        'intermediate key-switch submission survives a later signing expiry and reload without replay',
+      );
+
+      await approve(fullOwner, 'open');
+      await waitStatus(fullOwner, /opened/);
+      await approve(fullOwner, 'unlockOwner');
+      await waitStatus(fullOwner, /Account unlocked/);
+      const beforePrivateDisplay = await fullOwner.locator('#holdings-facts').textContent();
+      await fullOwner.evaluate(() => {
+        (window as unknown as { __ownerReadValue: number }).__ownerReadValue = 99;
+      });
+      let releaseRead!: () => void;
+      let observeRead!: () => void;
+      const privateReadWait = new Promise<void>((resolve) => {
+        releaseRead = resolve;
+      });
+      const privateReadObserved = new Promise<void>((resolve) => {
+        observeRead = resolve;
+      });
+      heldOwnerAction = 'holdings';
+      holdOwnerReceipt = () => {
+        observeRead();
+        return privateReadWait;
+      };
+      const credentialsBeforeRead = await ownerCredentials();
+      await approve(fullOwner, 'holdings');
+      await privateReadObserved;
+      await fullOwner.evaluate(() => {
+        (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 31 * 60_000;
+      });
+      await fullOwner
+        .locator('#routine-status')
+        .filter({ hasText: /expired/ })
+        .waitFor({ state: 'attached' });
+      releaseRead();
+      await waitStatus(fullOwner, /failed\./, /locked or expired/);
+      assert.equal(await fullOwner.locator('#holdings-facts').textContent(), beforePrivateDisplay);
+      assert.equal(await ownerCredentials(), credentialsBeforeRead);
+      heldOwnerAction = undefined;
+      holdOwnerReceipt = undefined;
+      done(
+        'private holdings arriving after owner lock are not displayed and cause no fallback credential access',
+      );
+
       assert.equal(failures.length, 0, failures.join(', '));
       assert.equal(pageErrors.length, 0, pageErrors.join(', '));
       const observedPurposes = new Set<string>(archivedPurposes[arm] ?? []);

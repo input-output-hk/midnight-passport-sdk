@@ -71,7 +71,9 @@ export function createAuthenticatedJubjubOwner(input: {
   const source = (companion: boolean): PrfKeySource => ({
     async withSession(work) {
       check();
-      return work();
+      const result = await work();
+      check();
+      return result;
     },
     async deviceSecret() {
       check();
@@ -100,6 +102,14 @@ export function createAuthenticatedJubjubOwner(input: {
   const recipe = recipeJubjubAuthoriser(prf, input.pure);
   const authoriser: typeof recipe = {
     ...recipe,
+    async withKeySession(work, flow) {
+      check();
+      const result = await work();
+      // Private reads must not disclose results after lock. Mutation acknowledgements
+      // survive local expiry; their transports already guard each new dispatch.
+      if (!flow || flow.kind === 'read-holdings' || flow.kind === 'sign-in') check();
+      return result;
+    },
     async authorise(request) {
       check();
       if (request.account !== context.account)

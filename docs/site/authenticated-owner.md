@@ -81,7 +81,14 @@ Public enrollment attempt IDs and transaction references persist for reconciliat
 An approved owner operation whose lease expires stops without silently switching to
 P-256. A transaction already submitted may settle after local lock; keep its original
 IDs. Public state/device/grant-roster reads remain available after lock for reconciliation.
-The demo records owner receipts before its best-effort post-operation refresh; an indexer
+Each acknowledged SDK submission emits `sponsor.submit` with its original transaction ID
+before finality/composite completion. The demo retains these public references in separate
+local records and restores them into Audit after reload. A submitted reference is not proof
+of finality. Multi-transaction rotations can stop on expiry after earlier effects; inspect
+the original IDs rather than replaying. Storage failure blocks further key actions and
+asks you to copy Audit; records are never silently evicted. Companion enrollment records
+also retain any earlier `rotationTxHash`.
+The demo records completed owner receipts before its best-effort post-operation refresh; an indexer
 failure cannot erase the transaction reference or trigger another submission.
 Uncertain grants/transfers retain their existing fences. Shielded withdrawals
 retain the exact-value guard; full ownership does not enable partial spends.
@@ -99,7 +106,8 @@ authentication; it cannot create a new credential.
 Pass it as `BrowserPassportConfig.ownerSession`, with `arm: 'jubjub'`, to compose
 the existing account API. Network and binding mismatches refuse. The composition
 opens only the pinned account and refuses creation; it never invokes a credential
-provider. Live ACC counter, device, keyring and coin checks remain in the account
+provider. Private derivation/read sessions recheck completion before exposing results;
+owner mutation sessions retain acknowledgements after dispatch. Live ACC counter, device, keyring and coin checks remain in the account
 package. Hosts must verify/enroll an owner before exposing this API to their UI.
 The exported source alone does not prove that its public key is a live owner.
 

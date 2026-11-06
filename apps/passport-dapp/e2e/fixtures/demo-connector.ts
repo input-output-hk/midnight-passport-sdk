@@ -118,13 +118,40 @@ const account = (credentialId: Uint8Array, owner?: AuthenticatedJubjubOwner) => 
       return [
         {
           inboxIndex: 2,
-          coin: { color: new Uint8Array(32), value: 2n, nonce: new Uint8Array(32) },
+          coin: {
+            color: new Uint8Array(32),
+            value: BigInt(
+              (window as unknown as { __ownerReadValue?: number }).__ownerReadValue ?? 2,
+            ),
+            nonce: new Uint8Array(32),
+          },
         },
       ];
     },
-    async rotateViewingKey() {
+    async rotateViewingKey(options: FlowOptions = {}) {
       await signAccount();
       const s = await call('rotate');
+      const event = {
+        id: `rotation-${s.txHash}`,
+        flowId: 'synthetic-rotation',
+        step: 'sponsor.submit' as const,
+        at: Date.now(),
+        clock: 'client' as const,
+      };
+      options.onEvent?.({ ...event, phase: 'start' });
+      options.onEvent?.({
+        ...event,
+        phase: 'end',
+        detail: {
+          txId: s.txHash,
+          circuit:
+            owner || ARM === 'jubjub' ? 'rotate_enc_key_with_jubjub' : 'rotate_enc_key_with_p256',
+        },
+      });
+      if ((window as unknown as { __partialOwnerRotation?: boolean }).__partialOwnerRotation) {
+        await call('rotation-tail');
+        await signAccount(); // A new inbox append must refuse after lease loss.
+      }
       return { ...tx(s), droppedDeviceEntries: [], unsealedGrantIds: [], sealedReadGrants: [] };
     },
     async addDevice(_reader: { devicePublicKey: string }) {

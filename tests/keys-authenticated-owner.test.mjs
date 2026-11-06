@@ -155,3 +155,46 @@ test('authenticated owner signs owner administration and value calls; expiry/loc
   );
   await assert.rejects(key.authoriser.devicePublicKey(), /locked/);
 });
+
+test('private owner reads recheck completion, while mutation receipts survive local expiry', async () => {
+  let valid = true;
+  const key = createAuthenticatedJubjubOwner({
+    context,
+    ...material(),
+    pure: pureCircuits,
+    companionReader: false,
+    check() {
+      if (!valid) throw Error('expired');
+    },
+  });
+  for (const read of [
+    () =>
+      key.prf.withSession(async () => {
+        valid = false;
+        return 'private';
+      }),
+    () =>
+      key.authoriser.withKeySession(
+        async () => {
+          valid = false;
+          return 'private';
+        },
+        { kind: 'read-holdings' },
+      ),
+  ]) {
+    valid = true;
+    await assert.rejects(read(), /expired/);
+  }
+  valid = true;
+  assert.deepEqual(
+    await key.authoriser.withKeySession(
+      async () => {
+        valid = false;
+        return { txHash: 'original' };
+      },
+      { kind: 'rotate-encryption-key', account: context.account },
+    ),
+    { txHash: 'original' },
+  );
+  key.dispose();
+});

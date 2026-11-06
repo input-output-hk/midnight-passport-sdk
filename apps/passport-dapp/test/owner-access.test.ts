@@ -193,3 +193,22 @@ test('public receipt reconciliation reads survive lease loss without authorising
   assert.deepEqual(reads, ['state', 'devices', 'grants']);
   assert.throws(() => routed.rotateViewingKey!(), /expired/);
 });
+
+test('companion enrollment retains its rotation reference after verification failure and reconciliation', async () => {
+  const f = fixture();
+  f.input.primary.addDevice = async () => ({
+    txHash: 'enrollment-id',
+    nextUseCounter: 1n,
+    rotationTxHash: 'rotation-id',
+    commitmentHex: 'cd'.repeat(32),
+  });
+  await assert.rejects(authenticateOwnerAccount(f.input), /not enrolled/);
+  let record = JSON.parse([...f.entries.values()][0]!);
+  assert.equal(record.txHash, 'enrollment-id');
+  assert.equal(record.rotationTxHash, 'rotation-id');
+  f.setLive();
+  await authenticateOwnerAccount(f.input);
+  record = JSON.parse([...f.entries.values()][0]!);
+  assert.equal(record.state, 'verified');
+  assert.equal(record.rotationTxHash, 'rotation-id');
+});
