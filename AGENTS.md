@@ -69,6 +69,16 @@ browser tests cover these controls with real signing guards and synthetic driver
 
 ## 1. What you need
 
+### Local naming adapter example (after RC7)
+
+The **Name service · mock adapter** panel resolves `alice.passport.test` and
+`bob.passport.test` in memory on the configured demo network. No open account,
+credential, funding or name creation is involved. Its addresses are synthetic,
+not deployed ACCs; never fund them. The panel never changes a transfer recipient.
+The reusable interface is `account/ports`' `PassportNameService`; the checked
+helper is `account/names`. The mock stays in the app. See
+[`docs/site/names.md`](docs/site/names.md). Neither export is in published RC7.
+
 | Requirement                                                                                                     | Why                                                                                                         |
 | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | macOS or Linux with [Nix](https://nixos.org/download) (flakes enabled)                                          | The shell pins Node, pnpm and Compact 0.35.0. A global `compact` is refused.                                |

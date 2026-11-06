@@ -4,6 +4,13 @@ title: Use-case coverage and release evidence
 permalink: /use-case-coverage/
 ---
 
+Local source after RC7 adds mock name-resolution coverage: the SDK's read-only
+port/resolver has scope, shape, expiry, absence/failure and redaction tests. The
+Chromium demo lane checks lookup, missing/invalid input, no credential access and
+unchanged transfer recipient. These synthetic fixtures do not qualify a live
+name provider, registration, name ownership or account deployment. See
+[naming adapters]({{ '/names/' | relative_url }}).
+
 ## Current published release and evidence tiers
 
 Published **RC7** adds ceremony-purpose hooks, consistent demo operation review,

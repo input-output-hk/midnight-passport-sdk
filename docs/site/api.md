@@ -4,6 +4,11 @@ title: Account API
 permalink: /api/
 ---
 
+Local source after RC7 adds the optional read-only
+[naming-service port and checked resolver]({{ '/names/' | relative_url }}):
+`PassportNameService` in `account/ports`, `resolvePassportName` in `account/names`.
+These are independent of account creation and absent from published RC7.
+
 The public flow is `createPassportAccounts(ports): PassportConnectorAPI` from `mn-passport-account`. The interfaces are in `mn-passport-protocol`; adapter authors import the contracts from `mn-passport-account/ports`. Source links below point to the exact prototype API.
 
 ```ts

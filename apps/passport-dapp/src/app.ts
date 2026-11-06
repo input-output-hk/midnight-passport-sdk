@@ -37,6 +37,8 @@ import { createDemoSession } from './session.js';
 import { unlockDemoSessionKey } from './session-key.js';
 import { sessionCheckpoint } from './session-checkpoint.js';
 import { demoOperationGuard } from './operation-guard.js';
+import { createMockNameService } from './mock-name-service.js';
+import { showDemoNameService } from './name-service.js';
 
 installShim();
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
@@ -98,6 +100,7 @@ if (recoveryNote)
 const { status, stage, record, event: onEvent } = ui;
 setOperationTraceSink(ui.trace);
 showDemoCapabilities(ARM);
+showDemoNameService(createMockNameService(network), network);
 
 let api: PassportConnectorAPI | undefined;
 let devWallet: DevWallet | undefined;

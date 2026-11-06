@@ -590,6 +590,31 @@
         </p>
       </section>
 
+      <section class="panel" aria-labelledby="name-service-title">
+        <h2 id="name-service-title">Name service · mock adapter</h2>
+        <p>
+          Read-only integration example. Try <code>alice.passport.test</code> or
+          <code>bob.passport.test</code> in the <code>passport-demo</code> namespace on this demo's
+          network. These synthetic addresses are not deployed accounts. No name is registered, no
+          passkey is requested and no transfer destination is changed.
+        </p>
+        <form id="name-service-form">
+          <label for="name-service-name">Exact name</label>
+          <input
+            id="name-service-name"
+            name="name"
+            value="alice.passport.test"
+            maxlength="256"
+            required
+          />
+          <button id="name-service-resolve" class="btn btn-secondary" type="submit">
+            Look up name
+          </button>
+        </form>
+        <p id="name-service-status" role="status" aria-live="polite">No lookup yet.</p>
+        <pre id="name-service-result" tabindex="0" aria-label="Name resolution result"></pre>
+      </section>
+
       <section class="panel panel-activity" aria-labelledby="activity-title">
         <div class="panel-head">
           <h2 id="activity-title">Progress</h2>

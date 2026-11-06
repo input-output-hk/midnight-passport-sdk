@@ -717,6 +717,29 @@ try {
       done('prepare holder, issue/export/spend/revoke, refuse revoked spend and recover pending');
 
       const beforeInspection = calls.length;
+      const recipientBeforeLookup = await owner.locator('#withdraw-recipient').inputValue();
+      await owner.locator('#name-service-resolve').click();
+      await owner
+        .locator('#name-service-status')
+        .filter({ hasText: 'Mock record found' })
+        .waitFor();
+      assert.match(await owner.locator('#name-service-result').innerText(), /"mode": "mock"/);
+      assert.match(
+        await owner.locator('#name-service-result').innerText(),
+        /"networkId": "undeployed"/,
+      );
+      await owner.locator('#name-service-name').fill('missing.passport.test');
+      await owner.locator('#name-service-resolve').click();
+      await owner.locator('#name-service-status').filter({ hasText: 'Name not found' }).waitFor();
+      assert.equal(await owner.locator('#name-service-result').innerText(), '');
+      await owner.locator('#name-service-name').fill('alice\u202e.passport.test');
+      await owner.locator('#name-service-resolve').click();
+      await owner.locator('#name-service-status').filter({ hasText: 'InvalidQuery' }).waitFor();
+      assert.equal(await owner.locator('#withdraw-recipient').inputValue(), recipientBeforeLookup);
+      assert.equal(calls.length, beforeInspection);
+      done(
+        'mock name lookup, absence and invalid input never access credentials or change recipient',
+      );
       await owner.locator('#capability-operation').selectOption('withdraw-shielded');
       assert.match(
         await owner.locator('#capability-report').innerText(),

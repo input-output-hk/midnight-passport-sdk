@@ -1,5 +1,12 @@
 # Passport prototype: apps
 
+Local source after RC7 adds a read-only **Name service · mock adapter** panel.
+It composes `account/names` with an app-owned in-memory `PassportNameService`.
+Try `alice.passport.test` or `bob.passport.test`; these synthetic records are
+not deployed accounts, require no passkey and never set a transfer recipient.
+See [the naming adapter guide](../docs/site/names.md) before replacing the mock.
+No registration or naming backend is launched; published RC7 is unchanged.
+
 A prototype of the Midnight Passport DApp Connector API and the web app that carries its heavy
 lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](../docs/superpowers/specs/2026-10-06-passport-dapp-design.md).
 

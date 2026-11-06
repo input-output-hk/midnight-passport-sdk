@@ -1,5 +1,9 @@
 # Midnight Passport DApp prototype
 
+The local source after RC7 also has a read-only, app-owned mock naming adapter.
+See [naming-service interfaces, replacement and demo limits](../site/names.md).
+It is independent of onboarding and never authorizes or redirects a transfer.
+
 For the current `acc-s3r1.1` setup, funding flow, audit status and operator handover, see the
 [engineering handover](../site/handover.md). The run evidence below is historical and names the
 older `acc-45721e1` binding.
