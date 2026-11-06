@@ -2,6 +2,11 @@
 import { MidnightBech32m, UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
 import { Buffer } from 'buffer';
 export async function createDevWallet(_seed: Uint8Array, config: { networkId: string }) {
+  const fixture = window as unknown as {
+    __demoWalletStarts?: number;
+    __demoHoldWalletStop?: () => Promise<void>;
+  };
+  fixture.__demoWalletStarts = (fixture.__demoWalletStarts ?? 0) + 1;
   const address = MidnightBech32m.encode(
     config.networkId,
     new UnshieldedAddress(Buffer.alloc(32, 7)),
@@ -22,5 +27,10 @@ export async function createDevWallet(_seed: Uint8Array, config: { networkId: st
     },
     getDustBalance: async () => ({ balance: 0n, cap: 0n }),
   };
-  return { descriptor: { connect: async () => api }, stop: async () => {} };
+  return {
+    descriptor: { connect: async () => api },
+    stop: async () => {
+      await fixture.__demoHoldWalletStop?.();
+    },
+  };
 }

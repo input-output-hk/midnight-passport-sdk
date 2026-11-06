@@ -1419,6 +1419,70 @@ try {
       done(
         'one PRF unlock serves repeated readings and wallet connection; critical rotation stays fresh and lock prevents reuse',
       );
+      for (const action of ['holdings', 'wallet']) {
+        await approve(owner, 'unlockRoutine');
+        await waitStatus(owner, /Quick actions unlocked/);
+        const beforeExpiry = await credentialsUsed();
+        await click(owner, `#${action}`);
+        await owner.locator('#consent-dialog').waitFor({ state: 'visible' });
+        await owner.evaluate(() => {
+          (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset =
+            31 * 60_000;
+        });
+        await click(owner, '#consent-continue');
+        await waitStatus(owner, /failed\./, /locked or expired/);
+        await owner.evaluate(() => {
+          (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 0;
+        });
+        assert.equal(
+          await credentialsUsed(),
+          beforeExpiry,
+          'expired review cannot fall back to a passkey',
+        );
+        assert.equal(await owner.locator('#ceremony-dialog').isVisible(), false);
+        done(`${action} review expiry refuses without silently requesting a passkey`);
+      }
+      await approve(owner, 'unlockRoutine');
+      await waitStatus(owner, /Quick actions unlocked/);
+      const beforeWalletRace = await credentialsUsed();
+      const walletStarts = await owner.evaluate(() => {
+        const w = window as unknown as {
+          __demoWalletStarts?: number;
+          __demoHoldWalletStop?: () => Promise<void>;
+          __demoWalletStopping?: boolean;
+          __demoReleaseWalletStop?: () => void;
+        };
+        w.__demoHoldWalletStop = () =>
+          new Promise<void>((resolve) => {
+            w.__demoWalletStopping = true;
+            w.__demoReleaseWalletStop = resolve;
+          });
+        return w.__demoWalletStarts;
+      });
+      await approve(owner, 'wallet');
+      await owner.waitForFunction(
+        () => (window as unknown as { __demoWalletStopping?: boolean }).__demoWalletStopping,
+      );
+      await owner.evaluate(() => {
+        const w = window as unknown as {
+          __demoHoldWalletStop?: () => Promise<void>;
+          __demoReleaseWalletStop?: () => void;
+        };
+        window.dispatchEvent(new Event('pagehide'));
+        delete w.__demoHoldWalletStop;
+        w.__demoReleaseWalletStop!();
+      });
+      await waitStatus(owner, /failed\./, /locked or expired/);
+      assert.equal(
+        await owner.evaluate(
+          () => (window as unknown as { __demoWalletStarts?: number }).__demoWalletStarts,
+        ),
+        walletStarts,
+      );
+      assert.equal(await credentialsUsed(), beforeWalletRace);
+      done(
+        'lock while the previous wallet stops discards copied seed without starting a new wallet',
+      );
       await approve(owner, 'unlockRoutine');
       await waitStatus(owner, /Quick actions unlocked/);
       await owner.evaluate(() => window.dispatchEvent(new Event('pagehide')));

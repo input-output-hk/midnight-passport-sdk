@@ -17,6 +17,8 @@ wallet connection or a login into unrestricted ACC spending authority.
 3. **Read shielded holdings** and **Connect built-in wallet** now reuse the unlocked
    material. Repeating them within this session does not request the passkey again.
    They retain their operation reviews and chain/network/credential checks.
+   If the lease expires or locks while reviewing or starting an action, it stops;
+   the page does not silently replace the reviewed routine path with a passkey request.
 4. To use JubJub for a transfer, choose the withdrawal asset and recipient, then
    approve the separate **Transfer permission** and its caps/expiry. Issuing that
    permission is a critical owner operation and still needs fresh passkey approval.

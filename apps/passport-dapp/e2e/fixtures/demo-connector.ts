@@ -3,7 +3,7 @@
 import { webauthnPasskey } from '@input-output-hk/mn-passport-adapter-webauthn';
 import type { FlowOptions, GrantScopeInput } from '@input-output-hk/mn-passport-protocol';
 import { beforeDemoCeremony } from '../../src/consent.ts';
-import { routineKeys } from '../../src/routine-access.ts';
+import { routineKeys, checkRoutineReview } from '../../src/routine-access.ts';
 
 export const SERVICE_URL = 'http://localhost:8787';
 export const MANIFEST_SHA256 = '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f';
@@ -85,6 +85,7 @@ const account = (credentialId: Uint8Array) => ({
     };
   },
   async readShieldedHoldings() {
+    checkRoutineReview();
     if (
       !routineKeys.matches({
         address: ADDRESS,

@@ -122,6 +122,20 @@ test('real device envelopes open with the bounded reader; another account and a 
   seed.fill(0);
 });
 
+test('a captured review lease refuses expiry and cannot revive after another unlock of the same account', async () => {
+  const f = fixture();
+  assert.equal(f.keys.lease(account), undefined);
+  await f.keys.unlock(account, 10, 'localhost', 'http://localhost:5173');
+  const reviewed = f.keys.lease(account)!;
+  reviewed();
+  f.time(1_800_000 + 10 * 60_000, 1000);
+  assert.throws(reviewed, /locked or expired/);
+  await f.keys.unlock(account, 15, 'localhost', 'http://localhost:5173');
+  assert.throws(reviewed, /locked or expired/);
+  f.keys.lease(account)!();
+  f.keys.lock();
+});
+
 test('grant children reuse the unlock but remain distinct and cannot sign owner calls or survive local lock', async () => {
   const f = fixture();
   await f.keys.unlock(account, 15, 'localhost', 'http://localhost:5173');

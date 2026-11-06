@@ -129,6 +129,12 @@ export function createRoutineKeys(ports: {
       };
     },
     lock: () => lock(),
+    lease(account: RoutineAccount): (() => void) | undefined {
+      const context = contextOf(account);
+      if (!context || !matches(context)) return undefined;
+      const version = revision;
+      return () => check(context, version);
+    },
     matches(account: RoutineAccount) {
       const context = contextOf(account);
       return !!context && matches(context);

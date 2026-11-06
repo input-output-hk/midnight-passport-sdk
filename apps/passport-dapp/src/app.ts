@@ -43,7 +43,12 @@ import { showDemoNameService } from './name-service.js';
 import { createDemoWorkspace } from './workspace.js';
 import { ActivityPanel } from './activity-controls.js';
 import { installLaceWallet } from './lace-wallet.js';
-import { routineKeys } from './routine-access.js';
+import {
+  routineKeys,
+  beginRoutineReview,
+  checkRoutineReview,
+  finishRoutineReview,
+} from './routine-access.js';
 
 installShim();
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
@@ -78,13 +83,15 @@ const ui = createUi(
   ARM,
   {
     before: async (action) => {
+      const routineUnlocked = beginRoutineReview(account, action);
       const approved = await reviewDemoAction(action, {
         network,
         arm: ARM,
         account: account?.address,
         target: ui.knownAddress(),
-        routineUnlocked: !!account && routineKeys.matches(account),
+        routineUnlocked,
       });
+      if (approved) checkRoutineReview();
       if (
         approved &&
         ['withdraw', 'startSession', 'spendGrant', 'fund'].includes(action) &&
@@ -96,7 +103,10 @@ const ui = createUi(
       return approved;
     },
     run: demoOperationGuard(network, BINDING_ID, navigator.locks),
-    after: finishDemoConsent,
+    after: () => {
+      finishRoutineReview();
+      finishDemoConsent();
+    },
   },
 );
 ActivityPanel(
@@ -393,6 +403,7 @@ ui.on('refresh', async () => {
   );
 });
 ui.on('holdings', async () => {
+  checkRoutineReview();
   if (!account?.readShieldedHoldings)
     throw new Error('Open a sealed Passport account before reading its shielded holdings.');
   const current = account;
@@ -1086,6 +1097,8 @@ ui.on('walletRefresh', async () => {
   showWalletBalanceResult(balances, 'refresh');
 });
 async function connectBuiltInWallet(): Promise<void> {
+  checkRoutineReview();
+  const lease = account && routineKeys.lease(account);
   status('Reading the service configuration…');
   const config = await fetchServiceConfig(SERVICE_URL, tracedFetch, network);
   if (config.networkId !== network) {
@@ -1095,16 +1108,23 @@ async function connectBuiltInWallet(): Promise<void> {
     );
   }
   stage('seed');
+  checkRoutineReview();
+  lease?.();
   // With an open account the PRF ceremony is pinned to its passkey (one prompt, no picker); with
   // none, the user picks a passkey first. Fails closed: without PRF this throws
   // UnsupportedAuthenticator, and no other wallet opens.
   status(
-    account
-      ? "Confirm with this account's passkey to derive the wallet seed (PRF)…"
-      : 'Choose your passkey, then confirm again to derive the wallet seed (PRF)…',
+    lease
+      ? 'Using the unlocked built-in wallet seed…'
+      : account
+        ? "Confirm with this account's passkey to derive the wallet seed (PRF)…"
+        : 'Choose your passkey, then confirm again to derive the wallet seed (PRF)…',
   );
+  const cachedSeed = account && routineKeys.walletSeed(account);
+  if (lease && !cachedSeed)
+    throw new Error('Quick actions are locked or expired. Unlock again with your passkey.');
   const seed =
-    (account && routineKeys.walletSeed(account)) ||
+    cachedSeed ||
     (await walletSeed({
       rpId: RP_ID,
       accountCredentialId: account?.credentialId,
@@ -1123,7 +1143,17 @@ async function connectBuiltInWallet(): Promise<void> {
     devWallet = undefined;
     ui.clearWallet();
     await previousWallet?.stop();
-    devWallet = await createDevWallet(seed, config);
+    lease?.();
+    checkRoutineReview();
+    const started = await createDevWallet(seed, config);
+    try {
+      lease?.();
+      checkRoutineReview();
+    } catch (error) {
+      await started.stop();
+      throw error;
+    }
+    devWallet = started;
     traceOperation('wallet.facade.started', { networkId: network });
   } finally {
     seed.fill(0);
