@@ -191,6 +191,10 @@ const session = createDemoSession({
   },
 });
 const sessionUse = () => (document.getElementById('session-use') as HTMLInputElement).checked;
+const ownerAuthorization = () =>
+  authenticatedAccount && routineKeys.snapshot().ownerVerified
+    ? 'authenticated JubJub full owner (no new passkey prompt)'
+    : 'fresh owner passkey';
 setInterval(() => updateSessionClock(session.snapshot()), 1000);
 routineKeys.subscribe((snapshot) => {
   if (snapshot.status !== 'active' || !snapshot.ownerVerified) authenticatedAccount = undefined;
@@ -1019,7 +1023,7 @@ ui.on('startSession', async () => {
     throw new Error('Choose 10–30 minutes.');
   if (
     !window.confirm(
-      `Authorize a scoped JubJub session?\n\nACC: ${current.address}\nNetwork: ${network}\nAsset: ${scope.color}\nRecipient: ${input.recipient}\nPer transfer: ${scope.perCallCap}\nTotal cap: ${scope.cap} smallest units\nAbsolute lifetime: ${minutes} minutes from authorization start (including proving).\n\nUnlock with the account passkey, then approve owner signatures to issue the grant. No owner or read authority is delegated. Critical actions still require your passkey. A copied key may spend until chain expiry or confirmed revocation.`,
+      `Authorize a scoped JubJub session?\n\nACC: ${current.address}\nNetwork: ${network}\nAsset: ${scope.color}\nRecipient: ${input.recipient}\nPer transfer: ${scope.perCallCap}\nTotal cap: ${scope.cap} smallest units\nAbsolute lifetime: ${minutes} minutes from authorization start (including proving).\n\nGrant issuer: ${ownerAuthorization()}. Unlock the separate scoped signer if needed, then approve issuing this grant. No owner or read authority is delegated. A copied key may spend until chain expiry or confirmed revocation.`,
     )
   ) {
     status('Session authorization declined before passkey access.');
@@ -1043,7 +1047,7 @@ ui.on('revokeSession', async () => {
   const snapshot = session.snapshot();
   if (
     !window.confirm(
-      `Revoke session grant ${snapshot.grantId ?? '(unknown; reconcile the original issue)'} for ACC ${account.address}?\n\nThis requires fresh owner passkey approval and does not undo transfers.`,
+      `Revoke session grant ${snapshot.grantId ?? '(unknown; reconcile the original issue)'} for ACC ${account.address}?\n\nAuthorization: ${ownerAuthorization()}. This does not undo transfers.`,
     )
   ) {
     status('Session grant revocation cancelled before signing.');
@@ -1097,9 +1101,13 @@ ui.on('withdraw', async () => {
       'Reconcile the original session transaction and revoke its grant before another withdrawal. No owner fallback is allowed.',
     );
   const useSession = sessionUse() && session.matches(current, transfer);
-  const route = useSession ? 'scoped JubJub session (no passkey prompt)' : 'fresh owner passkey';
+  const route = useSession ? 'scoped JubJub session (no passkey prompt)' : ownerAuthorization();
+  const unmatchedSession =
+    sessionUse() && !useSession
+      ? '\nThe selected scoped session does not match this transfer. This review requests owner authority instead.'
+      : '';
   const confirmed = window.confirm(
-    `Authorization: ${route}\n\nWithdraw from Passport ACC?\n\nNetwork: ${network}\nACC: ${current.address}\nAsset color: ${transfer.color}\nAmount: ${transfer.amount} smallest units\nFresh ACC balance: ${freshBalance}\nRecipient: ${input.recipient.trim()}\n\nConfirm this destination, amount and authorization route before signing.`,
+    `Authorization: ${route}${unmatchedSession}\n\nWithdraw from Passport ACC?\n\nNetwork: ${network}\nACC: ${current.address}\nAsset color: ${transfer.color}\nAmount: ${transfer.amount} smallest units\nFresh ACC balance: ${freshBalance}\nRecipient: ${input.recipient.trim()}\n\nConfirm this destination, amount and authorization route before signing.`,
   );
   if (!confirmed) {
     status('Withdrawal cancelled before signing.');
@@ -1110,7 +1118,7 @@ ui.on('withdraw', async () => {
   status(
     useSession
       ? 'Signing the scoped withdrawal with the active JubJub session…'
-      : 'Confirm the owner withdrawal with your passkey; proving and submission may take time…',
+      : `Signing with ${route}; proving and submission may take time…`,
   );
   // A failed/unknown session spend never falls back to an owner send.
   const result = useSession

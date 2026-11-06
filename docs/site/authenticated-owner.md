@@ -100,6 +100,15 @@ provider. Live ACC counter, device, keyring and coin checks remain in the accoun
 package. Hosts must verify/enroll an owner before exposing this API to their UI.
 The exported source alone does not prove that its public key is a live owner.
 
+The browser composition checks the lease before handing work to the prover, sponsor,
+submitter and host value-call port. Expiry during proving or sponsorship blocks the
+next submission. A host value-call POST delegates proving/submission to the backend:
+check before dispatch, then retain its acknowledgement even if the local key locks.
+Do not discard a successful response or replay an uncertain request. Custom transports
+with asynchronous preparation must recheck at their actual dispatch; direct users of
+the key factory must wire this transport policy themselves. A signature already sent
+to another process cannot be recalled by disposing the browser key.
+
 The demo keeps owner counter records separate from the primary P-256 record and
 preserves the original directory pointer. Encrypted grant journals keep the same
 root-derived key; bookkeeping recovery can open seals addressed to either of this

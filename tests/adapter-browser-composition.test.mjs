@@ -117,3 +117,121 @@ test('authenticated browser owner composition refuses context changes and never 
   owner.dispose();
   assert.throws(() => open(owner.context.account), /locked/);
 });
+
+// These are the exact decorators wired into createBrowserPassport's chain and value paths.
+// Deferred ports model expiry after signing while remote proof/sponsorship is pending.
+for (const pending of ['proof', 'sponsor'])
+  test(`authenticated owner expiry during ${pending} prevents the next dispatch`, async () => {
+    const { authenticatedOwnerTransports } =
+      await import('../packages/adapter-browser/dist/authenticated-transports.js');
+    let active = true;
+    /** @type {(() => void) | undefined} */
+    let release;
+    const paused = new Promise((resolve) => {
+      release = () => resolve(undefined);
+    });
+    /** @type {string[]} */
+    const calls = [];
+    const ports = authenticatedOwnerTransports(
+      () => {
+        if (!active) throw Error('expired');
+      },
+      {
+        prover: {
+          async proveTx() {
+            calls.push('proof');
+            if (pending === 'proof') await paused;
+            return { tx: new Uint8Array(), provenance: /** @type {const} */ ('remote') };
+          },
+        },
+        sponsor: {
+          supportsShieldedOffers: false,
+          async balanceAndSign() {
+            calls.push('sponsor');
+            if (pending === 'sponsor') await paused;
+            return new Uint8Array();
+          },
+        },
+        submitter: {
+          async submit() {
+            calls.push('submit');
+            return 'original-id';
+          },
+        },
+      },
+    );
+    const flow = (async () => {
+      const proof = await ports.prover.proveTx(new Uint8Array(), {
+        networkId: 'undeployed',
+        bindingId: 'acc-s3r1.1',
+        circuits: ['rotate_with_jubjub'],
+      });
+      const tx = await ports.sponsor.balanceAndSign(proof.tx);
+      return ports.submitter.submit(tx);
+    })();
+    if (pending === 'sponsor') await Promise.resolve();
+    active = false;
+    assert.ok(release);
+    release();
+    await assert.rejects(flow, /expired/);
+    assert.deepEqual(calls, pending === 'proof' ? ['proof'] : ['proof', 'sponsor']);
+    assert.equal(ports.sponsor.supportsShieldedOffers, false);
+  });
+
+for (const pending of ['submit', 'value'])
+  test(`authenticated owner preserves ${pending} acknowledgement after dispatch and rejects another send`, async () => {
+    const { authenticatedOwnerTransports } =
+      await import('../packages/adapter-browser/dist/authenticated-transports.js');
+    let active = true;
+    /** @type {(() => void) | undefined} */
+    let release;
+    const paused = new Promise((resolve) => {
+      release = () => resolve(undefined);
+    });
+    let calls = 0;
+    const check = () => {
+      if (!active) throw Error('expired');
+    };
+    const unused = async () => {
+      throw Error('unused');
+    };
+    const ports = authenticatedOwnerTransports(check, {
+      prover: { proveTx: unused },
+      sponsor: { balanceAndSign: unused },
+      submitter: {
+        async submit() {
+          calls++;
+          await paused;
+          return 'original-id';
+        },
+      },
+      valueCalls: {
+        async call() {
+          calls++;
+          await paused;
+          return { txHash: 'ab'.repeat(32) };
+        },
+      },
+    });
+    assert.ok(ports.valueCalls);
+    const valueCalls = ports.valueCalls;
+    const send = () =>
+      pending === 'submit'
+        ? ports.submitter.submit(new Uint8Array())
+        : valueCalls.call({
+            address: 'ab'.repeat(32),
+            circuit: 'withdraw_unshielded_with_jubjub',
+            args: [],
+          });
+    const result = send();
+    assert.equal(calls, 1);
+    active = false;
+    assert.ok(release);
+    release();
+    assert.deepEqual(
+      await result,
+      pending === 'submit' ? 'original-id' : { txHash: 'ab'.repeat(32) },
+    );
+    assert.throws(send, /expired/);
+    assert.equal(calls, 1);
+  });

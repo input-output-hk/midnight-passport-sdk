@@ -1,3 +1,4 @@
+import { authenticatedOwnerTransports } from './authenticated-transports.js';
 import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
 import type {
   AccountDirectory,
@@ -77,6 +78,7 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
       owner.context.bindingId !== config.network.bindingId)
   )
     throw new Error('Authenticated owner composition context mismatch.');
+  const transports = owner ? authenticatedOwnerTransports(() => owner.check(), config) : config;
   const passkey = webauthnPasskey(config.passkey);
   const prf = owner?.prf ?? passkey.prf;
   const grantJournal = config.grantJournal ?? config.grantJournalFactory?.(prf);
@@ -121,17 +123,17 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
       const chain = createMidnightChain({
         network: config.network,
         binding: module,
-        prover: config.prover,
-        sponsor: config.sponsor,
+        prover: transports.prover,
+        sponsor: transports.sponsor,
         sponsorKeys: config.sponsorKeys,
-        submitter: config.submitter,
+        submitter: transports.submitter,
       });
-      if (!config.valueCalls) return chain;
+      if (!transports.valueCalls) return chain;
       return {
         readAccount: chain.readAccount,
         call: (request) =>
           request.circuit.startsWith('withdraw_unshielded')
-            ? config.valueCalls!.call(request)
+            ? transports.valueCalls!.call(request)
             : chain.call(request),
       };
     },

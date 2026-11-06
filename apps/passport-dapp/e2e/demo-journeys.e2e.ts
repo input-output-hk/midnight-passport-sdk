@@ -1241,6 +1241,11 @@ try {
       assert.equal(await credentialsUsed(), beforePublicRead);
       await owner.locator('#activity-close').click();
       await owner.setViewportSize({ width: 1280, height: 900 });
+      await owner.waitForFunction(
+        () =>
+          document.getElementById('activity-toggle')?.getAttribute('aria-controls') ===
+          'activity-panel',
+      );
       done(
         'public reads reveal Activity without a ceremony; mobile results stay readable until dismissed',
       );
@@ -2191,6 +2196,22 @@ try {
         calls.filter((c) => c === 'enroll-owner').length,
         initialEnrollments + (arm === 'p256' ? 1 : 0),
       );
+      await fullOwner.setViewportSize({ width: 390, height: 844 });
+      await fullOwner.locator('#authenticated-owner-key').locator('..').locator('summary').click();
+      assert.ok(await fullOwner.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      if (process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS)
+        await fullOwner.screenshot({
+          path: resolve(
+            process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS,
+            `${arm}-authenticated-owner-mobile.png`,
+          ),
+          fullPage: true,
+        });
+      await fullOwner.locator('#authenticated-owner-key').locator('..').locator('summary').click();
+      await fullOwner.setViewportSize({ width: 1280, height: 900 });
+      done('authenticated owner public-key disclosure fits the mobile workspace');
+      const ownerDialogs: string[] = [];
+      fullOwner.on('dialog', (dialog) => ownerDialogs.push(dialog.message()));
       const authenticatedCredentials = await ownerCredentials();
       await approve(fullOwner, 'holdings');
       await waitStatus(fullOwner, /Verified 1 shielded/);
@@ -2215,8 +2236,43 @@ try {
       await waitStatus(fullOwner, /revoked/i);
       await fill(fullOwner, '#withdraw-recipient', recipient);
       await fill(fullOwner, '#withdraw-amount', '1');
+      await approve(fullOwner, 'startSession');
+      await waitStatus(fullOwner, /JubJub session active/);
+      await approve(fullOwner, 'revokeSession');
+      await waitStatus(fullOwner, /Session grant revoked on chain/);
+      assert.ok(
+        ownerDialogs.some((text) => text.includes('Grant issuer: authenticated JubJub full owner')),
+      );
+      assert.ok(
+        ownerDialogs.some(
+          (text) =>
+            text.includes('Revoke session grant') &&
+            text.includes('Authorization: authenticated JubJub full owner'),
+        ),
+      );
+      done(
+        'scoped grant issue and revocation disclose the authenticated full-owner issuer without credential access',
+      );
       await approve(fullOwner, 'withdraw');
       await waitStatus(fullOwner, /Withdrawal confirmed/);
+      assert.ok(
+        ownerDialogs.some((text) =>
+          text.includes('Authorization: authenticated JubJub full owner (no new passkey prompt)'),
+        ),
+      );
+      assert.ok(
+        !ownerDialogs.some((text) =>
+          /fresh owner passkey|Critical actions still require your passkey/.test(text),
+        ),
+      );
+      assert.ok(
+        ownerDialogs.some(
+          (text) =>
+            text.includes('selected scoped session does not match') &&
+            text.includes('owner authority instead'),
+        ),
+      );
+      done('exact owner withdrawal confirmation names the authenticated full owner');
       assert.equal(
         await ownerCredentials(),
         authenticatedCredentials,
