@@ -62,8 +62,13 @@ PRF reuse and wallet balance refresh already avoid requests. Reducing requests
 must not silently cache an owner key for a spending session, skip transaction
 consent, relax wrong-passkey checks or rewrite authenticator-signed data.
 
-This UI follow-up changes message/progress placement only. It makes no promise
-of fewer credential requests or full upstream/provider parity.
+The current source also has explicit [quick actions]({{ '/quick-actions/' | relative_url }}).
+One pinned PRF unlock keeps routine reader/wallet material in memory for the
+chosen 10–30 minutes. Repeated holdings reads and wallet connections use no new
+credential request while it is active. Scoped transfer keys can be derived from
+that session, but issuing/revoking their permission remains a critical fresh-owner
+operation. Initial creation/opening and multi-transaction owner changes can still
+need several requests; this does not promise full upstream/provider parity.
 
 [Consent]({{ '/consent/' | relative_url }}),
 [session boundaries]({{ '/jubjub-sessions/' | relative_url }}),

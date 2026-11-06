@@ -1261,11 +1261,11 @@ main.workspace-shell[data-activity='collapsed'] {
 #workspace-settings .action label {
   margin-block-start: 0.4rem;
 }
-#workspace-settings > details > label {
+#workspace-settings > [data-settings-page] > label {
   display: block;
   margin-block: 0.75rem 0.4rem;
 }
-#workspace-settings > details > input {
+#workspace-settings > [data-settings-page] > input {
   margin-block-end: 1rem;
 }
 #name-service-form {
@@ -1360,4 +1360,44 @@ main.workspace-shell[data-activity='collapsed'] {
 }
 #account-page-balances .panel > h3 {
   margin-bottom: 0.75rem;
+}
+
+.settings-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-block-end: 1px solid var(--border);
+  padding-block-end: 1rem;
+}
+.settings-nav button {
+  min-height: 44px;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--surface);
+  color: var(--heading);
+  font: inherit;
+  cursor: pointer;
+}
+.settings-nav button[aria-current='page'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+[data-settings-page][hidden] {
+  display: none;
+}
+.quick-access-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.routine-controls {
+  display: grid;
+  gap: 0.8rem;
+  padding-block: 1rem;
+  max-width: 44rem;
+}
+#workspace-settings .panel > .routine-controls {
+  margin-block-end: 2rem;
 }

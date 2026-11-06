@@ -1656,6 +1656,30 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           )
         )
           return [];
+        const routine = ports.routineViewingKey?.({
+          account: record.address,
+          networkId,
+          bindingId: network.bindingId,
+          credentialId: record.credentialId.slice(),
+        });
+        if (routine)
+          return readVerifiedHoldings(
+            {
+              account: record.address,
+              keyring: {
+                account: record.address,
+                encKey: view.encKey!,
+                envelopes: [...view.inboxEntries!].reverse(),
+              },
+            },
+            {
+              networkId,
+              chain: await readChain(),
+              authoriser: { withKeySession: async (work) => work() },
+              viewingKey: routine,
+              holdings: ports.holdings!,
+            },
+          );
         return authoriser.withKeySession!(
           async () => {
             const pk = await authoriser.devicePublicKey();

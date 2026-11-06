@@ -1,5 +1,6 @@
 import { createAccountWorkspace, type AccountPage } from './account-workspace.js';
 import { renderSessionDraft } from './session-view.js';
+import { createSettingsWorkspace } from './settings-workspace.js';
 
 /** Demo-owned layout and navigation. Moving existing nodes keeps action state and IDs intact. */
 export type WorkspaceId = 'overview' | 'account' | 'wallet' | 'audit' | 'settings';
@@ -100,11 +101,10 @@ export function createDemoWorkspace(config: {
   });
   move('wallet', wallet);
 
-  const security = node('details');
+  const security = node('section');
   security.id = 'settings-devices';
-  views.settings.append(node('h3', 'Security & access'));
   security.className = 'panel';
-  security.append(node('summary', 'Devices & passkeys'));
+  security.append(node('h3', 'Devices & passkeys'));
   views.settings.append(security);
   actions(security, ['prepareJoiner', 'roster', 'enrollDevice', 'removeDevice', 'rotate']);
   const moveBlock = (parent: HTMLElement, firstId: string, ids: readonly string[]) => {
@@ -116,10 +116,10 @@ export function createDemoWorkspace(config: {
   moveBlock(security, 'roster-empty', ['roster-empty', 'roster-facts']);
 
   const session = panelOf('session-title');
-  const sessions = node('details');
+  const sessions = node('section');
   sessions.id = 'settings-sessions';
   sessions.className = 'panel';
-  sessions.append(node('summary', 'Sessions'), session);
+  sessions.append(node('h3', 'Quick actions'), byId('routine-controls'), session);
   session.classList.remove('panel');
   move('settings', sessions);
   const editScope = byId('session-edit-target');
@@ -131,10 +131,10 @@ export function createDemoWorkspace(config: {
   byId('withdraw-asset').addEventListener('change', scope);
   byId('withdraw-recipient').addEventListener('input', scope);
   scope();
-  const access = node('details');
+  const access = node('section');
   access.id = 'settings-advanced-access';
   access.className = 'panel';
-  access.append(node('summary', 'Advanced access · manual grants'));
+  access.append(node('h3', 'Permissions · manual grants'));
   views.settings.append(access);
   actions(access, [
     'grantRoster',
@@ -196,10 +196,10 @@ export function createDemoWorkspace(config: {
   manage.className = 'btn btn-secondary';
   manage.type = 'button';
   wallet.append(manage);
-  const advanced = node('details');
+  const advanced = node('section');
   advanced.id = 'settings-developer-tools';
   advanced.className = 'panel';
-  advanced.append(node('summary', 'Advanced · Developer tools'));
+  advanced.append(node('h3', 'Developer tools'));
   const configuration = node('section');
   configuration.id = 'demo-configuration';
   configuration.className = 'panel';
@@ -237,6 +237,23 @@ export function createDemoWorkspace(config: {
     advanced.append(example);
   }
   views.settings.append(advanced);
+  const settingsPages = createSettingsWorkspace(views.settings, (page) => {
+    if (selected === 'settings') history.replaceState(null, '', `#settings/${page}`);
+  });
+  const quick = node('p');
+  quick.className = 'quick-access-summary';
+  const quickStatus = node('span', 'Quick actions locked');
+  quickStatus.id = 'routine-summary';
+  const quickManage = node('button', 'Manage quick actions');
+  quickManage.type = 'button';
+  quickManage.className = 'btn btn-ghost';
+  quickManage.addEventListener('click', () => {
+    show('settings');
+    settingsPages.select('sessions');
+    byId('unlockRoutine').focus();
+  });
+  quick.append(quickStatus, quickManage);
+  views.account.querySelector('.account-context')!.append(quick);
   oldActions.remove();
 
   const progress = panelOf('activity-title');
@@ -333,7 +350,11 @@ export function createDemoWorkspace(config: {
     history.replaceState(
       null,
       '',
-      id === 'account' ? `#account/${accountPages.selected()}` : `#${id}`,
+      id === 'account'
+        ? `#account/${accountPages.selected()}`
+        : id === 'settings'
+          ? `#settings/${settingsPages.selected()}`
+          : `#${id}`,
     );
     updateActivity();
     if (focus) byId(`workspace-${id}-title`).focus();
@@ -367,7 +388,10 @@ export function createDemoWorkspace(config: {
     closeSheet();
     updateActivity();
   });
-  manage.addEventListener('click', () => show('settings'));
+  manage.addEventListener('click', () => {
+    show('settings');
+    settingsPages.select('wallets');
+  });
   editScope.addEventListener('click', () => {
     show('account');
     accountPages.select('withdraw');
@@ -393,6 +417,8 @@ export function createDemoWorkspace(config: {
   const [hash, accountPage] = location.hash.slice(1).split('/');
   if (hash === 'account' && ['balances', 'deposit', 'withdraw'].includes(accountPage ?? ''))
     accountPages.select(accountPage as AccountPage, false);
+  if (hash === 'settings' && accountPage && settingsPages.valid(accountPage))
+    settingsPages.select(accountPage, false, false);
   show(Object.hasOwn(names, hash ?? '') ? (hash as WorkspaceId) : 'overview', false);
   // Presentation events never approve a credential or invoke an account command.
   let presentedCredential = false;

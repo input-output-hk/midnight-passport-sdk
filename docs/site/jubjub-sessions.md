@@ -31,7 +31,7 @@ supports this flow, with fresh PRF unlocks for owner operations.
    fund the ACC. Amounts are **smallest units**, not whole NIGHT.
 2. In **Passport account → Withdraw**, select an asset and enter the recipient. The session
    uses those exact fields, not the separate manual-grant form.
-3. In **Settings → Sessions → Configure a new session**, choose 10, 15 (default), or 30 minutes, a
+3. In **Settings → Quick actions → Configure a new session**, choose 10, 15 (default), or 30 minutes, a
    per-transfer cap and a total cap. Choose **Authorize JubJub session**.
 4. Review permission to use the passkey, then the exact account/network/asset/
    recipient/caps/lifetime. Declining starts no credential access. Approve the PRF

@@ -3,6 +3,7 @@
 import type { PassportStep } from '@input-output-hk/mn-passport-protocol';
 
 export type ActionId =
+  | 'unlockRoutine'
   | 'startSession'
   | 'endSession'
   | 'revokeSession'
@@ -41,6 +42,7 @@ export type PromptCount = number | readonly [min: number, max: number];
  * - Wallet: 1 with an account open (pinned to its passkey), 2 without (pick, then PRF).
  */
 export const PASSKEY_PROMPTS = {
+  unlockRoutine: 1,
   startSession: 1,
   endSession: 0,
   revokeSession: 1,
@@ -96,6 +98,12 @@ export interface FlowDef {
 const read: StageDef = { id: 'read', label: 'Read the account from the chain' };
 
 export const FLOWS: Record<ActionId, FlowDef> = {
+  unlockRoutine: {
+    title: 'Unlock quick actions',
+    summary:
+      'Keep reading and built-in wallet keys in memory for a bounded session, and derive a separate JubJub key. No transfer permission is granted.',
+    stages: [{ id: 'unlock', label: 'Unlock routine keys with the account passkey' }],
+  },
   startSession: {
     title: 'Authorize JubJub session',
     summary:
@@ -297,6 +305,7 @@ export const FLOWS: Record<ActionId, FlowDef> = {
  * at the event's own time. Every other step is noted on the running stage with its duration.
  */
 export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep, string>>>> = {
+  unlockRoutine: {},
   startSession: {},
   endSession: {},
   revokeSession: {},

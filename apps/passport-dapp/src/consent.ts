@@ -4,6 +4,8 @@ import { FLOWS, type ActionId } from './flows.js';
 import { traceOperation } from './operation-trace.js';
 
 const PURPOSES: Partial<Record<ActionId, string>> = {
+  unlockRoutine:
+    'Use the open account’s passkey PRF to unlock routine reading and built-in wallet keys for the selected 10–30 minute lifetime. Keep these only in this page’s memory and derive a separate JubJub key. This does not add an owner or grant spending permission. Device changes, key rotation, and issuing/revoking permissions still require fresh passkey approval. Lock, hidden tab, page exit or expiry discards the routine key material.',
   startSession:
     'Unlock a separate PRF-derived JubJub session key with this account’s passkey. Review the exact recipient, asset, caps and absolute expiry before owner signatures issue its on-chain grant. Eligible withdrawals use JubJub without more passkey prompts. Critical owner operations still require a fresh passkey ceremony. Session keys stay in page memory only; locking the page is not chain revocation.',
   revokeSession:
@@ -56,6 +58,7 @@ interface ConsentContext {
   readonly arm: 'p256' | 'jubjub';
   readonly account?: string | undefined;
   readonly target?: string | undefined;
+  readonly routineUnlocked?: boolean;
 }
 
 /** Selection flows must not imply that an already-open ACC is the one being approved. */
@@ -91,7 +94,12 @@ export async function reviewDemoAction(
   context: ConsentContext,
 ): Promise<boolean> {
   finishDemoConsent();
-  const purpose = PURPOSES[action];
+  const purpose =
+    context.routineUnlocked && (action === 'holdings' || action === 'wallet')
+      ? action === 'holdings'
+        ? 'Use the account’s explicitly unlocked reader keys to read and verify private holdings. This action uses no new passkey request and grants no spending permission.'
+        : 'Use the explicitly unlocked keys to connect the separate built-in Midnight wallet. This action uses no new passkey request and grants no ACC spending permission.'
+      : PURPOSES[action];
   if (!purpose) return true; // Public reads/funding never authorize a passkey ceremony.
   const dialog = document.getElementById('consent-dialog') as HTMLDialogElement;
   const title = document.getElementById('consent-title')!;

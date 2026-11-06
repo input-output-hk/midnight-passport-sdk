@@ -16,6 +16,7 @@ import type {
   NetworkConfig,
   Prover,
   PrfKeySource,
+  PassportPorts,
   Submitter,
   VerifiedHoldingSource,
 } from '@input-output-hk/mn-passport-account/ports';
@@ -50,6 +51,7 @@ export interface BrowserPassportConfig {
   readonly deployer: Deployer;
   readonly directory: AccountDirectory;
   readonly holdings?: VerifiedHoldingSource;
+  readonly routineViewingKey?: PassportPorts['routineViewingKey'];
   readonly readGrants?: ActiveReadGrantTargetSource;
   readonly grants?: ActiveGrantSnapshotSource;
   readonly grantCommitments?: GrantCommitmentSource;
@@ -123,6 +125,7 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
     deployer: config.deployer,
     directory: config.directory,
     ...(config.holdings && { holdings: config.holdings }),
+    ...(config.routineViewingKey && { routineViewingKey: config.routineViewingKey }),
     ...(config.readGrants && { readGrants: config.readGrants }),
     ...(config.grants && { grants: config.grants }),
     ...(config.grantCommitments && { grantCommitments: config.grantCommitments }),

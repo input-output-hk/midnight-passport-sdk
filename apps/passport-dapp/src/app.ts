@@ -43,6 +43,7 @@ import { showDemoNameService } from './name-service.js';
 import { createDemoWorkspace } from './workspace.js';
 import { ActivityPanel } from './activity-controls.js';
 import { installLaceWallet } from './lace-wallet.js';
+import { routineKeys } from './routine-access.js';
 
 installShim();
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
@@ -82,6 +83,7 @@ const ui = createUi(
         arm: ARM,
         account: account?.address,
         target: ui.knownAddress(),
+        routineUnlocked: !!account && routineKeys.matches(account),
       });
       if (
         approved &&
@@ -149,7 +151,7 @@ const session = createDemoSession({
     safetyNotice.hidden = phase !== 'blocked';
     safetyNotice.textContent =
       phase === 'blocked'
-        ? `A session operation needs reconciliation${intentId ? ` (original intent ${intentId})` : ''}. The local key is locked. Do not retry a transfer; inspect Settings → Sessions and Audit.`
+        ? `A session operation needs reconciliation${intentId ? ` (original intent ${intentId})` : ''}. The local key is locked. Do not retry a transfer; inspect Settings → Quick actions and Audit.`
         : '';
     traceOperation('session.state', {
       phase,
@@ -168,9 +170,31 @@ const session = createDemoSession({
 });
 const sessionUse = () => (document.getElementById('session-use') as HTMLInputElement).checked;
 setInterval(() => updateSessionClock(session.snapshot()), 1000);
-window.addEventListener('pagehide', () => session.lock());
+routineKeys.subscribe((snapshot) => {
+  ui.refreshPrompts();
+  document.getElementById('routine-status')!.textContent =
+    snapshot.status === 'active'
+      ? `Unlocked until ${new Date(snapshot.expiresAt!).toLocaleTimeString()}. Reading and wallet connection need no new passkey. Transfers require a separate permission.`
+      : `Quick actions ${snapshot.status}. Unlock with your account passkey to continue.`;
+  document.getElementById('routine-summary')!.textContent =
+    snapshot.status === 'active' ? 'Quick actions unlocked' : `Quick actions ${snapshot.status}`;
+  if (
+    snapshot.status !== 'active' &&
+    ['active', 'spending', 'authorizing'].includes(session.snapshot().status)
+  )
+    session.lock();
+});
+setInterval(() => routineKeys.snapshot(), 1000);
+document.getElementById('lock-routine')!.addEventListener('click', () => routineKeys.lock());
+window.addEventListener('pagehide', () => {
+  routineKeys.lock();
+  session.lock();
+});
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) session.lock();
+  if (document.hidden) {
+    routineKeys.lock();
+    session.lock();
+  }
 });
 
 async function refreshAccountBalances(
@@ -272,6 +296,7 @@ if (injected()) {
 }
 
 ui.on('create', async () => {
+  routineKeys.lock();
   status(
     ARM === 'jubjub'
       ? `Creating a JubJub account… confirm the passkey ceremonies, then wait for deployment (about ${DEPLOY_ESTIMATE_S / 60} minutes).`
@@ -294,6 +319,7 @@ ui.on('create', async () => {
   await opened(a, 'created');
 });
 ui.on('open', async () => {
+  routineKeys.lock();
   status(
     ARM === 'jubjub'
       ? 'Opening… choose your passkey and unlock its sealed ACC viewing secret.'
@@ -302,6 +328,7 @@ ui.on('open', async () => {
   await opened(await (await connector()).openAccount({ onEvent }), 'reopened');
 });
 ui.on('openAt', async () => {
+  routineKeys.lock();
   const requestedAddress = knownAccAddress(ui.knownAddress());
   traceOperation('account.openByAddress.requested', { accountAddress: requestedAddress });
   status('Opening the known ACC… choose an enrolled passkey and unlock its sealed viewing key.');
@@ -312,6 +339,23 @@ ui.on('openAt', async () => {
     throw new Error('The connector returned a different ACC address.');
   await opened(restored, 'opened by address');
   traceOperation('account.openByAddress.verified', { accountAddress: restored.address });
+});
+ui.on('unlockRoutine', async () => {
+  if (!account) throw new Error('Open a Passport account first.');
+  await routineKeys.unlock(
+    account,
+    Number((document.getElementById('routine-minutes') as HTMLSelectElement).value),
+    RP_ID,
+    ORIGIN,
+  );
+  status(
+    'Quick actions unlocked. A PRF-derived JubJub key is ready; transfers still need a separate scoped permission.',
+  );
+  traceOperation('routine.unlocked', {
+    accountAddress: account.address,
+    expiresAt: routineKeys.snapshot().expiresAt,
+    publicKey: routineKeys.snapshot().publicKey,
+  });
 });
 ui.on('refresh', async () => {
   if (!account) throw new Error('Open a Passport account before refreshing it.');
@@ -912,6 +956,7 @@ ui.on('startSession', async () => {
   );
 });
 ui.on('endSession', async () => {
+  routineKeys.lock();
   session.lock();
   status(
     'Local session locked. Its on-chain grant is not revoked; already-submitted effects still require reconciliation.',
@@ -1058,11 +1103,13 @@ async function connectBuiltInWallet(): Promise<void> {
       ? "Confirm with this account's passkey to derive the wallet seed (PRF)…"
       : 'Choose your passkey, then confirm again to derive the wallet seed (PRF)…',
   );
-  const seed = await walletSeed({
-    rpId: RP_ID,
-    accountCredentialId: account?.credentialId,
-    beforeCeremony: beforeDemoCeremony,
-  });
+  const seed =
+    (account && routineKeys.walletSeed(account)) ||
+    (await walletSeed({
+      rpId: RP_ID,
+      accountCredentialId: account?.credentialId,
+      beforeCeremony: beforeDemoCeremony,
+    }));
   traceOperation('wallet.seed.derived', {
     source: 'passkey PRF (Lace recipe v1)',
     accountPinned: !!account,

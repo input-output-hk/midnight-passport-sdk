@@ -524,8 +524,41 @@
           </li>
         </ul>
       </section>
+      <section id="routine-controls" class="routine-controls" aria-labelledby="routine-title">
+        <h4 id="routine-title">Unlock once for routine actions</h4>
+        <p>
+          Read private holdings and connect your built-in wallet without repeatedly using your
+          passkey. A separate JubJub key handles transfers only after you approve its recipient,
+          asset and limits below.
+        </p>
+        <label for="routine-minutes">Keep unlocked for</label>
+        <select id="routine-minutes" class="action-input">
+          <option value="10">10 minutes</option>
+          <option value="15" selected>15 minutes</option>
+          <option value="30">30 minutes</option>
+        </select>
+        <p id="routine-status" role="status">Quick actions are locked.</p>
+        <button
+          id="unlockRoutine"
+          class="btn btn-primary"
+          type="button"
+          aria-describedby="unlockRoutine-desc unlockRoutine-prompts"
+          disabled
+        >
+          Unlock quick actions
+        </button>
+        <p id="unlockRoutine-prompts" class="prompts"></p>
+        <p id="unlockRoutine-desc" class="action-desc"></p>
+        <button id="lock-routine" class="btn btn-secondary" type="button">
+          Lock quick actions
+        </button>
+        <p>
+          Critical account changes still require your passkey. Locking local keys does not revoke a
+          transfer permission already on chain.
+        </p>
+      </section>
       <section class="panel session-panel" aria-labelledby="session-title">
-        <h2 id="session-title">Quick transfer session</h2>
+        <h4 id="session-title">Transfer permission</h4>
         <p class="section-intro">
           Approve a temporary permission for unshielded transfers to one recipient. Account
           administration still requires your passkey.

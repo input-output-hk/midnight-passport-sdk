@@ -28,6 +28,7 @@ import { browserAccountRecords, browserGrantJournal } from './grant-journal.js';
 import { demoValueCall } from './value-call.js';
 import { grantHandoffFromOpening, type GrantHandoff } from './grant-handoff.js';
 import { beforeDemoCeremony } from './consent.js';
+import { routineKeys } from './routine-access.js';
 
 export const SERVICE_URL = import.meta.env.VITE_PASSPORT_SERVICE_URL ?? 'http://localhost:8787';
 /** The artefact manifest hash this build pins (R18); the service's /v1/config is checked against it. */
@@ -172,6 +173,7 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
     deployer: remoteV1Deployer(SERVICE_URL, { fetch: tracedFetch }),
     directory: demoDirectory(),
     holdings: holdingPort,
+    routineViewingKey: (context) => routineKeys.viewer(context),
     readGrants,
     grants: {
       readActiveGrantSnapshot: async (account) => (await grants()).readActiveGrantSnapshot(account),

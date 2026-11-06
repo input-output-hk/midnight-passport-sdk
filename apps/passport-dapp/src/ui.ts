@@ -21,6 +21,7 @@ import { evidenceJson } from './evidence.js';
 import { progressView, segmentGrow } from './progress.js';
 import { createActivityStore } from '@input-output-hk/mn-passport-account/interaction';
 import { demoActivityObservation, operationForRun } from './activity-observations.js';
+import { routineKeys } from './routine-access.js';
 import type { OperationTraceEntry } from './operation-trace.js';
 
 export interface EvidenceHeader {
@@ -53,6 +54,7 @@ export interface WalletView {
 }
 
 const ACTIONS: readonly ActionId[] = [
+  'unlockRoutine',
   'startSession',
   'endSession',
   'revokeSession',
@@ -177,11 +179,17 @@ export function createUi(
     'You still need an enrolled passkey. An address alone cannot grant access or recover a lost passkey.';
   const renderPrompts = () => {
     for (const action of ACTIONS) {
-      byId(`${action}-prompts`).textContent = ['create', 'open', 'openAt'].includes(action)
-        ? 'Passkey approval required'
-        : promptsFor(action, !!account) === 0
-          ? promptLabel(0)
-          : 'Passkey prompts vary by purpose, provider and transaction count.';
+      byId(`${action}-prompts`).textContent =
+        account &&
+        routineKeys.snapshot().status === 'active' &&
+        routineKeys.snapshot().account === account.address &&
+        ['holdings', 'wallet'].includes(action)
+          ? 'Uses unlocked keys · no new passkey request'
+          : ['create', 'open', 'openAt'].includes(action)
+            ? 'Passkey approval required'
+            : promptsFor(action, !!account) === 0
+              ? promptLabel(0)
+              : 'Passkey prompts vary by purpose, provider and transaction count.';
     }
   };
 
@@ -199,6 +207,7 @@ export function createUi(
   // --- buttons -----------------------------------------------------------------------------
   const renderButtons = () => {
     const busy = log.current !== undefined;
+    buttons.unlockRoutine.disabled = busy || !account;
     buttons.startSession.disabled = busy || !account || assetsByColor.size === 0;
     buttons.endSession.disabled = false;
     buttons.revokeSession.disabled = busy || !account;
@@ -740,6 +749,7 @@ export function createUi(
   renderEvidence();
 
   return {
+    refreshPrompts: renderPrompts,
     activity,
     status,
     knownAddress: () => knownAddress.value,

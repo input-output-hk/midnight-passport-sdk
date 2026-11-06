@@ -1485,6 +1485,36 @@ test('opened JubJub accounts read only chain-confirmed shielded holdings', async
   await assert.rejects(account.readShieldedHoldings(), { code: 'InternalError' });
 });
 
+test('JubJub routine reader retains live holdings checks and cannot service a critical owner flow', async () => {
+  const w = world();
+  await w.accounts.createAccount({ userName: 'routine', retireAuthority: true });
+  let reads = 0;
+  const account = await createPassportAccounts({
+    ...w.ports,
+    routineViewingKey: (context) => {
+      assert.equal(context.account, address);
+      assert.deepEqual(context.credentialId, credentialId);
+      reads++;
+      return { openInbox: w.viewingKey.openInbox };
+    },
+  }).openAccount();
+  const coin = { nonce: new Uint8Array(32).fill(4), color: new Uint8Array(32).fill(5), value: 7n };
+  w.inbox.push(await sealInboxCoin(w.encKey(), coin));
+  w.setHeldIndices([2]);
+  const before = w.sessionFlows.length;
+  assert.deepEqual(await account.readShieldedHoldings?.(), [{ inboxIndex: 2, coin }]);
+  assert.equal(w.sessionFlows.length, before);
+  assert.equal(reads, 1);
+  w.setHeldIndices([0]);
+  assert.ok(account.readShieldedHoldings);
+  await assert.rejects(account.readShieldedHoldings(), { code: 'InternalError' });
+  const beforeRotation = w.sessionFlows.length;
+  w.setHeldIndices([2]);
+  await account.rotateViewingKey?.();
+  assert.ok(w.sessionFlows.length > beforeRotation);
+  assert.equal(reads, 2);
+});
+
 test('a JubJub account without chain-backed holding verification refuses the read', async () => {
   const w = world();
   await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });

@@ -161,6 +161,11 @@ consent. It logs the confirmed transaction and rereads the ACC balance. The buil
 reads addresses and balances; receiving an asset there does not give this demo wallet a send button.
 After an indeterminate submit error, inspect the live ACC and recipient before trying again.
 Overview has separate **Create a new account** and **Open your account** cards.
+Settings uses submenu pages rather than top-level accordions. **Quick actions**
+explicitly unlocks routine reader/wallet material for10/15/30minutes, derives
+JubJub grant children without repeated PRF prompts, and keeps critical owner
+operations on the fresh-passkey path. A grant still needs separate owner approval;
+unlocking alone does not authorize transfers. See [the guide](../docs/site/quick-actions.md).
 Activity starts collapsed; its button sits beside the workspace title.
 In the Open card, expand **Have an account address?** for **Open by ACC address**: paste the public 64-character lowercase ACC address and
 choose an already-enrolled passkey. This verifies its live device entry and sealed viewing key

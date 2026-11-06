@@ -499,6 +499,14 @@ export interface PassportPorts {
   readonly encryptionKey: EncryptionKeySource;
   /** Random ACC viewing secret behind sealed device envelopes. */
   readonly viewingKey?: AccountViewingKey;
+  /** Optional host-approved, bounded reader session. Used only for verified holdings reads;
+   * never for owner signatures, key delivery, grants or account changes. */
+  readonly routineViewingKey?: (context: {
+    readonly account: string;
+    readonly networkId: string;
+    readonly bindingId: string;
+    readonly credentialId: Uint8Array;
+  }) => Pick<AccountViewingKey, 'openInbox'> | undefined;
   readonly holdings?: VerifiedHoldingSource;
   readonly readGrants?: ActiveReadGrantTargetSource;
   /** Live ACC grant map, used to pin issue consent and confirm settlement. */

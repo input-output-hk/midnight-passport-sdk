@@ -69,6 +69,20 @@ browser tests cover these controls with real signing guards and synthetic driver
 
 ## 1. What you need
 
+### Quick actions and Settings navigation (local source)
+
+Read `docs/site/quick-actions.md`. Settings is now a set of submenu pages, not
+top-level details/summary accordions; tests must navigate the actual selected
+page before accessing controls. `#settings/sessions` is Quick actions.
+An explicit10/15/30minute PRF unlock caches routine reading/wallet material only
+in memory. PRF owner output is zeroed; critical device/key/grant owner flows must
+still use fresh passkey approval. `routineViewingKey` is read-holdings-only; never
+route writes or owner signing through it. Transfers use the existing separately
+issued capped grant and retain unknown-spend/no-fallback/revoke-first guards.
+Lock/hidden/page-exit/expiry disposes the routine cache and its grant children;
+this does not revoke a chain grant or disconnect an already running wallet.
+Keep source-native, browser/synthetic and real-provider evidence separate.
+
 ### Approved UX milestone (local source)
 
 Follow [the execution map](docs/prototype/ux-milestone.md) and milestone #3, issues

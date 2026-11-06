@@ -10,7 +10,7 @@ The local prototype after RC7 has **Overview, Passport account, Midnight wallet,
 Audit and Settings**. Create/open in Overview; use Passport account → Deposit/Withdraw for transfers;
 refresh wallet balances in Midnight wallet. Devices, sessions, manual grants and
 wallet connection setup live in Settings. Developer tools and the mock name
-lookup are under its closed Advanced section. Full logs/copy are in Audit.
+lookup are under its Developer tools submenu. Full logs/copy are in Audit.
 See [workspace and Activity controls]({{ '/demo-ui/' | relative_url }}). These UI
 changes are not in published RC7.
 

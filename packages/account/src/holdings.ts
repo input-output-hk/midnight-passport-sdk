@@ -101,7 +101,7 @@ export interface ReadVerifiedHoldingsPorts {
   readonly networkId: string;
   readonly chain: Chain;
   readonly authoriser: Pick<Authoriser, 'withKeySession'>;
-  readonly viewingKey: AccountViewingKey;
+  readonly viewingKey: AccountViewingKey | Pick<AccountViewingKey, 'openInbox'>;
   /** Confirms opened descriptions against distinct chain outputs held by this ACC. */
   readonly holdings: VerifiedHoldingSource;
 }

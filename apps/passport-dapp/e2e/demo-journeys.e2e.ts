@@ -138,6 +138,7 @@ async function reveal(page: Page, selector: string): Promise<void> {
   const location = await page.locator(selector).evaluate((element) => ({
     view: element.closest<HTMLElement>('[data-workspace]')?.dataset.workspace,
     accountPage: element.closest<HTMLElement>('[data-account-page]')?.dataset.accountPage,
+    settingsPage: element.closest<HTMLElement>('[data-settings-page]')?.dataset.settingsPage,
     details: [...(element.closest('[data-workspace]')?.querySelectorAll('details') ?? [])]
       .filter((details) => details.contains(element))
       .map((details) => details.id),
@@ -155,6 +156,12 @@ async function reveal(page: Page, selector: string): Promise<void> {
   ) {
     await page.locator(`#account-tab-${location.accountPage}`).click();
   }
+  if (
+    location.settingsPage &&
+    (await page.locator(`#settings-tab-${location.settingsPage}`).getAttribute('aria-current')) !==
+      'page'
+  )
+    await page.locator(`#settings-tab-${location.settingsPage}`).click();
   for (const id of location.details) {
     if (
       id &&
@@ -805,17 +812,47 @@ try {
         null,
       );
       await owner.locator('#nav-settings').click();
-      for (const id of [
-        'settings-devices',
-        'settings-sessions',
-        'settings-advanced-access',
-        'settings-developer-tools',
-      ]) {
-        assert.equal(
-          await owner.locator(`#${id}`).evaluate((e) => (e as HTMLDetailsElement).open),
-          false,
-        );
+      assert.deepEqual(await owner.locator('.settings-nav button').allTextContents(), [
+        'Devices & passkeys',
+        'Quick actions',
+        'Permissions',
+        'Wallet connections',
+        'Developer tools',
+      ]);
+      assert.equal(await owner.locator('[data-settings-page]:visible').count(), 1);
+      assert.equal(await owner.locator('#workspace-settings > details').count(), 0);
+      for (const page of ['sessions', 'grants', 'wallets', 'developer', 'security']) {
+        await owner.locator(`#settings-tab-${page}`).click();
+        assert.equal(await owner.locator('[data-settings-page]:visible').count(), 1);
+        assert.equal(await owner.evaluate(() => location.hash), `#settings/${page}`);
       }
+      await owner.locator('#joiner-account-address').fill(address);
+      await owner.locator('#settings-tab-grants').click();
+      assert.equal(await owner.locator('#grantee-account-address').inputValue(), address);
+      await owner.locator('#settings-tab-wallets').click();
+      await owner.locator('#settings-tab-security').click();
+      assert.equal(await owner.locator('#joiner-account-address').inputValue(), address);
+      await owner.setViewportSize({ width: 390, height: 844 });
+      assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      await owner.setViewportSize({ width: 1280, height: 900 });
+      const settingsLink = await newPage(undefined, false, '#settings/sessions');
+      assert.equal(
+        await settingsLink.locator('#settings-tab-sessions').getAttribute('aria-current'),
+        'page',
+      );
+      assert.equal(await settingsLink.locator('#unlockRoutine').isEnabled(), false);
+      await settingsLink.close();
+      const unknownSettings = await newPage(undefined, false, '#settings/unknown');
+      assert.equal(
+        await unknownSettings.locator('#settings-tab-security').getAttribute('aria-current'),
+        'page',
+      );
+      await unknownSettings.close();
+      await owner.bringToFront();
+      assert.equal(calls.length, 0);
+      done(
+        'Settings submenus preserve public drafts, deep-link safely and fit mobile without credential effects',
+      );
       await owner.locator('#nav-audit').click();
       assert.equal(await owner.locator('#activity-panel').isVisible(), false);
       const wide = await owner.locator('.workspace-center').evaluate((e) => e.clientWidth);
@@ -823,17 +860,12 @@ try {
       assert.equal(await owner.locator('#activity-panel').isVisible(), true);
       assert.ok((await owner.locator('.workspace-center').evaluate((e) => e.clientWidth)) < wide);
       await click(owner, '#nav-settings');
-      assert.equal(
-        await owner
-          .locator('#settings-developer-tools')
-          .evaluate((e) => (e as HTMLDetailsElement).open),
-        false,
-      );
-      await owner.locator('#settings-developer-tools > summary').click();
+      assert.equal(await owner.locator('#demo-configuration').isVisible(), false);
+      await owner.locator('#settings-tab-developer').click();
       assert.match(await owner.locator('#demo-configuration').innerText(), new RegExp(manifest));
       assert.match(await owner.locator('#demo-configuration').innerText(), /acc-s3r1.1/);
       assert.equal(await owner.locator('#demo-configuration input').count(), 0);
-      await owner.locator('#settings-developer-tools > summary').click();
+      await owner.locator('#settings-tab-security').click();
       await owner.locator('#nav-overview').click();
       done('five workspaces separate settings and Audit without credentials or connector effects');
       await click(owner, '#nav-account');
@@ -1353,6 +1385,47 @@ try {
       await click(owner, '#walletRefresh');
       await waitStatus(owner, /snapshot refreshed/);
       done('fund ten, reject invalid recipient, withdraw one and refresh wallet');
+      const beforeRoutineUnlock = await credentialsUsed();
+      await approve(owner, 'unlockRoutine');
+      await waitStatus(owner, /Quick actions unlocked/);
+      assert.equal(await credentialsUsed(), beforeRoutineUnlock + 1);
+      const afterRoutineUnlock = await credentialsUsed();
+      await approve(owner, 'holdings');
+      await waitStatus(owner, /Verified 1 shielded/);
+      await approve(owner, 'holdings');
+      await waitStatus(owner, /Verified 1 shielded/);
+      await approve(owner, 'wallet');
+      await waitStatus(owner, /wallet connected through/);
+      assert.equal(
+        await credentialsUsed(),
+        afterRoutineUnlock,
+        'unlocked reads and wallet connection must not access the credential API',
+      );
+      await approve(owner, 'rotate');
+      await waitStatus(owner, /confirmed its new sealed/);
+      assert.ok(
+        (await credentialsUsed()) > afterRoutineUnlock,
+        'critical owner changes retain fresh passkey use',
+      );
+      await click(owner, '#lock-routine');
+      assert.match(await owner.locator('#routine-status').innerText(), /locked/);
+      const afterRoutineLock = await credentialsUsed();
+      await approve(owner, 'holdings');
+      await waitStatus(owner, /Verified 1 shielded/);
+      assert.ok(
+        (await credentialsUsed()) > afterRoutineLock,
+        'locked reader cannot reuse old key material',
+      );
+      done(
+        'one PRF unlock serves repeated readings and wallet connection; critical rotation stays fresh and lock prevents reuse',
+      );
+      await approve(owner, 'unlockRoutine');
+      await waitStatus(owner, /Quick actions unlocked/);
+      await owner.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      await reveal(owner, '#routine-status');
+      assert.match(await owner.locator('#routine-status').innerText(), /locked/);
+      done('page exit disposes quick-action keys without revoking or replacing a chain grant');
+
       await click(owner, '#nav-wallet');
       if (await owner.locator('#activity-panel').isVisible())
         await owner.locator('#activity-toggle').click();
@@ -1633,9 +1706,17 @@ try {
         await owner.locator('.operation-status').getAttribute('data-phase'),
         'cancelled',
       );
+      await owner.bringToFront();
+      await approve(owner, 'unlockRoutine');
+      await waitStatus(owner, /Quick actions unlocked/);
       const beforeAuthorize = await countCredentials();
       await approve(owner, 'startSession');
       await waitStatus(owner, /JubJub session active/);
+      assert.equal(
+        (await countCredentials()) - beforeAuthorize,
+        arm === 'p256' ? 3 : 2,
+        'the grant child reuses PRF material; owner issue and its journal unlock remain fresh',
+      );
       assert.ok(
         (await countCredentials()) > beforeAuthorize,
         'session issue must freshly access the owner passkey',

@@ -17,7 +17,7 @@ deployed site remain separate from this local work.
 | **Passport account** | **Balances**, **Deposit** and **Withdraw** tabs. The selected ACC/network stays visible; each operation has its own form. Amounts retain their original units and unavailable/stale states. |
 | **Midnight wallet** | Separate built-in HD and optional external Lace Wallet views: addresses, balances, freshness and **Refresh wallet balance**. **Manage wallet connections** opens Settings. |
 | **Audit** | Timed operation stages, full redacted request/response trace, public evidence JSON and **Copy full log**. |
-| **Settings** | Security and access, wallet connections, and closed-by-default advanced developer tools. |
+| **Settings** | Devices, quick actions, permissions, wallet connections and developer subpages. |
 
 ### Start from Overview
 
@@ -49,16 +49,27 @@ Home/End within the tab row. Mobile keeps the same three tabs and a single form.
 `#account/deposit` and `#account/withdraw` open those views without starting an
 operation. Form values and the selected tab survive navigation to another
 workspace in the same page; reloading does not restore a signing key or draft.
-Settings → Sessions’ target shortcut opens **Withdraw** and focuses the recipient.
+Settings → Quick actions’ target shortcut opens **Withdraw** and focuses the recipient.
 During pending or unknown transfers, navigation keeps original IDs and guards;
 progress and results stay in Activity. Tabs never resubmit, sign, refresh or cancel.
 
 ### Settings
 
+Settings uses separate submenu pages: **Devices & passkeys**, **Quick actions**,
+**Permissions**, **Wallet connections** and **Developer tools**. One page is
+visible at a time; navigation preserves drafts and starts no account action.
+For example, `#settings/sessions` opens Quick actions, and `#settings/wallets`
+opens wallet connections. Unknown subpages fall back to Devices & passkeys.
+Full identifiers may still use small technical disclosures inside a page.
+
+**Quick actions** has an explicit 10/15/30-minute unlock for routine reading and
+wallet connection. The separate transfer-permission controls issue a capped
+JubJub grant with fresh owner approval. See [the guide]({{ '/quick-actions/' | relative_url }}).
+
 - **Devices & passkeys:** prepare a joining device, read the device roster, enroll,
   remove an entry or rotate sealed viewing keys. Joining-device public handoff and
   roster details stay with these controls.
-- **Sessions:** choose 10/15/30 minutes and caps, authorize an expiring JubJub
+- **Quick actions → Transfer permission:** choose 10/15/30 minutes and caps, authorize an expiring JubJub
   grant, lock the local key or revoke the grant. Choose the asset/recipient in
   **Passport account** first; Settings displays the draft target separately from recorded session scope, and the actual
   authorization still reviews its exact scope. Critical owner operations always
@@ -76,7 +87,7 @@ progress and results stay in Activity. Tabs never resubmit, sign, refresh or can
 
 ### Read a session at a glance
 
-**Settings → Sessions** separates **Current session** from **Configure a new
+**Settings → Quick actions** separates **Current session** from **Configure a new
 session**. The status explains whether the local signer is ready, locked,
 expired, pending or blocked. A recorded grant keeps its own asset, recipient and
 spent/total limits; editing the withdrawal form changes only the next session's
@@ -96,7 +107,7 @@ Lace Wallet panel shows asset balances, a read timestamp and exact-identifier
 details instead of a single address/balance paragraph. An unavailable read clears
 the preceding snapshot; it never invents a zero balance.
 
-Security sections and Advanced start closed. Device/holder preparation mirrors
+Settings subpages keep unrelated controls out of view. Device/holder preparation mirrors
 the explicit **Target Passport ACC address** used by Open by address; changing
 that public input does not open, authorize or switch the active account. It is
 disabled while an operation runs. A name lookup never fills it or a recipient.

@@ -234,6 +234,13 @@ NIGHT, browser/provider and published-artifact claims keep their separate eviden
 
 ## Overview layout (source preview)
 
+Settings now uses separate Devices & passkeys / Quick actions / Permissions /
+Wallet connections / Developer tools submenu pages. [Quick actions](../site/quick-actions.md)
+provides an explicitly consented, bounded PRF unlock for routine reads and built-in
+wallet connection. Scoped JubJub transfers still require a separately approved
+grant; critical owner actions keep fresh passkey approval. No secret persists
+across reload or local lock, and unknown intents retain their original fences.
+
 Overview offers two matching cards: **Create a new account** and **Open your
 account**. The latter contains **Have an account address?** for the advanced
 address-based opening flow. The address still requires an enrolled passkey; it

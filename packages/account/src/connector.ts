@@ -1550,6 +1550,30 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
         const counter = await findCounter(flow, record, view);
         if (counter === undefined) throw notHeld(record);
+        const routine = ports.routineViewingKey?.({
+          account: record.address,
+          networkId,
+          bindingId: network.bindingId,
+          credentialId: record.credentialId.slice(),
+        });
+        if (routine)
+          return readVerifiedHoldings(
+            {
+              account: record.address,
+              keyring: {
+                account: record.address,
+                encKey: view.encKey!,
+                envelopes: [...view.inboxEntries!].reverse(),
+              },
+            },
+            {
+              networkId,
+              chain: await chain(),
+              authoriser: { withKeySession: async (work) => work() },
+              viewingKey: routine,
+              holdings: ports.holdings!,
+            },
+          );
         return authoriser.withKeySession(
           async () => {
             const selected = await authoriser.devicePublicKey();

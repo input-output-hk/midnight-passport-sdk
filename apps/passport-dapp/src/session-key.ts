@@ -10,9 +10,12 @@ import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
 import { accModule } from './acc-module.js';
 import { beforeDemoCeremony } from './consent.js';
 import { RP_ID } from './connector.js';
+import { routineKeys } from './routine-access.js';
 
 /** Pin the PRF ceremony to the open account; discard both raw PRF outputs immediately. */
 export async function unlockDemoSessionKey(account: PassportAccount, context: SessionKeyContext) {
+  const retained = await routineKeys.sessionKey(account, context);
+  if (retained) return retained;
   if (!account.credentialId) throw new Error('A passkey-backed account is required.');
   const outputs = await passkeyPrf({
     credentialId: account.credentialId,
