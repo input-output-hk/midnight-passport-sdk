@@ -29,7 +29,7 @@ explicit acknowledgement that the demo permanently retires maintenance authority
 creation/verification, identification, PRF unlock or P-256 signature before browser
 access. A later exact transaction/device/grant review remains separate. Counts vary
 by provider, retries and transaction count; do not promise one prompt for P-256.
-Declining the initial review starts no credential or account action. The source preview after RC7 additionally blocks every credential API call and retry behind a separate **Continue to passkey / Cancel operation** dialog; the banner alone does not grant consent. Two initial accesses create and verify the credential; later P-256 setup signatures publish sealed inbox entries, each with its own numbered review. Cancellation
+Declining the initial review starts no credential or account action. The source preview after RC7 additionally blocks every credential API call and retry behind a separate **Continue to passkey / Cancel operation** dialog; an Activity explanation alone does not grant consent. Two initial accesses create and verify the credential; later P-256 setup signatures publish sealed inbox entries, each with its own numbered review. Cancellation
 cannot undo submitted effects; preserve original IDs and reconcile unknowns.
 
 **SDK capabilities and proof plans** is advisory public-package inspection. It does
@@ -75,7 +75,9 @@ Follow [the execution map](docs/prototype/ux-milestone.md) and milestone #3, iss
 #287–#294. The optional `account/interaction` subpath supplies public immutable
 presentation models; existing demo progress consumes its arithmetic. It starts
 no credential, timer or transaction. The local demo now composes five workspaces,
-Settings, dedicated Audit and responsive Activity controls; read [the UI guide](docs/site/demo-ui.md).
+Settings, dedicated Audit and responsive Activity controls; the owner follow-up
+places progress/results/purpose explanations in Activity, with no floating banner
+or global progress panel. Blocking consent remains separate. Read [the UI guide](docs/site/demo-ui.md).
 Optional React/Lace Wallet wiring has separate acceptance gates. Keep the current branch, blocking consent,
 session/unknown-intent fences and running user demo intact. No `lace-sdk` work or
 new native/full Lace claim in this milestone. These exports are absent from RC7.
@@ -610,3 +612,16 @@ their volume/endpoint. The stable wallet lease is shared with older lanes. Retai
 failed/unknown roots and transaction bytes; source/runtime/reference/key pins must
 match at the end. Native synthetic credentials/faucet-token tests do not establish
 real providers, NIGHT funding, browser/native combination or released packages.
+
+
+### Activity and passkey prompt comparison — local follow-up
+
+Read docs/site/passkey-prompts.md and demo-ui.md. Activity now owns progress,
+operation results and transient explanations. Keep contextual balance freshness
+and form validation beside their fields. A collapsed Activity trigger must flag
+unknown/failed/blocked attention; durable guards remain enforced. Each approved
+credential call reveals its explanation in Activity before two rendering frames,
+and refuses if it cannot be visible. Mobile automatic-purpose sheets close only
+when that operation ends; user-opened sheets are not auto-dismissed. Never count
+a consent dialog as a native passkey call. Compare P-256 signatures/PRF/retries
+with pinned upstream per-action JubJub source; do not claim measured live parity.

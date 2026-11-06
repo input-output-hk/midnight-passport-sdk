@@ -38,9 +38,11 @@ published release or a change to the deployed documentation site.
 ## Approved information architecture
 
 - Left navigation: **Overview, Passport account, Midnight wallet, Audit, Settings**.
-- Main workspace: selected user task; the existing staged deployment progress bar
-  stays here during setup. Estimated progress never implies confirmation.
-- Collapsible right **Activity** panel: **Current operation first**, then **Your
+- Main workspace: selected user task and balances. Owner feedback on2026-11-06
+  moves all operation progress, results and transient explanations into Activity.
+  Estimated progress never implies confirmation.
+- Collapsible right **Activity** panel: **Current operation first** with staged
+  progress/results/notices, then **Your
   journey**. Compact operation summary links to Audit. Audit starts with the
   panel collapsed. Mobile uses an Activity sheet with focus containment/return.
 - **Settings → Security & access**: devices/passkeys, bounded sessions, advanced

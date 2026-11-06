@@ -96,7 +96,13 @@ const ui = createUi(
     after: finishDemoConsent,
   },
 );
-ActivityPanel(workspace.activityRoot, ui.activity, (id) => workspace.showAudit(id));
+ActivityPanel(
+  workspace.activityRoot,
+  ui.activity,
+  (id) => workspace.showAudit(id),
+  {},
+  workspace.operationDetails,
+);
 if (ARM === 'jubjub') {
   const note = document.getElementById('key-note');
   if (note)

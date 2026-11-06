@@ -453,7 +453,13 @@ try {
           [],
           'unexpected credential observer failure, even in a negative scenario',
         );
-        assert.match(await page.locator('#status').innerText(), expected);
+        assert.match(
+          await page
+            .locator('#status')
+            .textContent()
+            .then((text) => text ?? ''),
+          expected,
+        );
         if (expectedError)
           assert.match(
             (
@@ -470,7 +476,13 @@ try {
           )
           .catch(() => [] as string[]);
         credentialFailureCodes.push(...codes);
-        console.error('Journey status:', await page.locator('#status').innerText());
+        console.error(
+          'Journey status:',
+          await page
+            .locator('#status')
+            .textContent()
+            .then((text) => text ?? ''),
+        );
         console.error('Fixture/browser errors:', failures, pageErrors);
         throw error;
       }
@@ -659,6 +671,30 @@ try {
       done(
         'optional Lace Wallet has explicit review, separate read-only balances, network/rejection/replacement refusals and late-result forget fencing',
       );
+      const obscured = await newPage();
+      await obscured.evaluate(() =>
+        document.addEventListener(
+          'passport:present-ceremony',
+          () => document.getElementById('activity-toggle')!.click(),
+          { once: true },
+        ),
+      );
+      const callsBeforeObscured = calls.length;
+      await approve(obscured, 'create');
+      await obscured.locator('#ceremony-continue').click();
+      await waitStatus(obscured, /UserCancelled/, /explanation is not visible/);
+      assert.equal(
+        await obscured.evaluate(
+          () =>
+            (window as unknown as { __passportPurposeObservations: unknown[] })
+              .__passportPurposeObservations.length,
+        ),
+        0,
+      );
+      assert.equal(calls.length, callsBeforeObscured);
+      await obscured.close();
+      await owner.bringToFront();
+      done('hiding Activity between approval and browser access refuses the credential call');
       const controlChecks = await owner.evaluate(async () => {
         const path = '/e2e/fixtures/activity-controls-check.ts';
         const module = (await import(/* @vite-ignore */ path)) as {
@@ -690,10 +726,12 @@ try {
         'Audit',
         'Settings',
       ]);
-      assert.deepEqual(await owner.locator('#activity-content h2').allTextContents(), [
-        'Current operation',
-        'Your journey',
-      ]);
+      assert.deepEqual(
+        await owner
+          .locator('#activity-content .operation-status > h2, #activity-content .journey > h2')
+          .allTextContents(),
+        ['Current operation', 'Your journey'],
+      );
       assert.equal(await owner.locator('#capability-operation').isVisible(), false);
       assert.equal(await owner.locator('#session-minutes').isVisible(), false);
       for (const view of ['account', 'wallet', 'audit', 'settings', 'overview']) {
@@ -738,6 +776,13 @@ try {
       await owner.locator('#settings-developer-tools > summary').click();
       await owner.locator('#nav-overview').click();
       done('five workspaces separate settings and Audit without credentials or connector effects');
+      assert.equal(await owner.locator('.workspace-center #progress').count(), 0);
+      assert.equal(await owner.locator('.workspace-center #status').count(), 0);
+      assert.equal(await owner.locator('.workspace-center #ceremony-purpose').count(), 0);
+      assert.equal(await owner.locator('#activity-content #progress').count(), 1);
+      assert.equal(await owner.locator('#activity-content #ceremony-purpose').count(), 1);
+      assert.equal(await owner.locator('#activity-content #operation-safety-notice').count(), 1);
+      done('Activity owns progress, results and explanations without a floating header banner');
 
       await owner.setViewportSize({ width: 390, height: 844 });
       await owner.locator('#activity-panel').waitFor({ state: 'hidden' });
@@ -752,7 +797,9 @@ try {
         true,
       );
       assert.deepEqual(
-        await owner.locator('#activity-sheet #activity-content h2').allTextContents(),
+        await owner
+          .locator('#activity-sheet .operation-status > h2, #activity-sheet .journey > h2')
+          .allTextContents(),
         ['Current operation', 'Your journey'],
       );
       await owner.keyboard.press('Shift+Tab');
@@ -891,6 +938,7 @@ try {
         'operation termination closes pending consent; overlap and ended approvals cannot access a credential',
       );
 
+      await owner.setViewportSize({ width: 390, height: 844 });
       await approve(owner, 'create');
       await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
       await click(owner, '#ceremony-continue');
@@ -907,6 +955,14 @@ try {
         'declining verification must not assert the passkey',
       );
       assert.equal(calls.length, 0, 'declining the probe must not deploy');
+      assert.equal(
+        await owner.locator('#activity-sheet').evaluate((e) => (e as HTMLDialogElement).open),
+        false,
+      );
+      await owner.setViewportSize({ width: 1280, height: 900 });
+      done(
+        'approved mobile access reveals its purpose in Activity and closes the automatic sheet when the operation ends',
+      );
       done('the second initial prompt requires separate approval before the compatibility probe');
 
       if (arm === 'p256') {
@@ -1002,8 +1058,13 @@ try {
         assert.equal(await owner.locator('#ceremony-purpose').innerText(), before);
       }
       done('public state and rosters need no ceremony');
+      if (await owner.locator('#activity-panel').isVisible())
+        await owner.locator('#activity-toggle').click();
+      assert.equal(await owner.locator('#activity-panel').isVisible(), false);
       await approve(owner, 'holdings');
       await waitStatus(owner, /Verified 1 shielded/);
+      assert.equal(await owner.locator('#activity-panel').isVisible(), true);
+      done('approved desktop passkey access reveals Activity before calling the credential API');
       done('chain-labelled holdings UI through synthetic driver');
       await approve(owner, 'rotate');
       await waitStatus(owner, /confirmed its new sealed/);
@@ -1084,6 +1145,16 @@ try {
       await click(owner, '#walletRefresh');
       await waitStatus(owner, /snapshot refreshed/);
       done('fund ten, reject invalid recipient, withdraw one and refresh wallet');
+      await click(owner, '#nav-wallet');
+      if (await owner.locator('#activity-panel').isVisible())
+        await owner.locator('#activity-toggle').click();
+      assert.equal(await owner.locator('#progress').isVisible(), false);
+      assert.equal(await owner.locator('#status').isVisible(), false);
+      assert.match(await owner.locator('#activity-toggle').innerText(), /Completed/);
+      await owner.locator('#activity-toggle').click();
+      assert.equal(await owner.locator('#progress').isVisible(), true);
+      done('completed operation results stay in collapsible Activity when changing workspace');
+
       const beforeAudit = calls.length;
       await owner.locator('#nav-audit').click();
       const traceDetails = owner.locator('details').filter({ has: owner.locator('#trace') });
@@ -1509,6 +1580,14 @@ try {
       await waitStatus(owner, /failed\./, /Synthetic session outcome unknown/);
       assert.equal(await owner.locator('.operation-status').getAttribute('data-phase'), 'unknown');
       assert.equal(await owner.locator('#progress').getAttribute('aria-valuenow'), null);
+      assert.match(
+        await owner.locator('#activity-toggle').innerText(),
+        /Needs attention|Hide Activity/,
+      );
+      await owner.locator('#nav-audit').click();
+      assert.match(await owner.locator('#activity-toggle').innerText(), /Needs attention/);
+      assert.equal(await owner.locator('#operation-safety-notice').isVisible(), false);
+      await owner.locator('#activity-toggle').click();
       assert.equal(await owner.locator('#operation-safety-notice').isVisible(), true);
       const unknownSessionIntent = (await readSessionState(owner)).match(/Intent ([^ ]+)\./)?.[1];
       assert.ok(unknownSessionIntent);

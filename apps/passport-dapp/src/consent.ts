@@ -151,6 +151,7 @@ export function finishDemoConsent(): void {
     notice.hidden = true;
     notice.dataset.ready = 'false';
   }
+  document.dispatchEvent(new Event('passport:ceremony-finished'));
 }
 
 /** Each browser access needs its own approval; an operation review or prior prompt is insufficient. */
@@ -231,6 +232,7 @@ export async function beforeDemoCeremony(ceremony: Readonly<PasskeyCeremony>): P
       if (active === consent) finishDemoConsent();
       throw new PassportConnectorError('UserCancelled', 'The passkey request was declined.');
     }
+    document.dispatchEvent(new Event('passport:present-ceremony'));
     // The first rAF is before paint; its promise continuation would still be before paint.
     // Cross a second frame so the visible explanation has a rendering opportunity first.
     await new Promise<void>((resolve) =>
@@ -238,6 +240,18 @@ export async function beforeDemoCeremony(ceremony: Readonly<PasskeyCeremony>): P
     );
     if (active !== consent)
       throw new PassportConnectorError('UserCancelled', 'The operation approval ended.');
+    const rect = notice.getBoundingClientRect();
+    const visible =
+      !notice.hidden &&
+      notice.getClientRects().length > 0 &&
+      rect.top >= 0 &&
+      rect.bottom <= innerHeight &&
+      getComputedStyle(notice).visibility !== 'hidden';
+    if (!visible || document.querySelector('dialog[open]:not(#activity-sheet)'))
+      throw new PassportConnectorError(
+        'UserCancelled',
+        'The passkey explanation is not visible. Open Activity and approve the operation again.',
+      );
     notice.dataset.ready = 'true';
   } finally {
     ceremonyInFlight = false;

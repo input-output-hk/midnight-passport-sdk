@@ -47,7 +47,9 @@ disabled while an operation runs. A name lookup never fills it or a recipient.
 
 ## Progress and Activity
 
-The existing weighted, staged progress bar stays in the center during work.
+The weighted, staged progress bar, operation result and transient explanations
+live together in **Activity → Current operation**. The selected workspace keeps
+its task controls and balances; completed results never take over another workspace.
 Time estimates stop below completion; unknown/unestimated progress is not a
 confirmation percentage. Service/client clock differences are clamped for
 presentation only; original events and IDs remain available in Audit.
@@ -68,7 +70,11 @@ values, pending callbacks and transaction guards remain intact.
 
 Passkey consent is a **different blocking dialog**, before every actual credential
 request and retry. It prevents background navigation and Activity interaction.
-The native provider dialog follows only after explicit approval. Cancelling an
+The native provider dialog follows only after explicit approval. Before each
+credential call, the explanation is revealed in Activity and must be visible.
+On mobile an automatically opened Activity sheet closes when the operation ends;
+a sheet the user opened remains theirs to close. The blocking review dialog stays
+separate and is never replaced by an Activity message. Cancelling an
 attempt cannot undo earlier submissions. See [consent]({{ '/consent/' | relative_url }}).
 
 ## Uncertain results and evidence
@@ -76,8 +82,9 @@ attempt cannot undo earlier submissions. See [consent]({{ '/consent/' | relative
 An unknown funding/submission outcome keeps the original public request, flow or
 intent references. A stopped/failed attempt is not proof of failed chain effects.
 The summary asks for reconciliation and links to Audit; navigation never creates
-a replacement request. A blocked session also displays a persistent safety notice
-outside Settings, including its known original intent ID.
+a replacement request. A blocked session retains its original intent ID and reconciliation notice in
+Activity. When the panel is collapsed, its trigger says **Needs attention**; the
+underlying transaction fence remains enforced.
 
 Audit is public history for **this page**, not an immutable chain history or a
 replacement for durable journals. Reload does not recreate its entire display
@@ -141,3 +148,12 @@ mock WebAuthn remain distinct from native proofs and real-provider acceptance.
 [Milestone](https://github.com/input-output-hk/midnight-passport-sdk/milestone/3)
 and [#294](https://github.com/input-output-hk/midnight-passport-sdk/issues/294)
 track final review, documentation and evidence.
+
+
+## Why passkey prompts differ from the upstream demo
+
+See the [prompt comparison]({{ '/passkey-prompts/' | relative_url }}). Our default
+P-256 owner signs individual circuit challenges in the authenticator; upstream
+v5.2 derives a JubJub signer for one action. Reader PRF, wallet PRF, enrollment
+compatibility and browser-profile retries are separate sources of requests.
+Moving messages changes presentation, not the credential calls or their approvals.

@@ -73,8 +73,8 @@ Choose **Continue to passkey** to open the password manager or **Cancel operatio
 (or Escape) to refuse this access. The cancel button receives initial focus.
 An operation review, earlier successful prompt or signed publication cannot approve
 the next request. Ending the operation closes a pending request review. The purpose
-banner alone is not consent. Published RC7 has the operation review and purpose
-banner; this stronger request-by-request policy is a source-preview change.
+explanation in Activity alone is not consent. Published RC7 has the operation review and purpose
+banner; this stronger request-by-request policy and Activity placement are source-preview changes.
 
 The review identifies the operation, network, owner arm, account-selection context,
 request number and purpose. A known browser-profile retry explains why a new
@@ -138,3 +138,11 @@ as an unrestricted owner. This source capability is **absent from published RC7*
 See the [use-case evidence map]({{ '/use-case-coverage/' | relative_url }}) for what
 the automated browser tests establish. Google/iCloud synchronization and restoration
 remain independently qualified provider behavior.
+
+
+The source follow-up moves transient explanations into **Activity → Current
+operation**. The separate blocking dialog still requires approval. Activity is
+revealed and scrolled to the explanation before the credential call; unavailable
+or hidden explanations refuse the request. A collapsed trigger flags attention
+without putting a large notification panel over another task. See
+[prompt comparison]({{ '/passkey-prompts/' | relative_url }}).

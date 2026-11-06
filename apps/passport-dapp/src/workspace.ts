@@ -277,11 +277,26 @@ export function createDemoWorkspace(config: {
   document.body.append(sheet);
   const mobile = matchMedia('(max-width: 900px)');
   let expanded = true;
+  let ceremonySheet = false;
   let selected: WorkspaceId = 'overview';
   const updateActivity = () => {
     main.dataset.activity = expanded && !mobile.matches ? 'expanded' : 'collapsed';
     activity.hidden = mobile.matches || !expanded;
-    toggle.textContent = mobile.matches ? 'Activity' : expanded ? 'Hide Activity' : 'Show Activity';
+    const phase = content.querySelector<HTMLElement>('.operation-status')?.dataset.phase;
+    const attention =
+      !byId('operation-safety-notice').hidden || phase === 'unknown' || phase === 'failed';
+    const label = mobile.matches ? 'Activity' : expanded ? 'Hide Activity' : 'Show Activity';
+    const state = attention
+      ? 'Needs attention'
+      : phase === 'running'
+        ? 'In progress'
+        : phase === 'succeeded'
+          ? 'Completed'
+          : '';
+    const caption = state && (mobile.matches || !expanded) ? `${label} · ${state}` : label;
+    if (toggle.textContent !== caption) toggle.textContent = caption;
+    toggle.classList.toggle('has-attention', attention);
+    toggle.setAttribute('aria-live', 'polite');
     toggle.setAttribute('aria-expanded', String(mobile.matches ? sheet.open : expanded));
     toggle.setAttribute('aria-controls', mobile.matches ? sheet.id : activity.id);
   };
@@ -310,6 +325,7 @@ export function createDemoWorkspace(config: {
     if (sheet.returnValue !== 'audit') toggle.focus();
   });
   toggle.addEventListener('click', () => {
+    ceremonySheet = false;
     if (mobile.matches) {
       sheet.append(content);
       sheet.returnValue = '';
@@ -335,13 +351,45 @@ export function createDemoWorkspace(config: {
   safetyNotice.className = 'operation-safety-notice';
   safetyNotice.setAttribute('role', 'alert');
   safetyNotice.hidden = true;
-  center.append(toggle, safetyNotice, progress, ...Object.values(views));
+  const operationDetails = node('div');
+  operationDetails.className = 'activity-operation-details';
+  progress.classList.remove('panel');
+  progress.querySelector<HTMLElement>('.panel-head')!.hidden = true;
+  progress.setAttribute('aria-label', 'Operation progress and result');
+  progress.removeAttribute('aria-labelledby');
+  const purpose = byId('ceremony-purpose');
+  operationDetails.append(purpose, safetyNotice, progress);
+  content.append(operationDetails);
+  center.append(toggle, ...Object.values(views));
   main.replaceChildren(nav, center, activity);
   main.classList.add('workspace-shell');
   const hash = location.hash.slice(1);
   show(Object.hasOwn(names, hash) ? (hash as WorkspaceId) : 'overview', false);
+  // Presentation events never approve a credential or invoke an account command.
+  document.addEventListener('passport:present-ceremony', () => {
+    if (document.querySelector('dialog[open]:not(#activity-sheet)')) return;
+    if (mobile.matches) {
+      if (!sheet.open) {
+        ceremonySheet = true;
+        sheet.append(content);
+        sheet.returnValue = '';
+        sheet.showModal();
+      }
+    } else expanded = true;
+    updateActivity();
+    purpose.scrollIntoView({ block: 'nearest' });
+  });
+  document.addEventListener('passport:ceremony-finished', () => {
+    if (ceremonySheet) closeSheet('ceremony-complete');
+    ceremonySheet = false;
+    updateActivity();
+  });
+  const notices = new MutationObserver(updateActivity);
+  notices.observe(safetyNotice, { attributes: true, childList: true, subtree: true });
+  notices.observe(progress, { childList: true, subtree: true });
   return {
     activityRoot: content,
+    operationDetails,
     show,
     selected: () => selected,
     showAudit(operationId: string) {
