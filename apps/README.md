@@ -1,5 +1,24 @@
 # Passport prototype: apps
 
+## Local prototype UX milestone
+
+The [execution map](../docs/prototype/ux-milestone.md) tracks the approved
+Settings/Activity/Audit redesign. The local demo composes five workspaces, a
+responsive Activity panel/sheet and a dedicated Audit workspace using portable
+`account/interaction` models. [The UI guide](../docs/site/demo-ui.md) maps every
+action to its new location. The [optional React host example](../docs/site/react-example.md) uses synthetic
+public snapshots only; actual Lace Wallet connection remains a separate task.
+These changes are source after RC7; keep existing launch commands and durable
+operation state. Optional host renderers must not initiate account actions while
+rendering, subscribing or cleaning up a presentation control.
+
+Local source after RC7 adds a read-only **Name service · mock adapter** panel.
+It composes `account/names` with an app-owned in-memory `PassportNameService`.
+Try `alice.passport.test` or `bob.passport.test`; these synthetic records are
+not deployed accounts, require no passkey and never set a transfer recipient.
+See [the naming adapter guide](../docs/site/names.md) before replacing the mock.
+No registration or naming backend is launched; published RC7 is unchanged.
+
 A prototype of the Midnight Passport DApp Connector API and the web app that carries its heavy
 lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](../docs/superpowers/specs/2026-10-06-passport-dapp-design.md).
 
@@ -12,7 +31,7 @@ lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](.
 
 ## Candidate consent and browser regression
 
-Every key-using demo action now has an operation review before access. Creation explicitly acknowledges permanent maintenance-authority retirement. The typed WebAuthn `beforeCeremony` hook shows each actual access purpose; exact transaction reviews remain separate, and cancelled/unknown submissions are never described as rolled back. The capability panel inspects proof plans only, not readiness.
+Every key-using demo action now has an operation review before access. Creation explicitly acknowledges permanent maintenance-authority retirement. In the source preview after RC7, the typed WebAuthn `beforeCeremony` hook waits for **Continue to passkey / Cancel operation** before every actual access and retry; a purpose banner is not approval. The two initial creation accesses register and verify the credential; later numbered P-256 setup signatures publish sealed viewing-key entries. Each gets a separate review; exact transaction reviews remain separate, and cancelled/unknown submissions are never described as rolled back. The capability panel inspects proof plans only, not readiness.
 
 Run `nix develop -c pnpm run build` then `nix develop -c pnpm test:demo-browser` for isolated Chromium journeys across both owner-arm selections. This lane needs Chrome but no Docker/provider/live service. It uses the actual UI and mock credential API with synthetic connector/chain/wallet drivers. It owns an ephemeral server and intercepts all requests; it never changes a running demo. See [the use-case evidence map](../docs/site/use-case-coverage.md), [consent guide](../docs/site/consent.md) and separate native/provider recipes.
 
@@ -458,3 +477,24 @@ remain available. Unknown issue/spend/revocation records have independent public
 operation UUIDs; stale display writes cannot erase them, and settled records stop
 old tabs reopening completed fences. Never clear these records to retry an effect.
 Cross-device coordination and durable operator reconciliation remain host concerns.
+
+### Isolated native session qualification
+
+`pnpm qualify plan consented-sessions-native` documents the opt-in session lane.
+See [the review map](../docs/review/native-sessions/README.md) for the exact command,
+source/key/readiness guards, private evidence and owned cleanup. It allocates fresh
+ports 19964/18108/16320 and preserves retained/default localnets. Do not replay a
+failed/unknown run. Source `b5eeff8` passes the declared both-arm software/native
+profile; see its receipt for exact cases and observation recovery counts. Browser
+consent, real providers and released artifacts remain separate tiers.
+
+
+### Optional external Lace Wallet (local source)
+
+See [the source connector guide](../docs/site/lace-wallet.md). Settings → Wallet
+connections explicitly discovers/selects/reviews a public connector advertisement.
+Only address/unshielded balances are read, in a separate external-wallet card.
+No ACC permission, recipient autofill, signing or transfer follows connection.
+Forget invalidates locally; extension permissions must be managed in the wallet.
+The new adapter-browser/wallet subpath is absent from published RC7. Both-arm
+synthetic browser cases qualify UI refusals, not an installed Lace extension.

@@ -594,6 +594,17 @@ body[data-busy] .btn:disabled {
   color: var(--err);
 }
 
+.run[data-state='unknown'] .run-meta,
+.step[data-state='unknown'] .step-result {
+  color: var(--err);
+}
+.step[data-state='unknown'] .marker {
+  background: var(--err);
+}
+.step[data-state='cancelled'] .step-result {
+  color: var(--dim);
+}
+
 .steps {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -872,7 +883,9 @@ body[data-busy] .btn:disabled {
   }
 }
 /* Operation review remains readable with keyboard focus and long ACC addresses. */
-#consent-dialog {
+#consent-dialog,
+#ceremony-dialog,
+#lace-wallet-review {
   max-width: min(42rem, 90vw);
   max-height: 85vh;
   overflow: auto;
@@ -881,7 +894,9 @@ body[data-busy] .btn:disabled {
   color: var(--text);
   background: var(--surface);
 }
-#consent-dialog::backdrop {
+#consent-dialog::backdrop,
+#ceremony-dialog::backdrop,
+#lace-wallet-review::backdrop {
   background: rgb(0 0 0 / 65%);
 }
 .consent-details {
@@ -924,4 +939,180 @@ body[data-busy] .btn:disabled {
 
 #session-state {
   overflow-wrap: anywhere;
+}
+
+/* Host-owned workspace composition; account/interaction has no CSS or branding dependency. */
+main.workspace-shell {
+  max-width: 1600px;
+  grid-template-columns: 180px minmax(0, 1fr) 280px;
+  align-items: start;
+  gap: 1rem;
+}
+main.workspace-shell[data-activity='collapsed'] {
+  grid-template-columns: 180px minmax(0, 1fr);
+}
+.workspace-nav {
+  position: sticky;
+  top: 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+.workspace-nav button {
+  min-height: 44px;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid transparent;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.workspace-nav button[aria-current='page'] {
+  color: var(--heading);
+  background: var(--accent-soft);
+  border-color: var(--border-strong);
+}
+.workspace-center,
+.workspace-view {
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+}
+.workspace-view[hidden],
+.activity-panel[hidden],
+.operation-status button[hidden],
+.operation-safety-notice[hidden],
+.panel-activity [hidden] {
+  display: none;
+}
+.operation-safety-notice {
+  padding: 1rem;
+  border: 1px solid var(--err);
+  border-radius: 0.75rem;
+  overflow-wrap: anywhere;
+}
+.panel-activity.is-idle .panel-head {
+  display: none;
+}
+.panel-activity.is-idle .status {
+  margin: 0;
+}
+.workspace-view > h2 {
+  font-size: 1.6rem;
+}
+#activity-toggle {
+  justify-self: end;
+}
+.workspace-shell .actions {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+.workspace-shell .panel > h3,
+.workspace-shell .panel > p,
+.workspace-shell .panel > .actions {
+  margin-block-end: 0.8rem;
+}
+.workspace-shell .evidence {
+  grid-column: auto;
+}
+.workspace-shell summary {
+  cursor: pointer;
+  padding-block: 0.5rem;
+  min-height: 44px;
+}
+.workspace-shell details[open] > summary {
+  margin-block-end: 1rem;
+}
+.activity-panel {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+}
+#activity-content {
+  display: grid;
+  gap: 1.5rem;
+}
+.operation-status > *,
+.journey > * {
+  margin-block-end: 0.65rem;
+}
+.activity-references {
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.activity-references dd {
+  margin-inline-start: 0;
+  font-family: var(--font-mono);
+}
+.journey ol {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+.journey li {
+  margin-block: 0.65rem;
+}
+.journey li[data-phase='done'] {
+  color: var(--ok);
+}
+.operation-status[data-phase='unknown'],
+.operation-status[data-phase='failed'] {
+  border-inline-start: 3px solid var(--err);
+  padding-inline-start: 0.6rem;
+}
+#activity-sheet {
+  width: min(100% - 1rem, 40rem);
+  max-height: 85dvh;
+  margin-block: auto 0.5rem;
+  padding: 1.25rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 1rem;
+  overflow: auto;
+}
+#activity-sheet::backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+#activity-sheet h2,
+#activity-close {
+  margin-block-end: 1rem;
+}
+@media (max-width: 900px) {
+  .activity-panel {
+    display: none;
+  }
+  main.workspace-shell,
+  main.workspace-shell[data-activity='collapsed'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-nav {
+    position: static;
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+  }
+  .workspace-nav button {
+    font-size: 0.9rem;
+  }
+}
+
+#lace-wallet-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  min-width: 0;
+}
+#lace-wallet-controls > h4,
+#lace-wallet-controls > label,
+#lace-wallet-status {
+  flex-basis: 100%;
+}
+#lace-wallet-provider {
+  min-width: 0;
+  max-width: 100%;
+}
+#lace-wallet-review button {
+  min-height: 44px;
+  margin: 0.5rem;
 }

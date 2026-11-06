@@ -4,6 +4,15 @@ Updated 2026/10/20. Refs #231, #235 and #236.
 
 ## Feedback budget
 
+Local source after RC7 shards the synthetic demo browser lane by complete P-256
+and JubJub profiles. Each job has its own browser/Vite server and fresh outputs;
+the stable required aggregate still waits for both matrix jobs and fails if either
+fails, is cancelled or is skipped. Local default retains both arms. This avoids
+one serial UI job setting the critical path as navigation/consent cases grow.
+No source case is omitted, and no proof/key generation or new dependency cache is
+added. Measure the 30–45-second warm target after an authorized push; local profile
+times alone do not prove the GitHub job budget.
+
 The target is **30–45 seconds per warm required PR job**, from job start through
 post steps. Record queue time, total PR critical path, cache restore/save and cold
 dependency downloads separately. This is a performance target, not a 45-second

@@ -1,5 +1,11 @@
 # Demo script
 
+The local source after RC7 groups these actions into Overview, Passport account,
+Midnight wallet, Audit and Settings. Devices/sessions/grants/connections are in
+Settings; capability/name diagnostics are under Advanced. Read the
+[workspace guide](../site/demo-ui.md) before presenting the new layout.
+
+
 > The current sealed-account flow is described below. For environment setup, NIGHT funding and
 > verified handover status, use the [engineering handover](../site/handover.md) and
 > [AGENTS.md](../../AGENTS.md).
@@ -393,3 +399,25 @@ this passkey's:
 
 For ports, Docker memory, the manifest hash and the two-copies error, see the troubleshooting
 section of [`apps/README.md`](../../apps/README.md).
+
+
+## Source preview: review every passkey request
+
+After approving an operation, review each **Passkey request** dialog and choose
+**Continue to passkey** to open the password manager. **Cancel operation** or Escape
+refuses that access. The page never treats a banner or an earlier prompt as consent
+for a later request. This policy is not yet in published RC7.
+
+Account creation first registers a credential, then asks it to verify the ACC
+signing format before deployment. These are two different purposes. A provider
+that does not return PRF outputs at creation needs a separate unlock. After device
+activation, the P-256 arm needs separate signatures to publish sealed viewing-key
+envelopes and registrations. Numbered setup reviews explain those later requests;
+known signing-format retries need another explicit approval too. Counts vary by
+provider and retries, so do not promise one Touch ID prompt.
+
+Cancellation after deployment cannot undo the ACC or earlier publications. Keep
+the passkey and original evidence and reopen/reconcile the existing account before
+retrying. A matching consented JubJub session still avoids passkey requests for its
+scoped withdrawals; critical owner actions retain fresh passkey reviews. See the
+[consent guide](../site/consent.md).

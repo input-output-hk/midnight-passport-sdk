@@ -18,6 +18,13 @@ import type {
 import type { GrantScopeInput } from '../grant-scope.js';
 import type { GrantPublicationJournal } from '../jubjub-grant-publication.js';
 
+export type {
+  PassportNameQuery,
+  PassportNameRecord,
+  PassportNameProvider,
+  PassportNameService,
+} from './names.js';
+
 /** The host reads these ids from the live ACC grants map, not local bookkeeping. */
 export interface ActiveGrantSource {
   readActiveGrantIds(account: string): Promise<readonly string[]>;

@@ -1,0 +1,787 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "source-native-software-session-controller",
+  "source": {
+    "commit": "b5eeff81767a167a007ee9eb2e32c2e883f068b9",
+    "dirty": false,
+    "workspaceSha256": "af34c271e6ba149e3d7da7b86d4bffc4e6740d0aaad9becf461b71da4df6d062",
+    "fileCount": 1564
+  },
+  "binding": {
+    "id": "acc-s3r1.1",
+    "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+    "moduleSha256": "0ee002d3ac6eae8c048fbd9017ed2f1215e3961629f998221dd9b3e77d74bccf"
+  },
+  "worker": {
+    "arms": [
+      {
+        "account": "d17b8a13ca37af4f950411cc942c4804f85d09fc74bc2854e00b6eeb44603de3",
+        "arm": "jubjub",
+        "asset": "79a13290d8f55162c542aa87a34e921aadd71d5e3b2a98a46c3fa738542caeb5",
+        "cases": [
+          "full-acc-deployment-and-sealed-owner-open",
+          "exact-synthetic-asset-deposit-12",
+          "owner-approved-ten-minute-child-grant",
+          "session-withdrawal-and-distinct-recipient-credit-no-owner-signing",
+          "wrong-recipient-and-stale-spend-opening-refused-before-proof",
+          "fresh-owner-revocation-blocks-copied-child",
+          "renewal-uses-distinct-child-and-new-owner-approval",
+          "real-deadline-local-lock-and-indexed-chain-time-expiry-refusal",
+          "expired-slot-reclaimed-by-fresh-owner-revocation"
+        ],
+        "expiresAt": 1793926610000,
+        "grantId": "7dd034846b32499d9912ef20d6c87e5cfb506a6dd6bb61c44b40bc2cb2f7f324"
+      },
+      {
+        "account": "7c107a20a2541186de36c10fa82702fbfc9713e91eb22ecc84b0b7b047a3123b",
+        "arm": "p256",
+        "asset": "f04f4301936225f4e044cbc418f18b2ef30917f18d6768c40a782230fbf8fbd7",
+        "cases": [
+          "full-acc-deployment-and-sealed-owner-open",
+          "exact-synthetic-asset-deposit-12",
+          "owner-approved-ten-minute-child-grant",
+          "session-withdrawal-and-distinct-recipient-credit-no-owner-signing",
+          "wrong-recipient-and-stale-spend-opening-refused-before-proof",
+          "fresh-owner-revocation-blocks-copied-child",
+          "renewal-uses-distinct-child-and-new-owner-approval",
+          "real-deadline-local-lock-and-indexed-chain-time-expiry-refusal",
+          "expired-slot-reclaimed-by-fresh-owner-revocation"
+        ],
+        "expiresAt": 1793927402000,
+        "grantId": "e6d0c4e6a98222695358df109be44868e82a2e8c2845c822a48563c942bd9cf5"
+      }
+    ],
+    "browserNativeCombined": false,
+    "canonicalFinality": [
+      {
+        "blockHash": "ab5624d6c962feeec7a340014c4f7f9bbc4febf61f47c6e56687d7603f36f159",
+        "blockHeight": 17,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "8099a8188d6fc25866f305eb7895a8d24cfe98cf292eb49f09724791447f0065"
+      },
+      {
+        "blockHash": "c7bc39b8df7d6dc992abf4abbf142b5799eb62b0c0c2ba906c1f4c3dd32c7567",
+        "blockHeight": 20,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "c6458e438a4b33e61c289a78289daaec3abe037bb6ee9577b6e2ce5d2b3ea15b"
+      },
+      {
+        "blockHash": "02fad0ea91a093a71f9f79c5b3dcc3ed30dba8ee8db4f407a977f9a49a80ad27",
+        "blockHeight": 23,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "21ed18a1eb282da468b1a6129c0d7141006e7a057ab54428b433d491f590fc74"
+      },
+      {
+        "blockHash": "9767634d3f3686f0500125b8ee7d5b63c7c307ed25c402e5956a5dd78d3118c4",
+        "blockHeight": 26,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "565a56a4f0bc84457f837bac7c0992224d9fe758d3ec6da42f02bf97a0adf056"
+      },
+      {
+        "blockHash": "6d5b0e787ac423e411e1a55ee1bdde3d9e88648b5179c6eee85ae2817bd31ab9",
+        "blockHeight": 29,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "6e9e5107b87a5a19539518778ff3cf29ff70257d3f5f4924a8cf9ba62aaca258"
+      },
+      {
+        "blockHash": "4ed0aa0fa31eac4bd16d7153c260af2a999785d3eae2492957146177fc3cf971",
+        "blockHeight": 32,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "f8f3f316dcd76f0bd825edda3200b6b94d1f82cb3521fd7dd831275cc305ecc2"
+      },
+      {
+        "blockHash": "1419f69e287916fd370d4c62c1ae42b15e5626f0398127f8665caf15deb5a8fb",
+        "blockHeight": 35,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "5cdf09cc1b5458df7b10fdefcd305dc41e2a23f308f20398c5562b5a7a769f00"
+      },
+      {
+        "blockHash": "910c4945bf8424a61be6dd6fb757a676280f1a941bf19c7ada2fc1ef5724e432",
+        "blockHeight": 38,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "1d20d065975ea8f9d555dd85cd7f0fd39242897a58eb4ed05e139f15778669b0"
+      },
+      {
+        "blockHash": "ea416c09c99416ca9a9c068af5cedc8696fb1ef84a3c7cf8dc92a667a973ceee",
+        "blockHeight": 41,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "a8554cea550e3ef16d5fa889389e1adf095e6c81d51d3bdee64ae5291f90fad7"
+      },
+      {
+        "blockHash": "b676dedfbaecfa0302a7ae6f076d1002714546c4835ef7db0aa12b6ea6b8e77a",
+        "blockHeight": 44,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "f5c28b6521f47b17e2e8014615747a1e341aceacdbc0a6ec863c4c9bd4a78c04"
+      },
+      {
+        "blockHash": "9b0aca409e3347bc06e27e8d04ae50075d8d3abb16f9d4f20ab80d2ef505be54",
+        "blockHeight": 47,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "5a21a30384284a2be45bdb53b488f40e06058dc97d8fb8eaae487788aeacdb08"
+      },
+      {
+        "blockHash": "71deda6d36512cb0d0dd9b6e335a8d2c7e4c6904385ce44992910182d9a55090",
+        "blockHeight": 51,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "cfe817146668187c5ea7bc9504e5cc80cc56914837b11150005dd4c00be60410"
+      },
+      {
+        "blockHash": "b5acc920a07ea4a481bee558a4ce36debaed644ffddec983a1a0087066934d69",
+        "blockHeight": 56,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "f98d2d9ec09b466781e37d1f90f58a13040690ad89fb95ecf7aaddc276f4e0d1"
+      },
+      {
+        "blockHash": "68f09cb441a0697e66a4b630e508b2fdfd2f7e5482dac071c234b9f168936156",
+        "blockHeight": 60,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "e192f5e00c888ae78aef94febaf1c7b9a804003ce447c9a173b52bc8be471e0c"
+      },
+      {
+        "blockHash": "5946ca72742212c76b02deac491df236888c412162907dd7f1f75c724e017e40",
+        "blockHeight": 63,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "b80be6ac2ac0463a8a818d74c32f9a5fdf93534909160e258f06f52f27bc6fa2"
+      },
+      {
+        "blockHash": "32be540529b88ba304eb688093ddf6fc53bc83330a15187c99f093d886e91603",
+        "blockHeight": 86,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "3d1ccb4b21b0b563c8d3f8b6ad9c48d88a07194cbfcdc072ddf49e2feb86c075"
+      },
+      {
+        "blockHash": "2b0dcfa5fd11b4e1d412f8081d0ac196a2d9bd505ae851162ea255f137d31115",
+        "blockHeight": 91,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "b0bd43beeeb19eaa6a36687994048a0299197c2dbbc926171bd01ad6df766df2"
+      },
+      {
+        "blockHash": "5df8c63586315b0fabf1e9134847edefb1737c6f4dadb03e66ec8ce81c429221",
+        "blockHeight": 96,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "7a6c1b84b1b6934e95c2280d9be657c84ce5f94ecc6580e7ddbae04f9747d7ba"
+      },
+      {
+        "blockHash": "3631177c1c666a16e43f500829d9b7867ee4a37050025543caf5b64ec9db7f64",
+        "blockHeight": 101,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "a7950038816ac454f01afab237a85ca77d9cbeb70e56e6185a805bd902462cca"
+      },
+      {
+        "blockHash": "75a9d4ecc928d4ccc4925b8cce1025fb2786e69c481efed284d5179e3e860c34",
+        "blockHeight": 106,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "e114e27a2b1ad7967290491a488bdefcf0219acc84655d5d642a67913f7180d3"
+      },
+      {
+        "blockHash": "182e96afd884e070e43994d4d63edd245b675e1aefeb18c178763566272130a2",
+        "blockHeight": 130,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "79d2f572daa3e448e7c9b71cbf6ef0c0f3fbe76dcfb9a374f720f778e7525d3a"
+      },
+      {
+        "blockHash": "e8845cb1be53b2f1ddeef1daabf10753bc66e6908b7a76f7f404ddbf4fe6ae42",
+        "blockHeight": 135,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "596151131d1f8e2f97a7c4d1eef37dee98e6944524e1984ea170b4a39b82abce"
+      },
+      {
+        "blockHash": "74e8e53cea0a0c3ccc1d98603b8899ea4b6be2789e19dd79fb778d211e25600d",
+        "blockHeight": 139,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "021faceddbee63721fc30f1485d9195bfbafc316454e2c865b34b8f6117b9155"
+      },
+      {
+        "blockHash": "22913c30d4e64d9581d0f9537602d56115799116db63f4d89b12f6271b2cfbbd",
+        "blockHeight": 143,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "c2660f35bbb8ee07cce7839251000af76ab617ec93f594ff50dde40bf8a17591"
+      },
+      {
+        "blockHash": "08816d37bac044f669d933e4853f038f5aeba76381f8838878c091942a4284ea",
+        "blockHeight": 146,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "8ea55087975c7665f3112920e69f08194df12a91c797432b8b8b6e2b120e32ad"
+      },
+      {
+        "blockHash": "81be9b21311a53773b27ad5124c5c927af8778900eee73f20b7607c72d864cb4",
+        "blockHeight": 149,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "0c17d77e289d0afc712f80de04354819d75f7240457aabcc5eafc3e08e05b955"
+      },
+      {
+        "blockHash": "6371455058d493ee10a2c3d1a185da81d6dc9336bbcf5a440d01f21fa2a8d81f",
+        "blockHeight": 152,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "f3d3796dc06c720c72c7bdf181274c371b13a3140767683a7d4e228ac0dd33ad"
+      },
+      {
+        "blockHash": "5eb62f2a26060f12dce468c6695ecb370e72f172d9e9669eef1733c8a469250e",
+        "blockHeight": 155,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "6ea6e27c11745a3ec55553a2800bdfe675424926fa85ace2975b5faecbc5b459"
+      },
+      {
+        "blockHash": "1e9fda15e95140ef30b9ae23d196439f54ecf9bbe277f7c76fd945cd300e7c0e",
+        "blockHeight": 158,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "7dbb0d798e4161b4b277c537e1ecc59d7b5b42d6d431ac861334f349891cd0ce"
+      },
+      {
+        "blockHash": "9624926da1d9f1162acd73a4f733776eabe2235c13df580bc5dc63305082e468",
+        "blockHeight": 161,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "befc2c402e5b461fba23fb171a553be75c48a1ccee180187350d08b18399a577"
+      },
+      {
+        "blockHash": "fab1d8a22a0d331c7dbf54dae4cde198caf9eeba499b5e2167e1a6abd05adff4",
+        "blockHeight": 164,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "66197dc9e25a38d07d950b5b1b3bfc0df31e59c72c245feff432e1137c409200"
+      },
+      {
+        "blockHash": "592ea39874f05ec040420e7040d2092a11e221a700eb92e2afdc94311825bc9a",
+        "blockHeight": 167,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "e61553040a04a4779a38491358c8ea35f13be12995e7971add16563ba775e780"
+      },
+      {
+        "blockHash": "1bc70157a0341b77086c4f323ac74c237f4b73950edeb2de534afd530e59c92e",
+        "blockHeight": 170,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "e69b3b693f4ae4b5fbd3c529bc31aebf5a6bdbfb28ba4136115bb482d7cd7013"
+      },
+      {
+        "blockHash": "99607f3aae48a636163a8e52f9d44591b005b971691744a2cf62c52c3af02a4a",
+        "blockHeight": 173,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "1d7df066506117c588ae7587ba3ab5733b9c1d8656a5e8fead374e7477509c2f"
+      },
+      {
+        "blockHash": "609f9d0cba905994d34a8af39f642307eb0726d3fcbf88de23d23c7bcc1c32da",
+        "blockHeight": 177,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "92a170b60dfefc6ab137ce4974c30ca15d4c06476cffe2e9aa98fa372b75648c"
+      },
+      {
+        "blockHash": "1f1c1209931006cc305af4eacda4d9e74c1e13ba586f607d78d615528ae48305",
+        "blockHeight": 189,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "cdb968d8224fd76ba3c8c7c13f3b89a74c113109f16ee91fbde91844f72c7281"
+      },
+      {
+        "blockHash": "6141206a373bdd4fd3e44f4acec20521c69aa5b5168e49fb8b3ef534ac779b2c",
+        "blockHeight": 198,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "a2a020e0f5478e3b5f04912521ed4ddb0c01326bf49c79ad1049d0fb30fdd136"
+      },
+      {
+        "blockHash": "58aca69973194058e43352faa9b56a520ccfc089a43c6a95d0d22ab75e606d91",
+        "blockHeight": 201,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "890f150cae02ce5e5b01aacf6d8108076ec1698f5104c2f6851c76a84b68d833"
+      },
+      {
+        "blockHash": "fe1be211b3386a53c82d8708e36cf846bc3ceebbd4808da49a6e8e5d62efc903",
+        "blockHeight": 211,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "cb6cb1cce62867cab245d89a2d5aa63203327780bea85d94ef32d355b298a6ab"
+      },
+      {
+        "blockHash": "1ec5b67787681e0855804e5cf4e341f4003b62c83d834c762007ebf5f92dc736",
+        "blockHeight": 222,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "f20d81d6530b443e4fbfacc0e0b5d29527366b9839f290a3aa988cf110610eb0"
+      },
+      {
+        "blockHash": "e547a95458b488455cf59cc33aa25bd5f562857f8714065e2cbb1abd5bc1f9b4",
+        "blockHeight": 231,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "de26141d4507d26800fdde6e0b87fe80912062cb9b596afee25156c41b387bad"
+      },
+      {
+        "blockHash": "7b3abda54971be49f7e70000f5bc7fa5556f499f3889dc565295c6116b9ec936",
+        "blockHeight": 240,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "e29bf9c5dcb574d58e7057930d76390facb74fda02be2641c98e10132e8ce8ef"
+      },
+      {
+        "blockHash": "d1d7e8dbe93d18b46fb48a392eb9b61fa906be0dcfc04fd2e75f11dff6dade5c",
+        "blockHeight": 245,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "c4da7a74255b8712c10771011ca6732006e49b0c9c1ef030a4602bc5647b53a8"
+      },
+      {
+        "blockHash": "a015d2c96cc5fc52929ed6caa0e41f0d7b0fa8d26b54aa79e5b7c40ca8c04e73",
+        "blockHeight": 262,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "7d4197bd1c1a871c98fa564aaaa02fd68d203e804d0863cda98cbf370b73d2c9"
+      },
+      {
+        "blockHash": "f5a955d878db584422c3a0e503e39ebed0cf79071ac20237a498ed1b506118c1",
+        "blockHeight": 271,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "faacd90af7bab4900eef2423ead7b406aa2c5a89407d1ff7c60a3b29b486e2c5"
+      },
+      {
+        "blockHash": "b6ba19b799e82b33b519e4f8d02fc42e2f403246ac67e11c45acc02a4713049e",
+        "blockHeight": 280,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "55d9585917e92d5af1328e0392706de5167ec29ce6639962050d625c40651b33"
+      },
+      {
+        "blockHash": "c1a568d197f5c41915dd977583641efbce2ea9e8b74a79ebd0d3b4928083cf03",
+        "blockHeight": 289,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "e3305c8e56c6312fe029fae146ce37c73d510b7dfad0f28b83f39c1b058f58de"
+      },
+      {
+        "blockHash": "7335a22958fb4885f369d7693be5f233b63e493d1e795d073a98d046d931b954",
+        "blockHeight": 369,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "ffe6181b31b15d9f48d76b42850e35676e505a7c410176bb4a544c3036b5be3b"
+      },
+      {
+        "blockHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "blockHeight": 378,
+        "finalizedHash": "dba755326c41fe853e5770bbb212178e47858240db953f885350e8a00cbcf434",
+        "finalizedHeight": "378",
+        "txHash": "67774774bf910f2b2d63974474225d22fdb14b39b6fdca9031763d0e7c0f3360"
+      }
+    ],
+    "fundingWalletReconnects": 0,
+    "kind": "source-native-session-controller",
+    "limitations": [
+      "Synthetic PRF/owner credentials; no real-provider prompts.",
+      "Two actual ten-minute demo sessions per arm; expiry refusal is SDK pre-proof against indexed native chain time, not a malicious proof/node rejection.",
+      "Native value path uses the hosted Chain port directly; browser HTTP/consent/lock-loss behavior is separately covered by Chromium tests.",
+      "Dedicated faucet token, not an additional NIGHT funding qualification.",
+      "A stale setup mint view may require a canonical-original-bound refresh of the same standalone wallet/providers, without another mint or private-state reset.",
+      "A stale live recipient view may require a cold reconnect after the original withdrawal is independently finalized; this is never another send.",
+      "Source packages, not registry/image acceptance."
+    ],
+    "maliciousProofNodeRejectionQualified": false,
+    "proofAttempts": 49,
+    "proofs": 49,
+    "realProviderQualified": false,
+    "recipientObserverReconnects": 1,
+    "retainedBeforeSend": 49,
+    "schema": 1,
+    "sourceCommit": "b5eeff81767a167a007ee9eb2e32c2e883f068b9",
+    "submissions": 49,
+    "syntheticAssetNotNight": true,
+    "syntheticCredentials": true,
+    "verdict": "PASS"
+  },
+  "keyPins": [
+    {
+      "circuit": "activate_initial_device_with_jubjub",
+      "kind": "prover",
+      "sha256": "6b9571e641ff826dd381550d14e3c445f28efad59890c1cd8a50b27a9517995a"
+    },
+    {
+      "circuit": "activate_initial_device_with_jubjub",
+      "kind": "verifier",
+      "sha256": "b33fa139d34231f6ba1144a4ac3e947b35e679e8e91d31b554d7ff916932931e"
+    },
+    {
+      "circuit": "activate_initial_device_with_k256",
+      "kind": "verifier",
+      "sha256": "7e579319659b7f310c87c553b37ed0c3531e7c4558e76e7de0b8aa96916a8551"
+    },
+    {
+      "circuit": "activate_initial_device_with_p256",
+      "kind": "prover",
+      "sha256": "70f5d46e5e3f56a34c6e9a4c6a44c6e508e0fc11f1c8eee2abe21bed865d7bf8"
+    },
+    {
+      "circuit": "activate_initial_device_with_p256",
+      "kind": "verifier",
+      "sha256": "042ef4684a953bd2a2b3a246a517b999c5fa77e2c5a9851b4d55fed5db092ccd"
+    },
+    {
+      "circuit": "add_device_with_jubjub",
+      "kind": "verifier",
+      "sha256": "8bcb83e10f7ad25fc65e28f3fdb918eaf0f8755f6a0eb7416052c6153ea80408"
+    },
+    {
+      "circuit": "add_device_with_k256",
+      "kind": "verifier",
+      "sha256": "959e4057137caaf8e2febb8f4a6fdb3d5073d852247ca4dc12c84e2698fd9a86"
+    },
+    {
+      "circuit": "add_device_with_p256",
+      "kind": "verifier",
+      "sha256": "7414477f52366b4098bb5347879fcad174595148b19d853ffa65d4d84d48913f"
+    },
+    {
+      "circuit": "append_inbox_with_jubjub",
+      "kind": "prover",
+      "sha256": "6dff5362bd05631680267d83cdab67b5506597a7c851d6053cafa5332225c3e5"
+    },
+    {
+      "circuit": "append_inbox_with_jubjub",
+      "kind": "verifier",
+      "sha256": "c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601"
+    },
+    {
+      "circuit": "append_inbox_with_k256",
+      "kind": "verifier",
+      "sha256": "73e67013fa3e37fc0877ab8432be6614fc5835b2c1e79c835e2c8cc40e7be157"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "kind": "prover",
+      "sha256": "6bbfb51c6d21a8cbe3085c74517487384c6e0fff4d5fb1458533e8b1532f6c2d"
+    },
+    {
+      "circuit": "append_inbox_with_p256",
+      "kind": "verifier",
+      "sha256": "52779a258276ea8c217de9e307d5611c8589fc1c715cdde466f14472736303f9"
+    },
+    {
+      "circuit": "deposit_shielded",
+      "kind": "verifier",
+      "sha256": "18caf9ffc1ea3271c340f97ee5433598b796a64fadcc1fb7bb5c65868574d328"
+    },
+    {
+      "circuit": "deposit_unshielded",
+      "kind": "prover",
+      "sha256": "d8409e37efa3f142a8c9fb44a7a4c25397312317f9cf28f1243c1bba887f56a3"
+    },
+    {
+      "circuit": "deposit_unshielded",
+      "kind": "verifier",
+      "sha256": "bb4421a5909564377d15f0756299bef99740089b842e8d9796ad2d3d75831de9"
+    },
+    {
+      "circuit": "issue_grant_with_jubjub",
+      "kind": "prover",
+      "sha256": "d21b34197c0db7ea29626faa3b5d65e959c67fd3d1e28b450f5cb3515ede67a0"
+    },
+    {
+      "circuit": "issue_grant_with_jubjub",
+      "kind": "verifier",
+      "sha256": "008fa78514089341d53ead256a5f8878eb630d3f60741f3bc6bd34d41a84b2f7"
+    },
+    {
+      "circuit": "issue_grant_with_k256",
+      "kind": "verifier",
+      "sha256": "2c87005a33fa262204b01791f72b616d4b01c78d0f1b00d75942c87abff89b7b"
+    },
+    {
+      "circuit": "issue_grant_with_p256",
+      "kind": "prover",
+      "sha256": "ff171dbb5b5a15f7b1c6577a7903d2f6485954b401141f6ac0f89848a5597d37"
+    },
+    {
+      "circuit": "issue_grant_with_p256",
+      "kind": "verifier",
+      "sha256": "75cfd2a144aa4135075fb8eefa3f0aece57efea745c19cc687f1b388db85ef82"
+    },
+    {
+      "circuit": "publish_recovery_session_with_jubjub",
+      "kind": "verifier",
+      "sha256": "40a747a1ff4e2c2a8ff095b4900e80b32ba3b12936164f8f3ecb6178d980a16c"
+    },
+    {
+      "circuit": "publish_recovery_session_with_k256",
+      "kind": "verifier",
+      "sha256": "95d63f64ed223e13b995f39ec7d2ef630336aabe31aa4d3beaf47467cf5c7854"
+    },
+    {
+      "circuit": "publish_recovery_session_with_p256",
+      "kind": "verifier",
+      "sha256": "181a530e7af949f811f392aea988cffe471219406c36e57c8c283d647417731c"
+    },
+    {
+      "circuit": "recover_cancel_with_jubjub",
+      "kind": "verifier",
+      "sha256": "07ee83659226bdec4843a3ef75d62fd77e506492ff5cb43e174592f30644c0c7"
+    },
+    {
+      "circuit": "recover_cancel_with_k256",
+      "kind": "verifier",
+      "sha256": "fbb2b207720149ad54ba0a9a8f1b25add0edbb2d11ae2a8222af7ac875d16109"
+    },
+    {
+      "circuit": "recover_cancel_with_p256",
+      "kind": "verifier",
+      "sha256": "931442529db8c6ee84ef25d582b068c6acd0f92577d180d8f44284ea767e618f"
+    },
+    {
+      "circuit": "recover_finalise",
+      "kind": "verifier",
+      "sha256": "67cdf364b9ae2905ca8b73cccd6a987eaa4cab83786da19065df88940c9999d2"
+    },
+    {
+      "circuit": "recover_submit",
+      "kind": "verifier",
+      "sha256": "87f7ef22c8393dff30624ab0b1ce61a666662546395088da2d7127d74b236c9c"
+    },
+    {
+      "circuit": "remove_device_with_jubjub",
+      "kind": "verifier",
+      "sha256": "98b87b827e778a90e5012b99465b7c7cfcc00c5ee859bfbcfeec1da657698be0"
+    },
+    {
+      "circuit": "remove_device_with_k256",
+      "kind": "verifier",
+      "sha256": "e1c2c52b3f6d52fb7bef2b40505ba28c4531f0922ac0916bcf56b1b942210fee"
+    },
+    {
+      "circuit": "remove_device_with_p256",
+      "kind": "verifier",
+      "sha256": "07cc0794c5aaac46ec7832129caff43c7e1c81c24fa034962b48fb06b62c3efc"
+    },
+    {
+      "circuit": "revoke_all_grants_with_jubjub",
+      "kind": "verifier",
+      "sha256": "acf69db5f77b0663f995bbd91a752b4a8be80f89d1a5ea6132d890648a532610"
+    },
+    {
+      "circuit": "revoke_all_grants_with_k256",
+      "kind": "verifier",
+      "sha256": "ddbf3dfd380a258065fff743888e392fa39422fcf54e7046624ce042688932d2"
+    },
+    {
+      "circuit": "revoke_all_grants_with_p256",
+      "kind": "verifier",
+      "sha256": "594eb9482fc3c024957afd19b0207e393bf2df62e70c75a6c4aa7b6b59d465eb"
+    },
+    {
+      "circuit": "revoke_grant_with_jubjub",
+      "kind": "prover",
+      "sha256": "882036c4b1086fea1f402bbc9efb308d5387d1a63e92a7bab30f4b93c3e74883"
+    },
+    {
+      "circuit": "revoke_grant_with_jubjub",
+      "kind": "verifier",
+      "sha256": "2acbb4bf271df28b6fb6ed20d931a10a51975d661dd917b8855c41f8dffac289"
+    },
+    {
+      "circuit": "revoke_grant_with_k256",
+      "kind": "verifier",
+      "sha256": "963df4303ca470476ce4ac0635aba911f1d61774ebd323d843dfe1385bae05cd"
+    },
+    {
+      "circuit": "revoke_grant_with_p256",
+      "kind": "prover",
+      "sha256": "0d2c8243f9d15a564fdca1e03518f9a00b80cad8ff6cf34ede94ce117bf6715f"
+    },
+    {
+      "circuit": "revoke_grant_with_p256",
+      "kind": "verifier",
+      "sha256": "48829cf7ec8401b6e54bc639d3c9baf03495ecdf921e74021c3fe91fc2d38fa8"
+    },
+    {
+      "circuit": "rotate_enc_key_with_jubjub",
+      "kind": "verifier",
+      "sha256": "15238b09168c63a597c7d47cfe3b732fa126257bdf6b0558229d98feb5cb2322"
+    },
+    {
+      "circuit": "rotate_enc_key_with_k256",
+      "kind": "verifier",
+      "sha256": "5389d0d3d845bd94ef91bed9d501be4449a060d0def2336d4b7baedf6f410213"
+    },
+    {
+      "circuit": "rotate_enc_key_with_p256",
+      "kind": "verifier",
+      "sha256": "4b649df25e091e5ae49bf7b89e36a227e1a2f5ab13adacc22ce2c1a06926591f"
+    },
+    {
+      "circuit": "withdraw_shielded_to_contract_with_grant_jubjub",
+      "kind": "verifier",
+      "sha256": "043259fa82b5d28b7dbf76e96d23300e3bcbccb7985ffd6255f7aae09e0430ac"
+    },
+    {
+      "circuit": "withdraw_shielded_to_contract_with_grant_k256",
+      "kind": "verifier",
+      "sha256": "3d1e50b8350fd91446f2564e5abf7e7d4119bb13438ff21bc18a5d6f853e2de5"
+    },
+    {
+      "circuit": "withdraw_shielded_to_contract_with_grant_p256",
+      "kind": "verifier",
+      "sha256": "4be4b73b787c905b669ca5016b0f25bc702310b4e448482e520054216f6fdf0e"
+    },
+    {
+      "circuit": "withdraw_shielded_to_contract_with_jubjub",
+      "kind": "verifier",
+      "sha256": "80de79cc371eecbcede1cac34aa729abc5e5e0b58da8683fa585bb8242cf6cf2"
+    },
+    {
+      "circuit": "withdraw_shielded_to_contract_with_k256",
+      "kind": "verifier",
+      "sha256": "aafb9d7c641bcc7a9eb79c0e7db18ab40721cb1dff480013a9ffe92eb8821c5d"
+    },
+    {
+      "circuit": "withdraw_shielded_to_contract_with_p256",
+      "kind": "verifier",
+      "sha256": "8a53f9c55fc22caef6eb27880cca12230a6b77464db6121e3c7f76e0c6db30e6"
+    },
+    {
+      "circuit": "withdraw_shielded_with_grant_jubjub",
+      "kind": "verifier",
+      "sha256": "1697a967dbf464b0b3dca05d4208f30ae0a4d84ed132be082c2ebd55f949df99"
+    },
+    {
+      "circuit": "withdraw_shielded_with_grant_k256",
+      "kind": "verifier",
+      "sha256": "a856c3cc48db59b965518975870e5b62f2ab2516bebb20329b2e19cd18b661b7"
+    },
+    {
+      "circuit": "withdraw_shielded_with_grant_p256",
+      "kind": "verifier",
+      "sha256": "50eb4f5e705dc0d15f788f44ea7822828f257a6a977df77e5135636945042aca"
+    },
+    {
+      "circuit": "withdraw_shielded_with_jubjub",
+      "kind": "verifier",
+      "sha256": "81036722d686c1d6296e1a123118680d0240a96ce021da12f702101e4a7c554b"
+    },
+    {
+      "circuit": "withdraw_shielded_with_k256",
+      "kind": "verifier",
+      "sha256": "67f60dc3ed608b79c03cc635d09b327edf5d68774aa6576453b7a0003739b473"
+    },
+    {
+      "circuit": "withdraw_shielded_with_p256",
+      "kind": "verifier",
+      "sha256": "d6adc1feaabc78edb925b901ed7ff2d22a1da102b7686f8ab4a4bc552d8e4c26"
+    },
+    {
+      "circuit": "withdraw_unshielded_with_grant_jubjub",
+      "kind": "prover",
+      "sha256": "df111e31b1818f79acec90bc43252b7f1a76f0b24137637618ee8d5a20b237f7"
+    },
+    {
+      "circuit": "withdraw_unshielded_with_grant_jubjub",
+      "kind": "verifier",
+      "sha256": "b4e90d3b372189aabec6f9d5dc346f4ae5757e6dc91e7f9af6f5f7a83b513e87"
+    },
+    {
+      "circuit": "withdraw_unshielded_with_grant_k256",
+      "kind": "verifier",
+      "sha256": "3e0698c18fead34537a3fca985a515778e840be7bda9f69889071e0edde34413"
+    },
+    {
+      "circuit": "withdraw_unshielded_with_grant_p256",
+      "kind": "verifier",
+      "sha256": "0e0800a7594733b079f1c88f27855fe6af44d858c6ee0ae69bec4281aa26b4b5"
+    },
+    {
+      "circuit": "withdraw_unshielded_with_jubjub",
+      "kind": "verifier",
+      "sha256": "265a64198c2baf14b79ffdc57362c173cd0e13257e1627acae55c6cc821118c4"
+    },
+    {
+      "circuit": "withdraw_unshielded_with_k256",
+      "kind": "verifier",
+      "sha256": "a0d7624f9f25ad695511dc169d4daa9f25853f0af35bbea375f4fdb12fc943b6"
+    },
+    {
+      "circuit": "withdraw_unshielded_with_p256",
+      "kind": "verifier",
+      "sha256": "a4b8fd3383755f6f110a2b94fe97ab48a0dadd652043b200c30eb93e81fdc209"
+    }
+  ],
+  "inputAudit": {
+    "endInputsUnchanged": true,
+    "sdkDependencyFiles": 21253,
+    "referenceDependencyFiles": 24748,
+    "referenceGeneratedMatchesSdkPin": true,
+    "retainedTransactionBinariesVerified": 49,
+    "keyGenerationInvocations": 0
+  },
+  "infrastructureImages": [
+    {
+      "service": "node",
+      "imageId": "sha256:9040c346c27f569b72dfbbad9420cf38fc7cc6a13b38adf814a925bbe9311678",
+      "architecture": "arm64",
+      "repoDigests": [
+        "midnightntwrk/midnight-node@sha256:9040c346c27f569b72dfbbad9420cf38fc7cc6a13b38adf814a925bbe9311678"
+      ]
+    },
+    {
+      "service": "indexer",
+      "imageId": "sha256:ecfec6a26b9f8f89b7531e8f7c390f841661fb079bdf0bc57fa2cf8bb3f99c2f",
+      "architecture": "arm64",
+      "repoDigests": [
+        "ghcr.io/midnightntwrk/indexer-standalone@sha256:ecfec6a26b9f8f89b7531e8f7c390f841661fb079bdf0bc57fa2cf8bb3f99c2f"
+      ]
+    },
+    {
+      "service": "proof-server",
+      "imageId": "sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf",
+      "architecture": "arm64",
+      "repoDigests": [
+        "midnightntwrk/proof-server@sha256:2666c7bd7b4517f8ad135565387f98d14347a9ac715c6c466d4a8a852b545ecf"
+      ]
+    }
+  ],
+  "cleanup": {
+    "activeWalletsStoppedAtFinalCleanup": 2,
+    "replacedRecipientObserversStopped": 1,
+    "priorStandaloneWalletsStoppedForRefresh": 0,
+    "ownedContainersStopped": 3,
+    "leaseReleased": true,
+    "allLedgerKeyAndPrivateFixtureVolumesRetained": true,
+    "originalDefaultAndArchivedIndexerIdentitiesAndRunningStatesUnchanged": true
+  },
+  "priorSuitesRemainFailed": {
+    "v1": 11,
+    "v2": 43,
+    "v3": 4,
+    "v4": 38
+  },
+  "priorOriginalsReconciledWithoutReplay": 96,
+  "releasePublished": false
+}

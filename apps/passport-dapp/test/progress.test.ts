@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventLog } from '../src/event-log.ts';
 import { FLOWS, type ActionId } from '../src/flows.ts';
-import { RUNNING_FILL_CAP, progressView, segmentGrow } from '../src/progress.ts';
+import { RUNNING_FILL_CAP, progressView, segmentGrow, operationStatus } from '../src/progress.ts';
 
 /** A log on a settable clock, and the view of its latest run at `at`. */
 function setup() {
@@ -223,4 +223,72 @@ test('while a run is going the elapsed time follows the clock handed in', () => 
   s.log.start('open');
   assert.equal(s.view(1_000).elapsedMs, 0);
   assert.equal(s.view(66_000).elapsedMs, 65_000);
+});
+
+test('service clock skew cannot throw from a progress listener or stop deployment event delivery', () => {
+  for (const serviceAt of [1000, 1000000]) {
+    const s = setup();
+    s.clock(100000);
+    const run = s.log.start('create');
+    s.clock(110000);
+    s.log.stage('prf');
+    let renders = 0;
+    const detach = s.log.subscribe(() => {
+      const view = s.view(120000);
+      assert.ok(view.elapsedMs >= 0);
+      for (const segment of view.segments) assert.ok(segment.width >= 0 && segment.width <= 100);
+      renders++;
+    });
+    const event = {
+      id: 'deploy-1',
+      flowId: 'original-deploy-flow',
+      step: 'deploy',
+      phase: 'start',
+      at: serviceAt,
+      clock: 'service',
+    } as const;
+    assert.doesNotThrow(() => s.log.event(event));
+    assert.equal(run.steps[1]?.endedAt, serviceAt, 'raw mixed-clock Audit interval is untouched');
+    assert.strictEqual(run.events[0], event, 'raw service event and identity are preserved');
+    s.clock(120000);
+    assert.doesNotThrow(() => s.log.stage('activate'));
+    s.clock(125000);
+    assert.doesNotThrow(() => s.log.finish());
+    assert.equal(run.state, 'done', 'the listener does not interrupt the operation');
+    assert.equal(s.view(9999999).elapsedMs, 25000);
+    assert.equal(renders, 3);
+    detach();
+    s.log.start('open');
+    assert.equal(renders, 3, 'detaching the renderer cannot replay an operation or callback');
+  }
+});
+
+test('a backwards browser clock at attempt end is clamped only in progress, not in Audit', () => {
+  const s = setup();
+  s.clock(100000);
+  const run = s.log.start('open');
+  s.clock(90000);
+  s.log.finish();
+  const view = s.view(120000);
+  assert.equal(view.elapsedMs, 0);
+  assert.equal(view.label, 'Open with passkey finished in 0.0 s.');
+  assert.equal(run.endedAt, 90000);
+  assert.equal(run.steps[0]?.endedAt, 90000);
+});
+
+test('Activity preserves an unknown attempt identity and does not infer finality from a failed log row', () => {
+  const s = setup();
+  const run = s.log.start('fund');
+  s.clock(5000);
+  s.log.fail({ code: 'FundingRejected', message: 'Could not confirm', hint: 'Reconcile first' });
+  const view = operationStatus(run, s.log.stagesOf(run), 100000, {
+    id: 'operation-1',
+    phase: 'unknown',
+    references: { requestId: 'original-funding-request' },
+  });
+  assert.equal(view.phase, 'unknown');
+  assert.equal(view.id, 'operation-1');
+  assert.equal(view.references.requestId, 'original-funding-request');
+  assert.equal(run.state, 'failed', 'raw attempt result is separate from transaction finality');
+  assert.equal(view.elapsedMs, 5000);
 });

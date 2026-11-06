@@ -108,11 +108,16 @@ jobs:
           node --test apps/passport-key-service/test/*.test.mjs
 
   demo_browser:
-    name: Demo UI journeys (synthetic credentials)
+    name: Demo UI journeys (${{ matrix.arm }}, synthetic credentials)
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        arm: [p256, jubjub]
     env:
       CHROME_BIN: /usr/bin/google-chrome
+      PASSPORT_DEMO_JOURNEY_ARM: ${{ matrix.arm }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/prepare-workspace

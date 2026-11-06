@@ -37,6 +37,11 @@ import { createDemoSession } from './session.js';
 import { unlockDemoSessionKey } from './session-key.js';
 import { sessionCheckpoint } from './session-checkpoint.js';
 import { demoOperationGuard } from './operation-guard.js';
+import { createMockNameService } from './mock-name-service.js';
+import { showDemoNameService } from './name-service.js';
+import { createDemoWorkspace } from './workspace.js';
+import { ActivityPanel } from './activity-controls.js';
+import { installLaceWallet } from './lace-wallet.js';
 
 installShim();
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
@@ -48,6 +53,12 @@ const apiVersion = injected()?.apiVersion;
 
 // Presentation (buttons, progress, event log, cards, evidence) lives in ui.ts; this file keeps the
 // connector calls. `stage` moves the progress bar and the log to the next step of the action.
+const workspace = createDemoWorkspace({
+  networkId: network,
+  bindingId: BINDING_ID,
+  serviceUrl: SERVICE_URL,
+  manifestSha256: MANIFEST_SHA256,
+});
 const ui = createUi(
   {
     note:
@@ -85,6 +96,7 @@ const ui = createUi(
     after: finishDemoConsent,
   },
 );
+ActivityPanel(workspace.activityRoot, ui.activity, (id) => workspace.showAudit(id));
 if (ARM === 'jubjub') {
   const note = document.getElementById('key-note');
   if (note)
@@ -97,7 +109,9 @@ if (recoveryNote)
     ' Keep the original passkey: another enrolled reader cannot recover its grant openings. If an owner operation is interrupted, reconcile its transactions before retrying.';
 const { status, stage, record, event: onEvent } = ui;
 setOperationTraceSink(ui.trace);
+installLaceWallet(network, ui.showExternalWalletConnection);
 showDemoCapabilities(ARM);
+showDemoNameService(createMockNameService(network), network);
 
 let api: PassportConnectorAPI | undefined;
 let devWallet: DevWallet | undefined;
@@ -137,6 +151,12 @@ const session = createDemoSession({
         : phase === 'locked' || phase === 'expired'
           ? 'Local key disposed. Any chain grant remains until expiry or confirmed revocation.'
           : '');
+    const safetyNotice = document.getElementById('operation-safety-notice')!;
+    safetyNotice.hidden = phase !== 'blocked';
+    safetyNotice.textContent =
+      phase === 'blocked'
+        ? `A session operation needs reconciliation${intentId ? ` (original intent ${intentId})` : ''}. The local key is locked. Do not retry a transfer; inspect Settings → Sessions and Audit.`
+        : '';
     traceOperation('session.state', {
       phase,
       accountAddress: address,
@@ -443,6 +463,7 @@ ui.on('issueGrant', async () => {
   );
   if (!approved) {
     status('Grant issue cancelled before signing.');
+    traceOperation('grant.issue.cancelled', { accountAddress: current.address });
     return;
   }
   stage('submit');
@@ -484,6 +505,7 @@ ui.on('exportGrant', async () => {
   );
   if (!approved) {
     status('Grant opening export cancelled.');
+    traceOperation('grant.export.cancelled', { accountAddress: current.address, grantId });
     return;
   }
   stage('export');
@@ -516,6 +538,11 @@ ui.on('spendGrant', async () => {
           'Confirm before the grantee passkey prompt.',
       );
       if (approved) stage('submit');
+      else
+        traceOperation('grant.spend.cancelled', {
+          accountAddress: fields.account,
+          grantId: fields.grantId,
+        });
       return approved;
     },
   );
@@ -551,6 +578,7 @@ ui.on('revokeGrant', async () => {
   );
   if (!approved) {
     status('Grant revocation cancelled before signing.');
+    traceOperation('grant.revoke.cancelled', { accountAddress: current.address, grantId });
     return;
   }
   stage('submit');
@@ -624,7 +652,10 @@ ui.on('enrollDevice', async () => {
       `Joiner fingerprint: ${handoff.fingerprint}\n\n` +
       'Compare the fingerprint with the joining browser before consenting.',
   );
-  if (!approved) throw new Error('Device enrollment was cancelled before signing.');
+  if (!approved) {
+    traceOperation('account.device.enrollmentCancelled', { accountAddress: current.address });
+    throw new Error('Device enrollment was cancelled before signing.');
+  }
   stage('submit');
   const enrolled = await addDevice(reader, { onEvent });
   stage('read');
@@ -880,6 +911,7 @@ ui.on('startSession', async () => {
     )
   ) {
     status('Session authorization declined before passkey access.');
+    traceOperation('session.authorize.cancelled', { accountAddress: current.address });
     return;
   }
   await session.start(current, scope, minutes, RP_ID, { onEvent });
@@ -900,8 +932,14 @@ ui.on('revokeSession', async () => {
     !window.confirm(
       `Revoke session grant ${snapshot.grantId ?? '(unknown; reconcile the original issue)'} for ACC ${account.address}?\n\nThis requires fresh owner passkey approval and does not undo transfers.`,
     )
-  )
+  ) {
+    status('Session grant revocation cancelled before signing.');
+    traceOperation('session.revoke.cancelled', {
+      accountAddress: account.address,
+      grantId: snapshot.grantId,
+    });
     return;
+  }
   const result = await session.revoke(account, { onEvent });
   record('sessionRevoked', { grantId: snapshot.grantId, txHash: result.txHash });
   status('Session grant revoked on chain. Authorize a new session to renew.');

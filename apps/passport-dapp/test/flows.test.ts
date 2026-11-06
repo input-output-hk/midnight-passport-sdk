@@ -394,3 +394,25 @@ test('shorten keeps the ends of a long value and leaves a short one whole', () =
   assert.equal(shorten('', 2, 2), '');
   assert.equal(shorten('0123456789', 2, 2), '01…89');
 });
+
+test('post-submission errors retain only validated public transaction and grant identifiers', () => {
+  const txHash = 'AB'.repeat(33);
+  const grantId = 'cd'.repeat(32);
+  const error = plainError(
+    { code: 'GrantRosterUnsettled', message: 'unsettled', txHash, grantId, seed: 'secret' },
+    'http://svc',
+  );
+  assert.deepEqual(error.submission, { txHash, grantId });
+  assert.match(error.hint, /same transaction and reconcile/);
+  assert.ok(!JSON.stringify(error).includes('secret'));
+  for (const malformed of ['', 'x'.repeat(64), 'ab'.repeat(31), 'ab'.repeat(34)]) {
+    assert.equal(
+      plainError({ code: 'GrantRosterUnsettled', txHash: malformed, grantId }, '').submission,
+      undefined,
+    );
+  }
+  assert.deepEqual(plainError({ txHash: 'ab'.repeat(32), grantId: 'invalid' }, '').submission, {
+    txHash: 'ab'.repeat(32),
+  });
+  assert.equal(plainError({ code: 'GrantRosterUnsettled', grantId }, '').submission, undefined);
+});

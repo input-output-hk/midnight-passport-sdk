@@ -4,6 +4,17 @@ title: Demo use cases
 permalink: /use-cases/
 ---
 
+## Local source navigation
+
+The local prototype after RC7 has **Overview, Passport account, Midnight wallet,
+Audit and Settings**. Create/open in Overview; fund/withdraw in Passport account;
+refresh wallet balances in Midnight wallet. Devices, sessions, manual grants and
+wallet connection setup live in Settings. Developer tools and the mock name
+lookup are under its closed Advanced section. Full logs/copy are in Audit.
+See [workspace and Activity controls]({{ '/demo-ui/' | relative_url }}). These UI
+changes are not in published RC7.
+
+
 ## RC7 consent and capability inspection
 
 RC7 adds an operation review before key access, an explicit permanent
@@ -22,6 +33,13 @@ synthetic browser journeys from native/provider evidence and the current RC7 rel
 
 
 ## Library integration beyond the demo
+
+Local source after RC7 also includes **Name service · mock adapter**. Look up
+`alice.passport.test` or `bob.passport.test` without an account/passkey. The
+synthetic record is shown separately and never sets a transfer recipient.
+An unknown name clears the result. This is replaceable host wiring over the
+[SDK naming port]({{ '/names/' | relative_url }}), not name registration or a
+live naming registry. It is not in published RC7.
 
 The [partner contract guide]({{ '/partner-integration/' | relative_url }}) describes
 application→ACC composition using the installed contract/assets and account helpers.

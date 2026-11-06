@@ -1,5 +1,17 @@
 # Midnight Passport DApp prototype
 
+## Approved UX implementation milestone
+
+See the [execution map](ux-milestone.md) for the current local naming/interaction
+slice, responsive shell/Settings/Audit implementation and pending optional host wiring.
+Read the [workspace guide](../site/demo-ui.md) for the current action locations.
+These source additions are not in published RC7. Existing launch and safety rules
+in this guide remain in force.
+
+The local source after RC7 also has a read-only, app-owned mock naming adapter.
+See [naming-service interfaces, replacement and demo limits](../site/names.md).
+It is independent of onboarding and never authorizes or redirects a transfer.
+
 For the current `acc-s3r1.1` setup, funding flow, audit status and operator handover, see the
 [engineering handover](../site/handover.md). The run evidence below is historical and names the
 older `acc-45721e1` binding.
@@ -209,3 +221,13 @@ same-profile tabs using browser Web Locks. Missing coordination refuses new
 mutations. Public per-intent issue/spend/revocation records survive stale-tab
 metadata writes and reloads; confirmed records prevent stale uncertainty revival.
 This does not coordinate separate browsers/devices or replace host durable jobs.
+
+The [native session qualification map](../review/native-sessions/README.md) describes
+an isolated opt-in lane for the consented JubJub source increment. Both synthetic
+owner arms use the actual controller/SDK and a fresh faucet token. Native proof,
+browser consent, real-provider and published-artifact acceptance are separate.
+
+The post-RC7 session lane passes at signed `b5eeff8` for both software owner
+arms. See the [exact native source receipt](../review/native-sessions/README.md).
+It includes real ten-minute expiry, original-hash observer recovery and cleanup;
+NIGHT, browser/provider and published-artifact claims keep their separate evidence.

@@ -39,8 +39,7 @@ const unlock = () =>
   passkey.prf.withSession(async () => {
     (await passkey.prf.deviceSecret()).fill(0);
   });
-async function sign(): Promise<void> {
-  await unlock();
+async function p256Signature(): Promise<void> {
   if (ARM === 'p256') {
     await beforeDemoCeremony({ purpose: 'sign', rpId: RP_ID, attempt: 1 });
     await navigator.credentials.get({
@@ -51,6 +50,10 @@ async function sign(): Promise<void> {
       },
     });
   }
+}
+async function sign(): Promise<void> {
+  await unlock();
+  await p256Signature();
 }
 const tx = (s: State) => ({ txHash: s.txHash, nextUseCounter: BigInt(s.nonce) });
 const account = (credentialId: Uint8Array) => ({
@@ -152,6 +155,13 @@ const api = {
     const ref = await passkey.credentials.create({ name: 'journey owner' });
     await unlock();
     await call('create');
+    if (ARM === 'p256') {
+      // Synthetic setup publications exercise separate post-deployment consent boundaries.
+      await p256Signature();
+      await call('publish-envelope');
+      await p256Signature();
+      await call('publish-registration');
+    }
     return account(ref.credentialId);
   },
   async openAccount() {

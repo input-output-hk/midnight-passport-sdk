@@ -29,7 +29,7 @@ explicit acknowledgement that the demo permanently retires maintenance authority
 creation/verification, identification, PRF unlock or P-256 signature before browser
 access. A later exact transaction/device/grant review remains separate. Counts vary
 by provider, retries and transaction count; do not promise one prompt for P-256.
-Declining the initial review starts no credential or account action. Cancellation
+Declining the initial review starts no credential or account action. The source preview after RC7 additionally blocks every credential API call and retry behind a separate **Continue to passkey / Cancel operation** dialog; the banner alone does not grant consent. Two initial accesses create and verify the credential; later P-256 setup signatures publish sealed inbox entries, each with its own numbered review. Cancellation
 cannot undo submitted effects; preserve original IDs and reconcile unknowns.
 
 **SDK capabilities and proof plans** is advisory public-package inspection. It does
@@ -62,10 +62,53 @@ do not clear site data to retry. Browser Web Locks serialize authenticated/value
 actions across same-profile tabs; missing coordination refuses those actions.
 Independent per-intent public records retain issue/spend/revocation unknowns;
 stale tabs cannot clear them by overwriting display metadata. The session feature is not in published RC7 and
-has no native proof/provider qualification yet. Existing browser tests also cover
-these controls through real generated signing guards and synthetic chain drivers.
+has native source qualification at `b5eeff8` for both software owner arms,
+with the actual controller/SDK, a fresh faucet asset and real expiry. Provider,
+browser/native combined and released-artifact acceptance remain separate. Existing
+browser tests cover these controls with real signing guards and synthetic drivers.
 
 ## 1. What you need
+
+### Approved UX milestone (local source)
+
+Follow [the execution map](docs/prototype/ux-milestone.md) and milestone #3, issues
+#287–#294. The optional `account/interaction` subpath supplies public immutable
+presentation models; existing demo progress consumes its arithmetic. It starts
+no credential, timer or transaction. The local demo now composes five workspaces,
+Settings, dedicated Audit and responsive Activity controls; read [the UI guide](docs/site/demo-ui.md).
+Optional React/Lace Wallet wiring has separate acceptance gates. Keep the current branch, blocking consent,
+session/unknown-intent fences and running user demo intact. No `lace-sdk` work or
+new native/full Lace claim in this milestone. These exports are absent from RC7.
+
+### Optional React host example (local source)
+
+Read [the React example guide](docs/site/react-example.md). The development-only
+`/examples/react-activity.html` entry uses synthetic public snapshots under
+StrictMode. Hook/renderers import without mounting a browser app; foundation
+packages gain no React dependency. React/ReactDOM and types are app dev-only,
+pinned past the dependency cooldown. After dependency edits run the full frozen
+workspace install so sibling optional-peer links remain valid. Use the existing
+demo server or a separate free frontend port for the synthetic example; actual
+passkeys still need their canonical origin. No SSR/React Native/lace-sdk claim.
+
+### Optional external Lace Wallet (local source)
+
+Read [the connector guide](docs/site/lace-wallet.md). Settings → Wallet connections
+has explicit discovery, selection and review; the public4.0.x/4.1.x read subset
+only. Wallet-reported unshielded balances stay separate from the built-in wallet
+and ACC. No credential, ACC authority or value operation follows a connection.
+Forget is local, not permission revocation. Tests inject an owned synthetic
+provider; never operate a real user extension during automated qualification.
+
+### Local naming adapter example (after RC7)
+
+The **Name service · mock adapter** panel resolves `alice.passport.test` and
+`bob.passport.test` in memory on the configured demo network. No open account,
+credential, funding or name creation is involved. Its addresses are synthetic,
+not deployed ACCs; never fund them. The panel never changes a transfer recipient.
+The reusable interface is `account/ports`' `PassportNameService`; the checked
+helper is `account/names`. The mock stays in the app. See
+[`docs/site/names.md`](docs/site/names.md). Neither export is in published RC7.
 
 | Requirement                                                                                                     | Why                                                                                                         |
 | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
@@ -557,3 +600,13 @@ public host leaves it pending until close. Explicit fresh-client consent never r
 #272 and the review map before claiming navigation recovery. Copied-root integrity controls
 require a valid-copy baseline and the intended rejection reason. Latest same-source interruption
 control closes all created resources and preserves an honestly absent attacker server.
+
+### Isolated session qualification — 2026/11/05
+
+Read `docs/review/native-sessions/README.md` before the opt-in
+`consented-sessions-native` suite. It owns a fresh random project and fresh volumes
+on ports 19964/18108/16320; never stop/reconfigure archived/default indexers or reuse
+their volume/endpoint. The stable wallet lease is shared with older lanes. Retain
+failed/unknown roots and transaction bytes; source/runtime/reference/key pins must
+match at the end. Native synthetic credentials/faucet-token tests do not establish
+real providers, NIGHT funding, browser/native combination or released packages.

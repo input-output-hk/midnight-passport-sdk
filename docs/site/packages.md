@@ -53,6 +53,12 @@ nine implemented packages. Existing RC1 package records remain historical artifa
 
 ## What an integrator installs
 
+Local source after RC7 adds a read-only naming-service port to `account/ports`
+and a checked resolver in `account/names`. The mock adapter belongs to the demo;
+production providers implement the same port. This adds no package or core
+framework dependency. See [naming adapters]({{ '/names/' | relative_url }}).
+These exports are not available in published RC7.
+
 Partners may adopt the compiled ACC/assets layer while retaining their own account
 orchestration. The [partner contract guide]({{ '/partner-integration/' | relative_url }})
 also describes the **RC7** compiler-dependency export and application→ACC

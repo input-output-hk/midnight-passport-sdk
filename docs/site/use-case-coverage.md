@@ -4,6 +4,20 @@ title: Use-case coverage and release evidence
 permalink: /use-case-coverage/
 ---
 
+Local source after RC7 adds mock name-resolution coverage: the SDK's read-only
+port/resolver has scope, shape, expiry, absence/failure and redaction tests. The
+Chromium demo lane checks lookup, missing/invalid input, no credential access and
+unchanged transfer recipient. These synthetic fixtures do not qualify a live
+name provider, registration, name ownership or account deployment. See
+[naming adapters]({{ '/names/' | relative_url }}).
+
+The source [workspace/Activity increment]({{ '/demo-ui/' | relative_url }}) adds
+real navigation through the existing journeys, desktop collapse/Audit links,
+mobile sheet focus/Escape, separate mobile passkey consent, public Audit export,
+unknown-ID retention during navigation, active-spend navigation and independent
+white-label renderer cleanup. These remain synthetic connector/credential tests;
+they do not widen native or real-provider acceptance.
+
 ## Current published release and evidence tiers
 
 Published **RC7** adds ceremony-purpose hooks, consistent demo operation review,
@@ -67,6 +81,13 @@ generation or native proof is added. The 30–45-second warm-job target still ne
 hosted timing evidence. Native proof/restart and actual provider qualification
 remain independent slower lanes; follow the [qualification guide]({{ '/qualification/' | relative_url }}).
 
+Local default runs both arms. CI now uses two complete owner-arm jobs rather than
+one serial browser job; `PASSPORT_DEMO_JOURNEY_ARM=p256` or `jubjub` selects a
+single profile and any other explicit value refuses. The final required
+**Lint, format, build, and test** check still requires the whole matrix to pass.
+Sharding does not skip scenarios, change the package cache trust model or turn
+local timings into hosted performance evidence.
+
 ## Quantitative package coverage
 
 ```sh
@@ -122,3 +143,32 @@ scope/cap/context mismatch, key disposal and checkpoint guards.
 The immutable RC7 release evidence above is unchanged. These source tests are not
 native proof acceptance, provider synchronization/restoration or full Lace
 compatibility. See [session scope and safety]({{ '/jubjub-sessions/' | relative_url }}).
+
+## Native source session qualification after RC7
+
+A separate isolated run uses the actual controller, session key helper and holder
+against native proofs: both software owner arms, fixed-recipient withdrawal and
+recipient credit, copied-key revocation, distinct-child renewal, real ten-minute
+expiry and expired-slot reclamation. The [session guide]({{ '/jubjub-sessions/' | relative_url }})
+and its linked receipt pin the executed source, all originals, used key hashes and
+cleanup. Browser consent/HTTP behavior is still a separate synthetic-chain lane.
+These SDK refusals before proving do not establish malicious-proof node rejection.
+
+The run confirms an original transfer before reconnecting a stale wallet observer.
+A stale display is not permission to resend. Refresh, then use the normal consented
+wallet reconnect flow and original-hash inspection. Source qualification does not
+add this feature to published RC7, qualify a real PRF provider or prove full Lace.
+
+
+### Source preview after RC7: explicit approval per credential request
+
+The Chromium lane now checks independent approval before every observed mock
+credential access, including creation, new-credential verification, identification,
+PRF unlock and P-256 signatures. One click cannot approve a later request. It also
+checks Escape before credential creation, refusal of the second initial request,
+PRF refusal, separate post-deployment setup publications and cancellation of a
+synthetically injected recognized browser-format retry. The synthetic setup
+publications demonstrate consent boundaries, not native activation acceptance.
+The live proof receipts for the previous native slice remain pinned to their
+original source; they do not establish a real provider or combined browser/native
+pass for this UI change.

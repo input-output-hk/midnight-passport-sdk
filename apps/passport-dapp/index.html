@@ -32,6 +32,22 @@
         </button>
       </div>
     </dialog>
+    <dialog
+      id="ceremony-dialog"
+      aria-labelledby="ceremony-title"
+      aria-describedby="ceremony-details"
+    >
+      <h2 id="ceremony-title">Review passkey request</h2>
+      <p id="ceremony-details" class="consent-details"></p>
+      <div class="consent-buttons">
+        <button id="ceremony-cancel" class="btn btn-secondary" type="button">
+          Cancel operation
+        </button>
+        <button id="ceremony-continue" class="btn btn-primary" type="button">
+          Continue to passkey
+        </button>
+      </div>
+    </dialog>
     <p id="ceremony-purpose" class="ceremony-notice" role="status" aria-live="polite" hidden></p>
     <a class="skip-link" href="#main">Skip to the demo</a>
     <p class="mock-banner" id="mock-banner" role="alert" hidden></p>
@@ -502,9 +518,9 @@
       <section class="panel" aria-labelledby="session-title">
         <h2 id="session-title">Consented JubJub session</h2>
         <p>
-          Use the withdrawal asset and recipient above for a capped, expiring grant. The session
-          authorizes only unshielded transfers to that recipient. Owner administration always uses a
-          fresh passkey. Your account is not given another owner.
+          Choose the withdrawal asset and recipient in Passport account for a capped, expiring
+          grant. The session authorizes only unshielded transfers to that recipient. Owner
+          administration always uses a fresh passkey. Your account is not given another owner.
         </p>
         <label for="session-minutes">Absolute session lifetime</label>
         <select id="session-minutes">
@@ -572,6 +588,31 @@
             >Shielded deposit review and reconciliation</a
           >. These are engineer integrations, not additional demo transfer buttons.
         </p>
+      </section>
+
+      <section class="panel" aria-labelledby="name-service-title">
+        <h2 id="name-service-title">Name service · mock adapter</h2>
+        <p id="name-service-help">
+          Read-only integration example. Try <code>alice.passport.test</code> or
+          <code>bob.passport.test</code> in the <code>passport-demo</code> namespace on this demo's
+          network. These synthetic addresses are not deployed accounts. No name is registered, no
+          passkey is requested and no transfer destination is changed.
+        </p>
+        <form id="name-service-form">
+          <label for="name-service-name">Exact name</label>
+          <input
+            id="name-service-name"
+            name="name"
+            value="alice.passport.test"
+            maxlength="256"
+            required
+          />
+          <button id="name-service-resolve" class="btn btn-secondary" type="submit">
+            Look up name
+          </button>
+        </form>
+        <p id="name-service-status" role="status" aria-live="polite">No lookup yet.</p>
+        <pre id="name-service-result" tabindex="0" aria-label="Name resolution result"></pre>
       </section>
 
       <section class="panel panel-activity" aria-labelledby="activity-title">

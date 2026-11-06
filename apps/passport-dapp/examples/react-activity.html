@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Passport SDK · optional React host example</title>
+    <style>
+      body {
+        font:
+          16px/1.6 system-ui,
+          sans-serif;
+        margin: 1.25rem;
+        background: #f8f9fc;
+        color: #171822;
+      }
+      main {
+        max-width: 1050px;
+        margin: auto;
+      }
+      h1,
+      h2,
+      h3 {
+        line-height: 1.25;
+      }
+      button,
+      a {
+        font: inherit;
+      }
+      button {
+        min-height: 44px;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #787b90;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        background: white;
+        color: inherit;
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.6;
+      }
+      :focus-visible {
+        outline: 3px solid #0000fe;
+        outline-offset: 3px;
+      }
+      .notice {
+        border: 2px solid #826000;
+        padding: 1rem;
+        background: #fff5d4;
+      }
+      .example-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+      .example-hosts {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+        gap: 1rem;
+      }
+      .react-host {
+        background: white;
+        border: 2px solid var(--host-accent);
+        padding: 1rem;
+        border-radius: 1rem;
+      }
+      .react-host h2 {
+        color: var(--host-accent);
+      }
+      .theme-a {
+        --host-accent: #23328e;
+      }
+      .theme-b {
+        --host-accent: #833157;
+      }
+      .react-operation,
+      .react-journey {
+        margin-block: 1.25rem;
+      }
+      .intent {
+        font-family: monospace;
+        overflow-wrap: anywhere;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="react-example-root">Loading optional React example…</div>
+    <script type="module" src="/src/examples/react-activity.ts"></script>
+  </body>
+</html>

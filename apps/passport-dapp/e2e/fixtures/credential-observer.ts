@@ -4,6 +4,11 @@ export {};
 const frames: string[] = [];
 const observations: { purpose: string; attempt: number }[] = [];
 const failureCodes: string[] = [];
+const approvals = new Set<string>();
+document.getElementById('ceremony-continue')!.addEventListener('click', () => {
+  const dialog = document.getElementById('ceremony-dialog') as HTMLDialogElement;
+  if (dialog.open && dialog.dataset.ceremonyId) approvals.add(dialog.dataset.ceremonyId);
+});
 Object.assign(window, {
   __passportPurposeObservations: observations,
   __passportPurposeFailureCodes: failureCodes,
@@ -35,6 +40,8 @@ const observe = (
       : prf
         ? ['derive-keys']
         : ['verify-created', 'identify', 'sign'];
+  const ceremonyId = notice.dataset.ceremonyId ?? '';
+  if (!approvals.delete(ceremonyId)) refuse('UnapprovedCredentialAccess');
   if (
     notice.hidden ||
     notice.dataset.ready !== 'true' ||

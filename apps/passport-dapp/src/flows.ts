@@ -342,6 +342,8 @@ export interface PlainError {
   readonly message: string;
   /** What it means for the person at the demo, in plain language. */
   readonly hint: string;
+  /** Validated public evidence of acceptance, never arbitrary error/cause fields. */
+  readonly submission?: { readonly txHash: string; readonly grantId?: string };
 }
 
 const HINTS: Readonly<Record<string, string>> = {
@@ -377,21 +379,36 @@ export function knownAccAddress(value: string): string {
 /** Turns anything thrown into a code, the raw message and a plain-language hint. */
 export function plainError(e: unknown, serviceUrl: string): PlainError {
   // A thrown null or undefined is a value too: narrow it to an empty object.
-  const err = (e ?? {}) as { code?: unknown; message?: unknown; name?: unknown };
+  const err = (e ?? {}) as {
+    code?: unknown;
+    message?: unknown;
+    name?: unknown;
+    txHash?: unknown;
+    grantId?: unknown;
+  };
   const code =
     typeof err.code === 'string' ? err.code : typeof err.name === 'string' ? err.name : 'Error';
   const message = typeof err.message === 'string' && err.message ? err.message : String(e);
   // An unreachable service reads as an internal error from the connector: say what it is.
   const unreachable = /unreachable|failed to fetch|networkerror|load failed/i.test(message);
-  const hint =
-    code === 'TransferInvalid'
+  const submission =
+    typeof err.txHash === 'string' && /^[0-9a-f]{64}(?:[0-9a-f]{2})?$/i.test(err.txHash)
+      ? {
+          txHash: err.txHash,
+          ...(typeof err.grantId === 'string' &&
+            /^[0-9a-f]{64}$/.test(err.grantId) && { grantId: err.grantId }),
+        }
+      : undefined;
+  const hint = submission
+    ? `A transaction was submitted (${submission.txHash}), but this attempt did not confirm completion. Inspect that same transaction and reconcile before retrying.`
+    : code === 'TransferInvalid'
       ? message
       : code === 'AccountNotFound' && /not the passkey this account was created with/i.test(message)
         ? message
         : unreachable
           ? `Could not reach the Passport service at ${serviceUrl}. Is it running, and is this page at http://localhost:5173?`
           : (HINTS[code] ?? 'Unexpected error; see the message below.');
-  return { code, message, hint };
+  return { code, message, hint, ...(submission && { submission }) };
 }
 
 export const formatDuration = (ms: number): string => {

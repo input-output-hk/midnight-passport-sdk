@@ -10,10 +10,13 @@ import { execFileSync } from 'node:child_process';
 import { globSync, readFileSync } from 'node:fs';
 import { createServer } from 'vite';
 import { chromium, type BrowserContext, type Page } from 'playwright-core';
+import { settleWithCeremonyReviews } from './approve-ceremonies.ts';
+import { journeyArms } from './journey-arms.js';
 import { MidnightBech32m, UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
 
 const appRoot = fileURLToPath(new URL('../', import.meta.url));
 const origin = 'http://localhost:5173';
+const selectedArms = journeyArms(process.env.PASSPORT_DEMO_JOURNEY_ARM);
 const manifest = '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f';
 const address = 'a1'.repeat(32);
 const night = '00'.repeat(32);
@@ -28,6 +31,7 @@ const pageErrors: string[] = [];
 const credentialFailureCodes: string[] = [];
 const ceremonyPurposesByArm: Record<string, string[]> = {};
 const archivedPurposes: Record<string, string[]> = {};
+const closingContexts = new WeakSet<BrowserContext>();
 async function archiveObservations(page: Page, arm: string) {
   const saved = await page.evaluate(() => {
     const w = window as unknown as {
@@ -57,12 +61,16 @@ const runtimeIdentity = () => {
         'apps/passport-dapp/src/**/*.{ts,css}',
         'apps/passport-dapp/e2e/**/*.ts',
         'apps/passport-dapp/index.html',
+        'apps/passport-dapp/examples/**/*.html',
         'apps/passport-dapp/vite.config.ts',
         'packages/*/dist/**/*.js',
         'packages/*/package.json',
         'packages/contract/generated/acc-s3r1.1/*.js',
         'packages/contract/resources/acc-s3r1.1.capabilities.json',
         'pnpm-lock.yaml',
+        'node_modules/.pnpm/react@*/node_modules/react/**/*.js',
+        'node_modules/.pnpm/react-dom@*/node_modules/react-dom/**/*.js',
+        'node_modules/.pnpm/scheduler@*/node_modules/scheduler/**/*.js',
       ],
       { cwd: repoRoot },
     ),
@@ -124,6 +132,51 @@ const serverOptions: Parameters<typeof createServer>[0] = {
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 let browserVersion: string | undefined;
 let outcome = 'failed';
+// Exercise actual navigation and native disclosure controls before interacting with a field.
+// This does not call account methods, edit hidden state or bypass consent.
+async function reveal(page: Page, selector: string): Promise<void> {
+  const location = await page.locator(selector).evaluate((element) => ({
+    view: element.closest<HTMLElement>('[data-workspace]')?.dataset.workspace,
+    details: [...(element.closest('[data-workspace]')?.querySelectorAll('details') ?? [])]
+      .filter((details) => details.contains(element))
+      .map((details) => details.id),
+  }));
+  if (
+    location.view &&
+    (await page.locator(`#nav-${location.view}`).getAttribute('aria-current')) !== 'page'
+  ) {
+    await page.locator(`#nav-${location.view}`).click();
+  }
+  for (const id of location.details) {
+    if (
+      id &&
+      !(await page.locator(`#${id}`).evaluate((element) => (element as HTMLDetailsElement).open))
+    ) {
+      await page.locator(`#${id} > summary`).click();
+    }
+  }
+}
+async function readSessionState(page: Page): Promise<string> {
+  await reveal(page, '#session-state');
+  return page.locator('#session-state').innerText();
+}
+async function click(page: Page, selector: string): Promise<void> {
+  await reveal(page, selector);
+  await page.locator(selector).click();
+}
+async function fill(page: Page, selector: string, value: string): Promise<void> {
+  await reveal(page, selector);
+  await page.locator(selector).fill(value);
+}
+async function check(page: Page, selector: string): Promise<void> {
+  await reveal(page, selector);
+  await page.locator(selector).check();
+}
+async function select(page: Page, selector: string, value: string): Promise<void> {
+  await reveal(page, selector);
+  await page.locator(selector).selectOption(value);
+}
+
 async function observeCredentialAccess(page: Page): Promise<void> {
   await page.addScriptTag({ type: 'module', url: `${origin}/e2e/fixtures/credential-observer.ts` });
 }
@@ -141,7 +194,7 @@ try {
     ...(process.env.CHROME_BIN && { executablePath: process.env.CHROME_BIN }),
   });
   browserVersion = browser.version();
-  for (const arm of ['p256', 'jubjub'] as const) {
+  for (const arm of selectedArms) {
     const state: FixtureState = {
       nonce: 0,
       epoch: 0,
@@ -155,6 +208,7 @@ try {
     const fundedIds = new Map<string, number>();
     let unknownFunding = false;
     let unknownWithdrawal = false;
+    let unsettledGrantSpend = false;
     let unknownSession = false;
     let unknownRevocation = false;
     let holdSessionSpend: (() => Promise<void>) | undefined;
@@ -196,125 +250,142 @@ try {
       }
       return true;
     };
-    const newPage = async (existing?: BrowserContext) => {
+    const newPage = async (existing?: BrowserContext, reactExample = false) => {
       const context = existing ?? (await browser!.newContext({ serviceWorkers: 'block' }));
       if (!existing) {
         contexts.push(context);
         await context.route('**/*', async (route) => {
-          const request = route.request();
-          const url = new URL(request.url());
-          if (url.origin === origin && url.pathname === '/__demo-fixture') {
-            const data = request.postDataJSON() as Record<string, unknown>;
-            const action = String(data.action);
-            if (action === 'spend' && holdSessionSpend) {
-              fixture(action, data);
-              await holdSessionSpend();
-              await route.fulfill({ json: state });
-            } else if (action === 'spend' && unknownSession) {
-              fixture(action, data); // Realistic fake: effect occurred, acknowledgement was lost.
-              await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
-            } else if (action === 'revoke' && unknownRevocation) {
-              fixture(action, data);
-              await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
-            } else if (action === 'withdraw' && unknownWithdrawal) {
-              calls.push('withdraw-unknown');
-              await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
-            } else {
-              const accepted = fixture(action, data);
-              await route.fulfill({
-                status: accepted ? 200 : 409,
-                json: accepted
-                  ? action === 'state' && staleOwnerReads
-                    ? { ...state, nonce: state.nonce + (staleReadCount++ % 2) }
-                    : state
-                  : { code: 'GrantRevoked' },
-              });
-            }
-          } else if (url.origin === 'http://localhost:8787') {
-            if (url.pathname === '/v1/demo/funding') {
-              if (serviceUnavailable) {
+          try {
+            const request = route.request();
+            const url = new URL(request.url());
+            if (url.origin === origin && url.pathname === '/__demo-fixture') {
+              const data = request.postDataJSON() as Record<string, unknown>;
+              const action = String(data.action);
+              if (action === 'spend' && holdSessionSpend) {
+                fixture(action, data);
+                await holdSessionSpend();
+                await route.fulfill({ json: state });
+              } else if (action === 'spend' && unknownSession) {
+                fixture(action, data); // Realistic fake: effect occurred, acknowledgement was lost.
+                await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
+              } else if (action === 'revoke' && unknownRevocation) {
+                fixture(action, data);
+                await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
+              } else if (action === 'withdraw' && unknownWithdrawal) {
+                calls.push('withdraw-unknown');
+                await route.fulfill({ status: 503, json: { code: 'SubmissionUnknown' } });
+              } else {
+                const accepted = fixture(action, data);
                 await route.fulfill({
-                  status: 503,
-                  json: { error: 'Synthetic service unavailable' },
+                  status: accepted ? 200 : 409,
+                  json: accepted
+                    ? action === 'state' && staleOwnerReads
+                      ? { ...state, nonce: state.nonce + (staleReadCount++ % 2) }
+                      : {
+                          ...state,
+                          ...(action === 'spend' &&
+                            unsettledGrantSpend && { grantUnsettled: true }),
+                        }
+                    : { code: 'GrantRevoked' },
                 });
-                return;
               }
-              if (request.method() === 'POST') {
-                const data = request.postDataJSON();
-                fundingIds.push(data.requestId);
-                if (unknownFunding) {
+            } else if (url.origin === 'http://localhost:8787') {
+              if (url.pathname === '/v1/demo/funding') {
+                if (serviceUnavailable) {
                   await route.fulfill({
                     status: 503,
-                    json: { error: 'Synthetic funding outcome unknown; reconcile original ID' },
+                    json: { error: 'Synthetic service unavailable' },
                   });
                   return;
                 }
-                if (!fundedIds.has(data.requestId)) {
-                  state.night += 10;
-                  fundedIds.set(data.requestId, state.night);
+                if (request.method() === 'POST') {
+                  const data = request.postDataJSON();
+                  fundingIds.push(data.requestId);
+                  if (unknownFunding) {
+                    await route.fulfill({
+                      status: 503,
+                      json: { error: 'Synthetic funding outcome unknown; reconcile original ID' },
+                    });
+                    return;
+                  }
+                  if (!fundedIds.has(data.requestId)) {
+                    state.night += 10;
+                    fundedIds.set(data.requestId, state.night);
+                  }
+                  await route.fulfill({
+                    json: {
+                      ...data,
+                      amount: '10',
+                      txId: '70'.repeat(32),
+                      creditedBalance: String(fundedIds.get(data.requestId)),
+                    },
+                  });
+                } else if (url.searchParams.has('accountAddress')) {
+                  await route.fulfill({
+                    json: {
+                      accountAddress: address,
+                      balances: { night: String(state.night), fundedAsset: String(state.night) },
+                    },
+                  });
+                } else {
+                  await route.fulfill({
+                    json: { assets: [{ color: night, amount: '10' }], balanceAssetColor: night },
+                  });
                 }
+              } else if (url.pathname === '/v1/demo/value-call') {
+                const body = request.postDataJSON();
+                assert.equal(body.circuit, 'withdraw_unshielded_with_grant_jubjub');
+                const accepted = fixture('spend', { amount: body.args[1].$bigint });
+                if (holdSessionSpend) await holdSessionSpend();
                 await route.fulfill({
-                  json: {
-                    ...data,
-                    amount: '10',
-                    txId: '70'.repeat(32),
-                    creditedBalance: String(fundedIds.get(data.requestId)),
-                  },
+                  status: !accepted || unknownSession ? 503 : 200,
+                  json:
+                    !accepted || unknownSession
+                      ? { error: 'Synthetic session outcome unknown' }
+                      : { txHash: state.txHash },
                 });
-              } else if (url.searchParams.has('accountAddress')) {
+              } else if (url.pathname === '/v1/config' || url.pathname === '/config') {
                 await route.fulfill({
                   json: {
-                    accountAddress: address,
-                    balances: { night: String(state.night), fundedAsset: String(state.night) },
+                    networkId: 'undeployed',
+                    bindingId: 'acc-s3r1.1',
+                    manifestSha256: manifest,
+                    serviceApiVersion: '1.0.0',
+                    artefactUrl: 'http://localhost:8787/v1/zk/acc-s3r1.1',
+                    indexerUri: 'http://localhost:18088',
+                    indexerWsUri: 'ws://localhost:18088',
+                    nodeUri: 'ws://localhost:19944',
+                    proofServerUri: 'http://localhost:16300',
+                    zkBaseUrl: 'http://localhost:8787/v1/zk/acc-s3r1.1',
+                    coinPublicKey: '80'.repeat(32),
+                    encryptionPublicKey: '90'.repeat(32),
                   },
                 });
               } else {
-                await route.fulfill({
-                  json: { assets: [{ color: night, amount: '10' }], balanceAssetColor: night },
-                });
+                failures.push(`unhandled-service:${url.pathname}`);
+                await route.abort();
               }
-            } else if (url.pathname === '/v1/demo/value-call') {
-              const body = request.postDataJSON();
-              assert.equal(body.circuit, 'withdraw_unshielded_with_grant_jubjub');
-              const accepted = fixture('spend', { amount: body.args[1].$bigint });
-              if (holdSessionSpend) await holdSessionSpend();
-              await route.fulfill({
-                status: !accepted || unknownSession ? 503 : 200,
-                json:
-                  !accepted || unknownSession
-                    ? { error: 'Synthetic session outcome unknown' }
-                    : { txHash: state.txHash },
+            } else if (url.origin === origin) {
+              // Raw requests go only to our owned Vite server; no existing localhost app is touched.
+              const response = await route.fetch({
+                url: `${base}${url.pathname}${url.search}`,
+                // Only source-module GETs from our owned Vite server: never replay account/value requests.
+                maxRetries: request.method() === 'GET' ? 2 : 0,
               });
-            } else if (url.pathname === '/v1/config' || url.pathname === '/config') {
-              await route.fulfill({
-                json: {
-                  networkId: 'undeployed',
-                  bindingId: 'acc-s3r1.1',
-                  manifestSha256: manifest,
-                  serviceApiVersion: '1.0.0',
-                  artefactUrl: 'http://localhost:8787/v1/zk/acc-s3r1.1',
-                  indexerUri: 'http://localhost:18088',
-                  indexerWsUri: 'ws://localhost:18088',
-                  nodeUri: 'ws://localhost:19944',
-                  proofServerUri: 'http://localhost:16300',
-                  zkBaseUrl: 'http://localhost:8787/v1/zk/acc-s3r1.1',
-                  coinPublicKey: '80'.repeat(32),
-                  encryptionPublicKey: '90'.repeat(32),
-                },
-              });
+              await route.fulfill({ response });
             } else {
-              failures.push(`unhandled-service:${url.pathname}`);
+              // Fonts and browser telemetry are not needed; unexpected network access fails the run.
+              if (!['fonts.googleapis.com', 'fonts.gstatic.com'].includes(url.hostname))
+                failures.push(`unhandled-network:${url.hostname}`);
               await route.abort();
             }
-          } else if (url.origin === origin) {
-            // Raw requests go only to our owned Vite server; no existing localhost app is touched.
-            const response = await route.fetch({ url: `${base}${url.pathname}${url.search}` });
-            await route.fulfill({ response });
-          } else {
-            // Fonts and browser telemetry are not needed; unexpected network access fails the run.
-            if (!['fonts.googleapis.com', 'fonts.gstatic.com'].includes(url.hostname))
-              failures.push(`unhandled-network:${url.hostname}`);
-            await route.abort();
+          } catch (error) {
+            if (!closingContexts.has(context)) {
+              failures.push(
+                `route-error:${error instanceof Error ? error.message.split('\n')[0] : 'unknown'}`,
+              );
+            }
+            await route.abort().catch(() => {});
           }
         });
         await context.addInitScript(() => {
@@ -333,11 +404,35 @@ try {
           void dialog.dismiss();
         } else void dialog.accept();
       });
+      if (reactExample) {
+        // Install before any example code; a regression cannot open a real credential prompt.
+        await page.addInitScript({
+          content: `
+          window.__reactCredentialCalls = 0;
+          Object.defineProperty(navigator, 'credentials', { configurable: true, value: {
+            async create() { window.__reactCredentialCalls++; throw Error('Unexpected credential access'); },
+            async get() { window.__reactCredentialCalls++; throw Error('Unexpected credential access'); }
+          }});
+        `,
+        });
+        await page.goto(`${origin}/examples/react-activity.html`);
+        await page.locator('#react-revision').filter({ hasText: 'Revision 0' }).waitFor();
+        return page;
+      }
       await page.goto(`${origin}/?mockPasskey&fixtureArm=${arm}`);
       await page
         .locator('#status')
         .filter({ hasText: /^Ready\./ })
-        .waitFor();
+        .waitFor()
+        .catch(async (error: unknown) => {
+          console.error(
+            'Startup errors:',
+            failures,
+            pageErrors,
+            await page.locator('#status').allTextContents(),
+          );
+          throw error;
+        });
       await observeCredentialAccess(page);
       return page;
     };
@@ -347,11 +442,7 @@ try {
     };
     const waitStatus = async (page: Page, expected: RegExp, expectedError?: RegExp) => {
       try {
-        await page.waitForFunction(
-          () => !document.querySelector('#log .run[data-state="running"]'),
-          undefined,
-          { timeout: 20_000 },
-        );
+        await settleWithCeremonyReviews(page);
         const codes = await page.evaluate(
           () =>
             (window as unknown as { __passportPurposeFailureCodes?: string[] })
@@ -391,9 +482,9 @@ try {
       const beforeCredential = await page.evaluate(() =>
         localStorage.getItem('passport-dev:mock-passkey:v1'),
       );
-      await page.locator(`#${action}`).click();
+      await click(page, `#${action}`);
       await page.locator('#consent-dialog').waitFor({ state: 'visible' });
-      await page.locator('#consent-cancel').click();
+      await click(page, '#consent-cancel');
       await waitStatus(page, /declined before passkey/);
       assert.equal(calls.length, beforeCalls, `declining ${action} must not invoke a driver`);
       assert.ok(
@@ -401,13 +492,291 @@ try {
           beforeCredential,
         `declining ${action} must not use a credential`,
       );
-      await page.locator(`#${action}`).click();
+      await click(page, `#${action}`);
       await page.locator('#consent-dialog').waitFor({ state: 'visible' });
-      if (action === 'create') await page.locator('#consent-retirement-ack').check();
-      await page.locator('#consent-continue').click();
+      if (action === 'create') await check(page, '#consent-retirement-ack');
+      await click(page, '#consent-continue');
     };
     try {
       const owner = await newPage();
+      const react = await newPage(undefined, true);
+      const beforeReactCalls = calls.length;
+      assert.equal(await react.locator('#react-runtime').innerText(), 'React 19.3.1');
+      assert.deepEqual(await react.locator('.theme-a h3').allTextContents(), [
+        'Current operation',
+        'Your journey',
+      ]);
+      assert.deepEqual(await react.locator('.theme-b h3').allTextContents(), [
+        'Your journey',
+        'Current operation',
+      ]);
+      await react.locator('#react-publish').click();
+      await react.locator('#react-revision').filter({ hasText: 'Revision 1' }).waitFor();
+      assert.equal(await react.locator('[data-phase="unknown"]').count(), 2);
+      await react.locator('#react-toggle').click();
+      assert.equal(await react.locator('.theme-a').count(), 0);
+      await react.locator('#react-toggle').click();
+      assert.match(
+        await react.locator('.theme-a .intent').innerText(),
+        /original-synthetic-intent/,
+      );
+      assert.equal(await react.locator('#react-revision').innerText(), 'Revision 1');
+      await react.locator('.theme-b [data-action="audit"]').click();
+      await react
+        .locator('#react-audit-output')
+        .filter({ hasText: 'synthetic-operation' })
+        .waitFor();
+      assert.equal(await react.locator('#react-revision').innerText(), 'Revision 1');
+      await react.locator('#react-resolve').click();
+      await react.locator('#react-revision').filter({ hasText: 'Revision 2' }).waitFor();
+      assert.equal(await react.locator('[data-phase="succeeded"]').count(), 2);
+      assert.equal(
+        await react.evaluate(
+          () => (window as unknown as { __reactCredentialCalls: number }).__reactCredentialCalls,
+        ),
+        0,
+      );
+      assert.equal(calls.length, beforeReactCalls);
+      await react.close();
+      await owner.bringToFront();
+      done(
+        'optional React StrictMode hosts use public snapshots without credential access, command replay or SDK effects',
+      );
+      const external = await newPage();
+      const externalCallsBefore = calls.length;
+      const recipientBeforeExternal = await external.locator('#withdraw-recipient').inputValue();
+      await click(external, '#lace-wallet-discover');
+      assert.match(await external.locator('#lace-wallet-status').innerText(), /No compatible/);
+      await external.evaluate(async () => {
+        const path = '/e2e/fixtures/lace-provider.ts';
+        const fixture = await import(/* @vite-ignore */ path);
+        fixture.installLaceFixture();
+      });
+      const fixtureCall = async (method: string, value?: string) =>
+        external.evaluate(
+          async ({ method, value }) => {
+            const path = '/e2e/fixtures/lace-provider.ts';
+            const fixture = await import(/* @vite-ignore */ path);
+            return fixture[method](value);
+          },
+          { method, value },
+        );
+      await click(external, '#lace-wallet-discover');
+      assert.equal(await external.locator('#lace-wallet-provider option').count(), 3);
+      assert.equal(await external.locator('#lace-wallet-connect').isDisabled(), true);
+      assert.equal(await external.locator('#lace-wallet-controls img').count(), 0);
+      await select(external, '#lace-wallet-provider', '10000000-0000-0000-0000-000000000001');
+      await click(external, '#lace-wallet-connect');
+      await external.keyboard.press('Tab');
+      assert.equal(
+        await external.evaluate(() => document.activeElement?.id),
+        'lace-wallet-approve',
+      );
+      await external.keyboard.press('Shift+Tab');
+      assert.equal(await external.evaluate(() => document.activeElement?.id), 'lace-wallet-cancel');
+      await external.keyboard.press('Escape');
+      assert.deepEqual(await fixtureCall('laceFixtureCalls'), []);
+      await click(external, '#lace-wallet-connect');
+      await external.locator('#lace-wallet-approve').click();
+      await external
+        .locator('#lace-wallet-status')
+        .filter({ hasText: 'Connected for this page' })
+        .waitFor();
+      await click(external, '#nav-wallet');
+      assert.match(
+        await external.locator('#lace-wallet-snapshot').innerText(),
+        /NIGHT: 5 smallest units/,
+      );
+      assert.equal(
+        await external.locator('#withdraw-recipient').inputValue(),
+        recipientBeforeExternal,
+      );
+      assert.match((await external.locator('#account-empty').textContent()) ?? '', /No account/);
+      await external.setViewportSize({ width: 390, height: 844 });
+      assert.ok(
+        await external.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        'external-wallet long address must fit mobile',
+      );
+      await click(external, '#nav-settings');
+      assert.ok(
+        await external.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        'provider advertisements and controls must fit mobile',
+      );
+      await external.setViewportSize({ width: 1280, height: 900 });
+      await click(external, '#nav-wallet');
+      await fixtureCall('setLaceFixtureMode', 'wrong-network');
+      await click(external, '#lace-wallet-refresh');
+      await click(external, '#nav-settings');
+      await external
+        .locator('#lace-wallet-status')
+        .filter({ hasText: 'NetworkMismatch' })
+        .waitFor();
+      assert.match(
+        (await external.locator('#lace-wallet-snapshot').textContent()) ?? '',
+        /Balance unavailable/,
+      );
+      await fixtureCall('setLaceFixtureMode', 'reject');
+      await click(external, '#lace-wallet-connect');
+      await external.locator('#lace-wallet-approve').click();
+      await external
+        .locator('#lace-wallet-status')
+        .filter({ hasText: 'PermissionRejected' })
+        .waitFor();
+      assert.doesNotMatch(
+        await external.locator('#lace-wallet-status').innerText(),
+        /private detail/,
+      );
+      await fixtureCall('setLaceFixtureMode', 'delay');
+      await click(external, '#lace-wallet-connect');
+      await external.locator('#lace-wallet-approve').click();
+      await external.locator('#lace-wallet-status').filter({ hasText: 'Waiting for' }).waitFor();
+      await click(external, '#lace-wallet-forget');
+      await fixtureCall('releaseLaceFixture');
+      await external.waitForTimeout(30);
+      assert.match(await external.locator('#lace-wallet-status').innerText(), /forgotten/);
+      await fixtureCall('setLaceFixtureMode', 'ready');
+      await click(external, '#lace-wallet-connect');
+      const connectCountBeforeReplacement = (
+        (await fixtureCall('laceFixtureCalls')) as string[]
+      ).filter((c) => c === 'connect').length;
+      await fixtureCall('replaceLaceFixture');
+      await external.locator('#lace-wallet-approve').click();
+      await external
+        .locator('#lace-wallet-status')
+        .filter({ hasText: 'ProviderUnavailable' })
+        .waitFor();
+      assert.equal(
+        ((await fixtureCall('laceFixtureCalls')) as string[]).filter((c) => c === 'connect').length,
+        connectCountBeforeReplacement,
+      );
+      assert.equal(
+        await external.evaluate(() => localStorage.getItem('passport-dev:mock-passkey:v1')),
+        null,
+      );
+      assert.equal(calls.length, externalCallsBefore, 'wallet reads must not call the ACC driver');
+      await external.close();
+      await owner.bringToFront();
+      done(
+        'optional Lace Wallet has explicit review, separate read-only balances, network/rejection/replacement refusals and late-result forget fencing',
+      );
+      const controlChecks = await owner.evaluate(async () => {
+        const path = '/e2e/fixtures/activity-controls-check.ts';
+        const module = (await import(/* @vite-ignore */ path)) as {
+          checkActivityControls(): {
+            hosts: number;
+            markupEscaped: boolean;
+            themesIndependent: boolean;
+            remountReplays: number;
+            originalIntentPreserved: boolean;
+          };
+        };
+        return module.checkActivityControls();
+      });
+      assert.deepEqual(controlChecks, {
+        hosts: 2,
+        markupEscaped: true,
+        themesIndependent: true,
+        remountReplays: 0,
+        originalIntentPreserved: true,
+      });
+      assert.equal(calls.length, 0);
+      done(
+        'two white-label Activity hosts render shared public snapshots with independent cleanup and no replay',
+      );
+      assert.deepEqual(await owner.locator('.workspace-nav button').allTextContents(), [
+        'Overview',
+        'Passport account',
+        'Midnight wallet',
+        'Audit',
+        'Settings',
+      ]);
+      assert.deepEqual(await owner.locator('#activity-content h2').allTextContents(), [
+        'Current operation',
+        'Your journey',
+      ]);
+      assert.equal(await owner.locator('#capability-operation').isVisible(), false);
+      assert.equal(await owner.locator('#session-minutes').isVisible(), false);
+      for (const view of ['account', 'wallet', 'audit', 'settings', 'overview']) {
+        await owner.locator(`#nav-${view}`).click();
+        assert.equal(await owner.locator(`#workspace-${view}`).isVisible(), true);
+        assert.equal(await owner.locator('.workspace-view:visible').count(), 1);
+      }
+      assert.equal(calls.length, 0);
+      assert.equal(
+        await owner.evaluate(() => localStorage.getItem('passport-dev:mock-passkey:v1')),
+        null,
+      );
+      await owner.locator('#nav-settings').click();
+      for (const id of [
+        'settings-devices',
+        'settings-sessions',
+        'settings-advanced-access',
+        'settings-developer-tools',
+      ]) {
+        assert.equal(
+          await owner.locator(`#${id}`).evaluate((e) => (e as HTMLDetailsElement).open),
+          false,
+        );
+      }
+      await owner.locator('#nav-audit').click();
+      assert.equal(await owner.locator('#activity-panel').isVisible(), false);
+      const wide = await owner.locator('.workspace-center').evaluate((e) => e.clientWidth);
+      await owner.locator('#activity-toggle').click();
+      assert.equal(await owner.locator('#activity-panel').isVisible(), true);
+      assert.ok((await owner.locator('.workspace-center').evaluate((e) => e.clientWidth)) < wide);
+      await click(owner, '#nav-settings');
+      assert.equal(
+        await owner
+          .locator('#settings-developer-tools')
+          .evaluate((e) => (e as HTMLDetailsElement).open),
+        false,
+      );
+      await owner.locator('#settings-developer-tools > summary').click();
+      assert.match(await owner.locator('#demo-configuration').innerText(), new RegExp(manifest));
+      assert.match(await owner.locator('#demo-configuration').innerText(), /acc-s3r1.1/);
+      assert.equal(await owner.locator('#demo-configuration input').count(), 0);
+      await owner.locator('#settings-developer-tools > summary').click();
+      await owner.locator('#nav-overview').click();
+      done('five workspaces separate settings and Audit without credentials or connector effects');
+
+      await owner.setViewportSize({ width: 390, height: 844 });
+      await owner.locator('#activity-panel').waitFor({ state: 'hidden' });
+      assert.equal(await owner.locator('#activity-panel').isVisible(), false);
+      await owner.locator('#activity-toggle').click();
+      assert.equal(
+        await owner.locator('#activity-sheet').evaluate((e) => (e as HTMLDialogElement).open),
+        true,
+      );
+      assert.equal(
+        await owner.locator('#activity-close').evaluate((e) => e === document.activeElement),
+        true,
+      );
+      assert.deepEqual(
+        await owner.locator('#activity-sheet #activity-content h2').allTextContents(),
+        ['Current operation', 'Your journey'],
+      );
+      await owner.keyboard.press('Shift+Tab');
+      assert.equal(
+        await owner.locator('#activity-sheet').evaluate((e) => e.contains(document.activeElement)),
+        true,
+      );
+      await owner.keyboard.press('Escape');
+      await owner.locator('#activity-sheet').waitFor({ state: 'hidden' });
+      await owner.waitForFunction(() => document.activeElement?.id === 'activity-toggle');
+      assert.equal(
+        await owner.locator('#activity-sheet').evaluate((e) => (e as HTMLDialogElement).open),
+        false,
+      );
+      assert.equal(
+        await owner.locator('#activity-toggle').evaluate((e) => e === document.activeElement),
+        true,
+      );
+      assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      assert.equal(calls.length, 0);
+      done(
+        'mobile Activity sheet contains focus and Escape restores the trigger without starting work',
+      );
+      await owner.setViewportSize({ width: 1280, height: 900 });
       if (process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS && arm === 'p256') {
         const screenshots = process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS;
         await mkdir(screenshots, { recursive: true });
@@ -421,10 +790,12 @@ try {
         );
         await owner.setViewportSize({ width: 1280, height: 900 });
       }
-      await owner.locator('#create').click();
+      await click(owner, '#create');
       await owner.locator('#consent-dialog').waitFor({ state: 'visible' });
+      await assert.rejects(owner.locator('#activity-toggle').click({ timeout: 200 }));
+      await assert.rejects(owner.locator('#nav-settings').click({ timeout: 200 }));
       assert.ok(await owner.locator('#consent-continue').isDisabled());
-      await owner.locator('#consent-cancel').click();
+      await click(owner, '#consent-cancel');
       await waitStatus(owner, /declined before passkey/);
       assert.equal(calls.length, 0);
       assert.equal(
@@ -432,10 +803,145 @@ try {
         null,
       );
       done('declined irreversible create has no credential or connector effect');
+      assert.equal(
+        await owner.locator('.operation-status').getAttribute('data-phase'),
+        'cancelled',
+      );
+      assert.equal(await owner.locator('#progress').getAttribute('aria-valuenow'), null);
+      assert.match(await owner.locator('#progress-label').innerText(), /attempt cancelled/);
+      assert.match(
+        (await owner.locator('#audit-operation-1 .run-meta').textContent()) ?? '',
+        /Cancelled attempt/,
+      );
+      await owner.locator('[data-control="operation-audit-link"]').click();
+      assert.equal(await owner.locator('#workspace-audit').isVisible(), true);
+      assert.equal(await owner.locator('#audit-operation-1').count(), 1);
+      assert.equal(await owner.locator('#activity-panel').isVisible(), false);
+      await owner.locator('#nav-overview').click();
+      await owner.locator('#activity-toggle').click();
+      done(
+        'blocking consent prevents background navigation; cancelled attempt links to its original Audit entry',
+      );
+      await owner.setViewportSize({ width: 390, height: 844 });
+      await owner.locator('#activity-panel').waitFor({ state: 'hidden' });
+      await owner.locator('#activity-toggle').click();
+      await owner.locator('#activity-sheet [data-control="operation-audit-link"]').click();
+      await owner.locator('#activity-sheet').waitFor({ state: 'hidden' });
+      assert.equal(await owner.locator('#workspace-audit').isVisible(), true);
+      await owner.waitForFunction(() => document.activeElement?.id === 'workspace-audit-title');
+      assert.equal(calls.length, 0);
+      await owner.setViewportSize({ width: 1280, height: 900 });
+      await owner.locator('#nav-overview').click();
+      await owner.locator('#activity-toggle').click();
+      done(
+        'mobile operation-to-Audit navigation closes the sheet and focuses the destination without account effects',
+      );
+
+      const credentialsUsed = () =>
+        owner.evaluate(
+          () =>
+            (window as unknown as { __passportPurposeObservations: unknown[] })
+              .__passportPurposeObservations.length,
+        );
+      await approve(owner, 'create');
+      await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+      await owner.setViewportSize({ width: 390, height: 844 });
+      await assert.rejects(owner.locator('#activity-toggle').click({ timeout: 200 }));
+      assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      assert.equal(await credentialsUsed(), 0, 'operation approval alone must not use a passkey');
+      assert.equal(
+        await owner.locator('#ceremony-cancel').evaluate((e) => e === document.activeElement),
+        true,
+      );
+      await owner.keyboard.press('Escape');
+      await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+      await owner.setViewportSize({ width: 1280, height: 900 });
+      assert.equal(await credentialsUsed(), 0);
+      assert.equal(calls.length, 0);
+      done('Escape on the first ceremony refuses credential creation and deployment');
+      done('mobile passkey review remains a separate blocking dialog above the workspace');
+
+      await owner.addScriptTag({
+        type: 'module',
+        url: `${origin}/e2e/fixtures/consent-controls.ts`,
+      });
+      const controlsRefusal = () =>
+        owner.evaluate(() =>
+          (
+            window as unknown as { __consentControls: { refused(): Promise<string> } }
+          ).__consentControls.refused(),
+        );
+      assert.equal(await controlsRefusal(), 'UserCancelled');
+      await approve(owner, 'create');
+      await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+      const pendingId = await owner.locator('#ceremony-dialog').getAttribute('data-ceremony-id');
+      assert.equal(await controlsRefusal(), 'UserCancelled', 'overlapping requests must refuse');
+      assert.equal(
+        await owner.locator('#ceremony-dialog').getAttribute('data-ceremony-id'),
+        pendingId,
+      );
+      await owner.evaluate(() =>
+        (window as unknown as { __consentControls: { finish(): void } }).__consentControls.finish(),
+      );
+      await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+      assert.equal(await credentialsUsed(), 0);
+      assert.equal(calls.length, 0);
+      assert.equal(await controlsRefusal(), 'UserCancelled');
+      done(
+        'operation termination closes pending consent; overlap and ended approvals cannot access a credential',
+      );
+
+      await approve(owner, 'create');
+      await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+      await click(owner, '#ceremony-continue');
+      await owner
+        .locator('#ceremony-details')
+        .filter({ hasText: /second request checks/ })
+        .waitFor();
+      assert.equal(await credentialsUsed(), 1, 'only the expressly approved create was accessed');
+      await click(owner, '#ceremony-cancel');
+      await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+      assert.equal(
+        await credentialsUsed(),
+        1,
+        'declining verification must not assert the passkey',
+      );
+      assert.equal(calls.length, 0, 'declining the probe must not deploy');
+      done('the second initial prompt requires separate approval before the compatibility probe');
+
+      if (arm === 'p256') {
+        await approve(owner, 'create');
+        for (const purpose of ['create', 'verify-created', 'sign']) {
+          await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+          assert.equal(
+            await owner.locator('#ceremony-purpose').getAttribute('data-purpose'),
+            purpose,
+          );
+          const id = await owner.locator('#ceremony-dialog').getAttribute('data-ceremony-id');
+          await click(owner, '#ceremony-continue');
+          await owner.waitForFunction((previous) => {
+            const dialog = document.getElementById('ceremony-dialog') as HTMLDialogElement;
+            return !dialog.open || dialog.dataset.ceremonyId !== previous;
+          }, id);
+        }
+        await owner
+          .locator('#ceremony-details')
+          .filter({ hasText: /Setup signature 2/ })
+          .waitFor();
+        const beforeCancel = await credentialsUsed();
+        await click(owner, '#ceremony-cancel');
+        await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+        assert.equal(await credentialsUsed(), beforeCancel);
+        assert.equal(calls.filter((c) => c === 'publish-envelope').length, 1);
+        assert.equal(calls.filter((c) => c === 'publish-registration').length, 0);
+        done(
+          'each later setup signature needs new approval; declining preserves the prior publication',
+        );
+      }
 
       await approve(owner, 'create');
       await waitStatus(owner, /is created/);
-      done('acknowledged creation and purpose display');
+      done('acknowledged creation and one explicit approval per credential request');
       await archiveObservations(owner, arm);
       await owner.reload();
       await owner
@@ -443,12 +949,47 @@ try {
         .filter({ hasText: /^Ready\./ })
         .waitFor();
       await observeCredentialAccess(owner);
+      // Simulate the exact recognized Chromium variant once; a retry needs another approval.
+      await owner.addScriptTag({ type: 'module', url: `${origin}/e2e/fixtures/profile-retry.ts` });
+      await approve(owner, 'open');
+      await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+      await click(owner, '#ceremony-continue');
+      await owner
+        .locator('#ceremony-details')
+        .filter({ hasText: /Retry 2/ })
+        .waitFor();
+      assert.equal(await credentialsUsed(), 1);
+      await click(owner, '#ceremony-cancel');
+      await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+      assert.equal(
+        await credentialsUsed(),
+        1,
+        'a browser-profile retry cannot reuse prior approval',
+      );
+      done(
+        'a recognized signing-format retry explains the reason and can be declined before access',
+      );
+
       await approve(owner, 'open');
       await waitStatus(owner, /is reopened/);
-      await owner.locator('#open-address').fill(address);
+      await fill(owner, '#open-address', address);
       await approve(owner, 'openAt');
       await waitStatus(owner, /opened by address/);
       done('reload, reopen and known-address opening');
+
+      await approve(owner, 'holdings');
+      await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+      assert.equal(
+        await owner.locator('#ceremony-purpose').getAttribute('data-purpose'),
+        'derive-keys',
+      );
+      const beforeUnlock = await credentialsUsed();
+      const readsBeforeUnlock = calls.filter((c) => c === 'holdings').length;
+      await click(owner, '#ceremony-cancel');
+      await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+      assert.equal(await credentialsUsed(), beforeUnlock);
+      assert.equal(calls.filter((c) => c === 'holdings').length, readsBeforeUnlock);
+      done('declining PRF unlock prevents credential access and the dependent holdings read');
 
       for (const [action, status] of [
         ['refresh', /Account|ACC|refreshed/i],
@@ -456,7 +997,7 @@ try {
         ['grantRoster', /grant/i],
       ] as const) {
         const before = await owner.locator('#ceremony-purpose').innerText();
-        await owner.locator(`#${action}`).click();
+        await click(owner, `#${action}`);
         await waitStatus(owner, status);
         assert.equal(await owner.locator('#ceremony-purpose').innerText(), before);
       }
@@ -476,18 +1017,18 @@ try {
         .locator('.value')
         .getAttribute('title');
       assert.ok(recipient);
-      await owner.locator('#fund').click();
+      await click(owner, '#fund');
       await waitStatus(owner, /account balance: 10/);
       const successfulFundingId = fundingIds.at(-1)!;
       await owner.evaluate(({ key, id }) => localStorage.setItem(key, id), {
         key: `passport-demo:fund:undeployed:${address}:${night}`,
         id: successfulFundingId,
       });
-      await owner.locator('#fund').click();
+      await click(owner, '#fund');
       await waitStatus(owner, /account balance: 10/);
       assert.equal(state.night, 10, 'replayed funding ID must not credit twice');
-      await owner.locator('#withdraw-amount').fill('1');
-      await owner.locator('#withdraw-recipient').fill('invalid-recipient');
+      await fill(owner, '#withdraw-amount', '1');
+      await fill(owner, '#withdraw-recipient', 'invalid-recipient');
       const withdrawals = calls.filter((c) => c === 'withdraw').length;
       await approve(owner, 'withdraw');
       await waitStatus(
@@ -496,11 +1037,33 @@ try {
         /Enter a valid unshielded Midnight address for undeployed/,
       );
       assert.equal(calls.filter((c) => c === 'withdraw').length, withdrawals);
+      const phaseBeforeBackground = await owner
+        .locator('.operation-status')
+        .getAttribute('data-phase');
+      const refsBeforeBackground = await owner.locator('.activity-references').textContent();
+      const callsBeforeBackground = calls.length;
+      await owner.evaluate(async () => {
+        const path = '/src/operation-trace.ts';
+        const module = (await import(/* @vite-ignore */ path)) as {
+          traceOperation(kind: string, details: Record<string, unknown>): void;
+        };
+        module.traceOperation('session.state', {
+          phase: 'blocked',
+          intentId: 'background-not-this-operation',
+        });
+      });
+      assert.equal(
+        await owner.locator('.operation-status').getAttribute('data-phase'),
+        phaseBeforeBackground,
+      );
+      assert.equal(await owner.locator('.activity-references').textContent(), refsBeforeBackground);
+      assert.equal(calls.length, callsBeforeBackground);
+      done('background telemetry cannot relabel a finished attempt or borrow its intent reference');
       const wrongNetwork = MidnightBech32m.encode(
         'preview',
         new UnshieldedAddress(Buffer.alloc(32, 7)),
       ).asString();
-      await owner.locator('#withdraw-recipient').fill(wrongNetwork);
+      await fill(owner, '#withdraw-recipient', wrongNetwork);
       await approve(owner, 'withdraw');
       await waitStatus(
         owner,
@@ -508,7 +1071,7 @@ try {
         /Enter a valid unshielded Midnight address for undeployed/,
       );
       assert.equal(calls.filter((c) => c === 'withdraw').length, withdrawals);
-      await owner.locator('#withdraw-recipient').fill(recipient);
+      await fill(owner, '#withdraw-recipient', recipient);
       rejectNextDialog = true;
       await approve(owner, 'withdraw');
       await waitStatus(owner, /cancelled before signing/i);
@@ -518,21 +1081,71 @@ try {
       await waitStatus(owner, /Withdrawal confirmed/);
       assert.equal(state.night, 9);
       assert.equal(state.wallet, 1);
-      await owner.locator('#walletRefresh').click();
+      await click(owner, '#walletRefresh');
       await waitStatus(owner, /snapshot refreshed/);
       done('fund ten, reject invalid recipient, withdraw one and refresh wallet');
+      const beforeAudit = calls.length;
+      await owner.locator('#nav-audit').click();
+      const traceDetails = owner.locator('details').filter({ has: owner.locator('#trace') });
+      await traceDetails.locator('summary').click();
+      await owner
+        .locator('#trace')
+        .filter({ hasText: /http.request|funding.intent/ })
+        .waitFor();
+      assert.match(await owner.locator('#trace').innerText(), /http.request|funding.intent/);
+      await owner.evaluate(() => {
+        Object.defineProperty(navigator, 'clipboard', {
+          configurable: true,
+          value: {
+            async writeText(text: string) {
+              (window as unknown as { __copiedPublicAudit: string }).__copiedPublicAudit = text;
+            },
+          },
+        });
+      });
+      await click(owner, '#copy');
+      await waitStatus(owner, /Full operation log copied/);
+      const copied = await owner.evaluate(() => {
+        const text = (window as unknown as { __copiedPublicAudit: string }).__copiedPublicAudit;
+        const result = JSON.parse(text) as {
+          account: { address: string };
+          runs: { result: string; outcome: string }[];
+          trace: unknown[];
+        };
+        const forbidden =
+          /"(?:privateKey|prfOutput|seed|authenticatorData|clientDataJSON|bearerToken)"\s*:/i.test(
+            text,
+          );
+        return {
+          account: result.account.address,
+          runs: result.runs.length,
+          trace: result.trace.length,
+          forbidden,
+          hasCancellation: result.runs.some(
+            (run) => run.result === 'done' && run.outcome === 'cancelled',
+          ),
+        };
+      });
+      assert.equal(copied.account, address);
+      assert.ok(copied.runs > 0 && copied.trace > 0);
+      assert.equal(copied.forbidden, false);
+      assert.equal(copied.hasCancellation, true);
+      assert.equal(calls.length, beforeAudit);
+      done(
+        'dedicated Audit renders and copies public exchanges without secrets, a real clipboard write or connector effects',
+      );
 
       const joiner = await newPage();
-      await joiner.locator('#open-address').fill(address);
+      await fill(joiner, '#open-address', address);
       await approve(joiner, 'prepareJoiner');
       await waitStatus(joiner, /handoff|fingerprint|public keys/i);
       const handoff = await joiner.locator('#handoff-output').inputValue();
-      await owner.locator('#handoff-input').fill('{}');
+      await fill(owner, '#handoff-input', '{}');
       const enrollments = calls.filter((c) => c === 'enroll').length;
       await approve(owner, 'enrollDevice');
       await waitStatus(owner, /failed\./, /handoff does not match|joining-device JSON/i);
       assert.equal(calls.filter((c) => c === 'enroll').length, enrollments);
-      await owner.locator('#handoff-input').fill(handoff);
+      await fill(owner, '#handoff-input', handoff);
       staleOwnerReads = true;
       await approve(owner, 'enrollDevice');
       await waitStatus(owner, /failed\./, /ACC roster changed while preparing enrollment/);
@@ -542,32 +1155,51 @@ try {
       await waitStatus(owner, /Joining device confirmed/);
       await approve(joiner, 'openAt');
       await waitStatus(joiner, /opened by address/);
-      await owner.locator('#remove-commitment').fill(target);
+      await fill(owner, '#remove-commitment', target);
       await approve(owner, 'removeDevice');
       await waitStatus(owner, /entry is absent/);
       assert.equal(state.entries.length, 1);
       done('prepare joiner, reject malformed handoff, enroll, open and remove entry');
 
       const holder = await newPage();
-      await holder.locator('#open-address').fill(address);
+      await fill(holder, '#open-address', address);
       await approve(holder, 'prepareGrantee');
       await waitStatus(holder, /Public grantee key ready/);
-      await owner
-        .locator('#grant-grantee')
-        .fill(await holder.locator('#grantee-output').inputValue());
-      await owner.locator('#grant-recipient').fill(recipient);
-      await owner.locator('#grant-per-call').fill('1');
-      await owner.locator('#grant-cap').fill('2');
+      await fill(owner, '#grant-grantee', await holder.locator('#grantee-output').inputValue());
+      await fill(owner, '#grant-recipient', recipient);
+      await fill(owner, '#grant-per-call', '1');
+      await fill(owner, '#grant-cap', '2');
+      const issuesBeforeDecline = calls.filter((c) => c === 'issue').length;
+      const credentialsBeforeGrantDecline = await credentialsUsed();
+      rejectNextDialog = true;
+      await approve(owner, 'issueGrant');
+      await waitStatus(owner, /Grant issue cancelled before signing/);
+      assert.equal(
+        await owner.locator('.operation-status').getAttribute('data-phase'),
+        'cancelled',
+      );
+      assert.equal(await owner.locator('#progress').getAttribute('aria-valuenow'), null);
+      assert.equal(calls.filter((c) => c === 'issue').length, issuesBeforeDecline);
+      assert.equal(await credentialsUsed(), credentialsBeforeGrantDecline);
       await approve(owner, 'issueGrant');
       await waitStatus(owner, /Grant .*active|grant.*issued/i);
-      await owner.locator('#export-grant-id').fill(grantId);
+      await fill(owner, '#export-grant-id', grantId);
+      rejectNextDialog = true;
+      await approve(owner, 'exportGrant');
+      await waitStatus(owner, /Grant opening export cancelled/);
+      assert.equal(
+        await owner.locator('.operation-status').getAttribute('data-phase'),
+        'cancelled',
+      );
       await approve(owner, 'exportGrant');
       await waitStatus(owner, /Opening ready/);
-      await holder
-        .locator('#grant-opening-input')
-        .fill(await owner.locator('#grant-opening-output').inputValue());
-      await holder.locator('#grant-spend-amount').fill('1');
-      await holder.locator('#grant-spent-prev').fill('0');
+      await fill(
+        holder,
+        '#grant-opening-input',
+        await owner.locator('#grant-opening-output').inputValue(),
+      );
+      await fill(holder, '#grant-spend-amount', '1');
+      await fill(holder, '#grant-spent-prev', '0');
       const beforeDeclinedSpend = calls.filter((c) => c === 'spend').length;
       rejectNextDialog = true;
       await approve(holder, 'spendGrant');
@@ -576,7 +1208,36 @@ try {
       assert.equal(calls.filter((c) => c === 'spend').length, beforeDeclinedSpend);
       await approve(holder, 'spendGrant');
       await waitStatus(holder, /Grant spend .*confirmed/);
-      await owner.locator('#revoke-grant-id').fill(grantId);
+      await fill(holder, '#grant-spent-prev', '1');
+      unsettledGrantSpend = true;
+      await approve(holder, 'spendGrant');
+      await waitStatus(holder, /failed\./, /submitted/);
+      unsettledGrantSpend = false;
+      assert.equal(await holder.locator('.operation-status').getAttribute('data-phase'), 'unknown');
+      assert.match(await holder.locator('.operation-status').innerText(), new RegExp(state.txHash));
+      await click(holder, '#nav-audit');
+      assert.match(
+        await holder.locator('#log .run').first().locator('.run-meta').innerText(),
+        /Outcome unknown/,
+      );
+      done(
+        'submitted grant spend with unsettled roster preserves its hash and unknown outcome in Activity and Audit',
+      );
+
+      await fill(owner, '#revoke-grant-id', grantId);
+      const revocationsBeforeDecline = calls.filter((c) => c === 'revoke').length;
+      rejectNextDialog = true;
+      await approve(owner, 'revokeGrant');
+      await waitStatus(owner, /Grant revocation cancelled before signing/);
+      assert.equal(
+        await owner.locator('.operation-status').getAttribute('data-phase'),
+        'cancelled',
+      );
+      assert.equal(calls.filter((c) => c === 'revoke').length, revocationsBeforeDecline);
+      assert.equal(state.grant?.active, true);
+      done(
+        'declining exact issue, export and revoke reviews reports cancellation without grant mutations',
+      );
       await approve(owner, 'revokeGrant');
       await waitStatus(owner, /is revoked/);
       const balance = state.night;
@@ -588,22 +1249,69 @@ try {
       done('prepare holder, issue/export/spend/revoke, refuse revoked spend and recover pending');
 
       const beforeInspection = calls.length;
-      await owner.locator('#capability-operation').selectOption('withdraw-shielded');
+      const recipientBeforeLookup = await owner.locator('#withdraw-recipient').inputValue();
+      await click(owner, '#name-service-resolve');
+      await owner
+        .locator('#name-service-status')
+        .filter({ hasText: 'Mock record found' })
+        .waitFor();
+      assert.match(await owner.locator('#name-service-result').innerText(), /"mode": "mock"/);
+      assert.match(
+        await owner.locator('#name-service-result').innerText(),
+        /"networkId": "undeployed"/,
+      );
+      await fill(owner, '#name-service-name', 'missing.passport.test');
+      await click(owner, '#name-service-resolve');
+      await owner.locator('#name-service-status').filter({ hasText: 'Name not found' }).waitFor();
+      assert.equal(await owner.locator('#name-service-result').innerText(), '');
+      await fill(owner, '#name-service-name', 'alice\u202e.passport.test');
+      await click(owner, '#name-service-resolve');
+      await owner.locator('#name-service-status').filter({ hasText: 'InvalidQuery' }).waitFor();
+      assert.equal(await owner.locator('#withdraw-recipient').inputValue(), recipientBeforeLookup);
+      assert.equal(calls.length, beforeInspection);
+      done(
+        'mock name lookup, absence and invalid input never access credentials or change recipient',
+      );
+      await select(owner, '#capability-operation', 'withdraw-shielded');
       assert.match(
         await owner.locator('#capability-report').innerText(),
         /Exact-value selected shielded coin only/,
       );
-      await owner.locator('#capability-operation').selectOption('issue-grant');
-      await owner.locator('#capability-read-grant').check();
+      await select(owner, '#capability-operation', 'issue-grant');
+      await check(owner, '#capability-read-grant');
       assert.match(await owner.locator('#capability-report').innerText(), /rotate_enc_key_with_/);
       assert.equal(calls.length, beforeInspection);
       done('capability/proof-plan inspection invokes no connector or credentials');
 
       unknownFunding = true;
-      await owner.locator('#fund').click();
+      await click(owner, '#fund');
       await waitStatus(owner, /failed\./, /Synthetic funding outcome unknown/);
       const original = fundingIds.at(-1)!;
-      await owner.locator('#fund').click();
+      assert.equal(await owner.locator('.operation-status').getAttribute('data-phase'), 'unknown');
+      assert.equal(await owner.locator('#progress').getAttribute('aria-valuenow'), null);
+      assert.match(await owner.locator('#progress-label').innerText(), /not confirmed/);
+      assert.match(
+        (await owner.locator('#log .run').first().locator('.run-meta').textContent()) ?? '',
+        /Outcome unknown/,
+      );
+      assert.match(
+        (await owner.locator('.activity-references').textContent()) ?? '',
+        new RegExp(original),
+      );
+      const beforeUnknownNavigation = fundingIds.length;
+      for (const view of ['audit', 'settings', 'account'])
+        await owner.locator(`#nav-${view}`).click();
+      assert.equal(
+        fundingIds.length,
+        beforeUnknownNavigation,
+        'navigation never retries an unknown deposit',
+      );
+      assert.match(
+        (await owner.locator('.activity-references').textContent()) ?? '',
+        new RegExp(original),
+      );
+      done('unknown deposit IDs survive navigation with no implicit retry');
+      await click(owner, '#fund');
       await waitStatus(owner, /failed\./, /Synthetic funding outcome unknown/);
       assert.equal(fundingIds.at(-1), original);
       assert.equal(fundingIds.filter((id) => id === original).length, 2);
@@ -617,20 +1325,20 @@ try {
       unknownWithdrawal = false;
       done('uncertain withdrawal is not automatically replayed');
       serviceUnavailable = true;
-      await owner.locator('#refresh').click();
+      await click(owner, '#refresh');
       await waitStatus(owner, /refreshed|unavailable|failed/i);
       done('balance service outage is visible without signing');
       serviceUnavailable = false;
       await owner.bringToFront();
-      await owner.locator('#withdraw-recipient').fill(recipient);
-      await owner.locator('#withdraw-amount').fill('1');
-      await owner.locator('#session-cap').fill('2');
-      await owner.locator('#session-per-call').fill('1');
+      await fill(owner, '#withdraw-recipient', recipient);
+      await fill(owner, '#withdraw-amount', '1');
+      await fill(owner, '#session-cap', '2');
+      await fill(owner, '#session-per-call', '1');
       const staleTab = await newPage(owner.context());
       await approve(staleTab, 'open');
       await waitStatus(staleTab, /opened/);
-      await staleTab.locator('#withdraw-recipient').fill(recipient);
-      await staleTab.locator('#withdraw-amount').fill('1');
+      await fill(staleTab, '#withdraw-recipient', recipient);
+      await fill(staleTab, '#withdraw-amount', '1');
       const countCredentials = () =>
         owner.evaluate(
           () =>
@@ -640,6 +1348,10 @@ try {
       rejectNextDialog = true;
       await approve(owner, 'startSession');
       await waitStatus(owner, /authorization declined before passkey/);
+      assert.equal(
+        await owner.locator('.operation-status').getAttribute('data-phase'),
+        'cancelled',
+      );
       const beforeAuthorize = await countCredentials();
       await approve(owner, 'startSession');
       await waitStatus(owner, /JubJub session active/);
@@ -691,7 +1403,7 @@ try {
       await spendObserved;
       const sendsBeforeConcurrent = calls.filter((c) => c === 'withdraw' || c === 'spend').length;
       await staleTab.bringToFront();
-      await staleTab.locator('#withdraw').click();
+      await click(staleTab, '#withdraw');
       await waitStatus(staleTab, /failed\./, /Another Passport tab is handling an operation/);
       assert.equal(
         calls.filter((c) => c === 'withdraw' || c === 'spend').length,
@@ -699,21 +1411,29 @@ try {
       );
       await owner.bringToFront();
       done('real browser Web Locks refuse a second shared-storage tab while an effect is pending');
+      for (const view of ['audit', 'wallet', 'settings'])
+        await owner.locator(`#nav-${view}`).click();
+      assert.equal(
+        calls.filter((c) => c === 'withdraw' || c === 'spend').length,
+        sendsBeforeConcurrent,
+      );
+      assert.equal(await owner.locator('.operation-status').getAttribute('data-phase'), 'running');
+      done('navigation during a pending spend preserves the operation and sends no replacement');
       assert.ok(
         await owner.locator('#endSession').isEnabled(),
         'explicit lock is available while an operation is running',
       );
-      await owner.locator('#endSession').click();
-      assert.match(await owner.locator('#session-state').innerText(), /BLOCKED/);
+      await click(owner, '#endSession');
+      assert.match(await readSessionState(owner), /BLOCKED/);
       releaseHeldSpend();
       await waitStatus(owner, /Withdrawal confirmed/);
       holdSessionSpend = undefined;
-      assert.match(await owner.locator('#session-state').innerText(), /LOCKED/);
-      assert.match(await owner.locator('#session-state').innerText(), /Spent 2/);
+      assert.match(await readSessionState(owner), /LOCKED/);
+      assert.match(await readSessionState(owner), /Spent 2/);
       done(
         'immediate lock during settlement retains a confirmed transfer and keeps the signer locked',
       );
-      await owner.locator('#endSession').click();
+      await click(owner, '#endSession');
       await waitStatus(owner, /Local session locked/);
       assert.ok(state.grant?.active, 'local lock is not chain revocation');
       const beforeAfterLock = await countCredentials();
@@ -723,6 +1443,20 @@ try {
         (await countCredentials()) > beforeAfterLock,
         'local lock restores owner passkey authorization',
       );
+      const revokesBeforeSessionDecline = calls.filter((c) => c === 'revoke').length;
+      const credentialsBeforeSessionDecline = await countCredentials();
+      rejectNextDialog = true;
+      await approve(owner, 'revokeSession');
+      await waitStatus(owner, /Session grant revocation cancelled before signing/);
+      assert.equal(
+        await owner.locator('.operation-status').getAttribute('data-phase'),
+        'cancelled',
+      );
+      assert.equal(calls.filter((c) => c === 'revoke').length, revokesBeforeSessionDecline);
+      assert.equal(await countCredentials(), credentialsBeforeSessionDecline);
+      done(
+        'declined exact session authorization and revocation reviews are cancelled without owner-key or grant effects',
+      );
       await approve(owner, 'revokeSession');
       await waitStatus(owner, /Session grant revoked on chain/);
       assert.equal(state.grant?.active, false);
@@ -731,7 +1465,7 @@ try {
       await waitStatus(owner, /JubJub session active/);
       await owner.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); // visible page: no lock
       await owner.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide')));
-      assert.match(await owner.locator('#session-state').innerText(), /LOCKED/);
+      assert.match(await readSessionState(owner), /LOCKED/);
       const storedSession = await owner.evaluate(() =>
         localStorage.getItem('passport-demo:session:v1:undeployed:acc-s3r1.1'),
       );
@@ -746,14 +1480,14 @@ try {
         .filter({ hasText: /^Ready\./ })
         .waitFor();
       await observeCredentialAccess(owner);
-      assert.match(await owner.locator('#session-state').innerText(), /LOCKED/);
+      assert.match(await readSessionState(owner), /LOCKED/);
       await approve(owner, 'open');
       await waitStatus(owner, /opened/);
       await approve(owner, 'revokeSession');
       await waitStatus(owner, /Session grant revoked on chain/);
       done('pagehide/reload retains public grant metadata without restoring a signing session');
-      await owner.locator('#withdraw-recipient').fill(recipient);
-      await owner.locator('#withdraw-amount').fill('1');
+      await fill(owner, '#withdraw-recipient', recipient);
+      await fill(owner, '#withdraw-amount', '1');
       await approve(owner, 'startSession');
       await waitStatus(owner, /JubJub session active/);
       await owner.evaluate(() => {
@@ -773,6 +1507,22 @@ try {
       unknownSession = true;
       await approve(owner, 'withdraw');
       await waitStatus(owner, /failed\./, /Synthetic session outcome unknown/);
+      assert.equal(await owner.locator('.operation-status').getAttribute('data-phase'), 'unknown');
+      assert.equal(await owner.locator('#progress').getAttribute('aria-valuenow'), null);
+      assert.equal(await owner.locator('#operation-safety-notice').isVisible(), true);
+      const unknownSessionIntent = (await readSessionState(owner)).match(/Intent ([^ ]+)\./)?.[1];
+      assert.ok(unknownSessionIntent);
+      assert.ok(
+        (await owner.locator('.activity-references').textContent())?.includes(unknownSessionIntent),
+      );
+      assert.ok(
+        (await owner.locator('#operation-safety-notice').textContent())?.includes(
+          unknownSessionIntent,
+        ),
+      );
+      done(
+        'lost session acknowledgement is an unknown outcome with its original intent and persistent safety notice',
+      );
       const sendsAfterUnknown = calls.filter((c) => c === 'spend' || c === 'withdraw').length;
       unknownSession = false;
       const stalePrompts = await staleTab.evaluate(
@@ -782,7 +1532,7 @@ try {
       );
       await approve(staleTab, 'withdraw');
       await waitStatus(staleTab, /failed\./, /Reconcile the original session transaction/);
-      await staleTab.locator('#endSession').click();
+      await click(staleTab, '#endSession');
       await waitStatus(staleTab, /Local session locked/);
       assert.equal(
         calls.filter((c) => c === 'spend' || c === 'withdraw').length,
@@ -811,10 +1561,10 @@ try {
         .filter({ hasText: /^Ready\./ })
         .waitFor();
       await observeCredentialAccess(owner);
-      assert.match(await owner.locator('#session-state').innerText(), /BLOCKED/);
+      assert.match(await readSessionState(owner), /BLOCKED/);
       await approve(owner, 'open');
       await waitStatus(owner, /opened/);
-      await owner.locator('#withdraw-recipient').fill(recipient);
+      await fill(owner, '#withdraw-recipient', recipient);
       await approve(owner, 'withdraw');
       await waitStatus(owner, /failed\./, /Reconcile the original session transaction/);
       assert.equal(
@@ -826,7 +1576,7 @@ try {
       const revoker = await newPage();
       await approve(revoker, 'create');
       await waitStatus(revoker, /created/);
-      await revoker.locator('#withdraw-recipient').fill(recipient);
+      await fill(revoker, '#withdraw-recipient', recipient);
       await approve(revoker, 'startSession');
       await waitStatus(revoker, /JubJub session active/);
       const revokeCalls = calls.filter((c) => c === 'revoke').length;
@@ -888,7 +1638,10 @@ try {
         assert.ok(observedPurposes.has(purpose), `missing observed ${purpose} access for ${arm}`);
       ceremonyPurposesByArm[arm] = [...observedPurposes].sort();
     } finally {
-      for (const context of contexts) await context.close();
+      for (const context of contexts) {
+        closingContexts.add(context);
+        await context.close();
+      }
     }
   }
   assert.equal(
@@ -939,6 +1692,7 @@ try {
         runtimeSha256: initialRuntimeIdentity,
         elapsedMs: Date.now() - started,
         cases,
+        selectedArms,
         credentialFailureCodes,
         ceremonyPurposesByArm,
         actual: [

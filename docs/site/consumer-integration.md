@@ -575,3 +575,20 @@ closure. Our strengthened control actively issues such a request and verifies se
 client consent and no replay; it does not repair the public host. See [#272](https://github.com/input-output-hk/midnight-passport-sdk/issues/272).
 A host must retain uncertain operation IDs and define its own liveness/disposal policy; a timeout
 or navigation alone never authorises a replacement send.
+
+## State and wallet boundaries for host composition
+
+The [session source guide]({{ '/jubjub-sessions/' | relative_url }}) now links actual
+both-arm native evidence and its limits. Preserve host ownership of orchestration.
+Decode a host-created `ChargedState` with its matching physical generated/runtime
+module, then pass neutral fields through the SDK port. Identical versions or
+source bytes do not make different WASM instances interchangeable. Supply that
+matching decoder to grant reads consuming host-created state as well.
+
+A mutable reference private-state provider must select the ACC on every serialized
+call, including A→B→A, or the host must use independent providers. Never initialize
+missing private state merely to make a call pass. After a confirmed mint/withdrawal,
+a wallet view may lag; inspect the original hash before a same-address reconnect,
+and rebind providers to the current wallet while preserving stored private state.
+Reconnection never authorizes a new mint/send. These source fixtures do not qualify
+a new installed Lace version, real provider, browser/native combined flow or image.

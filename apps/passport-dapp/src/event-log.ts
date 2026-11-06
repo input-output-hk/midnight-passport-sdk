@@ -44,12 +44,18 @@ export class EventLog {
   readonly runs: LogRun[] = [];
   readonly traceEntries: OperationTraceEntry[] = [];
   private readonly listeners = new Set<() => void>();
+  private readonly traceStarts = new WeakMap<LogRun, number>();
+  private readonly traceEnds = new WeakMap<LogRun, number>();
 
   constructor(private readonly now: () => number = Date.now) {}
 
   /** Called after every change. */
-  subscribe(listener: () => void): void {
-    this.listeners.add(listener);
+  subscribe(listener: () => void): () => void {
+    const registration = () => listener();
+    this.listeners.add(registration);
+    return () => {
+      this.listeners.delete(registration);
+    };
   }
 
   /** The run in progress, if any. */
@@ -83,6 +89,7 @@ export class EventLog {
       events: [],
     };
     this.runs.push(run);
+    this.traceStarts.set(run, this.traceEntries.length);
     this.traceEntries.push({
       at: new Date(run.startedAt).toISOString(),
       kind: 'action.start',
@@ -192,6 +199,7 @@ export class EventLog {
       kind: 'action.error',
       details: { action: run.action, code: error.code },
     });
+    this.traceEnds.set(run, this.traceEntries.length);
     this.emit();
   }
 
@@ -207,11 +215,12 @@ export class EventLog {
       kind: 'action.end',
       details: { action: run.action, durationMs: run.endedAt - run.startedAt },
     });
+    this.traceEnds.set(run, this.traceEntries.length);
     this.emit();
   }
 
   /** The evidence rows: the same runs and steps the page shows. */
-  toJSON(): unknown[] {
+  toJSON(): Record<string, unknown>[] {
     const iso = (t: number | undefined) =>
       t === undefined ? undefined : new Date(t).toISOString();
     const span = (a: number, b: number | undefined) => (b === undefined ? undefined : b - a);
@@ -253,6 +262,14 @@ export class EventLog {
   /** A chronological public-field request/response and operation trace. */
   traceJSON(): readonly OperationTraceEntry[] {
     return this.traceEntries;
+  }
+
+  /** Public trace slice by append position, never by incomparable client/service clocks. */
+  traceOf(run: LogRun): readonly OperationTraceEntry[] {
+    const from = this.traceStarts.get(run);
+    if (from === undefined) return [];
+    const to = this.traceEnds.get(run);
+    return this.traceEntries.slice(from, to);
   }
 
   trace(entry: OperationTraceEntry): void {

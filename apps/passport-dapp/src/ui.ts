@@ -19,6 +19,8 @@ import {
 } from './flows.js';
 import { evidenceJson } from './evidence.js';
 import { progressView, segmentGrow } from './progress.js';
+import { createActivityStore } from '@input-output-hk/mn-passport-account/interaction';
+import { demoActivityObservation, operationForRun } from './activity-observations.js';
 import type { OperationTraceEntry } from './operation-trace.js';
 
 export interface EvidenceHeader {
@@ -113,6 +115,7 @@ export function createUi(
   },
 ) {
   const log = new EventLog();
+  const activity = createActivityStore();
   const buttons = Object.fromEntries(ACTIONS.map((a) => [a, byId<HTMLButtonElement>(a)])) as Record<
     ActionId,
     HTMLButtonElement
@@ -135,6 +138,7 @@ export function createUi(
   let ready = true;
   let account: AccountView | undefined;
   let wallet: WalletView = {};
+  let externalWalletConnected = false;
   let fundingAsset: { color: string; amount: string } | undefined;
   let assetsByColor = new Map<string, { color: string; amount: string }>();
   const fundingSelect = byId<HTMLSelectElement>('fund-asset');
@@ -260,10 +264,24 @@ export function createUi(
   };
 
   // --- progress ----------------------------------------------------------------------------
+  const renderActivity = () => {
+    const observation = demoActivityObservation(log, Date.now(), {
+      accountOpen: !!account,
+      walletConnected: !!wallet.unshieldedAddress || externalWalletConnected,
+    });
+    activity.replace(observation, activity.getSnapshot().revision);
+    return observation.operation;
+  };
   let segmentsFor: LogRun | undefined;
   let segmentFills: HTMLElement[] = [];
   const renderProgress = () => {
+    const operation = renderActivity();
     const run = log.last;
+    progressEl.hidden = !run;
+    progressLabel.hidden = !run;
+    elapsedEl.hidden = !run;
+    byId('activity-title').hidden = !run;
+    progressEl.closest('section')?.classList.toggle('is-idle', !run);
     if (!run) {
       progressEl.replaceChildren();
       progressEl.setAttribute('aria-valuetext', 'No action has run yet');
@@ -289,18 +307,30 @@ export function createUi(
       );
     }
     const view = progressView(run, stages, Date.now());
+    const stopped = operation?.phase === 'cancelled' || operation?.phase === 'unknown';
+    const lastStage = stages.findIndex((stage) => stage.id === run.steps.at(-1)?.id);
     view.segments.forEach((segmentView, i) => {
       const fill = segmentFills[i];
       const segment = fill?.parentElement;
       if (!segment || !fill) return;
-      segment.dataset.state = segmentView.state;
-      fill.style.width = `${segmentView.width}%`;
+      segment.dataset.state =
+        stopped && i === lastStage
+          ? operation.phase === 'unknown'
+            ? 'indeterminate'
+            : 'cancelled'
+          : segmentView.state;
+      fill.style.width = `${stopped && i === lastStage ? (operation.phase === 'unknown' ? 100 : 0) : segmentView.width}%`;
     });
     elapsedEl.textContent = formatClock(view.elapsedMs);
-    const label = view.label;
+    const label =
+      operation?.phase === 'cancelled'
+        ? `${run.title} attempt cancelled. Earlier effects may remain; inspect Audit.`
+        : operation?.phase === 'unknown'
+          ? `${run.title} outcome is not confirmed. Keep the original IDs and reconcile in Audit.`
+          : view.label;
     progressLabel.textContent = label;
     progressEl.setAttribute('aria-valuetext', label);
-    if (run.state === 'done') progressEl.setAttribute('aria-valuenow', '100');
+    if (operation?.phase === 'succeeded') progressEl.setAttribute('aria-valuenow', '100');
     else progressEl.removeAttribute('aria-valuenow');
   };
 
@@ -331,9 +361,22 @@ export function createUi(
     return { root, times, duration, result, extra, rendered: '' };
   }
 
-  const RESULT_TEXT = { running: 'Running', done: 'Done', failed: 'Failed' } as const;
+  const RESULT_TEXT = {
+    running: 'Running',
+    done: 'Done',
+    failed: 'Failed',
+    cancelled: 'Cancelled attempt',
+    unknown: 'Outcome unknown',
+  } as const;
+  const OUTCOME_TEXT = {
+    running: 'In progress',
+    succeeded: 'Completed',
+    failed: 'Attempt failed',
+    cancelled: 'Cancelled attempt',
+    unknown: 'Outcome unknown — reconcile original IDs',
+  } as const;
 
-  const renderStep = (step: LogStep, parent: HTMLElement) => {
+  const renderStep = (step: LogStep, parent: HTMLElement, outcome?: 'cancelled' | 'unknown') => {
     let parts = stepEls.get(step);
     if (!parts) {
       parts = stepElement(step);
@@ -341,10 +384,10 @@ export function createUi(
       parent.append(parts.root);
     }
     // Skip unchanged rows: the key covers everything the row shows.
-    const key = `${step.state}|${step.endedAt}|${step.notes.length}|${step.error?.code}`;
+    const key = `${step.state}|${step.endedAt}|${step.notes.length}|${step.error?.code}|${outcome}`;
     if (parts.rendered === key) return;
     parts.rendered = key;
-    parts.root.dataset.state = step.state;
+    parts.root.dataset.state = outcome ?? step.state;
     if (step.state === 'running') parts.root.setAttribute('aria-current', 'step');
     else parts.root.removeAttribute('aria-current');
     const to = el('span', 'sr-only', ' to ');
@@ -352,8 +395,10 @@ export function createUi(
     arrow.setAttribute('aria-hidden', 'true');
     parts.times.replaceChildren(timeEl(step.startedAt), to, arrow, timeEl(step.endedAt));
     parts.duration.textContent =
-      step.endedAt === undefined ? 'running' : formatDuration(step.endedAt - step.startedAt);
-    parts.result.textContent = RESULT_TEXT[step.state];
+      step.endedAt === undefined
+        ? 'running'
+        : formatDuration(Math.max(0, step.endedAt - step.startedAt));
+    parts.result.textContent = RESULT_TEXT[outcome ?? step.state];
     const extra: HTMLElement[] = [];
     if (step.notes.length > 0) extra.push(el('p', 'step-note', step.notes.join(' · ')));
     if (step.error) {
@@ -375,6 +420,7 @@ export function createUi(
       let parts = runEls.get(run);
       if (!parts) {
         const root = el('li', 'run');
+        root.id = `audit-operation-${log.runs.indexOf(run) + 1}`;
         const head = el('div', 'run-head');
         const title = el('h3', 'run-title', run.title);
         const meta = el('span', 'run-meta');
@@ -386,13 +432,21 @@ export function createUi(
         // Newest first: the running action stays at the top, next to the progress bar.
         logEl.prepend(root);
       }
-      parts.root.dataset.state = run.state;
+      const operation = operationForRun(log, run, Date.now());
+      parts.root.dataset.state = operation.phase;
       const meta =
         run.endedAt === undefined
-          ? `Started ${clockTime(run.startedAt)} · running`
-          : `Started ${clockTime(run.startedAt)} · ${formatDuration(run.endedAt - run.startedAt)} · ${RESULT_TEXT[run.state]}`;
+          ? `Started ${clockTime(run.startedAt)} · ${OUTCOME_TEXT[operation.phase]}`
+          : `Started ${clockTime(run.startedAt)} · ${formatDuration(operation.elapsedMs)} · ${OUTCOME_TEXT[operation.phase]}`;
       if (parts.meta.textContent !== meta) parts.meta.textContent = meta;
-      for (const step of run.steps) renderStep(step, parts.steps);
+      for (const step of run.steps) {
+        const outcome =
+          step === run.steps.at(-1) &&
+          (operation.phase === 'cancelled' || operation.phase === 'unknown')
+            ? operation.phase
+            : undefined;
+        renderStep(step, parts.steps, outcome);
+      }
     }
   };
 
@@ -403,7 +457,11 @@ export function createUi(
       page: location.origin,
       account,
       wallet,
-      runs: log.toJSON(),
+      runs: log.toJSON().map((row, index) => ({
+        ...row,
+        // Keep the raw legacy attempt result and add the same observed outcome shown in Audit.
+        outcome: operationForRun(log, log.runs[index]!, Date.now()).phase,
+      })),
       trace: log.traceJSON(),
     });
   const renderEvidence = () => {
@@ -667,6 +725,7 @@ export function createUi(
   renderEvidence();
 
   return {
+    activity,
     status,
     knownAddress: () => knownAddress.value,
     handoffJson: () => handoffInput.value,
@@ -768,6 +827,11 @@ export function createUi(
           const execute = async () => {
             if (consent && !(await consent.before(action))) {
               status('Operation declined before passkey access or submission.');
+              log.trace({
+                at: new Date().toISOString(),
+                kind: 'action.declined',
+                details: { action },
+              });
               log.finish();
               return;
             }
@@ -779,7 +843,14 @@ export function createUi(
         } catch (e) {
           const err = plainError(e, header.serviceUrl);
           log.fail(err);
-          status(`${FLOWS[action].title} failed. ${err.hint} (${err.code})`);
+          const outcome = log.last && operationForRun(log, log.last, Date.now()).phase;
+          const explanation =
+            outcome === 'unknown'
+              ? 'The transaction outcome is unknown. Keep the original IDs and reconcile in Audit.'
+              : outcome === 'cancelled'
+                ? 'The attempt was cancelled. Earlier effects may remain; inspect Audit.'
+                : err.hint;
+          status(`${FLOWS[action].title} attempt failed. ${explanation} (${err.code})`);
         } finally {
           consent?.after();
           // The button was disabled while the action ran, which drops focus: give it back.
@@ -915,6 +986,10 @@ export function createUi(
       if (account?.address !== address || !accountBalances) return;
       accountBalances = { ...accountBalances, error: 'Unavailable' };
       renderAccount();
+    },
+    showExternalWalletConnection(connected: boolean) {
+      externalWalletConnected = connected;
+      renderActivity();
     },
     showWallet(view: WalletView) {
       wallet = { ...wallet, ...view };
