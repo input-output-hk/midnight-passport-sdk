@@ -4,6 +4,7 @@
 //   PASSPORT_VIRTUAL_E2E_FULL=1 pnpm --filter passport-dapp virtual-authenticator
 import assert from 'node:assert/strict';
 import { chromium, type BrowserContext, type Page } from 'playwright-core';
+import { settleWithCeremonyReviews } from './approve-ceremonies.ts';
 
 const baseUrl = process.env.PASSPORT_DEMO_URL ?? 'http://localhost:5173/';
 if (new URL(baseUrl).hostname !== 'localhost')
@@ -19,6 +20,7 @@ async function approveAction(page: Page, name: string): Promise<void> {
   await page.locator('#consent-dialog').waitFor({ state: 'visible' });
   if (name === 'Create account') await page.locator('#consent-retirement-ack').check();
   await page.getByRole('button', { name: 'Approve operation', exact: true }).click();
+  await settleWithCeremonyReviews(page, 900_000);
 }
 
 async function waitForStatus(page: Page, success: RegExp, timeout: number) {

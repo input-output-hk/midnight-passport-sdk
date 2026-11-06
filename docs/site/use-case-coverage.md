@@ -137,3 +137,17 @@ The run confirms an original transfer before reconnecting a stale wallet observe
 A stale display is not permission to resend. Refresh, then use the normal consented
 wallet reconnect flow and original-hash inspection. Source qualification does not
 add this feature to published RC7, qualify a real PRF provider or prove full Lace.
+
+
+### Source preview after RC7: explicit approval per credential request
+
+The Chromium lane now checks independent approval before every observed mock
+credential access, including creation, new-credential verification, identification,
+PRF unlock and P-256 signatures. One click cannot approve a later request. It also
+checks Escape before credential creation, refusal of the second initial request,
+PRF refusal, separate post-deployment setup publications and cancellation of a
+synthetically injected recognized browser-format retry. The synthetic setup
+publications demonstrate consent boundaries, not native activation acceptance.
+The live proof receipts for the previous native slice remain pinned to their
+original source; they do not establish a real provider or combined browser/native
+pass for this UI change.

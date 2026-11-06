@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { globSync, readFileSync } from 'node:fs';
 import { createServer } from 'vite';
 import { chromium, type BrowserContext, type Page } from 'playwright-core';
+import { settleWithCeremonyReviews } from './approve-ceremonies.ts';
 import { MidnightBech32m, UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
 
 const appRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -347,11 +348,7 @@ try {
     };
     const waitStatus = async (page: Page, expected: RegExp, expectedError?: RegExp) => {
       try {
-        await page.waitForFunction(
-          () => !document.querySelector('#log .run[data-state="running"]'),
-          undefined,
-          { timeout: 20_000 },
-        );
+        await settleWithCeremonyReviews(page);
         const codes = await page.evaluate(
           () =>
             (window as unknown as { __passportPurposeFailureCodes?: string[] })
@@ -433,9 +430,106 @@ try {
       );
       done('declined irreversible create has no credential or connector effect');
 
+      const credentialsUsed = () =>
+        owner.evaluate(
+          () =>
+            (window as unknown as { __passportPurposeObservations: unknown[] })
+              .__passportPurposeObservations.length,
+        );
+      await approve(owner, 'create');
+      await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+      assert.equal(await credentialsUsed(), 0, 'operation approval alone must not use a passkey');
+      assert.equal(
+        await owner.locator('#ceremony-cancel').evaluate((e) => e === document.activeElement),
+        true,
+      );
+      await owner.keyboard.press('Escape');
+      await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+      assert.equal(await credentialsUsed(), 0);
+      assert.equal(calls.length, 0);
+      done('Escape on the first ceremony refuses credential creation and deployment');
+
+      await owner.addScriptTag({
+        type: 'module',
+        url: `${origin}/e2e/fixtures/consent-controls.ts`,
+      });
+      const controlsRefusal = () =>
+        owner.evaluate(() =>
+          (
+            window as unknown as { __consentControls: { refused(): Promise<string> } }
+          ).__consentControls.refused(),
+        );
+      assert.equal(await controlsRefusal(), 'UserCancelled');
+      await approve(owner, 'create');
+      await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+      const pendingId = await owner.locator('#ceremony-dialog').getAttribute('data-ceremony-id');
+      assert.equal(await controlsRefusal(), 'UserCancelled', 'overlapping requests must refuse');
+      assert.equal(
+        await owner.locator('#ceremony-dialog').getAttribute('data-ceremony-id'),
+        pendingId,
+      );
+      await owner.evaluate(() =>
+        (window as unknown as { __consentControls: { finish(): void } }).__consentControls.finish(),
+      );
+      await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+      assert.equal(await credentialsUsed(), 0);
+      assert.equal(calls.length, 0);
+      assert.equal(await controlsRefusal(), 'UserCancelled');
+      done(
+        'operation termination closes pending consent; overlap and ended approvals cannot access a credential',
+      );
+
+      await approve(owner, 'create');
+      await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+      await owner.locator('#ceremony-continue').click();
+      await owner
+        .locator('#ceremony-details')
+        .filter({ hasText: /second request checks/ })
+        .waitFor();
+      assert.equal(await credentialsUsed(), 1, 'only the expressly approved create was accessed');
+      await owner.locator('#ceremony-cancel').click();
+      await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+      assert.equal(
+        await credentialsUsed(),
+        1,
+        'declining verification must not assert the passkey',
+      );
+      assert.equal(calls.length, 0, 'declining the probe must not deploy');
+      done('the second initial prompt requires separate approval before the compatibility probe');
+
+      if (arm === 'p256') {
+        await approve(owner, 'create');
+        for (const purpose of ['create', 'verify-created', 'sign']) {
+          await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+          assert.equal(
+            await owner.locator('#ceremony-purpose').getAttribute('data-purpose'),
+            purpose,
+          );
+          const id = await owner.locator('#ceremony-dialog').getAttribute('data-ceremony-id');
+          await owner.locator('#ceremony-continue').click();
+          await owner.waitForFunction((previous) => {
+            const dialog = document.getElementById('ceremony-dialog') as HTMLDialogElement;
+            return !dialog.open || dialog.dataset.ceremonyId !== previous;
+          }, id);
+        }
+        await owner
+          .locator('#ceremony-details')
+          .filter({ hasText: /Setup signature 2/ })
+          .waitFor();
+        const beforeCancel = await credentialsUsed();
+        await owner.locator('#ceremony-cancel').click();
+        await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+        assert.equal(await credentialsUsed(), beforeCancel);
+        assert.equal(calls.filter((c) => c === 'publish-envelope').length, 1);
+        assert.equal(calls.filter((c) => c === 'publish-registration').length, 0);
+        done(
+          'each later setup signature needs new approval; declining preserves the prior publication',
+        );
+      }
+
       await approve(owner, 'create');
       await waitStatus(owner, /is created/);
-      done('acknowledged creation and purpose display');
+      done('acknowledged creation and one explicit approval per credential request');
       await archiveObservations(owner, arm);
       await owner.reload();
       await owner
@@ -443,12 +537,47 @@ try {
         .filter({ hasText: /^Ready\./ })
         .waitFor();
       await observeCredentialAccess(owner);
+      // Simulate the exact recognized Chromium variant once; a retry needs another approval.
+      await owner.addScriptTag({ type: 'module', url: `${origin}/e2e/fixtures/profile-retry.ts` });
+      await approve(owner, 'open');
+      await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+      await owner.locator('#ceremony-continue').click();
+      await owner
+        .locator('#ceremony-details')
+        .filter({ hasText: /Retry 2/ })
+        .waitFor();
+      assert.equal(await credentialsUsed(), 1);
+      await owner.locator('#ceremony-cancel').click();
+      await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+      assert.equal(
+        await credentialsUsed(),
+        1,
+        'a browser-profile retry cannot reuse prior approval',
+      );
+      done(
+        'a recognized signing-format retry explains the reason and can be declined before access',
+      );
+
       await approve(owner, 'open');
       await waitStatus(owner, /is reopened/);
       await owner.locator('#open-address').fill(address);
       await approve(owner, 'openAt');
       await waitStatus(owner, /opened by address/);
       done('reload, reopen and known-address opening');
+
+      await approve(owner, 'holdings');
+      await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+      assert.equal(
+        await owner.locator('#ceremony-purpose').getAttribute('data-purpose'),
+        'derive-keys',
+      );
+      const beforeUnlock = await credentialsUsed();
+      const readsBeforeUnlock = calls.filter((c) => c === 'holdings').length;
+      await owner.locator('#ceremony-cancel').click();
+      await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+      assert.equal(await credentialsUsed(), beforeUnlock);
+      assert.equal(calls.filter((c) => c === 'holdings').length, readsBeforeUnlock);
+      done('declining PRF unlock prevents credential access and the dependent holdings read');
 
       for (const [action, status] of [
         ['refresh', /Account|ACC|refreshed/i],

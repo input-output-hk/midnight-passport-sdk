@@ -32,6 +32,22 @@
         </button>
       </div>
     </dialog>
+    <dialog
+      id="ceremony-dialog"
+      aria-labelledby="ceremony-title"
+      aria-describedby="ceremony-details"
+    >
+      <h2 id="ceremony-title">Review passkey request</h2>
+      <p id="ceremony-details" class="consent-details"></p>
+      <div class="consent-buttons">
+        <button id="ceremony-cancel" class="btn btn-secondary" type="button">
+          Cancel operation
+        </button>
+        <button id="ceremony-continue" class="btn btn-primary" type="button">
+          Continue to passkey
+        </button>
+      </div>
+    </dialog>
     <p id="ceremony-purpose" class="ceremony-notice" role="status" aria-live="polite" hidden></p>
     <a class="skip-link" href="#main">Skip to the demo</a>
     <p class="mock-banner" id="mock-banner" role="alert" hidden></p>

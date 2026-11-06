@@ -29,7 +29,7 @@ explicit acknowledgement that the demo permanently retires maintenance authority
 creation/verification, identification, PRF unlock or P-256 signature before browser
 access. A later exact transaction/device/grant review remains separate. Counts vary
 by provider, retries and transaction count; do not promise one prompt for P-256.
-Declining the initial review starts no credential or account action. Cancellation
+Declining the initial review starts no credential or account action. The source preview after RC7 additionally blocks every credential API call and retry behind a separate **Continue to passkey / Cancel operation** dialog; the banner alone does not grant consent. Two initial accesses create and verify the credential; later P-256 setup signatures publish sealed inbox entries, each with its own numbered review. Cancellation
 cannot undo submitted effects; preserve original IDs and reconcile unknowns.
 
 **SDK capabilities and proof plans** is advisory public-package inspection. It does

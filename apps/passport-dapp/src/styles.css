@@ -872,7 +872,8 @@ body[data-busy] .btn:disabled {
   }
 }
 /* Operation review remains readable with keyboard focus and long ACC addresses. */
-#consent-dialog {
+#consent-dialog,
+#ceremony-dialog {
   max-width: min(42rem, 90vw);
   max-height: 85vh;
   overflow: auto;
@@ -881,7 +882,8 @@ body[data-busy] .btn:disabled {
   color: var(--text);
   background: var(--surface);
 }
-#consent-dialog::backdrop {
+#consent-dialog::backdrop,
+#ceremony-dialog::backdrop {
   background: rgb(0 0 0 / 65%);
 }
 .consent-details {
