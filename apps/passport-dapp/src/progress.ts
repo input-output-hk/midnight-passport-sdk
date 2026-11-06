@@ -29,13 +29,17 @@ export interface ProgressView {
 export const segmentGrow = (stage: StageDef): number => stageWeight(stage);
 
 export function progressView(run: LogRun, stages: readonly StageDef[], now: number): ProgressView {
+  // Log rows retain original client/service timestamps for Audit. A transition can close a
+  // client-stamped step with a service-stamped time (or vice versa); those clocks need not
+  // agree. Clamp only the presentation interval, never rewrite the raw event or stop polling
+  // an already-submitted operation because of wall-clock skew.
   const status = createOperationStatus(
     {
       id: run.action,
       title: run.title,
       phase: run.state === 'done' ? 'succeeded' : run.state,
       startedAt: run.startedAt,
-      ...(run.endedAt !== undefined && { endedAt: run.endedAt }),
+      ...(run.endedAt !== undefined && { endedAt: Math.max(run.startedAt, run.endedAt) }),
       stages: stages.map((stage) => {
         const step = run.steps.find((s) => s.id === stage.id);
         return {
@@ -43,7 +47,7 @@ export function progressView(run: LogRun, stages: readonly StageDef[], now: numb
           title: stage.label,
           phase: step?.state === 'done' ? 'succeeded' : (step?.state ?? 'pending'),
           ...(step && { startedAt: step.startedAt }),
-          ...(step?.endedAt !== undefined && { endedAt: step.endedAt }),
+          ...(step?.endedAt !== undefined && { endedAt: Math.max(step.startedAt, step.endedAt) }),
           ...(stage.estimateMs !== undefined && { estimateMs: stage.estimateMs }),
         };
       }),
@@ -70,9 +74,8 @@ export function progressView(run: LogRun, stages: readonly StageDef[], now: numb
     label = `Step ${i + 1} of ${stages.length}: ${step.label}`;
     return { state: 'indeterminate', width: 100 };
   });
-  const end = run.endedAt ?? now;
   if (run.state === 'done') {
-    label = `${run.title} finished in ${formatDuration(end - run.startedAt)}.`;
+    label = `${run.title} finished in ${formatDuration(status.elapsedMs)}.`;
   } else if (run.state === 'failed') {
     const step = run.steps.find((s) => s.state === 'failed');
     label = `${run.title} failed${step ? ` at “${step.label}”` : ''}.`;

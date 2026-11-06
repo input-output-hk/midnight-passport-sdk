@@ -127,6 +127,12 @@ uses this arithmetic through its own flow/copy adapter. This alone does not
 qualify a redesigned shell, React renderer, React Native, real provider, native
 proof, released artifact or full Lace integration.
 
+That demo adapter retains raw client/service event timestamps in Audit but clamps
+inverted intervals for presentation. Independent clocks must not make a progress
+listener throw and interrupt polling after a deployment has been submitted.
+Raw mixed-clock intervals are not reliable duration measurements; compare a
+service event's own duration or use a single host observation clock for estimates.
+
 The [UX milestone](https://github.com/input-output-hk/midnight-passport-sdk/milestone/3)
 tracks delivery. `lace-sdk` integration is outside it; the separate Lace Wallet
 connection must be capability- and network-checked before any claim of support.
