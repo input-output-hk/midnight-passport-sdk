@@ -24,6 +24,7 @@ import { progressView, segmentGrow } from './progress.js';
 import { createActivityStore } from '@input-output-hk/mn-passport-account/interaction';
 import { demoActivityObservation, operationForRun } from './activity-observations.js';
 import { routineKeys, OWNER_ACTIONS } from './routine-access.js';
+import { CRITICAL_ACTIONS } from './credential-policy.js';
 import type { OperationTraceEntry } from './operation-trace.js';
 
 export interface EvidenceHeader {
@@ -174,7 +175,11 @@ export function createUi(
         routineKeys.snapshot().account === account.address &&
         (['holdings', 'wallet'].includes(action) ||
           (routineKeys.snapshot().ownerVerified && OWNER_ACTIONS.includes(action)))
-          ? 'Uses unlocked keys · no new passkey request'
+          ? CRITICAL_ACTIONS.has(action)
+            ? action === 'withdraw'
+              ? 'Approved scoped transfer: no passkey · owner transfer: fresh passkey'
+              : 'Fresh passkey approval for this critical action'
+            : 'Uses unlocked keys · no new passkey request'
           : ['create', 'open', 'openAt'].includes(action)
             ? 'Passkey approval required'
             : promptsFor(action, !!account) === 0

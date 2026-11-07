@@ -4,11 +4,15 @@ title: Authenticated JubJub owner
 permalink: /authenticated-owner/
 ---
 
-**Local source preview, after RC7.** The owner-approved policy now allows an
-authenticated JubJub owner to perform **all implemented account owner operations**.
-Device changes, key rotation and permissions no longer force another passkey while
-this explicit owner session is active. Exact operation reviews remain mandatory.
-This supersedes the earlier critical-operation passkey policy for this mode.
+**Local source preview, after RC7.** An enrolled JubJub owner has full contract
+authority. The demo now requires **fresh passkey approval for each critical
+operation**, even while its explicit owner session is active. This host policy
+supersedes the earlier all-owner-operations reuse behavior; it does not narrow the
+owner's on-chain authority. Exact operation reviews remain mandatory.
+
+Reviewed login prepares only routine reader/wallet material. It does not unlock or
+enroll this full owner. Use [routine access]({{ '/quick-actions/' | relative_url }})
+for holdings and built-in wallet connection without extra requests during that lease.
 
 ## Try the demo
 
@@ -20,9 +24,12 @@ This supersedes the earlier critical-operation passkey policy for this mode.
    sealed reader data and an owner entry; it needs existing-owner passkey signatures.
    It is not a grant. Declining the enrollment sends no enrollment transaction.
 4. The app verifies the live owner entry and the unique sealed reader registration
-   before declaring the account unlocked. Now transfers, enrollment/removal, viewing
-   key rotation, grant issue/revocation and bookkeeping use this JubJub owner without
-   another credential access. Ordinary operation reviews still name exact effects.
+   before declaring the account unlocked. Transfers, enrollment/removal, viewing-key
+   rotation, grant changes, sensitive opening export and recovery/publication each
+   require fresh credential-pinned PRF approval before using this owner. The derived
+   owner **and reader** must match the captured session. Internal calls in the same
+   reviewed operation share that one approval, never another operation's approval.
+   The original absolute lease is not extended. Exact reviews still name effects.
 5. **Lock account keys**, hidden tab, page exit or timeout disposes local owner,
    reader and seed copies. Reauthenticate to reproduce the same owner key. An already
    live owner is verified again; it is not enrolled again on every unlock.
@@ -61,9 +68,11 @@ remains random, sealed to readers; it is not the wallet seed or signing scalar.
 | Action | Authenticated full owner | Reading-only / locked fallback |
 | --- | --- | --- |
 | Holdings and built-in wallet connection | Reuse unlocked reading/wallet material | Reading-only lease or fresh consented PRF |
-| Owner transfer | JubJub owner and exact transfer review | Fresh owner passkey, or a separately approved matching grant |
-| Device enrollment/removal, key rotation | JubJub owner and exact administration review | Fresh owner passkey |
-| Grant issue, revoke, revoke-all, bookkeeping | JubJub owner and exact permission review | Fresh owner passkey/PRF |
+| Owner transfer | Fresh pinned passkey approval, JubJub owner and exact review | Fresh owner passkey, or a separately approved matching grant |
+| Device enrollment/removal, key rotation | Fresh pinned approval and exact administration review | Fresh owner passkey |
+| Grant issue/revoke/revoke-all, sensitive opening export, recovery/publication | Fresh pinned approval and exact permission review | Fresh owner passkey/PRF |
+| Matching separately approved capped grant transfer | Grant child; no further passkey inside its exact bounds | Same, while that independently approved session is valid |
+| Public state/rosters, wallet refresh, funding, Lace connection | No Passport passkey | Same |
 | Creating another passkey or selecting a different grant holder | That identity still needs its own ceremony | Same |
 
 **Local expiry is not on-chain expiry.** A full owner has the same contract power
@@ -72,7 +81,8 @@ live entries are removed; a browser timer does not revoke it. Existing entry-rem
 survivor/rotation and compromised-key limitations still apply. This consent is shown
 before enrollment. Wallet connection alone still grants no ACC authority.
 
-The app retains only owned canonical scalar/seed copies in page memory. It clears
+The explicit full-owner cache retains owned canonical scalar/seed copies in page
+memory; the separate routine cache retains no owner key. It clears
 raw PRF outputs immediately, checks account/network/binding/credential scope and
 absolute wall/monotonic expiry, and zeros owned copies on lock. JavaScript cannot
 guarantee erasure of engine temporaries. Secrets do not enter storage, Audit or logs.
@@ -113,6 +123,14 @@ provider. Private derivation/read sessions recheck completion before exposing re
 owner mutation sessions retain acknowledgements after dispatch. Live ACC counter, device, keyring and coin checks remain in the account
 package. Hosts must verify/enroll an owner before exposing this API to their UI.
 The exported source alone does not prove that its public key is a live owner.
+The low-level key factory does not perform WebAuthn access for each signature.
+Fresh approval is host policy: the demo wires the optional authenticated-operation
+hook of `routeAuthenticatedAccount`, snapshots public arguments before awaiting
+approval, and rechecks the selected account/lease afterward. Its critical guard
+requests a pinned PRF assertion and matches owner/reader without replacing the
+lease. Sensitive export/recovery actions also enter that same reviewed guard.
+A partner using the raw factory or another facade must provide its own equivalent
+policy. A copied full-owner scalar is not constrained by this browser guard.
 
 The browser composition checks the lease before handing work to the prover, sponsor,
 submitter and host value-call port. Expiry during proving or sponsorship blocks the
@@ -139,9 +157,12 @@ replay or general-purpose partial-enrollment repair wizard in this preview.
 Key tests use generated ACC pure circuits and verify real signatures, deterministic
 identity, reader separation, context refusal and disposal. SDK tests exercise cached
 owner opening, administration/value use, expiry refusal and mixed-curve enrollment
-and rotation with fake chain drivers. Chromium journeys separately cover explicit
-enrollment, prompt-free authenticated owner operations, stable reauthentication,
-lease expiry and local lock using synthetic credentials/account/chain.
+and rotation with fake chain drivers. Earlier Chromium receipts for prompt-free
+owner administration describe the superseded policy, not the current fresh-approval
+requirement. Current regressions separately exercise owner/reader matching,
+refusal/expiry during approval, exact argument capture, lease preservation and
+routine login adoption. Browser journeys use synthetic credentials/account/chain;
+see the [credential audit ledger](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/credential-policy/README.md) for the test map.
 
 These are source checks, not new native-proof, real-provider, published-package or
 full Lace acceptance. The companion reader namespace is not claimed as an upstream

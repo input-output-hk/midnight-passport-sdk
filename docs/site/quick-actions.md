@@ -3,25 +3,27 @@ layout: default
 title: Quick actions and passkey approval
 permalink: /quick-actions/
 ---
-**Updated local-source policy:** [Unlock account]({{ '/authenticated-owner/' | relative_url }})
-authenticates a deterministic JubJub **full owner** for all implemented owner operations.
-That mode does not require a fresh passkey for administration or permission changes.
-The older reading-only/scoped-session mode below retains its passkey fallback; its
-child key is not a full owner. Operation reviews, local expiry and unknown-intent
-fences remain. These additions are not in published RC7.
 
-
-
-**Source preview after RC7.** Quick actions keeps explicitly approved routine key
-material in this page's memory for **10, 15 or 30 minutes**. It does not turn a
-wallet connection or a login into unrestricted ACC spending authority.
+**Source preview after RC7.** Quick actions retains explicitly approved routine
+reader/wallet material in this page's memory for **10, 15 or 30 minutes**. The demo
+can prepare it during verified login without an extra PRF request. Critical
+operations still require fresh passkey approval, including under a full JubJub
+owner session. This supersedes the earlier full-owner reuse policy.
 
 ## Try it
 
-1. Create or open your Passport account using its existing passkey.
-2. In **Passport account → Manage quick actions**, or **Settings → Quick actions**,
-   choose a lifetime and select **Unlock quick actions**. Review the purpose, then
-   approve the pinned passkey PRF request.
+1. Log in or open by ACC address using the existing passkey. Review the routine
+   lifetime as part of login; verified opening prepares that lease in the same
+   credential request. Creation does not silently start a routine lease.
+2. If access is locked, use **Passport account → Manage quick actions**, or
+   **Settings → Quick actions**, choose a lifetime and select the explicit reading
+   unlock. This separately reviewed renewal needs a pinned PRF request. It does not
+   restore a secret after reload or extend the old lease implicitly. Alternatively,
+   explicitly approve **Read shielded holdings** or **Connect built-in wallet**
+   after lock/expiry: one pinned reauthentication prepares a new routine lease as
+   well as that action, so subsequent routine actions need no additional request.
+   Its selected lifetime is captured before consent; changing the selector cannot
+   change an already reviewed lifetime.
 3. **Read shielded holdings** and **Connect built-in wallet** now reuse the unlocked
    material. Repeating them within this session does not request the passkey again.
    They retain their operation reviews and chain/network/credential checks.
@@ -49,8 +51,8 @@ wallet connection or a login into unrestricted ACC spending authority.
 | Matching capped transfer | A separate **PRF-derived JubJub grant child**, usable only after the owner issues its bounded on-chain permission. |
 | Add/remove device, rotate viewing keys, issue/revoke permissions, owner transfer | Fresh owner passkey path. The routine cache supplies neither its P-256 signature nor JubJub owner secret. |
 
-The first PRF output, used by a JubJub owner, is erased immediately. The routine
-cache retains the second output's derived wallet seed and network reader key,
+The routine lease does not retain the first PRF output, used by a JubJub owner.
+It retains the second output's derived wallet seed and network reader key,
 not the raw PRF outputs or an owner signing key. Grant children are derived under
 their own domain and fresh grant context. The displayed local public key does
 not itself add an owner or grant permission. JavaScript cannot guarantee erasure
@@ -74,6 +76,16 @@ holdings flow. Live account/device checks, live encryption-key matching and
 chain-backed coin verification still run. Critical flows use their original key
 ports. An absent session follows the existing explicitly consented passkey path.
 
+`BrowserPassportConfig.onAccountOpened(account, keys)` is an optional successful-open
+handoff. The core invokes it after verified `openAccount`/`openAccountAt`, inside
+`CredentialPort.withLoginSession` where available; never after failed opening or
+creation. `BrowserLoginKeys` exposes only `deriveWalletSeed()`, not raw PRF outputs
+or owner derivation. The host owns any returned seed copy and must clear it on
+failure/disposal. Retaining the handoff object beyond its scope does not preserve
+access. Use a captured account/network/binding/credential context, approved lifetime
+and revision; reject stale completion after lock, replacement or hidden page. The
+SDK itself starts no memory lease, wallet connection, grant or owner enrollment.
+
 The demo's memory lease and presentation live in
 `apps/passport-dapp/src/routine-keys.ts` and `routine-access.ts`; they are host policy,
 not a new SDK package or an implicit global cache. A partner may inject its own
@@ -85,11 +97,13 @@ or silently issue a grant while opening an account.
 
 Unit tests exercise real key derivation/envelope opening, expiry, clock rollback,
 late unlock cancellation, context mismatch and signer disposal. SDK tests cover
-both owner arms, chain-verified holdings and critical-flow isolation. Browser
-journeys count actual synthetic credential accesses: one explicit unlock,
-repeated holdings/wallet operations without more requests, fresh critical owner
-approval, and lock/page-exit behavior. These checks do not qualify a real passkey
-provider, browser/native proof combination or a published release.
+both owner arms, chain-verified holdings and critical-flow isolation. The
+credential-policy regressions cover verified-login adoption, bounded lifetime,
+repeated routine access and fresh critical-owner approval. Browser journeys count
+synthetic credential API accesses separately from provider dialogs and use
+synthetic account/chain drivers. See the [audit ledger](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/credential-policy/README.md)
+for the source/test map and outstanding qualification. These checks do not qualify
+a real passkey provider, browser/native proof combination or a published release.
 
 [Passkey purposes]({{ '/passkey-prompts/' | relative_url }}),
 [scoped transfer permissions]({{ '/jubjub-sessions/' | relative_url }}),

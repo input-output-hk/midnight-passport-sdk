@@ -5,7 +5,9 @@ permalink: /jubjub-sessions/
 ---
 **Updated local-source policy:** [Unlock account]({{ '/authenticated-owner/' | relative_url }})
 authenticates a deterministic JubJub **full owner** for all implemented owner operations.
-That mode does not require a fresh passkey for administration or permission changes.
+The current host policy requires fresh passkey approval for critical administration,
+permission changes, sensitive exports and owner transfers. Routine reads and wallet
+connection reuse bounded authentication; matching scoped transfers retain their grant route.
 The older reading-only/scoped-session mode below retains its passkey fallback; its
 child key is not a full owner. Operation reviews, local expiry and unknown-intent
 fences remain. These additions are not in published RC7.

@@ -23,15 +23,20 @@ import type {
 } from '@input-output-hk/mn-passport-account/ports';
 import type { GrantPublicationJournal } from '@input-output-hk/mn-passport-account';
 import { webauthnPasskey } from '@input-output-hk/mn-passport-adapter-webauthn';
-import type { PasskeyCeremonyOptions } from '@input-output-hk/mn-passport-adapter-webauthn';
+import type {
+  PasskeyCeremonyOptions,
+  PasskeyLoginKeys,
+} from '@input-output-hk/mn-passport-adapter-webauthn';
 import {
   recipeDeviceKeyring,
   recipeEncryptionKey,
   recipeJubjubAuthoriser,
   type AuthenticatedJubjubOwner,
 } from '@input-output-hk/mn-passport-keys';
-import type { PassportConnectorAPI } from '@input-output-hk/mn-passport-protocol';
+import type { PassportAccount, PassportConnectorAPI } from '@input-output-hk/mn-passport-protocol';
 import type { MidnightBinding } from '@input-output-hk/mn-passport-adapter-midnight-js';
+
+export type BrowserLoginKeys = PasskeyLoginKeys;
 
 /** A browser host supplies policy and network ports; this package supplies the browser key source. */
 export interface BrowserPassportConfig {
@@ -46,6 +51,10 @@ export interface BrowserPassportConfig {
     readonly origin: string;
     readonly credentials?: CredentialsContainer;
   };
+  /** Opt-in adoption of root-derived routine keys after verified open, before login scope disposal.
+   * The keys expose wallet derivation only and become invalid when this callback's login ends.
+   * Not called for authenticated ownerSession compositions or account creation. */
+  readonly onAccountOpened?: (account: PassportAccount, keys: BrowserLoginKeys) => Promise<void>;
   readonly prover: Prover;
   readonly sponsor: FeeSponsor;
   readonly sponsorKeys: { readonly coinPublicKey: string; readonly encryptionPublicKey: string };
@@ -71,6 +80,7 @@ export interface BrowserPassportConfig {
 /** Assemble a Passport account API without loading midnight-js until the first chain operation. */
 export function createBrowserPassport(config: BrowserPassportConfig): PassportConnectorAPI {
   const owner = config.ownerSession;
+  const onAccountOpened = config.onAccountOpened;
   if (
     owner &&
     (config.arm !== 'jubjub' ||
@@ -112,6 +122,11 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
     network: config.network,
     binding,
     credentials: owner?.credentials ?? passkey.credentials,
+    ...(!owner &&
+      onAccountOpened && {
+        onAccountOpened: (account: PassportAccount) =>
+          onAccountOpened(account, passkey.readLoginKeys(account.credentialId)),
+      }),
     authoriser,
     encryptionKey: recipeEncryptionKey(prf),
     viewingKey: recipeDeviceKeyring(prf),

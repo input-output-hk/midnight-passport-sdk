@@ -19,6 +19,7 @@ export type { PasskeyIdentity } from '../seams.js';
 import type {
   AuthScheme,
   FlowOptions,
+  PassportAccount,
   PassportTxResult,
 } from '@input-output-hk/mn-passport-protocol';
 import type {
@@ -409,6 +410,9 @@ export interface PassportPorts {
   readonly network: NetworkConfig;
   readonly binding: Lazy<AccBinding>;
   readonly credentials: CredentialPort;
+  /** Runs after a verified open, inside an optional credential login scope. Never runs on create
+   * or failed open. A host may adopt already-unlocked routine keys; the core retains no secrets. */
+  readonly onAccountOpened?: (account: PassportAccount) => Promise<void>;
   readonly authoriser: Authoriser;
   readonly encryptionKey: EncryptionKeySource;
   /** Random ACC viewing secret behind sealed device envelopes. */

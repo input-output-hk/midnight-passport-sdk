@@ -187,3 +187,35 @@ publications demonstrate consent boundaries, not native activation acceptance.
 The live proof receipts for the previous native slice remain pinned to their
 original source; they do not establish a real provider or combined browser/native
 pass for this UI change.
+
+
+## Current source: credential policy and audit map
+
+The latest policy supersedes earlier prompt-free **full-owner administration**.
+Verified login can warm an explicitly reviewed 10/15/30-minute routine lease;
+critical operations require fresh passkey approval even under an authenticated
+JubJub owner. A full owner retains full on-chain power. A bounded grant transfer
+remains separate and needs no credential request only inside its approved scope.
+
+The source review maps creation, both owner-arm logins, cold address-first P-256
+recovery, optional routine-key handoff, durable wrapper forwarding, independent
+wallet/holder identities and critical approval. See the
+[credential-path audit](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/credential-policy/README.md).
+This is an inventory with focused regressions, not proof of every credential path,
+circuit, interleaving or provider.
+
+| Regression layer | Actual code exercised | Boundary |
+| --- | --- | --- |
+| `tests/p256-credential-scope.test.mjs` | Browser WebAuthn adapter and real-core P-256 create/reopen, setup PRF reuse, cold address-first verification, cancellation/refusal | Software credential implementation and fake ledger, not native deployment/provider UI |
+| `tests/login-key-handoff.test.mjs` | Verified account-open hook inside login scope; wallet-seed-only handoff, scope disposal, failure and overlap | No implicit host lease; software credentials and fake chain |
+| `tests/durable-credential-session.test.mjs` | Prototype/receiver-bound optional login forwarding and legacy absence | Does not qualify every historical durable transcript |
+| `apps/passport-dapp/test/login-routine-adoption.test.ts` | Real derivation/envelopes, context binding, stale adoption, disposal and absolute lifetime | Host memory policy, not provider synchronization or wallet sync |
+| `apps/passport-dapp/test/critical-approval.test.ts` | Fresh owner/reader matching, refusal, lease loss, output disposal and unchanged expiry | Injected credential ports, not a real provider/native proof |
+| `tests/authenticated-operation-hook.test.mjs` | Argument capture before async approval, route/lease checks, no fallback and retention of dispatched receipts | Core host facade; cannot constrain a copied owner key on-chain |
+| Isolated Chromium journeys | Current demo review/operation UI and synthetic credential API calls, both selected owner arms | Account/chain/wallet drivers remain synthetic; final run receipts must pin the executed source |
+
+Historical prompt-free owner receipts remain evidence for their original policy;
+they do not establish today's fresh-approval behavior. Earlier native receipts,
+published RC7 hashes and provider limitations retain their exact original source
+identities. Real Google/iCloud restored-credential behavior, browser/native combined
+acceptance and eliminating the pure-JubJub creation probe are deferred.

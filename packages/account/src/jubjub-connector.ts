@@ -1555,7 +1555,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       }),
   });
 
-  return withLoginSession(credentials, {
+  const api: PassportConnectorAPI = {
     apiVersion: PASSPORT_API_VERSION,
     networkId,
     bindingId: network.bindingId,
@@ -1701,7 +1701,10 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       run(options, async (flow) => {
         const identity = await flow.step('passkey.identify', () => credentials.identify());
         const hint = await flow.step('directory.read', () =>
-          directory.get(networkId, { kind: 'credential-id', credentialId: identity.credentialId }),
+          directory.get(networkId, {
+            kind: 'credential-id',
+            credentialId: identity.credentialId,
+          }),
         );
         if (!hint || !isJubjubHint(hint) || !equal(hint.credentialId, identity.credentialId))
           throw new PassportConnectorError('AccountNotFound', 'No JubJub ACC for this passkey.');
@@ -1719,5 +1722,6 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           { kind: 'sign-in' },
         );
       }),
-  });
+  };
+  return withLoginSession(credentials, api, ports.onAccountOpened);
 }

@@ -41,13 +41,17 @@ Passport artwork and **Powered by Lace** branding. The same create/open/address
 controls keep their existing consent and state handling; successful access opens
 **Passport account → Balances**. **Demo tools** exposes Audit and Settings while
 the landing rail is hidden. No automatic wallet connection, owner enrollment or
-JubJub unlock follows login. See the [UI guide](../docs/site/demo-ui.md).
+JubJub owner unlock follows login. Reviewed login does warm the bounded routine
+reader/wallet lease; it does not grant owner authority. See the [UI guide](../docs/site/demo-ui.md).
 
 Active-account **Log in** and known-address opening now combine passkey discovery
 and both Lace PRF evaluations in one user-verified credential request, with the
 `identify-and-unlock` blocking review. Both sealed-key checks run within the same
-short-lived login scope. Output copies are cleared when it ends; no authenticated
-owner lease or wallet connection starts. Missing PRF/cancellation refuses without
+short-lived login scope. The demo's optional verified `onAccountOpened` hook derives
+a wallet-seed copy and adopts routine reader/wallet material for the reviewed
+10/15/30-minute lifetime before that scope ends. Raw PRF copies are cleared; no
+authenticated owner lease or wallet connection starts. Other hosts must opt in.
+Failed or stale login/adoption leaves routine keys locked. Missing PRF/cancellation refuses without
 an automatic second request. Pending setup and actual P-256 transactions may still
 need signatures. This is source-only, not published RC7 or measured provider UX.
 See [the prompt comparison](../docs/site/passkey-prompts.md).
@@ -188,7 +192,7 @@ Midnight wallet separates Built-in wallet and Lace Wallet. Audit separates Event
 Requests & responses and Export JSON. Content and navigation scroll independently;
 on compact screens use Menu to open the navigation drawer. Settings uses submenu
 pages rather than top-level accordions. **Quick actions**
-explicitly unlocks routine reader/wallet material for10/15/30minutes, derives
+uses the reviewed login lease or an explicit unlock for 10/15/30 minutes, derives
 JubJub grant children without repeated PRF prompts, and keeps critical owner
 operations on the fresh-passkey path. A grant still needs separate owner approval;
 unlocking alone does not authorize transfers. See [the guide](../docs/site/quick-actions.md).
@@ -197,7 +201,8 @@ Below the entry actions, expand **Have an account address?** for **Open by ACC a
 choose an already-enrolled passkey. This verifies its live device entry and sealed viewing key
 without relying on the local directory hint. It cannot discover an unknown address or recover a
 lost passkey. The requested and verified addresses appear in the operation trace.
-**Read shielded holdings** opens the ACC's sealed inbox with the current passkey and compares each
+**Read shielded holdings** opens the ACC's sealed inbox with the active routine reader
+(or an explicitly reviewed fresh PRF request) and compares each
 coin with the indexer's successful output event, exact Merkle index, and recorded ACC spend events.
 Only still-unspent coins appear with public color, value and inbox position; the page and exported
 log omit the viewing secret and coin nonce. This is separate from the unshielded balance shown in
@@ -208,7 +213,10 @@ balances without another passkey prompt.
 **Read grant roster** shows the live grant generation, nonce, public IDs and active/revoked status
 from one ACC chain snapshot. **Recover pending grants** checks encrypted openings staged in this
 browser against live commitments and resumes their sealed publication; unsettled IDs remain in
-the operation log. These actions do not create a grant or authorize a grantee spend.
+the operation log. Recovery/publication and sensitive opening export are critical
+operations requiring fresh passkey approval, even under an unlocked full owner.
+Public roster reads need no passkey. These actions do not create a grant or authorize
+a grantee spend.
 
 To add a second sealed device, open the demo in another browser profile at the same `localhost`
 origin. Put the owner ACC address in **Open by ACC address** and select **Prepare joining device**.
@@ -255,9 +263,11 @@ evidence to `experiments/acc-0.35/results/x8-dapp-e2e.json`.
 `http://localhost:5173/?mockPasskey`. A dev-only mock (`src/dev/mock-passkey.ts`) replaces
 `navigator.credentials` before the app loads, so the real UI path runs end to end: a WebCrypto
 P-256 key, `wa-json134` assertions (37-byte authenticator data, flags UP+UV) and PRF as
-HMAC-SHA256 under a random per-credential secret. As Google Password Manager is expected to, it answers
-both PRF salts already at create, so create asks twice; `?mockPasskey=noprf-results` answers only
-`prf.enabled` at create, so the third prompt (the separate PRF ceremony) can be clicked through.
+HMAC-SHA256 under a random per-credential secret. The default fixture returns both
+PRF results at create, so P-256 setup needs registration, its compatibility probe
+and the two actual publication signatures, without another PRF request.
+`?mockPasskey=noprf-results` returns only `prf.enabled` and adds one PRF request.
+These are mock API-call budgets, not measured Google/iCloud sheet counts.
 Its credentials, private keys and PRF secrets
 included, are kept in `localStorage` (`passport-dev:mock-passkey:v1`) so that "Open with passkey"
 works after a reload; a discoverable prompt picks the newest one. The page shows a "MOCK PASSKEY —
@@ -549,9 +559,14 @@ synthetic browser cases qualify UI refusals, not an installed Lace extension.
 
 Open the ACC, then Settings → Quick actions → **Unlock account**. Approve the pinned
 PRF unlock and, on first P-256 use, explicit companion-owner enrollment. The stable
-JubJub key uses Lace PRF output one; all implemented owner operations can then reuse
-it for 10/15/30 minutes, including administration and permissions. No critical-action
-passkey step-up is imposed in this owner-approved mode. Exact operation reviews remain.
+JubJub key uses Lace PRF output one and has full on-chain owner authority. The demo
+requires fresh, credential-pinned PRF approval before each critical reviewed
+operation, matching both owner and reader against the captured lease. This includes
+owner transfers, administration, permission changes and sensitive opening recovery
+or export. Multiple internal calls in the same operation share that approval; it
+neither renews the lease nor permits fallback after expiry. Exact operation reviews
+remain. This host rule supersedes the earlier all-owner-operations reuse policy; it
+does not constrain a copied full-owner key on-chain.
 **Unlock reading only** retains the earlier limited cache/grant behavior described
 above. Local timeout is not removal of the durable full owner; a connected built-in
 wallet also has a separate lifetime. Preserve pending enrollment markers and original

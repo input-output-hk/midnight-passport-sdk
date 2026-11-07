@@ -3,14 +3,12 @@ layout: default
 title: Consent and passkey purposes
 permalink: /consent/
 ---
-**Updated local-source policy:** [Unlock account]({{ '/authenticated-owner/' | relative_url }})
-authenticates a deterministic JubJub **full owner** for all implemented owner operations.
-That mode does not require a fresh passkey for administration or permission changes.
-The older reading-only/scoped-session mode below retains its passkey fallback; its
-child key is not a full owner. Operation reviews, local expiry and unknown-intent
-fences remain. These additions are not in published RC7.
 
-
+**Current local-source policy:** reviewed login may prepare a bounded routine
+reader/wallet lease. Critical operations need fresh passkey approval even under
+an unlocked JubJub full owner. This supersedes the older local policy that reused
+that owner for administration without another request. The owner retains full
+on-chain authority; fresh approval is host policy. These changes are not in RC7.
 
 ## RC7 increment and host responsibility
 
@@ -90,8 +88,11 @@ request number and purpose. A known browser-profile retry explains why a new
 assertion is needed. Provider-controlled passkey dialogs remain unchanged. The
 operation log links each request's approval or refusal to its own public ceremony
 ID and the operation's flow ID; it excludes key material and grant openings.
-Approval ends when that action finishes or fails, rather than staying active after
-login.
+Credential-request approval ends when that action finishes or fails. Login may
+separately authorize a reviewed 10/15/30-minute **routine** lease, retaining only
+derived reader/wallet material. That is not permission for a later critical action
+or an unbounded credential request. Public funding, wallet refresh and external
+Lace connection need no Passport passkey; their own service/extension rules remain.
 
 Some preparations need viewing access before exact transaction details are known:
 rotation inspects encrypted holdings, and grant use identifies/unlocks its holder.
@@ -112,7 +113,10 @@ actual signed bytes, including bounded extension data and additional JSON member
 JubJub has no enrolled P-256 public key: it authenticates the trusted provider's
 PRF-derived key against the live JubJub entry and sealed reader instead. Both paths
 validate the assertion's challenge, RP, origin and UV flags; no independent ES256
-verification is claimed for the PRF-only JubJub path.
+verification is claimed for the PRF-only JubJub path. The optional verified
+`onAccountOpened` handoff runs inside this scope and can derive the routine wallet
+seed without a second credential request. It exposes no owner PRF. Other hosts
+must opt in; failed/stale adoption locks the demo's routine cache.
 It does not relax `wa-json134` transaction signatures, enroll an owner, extend an
 owner lease or remove either live key check. Unsupported PRF/cancellation does not
 trigger another prompt. Pending setup may still need genuine signatures. See
@@ -127,8 +131,9 @@ API assertions are not measured user-visible provider prompts.
 Creation normally begins with two different accesses: `create` registers the
 credential, then `verify-created` checks that its assertions match the ACC's strict
 signing profile **before deployment**. PRF fallback or profile retries can add
-requests. After activation, P-256 creation signs the sealed viewing-key inbox
-publications separately (reader envelopes and registrations). Each signature now
+requests. P-256 creation shares one post-registration PRF scope through setup, but
+signs the sealed viewing-key inbox publications separately after activation
+(reader envelopes and registrations). Each signature now
 has its own numbered setup review. These are not repeated login or wallet-transfer
 requests; the compatibility probe and signature checks remain enabled.
 
@@ -144,18 +149,35 @@ Hosts should not share that adapter across unrelated approved operations. Broade
 session isolation and prompt-budget qualification remain
 [#245](https://github.com/input-output-hk/midnight-passport-sdk/issues/245).
 The optional `CredentialPort.withLoginSession` additionally fences overlapping
-logins and creation during login. The browser implementation clears login buffers
+logins and creation in both directions. The durable wrapper explicitly forwards
+that capability bound to its original receiver, including prototype methods.
+P-256 address-first opening authenticates the sealed registration before adopting
+the selected public key; it cannot rely on an earlier directory-based open.
+The browser implementation clears login buffers
 at callback completion even if a misbehaving host leaves a child unawaited, and
 refuses late identification results. Hosts must await all work inside the callback.
 Adapters without this optional port retain their existing login behavior.
+
+For a cached full owner, the demo requests fresh credential-pinned PRF approval
+before each critical reviewed operation, checks the derived owner and reader
+against the captured lease, and preserves its original expiry. Internal recovery,
+publication or mutation calls within that one operation share this approval.
+Decline, mismatch or loss of the captured lease refuses without another signer
+route or fallback. Public arguments are captured before async approval so the
+approved recipient, amount, device or grant cannot change during the dialog.
+Sensitive opening export and recovery/publication are critical even when a user
+might perceive them as reads. A separately approved, capped grant transfer has its
+own exact review and can use zero credential calls while inside that scope.
 
 ## Source preview: opt-in JubJub sessions
 
 The local source after RC7 adds an explicitly approved, PRF-derived session child
 with a recipient/asset-pinned, capped grant and a mandatory 10–30 minute chain
 expiry (15 minutes by default). Eligible unshielded withdrawals retain exact
-transfer consent and use JubJub without another passkey. Owner administration,
-wallet derivation and outside-scope transfers retain fresh passkey paths.
+transfer consent and use JubJub without another passkey. Owner administration
+and outside-scope owner transfers retain fresh passkey paths.
+Wallet derivation may reuse a separately approved routine lease; a scoped grant
+itself supplies no wallet or general reader authority.
 
 Read the [session guide]({{ '/jubjub-sessions/' | relative_url }}) for setup,
 authority rules, key derivation, locking/revocation, uncertainty handling and

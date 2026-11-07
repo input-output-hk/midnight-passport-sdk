@@ -1,3 +1,5 @@
+import { createP256Account } from './p256-creation.js';
+import { openP256Address } from './p256-address-open.js';
 import { withLoginSession } from './with-login-session.js';
 import { snapshotGrantScope, snapshotDeviceReader } from './request-snapshots.js';
 import {
@@ -1583,95 +1585,25 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
       }),
   });
 
-  return withLoginSession(credentials, {
+  const api: PassportConnectorAPI = {
     apiVersion: PASSPORT_API_VERSION,
     networkId,
     bindingId: network.bindingId,
     createAccount: ({ userName, retireAuthority, onProgress, ...options }) =>
       run(
         options,
-        async (flow) => {
-          if (typeof retireAuthority !== 'boolean') {
-            // Irreversible, so the caller decides, with no default (D-11); before any prompt.
-            throw new PassportConnectorError('InternalError', 'retireAuthority must be a boolean.');
-          }
-          const { credentialId, publicKey, device } = await flow.step(
-            'passkey.create',
-            async () => {
-              const { credentialId } = await credentials.create({ name: userName });
-              const publicKey = await authoriser.devicePublicKey();
-              const device = (await authoriser.deviceBinding?.())!;
-              return { credentialId, publicKey, device };
-            },
-          );
-          // Before the deploy: a passkey without PRF fails here, with nothing on chain.
-          if (viewingKey && !authoriser.devicePublicKeyHex)
-            throw new PassportConnectorError(
-              'BindingUnsupported',
-              'P-256 sealed accounts need a compressed device public key.',
-            );
-          const { pureCircuits } = await binding();
-          if (viewingKey && !pureCircuits.challenge_append_inbox_with_p256)
-            throw new PassportConnectorError(
-              'BindingUnsupported',
-              'ACC lacks P-256 inbox signing.',
-            );
-          const keys = viewingKey
-            ? await flow.step('passkey.prf', async () =>
-                viewingKey.createKeys(networkId, {
-                  scheme: 'p256-webauthn',
-                  devicePublicKey: await authoriser.devicePublicKeyHex!(),
-                  policy: device.policy,
-                }),
-              )
-            : undefined;
-          const encKey = keys
-            ? keys.encKey
-            : await flow.step('passkey.prf', () => encryptionKey.publicKey(networkId));
-          const salt = random(32);
-          if (
-            keys &&
-            (!validSealedEntries([...keys.envelopes, ...keys.registrations]) ||
-              keys.registrations[0]?.[0] !== 0xd5)
-          )
-            throw new PassportConnectorError(
-              'InternalError',
-              'P-256 keyring did not provide one envelope and one registration.',
-            );
-          const boot = pureCircuits.derive_boot_commitment_with_p256(
-            salt,
-            p256(publicKey),
-            device.policy,
-          );
-          // A deployer honours `signal` only before it submits anything: an account it deployed is
-          // always returned, and recorded below, so its salt is never lost.
-          const { address } = await flow.step('deploy', () =>
-            ports.deployer.deploy({
-              boot,
-              encKey,
-              retireAuthority,
-              firstArm: 'p256',
-              ...flow.ports,
+        async (flow) =>
+          account(
+            await createP256Account(userName, retireAuthority, {
+              ports,
+              flow,
+              binding,
+              random,
+              recordDeployed,
+              finishSealed,
+              activate,
             }),
-          );
-          const deployed: P256Hint = {
-            scheme: 'p256-webauthn',
-            credentialId,
-            publicKey,
-            policy: device.policy,
-            address,
-            salt,
-            ...(keys && { keyEntries: [...keys.envelopes, ...keys.registrations] }),
-            status: 'deployed',
-          };
-          // Recorded before activation: the salt is the only way to activate (Review Focus 2).
-          await recordDeployed(flow, deployed);
-          return account(
-            viewingKey && isSealedP256(deployed)
-              ? await finishSealed(flow, deployed)
-              : await activate(flow, deployed),
-          );
-        },
+          ),
         onProgress,
       ),
     openAccountAt: (address, options = {}) =>
@@ -1687,31 +1619,15 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             'Address recovery needs a sealed P-256 keyring.',
           );
         const identity = await flow.step('passkey.identify', () => credentials.identify());
-        const publicKey = await authoriser.devicePublicKey();
-        const device = await authoriser.deviceBinding!();
-        if (
-          !equalBytes(identity.credentialId, device.credentialId) ||
-          !identity.owns(publicKey, device.policy)
-        )
-          throw new PassportConnectorError(
-            'NotAuthorised',
-            'The selected passkey does not match its device binding.',
-          );
-        const record: SealedP256Hint = {
+        const { record, view } = await openP256Address(
           address,
-          scheme: 'p256-webauthn',
-          credentialId: Uint8Array.from(identity.credentialId),
-          publicKey,
-          policy: device.policy,
-          status: 'active',
-          sealed: true,
-        };
-        const view = await readView(flow, record);
-        if (!view.booted || view.specVersion !== 3)
-          throw new PassportConnectorError(
-            'AccountNotFound',
-            'The selected ACC is not an active spec-3 account.',
-          );
+          networkId,
+          identity,
+          authoriser,
+          viewingKey,
+          await chain(),
+          flow,
+        );
         const counter = await findCounter(flow, record, view);
         if (counter === undefined) throw notHeld(record);
         await sealedKeyring(record, view, false);
@@ -1775,5 +1691,6 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         }
         return account(hint.status === 'active' ? hint : await finishActivation(flow, hint, view));
       }),
-  });
+  };
+  return withLoginSession(credentials, api, ports.onAccountOpened);
 }

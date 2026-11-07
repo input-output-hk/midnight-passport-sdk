@@ -3,6 +3,12 @@ import type { PrfKeySource } from '@input-output-hk/mn-passport-account/ports';
 import { deriveSymmetricSecret, seedFromRoot } from '@input-output-hk/mn-passport-keys';
 import type { PasskeyPrfOutputs } from './prf.js';
 
+/** Scoped wallet derivation only: no owner PRF output, raw root or signing capability. */
+export interface PasskeyLoginKeys {
+  /** Fresh owned copy of the exact Lace root-output wallet seed. Caller zeroes it after use. */
+  deriveWalletSeed(): Uint8Array;
+}
+
 /** Private, operation-local PRF ownership; no timers, persistence or authenticated-owner lease. */
 export function createPasskeySessions(load: () => Promise<PasskeyPrfOutputs>) {
   let outputs: PasskeyPrfOutputs | undefined;
@@ -64,6 +70,20 @@ export function createPasskeySessions(load: () => Promise<PasskeyPrfOutputs>) {
   return {
     prf,
     active: () => login !== undefined,
+    readLoginKeys(checkCredential: () => void): PasskeyLoginKeys {
+      const attempt = login;
+      if (!attempt || attempt.phase !== 'selected' || !outputs)
+        throw new PassportConnectorError('NotAuthorised', 'No unlocked login keys are available.');
+      checkCredential();
+      return Object.freeze({
+        deriveWalletSeed() {
+          if (login !== attempt || attempt.phase !== 'selected' || !outputs)
+            throw new PassportConnectorError('NotAuthorised', 'The login session has ended.');
+          checkCredential();
+          return seedFromRoot(outputs.root);
+        },
+      });
+    },
     async withLoginSession<T>(work: () => Promise<T>): Promise<T> {
       if (login || users !== 0 || pending)
         throw new PassportConnectorError('NotAuthorised', 'Another credential session is active.');

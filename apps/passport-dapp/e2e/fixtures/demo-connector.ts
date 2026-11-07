@@ -4,7 +4,12 @@ import { webauthnPasskey } from '@input-output-hk/mn-passport-adapter-webauthn';
 import type { FlowOptions, GrantScopeInput } from '@input-output-hk/mn-passport-protocol';
 import { beforeDemoCeremony } from '../../src/consent.ts';
 import type { AuthenticatedJubjubOwner } from '@input-output-hk/mn-passport-keys';
-import { routineKeys, checkRoutineReview } from '../../src/routine-access.ts';
+import {
+  routineKeys,
+  checkRoutineReview,
+  acceptRoutineLogin,
+  approveCriticalOwner,
+} from '../../src/routine-access.ts';
 
 export const SERVICE_URL = 'http://localhost:8787';
 export const MANIFEST_SHA256 = '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f';
@@ -103,6 +108,11 @@ const account = (credentialId: Uint8Array, owner?: AuthenticatedJubjubOwner) => 
         entries: s.grant ? [{ id: s.grant.id, active: s.grant.active, read: false }] : [],
       };
     },
+    async rotateEncryptionKey() {
+      throw new Error(
+        'The sealed fixture uses rotateViewingKey instead of legacy raw-key rotation',
+      );
+    },
     async readShieldedHoldings() {
       checkRoutineReview();
       if (
@@ -173,7 +183,14 @@ const account = (credentialId: Uint8Array, owner?: AuthenticatedJubjubOwner) => 
     async removeDevice(target: string) {
       await signAccount();
       const s = await call('remove', { target });
-      return { ...tx(s), rotationTxHash: '30'.repeat(32) };
+      return {
+        ...tx(s),
+        rotationTxHash: '30'.repeat(32),
+        removedCommitmentHex: target,
+        droppedDeviceEntries: [],
+        sealedReadGrants: [],
+        unsealedGrantIds: [],
+      };
     },
     async issueGrant(scope: GrantScopeInput) {
       await signAccount();
@@ -201,6 +218,7 @@ const account = (credentialId: Uint8Array, owner?: AuthenticatedJubjubOwner) => 
         slot: 0,
         scopeDigest: '40'.repeat(32),
         status: 'active' as const,
+        appendTxHashes: [],
       };
     },
     async recoverPendingGrants() {
@@ -242,7 +260,9 @@ const api = {
       // Mirror the P-256 connector's before/after sealed-key validation, without native chain work.
       if (ARM === 'p256') await unlock();
       await call('open');
-      return account(ref.credentialId);
+      const opened = account(ref.credentialId);
+      await acceptRoutineLogin(opened, passkey.readLoginKeys(ref.credentialId), RP_ID, ORIGIN);
+      return opened;
     };
     return passkey.credentials.withLoginSession
       ? passkey.credentials.withLoginSession(open)
@@ -255,7 +275,8 @@ const api = {
 };
 export async function exportDemoGrantOpening() {
   checkRoutineReview();
-  if (!routineKeys.snapshot().ownerVerified) await unlock();
+  if (routineKeys.snapshot().ownerVerified) await approveCriticalOwner(true);
+  else await unlock();
   const s = await call('state');
   const scope = s.grant!.scope;
   return {

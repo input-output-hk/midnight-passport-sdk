@@ -40,7 +40,8 @@ export type PromptCount = number | readonly [min: number, max: number];
  *   Manager is expected to; otherwise 3 (create, verify, PRF).
  * - Current sealed accounts vary with the provider and publication state; the UI shows a
  *   qualitative prompt note for create and open instead of these legacy estimates.
- * - Wallet: 1 with an account open (pinned to its passkey), 2 without (pick, then PRF).
+ * - Wallet: one fresh request when locked, including discoverable PRF without an account;
+ *   an active routine lease uses no request.
  */
 export const PASSKEY_PROMPTS = {
   unlockOwner: 1,
@@ -59,7 +60,7 @@ export const PASSKEY_PROMPTS = {
   prepareGrantee: 2,
   issueGrant: 1,
   exportGrant: 1,
-  spendGrant: 2,
+  spendGrant: 1,
   revokeGrant: 1,
   recoverGrants: 1,
   enrollDevice: 1,
@@ -69,7 +70,7 @@ export const PASSKEY_PROMPTS = {
   withdraw: 1,
   walletRefresh: 0,
   walletWithAccount: 1,
-  walletWithoutAccount: 2,
+  walletWithoutAccount: 1,
 } as const satisfies Record<string, PromptCount>;
 
 export const promptsFor = (action: ActionId, accountOpen: boolean): PromptCount =>
@@ -103,7 +104,7 @@ export const FLOWS: Record<ActionId, FlowDef> = {
   unlockOwner: {
     title: 'Unlock account',
     summary:
-      'Authenticate a deterministic JubJub owner for all account operations. Existing P-256 accounts need explicit one-time enrollment. Local timeout does not revoke that owner.',
+      'Unlock a deterministic JubJub owner. Critical operations still require fresh passkey approval. Existing P-256 accounts need explicit first enrollment; local timeout does not revoke it.',
     stages: [
       { id: 'unlock', label: 'Unlock the passkey PRF' },
       { id: 'verify', label: 'Verify or enroll the JubJub owner' },

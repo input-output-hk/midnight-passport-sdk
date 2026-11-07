@@ -1,3 +1,4 @@
+import { durableCredentials } from './durable-credentials.js';
 import { utf8ToBytes } from '@noble/hashes/utils.js';
 import { hmac } from '@noble/hashes/hmac.js';
 import { sha256 } from '@noble/hashes/sha2.js';
@@ -439,21 +440,7 @@ export function createDurablePassportMutations({
       ['createKeys', 'sealToDevice', 'reencryptInbox', 'sealView', 'sealGrant'],
       'viewing',
     );
-    const credentials = {
-      ...ports.credentials,
-      create: (user: { readonly name: string }) =>
-        trace('credential.create', user, () => ports.credentials.create(user)),
-      identify: async () => {
-        const identity = await ports.credentials.identify();
-        await trace(
-          'credential.identify',
-          {},
-          async () => ({ credentialId: identity.credentialId }),
-          true,
-        );
-        return identity;
-      },
-    };
+    const credentials = durableCredentials(ports.credentials, trace);
     const protectedPorts: PassportPorts = {
       ...ports,
       binding,

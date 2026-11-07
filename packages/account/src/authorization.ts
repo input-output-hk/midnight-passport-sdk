@@ -214,15 +214,149 @@ export function createAccountAuthorisation(options: {
   });
 }
 
+/** Admission copying never runs getters or retains an unsupported mutable prototype. */
+function plainProperties(value: object): PropertyDescriptorMap {
+  if (
+    (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) ||
+    Object.getOwnPropertySymbols(value).length
+  )
+    throw new AccountAuthorisationError('InvalidContext');
+  const properties = Object.getOwnPropertyDescriptors(value);
+  if (Object.values(properties).some((property) => !('value' in property)))
+    throw new AccountAuthorisationError('InvalidContext');
+  return properties;
+}
+
+/** Only these explicitly trusted host capabilities retain identity across fresh approval. */
+function snapshotFlowOptions(value: unknown): unknown {
+  if (value === undefined) return value;
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw new AccountAuthorisationError('InvalidContext');
+  const properties = plainProperties(value);
+  if (Object.keys(properties).some((key) => !['signal', 'onEvent'].includes(key)))
+    throw new AccountAuthorisationError('InvalidContext');
+  const signal: unknown = properties.signal?.value;
+  const onEvent: unknown = properties.onEvent?.value;
+  if (
+    (onEvent !== undefined && typeof onEvent !== 'function') ||
+    (signal !== undefined &&
+      (typeof signal !== 'object' ||
+        signal === null ||
+        !('aborted' in signal) ||
+        typeof signal.aborted !== 'boolean' ||
+        !('addEventListener' in signal) ||
+        typeof signal.addEventListener !== 'function' ||
+        !('removeEventListener' in signal) ||
+        typeof signal.removeEventListener !== 'function'))
+  )
+    throw new AccountAuthorisationError('InvalidContext');
+  return Object.freeze({
+    ...(signal !== undefined && { signal }),
+    ...(onEvent !== undefined && { onEvent }),
+  });
+}
+
+/** Copy admitted public arguments before an async approval; neither caller nor hook owns dispatch bytes. */
+function snapshotOperationArgs(method: keyof PassportAccount, args: readonly unknown[]): unknown[] {
+  const optionIndex = [
+    'rotateViewingKey',
+    'readShieldedHoldings',
+    'revokeAllGrants',
+    'recoverPendingGrants',
+  ].includes(method)
+    ? 0
+    : 1;
+  if (args.length > optionIndex + 1) throw new AccountAuthorisationError('InvalidContext');
+  let nodes = 4096,
+    bytes = 65_536;
+  const visiting = new WeakSet<object>();
+  const copy = (value: unknown, depth = 0): unknown => {
+    if (--nodes < 0 || depth > 8) throw new AccountAuthorisationError('InvalidContext');
+    if (
+      value === null ||
+      value === undefined ||
+      typeof value === 'boolean' ||
+      typeof value === 'bigint'
+    )
+      return value;
+    if (typeof value === 'string' || value instanceof Uint8Array) {
+      bytes -= value.length;
+      if (bytes < 0) throw new AccountAuthorisationError('InvalidContext');
+      return typeof value === 'string' ? value : Uint8Array.from(value);
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value !== 'object' || visiting.has(value))
+      throw new AccountAuthorisationError('InvalidContext');
+    visiting.add(value);
+    try {
+      if (Array.isArray(value)) {
+        const properties = Object.getOwnPropertyDescriptors(value);
+        if (
+          value.length > 1024 ||
+          Object.keys(properties).length !== value.length + 1 ||
+          Object.getOwnPropertySymbols(value).length
+        )
+          throw new AccountAuthorisationError('InvalidContext');
+        return Object.freeze(
+          Array.from({ length: value.length }, (_, index) => {
+            const property = properties[String(index)];
+            if (!property || !('value' in property))
+              throw new AccountAuthorisationError('InvalidContext');
+            return copy(property.value, depth + 1);
+          }),
+        );
+      }
+      const properties = plainProperties(value);
+      if (Object.keys(properties).length > 64)
+        throw new AccountAuthorisationError('InvalidContext');
+      return Object.freeze(
+        Object.fromEntries(
+          Object.entries(properties).map(([key, property]) => [
+            key,
+            copy(property.value, depth + 1),
+          ]),
+        ),
+      );
+    } finally {
+      visiting.delete(value);
+    }
+  };
+  return args.map((value, index) =>
+    index === optionIndex ? snapshotFlowOptions(value) : copy(value),
+  );
+}
+
 /**
  * Compatibility facade for hosts that already review and pin a route externally.
  * Prefer createAccountAuthorisation for new integrations. Never grants authority itself.
+ * An optional authenticated-operation hook receives copied public arguments before dispatch.
+ * The route and lease are rechecked afterward; an already-dispatched receipt is never discarded.
  */
 export function routeAuthenticatedAccount(
   primary: PassportAccount,
   selected: () => PassportAccount | undefined,
   check: () => void,
+  beforeAuthenticatedOperation?: (
+    method: keyof PassportAccount,
+    args: readonly unknown[],
+  ) => Promise<void>,
 ): PassportAccount {
+  const context = {
+    account: primary.address,
+    networkId: primary.networkId,
+    bindingId: primary.bindingId,
+  };
+  const checkContext = (account: PassportAccount) => {
+    if (
+      account.address !== context.account ||
+      account.networkId !== context.networkId ||
+      account.bindingId !== context.bindingId ||
+      primary.address !== context.account ||
+      primary.networkId !== context.networkId ||
+      primary.bindingId !== context.bindingId
+    )
+      throw new AccountAuthorisationError('InvalidContext');
+  };
   return new Proxy(primary, {
     get(target, property) {
       if (['state', 'deviceRoster', 'grantRoster'].includes(String(property))) {
@@ -230,21 +364,34 @@ export function routeAuthenticatedAccount(
         return typeof read === 'function' ? read.bind(target) : read;
       }
       const current = selected() ?? target;
-      if (
-        current.address !== primary.address ||
-        current.networkId !== primary.networkId ||
-        current.bindingId !== primary.bindingId
-      )
-        throw new AccountAuthorisationError('InvalidContext');
+      checkContext(current);
       const value: unknown = Reflect.get(current, property);
       if (typeof value !== 'function') return value;
       return (...args: unknown[]) => {
-        check();
-        const chosen = selected() ?? target;
-        if (chosen !== current) throw new AccountAuthorisationError('Unavailable');
-        const operation: unknown = Reflect.get(chosen, property);
-        if (typeof operation !== 'function') throw new AccountAuthorisationError('Unavailable');
-        return Reflect.apply(operation, chosen, args);
+        const checkCurrent = () => {
+          check();
+          checkContext(current);
+          if ((selected() ?? target) !== current)
+            throw new AccountAuthorisationError('Unavailable');
+        };
+        const apply = (admitted: unknown[]) => {
+          const operation: unknown = Reflect.get(current, property);
+          if (typeof operation !== 'function') throw new AccountAuthorisationError('Unavailable');
+          return Reflect.apply(operation, current, admitted);
+        };
+        checkCurrent();
+        if (!beforeAuthenticatedOperation || current === target) return apply(args);
+        const admitted = snapshotOperationArgs(property as keyof PassportAccount, args);
+        return (async () => {
+          // Host policy may require fresh approval despite an existing authenticated-owner lease.
+          await beforeAuthenticatedOperation(
+            property as keyof PassportAccount,
+            snapshotOperationArgs(property as keyof PassportAccount, admitted),
+          );
+          checkCurrent();
+          // Dispatched mutation acknowledgements remain valid if the lease later expires.
+          return apply(admitted);
+        })();
       };
     },
   });

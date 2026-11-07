@@ -71,7 +71,7 @@ test('prompts per action, with and without an account open', () => {
   assert.equal(promptsFor('prepareGrantee', false), 2);
   assert.equal(promptsFor('issueGrant', true), 1);
   assert.equal(promptsFor('exportGrant', true), 1);
-  assert.equal(promptsFor('spendGrant', false), 2);
+  assert.equal(promptsFor('spendGrant', false), 1);
   assert.equal(promptsFor('revokeGrant', true), 1);
   assert.equal(promptsFor('recoverGrants', true), 1);
   assert.equal(promptsFor('enrollDevice', true), 1);
@@ -79,7 +79,7 @@ test('prompts per action, with and without an account open', () => {
   assert.equal(promptsFor('rotate', false), 1);
   assert.equal(promptsFor('rotate', true), 1);
   assert.equal(promptsFor('wallet', true), 1, 'pinned to the open account: one PRF prompt');
-  assert.equal(promptsFor('wallet', false), 2, 'no account: the picker, then the PRF prompt');
+  assert.equal(promptsFor('wallet', false), 1, 'no account: combined discovery and PRF');
   assert.equal(promptsFor('walletRefresh', false), 0, 'refresh reuses the connected wallet');
   assert.equal(promptsFor('fund', true), 0, 'funding needs no passkey prompt');
   assert.equal(promptsFor('withdraw', true), 1, 'owner withdrawal needs passkey consent');
@@ -148,7 +148,7 @@ test('prompt counts read as numbers, ranges and a plural that follows the larges
   assert.equal(promptLabel([0, 1]), '0–1 passkey prompt');
   assert.equal(promptLabel(0), 'No passkey prompt');
   assert.equal(promptLabel([0, 0]), 'No passkey prompt');
-  assert.equal(promptLabel(promptsFor('wallet', false)), '2 passkey prompts');
+  assert.equal(promptLabel(promptsFor('wallet', false)), '1 passkey prompt');
   assert.equal(promptLabel(promptsFor('create', true)), '2–3 passkey prompts');
 });
 

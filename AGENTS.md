@@ -23,20 +23,39 @@ shell.
 
 ## Latest local owner-authentication policy
 
-The owner's latest instruction supersedes the older critical-operation passkey rule
-below for **Unlock account** mode. Read `docs/site/authenticated-owner.md`.
-Use the existing deterministic Lace PRF-output-1 JubJub owner, not a random-context
-scoped child. Explicit first-time P-256 companion enrollment grants durable FULL
-ownership; local 10/15/30-minute expiry does not revoke it. Verify the live entry and
-unique sealed reader before exposing authenticated owner operations. All implemented
-owner operations can then reuse JubJub, including device/key/grant administration;
-exact operation consent still applies. Reading-only/scoped-grant mode remains separate.
-Keep pending enrollment attempts, original IDs, scope/expiry and unknown-transaction
-fences. Never silently enroll/replay on an uncertain result, switch a stale approved
-owner action to P-256, or clear a user journal. Original P-256 directory/counter state
-must remain independent. Key/SDK tests and synthetic browser evidence do not qualify
-new native/provider/full Lace behavior. Never enroll an owner on a real user account
-through automated tests; the demo user approves that durable change themselves.
+The latest policy requires passkey access for login and fresh approval for critical
+operations, including when a JubJub full-owner session is already active. This
+supersedes the earlier local policy that reused that owner for administration
+without another credential request. Read [the owner guide](docs/site/authenticated-owner.md)
+and [the credential-path audit](docs/review/credential-policy/README.md).
+
+Verified login may warm an explicitly reviewed **10/15/30-minute routine lease**.
+The demo opts in through `onAccountOpened` and `BrowserLoginKeys.deriveWalletSeed()`
+inside the login PRF scope; other hosts opt in themselves. Retain only derived
+wallet seed/reader material, never raw PRF outputs or an owner key in this routine
+lease. Failed/stale adoption, hidden tab, page exit, lock and expiry invalidate it.
+Login neither enrolls/unlocks a full owner nor connects a wallet. Routine holdings
+and wallet connection may reuse the lease; public reads, wallet refresh, funding
+and external Lace connection need no Passport passkey.
+
+Full-owner mode still uses the existing deterministic Lace PRF-output-1 JubJub
+owner, not a scoped child. Explicit first-time P-256 companion enrollment grants
+durable FULL on-chain ownership; the host's fresh-approval rule and local timer do
+not restrict that contract authority. Check the live entry and unique sealed reader.
+Before each critical reviewed operation, obtain a fresh credential-pinned PRF
+assertion and match its derived owner and reader to the captured lease. Reuse that
+approval only within the same logical operation, never extend the lease or silently
+fall back. Critical operations include owner transfers, device/key/grant changes,
+sensitive opening export and pending-grant recovery/publication. Separately approved
+bounded grant transfers keep their zero-request path only inside the exact scope.
+
+Preserve pending enrollment attempts, original IDs, scope/expiry and unknown-result
+fences. Never enroll/replay after uncertainty, switch a stale approved route to
+P-256, or clear a user journal. Original P-256 directory/counter state stays
+independent. Creation still needs the strict probe and real P-256 setup signatures;
+older durable creation transcripts may safely refuse the changed scope rather than
+being rewritten. Key/SDK and synthetic-browser tests do not qualify native proofs,
+real providers or full Lace. Never enroll an owner on a real account automatically.
 
 ## RC7: consent and reproducible browser journeys
 
@@ -91,9 +110,9 @@ browser tests cover these controls with real signing guards and synthetic driver
 Read `docs/site/quick-actions.md`. Settings is now a set of submenu pages, not
 top-level details/summary accordions; tests must navigate the actual selected
 page before accessing controls. `#settings/sessions` is Quick actions.
-An explicit10/15/30minute PRF unlock caches routine reading/wallet material only
-in memory. PRF owner output is zeroed; critical device/key/grant owner flows must
-still use fresh passkey approval. `routineViewingKey` is read-holdings-only; never
+Reviewed login or an explicit 10/15/30-minute PRF unlock caches routine
+reading/wallet material only in memory. PRF owner output is zeroed; critical
+device/key/grant owner flows must still use fresh passkey approval. `routineViewingKey` is read-holdings-only; never
 route writes or owner signing through it. Transfers use the existing separately
 issued capped grant and retain unknown-spend/no-fallback/revoke-first guards.
 Lock/hidden/page-exit/expiry disposes the routine cache and its grant children;
@@ -127,14 +146,19 @@ address drafts and unknown IDs; the landing is presentation, not a logout bounda
 Both account arms now wrap `openAccount`/`openAccountAt` in the credential port's
 optional `withLoginSession`. The browser adapter uses one discoverable assertion
 with both unchanged Lace PRF salts (`identify-and-unlock` consent), retaining its
-outputs only through the sequential sealed-key checks. P-256 `owns()` verifies
+outputs through the sequential sealed-key checks and optional verified account-opened
+hook. P-256 `owns()` verifies
 original signed client/authenticator bytes. A JubJub account has no enrolled
 P-256 key: bind the trusted provider's PRF-derived JubJub key to its live entry
 and sealed reader; do not claim independent ES256 verification for that path.
 Both paths validate challenge/RP/origin/UV. Never pass extension-bearing login material
 to strict ACC `wa-json134` signing or relax the enrollment/signing probe. Cancel,
 missing PRF and bad proofs never trigger implicit fallback/retry. Login does not
-enroll/unlock an owner or connect a wallet. Keep pending activation/publication
+enroll/unlock an owner or connect a wallet. The demo explicitly adopts only routine
+seed/reader material before this scope closes; the SDK does not enable that cache
+for other hosts automatically. Known-address P-256 recovery must work as the first
+open on a fresh adapter, validating its authentic sealed registration and assertion.
+Keep pending activation/publication
 signatures and uncertain-ID handling intact. Actual-core tests use real software
 ES256/PRF with a fake chain; browser journeys use a synthetic account driver.
 Neither establishes live-provider sheets/touches or native proof acceptance.
@@ -326,10 +350,10 @@ contract's WebAuthn profile are bound to that origin.
 | Step                                                     | Passkey prompts                                          | Takes                                                                    |
 | -------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------ |
 | **Create account**                                       | Provider-dependent; includes PRF and two signed inbox publications | 10 deploy waves, activation, then two signed sealed-key publications |
-| Reload the page, then **Open with passkey**              | Provider-dependent picker and PRF ceremony               | Reads the live ACC key and opens the sealed envelope |
-| **Open by ACC address** with an already-enrolled passkey | Provider-dependent picker and PRF ceremony               | Opens the known ACC without a local directory hint; does not recover a lost passkey |
+| Reload the page, then **Open with passkey**              | 1 credential API request; provider UI can vary           | Reads the live ACC key and opens the sealed envelope |
+| **Open by ACC address** with an already-enrolled passkey | 1 credential API request; provider UI can vary           | Opens the known ACC without a local directory hint; does not recover a lost passkey |
 | **Rotate sealed viewing key**                             | Provider-dependent owner signature ceremonies             | Reviews live devices, holdings and read grants, then reseals a fresh secret before the ACC key switch |
-| **Connect built-in wallet**                              | 1 with an account open, otherwise 2                      | seconds                                                                  |
+| **Connect built-in wallet**                              | 0 with a matching routine lease; otherwise 1 reviewed PRF request | seconds; no ACC authority follows a connection |
 | **Refresh wallet balance** | none | Waits for wallet sync (up to 120 s); no wallet recreation or seed derivation. |
 | **Copy full log** | none | Copies public operations and balance snapshots as JSON; no secrets. |
 

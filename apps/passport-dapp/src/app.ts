@@ -51,12 +51,16 @@ import {
   checkRoutineReview,
   finishRoutineReview,
   OWNER_ACTIONS,
+  withRoutineLogin,
+  beforeAuthenticatedOperation,
+  ensureRoutineReview,
 } from './routine-access.js';
 import { authenticateOwnerAccount, routeAuthenticatedAccount } from './owner-access.js';
 import { transactionReceipts, receiptStorageRequired } from './transaction-receipts.js';
 import { completeLocalCleanup } from './local-cleanup.js';
 const retainedTransactions = transactionReceipts(localStorage, NETWORK_ID, BINDING_ID);
 let receiptStorageFailed = false;
+let reviewedRoutineMinutes = 15;
 
 installShim();
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
@@ -98,7 +102,10 @@ const ui = createUi(
           );
         retainedTransactions.assertWritable();
       }
-      const routineUnlocked = beginRoutineReview(account, action);
+      const routineMinutes = Number(
+        (document.getElementById('routine-minutes') as HTMLSelectElement).value,
+      );
+      const routineUnlocked = beginRoutineReview(primaryAccount ?? account, action);
       const approved = await reviewDemoAction(action, {
         network,
         arm: ARM,
@@ -106,8 +113,21 @@ const ui = createUi(
         target: ui.knownAddress(),
         routineUnlocked,
         ownerUnlocked: !!routineKeys.snapshot().ownerVerified && OWNER_ACTIONS.includes(action),
+        routineMinutes,
       });
-      if (approved) checkRoutineReview();
+      if (approved) {
+        checkRoutineReview();
+        reviewedRoutineMinutes = routineMinutes;
+      }
+      if (approved)
+        await ensureRoutineReview(
+          primaryAccount ?? account,
+          action,
+          routineUnlocked,
+          reviewedRoutineMinutes,
+          RP_ID,
+          ORIGIN,
+        );
       if (
         approved &&
         ['withdraw', 'startSession', 'spendGrant', 'fund'].includes(action) &&
@@ -276,7 +296,7 @@ const session = createDemoSession({
 const sessionUse = () => (document.getElementById('session-use') as HTMLInputElement).checked;
 const ownerAuthorization = () =>
   authenticatedAccount && routineKeys.snapshot().ownerVerified
-    ? 'authenticated JubJub full owner (no new passkey prompt)'
+    ? 'authenticated JubJub owner after fresh passkey approval'
     : 'fresh owner passkey';
 setInterval(() => updateSessionClock(session.snapshot()), 1000);
 routineKeys.subscribe((snapshot) => {
@@ -288,7 +308,7 @@ routineKeys.subscribe((snapshot) => {
     snapshot.status === 'active'
       ? snapshot.authority === 'owner'
         ? snapshot.ownerVerified
-          ? `Authenticated until ${new Date(snapshot.expiresAt!).toLocaleTimeString()}. All account owner operations use the deterministic JubJub key, with no new passkey request.`
+          ? `Authenticated until ${new Date(snapshot.expiresAt!).toLocaleTimeString()}. Routine actions reuse unlocked keys. Critical owner actions require fresh passkey approval before the JubJub signature.`
           : 'Verifying the deterministic JubJub owner. First enrollment may require passkey signatures.'
         : `Unlocked until ${new Date(snapshot.expiresAt!).toLocaleTimeString()}. Reading and wallet connection need no new passkey. Transfers require a separate permission.`
       : `Quick actions ${snapshot.status}. Unlock with your account passkey to continue.`;
@@ -375,7 +395,12 @@ const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult
   session.lock();
   primaryAccount = a;
   authenticatedAccount = undefined;
-  account = routeAuthenticatedAccount(a, () => authenticatedAccount, checkRoutineReview);
+  account = routeAuthenticatedAccount(
+    a,
+    () => authenticatedAccount,
+    checkRoutineReview,
+    beforeAuthenticatedOperation,
+  );
   stage('read');
   const state = await a.state();
   record(how, { address: a.address, binding: a.bindingId, state, ...(lastTx && { lastTx }) });
@@ -433,35 +458,29 @@ ui.on('create', async () => {
   await opened(a, 'created');
 });
 ui.on('open', async () => {
-  routineKeys.lock();
-  status(
-    ARM === 'jubjub'
-      ? 'Opening… choose your passkey and unlock its sealed ACC viewing secret.'
-      : 'Opening… choose your passkey, then unlock its sealed ACC viewing secret.',
+  status('Opening… choose your passkey once to open the account and enable routine access.');
+  await withRoutineLogin(reviewedRoutineMinutes, async () =>
+    opened(await (await connector()).openAccount({ onEvent }), 'reopened'),
   );
-  await opened(await (await connector()).openAccount({ onEvent }), 'reopened');
 });
 ui.on('openAt', async () => {
-  routineKeys.lock();
   const requestedAddress = knownAccAddress(ui.knownAddress());
   traceOperation('account.openByAddress.requested', { accountAddress: requestedAddress });
-  status('Opening the known ACC… choose an enrolled passkey and unlock its sealed viewing key.');
-  const accountApi = await connector();
-  if (!accountApi.openAccountAt) throw new Error('This Passport connector cannot open by address.');
-  const restored = await accountApi.openAccountAt(requestedAddress, { onEvent });
-  if (restored.address !== requestedAddress)
-    throw new Error('The connector returned a different ACC address.');
-  await opened(restored, 'opened by address');
-  traceOperation('account.openByAddress.verified', { accountAddress: restored.address });
+  status('Opening the known ACC… choose an enrolled passkey once.');
+  await withRoutineLogin(reviewedRoutineMinutes, async () => {
+    const accountApi = await connector();
+    if (!accountApi.openAccountAt)
+      throw new Error('This Passport connector cannot open by address.');
+    const restored = await accountApi.openAccountAt(requestedAddress, { onEvent });
+    if (restored.address !== requestedAddress)
+      throw new Error('The connector returned a different ACC address.');
+    await opened(restored, 'opened by address');
+    traceOperation('account.openByAddress.verified', { accountAddress: restored.address });
+  });
 });
 ui.on('unlockRoutine', async () => {
   if (!account) throw new Error('Open a Passport account first.');
-  await routineKeys.unlock(
-    account,
-    Number((document.getElementById('routine-minutes') as HTMLSelectElement).value),
-    RP_ID,
-    ORIGIN,
-  );
+  await routineKeys.unlock(account, reviewedRoutineMinutes, RP_ID, ORIGIN);
   status(
     'Quick actions unlocked. A PRF-derived JubJub key is ready; transfers still need a separate scoped permission.',
   );
@@ -475,13 +494,7 @@ ui.on('unlockOwner', async () => {
   const primary = primaryAccount;
   if (!primary) throw new Error('Open a Passport account first.');
   try {
-    await routineKeys.unlock(
-      primary,
-      Number((document.getElementById('routine-minutes') as HTMLSelectElement).value),
-      RP_ID,
-      ORIGIN,
-      true,
-    );
+    await routineKeys.unlock(primary, reviewedRoutineMinutes, RP_ID, ORIGIN, true);
     const owner = routineKeys.ownerSession(primary)!;
     stage('verify');
     const api = await connectAccount(network, owner);
@@ -507,7 +520,7 @@ ui.on('unlockOwner', async () => {
       expiresAt: routineKeys.snapshot().expiresAt,
     });
     status(
-      'Account unlocked. All account operations can use the deterministic JubJub owner until local lock or expiry.',
+      'Account unlocked. Routine actions reuse keys; critical operations require fresh passkey approval before using the JubJub owner.',
     );
   } catch (error) {
     routineKeys.lock();
@@ -1307,7 +1320,7 @@ async function connectBuiltInWallet(): Promise<void> {
       ? 'Using the unlocked built-in wallet seed…'
       : account
         ? "Confirm with this account's passkey to derive the wallet seed (PRF)…"
-        : 'Choose your passkey, then confirm again to derive the wallet seed (PRF)…',
+        : 'Choose your passkey once to derive the wallet seed (PRF)…',
   );
   const cachedSeed = account && routineKeys.walletSeed(account);
   if (lease && !cachedSeed)

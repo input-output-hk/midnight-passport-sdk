@@ -1,5 +1,27 @@
 # Flows
 
+## Current credential policy
+
+This section describes local source after RC7. The latest policy supersedes the
+earlier full-owner reuse behavior: login and critical operations use a passkey;
+routine reader/wallet work may reuse a reviewed 10/15/30-minute memory lease.
+Fresh approval for a cached JubJub owner is a host rule, not a limitation on its
+full on-chain authority. See the [credential-path audit](../review/credential-policy/README.md).
+
+- Public state/rosters/balances, connected-wallet refresh, sponsor funding and
+  external Lace connection require no Passport passkey.
+- Verified login can adopt only derived routine seed/reader material; it does not
+  retain raw owner PRF, enroll/unlock an owner or connect a wallet.
+- Owner transfers, device/key/grant changes, sensitive opening export and pending
+  grant recovery/publication require fresh approval. Cached JubJub uses a pinned
+  PRF assertion matching both owner and reader, once per reviewed logical operation.
+  P-256 keeps each required exact-challenge signature. Neither route extends a
+  lease or silently switches signer after expiry.
+- A separately approved bounded grant transfer uses no additional credential call
+  inside its exact caps/recipient/asset/expiry. Unknown effects never auto-retry.
+- Independent wallet/holder selection combines discovery and PRF in one request;
+  it neither adopts another account's identity nor silently enables a routine cache.
+
 ## Candidate operation review
 
 RC7 starts every key-using action with an explicit operation review; creation requires acknowledgement of permanent maintenance-authority retirement. Before each actual browser access the page displays its purpose: create, verify the new credential, identify, derive keys (PRF), or sign an ACC transaction. Read preparation may precede the later exact transaction review, but follows the initial viewing/key-use approval. Public refresh does not unlock a key. Provider/retry/multi-transaction counts vary; the legacy counts below are not current promises. See [consent](../site/consent.md) and [the use-case/test evidence map](../site/use-case-coverage.md).
@@ -20,7 +42,7 @@ sequenceDiagram
   participant K as Passkey and keyring
   participant C as ACC ledger
   U->>P: Create account
-  P->>K: Create WebAuthn credential and obtain reader key from PRF
+  P->>K: Create credential, strict probe, shared setup PRF scope
   K-->>P: Public P-256 key, random ACC enc_key, sealed envelope and registration
   P->>C: Deploy and activate P-256 device
   P->>C: append_inbox_with_p256 (envelope)
@@ -32,6 +54,10 @@ sequenceDiagram
   P->>C: Read live device entry, enc_key and inbox
   P->>K: Open sealed envelope using reader key
   K-->>P: Key match or refusal, never raw account secret
+  opt Host explicitly approved routine lifetime
+    P->>K: Verified onAccountOpened derives routine wallet-seed copy
+    Note over P: Retain derived routine seed/reader, no owner key
+  end
 ```
 
 The directory persists the boot salt and two sealed entries before activation. `openAccount`
@@ -50,13 +76,31 @@ held outputs. P-256 ownership verifies the original signed client/authenticator
 bytes. JubJub has no enrolled P-256 verification key: the trusted provider's
 PRF-derived key must match its live JubJub entry and sealed reader. Both paths
 validate challenge/RP/origin/UV; neither uses this as ACC `wa-json134` transaction
-material. Login clears its output
-copies on completion/failure, refuses overlapping logins and does not silently
-retry missing PRF. No owner enrollment, authenticated owner lease or wallet
-connection follows. One request covers an already active supported account;
+material. Login clears raw output copies on completion/failure, refuses overlapping
+login/creation and does not silently retry missing PRF. An optional
+`onAccountOpened` hook runs after verified open, before scope disposal. The browser
+handoff exposes only `BrowserLoginKeys.deriveWalletSeed()`. The demo opts in to a
+reviewed routine lease; other hosts must opt in themselves. Failed/stale adoption,
+hidden tab, lock and expiry invalidate it. No owner enrollment, authenticated
+full-owner lease or wallet connection follows. One request covers an already active supported account;
 unfinished setup may still need real chain signatures. See
 [passkey purposes](../site/passkey-prompts.md). Legacy/custom credential ports
 without the optional scope retain their existing behavior.
+
+P-256 known-address opening must also succeed as the first open with a fresh
+adapter. It opens the authentic sealed registration, recovers the P-256 public
+key/policy, verifies that same identify assertion and checks the live owner/keyring.
+An earlier open must not supply an otherwise missing public key. Ambiguous or
+missing registrations, wrong assertions and removed owners refuse.
+
+P-256 creation uses one post-registration PRF session through deployment,
+activation and sealed publication validation. Both returned create outputs can be
+reused; otherwise one explicit PRF request is needed. The compatibility probe and
+each real P-256 publication signature remain. This new scope changes the durable
+source-program transcript: an older continuation may safely refuse divergence.
+Keep original journals/IDs for review; do not rewrite a transcript or replay an
+unknown effect to force compatibility. Pure-JubJub creation still uses the shared
+P-256 compatibility probe and needs separate optimization/qualification.
 
 ## Historical deterministic-key P-256 flow
 

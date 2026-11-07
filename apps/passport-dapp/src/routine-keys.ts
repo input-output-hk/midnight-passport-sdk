@@ -1,10 +1,15 @@
+import { createRoutineReader } from './routine-reader.js';
+import {
+  prepareRoutineLogin,
+  unlockRoutineMaterial,
+  checkedRoutineSeed,
+  type RoutineMaterial,
+} from './routine-material.js';
 import type { AccountViewingKey, PrfKeySource } from '@input-output-hk/mn-passport-account/ports';
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
 import {
   createSessionJubjubAuthoriser,
   deriveSymmetricSecret,
-  seedFromRoot,
-  recipeDeviceKeyring,
   READER_SECRET_DOMAIN,
   type JubjubDeviceCircuits,
   type SessionKeyContext,
@@ -31,6 +36,14 @@ export interface RoutineContext {
   readonly bindingId: string;
   readonly credentialId: Uint8Array;
 }
+
+const contextOf = (account: RoutineAccount): RoutineContext | undefined =>
+  account.credentialId && {
+    account: account.address,
+    networkId: account.networkId,
+    bindingId: account.bindingId,
+    credentialId: account.credentialId.slice(),
+  };
 
 /** Host-owned, memory-only reading/wallet lease. PRF #1 (owner signing) is never retained.
  * The JubJub child has no authority until a separately approved grant is issued.
@@ -98,13 +111,6 @@ export function createRoutineKeys(ports: {
     }
     return state;
   };
-  const contextOf = (account: RoutineAccount): RoutineContext | undefined =>
-    account.credentialId && {
-      account: account.address,
-      networkId: account.networkId,
-      bindingId: account.bindingId,
-      credentialId: account.credentialId.slice(),
-    };
   const matches = (context: RoutineContext) => {
     tick();
     return (
@@ -132,6 +138,111 @@ export function createRoutineKeys(ports: {
       if (!seed) throw new Error('Quick actions are locked.');
       return deriveSymmetricSecret(seed, params);
     },
+  };
+  const activate = async (
+    account: RoutineAccount,
+    minutes: number,
+    rpId: string,
+    pageOrigin: string,
+    fullOwner: boolean,
+    load: (context: RoutineContext) => Promise<RoutineMaterial>,
+  ) => {
+    const context = contextOf(account);
+    const scheme = account.scheme;
+    if (
+      !context ||
+      !/^[0-9a-f]{64}$/.test(context.account) ||
+      ![10, 15, 30].includes(minutes) ||
+      !rpId ||
+      !pageOrigin
+    )
+      throw new Error('Open a passkey-backed account and select 10, 15 or 30 minutes.');
+    lock();
+    const version = revision;
+    const wall = now(),
+      monotonic = mono();
+    if (!Number.isFinite(wall) || !Number.isFinite(monotonic))
+      throw new Error('Invalid session clock.');
+    const expiresAt = wall + minutes * 60_000;
+    publish({ status: 'unlocking', account: context.account });
+    let candidate: Uint8Array | undefined;
+    let candidateOwner: AuthenticatedJubjubOwner | undefined;
+    try {
+      const pure = await ports.pure();
+      if (version !== revision) throw new Error('Quick-actions unlock was cancelled.');
+      const material = await load(context);
+      try {
+        candidate = checkedRoutineSeed(material.seed);
+        if (fullOwner) {
+          if (!material.ownerSecret) throw new Error('Owner material is unavailable.');
+          candidateOwner = createAuthenticatedJubjubOwner({
+            context,
+            authoriser: material.ownerSecret,
+            walletSeed: candidate,
+            pure,
+            companionReader: scheme !== 'jubjub-schnorr',
+            check: () => check(context, version),
+          });
+        }
+      } finally {
+        material.ownerSecret?.fill(0);
+      }
+      if (version !== revision) throw new Error('Quick-actions unlock was cancelled.');
+      if (version !== revision || now() >= expiresAt || mono() >= monotonic + minutes * 60_000)
+        throw new Error('Quick-actions unlock was cancelled or expired.');
+      const localSeed = candidate;
+      const initialSource: PrfKeySource = {
+        withSession: (work) => work(),
+        deviceSecret: source.deviceSecret,
+        deriveSecret: async (params) => deriveSymmetricSecret(localSeed, params),
+      };
+      const child = candidateOwner
+        ? undefined
+        : await createSessionJubjubAuthoriser(
+            initialSource,
+            pure,
+            {
+              ...context,
+              origin: pageOrigin,
+              sessionId:
+                crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', ''),
+              expiresAt,
+            },
+            now,
+          );
+      if (version !== revision || now() >= expiresAt || mono() >= monotonic + minutes * 60_000) {
+        child?.dispose();
+        throw new Error('Quick-actions unlock was cancelled or expired.');
+      }
+      seed = candidate;
+      candidate = undefined;
+      bound = context;
+      // The existing grant protocol uses the trusted RP ID as its origin scope.
+      origin = rpId;
+      reader = deriveSymmetricSecret(seed, {
+        domain: READER_SECRET_DOMAIN,
+        context: context.networkId,
+      });
+      deadline = monotonic + minutes * 60_000;
+      lastWall = wall;
+      lastMono = monotonic;
+      owner = candidateOwner;
+      candidateOwner = undefined;
+      if (child) children.add(child);
+      publish({
+        status: 'active',
+        account: context.account,
+        expiresAt,
+        publicKey: owner?.publicKey ?? child!.publicKey,
+        authority: owner ? 'owner' : 'routine',
+      });
+    } catch (error) {
+      if (version === revision) lock();
+      throw error;
+    } finally {
+      candidate?.fill(0);
+      candidateOwner?.dispose();
+    }
   };
   return {
     snapshot: tick,
@@ -164,104 +275,29 @@ export function createRoutineKeys(ports: {
       pageOrigin: string,
       fullOwner = false,
     ) {
-      const context = contextOf(account);
-      if (
-        !context ||
-        !/^[0-9a-f]{64}$/.test(context.account) ||
-        ![10, 15, 30].includes(minutes) ||
-        !rpId ||
-        !pageOrigin
-      )
-        throw new Error('Open a passkey-backed account and select 10, 15 or 30 minutes.');
-      lock();
-      const version = revision;
-      const wall = now(),
-        monotonic = mono();
-      if (!Number.isFinite(wall) || !Number.isFinite(monotonic))
-        throw new Error('Invalid session clock.');
-      const expiresAt = wall + minutes * 60_000;
-      publish({ status: 'unlocking', account: context.account });
-      let candidate: Uint8Array | undefined;
-      let candidateOwner: AuthenticatedJubjubOwner | undefined;
-      try {
-        const pure = await ports.pure();
-        if (version !== revision) throw new Error('Quick-actions unlock was cancelled.');
-        const output = await ports.unlock(
-          { ...account, credentialId: context.credentialId.slice() },
-          rpId,
-        );
-        try {
-          candidate = seedFromRoot(output.root);
-          if (fullOwner)
-            candidateOwner = createAuthenticatedJubjubOwner({
-              context,
-              authoriser: output.authoriser,
-              walletSeed: candidate,
-              pure,
-              companionReader: account.scheme !== 'jubjub-schnorr',
-              check: () => check(context, version),
-            });
-        } finally {
-          output.root.fill(0);
-          output.authoriser.fill(0);
-        }
-        if (version !== revision) throw new Error('Quick-actions unlock was cancelled.');
-        if (version !== revision || now() >= expiresAt || mono() >= monotonic + minutes * 60_000)
-          throw new Error('Quick-actions unlock was cancelled or expired.');
-        const localSeed = candidate;
-        const initialSource: PrfKeySource = {
-          withSession: (work) => work(),
-          deviceSecret: source.deviceSecret,
-          deriveSecret: async (params) => deriveSymmetricSecret(localSeed, params),
-        };
-        const child = candidateOwner
-          ? undefined
-          : await createSessionJubjubAuthoriser(
-              initialSource,
-              pure,
+      return activate(account, minutes, rpId, pageOrigin, fullOwner, (context) =>
+        unlockRoutineMaterial(
+          () =>
+            ports.unlock(
               {
-                ...context,
-                origin: pageOrigin,
-                sessionId:
-                  crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', ''),
-                expiresAt,
+                address: context.account,
+                networkId: context.networkId,
+                bindingId: context.bindingId,
+                credentialId: Uint8Array.from(context.credentialId),
               },
-              now,
-            );
-        if (version !== revision || now() >= expiresAt || mono() >= monotonic + minutes * 60_000) {
-          child?.dispose();
-          throw new Error('Quick-actions unlock was cancelled or expired.');
-        }
-        seed = candidate;
-        candidate = undefined;
-        bound = context;
-        // The existing grant protocol uses the trusted RP ID as its origin scope.
-        origin = rpId;
-        reader = deriveSymmetricSecret(seed, {
-          domain: READER_SECRET_DOMAIN,
-          context: context.networkId,
-        });
-        deadline = monotonic + minutes * 60_000;
-        lastWall = wall;
-        lastMono = monotonic;
-        owner = candidateOwner;
-        candidateOwner = undefined;
-        if (child) children.add(child);
-        publish({
-          status: 'active',
-          account: context.account,
-          expiresAt,
-          publicKey: owner?.publicKey ?? child!.publicKey,
-          authority: owner ? 'owner' : 'routine',
-        });
-      } catch (error) {
-        if (version === revision) lock();
-        throw error;
-      } finally {
-        candidate?.fill(0);
-        candidateOwner?.dispose();
-      }
+              rpId,
+            ),
+          fullOwner,
+        ),
+      );
     },
+    prepareLogin: () =>
+      prepareRoutineLogin({
+        lock: () => lock(),
+        revision: () => revision,
+        activate: (account, minutes, rpId, origin, load) =>
+          activate(account, minutes, rpId, origin, false, load),
+      }),
     ownerSession(account: RoutineAccount) {
       const context = contextOf(account);
       return context && matches(context) ? owner : undefined;
@@ -276,34 +312,11 @@ export function createRoutineKeys(ports: {
       const context = Object.freeze({ ...request, credentialId: request.credentialId.slice() });
       if (!matches(context)) return undefined;
       const version = revision;
-      const readSource: PrfKeySource = {
-        async withSession(work) {
-          check(context, version);
-          const result = await work();
-          check(context, version);
-          return result;
-        },
-        deviceSecret: source.deviceSecret,
-        async deriveSecret(params) {
-          check(context, version);
-          if (
-            params.domain !== READER_SECRET_DOMAIN ||
-            params.context !== context.networkId ||
-            (params.length ?? 32) !== 32
-          )
-            throw new Error('Routine reader cannot derive another key.');
-          return reader!.slice();
-        },
-      };
-      const keyring = recipeDeviceKeyring(readSource);
-      return {
-        async openInbox(network, keys, entries) {
-          check(context, version);
-          if (network !== context.networkId || keys.account !== context.account)
-            throw new Error('Routine reader context mismatch.');
-          return keyring.openInbox(network, keys, entries);
-        },
-      };
+      return createRoutineReader(
+        context,
+        () => check(context, version),
+        () => reader!.slice(),
+      );
     },
     walletSeed(account: RoutineAccount): Uint8Array | undefined {
       const context = contextOf(account);

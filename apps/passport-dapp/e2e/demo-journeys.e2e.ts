@@ -551,7 +551,7 @@ try {
         throw error;
       }
     };
-    const approve = async (page: Page, action: string) => {
+    const approve = async (page: Page, action: string, beforeContinue?: () => Promise<void>) => {
       await page.bringToFront();
       // Each authenticated action is declined first: no handler, credential or driver effect.
       const beforeCalls = calls.length;
@@ -571,6 +571,7 @@ try {
       await click(page, `#${action}`);
       await page.locator('#consent-dialog').waitFor({ state: 'visible' });
       if (action === 'create') await check(page, '#consent-retirement-ack');
+      await beforeContinue?.();
       await click(page, '#consent-continue');
     };
     try {
@@ -1444,6 +1445,15 @@ try {
       await observeCredentialAccess(owner);
       assert.equal(await owner.locator('#main').getAttribute('data-landing'), 'true');
       assert.equal(await owner.locator('#workspace-account').isVisible(), false);
+      const beforeStandaloneWallet = await credentialsUsed();
+      await approve(owner, 'wallet');
+      await waitStatus(owner, /wallet connected through/);
+      assert.equal(await credentialsUsed(), beforeStandaloneWallet + 1);
+      assert.equal(await owner.locator('#authenticated-owner-key').textContent(), 'Not unlocked');
+      done(
+        'standalone built-in wallet connects with one discoverable PRF request without opening an ACC',
+      );
+      const beforeDeclinedLogin = await credentialsUsed();
       await approve(owner, 'open');
       await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
       assert.equal(
@@ -1456,7 +1466,7 @@ try {
       assert.equal(await owner.locator('#workspace-account').isVisible(), false);
       assert.equal(
         await credentialsUsed(),
-        0,
+        beforeDeclinedLogin,
         'declining combined login prevents both identification and PRF access',
       );
       done(
@@ -1465,15 +1475,39 @@ try {
 
       const beforeLogin = await credentialsUsed();
       const beforeLoginOwnerEnrollment = calls.filter((action) => action === 'enroll-owner').length;
-      await approve(owner, 'open');
+      await select(owner, '#routine-minutes', '15');
+      await approve(owner, 'open', async () => {
+        assert.match((await owner.locator('#consent-details').textContent())!, /15 minutes/);
+        assert.equal(
+          await credentialsUsed(),
+          beforeLogin,
+          'showing login consent starts no credential',
+        );
+        // Negative alias probe: a later change to the hidden form must not extend reviewed custody.
+        await owner.evaluate(() => {
+          (document.getElementById('routine-minutes') as HTMLSelectElement).value = '30';
+        });
+      });
       await waitStatus(owner, /is reopened/);
       await assertAccountWorkspace(owner);
+      const remainingRoutineLease = await owner.evaluate(async () => {
+        const path = '/src/routine-access.ts';
+        const module = (await import(/* @vite-ignore */ path)) as {
+          routineKeys: { snapshot(): { expiresAt?: number } };
+        };
+        return (module.routineKeys.snapshot().expiresAt ?? 0) - Date.now();
+      });
+      assert.ok(remainingRoutineLease > 14 * 60_000 && remainingRoutineLease <= 15 * 60_000);
+      done(
+        'changing the hidden lifetime after login consent cannot extend the approved 15-minute lease',
+      );
       assert.equal(
         await credentialsUsed(),
         beforeLogin + 1,
         'login uses one actual credential call',
       );
-      assert.match((await owner.locator('#routine-status').textContent())!, /locked/);
+      assert.match((await owner.locator('#routine-status').textContent())!, /Unlocked until/);
+      assert.equal(await owner.locator('#authenticated-owner-key').textContent(), 'Not unlocked');
       assert.equal(
         calls.filter((action) => action === 'enroll-owner').length,
         beforeLoginOwnerEnrollment,
@@ -1484,8 +1518,9 @@ try {
         'identify-and-unlock',
       );
       done(
-        'active account login uses one combined request without unlocking or enrolling an owner',
+        'active account login uses one combined request and warms routine access without unlocking or enrolling an owner',
       );
+      await select(owner, '#routine-minutes', '15');
       await fill(owner, '#open-address', address);
       const beforeAddressLogin = await credentialsUsed();
       await approve(owner, 'openAt');
@@ -1496,12 +1531,28 @@ try {
         beforeAddressLogin + 1,
         'address login uses one actual credential call',
       );
-      assert.match((await owner.locator('#routine-status').textContent())!, /locked/);
-      done('address login uses one combined request and leaves retained account keys locked');
+      assert.match((await owner.locator('#routine-status').textContent())!, /Unlocked until/);
+      assert.equal(await owner.locator('#authenticated-owner-key').textContent(), 'Not unlocked');
+      done('address login uses one combined request and adopts only the approved routine lease');
       done(
         'reload stays on landing; successful creation, login and address login select account balances',
       );
 
+      const afterRoutineLogin = await credentialsUsed();
+      await approve(owner, 'holdings');
+      await waitStatus(owner, /Verified 1 shielded/);
+      await approve(owner, 'wallet');
+      await waitStatus(owner, /wallet connected through/);
+      assert.equal(
+        await credentialsUsed(),
+        afterRoutineLogin,
+        'login-derived routine access serves the first holdings read and wallet connection without another prompt',
+      );
+      assert.equal(await owner.locator('#authenticated-owner-key').textContent(), 'Not unlocked');
+      done(
+        'login then holdings and built-in wallet connection reuse one approved PRF without owner authority',
+      );
+      await click(owner, '#lock-routine');
       await approve(owner, 'holdings');
       await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
       assert.equal(
@@ -1762,9 +1813,19 @@ try {
       const afterRoutineLock = await credentialsUsed();
       await approve(owner, 'holdings');
       await waitStatus(owner, /Verified 1 shielded/);
-      assert.ok(
-        (await credentialsUsed()) > afterRoutineLock,
-        'locked reader cannot reuse old key material',
+      assert.equal(
+        await credentialsUsed(),
+        afterRoutineLock + 1,
+        'locked routine access reauthenticates once',
+      );
+      const afterRoutineReauthentication = await credentialsUsed();
+      await approve(owner, 'holdings');
+      await waitStatus(owner, /Verified 1 shielded/);
+      await approve(owner, 'wallet');
+      await waitStatus(owner, /wallet connected through/);
+      assert.equal(await credentialsUsed(), afterRoutineReauthentication);
+      done(
+        'one post-lock routine reauthentication warms the next holdings read and wallet connection',
       );
       done(
         'one PRF unlock serves repeated readings and wallet connection; critical rotation stays fresh and lock prevents reuse',
@@ -1971,8 +2032,17 @@ try {
       await waitStatus(holder, /failed\./, /Spend declined/);
       assert.equal(rejectNextDialog, false, 'the exact grant spend review must have appeared');
       assert.equal(calls.filter((c) => c === 'spend').length, beforeDeclinedSpend);
+      const holderCredentials = () =>
+        holder.evaluate(
+          () =>
+            (window as unknown as { __passportPurposeObservations: unknown[] })
+              .__passportPurposeObservations.length,
+        );
+      const beforeHolderSpend = await holderCredentials();
       await approve(holder, 'spendGrant');
       await waitStatus(holder, /Grant spend .*confirmed/);
+      assert.equal(await holderCredentials(), beforeHolderSpend + 1);
+      done('independent grantee spend identifies and derives its signer with one scoped request');
       await fill(holder, '#grant-spent-prev', '1');
       unsettledGrantSpend = true;
       await approve(holder, 'spendGrant');
@@ -2537,64 +2607,98 @@ try {
       await fullOwner.locator('#authenticated-owner-key').locator('..').locator('summary').click();
       await fullOwner.setViewportSize({ width: 1280, height: 900 });
       done('authenticated owner public-key disclosure fits the mobile workspace');
-      assert.ok(
-        !(await fullOwner.locator('#workspace-settings').innerText()).includes(
-          'administration still requires your passkey',
-        ),
+      assert.match(
+        (await fullOwner.locator('#routine-status').textContent())!,
+        /Critical owner actions require fresh passkey approval/,
       );
       const ownerDialogs: string[] = [];
       fullOwner.on('dialog', (dialog) => ownerDialogs.push(dialog.message()));
       const authenticatedCredentials = await ownerCredentials();
+      const approveFreshOwnerCeremony = async () => {
+        await fullOwner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+        assert.equal(
+          await fullOwner.locator('#ceremony-purpose').getAttribute('data-purpose'),
+          'derive-keys',
+        );
+        await click(fullOwner, '#ceremony-continue');
+      };
+      const criticalOwnerAction = async (action: string, expected: RegExp) => {
+        const before = await ownerCredentials();
+        await approve(fullOwner, action);
+        await waitStatus(fullOwner, expected);
+        assert.equal(
+          await ownerCredentials(),
+          before + 1,
+          `${action} requires exactly one fresh owner approval while retaining the JubJub signer`,
+        );
+      };
       await approve(fullOwner, 'holdings');
       await waitStatus(fullOwner, /Verified 1 shielded/);
       await approve(fullOwner, 'wallet');
       await waitStatus(fullOwner, /wallet connected through/);
+      assert.equal(await ownerCredentials(), authenticatedCredentials);
+      done('authenticated owner holdings and built-in wallet access reuse the routine lease');
+      const rotationsBeforeDeclinedFresh = calls.filter((call) => call === 'rotate').length;
       await approve(fullOwner, 'rotate');
-      await waitStatus(fullOwner, /confirmed its new sealed/);
+      await fullOwner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+      assert.equal(
+        await fullOwner.locator('#ceremony-purpose').getAttribute('data-purpose'),
+        'derive-keys',
+      );
+      await click(fullOwner, '#ceremony-cancel');
+      await waitStatus(fullOwner, /UserCancelled/, /passkey request was declined/);
+      assert.equal(await ownerCredentials(), authenticatedCredentials);
+      assert.equal(calls.filter((call) => call === 'rotate').length, rotationsBeforeDeclinedFresh);
+      done('declining fresh critical approval while an owner is unlocked sends no owner mutation');
+      await criticalOwnerAction('rotate', /confirmed its new sealed/);
       await fill(fullOwner, '#handoff-input', handoff);
-      await approve(fullOwner, 'enrollDevice');
-      await waitStatus(fullOwner, /Joining device confirmed/);
+      await criticalOwnerAction('enrollDevice', /Joining device confirmed/);
       await fill(fullOwner, '#remove-commitment', target);
-      await approve(fullOwner, 'removeDevice');
-      await waitStatus(fullOwner, /selected entry is absent/i);
+      await criticalOwnerAction('removeDevice', /selected entry is absent/i);
       await fill(fullOwner, '#grant-grantee', publicOwner!);
       await fill(fullOwner, '#grant-recipient', recipient);
       await fill(fullOwner, '#grant-per-call', '1');
       await fill(fullOwner, '#grant-cap', '2');
-      await approve(fullOwner, 'issueGrant');
-      await waitStatus(fullOwner, /Grant.*confirmed|Grant.*active|Grant.*issued/i);
+      await criticalOwnerAction('issueGrant', /Grant.*confirmed|Grant.*active|Grant.*issued/i);
       await fill(fullOwner, '#revoke-grant-id', state.grant!.id);
-      await approve(fullOwner, 'revokeGrant');
-      await waitStatus(fullOwner, /revoked/i);
+      await criticalOwnerAction('revokeGrant', /revoked/i);
       await fill(fullOwner, '#withdraw-recipient', recipient);
       await fill(fullOwner, '#withdraw-amount', '1');
-      await approve(fullOwner, 'startSession');
-      await waitStatus(fullOwner, /JubJub session active/);
-      await approve(fullOwner, 'revokeSession');
-      await waitStatus(fullOwner, /Session grant revoked on chain/);
+      if (state.night < 2) {
+        await click(fullOwner, '#fund');
+        await waitStatus(fullOwner, /account balance:/);
+      }
+      await criticalOwnerAction('startSession', /JubJub session active/);
+      await check(fullOwner, '#session-use');
+      const beforeOwnerBoundedTransfer = await ownerCredentials();
+      await approve(fullOwner, 'withdraw');
+      await waitStatus(fullOwner, /Withdrawal confirmed/);
+      assert.equal(
+        await ownerCredentials(),
+        beforeOwnerBoundedTransfer,
+        'a matching bounded grant transfer does not trigger the cached-owner critical gate',
+      );
+      done('matching bounded withdrawal stays passkey-free even while a full owner is unlocked');
+      await criticalOwnerAction('revokeSession', /Session grant revoked on chain/);
       assert.ok(
-        ownerDialogs.some((text) => text.includes('Grant issuer: authenticated JubJub full owner')),
+        ownerDialogs.some((text) =>
+          text.includes('Grant issuer: authenticated JubJub owner after fresh passkey approval'),
+        ),
       );
       assert.ok(
         ownerDialogs.some(
           (text) =>
             text.includes('Revoke session grant') &&
-            text.includes('Authorization: authenticated JubJub full owner'),
+            text.includes('Authorization: authenticated JubJub owner after fresh passkey approval'),
         ),
       );
       done(
-        'scoped grant issue and revocation disclose the authenticated full-owner issuer without credential access',
+        'grant issue and revocation each require one fresh approval, including bookkeeping in the same reviewed operation',
       );
-      await approve(fullOwner, 'withdraw');
-      await waitStatus(fullOwner, /Withdrawal confirmed/);
+      await criticalOwnerAction('withdraw', /Withdrawal confirmed/);
       assert.ok(
         ownerDialogs.some((text) =>
-          text.includes('Authorization: authenticated JubJub full owner (no new passkey prompt)'),
-        ),
-      );
-      assert.ok(
-        !ownerDialogs.some((text) =>
-          /fresh owner passkey|Critical actions still require your passkey/.test(text),
+          text.includes('Authorization: authenticated JubJub owner after fresh passkey approval'),
         ),
       );
       assert.ok(
@@ -2604,15 +2708,11 @@ try {
             text.includes('owner authority instead'),
         ),
       );
-      done('exact owner withdrawal confirmation names the authenticated full owner');
-      assert.equal(
-        await ownerCredentials(),
-        authenticatedCredentials,
-        'all owner operations must reuse the authenticated JubJub owner',
-      );
+      assert.equal(await ownerCredentials(), authenticatedCredentials + 8);
       done(
-        'authenticated deterministic JubJub owner performs readings, wallet connection, rotation, enrollment, removal, grants and transfer without new credential access',
+        'cached JubJub owner uses fresh approval for each critical action; routine access remains prompt-free',
       );
+      const afterCriticalOperations = await ownerCredentials();
       const rotationsBeforeExpiry = calls.filter((c) => c === 'rotate').length;
       await click(fullOwner, '#rotate');
       await fullOwner.locator('#consent-dialog').waitFor({ state: 'visible' });
@@ -2625,7 +2725,7 @@ try {
         (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 0;
       });
       assert.equal(calls.filter((c) => c === 'rotate').length, rotationsBeforeExpiry);
-      assert.equal(await ownerCredentials(), authenticatedCredentials);
+      assert.equal(await ownerCredentials(), afterCriticalOperations);
       done(
         'expired full-owner approval cannot fall back to a passkey or submit owner administration',
       );
@@ -2636,13 +2736,13 @@ try {
       assert.equal(calls.filter((c) => c === 'enroll-owner').length, enrollmentsAfterFirstUnlock);
       assert.equal(
         await ownerCredentials(),
-        authenticatedCredentials + 1,
+        afterCriticalOperations + 1,
         'reauthentication needs only the pinned PRF unlock, not enrollment',
       );
       await click(fullOwner, '#lock-routine');
       await approve(fullOwner, 'rotate');
       await waitStatus(fullOwner, /confirmed its new sealed/);
-      assert.ok((await ownerCredentials()) > authenticatedCredentials + 1);
+      assert.ok((await ownerCredentials()) > afterCriticalOperations + 1);
       done(
         'reauthentication restores the same owner without enrollment; local lock returns to explicitly reviewed passkey access',
       );
@@ -2679,6 +2779,7 @@ try {
         const originalCalls = calls.filter((call) => call === heldOwnerAction).length;
         const credentialsBefore = await ownerCredentials();
         await approve(fullOwner, action);
+        await approveFreshOwnerCeremony();
         await receiptObserved;
         const originalHash = state.txHash;
         await fullOwner.evaluate(() => {
@@ -2703,7 +2804,7 @@ try {
         );
         receiptReadUnavailable = false;
         assert.equal(calls.filter((call) => call === heldOwnerAction).length, originalCalls + 1);
-        assert.equal(await ownerCredentials(), credentialsBefore);
+        assert.equal(await ownerCredentials(), credentialsBefore + 1);
         heldOwnerAction = undefined;
         holdOwnerReceipt = undefined;
         await fullOwner.evaluate(() => {
@@ -2745,6 +2846,7 @@ try {
       const rotatesBeforePartial = calls.filter((call) => call === 'rotate').length;
       const credentialsBeforePartial = await ownerCredentials();
       await approve(fullOwner, 'rotate');
+      await approveFreshOwnerCeremony();
       await partialObserved;
       const partialHash = state.txHash;
       assert.ok(
@@ -2766,7 +2868,7 @@ try {
         .waitFor({ state: 'attached' });
       releasePartial();
       await waitStatus(fullOwner, /failed\./, /locked|expired/);
-      assert.equal(await ownerCredentials(), credentialsBeforePartial);
+      assert.equal(await ownerCredentials(), credentialsBeforePartial + 1);
       assert.equal(calls.filter((call) => call === 'rotate').length, rotatesBeforePartial + 1);
       heldOwnerAction = undefined;
       holdOwnerReceipt = undefined;
@@ -2891,6 +2993,7 @@ try {
         return storageFaultWait;
       };
       await approve(fullOwner, 'rotate');
+      await approveFreshOwnerCeremony();
       await storageFaultObserved;
       const storageFaultHash = state.txHash;
       await fullOwner.evaluate(() => {
@@ -2960,7 +3063,6 @@ try {
       for (const purpose of [
         'create',
         'verify-created',
-        'identify',
         'identify-and-unlock',
         'derive-keys',
         ...(arm === 'p256' ? ['sign'] : []),

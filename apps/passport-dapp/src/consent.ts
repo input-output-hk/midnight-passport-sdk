@@ -2,10 +2,11 @@ import { PassportConnectorError } from '@input-output-hk/mn-passport-account';
 import type { PasskeyCeremony } from '@input-output-hk/mn-passport-adapter-webauthn';
 import { FLOWS, type ActionId } from './flows.js';
 import { traceOperation } from './operation-trace.js';
+import { CRITICAL_ACTIONS } from './credential-policy.js';
 
 const PURPOSES: Partial<Record<ActionId, string>> = {
   unlockOwner:
-    'Use this account’s passkey PRF to unlock its deterministic JubJub OWNER key for 10–30 minutes. It has full account authority: transfers, device changes, key rotation and issuing or revoking permissions. On an existing P-256 account, first enrollment requires a separate explicit review and passkey signatures. The on-chain owner does not expire with the browser session; lock, hidden tab, page exit and timeout only clear local key material. Every operation still requires its own review.',
+    'Use this account’s passkey PRF to unlock its deterministic JubJub OWNER key for 10–30 minutes. It has full on-chain owner authority; this host additionally requires fresh passkey approval for critical operations. On an existing P-256 account, first enrollment requires a separate explicit review and passkey signatures. Local lock or timeout clears local material, not the on-chain owner. Every operation still requires its own review.',
   unlockRoutine:
     'Use the open account’s passkey PRF to unlock routine reading and built-in wallet keys for the selected 10–30 minute lifetime. Keep these only in this page’s memory and derive a separate JubJub key. This does not add an owner or grant spending permission. Device changes, key rotation, and issuing/revoking permissions still require fresh passkey approval. Lock, hidden tab, page exit or expiry discards the routine key material.',
   startSession:
@@ -51,7 +52,7 @@ const CEREMONIES: Record<PasskeyCeremony['purpose'], string> = {
     'Verify the new passkey’s signing format before deployment or enrollment. This second request checks that the newly created credential works with the ACC; creating it alone cannot establish that.',
   identify: 'Choose and verify the passkey for this operation.',
   'identify-and-unlock':
-    'Choose your passkey and unlock its local account keys in this one request (PRF). These keys are cleared when login finishes. This does not sign an ACC transaction, enroll an owner or start an authenticated owner session.',
+    'Choose your passkey and unlock its local account keys in this one request (PRF). Login may keep the explicitly reviewed reading and wallet material in page memory until lock or expiry; raw PRF outputs are cleared when login ends. This does not sign an ACC transaction, enroll an owner or start a full owner session.',
   sign: 'Sign the current ACC transaction. This is separate from unlocking local keys.',
   'derive-keys':
     'Unlock passkey-derived local keys (PRF). This is not an ACC transaction signature.',
@@ -64,6 +65,7 @@ interface ConsentContext {
   readonly target?: string | undefined;
   readonly routineUnlocked?: boolean;
   readonly ownerUnlocked?: boolean;
+  readonly routineMinutes?: number;
 }
 
 /** Selection flows must not imply that an already-open ACC is the one being approved. */
@@ -120,7 +122,11 @@ export async function reviewDemoAction(
   };
   const purpose =
     context.ownerUnlocked && ownerPurpose[action]
-      ? `Use the authenticated JubJub owner with no new passkey request. ${ownerPurpose[action]}`
+      ? CRITICAL_ACTIONS.has(action)
+        ? action === 'withdraw'
+          ? `A matching scoped transfer uses its approved JubJub grant without a passkey. Owner transfers require fresh passkey approval before the JubJub signature. ${ownerPurpose[action]}`
+          : `Require fresh passkey approval before this critical action uses the authenticated JubJub owner. ${ownerPurpose[action]}`
+        : `Use the authenticated JubJub owner with no new passkey request. ${ownerPurpose[action]}`
       : context.routineUnlocked && (action === 'holdings' || action === 'wallet')
         ? action === 'holdings'
           ? 'Use the account’s explicitly unlocked reader keys to read and verify private holdings. This action uses no new passkey request and grants no spending permission.'
@@ -138,7 +144,18 @@ export async function reviewDemoAction(
   title.textContent = FLOWS[action].title;
   details.textContent =
     `Network: ${context.network}\nOwner arm: ${context.ownerUnlocked ? 'authenticated JubJub owner' : context.arm}\n` +
-    `ACC: ${accountReview.label}\n\n${purpose}\n\nPrompts vary by provider, retry and transaction count. Cancelling stops future work; it cannot roll back a submitted transaction.`;
+    `ACC: ${accountReview.label}\n\n${purpose}` +
+    (action === 'unlockOwner' || action === 'unlockRoutine'
+      ? `\n\nReviewed local lifetime: ${context.routineMinutes ?? 15} minutes.`
+      : '') +
+    (action === 'open' ||
+    action === 'openAt' ||
+    (!!context.account &&
+      !context.routineUnlocked &&
+      (action === 'holdings' || action === 'wallet'))
+      ? `\n\nAfter successful authentication, keep reading and built-in wallet keys in this page’s memory for ${context.routineMinutes ?? 15} minutes. Lock, hidden tab, page exit or expiry clears them. This grants no owner or spending authority and does not connect a wallet.`
+      : '') +
+    '\n\nPrompts vary by provider, retry and transaction count. Cancelling stops future work; it cannot roll back a submitted transaction.';
   retirement.hidden = action !== 'create';
   acknowledgement.checked = false;
   proceed.disabled = action === 'create';

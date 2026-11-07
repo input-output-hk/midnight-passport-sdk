@@ -9,8 +9,11 @@ import { p256 as p256Curve } from '@noble/curves/nist.js';
 import { browserPasskey } from './passkey.js';
 import { passkeyPrf } from './prf.js';
 import { identifyPasskeyWithPrf } from './login.js';
-import { createPasskeySessions } from './sessions.js';
+import { createPasskeySessions, type PasskeyLoginKeys } from './sessions.js';
 import type { PasskeyCeremonyOptions } from './ceremony.js';
+import { equalBytes } from './webauthn.js';
+
+export type { PasskeyLoginKeys } from './sessions.js';
 
 /** Browser implementation of the account's credential, PRF and P-256 authoriser ports. */
 export function webauthnPasskey(
@@ -19,11 +22,18 @@ export function webauthnPasskey(
     origin: string;
     credentials?: CredentialsContainer;
   },
-): { credentials: CredentialPort; prf: PrfKeySource; p256: Authoriser } {
+): {
+  credentials: CredentialPort;
+  prf: PrfKeySource;
+  p256: Authoriser;
+  /** Available only during a combined login for this exact selected credential. */
+  readLoginKeys(credentialId: Uint8Array | undefined): PasskeyLoginKeys;
+} {
   const seam = browserPasskey(opts);
   const known = new Map<string, PasskeyCredential>();
   let current: PasskeyCredential | undefined;
   let selectedCredentialId: Uint8Array | undefined;
+  let selecting = false;
   const sessions = createPasskeySessions(async () => {
     if (!selectedCredentialId)
       throw new PassportConnectorError('InternalError', 'No passkey was selected.');
@@ -42,35 +52,66 @@ export function webauthnPasskey(
     return current;
   };
   const credentials: CredentialPort = {
-    withLoginSession: (work) => sessions.withLoginSession(work),
+    async withLoginSession(work) {
+      if (selecting)
+        throw new PassportConnectorError(
+          'NotAuthorised',
+          'Another credential selection is active.',
+        );
+      return sessions.withLoginSession(work);
+    },
     async create({ name }) {
-      if (sessions.active())
-        throw new PassportConnectorError('NotAuthorised', 'A login session is active.');
-      const created = await seam.create(name);
-      current = created;
-      selectedCredentialId = created.credentialId;
-      known.set(idHex(created.credentialId), created);
-      return { credentialId: created.credentialId };
+      if (selecting || sessions.active())
+        throw new PassportConnectorError(
+          'NotAuthorised',
+          'Another credential selection is active.',
+        );
+      selecting = true;
+      try {
+        const created = await seam.create(name);
+        current = created;
+        selectedCredentialId = created.credentialId.slice();
+        known.set(idHex(created.credentialId), created);
+        return { credentialId: created.credentialId };
+      } finally {
+        selecting = false;
+      }
     },
     async identify() {
-      const identity = sessions.active()
-        ? await sessions.identify(() => identifyPasskeyWithPrf(opts))
-        : await seam.identify();
-      selectedCredentialId = identity.credentialId;
-      current = known.get(idHex(identity.credentialId));
-      return {
-        credentialId: identity.credentialId,
-        owns(key, policy) {
-          if (!policy || !identity.owns({ ...key, identity: false }, policy)) return false;
-          current = {
-            credentialId: identity.credentialId,
-            publicKey: { ...key, identity: false },
-            policy,
-          };
-          known.set(idHex(identity.credentialId), current);
-          return true;
-        },
-      };
+      if (selecting)
+        throw new PassportConnectorError(
+          'NotAuthorised',
+          'Another credential selection is active.',
+        );
+      selecting = true;
+      try {
+        const identity = sessions.active()
+          ? await sessions.identify(() => identifyPasskeyWithPrf(opts))
+          : await seam.identify();
+        selectedCredentialId = identity.credentialId.slice();
+        current = known.get(idHex(identity.credentialId));
+        return {
+          credentialId: identity.credentialId,
+          owns(key, policy) {
+            if (
+              !policy ||
+              !selectedCredentialId ||
+              !equalBytes(identity.credentialId, selectedCredentialId) ||
+              !identity.owns({ ...key, identity: false }, policy)
+            )
+              return false;
+            current = {
+              credentialId: identity.credentialId,
+              publicKey: { ...key, identity: false },
+              policy,
+            };
+            known.set(idHex(identity.credentialId), current);
+            return true;
+          },
+        };
+      } finally {
+        selecting = false;
+      }
     },
   };
   const prf = sessions.prf;
@@ -101,5 +142,16 @@ export function webauthnPasskey(
       };
     },
   };
-  return { credentials, prf, p256 };
+  return {
+    credentials,
+    prf,
+    p256,
+    readLoginKeys(credentialId) {
+      const expected = credentialId?.slice();
+      return sessions.readLoginKeys(() => {
+        if (!expected || !selectedCredentialId || !equalBytes(expected, selectedCredentialId))
+          throw new PassportConnectorError('NotAuthorised', 'The login credential does not match.');
+      });
+    },
+  };
 }
