@@ -4,6 +4,10 @@ title: Quick actions and passkey approval
 permalink: /quick-actions/
 ---
 
+This page documents the [demo's routine access policy]({{ '/demo-guide/' | relative_url }}).
+The [library integration guide]({{ '/library-guide/' | relative_url }}) covers the optional
+ports and host-owned lifecycle; importing an adapter does not create this cache.
+
 **Source preview after RC7.** Quick actions retains explicitly approved routine
 reader/wallet material in this page's memory for **10, 15 or 30 minutes**. The demo
 can prepare it during verified login without an extra PRF request. Critical
@@ -13,8 +17,8 @@ owner session. This supersedes the earlier full-owner reuse policy.
 ## Try it
 
 1. Log in or open by ACC address using the existing passkey. Review the routine
-   lifetime as part of login; verified opening prepares that lease in the same
-   credential request. Creation does not silently start a routine lease.
+   lifetime in its combined operation/passkey review; verified opening prepares that
+   lease in the same credential request. Creation does not silently start a routine lease.
 2. If access is locked, use **Passport account → Manage quick actions**, or
    **Settings → Quick actions**, choose a lifetime and select the explicit reading
    unlock. This separately reviewed renewal needs a pinned PRF request. It does not
@@ -26,8 +30,8 @@ owner session. This supersedes the earlier full-owner reuse policy.
    change an already reviewed lifetime.
 3. **Read shielded holdings** and **Connect built-in wallet** now reuse the unlocked
    material. Repeating them within this session does not request the passkey again.
-   They retain their operation reviews and chain/network/credential checks.
-   If the lease expires or locks while reviewing or starting an action, it stops;
+   They have no generic operation popup and retain chain/network/credential checks.
+   If the captured lease expires or locks before completion, the action stops;
    the page does not silently replace the reviewed routine path with a passkey request.
 4. To use JubJub for a transfer, choose the withdrawal asset and recipient, then
    approve the separate **Transfer permission** and its caps/expiry. Issuing that
@@ -68,7 +72,8 @@ disconnect that already running wallet or erase its own internal material.
 
 ## Engineer integration
 
-The foundation packages remain framework-neutral. The optional
+**Source-only library seams, host-owned policy.** The foundation packages remain
+framework-neutral. The optional
 `PassportPorts.routineViewingKey` / `BrowserPassportConfig.routineViewingKey`
 factory accepts an account, network, binding and credential context, and returns
 only an `openInbox` reader or `undefined`. It is consulted **only** by the verified

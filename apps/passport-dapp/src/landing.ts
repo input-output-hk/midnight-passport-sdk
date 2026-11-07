@@ -100,8 +100,6 @@ export function createLandingPage(
   choices.append(create.item, open.item);
   const reminder = element('p', 'Already have a Passport? Log in with your registered passkey.');
   reminder.className = 'landing-entry-note';
-  const passkeyNote = element('p', 'Each passkey request is explained before you approve it.');
-  passkeyNote.className = 'overview-note';
   const byAddress = element('details');
   byAddress.id = 'overview-open-address';
   byAddress.className = 'overview-advanced';
@@ -115,6 +113,6 @@ export function createLandingPage(
   );
   addressNote.className = 'overview-note';
   byAddress.append(addressActions, addressNote);
-  welcome.append(title, choices, reminder, passkeyNote, byAddress);
+  welcome.append(title, choices, reminder, byAddress);
   view.append(welcome, demoTools(navigate));
 }

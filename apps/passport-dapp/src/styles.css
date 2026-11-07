@@ -193,6 +193,14 @@ code {
   font-weight: 500;
 }
 
+.brand-home {
+  display: inline-flex;
+  align-items: center;
+  gap: inherit;
+  color: inherit;
+  text-decoration: none;
+}
+
 .midnight-logo {
   display: block;
   height: 26px;

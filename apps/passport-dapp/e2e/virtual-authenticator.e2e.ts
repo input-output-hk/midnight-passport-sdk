@@ -38,9 +38,10 @@ async function approveAction(page: Page, name: string): Promise<void> {
     await page.locator(pageControl ? `#${pageControl}` : `#nav-${section}`).click();
   }
   await button.click();
-  await page.locator('#consent-dialog').waitFor({ state: 'visible' });
-  if (name === 'Create account') await page.locator('#consent-retirement-ack').check();
-  await page.getByRole('button', { name: 'Approve operation', exact: true }).click();
+  if (name === 'Create account') {
+    await page.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+    await page.locator('#consent-retirement-ack').check();
+  }
   await settleWithCeremonyReviews(page, 900_000);
 }
 

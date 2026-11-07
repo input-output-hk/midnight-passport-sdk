@@ -158,6 +158,10 @@ async function openNavigation(page: Page): Promise<void> {
   }
 }
 async function navClick(page: Page, selector: string): Promise<void> {
+  if (selector === '#brand-home') {
+    await page.locator(selector).click();
+    return;
+  }
   await openNavigation(page);
   await page.locator(selector).click();
 }
@@ -181,7 +185,9 @@ async function reveal(page: Page, selector: string): Promise<void> {
     await openNavigation(page);
     return;
   }
-  if (
+  if (location.view === 'overview') {
+    await navClick(page, '#brand-home');
+  } else if (
     location.control &&
     (await page.locator(`#${location.control}`).getAttribute('aria-current')) !== 'page'
   )
@@ -551,28 +557,16 @@ try {
         throw error;
       }
     };
+    // Start the action; only its actual credential callback opens a combined review.
+    // Cached routine and bounded grant paths may complete without a credential modal.
     const approve = async (page: Page, action: string, beforeContinue?: () => Promise<void>) => {
       await page.bringToFront();
-      // Each authenticated action is declined first: no handler, credential or driver effect.
-      const beforeCalls = calls.length;
-      const beforeCredential = await page.evaluate(() =>
-        localStorage.getItem('passport-dev:mock-passkey:v1'),
-      );
       await click(page, `#${action}`);
-      await page.locator('#consent-dialog').waitFor({ state: 'visible' });
-      await click(page, '#consent-cancel');
-      await waitStatus(page, /declined before passkey/);
-      assert.equal(calls.length, beforeCalls, `declining ${action} must not invoke a driver`);
-      assert.ok(
-        (await page.evaluate(() => localStorage.getItem('passport-dev:mock-passkey:v1'))) ===
-          beforeCredential,
-        `declining ${action} must not use a credential`,
-      );
-      await click(page, `#${action}`);
-      await page.locator('#consent-dialog').waitFor({ state: 'visible' });
-      if (action === 'create') await check(page, '#consent-retirement-ack');
-      await beforeContinue?.();
-      await click(page, '#consent-continue');
+      if (action === 'create' || beforeContinue) {
+        await page.locator('#ceremony-dialog').waitFor({ state: 'visible' });
+        if (action === 'create') await check(page, '#consent-retirement-ack');
+        await beforeContinue?.();
+      }
     };
     try {
       const owner = await newPage();
@@ -581,6 +575,8 @@ try {
       assert.equal(await owner.locator('.workspace-nav').isVisible(), false);
       assert.equal(await owner.locator('#navigation-toggle').isVisible(), false);
       assert.equal(await owner.locator('#landing-demo-tools > summary').isVisible(), true);
+      assert.equal(await owner.locator('#nav-overview, #consent-dialog').count(), 0);
+      assert.equal(await owner.getByRole('link', { name: 'Midnight Passport home' }).count(), 1);
       assert.equal(calls.length, 0);
       assert.equal(
         await owner.evaluate(() => localStorage.getItem('passport-dev:mock-passkey:v1')),
@@ -592,10 +588,20 @@ try {
       await owner.locator('#landing-demo-tools > summary').click();
       await owner.locator('#landing-audit').click();
       assert.equal(await owner.locator('#workspace-audit').isVisible(), true);
-      await navClick(owner, '#nav-overview');
+      await navClick(owner, '#brand-home');
       assert.equal(await owner.locator('#main').getAttribute('data-landing'), 'true');
       assert.equal(calls.length, 0);
-      done('landing Demo tools keeps Audit reachable without logging in or clearing account state');
+      assert.equal(
+        await owner.evaluate(
+          () =>
+            (window as unknown as { __passportPurposeObservations: unknown[] })
+              .__passportPurposeObservations.length,
+        ),
+        0,
+      );
+      done(
+        'signed-out home returns from Demo tools to login without an Overview menu or credential call',
+      );
       const react = await newPage(undefined, true);
       const beforeReactCalls = calls.length;
       assert.equal(await react.locator('#react-runtime').innerText(), 'React 19.3.1');
@@ -806,19 +812,12 @@ try {
       );
       await openNavigation(owner);
       assert.deepEqual(await owner.locator('.workspace-nav-group > button').allTextContents(), [
-        'Overview',
         'Passport account',
         'Midnight wallet',
         'Audit',
         'Settings',
       ]);
-      for (const label of [
-        'Overview',
-        'Passport account',
-        'Midnight wallet',
-        'Audit',
-        'Settings',
-      ]) {
+      for (const label of ['Passport account', 'Midnight wallet', 'Audit', 'Settings']) {
         const control = owner.getByRole('button', { name: label, exact: true });
         assert.equal(await control.count(), 1, 'decorative icons preserve accessible names');
         const icon = control.locator('svg');
@@ -882,7 +881,7 @@ try {
         assert.equal(await owner.locator('.workspace-submenu [aria-current="page"]').count(), 1);
         assert.equal(await owner.evaluate(() => location.hash), `#audit/${id}`);
       }
-      await navClick(owner, '#nav-overview');
+      await navClick(owner, '#brand-home');
       assert.equal(calls.length, 0);
       done(
         'persistent navigation keeps parent positions and document scroll stable; wallet and Audit use consistent side-effect-free page links',
@@ -933,7 +932,7 @@ try {
       await owner.setViewportSize({ width: 1280, height: 900 });
       await owner.waitForFunction(() => document.activeElement?.id === 'workspace-wallet-title');
 
-      await navClick(owner, '#nav-overview');
+      await navClick(owner, '#brand-home');
       assert.equal(calls.length, 0);
       done(
         'compact navigation drawer contains focus, returns focus on cancel or navigation, and resizes without duplicating controls or shifting content',
@@ -984,7 +983,7 @@ try {
               !button.classList.contains('btn-primary'),
           ),
       );
-      assert.equal(await owner.locator('.overview-welcome > .overview-note').count(), 1);
+      assert.equal(await owner.locator('.overview-welcome > .overview-note').count(), 0);
       assert.equal(
         await owner.locator('#overview-open-address > summary').textContent(),
         'Log in with an account address',
@@ -998,7 +997,7 @@ try {
       assert.equal(await owner.locator('#openAt').isEnabled(), true);
       await owner.locator('#overview-open-address > summary').click();
       await navClick(owner, '#nav-wallet');
-      await navClick(owner, '#nav-overview');
+      await navClick(owner, '#brand-home');
       assert.equal(await owner.locator('#open-address').inputValue(), address);
       assert.equal(await owner.locator('#open-address').isVisible(), false);
       const choiceBounds = await owner.locator('.overview-choices button').evaluateAll((buttons) =>
@@ -1060,11 +1059,15 @@ try {
       );
       assert.equal(await owner.locator('#capability-operation').isVisible(), false);
       assert.equal(await owner.locator('#session-minutes').isVisible(), false);
-      for (const view of ['account', 'wallet', 'audit', 'settings', 'overview']) {
+      for (const view of ['account', 'wallet', 'audit', 'settings']) {
         await navClick(owner, `#nav-${view}`);
         assert.equal(await owner.locator(`#workspace-${view}`).isVisible(), true);
         assert.equal(await owner.locator('.workspace-view:visible').count(), 1);
       }
+      await navClick(owner, '#brand-home');
+      assert.equal(await owner.locator('#workspace-overview').isVisible(), true);
+      assert.equal(await owner.locator('.workspace-view:visible').count(), 1);
+      assert.equal(await owner.locator('#nav-overview').count(), 0);
       assert.equal(calls.length, 0);
       assert.equal(
         await owner.evaluate(() => localStorage.getItem('passport-dev:mock-passkey:v1')),
@@ -1131,8 +1134,10 @@ try {
       assert.match(await owner.locator('#demo-configuration').innerText(), /acc-s3r1.1/);
       assert.equal(await owner.locator('#demo-configuration input').count(), 0);
       await navClick(owner, '#settings-tab-security');
-      await navClick(owner, '#nav-overview');
-      done('five workspaces separate settings and Audit without credentials or connector effects');
+      await navClick(owner, '#brand-home');
+      done(
+        'four workspaces and a home link separate settings and Audit without credentials or connector effects',
+      );
       await click(owner, '#account-tab-balances');
       assert.deepEqual(await owner.locator('.account-tabs a').allTextContents(), [
         'Balances',
@@ -1206,7 +1211,7 @@ try {
       done(
         'account operation deep links restore presentation only; unknown subpages fall back to balances',
       );
-      await navClick(owner, '#nav-overview');
+      await navClick(owner, '#brand-home');
 
       assert.equal(await owner.locator('.workspace-center #progress').count(), 0);
       assert.equal(await owner.locator('.workspace-center #status').count(), 0);
@@ -1270,12 +1275,13 @@ try {
         await owner.setViewportSize({ width: 1280, height: 900 });
       }
       await click(owner, '#create');
-      await owner.locator('#consent-dialog').waitFor({ state: 'visible' });
+      await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
       await assert.rejects(owner.locator('#activity-toggle').click({ timeout: 200 }));
       await assert.rejects(owner.locator('#nav-settings').click({ timeout: 200 }));
-      assert.ok(await owner.locator('#consent-continue').isDisabled());
-      await click(owner, '#consent-cancel');
-      await waitStatus(owner, /declined before passkey/);
+      assert.ok(await owner.locator('#ceremony-continue').isDisabled());
+      assert.equal(await owner.evaluate(() => document.activeElement?.id), 'ceremony-cancel');
+      await click(owner, '#ceremony-cancel');
+      await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
       assert.equal(await owner.locator('#main').getAttribute('data-landing'), 'true');
       assert.equal(await owner.locator('#workspace-account').isVisible(), false);
       assert.equal(calls.length, 0);
@@ -1298,7 +1304,7 @@ try {
       assert.equal(await owner.locator('#workspace-audit').isVisible(), true);
       assert.equal(await owner.locator('#audit-operation-1').count(), 1);
       assert.equal(await owner.locator('#activity-panel').isVisible(), false);
-      await navClick(owner, '#nav-overview');
+      await navClick(owner, '#brand-home');
       await owner.locator('#activity-toggle').click();
       done(
         'blocking consent prevents background navigation; cancelled attempt links to its original Audit entry',
@@ -1312,7 +1318,7 @@ try {
       await owner.waitForFunction(() => document.activeElement?.id === 'workspace-audit-title');
       assert.equal(calls.length, 0);
       await owner.setViewportSize({ width: 1280, height: 900 });
-      await navClick(owner, '#nav-overview');
+      await navClick(owner, '#brand-home');
       await owner.locator('#activity-toggle').click();
       done(
         'mobile operation-to-Audit navigation closes the sheet and focuses the destination without account effects',
@@ -1329,9 +1335,15 @@ try {
       await owner.setViewportSize({ width: 390, height: 844 });
       await assert.rejects(owner.locator('#activity-toggle').click({ timeout: 200 }));
       assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-      assert.equal(await credentialsUsed(), 0, 'operation approval alone must not use a passkey');
       assert.equal(
-        await owner.locator('#ceremony-cancel').evaluate((e) => e === document.activeElement),
+        await credentialsUsed(),
+        0,
+        'showing the combined review must not use a passkey',
+      );
+      assert.equal(
+        await owner
+          .locator('#consent-retirement-ack')
+          .evaluate((e) => e === document.activeElement),
         true,
       );
       await owner.keyboard.press('Escape');
@@ -1340,7 +1352,9 @@ try {
       assert.equal(await credentialsUsed(), 0);
       assert.equal(calls.length, 0);
       done('Escape on the first ceremony refuses credential creation and deployment');
-      done('mobile passkey review remains a separate blocking dialog above the workspace');
+      done(
+        'mobile combined passkey review is the sole blocking app dialog before credential access',
+      );
 
       await owner.addScriptTag({
         type: 'module',
@@ -1378,7 +1392,7 @@ try {
       await click(owner, '#ceremony-continue');
       await owner
         .locator('#ceremony-details')
-        .filter({ hasText: /second request checks/ })
+        .filter({ hasText: /Verify that your new passkey can sign/ })
         .waitFor();
       assert.equal(await credentialsUsed(), 1, 'only the expressly approved create was accessed');
       await click(owner, '#ceremony-cancel');
@@ -1434,10 +1448,15 @@ try {
       await assertAccountWorkspace(owner);
       done('acknowledged creation and one explicit approval per credential request');
       await archiveObservations(owner, arm);
-      // Revisit the landing before reload: saved passkey hints must not reopen the account.
-      // Explicit workspace deep links retain their separate presentation-only coverage.
-      await navClick(owner, '#nav-overview');
-      await owner.reload();
+      const afterCreateCredentials = await credentialsUsed();
+      await navClick(owner, '#account-tab-withdraw');
+      await navClick(owner, '#brand-home');
+      await assertAccountWorkspace(owner);
+      assert.equal(await owner.locator('#nav-overview').count(), 0);
+      assert.equal(await credentialsUsed(), afterCreateCredentials);
+      done('authenticated home returns to balances without an Overview menu or credential request');
+      // A fresh document has no authenticated workspace; stored passkey hints do not open it.
+      await owner.goto(`${origin}/?mockPasskey&fixtureArm=${arm}&freshEntry#overview`);
       await owner
         .locator('#status')
         .filter({ hasText: /^Ready\./ })
@@ -1477,7 +1496,7 @@ try {
       const beforeLoginOwnerEnrollment = calls.filter((action) => action === 'enroll-owner').length;
       await select(owner, '#routine-minutes', '15');
       await approve(owner, 'open', async () => {
-        assert.match((await owner.locator('#consent-details').textContent())!, /15 minutes/);
+        assert.match((await owner.locator('#ceremony-details').textContent())!, /15 minutes/);
         assert.equal(
           await credentialsUsed(),
           beforeLogin,
@@ -1520,6 +1539,13 @@ try {
       done(
         'active account login uses one combined request and warms routine access without unlocking or enrolling an owner',
       );
+      await archiveObservations(owner, arm);
+      await owner.goto(`${origin}/?mockPasskey&fixtureArm=${arm}&addressEntry#overview`);
+      await owner
+        .locator('#status')
+        .filter({ hasText: /^Ready\./ })
+        .waitFor({ state: 'attached' });
+      await observeCredentialAccess(owner);
       await select(owner, '#routine-minutes', '15');
       await fill(owner, '#open-address', address);
       const beforeAddressLogin = await credentialsUsed();
@@ -1834,17 +1860,45 @@ try {
         await approve(owner, 'unlockRoutine');
         await waitStatus(owner, /Quick actions unlocked/);
         const beforeExpiry = await credentialsUsed();
-        await click(owner, `#${action}`);
-        await owner.locator('#consent-dialog').waitFor({ state: 'visible' });
-        await owner.evaluate(() => {
-          (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset =
-            31 * 60_000;
-        });
-        await click(owner, '#consent-continue');
-        await waitStatus(owner, /failed\./, /locked or expired/);
-        await owner.evaluate(() => {
-          (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 0;
-        });
+        // A standalone JS expression avoids tsx's inferred-name helpers crossing
+        // Playwright's function serialization boundary into the browser realm.
+        await owner.evaluate(String.raw`(() => {
+          const manager = navigator.locks;
+          const original = manager.request.bind(manager);
+          const descriptor = Object.getOwnPropertyDescriptor(manager, 'request');
+          const restore = () => {
+            if (descriptor) Object.defineProperty(manager, 'request', descriptor);
+            else Reflect.deleteProperty(manager, 'request');
+            delete window.__restoreReviewLocks;
+          };
+          window.__restoreReviewLocks = restore;
+          Object.defineProperty(manager, 'request', {
+            configurable: true,
+            value: (name, options, callback) =>
+              original(name, options, (lock) => {
+                // Execute synchronously through lease capture, before its await resumes.
+                const pending = callback(lock);
+                if (lock && name.startsWith('passport-demo:operation:v1:')) {
+                  window.__sessionClockOffset = 31 * 60_000;
+                  restore();
+                }
+                return pending;
+              }),
+          });
+        })()`);
+        try {
+          await click(owner, `#${action}`);
+          await waitStatus(owner, /failed\./, /locked or expired/);
+        } finally {
+          await owner.evaluate(() => {
+            const fixture = window as unknown as {
+              __sessionClockOffset: number;
+              __restoreReviewLocks?: () => void;
+            };
+            fixture.__restoreReviewLocks?.();
+            fixture.__sessionClockOffset = 0;
+          });
+        }
         assert.equal(
           await credentialsUsed(),
           beforeExpiry,
@@ -2715,11 +2769,11 @@ try {
       const afterCriticalOperations = await ownerCredentials();
       const rotationsBeforeExpiry = calls.filter((c) => c === 'rotate').length;
       await click(fullOwner, '#rotate');
-      await fullOwner.locator('#consent-dialog').waitFor({ state: 'visible' });
+      await fullOwner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
       await fullOwner.evaluate(() => {
         (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 31 * 60_000;
       });
-      await click(fullOwner, '#consent-continue');
+      await click(fullOwner, '#ceremony-continue');
       await waitStatus(fullOwner, /failed\./, /locked or expired/);
       await fullOwner.evaluate(() => {
         (window as unknown as { __sessionClockOffset: number }).__sessionClockOffset = 0;

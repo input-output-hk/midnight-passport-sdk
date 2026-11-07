@@ -4,6 +4,11 @@ title: Consent and passkey purposes
 permalink: /consent/
 ---
 
+This page separates the reusable [library ceremony contract]({{ '/library-guide/' | relative_url }})
+from the [reference demo's host policy]({{ '/demo-guide/' | relative_url }}).
+The hook is published in RC7; the combined app review and routine/full-owner/session
+composition below describe later local source.
+
 **Current local-source policy:** reviewed login may prepare a bounded routine
 reader/wallet lease. Critical operations need fresh passkey approval even under
 an unlocked JubJub full owner. This supersedes the older local policy that reused
@@ -34,8 +39,8 @@ import {
 } from '@input-output-hk/mn-passport-adapter-webauthn';
 
 const beforeCeremony: BeforePasskeyCeremony = async (ceremony) => {
-  // The host must already have approved this operation and own its session policy.
-  // Show the purpose in the trusted host UI; throw if approval ended or changed.
+  // Bind this actual purpose to the captured operation in trusted host UI.
+  // Review it here, or check an approval scoped to this exact call; throw on refusal.
   console.info(ceremony.purpose, ceremony.rpId, ceremony.attempt);
 };
 
@@ -67,38 +72,45 @@ The hook is optional for backward compatibility, and is not contract enforcement
 
 ## Demo behavior
 
-Every key-using demo action starts with a keyboard-accessible operation review.
-Creation additionally requires an unchecked acknowledgement that the demo
-**permanently retires maintenance authority**, preventing later ACC upgrades.
-Declining this review invokes neither the action handler nor passkey access.
-Public state/roster/balance refresh and sponsor-wallet funding do not acquire a
-passkey approval. They cannot use the demo's ceremony guard as implicit approval.
+The source preview stages a frozen operation context before work; staging does not
+approve a credential. At the **actual credential callback**, one keyboard-accessible
+combined review presents the operation purpose, account/network, actual passkey
+purpose/attempt and reviewed routine lifetime where applicable. Creation adds an
+unchecked acknowledgement that the demo **permanently retires maintenance authority**,
+preventing later ACC upgrades. Continue stays disabled until acknowledged.
 
-The source preview after RC7 waits at a separate, keyboard-accessible **passkey
-request review** before **every** credential API call, including profile retries.
-Choose **Continue to passkey** to open the password manager or **Cancel operation**
-(or Escape) to refuse this access. The cancel button receives initial focus.
-An operation review, earlier successful prompt or signed publication cannot approve
-the next request. Ending the operation closes a pending request review. The purpose
-explanation in Activity alone is not consent. Published RC7 has the operation review and purpose
-banner; this stronger request-by-request policy and Activity placement are source-preview changes.
+Choose **Continue to passkey** to approve exactly that access, or **Cancel operation**
+(or Escape) to refuse it. Cancel receives initial focus. Every later call and recognized
+signing-format retry needs a fresh review and ceremony ID; an earlier successful prompt
+or publication grants no approval to the next call. Ending the operation closes a pending
+review. The captured account/lease is rechecked before review, after approval and after
+the Activity rendering frames immediately before browser access.
 
-The review identifies the operation, network, owner arm, account-selection context,
-request number and purpose. A known browser-profile retry explains why a new
-assertion is needed. Provider-controlled passkey dialogs remain unchanged. The
-operation log links each request's approval or refusal to its own public ceremony
-ID and the operation's flow ID; it excludes key material and grant openings.
-Credential-request approval ends when that action finishes or fails. Login may
-separately authorize a reviewed 10/15/30-minute **routine** lease, retaining only
-derived reader/wallet material. That is not permission for a later critical action
-or an unbounded credential request. Public funding, wallet refresh and external
-Lace connection need no Passport passkey; their own service/extension rules remain.
+The generic operation-only popup has been removed. Matching cached holdings reads and
+built-in wallet connection use their already reviewed routine lease without that popup
+or another credential request. Public state/roster/balance refresh, sponsor-wallet funding,
+wallet refresh and external Lace connection need no Passport credential; their own
+service/extension authorization still applies.
 
-Some preparations need viewing access before exact transaction details are known:
-rotation inspects encrypted holdings, and grant use identifies/unlocks its holder.
-The first review explains that access. The later transaction/device/grant dialog
-still reviews the exact live scope, recipient, amount or reader fingerprint before
-signing. An approved unlock is not permission to substitute another operation.
+Provider sheets remain separate from app dialogs. The combined review is a **source
+preview after RC7**: published RC7 has its earlier operation review/purpose banner, not
+this UI composition. The public `beforeCeremony` contract itself remains optional and
+host-owned. The operation log associates each actual approval/refusal with its public
+ceremony and flow IDs and excludes key material and grant openings.
+
+Exact transaction/device/grant reviews remain. They inspect the live recipient, amount,
+caps, expiry, reader fingerprint or roster before signing. Some critical paths therefore
+still show an exact operation popup plus the combined credential review. Viewing access
+may also be needed before exact mutation details are available, as for rotation holdings
+or independent grant-holder identity. An approved read/unlock never permits substituting
+a different transaction. Consolidating an exact review requires carrying its immutable
+scope into the actual request, not treating an earlier click as blanket authorization.
+
+Login may separately approve a 10/15/30-minute routine memory lease of derived
+reader/wallet material. It does not approve later critical work or retain a full owner.
+A matching expressly approved bounded grant transfer retains its exact transfer review
+and zero-new-credential path. Neither a stale lease nor an unknown outcome can silently
+change that route.
 
 Cancellation stops future work. It cannot undo already confirmed publications or
 prove an uncertain submission never happened. Preserve original request IDs and

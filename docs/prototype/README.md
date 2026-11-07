@@ -232,7 +232,7 @@ arms. See the [exact native source receipt](../review/native-sessions/README.md)
 It includes real ten-minute expiry, original-hash observer recovery and cleanup;
 NIGHT, browser/provider and published-artifact claims keep their separate evidence.
 
-## Overview layout (source preview)
+## Entry and workspace layout (source preview)
 
 Settings now uses separate Devices & passkeys / Quick actions / Permissions /
 Wallet connections / Developer tools submenu pages. [Quick actions](../site/quick-actions.md)
@@ -247,10 +247,10 @@ log, Requests & responses and Export JSON. Compact screens use a modal Menu
 drawer, with the same controls and no layout shift. Read the
 [UI guide](../site/demo-ui.md) for routes and keyboard behavior.
 
-Overview offers one compact **Your Passport account** panel with **Open with
-passkey** as the primary action and **Create account** as secondary. Below them,
-**Have an account address?** reveals the advanced
-address-based opening flow. The address still requires an enrolled passkey; it
+The signed-out entry offers **Sign up / Log in**, with **Log in with an account
+address** as the secondary address-based opening flow. Overview is not a menu
+item. The brand Home link opens Account balances after verified opening; it does
+not log out, request a passkey or reset account state. The address still requires an enrolled passkey; it
 is not account recovery. Navigation/disclosure changes preserve the address draft
 and start no credential or transaction. Activity starts collapsed with its trigger
 beside the workspace title; approved credential requests reveal their explanation
@@ -259,15 +259,16 @@ before access and retain their separate blocking consent dialog.
 
 ## Authenticated owner policy update (local source)
 
-The owner approved full use of the deterministic Lace PRF-1 JubJub owner while
-explicitly authenticated. **Settings → Quick actions → Unlock account** verifies an
-existing JubJub owner or explicitly enrolls a P-256 companion once. All implemented
-owner operations, including device/key/permission changes, then use that key without
-fresh passkey requests; exact action reviews remain. This supersedes the earlier
-critical-operation step-up rule for this mode only. **Unlock reading only** preserves
-the restricted cache/grant alternative. Local expiry clears memory, not the durable
-chain owner. Read [the full authority/lifetime guide](../site/authenticated-owner.md).
-No new native/provider/full Lace qualification or published package change is implied.
+Current policy requires passkey login and fresh approval for critical owner
+operations, even while a deterministic Lace PRF-1 JubJub owner is unlocked.
+**Settings → Quick actions → Unlock account** verifies an existing owner or
+explicitly enrolls a P-256 companion; that key still has durable FULL on-chain
+authority. Fresh host approval matches owner and reader to the captured lease,
+without extending it. Routine holdings/wallet access reuses the approved lease;
+transfers within a separately approved recipient/asset/caps/expiry use their scoped
+JubJub grant. Outside that scope, a fresh owner passkey is required. Local lock is
+not chain revocation. Read [the authority/lifetime guide](../site/authenticated-owner.md).
+No new provider/native/full Lace or publication claim is implied.
 
 ## Source quality and execution boundaries
 

@@ -18,6 +18,10 @@ export const SecretReferenceSchema = z
   })
   .readonly();
 export const SECRET_BYTES_LIMIT = 65_536;
+const typedArrayByteLength = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Uint8Array.prototype),
+  'byteLength',
+)?.get;
 export type SecretStoreErrorCode = 'InvalidInput' | 'Conflict' | 'Unavailable' | 'Closed';
 /** Never includes a value, provider message or original error cause. */
 export class SecretStoreError extends Error {
@@ -33,13 +37,17 @@ export function secretReferenceKey(value: SecretReference): string {
   return JSON.stringify([ref.namespace, ref.networkId, ref.bindingId, ref.account, ref.id]);
 }
 export function copySecretBytes(value: Uint8Array): Uint8Array {
-  if (
-    !(value instanceof Uint8Array) ||
-    value.byteLength === 0 ||
-    value.byteLength > SECRET_BYTES_LIMIT
-  )
+  try {
+    if (!(value instanceof Uint8Array)) throw new SecretStoreError('InvalidInput');
+    const length: unknown = typedArrayByteLength?.call(value);
+    if (typeof length !== 'number' || length === 0 || length > SECRET_BYTES_LIMIT)
+      throw new SecretStoreError('InvalidInput');
+    // The typed-array constructor copies internal elements, ignoring shadowed lengths
+    // and custom iterators. It also copies Buffer bytes without retaining their backing store.
+    return new Uint8Array(value);
+  } catch {
     throw new SecretStoreError('InvalidInput');
-  return Uint8Array.from(value);
+  }
 }
 export function validSecretVersion(value: unknown): value is string {
   return typeof value === 'string' && /^[a-zA-Z0-9._:-]{1,128}$/.test(value);

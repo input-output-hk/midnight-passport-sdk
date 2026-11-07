@@ -44,15 +44,22 @@ not a proxy that silently substitutes schemes in a single binding.
 
 ## Policy retained
 
-The owner's approved full-owner mode permits deterministic PRF-derived JubJub for
-all implemented owner operations during the authenticated lease. Enrolling it
-on a P-256 ACC requires explicit consent and live verification. Local timeout
-does not expire its durable owner entry. Routine reader/wallet unlock and capped
-expiring grants remain distinct choices. The SDK does not silently downgrade or
-upgrade one mode to another.
+The updated owner policy (2026-11-08) requires passkey login and fresh approval
+for critical operations, including when a deterministic PRF-derived JubJub full
+owner is unlocked. The demo's authenticated-operation hook checks the fresh
+credential-derived owner and reader against the captured lease. A full owner
+retains its durable on-chain authority; the host policy and local timeout do not
+narrow or revoke that entry. Enrolling a P-256 companion requires explicit review
+and live verification. Routine seed/reader leases and expiring scoped grants stay
+separate. Only transfers outside a separately approved scope need fresh owner
+passkey approval; in-scope transfers retain their exact transfer consent. The SDK
+never silently changes routes or grants a host blanket consent.
 
-Passkey credential ceremonies remain separately consented by the host WebAuthn
-adapter. The route review does not suppress a platform authenticator dialog or
+The host WebAuthn adapter reviews each actual passkey credential ceremony. The
+reference demo combines its generic operation context and actual ceremony in one
+blocking dialog; staging context alone grants no credential approval. Exact
+transaction/device/grant reviews remain necessary where their final data arrives
+later. The route review does not suppress a platform authenticator dialog or
 allow a worker/background service to invoke credentials. The operation callback
 must use the reviewed fields, and direct access to a supplied account remains a
 trusted-host capability, not a sandboxed permission system.

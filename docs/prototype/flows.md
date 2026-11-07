@@ -24,7 +24,16 @@ full on-chain authority. See the [credential-path audit](../review/credential-po
 
 ## Candidate operation review
 
-RC7 starts every key-using action with an explicit operation review; creation requires acknowledgement of permanent maintenance-authority retirement. Before each actual browser access the page displays its purpose: create, verify the new credential, identify, derive keys (PRF), or sign an ACC transaction. Read preparation may precede the later exact transaction review, but follows the initial viewing/key-use approval. Public refresh does not unlock a key. Provider/retry/multi-transaction counts vary; the legacy counts below are not current promises. See [consent](../site/consent.md) and [the use-case/test evidence map](../site/use-case-coverage.md).
+The current source stages one frozen operation context, then shows one combined
+operation/ceremony review immediately before each actual credential call. The
+first creation review includes permanent maintenance-retirement acknowledgement.
+Every subsequent access and profile retry still requires explicit approval.
+Routine cached reads/wallet connection have no generic modal; public refresh
+unlocks no key. Exact transaction/device/grant reviews remain separate when final
+inputs are available later. A declined or expired captured review cannot invoke
+a credential or silently switch signer. Provider UI and multi-transaction counts
+vary; the legacy counts below are not current promises. See [consent](../site/consent.md)
+and [the evidence map](../site/use-case-coverage.md).
 
 
 The current browser composition is in `packages/adapter-browser/src/compose.ts`, with the

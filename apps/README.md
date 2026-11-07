@@ -36,7 +36,7 @@ lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](.
 
 ## Candidate consent and browser regression
 
-Overview now uses the upstream-inspired **Sign up / Log in** landing with local
+The signed-out entry uses the upstream-inspired **Sign up / Log in** landing with local
 Passport artwork and **Powered by Lace** branding. The same create/open/address
 controls keep their existing consent and state handling; successful access opens
 **Passport account → Balances**. **Demo tools** exposes Audit and Settings while
@@ -61,15 +61,26 @@ They inherit the host theme and keep visible text labels; no icon library or
 branding dependency is added to the SDK packages. See the
 [UI guide](../docs/site/demo-ui.md#stable-navigation).
 
-Every key-using demo action now has an operation review before access. Creation explicitly acknowledges permanent maintenance-authority retirement. In the source preview after RC7, the typed WebAuthn `beforeCeremony` hook waits for **Continue to passkey / Cancel operation** before every actual access and retry; a purpose banner is not approval. The two initial creation accesses register and verify the credential; later numbered P-256 setup signatures publish sealed viewing-key entries. Each gets a separate review; exact transaction reviews remain separate, and cancelled/unknown submissions are never described as rolled back. The capability panel inspects proof plans only, not readiness.
+One combined operation/credential review precedes each actual passkey API call;
+there is no extra generic dialog first. Creation includes the irreversible
+maintenance-retirement acknowledgement in its first review. The `beforeCeremony`
+hook pins actual purpose, attempt and RP; the host rechecks the captured lease
+before/after approval and immediately before access. Cached routine reads and
+wallet connection need no generic modal. Exact transaction/device/grant reviews
+remain separate when their final inputs are known later. Retries still need fresh
+approval; cancel never rolls back a submitted transaction or clears its unknown
+outcome. The capability panel inspects proof plans, not readiness.
 
 Run `nix develop -c pnpm run build` then `nix develop -c pnpm test:demo-browser` for isolated Chromium journeys across both owner-arm selections. This lane needs Chrome but no Docker/provider/live service. It uses the actual UI and mock credential API with synthetic connector/chain/wallet drivers. It owns an ephemeral server and intercepts all requests; it never changes a running demo. See [the use-case evidence map](../docs/site/use-case-coverage.md), [consent guide](../docs/site/consent.md) and separate native/provider recipes.
 
 
 ## Documentation
 
-The prototype's overview, the demo script, the flows, the key derivation and the limitations are in
-[`docs/prototype/`](../docs/prototype/README.md). This file covers setup and operation.
+This file documents the reference demo's setup, environment and operation.
+For reusable package integration, start with the [library guide](../docs/site/library-guide.md).
+For UI flows and composition, use the [demo guide](../docs/site/demo-guide.md) and
+[`docs/prototype/`](../docs/prototype/README.md). The demo's dialogs, local lease
+policy and wallet worker are host choices, not automatic library behavior.
 
 The [demo use cases](../docs/site/use-cases.md) cover the available browser scenarios.
 After connecting the built-in wallet, **Refresh wallet balance** rereads its synced NIGHT,
@@ -185,8 +196,9 @@ the network, ACC, asset, amount and destination for explicit confirmation before
 consent. It logs the confirmed transaction and rereads the ACC balance. The built-in wallet only
 reads addresses and balances; receiving an asset there does not give this demo wallet a send button.
 After an indeterminate submit error, inspect the live ACC and recipient before trying again.
-Overview has one compact **Your Passport account** panel: **Open with passkey**
-is primary and **Create account** is secondary.
+The signed-out entry offers **Sign up** and **Log in**. There is no Overview
+navigation item. Home returns an already-open account to **Balances** without
+requesting credentials or resetting its state; in a fresh document it opens login.
 All four multi-page workspaces use consistent page links in a persistent left rail.
 Midnight wallet separates Built-in wallet and Lace Wallet. Audit separates Event log,
 Requests & responses and Export JSON. Content and navigation scroll independently;
@@ -197,7 +209,7 @@ JubJub grant children without repeated PRF prompts, and keeps critical owner
 operations on the fresh-passkey path. A grant still needs separate owner approval;
 unlocking alone does not authorize transfers. See [the guide](../docs/site/quick-actions.md).
 Activity starts collapsed; its button sits beside the workspace title.
-Below the entry actions, expand **Have an account address?** for **Open by ACC address**: paste the public 64-character lowercase ACC address and
+Below the entry actions, expand **Log in with an account address**: paste the public 64-character lowercase ACC address and
 choose an already-enrolled passkey. This verifies its live device entry and sealed viewing key
 without relying on the local directory hint. It cannot discover an unknown address or recover a
 lost passkey. The requested and verified addresses appear in the operation trace.

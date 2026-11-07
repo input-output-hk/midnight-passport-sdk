@@ -57,16 +57,21 @@ older durable creation transcripts may safely refuse the changed scope rather th
 being rewritten. Key/SDK and synthetic-browser tests do not qualify native proofs,
 real providers or full Lace. Never enroll an owner on a real account automatically.
 
-## RC7: consent and reproducible browser journeys
+## Consent and reproducible browser journeys (source preview after RC7)
 
-RC7 adds a review before every key-using action. **Create account** requires
-explicit acknowledgement that the demo permanently retires maintenance authority
-(the ACC cannot later be upgraded). The page explains each ensuing credential
-creation/verification, identification, PRF unlock or P-256 signature before browser
-access. A later exact transaction/device/grant review remains separate. Counts vary
-by provider, retries and transaction count; do not promise one prompt for P-256.
-Declining the initial review starts no credential or account action. The source preview after RC7 additionally blocks every credential API call and retry behind a separate **Continue to passkey / Cancel operation** dialog; an Activity explanation alone does not grant consent. Two initial accesses create and verify the credential; later P-256 setup signatures publish sealed inbox entries, each with its own numbered review. Cancellation
-cannot undo submitted effects; preserve original IDs and reconcile unknowns.
+The demo uses one combined operation/ceremony review before each actual credential
+API call. `reviewDemoAction` prepares frozen context without opening a dialog;
+`beforeDemoCeremony` shows the operation, actual purpose, selected lifetime and
+retry number in `#ceremony-dialog`. There is no generic `#consent-dialog` first.
+Creation must acknowledge permanent maintenance-authority retirement before the
+first credential is created. Every subsequent access/retry still requires fresh
+approval. Check the captured routine lease before/after approval and after paint;
+expiry refuses without a credential or fallback. Routine cached reads/wallet
+connection show no generic modal. Exact transaction/device/grant reviews remain
+separate where their final inputs become available later. Do not remove those
+reviews merely to reduce dialog counts. Cancellation cannot undo submitted effects;
+retain original IDs and reconcile unknowns. Provider UI and multi-transaction
+P-256 signatures remain separate from app dialog counts.
 
 **SDK capabilities and proof plans** is advisory public-package inspection. It does
 not load a credential or call a prover, and does not certify runtime readiness.
@@ -123,7 +128,7 @@ Keep source-native, browser/synthetic and real-provider evidence separate.
 
 Read `docs/site/demo-ui.md`. All four multi-page workspaces use one shared page-link
 controller; wallet has Built-in/Lace pages and Audit has Event log/Requests/Export.
-Outside Overview's landing, desktop groups remain visible with independent navigation/content scrolling. On
+Outside the signed-out entry screen, desktop groups remain visible with independent navigation/content scrolling. On
 compact screens open Menu before clicking navigation; its modal drawer owns the
 same DOM nodes and restores focus. Use `[data-workspace-page]`/`aria-labelledby`
 to find the actual page control in browser journeys. Audit trace/JSON are pages,
@@ -133,8 +138,12 @@ unknown-intent fences; test actual pointer/keyboard navigation, not hidden mutat
 
 ### Landing entry page (local source)
 
-Overview uses **Sign up / Log in**, retaining the existing create/open/address
-IDs and consent handlers. Its rail and mobile Menu are hidden; use **Demo tools →
+The signed-out entry uses **Sign up / Log in**, retaining the existing
+create/open/address IDs and consent handlers. There is no Overview menu item:
+normal navigation contains Passport account, Midnight wallet, Audit and Settings.
+The brand Home link opens Account balances after a verified account open; it
+returns to the login entry when no account has been opened in this document.
+Navigation never logs out, changes credentials or starts authentication. Its rail and mobile Menu are hidden; use **Demo tools →
 Settings** to enter the regular navigation, or **Demo tools → Audit** to inspect
 an entry failure. Successful create/open/openAt selects Account Balances through
 the successful `opened()` path only. Navigation, stored hints and generic state

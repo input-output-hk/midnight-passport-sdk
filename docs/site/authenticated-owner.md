@@ -4,6 +4,10 @@ title: Authenticated JubJub owner
 permalink: /authenticated-owner/
 ---
 
+The [demo guide]({{ '/demo-guide/' | relative_url }}) explains the UI steps.
+[Library integration]({{ '/library-guide/' | relative_url }}) explains how a different
+host supplies its own authentication, consent, custody and cleanup policy.
+
 **Local source preview, after RC7.** An enrolled JubJub owner has full contract
 authority. The demo now requires **fresh passkey approval for each critical
 operation**, even while its explicit owner session is active. This host policy
@@ -18,7 +22,7 @@ for holdings and built-in wallet connection without extra requests during that l
 
 1. Create or open the existing ACC with its passkey.
 2. Go to **Settings → Quick actions**. Select 10, 15 or 30 minutes, then
-   **Unlock account** and approve the pinned passkey PRF ceremony.
+   **Unlock account** and approve its combined operation/passkey PRF review.
 3. For an existing P-256 account, review the public JubJub and reader keys before
    enabling the companion as a **full owner**. This one-time enrollment publishes
    sealed reader data and an owner entry; it needs existing-owner passkey signatures.
@@ -29,7 +33,8 @@ for holdings and built-in wallet connection without extra requests during that l
    require fresh credential-pinned PRF approval before using this owner. The derived
    owner **and reader** must match the captured session. Internal calls in the same
    reviewed operation share that one approval, never another operation's approval.
-   The original absolute lease is not extended. Exact reviews still name effects.
+   The original absolute lease is not extended. Exact reviews still name effects;
+   they can remain a separate popup before the actual credential review.
 5. **Lock account keys**, hidden tab, page exit or timeout disposes local owner,
    reader and seed copies. Reauthenticate to reproduce the same owner key. An already
    live owner is verified again; it is not enrolled again on every unlock.
@@ -108,7 +113,8 @@ retain the exact-value guard; full ownership does not enable partial spends.
 
 ## Engineer integration
 
-`keys.createAuthenticatedJubjubOwner` is framework-neutral. Give it the existing
+**Source-only reusable helper.** `createAuthenticatedJubjubOwner` from
+`mn-passport-keys` is framework-neutral. It is absent from published RC7. Give it the existing
 PRF authoriser output, derived wallet seed, pinned pure circuits, account context,
 and a host `check()` that enforces the authenticated lifetime and revision. The
 caller clears raw inputs in `finally`; the returned object owns and clears its own
@@ -124,7 +130,7 @@ owner mutation sessions retain acknowledgements after dispatch. Live ACC counter
 package. Hosts must verify/enroll an owner before exposing this API to their UI.
 The exported source alone does not prove that its public key is a live owner.
 The low-level key factory does not perform WebAuthn access for each signature.
-Fresh approval is host policy: the demo wires the optional authenticated-operation
+Fresh approval is host policy, not a factory default: the demo wires the optional authenticated-operation
 hook of `routeAuthenticatedAccount`, snapshots public arguments before awaiting
 approval, and rechecks the selected account/lease afterward. Its critical guard
 requests a pinned PRF assertion and matches owner/reader without replacing the

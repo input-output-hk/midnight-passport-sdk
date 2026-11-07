@@ -5,6 +5,7 @@ import type { GrantScopeInput } from '@input-output-hk/mn-passport-protocol';
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import type { CurvePoint } from './ports/index.js';
+import { parseGrantU128 } from './grant-decimal.js';
 
 export type {
   GrantOperation,
@@ -72,7 +73,6 @@ export interface PreparedJubjubGrant {
 }
 
 const MAX_GRANTS = 16;
-const UINT128_MAX = (1n << 128n) - 1n;
 const UINT64_MAX = (1n << 64n) - 1n;
 const CURVE25519_PRIME = (1n << 255n) - 19n;
 const ORIGIN_TAG = utf8ToBytes('midnight:account:grant:origin:v1');
@@ -100,9 +100,9 @@ const bytes32 = (name: string, value: string): Uint8Array => {
   return fromHex(value);
 };
 const decimal = (name: string, value: string): bigint => {
-  if (!/^\d+$/.test(value)) invalid(`${name} must be a non-negative decimal integer`);
-  const parsed = BigInt(value);
-  if (parsed > UINT128_MAX) invalid(`${name} exceeds 128 bits`);
+  const parsed = parseGrantU128(value);
+  if (parsed === undefined)
+    return invalid(`${name} must be a bounded non-negative 128-bit decimal integer`);
   return parsed;
 };
 const seconds = (name: string, value: number): bigint => {

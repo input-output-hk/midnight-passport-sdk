@@ -1,7 +1,8 @@
 # Demo script
 
-The local source after RC7 groups these actions into Overview, Passport account,
-Midnight wallet, Audit and Settings. Devices/sessions/grants/connections are in
+The local source after RC7 starts with a Sign up / Log in entry screen. Its four
+workspaces are Passport account, Midnight wallet, Audit and Settings. There is no
+Overview menu; Home preserves an open account and selects Balances. Devices/sessions/grants/connections are in
 Settings; capability/name diagnostics are under Advanced. Read the
 [workspace guide](../site/demo-ui.md) before presenting the new layout.
 
@@ -25,7 +26,7 @@ localnet proof time varies by host.
 Set up the stack as [`apps/README.md`](../../apps/README.md) describes: Nix, Docker with at least
 24 GiB of memory, and the compiled ACC artefacts. Then:
 
-1. Start the stack with `pnpm prototype:up`. It starts the localnet, the service and the page, and
+1. Start the stack with `nix develop -c pnpm prototype:up`. It starts the localnet, the service and the page, and
    stops them on Ctrl-C.
 2. Check that the service answers: `curl -s http://127.0.0.1:8787/config`.
 3. Open **`http://localhost:5173`** in Chrome, not `127.0.0.1`. The passkey is bound to the origin.
@@ -34,8 +35,9 @@ Set up the stack as [`apps/README.md`](../../apps/README.md) describes: Nix, Doc
 5. Optional but wise: do a dry run with the mock first ([Mock mode](#mock-mode)). It shows any
    problem with the stack before an audience does.
 
-If the chain was reset since the last run, delete `~/.midnight-passport/registry.json` and
-`registry.deployments.json` first.
+For an intentionally reset chain, archive the old registry, deployment records and
+unknown-operation evidence before selecting fresh state. A routine restart never
+requires deleting registry files, passkeys, journals or pending transaction IDs.
 
 ## Open a known ACC by address
 

@@ -14,10 +14,10 @@ const PURPOSES: Partial<Record<ActionId, string>> = {
   revokeSession:
     'Lock the local session key, then use fresh owner passkey approval to revoke its grant on chain. Confirmed and already-submitted transfers cannot be undone.',
   create:
-    'Create and verify a new passkey, unlock its local signing/reader keys, deploy and activate a sponsored ACC, and publish sealed viewing keys. This demo permanently retires maintenance authority: the account cannot later be upgraded. Keep access to this passkey; the demo provides no total-loss recovery.',
-  open: 'Identify your passkey and unlock the reader keys needed to open this ACC. This does not approve a withdrawal or connect the separate HD wallet. Interrupted creation may need further signed activation or sealed-key publication.',
+    'Create a passkey and a sponsored Passport account. Setup verifies the passkey and publishes sealed reading keys. This demo permanently retires maintenance authority, so the account cannot be upgraded. Keep your passkey; the demo has no recovery if it is lost.',
+  open: 'Open your Passport with its passkey. Keep only reading and wallet keys in this tab for the reviewed lifetime. Login does not approve spending, enroll an owner or connect a wallet. Interrupted setup may need separate signatures.',
   openAt:
-    'Identify an enrolled passkey and unlock the reader keys for the supplied ACC address. Knowing the address alone grants no access. This does not approve spending or recover a lost passkey.',
+    'Open this account with an enrolled passkey. Keep only reading and wallet keys in this tab for the reviewed lifetime. Login does not approve spending or recover a lost passkey.',
   holdings:
     'Unlock your reader keys to decrypt inbox entries, then show only holdings matched to the live chain. This is viewing access, not spending approval.',
   prepareJoiner:
@@ -49,13 +49,12 @@ const PURPOSES: Partial<Record<ActionId, string>> = {
 const CEREMONIES: Record<PasskeyCeremony['purpose'], string> = {
   create: 'Create a new passkey for this operation.',
   'verify-created':
-    'Verify the new passkey’s signing format before deployment or enrollment. This second request checks that the newly created credential works with the ACC; creating it alone cannot establish that.',
+    'Verify that your new passkey can sign for this account before deployment or enrollment.',
   identify: 'Choose and verify the passkey for this operation.',
   'identify-and-unlock':
-    'Choose your passkey and unlock its local account keys in this one request (PRF). Login may keep the explicitly reviewed reading and wallet material in page memory until lock or expiry; raw PRF outputs are cleared when login ends. This does not sign an ACC transaction, enroll an owner or start a full owner session.',
+    'Choose your passkey and unlock local account keys in this request (PRF). Raw PRF outputs are cleared when login ends.',
   sign: 'Sign the current ACC transaction. This is separate from unlocking local keys.',
-  'derive-keys':
-    'Unlock passkey-derived local keys (PRF). This is not an ACC transaction signature.',
+  'derive-keys': 'Unlock this account’s local keys with the passkey (PRF).',
 };
 
 interface ConsentContext {
@@ -66,6 +65,7 @@ interface ConsentContext {
   readonly routineUnlocked?: boolean;
   readonly ownerUnlocked?: boolean;
   readonly routineMinutes?: number;
+  readonly check?: () => void;
 }
 
 /** Selection flows must not imply that an already-open ACC is the one being approved. */
@@ -83,24 +83,24 @@ export function reviewedAccount(
       : context.account;
   return address ? { label: address, address } : { label: 'selected during this operation' };
 }
-let active:
-  | {
-      readonly action: ActionId;
-      readonly id: string;
-      readonly context: ConsentContext;
-      requests: number;
-      signatures: number;
-    }
-  | undefined;
+interface ActiveConsent {
+  readonly action: ActionId;
+  readonly id: string;
+  readonly context: ConsentContext;
+  readonly purpose: string;
+  requests: number;
+  signatures: number;
+  reviewed: boolean;
+  retirementApproved: boolean;
+}
+let active: ActiveConsent | undefined;
 let pendingCeremony: { cancel(): void } | undefined;
 let ceremonyInFlight = false;
 
-/** The demo permits one operation at a time; approval ends with that action, including failure. */
-export async function reviewDemoAction(
-  action: ActionId,
-  context: ConsentContext,
-): Promise<boolean> {
+/** Prepare one action; only the actual credential review grants passkey approval. */
+export async function reviewDemoAction(action: ActionId, input: ConsentContext): Promise<boolean> {
   finishDemoConsent();
+  const context = Object.freeze({ ...input });
   const ownerPurpose: Partial<Record<ActionId, string>> = {
     holdings: 'Decrypt and chain-verify private holdings.',
     wallet: 'Connect the separate built-in HD wallet; this does not change ACC ownership.',
@@ -132,49 +132,80 @@ export async function reviewDemoAction(
           ? 'Use the account’s explicitly unlocked reader keys to read and verify private holdings. This action uses no new passkey request and grants no spending permission.'
           : 'Use the explicitly unlocked keys to connect the separate built-in Midnight wallet. This action uses no new passkey request and grants no ACC spending permission.'
         : PURPOSES[action];
-  if (!purpose) return true; // Public reads/funding never authorize a passkey ceremony.
-  const dialog = document.getElementById('consent-dialog') as HTMLDialogElement;
-  const title = document.getElementById('consent-title')!;
-  const details = document.getElementById('consent-details')!;
-  const retirement = document.getElementById('consent-retirement')!;
-  const acknowledgement = document.getElementById('consent-retirement-ack') as HTMLInputElement;
-  const proceed = document.getElementById('consent-continue') as HTMLButtonElement;
-  const cancel = document.getElementById('consent-cancel') as HTMLButtonElement;
+  if (!purpose) return true;
+  active = {
+    action,
+    context,
+    purpose,
+    id: crypto.randomUUID(),
+    requests: 0,
+    signatures: 0,
+    reviewed: false,
+    retirementApproved: false,
+  };
+  traceOperation('consent.prepared', { action, flowId: active.id, networkId: context.network });
+  return true;
+}
+
+function operationDetails(consent: ActiveConsent): string {
+  const { action, context, purpose } = consent;
   const accountReview = reviewedAccount(action, context);
-  title.textContent = FLOWS[action].title;
-  details.textContent =
-    `Network: ${context.network}\nOwner arm: ${context.ownerUnlocked ? 'authenticated JubJub owner' : context.arm}\n` +
-    `ACC: ${accountReview.label}\n\n${purpose}` +
-    (action === 'unlockOwner' || action === 'unlockRoutine'
-      ? `\n\nReviewed local lifetime: ${context.routineMinutes ?? 15} minutes.`
-      : '') +
-    (action === 'open' ||
+  const routine =
+    action === 'unlockOwner' ||
+    action === 'unlockRoutine' ||
+    action === 'open' ||
     action === 'openAt' ||
     (!!context.account &&
       !context.routineUnlocked &&
-      (action === 'holdings' || action === 'wallet'))
-      ? `\n\nAfter successful authentication, keep reading and built-in wallet keys in this page’s memory for ${context.routineMinutes ?? 15} minutes. Lock, hidden tab, page exit or expiry clears them. This grants no owner or spending authority and does not connect a wallet.`
-      : '') +
-    '\n\nPrompts vary by provider, retry and transaction count. Cancelling stops future work; it cannot roll back a submitted transaction.';
-  retirement.hidden = action !== 'create';
+      (action === 'holdings' || action === 'wallet'));
+  return (
+    `Network: ${context.network}\nOwner arm: ${context.ownerUnlocked ? 'authenticated JubJub owner' : context.arm}\nACC: ${accountReview.label}\n\n${purpose}` +
+    (routine
+      ? `\n\nKeep the reviewed local keys in this tab for ${context.routineMinutes ?? 15} minutes. Lock, hidden tab, page exit or expiry clears them.`
+      : '')
+  );
+}
+
+function checkActive(consent: ActiveConsent): void {
+  if (active !== consent)
+    throw new PassportConnectorError('UserCancelled', 'The operation approval ended.');
+  consent.context.check?.();
+}
+
+async function reviewCeremony(consent: ActiveConsent, ceremonyId: string): Promise<boolean> {
+  const dialog = document.getElementById('ceremony-dialog') as HTMLDialogElement;
+  const proceed = document.getElementById('ceremony-continue') as HTMLButtonElement;
+  const cancel = document.getElementById('ceremony-cancel') as HTMLButtonElement;
+  const retirement = document.getElementById('consent-retirement') as HTMLElement;
+  const acknowledgement = document.getElementById('consent-retirement-ack') as HTMLInputElement;
+  const needsAcknowledgement = consent.action === 'create' && !consent.retirementApproved;
+  retirement.hidden = !needsAcknowledgement;
   acknowledgement.checked = false;
-  proceed.disabled = action === 'create';
-  const id = crypto.randomUUID();
-  const approved = await new Promise<boolean>((resolve) => {
+  proceed.disabled = needsAcknowledgement;
+  dialog.dataset.ceremonyId = ceremonyId;
+  return new Promise<boolean>((resolve) => {
+    const pending = { cancel: () => dialog.close('declined') };
     const changed = () => {
-      proceed.disabled = action === 'create' && !acknowledgement.checked;
+      proceed.disabled = needsAcknowledgement && !acknowledgement.checked;
     };
     const close = () => {
       acknowledgement.removeEventListener('change', changed);
       dialog.removeEventListener('close', close);
       proceed.removeEventListener('click', yes);
       cancel.removeEventListener('click', no);
-      resolve(
-        dialog.returnValue === 'approved' && (action !== 'create' || acknowledgement.checked),
-      );
+      if (pendingCeremony === pending) pendingCeremony = undefined;
+      const approved =
+        dialog.returnValue === 'approved' &&
+        active === consent &&
+        (!needsAcknowledgement || acknowledgement.checked);
+      if (approved && needsAcknowledgement) consent.retirementApproved = true;
+      resolve(approved);
     };
-    const yes = () => dialog.close('approved');
+    const yes = () => {
+      if (!proceed.disabled) dialog.close('approved');
+    };
     const no = () => dialog.close('declined');
+    pendingCeremony = pending;
     acknowledgement.addEventListener('change', changed);
     dialog.addEventListener('close', close);
     proceed.addEventListener('click', yes);
@@ -183,15 +214,6 @@ export async function reviewDemoAction(
     dialog.showModal();
     cancel.focus();
   });
-  traceOperation(approved ? 'consent.approved' : 'consent.declined', {
-    action,
-    flowId: id,
-    networkId: context.network,
-    ...(accountReview.address && { accountAddress: accountReview.address }),
-  });
-  if (approved)
-    active = { action, id, context: Object.freeze({ ...context }), requests: 0, signatures: 0 };
-  return approved;
 }
 
 export function finishDemoConsent(): void {
@@ -205,22 +227,29 @@ export function finishDemoConsent(): void {
   document.dispatchEvent(new Event('passport:ceremony-finished'));
 }
 
-/** Each browser access needs its own approval; an operation review or prior prompt is insufficient. */
-export async function beforeDemoCeremony(ceremony: Readonly<PasskeyCeremony>): Promise<void> {
+/** One combined review approves exactly this browser access; later calls and retries review again. */
+export async function beforeDemoCeremony(input: Readonly<PasskeyCeremony>): Promise<void> {
   const consent = active;
-  if (!consent || ceremony.rpId !== 'localhost' || ceremonyInFlight)
-    throw new PassportConnectorError(
-      'UserCancelled',
-      'Approve the demo operation before using a passkey.',
-    );
+  const ceremony = Object.freeze({ ...input });
+  if (
+    !consent ||
+    ceremony.rpId !== 'localhost' ||
+    ceremonyInFlight ||
+    !Object.hasOwn(CEREMONIES, ceremony.purpose) ||
+    !Number.isInteger(ceremony.attempt) ||
+    ceremony.attempt < 1 ||
+    ceremony.attempt > 5
+  )
+    throw new PassportConnectorError('UserCancelled', 'Start an operation before using a passkey.');
   ceremonyInFlight = true;
   try {
+    checkActive(consent);
     const request = ++consent.requests;
     if (ceremony.purpose === 'sign' && ceremony.attempt === 1) consent.signatures++;
     const ceremonyId = crypto.randomUUID();
     const setup =
       ceremony.purpose === 'sign' && consent.action === 'create'
-        ? `Setup signature ${consent.signatures}: publish a sealed viewing-key entry to the ACC inbox. Creation publishes reader envelopes and their registrations in separate signed transactions. These are not another login or an HD wallet transfer.\n\n`
+        ? `Setup signature ${consent.signatures}: publish a sealed viewing-key entry to the ACC inbox. Reader envelopes and registrations use separate setup transactions.\n\n`
         : '';
     const text = `${FLOWS[consent.action].title} — passkey request ${request}: ${CEREMONIES[ceremony.purpose]} Attempt ${ceremony.attempt}.`;
     const notice = document.getElementById('ceremony-purpose')!;
@@ -231,18 +260,17 @@ export async function beforeDemoCeremony(ceremony: Readonly<PasskeyCeremony>): P
     notice.dataset.ready = 'false';
     notice.dataset.ceremonyId = ceremonyId;
     const dialog = document.getElementById('ceremony-dialog') as HTMLDialogElement;
-    const proceed = document.getElementById('ceremony-continue') as HTMLButtonElement;
-    const cancel = document.getElementById('ceremony-cancel') as HTMLButtonElement;
     document.getElementById('ceremony-title')!.textContent =
       `Passkey request ${request} · ${FLOWS[consent.action].title}`;
     document.getElementById('ceremony-details')!.textContent =
-      `Network: ${consent.context.network}\nOwner arm: ${consent.context.arm}\nACC: ${reviewedAccount(consent.action, consent.context).label}\n\n` +
+      operationDetails(consent) +
+      '\n\n' +
       setup +
       CEREMONIES[ceremony.purpose] +
       (ceremony.attempt > 1
-        ? `\n\nRetry ${ceremony.attempt}: the browser returned a known signing-format variant the ACC cannot accept. No bytes are rewritten; this asks for a new assertion.`
+        ? `\n\nRetry ${ceremony.attempt}: the browser returned an unsupported signing format. Try the passkey again; signed bytes are never rewritten.`
         : '') +
-      '\n\nContinue opens your password manager, which may ask for Touch ID or another verification. Cancel stops this request and future work; already submitted transactions remain and must be reconciled before retrying.';
+      '\n\nContinue opens your passkey provider. Cancel stops the remaining steps; submitted transactions may still complete.';
     dialog.dataset.ceremonyId = ceremonyId;
     traceOperation('consent.ceremony', {
       action: consent.action,
@@ -252,25 +280,13 @@ export async function beforeDemoCeremony(ceremony: Readonly<PasskeyCeremony>): P
       ceremonyId,
       request,
     });
-    const approved = await new Promise<boolean>((resolve) => {
-      const pending = { cancel: () => dialog.close('declined') };
-      const close = () => {
-        dialog.removeEventListener('close', close);
-        proceed.removeEventListener('click', yes);
-        cancel.removeEventListener('click', no);
-        if (pendingCeremony === pending) pendingCeremony = undefined;
-        resolve(dialog.returnValue === 'approved' && active === consent);
-      };
-      const yes = () => dialog.close('approved');
-      const no = () => dialog.close('declined');
-      pendingCeremony = pending;
-      dialog.addEventListener('close', close);
-      proceed.addEventListener('click', yes);
-      cancel.addEventListener('click', no);
-      dialog.returnValue = '';
-      dialog.showModal();
-      cancel.focus();
+    Object.assign(dialog.dataset, {
+      flowId: consent.id,
+      purpose: ceremony.purpose,
+      attempt: String(ceremony.attempt),
+      rpId: ceremony.rpId,
     });
+    const approved = await reviewCeremony(consent, ceremonyId);
     traceOperation(approved ? 'consent.ceremony-approved' : 'consent.ceremony-declined', {
       action: consent.action,
       flowId: consent.id,
@@ -283,14 +299,25 @@ export async function beforeDemoCeremony(ceremony: Readonly<PasskeyCeremony>): P
       if (active === consent) finishDemoConsent();
       throw new PassportConnectorError('UserCancelled', 'The passkey request was declined.');
     }
+    checkActive(consent);
+    if (!consent.reviewed) {
+      consent.reviewed = true;
+      const accountReview = reviewedAccount(consent.action, consent.context);
+      traceOperation('consent.approved', {
+        action: consent.action,
+        flowId: consent.id,
+        ceremonyId,
+        networkId: consent.context.network,
+        ...(accountReview.address && { accountAddress: accountReview.address }),
+      });
+    }
     document.dispatchEvent(new Event('passport:present-ceremony'));
     // The first rAF is before paint; its promise continuation would still be before paint.
     // Cross a second frame so the visible explanation has a rendering opportunity first.
     await new Promise<void>((resolve) =>
       requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
     );
-    if (active !== consent)
-      throw new PassportConnectorError('UserCancelled', 'The operation approval ended.');
+    checkActive(consent);
     const rect = notice.getBoundingClientRect();
     const visible =
       !notice.hidden &&

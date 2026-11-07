@@ -2,11 +2,17 @@ import { createAccountWorkspace } from './account-workspace.js';
 import { renderSessionDraft } from './session-view.js';
 import { createSettingsWorkspace } from './settings-workspace.js';
 import { createWorkspacePages } from './workspace-pages.js';
-import { createNavigationDrawer, createNavigationButton } from './navigation-drawer.js';
+import { createNavigationDrawer } from './navigation-drawer.js';
+import {
+  createWorkspaceNavigation,
+  entryWorkspace,
+  workspaceNames as names,
+  type WorkspaceId,
+} from './workspace-navigation.js';
 import { createLandingPage } from './landing.js';
 
 /** Demo-owned layout and navigation. Moving existing nodes keeps action state and IDs intact. */
-export type WorkspaceId = 'overview' | 'account' | 'wallet' | 'audit' | 'settings';
+export type { WorkspaceId } from './workspace-navigation.js';
 
 const node = <K extends keyof HTMLElementTagNameMap>(tag: K, text?: string) => {
   const result = document.createElement(tag);
@@ -27,9 +33,7 @@ export function createDemoWorkspace(config: {
   readonly manifestSha256: string;
 }) {
   const main = byId('main');
-  const nav = node('nav');
-  nav.className = 'workspace-nav';
-  nav.setAttribute('aria-label', 'Main navigation');
+  const { navigation: nav, views, buttons } = createWorkspaceNavigation();
   const center = node('div');
   center.className = 'workspace-center';
   center.id = 'workspace-content';
@@ -37,36 +41,6 @@ export function createDemoWorkspace(config: {
   const skip = document.querySelector<HTMLAnchorElement>('.skip-link')!;
   skip.href = '#workspace-content';
   skip.textContent = 'Skip to content';
-  const names: Record<WorkspaceId, string> = {
-    overview: 'Overview',
-    account: 'Passport account',
-    wallet: 'Midnight wallet',
-    audit: 'Audit',
-    settings: 'Settings',
-  };
-  const views = {} as Record<WorkspaceId, HTMLElement>;
-  const buttons = {} as Record<WorkspaceId, HTMLButtonElement>;
-  for (const id of Object.keys(names) as WorkspaceId[]) {
-    const view = node('section');
-    view.id = `workspace-${id}`;
-    view.dataset.workspace = id;
-    view.className = 'workspace-view';
-    const heading = node('h2', names[id]);
-    heading.id = `workspace-${id}-title`;
-    heading.tabIndex = -1;
-    view.setAttribute('aria-labelledby', heading.id);
-    const titleRow = node('div');
-    titleRow.className = 'workspace-heading';
-    titleRow.append(heading);
-    view.append(titleRow);
-    views[id] = view;
-    const button = createNavigationButton(id, names[id], view.id);
-    buttons[id] = button;
-    const group = node('div');
-    group.className = 'workspace-nav-group';
-    group.append(button);
-    nav.append(group);
-  }
   // Keep relocated controls in the document: the existing UI intentionally resolves stable
   // IDs while composing later panels. Detaching a whole account card would hide its children.
   center.append(...Object.values(views));
@@ -324,7 +298,7 @@ export function createDemoWorkspace(config: {
     const submenu = pages.navigation;
     submenu.id = `nav-${id}-submenu`;
     submenu.classList.add('workspace-submenu');
-    buttons[id as WorkspaceId].after(submenu);
+    buttons.get(id as WorkspaceId)?.after(submenu);
   }
   const activity = node('aside');
   activity.id = 'activity-panel';
@@ -376,6 +350,7 @@ export function createDemoWorkspace(config: {
   let expanded = false;
   let ceremonySheet = false;
   let selected: WorkspaceId = 'overview';
+  let accountOpened = false;
   const scrollPositions = new Map<WorkspaceId, number>();
   let navigationDrawer: ReturnType<typeof createNavigationDrawer> | undefined;
   const updateActivity = () => {
@@ -399,14 +374,16 @@ export function createDemoWorkspace(config: {
     toggle.setAttribute('aria-expanded', String(mobile.matches ? sheet.open : expanded));
     toggle.setAttribute('aria-controls', mobile.matches ? sheet.id : activity.id);
   };
-  const show = (id: WorkspaceId, focus = true) => {
+  const show = (requested: WorkspaceId, focus = true) => {
+    const id = entryWorkspace(requested, accountOpened);
+    if (requested === 'overview' && accountOpened) accountPages.select('balances', false);
     if (selected !== id) scrollPositions.set(selected, center.scrollTop);
     selected = id;
     main.dataset.landing = String(id === 'overview');
     for (const view of Object.keys(views) as WorkspaceId[]) {
       views[view].hidden = view !== id;
-      if (view === id) buttons[view].setAttribute('aria-current', 'page');
-      else buttons[view].removeAttribute('aria-current');
+      if (view === id) buttons.get(view)?.setAttribute('aria-current', 'page');
+      else buttons.get(view)?.removeAttribute('aria-current');
       if (view !== 'overview') pagesByWorkspace[view].setActive(view === id);
     }
     if (id === 'audit') expanded = false;
@@ -428,8 +405,7 @@ export function createDemoWorkspace(config: {
     center.scrollTop = 0;
     scrollPositions.set(id, 0);
   }
-  for (const id of Object.keys(names) as WorkspaceId[])
-    buttons[id].addEventListener('click', () => show(id));
+  for (const [id, button] of buttons) button.addEventListener('click', () => show(id));
   const closeSheet = (reason = '') => {
     if (sheet.open) sheet.close(reason);
   };
@@ -500,6 +476,25 @@ export function createDemoWorkspace(config: {
   if (hash === 'settings' && accountPage && settingsPages.valid(accountPage))
     settingsPages.select(accountPage, false, false);
   show(Object.hasOwn(names, hash ?? '') ? (hash as WorkspaceId) : 'overview', false);
+  byId('brand-home').addEventListener('click', (event) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)
+      return;
+    event.preventDefault();
+    show('overview');
+    navigationDrawer?.closeForNavigation();
+  });
+  window.addEventListener('hashchange', () => {
+    const [workspace, page] = location.hash.slice(1).split('/');
+    if (workspace === 'account' && page && accountPages.valid(page))
+      accountPages.select(page, false);
+    if (workspace === 'wallet' && page && walletPages.valid(page))
+      walletPages.select(page, false, false);
+    if (workspace === 'audit' && page && auditPages.valid(page))
+      auditPages.select(page, false, false);
+    if (workspace === 'settings' && page && settingsPages.valid(page))
+      settingsPages.select(page, false, false);
+    show(Object.hasOwn(names, workspace ?? '') ? (workspace as WorkspaceId) : 'overview');
+  });
   // Presentation events never approve a credential or invoke an account command.
   let presentedCredential = false;
   document.addEventListener('passport:operation-started', () => {
@@ -555,6 +550,7 @@ export function createDemoWorkspace(config: {
     show,
     selected: () => selected,
     showAccount() {
+      accountOpened = true;
       accountPages.select('balances', false);
       scrollPositions.delete('account');
       show('account');

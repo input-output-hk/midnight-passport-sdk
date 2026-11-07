@@ -4,6 +4,13 @@ title: Install and connect
 permalink: /getting-started/
 ---
 
+**Library path · published RC7.** This page installs the released `0.1.0-rc7`
+libraries. Start with the [Library integration guide]({{ '/library-guide/' | relative_url }})
+for the lifecycle and host responsibilities, or the
+[Demo app guide]({{ '/demo-guide/' | relative_url }}) to run the reference application.
+Optional authorization, validation, storage/background and login/session helpers in the
+current source are **not RC7 imports**; see the [API release map]({{ '/api/#published-and-source-preview-surfaces' | relative_url }}).
+
 Use this path to evaluate the implemented libraries in a wallet host or browser application.
 To try the full reference UI first, use the [demo use cases]({{ '/use-cases/' | relative_url }})
 and [agent/local setup guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/AGENTS.md).
@@ -68,7 +75,7 @@ Check `/healthz` and `/v1/config` on the Passport service. The network must be `
 binding `acc-s3r1.1`, compiler manifest SHA-256
 `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f`.
 Derive this pin from the installed contract package or trusted release evidence, not from the
-server's answer. The example below uses `resolveBinding` and `fetchCheckedV1Config` to do that.
+server's answer. The linked composition uses `resolveBinding` and `fetchCheckedV1Config` to do that.
 
 Production hosts need explicit public URLs, authenticated ingress, fee/funding limits and durable
 state. A standalone network's public genesis wallet is for `undeployed` only. Linux images need
@@ -84,6 +91,13 @@ Implement its `read`, `write` and `exists` methods persistently before creating 
 [record store](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc7/apps/passport-dapp/src/grant-journal.ts)
 shows validation and encoding. Store keys must distinguish network, binding and device/account;
 the demo keeps one selected record per network for evaluation.
+
+The quickstart wires the minimal account ports; it does not supply your product's
+blocking consent UI, lock policy or vault. RC7's optional `passkey.beforeCeremony`
+hook lets a host review each actual credential purpose and refuse access by throwing.
+Review account effects separately or combine them with the actual request when the
+exact fields are already available. Neither login nor PRF derivation approves a transfer.
+See [the ceremony contract]({{ '/consent/#public-ceremony-hook' | relative_url }}).
 
 Call the API from explicit user actions:
 
@@ -144,3 +158,24 @@ and the [Lace compatibility boundary]({{ '/lace-handover/' | relative_url }}).
 ## Optional RC7 operator host-job integration
 
 For a trusted operator host/BFF, the [durable service-job runbook]({{ '/service-jobs/' | relative_url }}) describes opt-in encrypted reference-service settings, `remoteHostJobPorts` for the durable owner composition, explicit restart recovery and real HTTP/process tests. Client and service must both support identity hashes. Keep the bearer token out of a public browser page; portable browser imports do not make the token public. The default demo keeps its existing composition; RC7 host jobs require explicit opt-in.
+
+
+## Host lifecycle beyond the quickstart
+
+Keep durable account metadata, encrypted recovery/grant journals and optional secret
+custody separate. Scope records by network, binding and account/device; copy supported
+byte and nested inputs before awaiting consent. A TypeScript `readonly` property does
+not prevent a caller from mutating a shared buffer. Supply complete live sources and
+check the pinned route before dispatch; do not replace missing data with an empty roster.
+
+Cancellation stops future work. Retain acknowledged transaction hashes and unknown
+original intent IDs even if a local lease expires or a later refresh fails. Reconcile
+those same records before another send. Clear caller-owned secret copies and dispose
+owned local keys, observers, worker channels and storage handles on teardown. Local
+cleanup is not chain revocation and must not erase recovery evidence.
+
+The optional source `onAccountOpened` handoff and 10/15/30-minute demo routine cache
+are not enabled by this RC7 quickstart. Other hosts explicitly select their custody and
+lifetime policy; no library default caches a full owner or writes raw PRF output to
+storage. See [library lifecycle and custody]({{ '/library-guide/' | relative_url }}) and
+[the reference demo's choices]({{ '/demo-guide/' | relative_url }}).

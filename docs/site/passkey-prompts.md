@@ -9,10 +9,12 @@ Routine work can reuse a reviewed memory lease. This supersedes the earlier loca
 policy that allowed full-owner administration without fresh approval. Published
 RC7 and historical qualification receipts are unchanged.
 
-An app operation review, our **Continue to passkey / Cancel operation** dialog and
-the password manager's credential sheet are different events. Each actual
-credential API call, including a profile retry, requires its own request approval.
-Count those calls separately from UI dialogs and provider sheets/touches.
+The [demo app]({{ '/demo-guide/' | relative_url }}) uses one combined operation/purpose
+review for each actual credential API call, including retries. An exact transaction,
+device or grant review may still be separate. The password manager's credential sheet
+is another event. Count actual credential calls separately from app dialogs and provider
+sheets/touches. The [library hook]({{ '/consent/#public-ceremony-hook' | relative_url }})
+provides metadata and refusal; it does not impose this demo UI on other hosts.
 
 ## Login also prepares routine access
 
@@ -40,8 +42,9 @@ After lock/expiry, explicitly approving holdings or built-in wallet connection c
 reauthenticate once with the pinned credential **and prepare a new routine lease**.
 The reviewed lifetime is captured before consent. Following routine actions use
 that lease without more requests. If an existing lease was selected for an action
-and expires while its consent dialog is open, that action refuses; it does not
-silently switch to this reauthentication path.
+and expires before the captured action completes, that action refuses; it does not
+silently switch to this reauthentication path. Matching cached reads/wallet access have
+no generic operation modal. The lifetime is shown in the actual login/unlock review.
 
 Cold P-256 address recovery is tested as the **first open on a fresh adapter**.
 It recovers the public key/policy from an authentic sealed registration, verifies

@@ -3,6 +3,10 @@ layout: default
 title: Prototype workspaces and host controls
 permalink: /demo-ui/
 ---
+This page describes the [reference demo app]({{ '/demo-guide/' | relative_url }}).
+For reusable APIs and another host's lifecycle/consent responsibilities, use the
+[Library integration guide]({{ '/library-guide/' | relative_url }}).
+
 **Updated local-source policy:** [Unlock account]({{ '/authenticated-owner/' | relative_url }})
 authenticates a deterministic JubJub **full owner** for all implemented owner operations.
 The current host policy requires fresh passkey approval for critical administration,
@@ -21,9 +25,9 @@ deployed site remain separate from this local work.
 
 ## Find an action
 
-| Workspace | What belongs here |
+| Entry or workspace | What belongs here |
 | --- | --- |
-| **Overview** | Landing page with **Sign up** and **Log in**, plus secondary account-address login. **Demo tools** keeps Audit and Settings reachable. No name or profile creation. |
+| **Login entry** | **Sign up**, **Log in** and secondary account-address login. **Demo tools** keeps Audit and Settings reachable. This is not an Overview menu or workspace group. |
 | **Passport account** | **Balances**, **Deposit** and **Withdraw** pages under its left navigation entry. The selected ACC/network stays visible; each operation has its own form. Amounts retain their original units and unavailable/stale states. |
 | **Midnight wallet** | **Built-in wallet** and **Lace Wallet** pages: addresses, balances, freshness and **Refresh wallet balance**. **Manage wallet connections** opens Settings. |
 | **Audit** | **Event log**, **Requests & responses** and **Export JSON** pages, with **Copy full log** on every page. |
@@ -31,7 +35,7 @@ deployed site remain separate from this local work.
 
 ### Stable navigation
 
-The demo's small SVG set uses rounded 24-unit outlines for the five workspace
+The demo's small SVG set uses rounded 24-unit outlines for the four workspace
 entries and the create/passkey entry actions. Icons are decorative, unfocusable
 and inherit `currentColor`; visible labels remain the accessible names. Active,
 disabled and focus states still belong to the control. Submenus keep text labels
@@ -76,12 +80,13 @@ Synthetic keyboard/layout tests do not establish assistive-technology certificat
 
 ### Start from Overview
 
-Overview is a landing page inspired by the current upstream Passport design:
+The internal `#overview` route is retained for inbound links; the menu has no
+Overview entry. Before a verified account open in the page, it shows the login landing:
 a decorative Passport card and short introduction sit beside a **Get started
 with Passport** card. **Sign up** is primary; **Log in** is secondary. These labels
 reuse the existing create/open controls and handlers. Sign up still requests the
-irreversible maintenance-retirement acknowledgement; every actual credential
-request has its own blocking review. An open account and an unlocked JubJub owner
+irreversible maintenance-retirement acknowledgement in its first combined
+operation/passkey review; every later actual credential request has a fresh review. An open account and an unlocked JubJub owner
 remain separate states.
 
 The workspace rail and mobile Menu are absent on this entry page. **Demo tools**
@@ -95,8 +100,11 @@ alone grants no access and cannot recover a lost passkey. Expanding the form or
 editing its draft starts no credential operation. Drafts survive local navigation.
 Successful creation, passkey login or address login opens **Passport account →
 Balances**. A declined or failed attempt does not redirect to an account; Activity
-and Audit retain its original evidence and uncertain IDs. Returning to Overview
-does not log out, revoke authority or erase local records.
+and Audit retain its original evidence and uncertain IDs. The header’s **Midnight
+Passport home** link uses `#overview`: before account opening it returns to login;
+after a verified open it selects **Passport account → Balances**, preserving the
+open account. It never logs out, requests a credential or erases local records.
+Stored hints and navigation do not set the verified-open state.
 
 The illustration and CSS are demo-owned. SDK consumers can compose the same
 headless account capabilities with their own brand, layout and consent host.
@@ -107,7 +115,8 @@ headless account capabilities with their own brand, layout and consent host.
   Contract counters, binding and last-transaction details are expandable. A failed
   balance refresh labels prior amounts as old snapshots; unavailable balances do
   not mean zero. **Shielded holdings** has a separate explicit read action and
-  passkey consent; merely opening this tab never unlocks the sealed inbox.
+  the approved routine lease or a combined passkey review when locked; merely
+  opening this tab never unlocks the sealed inbox.
 - **Deposit** shows one asset selector and the funding action. The configured
   fixed deposit comes from the **demo funding wallet**, not your connected wallet.
   The tab explains when funding is unavailable instead of offering a new route.
@@ -197,7 +206,7 @@ Cancelled attempts and unknown outcomes never expose a completed 100-percent
 progress value. A cancelled attempt does not imply that earlier effects rolled back.
 
 Desktop has a collapsible right **Activity** panel: **Current operation** first,
-then **Your journey**. It starts collapsed so idle Overview has no empty side
+then **Your journey**. It starts collapsed so the idle login entry has no empty side
 panel; its trigger sits alongside the workspace title. Each approved credential
 call still reveals Activity before browser access. Starting any action reveals
 desktop Activity. On mobile, an operation with no credential ceremony opens its
@@ -216,8 +225,10 @@ changing workspace or expanding a section never cancels, revokes, retries or
 starts an account operation. Existing controls are moved, not recreated, so form
 values, pending callbacks and transaction guards remain intact.
 
-Passkey consent is a **different blocking dialog**, before every actual credential
-request and retry. It prevents background navigation and Activity interaction.
+The combined operation/passkey review is a **different blocking dialog** from
+Activity, before every actual credential request and retry. There is no generic
+operation-only popup. Exact transaction/device/grant reviews remain separate where
+they inspect the live scope, so some critical paths still have two app reviews. It prevents background navigation and Activity interaction.
 The native provider dialog follows only after explicit approval. Before each
 credential call, the explanation is revealed in Activity and must be visible.
 On mobile an automatically opened Activity sheet closes when the operation ends;

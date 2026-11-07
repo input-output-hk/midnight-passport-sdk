@@ -85,7 +85,7 @@ export async function createSessionJubjubAuthoriser(
       },
       async deviceSecret() {
         check();
-        return secret!.slice();
+        return Uint8Array.from(secret!);
       },
       async deriveSecret() {
         throw new Error('Session keys cannot derive wallet or reader secrets.');

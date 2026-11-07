@@ -4,6 +4,22 @@ title: Account API
 permalink: /api/
 ---
 
+This is the reusable account/adapter reference. The [Library integration guide]({{ '/library-guide/' | relative_url }})
+explains host lifecycle and custody. The [Demo app guide]({{ '/demo-guide/' | relative_url }})
+describes the reference UI's chosen policies; those policies are not implicit API defaults.
+
+## Published and source preview surfaces
+
+| Track | Exports and behavior |
+| --- | --- |
+| Published `0.1.0-rc7` | Account create/open/state, supported device/key/grant/value flows through host ports; browser/WebAuthn/service adapters; capability/preflight and documented opt-in recovery/service-job APIs. Use matching exact packages and release-tagged examples. |
+| Source after RC7 | `account/names`, `account/interaction`, `account/validation`, `account/authorization`, `account/secret-store`, `account/background`; browser wallet/custody/background subpaths; verified-login handoff and authenticated-owner/scoped-session helpers. These imports and policies require source builds until a release includes them. |
+
+Validation, consent, verified ownership and dispatch/finality are different boundaries.
+A parser checks canonical input; a host review approves one exact operation; live
+account/key checks establish authority; a submission acknowledgement still needs
+settlement or same-intent recovery. Never use one as evidence for the next.
+
 Local source after RC7 adds the optional read-only
 [naming-service port and checked resolver]({{ '/names/' | relative_url }}):
 `PassportNameService` in `account/ports`, `resolvePassportName` in `account/names`.
@@ -18,7 +34,7 @@ The optional [wallet reader]({{ '/lace-wallet/' | relative_url }}) is a separate
 `adapter-browser/wallet` source subpath. It supplies no ACC ownership, viewing or
 spending permission and exposes no transfer/signing methods.
 
-The public flow is `createPassportAccounts(ports): PassportConnectorAPI` from `mn-passport-account`. The interfaces are in `mn-passport-protocol`; adapter authors import the contracts from `mn-passport-account/ports`. Source links below point to the exact prototype API.
+The public flow is `createPassportAccounts(ports): PassportConnectorAPI` from `mn-passport-account`. The interfaces are in `mn-passport-protocol`; adapter authors import the contracts from `mn-passport-account/ports`. Prototype-branch links describe current source; release-tagged examples describe RC7. Consult the release map before copying an additive export.
 
 ```ts
 import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
@@ -275,3 +291,29 @@ These optional subpaths add no package and are not present in published RC7:
 Interfaces are available through the types-only `account/ports` entry. Hosts still
 verify live ownership and supply credential/consent UI. See [quality strategy](../quality/),
 [secret custody](../secret-storage/) and [owner authentication](../authenticated-owner/).
+
+
+## Host lifetime, admission and cleanup contract
+
+Current source captures supported public arguments before asynchronous authenticated
+approval, including owned byte copies and bounded canonical grant amounts. Host adapters
+must keep their own inputs stable, validate provider responses, and recheck account,
+network, binding, selected owner and lease at the actual dispatch boundary. Unsupported
+mutable object/prototype shapes do not become trusted merely because they cross a typed
+port. See the [authorization tests](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/tests/account-authorization.test.mjs)
+and [input snapshot tests](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/tests/request-snapshots.test.mjs).
+
+`createAccountAuthorisation` pins one reviewed route, but does not authenticate a user
+or acquire fresh passkey approval automatically. `ownerSession` is a previously verified
+software owner, not a spending-limited key. The demo implements additional fresh critical
+approval through its host guard. `onAccountOpened(account, keys)` is an optional verified
+source handoff inside the login scope; `BrowserLoginKeys.deriveWalletSeed()` gives the
+host an owned seed copy to manage. The SDK starts no routine timer, wallet connection,
+owner enrollment or persistent owner store on another host's behalf.
+
+Dispose owned secret copies and session helpers on lock/teardown; close owned storage,
+worker and observer handles. Preserve durable original intents and mutation receipts,
+including an acknowledgement arriving after local expiry. Fail unavailable/stale routes
+without falling back to another signer. Read the [library lifecycle]({{ '/library-guide/' | relative_url }})
+for custody/error distinctions and [demo policy]({{ '/demo-guide/' | relative_url }}) for
+its bounded routine lease, full-owner guard and independent capped-grant route.

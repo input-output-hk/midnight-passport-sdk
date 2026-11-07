@@ -42,8 +42,8 @@ and account entry actions. Text remains visible and supplies each control's
 accessible name; no additional SDK UI dependency is required. See the
 [UI guide](../site/demo-ui.md#stable-navigation) for reuse and accessibility rules.
 
-- Left navigation: **Overview, Passport account, Midnight wallet, Audit, Settings**.
-- Overview is the upstream-inspired **Sign up / Log in** landing, with the
+- Left navigation: **Passport account, Midnight wallet, Audit, Settings**.
+- The signed-out entry is the upstream-inspired **Sign up / Log in** landing, with the
   workspace rail hidden and Audit/Settings under **Demo tools**. The existing
   account controls and blocking consent are reused; successful account access
   opens Balances. It does not unlock a JubJub owner or connect a wallet. Other

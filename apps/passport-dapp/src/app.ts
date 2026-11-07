@@ -114,6 +114,7 @@ const ui = createUi(
         routineUnlocked,
         ownerUnlocked: !!routineKeys.snapshot().ownerVerified && OWNER_ACTIONS.includes(action),
         routineMinutes,
+        check: checkRoutineReview,
       });
       if (approved) {
         checkRoutineReview();
