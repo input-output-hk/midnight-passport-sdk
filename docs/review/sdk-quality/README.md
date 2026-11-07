@@ -106,3 +106,14 @@ The release-scoped Q1–Q10 deliverables above are implemented locally. The expl
 follow-ups remain backlog, including live browser/DUST acceptance and hardened
 custody. Re-run release gates at the actual publication head; local tarballs do
 not establish registry availability or package visibility.
+
+### Independent candidate review correction
+
+The read-only review of `b0170aa` found a P1 contract gap in the new public
+consent router: a primary account object stays A when the host selects B, and
+there was no host-selection guard to observe that change. The correction adds a
+required synchronous `isContextCurrent()` on both routes. It refuses before dispatch
+on selection/authentication revision changes, discards stale private-read results
+and retains already-dispatched mutation acknowledgements. Seven regression cases
+cover both routes. Fresh follow-up gates and review are archived separately;
+initial receipts remain evidence for the initial candidate, not the correction.

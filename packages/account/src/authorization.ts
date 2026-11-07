@@ -143,10 +143,16 @@ function copyFlow(flow: FlowDescriptor): FlowDescriptor {
  */
 export function createAccountAuthorisation(options: {
   primary: PassportAccount;
+  /** Synchronous host scope check; return true only while the captured account/authentication revision is current. */
+  isContextCurrent(): boolean;
   authenticated?: () => AuthenticatedAccount | undefined;
   consent: AccountConsentPort;
 }) {
-  const primary = options.primary;
+  const { primary, isContextCurrent } = options;
+  if (typeof isContextCurrent !== 'function') throw new AccountAuthorisationError('InvalidContext');
+  const checkContext = () => {
+    if (isContextCurrent() !== true) throw new AccountAuthorisationError('Unavailable');
+  };
   const context = AccountContextSchema.parse({
     account: primary.address,
     networkId: primary.networkId,
@@ -161,6 +167,7 @@ export function createAccountAuthorisation(options: {
       request: { route: AuthorisationRoute; flow: FlowDescriptor },
       work: (account: PassportAccount, approved: AccountConsent) => Promise<T>,
     ): Promise<T> {
+      checkContext();
       const { route } = request;
       if (
         !['primary', 'authenticated-owner'].includes(route) ||
@@ -185,6 +192,7 @@ export function createAccountAuthorisation(options: {
       if (approved !== true) throw new AccountAuthorisationError('Declined');
       // Lock/replacement while the consent UI was open never chooses another key path.
       const checkCurrent = () => {
+        checkContext();
         candidate?.check();
         if (!sameAccount(account)) throw new AccountAuthorisationError('InvalidContext');
         if (candidate) {

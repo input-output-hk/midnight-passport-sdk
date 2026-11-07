@@ -20,6 +20,7 @@ function fixture() {
   const primary = account(),
     owner = account('jubjub-schnorr');
   let valid = true;
+  let contextCurrent = true;
   const lease = {
     account: owner,
     check() {
@@ -31,6 +32,7 @@ function fixture() {
     /** @type {import('../packages/account/dist/authorization.js').AccountConsent[]} */ ([]);
   const options = {
     primary,
+    isContextCurrent: () => contextCurrent,
     authenticated: () => current,
     consent: {
       async review(
@@ -47,6 +49,9 @@ function fixture() {
     lease,
     options,
     reviews,
+    switchAccount() {
+      contextCurrent = false;
+    },
     lock() {
       valid = false;
     },
@@ -154,10 +159,11 @@ test('wrong account, malformed flow and missing authenticated owner refuse befor
     { code: 'InvalidContext' },
   );
   await assert.rejects(
-    createAccountAuthorisation({ primary: f.primary, consent: f.options.consent }).run(
-      { route: 'authenticated-owner', flow },
-      async () => {},
-    ),
+    createAccountAuthorisation({
+      primary: f.primary,
+      isContextCurrent: f.options.isContextCurrent,
+      consent: f.options.consent,
+    }).run({ route: 'authenticated-owner', flow }, async () => {}),
     { code: 'Unavailable' },
   );
   assert.equal(f.reviews.length, 0);
@@ -269,5 +275,56 @@ test('value and permission reviews refuse incomplete effects before opening a co
       ),
       { code: 'InvalidContext' },
     );
+  assert.equal(f.reviews.length, 0);
+});
+
+for (const route of /** @type {const} */ (['primary', 'authenticated-owner'])) {
+  test(`${route}: host account selection changes during consent refuse without dispatch or fallback`, async () => {
+    const f = fixture();
+    let dispatched = false;
+    f.options.consent.review = async () => {
+      f.switchAccount();
+      return true;
+    };
+    await assert.rejects(
+      createAccountAuthorisation(f.options).run({ route, flow }, async () => {
+        dispatched = true;
+      }),
+      { code: 'Unavailable' },
+    );
+    assert.equal(dispatched, false);
+  });
+  test(`${route}: host scope changes during a private read discard its result`, async () => {
+    const f = fixture();
+    await assert.rejects(
+      createAccountAuthorisation(f.options).run(
+        { route, flow: { kind: 'read-holdings' } },
+        async () => {
+          f.switchAccount();
+          return 'private result';
+        },
+      ),
+      { code: 'Unavailable' },
+    );
+  });
+  test(`${route}: host scope change after mutation dispatch retains its acknowledgement`, async () => {
+    const f = fixture();
+    const result = await createAccountAuthorisation(f.options).run({ route, flow }, async () => {
+      f.switchAccount();
+      return { txHash: 'original-ack' };
+    });
+    assert.equal(result.txHash, 'original-ack');
+  });
+}
+
+test('authorization refuses an omitted host context guard before any review', () => {
+  const f = fixture();
+  assert.throws(
+    () => {
+      // @ts-expect-error JavaScript callers can omit a required guard; fail closed at construction.
+      createAccountAuthorisation({ primary: f.primary, consent: f.options.consent });
+    },
+    { code: 'InvalidContext' },
+  );
   assert.equal(f.reviews.length, 0);
 });

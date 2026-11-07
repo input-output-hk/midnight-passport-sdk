@@ -134,6 +134,7 @@ import { UnshieldedWithdrawalSchema } from '@input-output-hk/mn-passport-account
 
 const routes = createAccountAuthorisation({
   primary: primaryAccount,
+  isContextCurrent: () => hostAccountScope.isCurrent(), // synchronous selection/auth revision predicate
   authenticated: () => verifiedOwnerLease, // account + checked host expiry/revision
   consent: { review: intent => hostReviewDialog(intent) },
 });
@@ -165,3 +166,9 @@ When promising owned byte copies, use `Uint8Array.from(value)`. A Node `Buffer`
 is also a `Uint8Array`, but its `slice()` shares memory. Tests cover Buffer inputs
 so storage cleanup, owner disposal and caller mutations cannot erase each other's
 bytes. This is copy isolation, not a guarantee of secure memory erasure.
+
+The required `isContextCurrent()` is a synchronous host lifecycle guard for **both**
+routes. Bind it to the selected account/authentication revision and return false when
+that scope changes. It runs before review, again before invoking the operation callback and after private
+reads; the SDK cannot infer UI selection from an immutable account object.
+Mutation acknowledgements remain available after a later context switch.

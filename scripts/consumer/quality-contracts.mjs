@@ -21,7 +21,11 @@ const unchecked:AccountAddress='ab';
 const uncheckedAmount:Amount='1';
 export function compose(primary:PassportAccount,port:BackgroundPort) {
   const store:SecretStore=createMemorySecretStore();
-  const consent=createAccountAuthorisation({primary,consent:{review:async(request)=>request.route==='primary'}});
+  const consent=createAccountAuthorisation({primary,isContextCurrent:()=>true /* fixed account scope for this compile fixture */,consent:{review:async(request)=>request.route==='primary'}});
+  // @ts-expect-error Context guards are synchronous; an async predicate cannot authorize work.
+  createAccountAuthorisation({primary,isContextCurrent:async()=>true,consent:{review:async()=>true}});
+  // @ts-expect-error Both signing routes require an explicit host context guard.
+  createAccountAuthorisation({primary,consent:{review:async()=>true}});
   const client=createBackgroundClient(port,{channel:'node-read-worker'});
   return {store,consent,client,account,asset,amount,wrongAsset,unchecked,uncheckedAmount};
 }
