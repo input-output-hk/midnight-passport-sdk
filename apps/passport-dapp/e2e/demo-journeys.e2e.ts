@@ -1443,8 +1443,38 @@ try {
       await waitStatus(owner, /confirmed its new sealed/);
       done('rotation review and result');
 
+      await owner.evaluate(() => {
+        const fixture = window as unknown as {
+          __demoHoldDust?: () => Promise<void>;
+          __demoReleaseDust?: () => void;
+        };
+        const pending = new Promise<void>((resolve) => {
+          fixture.__demoReleaseDust = resolve;
+        });
+        fixture.__demoHoldDust = () => pending;
+      });
       await approve(owner, 'wallet');
       await waitStatus(owner, /wallet connected through/);
+      await reveal(owner, '#walletRefresh');
+      assert.equal(await owner.locator('#walletRefresh').isEnabled(), true);
+      assert.match((await owner.locator('#wallet-facts').textContent()) ?? '', /NIGHT/);
+      assert.match(
+        (await owner.locator('#wallet-facts').textContent()) ?? '',
+        /Syncing independently/,
+      );
+      await owner.evaluate(() => {
+        const fixture = window as unknown as {
+          __demoHoldDust?: () => Promise<void>;
+          __demoReleaseDust?: () => void;
+        };
+        fixture.__demoReleaseDust?.();
+        delete fixture.__demoHoldDust;
+        delete fixture.__demoReleaseDust;
+      });
+      await owner.waitForFunction(() =>
+        document.getElementById('wallet-facts')?.textContent?.includes('0 of 0'),
+      );
+      done('NIGHT and wallet actions stay ready while DUST sync waits independently');
       const recipient = await owner
         .locator('#wallet-facts .fact')
         .filter({ hasText: 'Unshielded address' })

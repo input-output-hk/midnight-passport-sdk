@@ -268,3 +268,15 @@ critical-operation step-up rule for this mode only. **Unlock reading only** pres
 the restricted cache/grant alternative. Local expiry clears memory, not the durable
 chain owner. Read [the full authority/lifetime guide](../site/authenticated-owner.md).
 No new native/provider/full Lace qualification or published package change is implied.
+
+## Source quality and execution boundaries
+
+The [quality strategy](../site/quality.md) specifies the package coverage gate,
+web/Node contracts and worker test scope. The demo's built-in wallet now runs in
+an owned browser worker; credential consent stays on the page. Secret persistence
+is optional and does not change the existing memory-only owner authentication.
+See [the secret-store design](../adr/0016-host-secret-custody.md).
+
+NIGHT and DUST now have independent readiness and presentation. DUST runs as an
+observed background read; a pending/failing DUST sync does not hold a ready NIGHT
+balance or wallet action open. Refresh/reconnect revisions discard late results.

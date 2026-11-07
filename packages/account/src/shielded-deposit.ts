@@ -79,10 +79,10 @@ export async function depositShielded(
     throw new PassportConnectorError('EncryptionKeyMismatch', 'The ACC enc_key is malformed.');
 
   const initialInboxCount = first.inboxEntries.length;
-  const encKey = first.encKey.slice();
+  const encKey = Uint8Array.from(first.encKey);
   const coin: ShieldedCoin = {
-    nonce: input.nonce.slice(),
-    color: input.color.slice(),
+    nonce: Uint8Array.from(input.nonce),
+    color: Uint8Array.from(input.color),
     value: input.amount,
   };
   const entry = await ports.sealCoin(encKey, coin);

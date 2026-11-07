@@ -96,14 +96,18 @@ nix develop -c pnpm test:coverage
 nix develop -c node scripts/test-coverage.mjs /private/new-coverage-directory
 ```
 
-This opt-in command uses Node's built-in V8 coverage and produces `tests.tap`,
-`lcov.info` and `summary.json` under a fresh ignored review directory. It measures
-**loaded package `dist` JavaScript in the root Node test suite**, not unimported
-files, TypeScript source statement coverage, application/UI coverage, contract
-constraint coverage or real-provider completeness. It records source, dirty state,
-runtime version and pass/fail/skip counts. No percentage substitutes for use-case
-or native evidence. The report is outside required fast CI; no arbitrary threshold
-has been imposed before a useful baseline exists.
+The local-source quality increment uses pinned c8/V8 coverage with compiler source
+maps and **all executable authored sources in the nine public packages**, including
+unimported files. It produces `tests.tap`, `lcov.info`, raw `coverage-summary.json`
+and an inventory/threshold receipt in `summary.json` under a fresh ignored review
+directory. It enforces 80% lines, functions and branches globally and per package,
+and refuses missing source records. Generated metadata, type-only stubs, testing
+helpers and private retired scaffolds are explicit exclusions. Release verification
+runs it; it stays outside the short required PR critical path. This is not UI,
+contract-constraint, native-proof or provider coverage. See [quality strategy](../quality/).
+
+The following earlier measurements used a **loaded-only JavaScript denominator**
+and are retained as historical evidence, not directly comparable current results.
 
 The initial 5 November development measurement covered 133 loaded files:
 95.47% lines, 94.14% functions and 84.50% branches (958 passed, five skips).

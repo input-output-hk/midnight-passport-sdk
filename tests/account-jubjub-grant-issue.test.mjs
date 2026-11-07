@@ -131,7 +131,7 @@ function fixture() {
         assert.equal(flow?.account, account);
         assert.equal(flow?.scopeSalt, '09'.repeat(32));
         assert.equal(flow?.slot, 0);
-        assert.equal(flow?.scope, scope);
+        assert.deepEqual(flow?.scope, scope);
         assert.equal(flow?.scopeDigest?.length, 64);
         return operation();
       },
@@ -414,4 +414,25 @@ test('interrupted settlement exposes the submitted grant ID and resumes without 
   assert.deepEqual(resumed.appendTxHashes, []);
   assert.equal(resumed.nextUseCounter, 3n);
   assert.equal(published, true);
+});
+
+test('grant issue snapshots caller scope before async review and journal staging', async () => {
+  const w = fixture();
+  const mutable = {
+    ...scope,
+    grantee: { ...scope.grantee },
+    recipient: { ...scope.recipient },
+    operations: [...scope.operations],
+  };
+  const session = w.ports.authoriser.withKeySession;
+  assert.ok(session);
+  w.ports.authoriser.withKeySession = async (operation, descriptor) => {
+    mutable.cap = '1';
+    mutable.grantee.publicKey = 'ff'.repeat(32);
+    mutable.operations.length = 0;
+    assert.deepEqual(descriptor?.scope, scope);
+    return session(operation, descriptor);
+  };
+  await issueJubjubGrantCall({ ...input, scope: mutable }, w.ports);
+  assert.deepEqual(w.staged[0]?.scope, scope);
 });

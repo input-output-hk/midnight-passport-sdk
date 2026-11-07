@@ -1,3 +1,5 @@
+import { walletFacts, type WalletView } from './wallet/view.js';
+export type { WalletView } from './wallet/view.js';
 // Presentation: the action buttons, the progress bar, the event log, the account and wallet cards
 // and the evidence. app.ts keeps the connector calls and drives this through `createUi`.
 // Every dynamic string goes in through textContent or an attribute, never innerHTML.
@@ -39,18 +41,6 @@ export interface AccountView {
   readonly bindingId: string;
   readonly state: PassportAccountState;
   readonly lastTx?: PassportTxResult;
-}
-
-export interface WalletView {
-  readonly unshieldedAddress?: string;
-  readonly shieldedAddress?: string;
-  readonly dustAddress?: string;
-  /** Explicit undefined clears a previous snapshot after a failed read. */
-  readonly unshieldedBalances?: Record<string, bigint> | undefined;
-  readonly dust?: { balance: bigint; cap: bigint } | undefined;
-  /** Set when the balances could not be read (the wallet itself connected). */
-  readonly balanceError?: string | undefined;
-  readonly balanceUpdatedAt?: string | undefined;
 }
 
 const ACTIONS: readonly ActionId[] = [
@@ -106,11 +96,9 @@ const clockTime = (t: number) =>
 export const shorten = (value: string, head = 8, tail = 6): string =>
   value.length <= head + tail + 1 ? value : `${value.slice(0, head)}…${value.slice(-tail)}`;
 
-const formatAmount = (v: bigint) => v.toLocaleString('en-GB');
-
 export function createUi(
   header: EvidenceHeader,
-  arm: 'p256' | 'jubjub' = 'p256',
+  _arm: 'p256' | 'jubjub' = 'p256',
   consent?: {
     before(action: ActionId): Promise<boolean>;
     after(): void;
@@ -674,44 +662,7 @@ export function createUi(
     const list = byId('wallet-facts');
     list.hidden = !connected;
     if (!connected) return;
-    const facts: Fact[] = [];
-    const address = (label: string, value: string | undefined) => {
-      if (value) facts.push({ label, value: shorten(value, 14, 8), full: value, copy: value });
-    };
-    address('Unshielded address', wallet.unshieldedAddress);
-    address('Shielded address', wallet.shieldedAddress);
-    address('Dust address', wallet.dustAddress);
-    if (wallet.unshieldedBalances) {
-      const entries = Object.entries(wallet.unshieldedBalances);
-      if (!entries.some(([token]) => /^0+$/.test(token)))
-        facts.push({ label: 'NIGHT (built-in wallet)', value: '0', hint: 'Smallest unit.' });
-      for (const [token, amount] of entries) {
-        facts.push({
-          label: /^0+$/.test(token) ? 'NIGHT (built-in wallet)' : `Token ${shorten(token, 6, 4)}`,
-          value: formatAmount(amount),
-          full: token,
-          hint: 'Smallest unit.',
-        });
-      }
-    } else if (wallet.balanceError) {
-      facts.push({ label: 'Balances', value: 'Not read', hint: wallet.balanceError });
-    } else {
-      facts.push({ label: 'Balances', value: 'Waiting for the wallet to sync…' });
-    }
-    if (wallet.dust) {
-      facts.push({
-        label: 'DUST',
-        value: `${formatAmount(wallet.dust.balance)} of ${formatAmount(wallet.dust.cap)}`,
-        hint: 'Balance of cap, in Specks.',
-      });
-    }
-    if (wallet.balanceUpdatedAt)
-      facts.push({
-        label: 'Balances updated',
-        value: wallet.balanceUpdatedAt,
-        hint: 'Local read time (UTC), not the chain confirmation time. Refresh after receiving funds.',
-      });
-    renderFacts(list, facts);
+    renderFacts(list, walletFacts(wallet));
   };
 
   // --- wiring ------------------------------------------------------------------------------

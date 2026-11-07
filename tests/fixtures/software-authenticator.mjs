@@ -28,8 +28,6 @@ export const ID = Uint8Array.of(1, 2, 3, 4);
 
 /** @param {Uint8Array} bytes @returns {ArrayBuffer} */
 const buffer = (bytes) => bytes.slice().buffer;
-/** @param {Uint8Array} bytes */
-const hex = (bytes) => Buffer.from(bytes).toString('hex');
 /** @param {bigint} n @returns {Uint8Array} A minimal positive DER INTEGER. */
 function derInteger(n) {
   let body = Buffer.from(n.toString(16).padStart(64, '0'), 'hex');

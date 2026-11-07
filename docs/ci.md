@@ -225,3 +225,23 @@ took26seconds(service) and41seconds(funding). The30–45second goal is therefore
 weaken ceremony assertions or put native proof/key generation into fast PR CI.
 Signed-tag release/publisher reproducibility and image restoration remain slower
 release gates, outside the fast development target.
+
+## Local-source release quality gate (2026-11-07)
+
+Required lint now includes TypeScript AST budgets; compiler checks also reject
+unused locals and parameters. Existing measured debt is explicit in
+`scripts/code-quality-budgets.json`; lint never regenerates it. `quality:report`
+locates large/complex functions. These checks require no proving artifacts.
+
+`test:coverage` uses pinned c8, source maps and an inventory of all executable
+authored sources in the nine public packages, including unimported files. It
+requires 80% lines/functions/branches globally and per package, refuses missing
+source evidence, and records exclusions. Release verification runs this gate
+before packing. It is intentionally outside the short required PR critical path.
+
+The P-256 browser job additionally runs `test:background` once (the worker protocol
+is independent of the owner arm): actual Chromium workers and IndexedDB, synthetic
+wallet work/balances, plus actual wallet SDK import in a worker. Its receipt is
+included in the job summary. It does not contact a user's demo or start Docker.
+Measure warm hosted timing after an authorized push; local timing is not proof of
+the 30–45-second hosted target. The full browser journeys still run both arms.

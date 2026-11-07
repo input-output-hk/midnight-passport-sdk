@@ -40,7 +40,7 @@ export function createAuthenticatedJubjubOwner(input: {
     throw new Error('Invalid authenticated owner material or context.');
   const context = Object.freeze({
     ...input.context,
-    credentialId: input.context.credentialId.slice(),
+    credentialId: Uint8Array.from(input.context.credentialId),
   });
   const scalar = littleEndianScalar(input.authoriser) % JUBJUB_ORDER;
   if (!scalar) throw new Error('The JubJub owner scalar reduced to zero.');
@@ -50,7 +50,7 @@ export function createAuthenticatedJubjubOwner(input: {
   const publicKey = hex(jubjub.Point.fromAffine(pk).toBytes());
   const secret = new Uint8Array(32);
   for (let i = 0; i < 32; i++) secret[i] = Number((scalar >> BigInt(i * 8)) & 255n);
-  const seed = input.walletSeed.slice();
+  const seed = Uint8Array.from(input.walletSeed);
   let disposed = false;
   const check = () => {
     if (disposed) throw new Error('Authenticated owner is locked.');

@@ -119,12 +119,12 @@ test('remote sponsor and deployer use the transaction endpoints and preserve the
 
 test('remote directory carries hints and proofs on the versioned wire', async () => {
   const hint = {
-    address: 'account',
+    address: 'ab'.repeat(32),
     scheme: /** @type {const} */ ('p256-webauthn'),
     credentialId: Uint8Array.of(1),
     publicKey: { x: 2n, y: 3n },
-    policy: { rp_id_hash: Uint8Array.of(4), origin: Uint8Array.of(5) },
-    salt: Uint8Array.of(6),
+    policy: { rp_id_hash: new Uint8Array(32).fill(4), origin: Uint8Array.of(5) },
+    salt: new Uint8Array(32).fill(6),
     status: /** @type {const} */ ('deployed'),
   };
   /** @type {import('../packages/account/dist/ports/index.js').FetchLike} */
@@ -133,12 +133,12 @@ test('remote directory carries hints and proofs on the versioned wire', async ()
     if (init?.method === 'PUT') {
       assert.deepEqual(JSON.parse(init.body ?? ''), {
         hint: {
-          address: 'account',
+          address: 'ab'.repeat(32),
           scheme: 'p256-webauthn',
           credentialId: '01',
           publicKey: { x: '2', y: '3' },
-          policy: { rp_id_hash: '04', origin: '05' },
-          salt: '06',
+          policy: { rp_id_hash: '04'.repeat(32), origin: '05' },
+          salt: '06'.repeat(32),
           status: 'deployed',
         },
         proof: {
@@ -152,12 +152,12 @@ test('remote directory carries hints and proofs on the versioned wire', async ()
       return reply(204, undefined);
     }
     return reply(200, {
-      address: 'account',
+      address: 'ab'.repeat(32),
       scheme: 'p256-webauthn',
       credentialId: '01',
       publicKey: { x: '2', y: '3' },
-      policy: { rp_id_hash: '04', origin: '05' },
-      salt: '06',
+      policy: { rp_id_hash: '04'.repeat(32), origin: '05' },
+      salt: '06'.repeat(32),
       status: 'deployed',
     });
   };

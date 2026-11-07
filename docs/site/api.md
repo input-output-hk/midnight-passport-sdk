@@ -258,3 +258,20 @@ seconds. Existing owner key derivation is unchanged. See the
 [session guide]({{ '/jubjub-sessions/' | relative_url }}) for authority, host
 composition, consent, lifecycle and evidence limits. This export is absent from
 the currently published `0.1.0-rc7` package.
+
+## Source quality APIs (after RC7)
+
+These optional subpaths add no package and are not present in published RC7:
+
+| Subpath | Purpose | Target |
+| --- | --- | --- |
+| `account/validation` | Zod constructors for distinct branded account, asset, recipient, amount, network and binding values | Web/Node |
+| `account/authorization` | Host consent port and a pinned passkey/authenticated-owner route per operation | Web/Node |
+| `account/secret-store` | Scoped async custody contract, errors and memory reference store | Web/Node |
+| `account/background` | Bounded read/computation worker protocol; no transaction retry | Web/Node |
+| `adapter-browser/secret-store` | Explicit plaintext IndexedDB reference adapter | Browser |
+| `adapter-browser/background` | Owned Web Worker/MessagePort structural bridge | Browser |
+
+Interfaces are available through the types-only `account/ports` entry. Hosts still
+verify live ownership and supply credential/consent UI. See [quality strategy](../quality/),
+[secret custody](../secret-storage/) and [owner authentication](../authenticated-owner/).

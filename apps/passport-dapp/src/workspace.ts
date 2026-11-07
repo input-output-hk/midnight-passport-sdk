@@ -1,4 +1,4 @@
-import { createAccountWorkspace, type AccountPage } from './account-workspace.js';
+import { createAccountWorkspace } from './account-workspace.js';
 import { renderSessionDraft } from './session-view.js';
 import { createSettingsWorkspace } from './settings-workspace.js';
 import { createWorkspacePages } from './workspace-pages.js';

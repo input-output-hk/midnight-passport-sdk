@@ -19,6 +19,14 @@
     "./wallet": {
       "types": "./dist/wallet.d.ts",
       "default": "./dist/wallet.js"
+    },
+    "./secret-store": {
+      "types": "./dist/secret-store.d.ts",
+      "default": "./dist/secret-store.js"
+    },
+    "./background": {
+      "types": "./dist/background.d.ts",
+      "default": "./dist/background.js"
     }
   },
   "files": [

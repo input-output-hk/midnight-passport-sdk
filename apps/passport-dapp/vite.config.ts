@@ -25,6 +25,7 @@ const buffer = path.resolve(here, 'node_modules/buffer/index.js');
 
 export default defineConfig({
   plugins: [wasm()],
+  worker: { format: 'es', plugins: () => [wasm()] },
   define: {
     __PASSPORT_MANIFEST_SHA256__: JSON.stringify(manifestSha256),
     __PASSPORT_NETWORK_ID__: JSON.stringify(networkId),

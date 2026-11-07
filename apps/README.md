@@ -537,3 +537,23 @@ wallet also has a separate lifetime. Preserve pending enrollment markers and ori
 Audit IDs; no automatic replay after uncertainty. See
 [owner authentication](../docs/site/authenticated-owner.md). Source-only preview;
 no new provider/native/full Lace or published-package acceptance.
+
+## Local-source package quality increment
+
+The built-in wallet runs its SDK, HD derivation, indexer subscriptions and dust
+sync in a dedicated browser worker. The page owns passkeys, consent and UI state;
+stop terminates only its worker and rejects late reads. Node wallet probes use the
+same runtime directly. No owner-key persistence or wallet spending is added.
+
+Run `nix develop -c pnpm run test:background` for isolated Chromium worker and real
+IndexedDB contract checks. Wallet CPU/balances are synthetic; a separate case
+imports the actual SDK in a worker without opening a network wallet. This lane
+never contacts a running demo. Full UI journeys remain `test:demo-browser`.
+See [quality strategy](../docs/site/quality.md), [secret custody](../docs/site/secret-storage.md)
+and the [local backlog](../docs/review/sdk-quality/README.md).
+
+NIGHT readiness is independent of shielded/DUST progress. A pending DUST read no
+longer holds the wallet action open: it has a separate status and timestamp, with
+shared in-flight reads and stale-result fences across refresh/reconnect. DUST
+failure does not hide a ready NIGHT balance. The browser journey deliberately
+holds DUST pending and checks NIGHT plus usable wallet controls before releasing it.

@@ -198,3 +198,29 @@ test('private owner reads recheck completion, while mutation receipts survive lo
   );
   key.dispose();
 });
+
+test('authenticated owner copies Node Buffer seed and credential material', async () => {
+  const walletSeed = Buffer.alloc(64, 9);
+  const credentialId = Buffer.from([1, 2]);
+  const owner = createAuthenticatedJubjubOwner({
+    context: { ...context, credentialId },
+    authoriser: Buffer.alloc(32, 7),
+    walletSeed,
+    pure: pureCircuits,
+    companionReader: false,
+    check() {},
+  });
+  try {
+    const params = { domain: READER_SECRET_DOMAIN, context: context.networkId };
+    const original = await owner.prf.deriveSecret(params);
+    walletSeed.fill(0);
+    credentialId.fill(0);
+    assert.deepEqual(await owner.prf.deriveSecret(params), original);
+    assert.deepEqual([...(await owner.credentials.identify()).credentialId], [1, 2]);
+    walletSeed.fill(9);
+    owner.dispose();
+    assert.deepEqual([...walletSeed], Array(64).fill(9), 'dispose only clears owned bytes');
+  } finally {
+    owner.dispose();
+  }
+});

@@ -1,3 +1,13 @@
+import { snapshotGrantScope, snapshotDeviceReader } from './request-snapshots.js';
+import {
+  accountInboxReader,
+  hasInbox,
+  requireDeviceInbox,
+  type InboxLedgerView,
+  type DeviceInboxLedgerView,
+} from './inbox-view.js';
+import { jubjubWithdrawals } from './jubjub-withdrawals.js';
+import { lazyPort } from './lazy-port.js';
 import { resolveRemovalReader } from './removal-reader.js';
 import {
   PASSPORT_API_VERSION,
@@ -13,7 +23,7 @@ import {
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow, type Flow } from './flow.js';
-import { readQualifiedHolding, readVerifiedHoldings } from './holdings.js';
+import { readVerifiedHoldings } from './holdings.js';
 import { validGrantId } from './grant-publication-state.js';
 import { issueAndPublishJubjubGrant } from './jubjub-grant-settlement.js';
 import type { IssueJubjubGrantPure } from './jubjub-grant-issue.js';
@@ -29,7 +39,6 @@ import {
   resolveRegisteredReaders,
 } from './jubjub-readers.js';
 import { sealActiveReadGrants } from './read-grant-deliveries.js';
-import { prepareShieldedWithdrawal, prepareUnshieldedWithdrawal } from './unshielded-withdrawal.js';
 import type {
   AccLedgerView,
   AccountHint,
@@ -39,7 +48,6 @@ import type {
   DeviceReader,
   JubjubPureCircuits,
   PassportPorts,
-  QualifiedHoldingSource,
 } from './ports/index.js';
 
 const RETRIES = 30;
@@ -78,7 +86,7 @@ type JubjubHint = AccountHint & {
 type EnrollmentContext = {
   readonly reader: PassportDeviceReader;
   readonly entry: Uint8Array;
-  readonly initial: AccLedgerView;
+  readonly initial: DeviceInboxLedgerView;
   readonly grants: readonly ActiveReadGrantTarget[];
 };
 
@@ -161,9 +169,8 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       'JubJub accounts need a directory, viewing key, and session-capable authoriser.',
     );
   const { networkId } = network;
-  const readBinding = async () =>
-    typeof ports.binding === 'function' ? ports.binding() : ports.binding;
-  const readChain = async () => (typeof ports.chain === 'function' ? ports.chain() : ports.chain);
+  const readBinding = lazyPort(ports.binding);
+  const readChain = lazyPort(ports.chain);
   const fresh = ports.random ?? random;
   const run = async <T>(
     options: FlowOptions,
@@ -177,24 +184,11 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       throw flow.fail(error);
     }
   };
-  const read = async (record: JubjubHint, includeDevices = false): Promise<AccLedgerView> => {
-    const view = await (
-      await readChain()
-    ).readAccount(record.address, {
-      includeInbox: true,
-      ...(includeDevices && { includeDevices: true }),
-    });
-    if (!view) throw new PassportConnectorError('AccountNotFound', `No ACC at ${record.address}.`);
-    if (!view.encKey || !view.inboxEntries)
-      throw new PassportConnectorError('BindingUnsupported', 'The chain port omits the ACC inbox.');
-    if (includeDevices && !view.deviceEntries)
-      throw new PassportConnectorError('BindingUnsupported', 'The chain port omits live devices.');
-    return view;
-  };
-  const awaitDeployed = async (record: JubjubHint): Promise<AccLedgerView> => {
+  const read = accountInboxReader(readChain);
+  const awaitDeployed = async (record: JubjubHint): Promise<InboxLedgerView> => {
     for (let attempt = 0; attempt < RETRIES; attempt++) {
       const view = await (await readChain()).readAccount(record.address, { includeInbox: true });
-      if (view?.encKey && view.inboxEntries) return view;
+      if (view && hasInbox(view)) return view;
       await sleep(1000);
     }
     throw new PassportConnectorError(
@@ -217,19 +211,19 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     return undefined;
   };
   const recordPure = new WeakMap<JubjubHint, JubjubPureCircuits>();
-  const keyring = async (record: JubjubHint, view: AccLedgerView, pending: boolean) => {
+  const keyring = async (record: JubjubHint, view: InboxLedgerView, pending: boolean) => {
     const reader = await viewingKey.readerPublicKey(networkId);
     if (reader.length !== 32)
       throw new PassportConnectorError('InternalError', 'Invalid reader key.');
     const pendingEntries = record.keyEntries ?? [];
     if (pending && pendingEntries.length !== 2)
       throw new PassportConnectorError('AccountNotFound', 'The pending key entries are missing.');
-    const entries = pending ? [...view.inboxEntries!, ...pendingEntries] : [...view.inboxEntries!];
+    const entries = pending ? [...view.inboxEntries, ...pendingEntries] : [...view.inboxEntries];
     try {
       if (!entries.length) throw new Error('the ACC inbox has no sealed key entries');
       const opened = await viewingKey.openInbox(
         networkId,
-        { account: record.address, encKey: view.encKey!, envelopes: [...entries].reverse() },
+        { account: record.address, encKey: view.encKey, envelopes: [...entries].reverse() },
         // Hosted adapters may return immediately for an empty batch. A nonempty opening
         // forces the key origin to authenticate the envelope against the live enc_key.
         pending ? pendingEntries : entries.slice(0, 1),
@@ -251,7 +245,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       );
     }
   };
-  const advanced = async (record: JubjubHint, nonce: bigint): Promise<AccLedgerView> => {
+  const advanced = async (record: JubjubHint, nonce: bigint): Promise<InboxLedgerView> => {
     for (let attempt = 0; attempt < RETRIES; attempt++) {
       const view = await read(record);
       if (view.authNonce > nonce) return view;
@@ -259,7 +253,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     }
     throw new PassportConnectorError('InternalError', 'The ACC call did not appear in the ledger.');
   };
-  const awaitBooted = async (record: JubjubHint): Promise<AccLedgerView> => {
+  const awaitBooted = async (record: JubjubHint): Promise<InboxLedgerView> => {
     for (let attempt = 0; attempt < RETRIES; attempt++) {
       const view = await read(record);
       if (view.booted) return view;
@@ -313,7 +307,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     });
     return advanced(record, view.authNonce);
   };
-  const finish = async (flow: Flow, record: JubjubHint, view: AccLedgerView) => {
+  const finish = async (flow: Flow, record: JubjubHint, view: InboxLedgerView) => {
     const pure = requirePure((await readBinding()).pureCircuits);
     recordPure.set(record, pure);
     const pending = record.status === 'deployed';
@@ -337,7 +331,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       throw new PassportConnectorError('AccountNotFound', 'This passkey has no live ACC entry.');
     if (pending) {
       for (const entry of record.keyEntries ?? []) {
-        if (view.inboxEntries!.some((held) => equal(held, entry))) continue;
+        if (view.inboxEntries.some((held) => equal(held, entry))) continue;
         view = await append(flow, record, entry, view);
       }
     }
@@ -356,7 +350,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       address: active.address,
       bindingId: network.bindingId,
       scheme: 'jubjub-schnorr',
-      credentialId: active.credentialId.slice(),
+      credentialId: Uint8Array.from(active.credentialId),
       localUseCounter: counter,
     });
     return account(active);
@@ -417,11 +411,12 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     flow: Flow,
     record: JubjubHint,
     pure: JubjubPureCircuits,
-    view: AccLedgerView,
+    view: InboxLedgerView,
     reader: PassportDeviceReader,
     entry: Uint8Array,
     expectedGrants: readonly ActiveReadGrantTarget[],
   ): Promise<DeviceEnrollmentResult> => {
+    requireDeviceInbox(view);
     const ownerKey = await authoriser.devicePublicKey();
     if (!samePoint(ownerKey, record.publicKey) || findCounter(record, view) === undefined)
       throw new PassportConnectorError('NotAuthorised', 'This device no longer owns the ACC.');
@@ -430,10 +425,10 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     await keyring(record, view, false);
     const currentKeyring = {
       account: record.address,
-      encKey: view.encKey!,
-      envelopes: [...view.inboxEntries!].reverse(),
+      encKey: view.encKey,
+      envelopes: [...view.inboxEntries].reverse(),
     };
-    const opened = await viewingKey.openInbox(networkId, currentKeyring, view.inboxEntries!);
+    const opened = await viewingKey.openInbox(networkId, currentKeyring, view.inboxEntries);
     if (opened.some((item) => item?.kind === 'device' && conflictsWithReader(item.device, reader)))
       throw new PassportConnectorError(
         'DeviceRosterInvalid',
@@ -465,15 +460,16 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     view = await append(flow, record, delivery.envelope, view);
     view = await append(flow, record, delivery.registration, view);
     view = await read(record, true);
+    requireDeviceInbox(view);
     if (
-      !equal(view.encKey!, currentKeyring.encKey) ||
+      !equal(view.encKey, currentKeyring.encKey) ||
       view.deviceEpoch !== epoch ||
       ![delivery.envelope, delivery.registration].every((sealed) =>
-        view.inboxEntries!.some((held) => equal(held, sealed)),
+        view.inboxEntries.some((held) => equal(held, sealed)),
       )
     )
       throw new PassportConnectorError('EncryptionKeyMismatch', 'The key delivery did not settle.');
-    if (view.deviceEntries!.some((held) => equal(held, entry)))
+    if (view.deviceEntries.some((held) => equal(held, entry)))
       throw new PassportConnectorError('DeviceRosterInvalid', 'The joining device became live.');
     const latestGrants = await flow.step('grant.roster', () =>
       ports.readGrants!.readActiveReadGrantTargets(record.address),
@@ -536,25 +532,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           'BindingUnsupported',
           'JubJub enrollment needs a reader decoder and a complete chain-backed read-grant source.',
         );
-      if (
-        'scheme' in input &&
-        (!(input.policy?.rp_id_hash instanceof Uint8Array) ||
-          !(input.policy?.origin instanceof Uint8Array))
-      )
-        throw new PassportConnectorError(
-          'DeviceRosterInvalid',
-          'The joining WebAuthn policy is malformed.',
-        );
-      const reader: PassportDeviceReader =
-        'scheme' in input
-          ? {
-              ...input,
-              policy: {
-                rp_id_hash: input.policy.rp_id_hash.slice(),
-                origin: input.policy.origin.slice(),
-              },
-            }
-          : { ...input };
+      const reader = snapshotDeviceReader(input);
       const joining = await joiningEntry(record.address, reader);
       if (!joining.p256 && samePoint(joining.point, record.publicKey))
         throw new PassportConnectorError(
@@ -599,9 +577,9 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               'DeviceRosterInvalid',
               'The ACC changed before enrollment.',
             );
-          if (!equal(view.encKey!, initial.encKey!))
+          if (!equal(view.encKey, initial.encKey))
             throw new PassportConnectorError('EncryptionKeyMismatch', 'The ACC key changed.');
-          if (view.deviceEntries!.some((held) => equal(held, entry)))
+          if (view.deviceEntries.some((held) => equal(held, entry)))
             throw new PassportConnectorError(
               'DeviceRosterInvalid',
               'The joining device is already live.',
@@ -702,7 +680,8 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
         : (operation, descriptor) => authoriser.withKeySession!(operation, descriptor);
       return withSession(
         async () => {
-          let view = await flow.step('chain.read', () => read(record, true));
+          let view: InboxLedgerView = await flow.step('chain.read', () => read(record, true));
+          requireDeviceInbox(view);
           if (!view.booted || record.status !== 'active')
             throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
           if (view.specVersion !== 3)
@@ -731,10 +710,10 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               );
           }
           await keyring(record, view, false);
-          const oldEntries = [...view.inboxEntries!];
+          const oldEntries = [...view.inboxEntries];
           const oldKeyring = {
             account: record.address,
-            encKey: view.encKey!,
+            encKey: view.encKey,
             envelopes: [...oldEntries].reverse(),
           };
           const opened = await viewingKey.openInbox(networkId, oldKeyring, oldEntries);
@@ -743,7 +722,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               'InternalError',
               'The viewing key skipped inbox entries.',
             );
-          const liveEntries = view.deviceEntries!;
+          const liveEntries = view.deviceEntries;
           const self = { bytes: fromHex(record.address) };
           const ownEntry = pure.derive_device_entry_with_jubjub(
             self,
@@ -760,7 +739,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             if (
               view.authNonce !== initial!.authNonce ||
               view.deviceEpoch !== initial!.deviceEpoch ||
-              !equal(view.encKey!, initial!.encKey!)
+              !equal(view.encKey, initial!.encKey)
             )
               throw new PassportConnectorError(
                 revocation ? 'GrantRosterUnsettled' : 'DeviceRosterInvalid',
@@ -929,7 +908,8 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           for (const entry of [...keys.envelopes, ...keys.registrations, ...deliveryEntries])
             view = await append(flow, record, entry, view);
           view = await read(record, true);
-          if (!equal(view.encKey!, oldKeyring.encKey))
+          requireDeviceInbox(view);
+          if (!equal(view.encKey, oldKeyring.encKey))
             throw new PassportConnectorError(
               'EncryptionKeyMismatch',
               'The ACC key changed during rotation.',
@@ -947,8 +927,8 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             .filter((entry) => !equal(entry, ownEntry))
             .map(toHex)
             .sort();
-          const current = view
-            .deviceEntries!.filter((entry) => !equal(entry, latestOwnEntry))
+          const current = view.deviceEntries
+            .filter((entry) => !equal(entry, latestOwnEntry))
             .map(toHex)
             .sort();
           if (baseline.length !== current.length || baseline.some((item, i) => item !== current[i]))
@@ -963,7 +943,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             const value = toHex(entry);
             expected.set(value, (expected.get(value) ?? 0) + 1);
           }
-          for (const entry of view.inboxEntries!) {
+          for (const entry of view.inboxEntries) {
             const value = toHex(entry);
             const remaining = expected.get(value) ?? 0;
             if (!remaining)
@@ -1035,7 +1015,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             ...flow.ports,
           });
           view = await advanced(record, nonce);
-          if (!equal(view.encKey!, keys.encKey))
+          if (!equal(view.encKey, keys.encKey))
             throw new PassportConnectorError(
               'EncryptionKeyMismatch',
               'The rotated ACC key did not land.',
@@ -1058,7 +1038,8 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           };
           if (enrollment) {
             view = await read(record, true);
-            if (view.deviceEntries!.some((held) => equal(held, enrollment.entry)))
+            requireDeviceInbox(view);
+            if (view.deviceEntries.some((held) => equal(held, enrollment.entry)))
               throw new PassportConnectorError(
                 'DeviceRosterInvalid',
                 'The joining device is live.',
@@ -1080,6 +1061,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           }
           if (revocation) {
             view = await read(record, true);
+            requireDeviceInbox(view);
             const grant = await flow.step('grant.roster', () =>
               ports.grantDetails!.readGrant(record.address, revocation),
             );
@@ -1169,7 +1151,8 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           }
           if (!target) return rotation;
           view = await read(record, true);
-          if (!view.deviceEntries!.some((entry) => equal(entry, target)))
+          requireDeviceInbox(view);
+          if (!view.deviceEntries.some((entry) => equal(entry, target)))
             throw new PassportConnectorError(
               'RemovalTargetNotFound',
               'The target disappeared before the removal call.',
@@ -1242,7 +1225,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               kind: 'remove-device',
               account: record.address,
               commitmentHex: toHex(target),
-              devices: initial!.deviceEntries!.filter((entry) => !equal(entry, target)).map(toHex),
+              devices: initial!.deviceEntries.filter((entry) => !equal(entry, target)).map(toHex),
             }
           : enrollment
             ? {
@@ -1250,14 +1233,14 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
                 account: record.address,
                 commitmentHex: toHex(enrollment.entry),
                 reader: enrollment.reader,
-                devices: enrollment.initial.deviceEntries!.map(toHex),
+                devices: enrollment.initial.deviceEntries.map(toHex),
               }
             : revokeAll
               ? {
                   kind: 'revoke-all-grants',
                   account: record.address,
                   read: true,
-                  devices: initial!.deviceEntries!.map(toHex),
+                  devices: initial!.deviceEntries.map(toHex),
                 }
               : revocation
                 ? {
@@ -1265,7 +1248,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
                     account: record.address,
                     grantId: revocation,
                     read: true,
-                    devices: initial!.deviceEntries!.map(toHex),
+                    devices: initial!.deviceEntries.map(toHex),
                   }
                 : { kind: 'rotate-encryption-key' },
       );
@@ -1277,212 +1260,18 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     networkId,
     bindingId: network.bindingId,
     scheme: 'jubjub-schnorr',
-    credentialId: record.credentialId.slice(),
-    withdrawUnshielded: (request, options = {}) =>
-      run(options, async (flow) => {
-        const transfer = prepareUnshieldedWithdrawal(request);
-        const pure = requirePure((await readBinding()).pureCircuits);
-        if (network.bindingId !== 'acc-s3r1.1' || !pure.challenge_withdraw_unshielded_with_jubjub)
-          throw new PassportConnectorError(
-            'BindingUnsupported',
-            'JubJub withdrawal needs the pinned challenge circuit.',
-          );
-        if (record.status !== 'active')
-          throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
-        recordPure.set(record, pure);
-        return authoriser.withKeySession!(
-          async () => {
-            const pk = await authoriser.devicePublicKey();
-            if (!samePoint(pk, record.publicKey))
-              throw new PassportConnectorError(
-                'NotAuthorised',
-                'The selected device does not own this ACC.',
-              );
-            const view = await flow.step('chain.read', () => read(record));
-            if (!view.booted || view.specVersion !== 3)
-              throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
-            const counter = await flow.step('counter.scan', async () => findCounter(record, view));
-            if (counter === undefined)
-              throw new PassportConnectorError(
-                'NotAuthorised',
-                'This device has no live ACC entry.',
-              );
-            const self = { bytes: fromHex(record.address) };
-            const circuit = 'withdraw_unshielded_with_jubjub';
-            const signed = await flow.step('passkey.sign', () =>
-              authoriser.authorise({
-                account: record.address,
-                circuit,
-                args: [transfer.color, transfer.amount, transfer.recipient],
-                witnessValues: [],
-                authNonce: view.authNonce,
-                useCounter: counter,
-                challenge: (sigR, grindNonce) =>
-                  pure.challenge_withdraw_unshielded_with_jubjub!(
-                    self,
-                    sigR,
-                    record.publicKey,
-                    transfer.color,
-                    transfer.amount,
-                    transfer.recipient,
-                    view.authNonce,
-                    grindNonce,
-                  ),
-              }),
-            );
-            if (
-              signed.scheme !== 'jubjub-schnorr' ||
-              signed.useCounter !== counter ||
-              !samePoint(signed.pk, record.publicKey)
-            )
-              throw new PassportConnectorError(
-                'NotAuthorised',
-                'The signature names another device.',
-              );
-            flow.checkpoint();
-            const tx = await (
-              await readChain()
-            ).call({
-              address: record.address,
-              circuit,
-              args: [
-                transfer.color,
-                transfer.amount,
-                transfer.recipient,
-                record.publicKey,
-                counter,
-                signed.sigR,
-                signed.sigS,
-                signed.grindNonce,
-              ],
-              ...flow.ports,
-            });
-            return { ...tx, nextUseCounter: counter + 1n };
-          },
-          {
-            kind: 'withdraw-unshielded',
-            account: record.address,
-            color: request.color,
-            amount: request.amount,
-            recipient: request.recipient,
-          },
-        );
-      }),
-    withdrawShielded: (request, options = {}) =>
-      run(options, async (flow) => {
-        const transfer = prepareShieldedWithdrawal(request);
-        const qualified = ports.holdings as QualifiedHoldingSource | undefined;
-        const pure = requirePure((await readBinding()).pureCircuits);
-        if (
-          network.bindingId !== 'acc-s3r1.1' ||
-          !pure.challenge_withdraw_shielded_with_jubjub ||
-          !qualified?.selectQualifiedHeldCoins
-        )
-          throw new PassportConnectorError(
-            'BindingUnsupported',
-            'JubJub shielded withdrawal needs the pinned challenge and qualified holdings.',
-          );
-        if (record.status !== 'active')
-          throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
-        recordPure.set(record, pure);
-        return authoriser.withKeySession!(
-          async () => {
-            const pk = await authoriser.devicePublicKey();
-            if (!samePoint(pk, record.publicKey))
-              throw new PassportConnectorError(
-                'NotAuthorised',
-                'The selected device does not own this ACC.',
-              );
-            const view = await flow.step('chain.read', () => read(record));
-            if (!view.booted || view.specVersion !== 3)
-              throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
-            const counter = await flow.step('counter.scan', async () => findCounter(record, view));
-            if (counter === undefined)
-              throw new PassportConnectorError(
-                'NotAuthorised',
-                'This device has no live ACC entry.',
-              );
-            const chainPort = await readChain();
-            const coin = await readQualifiedHolding(
-              {
-                account: record.address,
-                keyring: {
-                  account: record.address,
-                  encKey: view.encKey!,
-                  envelopes: [...view.inboxEntries!].reverse(),
-                },
-                inboxIndex: transfer.inboxIndex,
-                color: transfer.color,
-              },
-              { networkId, chain: chainPort, viewingKey, holdings: qualified },
-            );
-            if (transfer.amount !== coin.value)
-              throw new PassportConnectorError(
-                'TransferInvalid',
-                'A shielded owner withdrawal must spend the selected coin exactly until change settlement is available.',
-              );
-            const self = { bytes: fromHex(record.address) };
-            const circuit = 'withdraw_shielded_with_jubjub';
-            const signed = await flow.step('passkey.sign', () =>
-              authoriser.authorise({
-                account: record.address,
-                circuit,
-                args: [transfer.recipient, transfer.color, transfer.amount],
-                witnessValues: [coin],
-                authNonce: view.authNonce,
-                useCounter: counter,
-                challenge: (sigR, grindNonce) =>
-                  pure.challenge_withdraw_shielded_with_jubjub!(
-                    self,
-                    sigR,
-                    record.publicKey,
-                    transfer.recipient,
-                    transfer.color,
-                    transfer.amount,
-                    coin,
-                    view.authNonce,
-                    grindNonce,
-                  ),
-              }),
-            );
-            if (
-              signed.scheme !== 'jubjub-schnorr' ||
-              signed.useCounter !== counter ||
-              !samePoint(signed.pk, record.publicKey)
-            )
-              throw new PassportConnectorError(
-                'NotAuthorised',
-                'The signature names another device.',
-              );
-            flow.checkpoint();
-            const tx = await chainPort.call({
-              address: record.address,
-              circuit,
-              args: [
-                transfer.recipient,
-                transfer.color,
-                transfer.amount,
-                record.publicKey,
-                counter,
-                signed.sigR,
-                signed.sigS,
-                signed.grindNonce,
-              ],
-              heldCoin: coin,
-              ...flow.ports,
-            });
-            return { ...tx, nextUseCounter: counter + 1n };
-          },
-          {
-            kind: 'withdraw-shielded',
-            account: record.address,
-            color: request.color,
-            amount: request.amount,
-            recipient: request.recipient,
-            inboxIndex: request.inboxIndex,
-          },
-        );
-      }),
+    credentialId: Uint8Array.from(record.credentialId),
+    ...jubjubWithdrawals({
+      record,
+      ports: { ...ports, viewingKey },
+      readBinding,
+      readChain,
+      requirePure,
+      read,
+      findCounter,
+      recordPure,
+      run,
+    }),
     async state() {
       const view = await read(record);
       return {
@@ -1526,6 +1315,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       rotateViewingKey(record, options, commitmentHex) as Promise<DeviceRemovalResult>,
     addDevice: (reader, options) => addDevice(record, reader, options),
     issueGrant: async (scope, options = {}) => {
+      scope = snapshotGrantScope(scope);
       if (
         !ports.records ||
         !ports.grants ||
@@ -1704,7 +1494,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
         // The pinned Lace v1 coin-description format is 192 bytes with the 01 01 prefix.
         // Device envelopes and grant records need no owner key ceremony for an empty read.
         if (
-          !view.inboxEntries!.some(
+          !view.inboxEntries.some(
             (entry) => entry.length === 192 && entry[0] === 1 && entry[1] === 1,
           )
         )
@@ -1713,7 +1503,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           account: record.address,
           networkId,
           bindingId: network.bindingId,
-          credentialId: record.credentialId.slice(),
+          credentialId: Uint8Array.from(record.credentialId),
         });
         if (routine)
           return readVerifiedHoldings(
@@ -1721,8 +1511,8 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               account: record.address,
               keyring: {
                 account: record.address,
-                encKey: view.encKey!,
-                envelopes: [...view.inboxEntries!].reverse(),
+                encKey: view.encKey,
+                envelopes: [...view.inboxEntries].reverse(),
               },
             },
             {
@@ -1746,8 +1536,8 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
                 account: record.address,
                 keyring: {
                   account: record.address,
-                  encKey: view.encKey!,
-                  envelopes: [...view.inboxEntries!].reverse(),
+                  encKey: view.encKey,
+                  envelopes: [...view.inboxEntries].reverse(),
                 },
               },
               {
@@ -1783,7 +1573,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
             const record: JubjubHint = {
               address,
               scheme: 'jubjub-schnorr',
-              credentialId: identity.credentialId.slice(),
+              credentialId: Uint8Array.from(identity.credentialId),
               publicKey,
               status: 'active',
             };
@@ -1807,10 +1597,10 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               networkId,
               {
                 account: address,
-                encKey: view.encKey!,
-                envelopes: [...view.inboxEntries!].reverse(),
+                encKey: view.encKey,
+                envelopes: [...view.inboxEntries].reverse(),
               },
-              view.inboxEntries!,
+              view.inboxEntries,
             );
             const matching = opened.filter(
               (entry) =>
@@ -1839,7 +1629,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
               address,
               bindingId: network.bindingId,
               scheme: 'jubjub-schnorr',
-              credentialId: record.credentialId.slice(),
+              credentialId: Uint8Array.from(record.credentialId),
               localUseCounter: counter,
             });
             return account(record);

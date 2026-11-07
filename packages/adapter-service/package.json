@@ -39,7 +39,8 @@
   ],
   "dependencies": {
     "@input-output-hk/mn-passport-account": "workspace:*",
-    "@input-output-hk/mn-passport-protocol": "workspace:*"
+    "@input-output-hk/mn-passport-protocol": "workspace:*",
+    "zod": "4.1.12"
   },
   "license": "Apache-2.0",
   "repository": {

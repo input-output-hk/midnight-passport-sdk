@@ -123,6 +123,11 @@ jobs:
       - uses: ./.github/actions/prepare-workspace
       - name: Fresh package outputs
         run: pnpm exec tsc -b tsconfig.build.json
+      - name: Browser worker and IndexedDB contracts
+        if: matrix.arm == 'p256'
+        env:
+          PASSPORT_BACKGROUND_OUTPUT: ${{ runner.temp }}/background-quality.json
+        run: pnpm test:background
       - name: Actual Chromium UI with isolated synthetic account and chain drivers
         env:
           PASSPORT_DEMO_JOURNEY_OUTPUT: ${{ runner.temp }}/demo-journeys.json
@@ -134,6 +139,9 @@ jobs:
         run: |
           if test -f "$PASSPORT_DEMO_JOURNEY_OUTPUT"; then
             cat "$PASSPORT_DEMO_JOURNEY_OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if test -f "$RUNNER_TEMP/background-quality.json"; then
+            cat "$RUNNER_TEMP/background-quality.json" >> "$GITHUB_STEP_SUMMARY"
           fi
 
   package_tests:

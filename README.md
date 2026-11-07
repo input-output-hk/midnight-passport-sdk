@@ -30,6 +30,10 @@ prototype API. Start with [Install and connect](./docs/site/getting-started.md) 
 or the [demo use cases](./docs/site/use-cases.md) for local evaluation. Registry publication
 is tracked separately from documentation deployment.
 
+The [package quality strategy](./docs/site/quality.md) defines coverage, type safety,
+worker execution and release gates. [Secret custody](./docs/site/secret-storage.md)
+is an optional host seam; its browser reference is explicitly plaintext.
+
 The design lives in [`docs/`](./docs):
 
 - [`sdk-requirements.md`](./docs/sdk-requirements.md) — what the SDK must do, and why.

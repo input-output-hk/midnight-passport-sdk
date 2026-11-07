@@ -173,7 +173,9 @@ export function recipeDeviceKeyring(source: PrfKeySource): DeviceKeyring {
   ): Promise<AccountKeys> => {
     const secrets: AccountSecrets = {
       secret: x25519.utils.randomSecretKey(),
-      rosterKey: rosterKey?.slice() ?? crypto.getRandomValues(new Uint8Array(KEY_LENGTH)),
+      rosterKey: rosterKey
+        ? Uint8Array.from(rosterKey)
+        : crypto.getRandomValues(new Uint8Array(KEY_LENGTH)),
     };
     try {
       const recipients = [self, ...readers];

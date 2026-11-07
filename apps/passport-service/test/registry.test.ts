@@ -45,7 +45,7 @@ async function registryFetch(url: string, init?: RequestInit): Promise<Response>
   }
 }
 
-test('malformed ids or bodies are refused with 400', async (t) => {
+test('malformed ids or bodies are refused with 400', async () => {
   const { base, server } = await start();
   try {
     assert.equal(
@@ -102,8 +102,8 @@ test('malformed ids or bodies are refused with 400', async (t) => {
   }
 });
 
-test('identical deployed re-PUT returns 204', async (t) => {
-  const { base, server, config } = await start();
+test('identical deployed re-PUT returns 204', async () => {
+  const { base, server } = await start();
   try {
     const put1 = await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
@@ -125,8 +125,8 @@ test('identical deployed re-PUT returns 204', async (t) => {
   }
 });
 
-test('deployed to active transition returns 204 and updates status', async (t) => {
-  const { base, server, config } = await start();
+test('deployed to active transition returns 204 and updates status', async () => {
+  const { base, server } = await start();
   try {
     await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
@@ -149,8 +149,8 @@ test('deployed to active transition returns 204 and updates status', async (t) =
   }
 });
 
-test('identical active re-PUT returns 204', async (t) => {
-  const { base, server, config } = await start();
+test('identical active re-PUT returns 204', async () => {
+  const { base, server } = await start();
   try {
     const activeRecord = { ...record, status: 'active' as const };
     await registryFetch(`${base}/accounts/undeployed/0a0b`, {
@@ -169,8 +169,8 @@ test('identical active re-PUT returns 204', async (t) => {
   }
 });
 
-test('active to deployed transition returns 409 and record stays active', async (t) => {
-  const { base, server, config } = await start();
+test('active to deployed transition returns 409 and record stays active', async () => {
+  const { base, server } = await start();
   try {
     const activeRecord = { ...record, status: 'active' as const };
     await registryFetch(`${base}/accounts/undeployed/0a0b`, {
@@ -193,8 +193,8 @@ test('active to deployed transition returns 409 and record stays active', async 
   }
 });
 
-test('different address over existing record returns 409 and GET is unchanged', async (t) => {
-  const { base, server, config } = await start();
+test('different address over existing record returns 409 and GET is unchanged', async () => {
+  const { base, server } = await start();
   try {
     await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
@@ -216,8 +216,8 @@ test('different address over existing record returns 409 and GET is unchanged', 
   }
 });
 
-test('different salt over existing record returns 409', async (t) => {
-  const { base, server, config } = await start();
+test('different salt over existing record returns 409', async () => {
+  const { base, server } = await start();
   try {
     await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
@@ -236,8 +236,8 @@ test('different salt over existing record returns 409', async (t) => {
   }
 });
 
-test('deployed to active with changed salt returns 409', async (t) => {
-  const { base, server, config } = await start();
+test('deployed to active with changed salt returns 409', async () => {
+  const { base, server } = await start();
   try {
     await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
@@ -256,8 +256,8 @@ test('deployed to active with changed salt returns 409', async (t) => {
   }
 });
 
-test('same credential on testnet returns 204, with undeployed untouched', async (t) => {
-  const { base, server, config } = await start();
+test('same credential on testnet returns 204, with undeployed untouched', async () => {
+  const { base, server } = await start();
   try {
     await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
@@ -281,8 +281,8 @@ test('same credential on testnet returns 204, with undeployed untouched', async 
   }
 });
 
-test('identical record with different key order returns 204', async (t) => {
-  const { base, server, config } = await start();
+test('identical record with different key order returns 204', async () => {
+  const { base, server } = await start();
   try {
     await registryFetch(`${base}/accounts/undeployed/0a0b`, {
       method: 'PUT',
@@ -311,7 +311,7 @@ test('identical record with different key order returns 204', async (t) => {
   }
 });
 
-test('409 persists after a restart', async (t) => {
+test('409 persists after a restart', async () => {
   const first = await start();
   try {
     await registryFetch(`${first.base}/accounts/undeployed/0a0b`, {
@@ -337,7 +337,7 @@ test('409 persists after a restart', async (t) => {
   }
 });
 
-test('corrupt registry file returns 500, excludes file contents, and leaves file unchanged', async (t) => {
+test('corrupt registry file returns 500, excludes file contents, and leaves file unchanged', async () => {
   const config = testConfig();
   const corruptContent = 'not valid json';
   writeFileSync(config.registryFile, corruptContent);
@@ -363,7 +363,7 @@ test('corrupt registry file returns 500, excludes file contents, and leaves file
   }
 });
 
-test('records survive a restart', async (t) => {
+test('records survive a restart', async () => {
   const first = await start();
   try {
     await registryFetch(`${first.base}/accounts/undeployed/0a0b`, {

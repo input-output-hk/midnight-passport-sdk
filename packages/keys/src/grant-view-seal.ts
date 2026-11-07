@@ -105,8 +105,8 @@ export async function openGrantView(
     throw new Error('live ACC enc_key must be 32 bytes');
   const grantId = bytes(request.grantId);
   const account = bytes(request.account);
-  const seal = request.seal.slice();
-  const expectedEncKey = request.expectedEncKey.slice();
+  const seal = Uint8Array.from(request.seal);
+  const expectedEncKey = Uint8Array.from(request.expectedEncKey);
   if (seal.length !== GRANT_VIEW_SEAL_LENGTH || seal[0] !== 1 || seal[1] !== 1) return null;
   let opened: Uint8Array | undefined;
   try {

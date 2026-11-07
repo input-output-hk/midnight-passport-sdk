@@ -141,3 +141,14 @@ remains available for audits. Use the [service](https://github.com/input-output-
 [funding](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md)
 and [key](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-key-service/README.md)
 image guides for current mount, wallet and network requirements.
+
+## Source quality gates for the next preview
+
+Before packing, release verification now enforces [80% all-files package coverage](../quality/)
+globally and per package. Its installed-consumer smoke additionally compiles the
+new portable APIs without DOM ambient types, compiles browser adapters with DOM
+types, exercises their Node imports and builds the browser bundle. Brands have
+negative type checks. The runtime-identity checker ignores unrelated NODE_PATH
+and global packages so a missing installed dependency cannot be borrowed from a
+developer workspace. The [quality backlog](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/sdk-quality/README.md)
+records local acceptance and explicit limits; these APIs are absent from RC7.

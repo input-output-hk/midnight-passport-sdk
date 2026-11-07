@@ -84,8 +84,8 @@ export async function readQualifiedHolding(
   )
     throw new PassportConnectorError('TransferInvalid', 'The qualified coin is malformed.');
   return {
-    nonce: coin.nonce.slice(),
-    color: coin.color.slice(),
+    nonce: Uint8Array.from(coin.nonce),
+    color: Uint8Array.from(coin.color),
     value: coin.value,
     mt_index: coin.mt_index,
   };

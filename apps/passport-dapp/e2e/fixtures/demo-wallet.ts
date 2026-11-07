@@ -4,6 +4,7 @@ import { Buffer } from 'buffer';
 export async function createDevWallet(_seed: Uint8Array, config: { networkId: string }) {
   const fixture = window as unknown as {
     __demoWalletStarts?: number;
+    __demoHoldDust?: () => Promise<void>;
     __demoHoldWalletStop?: () => Promise<void>;
   };
   fixture.__demoWalletStarts = (fixture.__demoWalletStarts ?? 0) + 1;
@@ -25,7 +26,10 @@ export async function createDevWallet(_seed: Uint8Array, config: { networkId: st
       ).json();
       return { ['00'.repeat(32)]: BigInt(s.wallet) };
     },
-    getDustBalance: async () => ({ balance: 0n, cap: 0n }),
+    getDustBalance: async () => {
+      await fixture.__demoHoldDust?.();
+      return { balance: 0n, cap: 0n };
+    },
   };
   return {
     descriptor: { connect: async () => api },

@@ -297,8 +297,8 @@ export async function runRecoverableShieldedDeposit(
     if (first.entries.length >= MAX_INBOX)
       fail('Deposit inbox exceeds the supported recovery bound.');
     const entry = await ports.sealCoin(fromHex(first.encKey), {
-      nonce: input.nonce.slice(),
-      color: input.color.slice(),
+      nonce: Uint8Array.from(input.nonce),
+      color: Uint8Array.from(input.color),
       value: input.amount,
     });
     if (entry.length !== 192) fail('The coin sealer returned a malformed entry.');

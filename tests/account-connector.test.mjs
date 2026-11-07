@@ -16,8 +16,8 @@ const eq = (x, y) => x.length === y.length && x.every((v, i) => v === y[i]);
 const pureCircuits = {
   /** @param {Uint8Array} salt @param {Pk} pk */
   derive_boot_commitment_with_p256: (salt, pk) => enc(`boot:${salt[0]}:${pk.x}`),
-  /** @param {unknown} self @param {Pk} pk @param {unknown} _p @param {bigint} epoch @param {bigint} counter */
-  derive_device_entry_with_p256: (self, pk, _p, epoch, counter) =>
+  /** @param {unknown} _self @param {Pk} pk @param {unknown} _p @param {bigint} epoch @param {bigint} counter */
+  derive_device_entry_with_p256: (_self, pk, _p, epoch, counter) =>
     enc(`entry:${pk.x}:${epoch}:${counter}`),
   /** @param {unknown} _self @param {Pk} pk @param {Uint8Array} key @param {bigint} nonce */
   challenge_rotate_enc_key_with_p256: (_self, pk, key, nonce) =>
@@ -426,4 +426,18 @@ test('the bridge asks the encryption key at open for the passkey identify proved
   await assert.rejects(a.createPassportConnector(w.seams).openAccount(), {
     code: 'EncryptionKeyMismatch',
   });
+});
+
+test('legacy rotation snapshots Node Buffer before async ledger reads', async () => {
+  const w = world();
+  const account = await a.createPassportConnector(w.seams).createAccount({ userName: 'u' });
+  const key = Buffer.from([4]);
+  const pending = account.rotateEncryptionKey(key);
+  key.fill(9);
+  await pending;
+  assert.deepEqual(
+    w.log.filter((l) => l[0] === 'sign').map((l) => l[1]),
+    ['rot:11:4:0'],
+  );
+  assert.equal(key[0], 9);
 });

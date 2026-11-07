@@ -31,8 +31,8 @@ import { Buffer } from 'buffer';
 import { parseDeviceHandoff, prepareDeviceHandoff } from './device-handoff.js';
 import { setOperationTraceSink, tracedFetch, traceOperation } from './operation-trace.js';
 import { createUi } from './ui.js';
-import type { DevWallet, DevWalletConnectedApi } from './wallet/dev-wallet.js';
-import { readWalletBalances } from './wallet/balances.js';
+import type { DevWallet } from './wallet/dev-wallet.js';
+import { createWalletPresentation } from './wallet/presentation.js';
 import { walletSeed } from './wallet/seed.js';
 import { beforeDemoCeremony, finishDemoConsent, reviewDemoAction } from './consent.js';
 import { showDemoCapabilities } from './capabilities.js';
@@ -214,6 +214,13 @@ showDemoNameService(createMockNameService(network), network);
 
 let api: PassportConnectorAPI | undefined;
 let devWallet: DevWallet | undefined;
+const walletPresentation = createWalletPresentation({
+  network,
+  showWallet: ui.showWallet,
+  record,
+  status,
+  trace: traceOperation,
+});
 let account: PassportAccount | undefined;
 let primaryAccount: PassportAccount | undefined;
 let authenticatedAccount: PassportAccount | undefined;
@@ -1275,8 +1282,7 @@ ui.on('walletRefresh', async () => {
   if (!devWallet) throw new Error('Connect the built-in wallet before refreshing its balance.');
   status('Waiting for wallet sync to refresh balances…');
   const w = await devWallet.descriptor.connect(network);
-  const balances = await ui.attempt('balances', () => readAndRecordWalletBalances(w));
-  showWalletBalanceResult(balances, 'refresh');
+  await ui.attempt('balances', () => walletPresentation.refresh(w, 'refresh'));
 });
 async function connectBuiltInWallet(): Promise<void> {
   checkRoutineReview();
@@ -1323,6 +1329,7 @@ async function connectBuiltInWallet(): Promise<void> {
     const { createDevWallet } = await import('./wallet/dev-wallet.js');
     const previousWallet = devWallet;
     devWallet = undefined;
+    walletPresentation.invalidate();
     ui.clearWallet();
     await previousWallet?.stop();
     lease?.();
@@ -1360,50 +1367,5 @@ async function connectBuiltInWallet(): Promise<void> {
   ui.showWallet({ unshieldedAddress: unshielded.unshieldedAddress, dustAddress: dust.dustAddress });
   status('Built-in wallet connected; waiting for it to sync to read the balances…');
   // Reads that can time out while the wallet itself works: a failure marks only this step.
-  const balances = await ui.attempt('balances', () => readAndRecordWalletBalances(w));
-  showWalletBalanceResult(balances, 'connect');
-}
-
-async function readAndRecordWalletBalances(w: DevWalletConnectedApi) {
-  const [snapshot, shielded] = await Promise.all([readWalletBalances(w), w.getShieldedAddresses()]);
-  ui.showWallet({ shieldedAddress: shielded.shieldedAddress });
-  const { unshieldedBalances, dust: dustBalance, balanceUpdatedAt } = snapshot;
-  record('balances', { shielded, ...snapshot });
-  traceOperation('wallet.balances', {
-    networkId: network,
-    shieldedAddress: shielded.shieldedAddress,
-    unshieldedBalances: Object.fromEntries(
-      Object.entries(unshieldedBalances).map(([color, value]) => [color, value.toString()]),
-    ),
-    dustBalance: dustBalance.balance.toString(),
-    dustCap: dustBalance.cap.toString(),
-    balanceUpdatedAt,
-  });
-  return snapshot;
-}
-
-function showWalletBalanceResult(
-  balances: Awaited<ReturnType<typeof readWalletBalances>> | undefined,
-  action: 'connect' | 'refresh',
-) {
-  if (balances) {
-    ui.showWallet({ ...balances, balanceError: undefined });
-    status(
-      action === 'connect'
-        ? 'Built-in wallet connected through the DApp Connector API; balances read. Refresh after receiving funds.'
-        : 'Built-in wallet balance snapshot refreshed. Refresh again if the indexer has not yet observed incoming funds.',
-    );
-  } else {
-    ui.showWallet({
-      unshieldedBalances: undefined,
-      dust: undefined,
-      balanceUpdatedAt: undefined,
-      balanceError: 'See the event log; retry Refresh wallet balance.',
-    });
-    status(
-      action === 'connect'
-        ? 'Built-in wallet connected, but its balances could not be read (see the event log).'
-        : 'Wallet balance refresh failed; the wallet remains connected. See the event log and retry.',
-    );
-  }
+  await ui.attempt('balances', () => walletPresentation.refresh(w, 'connect'));
 }

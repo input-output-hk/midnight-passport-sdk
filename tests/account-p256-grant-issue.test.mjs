@@ -222,3 +222,24 @@ test('P-256 read issue requires a rotation hook before key consent', async () =>
   );
   assert.deepEqual(world.calls, []);
 });
+
+test('grant issue snapshots caller scope before async review and journal staging', async () => {
+  const w = fixture();
+  const mutable = {
+    ...scope,
+    grantee: { ...scope.grantee },
+    recipient: { ...scope.recipient },
+    operations: [...scope.operations],
+  };
+  const session = w.ports.authoriser.withKeySession;
+  assert.ok(session);
+  w.ports.authoriser.withKeySession = async (operation, descriptor) => {
+    mutable.cap = '1';
+    mutable.grantee.publicKey = 'ff'.repeat(32);
+    mutable.operations.length = 0;
+    assert.deepEqual(descriptor?.scope, scope);
+    return session(operation, descriptor);
+  };
+  await issueP256GrantCall({ ...input, scope: mutable }, w.ports);
+  assert.deepEqual(w.staged[0]?.scope, scope);
+});

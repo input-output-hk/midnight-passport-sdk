@@ -1,194 +1,127 @@
-// The built-in wallet: a stand-in for lace-sdk's Midnight wallet, shaped like the DApp Connector
-// API 4.1.0 (spec §5.5). It is read-only: it never proves or pays, because the Passport flows are
-// sponsored by the service. The construction mirrors the reference `createWallet`
-// (experiments/acc-0.35/work/acc-45721e1/contract/src/node/wallet.ts), minus its Node-only pieces
-// (`ws`, `node:http`, Level storage): the browser's own WebSocket serves the indexer subscription.
-//
-// Lines marked "FROM D.TS" were taken from the TypeScript declarations of
-// @midnightntwrk/wallet-sdk-facade 5.0.0-rc.0 and its shielded, unshielded and dust wallet
-// packages, not from a runtime probe (R22: the localnet was unavailable). They are to be confirmed
-// by the runtime probe at the localnet session (see the task-12 report).
-import '@midnightntwrk/ledger-v9'; // keeps the ledger WASM initialised before the facade uses it, as in the reference
-import { NoOpTransactionHistoryStorage } from '@midnightntwrk/wallet-sdk-abstractions';
-import { MidnightBech32m } from '@midnightntwrk/wallet-sdk-address-format';
-import { DustWallet } from '@midnightntwrk/wallet-sdk-dust-wallet';
-import { type FacadeState, WalletFacade } from '@midnightntwrk/wallet-sdk-facade';
-import { HDWallet, Roles } from '@midnightntwrk/wallet-sdk-hd';
-import { ShieldedWallet } from '@midnightntwrk/wallet-sdk-shielded';
+// Browser wallet SDK work lives in a dedicated worker. Node qualification uses the
+// same runtime directly; UI and credential APIs are never imported into that runtime.
 import {
-  createKeystore,
-  PublicKey,
-  UnshieldedWallet,
-} from '@midnightntwrk/wallet-sdk-unshielded-wallet';
-import * as Rx from 'rxjs';
-import { devWalletSession, walletApiError as apiError } from './lifecycle.ts';
+  BackgroundError,
+  createBackgroundClient,
+} from '@input-output-hk/mn-passport-account/background';
+import { browserBackgroundPort } from '@input-output-hk/mn-passport-adapter-browser/background';
+import { devWalletSession, walletApiError } from './lifecycle.js';
+import type { DevWallet, DevWalletConfig, DevWalletConnectedApi } from './contracts.js';
+export type * from './contracts.js';
 
-/** The service's `/config` members the wallet needs. */
-export interface DevWalletConfig {
-  networkId: string;
-  indexerUri: string;
-  indexerWsUri: string;
-  nodeUri: string;
-}
-
-/** The DApp Connector API's `APIError` shape: `type`, `code` and `reason`. */
-export type DevWalletErrorCode = 'InternalError' | 'InvalidRequest' | 'Rejected' | 'Disconnected';
-export interface DevWalletApiError extends Error {
-  type: 'DAppConnectorAPIError';
-  code: DevWalletErrorCode;
-  reason: string;
-}
-/** How long a balance read waits for a synced state before it fails. */
-const SYNC_TIMEOUT_MS = 120_000;
-
-export interface DevWalletConnectedApi {
-  getConfiguration(): Promise<{
-    indexerUri: string;
-    indexerWsUri: string;
-    substrateNodeUri: string;
-    networkId: string;
-  }>;
-  getConnectionStatus(): Promise<{ status: 'connected'; networkId: string }>;
-  getShieldedAddresses(): Promise<{
-    shieldedAddress: string;
-    shieldedCoinPublicKey: string;
-    shieldedEncryptionPublicKey: string;
-  }>;
-  getUnshieldedAddress(): Promise<{ unshieldedAddress: string }>;
-  getDustAddress(): Promise<{ dustAddress: string }>;
-  getUnshieldedBalances(): Promise<Record<string, bigint>>;
-  getDustBalance(): Promise<{ balance: bigint; cap: bigint }>;
-}
-
-export interface DevWalletDescriptor {
-  name: string;
-  apiVersion: '4.1.0';
-  rdns: string;
-  connect(networkId: string): Promise<DevWalletConnectedApi>;
-}
-
-export interface DevWallet {
-  descriptor: DevWalletDescriptor;
-  stop(): Promise<void>;
-}
-
-/**
- * Builds the wallet from a BIP-32 master seed and starts its sync against the service's indexer
- * and node. In the page that seed is the passkey's 64-byte BIP-39 seed (Lace recipe v1,
- * `passkeySeed`), through `HDWallet.fromSeed`. Lace has no phrase-derived Midnight wallet in
- * scope yet, so this is the prototype's stand-in for one. The seed is used for key derivation
- * only; nothing here logs or returns it.
- */
 export async function createDevWallet(
   seed: Uint8Array,
   config: DevWalletConfig,
 ): Promise<DevWallet> {
-  const hd = HDWallet.fromSeed(seed);
-  if (hd.type !== 'seedOk') throw new Error('invalid wallet seed');
-  const derived = hd.hdWallet
-    .selectAccount(0)
-    .selectRoles([Roles.Zswap, Roles.NightExternal, Roles.Dust])
-    .deriveKeysAt(0);
-  if (derived.type !== 'keysDerived') throw new Error('wallet key derivation failed');
-  hd.hdWallet.clear();
-  const keys = derived.keys;
-
-  const unshieldedKeystore = createKeystore(
-    { kind: 'schnorr', secret: keys[Roles.NightExternal] },
-    config.networkId,
-  );
-  const facade = await WalletFacade.init({
-    configuration: {
-      networkId: config.networkId,
-      indexerClientConnection: {
-        indexerHttpUrl: config.indexerUri,
-        indexerWsUrl: config.indexerWsUri,
-      },
-      // Required by the configuration type; never contacted, since this wallet proves nothing.
-      provingServerUrl: new URL('http://localhost:6300'),
-      relayURL: new URL(config.nodeUri.replace(/^http/, 'ws')),
-      costParameters: { feeBlocksMargin: 100 },
-      txHistoryStorage: new NoOpTransactionHistoryStorage(),
-    },
-    shielded: (c) => ShieldedWallet(c).startWithSeed(keys[Roles.Zswap]),
-    unshielded: (c) =>
-      UnshieldedWallet(c).startWithPublicKey(PublicKey.fromKeyStore(unshieldedKeystore)),
-    dust: (c) => DustWallet(c).startWithSeed(keys[Roles.Dust]),
-  });
-  try {
-    await facade.start({
-      shielded: keys[Roles.Zswap],
-      unshielded: keys[Roles.NightExternal],
-      dust: keys[Roles.Dust],
-    });
-  } catch (e) {
-    // Release the indexer connections the half-started wallets opened, then report the failure.
-    await facade.stop().catch(() => undefined);
-    throw e;
+  if (typeof window === 'undefined') {
+    const { createWalletRuntime } = await import('./runtime.js');
+    return createWalletRuntime(seed, config);
   }
-
-  // Addresses derive from the keys alone, so the first emission answers them. Balances wait for a
-  // synced state; the throttle is the reference's: isSynced flaps true, false, true early in sync,
-  // and sampling every 5 s waits for a stable state.
-  const current = (): Promise<FacadeState> => Rx.firstValueFrom(facade.state());
-  const synced = (): Promise<FacadeState> =>
-    Rx.firstValueFrom(
-      facade.state().pipe(
-        Rx.throttleTime(5_000),
-        Rx.filter((s) => s.isSynced),
-        // throttleTime can drop the emission that carries isSynced, so never wait unboundedly.
-        Rx.timeout({
-          first: SYNC_TIMEOUT_MS,
-          with: () =>
-            Rx.throwError(() =>
-              apiError(
-                'InternalError',
-                `the wallet did not sync within ${SYNC_TIMEOUT_MS / 1000} s`,
-              ),
-            ),
-        }),
-      ),
-    );
-  const bech32 = (address: Parameters<typeof MidnightBech32m.encode>[1]): string =>
-    MidnightBech32m.encode(config.networkId, address).asString();
-
-  const connected: DevWalletConnectedApi = {
-    getConfiguration: async () => ({
-      indexerUri: config.indexerUri,
-      indexerWsUri: config.indexerWsUri,
-      substrateNodeUri: config.nodeUri,
-      networkId: config.networkId,
-    }),
-    getConnectionStatus: async () => ({ status: 'connected', networkId: config.networkId }),
-    getShieldedAddresses: async () => {
-      const shielded = (await current()).shielded;
-      return {
-        // FROM D.TS: ShieldedWalletState.address (ShieldedAddress), .coinPublicKey, .encryptionPublicKey
-        shieldedAddress: bech32(shielded.address),
-        shieldedCoinPublicKey: shielded.coinPublicKey.toHexString(),
-        shieldedEncryptionPublicKey: shielded.encryptionPublicKey.toHexString(),
-      };
+  const worker = new Worker(new URL('./worker.ts', import.meta.url), {
+    type: 'module',
+    name: 'passport-wallet',
+  });
+  const client = createBackgroundClient(
+    browserBackgroundPort(worker, () => worker.terminate()),
+    {
+      channel: 'passport-wallet',
+      timeoutMs: 150_000,
     },
-    // FROM D.TS: UnshieldedWalletState.address (UnshieldedAddress), encoded as mn_addr_<network>1…
-    getUnshieldedAddress: async () => ({
-      unshieldedAddress: bech32((await current()).unshielded.address),
-    }),
-    // FROM D.TS: DustWalletState.address (DustAddress), encoded as mn_dust_<network>1…
-    getDustAddress: async () => ({ dustAddress: bech32((await current()).dust.address) }),
-    // FROM D.TS: UnshieldedWalletState.balances (Record<RawTokenType, bigint>)
-    getUnshieldedBalances: async () => ({ ...(await synced()).unshielded.balances }),
-    // FROM D.TS: DustWalletState.balance(time: Date): bigint (Specks); the cap is the sum of
-    // DustFullInfo.maxCap over DustWalletState.availableCoins. To be confirmed by the runtime
-    // probe at the localnet session (task-12 report), together with whether the API's `cap` is
-    // this sum.
-    getDustBalance: async () => {
-      const dust = (await synced()).dust;
-      return {
-        balance: dust.balance(new Date()),
-        cap: dust.availableCoins.reduce((total, coin) => total + coin.maxCap, 0n),
-      };
-    },
+  );
+  const owned = Uint8Array.from(seed);
+  try {
+    const ready = await client.request('initialize', { seed: owned, config: { ...config } });
+    if (!ready || typeof ready !== 'object' || !('ready' in ready) || ready.ready !== true)
+      throw new Error('Invalid worker initialization.');
+  } catch (error) {
+    client.close();
+    throw error;
+  } finally {
+    owned.fill(0);
+  }
+  // Only these read methods cross the boundary. The worker owns the wallet SDK,
+  // indexer subscriptions, DUST sync and address derivation, never a passkey ceremony.
+  const call = async <K extends keyof DevWalletConnectedApi>(
+    method: K,
+  ): Promise<Awaited<ReturnType<DevWalletConnectedApi[K]>>> => {
+    try {
+      const result = await client.request(method, undefined);
+      return validateWalletReply(method, result) as Awaited<ReturnType<DevWalletConnectedApi[K]>>;
+    } catch (error) {
+      throw walletBackgroundError(error);
+    }
   };
+  return devWalletSession(
+    config.networkId,
+    {
+      getConfiguration: () => call('getConfiguration'),
+      getConnectionStatus: () => call('getConnectionStatus'),
+      getShieldedAddresses: () => call('getShieldedAddresses'),
+      getUnshieldedAddress: () => call('getUnshieldedAddress'),
+      getDustAddress: () => call('getDustAddress'),
+      getUnshieldedBalances: () => call('getUnshieldedBalances'),
+      getDustBalance: () => call('getDustBalance'),
+    },
+    async () => {
+      // Termination releases owned sockets and any stalled sync without waiting two minutes.
+      client.close();
+    },
+  );
+}
 
-  return devWalletSession(config.networkId, connected, () => facade.stop());
+/** Preserve the connector error contract without exposing worker/provider exception text. */
+export function walletBackgroundError(error: unknown) {
+  const disconnected =
+    error instanceof BackgroundError && ['Closed', 'Unavailable'].includes(error.code);
+  return walletApiError(
+    disconnected ? 'Disconnected' : 'InternalError',
+    disconnected
+      ? 'The wallet worker disconnected. Reconnect the built-in wallet.'
+      : 'The wallet background read failed. Refresh to retry.',
+  );
+}
+
+export function validateWalletReply(method: keyof DevWalletConnectedApi, value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new Error('Invalid worker wallet reply.');
+  const record = value as Record<string, unknown>;
+  const strings: Partial<Record<keyof DevWalletConnectedApi, readonly string[]>> = {
+    getConfiguration: ['indexerUri', 'indexerWsUri', 'substrateNodeUri', 'networkId'],
+    getConnectionStatus: ['status', 'networkId'],
+    getShieldedAddresses: [
+      'shieldedAddress',
+      'shieldedCoinPublicKey',
+      'shieldedEncryptionPublicKey',
+    ],
+    getUnshieldedAddress: ['unshieldedAddress'],
+    getDustAddress: ['dustAddress'],
+  };
+  const fields = strings[method];
+  if (fields) {
+    if (
+      fields.some(
+        (field) =>
+          typeof record[field] !== 'string' ||
+          (record[field] as string).length === 0 ||
+          (record[field] as string).length > 4096,
+      ) ||
+      (method === 'getConnectionStatus' && record.status !== 'connected')
+    )
+      throw new Error('Invalid worker wallet reply.');
+    return Object.fromEntries(fields.map((field) => [field, record[field]]));
+  }
+  const entries = Object.entries(record);
+  if (
+    entries.length > 1024 ||
+    entries.some(
+      ([key, amount]) =>
+        typeof amount !== 'bigint' ||
+        amount < 0n ||
+        (method === 'getUnshieldedBalances' && !/^[0-9a-f]{64}$/.test(key)),
+    ) ||
+    (method === 'getDustBalance' &&
+      (entries.length !== 2 || !('balance' in record) || !('cap' in record)))
+  )
+    throw new Error('Invalid worker wallet reply.');
+  return Object.fromEntries(entries);
 }

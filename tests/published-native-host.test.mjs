@@ -334,7 +334,7 @@ function finalityFixture() {
     transactionResult: { status: 'SUCCESS', segments: [{ id: 1, success: true }] },
   };
   let canonical = '0x' + blockHash;
-  /** @type {typeof fetch} */ const request = async (url, init) => {
+  /** @type {typeof fetch} */ const request = async (_url, init) => {
     assert.ok(typeof init?.body === 'string');
     const data = JSON.parse(init.body);
     return new Response(

@@ -1,4 +1,14 @@
-import { resolveRemovalReader } from './removal-reader.js';
+import { snapshotGrantScope, snapshotDeviceReader } from './request-snapshots.js';
+import {
+  type P256Hint,
+  type SealedP256Hint,
+  isP256,
+  isSealedP256,
+  validSealedEntries,
+  p256,
+} from './p256-device.js';
+import { createP256ViewingRotation } from './p256-viewing-rotation.js';
+import { lazyPort } from './lazy-port.js';
 import {
   PASSPORT_API_VERSION,
   type CreateAccountStep,
@@ -20,20 +30,13 @@ import { recoverPendingP256Grants } from './p256-grant-publication.js';
 import type { GrantRecoveryJournal } from './jubjub-grant-publication.js';
 import { readQualifiedHolding, readVerifiedHoldings } from './holdings.js';
 import { createJubjubAccounts } from './jubjub-connector.js';
-import { resolveRegisteredReaders } from './jubjub-readers.js';
-import { sealActiveReadGrants } from './read-grant-deliveries.js';
 import { prepareShieldedWithdrawal, prepareUnshieldedWithdrawal } from './unshielded-withdrawal.js';
 import { startFlow, type Flow } from './flow.js';
 import type {
   AccLedgerView,
   AccPureCircuits,
-  AccountHint,
-  CurvePoint,
-  Lazy,
-  P256PublicKey,
   PassportPorts,
   QualifiedHoldingSource,
-  WebAuthnPolicy,
 } from './ports/index.js';
 
 const equalBytes = (a: Uint8Array, b: Uint8Array): boolean =>
@@ -88,33 +91,6 @@ const webRandom = (length: number) =>
     globalThis as unknown as { crypto: { getRandomValues(bytes: Uint8Array): Uint8Array } }
   ).crypto.getRandomValues(new Uint8Array(length));
 
-/** A hint for the P-256 arm. */
-type P256Hint = AccountHint & {
-  readonly credentialId: Uint8Array;
-  readonly policy: WebAuthnPolicy;
-  /** Active address-based recovery has no local creation entries, but validates the ledger envelope. */
-  readonly sealed?: true;
-};
-const isP256 = (hint: AccountHint): hint is P256Hint =>
-  hint.scheme === 'p256-webauthn' && hint.credentialId !== undefined && hint.policy !== undefined;
-type SealedP256Hint = P256Hint &
-  ({ readonly keyEntries: readonly Uint8Array[] } | { readonly sealed: true });
-const validSealedEntries = (entries: readonly Uint8Array[] | undefined): boolean =>
-  entries?.length === 2 &&
-  entries[0]?.length === 192 &&
-  entries[0][0] === 0xd1 &&
-  (entries[0][1] === 1 || entries[0][1] === 2) &&
-  entries[1]?.length === 192 &&
-  (entries[1][0] === 0xd4 || entries[1][0] === 0xd5) &&
-  entries[1][1] === entries[0][1];
-const isSealedP256 = (hint: P256Hint): hint is SealedP256Hint =>
-  validSealedEntries(hint.keyEntries) || (hint.status === 'active' && hint.sealed === true);
-/** The circuits' P-256 key; a point that already is one passes as is, so the same key reaches the chain. */
-const p256 = (point: CurvePoint): P256PublicKey =>
-  (point as Partial<P256PublicKey>).identity === false
-    ? (point as P256PublicKey)
-    : { x: point.x, y: point.y, identity: false };
-
 /**
  * Whether the open-time `enc_key` check (lace-platform's `encryption-key-mismatch`) can run. The
  * ACC keeps no epoch for `enc_key`: the constructor sets it, and only `rotate_enc_key_with_*`
@@ -129,18 +105,6 @@ const encKeyComparable = (
 ): view is AccLedgerView & { readonly encKey: Uint8Array } =>
   view.encKey !== undefined && view.authNonce === 0n && view.specVersion === 2;
 
-/** Loads a `Lazy` port on first use, once; a failed load is retried on the next use. */
-function once<T>(value: Lazy<T>): () => Promise<T> {
-  if (typeof value !== 'function') return () => Promise.resolve(value);
-  const load = value as () => Promise<T>;
-  let pending: Promise<T> | undefined;
-  return () =>
-    (pending ??= load().catch((e: unknown) => {
-      pending = undefined;
-      throw e;
-    }));
-}
-
 /** The account API over the ports (design §1.3, §2.1). */
 export function createPassportAccounts(ports: PassportPorts): PassportConnectorAPI {
   if (ports.authoriser.scheme === 'jubjub-schnorr') return createJubjubAccounts(ports);
@@ -152,8 +116,8 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
       'The selected authorisation arm needs a compatible authoriser and binding.',
     );
   }
-  const binding = once(ports.binding);
-  const chain = once(ports.chain);
+  const binding = lazyPort(ports.binding);
+  const chain = lazyPort(ports.chain);
   const random = ports.random ?? webRandom;
   /** Records what the chain already holds, so it runs even once the flow is aborted. */
   const put = (flow: Flow, record: P256Hint) =>
@@ -443,7 +407,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
       address: active.address,
       bindingId: network.bindingId,
       scheme: 'p256-webauthn',
-      credentialId: active.credentialId.slice(),
+      credentialId: Uint8Array.from(active.credentialId),
       localUseCounter: counter,
     });
     return active;
@@ -451,10 +415,11 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
 
   const addP256Device = (
     record: P256Hint,
-    reader: PassportDeviceReader,
+    readerInput: PassportDeviceReader,
     options: FlowOptions = {},
   ) =>
     run(options, async (flow): Promise<DeviceEnrollmentResult> => {
+      const reader = snapshotDeviceReader(readerInput);
       const keyring = viewingKey;
       const joiningP256 = 'scheme' in reader && reader.scheme === 'p256-webauthn';
       const decodeP256 = keyring?.decodeP256DevicePublicKey;
@@ -816,467 +781,19 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
       );
     });
 
-  const rotateP256ViewingKey = (
-    record: P256Hint,
-    options: FlowOptions = {},
-    removal?: string,
-    excludedGrant?: string | 'all',
-    onRotated?: (state: { readonly encKey: Uint8Array; readonly authNonce: bigint }) => void,
-    controls: {
-      readonly inOwnerSession?: boolean;
-      readonly rotateRosterForEnrollment?: boolean;
-    } = {},
-  ) =>
-    run(options, async (flow): Promise<ViewingKeyRotationResult | DeviceRemovalResult> => {
-      const keyring = viewingKey;
-      const reencrypt = keyring?.reencryptInbox;
-      const decodeJubjub = keyring?.decodeDevicePublicKey;
-      const decodeP256 = keyring?.decodeP256DevicePublicKey;
-      const pure = (await binding()).pureCircuits;
-      if (
-        !isSealedP256(record) ||
-        !keyring ||
-        !reencrypt ||
-        !decodeJubjub ||
-        !decodeP256 ||
-        !pure.derive_device_entry_with_jubjub ||
-        !pure.challenge_append_inbox_with_p256 ||
-        (removal !== undefined && !pure.challenge_remove_device_with_p256) ||
-        !ports.holdings ||
-        !ports.readGrants ||
-        !authoriser.withKeySession ||
-        !authoriser.deviceBinding ||
-        !authoriser.devicePublicKeyHex
-      )
-        throw new PassportConnectorError(
-          'BindingUnsupported',
-          'P-256 rotation needs sealed keys, both device decoders, verified holdings and a complete read-grant source.',
-        );
-      if (removal !== undefined && !/^[0-9a-f]{64}$/i.test(removal))
-        throw new PassportConnectorError(
-          'RemovalTargetNotFound',
-          'The target must be a 32-byte device commitment.',
-        );
-      const target = removal === undefined ? undefined : fromHex(removal.toLowerCase());
-      const read = async () => {
-        const view = await flow.step('chain.read', async () =>
-          (await chain()).readAccount(record.address, { includeInbox: true, includeDevices: true }),
-        );
-        if (!view) throw new PassportConnectorError('AccountNotFound', 'The ACC is absent.');
-        if (!view.encKey || !view.inboxEntries || !view.deviceEntries)
-          throw new PassportConnectorError(
-            'BindingUnsupported',
-            'The chain port omits the ACC key, inbox or live devices.',
-          );
-        return view as AccLedgerView & {
-          readonly encKey: Uint8Array;
-          readonly inboxEntries: readonly Uint8Array[];
-          readonly deviceEntries: readonly Uint8Array[];
-        };
-      };
-      const withSession: NonNullable<typeof authoriser.withKeySession> = controls.inOwnerSession
-        ? (operation) => operation()
-        : (operation, descriptor) => authoriser.withKeySession!(operation, descriptor);
-      return withSession(
-        async () => {
-          const selected = await authoriser.devicePublicKey();
-          const selectedBinding = await authoriser.deviceBinding!();
-          if (
-            selected.x !== record.publicKey.x ||
-            selected.y !== record.publicKey.y ||
-            !equalBytes(selectedBinding.credentialId, record.credentialId) ||
-            !equalBytes(selectedBinding.policy.rp_id_hash, record.policy.rp_id_hash) ||
-            !equalBytes(selectedBinding.policy.origin, record.policy.origin)
-          )
-            throw new PassportConnectorError(
-              'NotAuthorised',
-              'The selected passkey does not own this ACC.',
-            );
-          let view = await read();
-          if (!view.booted || record.status !== 'active')
-            throw new PassportConnectorError('AccountNotFound', 'The P-256 ACC is not active.');
-          if (view.specVersion !== 3)
-            throw new PassportConnectorError(
-              'BindingUnsupported',
-              'The ACC spec version is not 3.',
-            );
-          const initialCounter = await findCounter(flow, record, view);
-          if (initialCounter === undefined) throw notHeld(record);
-          if (target) {
-            const own = pure.derive_device_entry_with_p256(
-              { bytes: fromHex(record.address) },
-              p256(record.publicKey),
-              record.policy,
-              view.deviceEpoch,
-              initialCounter,
-            );
-            if (equalBytes(target, own))
-              throw new PassportConnectorError('LastDevice', 'A device cannot remove itself.');
-            if (!view.deviceEntries.some((entry) => equalBytes(entry, target)))
-              throw new PassportConnectorError('RemovalTargetNotFound', 'The target is not live.');
-          }
-          await sealedKeyring(record, view, false, true);
-          const oldEntries = [...view.inboxEntries];
-          const oldKeyring = {
-            account: record.address,
-            encKey: view.encKey,
-            envelopes: [...oldEntries].reverse(),
-          };
-          const opened = await keyring.openInbox(networkId, oldKeyring, oldEntries);
-          if (opened.length !== oldEntries.length)
-            throw new PassportConnectorError(
-              'InternalError',
-              'The keyring returned an incomplete inbox.',
-            );
-          const ownerReader = toHex(await keyring.readerPublicKey(networkId));
-          const ownerDevice = await authoriser.devicePublicKeyHex!();
-          const roster = resolveRegisteredReaders({
-            account: record.address,
-            epoch: view.deviceEpoch,
-            registered: opened.flatMap((item) => (item?.kind === 'device' ? [item.device] : [])),
-            liveEntries: view.deviceEntries,
-            ...(target && {
-              allowedEntries: view.deviceEntries.filter((entry) => !equalBytes(entry, target)),
-            }),
-            pure: { derive_device_entry_with_jubjub: pure.derive_device_entry_with_jubjub! },
-            p256Pure: pure,
-            decodeDevicePublicKey: decodeJubjub,
-            decodeP256DevicePublicKey: decodeP256,
-          });
-          if (
-            roster.dropped.length ||
-            !roster.readers.some(
-              (reader) =>
-                reader.readerPublicKey === ownerReader &&
-                reader.devicePublicKey === ownerDevice &&
-                reader.scheme === 'p256-webauthn' &&
-                reader.policy &&
-                equalBytes(reader.policy.rp_id_hash, record.policy.rp_id_hash) &&
-                equalBytes(reader.policy.origin, record.policy.origin),
-            )
-          )
-            throw new PassportConnectorError(
-              'DeviceRosterInvalid',
-              'Every live device needs one unique registered reader before rotation.',
-            );
-          const removedReader = target ? await resolveRemovalReader(roster) : undefined;
-          const initial = view;
-          const held = await ports.holdings!.selectHeldEntries(record.address, oldEntries, opened);
-          const seen = new Set<number>();
-          const holdingEntries: Uint8Array[] = [];
-          for (const index of held) {
-            if (
-              !Number.isSafeInteger(index) ||
-              index < 0 ||
-              index >= oldEntries.length ||
-              seen.has(index) ||
-              opened[index]?.kind !== 'coin'
-            )
-              throw new PassportConnectorError('InternalError', 'Invalid verified holding index.');
-            seen.add(index);
-            holdingEntries.push(oldEntries[index]!);
-          }
-          const registrations = oldEntries.filter(
-            (entry) =>
-              entry.length === 192 &&
-              (entry[1] === 1 || entry[1] === 2) &&
-              (entry[0] === 0xd2 || entry[0] === 0xd4 || entry[0] === 0xd5),
-          );
-          const keys = await keyring.createKeys(networkId, {
-            scheme: 'p256-webauthn',
-            devicePublicKey: ownerDevice,
-            policy: record.policy,
-            keyring: oldKeyring,
-            registrations,
-            readers: roster.readers.filter((reader) => reader.readerPublicKey !== ownerReader),
-            ...((target || controls.rotateRosterForEnrollment) && { rotateRoster: true }),
-            ...(removedReader && {
-              removed: {
-                devicePublicKey: removedReader.devicePublicKey,
-                epoch: removedReader.epoch,
-                counter: removedReader.counter,
-              },
-            }),
-          });
-          const reencrypted = await reencrypt(
-            networkId,
-            { keyring: oldKeyring, to: keys.encKey },
-            holdingEntries,
-          );
-          if (
-            reencrypted.length !== holdingEntries.length ||
-            reencrypted.some((entry) => !(entry instanceof Uint8Array))
-          )
-            throw new PassportConnectorError(
-              'InternalError',
-              'A verified holding could not be resealed.',
-            );
-          const deliveries = await sealActiveReadGrants(
-            {
-              networkId,
-              keyring: { account: record.address, encKey: keys.encKey, envelopes: keys.envelopes },
-              authNonce: view.authNonce,
-              ...(excludedGrant === 'all' && { exceptAll: true }),
-              ...(excludedGrant && excludedGrant !== 'all' && { exceptGrantId: excludedGrant }),
-              ...flow.ports,
-            },
-            { targets: ports.readGrants!, viewingKey: keyring, random },
-          );
-          if (
-            excludedGrant &&
-            excludedGrant !== 'all' &&
-            !deliveries.targets.some(({ grantId }) => grantId === excludedGrant)
-          )
-            throw new PassportConnectorError(
-              'GrantRosterUnsettled',
-              'The read grant disappeared before key rotation.',
-            );
-          if (deliveries.unsealedGrantIds.length)
-            throw new PassportConnectorError(
-              'GrantRosterUnsettled',
-              'A surviving read grantee cannot receive the fresh key.',
-            );
-          if (
-            removedReader &&
-            deliveries.targets.some(
-              ({ readPublicKey }) => readPublicKey === removedReader.readerPublicKey,
-            )
-          )
-            throw new PassportConnectorError(
-              'DeviceRosterInvalid',
-              'An active read grant would return the fresh key to the removed reader.',
-            );
-          const appended = [
-            ...keys.envelopes,
-            ...keys.registrations,
-            ...deliveries.sealed.map(({ entry }) => entry),
-          ];
-          for (const entry of appended) {
-            await appendP256(flow, record, entry, view);
-            view = await read();
-          }
-          if (
-            !equalBytes(view.encKey, initial.encKey) ||
-            view.deviceEpoch !== initial.deviceEpoch ||
-            view.authNonce !== initial.authNonce + BigInt(appended.length)
-          )
-            throw new PassportConnectorError(
-              'DeviceRosterInvalid',
-              'The ACC changed during key delivery.',
-            );
-          const ownerEntry = (counter: bigint) =>
-            pure.derive_device_entry_with_p256(
-              { bytes: fromHex(record.address) },
-              p256(record.publicKey),
-              record.policy,
-              view.deviceEpoch,
-              counter,
-            );
-          const other = (entries: readonly Uint8Array[], own: Uint8Array) =>
-            entries
-              .filter((entry) => !equalBytes(entry, own))
-              .map(toHex)
-              .sort();
-          const counter = await findCounter(flow, record, view);
-          if (counter === undefined) throw notHeld(record);
-          const baseline = other(initial.deviceEntries, ownerEntry(initialCounter));
-          const current = other(view.deviceEntries, ownerEntry(counter));
-          if (
-            baseline.length !== current.length ||
-            current.some((entry, i) => entry !== baseline[i])
-          )
-            throw new PassportConnectorError(
-              'DeviceRosterInvalid',
-              'The live device roster changed.',
-            );
-          const expected = new Map<string, number>();
-          for (const entry of [...oldEntries, ...appended]) {
-            const value = toHex(entry);
-            expected.set(value, (expected.get(value) ?? 0) + 1);
-          }
-          for (const entry of view.inboxEntries) {
-            const value = toHex(entry);
-            const count = expected.get(value) ?? 0;
-            if (!count)
-              throw new PassportConnectorError(
-                'InternalError',
-                'The ACC inbox changed during delivery.',
-              );
-            expected.set(value, count - 1);
-          }
-          if ([...expected.values()].some((count) => count !== 0))
-            throw new PassportConnectorError(
-              'InternalError',
-              'The ACC inbox lost a sealed delivery.',
-            );
-          const latestGrants = await flow.step('grant.roster', () =>
-            ports.readGrants!.readActiveReadGrantTargets(record.address),
-          );
-          const targetKey = (targets: readonly { grantId: string; readPublicKey?: string }[]) =>
-            targets.map(({ grantId, readPublicKey }) => `${grantId}:${readPublicKey ?? ''}`).sort();
-          if (
-            latestGrants.authNonce !== view.authNonce ||
-            JSON.stringify(targetKey(latestGrants.targets)) !==
-              JSON.stringify(targetKey(deliveries.targets))
-          )
-            throw new PassportConnectorError(
-              'GrantRosterUnsettled',
-              'The read-grant roster changed.',
-            );
-          const circuit = 'rotate_enc_key_with_p256';
-          const challenge = pure.challenge_rotate_enc_key_with_p256(
-            { bytes: fromHex(record.address) },
-            p256(record.publicKey),
-            keys.encKey,
-            view.authNonce,
-          );
-          const signed = await flow.step('passkey.sign', () =>
-            authoriser.authorise({
-              account: record.address,
-              circuit,
-              args: [keys.encKey],
-              witnessValues: [],
-              authNonce: view.authNonce,
-              useCounter: counter,
-              challenge,
-              credentialId: record.credentialId,
-            }),
-          );
-          if (
-            signed.scheme !== 'p256-webauthn' ||
-            signed.useCounter !== counter ||
-            signed.pk.x !== record.publicKey.x ||
-            signed.pk.y !== record.publicKey.y
-          )
-            throw new PassportConnectorError(
-              'NotAuthorised',
-              'The signature names another device.',
-            );
-          flow.checkpoint();
-          const tx = await (
-            await chain()
-          ).call({
-            address: record.address,
-            circuit,
-            args: [
-              keys.encKey,
-              {
-                pk: p256(record.publicKey),
-                policy: record.policy,
-                authenticator_data: signed.authenticatorData,
-                sig: signed.sig,
-                use_counter: counter,
-              },
-            ],
-            ...flow.ports,
-          });
-          let rotatedView = await awaitSealedView(
-            record,
-            (candidate) =>
-              candidate.authNonce > latestGrants.authNonce &&
-              candidate.encKey !== undefined &&
-              equalBytes(candidate.encKey, keys.encKey),
-          );
-          for (const entry of reencrypted)
-            rotatedView = await appendP256(flow, record, entry!, rotatedView);
-          onRotated?.({ encKey: keys.encKey, authNonce: rotatedView.authNonce });
-          const rotation = {
-            ...tx,
-            droppedDeviceEntries: [],
-            sealedReadGrants: deliveries.sealed.map(
-              ({ grantId, readPublicKey, seal, sealedEncKey }) => ({
-                grantId,
-                readPublicKey,
-                seal,
-                sealedEncKey,
-              }),
-            ),
-            unsealedGrantIds: deliveries.unsealedGrantIds,
-          };
-          if (!target) return rotation;
-          const beforeRemoval = await read();
-          if (
-            !beforeRemoval.deviceEntries.some((entry) => equalBytes(entry, target)) ||
-            !equalBytes(beforeRemoval.encKey, keys.encKey)
-          )
-            throw new PassportConnectorError(
-              'DeviceRosterInvalid',
-              'The removal target or ACC key changed.',
-            );
-          const removeCounter = await findCounter(flow, record, beforeRemoval);
-          if (removeCounter === undefined) throw notHeld(record);
-          const removeCircuit = 'remove_device_with_p256';
-          const removeChallenge = pure.challenge_remove_device_with_p256!(
-            { bytes: fromHex(record.address) },
-            p256(record.publicKey),
-            target,
-            beforeRemoval.authNonce,
-          );
-          const removeSignature = await flow.step('passkey.sign', () =>
-            authoriser.authorise({
-              account: record.address,
-              circuit: removeCircuit,
-              args: [target],
-              witnessValues: [],
-              authNonce: beforeRemoval.authNonce,
-              useCounter: removeCounter,
-              challenge: removeChallenge,
-              credentialId: record.credentialId,
-            }),
-          );
-          if (
-            removeSignature.scheme !== 'p256-webauthn' ||
-            removeSignature.useCounter !== removeCounter ||
-            removeSignature.pk.x !== record.publicKey.x ||
-            removeSignature.pk.y !== record.publicKey.y
-          )
-            throw new PassportConnectorError(
-              'NotAuthorised',
-              'The signature names another device.',
-            );
-          flow.checkpoint();
-          const removed = await (
-            await chain()
-          ).call({
-            address: record.address,
-            circuit: removeCircuit,
-            args: [
-              target,
-              {
-                pk: p256(record.publicKey),
-                policy: record.policy,
-                authenticator_data: removeSignature.authenticatorData,
-                sig: removeSignature.sig,
-                use_counter: removeCounter,
-              },
-            ],
-            ...flow.ports,
-          });
-          for (let attempt = 0; attempt < 30; attempt++) {
-            flow.checkpoint();
-            const settled = await read();
-            if (
-              settled.authNonce > beforeRemoval.authNonce &&
-              !settled.deviceEntries.some((entry) => equalBytes(entry, target))
-            )
-              return {
-                ...rotation,
-                ...removed,
-                removedCommitmentHex: toHex(target),
-                rotationTxHash: tx.txHash,
-              };
-            if (attempt < 29) await sleep(1000);
-          }
-          throw new PassportConnectorError(
-            'DeviceRosterInvalid',
-            'The removed device is still in the live ACC set.',
-          );
-        },
-        target
-          ? { kind: 'remove-device', account: record.address, commitmentHex: toHex(target) }
-          : { kind: 'rotate-encryption-key', account: record.address },
-      );
-    });
+  const rotateP256ViewingKey = createP256ViewingRotation({
+    ports,
+    binding,
+    chain,
+    run,
+    findCounter,
+    notHeld,
+    sealedKeyring,
+    appendP256,
+    awaitSealedView,
+    random,
+    sleep,
+  });
 
   const account = (record: P256Hint): PassportAccount => ({
     address: record.address,
@@ -1284,7 +801,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     bindingId: network.bindingId,
     scheme: record.scheme,
     // A copy: the caller may not alter the id the account's own ceremonies are pinned to.
-    credentialId: record.credentialId.slice(),
+    credentialId: Uint8Array.from(record.credentialId),
     withdrawUnshielded: (request, options = {}) =>
       run(options, async (flow) => {
         const transfer = prepareUnshieldedWithdrawal(request);
@@ -1373,9 +890,9 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           {
             kind: 'withdraw-unshielded',
             account: record.address,
-            color: request.color,
-            amount: request.amount,
-            recipient: request.recipient,
+            color: toHex(transfer.color),
+            amount: transfer.amount.toString(),
+            recipient: toHex(transfer.recipient.bytes),
           },
         );
       }),
@@ -1495,10 +1012,10 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           {
             kind: 'withdraw-shielded',
             account: record.address,
-            color: request.color,
-            amount: request.amount,
-            recipient: request.recipient,
-            inboxIndex: request.inboxIndex,
+            color: toHex(transfer.color),
+            amount: transfer.amount.toString(),
+            recipient: toHex(transfer.recipient.bytes),
+            inboxIndex: transfer.inboxIndex,
           },
         );
       }),
@@ -1554,7 +1071,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           account: record.address,
           networkId,
           bindingId: network.bindingId,
-          credentialId: record.credentialId.slice(),
+          credentialId: Uint8Array.from(record.credentialId),
         });
         if (routine)
           return readVerifiedHoldings(
@@ -1621,6 +1138,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
             'BindingUnsupported',
             'Sealed P-256 accounts require roster-safe viewing-key rotation.',
           );
+        newKey = Uint8Array.from(newKey);
         const { counter, authNonce } = await useCounter(flow, record);
         const self = { bytes: fromHex(record.address) };
         const circuit = 'rotate_enc_key_with_p256';
@@ -1662,6 +1180,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         });
       }),
     issueGrant: async (scope, options = {}) => {
+      scope = snapshotGrantScope(scope);
       if (
         !isSealedP256(record) ||
         !viewingKey ||
@@ -2180,7 +1699,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         const record: SealedP256Hint = {
           address,
           scheme: 'p256-webauthn',
-          credentialId: identity.credentialId.slice(),
+          credentialId: Uint8Array.from(identity.credentialId),
           publicKey,
           policy: device.policy,
           status: 'active',
@@ -2199,7 +1718,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
           address,
           bindingId: network.bindingId,
           scheme: 'p256-webauthn',
-          credentialId: record.credentialId.slice(),
+          credentialId: Uint8Array.from(record.credentialId),
           localUseCounter: counter,
         });
         return account(record);

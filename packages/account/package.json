@@ -31,6 +31,22 @@
     "./interaction": {
       "types": "./dist/interaction.d.ts",
       "default": "./dist/interaction.js"
+    },
+    "./validation": {
+      "types": "./dist/validation.d.ts",
+      "default": "./dist/validation.js"
+    },
+    "./secret-store": {
+      "types": "./dist/secret-store.d.ts",
+      "default": "./dist/secret-store.js"
+    },
+    "./authorization": {
+      "types": "./dist/authorization.d.ts",
+      "default": "./dist/authorization.js"
+    },
+    "./background": {
+      "types": "./dist/background.d.ts",
+      "default": "./dist/background.js"
     }
   },
   "files": [
@@ -40,7 +56,8 @@
   "dependencies": {
     "@input-output-hk/mn-passport-protocol": "workspace:*",
     "@noble/curves": "2.2.0",
-    "@noble/hashes": "2.2.0"
+    "@noble/hashes": "2.2.0",
+    "zod": "4.1.12"
   },
   "license": "Apache-2.0",
   "repository": {

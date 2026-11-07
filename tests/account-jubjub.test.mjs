@@ -438,7 +438,12 @@ test('JubJub owner withdrawal binds amount and recipient to consent and the sign
   const request = { color: '01'.repeat(32), amount: '7', recipient: '02'.repeat(32) };
   const callsBefore = w.calls.length;
   assert.ok(account.withdrawUnshielded);
-  const tx = await account.withdrawUnshielded(request);
+  const callerInput = { ...request };
+  const pending = account.withdrawUnshielded(callerInput);
+  callerInput.amount = '999';
+  callerInput.recipient = 'ff'.repeat(32);
+  callerInput.color = 'ee'.repeat(32);
+  const tx = await pending;
   assert.equal(tx.nextUseCounter, 3n);
   assert.deepEqual(w.calls.slice(callsBefore), ['withdraw_unshielded_with_jubjub']);
   assert.deepEqual(w.sessionFlows.at(-1), {
@@ -479,7 +484,12 @@ test('JubJub shielded spend binds the qualified coin to the signature and witnes
   const request = { inboxIndex, color: hex(coin.color), amount: '7', recipient: '02'.repeat(32) };
   const authNonce = w.grantNonce();
   assert.ok(account.withdrawShielded);
-  const tx = await account.withdrawShielded(request);
+  const callerInput = { ...request };
+  const pending = account.withdrawShielded(callerInput);
+  callerInput.amount = '999';
+  callerInput.recipient = 'ff'.repeat(32);
+  callerInput.color = 'ee'.repeat(32);
+  const tx = await pending;
   assert.ok(tx.txHash);
   assert.deepEqual(w.sessionFlows.at(-1), {
     kind: 'withdraw-shielded',

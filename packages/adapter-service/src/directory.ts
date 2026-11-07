@@ -5,13 +5,13 @@ import type {
   OwnershipProof,
 } from '@input-output-hk/mn-passport-account/ports';
 import type { ServiceWire as Wire } from '@input-output-hk/mn-passport-protocol';
-import { fromHex, toHex } from './hex.js';
+import { toHex } from './hex.js';
+import { boundedJson } from './bounded-json.js';
+import { directoryHint } from './directory-codec.js';
 import type { RemoteOptions } from './options.js';
 import { defaultFetch, trimBase } from './service-client.js';
 
 const hexBigint = (value: bigint): string => value.toString(16);
-const record = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 function toWire(hint: AccountHint): Wire.AccountHintBody {
   if (
@@ -51,62 +51,21 @@ function proofToWire(proof: OwnershipProof): Wire.OwnershipProofBody {
   };
 }
 
-/** Parse untrusted directory JSON before the account core verifies it against the ledger. */
-function fromWire(value: unknown): AccountHint {
-  if (!record(value) || !record(value.publicKey)) throw new Error('invalid directory hint');
-  const { address, scheme, credentialId, publicKey, policy, salt, keyEntries, status } = value;
-  if (
-    typeof address !== 'string' ||
-    !address ||
-    !['p256-webauthn', 'jubjub-schnorr', 'k256-ecdsa'].includes(String(scheme)) ||
-    typeof publicKey.x !== 'string' ||
-    typeof publicKey.y !== 'string' ||
-    !/^[0-9a-f]+$/i.test(publicKey.x) ||
-    !/^[0-9a-f]+$/i.test(publicKey.y) ||
-    !['deployed', 'active'].includes(String(status)) ||
-    (credentialId !== undefined && typeof credentialId !== 'string') ||
-    (salt !== undefined && typeof salt !== 'string') ||
-    (keyEntries !== undefined &&
-      (!Array.isArray(keyEntries) ||
-        keyEntries.length > 16 ||
-        !keyEntries.every(
-          (entry) => typeof entry === 'string' && /^[0-9a-f]{384}$/.test(entry),
-        ))) ||
-    (policy !== undefined &&
-      (!record(policy) ||
-        typeof policy.rp_id_hash !== 'string' ||
-        typeof policy.origin !== 'string'))
-  ) {
-    throw new Error('invalid directory hint');
-  }
-  return {
-    address,
-    scheme: scheme as AccountHint['scheme'],
-    publicKey: { x: BigInt(`0x${publicKey.x}`), y: BigInt(`0x${publicKey.y}`) },
-    ...(credentialId !== undefined && { credentialId: fromHex(credentialId) }),
-    ...(salt !== undefined && { salt: fromHex(salt) }),
-    ...(keyEntries !== undefined && { keyEntries: (keyEntries as string[]).map(fromHex) }),
-    ...(policy !== undefined &&
-      record(policy) && {
-        policy: {
-          rp_id_hash: fromHex(String(policy.rp_id_hash)),
-          origin: fromHex(String(policy.origin)),
-        },
-      }),
-    status: status as AccountHint['status'],
-  };
-}
-
 /** The versioned service directory; its answers are hints that the core checks on chain. */
 export function remoteDirectory(base: string, options: RemoteOptions = {}): AccountDirectory {
   const fetchFn = options.fetch ?? defaultFetch;
+  const timeoutMs = options.timeoutMs ?? 30_000;
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 600_000)
+    throw new PassportConnectorError('InternalError', 'Invalid directory read timeout.');
   const url = (networkId: string, credentialId: Uint8Array) =>
     `${trimBase(base)}/v1/accounts/${encodeURIComponent(networkId)}/${toHex(credentialId)}`;
   return {
     async get(networkId, key) {
       let response;
       try {
-        response = await fetchFn(url(networkId, key.credentialId));
+        response = await fetchFn(url(networkId, key.credentialId), {
+          signal: AbortSignal.timeout(timeoutMs),
+        });
       } catch (cause) {
         throw new PassportConnectorError('InternalError', 'directory GET is unreachable', {
           cause,
@@ -119,15 +78,9 @@ export function remoteDirectory(base: string, options: RemoteOptions = {}): Acco
           `directory GET failed: HTTP ${response.status}`,
         );
       try {
-        return fromWire(await response.json());
-      } catch (cause) {
-        throw new PassportConnectorError(
-          'InternalError',
-          'directory GET answered an invalid hint',
-          {
-            cause,
-          },
-        );
+        return directoryHint(await boundedJson(response, 32_768));
+      } catch {
+        throw new PassportConnectorError('InternalError', 'directory GET answered an invalid hint');
       }
     },
     async put(networkId, hint, proof) {

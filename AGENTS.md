@@ -66,8 +66,8 @@ Chrome must be installed (`CHROME_BIN` may select it). The runner owns an epheme
 Vite server and fresh browser contexts; intercepted localhost:5173 requests never
 reach an existing demo. This is UI/consent coverage, not native proof/provider
 acceptance. Both owner-arm selections run. Receipts use fresh ignored `review/`
-paths. `nix develop -c pnpm test:coverage` separately records loaded-package
-JavaScript line/function/branch coverage; it is outside fast required CI.
+paths. `nix develop -c pnpm test:coverage` now records all executable authored package
+source coverage with an 80% global/per-package floor; it is outside fast required CI.
 The local source after RC7 adds opt-in **Consented JubJub session** controls (#281).
 Read [the session guide](docs/site/jubjub-sessions.md). Set the withdrawal asset and
 recipient, choose 10/15/30 minutes and caps, then authorize the session with the
@@ -668,3 +668,25 @@ and refuses if it cannot be visible. Mobile automatic-purpose sheets close only
 when that operation ends; user-opened sheets are not auto-dismissed. Never count
 a consent dialog as a native passkey call. Compare P-256 signatures/PRF/retries
 with pinned upstream per-action JubJub source; do not claim measured live parity.
+
+### SDK quality tranche — local source 2026-11-07
+
+Read `docs/review/sdk-quality/README.md`, `docs/site/quality.md` and ADRs 0015–0017.
+Coverage uses all executable authored sources in all nine public packages, with
+80% lines/functions/branches globally and per package. Run `nix develop -c pnpm
+run test:coverage` before release; do not substitute loaded-only measurements.
+`lint` includes AST budgets, and TypeScript rejects unused declarations. Never
+regenerate/increase legacy budgets just to pass; give a reviewed rationale.
+
+`nix develop -c pnpm run test:background` owns an ephemeral browser/server and tests
+worker/IndexedDB contracts. It imports the actual wallet SDK in a worker, but
+uses synthetic wallet CPU/balances and establishes no live sync/proof/provider
+acceptance. The browser demo now runs the wallet SDK/dust runtime in a dedicated
+owned worker. Credential prompts and consent remain on the UI thread. Stop only
+the owned worker, never another Midnight stack.
+
+`account/authorization` provides explicit per-operation consent with a pinned
+signing route; expiry refuses without fallback and dispatched receipts survive.
+`account/ports` adds optional SecretStore and BackgroundPort seams. The memory
+secret store is ephemeral; the browser IndexedDB adapter requires explicit
+plaintext opt-in. Never automatically persist an owner key or PRF output.

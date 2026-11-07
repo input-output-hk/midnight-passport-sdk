@@ -289,7 +289,7 @@ export async function runBrowserSigner(env = process.env) {
         await popup.waitForLoadState();
         const cdp = await context.newCDPSession(popup);
         await cdp.send('WebAuthn.enable');
-        const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', {
+        await cdp.send('WebAuthn.addVirtualAuthenticator', {
           options: {
             protocol: 'ctap2',
             transport: 'internal',

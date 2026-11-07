@@ -39,7 +39,7 @@ test('the artefact check accepts a matching tree and refuses a tampered one', ()
 });
 
 test('/zk serves artefact files as octet-stream with CORS and cache headers', async (t) => {
-  const { base, server } = await start(t);
+  const { base } = await start(t);
   const res = await fetch(`${base}/zk/acc/keys/c.verifier`, {
     headers: { origin: 'http://localhost:5173' },
   });
@@ -132,7 +132,7 @@ test('the v1 artefact route refuses an unpinned or corrupt tree at startup', () 
 });
 
 test('/zk refuses path traversal and unknown files with 404', async (t) => {
-  const { base, server } = await start(t);
+  const { base } = await start(t);
   for (const p of [
     '/zk/acc/../registry.json',
     '/zk/acc/%2e%2e/registry.json',
@@ -148,12 +148,12 @@ test('/zk refuses a key-tree symlink that resolves outside its verified root', a
   const elsewhere = mkdtempSync(join(tmpdir(), 'acc-external-'));
   writeFileSync(join(elsewhere, 'secret.txt'), 'do not serve');
   symlinkSync(join(elsewhere, 'secret.txt'), join(config.artefactDir, 'keys/secret.txt'));
-  const { base, server } = await start(t, config);
+  const { base } = await start(t, config);
   assert.equal((await fetch(`${base}/zk/acc/keys/secret.txt`)).status, 404);
 });
 
 test('/config reports the network, binding and pinned manifest', async (t) => {
-  const { base, server, config } = await start(t);
+  const { base, config } = await start(t);
   const body = (await (await fetch(`${base}/config`)).json()) as Record<string, string>;
   assert.equal(body.networkId, 'undeployed');
   assert.equal(body.manifestSha256, config.manifestSha256);
@@ -198,7 +198,7 @@ test('/zk serves only the compiler, zkir and keys folders', async (t) => {
   const config = testConfig();
   mkdirSync(join(config.artefactDir, 'contract'), { recursive: true });
   writeFileSync(join(config.artefactDir, 'contract/index.js'), 'export {};');
-  const { base, server } = await start(t, config);
+  const { base } = await start(t, config);
   assert.equal((await fetch(`${base}/zk/acc/contract/index.js`)).status, 404);
   assert.equal((await fetch(`${base}/zk/acc/registry.json`)).status, 404);
   for (const ok of [
@@ -408,7 +408,7 @@ test('/config advertises exactly the configured stack', async (t) => {
     indexerWsUri: 'wss://indexer.example/graphql/ws',
     proofServerUri: 'https://prover.example',
   });
-  const { base, server } = await start(t, config);
+  const { base } = await start(t, config);
   const body = (await (await fetch(`${base}/config`)).json()) as Record<string, string>;
   assert.deepEqual(stackOf(body as unknown as ServiceConfig), stackOf(config));
 });
