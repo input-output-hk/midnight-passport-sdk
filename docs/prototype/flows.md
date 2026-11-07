@@ -46,8 +46,11 @@ sealed entry, because a hosted encryption port may treat an empty batch as a no-
 The current WebAuthn adapter's optional `CredentialPort.withLoginSession` surrounds
 `openAccount` and `openAccountAt` for both owner arms. Identification and PRF now
 share one user-verified assertion, and the two sealed-key validations reuse its
-held outputs. The local assertion proves the original signed client/authenticator
-bytes; it is not ACC `wa-json134` transaction material. Login clears its output
+held outputs. P-256 ownership verifies the original signed client/authenticator
+bytes. JubJub has no enrolled P-256 verification key: the trusted provider's
+PRF-derived key must match its live JubJub entry and sealed reader. Both paths
+validate challenge/RP/origin/UV; neither uses this as ACC `wa-json134` transaction
+material. Login clears its output
 copies on completion/failure, refuses overlapping logins and does not silently
 retry missing PRF. No owner enrollment, authenticated owner lease or wallet
 connection follows. One request covers an already active supported account;

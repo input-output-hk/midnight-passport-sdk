@@ -48,9 +48,14 @@ credential requests. JubJub also had a separate identify/unlock pair.
 This follows upstream's
 [`WebAuthnPrfKeyProvider.discover()`](https://github.com/midnightntwrk/passport-demo/blob/d343acf6674b7258e04cad9eb5d64c054f0dfebd/demo-backend/src/passkey.ts#L1148-L1181)
 pattern: request discovery and PRF together. Our Lace salts, derivation recipe,
-credential ownership proof and live sealed-key checks are preserved. Signed extra
-client JSON members and bounded authenticator extension data are accepted for this
-**local login proof**; the stricter ACC transaction profile is unchanged.
+account ownership and live sealed-key checks are preserved. P-256 uses `owns()` to
+verify the original assertion signature against the enrolled P-256 public key.
+JubJub accounts have no enrolled P-256 verification key: they authenticate with the
+trusted WebAuthn provider's PRF-derived JubJub key, its matching live ACC entry and
+the sealed reader. Their login does not claim independent ES256 verification.
+Both paths validate challenge, RP, origin and UV flags. Extra client JSON members
+and bounded authenticator extension data are accepted locally; the stricter ACC
+transaction profile is unchanged.
 
 The request review says `identify-and-unlock`. Cancel or missing PRF fails without
 an automatic second request or replacement seed. Held output copies are zeroed
@@ -84,7 +89,7 @@ session is not general authority to use owner or HD wallet secrets.
 
 PRF-bearing assertions may carry extension data. Our pinned P-256 circuit accepts
 only its bounded authentication-data/profile shape, so combining PRF and a P-256
-signature is not a safe shortcut under this binding.
+ACC transaction signature is not a safe shortcut under this binding.
 
 ## Improvement candidates
 

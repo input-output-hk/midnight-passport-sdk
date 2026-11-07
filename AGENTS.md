@@ -127,8 +127,11 @@ address drafts and unknown IDs; the landing is presentation, not a logout bounda
 Both account arms now wrap `openAccount`/`openAccountAt` in the credential port's
 optional `withLoginSession`. The browser adapter uses one discoverable assertion
 with both unchanged Lace PRF salts (`identify-and-unlock` consent), retaining its
-outputs only through the sequential sealed-key checks. Verify signed original
-client/authenticator bytes locally; never pass extension-bearing login material
+outputs only through the sequential sealed-key checks. P-256 `owns()` verifies
+original signed client/authenticator bytes. A JubJub account has no enrolled
+P-256 key: bind the trusted provider's PRF-derived JubJub key to its live entry
+and sealed reader; do not claim independent ES256 verification for that path.
+Both paths validate challenge/RP/origin/UV. Never pass extension-bearing login material
 to strict ACC `wa-json134` signing or relax the enrollment/signing probe. Cancel,
 missing PRF and bad proofs never trigger implicit fallback/retry. Login does not
 enroll/unlock an owner or connect a wallet. Keep pending activation/publication

@@ -107,8 +107,12 @@ transaction receipts, inspect the log and reconcile before another effect.
 
 Current-source active-account login combines discovery and PRF into one
 `identify-and-unlock` request. Both sequential sealed-key checks reuse that login's
-held outputs; they are cleared on success or failure. The local proof verifies the
+held outputs; they are cleared on success or failure. P-256 ownership verifies the
 actual signed bytes, including bounded extension data and additional JSON members.
+JubJub has no enrolled P-256 public key: it authenticates the trusted provider's
+PRF-derived key against the live JubJub entry and sealed reader instead. Both paths
+validate the assertion's challenge, RP, origin and UV flags; no independent ES256
+verification is claimed for the PRF-only JubJub path.
 It does not relax `wa-json134` transaction signatures, enroll an owner, extend an
 owner lease or remove either live key check. Unsupported PRF/cancellation does not
 trigger another prompt. Pending setup may still need genuine signatures. See

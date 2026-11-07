@@ -69,9 +69,11 @@ function validateAuthenticatorData(data: Uint8Array, policy: WebAuthnPolicy): vo
 }
 
 /**
- * One discoverable login assertion evaluates both Lace PRF salts. This local ownership proof
- * accepts signed additional JSON members and bounded CBOR extensions, unlike ACC wa-json134.
- * It is never transaction material: strict enrolment/signing validation remains unchanged.
+ * One discoverable login assertion evaluates both Lace PRF salts. The deferred P-256 ownership
+ * proof verifies original bytes, allowing additional JSON and bounded CBOR, unlike wa-json134.
+ * A JubJub account instead binds the trusted provider's PRF-derived key to its live ACC entry
+ * and sealed reader; it has no enrolled P-256 verification key. This is never ACC transaction
+ * material: strict enrolment/signing validation remains unchanged.
  * The caller owns and zeroes both output copies; the identity retains public proof bytes only.
  */
 export async function identifyPasskeyWithPrf(

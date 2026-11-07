@@ -18,14 +18,15 @@ import {
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 import { softwareAuthenticator, ORIGIN, RP, ID } from './fixtures/software-authenticator.mjs';
 
-/** @param {ReturnType<typeof softwareAuthenticator>} auth */
-function setup(auth) {
+/** @param {ReturnType<typeof softwareAuthenticator>} auth
+ * @param {ReturnType<typeof softwareAuthenticator>["container"]} [container] */
+function setup(auth, container = auth.container) {
   /** @type {string[]} */
   const purposes = [];
   const adapter = webauthnPasskey({
     rpId: RP,
     origin: ORIGIN,
-    credentials: auth.container,
+    credentials: container,
     beforeCeremony: ({ purpose }) => {
       purposes.push(purpose);
     },
@@ -166,63 +167,69 @@ test('an active login refuses overlapping login, credential creation and another
   });
 });
 
-for (const arm of ['p256', 'jubjub']) {
-  test(`actual ${arm} account reopening and address recovery each use one credential request`, async () => {
-    const auth = softwareAuthenticator();
-    const fake = createFakePorts({ binding: { pureCircuits } });
-    const first = setup(auth);
-    /** @param {ReturnType<typeof setup>} adapter */
-    const ports = (adapter) => ({
-      ...fake,
-      credentials: adapter.credentials,
-      authoriser: arm === 'p256' ? adapter.p256 : recipeJubjubAuthoriser(adapter.prf, pureCircuits),
-      viewingKey: recipeDeviceKeyring(adapter.prf),
-    });
-    const created =
-      arm === 'p256'
-        ? await createPassportAccounts(ports(first)).createAccount({
-            userName: 'login-regression',
-            retireAuthority: true,
-          })
-        : await first.login(async () => {
-            // Seed an already-active synthetic JubJub ledger; the shared fake mutates P-256 only.
-            const identity = await first.credentials.identify();
-            const authoriser = recipeJubjubAuthoriser(first.prf, pureCircuits);
-            const publicKey = await authoriser.devicePublicKey();
-            const address = 'a7'.repeat(32);
-            const keyring = recipeDeviceKeyring(first.prf);
-            const keys = await keyring.createKeys('undeployed', {
-              devicePublicKey: await authoriser.devicePublicKeyHex(),
-            });
-            const entry = pureCircuits.derive_device_entry_with_jubjub(
-              { bytes: Buffer.from(address, 'hex') },
-              publicKey,
-              0n,
-              0n,
-            );
-            fake.ledger.set(address, {
-              boot: new Uint8Array(32),
-              encKey: keys.encKey,
-              authorityRetired: true,
-              booted: true,
-              authNonce: 0n,
-              deviceEpoch: 0n,
-              specVersion: 3,
-              inboxEntries: [...keys.envelopes, ...keys.registrations],
-              entries: new Set([Buffer.from(entry).toString('hex')]),
-            });
-            await fake.directory.put('undeployed', {
-              address,
-              scheme: 'jubjub-schnorr',
-              credentialId: identity.credentialId,
-              publicKey,
-              status: 'active',
-            });
-            return { address };
+/** @param {"p256" | "jubjub"} arm */
+async function activeAccount(arm) {
+  const auth = softwareAuthenticator();
+  const fake = createFakePorts({ binding: { pureCircuits } });
+  const first = setup(auth);
+  /** @param {ReturnType<typeof setup>} adapter */
+  const ports = (adapter) => ({
+    ...fake,
+    credentials: adapter.credentials,
+    authoriser: arm === 'p256' ? adapter.p256 : recipeJubjubAuthoriser(adapter.prf, pureCircuits),
+    viewingKey: recipeDeviceKeyring(adapter.prf),
+  });
+  const created =
+    arm === 'p256'
+      ? await createPassportAccounts(ports(first)).createAccount({
+          userName: 'login-regression',
+          retireAuthority: true,
+        })
+      : await first.login(async () => {
+          // Seed an already-active synthetic JubJub ledger; the shared fake mutates P-256 only.
+          const identity = await first.credentials.identify();
+          const authoriser = recipeJubjubAuthoriser(first.prf, pureCircuits);
+          const publicKey = await authoriser.devicePublicKey();
+          const address = 'a7'.repeat(32);
+          const keyring = recipeDeviceKeyring(first.prf);
+          const keys = await keyring.createKeys('undeployed', {
+            devicePublicKey: await authoriser.devicePublicKeyHex(),
           });
-    const ledger = fake.ledger.get(created.address);
-    assert.ok(ledger);
-    ledger.specVersion = 3;
+          const entry = pureCircuits.derive_device_entry_with_jubjub(
+            { bytes: Buffer.from(address, 'hex') },
+            publicKey,
+            0n,
+            0n,
+          );
+          fake.ledger.set(address, {
+            boot: new Uint8Array(32),
+            encKey: keys.encKey,
+            authorityRetired: true,
+            booted: true,
+            authNonce: 0n,
+            deviceEpoch: 0n,
+            specVersion: 3,
+            inboxEntries: [...keys.envelopes, ...keys.registrations],
+            entries: new Set([Buffer.from(entry).toString('hex')]),
+          });
+          await fake.directory.put('undeployed', {
+            address,
+            scheme: 'jubjub-schnorr',
+            credentialId: identity.credentialId,
+            publicKey,
+            status: 'active',
+          });
+          return { address };
+        });
+  const ledger = fake.ledger.get(created.address);
+  assert.ok(ledger);
+  ledger.specVersion = 3;
+  return { auth, fake, created, ports, ledger };
+}
+
+for (const arm of /** @type {const} */ (['p256', 'jubjub'])) {
+  test(`actual ${arm} account reopening and address recovery each use one credential request`, async () => {
+    const { auth, created, ports, ledger } = await activeAccount(arm);
     const fresh = setup(auth);
     const api = createPassportAccounts(ports(fresh));
     const before = auth.gets.length;
@@ -237,3 +244,92 @@ for (const arm of ['p256', 'jubjub']) {
     assert.deepEqual(fresh.purposes, ['identify-and-unlock', 'identify-and-unlock']);
   });
 }
+
+/** Return copied PRF results or a deliberately invalid signature without changing fixture buffers.
+ * @param {ReturnType<typeof softwareAuthenticator>} auth
+ * @param {'first' | 'second' | 'invalid-signature'} fault */
+function withFault(auth, fault) {
+  return {
+    ...auth.container,
+    async get(/** @type {Parameters<typeof auth.container.get>[0]} */ options) {
+      const credential = await auth.container.get(options);
+      assert.ok(credential);
+      if (fault === 'invalid-signature') {
+        // DER-valid ES256 scalars, but not a signature over this assertion's actual signed bytes.
+        const signature = Uint8Array.of(0x30, 6, 2, 1, 1, 2, 1, 1);
+        const data = new Uint8Array(credential.response.authenticatorData);
+        const client = new Uint8Array(credential.response.clientDataJSON);
+        const message = new Uint8Array([...data, ...sha256(client)]);
+        assert.equal(
+          p256.verify(signature, message, auth.pub, { format: 'der', lowS: false }),
+          false,
+        );
+        return {
+          ...credential,
+          response: { ...credential.response, signature: signature.buffer },
+        };
+      }
+      const results = credential.getClientExtensionResults().prf?.results;
+      const original = results?.[fault];
+      assert.ok(original);
+      const changed = new Uint8Array(original).slice();
+      changed[0] = (changed[0] ?? 0) ^ 1;
+      return {
+        ...credential,
+        getClientExtensionResults: () => ({
+          prf: { results: { ...results, [fault]: changed.buffer } },
+        }),
+      };
+    },
+  };
+}
+
+for (const fault of /** @type {const} */ (['first', 'second'])) {
+  test(`actual JubJub login refuses a wrong ${fault === 'first' ? 'owner' : 'reader-root'} PRF output`, async () => {
+    const { auth, created, ports } = await activeAccount('jubjub');
+    const adapter = setup(auth, withFault(auth, fault));
+    const api = createPassportAccounts(ports(adapter));
+    const before = auth.gets.length;
+    const code = fault === 'first' ? 'AccountNotFound' : 'EncryptionKeyMismatch';
+    await assert.rejects(api.openAccount(), { code });
+    assert.ok(api.openAccountAt);
+    await assert.rejects(api.openAccountAt(created.address), {
+      code: fault === 'first' ? 'NotAuthorised' : code,
+    });
+    assert.equal(auth.gets.length, before + 2, 'each refusal uses one request without fallback');
+  });
+}
+
+test('actual P-256 login refuses a directory hint naming another passkey key', async () => {
+  const { auth, fake, ports } = await activeAccount('p256');
+  for (const [key, hint] of fake.directory.hints)
+    fake.directory.hints.set(key, { ...hint, publicKey: point(softwareAuthenticator().pub) });
+  const adapter = setup(auth);
+  const before = auth.gets.length;
+  await assert.rejects(createPassportAccounts(ports(adapter)).openAccount(), {
+    code: 'AccountNotFound',
+  });
+  assert.equal(auth.gets.length, before + 1);
+});
+
+test('JubJub trusts native PRF results, not an unavailable enrolled P-256 key; live owner and reader remain mandatory', async () => {
+  const { auth, created, ports, ledger } = await activeAccount('jubjub');
+  const adapter = setup(auth, withFault(auth, 'invalid-signature'));
+  const api = createPassportAccounts(ports(adapter));
+  const before = auth.gets.length;
+  // A JubJub directory stores its derived JubJub point, not the credential's P-256 public key.
+  // Shape/UV/RP checks still run; claiming ES256 verification on this arm would be incorrect.
+  assert.equal((await api.openAccount()).address, created.address);
+  assert.equal(auth.gets.length, before + 1);
+  const entries = [...ledger.entries];
+  ledger.entries.clear();
+  await assert.rejects(api.openAccount(), { code: 'AccountNotFound' });
+  for (const entry of entries) ledger.entries.add(entry);
+  ledger.inboxEntries = [];
+  await assert.rejects(api.openAccount(), { code: 'EncryptionKeyMismatch' });
+  assert.equal(
+    auth.gets.length,
+    before + 3,
+    'each positive/negative control has one credential call',
+  );
+});
