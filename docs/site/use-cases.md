@@ -22,6 +22,13 @@ lookup are under its Developer tools submenu. Full logs/copy are in Audit.
 See [workspace and Activity controls]({{ '/demo-ui/' | relative_url }}). These UI
 changes are not in published RC7.
 
+In the latest local source, Overview is the **Sign up / Log in** landing. These
+labels invoke the existing create/open flows below; **Log in with an account
+address** retains the enrolled-passkey address flow. Use **Demo tools → Settings**
+or **Demo tools → Audit** to reach the regular workspaces before opening an
+account. Successful account access selects Balances; it grants no new permission
+and does not connect or unlock the separate wallet automatically.
+
 
 ## RC7 consent and capability inspection
 

@@ -3,7 +3,7 @@ import { renderSessionDraft } from './session-view.js';
 import { createSettingsWorkspace } from './settings-workspace.js';
 import { createWorkspacePages } from './workspace-pages.js';
 import { createNavigationDrawer, createNavigationButton } from './navigation-drawer.js';
-import { createIcon } from './icons.js';
+import { createLandingPage } from './landing.js';
 
 /** Demo-owned layout and navigation. Moving existing nodes keeps action state and IDs intact. */
 export type WorkspaceId = 'overview' | 'account' | 'wallet' | 'audit' | 'settings';
@@ -75,44 +75,13 @@ export function createDemoWorkspace(config: {
   const intro = main.querySelector<HTMLElement>('.intro')!;
   move('overview', intro);
   const oldActions = main.querySelector<HTMLElement>('.panel-actions')!;
-  byId('create').prepend(createIcon('signup'));
-  byId('open').prepend(createIcon('passkey'));
   const actions = (parent: HTMLElement, ids: readonly string[]) => {
     const list = node('ul');
     list.className = 'actions';
     for (const id of ids) list.append(byId(id).closest('li')!);
     parent.append(list);
   };
-  const welcome = node('section');
-  welcome.className = 'overview-welcome';
-  welcome.setAttribute('aria-labelledby', 'overview-welcome-title');
-  const welcomeTitle = node('h3', 'Your Passport account');
-  welcomeTitle.id = 'overview-welcome-title';
-  welcome.append(
-    welcomeTitle,
-    node('p', 'Open your account with its passkey, or create a new account to get started.'),
-  );
-  views.overview.append(welcome);
-  actions(welcome, ['open', 'create']);
-  welcome.querySelector('.actions')!.classList.add('overview-choices');
-  // Keep the action-specific descriptions available to assistive technology;
-  // the shared panel explains passkey approval once visually.
-  for (const id of ['open', 'create']) {
-    byId(`${id}-desc`).classList.add('sr-only');
-    byId(`${id}-prompts`).classList.add('sr-only');
-  }
-  const passkeyNote = node(
-    'p',
-    'Passkey approval required. Each request is explained before you approve it.',
-  );
-  passkeyNote.className = 'overview-note';
-  welcome.append(passkeyNote);
-  const openByAddress = node('details');
-  openByAddress.id = 'overview-open-address';
-  openByAddress.className = 'overview-advanced';
-  openByAddress.append(node('summary', 'Have an account address?'));
-  actions(openByAddress, ['openAt']);
-  welcome.append(openByAddress);
+  createLandingPage(views.overview, (section) => show(section));
   const account = panelOf('account-title');
   const wallet = panelOf('wallet-title');
   const accountPages = createAccountWorkspace(views.account, account, (page) => {
@@ -433,6 +402,7 @@ export function createDemoWorkspace(config: {
   const show = (id: WorkspaceId, focus = true) => {
     if (selected !== id) scrollPositions.set(selected, center.scrollTop);
     selected = id;
+    main.dataset.landing = String(id === 'overview');
     for (const view of Object.keys(views) as WorkspaceId[]) {
       views[view].hidden = view !== id;
       if (view === id) buttons[view].setAttribute('aria-current', 'page');
@@ -584,6 +554,12 @@ export function createDemoWorkspace(config: {
     operationDetails,
     show,
     selected: () => selected,
+    showAccount() {
+      accountPages.select('balances', false);
+      scrollPositions.delete('account');
+      show('account');
+      navigationDrawer?.closeForNavigation();
+    },
     showAudit(operationId: string) {
       closeSheet('audit');
       auditPages.select('events', false, false);

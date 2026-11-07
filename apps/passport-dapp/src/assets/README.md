@@ -8,6 +8,12 @@ or black: the page inverts it to black on the light theme).
 | `midnight-logo.svg` | `midnight-did`, `docs-site/public/midnight-header-logo.svg` (commit `a1f3bb3`)                                          |
 | `lace-logo.svg`     | `lace-platform` `origin/main`, `packages/lib/ui-extension/src/assets/images/lace-logo.component.svg` (commit `5c8022c`) |
 
+`passport-card.svg` is decorative landing artwork adapted from the public
+[Passport staging page](https://staging.midnightpassport.com/), through the approved UX Pilot
+landing frame `pkNkLebTW9JTLx1KF2e3`. It retains that frame's card shapes and “Passkey” caption;
+the remote symbol image is omitted, and it makes no external asset requests. It is not a logo,
+verification badge or account status indicator. The demo renders it with empty alternative text.
+
 Colours used by `src/styles.css`:
 
 - **Midnight** (Brand Hub, midnight.network/brand-hub): Midnight Black `#0A0A0A`, White

@@ -104,13 +104,23 @@ Keep source-native, browser/synthetic and real-provider evidence separate.
 
 Read `docs/site/demo-ui.md`. All four multi-page workspaces use one shared page-link
 controller; wallet has Built-in/Lace pages and Audit has Event log/Requests/Export.
-Desktop groups remain visible with independent navigation/content scrolling. On
+Outside Overview's landing, desktop groups remain visible with independent navigation/content scrolling. On
 compact screens open Menu before clicking navigation; its modal drawer owns the
 same DOM nodes and restores focus. Use `[data-workspace-page]`/`aria-labelledby`
 to find the actual page control in browser journeys. Audit trace/JSON are pages,
 not details/summary disclosures. Navigation never starts credential/account/wallet
 work. Keep stable viewport geometry, drafts, deep links, explicit consent and
 unknown-intent fences; test actual pointer/keyboard navigation, not hidden mutations.
+
+### Landing entry page (local source)
+
+Overview uses **Sign up / Log in**, retaining the existing create/open/address
+IDs and consent handlers. Its rail and mobile Menu are hidden; use **Demo tools →
+Settings** to enter the regular navigation, or **Demo tools → Audit** to inspect
+an entry failure. Successful create/open/openAt selects Account Balances through
+the successful `opened()` path only. Navigation, stored hints and generic state
+refreshes never authenticate, enroll/unlock an owner or connect a wallet. Preserve
+address drafts and unknown IDs; the landing is presentation, not a logout boundary.
 
 ### Approved UX milestone (local source)
 

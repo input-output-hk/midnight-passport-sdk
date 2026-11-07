@@ -135,6 +135,12 @@ let browserVersion: string | undefined;
 let outcome = 'failed';
 // Use actual navigation, including the mobile drawer; never reveal content by mutating hidden state.
 async function openNavigation(page: Page): Promise<void> {
+  if ((await page.locator('#main').getAttribute('data-landing')) === 'true') {
+    const tools = page.locator('#landing-demo-tools');
+    if (!(await tools.evaluate((element) => (element as HTMLDetailsElement).open)))
+      await tools.locator('summary').click();
+    await page.locator('#landing-settings').click();
+  }
   await page.waitForFunction(() => {
     const nav = document.querySelector('.workspace-nav');
     return matchMedia('(max-width: 900px)').matches
@@ -154,6 +160,13 @@ async function openNavigation(page: Page): Promise<void> {
 async function navClick(page: Page, selector: string): Promise<void> {
   await openNavigation(page);
   await page.locator(selector).click();
+}
+async function assertAccountWorkspace(page: Page): Promise<void> {
+  assert.equal(await page.locator('#workspace-account').isVisible(), true);
+  assert.equal(await page.locator('#account-page-balances').isVisible(), true);
+  assert.equal(await page.locator('#account-tab-balances').getAttribute('aria-current'), 'page');
+  assert.equal(await page.evaluate(() => location.hash), '#account/balances');
+  assert.notEqual(await page.locator('#main').getAttribute('data-landing'), 'true');
 }
 async function reveal(page: Page, selector: string): Promise<void> {
   const location = await page.locator(selector).evaluate((element) => ({
@@ -562,6 +575,26 @@ try {
     };
     try {
       const owner = await newPage();
+      assert.equal(await owner.locator('#main').getAttribute('data-landing'), 'true');
+      assert.equal(await owner.locator('#workspace-overview').isVisible(), true);
+      assert.equal(await owner.locator('.workspace-nav').isVisible(), false);
+      assert.equal(await owner.locator('#navigation-toggle').isVisible(), false);
+      assert.equal(await owner.locator('#landing-demo-tools > summary').isVisible(), true);
+      assert.equal(calls.length, 0);
+      assert.equal(
+        await owner.evaluate(() => localStorage.getItem('passport-dev:mock-passkey:v1')),
+        null,
+      );
+      done(
+        'signed-out landing hides workspace navigation and starts no credential or account work',
+      );
+      await owner.locator('#landing-demo-tools > summary').click();
+      await owner.locator('#landing-audit').click();
+      assert.equal(await owner.locator('#workspace-audit').isVisible(), true);
+      await navClick(owner, '#nav-overview');
+      assert.equal(await owner.locator('#main').getAttribute('data-landing'), 'true');
+      assert.equal(calls.length, 0);
+      done('landing Demo tools keeps Audit reachable without logging in or clearing account state');
       const react = await newPage(undefined, true);
       const beforeReactCalls = calls.length;
       assert.equal(await react.locator('#react-runtime').innerText(), 'React 19.3.1');
@@ -770,6 +803,7 @@ try {
       done(
         'two white-label Activity hosts render shared public snapshots with independent cleanup and no replay',
       );
+      await openNavigation(owner);
       assert.deepEqual(await owner.locator('.workspace-nav-group > button').allTextContents(), [
         'Overview',
         'Passport account',
@@ -809,7 +843,7 @@ try {
         '#wallet-tab-lace',
         '#audit-tab-requests',
         '#settings-tab-developer',
-        '#nav-overview',
+        '#nav-settings',
       ]) {
         await navClick(owner, control);
         const current = await menuPositions();
@@ -853,6 +887,7 @@ try {
         'persistent navigation keeps parent positions and document scroll stable; wallet and Audit use consistent side-effect-free page links',
       );
 
+      await navClick(owner, '#nav-settings');
       await owner.setViewportSize({ width: 390, height: 844 });
       await owner.locator('#navigation-toggle').waitFor({ state: 'visible' });
       assert.equal(await owner.locator('#navigation-toggle').isVisible(), true);
@@ -922,20 +957,26 @@ try {
       assert.equal(await owner.locator('.overview-welcome').count(), 1);
       assert.equal(
         await owner.locator('.overview-welcome > h3').textContent(),
-        'Your Passport account',
+        'Get started with Passport',
+      );
+      assert.equal(
+        (await owner.locator('.landing-introduction h1').innerText()).replace(/\s+/g, ' '),
+        'Your Passport account for the Midnight network.',
       );
       assert.deepEqual(
         (await owner.locator('.overview-choices button').allTextContents()).map((text) =>
           text.trim(),
         ),
-        ['Open with passkey', 'Create account'],
-      );
-      assert.ok(
-        await owner.locator('#open').evaluate((button) => button.classList.contains('btn-primary')),
+        ['Sign up', 'Log in'],
       );
       assert.ok(
         await owner
           .locator('#create')
+          .evaluate((button) => button.classList.contains('btn-primary')),
+      );
+      assert.ok(
+        await owner
+          .locator('#open')
           .evaluate(
             (button) =>
               button.classList.contains('btn-secondary') &&
@@ -943,6 +984,10 @@ try {
           ),
       );
       assert.equal(await owner.locator('.overview-welcome > .overview-note').count(), 1);
+      assert.equal(
+        await owner.locator('#overview-open-address > summary').textContent(),
+        'Log in with an account address',
+      );
       assert.equal(await owner.locator('#open-address').isVisible(), false);
       await owner.locator('#overview-open-address > summary').click();
       assert.equal(await owner.locator('#open-address').isVisible(), true);
@@ -958,23 +1003,42 @@ try {
       const choiceBounds = await owner.locator('.overview-choices button').evaluateAll((buttons) =>
         buttons.map((button) => {
           const bounds = button.getBoundingClientRect();
-          return { y: bounds.y, width: bounds.width };
+          return { x: bounds.x, y: bounds.y, height: bounds.height, width: bounds.width };
         }),
       );
-      assert.ok(Math.abs(choiceBounds[0]!.y - choiceBounds[1]!.y) < 2);
+      assert.ok(choiceBounds[1]!.y >= choiceBounds[0]!.y + choiceBounds[0]!.height);
+      assert.ok(Math.abs(choiceBounds[0]!.x - choiceBounds[1]!.x) < 2);
       assert.ok(Math.abs(choiceBounds[0]!.width - choiceBounds[1]!.width) < 2);
+      await owner.setViewportSize({ width: 390, height: 844 });
+      assert.equal(await owner.locator('#navigation-toggle').isVisible(), false);
+      assert.equal(await owner.locator('.workspace-nav').isVisible(), false);
+      assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      assert.ok(
+        await owner.locator('.overview-choices button').evaluateAll((buttons) =>
+          buttons.every((button) => {
+            const bounds = button.getBoundingClientRect();
+            return bounds.width >= 44 && bounds.height >= 44;
+          }),
+        ),
+        'landing entry actions retain usable touch targets',
+      );
+      await owner.setViewportSize({ width: 1280, height: 900 });
       if (process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS && arm === 'p256') {
         const screenshots = process.env.PASSPORT_DEMO_JOURNEY_SCREENSHOTS;
         await mkdir(screenshots, { recursive: true });
         await owner.emulateMedia({ colorScheme: 'dark' });
         await owner.screenshot({
           path: resolve(screenshots, 'overview-idle-desktop.png'),
+          animations: 'disabled',
           fullPage: true,
         });
         await owner.setViewportSize({ width: 390, height: 844 });
+        assert.equal(await owner.locator('#navigation-toggle').isVisible(), false);
+        assert.equal(await owner.locator('.workspace-nav').isVisible(), false);
         assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
         await owner.screenshot({
           path: resolve(screenshots, 'overview-idle-mobile.png'),
+          animations: 'disabled',
           fullPage: true,
         });
         await owner.setViewportSize({ width: 1280, height: 900 });
@@ -985,7 +1049,7 @@ try {
         null,
       );
       done(
-        'Overview has one compact entry panel; optional address disclosure preserves draft and starts no credential or account action',
+        'landing offers balanced Sign up and Log in actions; optional address login preserves drafts without credential or account work',
       );
       assert.deepEqual(
         await owner
@@ -1211,6 +1275,8 @@ try {
       assert.ok(await owner.locator('#consent-continue').isDisabled());
       await click(owner, '#consent-cancel');
       await waitStatus(owner, /declined before passkey/);
+      assert.equal(await owner.locator('#main').getAttribute('data-landing'), 'true');
+      assert.equal(await owner.locator('#workspace-account').isVisible(), false);
       assert.equal(calls.length, 0);
       assert.equal(
         await owner.evaluate(() => localStorage.getItem('passport-dev:mock-passkey:v1')),
@@ -1364,14 +1430,20 @@ try {
 
       await approve(owner, 'create');
       await waitStatus(owner, /is created/);
+      await assertAccountWorkspace(owner);
       done('acknowledged creation and one explicit approval per credential request');
       await archiveObservations(owner, arm);
+      // Revisit the landing before reload: saved passkey hints must not reopen the account.
+      // Explicit workspace deep links retain their separate presentation-only coverage.
+      await navClick(owner, '#nav-overview');
       await owner.reload();
       await owner
         .locator('#status')
         .filter({ hasText: /^Ready\./ })
         .waitFor({ state: 'attached' });
       await observeCredentialAccess(owner);
+      assert.equal(await owner.locator('#main').getAttribute('data-landing'), 'true');
+      assert.equal(await owner.locator('#workspace-account').isVisible(), false);
       // Simulate the exact recognized Chromium variant once; a retry needs another approval.
       await owner.addScriptTag({ type: 'module', url: `${origin}/e2e/fixtures/profile-retry.ts` });
       await approve(owner, 'open');
@@ -1384,6 +1456,8 @@ try {
       assert.equal(await credentialsUsed(), 1);
       await click(owner, '#ceremony-cancel');
       await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+      assert.equal(await owner.locator('#main').getAttribute('data-landing'), 'true');
+      assert.equal(await owner.locator('#workspace-account').isVisible(), false);
       assert.equal(
         await credentialsUsed(),
         1,
@@ -1395,10 +1469,14 @@ try {
 
       await approve(owner, 'open');
       await waitStatus(owner, /is reopened/);
+      await assertAccountWorkspace(owner);
       await fill(owner, '#open-address', address);
       await approve(owner, 'openAt');
       await waitStatus(owner, /opened by address/);
-      done('reload, reopen and known-address opening');
+      await assertAccountWorkspace(owner);
+      done(
+        'reload stays on landing; successful creation, login and address login select account balances',
+      );
 
       await approve(owner, 'holdings');
       await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });

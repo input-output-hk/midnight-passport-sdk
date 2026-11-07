@@ -956,6 +956,16 @@ main.workspace-shell {
 main.workspace-shell[data-activity='collapsed'] {
   grid-template-columns: 210px minmax(0, 1fr);
 }
+main.workspace-shell[data-landing='true'] {
+  grid-template-columns: minmax(0, 1fr) 280px;
+}
+main.workspace-shell[data-landing='true'][data-activity='collapsed'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+main.workspace-shell[data-landing='true'] > .workspace-nav,
+main.workspace-shell[data-landing='true'] > .navigation-bar {
+  display: none;
+}
 .workspace-nav {
   min-height: 0;
   overflow: auto;
@@ -1245,6 +1255,10 @@ main.workspace-shell[data-activity='collapsed'] {
   }
   main.workspace-shell {
     grid-template-rows: auto minmax(0, 1fr);
+  }
+  main.workspace-shell[data-landing='true'] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
   }
   .workspace-nav :is(button, a) {
     font-size: 0.95rem;

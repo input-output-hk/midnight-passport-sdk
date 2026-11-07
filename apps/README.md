@@ -36,6 +36,13 @@ lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](.
 
 ## Candidate consent and browser regression
 
+Overview now uses the upstream-inspired **Sign up / Log in** landing with local
+Passport artwork and **Powered by Lace** branding. The same create/open/address
+controls keep their existing consent and state handling; successful access opens
+**Passport account → Balances**. **Demo tools** exposes Audit and Settings while
+the landing rail is hidden. No automatic wallet connection, owner enrollment or
+JubJub unlock follows login. See the [UI guide](../docs/site/demo-ui.md).
+
 The demo's navigation and account entry actions include app-owned SVG outlines.
 They inherit the host theme and keep visible text labels; no icon library or
 branding dependency is added to the SDK packages. See the

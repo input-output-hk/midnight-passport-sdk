@@ -1,0 +1,207 @@
+/* Demo composition inspired by the upstream Passport landing page; no SDK styling contract. */
+main.workspace-shell[data-landing='true'] .passport-landing {
+  --landing-panel: #171b27;
+  --landing-border: #3a4054;
+  --landing-secondary: #afb6ca;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+  align-items: center;
+  align-content: center;
+  gap: 2rem 4rem;
+  max-width: 1120px;
+  min-height: 100%;
+  margin-inline: auto;
+  padding: 1rem 1.25rem;
+  background:
+    radial-gradient(circle at 76% 3%, rgb(0 0 254 / 10%), transparent 30%),
+    radial-gradient(circle at 12% 76%, rgb(121 104 255 / 5%), transparent 32%);
+}
+
+.passport-landing .workspace-heading {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+.passport-landing .workspace-heading > h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.passport-landing .landing-introduction {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+  max-width: none;
+  grid-column: auto;
+}
+
+.passport-landing .landing-passport-card {
+  display: block;
+  width: min(100%, 360px);
+  height: auto;
+}
+
+.passport-landing .landing-title {
+  max-width: 10.5em;
+  font-size: clamp(2.25rem, 4.4vw, 3.625rem);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  font-weight: 500;
+  text-wrap: balance;
+}
+
+.passport-landing .landing-description {
+  max-width: 26rem;
+  color: var(--landing-secondary);
+  font-size: 1rem;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.passport-landing .overview-welcome {
+  width: 100%;
+  max-width: none;
+  padding: 2.25rem;
+  border-color: var(--landing-border);
+  border-radius: 1.75rem;
+  background: var(--bg);
+  gap: 1.25rem;
+}
+
+.workspace-shell .passport-landing .overview-choices,
+.workspace-shell .passport-landing .landing-address-actions {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.passport-landing .overview-choices .btn {
+  width: 100%;
+  min-height: 56px;
+  padding: 1rem 1.5rem;
+  border-radius: 1.125rem;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.passport-landing .overview-choices .btn-secondary {
+  background: var(--landing-panel);
+  border-color: var(--landing-border);
+  color: var(--heading);
+}
+
+.passport-landing .overview-choices .btn-secondary:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.passport-landing .landing-entry-note,
+.passport-landing .overview-note {
+  color: var(--landing-secondary);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.passport-landing .overview-advanced {
+  min-width: 0;
+  border-block-start: 1px solid var(--landing-border);
+  padding-block-start: 0.75rem;
+}
+
+.passport-landing .overview-advanced > summary {
+  min-height: 44px;
+  color: var(--landing-secondary);
+  font-size: 0.875rem;
+}
+
+.passport-landing .landing-address-actions {
+  margin-block-end: 0.75rem;
+}
+
+.passport-landing .landing-address-actions .action {
+  gap: 0.75rem;
+}
+
+.passport-landing .landing-address-actions label {
+  font-size: 0.875rem;
+}
+
+.passport-landing .landing-address-actions .btn {
+  min-height: 48px;
+}
+
+.passport-landing .landing-footer {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 1rem;
+  border-block-start: 1px solid var(--landing-border);
+  color: var(--landing-secondary);
+  font-size: 0.8rem;
+}
+
+.passport-landing .landing-footer > p {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.passport-landing .landing-tools > summary {
+  min-height: 44px;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+.passport-landing .landing-tools-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.passport-landing .landing-tools-links .btn {
+  min-height: 44px;
+  gap: 0.5rem;
+}
+
+@media (prefers-color-scheme: light) {
+  main.workspace-shell[data-landing='true'] .passport-landing {
+    --landing-panel: #f3f4fa;
+    --landing-border: #ced3df;
+    --landing-secondary: #555e73;
+  }
+}
+
+@media (max-width: 900px) {
+  main.workspace-shell[data-landing='true'] .passport-landing {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+    padding: 0.5rem 0.25rem;
+    align-content: start;
+  }
+
+  .passport-landing .landing-introduction {
+    justify-items: center;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .passport-landing .landing-passport-card {
+    width: min(100%, 192px);
+  }
+
+  .passport-landing .landing-title {
+    max-width: 15em;
+    font-size: 2.25rem;
+  }
+
+  .passport-landing .overview-welcome {
+    max-width: 32rem;
+    margin-inline: auto;
+    padding: 1.5rem;
+  }
+}

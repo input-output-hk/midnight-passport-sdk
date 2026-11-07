@@ -399,6 +399,7 @@ const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult
     entryCount: state.entryCount,
   });
   status(`Account ${a.address.slice(0, 12)}… is ${how}.`);
+  workspace.showAccount();
 };
 
 if (injected()) {

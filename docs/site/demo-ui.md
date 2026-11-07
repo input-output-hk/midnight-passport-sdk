@@ -21,7 +21,7 @@ deployed site remain separate from this local work.
 
 | Workspace | What belongs here |
 | --- | --- |
-| **Overview** | Create an account, open with a passkey, or open a known ACC address with an enrolled passkey. No name or profile creation. |
+| **Overview** | Landing page with **Sign up** and **Log in**, plus secondary account-address login. **Demo tools** keeps Audit and Settings reachable. No name or profile creation. |
 | **Passport account** | **Balances**, **Deposit** and **Withdraw** pages under its left navigation entry. The selected ACC/network stays visible; each operation has its own form. Amounts retain their original units and unavailable/stale states. |
 | **Midnight wallet** | **Built-in wallet** and **Lace Wallet** pages: addresses, balances, freshness and **Refresh wallet balance**. **Manage wallet connections** opens Settings. |
 | **Audit** | **Event log**, **Requests & responses** and **Export JSON** pages, with **Copy full log** on every page. |
@@ -38,7 +38,7 @@ to avoid visual clutter. These app-owned assets (`src/icons.ts` and
 branding dependency. A fingerprint indicates passkey access, not that a device
 has a fingerprint sensor or that authentication already succeeded.
 
-All desktop groups stay visible in the left rail, so selecting a page never moves
+Outside the landing page, all desktop groups stay visible in the left rail, so selecting a page never moves
 other menu entries. Navigation and content scroll independently; changing content
 cannot resize or scroll the navigation rail. Page focus uses `preventScroll`.
 The active page has a clear outline and `aria-current="page"`; navigation uses
@@ -74,15 +74,30 @@ Synthetic keyboard/layout tests do not establish assistive-technology certificat
 
 ### Start from Overview
 
-One compact **Your Passport account** panel groups both entry actions.
-**Open with passkey** is the primary action; **Create account** is secondary.
-A shared notice explains passkey approval. **Have an account address?** expands
-below the actions for the less common **Open by ACC address** flow. Paste the
-64-character lowercase hexadecimal account address and use an enrolled passkey;
-an address alone grants no access and cannot recover a lost passkey. Expanding
-this option or entering an address starts no credential or account operation.
-The draft stays intact when navigating within the page. Setup details and every
-actual passkey request still have their own blocking review.
+Overview is a landing page inspired by the current upstream Passport design:
+a decorative Passport card and short introduction sit beside a **Get started
+with Passport** card. **Sign up** is primary; **Log in** is secondary. These labels
+reuse the existing create/open controls and handlers. Sign up still requests the
+irreversible maintenance-retirement acknowledgement; every actual credential
+request has its own blocking review. An open account and an unlocked JubJub owner
+remain separate states.
+
+The workspace rail and mobile Menu are absent on this entry page. **Demo tools**
+offers Audit and Settings without requiring account access. Other workspaces keep
+their existing navigation; Activity still displays progress, failures and unknown
+outcomes during entry operations. Merely navigating never authenticates a user.
+
+**Log in with an account address** expands the existing address form. Paste the
+64-character lowercase hexadecimal address and use an enrolled passkey; an address
+alone grants no access and cannot recover a lost passkey. Expanding the form or
+editing its draft starts no credential operation. Drafts survive local navigation.
+Successful creation, passkey login or address login opens **Passport account →
+Balances**. A declined or failed attempt does not redirect to an account; Activity
+and Audit retain its original evidence and uncertain IDs. Returning to Overview
+does not log out, revoke authority or erase local records.
+
+The illustration and CSS are demo-owned. SDK consumers can compose the same
+headless account capabilities with their own brand, layout and consent host.
 
 ### Passport account operations
 

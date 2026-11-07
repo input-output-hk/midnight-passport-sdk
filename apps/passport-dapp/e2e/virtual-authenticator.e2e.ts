@@ -16,7 +16,28 @@ const browser = await chromium.launch({
 });
 
 async function approveAction(page: Page, name: string): Promise<void> {
-  await page.getByRole('button', { name, exact: true }).click();
+  const label =
+    name === 'Create account' ? 'Sign up' : name === 'Open with passkey' ? 'Log in' : name;
+  const button = page.getByRole('button', { name: label, exact: true, includeHidden: true });
+  if (!(await button.isVisible())) {
+    const section = await button.evaluate(
+      (item) => item.closest<HTMLElement>('[data-workspace]')?.dataset.workspace,
+    );
+    const pageControl = await button.evaluate((item) =>
+      item.closest('[data-workspace-page]')?.getAttribute('aria-labelledby'),
+    );
+    if (!section) throw new Error(`No workspace for ${label}`);
+    if ((await page.locator('#main').getAttribute('data-landing')) === 'true') {
+      const tools = page.locator('#landing-demo-tools');
+      if (!(await tools.evaluate((item) => (item as HTMLDetailsElement).open)))
+        await tools.locator('summary').click();
+      await page.locator('#landing-settings').click();
+    }
+    if (await page.locator('#navigation-toggle').isVisible())
+      await page.locator('#navigation-toggle').click();
+    await page.locator(pageControl ? `#${pageControl}` : `#nav-${section}`).click();
+  }
+  await button.click();
   await page.locator('#consent-dialog').waitFor({ state: 'visible' });
   if (name === 'Create account') await page.locator('#consent-retirement-ack').check();
   await page.getByRole('button', { name: 'Approve operation', exact: true }).click();
