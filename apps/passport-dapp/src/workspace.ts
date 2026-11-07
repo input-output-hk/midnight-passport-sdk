@@ -2,7 +2,8 @@ import { createAccountWorkspace } from './account-workspace.js';
 import { renderSessionDraft } from './session-view.js';
 import { createSettingsWorkspace } from './settings-workspace.js';
 import { createWorkspacePages } from './workspace-pages.js';
-import { createNavigationDrawer } from './navigation-drawer.js';
+import { createNavigationDrawer, createNavigationButton } from './navigation-drawer.js';
+import { createIcon } from './icons.js';
 
 /** Demo-owned layout and navigation. Moving existing nodes keeps action state and IDs intact. */
 export type WorkspaceId = 'overview' | 'account' | 'wallet' | 'audit' | 'settings';
@@ -59,10 +60,7 @@ export function createDemoWorkspace(config: {
     titleRow.append(heading);
     view.append(titleRow);
     views[id] = view;
-    const button = node('button', names[id]);
-    button.type = 'button';
-    button.id = `nav-${id}`;
-    button.setAttribute('aria-controls', view.id);
+    const button = createNavigationButton(id, names[id], view.id);
     buttons[id] = button;
     const group = node('div');
     group.className = 'workspace-nav-group';
@@ -77,6 +75,8 @@ export function createDemoWorkspace(config: {
   const intro = main.querySelector<HTMLElement>('.intro')!;
   move('overview', intro);
   const oldActions = main.querySelector<HTMLElement>('.panel-actions')!;
+  byId('create').prepend(createIcon('signup'));
+  byId('open').prepend(createIcon('passkey'));
   const actions = (parent: HTMLElement, ids: readonly string[]) => {
     const list = node('ul');
     list.className = 'actions';

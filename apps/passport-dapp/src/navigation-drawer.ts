@@ -1,3 +1,15 @@
+import { createIcon, type DemoIcon } from './icons.js';
+
+export function createNavigationButton(id: DemoIcon, label: string, viewId: string) {
+  const button = document.createElement('button');
+  button.textContent = label;
+  button.prepend(createIcon(id));
+  button.type = 'button';
+  button.id = `nav-${id}`;
+  button.setAttribute('aria-controls', viewId);
+  return button;
+}
+
 /** One navigation DOM tree: persistent desktop rail, modal drawer on compact screens. */
 export function createNavigationDrawer(
   main: HTMLElement,

@@ -777,6 +777,21 @@ try {
         'Audit',
         'Settings',
       ]);
+      for (const label of [
+        'Overview',
+        'Passport account',
+        'Midnight wallet',
+        'Audit',
+        'Settings',
+      ]) {
+        const control = owner.getByRole('button', { name: label, exact: true });
+        assert.equal(await control.count(), 1, 'decorative icons preserve accessible names');
+        const icon = control.locator('svg');
+        assert.equal(await icon.getAttribute('aria-hidden'), 'true');
+        assert.equal(await icon.getAttribute('focusable'), 'false');
+        assert.equal(await icon.getAttribute('stroke'), 'currentColor');
+      }
+      assert.equal(await owner.locator('#create svg, #open svg').count(), 2);
       const menuPositions = () =>
         owner.locator('.workspace-nav-group > button').evaluateAll((items) => {
           const nav = document.querySelector<HTMLElement>('.workspace-nav')!;

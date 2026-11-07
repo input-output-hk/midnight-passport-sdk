@@ -29,6 +29,15 @@ deployed site remain separate from this local work.
 
 ### Stable navigation
 
+The demo's small SVG set uses rounded 24-unit outlines for the five workspace
+entries and the create/passkey entry actions. Icons are decorative, unfocusable
+and inherit `currentColor`; visible labels remain the accessible names. Active,
+disabled and focus states still belong to the control. Submenus keep text labels
+to avoid visual clutter. These app-owned assets (`src/icons.ts` and
+`.passport-icon`) can be restyled by a host; the SDK packages have no icon, DOM or
+branding dependency. A fingerprint indicates passkey access, not that a device
+has a fingerprint sensor or that authentication already succeeded.
+
 All desktop groups stay visible in the left rail, so selecting a page never moves
 other menu entries. Navigation and content scroll independently; changing content
 cannot resize or scroll the navigation rail. Page focus uses `preventScroll`.

@@ -37,6 +37,11 @@ published release or a change to the deployed documentation site.
 
 ## Approved information architecture
 
+The local demo adds a small, app-owned rounded SVG icon set to workspace entries
+and account entry actions. Text remains visible and supplies each control's
+accessible name; no additional SDK UI dependency is required. See the
+[UI guide](../site/demo-ui.md#stable-navigation) for reuse and accessibility rules.
+
 - Left navigation: **Overview, Passport account, Midnight wallet, Audit, Settings**.
 - Passport account uses **Balances / Deposit / Withdraw** tabs, a shared open-ACC
   identity and one operation form at a time. Contract state is expandable; refresh
