@@ -10,6 +10,7 @@ export type {
   JubjubAuthorisation,
   Authorisation,
 } from './authorisation.js';
+export type { PasskeyIdentity } from '../seams.js';
 // The ports of the account core (design §2.1, D-2, D-4), exported as `./ports`: types only, so an
 // adapter or a host gets the interfaces without the flows. Where a port means what a lace-platform
 // seam means, it takes that seam's member names and compatible shapes where possible. The current

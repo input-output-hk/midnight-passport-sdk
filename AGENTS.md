@@ -122,6 +122,20 @@ the successful `opened()` path only. Navigation, stored hints and generic state
 refreshes never authenticate, enroll/unlock an owner or connect a wallet. Preserve
 address drafts and unknown IDs; the landing is presentation, not a logout boundary.
 
+### Single-request active login (local source)
+
+Both account arms now wrap `openAccount`/`openAccountAt` in the credential port's
+optional `withLoginSession`. The browser adapter uses one discoverable assertion
+with both unchanged Lace PRF salts (`identify-and-unlock` consent), retaining its
+outputs only through the sequential sealed-key checks. Verify signed original
+client/authenticator bytes locally; never pass extension-bearing login material
+to strict ACC `wa-json134` signing or relax the enrollment/signing probe. Cancel,
+missing PRF and bad proofs never trigger implicit fallback/retry. Login does not
+enroll/unlock an owner or connect a wallet. Keep pending activation/publication
+signatures and uncertain-ID handling intact. Actual-core tests use real software
+ES256/PRF with a fake chain; browser journeys use a synthetic account driver.
+Neither establishes live-provider sheets/touches or native proof acceptance.
+
 ### Approved UX milestone (local source)
 
 Follow [the execution map](docs/prototype/ux-milestone.md) and milestone #3, issues

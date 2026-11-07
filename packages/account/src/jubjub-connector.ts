@@ -1,3 +1,4 @@
+import { withLoginSession } from './with-login-session.js';
 import { snapshotGrantScope, snapshotDeviceReader } from './request-snapshots.js';
 import {
   accountInboxReader,
@@ -1554,7 +1555,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
       }),
   });
 
-  return {
+  return withLoginSession(credentials, {
     apiVersion: PASSPORT_API_VERSION,
     networkId,
     bindingId: network.bindingId,
@@ -1718,5 +1719,5 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
           { kind: 'sign-in' },
         );
       }),
-  };
+  });
 }

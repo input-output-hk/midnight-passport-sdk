@@ -34,11 +34,15 @@ const observe = (
   const rect = notice.getBoundingClientRect();
   const text = notice.textContent ?? '';
   const prf = options.publicKey?.extensions?.prf;
+  const discoverable =
+    method === 'get' && !(options as CredentialRequestOptions).publicKey?.allowCredentials?.length;
   const expected =
     method === 'create'
       ? ['create']
       : prf
-        ? ['derive-keys']
+        ? discoverable
+          ? ['identify-and-unlock']
+          : ['derive-keys']
         : ['verify-created', 'identify', 'sign'];
   const ceremonyId = notice.dataset.ceremonyId ?? '';
   if (!approvals.delete(ceremonyId)) refuse('UnapprovedCredentialAccess');

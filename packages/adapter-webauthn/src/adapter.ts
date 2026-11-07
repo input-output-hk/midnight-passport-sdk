@@ -5,10 +5,11 @@ import type {
   PasskeyCredential,
   PrfKeySource,
 } from '@input-output-hk/mn-passport-account/ports';
-import { deriveSymmetricSecret, seedFromRoot } from '@input-output-hk/mn-passport-keys';
 import { p256 as p256Curve } from '@noble/curves/nist.js';
 import { browserPasskey } from './passkey.js';
-import { passkeyPrf, type PasskeyPrfOutputs } from './prf.js';
+import { passkeyPrf } from './prf.js';
+import { identifyPasskeyWithPrf } from './login.js';
+import { createPasskeySessions } from './sessions.js';
 import type { PasskeyCeremonyOptions } from './ceremony.js';
 
 /** Browser implementation of the account's credential, PRF and P-256 authoriser ports. */
@@ -23,9 +24,17 @@ export function webauthnPasskey(
   const known = new Map<string, PasskeyCredential>();
   let current: PasskeyCredential | undefined;
   let selectedCredentialId: Uint8Array | undefined;
-  let session: PasskeyPrfOutputs | undefined;
-  let pendingSession: Promise<PasskeyPrfOutputs> | undefined;
-  let sessionUsers = 0;
+  const sessions = createPasskeySessions(async () => {
+    if (!selectedCredentialId)
+      throw new PassportConnectorError('InternalError', 'No passkey was selected.');
+    return passkeyPrf({
+      credentialId: selectedCredentialId,
+      rpId: opts.rpId,
+      beforeCeremony: opts.beforeCeremony,
+      ...(opts.credentials && { credentials: opts.credentials }),
+      ...(current && { created: current }),
+    });
+  });
   const idHex = (id: Uint8Array): string =>
     Array.from(id, (byte) => byte.toString(16).padStart(2, '0')).join('');
   const selected = (): PasskeyCredential => {
@@ -33,7 +42,10 @@ export function webauthnPasskey(
     return current;
   };
   const credentials: CredentialPort = {
+    withLoginSession: (work) => sessions.withLoginSession(work),
     async create({ name }) {
+      if (sessions.active())
+        throw new PassportConnectorError('NotAuthorised', 'A login session is active.');
       const created = await seam.create(name);
       current = created;
       selectedCredentialId = created.credentialId;
@@ -41,7 +53,9 @@ export function webauthnPasskey(
       return { credentialId: created.credentialId };
     },
     async identify() {
-      const identity = await seam.identify();
+      const identity = sessions.active()
+        ? await sessions.identify(() => identifyPasskeyWithPrf(opts))
+        : await seam.identify();
       selectedCredentialId = identity.credentialId;
       current = known.get(idHex(identity.credentialId));
       return {
@@ -59,60 +73,7 @@ export function webauthnPasskey(
       };
     },
   };
-  const prf: PrfKeySource = {
-    async withSession<T>(operation: () => Promise<T>): Promise<T> {
-      // Reserve before awaiting the ceremony: overlapping users share one prompt and the outputs
-      // remain live until the last user finishes, even if an earlier operation finishes first.
-      sessionUsers++;
-      try {
-        if (!session) {
-          pendingSession ??= (async () => {
-            const credentialId = selectedCredentialId;
-            if (!credentialId)
-              throw new PassportConnectorError('InternalError', 'No passkey was selected.');
-            return passkeyPrf({
-              credentialId,
-              rpId: opts.rpId,
-              beforeCeremony: opts.beforeCeremony,
-              ...(opts.credentials && { credentials: opts.credentials }),
-              ...(current && { created: current }),
-            });
-          })().finally(() => {
-            pendingSession = undefined;
-          });
-          session = await pendingSession;
-        }
-        return await operation();
-      } finally {
-        sessionUsers--;
-        if (sessionUsers === 0 && session) {
-          session.authoriser.fill(0);
-          session.root.fill(0);
-          session = undefined;
-        }
-      }
-    },
-    async deviceSecret() {
-      if (!session) return prf.withSession(() => prf.deviceSecret());
-      return session.authoriser.slice();
-    },
-    async deriveSecret({ domain, context, length }) {
-      if (!session)
-        return prf.withSession(() =>
-          prf.deriveSecret({ domain, context, ...(length === undefined ? {} : { length }) }),
-        );
-      const seed = seedFromRoot(session.root);
-      try {
-        return deriveSymmetricSecret(seed, {
-          domain,
-          context,
-          ...(length === undefined ? {} : { length }),
-        });
-      } finally {
-        seed.fill(0);
-      }
-    },
-  };
+  const prf = sessions.prf;
   const p256: Authoriser = {
     scheme: 'p256-webauthn',
     devicePublicKey: async () => selected().publicKey,

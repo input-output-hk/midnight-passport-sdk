@@ -50,6 +50,8 @@ const CEREMONIES: Record<PasskeyCeremony['purpose'], string> = {
   'verify-created':
     'Verify the new passkey’s signing format before deployment or enrollment. This second request checks that the newly created credential works with the ACC; creating it alone cannot establish that.',
   identify: 'Choose and verify the passkey for this operation.',
+  'identify-and-unlock':
+    'Choose your passkey and unlock its local account keys in this one request (PRF). These keys are cleared when login finishes. This does not sign an ACC transaction, enroll an owner or start an authenticated owner session.',
   sign: 'Sign the current ACC transaction. This is separate from unlocking local keys.',
   'derive-keys':
     'Unlock passkey-derived local keys (PRF). This is not an ACC transaction signature.',

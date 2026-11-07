@@ -43,6 +43,15 @@ controls keep their existing consent and state handling; successful access opens
 the landing rail is hidden. No automatic wallet connection, owner enrollment or
 JubJub unlock follows login. See the [UI guide](../docs/site/demo-ui.md).
 
+Active-account **Log in** and known-address opening now combine passkey discovery
+and both Lace PRF evaluations in one user-verified credential request, with the
+`identify-and-unlock` blocking review. Both sealed-key checks run within the same
+short-lived login scope. Output copies are cleared when it ends; no authenticated
+owner lease or wallet connection starts. Missing PRF/cancellation refuses without
+an automatic second request. Pending setup and actual P-256 transactions may still
+need signatures. This is source-only, not published RC7 or measured provider UX.
+See [the prompt comparison](../docs/site/passkey-prompts.md).
+
 The demo's navigation and account entry actions include app-owned SVG outlines.
 They inherit the host theme and keep visible text labels; no icon library or
 branding dependency is added to the SDK packages. See the

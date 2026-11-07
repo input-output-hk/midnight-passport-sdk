@@ -57,6 +57,7 @@ approval to the account, network, request and authority being used.
 | `create` | Create a discoverable P-256 credential with PRF requested |
 | `verify-created` | Check the new credential's signing/profile compatibility before account effects |
 | `identify` | Select and verify a credential for this operation |
+| `identify-and-unlock` | In one discoverable assertion, select/prove the credential and evaluate both existing Lace PRF salts for operation-local account keys |
 | `derive-keys` | Evaluate PRF to derive local signing/reader/journal or independent wallet material |
 | `sign` | Request a direct P-256 account-transaction signature |
 
@@ -104,6 +105,15 @@ transaction receipts, inspect the log and reconcile before another effect.
 
 ## Prompt budgets and session lifetime
 
+Current-source active-account login combines discovery and PRF into one
+`identify-and-unlock` request. Both sequential sealed-key checks reuse that login's
+held outputs; they are cleared on success or failure. The local proof verifies the
+actual signed bytes, including bounded extension data and additional JSON members.
+It does not relax `wa-json134` transaction signatures, enroll an owner, extend an
+owner lease or remove either live key check. Unsupported PRF/cancellation does not
+trigger another prompt. Pending setup may still need genuine signatures. See
+[the comparison and evidence boundary]({{ '/passkey-prompts/' | relative_url }}).
+
 P-256 signs each account transaction through its authenticator, so a multi-transaction
 operation may need several prompts. JubJub signs in software after the approved PRF
 unlock. Provider behavior, held create outputs and profile retries also affect
@@ -129,6 +139,11 @@ adapter until its last session exits, then clears its held buffers. This is
 Hosts should not share that adapter across unrelated approved operations. Broader
 session isolation and prompt-budget qualification remain
 [#245](https://github.com/input-output-hk/midnight-passport-sdk/issues/245).
+The optional `CredentialPort.withLoginSession` additionally fences overlapping
+logins and creation during login. The browser implementation clears login buffers
+at callback completion even if a misbehaving host leaves a child unawaited, and
+refuses late identification results. Hosts must await all work inside the callback.
+Adapters without this optional port retain their existing login behavior.
 
 ## Source preview: opt-in JubJub sessions
 

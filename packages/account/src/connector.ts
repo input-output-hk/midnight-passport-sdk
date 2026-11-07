@@ -1,3 +1,4 @@
+import { withLoginSession } from './with-login-session.js';
 import { snapshotGrantScope, snapshotDeviceReader } from './request-snapshots.js';
 import {
   type P256Hint,
@@ -1582,7 +1583,7 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
       }),
   });
 
-  return {
+  return withLoginSession(credentials, {
     apiVersion: PASSPORT_API_VERSION,
     networkId,
     bindingId: network.bindingId,
@@ -1774,5 +1775,5 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         }
         return account(hint.status === 'active' ? hint : await finishActivation(flow, hint, view));
       }),
-  };
+  });
 }

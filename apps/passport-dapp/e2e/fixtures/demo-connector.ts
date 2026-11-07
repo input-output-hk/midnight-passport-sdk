@@ -236,10 +236,17 @@ const api = {
     return account(ref.credentialId);
   },
   async openAccount() {
-    const ref = await passkey.credentials.identify();
-    await unlock();
-    await call('open');
-    return account(ref.credentialId);
+    const open = async () => {
+      const ref = await passkey.credentials.identify();
+      await unlock();
+      // Mirror the P-256 connector's before/after sealed-key validation, without native chain work.
+      if (ARM === 'p256') await unlock();
+      await call('open');
+      return account(ref.credentialId);
+    };
+    return passkey.credentials.withLoginSession
+      ? passkey.credentials.withLoginSession(open)
+      : open();
   },
   async openAccountAt(address: string) {
     if (address !== ADDRESS) throw new Error('Unknown fixture ACC');

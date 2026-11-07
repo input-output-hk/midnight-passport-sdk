@@ -1444,36 +1444,60 @@ try {
       await observeCredentialAccess(owner);
       assert.equal(await owner.locator('#main').getAttribute('data-landing'), 'true');
       assert.equal(await owner.locator('#workspace-account').isVisible(), false);
-      // Simulate the exact recognized Chromium variant once; a retry needs another approval.
-      await owner.addScriptTag({ type: 'module', url: `${origin}/e2e/fixtures/profile-retry.ts` });
       await approve(owner, 'open');
       await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
-      await click(owner, '#ceremony-continue');
-      await owner
-        .locator('#ceremony-details')
-        .filter({ hasText: /Retry 2/ })
-        .waitFor();
-      assert.equal(await credentialsUsed(), 1);
+      assert.equal(
+        await owner.locator('#ceremony-purpose').getAttribute('data-purpose'),
+        'identify-and-unlock',
+      );
       await click(owner, '#ceremony-cancel');
       await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
       assert.equal(await owner.locator('#main').getAttribute('data-landing'), 'true');
       assert.equal(await owner.locator('#workspace-account').isVisible(), false);
       assert.equal(
         await credentialsUsed(),
-        1,
-        'a browser-profile retry cannot reuse prior approval',
+        0,
+        'declining combined login prevents both identification and PRF access',
       );
       done(
-        'a recognized signing-format retry explains the reason and can be declined before access',
+        'combined login has an explicit purpose review; declining it starts no credential access',
       );
 
+      const beforeLogin = await credentialsUsed();
+      const beforeLoginOwnerEnrollment = calls.filter((action) => action === 'enroll-owner').length;
       await approve(owner, 'open');
       await waitStatus(owner, /is reopened/);
       await assertAccountWorkspace(owner);
+      assert.equal(
+        await credentialsUsed(),
+        beforeLogin + 1,
+        'login uses one actual credential call',
+      );
+      assert.match((await owner.locator('#routine-status').textContent())!, /locked/);
+      assert.equal(
+        calls.filter((action) => action === 'enroll-owner').length,
+        beforeLoginOwnerEnrollment,
+        'login never enrolls a companion owner',
+      );
+      assert.equal(
+        await owner.locator('#ceremony-purpose').getAttribute('data-purpose'),
+        'identify-and-unlock',
+      );
+      done(
+        'active account login uses one combined request without unlocking or enrolling an owner',
+      );
       await fill(owner, '#open-address', address);
+      const beforeAddressLogin = await credentialsUsed();
       await approve(owner, 'openAt');
       await waitStatus(owner, /opened by address/);
       await assertAccountWorkspace(owner);
+      assert.equal(
+        await credentialsUsed(),
+        beforeAddressLogin + 1,
+        'address login uses one actual credential call',
+      );
+      assert.match((await owner.locator('#routine-status').textContent())!, /locked/);
+      done('address login uses one combined request and leaves retained account keys locked');
       done(
         'reload stays on landing; successful creation, login and address login select account balances',
       );
@@ -2937,6 +2961,7 @@ try {
         'create',
         'verify-created',
         'identify',
+        'identify-and-unlock',
         'derive-keys',
         ...(arm === 'p256' ? ['sign'] : []),
       ])

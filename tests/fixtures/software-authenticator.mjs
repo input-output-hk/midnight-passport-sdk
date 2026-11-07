@@ -10,6 +10,7 @@ export const ID = Uint8Array.of(1, 2, 3, 4);
  * @typedef {{
  *   challenge: Uint8Array;
  *   rpId?: string;
+ *   userVerification?: string;
  *   allowCredentials?: { type: string; id: Uint8Array }[];
  *   extensions?: { prf?: { eval: { first: Uint8Array; second?: Uint8Array } } };
  * }} GetOptions
@@ -59,15 +60,15 @@ export function softwareAuthenticator({
   const behaviour = { flags: 5, extensionData: false, rp: RP, wrongChallenge: false };
   const grease = { remaining: 0 };
   const prfControl = { cancelled: false, unavailable: false, wrongCredential: false };
-  const authenticatorData = () =>
+  const authenticatorData = (/** @type {boolean} */ withPrf) =>
     new Uint8Array([
       ...sha256(new TextEncoder().encode(behaviour.rp)),
-      behaviour.flags,
+      behaviour.flags | (withPrf ? 0x80 : 0),
       0,
       0,
       0,
       1,
-      ...(behaviour.extensionData ? [0xa1, 0x60, 0x00] : []), // a CBOR extensions map
+      ...(behaviour.extensionData || withPrf ? [0xa1, 0x60, 0x00] : []), // a CBOR extensions map
     ]);
   const cancelled = () => Object.assign(new Error('prompt dismissed'), { name: cancel });
   /** A stand-in PRF: a deterministic function of each salt, as the real extension is. */
@@ -110,18 +111,13 @@ export function softwareAuthenticator({
         if (cancel) throw cancelled();
         gets.push(publicKey);
         if (empty) return null;
-        if (publicKey.extensions?.prf) {
+        const salts = publicKey.extensions?.prf?.eval;
+        if (salts) {
           if (prfControl.cancelled)
             throw Object.assign(new Error('prompt dismissed'), { name: 'NotAllowedError' });
-          if (!prf || prfControl.unavailable)
-            return { rawId: buffer(ID), getClientExtensionResults: () => ({}) };
-          const results = evaluate(publicKey.extensions.prf.eval);
-          return {
-            rawId: buffer(prfControl.wrongCredential ? ID.map((x) => x ^ 1) : ID),
-            getClientExtensionResults: () => ({ prf: { results } }),
-          };
         }
-        const authData = authenticatorData();
+        const results = salts && prf && !prfControl.unavailable ? evaluate(salts) : undefined;
+        const authData = authenticatorData(!!results);
         const asked = new Uint8Array(publicKey.challenge);
         let clientData = clientDataJSON(
           behaviour.wrongChallenge ? asked.map((v) => v ^ 1) : asked,
@@ -142,12 +138,13 @@ export function softwareAuthenticator({
           signature = derSignature(r, p256.Point.Fn.ORDER - s);
         }
         return {
-          rawId: buffer(ID),
+          rawId: buffer(salts && prfControl.wrongCredential ? ID.map((x) => x ^ 1) : ID),
           response: {
             authenticatorData: buffer(authData),
             clientDataJSON: buffer(clientData),
             signature: buffer(signature),
           },
+          getClientExtensionResults: () => (results ? { prf: { results } } : {}),
         };
       },
     },

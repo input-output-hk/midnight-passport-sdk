@@ -101,6 +101,12 @@ export interface CredentialRef {
   readonly credentialId: Uint8Array;
 }
 export interface CredentialPort {
+  /**
+   * Optional operation-scoped login: combine discovery and reader-key derivation in one
+   * credential ceremony. Implementations dispose private material when work ends and refuse
+   * overlapping logins. This does not approve a transaction or extend an owner-key lease.
+   */
+  withLoginSession?<T>(work: () => Promise<T>): Promise<T>;
   create(user: { readonly name: string }): Promise<CredentialRef>;
   /**
    * The discoverable prompt. `owns` is true only when the assertion it obtained verifies under

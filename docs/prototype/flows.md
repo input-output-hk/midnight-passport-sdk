@@ -27,6 +27,8 @@ sequenceDiagram
   P->>C: append_inbox_with_p256 (registration)
   P-->>U: Active account
   U->>P: Open with passkey
+  P->>K: One discoverable assertion with both Lace PRF salts
+  K-->>P: Public ownership proof and operation-local derived keys
   P->>C: Read live device entry, enc_key and inbox
   P->>K: Open sealed envelope using reader key
   K-->>P: Key match or refusal, never raw account secret
@@ -40,6 +42,18 @@ migrated. The standalone page now offers **Rotate sealed viewing key**: it revie
 verified holdings and active read grants before confirmation, then checks the settled nonce.
 Missing reader or grantee openings refuse the operation. Viewing-key validation requests a real
 sealed entry, because a hosted encryption port may treat an empty batch as a no-op.
+
+The current WebAuthn adapter's optional `CredentialPort.withLoginSession` surrounds
+`openAccount` and `openAccountAt` for both owner arms. Identification and PRF now
+share one user-verified assertion, and the two sealed-key validations reuse its
+held outputs. The local assertion proves the original signed client/authenticator
+bytes; it is not ACC `wa-json134` transaction material. Login clears its output
+copies on completion/failure, refuses overlapping logins and does not silently
+retry missing PRF. No owner enrollment, authenticated owner lease or wallet
+connection follows. One request covers an already active supported account;
+unfinished setup may still need real chain signatures. See
+[passkey purposes](../site/passkey-prompts.md). Legacy/custom credential ports
+without the optional scope retain their existing behavior.
 
 ## Historical deterministic-key P-256 flow
 

@@ -47,6 +47,15 @@ These are mapped tests, not exhaustive coverage of every parameter, circuit,
 interleaving or provider. The 52 proof/66 pure circuit inventory does not imply
 52 fully supported typed/browser workflows.
 
+The current-source single-request login has separate actual-core regressions:
+real ES256 verification, unchanged Lace PRF vectors and sealed readers reopen
+active P-256/JubJub accounts (including address recovery) with one credential call
+against a fake ledger. Tests also cover signed extra JSON/extension data,
+wrong-key/policy refusal, absent PRF, cancellation, no fallback, overlap refusal
+and output disposal. Browser journeys check combined-purpose consent and one-call
+login through their synthetic account driver. These are not real-provider or
+native-proof qualification. Login neither enrolls nor unlocks a companion owner.
+
 ## Run deterministic browser journeys
 
 With locked dependencies, Chrome and built SDK packages:
