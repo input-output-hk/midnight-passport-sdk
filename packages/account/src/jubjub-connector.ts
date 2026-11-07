@@ -5,11 +5,9 @@ import {
   hasInbox,
   requireDeviceInbox,
   type InboxLedgerView,
-  type DeviceInboxLedgerView,
 } from './inbox-view.js';
 import { jubjubWithdrawals } from './jubjub-withdrawals.js';
 import { lazyPort } from './lazy-port.js';
-import { resolveRemovalReader } from './removal-reader.js';
 import {
   PASSPORT_API_VERSION,
   type DeviceEnrollmentResult,
@@ -25,7 +23,6 @@ import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow, type Flow } from './flow.js';
 import { readVerifiedHoldings } from './holdings.js';
-import { validGrantId } from './grant-publication-state.js';
 import { issueAndPublishJubjubGrant } from './jubjub-grant-settlement.js';
 import type { IssueJubjubGrantPure } from './jubjub-grant-issue.js';
 import { recoverPendingJubjubGrants } from './jubjub-grant-publication.js';
@@ -34,17 +31,13 @@ import { revokeAndConfirmJubjubGrant } from './jubjub-grant-revoke.js';
 import type { RevokeJubjubGrantPure } from './jubjub-grant-revoke.js';
 import { revokeAllJubjubGrants } from './jubjub-grant-revoke-all.js';
 import type { RevokeAllJubjubGrantPure } from './jubjub-grant-revoke-all.js';
-import {
-  JUBJUB_READER_SCAN_LIMIT,
-  resolveJubjubReaders,
-  resolveRegisteredReaders,
-} from './jubjub-readers.js';
-import { sealActiveReadGrants } from './read-grant-deliveries.js';
+import { JUBJUB_READER_SCAN_LIMIT } from './jubjub-readers.js';
+import { createJubjubViewingRotation } from './jubjub-viewing-rotation.js';
+import type { JubjubHint } from './jubjub-rotation-types.js';
 import type {
   AccLedgerView,
   AccountHint,
   ActiveReadGrantTarget,
-  Authoriser,
   CurvePoint,
   DeviceReader,
   JubjubPureCircuits,
@@ -78,18 +71,6 @@ const sleep = (ms: number) =>
       ms,
     ),
   );
-
-type JubjubHint = AccountHint & {
-  readonly scheme: 'jubjub-schnorr';
-  readonly credentialId: Uint8Array;
-};
-
-type EnrollmentContext = {
-  readonly reader: PassportDeviceReader;
-  readonly entry: Uint8Array;
-  readonly initial: DeviceInboxLedgerView;
-  readonly grants: readonly ActiveReadGrantTarget[];
-};
 
 function isJubjubHint(hint: AccountHint): hint is JubjubHint {
   const entries = hint.keyEntries;
@@ -590,672 +571,47 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
         { kind: 'add-device', account: record.address, commitmentHex: toHex(entry), reader },
       );
     });
-  const rotateViewingKey = (
-    record: JubjubHint,
-    options: FlowOptions = {},
-    removal?: string,
-    enrollment?: EnrollmentContext,
-    existingFlow?: Flow,
-    revocation?: string,
-    revokeAll = false,
-    inOwnerSession = false,
-  ) => {
-    const body = async (flow: Flow) => {
-      const holdings = ports.holdings;
-      const reencrypt = viewingKey.reencryptInbox;
-      const decode = viewingKey.decodeDevicePublicKey;
-      if (!holdings || !reencrypt || !decode || !ports.readGrants)
+  const rotateViewingKey = createJubjubViewingRotation({
+    ports,
+    authoriser,
+    viewingKey,
+    withOwnerSession(operation, descriptor) {
+      const current = authoriser.withKeySession;
+      if (!current)
         throw new PassportConnectorError(
           'BindingUnsupported',
-          'JubJub rotation needs verified holdings, an active read-grant source and the full viewing-key port.',
+          'JubJub accounts need a directory, viewing key, and session-capable authoriser.',
         );
-      if (revocation && !validGrantId(revocation))
-        throw new PassportConnectorError('GrantScopeInvalid', 'The grant id must be 32-byte hex.');
-      if (revocation && (!ports.grantDetails || !ports.records))
+      return current.bind(authoriser)(operation, descriptor);
+    },
+    ownerPublicKeyHex() {
+      const current = authoriser.devicePublicKeyHex;
+      if (!current)
         throw new PassportConnectorError(
           'BindingUnsupported',
-          'Read grant revocation needs live grant details and local account records.',
+          'JubJub accounts need a directory, viewing key, and session-capable authoriser.',
         );
-      if (revocation && !(await ports.records!.exists()))
-        throw new PassportConnectorError('AccountNotFound', 'No local account record exists.');
-      const resolvedBinding = await readBinding();
-      const pure = requirePure(resolvedBinding.pureCircuits);
+      return current.call(authoriser);
+    },
+    async resolveBinding(record) {
+      const binding = await readBinding();
+      const pure = requirePure(binding.pureCircuits);
       recordPure.set(record, pure);
-      if (removal !== undefined && !/^[0-9a-f]{64}$/i.test(removal))
-        throw new PassportConnectorError(
-          'RemovalTargetNotFound',
-          'The target must be a 32-byte device commitment.',
-        );
-      const target = removal === undefined ? undefined : fromHex(removal.toLowerCase());
-      const initial =
-        enrollment?.initial ??
-        (target || revocation || revokeAll
-          ? await flow.step('chain.read', () => read(record, true))
-          : undefined);
-      if (initial) {
-        if (!initial.booted || record.status !== 'active')
-          throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
-        if (initial.specVersion !== 3)
-          throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
-        const ownCounter = findCounter(record, initial);
-        if (ownCounter === undefined)
-          throw new PassportConnectorError('NotAuthorised', 'This device has no live ACC entry.');
-        const ownEntry = pure.derive_device_entry_with_jubjub(
-          { bytes: fromHex(record.address) },
-          record.publicKey,
-          initial.deviceEpoch,
-          ownCounter,
-        );
-        if (target) {
-          if (equal(target, ownEntry))
-            throw new PassportConnectorError('LastDevice', 'A device cannot remove itself.');
-          if (!initial.deviceEntries!.some((entry) => equal(entry, target)))
-            throw new PassportConnectorError(
-              'RemovalTargetNotFound',
-              'The target is absent from the live ACC device set.',
-            );
-        }
-        if (revocation) {
-          const grant = await flow.step('grant.roster', () =>
-            ports.grantDetails!.readGrant(record.address, revocation),
-          );
-          if (!grant) throw new PassportConnectorError('GrantNotFound', 'The grant is missing.');
-          if (!grant.active)
-            throw new PassportConnectorError('GrantRevoked', 'The grant is already revoked.');
-          if (!grant.read)
-            throw new PassportConnectorError('GrantScopeInvalid', 'The grant has no read access.');
-          if (grant.authNonce !== initial.authNonce)
-            throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster is stale.');
-          const targets = await flow.step('grant.roster', () =>
-            ports.readGrants!.readActiveReadGrantTargets(record.address),
-          );
-          if (
-            targets.authNonce !== initial.authNonce ||
-            !targets.targets.some(({ grantId }) => grantId === revocation)
-          )
-            throw new PassportConnectorError('GrantRosterUnsettled', 'The read grant is absent.');
-        }
-      }
-      const withSession: NonNullable<Authoriser['withKeySession']> = inOwnerSession
-        ? (operation) => operation()
-        : (operation, descriptor) => authoriser.withKeySession!(operation, descriptor);
-      return withSession(
-        async () => {
-          let view: InboxLedgerView = await flow.step('chain.read', () => read(record, true));
-          requireDeviceInbox(view);
-          if (!view.booted || record.status !== 'active')
-            throw new PassportConnectorError('AccountNotFound', 'The JubJub ACC is not active.');
-          if (view.specVersion !== 3)
-            throw new PassportConnectorError(
-              'BindingUnsupported',
-              'The ACC spec version is not 3.',
-            );
-          const ownCounter = findCounter(record, view);
-          if (ownCounter === undefined)
-            throw new PassportConnectorError(
-              'AccountNotFound',
-              'This device is not live on the ACC.',
-            );
-          if (revocation) {
-            const stored = await ports.records!.read();
-            if (
-              stored?.scheme !== 'jubjub-schnorr' ||
-              stored.address !== record.address ||
-              stored.bindingId !== network.bindingId ||
-              !stored.credentialId ||
-              !equal(stored.credentialId, record.credentialId)
-            )
-              throw new PassportConnectorError(
-                'NotAuthorised',
-                'The local record does not match this device.',
-              );
-          }
-          await keyring(record, view, false);
-          const oldEntries = [...view.inboxEntries];
-          const oldKeyring = {
-            account: record.address,
-            encKey: view.encKey,
-            envelopes: [...oldEntries].reverse(),
-          };
-          const opened = await viewingKey.openInbox(networkId, oldKeyring, oldEntries);
-          if (opened.length !== oldEntries.length)
-            throw new PassportConnectorError(
-              'InternalError',
-              'The viewing key skipped inbox entries.',
-            );
-          const liveEntries = view.deviceEntries;
-          const self = { bytes: fromHex(record.address) };
-          const ownEntry = pure.derive_device_entry_with_jubjub(
-            self,
-            record.publicKey,
-            view.deviceEpoch,
-            ownCounter,
-          );
-          if (!liveEntries.some((entry) => equal(entry, ownEntry)))
-            throw new PassportConnectorError(
-              'InternalError',
-              'The ledger device set is inconsistent.',
-            );
-          if (target || enrollment || revocation || revokeAll) {
-            if (
-              view.authNonce !== initial!.authNonce ||
-              view.deviceEpoch !== initial!.deviceEpoch ||
-              !equal(view.encKey, initial!.encKey)
-            )
-              throw new PassportConnectorError(
-                revocation ? 'GrantRosterUnsettled' : 'DeviceRosterInvalid',
-                'The ACC changed after the owner flow was approved.',
-              );
-          }
-          if (target && !liveEntries.some((entry) => equal(entry, target)))
-            throw new PassportConnectorError(
-              'RemovalTargetNotFound',
-              'The target is absent from the live ACC device set.',
-            );
-          if (enrollment && liveEntries.some((entry) => equal(entry, enrollment.entry)))
-            throw new PassportConnectorError('DeviceRosterInvalid', 'The joining device is live.');
-          const reader = toHex(await viewingKey.readerPublicKey(networkId));
-          const device = await authoriser.devicePublicKeyHex!();
-          const registered = opened.flatMap((entry) =>
-            entry?.kind === 'device' ? [entry.device] : [],
-          );
-          const rosterInput = {
-            account: record.address,
-            epoch: view.deviceEpoch,
-            registered,
-            liveEntries,
-            ...(target && {
-              allowedEntries: liveEntries.filter((entry) => !equal(entry, target)),
-            }),
-            pure,
-            decodeDevicePublicKey: decode,
-          };
-          const decodeP256 = viewingKey.decodeP256DevicePublicKey;
-          if (registered.some((entry) => entry.scheme === 'p256-webauthn') && !decodeP256)
-            throw new PassportConnectorError(
-              'BindingUnsupported',
-              'A mixed roster needs a P-256 registration decoder.',
-            );
-          const roster = decodeP256
-            ? resolveRegisteredReaders({
-                ...rosterInput,
-                p256Pure: resolvedBinding.pureCircuits,
-                decodeP256DevicePublicKey: decodeP256,
-              })
-            : resolveJubjubReaders(rosterInput);
-          if (
-            enrollment &&
-            opened.some(
-              (item) =>
-                item?.kind === 'device' && conflictsWithReader(item.device, enrollment.reader),
-            )
-          )
-            throw new PassportConnectorError(
-              'DeviceRosterInvalid',
-              'The joining reader or signing key already has a roster registration.',
-            );
-          if (
-            enrollment &&
-            roster.readers.some(
-              (item) =>
-                item.readerPublicKey === enrollment.reader.readerPublicKey &&
-                item.devicePublicKey === enrollment.reader.devicePublicKey,
-            )
-          )
-            throw new PassportConnectorError(
-              'DeviceRosterInvalid',
-              'The joining device already has a live entry.',
-            );
-          if (roster.dropped.some((entry) => !equal(entry, ownEntry) || (!target && !enrollment)))
-            throw new PassportConnectorError(
-              'DeviceRosterInvalid',
-              'A live device has no unique, usable reader registration.',
-            );
-          const removedReader = target ? await resolveRemovalReader(roster) : undefined;
-          const held = await holdings.selectHeldEntries(record.address, oldEntries, opened);
-          const seen = new Set<number>();
-          const holdingEntries: Uint8Array[] = [];
-          for (const index of held) {
-            if (
-              !Number.isSafeInteger(index) ||
-              index < 0 ||
-              index >= oldEntries.length ||
-              seen.has(index) ||
-              opened[index]?.kind !== 'coin'
-            )
-              throw new PassportConnectorError('InternalError', 'Invalid verified holding index.');
-            seen.add(index);
-            holdingEntries.push(oldEntries[index]!);
-          }
-          const registrations = oldEntries.filter(
-            (entry) =>
-              entry.length === 192 &&
-              (entry[1] === 1 || entry[1] === 2) &&
-              (entry[0] === 0xd2 || entry[0] === 0xd4 || entry[0] === 0xd5),
-          );
-          const keys = await viewingKey.createKeys(networkId, {
-            devicePublicKey: device,
-            keyring: oldKeyring,
-            registrations,
-            readers: roster.readers.filter((item) => item.readerPublicKey !== reader),
-            ...((target || enrollment) && { rotateRoster: true }),
-            ...(removedReader && {
-              removed: {
-                devicePublicKey: removedReader.devicePublicKey,
-                epoch: removedReader.epoch,
-                counter: removedReader.counter,
-              },
-            }),
-          });
-          const reencrypted = await reencrypt(
-            networkId,
-            { keyring: oldKeyring, to: keys.encKey },
-            holdingEntries,
-          );
-          if (
-            reencrypted.length !== holdingEntries.length ||
-            reencrypted.some((entry) => !(entry instanceof Uint8Array))
-          )
-            throw new PassportConnectorError(
-              'InternalError',
-              'A verified holding could not be sealed.',
-            );
-          const deliveries = await sealActiveReadGrants(
-            {
-              networkId,
-              keyring: {
-                account: record.address,
-                encKey: keys.encKey,
-                envelopes: keys.envelopes,
-              },
-              authNonce: view.authNonce,
-              ...(revocation && { exceptGrantId: revocation }),
-              ...(revokeAll && { exceptAll: true }),
-              ...flow.ports,
-            },
-            { targets: ports.readGrants!, viewingKey, random: fresh },
-          );
-          if (deliveries.unsealedGrantIds.length)
-            throw new PassportConnectorError(
-              'GrantRosterUnsettled',
-              'Every surviving read grantee must receive the fresh viewing secret.',
-            );
-          if (
-            removedReader &&
-            deliveries.targets.some(
-              ({ readPublicKey }) => readPublicKey === removedReader.readerPublicKey,
-            )
-          )
-            throw new PassportConnectorError(
-              'DeviceRosterInvalid',
-              'An active read grant would return the fresh key to the removed reader.',
-            );
-          if (revocation && !deliveries.targets.some(({ grantId }) => grantId === revocation))
-            throw new PassportConnectorError('GrantRosterUnsettled', 'The read grant disappeared.');
-          if (enrollment) {
-            const ordered = (items: readonly ActiveReadGrantTarget[]) =>
-              items.map(({ grantId, readPublicKey }) => `${grantId}:${readPublicKey ?? ''}`).sort();
-            if (
-              deliveries.unsealedGrantIds.length ||
-              JSON.stringify(ordered(deliveries.targets)) !==
-                JSON.stringify(ordered(enrollment.grants))
-            )
-              throw new PassportConnectorError(
-                'GrantRosterUnsettled',
-                'Enrollment cannot preserve every active read grant.',
-              );
-          }
-          const deliveryEntries = deliveries.sealed.map(({ entry }) => entry);
-          for (const entry of [...keys.envelopes, ...keys.registrations, ...deliveryEntries])
-            view = await append(flow, record, entry, view);
-          view = await read(record, true);
-          requireDeviceInbox(view);
-          if (!equal(view.encKey, oldKeyring.encKey))
-            throw new PassportConnectorError(
-              'EncryptionKeyMismatch',
-              'The ACC key changed during rotation.',
-            );
-          const counter = findCounter(record, view);
-          if (counter === undefined)
-            throw new PassportConnectorError('AccountNotFound', 'This device is no longer live.');
-          const latestOwnEntry = pure.derive_device_entry_with_jubjub(
-            self,
-            record.publicKey,
-            view.deviceEpoch,
-            counter,
-          );
-          const baseline = liveEntries
-            .filter((entry) => !equal(entry, ownEntry))
-            .map(toHex)
-            .sort();
-          const current = view.deviceEntries
-            .filter((entry) => !equal(entry, latestOwnEntry))
-            .map(toHex)
-            .sort();
-          if (baseline.length !== current.length || baseline.some((item, i) => item !== current[i]))
-            throw new PassportConnectorError('InternalError', 'The live device roster changed.');
-          const expected = new Map<string, number>();
-          for (const entry of [
-            ...oldEntries,
-            ...keys.envelopes,
-            ...keys.registrations,
-            ...deliveryEntries,
-          ]) {
-            const value = toHex(entry);
-            expected.set(value, (expected.get(value) ?? 0) + 1);
-          }
-          for (const entry of view.inboxEntries) {
-            const value = toHex(entry);
-            const remaining = expected.get(value) ?? 0;
-            if (!remaining)
-              throw new PassportConnectorError(
-                'InternalError',
-                'The ACC inbox changed during rotation.',
-              );
-            expected.set(value, remaining - 1);
-          }
-          if ([...expected.values()].some((remaining) => remaining !== 0))
-            throw new PassportConnectorError(
-              'InternalError',
-              'The ACC inbox lost an expected entry.',
-            );
-          const latestGrants = await flow.step('grant.roster', () =>
-            ports.readGrants!.readActiveReadGrantTargets(record.address),
-          );
-          const ordered = (items: typeof latestGrants.targets) =>
-            items.map(({ grantId, readPublicKey }) => `${grantId}:${readPublicKey ?? ''}`).sort();
-          if (
-            latestGrants.authNonce !== view.authNonce ||
-            JSON.stringify(ordered(deliveries.targets)) !==
-              JSON.stringify(ordered(latestGrants.targets))
-          )
-            throw new PassportConnectorError(
-              'GrantRosterUnsettled',
-              'The active read-grant roster changed during rotation.',
-            );
-          const nonce = view.authNonce;
-          const circuit = 'rotate_enc_key_with_jubjub';
-          const signed = await flow.step('passkey.sign', () =>
-            authoriser.authorise({
-              account: record.address,
-              circuit,
-              args: [keys.encKey],
-              witnessValues: [],
-              authNonce: nonce,
-              useCounter: counter,
-              challenge: (sigR, grindNonce) =>
-                pure.challenge_rotate_enc_key_with_jubjub(
-                  self,
-                  sigR,
-                  record.publicKey,
-                  keys.encKey,
-                  nonce,
-                  grindNonce,
-                ),
-            }),
-          );
-          if (signed.scheme !== 'jubjub-schnorr')
-            throw new PassportConnectorError(
-              'InternalError',
-              'The authoriser returned another arm.',
-            );
-          flow.checkpoint();
-          const tx = await (
-            await readChain()
-          ).call({
-            address: record.address,
-            circuit,
-            args: [
-              keys.encKey,
-              record.publicKey,
-              counter,
-              signed.sigR,
-              signed.sigS,
-              signed.grindNonce,
-            ],
-            ...flow.ports,
-          });
-          view = await advanced(record, nonce);
-          if (!equal(view.encKey, keys.encKey))
-            throw new PassportConnectorError(
-              'EncryptionKeyMismatch',
-              'The rotated ACC key did not land.',
-            );
-          for (const entry of reencrypted) view = await append(flow, record, entry!, view);
-          const rotation = {
-            ...tx,
-            droppedDeviceEntries: roster.dropped
-              .filter((entry) => !equal(entry, ownEntry))
-              .map(toHex),
-            sealedReadGrants: deliveries.sealed.map(
-              ({ grantId, readPublicKey, seal, sealedEncKey }) => ({
-                grantId,
-                readPublicKey,
-                seal,
-                sealedEncKey,
-              }),
-            ),
-            unsealedGrantIds: deliveries.unsealedGrantIds,
-          };
-          if (enrollment) {
-            view = await read(record, true);
-            requireDeviceInbox(view);
-            if (view.deviceEntries.some((held) => equal(held, enrollment.entry)))
-              throw new PassportConnectorError(
-                'DeviceRosterInvalid',
-                'The joining device is live.',
-              );
-            const enrolled = await completeEnrollment(
-              flow,
-              record,
-              pure,
-              view,
-              enrollment.reader,
-              enrollment.entry,
-              deliveries.targets,
-            );
-            return {
-              ...enrolled,
-              rotationTxHash: tx.txHash,
-              sealedReadGrants: rotation.sealedReadGrants,
-            };
-          }
-          if (revocation) {
-            view = await read(record, true);
-            requireDeviceInbox(view);
-            const grant = await flow.step('grant.roster', () =>
-              ports.grantDetails!.readGrant(record.address, revocation),
-            );
-            if (!grant?.active || !grant.read || grant.authNonce !== view.authNonce)
-              throw new PassportConnectorError(
-                'GrantRosterUnsettled',
-                'The read grant changed during rotation.',
-              );
-            const revokeCounter = findCounter(record, view);
-            if (revokeCounter === undefined)
-              throw new PassportConnectorError('NotAuthorised', 'This device is no longer live.');
-            const id = fromHex(revocation);
-            const nonce = view.authNonce;
-            const revokePure = requireRevokePure((await readBinding()).pureCircuits);
-            const signed = await flow.step('passkey.sign', () =>
-              authoriser.authorise({
-                account: record.address,
-                circuit: 'revoke_grant_with_jubjub',
-                args: [id],
-                witnessValues: [],
-                authNonce: nonce,
-                useCounter: revokeCounter,
-                challenge: (sigR, grindNonce) =>
-                  revokePure.challenge_revoke_grant_with_jubjub(
-                    self,
-                    sigR,
-                    record.publicKey,
-                    id,
-                    nonce,
-                    grindNonce,
-                  ),
-              }),
-            );
-            if (
-              signed.scheme !== 'jubjub-schnorr' ||
-              signed.useCounter !== revokeCounter ||
-              !samePoint(signed.pk, record.publicKey)
-            )
-              throw new PassportConnectorError(
-                'NotAuthorised',
-                'The revocation signature names another device.',
-              );
-            flow.checkpoint();
-            const revoked = await (
-              await readChain()
-            ).call({
-              address: record.address,
-              circuit: 'revoke_grant_with_jubjub',
-              args: [
-                id,
-                record.publicKey,
-                revokeCounter,
-                signed.sigR,
-                signed.sigS,
-                signed.grindNonce,
-              ],
-              ...flow.ports,
-            });
-            await advanced(record, nonce);
-            const stored = await ports.records!.read();
-            if (!stored || stored.address !== record.address)
-              throw new PassportConnectorError(
-                'AccountNotFound',
-                'No local account record exists.',
-              );
-            await ports.records!.write({ ...stored, localUseCounter: revokeCounter + 1n });
-            for (let attempt = 0; attempt < RETRIES; attempt++) {
-              flow.checkpoint();
-              const settled = await flow.step('grant.roster', () =>
-                ports.grantDetails!.readGrant(record.address, revocation),
-              );
-              if (settled && !settled.active) {
-                return {
-                  ...revoked,
-                  grantId: revocation,
-                  status: 'revoked' as const,
-                  nextUseCounter: revokeCounter + 1n,
-                  rotation,
-                };
-              }
-              if (attempt + 1 < RETRIES) await sleep(1000);
-            }
-            throw new PassportConnectorError(
-              'GrantRosterUnsettled',
-              'The read grant revocation did not settle.',
-            );
-          }
-          if (!target) return rotation;
-          view = await read(record, true);
-          requireDeviceInbox(view);
-          if (!view.deviceEntries.some((entry) => equal(entry, target)))
-            throw new PassportConnectorError(
-              'RemovalTargetNotFound',
-              'The target disappeared before the removal call.',
-            );
-          const removeCounter = findCounter(record, view);
-          if (removeCounter === undefined)
-            throw new PassportConnectorError('NotAuthorised', 'This device is no longer live.');
-          const removeNonce = view.authNonce;
-          const removeCircuit = 'remove_device_with_jubjub';
-          const removeSignature = await flow.step('passkey.sign', () =>
-            authoriser.authorise({
-              account: record.address,
-              circuit: removeCircuit,
-              args: [target],
-              witnessValues: [],
-              authNonce: removeNonce,
-              useCounter: removeCounter,
-              challenge: (sigR, grindNonce) =>
-                pure.challenge_remove_device_with_jubjub(
-                  self,
-                  sigR,
-                  record.publicKey,
-                  target,
-                  removeNonce,
-                  grindNonce,
-                ),
-            }),
-          );
-          if (
-            removeSignature.scheme !== 'jubjub-schnorr' ||
-            removeSignature.useCounter !== removeCounter ||
-            !samePoint(removeSignature.pk, record.publicKey)
-          )
-            throw new PassportConnectorError(
-              'NotAuthorised',
-              'The signature names another device.',
-            );
-          flow.checkpoint();
-          const removed = await (
-            await readChain()
-          ).call({
-            address: record.address,
-            circuit: removeCircuit,
-            args: [
-              target,
-              record.publicKey,
-              removeCounter,
-              removeSignature.sigR,
-              removeSignature.sigS,
-              removeSignature.grindNonce,
-            ],
-            ...flow.ports,
-          });
-          await advanced(record, removeNonce);
-          const settled = await read(record, true);
-          if (settled.deviceEntries!.some((entry) => equal(entry, target)))
-            throw new PassportConnectorError(
-              'DeviceRosterInvalid',
-              'The device removal did not land.',
-            );
-          return {
-            ...rotation,
-            ...removed,
-            removedCommitmentHex: toHex(target),
-            rotationTxHash: tx.txHash,
-          } satisfies DeviceRemovalResult;
-        },
-        target
-          ? {
-              kind: 'remove-device',
-              account: record.address,
-              commitmentHex: toHex(target),
-              devices: initial!.deviceEntries.filter((entry) => !equal(entry, target)).map(toHex),
-            }
-          : enrollment
-            ? {
-                kind: 'add-device',
-                account: record.address,
-                commitmentHex: toHex(enrollment.entry),
-                reader: enrollment.reader,
-                devices: enrollment.initial.deviceEntries.map(toHex),
-              }
-            : revokeAll
-              ? {
-                  kind: 'revoke-all-grants',
-                  account: record.address,
-                  read: true,
-                  devices: initial!.deviceEntries.map(toHex),
-                }
-              : revocation
-                ? {
-                    kind: 'revoke-grant',
-                    account: record.address,
-                    grantId: revocation,
-                    read: true,
-                    devices: initial!.deviceEntries.map(toHex),
-                  }
-                : { kind: 'rotate-encryption-key' },
-      );
-    };
-    return existingFlow ? body(existingFlow) : run(options, body);
-  };
+      return { binding, pure };
+    },
+    revocationPure: async () => requireRevokePure((await readBinding()).pureCircuits),
+    read: (record) => read(record, true),
+    chain: readChain,
+    findCounter,
+    keyring,
+    append,
+    advanced,
+    completeEnrollment,
+    conflictsWithReader,
+    run,
+    random: fresh,
+    sleep,
+  });
   const account = (record: JubjubHint): PassportAccount => ({
     address: record.address,
     networkId,

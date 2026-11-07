@@ -1,6 +1,7 @@
 import { sha256 } from '@noble/hashes/sha2.js';
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
+import { parseGrantU128 } from './grant-decimal.js';
 import { grantOriginHash, granteePoint, type GrantScopePure } from './grant-scope.js';
 import type { StagedJubjubGrant } from './jubjub-grant-issue.js';
 import type { GrantBookkeeping, LiveGrantCommitment } from './ports/index.js';
@@ -53,6 +54,8 @@ export function verifyGrantBookkeepingCommitment(
   try {
     if (!Number.isInteger(grant.slot) || grant.slot < 0 || grant.slot > 255)
       throw new Error('invalid grant slot');
+    const maxCoinValue = parseGrantU128(grant.object.maxCoinValue);
+    if (maxCoinValue === undefined) throw new Error('invalid coin bound');
     const derivedId = pure.derive_grant_id_with_jubjub(
       { bytes: bytes32(account) },
       granteePoint(grant.granteePublicKey),
@@ -76,13 +79,12 @@ export function verifyGrantBookkeepingCommitment(
             : 3n;
     const recipient =
       grant.object.recipient.kind === 'any' ? EMPTY : bytes32(grant.object.recipient.value);
-    if (!/^\d+$/.test(grant.object.maxCoinValue)) throw new Error('invalid coin bound');
     const objectCommit = pure.derive_grant_object_commit(
       bytes32(grant.scopeSalt),
       bytes32(grant.object.color),
       recipientKind,
       recipient,
-      BigInt(grant.object.maxCoinValue),
+      maxCoinValue,
     );
     const readPkHash = grant.readPublicKey ? sha256(bytes32(grant.readPublicKey)) : EMPTY;
     if (

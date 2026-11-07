@@ -118,6 +118,14 @@ const associatedData = (entry: Uint8Array): Uint8Array<ArrayBuffer> =>
     ? concat(entry.subarray(0, 2), entry.subarray(34, 46))
     : (entry.slice(0, 46) as Uint8Array<ArrayBuffer>);
 
+const maxCoinValue = (value: string): bigint => {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 39 || /[^0-9]/.test(value))
+    throw new Error('max coin value must be a uint128 decimal');
+  const result = BigInt(value);
+  if (result >= 1n << 128n) throw new Error('max coin value exceeds uint128');
+  return result;
+};
+
 const encodePart = (part: GrantRecordPart): Uint8Array => {
   const plain = new Uint8Array(BODY_LENGTH);
   plain[0] = part.part === 'grant' ? 0 : part.part === 'object' ? 1 : 2;
@@ -137,8 +145,7 @@ const encodePart = (part: GrantRecordPart): Uint8Array => {
       const recipient = part.object.recipient;
       plain[body + 32] = RECIPIENT_KIND[recipient.kind];
       if (recipient.kind !== 'any') plain.set(bytes(recipient.value), body + 33);
-      const value = BigInt(part.object.maxCoinValue);
-      if (value < 0n || value >= 1n << 128n) throw new Error('max coin value exceeds uint128');
+      const value = maxCoinValue(part.object.maxCoinValue);
       let rest = value;
       for (let offset = body + 80; offset >= body + 65; offset--) {
         plain[offset] = Number(rest & 255n);
@@ -203,15 +210,18 @@ export async function sealGrantRecord(
   account: string,
   part: GrantRecordPart,
 ): Promise<Uint8Array> {
-  const { key, tagKey } = await recordKeys(readerSecret, account);
-  let plain: Uint8Array | undefined;
+  // Capture and validate the complete record before asynchronous key derivation.
+  const plain = encodePart(part);
+  let tagKey: Uint8Array | undefined;
   const entry = new Uint8Array(ENTRY_LENGTH);
   entry[0] = TYPE;
   entry[1] = SUITE;
   try {
+    const keys = await recordKeys(readerSecret, account);
+    const key = keys.key;
+    tagKey = keys.tagKey;
     const nonce = crypto.getRandomValues(new Uint8Array(NONCE_LENGTH));
     entry.set(nonce, 34);
-    plain = encodePart(part);
     const sealed = new Uint8Array(
       await crypto.subtle.encrypt(
         { name: 'AES-GCM', iv: nonce, additionalData: associatedData(entry), tagLength: 128 },
@@ -224,8 +234,8 @@ export async function sealGrantRecord(
     entry.set(await recordTag(tagKey, entry), 2);
     return entry;
   } finally {
-    tagKey.fill(0);
-    plain?.fill(0);
+    tagKey?.fill(0);
+    plain.fill(0);
   }
 }
 
@@ -233,14 +243,15 @@ export async function sealGrantRecord(
 export async function openGrantRecord(
   readerSecret: Uint8Array,
   account: string,
-  entry: Uint8Array,
+  input: Uint8Array,
 ): Promise<GrantRecordPart | null> {
   if (
-    entry.length !== ENTRY_LENGTH ||
-    entry[0] !== TYPE ||
-    (entry[1] !== SUITE && entry[1] !== LEGACY_SUITE)
+    input.length !== ENTRY_LENGTH ||
+    input[0] !== TYPE ||
+    (input[1] !== SUITE && input[1] !== LEGACY_SUITE)
   )
     return null;
+  const entry = new Uint8Array(input);
   const { key, tagKey } = await recordKeys(readerSecret, account);
   try {
     if (!equal(entry.subarray(2, 34), await recordTag(tagKey, entry))) return null;

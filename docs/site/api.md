@@ -47,7 +47,7 @@ const account = await passport.createAccount({
   retireAuthority: true,
   onEvent: (event) => console.log(event.step, event.phase),
 });
-const state = await account.state();
+export const state = await account.state();
 ```
 
 `retireAuthority` is required. `true` removes the maintenance authority after the last deployment wave and cannot be undone. A host must make that choice explicitly. The account connector supports P-256 WebAuthn and JubJub Schnorr creation and opening. The typed `k256-ecdsa` arm is not implemented.
@@ -289,8 +289,10 @@ These optional subpaths add no package and are not present in published RC7:
 | `adapter-browser/background` | Owned Web Worker/MessagePort structural bridge | Browser |
 
 Interfaces are available through the types-only `account/ports` entry. Hosts still
-verify live ownership and supply credential/consent UI. See [quality strategy](../quality/),
-[secret custody](../secret-storage/) and [owner authentication](../authenticated-owner/).
+verify live ownership and supply credential/consent UI. See [authorization]({{ '/authorization/' | relative_url }}),
+[secret custody]({{ '/secret-storage/' | relative_url }}),
+[background tasks]({{ '/background/' | relative_url }}) and
+[quality strategy]({{ '/quality/' | relative_url }}).
 
 
 ## Host lifetime, admission and cleanup contract
@@ -317,3 +319,63 @@ including an acknowledgement arriving after local expiry. Fail unavailable/stale
 without falling back to another signer. Read the [library lifecycle]({{ '/library-guide/' | relative_url }})
 for custody/error distinctions and [demo policy]({{ '/demo-guide/' | relative_url }}) for
 its bounded routine lease, full-owner guard and independent capped-grant route.
+
+
+## Source preview: checked configuration contract
+
+The current source hardens discovery in `mn-passport-adapter-service/config`.
+**The limits and deadline behavior below are source preview after RC7**; the existence
+of a discovery export in RC7 does not imply that the published version has these changes.
+
+```ts
+import type { FetchLike, NetworkConfig } from '@input-output-hk/mn-passport-account/ports';
+import { fetchCheckedV1Config } from '@input-output-hk/mn-passport-adapter-service/config';
+
+export function loadPinnedConfig(
+  base: string,
+  pin: Pick<NetworkConfig, 'networkId' | 'bindingId' | 'manifestSha256' | 'artefactUrl'>,
+  fetch: FetchLike,
+) {
+  return fetchCheckedV1Config(base, { ...pin }, { fetch, timeoutMs: 30_000 });
+}
+```
+
+Obtain the pin from your trusted deployment configuration, never from the response
+being checked. `fetch` is an injected structural transport; omit it to use the adapter's
+default fetch. Browser and fetch-capable Node hosts can supply this transport; the
+default requires ambient `fetch`, URL, AbortController and timer capabilities. Importing
+this adapter does not create a worker or fetch configuration. Keep the returned ordinary mutable object private or capture a stable
+projection before asynchronous review. Neither the return type nor parsing freezes it.
+
+| API | Request and admission |
+| --- | --- |
+| `fetchCheckedConfig(base, pin, options?)` | Legacy `/config`; checks network, binding and case-insensitive 64-hex manifest pin. Legacy field schema accepts string fields, including empty strings, and strips extensions. |
+| `fetchCheckedV1Config(base, pin, options?)` | `/v1/config`; checks network, binding, manifest and supported API version; requires nonempty service URI/key strings. Retains response extensions. |
+| Both checked APIs | **65,536-byte** JSON limit; **30,000 ms** default whole-read deadline. `options.timeoutMs` is an integer **1–600,000**. Invalid values fail before transport dispatch. |
+| Legacy `fetchServiceConfig(base, fetch, networkId, timeoutMs?)` | Three-argument compatibility call has **no deadline**. Explicit fourth argument applies the same deadline range. It is not the pinned discovery API. |
+
+V1 also checks that `zkBaseUrl` is HTTP(S), has exactly `/v1/zk/<bindingId>` as its
+path, has no query/fragment and equals the independently pinned `artefactUrl` apart
+from a trailing slash. This is not artifact-content verification. Parsing other URI
+and public-key fields as nonempty strings does not validate their schemes, credentials,
+trust or cryptographic meaning. Check them in the selected host adapters before use.
+Legacy discovery does not apply the V1 URL checks.
+
+With a native response body, the reader bounds streamed bytes before JSON parsing.
+A custom transport exposing only `json()` must enforce its own allocation budget:
+the adapter can reject the encoded result's size only after that method allocates it.
+The single deadline covers headers and body/JSON, aborts the supplied transport signal,
+and cancels/releases a body reader best effort. It rejects promptly even if injected
+fetch/JSON work ignores abort, but cannot forcibly stop that provider's work. Late
+responses are discarded and their body is cancelled best effort. These APIs accept
+no caller `AbortSignal`; `RemoteOptions` contains only `fetch` and `timeoutMs`.
+
+Discovery has no automatic retry. Network, binding, manifest and API failures use
+`NetworkMismatch`, `BindingUnsupported`, `ArtefactIntegrity` and `ApiVersionUnsupported`.
+Malformed/unavailable/oversized/timed-out reads use `PassportConnectorError` with
+`InternalError`. Provider causes may be attached; redact them before public UI/logging.
+Do not use a config-read timeout as evidence about a transaction. Explicitly reacquire
+configuration under the same trusted pins when retrying. The
+[adapter boundary tests](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/tests/overnight-adapter-boundaries.test.mjs)
+exercise deadline, cancellation, size and pin-failure ordering with owned transports;
+they are source tests, not released-package or live-provider qualification.

@@ -177,8 +177,8 @@ Neither establishes live-provider sheets/touches or native proof acceptance.
 Follow [the execution map](docs/prototype/ux-milestone.md) and milestone #3, issues
 #287–#294. The optional `account/interaction` subpath supplies public immutable
 presentation models; existing demo progress consumes its arithmetic. It starts
-no credential, timer or transaction. The local demo now composes five workspaces,
-Settings, dedicated Audit and responsive Activity controls; the owner follow-up
+no credential, timer or transaction. The local demo now has an authentication entry and four workspace groups,
+including Settings, dedicated Audit and responsive Activity controls; the owner follow-up
 places progress/results/purpose explanations in Activity, with no floating banner
 or global progress panel. Blocking consent remains separate. Read [the UI guide](docs/site/demo-ui.md).
 Optional React/Lace Wallet wiring has separate acceptance gates. Keep the current branch, blocking consent,
@@ -750,3 +750,17 @@ signing route; expiry refuses without fallback and dispatched receipts survive.
 `account/ports` adds optional SecretStore and BackgroundPort seams. The memory
 secret store is ephemeral; the browser IndexedDB adapter requires explicit
 plaintext opt-in. Never automatically persist an owner key or PRF output.
+
+
+### Library docs and demo composition — overnight local source
+
+Start with `docs/site/library-guide.md` for integration/ownership/error contracts,
+and `docs/site/demo-guide.md` for the reference app's wiring/defaults. The source
+preview is separate from published RC7. Keep public API snippets strict-checked
+against the matching source; render Jekyll and check local links after guide changes.
+Do not imply demo memory leases, funding UI, navigation or worker creation are SDK
+defaults. Typed internal JubJub rotation phases preserve publication/recheck/switch/
+observation/authority ordering; new modules use default AST budgets. Checked service
+config now has bounded deadline/body admission; legacy discovery keeps its plainGET
+shape. Read `docs/review/overnight-quality/README.md` and actual focused test receipts
+before making broader qualification claims. Do not reset user state to run tests.

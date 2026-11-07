@@ -87,6 +87,32 @@ explains why another demo can restore a wallet without a new passkey: its storag
 both encrypted wallet seed and a usable decrypt key. That observation is not a change to
 this demo's consent/custody policy or evidence of fresh ACC authentication.
 
+## Built-in wallet worker
+
+This demo explicitly creates a dedicated module Worker through
+`adapter-browser/background`; importing the account library does not start one.
+The page retains passkeys and blocking review. The worker hosts wallet/HD derivation,
+subscriptions and dust synchronization, with an allowlist of read methods. The page
+validates unknown replies before rendering and ignores completions after stop or
+scope replacement. NIGHT and DUST have separate progress/status; unavailable DUST
+does not turn NIGHT into zero.
+
+The demo selects a **150,000 ms** client timeout for wallet requests, overriding the
+library's **120,000 ms** default, and retains the default **16** pending requests.
+Initialization sends an owned seed copy, clears that copy in `finally` and clears
+the received worker copy after initialization. Failure closes the owned client;
+wallet stop invalidates later reads and terminates its worker. That does not claim
+secure erasure of all wallet-runtime internals. A running wallet's lifetime remains
+separate from the routine reader/seed lease; locking that lease alone is not wallet
+shutdown. Node qualification probes use the runtime directly without this browser
+worker. See the [background guide]({{ '/background/' | relative_url }}) for the
+reusable transport, timeout and server-stop contracts.
+
+The local demo also chooses remote service ports and independently pinned checked
+configuration. Its localhost endpoints and wallet timeout are application settings,
+not library defaults. Use [checked configuration]({{ '/api/#source-preview-checked-configuration-contract' | relative_url }})
+when composing another host. No background timeout authorizes a transaction retry.
+
 ## Cancel, lock and investigate
 
 Lock, hidden tab, page exit and expiry dispose the applicable local keys. Local disposal

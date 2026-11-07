@@ -14,17 +14,17 @@ possible. Public docs live here; running checklist/evidence live in Obsidian.
 
 ## Acceptance and execution backlog
 
-| ID | Deliverable | Required observable outcome | Initial status |
+| ID | Deliverable | Required observable outcome | Status |
 | --- | --- | --- | --- |
-| O1 | Consent consolidation | One app review before each actual credential request; retain exact transaction/device/grant approval and create maintenance acknowledgement; cancel invokes no credential; retries are fresh; no stale-lease fallback | Implementation in progress |
-| O2 | Entry navigation | No Overview menu item. Signed-out entry offers Sign up/Log in; authenticated home navigation opens Account balances without another credential, account reset or lost draft | Implementation in progress |
-| O3 | SDK boundary defects | Grant-holder review/sign/send use one immutable admitted input; bounded decimals before BigInt; Node Buffer session reads do not erase retained keys | Confirmed defects; fixing |
-| O4 | Reusable API and domain readability | Extract cohesive responsibilities from measured large files, clear capability/custody/authority naming, no API/recipe churn or inflated quality ceilings | Baseline audit underway |
-| O5 | Input and platform contracts | Zod/branded admission where needed; safe malformed/oversized/mutating input handling; browser/Node import/type behavior preserved | Independent adapter audit underway |
-| O6 | Browser coverage | Playwright journeys cover successful/cancel/retry/expiry/navigation flows and exact request counts; actual DOM/worker/storage tests distinguish synthetic account/chain from native evidence | Existing188journeys; updating |
-| O7 | Promptless upstream behavior | Pin current staging/public source; explain persisted-key restoration vs fresh authentication. Any implemented resume never infers private authority from machine trust or public hints | Research complete; integration design pending |
-| O8 | Human copy and docs | Remove redundant reassurance, keep meaningful action/scope/recovery information, align API examples, agent guide and architecture decisions | Consent/landing copy underway |
-| O9 | Independent handover | Sub-agent reviews plus independent exact-head review, signed local commits, passing gates/coverage/consumer checks, signed immutable packet and updated checkpoint | Per-tranche and final gates pending |
+| O1 | Consent consolidation | One app review before each actual credential request; retain exact transaction/device/grant approval and create maintenance acknowledgement; cancel invokes no credential; retries are fresh; no stale-lease fallback | First tranche delivered locally |
+| O2 | Entry navigation | No Overview menu item. Signed-out entry offers Sign up/Log in; authenticated home navigation opens Account balances without another credential, account reset or lost draft | First tranche delivered locally |
+| O3 | SDK boundary defects | Grant-holder review/sign/send use one immutable admitted input; bounded decimals before BigInt; Node Buffer session reads do not erase retained keys | Fixed; grant-record follow-up in wave 2 |
+| O4 | Reusable API and domain readability | Extract cohesive responsibilities from measured large files, clear capability/custody/authority naming, no API/recipe churn or inflated quality ceilings | Typed JubJub rotation decomposition in wave 2 |
+| O5 | Input and platform contracts | Zod/branded admission where needed; safe malformed/oversized/mutating input handling; browser/Node import/type behavior preserved | Secret admission fixed; bounded config/MessagePort in wave 2 |
+| O6 | Browser coverage | Playwright journeys cover successful/cancel/retry/expiry/navigation flows and exact request counts; actual DOM/worker/storage tests distinguish synthetic account/chain from native evidence | 190 both-arm journeys passed wave 1; worker suite extended wave 2 |
+| O7 | Promptless upstream behavior | Pin current staging/public source; explain persisted-key restoration vs fresh authentication. Any implemented resume never infers private authority from machine trust or public hints | Research published locally; no implicit private persistence |
+| O8 | Human copy and docs | Remove redundant reassurance, keep meaningful action/scope/recovery information, align API examples, agent guide and architecture decisions | Library/demo paths and rendered/typechecked examples delivered; contract guides in wave 2 |
+| O9 | Independent handover | Sub-agent reviews plus independent exact-head review, signed local commits, passing gates/coverage/consumer checks, signed immutable packet and updated checkpoint | Wave 1 signed and independently reviewed; final overnight gates pending |
 
 ## First tranche verification
 
@@ -39,7 +39,7 @@ All nine package80% coverage floors pass at **93.63 / 92.43 / 85.00%**
 lines/functions/branches. Pinned Jekyll4.4.1 renders41pages;1,758local links/assets/
 anchors pass. The new library example type-checks; owned desktop/mobile docs checks
 pass. These are local source/virtual-browser results, not provider/native/released
-acceptance. The signed head and independent review belong in the final checkpoint.
+acceptance. Signed head `80bf7e096a60abaffa52052ab7009b8793a66588` passed independent exact-head read-only Codex review with no actionable findings. Its signed immutable evidence packet retains all early failures; the original 1,542 indexed artifacts are unchanged.
 
 O1's duplicate generic modal, O2, O3 and the first O5 boundary fix are implemented.
 O7 research is documented; automatic private-session persistence is not adopted.
@@ -88,3 +88,58 @@ package coverage floors remain80% lines/functions/branches. No test count alone
 proves provider UX, native proofs, recovery from lost credentials or full Lace.
 No exact-value shielded guard removal, implicit owner enrollment, mutation replay,
 new automatic key persistence or real user passkey/account/fund operation.
+
+
+## Second tranche: typed transitions and bounded adapters
+
+The JubJub viewing-key transition now has explicit internal phase records and
+modules: plan and authenticate the complete roster, prepare fresh material,
+publish then recheck, switch/observe the key, and finish the requested authority
+change. Enrollment, removal and read-grant revocation keep their existing flow,
+key session, IDs, challenge bytes and ordering. Publication and observed key
+switch precede the final authority change. Duplicate inbox entries remain a
+multiset check; a set must not hide duplicates. The connector's measured maximum
+complexity falls95→19, maximum function span1563→938 and file1727→1083lines;
+new helpers stay below default600line/150function/25complexity limits. Quality
+ceilings ratchet down, not up. The remaining large factories are still debt.
+
+Checked service-config discovery uses a 30s default deadline across both headers
+and body; explicit timeout1–600000ms and native-stream64KiB bounds refuse before
+adopting config. Invalid budgets refuse before fetch. Legacy three-argument
+`fetchServiceConfig` retains its no-deadline plain-GET behavior. Network-first
+pin checks and versioned extension fields preserve their established behavior.
+A custom transport that only exposes `json()` owns its allocation limit and may
+ignore cancellation; bounded waiting does not forcibly stop such external work.
+The browser background adapter starts native MessagePorts after attaching owned
+listeners and cleans up partially failed initialization. Real MessageChannel RPC
+is tested with no caller `start()`; Worker behavior remains separate.
+
+Grant opening/record max values are bounded decimal uint128 inputs before key
+work/commitment helpers. Sealing captures record plaintext before any await;
+opening copies its192byte envelope, including Node Buffer, before asynchronous
+checks. Caller mutation cannot silently change the authenticated record. Existing
+suite1 reads and suite2 wire/crypto recipes remain unchanged. Failed original IDs
+and scope/unknown fences are preserved. No secret is newly persisted.
+
+Wave2 frozen integration passes the full Nix gate: **1,598 tests passed / seven
+existing skips**, lint/format/build and all app typechecks. **192 both-arm synthetic
+Chromium journeys pass** with stable runtime hash and owned resources closed;
+this includes changing the grant-recipient form during the live roster await and
+checking review and submission retain the originally admitted recipient. All nine
+80% coverage floors pass at **93.93 / 92.70 / 85.31%** line/function/branch. Actual
+native MessageChannel RPC, owned HTTP success/header-stall/body-stall and browser
+worker/storage tests pass. These remain synthetic account/chain tests, not native
+transaction or real-provider acceptance.
+
+Seven exact documentation snippets strict-typecheck across neutral ES2022, browser,
+WebWorker and Node transport configurations. Pinned Jekyll4.4.1 renders43pages;
+1,933local targets/anchors pass. Desktop/mobile entry/reference navigation and new
+guides have no page overflow, with owned browser/server cleanup. Library contracts
+and demo defaults are separate; published RC7 remains unchanged. The signed head
+and independent exact-head review will be recorded after the final precommit gate.
+
+The independent asynchronous-contract audit confirmed the next local slice:
+neutral background initialization/send-failure cleanup and pinned checker/scheme/
+byte-admission hardening. Current docs state the existing transport limitations;
+passing built-in browser tests do not qualify every custom port. Typed P-256
+enrollment decomposition and exact-intent consent consolidation follow separately.

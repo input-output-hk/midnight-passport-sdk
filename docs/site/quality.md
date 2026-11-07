@@ -113,7 +113,8 @@ route expiry must refuse rather than silently choose another signer. See
 
 The optional `account/background` protocol transports read/computation tasks.
 Use a dedicated Web Worker in a browser, or supply a `worker_threads` port in
-Node. It bounds outstanding requests and rejects stale/replayed replies. Do not
+Node. It bounds outstanding requests, ignores late/duplicate replies and refuses replayed
+server requests within its dedicated channel epoch. Do not
 use read RPC timeout as a mutation outcome or automatically retry value calls.
 Durable jobs and mutation journals remain separate.
 
@@ -126,33 +127,22 @@ Stopping the wallet terminates that worker and invalidates late read results.
 Node probes use the same wallet runtime without browser globals. This is a demo
 composition, not a replacement for Lace Wallet or an integration with `lace-sdk`.
 
-### Host consent example
+### Reusable integration contracts
 
-```ts
-import { createAccountAuthorisation } from '@input-output-hk/mn-passport-account/authorization';
-import { UnshieldedWithdrawalSchema } from '@input-output-hk/mn-passport-account/validation';
+Use the focused guides for actual signatures, strict typed examples and lifecycle rules:
 
-const routes = createAccountAuthorisation({
-  primary: primaryAccount,
-  isContextCurrent: () => hostAccountScope.isCurrent(), // synchronous selection/auth revision predicate
-  authenticated: () => verifiedOwnerLease, // account + checked host expiry/revision
-  consent: { review: intent => hostReviewDialog(intent) },
-});
-await routes.run({
-  route: 'authenticated-owner',
-  flow: { kind: 'withdraw-unshielded', ...UnshieldedWithdrawalSchema.parse(input) },
-}, async (account, approved) => {
-  if (!account.withdrawUnshielded) throw new Error('Withdrawal is unavailable.');
-  return account.withdrawUnshielded(UnshieldedWithdrawalSchema.parse(approved.flow));
-});
-```
+- [Authorization]({{ '/authorization/' | relative_url }}): one reviewed route, owned
+  flow snapshots, trusted callback responsibilities and stale-context refusal.
+- [Secret storage]({{ '/secret-storage/' | relative_url }}): versioned per-reference
+  custody, caller-owned copies, explicit plaintext opt-in and unavailable versus absent.
+- [Background tasks]({{ '/background/' | relative_url }}): allowlisted methods,
+  unknown reply validation, independent pending limits, timeout and endpoint ownership.
+- [Checked configuration]({{ '/api/#source-preview-checked-configuration-contract' | relative_url }}):
+  trusted pins, native byte bounds, whole-read deadlines and custom transport limits.
 
-Use `route: 'primary'` for the explicitly configured primary signer. It may be a
-passkey-backed browser signer or a Node signer; a cryptographic curve does not
-identify its custody or UI. The host labels it accurately. There is no automatic
-fallback between routes. Always execute the approved snapshot, not a mutable form
-object captured before the review. The callback is a trusted host integration,
-not a sandbox that prevents direct access to an account capability.
+These are library contracts. The [demo guide]({{ '/demo-guide/' | relative_url }})
+records its worker, routine-access and critical fresh-passkey composition. Synthetic
+contract/browser evidence cannot replace provider, native or production-custody review.
 
 ### Async input and byte ownership
 
@@ -162,7 +152,9 @@ arguments and journals must describe the same values. Copy device policy bytes
 before loading bindings or showing a review. Regression tests mutate original
 transfer/grant inputs while a call is pending.
 
-When promising owned byte copies, use `Uint8Array.from(value)`. A Node `Buffer`
+For admitted ordinary byte inputs, make an owned copy rather than retaining a view.
+`copySecretBytes` additionally validates actual typed-array length and ignores custom
+iterators or shadowed properties at the secret-store boundary. A Node `Buffer`
 is also a `Uint8Array`, but its `slice()` shares memory. Tests cover Buffer inputs
 so storage cleanup, owner disposal and caller mutations cannot erase each other's
 bytes. This is copy isolation, not a guarantee of secure memory erasure.

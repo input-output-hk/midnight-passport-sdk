@@ -660,14 +660,15 @@ ui.on('issueGrant', async () => {
   const current = account;
   if (!current?.issueGrant || !current.grantRoster)
     throw new Error('Open a supported Passport account before issuing a grant.');
-  const scope = fixedUnshieldedGrant(network, ui.grantInput());
+  const input = ui.grantInput();
+  const scope = fixedUnshieldedGrant(network, input);
   stage('review');
   const before = await current.grantRoster();
   ui.showGrantRoster(current.address, before);
   const approved = window.confirm(
     `Issue a scoped ACC withdrawal grant?\n\nACC: ${current.address}\nNetwork: ${network}\n` +
       `Grantee JubJub key: ${scope.grantee.publicKey}\nAsset color: ${scope.color}\n` +
-      `Fixed recipient: ${ui.grantInput().recipient}\nPer-call cap: ${scope.perCallCap}\n` +
+      `Fixed recipient: ${input.recipient}\nPer-call cap: ${scope.perCallCap}\n` +
       `Total cap: ${scope.cap}\nExpiry: none\n\nThe grant can move ACC funds to this recipient until revoked.`,
   );
   if (!approved) {
@@ -753,7 +754,7 @@ ui.on('spendGrant', async () => {
         `Spend this scoped grant?\n\nACC: ${fields.account}\nGrant: ${fields.grantId}\n` +
           `Asset color: ${fields.color}\nAmount: ${fields.amount} smallest units\n` +
           `Remaining cap: ${fields.remainingCap}\nFixed recipient: ${address}\n\n` +
-          'Confirm before the grantee passkey prompt.',
+          'Approve this exact transfer before signing and submission.',
       );
       if (approved) stage('submit');
       else

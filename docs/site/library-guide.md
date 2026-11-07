@@ -73,46 +73,19 @@ spending authority. Amounts are base units, with no rounding or numeric coercion
 Byte fields and nested grant/device inputs must be owned copies before the first await;
 `readonly` types alone do not prevent aliases or Buffer-backed mutation.
 
-`account/authorization` supplies `createAccountAuthorisation`, which asks your
-`AccountConsentPort`, captures one account and signer route, and refuses stale context or
-lease replacement without fallback. It does not authenticate a user or supply fresh
-passkey policy by itself. The host's approved callback and selected connector still own
-credential and dispatch checks. This source-only example composes the public APIs:
+`account/authorization` supplies `createAccountAuthorisation` for one captured account,
+route and reviewed operation. It creates no credential UI, timer or automatic fresh
+passkey check. The host callback executes the approved snapshot and the connector
+retains dispatch checks. See the [authorization guide]({{ '/authorization/' | relative_url }})
+for a complete typed withdrawal example, route admission, errors and cancellation.
 
-```ts
-import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
-import {
-  createAccountAuthorisation,
-  type AccountConsent,
-} from '@input-output-hk/mn-passport-account/authorization';
-import { UnshieldedWithdrawalSchema } from '@input-output-hk/mn-passport-account/validation';
+## Source preview: checked service configuration
 
-declare const primary: PassportAccount; // already opened and verified
-// Capture an account/authentication revision; return false after lock or replacement.
-declare function isContextCurrent(): boolean;
-declare function reviewAccountRequest(request: AccountConsent): Promise<boolean>;
-declare const formValue: unknown;
-
-const transfer = Object.freeze(UnshieldedWithdrawalSchema.parse(formValue));
-const policy = createAccountAuthorisation({
-  primary,
-  isContextCurrent,
-  consent: { review: reviewAccountRequest },
-});
-await policy.run(
-  { route: 'primary', flow: { kind: 'withdraw-unshielded', ...transfer } },
-  async (account) => {
-    if (!account.withdrawUnshielded) throw new Error('Withdrawal is unavailable');
-    return account.withdrawUnshielded(transfer);
-  },
-);
-```
-
-The host function must present and decide the exact request; it must not return `true`
-as a default. The demo additionally requires fresh passkey approval for critical owner
-work, while its expressly approved bounded transfer grant can sign within its scope
-without another credential. That is [demo host policy]({{ '/authenticated-owner/' | relative_url }}),
-not a narrower on-chain permission for a full owner.
+Load service configuration against independently trusted pins before selecting runtime
+ports. The checked discovery APIs bound response bytes and time; they do not establish
+that every advertised service is trusted or operational. See
+[configuration contracts]({{ '/api/#source-preview-checked-configuration-contract' | relative_url }})
+for limits, transport expectations, validation and a typed source example.
 
 ## Custody and cleanup
 
@@ -131,7 +104,8 @@ raw PRF output to this adapter. See [secret custody]({{ '/secret-storage/' | rel
 The optional background client is for bounded read/computation work, with explicit
 owned-channel shutdown. A worker timeout is not a transaction outcome and must not
 cause a transaction retry. A browser host keeps credentials and consent in its trusted
-UI context. See [quality and worker contracts]({{ '/quality/' | relative_url }}).
+UI context. See [background contracts]({{ '/background/' | relative_url }}) for method admission,
+timeouts, browser/Node ports and the distinction between client close and server stop.
 
 Persisting a private session needs a separately chosen custody/access/expiry/removal
 policy. The [upstream restoration research](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/research/2026-11-08-session-restoration.md)

@@ -51,13 +51,12 @@
     },
     "packages/account/src/jubjub-connector.ts": {
       "ceilings": {
-        "lines": 1739,
-        "functionLines": 1582,
-        "complexity": 95,
-        "nonNull": 73,
+        "lines": 1083,
+        "functionLines": 938,
+        "nonNull": 15,
         "unsafeCasts": 2
       },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+      "reason": "O4: typed rotation preparation/publication/switch/completion phases extracted. Actual connector falls from1727lines/1563function span/complexity95/37non-null to1083/938/19/15; all new modules use default budgets. Remaining factory/type debt cannot grow. See docs/review/overnight-quality/README.md."
     },
     "packages/account/src/jubjub-device.ts": {
       "ceilings": {
@@ -232,12 +231,6 @@
     "packages/adapter-midnight-js/src/holdings.ts": {
       "ceilings": {
         "nonNull": 1
-      },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
-    },
-    "packages/adapter-service/src/config.ts": {
-      "ceilings": {
-        "unsafeCasts": 1
       },
       "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
     },

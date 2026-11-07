@@ -88,7 +88,34 @@ try {
   const page = await context.newPage();
   await page.goto(base + '/__quality');
   results = await page.evaluate(
-    async ({ storageModule }) => {
+    async ({ storageModule, backgroundModule, rpcModule }) => {
+      const { browserBackgroundPort } = await import(backgroundModule);
+      const { createBackgroundClient, serveBackgroundTasks } = await import(rpcModule);
+      const channel = new MessageChannel();
+      const client = createBackgroundClient(
+        browserBackgroundPort(channel.port1, () => channel.port1.close()),
+        { channel: 'native-channel', timeoutMs: 2_000 },
+      );
+      const stop = serveBackgroundTasks(
+        browserBackgroundPort(channel.port2, () => channel.port2.close()),
+        {
+          channel: 'native-channel',
+          methods: {
+            async echo(input: unknown) {
+              return input;
+            },
+          },
+        },
+      );
+      let messageChannel: unknown;
+      try {
+        // No manual start(): both native receiving ports must be started by the adapter.
+        messageChannel = await client.request('echo', { native: true });
+      } finally {
+        client.close();
+        stop();
+        channel.port2.close();
+      }
       const modulePath = '/src/wallet/dev-wallet.ts';
       const { createDevWallet } = await import(modulePath);
       const seed = new Uint8Array(64).fill(4);
@@ -175,11 +202,15 @@ try {
           reopened: recovered.bytes instanceof Uint8Array,
         },
         realImport,
+        messageChannel,
       };
     },
     {
       storageModule:
         '/@fs' + resolve(appRoot, '../../packages/adapter-browser/dist/secret-store.js'),
+      backgroundModule:
+        '/@fs' + resolve(appRoot, '../../packages/adapter-browser/dist/background.js'),
+      rpcModule: '/@fs' + resolve(appRoot, '../../packages/account/dist/background.js'),
     },
   );
   const result = results as {
@@ -192,6 +223,7 @@ try {
     stopped: boolean;
     indexedDB: { conflicts: number; reopened: boolean };
     realImport: { imported: boolean; worker: boolean };
+    messageChannel: { native: boolean };
   };
   assert.equal(result.worker.night, '7');
   assert.equal(result.worker.clearedWorkerSeed, true);
@@ -200,6 +232,7 @@ try {
   assert.equal(result.stopped, true);
   assert.deepEqual(result.indexedDB, { conflicts: 1, reopened: true });
   assert.deepEqual(result.realImport, { imported: true, worker: true });
+  assert.deepEqual(result.messageChannel, { native: true });
   outcome = 'passed';
 } catch (error) {
   failure = error instanceof Error ? error.message : 'Unknown qualification failure';
@@ -229,7 +262,7 @@ try {
         startedAt,
         endedAt: new Date().toISOString(),
         scope:
-          'Real Chromium worker transport and IndexedDB; synthetic wallet CPU/balances; actual wallet SDK import only, no native sync/proofs/provider acceptance.',
+          'Real Chromium MessageChannel/worker transport and IndexedDB; synthetic wallet CPU/balances; actual wallet SDK import only, no native sync/proofs/provider acceptance.',
         results,
         failure,
         resourcesClosed,

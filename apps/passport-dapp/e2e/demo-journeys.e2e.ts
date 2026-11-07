@@ -2061,8 +2061,46 @@ try {
       assert.equal(await owner.locator('#progress').getAttribute('aria-valuenow'), null);
       assert.equal(calls.filter((c) => c === 'issue').length, issuesBeforeDecline);
       assert.equal(await credentialsUsed(), credentialsBeforeGrantDecline);
+      const changedRecipient = MidnightBech32m.encode(
+        'undeployed',
+        new UnshieldedAddress(Buffer.alloc(32, 83)),
+      ).asString();
+      let issueReview = '';
+      const captureIssueReview = (dialog: import('playwright-core').Dialog) => {
+        issueReview = dialog.message();
+      };
+      owner.on('dialog', captureIssueReview);
+      // Change the form while the public roster read is pending, after admission.
+      // This lives only in the owned test page; production code receives no test hooks.
+      await owner.evaluate(`(() => {
+        const original = window.fetch;
+        window.fetch = async (...args) => {
+          const response = await original(...args);
+          const body = args[1]?.body;
+          if (args[0] === '/__demo-fixture' && typeof body === 'string' &&
+              JSON.parse(body).action === 'state') {
+            window.fetch = original;
+            document.getElementById('grant-recipient').value = ${JSON.stringify(changedRecipient)};
+          }
+          return response;
+        };
+      })()`);
       await approve(owner, 'issueGrant');
       await waitStatus(owner, /Grant .*active|grant.*issued/i);
+      owner.off('dialog', captureIssueReview);
+      assert.ok(issueReview.includes(recipient), 'review retains the originally admitted address');
+      assert.ok(
+        !issueReview.includes(changedRecipient),
+        'a changed form is not the approved intent',
+      );
+      assert.equal(await owner.locator('#grant-recipient').inputValue(), changedRecipient);
+      assert.equal(
+        (state.grant?.scope.recipient as { value?: string } | undefined)?.value,
+        MidnightBech32m.parse(recipient).decode(UnshieldedAddress, 'undeployed').hexString,
+      );
+      done(
+        'grant review and submission retain the admitted recipient across an asynchronous roster read',
+      );
       await fill(owner, '#export-grant-id', grantId);
       rejectNextDialog = true;
       await approve(owner, 'exportGrant');
