@@ -550,3 +550,33 @@ merely to check types/imports. Library policies stay separate from demo wiring.
 The final local full Nix gate passes **2,111 tests / seven existing skips**, with
 lint, formatting, builds and all app typechecks. Signing, exact-head review and
 fresh installed/coverage/browser/doc receipts follow this frozen candidate.
+
+
+## Wave 9: owned funding intent and smaller readiness phases
+
+Funding requests now retain one admitted scalar snapshot across asynchronous
+credential lookup, POST and response matching. Malformed IDs, pins and positive
+U128 amounts refuse before credentials. Header callbacks retain their receiver and
+are invoked once per explicit call. Explicit observation budgets include preparation,
+credentials, headers, body and projection; late credentials cannot initiate a POST.
+An unset budget adds no default timeout or signal. A returned resulting balance is
+not a delta. There is no automatic retry, replacement ID or send reconciliation.
+
+Sixty-seven new funding cases and three compatibility cases pass; independent
+probes additionally cover encoding-time expiry, reversed concurrent credential
+completion, mutable status/body values and late failures. The original mutation
+and deadline failures are retained. These are adapter contracts, not live deposits.
+
+The P-256 connector drops from 1,057 to 763 lines, its factory from 949 to 673,
+and non-null assertions from 16 to 13. Five private readiness helpers use default
+budgets with no unsafe assertions. Extraction preserves original late host-record
+reads, strict challenges, Flow/session boundaries, directory retries/always-writes,
+30 raw observation polls and durable effect IDs. Twenty-five new cases and four
+actual pre-extraction-journal/current-code resumes pass. Existing focused coverage
+ran before the final compatibility correction; the final full gate is still required.
+
+The synthetic browser runner gains additive monotonic setup, checkpoint and cleanup
+timings without changing case order or credential purposes. Checkpoint intervals
+include UI work between assertions. They do not establish isolated case runtime,
+hosted CI latency or native/provider support. The final complete both-arm run and
+root integration gates follow these frozen implementation slices.

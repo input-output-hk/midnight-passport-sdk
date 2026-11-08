@@ -878,3 +878,28 @@ encoding and bodies. Unset timeout still delegates to legacy behavior. No automa
 POST retry or durable recovery query follows an observation failure. Preserve
 public typed errors even if encoding consumes the budget before dispatch. Read
 the HTTP selection map before substituting legacy and versioned clients.
+
+
+### Funding invocation and P-256 readiness — overnight wave 9
+
+The public funding client snapshots its admitted request before async credentials:
+canonical request ID, network/binding/pins, account, asset and positive U128 amount.
+Fresh headers are evaluated once per explicit invocation; the callback retains its
+receiver. An explicit timeout covers preparation, credentials, one POST and response
+projection. Unset timeout keeps unbounded observation. Failed observation cannot
+undo a send: retain the original request ID and inspect/reconcile before retrying.
+The returned balance is resulting account balance, not the deposit delta. Read the
+library service guide separately from the demo funding setup.
+
+P-256 activation/opening/sealed publication now use private typed phases. This is
+an extraction, not a new flow or custody policy: preserve late host-record lookups,
+30 raw observation polls, directory retry/always-write behavior, strict signing,
+Flow/session boundaries, original material and durable request/effect IDs. Four
+pre-extraction protected journals resume under current code in synthetic tests.
+Neither those probes nor older native receipts establish current native acceptance.
+
+Browser journey receipts now include monotonic setup, per-arm checkpoint intervals
+and cleanup timings. Checkpoint deltas include intervening UI setup/actions and
+assertions; they are not isolated test durations. Full case order and both arms
+remain mandatory. Measure before changing CI scheduling; do not omit consent or
+shorten waits solely to meet a target runtime.

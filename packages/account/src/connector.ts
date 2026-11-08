@@ -1,15 +1,12 @@
 import { createP256Account } from './p256-creation.js';
-import { openP256Address } from './p256-address-open.js';
+import { activateCreatedAccount, recordDeployedHint } from './p256-activation.js';
+import { openDirectoryP256Account, openKnownP256Account } from './p256-account-open.js';
+import type { P256ReadinessHost } from './p256-readiness-types.js';
+import { authenticateSealedReader, observeSealedAccount } from './p256-sealed-reader.js';
+import { appendP256InboxEntry, finishSealedAccount } from './p256-sealed-readiness.js';
 import { withLoginSession } from './with-login-session.js';
 import { snapshotGrantScope } from './request-snapshots.js';
-import {
-  type P256Hint,
-  type SealedP256Hint,
-  isP256,
-  isSealedP256,
-  validSealedEntries,
-  p256,
-} from './p256-device.js';
+import { type P256Hint, type SealedP256Hint, isSealedP256, p256 } from './p256-device.js';
 import { createP256ViewingRotation } from './p256-viewing-rotation.js';
 import { createP256DeviceEnrollment } from './p256-device-enrollment.js';
 import { revokeP256Grant, revokeAllP256Grants } from './p256-grant-revocation.js';
@@ -81,7 +78,6 @@ export const RESCAN_LIMIT = 64;
  * write is idempotent (an identical re-PUT answers 204), so retrying it is safe.
  */
 export const DEPLOYED_PUT_RETRIES = 3;
-const RETRY_BASE_MS = 200;
 /** Both browsers and Node have `setTimeout`; the package compiles without either's types. */
 const timers = globalThis as unknown as { setTimeout(run: () => void, ms: number): unknown };
 const sleep = (ms: number) => new Promise<void>((resolve) => timers.setTimeout(resolve, ms));
@@ -90,20 +86,6 @@ const webRandom = (length: number) =>
   (
     globalThis as unknown as { crypto: { getRandomValues(bytes: Uint8Array): Uint8Array } }
   ).crypto.getRandomValues(new Uint8Array(length));
-
-/**
- * Whether the open-time `enc_key` check (lace-platform's `encryption-key-mismatch`) can run. The
- * ACC keeps no epoch for `enc_key`: the constructor sets it, and only `rotate_enc_key_with_*`
- * changes it, each gated and so each advancing `auth_nonce` (spec_version 2). While `auth_nonce`
- * is 0 no gated call has run, so `enc_key` must still be the key the passkey derives; after one,
- * it may have been rotated (to a random key, in the prototype), and the check is skipped rather
- * than refusing a rotated account. Skipped too when the reader does not report `enc_key`, or for a
- * spec_version whose rules this release does not know.
- */
-const encKeyComparable = (
-  view: AccLedgerView,
-): view is AccLedgerView & { readonly encKey: Uint8Array } =>
-  view.encKey !== undefined && view.authNonce === 0n && view.specVersion === 2;
 
 /** The account API over the ports (design §1.3, §2.1). */
 export function createPassportAccounts(ports: PassportPorts): PassportConnectorAPI {
@@ -119,9 +101,6 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
   const binding = lazyPort(ports.binding);
   const chain = lazyPort(ports.chain);
   const random = ports.random ?? webRandom;
-  /** Records what the chain already holds, so it runs even once the flow is aborted. */
-  const put = (flow: Flow, record: P256Hint) =>
-    flow.step('directory.write', async () => directory?.put(networkId, record), 'always');
   /** Flows run through `run`: their events, their abort checks and their errors (design §3.3, §3.4). */
   const run = async <T>(
     options: FlowOptions,
@@ -135,45 +114,6 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
       throw flow.fail(e);
     }
   };
-
-  const submitActivation = (flow: Flow, record: P256Hint) =>
-    flow.step('activate', async () =>
-      (await chain()).call({
-        address: record.address,
-        circuit: 'activate_initial_device_with_p256',
-        args: [p256(record.publicKey), record.salt, record.policy],
-        ...flow.ports,
-      }),
-    );
-
-  const activate = async (flow: Flow, record: P256Hint): Promise<P256Hint> => {
-    await submitActivation(flow, record);
-    const active: P256Hint = { ...record, status: 'active' };
-    await put(flow, active);
-    return active;
-  };
-
-  const recordDeployed = (flow: Flow, record: P256Hint) =>
-    flow.step(
-      'directory.write',
-      async () => {
-        for (let attempt = 0; ; attempt++) {
-          try {
-            return await directory?.put(networkId, record);
-          } catch (e) {
-            if (attempt >= DEPLOYED_PUT_RETRIES) {
-              throw new PassportConnectorError(
-                'InternalError',
-                `The account at ${record.address} is deployed, but the registry did not record it after ${attempt + 1} attempts: ${e instanceof Error ? e.message : String(e)}`,
-                { cause: e },
-              );
-            }
-            await sleep(RETRY_BASE_MS * 2 ** attempt);
-          }
-        }
-      },
-      'always',
-    );
 
   const readAccount = async (record: P256Hint): Promise<AccLedgerView> => {
     const view = await (
@@ -227,191 +167,38 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     return { counter, authNonce: view.authNonce };
   };
 
-  /**
-   * Completes a 'deployed' record whose passkey `openAccount` has already verified. Activation may
-   * already have landed on-chain while its response or the registry write was lost, so a booted
-   * ledger is adopted instead of activating a second time, but only once it holds this passkey.
-   * An unbooted ledger is activated: its boot commitment binds pk, salt and policy on chain, so a
-   * mismatched record cannot activate someone else's account, and the entry is checked afterwards
-   * all the same before the record is marked active.
-   */
-  const finishActivation = async (
-    flow: Flow,
-    record: P256Hint,
-    view: AccLedgerView,
-  ): Promise<P256Hint> => {
-    if (!view.booted) {
-      await submitActivation(flow, record);
-      const after = await readView(flow, record);
-      if ((await findCounter(flow, record, after)) === undefined) throw notHeld(record);
-    }
-    const active: P256Hint = { ...record, status: 'active' };
-    await put(flow, active);
-    return active;
+  const readiness: P256ReadinessHost = {
+    ports,
+    authoriser,
+    credentials,
+    directory,
+    encryptionKey,
+    network,
+    networkId,
+    viewingKey,
+    binding,
+    chain,
+    readView,
+    findCounter,
+    notHeld,
+    sleep,
   };
-
-  const sealedKeyring = async (
+  const sealedKeyring = (
     record: SealedP256Hint,
     view: AccLedgerView,
     pending: boolean,
     inOwnerSession = false,
-  ) => {
-    const keyring = viewingKey;
-    const devicePublicKeyHex = authoriser.devicePublicKeyHex?.bind(authoriser);
-    const { encKey, inboxEntries } = view;
-    if (!keyring || !devicePublicKeyHex || !encKey || !inboxEntries)
-      throw new PassportConnectorError(
-        'BindingUnsupported',
-        'P-256 sealed accounts need an inbox reader, keyring and compressed device key.',
-      );
-    if (pending && !validSealedEntries(record.keyEntries))
-      throw new PassportConnectorError(
-        'BindingUnsupported',
-        'The pending ACC has no sealed creation entries.',
-      );
-    const entries = pending ? [...inboxEntries, ...record.keyEntries!] : [...inboxEntries];
-    const check = async () => {
-      if (!entries.length) throw new Error('the ACC inbox has no sealed key entries');
-      const opened = await keyring.openInbox(
-        networkId,
-        { account: record.address, encKey, envelopes: [...entries].reverse() },
-        // Empty batches can be a transport no-op, so request an actual sealed entry.
-        pending ? record.keyEntries! : entries.slice(0, 1),
-      );
-      if (pending) {
-        const device = opened[1];
-        const reader = await keyring.readerPublicKey(networkId);
-        const deviceKey = await devicePublicKeyHex();
-        if (
-          device?.kind !== 'device' ||
-          device.device.scheme !== 'p256-webauthn' ||
-          device.device.readerPublicKey !== toHex(reader) ||
-          device.device.devicePublicKey !== deviceKey ||
-          (device.device.policy !== undefined &&
-            (!equalBytes(device.device.policy.rp_id_hash, record.policy.rp_id_hash) ||
-              !equalBytes(device.device.policy.origin, record.policy.origin)))
-        )
-          throw new Error('the sealed registration does not name this device');
-      }
-    };
-    try {
-      if (authoriser.withKeySession && !inOwnerSession)
-        await authoriser.withKeySession(check, { kind: 'sign-in', account: record.address });
-      else await check();
-    } catch (cause) {
-      throw new PassportConnectorError(
-        'EncryptionKeyMismatch',
-        'No sealed envelope for this passkey opens the ACC encryption key.',
-        { cause },
-      );
-    }
-  };
-
-  const awaitSealedView = async (
-    record: SealedP256Hint,
-    ready: (view: AccLedgerView) => boolean,
-  ): Promise<AccLedgerView> => {
-    for (let attempt = 0; attempt < 30; attempt++) {
-      const view = await (await chain()).readAccount(record.address, { includeInbox: true });
-      if (view && ready(view)) return view;
-      await sleep(1000);
-    }
-    throw new PassportConnectorError(
-      'InternalError',
-      'The sealed ACC call did not appear on chain.',
-    );
-  };
-
-  const appendP256 = async (
-    flow: Flow,
-    record: SealedP256Hint,
-    entry: Uint8Array,
-    view: AccLedgerView,
-  ): Promise<AccLedgerView> => {
-    const pure = (await binding()).pureCircuits;
-    if (!pure.challenge_append_inbox_with_p256)
-      throw new PassportConnectorError('BindingUnsupported', 'ACC lacks P-256 inbox signing.');
-    const counter = await findCounter(flow, record, view);
-    if (counter === undefined) throw notHeld(record);
-    const circuit = 'append_inbox_with_p256';
-    const challenge = pure.challenge_append_inbox_with_p256(
-      { bytes: fromHex(record.address) },
-      p256(record.publicKey),
-      entry,
-      view.authNonce,
-    );
-    const signed = await flow.step('passkey.sign', () =>
-      authoriser.authorise({
-        account: record.address,
-        circuit,
-        args: [entry],
-        witnessValues: [],
-        authNonce: view.authNonce,
-        useCounter: counter,
-        challenge,
-        credentialId: record.credentialId,
-      }),
-    );
-    if (
-      signed.scheme !== 'p256-webauthn' ||
-      signed.useCounter !== counter ||
-      signed.pk.x !== record.publicKey.x ||
-      signed.pk.y !== record.publicKey.y
-    )
-      throw new PassportConnectorError('NotAuthorised', 'The signature names another device.');
-    flow.checkpoint();
-    await (
-      await chain()
-    ).call({
-      address: record.address,
-      circuit,
-      args: [
-        entry,
-        {
-          pk: p256(record.publicKey),
-          policy: record.policy,
-          authenticator_data: signed.authenticatorData,
-          sig: signed.sig,
-          use_counter: counter,
-        },
-      ],
-      ...flow.ports,
-    });
-    return awaitSealedView(record, (candidate) => candidate.authNonce > view.authNonce);
-  };
-
-  const finishSealed = async (flow: Flow, record: SealedP256Hint): Promise<P256Hint> => {
-    let view = await awaitSealedView(record, (candidate) =>
-      Boolean(candidate.encKey && candidate.inboxEntries),
-    );
-    const pending = record.status === 'deployed';
-    await sealedKeyring(record, view, pending);
-    if (!view.booted) {
-      if (!pending) throw new PassportConnectorError('AccountNotFound', 'The ACC is not booted.');
-      await submitActivation(flow, record);
-      view = await awaitSealedView(record, (candidate) => candidate.booted);
-    }
-    if ((await findCounter(flow, record, view)) === undefined) throw notHeld(record);
-    if (pending) {
-      for (const entry of record.keyEntries!) {
-        if (view.inboxEntries?.some((held) => equalBytes(held, entry))) continue;
-        view = await appendP256(flow, record, entry, view);
-      }
-    }
-    await sealedKeyring(record, view, false);
-    const active: P256Hint = { ...record, status: 'active' };
-    if (pending) await put(flow, active);
-    const counter = await findCounter(flow, active, view);
-    if (counter === undefined) throw notHeld(active);
-    await ports.records?.write({
-      address: active.address,
-      bindingId: network.bindingId,
-      scheme: 'p256-webauthn',
-      credentialId: Uint8Array.from(active.credentialId),
-      localUseCounter: counter,
-    });
-    return active;
-  };
+  ) => authenticateSealedReader(readiness, record, view, pending, inOwnerSession);
+  const awaitSealedView = (record: SealedP256Hint, ready: (view: AccLedgerView) => boolean) =>
+    observeSealedAccount(readiness, record, ready);
+  const appendP256 = (flow: Flow, record: SealedP256Hint, entry: Uint8Array, view: AccLedgerView) =>
+    appendP256InboxEntry(readiness, flow, record, entry, view);
+  const recordDeployed = (flow: Flow, record: P256Hint) =>
+    recordDeployedHint(readiness, flow, record, DEPLOYED_PUT_RETRIES);
+  const finishSealed = (flow: Flow, record: SealedP256Hint) =>
+    finishSealedAccount(readiness, flow, record);
+  const activate = (flow: Flow, record: P256Hint) =>
+    activateCreatedAccount(readiness, flow, record);
 
   const addP256Device = createP256DeviceEnrollment({
     ports,
@@ -968,90 +755,9 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
         onProgress,
       ),
     openAccountAt: (address, options = {}) =>
-      run(options, async (flow) => {
-        if (!/^[0-9a-f]{64}$/.test(address))
-          throw new PassportConnectorError(
-            'AccountNotFound',
-            'ACC address must be 32-byte lowercase hex.',
-          );
-        if (!viewingKey || !authoriser.devicePublicKeyHex)
-          throw new PassportConnectorError(
-            'BindingUnsupported',
-            'Address recovery needs a sealed P-256 keyring.',
-          );
-        const identity = await flow.step('passkey.identify', () => credentials.identify());
-        const { record, view } = await openP256Address(
-          address,
-          networkId,
-          identity,
-          authoriser,
-          viewingKey,
-          await chain(),
-          flow,
-        );
-        const counter = await findCounter(flow, record, view);
-        if (counter === undefined) throw notHeld(record);
-        await sealedKeyring(record, view, false);
-        await ports.records?.write({
-          address,
-          bindingId: network.bindingId,
-          scheme: 'p256-webauthn',
-          credentialId: Uint8Array.from(record.credentialId),
-          localUseCounter: counter,
-        });
-        return account(record);
-      }),
+      run(options, async (flow) => account(await openKnownP256Account(readiness, flow, address))),
     openAccount: (options = {}) =>
-      run(options, async (flow) => {
-        const identity = await flow.step('passkey.identify', () => credentials.identify());
-        const hint = await flow.step('directory.read', async () =>
-          directory?.get(networkId, {
-            kind: 'credential-id',
-            credentialId: identity.credentialId,
-          }),
-        );
-        if (!hint)
-          throw new PassportConnectorError(
-            'AccountNotFound',
-            'No Passport account for this passkey on this network.',
-          );
-        // The registry is an untrusted hint (Ruling R10(b)): the record must name the picked
-        // passkey's own key, the address must hold a ledger, and that ledger must hold the passkey.
-        if (
-          !isP256(hint) ||
-          !equalBytes(hint.credentialId, identity.credentialId) ||
-          !identity.owns(hint.publicKey, hint.policy)
-        ) {
-          throw new PassportConnectorError(
-            'AccountNotFound',
-            'The registry record does not belong to this passkey.',
-          );
-        }
-        const view = await readView(flow, hint);
-        if (
-          (hint.status === 'active' || view.booted) &&
-          (await findCounter(flow, hint, view)) === undefined
-        )
-          throw notHeld(hint);
-        if (viewingKey) {
-          if (!isSealedP256(hint))
-            throw new PassportConnectorError(
-              'BindingUnsupported',
-              'This P-256 account has no sealed viewing key; use the legacy adapter or migrate it.',
-            );
-          return account(await finishSealed(flow, hint));
-        }
-        if (encKeyComparable(view)) {
-          const derived = await flow.step('passkey.prf', () => encryptionKey.publicKey(networkId));
-          if (!equalBytes(derived, view.encKey)) {
-            throw new PassportConnectorError(
-              'EncryptionKeyMismatch',
-              `The account at ${hint.address} holds an encryption key this passkey does not derive.`,
-            );
-          }
-        }
-        return account(hint.status === 'active' ? hint : await finishActivation(flow, hint, view));
-      }),
+      run(options, async (flow) => account(await openDirectoryP256Account(readiness, flow))),
   };
   return withLoginSession(credentials, api, ports.onAccountOpened);
 }

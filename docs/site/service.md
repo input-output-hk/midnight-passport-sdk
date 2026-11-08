@@ -46,7 +46,7 @@ configuration while keeping RC7 package bytes.
 | `adapter-service`: `remoteHostJobs`, `remoteHostJobPorts` | Durable `/v1/host-jobs` descriptors, status and explicit resume | 600,000 ms invocation; 10,000 ms per request; 250 ms poll interval | Caller signal; `onSnapshot` shares the invocation budget | GET is read-only; no automatic POST retry or legacy fallback. Preserve the original identity. See [service jobs]({{ '/service-jobs/' | relative_url }}). |
 | `adapter-service/prover`, `/deployer`, `/sponsor`: `remoteProver`, `remoteDeployer`, `remoteSponsor` | Legacy `/prove-tx`, `/deploy`, `/sponsor/*` | Prover defaults to 600,000 ms; deployer/sponsor have no default timeout. Explicit fetch abort does not bound an uncooperative body | Deployer checks pre-abort only; no active caller-signal/progress forwarding | No automatic retry. Use the matching server protocol and reconcile uncertain effects. |
 | `adapter-service/config`: `fetchCheckedConfig`, `fetchCheckedV1Config` | `GET /config` or `/v1/config` | Source preview: 30,000 ms whole read and 65,536 bytes | No caller signal/progress option | No automatic retry. Reacquire under the same trusted pins; a discovery result is not transaction evidence. See [config admission]({{ '/api/#source-preview-checked-configuration-contract' | relative_url }}). |
-| `adapter-service/faucet`: `remoteFaucet` | `POST /v1/faucet/fund` | No default deadline; optional fetch abort is not a whole-observation guarantee | Fresh header callback; no caller signal/progress option | Retain the caller's request ID. Completed IDs return recorded results; pending uncertainty requires operator reconciliation. |
+| `adapter-service/faucet`: `remoteFaucet` | `POST /v1/faucet/fund` | Source preview: no default deadline; an explicit timeout covers credentials, encoding, POST, body and projection | Fresh header values from a captured callback; no caller signal/progress option | Retain the caller's request ID. Completed IDs return recorded results; pending uncertainty requires operator reconciliation. |
 
 The total-budget and body-ownership contracts are per client, not a library-wide
 HTTP default. Generic V1 proof results have no universal byte ceiling; the raw
@@ -193,3 +193,39 @@ available transaction evidence and reconcile through the chosen backend/chain;
 do not repeat balance/submit merely because waiting ended. This source-only
 correction does not change legacy `remoteSponsor`/`postService`, host jobs,
 configuration reads or published RC7 package bytes.
+
+## Source preview: funding intent and observation
+
+After RC7, `remoteFaucet` captures its fetch, timeout and credential callback at
+construction, retaining the callback's original receiver. Every explicit `fund`
+call still requests fresh header values. Before any credential callback or await,
+it captures the seven request fields and validates the canonical lowercase UUID,
+64-character lowercase hex pins/account/asset, string network/binding and positive
+canonical decimal Uint128 amount. The amount is bounded to 39 digits before range
+comparison. Invalid local input rejects with `FaucetClientError.status === 0`;
+it is not an HTTP 400 response. The client never generates a replacement ID.
+
+The wire and response check use that captured original request ID even if the
+caller's object changes while credentials or the service are pending. A successful
+response is a new owned record with validated ID, nonempty provider transaction ID,
+positive Uint128 credited balance and an optional string preparation transaction ID.
+Unknown fields are not forwarded. Credited balance is the resulting ACC balance,
+not the deposit amount or an independently verified balance delta. Chain-backed
+credit and durable idempotency remain the server/backend's responsibility.
+
+No timeout means no hidden timer, wire signal or response cap. An explicit integer
+**1–2,147,483,647 ms** bounds the whole invocation, including fresh credentials,
+request preparation, the single POST, body and result projection. If credentials
+finish after expiry, no POST follows. Underlying callbacks/promises, blocking
+JavaScript and remote transactions cannot be forcibly cancelled; readers and
+late bodies are disposed best effort. This adds no caller-signal API or body cap.
+
+Funding retains its own error contract rather than the sponsor's: credential/fetch
+failure has status `0`; failed JSON observation after timely headers retains the
+known HTTP status and invalid-JSON message. Parsed refusals retain their HTTP
+status/message, and successful `response.ok` replies are validated against the
+original ID. An HTTP status on an observation error is not proof of no deposit.
+Preserve the ID and available transaction evidence, then use the operator's
+reconciliation policy. There is no automatic POST retry, fallback, new ID, pending
+reservation release or background reconciliation. Published RC7 predates these
+client hardening changes; the funding route, wallet policy and journals are unchanged.

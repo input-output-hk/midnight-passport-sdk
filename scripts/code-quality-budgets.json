@@ -11,13 +11,13 @@
     },
     "packages/account/src/connector.ts": {
       "ceilings": {
-        "lines": 1057,
-        "functionLines": 949,
+        "lines": 763,
+        "functionLines": 673,
         "complexity": 15,
-        "nonNull": 16,
+        "nonNull": 13,
         "unsafeCasts": 2
       },
-      "reason": "O4: typed selective/all P-256 grant revocation phases preserve separate source/roster/signing/settlement policies. Actual connector1362\u21921057lines, factory1252\u2192949, complexity45\u219215, non-null27\u219216; remaining large factory/unsafe debt cannot grow. New modules use default budgets. See docs/review/overnight-quality/README.md."
+      "reason": "O4 wave9: typed activation, sealed-reader readiness/publication and account-open phases preserve late host-record reads, flow/session boundaries and durable effect IDs. Actual connector1057\u2192763lines, factory949\u2192673, non-null16\u219213; existing complexity15/unsafe2 unchanged. Remaining factory debt cannot grow. New helpers use defaults. See docs/review/overnight-quality/README.md."
     },
     "packages/account/src/durable-mutations.ts": {
       "ceilings": {

@@ -12,6 +12,7 @@ import { createServer } from 'vite';
 import { chromium, type BrowserContext, type Page } from 'playwright-core';
 import { settleWithCeremonyReviews } from './approve-ceremonies.ts';
 import { journeyArms } from './journey-arms.js';
+import { journeyTiming } from './journey-timing.js';
 import { MidnightBech32m, UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
 
 const appRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -48,6 +49,7 @@ async function archiveObservations(page: Page, arm: string) {
 }
 const repoRoot = resolve(appRoot, '../..');
 const started = Date.now();
+const timing = journeyTiming();
 const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
   cwd: repoRoot,
   encoding: 'utf8',
@@ -243,7 +245,9 @@ try {
     ...(process.env.CHROME_BIN && { executablePath: process.env.CHROME_BIN }),
   });
   browserVersion = browser.version();
+  timing.finishSetup();
   for (const arm of selectedArms) {
+    timing.beginArm(arm);
     const state: FixtureState = {
       nonce: 0,
       epoch: 0,
@@ -321,6 +325,7 @@ try {
       const context = existing ?? (await browser!.newContext({ serviceWorkers: 'block' }));
       if (!existing) {
         contexts.push(context);
+        timing.created('context');
         await context.route('**/*', async (route) => {
           try {
             const request = route.request();
@@ -465,6 +470,7 @@ try {
         });
       }
       const page = await context.newPage();
+      timing.created('page');
       page.on('pageerror', (error) => {
         pageErrors.push(error.message);
       });
@@ -507,6 +513,7 @@ try {
       return page;
     };
     const done = (name: string) => {
+      timing.checkpoint(name);
       cases.push({ arm, name });
       console.log(`PASS ${arm}: ${name}`);
     };
@@ -568,6 +575,7 @@ try {
         await beforeContinue?.();
       }
     };
+    let armBodyComplete = false;
     try {
       const owner = await newPage();
       assert.equal(await owner.locator('#main').getAttribute('data-landing'), 'true');
@@ -3186,10 +3194,16 @@ try {
       ])
         assert.ok(observedPurposes.has(purpose), `missing observed ${purpose} access for ${arm}`);
       ceremonyPurposesByArm[arm] = [...observedPurposes].sort();
+      armBodyComplete = true;
     } finally {
-      for (const context of contexts) {
-        closingContexts.add(context);
-        await context.close();
+      timing.beginArmCleanup();
+      try {
+        for (const context of contexts) {
+          closingContexts.add(context);
+          await context.close();
+        }
+      } finally {
+        timing.endArm(armBodyComplete);
       }
     }
   }
@@ -3200,6 +3214,7 @@ try {
   );
   outcome = 'passed';
 } finally {
+  timing.beginCleanup();
   const cleanup: Record<string, string> = {};
   const close = async (name: string, present: boolean, operation: () => Promise<unknown>) => {
     if (!present) {
@@ -3224,6 +3239,7 @@ try {
   const resourcesClosed = Object.values(cleanup).every((status) => status !== 'failed');
   if (savedPin === undefined) delete process.env.PASSPORT_MANIFEST_SHA256;
   else process.env.PASSPORT_MANIFEST_SHA256 = savedPin;
+  timing.finishCleanup();
   await mkdir(resolve(output, '..'), { recursive: true });
   await writeFile(
     output,
@@ -3240,6 +3256,7 @@ try {
         browserVersion,
         runtimeSha256: initialRuntimeIdentity,
         elapsedMs: Date.now() - started,
+        timings: timing.snapshot(),
         cases,
         selectedArms,
         credentialFailureCodes,

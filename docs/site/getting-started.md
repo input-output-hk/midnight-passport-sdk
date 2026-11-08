@@ -11,11 +11,9 @@ for the lifecycle and host responsibilities, or the
 Optional authorization, validation, storage/background and login/session helpers in the
 current source are **not RC7 imports**; see the [API release map]({{ '/api/#published-and-source-preview-surfaces' | relative_url }}).
 
-Use this path to evaluate the implemented libraries in a wallet host or browser application.
-To try the full reference UI first, use the [demo use cases]({{ '/use-cases/' | relative_url }})
-and [agent/local setup guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/AGENTS.md).
-The upstream app engine and dApp grant protocol are broader than this preview; the account-owner
-API is the implemented integration surface.
+The path below produces a browser account integration module and a caller module for
+your own application. The upstream app engine and dApp grant protocol are broader than
+this preview; the account-owner API is the implemented integration surface.
 
 ## 1. Choose the integration boundary
 
@@ -51,6 +49,7 @@ Install the verified RC7 preview:
 ```sh
 npm install --save-exact \
   @input-output-hk/mn-passport-account@0.1.0-rc7 \
+  @input-output-hk/mn-passport-protocol@0.1.0-rc7 \
   @input-output-hk/mn-passport-adapter-browser@0.1.0-rc7 \
   @input-output-hk/mn-passport-adapter-service@0.1.0-rc7 \
   @input-output-hk/mn-passport-contract@0.1.0-rc7
@@ -60,10 +59,18 @@ Node 22 is the repository's pinned/tested tooling baseline. Use `nix develop` to
 Compact; a newer Node version needs its own runtime verification. Keep all SDK packages on the same exact release. `next` is a moving preview tag;
 pin a version and lockfile for a reproducible integration.
 
-## 3. Start and verify the backend
+## 3. Choose and verify the backend
 
-For local evaluation use `nix develop -c pnpm demo up` with the pinned ACC export, as described
-in the setup guide. Packages alone do not start a chain, create keys or fund a fee wallet.
+The browser recipe below uses remote ports. Point them at an operator-controlled
+Passport service, or run the reference local stack for evaluation. Installing the
+libraries does not require the demo UI; executing this recipe does require its
+configured chain/prover and fee payer. A wallet host supplying its own typed ports
+can use its existing infrastructure instead of this HTTP composition.
+
+For the reference local stack, follow the
+[demo setup guide]({{ '/demo-guide/' | relative_url }}) and its pinned ACC export.
+Its endpoints below are deployment choices, not library defaults. Packages alone
+do not start a chain, create keys or fund a fee wallet.
 
 | Service | Default local endpoint | Purpose |
 | --- | --- | --- |
@@ -71,7 +78,7 @@ in the setup guide. Packages alone do not start a chain, create keys or fund a f
 | Key service | `http://127.0.0.1:8788` | Restore and verify prover keys, then serve pinned files over HTTP. Optional when using the Passport service's local artefacts. |
 | Funding service | `http://127.0.0.1:8789` | Authenticated, allowlisted wallet-to-ACC deposits; started by `--funding`. It is not a fee sponsor. |
 
-Check `/healthz` and `/v1/config` on the Passport service. The network must be `undeployed`,
+For this local recipe, check `/healthz` and `/v1/config` on the Passport service. The network must be `undeployed`,
 binding `acc-s3r1.1`, compiler manifest SHA-256
 `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f`.
 Derive this pin from the installed contract package or trusted release evidence, not from the
@@ -198,22 +205,15 @@ and the [Lace compatibility boundary]({{ '/lace-handover/' | relative_url }}).
 For a trusted operator host/BFF, the [durable service-job runbook]({{ '/service-jobs/' | relative_url }}) describes opt-in encrypted reference-service settings, `remoteHostJobPorts` for the durable owner composition, explicit restart recovery and real HTTP/process tests. Client and service must both support identity hashes. Keep the bearer token out of a public browser page; portable browser imports do not make the token public. The default demo keeps its existing composition; RC7 host jobs require explicit opt-in.
 
 
-## Host lifecycle beyond the quickstart
+## Choose the next capability
 
-Keep durable account metadata, encrypted recovery/grant journals and optional secret
-custody separate. Scope records by network, binding and account/device; copy supported
-byte and nested inputs before awaiting consent. A TypeScript `readonly` property does
-not prevent a caller from mutating a shared buffer. Supply complete live sources and
-check the pinned route before dispatch; do not replace missing data with an empty roster.
+| Next step | Integration contract |
+| --- | --- |
+| Add private holdings, transfers or administration | [Account prerequisites]({{ '/api/#optional-methods-and-host-prerequisites' | relative_url }}): supply complete live sources and the correct value/proof path. |
+| Survive interruption or an unknown submission | [Durability]({{ '/durability/' | relative_url }}): retain the original IDs, protected outputs and journal; reconcile before another send. |
+| Choose storage, key lifetime and teardown | [Library custody and cleanup]({{ '/library-guide/#custody-and-cleanup' | relative_url }}): metadata, journals and secret custody have separate owners. |
+| Adopt source-only helpers | [Release map]({{ '/api/#published-and-source-preview-surfaces' | relative_url }}): build matching source; an RC7 install has no optional source authorization, secret-store, background or verified-login handoff entries. |
 
-Cancellation stops future work. Retain acknowledged transaction hashes and unknown
-original intent IDs even if a local lease expires or a later refresh fails. Reconcile
-those same records before another send. Clear caller-owned secret copies and dispose
-owned local keys, observers, worker channels and storage handles on teardown. Local
-cleanup is not chain revocation and must not erase recovery evidence.
-
-The optional source `onAccountOpened` handoff and 10/15/30-minute demo routine cache
-are not enabled by this RC7 quickstart. Other hosts explicitly select their custody and
-lifetime policy; no library default caches a full owner or writes raw PRF output to
-storage. See [library lifecycle and custody]({{ '/library-guide/' | relative_url }}) and
-[the reference demo's choices]({{ '/demo-guide/' | relative_url }}).
+The demo's routine cache and fresh critical-approval policy are explicit host choices.
+The quickstart enables neither that cache nor automatic full-owner enrollment. Keep
+receipts and recovery evidence when disposing your own keys, observers and handles.

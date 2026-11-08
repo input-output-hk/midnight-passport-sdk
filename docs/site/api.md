@@ -68,6 +68,28 @@ export async function openAndReadAccount(ports: PassportPorts) {
 
 `retireAuthority` is required. `true` removes the maintenance authority after the last deployment wave and cannot be undone. A host must make that choice explicitly. The account connector supports P-256 WebAuthn and JubJub Schnorr creation and opening. The typed `k256-ecdsa` arm is not implemented.
 
+## Public entry points and ownership
+
+Package names below use the `@input-output-hk/mn-passport-` prefix. Import public
+entries, not internal source/dist files. The core and its adapters are separate
+composition choices:
+
+| Entry | Use it for | What your host supplies |
+| --- | --- | --- |
+| `account` → `createPassportAccounts` | Portable account flows | Typed ports; credential/consent policy; persistence and transaction recovery. |
+| `account/ports` and `protocol` | Adapter contracts and account/event types | Implementations matching the selected network, binding and runtime. Type imports start no operation. |
+| `adapter-browser` → `createBrowserPassport` | Browser WebAuthn/keyring and Midnight composition | RP/origin, trusted network/backend ports, records, bundler capabilities and user-action handlers. |
+| `adapter-service` | Fetch-based remote proof/deploy/sponsor/directory clients | Backend URL/pins and appropriate authentication; no server is started. |
+| `service` | Embedded Node routes, stores and service policies | An HTTP host, verified artifacts, proof/wallet providers and operator policy. |
+
+Create the API for a chosen host composition, then call its methods from reviewed
+user actions. An opened `PassportAccount` identifies the selected account; retaining
+that object is not a timed key lease or an authenticated session. Methods still
+perform their documented live checks. There is no generic account `disconnect()`;
+your host owns key disposal, observers, worker channels and storage handles.
+See [lifecycle order]({{ '/library-guide/#integrate-in-lifecycle-order' | relative_url }})
+for persistence and teardown, separately from the demo's UI policy.
+
 ## Flow methods
 
 | Method                                                            | Result                     | Behaviour                                                                                                                      |
@@ -99,7 +121,9 @@ A shielded withdrawal uses the `inboxIndex` returned by `readShieldedHoldings`, 
 ## Optional methods and host prerequisites
 
 `state()` and legacy `rotateEncryptionKey()` are required by the account interface;
-other account methods in the table are optional capabilities. Presence of a function
+other account methods in the table are optional capabilities. Check for a function
+before exposing an action in your UI; keep the refusal path when prerequisites are
+unavailable. Presence of a function
 is the first check, not proof that its binding, live state and supplied ports support
 the requested operation. A legacy rotation method can still refuse a sealed account.
 Use [preflight/capability inspection]({{ '/capabilities/' | relative_url }}) before key
@@ -281,6 +305,11 @@ The exact-source consumer checks pin merged [Lace PR #2845](https://github.com/i
 ## Events and cancellation
 
 Each step reports `start` and exactly one `end` or `error` with the same `flowId` and `id`. `PassportEvent` includes `step`, `phase`, timestamp `at`, `clock`, optional `durationMs`, safe detail fields and an error code. Relevant steps include `passkey.create`, `deploy`, `activate`, `prove`, `sponsor.submit` and `chain.finality`. `signal` ends a flow with `Aborted`; it cannot reverse an already submitted transaction. See [events.ts](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/protocol/src/events.ts).
+
+Progress is not a durable transaction journal. Keep accepted transaction references
+and original intent IDs even when the page stops observing or a later step fails.
+A cancellation request does not establish that a POST or chain call was never sent;
+use the chosen adapter's receipt/reconciliation contract.
 
 ## Errors
 

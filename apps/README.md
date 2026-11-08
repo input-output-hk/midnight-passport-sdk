@@ -691,3 +691,19 @@ public-module imports and input hashes. It does not install or publish; follow
 `docs/site/quality.md` for the required bundle/lock pins and output path. Keep
 local installed-source results separate from released RC7 and native/provider
 evidence. The demo remains one composition of these libraries.
+
+
+### Funding-client intent ownership and browser timing (local source)
+
+`remoteFaucet` now validates and captures the original deposit request before fresh
+credentials, keeps its original ID for the wire and confirmation, and returns owned
+validated receipt fields. Only an explicit timeout bounds credentials through body
+observation; it never retries or invents an ID. See the library funding contract in
+`docs/site/service.md`. The demo's proxy, allowlist, wallet and reservation recovery
+policy are unchanged; an observation failure still needs original-ID reconciliation.
+
+Synthetic browser receipts now include monotonic setup, per-arm, checkpoint and
+cleanup timings, plus owned page/context counts. Checkpoint intervals include
+intervening UI setup and actions; they are not isolated test durations. All cases
+and consent assertions still run by default. Scheduling changes require measured
+groups and exact coverage inventory; timing data alone is not a CI speedup.

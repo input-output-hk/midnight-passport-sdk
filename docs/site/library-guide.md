@@ -57,7 +57,8 @@ the exact check receipt with your evaluation.
 | --- | --- | --- |
 | Browser account UI | `createBrowserPassport` from `adapter-browser` | Exact network/binding/manifest pins, passkey RP/origin, consent UI, account records, backend ports and bundler setup. |
 | Wallet or custom runtime | `createPassportAccounts` from `account`; types from `account/ports` and `protocol` | Credential/authorizer/key sources, checked chain reads, proof/submission ports, reviewed operation policy and persistence. |
-| Proving or HTTP backend | `service`, `adapter-service`, `contract` | Verified artifact/key cache, authenticated ingress, sponsored-fee limits, durable jobs and value routing. |
+| HTTP client in a browser or fetch-capable Node host | `adapter-service` | Trusted service URL/pins, authorization headers where required and interpretation of receipts/unknown outcomes. It does not start a backend. |
+| Embedded Node backend | `service`, `contract`; host-specific proof/wallet adapters | HTTP server wiring, verified artifact/key cache, authenticated ingress, sponsored-fee limits, durable jobs and value routing. |
 | ACC or application-contract integration | Versioned `contract` binding and compiler dependency export | Compatible compiler/runtime and circuit inputs; see [partner contracts]({{ '/partner-integration/' | relative_url }}). |
 
 The portable account/key layers do not create your DOM, React tree, wallet vault or
@@ -65,6 +66,20 @@ worker. An ACC viewing secret, a passkey signer, a wallet seed, fee sponsorship 
 funding are different capabilities. Passing one does not grant the others.
 For an optional source-only seed handoff during verified open, see the
 [login lifecycle example]({{ '/account-keys/#source-preview-use-wallet-material-during-verified-login' | relative_url }}).
+
+## Build one integration module first
+
+Keep the first module independent of your application UI:
+
+* A browser host starts with the [released browser composition]({{ '/getting-started/#4-compose-the-browser-account-api' | relative_url }}). Supply its account-record store and trusted backend configuration; return the API to your UI. Construction is not an account-opening action.
+* A custom wallet or Node host starts with `createPassportAccounts(ports)`. Implement the contracts from `account/ports` using its existing credential/key source and chain/proof/submission system. The neutral account package does not supply a Node passkey provider or start an HTTP server.
+* An HTTP operator integrates the [service contracts]({{ '/service/' | relative_url }}) separately. A browser need not embed a service, and a service need not import the browser adapter.
+
+Expose create/open and public state before adding another operation. The minimal
+browser recipe omits the complete holding/grant sources and value-capable call path
+needed by administration or transfers. Add those ports when you add the corresponding
+UI action; use the [method prerequisites]({{ '/api/#optional-methods-and-host-prerequisites' | relative_url }})
+as the checklist. Account opening does not connect an HD wallet or fund the ACC.
 
 ## Integrate in lifecycle order
 
@@ -201,6 +216,17 @@ policy. The [upstream restoration research](https://github.com/input-output-hk/m
 observes wallet ciphertext stored alongside a usable decrypt key; restoring that wallet
 does not establish fresh passkey verification or restored ACC owner authority. The
 reference SDK demo does not adopt automatic private-session persistence from that research.
+
+## Funding a Passport account
+
+Fee sponsorship and value funding use separate ports. The HTTP funding client
+accepts a caller-owned stable UUID; it does not create a deposit ID or verify chain
+credit on its own. Current source captures and validates the original request
+before loading fresh credentials and binds the response to that same ID. Read
+the [funding client contract]({{ '/service/#source-preview-funding-intent-and-observation' | relative_url }})
+for Uint128 admission, explicit observation deadlines and uncertain-result handling.
+The demo's fixed offered assets, loopback proxy and funding wallet are its chosen
+composition, described in the [demo guide]({{ '/demo-guide/' | relative_url }}).
 
 ## Errors, recovery and evidence
 
