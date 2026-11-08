@@ -266,7 +266,7 @@ export function createDemoWorkspace(config: {
   }
   const auditNote = node(
     'p',
-    'Review operation history, redacted requests and responses, or export the full public log. Navigation never retries a transaction.',
+    'Review operation history, redacted requests and responses, or export the full public log.',
   );
   views.audit.append(auditNote, ...Object.values(auditSections));
   const auditPages = createWorkspacePages(views.audit, {

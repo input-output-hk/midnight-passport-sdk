@@ -122,7 +122,11 @@ Custom teardown callbacks may return promises despite their structural `void` ty
 The library observes their rejection without awaiting completion: a stalled cleanup
 cannot delay pending-read rejection, and a teardown failure cannot replace the read's
 typed outcome. A synchronous `close()` return is not an acknowledgement that an
-asynchronous provider shutdown has finished.
+asynchronous provider shutdown has finished. The browser bridge also observes results
+from its injected close action and listener removals; otherwise a rejected promise
+can be lost before it reaches the neutral channel. Callback invocation stays at
+the original synchronous boundary: a direct bridge close may still throw, while
+client/server best-effort teardown retains its existing typed outcome.
 
 The disposer returned by `serveBackgroundTasks` **only unsubscribes and suppresses
 later replies**. It does not close its port or stop handlers already running. A

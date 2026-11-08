@@ -54,6 +54,11 @@ as a new SDK binding. Its separate offline comparison does not substitute for
 fresh key hashes, proof/node acceptance, verifier-wave sizing or migration consent.
 See [ADR 0012](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0012-retain-binding-with-explicit-removal-and-recovery-limits.md).
 
+For earlier source-native runs and incident preservation rules, see the
+[historical live qualification record]({{ '/live-qualification/' | relative_url }}).
+Its retained projects, endpoints and unknown intents are not fresh-run defaults.
+Select a current lane and its isolated resource policy before starting work.
+
 ## Evidence tiers
 
 | Tier | Establishes | Does not establish |

@@ -30,32 +30,43 @@ export function validateInstalledCases(value) {
         expected.add([arm, kind, boundary].join(':'));
   const ids = new Set();
   for (const c of v.cases) {
-    if (
-      !c ||
-      !expected.delete([c.arm, c.kind, c.boundary].join(':')) ||
-      c.verdict !== 'PASS' ||
-      c.state !== (c.boundary === 'after-send' ? 'done' : 'unknown') ||
-      c.recoveryEffectAttempts !== 0 ||
-      c.ledgerUnchanged !== true ||
-      c.resultVisibilityTtlMs !== 0 ||
-      c.submitEntries !== (c.boundary === 'before-host' ? 0 : c.kind === 'deploy' ? 2 : 1) ||
-      !/^[a-f0-9]{32}$/.test(c.jobId) ||
-      !/^[a-f0-9]{64}$/.test(c.identitySha256) ||
-      ids.has(c.jobId) ||
-      !Array.isArray(c.checks) ||
-      [
-        'actual-http',
-        'process-sigkill',
-        'original-id',
-        'repeat-resume',
-        'input-conflict',
-        'unauthorised-refusal',
-        'missing-read-only',
-      ].some((k) => !c.checks.includes(k))
-    )
-      throw Error('invalid installed interruption evidence');
-    ids.add(c.jobId);
+    requireInstalledCase(c, expected, ids);
   }
   if (expected.size) throw Error('missing installed interruption case');
   return v;
+}
+
+/** @typedef {{arm:string,kind:string,boundary:string,verdict:string,state:string,
+ * recoveryEffectAttempts:number,ledgerUnchanged:boolean,resultVisibilityTtlMs:number,
+ * submitEntries:number,jobId:string,identitySha256:string,checks:string[]}} InstalledCase
+ */
+/** Check the existing receipt schema without coercing or reordering unknown-input checks.
+ * @param {InstalledCase} c @param {Set<string>} expected @param {Set<string>} ids
+ */
+function requireInstalledCase(c, expected, ids) {
+  if (
+    !c ||
+    !expected.delete([c.arm, c.kind, c.boundary].join(':')) ||
+    c.verdict !== 'PASS' ||
+    c.state !== (c.boundary === 'after-send' ? 'done' : 'unknown') ||
+    c.recoveryEffectAttempts !== 0 ||
+    c.ledgerUnchanged !== true ||
+    c.resultVisibilityTtlMs !== 0 ||
+    c.submitEntries !== (c.boundary === 'before-host' ? 0 : c.kind === 'deploy' ? 2 : 1) ||
+    !/^[a-f0-9]{32}$/.test(c.jobId) ||
+    !/^[a-f0-9]{64}$/.test(c.identitySha256) ||
+    ids.has(c.jobId) ||
+    !Array.isArray(c.checks) ||
+    [
+      'actual-http',
+      'process-sigkill',
+      'original-id',
+      'repeat-resume',
+      'input-conflict',
+      'unauthorised-refusal',
+      'missing-read-only',
+    ].some((k) => !c.checks.includes(k))
+  )
+    throw Error('invalid installed interruption evidence');
+  ids.add(c.jobId);
 }

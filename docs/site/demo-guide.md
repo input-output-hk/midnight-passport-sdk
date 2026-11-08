@@ -30,7 +30,8 @@ The browser runs at `http://localhost:5173`. The Passport, key and optional fund
 services normally use `8787`, `8788` and `8789`. The optional funding wallet supplies
 allowlisted ACC deposits; the fee sponsor and the user's built-in wallet are separate.
 Use the [demo use cases]({{ '/use-cases/' | relative_url }}) for action prerequisites and
-[handover]({{ '/handover/' | relative_url }}) for operations.
+[historical RC5 funding trace]({{ '/handover/' | relative_url }}) for that dated evidence.
+Use the setup/app references above for current operation and state preservation.
 
 ## Enter and navigate
 

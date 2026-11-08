@@ -4,14 +4,33 @@ Updated 2026/10/20. Refs #231, #235 and #236.
 
 ## Feedback budget
 
-Local source after RC7 shards the synthetic demo browser lane by complete P-256
-and JubJub profiles. Each job has its own browser/Vite server and fresh outputs;
-the stable required aggregate still waits for both matrix jobs and fails if either
-fails, is cancelled or is skipped. Local default retains both arms. This avoids
-one serial UI job setting the critical path as navigation/consent cases grow.
-No source case is omitted, and no proof/key generation or new dependency cache is
-added. Measure the 30–45-second warm target after an authorized push; local profile
-times alone do not prove the GitHub job budget.
+Local source after RC7 runs the synthetic demo browser lane as eight independent
+cells: P-256/JubJub × presentation/account-actions/scoped-sessions/owner-safety.
+Each owns its browser/Vite server and fresh receipt. The default local command
+still runs the entire original flow for both arms in order. Standalone groups use
+explicit UI bootstraps rather than assigning authenticated state or grant authority.
+The catalog retains97P-256 and95JubJub cases, with stable IDs and original names.
+
+The stable required **Lint, format, build, and test** aggregate waits for both the
+matrix and **Complete browser journey inventory**. A failed, cancelled or skipped
+cell refuses. The inventory job downloads exactly eight current-run receipts and
+checks their source, runtime/catalog hashes, case order/union, purpose observations,
+complete setup/body/cleanup and monotonic timing accounting. A case count alone
+cannot satisfy the gate. Real worker/IndexedDB contracts run once in the P-256
+presentation cell and remain required through that cell's outcome.
+
+Cells retain a unique `journey-<arm>-<group>` artifact for seven days, with missing
+files treated as errors. Upload v7.0.2 and download v8.0.2 are pinned to reviewed
+immutable commits; the official releases date2026-10-07, past the seven-day
+cooldown. These actions useNode24 on the existing hostedUbuntu runners. Download
+uses the current run, preserves per-artifact directories and sets
+`digest-mismatch: error`. Artifact digest checks do not replace semantic receipt
+validation or the original signed-source/input audits. No token, cross-run download,
+new key cache, artifact execution or release publication is added.
+
+Measure the30–45second warm target after an authorized push. Local group/body
+intervals exclude dependency setup/build and cannot prove whole-job latency.
+No proof/key generation or assertion/wait removal is used to meet the target.
 
 The target is **30–45 seconds per warm required PR job**, from job start through
 post steps. Record queue time, total PR critical path, cache restore/save and cold

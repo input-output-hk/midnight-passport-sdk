@@ -92,12 +92,47 @@ generation or native proof is added. The 30–45-second warm-job target still ne
 hosted timing evidence. Native proof/restart and actual provider qualification
 remain independent slower lanes; follow the [qualification guide]({{ '/qualification/' | relative_url }}).
 
-Local default runs both arms. CI now uses two complete owner-arm jobs rather than
-one serial browser job; `PASSPORT_DEMO_JOURNEY_ARM=p256` or `jubjub` selects a
-single profile and any other explicit value refuses. The final required
-**Lint, format, build, and test** check still requires the whole matrix to pass.
-Sharding does not skip scenarios, change the package cache trust model or turn
-local timings into hosted performance evidence.
+### Select one diagnostic group
+
+Local default runs both complete arms. `PASSPORT_DEMO_JOURNEY_ARM=p256` or
+`jubjub` selects one whole profile. An explicit group additionally requires one
+explicit arm; invalid selectors refuse before starting resources:
+
+```sh
+nix develop -c env PASSPORT_DEMO_JOURNEY_ARM=p256 \
+  PASSPORT_DEMO_JOURNEY_GROUP=account-actions \
+  pnpm test:demo-browser
+```
+
+Groups are `presentation`, `account-actions`, `scoped-sessions` and `owner-safety`.
+Each standalone group prepares its own required state through real demo controls:
+signed-out page, reviewed create/wallet/funding/session draft, or reviewed joiner
+handoff/wallet. Bootstrap time is recorded separately; bootstrap actions do not
+receive credit as canonical cases. Presentation exercises no successful credential
+access; the other groups retain their required purpose observations. Default full
+runs reuse their original preceding flow, without these extra bootstrap operations.
+
+CI runs all eight arm/group cells. Its separate inventory aggregate requires
+matching source/runtime/catalog identities, exact ordered case sets, purpose and
+cleanup evidence, and consistent monotonic timing. Missing, duplicated, stale,
+failed or skipped cells cannot pass. **Lint, format, build, and test** retains its
+required name and waits for both matrix and inventory checks. Local default and
+standalone receipts are separate evidence; neither proves hosted performance,
+native proofs, real-provider support or release readiness by itself.
+
+For local artifact aggregation, arrange each fresh receipt at
+`<root>/journey-<arm>-<group>/demo-journeys.json`, then run:
+
+```sh
+nix develop -c node scripts/qualification/demo-journey-receipts.mjs \
+  --input /absolute/path/to/eight-cell-artifacts --source FULL_COMMITTED_SOURCE_SHA
+```
+
+The CLI expects a clean source and a closed directory inventory. `--allow-dirty`
+is only for explicitly labelled local diagnostics and refuses in CI. The aggregate
+checks receipt structure and matching evidence; it does not launch tests or certify
+that a synthetic JSON fixture came from a browser. Keep the original runner logs,
+commands and source signatures alongside the receipts.
 
 ## Quantitative package coverage
 

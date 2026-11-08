@@ -12,6 +12,24 @@ and meaningful browser/consumer evidence. Preserve user demo/state/unknown IDs,
 existing native resources, all prior immutable receipts and package APIs where
 possible. Public docs live here; running checklist/evidence live in Obsidian.
 
+## Latest accepted local state
+
+Signed implementation `04aabc4` and fixture-only follow-up `44af4ac` complete wave10.
+Both exact clean-head reviews found no actionable findings. Full Nix gates pass
+2,294tests/sevenexisting skips; clean all-package coverage is95.25/94.00/87.32%.
+Fresh nine local tarballs from04a pass33actual exports, strict Node/DOM/Worker/docs
+and six software/generated-contract crypto cases with unchanged inputs. The final
+44af docs render44pages/2,086local targets and pass1280/390layout checks. Real
+browser worker/IndexedDB checks pass at44af; last full192synthetic journeys areW9.
+These evidence tiers and source revisions remain separate. No publication tonight.
+
+Wave11 in progress: semantic browser/CI groups, recursive consumer-tool quality
+inventory, browser teardown result observation and current/historical agent-docs
+separation. Its final gates, signed head and current-source browser acceptance are
+pending. The [local stack plan](stack.md) proposes coherent review units for tomorrow.
+Current checkpoint and immutable packets remain in the owner's Obsidian milestone
+space; original failed attempts and unknown-state evidence are preserved.
+
 ## Acceptance and execution backlog
 
 | ID | Deliverable | Required observable outcome | Status |
@@ -21,10 +39,10 @@ possible. Public docs live here; running checklist/evidence live in Obsidian.
 | O3 | SDK boundary defects | Grant-holder review/sign/send use one immutable admitted input; bounded decimals before BigInt; Node Buffer session reads do not erase retained keys | Fixed, including immutable grant records/openings in wave 2 |
 | O4 | Reusable API and domain readability | Extract cohesive responsibilities from measured large files, clear capability/custody/authority naming, no API/recipe churn or inflated quality ceilings | Typed rotation/enrollment/job phases in waves 2–4; keyring modules in wave 5; selective/all P-256 grant revocation in wave 7 |
 | O5 | Input and platform contracts | Zod/branded admission where needed; safe malformed/oversized/mutating input handling; browser/Node import/type behavior preserved | Waves 1–7: bounded config/jobs, owned key/coin inputs, invocation IDs, cleanup and total V1/raw-mutation observation lifetimes |
-| O6 | Browser coverage | Playwright journeys cover successful/cancel/retry/expiry/navigation flows and exact request counts; actual DOM/worker/storage tests distinguish synthetic account/chain from native evidence | 192 both-arm journeys pass at the clean signed wave 7 head; worker/storage checks retained; final overnight rerun follows the last runtime tranche |
+| O6 | Browser coverage | Playwright journeys cover successful/cancel/retry/expiry/navigation flows and exact request counts; actual DOM/worker/storage tests distinguish synthetic account/chain from native evidence | 192 both-arm journeys pass at the clean signed wave9 head; worker/storage checks pass at wave10; final overnight rerun follows the last runtime tranche |
 | O7 | Promptless upstream behavior | Pin current staging/public source; explain persisted-key restoration vs fresh authentication. Any implemented resume never infers private authority from machine trust or public hints | Research published locally; no implicit private persistence |
 | O8 | Human copy and docs | Remove redundant reassurance, keep meaningful action/scope/recovery information, align API examples, agent guide and architecture decisions | Library/demo paths and rendered/typechecked examples delivered; contract guides in wave 2 |
-| O9 | Independent handover | Sub-agent reviews plus independent exact-head review, signed local commits, passing gates/coverage/consumer checks, signed immutable packet and updated checkpoint | Waves 1–7 signed and independently accepted; wave 3 finding closed in wave 4; final overnight review remains |
+| O9 | Independent handover | Sub-agent reviews plus independent exact-head review, signed local commits, passing gates/coverage/consumer checks, signed immutable packet and updated checkpoint | Waves 1–10 signed and independently accepted; wave3 finding closed in wave4; final overnight review remains |
 
 ## First tranche verification
 

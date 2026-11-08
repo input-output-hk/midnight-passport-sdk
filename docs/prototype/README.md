@@ -7,6 +7,12 @@ The [demo guide](../site/demo-guide.md) describes current host policy and compos
 Later source-preview APIs are not part of published RC7; dated runs retain their
 original binding, source and provider limits.
 
+Current setup and agent operations are indexed in the [runbook](../agent-runbook.md).
+The [browser evidence guide](../site/use-case-coverage.md#select-one-diagnostic-group)
+explains default full-flow versus standalone semantic groups and their UI bootstraps.
+All192canonical cases remain required across both arms; neither these synthetic
+checks nor the retained historical traces below qualify a new native/provider run.
+
 ## Approved UX implementation milestone
 
 See the [execution map](ux-milestone.md) for the current local naming/interaction

@@ -78,6 +78,19 @@ outcome. The capability panel inspects proof plans, not readiness.
 Run `nix develop -c pnpm run build` then `nix develop -c pnpm test:demo-browser` for isolated Chromium journeys across both owner-arm selections. This lane needs Chrome but no Docker/provider/live service. It uses the actual UI and mock credential API with synthetic connector/chain/wallet drivers. It owns an ephemeral server and intercepts all requests; it never changes a running demo. See [the use-case evidence map](../docs/site/use-case-coverage.md), [consent guide](../docs/site/consent.md) and separate native/provider recipes.
 
 
+### Browser diagnostic groups
+
+The default browser command retains all192cases across P-256/JubJub in their
+original flow order. For a focused diagnostic, set one explicit arm and
+`PASSPORT_DEMO_JOURNEY_GROUP` to `presentation`, `account-actions`,
+`scoped-sessions` or `owner-safety`. Standalone groups create their prerequisites
+through the UI; their bootstrap time is separate and earns no canonical case
+credit. CI requires all eight cells plus an exact receipt-inventory aggregate.
+See the [browser evidence guide](../docs/site/use-case-coverage.md#select-one-diagnostic-group)
+and [CI policy](../docs/ci.md). Synthetic success does not establish provider or
+native acceptance. Current agent commands/state rules are in the
+[runbook](../docs/agent-runbook.md); historical guidance remains labelled and retained.
+
 ## Documentation
 
 This file documents the reference demo's setup, environment and operation.

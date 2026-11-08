@@ -8,6 +8,17 @@ export interface BrowserMessageEndpoint {
   /** MessagePorts need explicit startup with addEventListener; Workers do not. */
   start?(): void;
 }
+
+/** Structural void callbacks can return promises; observe only their result so
+ * synchronous cleanup errors retain their original invocation boundaries. */
+async function observeCleanupResult(result: unknown): Promise<void> {
+  try {
+    await result;
+  } catch {
+    // Teardown remains best effort and never delays channel closure.
+  }
+}
+
 export function browserBackgroundPort(
   endpoint: BrowserMessageEndpoint,
   close: () => void,
@@ -16,7 +27,7 @@ export function browserBackgroundPort(
   const closeOwned = () => {
     if (closed) return;
     closed = true;
-    close();
+    void observeCleanupResult(close());
   };
   return {
     post: (message) => endpoint.postMessage(message),
@@ -31,7 +42,7 @@ export function browserBackgroundPort(
       const unsubscribe = () => {
         for (const [type, listener] of listeners) {
           try {
-            endpoint.removeEventListener(type, listener);
+            void observeCleanupResult(endpoint.removeEventListener(type, listener));
           } catch {
             /* Continue releasing the remaining owned listeners. */
           }

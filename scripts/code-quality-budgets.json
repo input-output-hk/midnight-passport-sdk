@@ -3,6 +3,13 @@
   "baseline": "b66e946f412dfc871d19d98804ccd90efa332149",
   "policy": "New authored files use defaults. Existing exceptions may only decrease; additions require explicit review and a tracked rationale. Generated files excluded.",
   "files": {
+    "scripts/consumer/public-signer-source.mjs": {
+      "ceilings": {
+        "functionLines": 284,
+        "complexity": 34
+      },
+      "reason": "C1: recursive consumer .mjs inventory now covers this existing public-signer build orchestration. Newly covered legacy debt only, measured at 284 function lines / complexity 34; source is unchanged at SHA-256 7b82280351d90eddf2d86d404275c83eba0b9fc53c6f97c7ae5191fd46642266. This is authored orchestration, not a generated-source exemption; all other metrics and new consumer files use defaults. No growth."
+    },
     "packages/account/src/background.ts": {
       "ceilings": {
         "unsafeCasts": 1

@@ -106,12 +106,12 @@ export function qualityFailures(metrics, budget = {}) {
 export function qualityInventory(root = process.cwd()) {
   /** @type {Record<string,ReturnType<typeof inspectSource>>} */
   const inventory = {};
-  /** @param {string} directory */
-  const walk = (directory) => {
+  /** @param {string} directory @param {'.ts'|'.mjs'} [extension] */
+  const walk = (directory, extension = '.ts') => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       const file = resolve(directory, entry.name);
-      if (entry.isDirectory()) walk(file);
-      else if (entry.name.endsWith('.ts')) {
+      if (entry.isDirectory()) walk(file, extension);
+      else if (entry.name.endsWith(extension)) {
         const path = relative(root, file).replaceAll('\\', '/');
         if (generatedSources.includes(path)) continue;
         inventory[path] = inspectSource(readFileSync(file, 'utf8'), path);
@@ -121,6 +121,11 @@ export function qualityInventory(root = process.cwd()) {
   for (const pkg of readdirSync(resolve(root, 'packages')).sort())
     walk(resolve(root, 'packages', pkg, 'src'));
   walk(resolve(root, 'apps/passport-dapp/src'));
+  const journeys = 'apps/passport-dapp/e2e/demo-journeys.e2e.ts';
+  inventory[journeys] = inspectSource(readFileSync(resolve(root, journeys), 'utf8'), journeys);
+  walk(resolve(root, 'apps/passport-dapp/e2e/journeys'));
+  walk(resolve(root, 'apps/passport-dapp/e2e/journeys'), '.mjs');
+  walk(resolve(root, 'scripts/consumer'), '.mjs');
   return inventory;
 }
 
