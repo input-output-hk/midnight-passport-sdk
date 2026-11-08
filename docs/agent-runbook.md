@@ -337,8 +337,10 @@ nix develop -c pnpm run test:background
   case durations; do not omit consent or shorten waits to meet timing targets.
 - Coverage is all executable authored source in all nine public packages, with 80%
   global/per-package lines/functions/branches. AST budgets require reviewed reasons,
-  never blind regeneration. JavaScript JSDoc `any` is not currently included in
-  the ordinary AST explicit-any count; a zero metric does not claim otherwise.
+  never blind regeneration. The explicit-any metric separately traverses all parsed
+  JSDoc blocks and counts `any` and `*` once per actual type token. Documentation
+  function types do not affect executable complexity. This does not detect
+  inferred/JSON.parse `any` or establish JSDoc unsafe-cast parity.
   Read [quality](site/quality.md),
   [SDK review](review/sdk-quality/README.md) and ADRs 0015–0017.
 - Background checks own an ephemeral browser/server and actual wallet SDK worker

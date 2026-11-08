@@ -7,7 +7,8 @@ creating a stack; the local baseline is not evidence that the remote is unchange
 
 The cumulative source starts at signed `0d5ec73`. Every listed local commit has a
 verified GPG signature, DCO sign-off and `Assisted-by: AI`. Each candidate passed
-its full local gate and an independent exact-head review. Checks apply to those
+its full local gate. Independent exact-head findings are preserved and closed by
+follow-up corrections; the final corrected head needs its own review. Checks apply to those
 heads; rebasing a stack requires verifying signatures and current-head gates again.
 
 ## Proposed review units
@@ -24,9 +25,15 @@ including authored tests/docs. They are a review-size measure, not production LO
 | 5 | `b7eafb4..02188b6` | 5,930 | Durable invocation identity, verified holding bytes, P-256 revocation and whole-observation HTTP lifetimes. |
 | 6 | `02188b6..44af4ac` | 8,183 | Sponsor/funding snapshots and deadlines, P-256 readiness, JubJub publication, teardown and installed-consumer/crypto qualification. |
 
-The following browser-harness/CI and quality-inventory tranche remains in progress;
-its final signed range, size and receipts will be added after acceptance. Do not
-include an unreviewed working-tree delta merely because an earlier unit is green.
+| 7 | `44af4ac..b94c838` plus the final local follow-up | 13,521 before follow-up | Typed browser journeys and closed CI inventory, consumer-tool/JSDoc quality admission, observed browser teardown, held-coin ownership and documentation consolidation. |
+
+Unit 7 exceeds the preferred range because it includes relocating the existing
+browser runner and preserving the exact historical agent guide alongside the new
+runbook. Do not pad or silently rewrite the local signed history to meet a line
+count. Before publishing, decide whether to split the relocation and behavioral
+changes into separately verified review units. The final follow-up closes review
+findings, corrects documentation wording and stabilizes a test-only HTTP clock;
+its exact head and size belong in the final handover.
 
 ## Review by contract
 

@@ -12,9 +12,11 @@ authenticates a deterministic JubJub **full owner** for all implemented owner op
 The current host policy requires fresh passkey approval for critical administration,
 permission changes, sensitive exports and owner transfers. Routine reads and wallet
 connection reuse bounded authentication; matching scoped transfers retain their grant route.
-The older reading-only/scoped-session mode below retains its passkey fallback; its
-child key is not a full owner. Operation reviews, local expiry and unknown-intent
-fences remain. These additions are not in published RC7.
+Reading-only access can use explicitly reviewed reauthentication when no routine
+lease is selected; an expired captured lease refuses rather than switching routes.
+The separate scoped-transfer child is not a full owner, and a failed or uncertain
+spend never falls back to an owner transfer. Operation reviews, local expiry and
+unknown-intent fences remain. These additions are not in published RC7.
 
 
 
@@ -154,8 +156,8 @@ JubJub grant with fresh owner approval. See [the guide]({{ '/quick-actions/' | r
 - **Quick actions → Transfer permission:** choose 10/15/30 minutes and caps, authorize an expiring JubJub
   grant, lock the local key or revoke the grant. Choose the asset/recipient in
   **Passport account** first; Settings displays the draft target separately from recorded session scope, and the actual
-  authorization still reviews its exact scope. Without an authenticated full owner, critical owner operations
-  require fresh passkey consent.
+  authorization still reviews its exact scope. Critical owner operations always
+  require fresh passkey consent, including with an authenticated full owner.
 - **Advanced access · manual grants:** holder preparation, roster, issue, export,
   spend, revoke and recovery. This is a separate advanced demonstration, not
   automatic permissions for a connected wallet.

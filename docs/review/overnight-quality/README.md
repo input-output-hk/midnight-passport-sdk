@@ -12,27 +12,36 @@ and meaningful browser/consumer evidence. Preserve user demo/state/unknown IDs,
 existing native resources, all prior immutable receipts and package APIs where
 possible. Public docs live here; running checklist/evidence live in Obsidian.
 
-## Latest accepted local state
+## Current local verification
 
-Signed implementation `04aabc4` and fixture-only follow-up `44af4ac` complete wave10.
-Both exact clean-head reviews found no actionable findings. Full Nix gates pass
-2,294tests/sevenexisting skips; clean all-package coverage is95.25/94.00/87.32%.
-Fresh nine local tarballs from04a pass33actual exports, strict Node/DOM/Worker/docs
-and six software/generated-contract crypto cases with unchanged inputs. The final
-44af docs render44pages/2,086local targets and pass1280/390layout checks. Real
-browser worker/IndexedDB checks pass at44af; last full192synthetic journeys areW9.
-These evidence tiers and source revisions remain separate. No publication tonight.
+Waves 1–10 are signed, independently accepted and archived. W11 adds the typed
+browser inventory/CI groups, observed browser cleanup and a consolidated agent
+runbook. W12 closes explicit JSDoc-any admission and Node Buffer aliasing in the
+public held-coin witness. W13 (`b94c838`) adds positive group-body duration/accounting guards. Its review
+found a further tolerance edge: a zero-width interval with a tiny positive
+reported duration. The final follow-up also requires strictly increasing actual
+body boundaries and tests both reported-duration variants.
+Original findings, failing probes and corrected receipts remain separate.
 
-Wave11 signed and wave12 follow-up: semantic browser/CI groups, recursive consumer-tool quality
-inventory, browser teardown result observation and current/historical agent-docs
-separation. Its final gates, signed head and current-source browser acceptance are
-pending. Exact W11 review identified one remaining contradictory group-body timing
-case; wave12 records shared-clock phase boundaries and checks case completion
-placement. W12 also closes adjacent-block JSDoc-any admission and Node Buffer
-aliasing at the public held-coin witness boundary. Original findings/failed probes
-remain retained; final qualification follows these corrections. The [local stack plan](stack.md) proposes coherent review units for tomorrow.
-Current checkpoint and immutable packets remain in the owner's Obsidian milestone
-space; original failed attempts and unknown-state evidence are preserved.
+The W13 full Nix gate passes **2,446 tests / seven existing skips**. Clean W13
+package coverage is **95.26% lines / 94.00% functions / 87.34% branches**; all nine
+packages meet the 80% floors. W12's clean synthetic browser run passes all 192
+original cases in order, the real worker/IndexedDB lane and all eight independent
+CI cells. The stricter W13 validator accepts those unchanged W12 receipts; it does
+not relabel their source. Local cell timings do not establish hosted job latency.
+
+Nine actual W12 source tarballs pass 33 installed exports, strict Node/DOM/Worker
+and documentation checks, six software/generated-contract crypto cases and the
+installed public held-coin Buffer controls. Their input audits remain unchanged.
+These are private local candidates, not new published packages. Source-qualified
+receipts, review reports and the final rendered documentation live in the owner's
+Obsidian milestone space. See the [review stack](stack.md) for tomorrow's ordering.
+
+The isolated W9 native run passes 28 observations with unchanged final inputs,
+owned compute stopped and its lease released. A fresh later-source run is a
+separate acceptance step. No native result is inferred from browser or installed
+software checks. The final handover records each actual source and evidence tier;
+there is no push, registry/image publication, provider or full Lace claim tonight.
 
 ## Acceptance and execution backlog
 
@@ -43,10 +52,10 @@ space; original failed attempts and unknown-state evidence are preserved.
 | O3 | SDK boundary defects | Grant-holder review/sign/send use one immutable admitted input; bounded decimals before BigInt; Node Buffer session reads do not erase retained keys | Fixed, including immutable grant records/openings in wave 2 |
 | O4 | Reusable API and domain readability | Extract cohesive responsibilities from measured large files, clear capability/custody/authority naming, no API/recipe churn or inflated quality ceilings | Typed rotation/enrollment/job phases in waves 2–4; keyring modules in wave 5; selective/all P-256 grant revocation in wave 7 |
 | O5 | Input and platform contracts | Zod/branded admission where needed; safe malformed/oversized/mutating input handling; browser/Node import/type behavior preserved | Waves 1–7: bounded config/jobs, owned key/coin inputs, invocation IDs, cleanup and total V1/raw-mutation observation lifetimes |
-| O6 | Browser coverage | Playwright journeys cover successful/cancel/retry/expiry/navigation flows and exact request counts; actual DOM/worker/storage tests distinguish synthetic account/chain from native evidence | 192 both-arm journeys pass at the clean signed wave9 head; worker/storage checks pass at wave10; final overnight rerun follows the last runtime tranche |
+| O6 | Browser coverage | Playwright journeys cover successful/cancel/retry/expiry/navigation flows and exact request counts; actual DOM/worker/storage tests distinguish synthetic account/chain from native evidence | 192 both-arm journeys and worker/storage pass at clean W12; all eight independent cells retain the same canonical inventory, with W13 receipt guards |
 | O7 | Promptless upstream behavior | Pin current staging/public source; explain persisted-key restoration vs fresh authentication. Any implemented resume never infers private authority from machine trust or public hints | Research published locally; no implicit private persistence |
 | O8 | Human copy and docs | Remove redundant reassurance, keep meaningful action/scope/recovery information, align API examples, agent guide and architecture decisions | Library/demo paths and rendered/typechecked examples delivered; contract guides in wave 2 |
-| O9 | Independent handover | Sub-agent reviews plus independent exact-head review, signed local commits, passing gates/coverage/consumer checks, signed immutable packet and updated checkpoint | Waves 1–10 signed and independently accepted; wave3 finding closed in wave4; final overnight review remains |
+| O9 | Independent handover | Sub-agent reviews plus independent exact-head review, signed local commits, passing gates/coverage/consumer checks, signed immutable packet and updated checkpoint | Waves 1–10 archived; W11/W12 review findings are preserved and closed by following corrections; final exact-head review/packet remains required |
 
 ## First tranche verification
 

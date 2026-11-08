@@ -318,24 +318,58 @@ test('unset timeout stays intentionally unbounded with no signal when later opti
 
 for (const status of [200, 201, 400, 403, 409, 429, 502]) {
   for (const mode of ['invalid', 'stalled']) {
-    test(`HTTP${status} ${mode} JSON retains known-status body failure`, async () => {
-      const remote = client(
-        async () => ({
-          ok: status < 400,
-          status,
-          json:
-            mode === 'stalled'
-              ? () => new Promise(() => {})
-              : async () => {
-                  throw Error('Owned bad JSON');
-                },
-        }),
-        15,
-      );
-      await assert.rejects(bounded(remote.fund({ ...original })), (error) =>
-        failure(error, status, 'funding service answered invalid JSON'),
-      );
-    });
+    test(
+      `HTTP${status} ${mode} JSON retains known-status body failure`,
+      { timeout: 1500 },
+      async (t) => {
+        let now = 1000,
+          calls = 0,
+          reads = 0;
+        const bodyEntered = deferred();
+        /** @type {AbortSignal|undefined} */ let wire;
+        // This matrix checks a known response status. Hold the whole-observation
+        // clock until body entry, then expire stalled bodies deliberately.
+        t.mock.method(performance, 'now', () => now);
+        t.mock.timers.enable({ apis: ['setTimeout'] });
+        t.after(() => t.mock.timers.reset());
+        const remote = client(async (_url, init) => {
+          calls++;
+          assert.equal(init?.method, 'POST');
+          assert.ok(init?.signal instanceof AbortSignal);
+          wire = init.signal;
+          return {
+            ok: status < 400,
+            status,
+            json: async () => {
+              reads++;
+              bodyEntered.resolve(undefined);
+              if (mode === 'invalid') throw Error('Owned bad JSON');
+              return new Promise(() => {});
+            },
+          };
+        }, 15);
+        const task = remote.fund({ ...original });
+        const observed = assert.rejects(task, (error) =>
+          failure(error, status, 'funding service answered invalid JSON'),
+        );
+        await bodyEntered.promise;
+        assert.equal(calls, 1);
+        assert.equal(reads, 1);
+        if (mode === 'stalled') {
+          now += 15;
+          t.mock.timers.tick(15);
+        }
+        await observed;
+        assert.ok(wire);
+        assert.equal(wire.aborted, mode === 'stalled');
+        assert.equal(getEventListeners(wire, 'abort').length, 0);
+        now += 30;
+        t.mock.timers.tick(30);
+        assert.equal(calls, 1);
+        assert.equal(reads, 1);
+        assert.equal(wire.aborted, mode === 'stalled');
+      },
+    );
   }
 }
 
