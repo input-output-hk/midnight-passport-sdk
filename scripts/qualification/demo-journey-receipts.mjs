@@ -153,6 +153,8 @@ function attestGroupTiming(groups, group, arm) {
     throw Error('Incomplete group or bootstrap accounting');
   const body = interval(phase.body);
   if (
+    body.elapsedMs <= 0 ||
+    phase.bodyMs <= 0 ||
     body.startMs < arm.body.startMs ||
     body.endMs > arm.cleanup.startMs ||
     !near(phase.bodyMs, body.elapsedMs) ||

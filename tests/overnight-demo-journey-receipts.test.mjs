@@ -362,3 +362,29 @@ test('artifact reader admits exactly eight regular single-file directories and r
   writeFileSync(file, ' '.repeat(1024 * 1024 + 1));
   assert.throws(() => readJourneyCells(root));
 });
+
+for (const cell of journeyCells)
+  test(`nonempty ${cell.arm}/${cell.group} cannot compress all case completions into a zero-width body`, () => {
+    const values = receipts();
+    assert.equal(aggregateJourneyReceipts(values, source).cases, 192);
+    const value = values.find(
+      (item) => item.selectedArms[0] === cell.arm && item.selectedGroups[0] === cell.group,
+    );
+    assert.ok(value);
+    const phase = value.groupTimings[cell.arm]?.[0],
+      arm = value.timings.arms[0];
+    assert.ok(phase && arm);
+    const at = arm.cleanup.startMs;
+    for (const [index, point] of arm.checkpoints.entries()) {
+      point.startMs = index === 0 ? arm.startMs : at;
+      point.endMs = at;
+      point.elapsedMs = at - point.startMs;
+    }
+    phase.body = { startMs: at, endMs: at, elapsedMs: 0 };
+    phase.bodyMs = 0;
+    phase.elapsedMs = phase.bootstrapMs;
+    assert.throws(
+      () => aggregateJourneyReceipts(values, source),
+      /Journey case completion outside group body/,
+    );
+  });
