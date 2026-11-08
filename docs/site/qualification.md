@@ -261,6 +261,26 @@ Native proof, authenticated registry, actual host and manual-provider evidence
 remain independent tiers.
 
 
+### Installed imports, types and software crypto
+
+For a newly packed candidate, keep three records together:
+
+1. Original signed-source build/pack and fresh frozen installation receipts, with
+   independently trusted manifest/lock hashes and reviewed dependency selections.
+2. The [installed quality check]({{ '/quality/#installed-current-source-quality-check' | relative_url }}):
+   actual public module imports, strict Node/DOM/Worker declarations and maintained
+   documentation examples against installed packages.
+3. The [installed software-crypto check]({{ '/quality/#installed-software-crypto-check' | relative_url }}):
+   both generated signature arms, derivation, authenticated sealing and selected
+   runtime hash implementations, with unchanged input bytes.
+
+The last two tools consume an already prepared application. Neither installs,
+publishes or restores keys. They use fresh retained output directories and cannot
+turn an incomplete/failed child into a passing candidate. If preparation needed
+online cache warming, record that separately; a final offline install does not
+make the whole history offline. A software simulator receipt remains separate
+from native/provider/released-artifact qualification.
+
 ## Public signer tiers
 
 The [public-source signer lane]({{ '/consumer-integration/' | relative_url }}#public-source-signer-handlers)

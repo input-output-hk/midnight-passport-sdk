@@ -118,6 +118,12 @@ owned port, best effort and idempotently. The browser bridge removes its listene
 its registration/start failures also close the owned endpoint and report failure. Its
 close callback must terminate only the worker/channel the host owns.
 
+Custom teardown callbacks may return promises despite their structural `void` type.
+The library observes their rejection without awaiting completion: a stalled cleanup
+cannot delay pending-read rejection, and a teardown failure cannot replace the read's
+typed outcome. A synchronous `close()` return is not an acknowledgement that an
+asynchronous provider shutdown has finished.
+
 The disposer returned by `serveBackgroundTasks` **only unsubscribes and suppresses
 later replies**. It does not close its port or stop handlers already running. A
 server host must separately close its endpoint or terminate its owned worker when

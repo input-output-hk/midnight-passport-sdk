@@ -1,32 +1,30 @@
 import type { FlowOptions } from '@input-output-hk/mn-passport-protocol';
-import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { startFlow } from './flow.js';
-import { verifyStagedGrantCommitment } from './grant-opening-check.js';
 import type { GrantScopePure } from './grant-scope.js';
-import {
-  grantObjectMatches,
-  isPublishableReadGrant,
-  isPublishableUnshieldedGrant,
-  publishedGrantParts,
-  publishedGrantView,
-  validGrantId,
-} from './grant-publication-state.js';
+import { validGrantId } from './grant-publication-state.js';
 import type {
   ActiveGrantSource,
   GrantIssueJournal,
   StagedJubjubGrant,
 } from './jubjub-grant-issue.js';
-import { JUBJUB_READER_SCAN_LIMIT } from './jubjub-readers.js';
+import {
+  prepareJubjubPublication,
+  selectJubjubPublication,
+} from './jubjub-grant-publication-plan.js';
+import {
+  inspectJubjubPublication,
+  publishMissingJubjubBookkeeping,
+  publishJubjubReadDelivery,
+  finishJubjubPublication,
+  finishAppendedJubjubPublication,
+} from './jubjub-grant-publication-completion.js';
 import type {
-  AccLedgerView,
   AccountHint,
-  AccountRecord,
   AccountRecordStore,
   AccountViewingKey,
   Authoriser,
   Chain,
-  CurvePoint,
   GrantCommitmentSource,
   JubjubPureCircuits,
 } from './ports/index.js';
@@ -133,24 +131,6 @@ export interface PublishedJubjubGrant {
   };
 }
 
-type InboxSnapshot = AccLedgerView & {
-  readonly encKey: Uint8Array;
-  readonly inboxEntries: readonly Uint8Array[];
-};
-
-const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
-  a.length === b.length && a.every((value, index) => value === b[index]);
-const samePoint = (a: CurvePoint, b: CurvePoint): boolean => a.x === b.x && a.y === b.y;
-const canonicalScope = (value: unknown): string => {
-  if (Array.isArray(value)) return `[${value.map(canonicalScope).join(',')}]`;
-  if (value !== null && typeof value === 'object')
-    return `{${Object.entries(value)
-      .filter(([, item]) => item !== undefined)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalScope(item)}`)
-      .join(',')}}`;
-  return JSON.stringify(value) ?? 'null';
-};
 const random = (length: number): Uint8Array =>
   (
     globalThis as unknown as { crypto: { getRandomValues(bytes: Uint8Array): Uint8Array } }
@@ -162,19 +142,6 @@ const sleep = (milliseconds: number): Promise<void> =>
       milliseconds,
     ),
   );
-function requireSnapshot(view: AccLedgerView | undefined): InboxSnapshot {
-  if (!view?.booted)
-    throw new PassportConnectorError('AccountNotFound', 'The active ACC is missing.');
-  if (view.specVersion !== 3)
-    throw new PassportConnectorError('BindingUnsupported', 'The ACC spec version is not 3.');
-  if (view.encKey?.length !== 32 || !view.inboxEntries)
-    throw new PassportConnectorError(
-      'BindingUnsupported',
-      'The ACC inbox and encryption key are required.',
-    );
-  return view as InboxSnapshot;
-}
-
 /** Publish missing grant records and a read seal, leaving failures staged for recovery. */
 export async function publishJubjubGrantBookkeeping(
   input: PublishJubjubGrantInput,
@@ -184,389 +151,26 @@ export async function publishJubjubGrantBookkeeping(
   const wait = ports.sleep ?? sleep;
   const attempts = ports.attempts ?? 30;
   try {
-    const { hint, grantId } = input;
-    if (
-      !validGrantId(grantId) ||
-      hint.scheme !== 'jubjub-schnorr' ||
-      hint.status !== 'active' ||
-      !hint.credentialId
-    )
-      throw new PassportConnectorError(
-        'NotAuthorised',
-        'An active JubJub grant and device are required.',
-      );
-    if (!Number.isSafeInteger(attempts) || attempts < 1 || attempts > 120)
-      throw new PassportConnectorError('InternalError', 'Invalid grant settlement polling bound.');
-    const credentialId = hint.credentialId;
-    if (!(await ports.records.exists()))
-      throw new PassportConnectorError('AccountNotFound', 'No local account record exists.');
-    if (ports.authoriser.scheme !== 'jubjub-schnorr' || !ports.authoriser.withKeySession)
-      throw new PassportConnectorError('BindingUnsupported', 'A JubJub key session is required.');
-    await flow.step('grant.roster', async () => {
-      for (let attempt = 0; attempt < attempts; attempt++) {
-        flow.checkpoint();
-        if ((await ports.grants.readActiveGrantIds(hint.address)).includes(grantId)) return;
-        if (attempt + 1 < attempts) await wait(1000);
-      }
-      throw new PassportConnectorError(
-        'GrantRosterUnsettled',
-        'The submitted grant did not appear active on chain.',
-      );
-    });
-    const read = () =>
-      ports.chain.readAccount(hint.address, { includeInbox: true, includeDevices: true });
-    let view = requireSnapshot(await flow.step('chain.read', read));
-    const self = { bytes: fromHex(hint.address) };
-    const appendTxHashes: string[] = [];
-    const opening = await flow.step('grant.stage', () => ports.journal.load(hint.address, grantId));
-    if (
-      !isPublishableUnshieldedGrant(opening, hint.address, grantId) &&
-      !isPublishableReadGrant(opening, hint.address, grantId)
-    )
-      throw new PassportConnectorError(
-        'GrantScopeInvalid',
-        'No supported staged grant opening exists.',
-      );
-    let currentOpening = opening;
-    const requireActiveGrant = async () => {
-      const live = await flow.step('grant.roster', () =>
-        ports.commitments.readGrantCommitment(hint.address, grantId),
-      );
-      verifyStagedGrantCommitment(currentOpening, live, ports.pure);
-      if (live!.authNonce !== view.authNonce)
-        throw new PassportConnectorError('GrantRosterUnsettled', 'The grant roster is stale.');
-    };
-    await requireActiveGrant();
-    const approved = {
-      scope: JSON.parse(JSON.stringify(opening.scope)) as typeof opening.scope,
-      scopeDigest: opening.scopeDigest,
-      scopeSalt: opening.bookkeeping.scopeSalt,
-      slot: opening.bookkeeping.slot,
-    };
-    return await ports.authoriser.withKeySession(
+    const prepared = await prepareJubjubPublication(input, ports, flow, wait, attempts);
+    const { operation, approved } = prepared;
+    return await operation.ports.authoriser.withKeySession(
       async () => {
-        const record = await ports.records.read();
+        const selected = await selectJubjubPublication(prepared);
+        let progress = await inspectJubjubPublication(selected, prepared.view);
         if (
-          record?.scheme !== 'jubjub-schnorr' ||
-          record.address !== hint.address ||
-          record.bindingId !== ports.bindingId ||
-          !record.credentialId ||
-          !sameBytes(credentialId, record.credentialId)
+          progress.parts.header &&
+          progress.parts.object &&
+          (!selected.staged.scope.read || progress.viewRecord)
         )
-          throw new PassportConnectorError(
-            'NotAuthorised',
-            'The stored account does not match this device.',
-          );
-        const staged = await ports.journal.load(hint.address, grantId);
-        if (
-          !isPublishableUnshieldedGrant(staged, hint.address, grantId) &&
-          !isPublishableReadGrant(staged, hint.address, grantId)
-        )
-          throw new PassportConnectorError(
-            'GrantScopeInvalid',
-            'No supported staged grant opening exists.',
-          );
-        if (
-          staged.scopeDigest !== approved.scopeDigest ||
-          staged.bookkeeping.scopeSalt !== approved.scopeSalt ||
-          staged.bookkeeping.slot !== approved.slot ||
-          canonicalScope(staged.scope) !== canonicalScope(approved.scope)
-        )
-          throw new PassportConnectorError(
-            'GrantScopeInvalid',
-            'The staged grant changed after consent.',
-          );
-        currentOpening = staged;
-        await requireActiveGrant();
-        const publicKey = await ports.authoriser.devicePublicKey();
-        if (!samePoint(publicKey, hint.publicKey))
-          throw new PassportConnectorError(
-            'NotAuthorised',
-            'The selected device does not own this ACC.',
-          );
-        const open = () =>
-          ports.viewingKey.openInbox(
-            ports.networkId,
-            {
-              account: hint.address,
-              encKey: view.encKey,
-              envelopes: [...view.inboxEntries].reverse(),
-            },
-            view.inboxEntries,
-          );
-        let opened = await open();
-        let parts = publishedGrantParts(opened, staged.bookkeeping);
-        let viewRecord = staged.scope.read
-          ? publishedGrantView(opened, grantId, toHex(view.encKey))
-          : undefined;
-        const readSeal = (seal: string) => ({
-          grantId,
-          readPublicKey: staged.bookkeeping.readPublicKey!,
-          seal: fromHex(seal),
-          sealedEncKey: toHex(view.encKey),
-        });
-        if (parts.header && parts.object && (!staged.scope.read || viewRecord)) {
-          await requireActiveGrant();
-          await ports.journal.markPublished(hint.address, grantId);
-          return {
-            grantId,
-            status: 'active' as const,
-            appendTxHashes,
-            nextUseCounter: record.localUseCounter,
-            ...(viewRecord && { sealedReadGrant: readSeal(viewRecord.seal) }),
-          };
-        }
-        const sealed =
-          parts.header && parts.object
-            ? []
-            : await ports.viewingKey.sealGrant(ports.networkId, hint.address, staged.bookkeeping);
-        if (sealed.length && (sealed.length !== 2 || sealed.some((entry) => entry.length !== 192)))
-          throw new PassportConnectorError(
-            'InternalError',
-            'Viewing key returned invalid grant seals.',
-          );
-        const sealedOpened = sealed.length
-          ? await ports.viewingKey.openInbox(
-              ports.networkId,
-              {
-                account: hint.address,
-                encKey: view.encKey,
-                envelopes: [...view.inboxEntries].reverse(),
-              },
-              sealed,
-            )
-          : [];
-        if (
-          sealed.length &&
-          (sealedOpened[0]?.kind !== 'grant' ||
-            sealedOpened[0].record.part !== 'grant' ||
-            sealedOpened[0].record.grantId !== grantId ||
-            sealedOpened[0].record.scopeSalt !== staged.bookkeeping.scopeSalt ||
-            sealedOpened[1]?.kind !== 'grant' ||
-            sealedOpened[1].record.part !== 'object' ||
-            sealedOpened[1].record.grantId !== grantId ||
-            !grantObjectMatches(sealedOpened[1].record.object, staged.bookkeeping.object))
-        )
-          throw new PassportConnectorError(
-            'InternalError',
-            'Viewing key returned unrelated grant seals.',
-          );
-        for (const [index, part] of ['header', 'object'].entries() as IterableIterator<
-          [number, 'header' | 'object']
-        >) {
-          if (parts[part]) continue;
-          flow.checkpoint();
-          await requireActiveGrant();
-          const entry = sealed[index]!;
-          const counter = await flow.step('counter.scan', async () => {
-            for (let value = 0n; value < JUBJUB_READER_SCAN_LIMIT; value++) {
-              const own = ports.pure.derive_device_entry_with_jubjub(
-                self,
-                publicKey,
-                view.deviceEpoch,
-                value,
-              );
-              if (view.hasEntry(own)) return value;
-            }
-            throw new PassportConnectorError(
-              'NotAuthorised',
-              'The owner device has no live entry.',
-            );
-          });
-          const signed = await flow.step('passkey.sign', () =>
-            ports.authoriser.authorise({
-              account: hint.address,
-              circuit: 'append_inbox_with_jubjub',
-              args: [entry],
-              witnessValues: [],
-              authNonce: view.authNonce,
-              useCounter: counter,
-              challenge: (sigR, grindNonce) =>
-                ports.pure.challenge_append_inbox_with_jubjub(
-                  self,
-                  sigR,
-                  publicKey,
-                  entry,
-                  view.authNonce,
-                  grindNonce,
-                ),
-            }),
-          );
-          if (
-            signed.scheme !== 'jubjub-schnorr' ||
-            signed.useCounter !== counter ||
-            !samePoint(signed.pk, publicKey)
-          )
-            throw new PassportConnectorError(
-              'NotAuthorised',
-              'The signature names another device.',
-            );
-          const nonce = view.authNonce;
-          flow.checkpoint();
-          const tx = await ports.chain.call({
-            address: hint.address,
-            circuit: 'append_inbox_with_jubjub',
-            args: [entry, publicKey, counter, signed.sigR, signed.sigS, signed.grindNonce],
-            ...flow.ports,
-          });
-          appendTxHashes.push(tx.txHash);
-          await ports.records.write({ ...record, localUseCounter: counter + 1n });
-          view = await flow.step('chain.read', async () => {
-            for (let attempt = 0; attempt < attempts; attempt++) {
-              flow.checkpoint();
-              const next = requireSnapshot(await read());
-              if (
-                next.authNonce > nonce &&
-                next.inboxEntries.some((item) => sameBytes(item, entry))
-              )
-                return next;
-              if (attempt + 1 < attempts) await wait(1000);
-            }
-            throw new PassportConnectorError(
-              'GrantBookkeepingUnsettled',
-              'The accepted grant bookkeeping append did not appear on chain.',
-            );
-          });
-          opened = await open();
-          parts = publishedGrantParts(opened, staged.bookkeeping);
-          if (!parts[part])
-            throw new PassportConnectorError(
-              'GrantBookkeepingUnsettled',
-              'The ACC inbox does not open the appended grant bookkeeping.',
-            );
-        }
-        if (!parts.header || !parts.object)
-          throw new PassportConnectorError(
-            'GrantBookkeepingUnsettled',
-            'The ACC inbox lacks part of the staged grant opening.',
-          );
-        if (staged.scope.read && !viewRecord) {
-          if (!ports.viewingKey.sealView)
-            throw new PassportConnectorError(
-              'BindingUnsupported',
-              'Read-grant sealing is unavailable.',
-            );
-          const readPublicKey = staged.bookkeeping.readPublicKey!;
-          const keyring = {
-            account: hint.address,
-            encKey: view.encKey,
-            envelopes: [...view.inboxEntries].reverse(),
-          };
-          const delivery = await flow.step('grant.seal', () =>
-            ports.viewingKey.sealView!(ports.networkId, keyring, {
-              grantId,
-              account: hint.address,
-              readPublicKey,
-            }),
-          );
-          if (delivery.seal.length !== 94 || delivery.entry.length !== 192)
-            throw new PassportConnectorError('InternalError', 'Invalid read-grant seal.');
-          const verified = await ports.viewingKey.openInbox(ports.networkId, keyring, [
-            delivery.entry,
-          ]);
-          if (
-            verified[0]?.kind !== 'grant' ||
-            verified[0].record.part !== 'view' ||
-            verified[0].record.grantId !== grantId ||
-            verified[0].record.encKeyPrefix !== toHex(view.encKey).slice(0, 6) ||
-            verified[0].record.seal !== toHex(delivery.seal)
-          )
-            throw new PassportConnectorError('InternalError', 'Unrelated read-grant seal.');
-          const counter = await flow.step('counter.scan', async () => {
-            for (let value = 0n; value < JUBJUB_READER_SCAN_LIMIT; value++) {
-              if (
-                view.hasEntry(
-                  ports.pure.derive_device_entry_with_jubjub(
-                    self,
-                    publicKey,
-                    view.deviceEpoch,
-                    value,
-                  ),
-                )
-              )
-                return value;
-            }
-            throw new PassportConnectorError(
-              'NotAuthorised',
-              'The owner device has no live entry.',
-            );
-          });
-          const signed = await flow.step('passkey.sign', () =>
-            ports.authoriser.authorise({
-              account: hint.address,
-              circuit: 'append_inbox_with_jubjub',
-              args: [delivery.entry],
-              witnessValues: [],
-              authNonce: view.authNonce,
-              useCounter: counter,
-              challenge: (sigR, grindNonce) =>
-                ports.pure.challenge_append_inbox_with_jubjub(
-                  self,
-                  sigR,
-                  publicKey,
-                  delivery.entry,
-                  view.authNonce,
-                  grindNonce,
-                ),
-            }),
-          );
-          if (
-            signed.scheme !== 'jubjub-schnorr' ||
-            signed.useCounter !== counter ||
-            !samePoint(signed.pk, publicKey)
-          )
-            throw new PassportConnectorError(
-              'NotAuthorised',
-              'The signature names another device.',
-            );
-          const nonce = view.authNonce;
-          flow.checkpoint();
-          const tx = await ports.chain.call({
-            address: hint.address,
-            circuit: 'append_inbox_with_jubjub',
-            args: [delivery.entry, publicKey, counter, signed.sigR, signed.sigS, signed.grindNonce],
-            ...flow.ports,
-          });
-          appendTxHashes.push(tx.txHash);
-          await ports.records.write({ ...record, localUseCounter: counter + 1n });
-          view = await flow.step('chain.read', async () => {
-            for (let attempt = 0; attempt < attempts; attempt++) {
-              flow.checkpoint();
-              const next = requireSnapshot(await read());
-              if (
-                next.authNonce > nonce &&
-                next.inboxEntries.some((item) => sameBytes(item, delivery.entry))
-              )
-                return next;
-              if (attempt + 1 < attempts) await wait(1000);
-            }
-            throw new PassportConnectorError(
-              'GrantBookkeepingUnsettled',
-              'The read-grant seal did not appear on chain.',
-            );
-          });
-          viewRecord = publishedGrantView(await open(), grantId, toHex(view.encKey));
-          if (!viewRecord || viewRecord.seal !== toHex(delivery.seal))
-            throw new PassportConnectorError(
-              'GrantBookkeepingUnsettled',
-              'The ACC inbox does not open the read-grant seal.',
-            );
-        }
-        await requireActiveGrant();
-        await ports.journal.markPublished(hint.address, grantId);
-        const current: AccountRecord = (await ports.records.read()) ?? record;
-        return {
-          grantId,
-          status: 'active' as const,
-          appendTxHashes,
-          nextUseCounter: current.localUseCounter,
-          ...(viewRecord && { sealedReadGrant: readSeal(viewRecord.seal) }),
-        };
+          return finishJubjubPublication(selected, progress);
+        progress = await publishMissingJubjubBookkeeping(selected, progress);
+        progress = await publishJubjubReadDelivery(selected, progress);
+        return finishAppendedJubjubPublication(selected, progress);
       },
       {
         kind: 'issue-grant',
-        account: hint.address,
-        grantId,
+        account: operation.hint.address,
+        grantId: operation.grantId,
         scope: approved.scope,
         slot: approved.slot,
         scopeSalt: approved.scopeSalt,

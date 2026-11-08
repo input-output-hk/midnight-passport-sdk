@@ -707,3 +707,19 @@ cleanup timings, plus owned page/context counts. Checkpoint intervals include
 intervening UI setup and actions; they are not isolated test durations. All cases
 and consent assertions still run by default. Scheduling changes require measured
 groups and exact coverage inventory; timing data alone is not a CI speedup.
+
+
+### Library hardening and demo qualification (local source)
+
+The reusable background port now observes failed async teardown without delaying
+pending read rejection; the demo still owns its worker and UI lifecycle. Library
+contracts live in `docs/site/background.md`; demo wiring is in the demo guide.
+Grant bookkeeping now rejects missing required JubJub seal pairs before signing;
+publication recovery keeps the original staged grant, never a replacement issue.
+Read the API/grant-recovery guides before implementing a custom sealing adapter.
+
+The opt-in installed-crypto tool checks six software/generated-contract cases on
+an already prepared nine-package consumer. Follow `docs/site/quality.md` for exact
+manifest/lock pins and fresh retained output. It does not start this demo, a wallet
+or a proof stack; source tests, installed bytes and native/provider evidence remain
+separate. No new release or deployed documentation is implied by local checks.

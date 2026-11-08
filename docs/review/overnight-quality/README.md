@@ -580,3 +580,36 @@ timings without changing case order or credential purposes. Checkpoint intervals
 include UI work between assertions. They do not establish isolated case runtime,
 hosted CI latency or native/provider support. The final complete both-arm run and
 root integration gates follow these frozen implementation slices.
+
+
+## Wave10: grant publication, observed teardown and installed crypto
+
+The JubJub grant publisher is split into typed preparation, append and completion
+phases. P-256 and shared crypto/publication validators remain unchanged. Valid
+provider paths retain arm-specific consent/session/Flow/counter/settlement behavior.
+A separately confirmed malformed-provider defect is corrected: missing required
+seal pairs refuse with the existing typed error before signing/appending, rather
+than reaching a credential action with an undefined entry. Original failing
+probe and valid/continuation controls are retained with the implementation receipts.
+
+A structural void teardown may return a rejected promise. Background channel
+cleanup now observes that result through a private async try/await helper without
+awaiting shutdown from close. Client pending reads retain their Closed/Unavailable
+outcomes, and server stop still only unsubscribes. The first observer's dynamic
+catch-method edge was independently found and fixed; original probes remain.
+Final independent controls include decorated native promises, delayed rejection,
+accepted reads, pending reads, repeated close and exact endpoint ownership.
+
+Small opt-in installed-crypto modules execute six software/generated-contract
+behaviors on audited public installed exports. They reuse archive/runtime checks,
+not a source alias or TypeScript/docs compiler. Explicit bundle/lock pins, closed
+case inventory, exact owned child limits, physical parent resolutions and final
+byte audits are mandatory. The tool records a graph; separate preparation owns
+its dependency/SRI approval. Narrow Node feature probes do not relax the import
+lane. The first actual promoted-tool run passes on preserved W8 bytes only; final
+current-source installation remains a separate required receipt.
+
+The library guides document these contracts; application notes describe their
+use in the demo. Root integration, exact-head review and final qualification
+follow the frozen implementations. No push, registry/image publication or new
+provider/native claim follows from these local changes.

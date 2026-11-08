@@ -247,6 +247,16 @@ may be unable to open those records. Missing openings never imply an empty roste
 
 `publishP256GrantBookkeeping({ hint, grantId }, ports)` is the lower-level publication step for an already accepted P-256 issue on `acc-s3r1.1`. The host must durably stage the grant opening and supply the active grant source, journal, account record store, sealed viewing key, chain and P-256 authoriser. It waits for the live grant, validates the selected passkey and staged opening, appends only missing sealed grant records, and marks the journal published after the inbox settles. Read grants also receive a seal for the current ACC viewing key. This helper never submits an issue.
 
+**Source preview: custom JubJub sealing adapters.** When bookkeeping is missing,
+`sealGrant` must return both required sealed records in their declared order. An
+empty or incomplete pair is an invalid provider result, not an “already published”
+signal; the publisher refuses it before signing or appending. Already-held parts
+are identified from the verified inbox. Keep the original staged opening until
+the complete publication and final live commitment are confirmed. The journal
+stores the opening, not stable append request IDs or every generated ciphertext:
+a publication-only retry may seal missing logical parts again, but must not issue
+a replacement grant or duplicate an already observed part.
+
 `issueP256GrantCall(input, ports)` submits the pinned P-256 issue after validating the scope against an auth-nonce-pinned live roster and durably staging its opening. A read grant requires a host `rotateBeforeIssue` hook in the same owner session; the hook must preserve every active read grantee. `issueAndPublishP256Grant(input, ports)` composes that call with the publisher and returns active only after sealed records settle. If publication fails after submission, `SubmittedGrantSettlementError` carries the grant ID and transaction hash for a publication-only retry. A sealed P-256 account now exposes the same `account.issueGrant(scope)` and `account.recoverPendingGrants()` methods as JubJub when the host supplies records, grants, a durable journal and a trusted origin. Read issue additionally requires chain-backed holdings and read-grant targets; it refuses a key rotation that leaves any live reader unsealed. The demo wires these ports for its supported spend-only grant form. General read-grant issue is a host integration scenario and is not exposed by that form.
 
 `createMidnightGrantSource` also exposes `GrantCommitmentSource.readGrantCommitment(account, grantId)`, returning the live ACC object's commitment, read-key hash, read flag, active flag and auth nonce from one checked snapshot. Both grant publishers require this port and reject a staged opening that differs from the current on-chain grant before appending or marking it published. Hosts pass it as `grantCommitments` alongside `grants` and `grantJournal`; the inbox alone is not proof of the current grant's scope.

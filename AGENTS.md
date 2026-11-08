@@ -903,3 +903,22 @@ and cleanup timings. Checkpoint deltas include intervening UI setup/actions and
 assertions; they are not isolated test durations. Full case order and both arms
 remain mandatory. Measure before changing CI scheduling; do not omit consent or
 shorten waits solely to meet a target runtime.
+
+
+### Installed software crypto and teardown — overnight wave10
+
+The opt-in `scripts/consumer/installed-crypto.mjs` uses the same four prepared-consumer
+pins as installed-quality and a fresh direct child output. Read the quality guide.
+It runs six closed software/generated-contract behaviors against installed public
+exports, without source aliases, compiler requirements or a running demo. Keep the
+original signed build/pack/frozen-install and reviewed graph/SRI receipts separate.
+Actual selected parent resolutions are recorded, not automatically approved. Every
+case, owned child closure and before/after byte audit must pass. Narrow Node feature
+probes belong only to this lane; do not relax import-only browser guards. Preserve
+failed outputs. These tools cannot establish native proofs or provider compatibility.
+
+Background channel teardown now observes rejected asynchronous callbacks without
+awaiting shutdown. Pending reads retain Closed/Unavailable outcomes and idempotent
+owned cleanup. Server stop still only unsubscribes; it does not take ownership of
+its port or stop running handlers. See the library background guide, separately
+from the demo's owned wallet-worker composition.

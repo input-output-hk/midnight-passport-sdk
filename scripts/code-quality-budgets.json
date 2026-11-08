@@ -74,12 +74,9 @@
     },
     "packages/account/src/jubjub-grant-publication.ts": {
       "ceilings": {
-        "functionLines": 401,
-        "complexity": 59,
-        "nonNull": 5,
         "unsafeCasts": 2
       },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+      "reason": "O4 wave10: typed JubJub grant preparation/append/completion phases remove legacy function/complexity/non-null exceptions. Original timer/random structural bridges remain; valid-provider flow, authority and journal semantics are preserved. New modules use defaults with zero assertions. See docs/review/overnight-quality/README.md."
     },
     "packages/account/src/jubjub-grant-revoke-all.ts": {
       "ceilings": {

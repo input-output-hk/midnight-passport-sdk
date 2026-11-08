@@ -226,6 +226,49 @@ obtained. Pair it with the original build/pack and fresh frozen-offline installa
 receipts. Local tarball integrity is not registry provenance, a published release,
 provider support, native proof acceptance or full Lace interoperability.
 
+### Installed software-crypto check
+
+Use the source-only `installed-crypto.mjs` after preparing and auditing the candidate
+application above. It executes installed public APIs, without a source alias,
+TypeScript compiler, demo UI, chain or wallet:
+
+```sh
+CONSUMER_ROOT=/absolute/path/to/prepared-consumer \
+RELEASE_VERSION=YOUR_EXACT_CANDIDATE_VERSION \
+CONSUMER_MANIFEST_SHA256=YOUR_INDEPENDENT_MANIFEST_SHA256 \
+CONSUMER_LOCK_SHA256=YOUR_INDEPENDENT_LOCK_SHA256 \
+nix develop -c node scripts/consumer/installed-crypto.mjs \
+  --output /absolute/path/to/prepared-consumer/crypto-new
+```
+
+Choose an absent direct child for each attempt. The command retains a parent
+receipt, child results and logs, including partial failures. It checks these six
+behaviors on the installed graph:
+
+* Generated ACC execution accepts valid JubJub and strict P-256 signatures and
+  refuses changed signed payloads without changing account state.
+* Public Lace derivation matches its known answers and network separation.
+* Public keyring coin sealing opens correctly and refuses ciphertext tampering.
+* The binding's selected Compact runtime matches SHA512 and Keccak vectors.
+* The selected Midnight utilities match SHA256 and refuse a changed manifest hash.
+
+The two signature arms are separate cases, making six cases in total. Every case
+must pass; a missing, duplicate or foreign case fails even if the child exits zero.
+The owned child has a bounded runtime/output budget. Input, installed SDK/dependency,
+lock and qualification-tool hashes are compared before and after execution.
+
+This lane records physical parent/dependency resolutions; it does not approve a
+new dependency graph, change overrides or prove compatibility with every version
+allowed by a semver range. Keep separate reviewed graph/SRI and build/pack/install
+receipts. Its current supported ACC/runtime profile is explicit. A narrow reviewed
+wasm-bindgen Node feature probe is allowed only in this crypto lane; the import-only
+browser-global guard is unchanged. An unrecognized probe is a harness refusal
+requiring review, not a crypto acceptance or an automatic compatibility fallback.
+
+A passing receipt establishes installed software-crypto and in-memory generated
+contract behavior on those exact bytes. Native proofs, real passkeys, value movement,
+registry availability and full Lace integration need their own acceptance lanes.
+
 ### Documentation is checked source
 
 Required lint runs `test:docs`'s checker without executing any example. The

@@ -43,6 +43,16 @@ function settings(channel: string, maximum: number) {
     throw new BackgroundError('InvalidMessage');
 }
 
+/** A structural void callback may still return a promise. Cleanup never blocks
+ * channel closure or replaces the read outcome with a provider's failure. */
+async function observeCleanup(work: () => unknown): Promise<void> {
+  try {
+    await work();
+  } catch {
+    // The channel is already closed; pending reads must still settle.
+  }
+}
+
 /**
  * Bounded, correlated read/computation RPC. No credentials, persistence, signing-route
  * selection or transaction retry. Hosts validate method-specific results before projection.
@@ -69,21 +79,13 @@ export function createBackgroundClient(
   const close = (code: 'Closed' | 'Unavailable') => {
     if (closed) return;
     closed = true;
-    try {
-      unsubscribe();
-    } catch {
-      /* Teardown must not strand pending reads. */
-    }
+    void observeCleanup(unsubscribe);
     for (const request of pending.values()) {
       timers.clearTimeout(request.timer);
       request.reject(new BackgroundError(code));
     }
     pending.clear();
-    try {
-      port.close();
-    } catch {
-      /* The channel is already unusable. */
-    }
+    void observeCleanup(() => port.close());
   };
   try {
     unsubscribe = port.subscribe(
@@ -104,13 +106,7 @@ export function createBackgroundClient(
     close('Unavailable');
     throw new BackgroundError('Unavailable');
   }
-  if (closed) {
-    try {
-      unsubscribe();
-    } catch {
-      /* Already closed. */
-    }
-  }
+  if (closed) void observeCleanup(unsubscribe);
   return {
     request(method, input) {
       if (closed) return Promise.reject(new BackgroundError('Closed'));
@@ -168,20 +164,12 @@ export function serveBackgroundTasks(
   const close = () => {
     if (closed) return;
     closed = true;
-    try {
-      unsubscribe();
-    } catch {
-      /* Teardown must not strand pending reads. */
-    }
+    void observeCleanup(unsubscribe);
   };
   const fail = () => {
     if (closed) return;
     close();
-    try {
-      port.close();
-    } catch {
-      /* A fatal transport failure cannot expose provider teardown details. */
-    }
+    void observeCleanup(() => port.close());
   };
   try {
     unsubscribe = port.subscribe((message) => {
@@ -211,12 +199,6 @@ export function serveBackgroundTasks(
     fail();
     throw new BackgroundError('Unavailable');
   }
-  if (closed) {
-    try {
-      unsubscribe();
-    } catch {
-      /* Already closed. */
-    }
-  }
+  if (closed) void observeCleanup(unsubscribe);
   return close;
 }
