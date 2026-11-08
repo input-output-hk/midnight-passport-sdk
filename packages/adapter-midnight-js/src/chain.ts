@@ -93,8 +93,8 @@ export function createHeldCoinWitness(heldCoin?: QualifiedShieldedCoin) {
   )
     throw new PassportConnectorError('TransferInvalid', 'Invalid qualified shielded coin.');
   const pinned = heldCoin && {
-    nonce: heldCoin.nonce.slice(),
-    color: heldCoin.color.slice(),
+    nonce: new Uint8Array(heldCoin.nonce),
+    color: new Uint8Array(heldCoin.color),
     value: heldCoin.value,
     mt_index: heldCoin.mt_index,
   };
@@ -112,7 +112,7 @@ export function createHeldCoinWitness(heldCoin?: QualifiedShieldedCoin) {
         );
       return [
         context.privateState,
-        { ...pinned, nonce: pinned.nonce.slice(), color: pinned.color.slice() },
+        { ...pinned, nonce: new Uint8Array(pinned.nonce), color: new Uint8Array(pinned.color) },
       ] as const;
     },
   };

@@ -133,7 +133,9 @@ The Midnight holding adapter owns the coin bytes it verifies and returns fresh
 qualified values; an injected nullifier callback receives a separate copy. Supply
 the complete [holding-indexer contract]({{ '/api/#ports' | relative_url }}), not only
 an inbox decoder. Source snapshots protect tested asynchronous boundaries, not
-arbitrary hostile host code or external chain freshness.
+arbitrary hostile host code or external chain freshness. The per-call
+`createHeldCoinWitness` also owns nonce/color inputs and each returned copy, including
+Node Buffers; its exact color/value/index checks still apply.
 The optional [routine-reader seam]({{ '/api/#source-preview-optional-routine-reader' | relative_url }})
 accepts host-approved holdings access; its lifetime and refusal policy remain host-owned.
 

@@ -1,7 +1,14 @@
 // Refuse partial, duplicated or overclaimed synthetic evidence before a qualification pass.
+/** @typedef {{kind:unknown,supportedDescriptorPreserved:unknown,
+ * lossyConversionRefused:unknown,noRejectedHostSessions:unknown,secretCalls:unknown,
+ * realProvider:unknown,unsupportedOwnerFlowsRefused:unknown}} InstalledConsent
+ */
+/** @typedef {Record<string,unknown> & {schemaVersion:unknown,kind:unknown,
+ * allRequiredPassed:unknown,cases:InstalledCase[],consent:InstalledConsent}} InstalledCases
+ */
 /** @param {unknown} value */
 export function validateInstalledCases(value) {
-  const v = /** @type {Record<string,any>} */ (value);
+  const v = /** @type {InstalledCases} */ (value);
   if (
     !v ||
     v.schemaVersion !== 1 ||

@@ -166,6 +166,12 @@ of settlement. Disposing local keys cannot recall a submitted signature or trans
 
 Shielded ACC withdrawals need a `QualifiedShieldedCoin` private witness with 32-byte nonce and color, unsigned 128-bit value, and unsigned 64-bit Merkle index. `createMidnightChain` accepts it only as `Chain.call({ heldCoin })` for a `withdraw_shielded*` circuit. The adapter snapshots the value for that call and refuses a different color requested by `held_coin`. It does not add the coin to proof-service metadata; remote proving still receives the serialized transaction preimage needed to produce a proof. The account API obtains this input from `QualifiedHoldingSource`. The hosted ACC handle does not yet accept this witness.
 
+**Source hardening after RC7:** `createHeldCoinWitness` owns its admitted nonce/color
+and returns fresh copies on every witness call, including Node Buffer inputs and
+offset views. Later caller/result mutation cannot change the pinned coin. Scalar
+bounds, exact color matching, per-call private state and proof-service metadata
+remain unchanged; this does not establish current spentness or secure erasure.
+
 `createMidnightHoldingSource(indexer)` from `mn-passport-adapter-midnight-js`
 implements the qualified holding source using Midnight's contract-owned output
 commitment. Supply **all four** `HoldingIndexer` methods: `enumerateContractActions`,

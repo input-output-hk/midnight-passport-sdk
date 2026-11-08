@@ -29,9 +29,28 @@ export function inspectSource(text, name = 'source.ts') {
   };
   /** @type {{line:number,lines:number,complexity:number}[]} */
   const functions = [];
+  /** @type {Set<import('typescript').Node>} */
+  const countedTypes = new Set();
+  /** @type {Set<number>} */
+  const countedAnyPositions = new Set();
+  /** Public children include every parsed adjacent JSDoc block; tag helpers can
+   * filter earlier blocks. An assertion doc can also be parsed on both its
+   * statement and expression: count each type token once, not each parsed copy.
+   * @param {import('typescript').Node} node
+   */
+  function countExplicitAny(node) {
+    if (countedTypes.has(node)) return;
+    countedTypes.add(node);
+    if (node.kind === ts.SyntaxKind.AnyKeyword || node.kind === ts.SyntaxKind.JSDocAllType) {
+      const position = node.getStart(source);
+      if (!countedAnyPositions.has(position)) metrics.explicitAny++;
+      countedAnyPositions.add(position);
+    }
+    for (const child of node.getChildren(source)) countExplicitAny(child);
+  }
+  countExplicitAny(source);
   /** @param {import('typescript').Node} node */
   function visit(node) {
-    if (node.kind === ts.SyntaxKind.AnyKeyword) metrics.explicitAny++;
     if (ts.isNonNullExpression(node)) metrics.nonNull++;
     if (
       ts.isAsExpression(node) &&

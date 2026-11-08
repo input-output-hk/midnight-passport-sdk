@@ -452,6 +452,14 @@ archive-integrity and receipt-refusal controls run in the ordinary test gate.
 
 ## Public-source signer handlers
 
+Source preparation verifies the builder recipe hash, including its type comments.
+After a tooling change, prepare a fresh signer output from the independently pinned
+public source and dependencies; an older recipe record correctly refuses. Preserve
+old outputs and their source revision. Never rewrite their pins or reuse an unknown
+transaction fixture to make a new build pass. A type-only tooling change is not a
+new native/provider qualification.
+
+
 The public host package exports the remote **client** and seams, but does not export a signer
 server/handler entry. The optional qualification lane builds the actual unmodified public
 handlers/server from `input-output-hk/lace-sdk` commit

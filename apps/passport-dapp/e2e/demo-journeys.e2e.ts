@@ -148,7 +148,7 @@ try {
     try {
       const observedGroups: GroupTiming[] = [];
       groupTimings[arm] = observedGroups;
-      await executeGroups(h, selectedGroup, recorder.begin, observedGroups);
+      await executeGroups(h, selectedGroup, recorder.begin, timing.boundary, observedGroups);
       recorder.complete();
       ceremonyPurposesByArm[arm] = await collectPurposes(h, selectedGroup);
       complete = true;

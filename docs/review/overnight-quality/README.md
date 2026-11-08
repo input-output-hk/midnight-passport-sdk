@@ -23,10 +23,14 @@ and six software/generated-contract crypto cases with unchanged inputs. The fina
 browser worker/IndexedDB checks pass at44af; last full192synthetic journeys areW9.
 These evidence tiers and source revisions remain separate. No publication tonight.
 
-Wave11 in progress: semantic browser/CI groups, recursive consumer-tool quality
+Wave11 signed and wave12 follow-up: semantic browser/CI groups, recursive consumer-tool quality
 inventory, browser teardown result observation and current/historical agent-docs
 separation. Its final gates, signed head and current-source browser acceptance are
-pending. The [local stack plan](stack.md) proposes coherent review units for tomorrow.
+pending. Exact W11 review identified one remaining contradictory group-body timing
+case; wave12 records shared-clock phase boundaries and checks case completion
+placement. W12 also closes adjacent-block JSDoc-any admission and Node Buffer
+aliasing at the public held-coin witness boundary. Original findings/failed probes
+remain retained; final qualification follows these corrections. The [local stack plan](stack.md) proposes coherent review units for tomorrow.
 Current checkpoint and immutable packets remain in the owner's Obsidian milestone
 space; original failed attempts and unknown-state evidence are preserved.
 

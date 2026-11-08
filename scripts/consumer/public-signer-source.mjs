@@ -145,6 +145,10 @@ function packageRoot(root, name) {
   assert.ok(existsSync(join(path, 'package.json')), 'A pinned dependency is missing: ' + name);
   return realpathSync(path);
 }
+/** Only the emitted fields consumed by the audited import walk.
+ * @typedef {{type:'chunk',fileName:string,imports:string[],dynamicImports:string[]}
+ * | {type:'asset',fileName:string}} SignerOutput
+ */
 /** @param {{consumer:string,consumerPin:string,source:string,extras:string,output:string,repository:string}} options */
 export async function buildPublicSigner(options) {
   const consumer = realpathSync(options.consumer),
@@ -361,7 +365,7 @@ export async function buildPublicSigner(options) {
       },
     ],
   });
-  /** @type {any[]} */
+  /** @type {SignerOutput[]} */
   let chunks;
   try {
     chunks = (

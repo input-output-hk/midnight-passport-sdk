@@ -184,8 +184,17 @@ export const HOST_ENTRY_CHECKS = Object.freeze([
   'browser-build',
 ]);
 
+/** @typedef {{version:string,pin:{name:string,version:string},lockSha256:string,
+ * installed:{host:{entries:{entry:string,hashes:Record<string,string>}[]}},
+ * runtimeIdentity:Record<string,unknown>}} HostEntryConfig
+ */
+/** @typedef {Record<string,unknown> & {kind:unknown,sdkVersion:unknown,
+ * host:{name:unknown,version:unknown},lockSha256:unknown,entryChecks:unknown,
+ * runtimeIdentity:string[],checks:unknown,protocol:Record<string,unknown> &
+ * {kind:unknown,testsPassed:unknown,cases:unknown[]}}} HostEntryReceipt
+ */
 /** Inner evidence must name exactly the entries authenticated from the host archive.
- * @param {any} entry @param {any} config
+ * @param {HostEntryReceipt} entry @param {HostEntryConfig} config
  */
 export function verifyHostEntryReceipt(entry, config) {
   assert.equal(entry.kind, 'installed-published-host');

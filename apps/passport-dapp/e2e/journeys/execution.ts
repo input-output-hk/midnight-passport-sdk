@@ -7,59 +7,28 @@ import {
   ownerBootstrap,
   bootstrapPlan,
 } from './bootstrap.js';
-export interface GroupTiming {
-  group: JourneyGroup;
-  elapsedMs: number;
-  bodyMs: number;
-  bootstrapMs: number;
-  bootstrapActions: readonly string[];
-  bootstrapComplete: boolean;
-  complete: boolean;
-}
+import { groupTiming, measureJourneyPhase, type GroupTiming } from './phase-timing.js';
+export type { GroupTiming } from './phase-timing.js';
 /** Timing owns no authority. Bootstrap cannot record canonical cases before begin(). */
 export async function executeGroups(
   h: JourneyHarness,
   selected: JourneyGroup | undefined,
   begin: (group: JourneyGroup) => void,
+  boundary: () => number,
   timings: GroupTiming[] = [],
 ) {
   const phase = (group: JourneyGroup): GroupTiming => {
-    const value = {
-      group,
-      elapsedMs: 0,
-      bodyMs: 0,
-      bootstrapMs: 0,
-      bootstrapActions: [],
-      bootstrapComplete: true,
-      complete: false,
-    };
+    const value = groupTiming(group);
     timings.push(value);
     return value;
   };
-  const body = async <T>(value: GroupTiming, work: () => Promise<T>): Promise<T> => {
+  const body = <T>(value: GroupTiming, work: () => Promise<T>): Promise<T> => {
     begin(value.group);
-    const start = performance.now();
-    try {
-      const result = await work();
-      value.complete = true;
-      return result;
-    } finally {
-      value.bodyMs = performance.now() - start;
-      value.elapsedMs = value.bodyMs + value.bootstrapMs;
-    }
+    return measureJourneyPhase(value, 'body', boundary, work);
   };
-  const bootstrap = async <T>(value: GroupTiming, work: () => Promise<T>): Promise<T> => {
+  const bootstrap = <T>(value: GroupTiming, work: () => Promise<T>): Promise<T> => {
     value.bootstrapActions = bootstrapPlan(value.group);
-    value.bootstrapComplete = false;
-    const start = performance.now();
-    try {
-      const result = await work();
-      value.bootstrapComplete = true;
-      return result;
-    } finally {
-      value.bootstrapMs = performance.now() - start;
-      value.elapsedMs = value.bootstrapMs;
-    }
+    return measureJourneyPhase(value, 'bootstrap', boundary, work);
   };
   if (selected === undefined) {
     const entry = await body(phase('presentation'), () => runPresentation(h));

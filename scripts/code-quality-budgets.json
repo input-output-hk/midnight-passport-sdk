@@ -8,7 +8,7 @@
         "functionLines": 284,
         "complexity": 34
       },
-      "reason": "C1: recursive consumer .mjs inventory now covers this existing public-signer build orchestration. Newly covered legacy debt only, measured at 284 function lines / complexity 34; source is unchanged at SHA-256 7b82280351d90eddf2d86d404275c83eba0b9fc53c6f97c7ae5191fd46642266. This is authored orchestration, not a generated-source exemption; all other metrics and new consumer files use defaults. No growth."
+      "reason": "C1: recursive consumer .mjs inventory first covered this legacy orchestration in W11 at SHA-256 7b82280351d90eddf2d86d404275c83eba0b9fc53c6f97c7ae5191fd46642266, measured at 284 function lines / complexity34. W12 replaces explicit JSDoc-any annotations with structural types (source SHA-256 8c7c89e28bfc679eb125b1951ff58b457c90c3de528cedb1c3dcc9822900f5b7); commentless runtime syntax is unchanged and ceilings do not grow. This is authored orchestration debt, not a generated-source exemption; other metrics and new modules use defaults."
     },
     "packages/account/src/background.ts": {
       "ceilings": {

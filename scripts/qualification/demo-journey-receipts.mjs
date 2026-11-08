@@ -95,6 +95,8 @@ function attestArmTiming(observed, arm, group) {
   if (!Array.isArray(observed.checkpoints) || observed.checkpoints.length !== expected.length)
     throw Error('Missing journey checkpoints');
   let last = body.startMs;
+  /** @type {number[]} */
+  const completions = [];
   for (const [index, point] of observed.checkpoints.entries()) {
     object(point);
     const checkpoint = interval(point);
@@ -105,16 +107,39 @@ function attestArmTiming(observed, arm, group) {
     )
       throw Error('Journey checkpoint inventory or chronology differs');
     last = checkpoint.endMs;
+    completions.push(last);
   }
   if (
     !finite(observed.afterLastCheckpointMs) ||
     !near(observed.afterLastCheckpointMs, cleanup.startMs - last)
   )
     throw Error('Invalid journey checkpoint tail');
-  return { body, cleanup };
+  return { body, cleanup, completions };
 }
-/** @param {unknown} groups @param {string} group @param {number} availableMs */
-function attestGroupTiming(groups, group, availableMs) {
+/** @param {Record<string,unknown>} phase @param {string} group
+ * @param {number} armStart @param {number} bodyStart */
+function attestBootstrap(phase, group, armStart, bodyStart) {
+  const actions = bootstrapPlans[/** @type {keyof typeof bootstrapPlans} */ (group)];
+  if (JSON.stringify(phase.bootstrapActions) !== JSON.stringify(actions))
+    throw Error('Journey bootstrap actions differ');
+  if (actions.length === 0) {
+    if (phase.bootstrap !== null || phase.bootstrapMs !== 0)
+      throw Error('Unexpected journey bootstrap');
+    return 0;
+  }
+  const bootstrap = interval(phase.bootstrap);
+  if (
+    bootstrap.startMs < armStart ||
+    bootstrap.endMs > bodyStart ||
+    !finite(phase.bootstrapMs) ||
+    !near(phase.bootstrapMs, bootstrap.elapsedMs)
+  )
+    throw Error('Invalid journey bootstrap boundaries');
+  return bootstrap.elapsedMs;
+}
+/** @param {unknown} groups @param {string} group
+ * @param {ReturnType<typeof attestArmTiming>} arm */
+function attestGroupTiming(groups, group, arm) {
   if (!Array.isArray(groups) || groups.length !== 1) throw Error('Missing journey group timing');
   const phase = groups[0];
   object(phase);
@@ -123,14 +148,20 @@ function attestGroupTiming(groups, group, availableMs) {
     phase.complete !== true ||
     phase.bootstrapComplete !== true ||
     !finite(phase.bodyMs) ||
-    !finite(phase.elapsedMs) ||
-    !finite(phase.bootstrapMs) ||
-    !near(phase.elapsedMs, phase.bodyMs + phase.bootstrapMs) ||
-    phase.elapsedMs > availableMs + 0.01 ||
-    JSON.stringify(phase.bootstrapActions) !==
-      JSON.stringify(bootstrapPlans[/** @type {keyof typeof bootstrapPlans} */ (group)])
+    !finite(phase.elapsedMs)
   )
     throw Error('Incomplete group or bootstrap accounting');
+  const body = interval(phase.body);
+  if (
+    body.startMs < arm.body.startMs ||
+    body.endMs > arm.cleanup.startMs ||
+    !near(phase.bodyMs, body.elapsedMs) ||
+    arm.completions.some((at) => at < body.startMs || at > body.endMs)
+  )
+    throw Error('Journey case completion outside group body');
+  const bootstrapMs = attestBootstrap(phase, group, arm.body.startMs, body.startMs);
+  if (!near(phase.elapsedMs, body.elapsedMs + bootstrapMs))
+    throw Error('Journey group duration differs from boundaries');
 }
 /** @param {Record<string,unknown>} value @param {string} arm @param {string} group */
 function attestTiming(value, arm, group) {
@@ -155,11 +186,7 @@ function attestTiming(value, arm, group) {
   )
     throw Error('Invalid journey phase chronology');
   object(value.groupTimings);
-  attestGroupTiming(
-    value.groupTimings[arm],
-    group,
-    armTiming.cleanup.startMs - armTiming.body.startMs,
-  );
+  attestGroupTiming(value.groupTimings[arm], group, armTiming);
 }
 /** @param {Record<string,unknown>} value @param {string} source @param {boolean} allowDirty */
 function attestScope(value, source, allowDirty) {

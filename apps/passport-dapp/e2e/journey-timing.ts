@@ -36,6 +36,10 @@ export function journeyTiming(clock: () => number = () => performance.now()) {
     elapsedMs: (value.endMs ?? time) - value.startMs,
   });
   return {
+    boundary() {
+      currentArm();
+      return now();
+    },
     finishSetup() {
       if (setup.endMs !== null || cleanup) throw new Error('Setup already ended.');
       setup.endMs = now();

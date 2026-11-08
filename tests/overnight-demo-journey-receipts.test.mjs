@@ -16,7 +16,8 @@ const source = '44'.repeat(20);
  * @param {{arm:string,group:import('../apps/passport-dapp/e2e/journeys/catalog.mjs').JourneyGroup}} cell */
 function cellReceipt({ arm, group }) {
   const cases = expectedCases(arm, group).map(({ id, name }) => ({ arm, group, id, name }));
-  const n = cases.length;
+  const n = cases.length,
+    bootstrapMs = group === 'presentation' ? 0 : 2;
   return {
     schemaVersion: 1,
     outcome: 'passed',
@@ -46,38 +47,43 @@ function cellReceipt({ arm, group }) {
         {
           group,
           complete: true,
-          elapsedMs: n,
+          elapsedMs: n + bootstrapMs,
           bodyMs: n,
+          body: { startMs: 1 + bootstrapMs, endMs: n + bootstrapMs + 1, elapsedMs: n },
+          bootstrap:
+            group === 'presentation'
+              ? null
+              : { startMs: 1, endMs: 1 + bootstrapMs, elapsedMs: bootstrapMs },
           bootstrapComplete: true,
-          bootstrapMs: 0,
+          bootstrapMs,
           bootstrapActions: bootstrapPlans[group],
         },
       ],
     },
     timings: {
       clock: 'monotonic performance.now',
-      totalMs: n + 3,
+      totalMs: n + bootstrapMs + 3,
       setup: { startMs: 0, endMs: 1, elapsedMs: 1, complete: true },
       arms: [
         {
           arm,
           startMs: 1,
-          endMs: n + 2,
-          elapsedMs: n + 1,
+          endMs: n + bootstrapMs + 2,
+          elapsedMs: n + bootstrapMs + 1,
           bodyComplete: true,
           contextsCreated: 1,
           pagesCreated: 1,
           afterLastCheckpointMs: 0,
-          cleanup: { startMs: n + 1, endMs: n + 2, elapsedMs: 1 },
+          cleanup: { startMs: n + bootstrapMs + 1, endMs: n + bootstrapMs + 2, elapsedMs: 1 },
           checkpoints: cases.map((c, i) => ({
             name: c.name,
-            startMs: i + 1,
-            endMs: i + 2,
-            elapsedMs: 1,
+            startMs: i === 0 ? 1 : i + bootstrapMs + 1,
+            endMs: i + bootstrapMs + 2,
+            elapsedMs: i === 0 ? bootstrapMs + 1 : 1,
           })),
         },
       ],
-      cleanup: { startMs: n + 2, endMs: n + 3, elapsedMs: 1 },
+      cleanup: { startMs: n + bootstrapMs + 2, endMs: n + bootstrapMs + 3, elapsedMs: 1 },
     },
   };
 }
@@ -176,6 +182,14 @@ test('timing validation permits measured inter-phase gaps and a nonzero checkpoi
   assert.ok(value);
   const arm = value.timings.arms[0];
   assert.ok(arm);
+  const phase = value.groupTimings.p256?.[0];
+  assert.ok(phase);
+  phase.body.startMs++;
+  phase.body.endMs++;
+  if (phase.bootstrap) {
+    phase.bootstrap.startMs++;
+    phase.bootstrap.endMs++;
+  }
   arm.startMs++;
   for (const point of arm.checkpoints) {
     point.startMs++;
@@ -237,6 +251,89 @@ for (const defect of [
       value.timings.setup.startMs++;
       value.timings.setup.endMs++;
     }
+    assert.throws(() => aggregateJourneyReceipts(values, source));
+  });
+for (const defect of [
+  'zero-summary',
+  'zero-body',
+  'first-before-body',
+  'last-after-body',
+  'missing-body',
+  'unfinished-body',
+])
+  test(`case completion is bound to its ${defect} body interval`, () => {
+    const values = receipts(),
+      value = values[0];
+    assert.ok(value);
+    const phase = value.groupTimings.p256?.[0],
+      arm = value.timings.arms[0];
+    assert.ok(phase && arm);
+    const first = arm.checkpoints[0],
+      last = arm.checkpoints.at(-1);
+    assert.ok(first && last);
+    if (defect === 'zero-summary') {
+      phase.bodyMs = 0;
+      phase.elapsedMs = 0;
+    }
+    if (defect === 'zero-body') {
+      phase.body.startMs = phase.body.endMs;
+      phase.body.elapsedMs = 0;
+      phase.bodyMs = 0;
+      phase.elapsedMs = 0;
+    }
+    if (defect === 'first-before-body') {
+      phase.body.startMs = first.endMs + 0.5;
+      phase.body.elapsedMs = phase.body.endMs - phase.body.startMs;
+      phase.bodyMs = phase.body.elapsedMs;
+      phase.elapsedMs = phase.bodyMs;
+    }
+    if (defect === 'last-after-body') {
+      phase.body.endMs = last.endMs - 0.5;
+      phase.body.elapsedMs = phase.body.endMs - phase.body.startMs;
+      phase.bodyMs = phase.body.elapsedMs;
+      phase.elapsedMs = phase.bodyMs;
+    }
+    if (defect === 'missing-body') Reflect.deleteProperty(phase, 'body');
+    if (defect === 'unfinished-body') Object.assign(phase.body, { endMs: null, elapsedMs: null });
+    assert.throws(() => aggregateJourneyReceipts(values, source));
+  });
+for (const defect of [
+  'before-bootstrap',
+  'bootstrap-after-body',
+  'bootstrap-outside-arm',
+  'missing-bootstrap',
+])
+  test(`case and bootstrap boundaries refuse ${defect}`, () => {
+    const values = receipts(),
+      value = values[1];
+    assert.ok(value);
+    const phase = value.groupTimings.p256?.[0],
+      arm = value.timings.arms[0];
+    assert.ok(phase && phase.bootstrap && arm);
+    const first = arm.checkpoints[0];
+    assert.ok(first);
+    if (defect === 'before-bootstrap') {
+      phase.bootstrap.endMs = first.endMs + 0.5;
+      phase.bootstrap.elapsedMs = phase.bootstrap.endMs - phase.bootstrap.startMs;
+      phase.bootstrapMs = phase.bootstrap.elapsedMs;
+      phase.body.startMs = phase.bootstrap.endMs;
+      phase.body.elapsedMs = phase.body.endMs - phase.body.startMs;
+      phase.bodyMs = phase.body.elapsedMs;
+      phase.elapsedMs = phase.bodyMs + phase.bootstrapMs;
+    }
+    if (defect === 'bootstrap-after-body') {
+      phase.bootstrap.endMs = phase.body.startMs + 0.5;
+      phase.bootstrap.elapsedMs += 0.5;
+      phase.bootstrapMs += 0.5;
+      phase.elapsedMs += 0.5;
+    }
+    if (defect === 'bootstrap-outside-arm') {
+      phase.bootstrap.startMs--;
+      phase.bootstrap.elapsedMs++;
+      phase.bootstrapMs++;
+      phase.elapsedMs++;
+    }
+    if (defect === 'missing-bootstrap') phase.bootstrap = null;
     assert.throws(() => aggregateJourneyReceipts(values, source));
   });
 test('dirty local evaluation needs explicit opt-in and still binds every runtime', () => {
