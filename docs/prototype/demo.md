@@ -26,9 +26,10 @@ localnet proof time varies by host.
 Set up the stack as [`apps/README.md`](../../apps/README.md) describes: Nix, Docker with at least
 24 GiB of memory, and the compiled ACC artefacts. Then:
 
-1. Start the stack with `nix develop -c pnpm prototype:up`. It starts the localnet, the service and the page, and
-   stops them on Ctrl-C.
-2. Check that the service answers: `curl -s http://127.0.0.1:8787/config`.
+1. Follow the pinned setup guide, then start with `PASSPORT_REPO=/path/to/passport nix develop -c pnpm demo up`.
+   Reuse a healthy existing stack; Ctrl-C stops only launcher-owned processes.
+2. Check `/healthz` and `/v1/config` against the independently trusted network/binding/manifest pins.
+   A successful HTTP response alone is not proof/provider readiness.
 3. Open **`http://localhost:5173`** in Chrome, not `127.0.0.1`. The passkey is bound to the origin.
 4. Have a platform passkey provider with PRF ready: Google Password Manager or iCloud Keychain. See
    [Passkey provider advice](#passkey-provider-advice).
@@ -239,10 +240,12 @@ second enrolled device that knows the address; it does not reconstruct a lost pa
 
 ### 4. Connect the built-in wallet
 
-**Do.** Click **Connect built-in wallet**. With an ACC open, the PRF ceremony is pinned to that
-account's credential. The wallet derives its own HD seed from the passkey and shows read-only
-addresses and balances. The sponsor wallet is separate. If the browser selects another credential,
-the pinned wallet ceremony is refused.
+**Do.** Click **Connect built-in wallet**. A matching reviewed routine seed lease needs
+no new credential request. Otherwise explicitly approve the pinned PRF access for the
+open ACC; with no ACC, the wallet selects its own passkey identity. Another credential
+cannot silently replace the pinned one. The worker-hosted wallet shows read-only
+addresses/balances and has a separate lifetime from the routine cache, ACC viewing
+secret and sponsor/funding wallets. It is not connected automatically by login.
 
 ### 5. Copy the evidence
 

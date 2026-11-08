@@ -64,20 +64,20 @@ In `reader.worker.ts`, validate again at the receiving boundary:
 import { serveBackgroundTasks } from '@input-output-hk/mn-passport-account/background';
 import { browserBackgroundPort } from '@input-output-hk/mn-passport-adapter-browser/background';
 
-declare const self: DedicatedWorkerGlobalScope;
-
-serveBackgroundTasks(browserBackgroundPort(self, () => self.close()), {
-  channel: 'example.reads.v1',
-  methods: {
-    async countAccounts(input: unknown) {
-      if (!Array.isArray(input) || input.length > 256 ||
-          Array.from(input).some(value => typeof value !== 'string' || !/^[0-9a-f]{64}$/.test(value))) {
-        throw new Error('Invalid account list');
-      }
-      return input.length;
+export function serveAccountReads(scope: DedicatedWorkerGlobalScope) {
+  return serveBackgroundTasks(browserBackgroundPort(scope, () => scope.close()), {
+    channel: 'example.reads.v1',
+    methods: {
+      async countAccounts(input: unknown) {
+        if (!Array.isArray(input) || input.length > 256 ||
+            Array.from(input).some(value => typeof value !== 'string' || !/^[0-9a-f]{64}$/.test(value))) {
+          throw new Error('Invalid account list');
+        }
+        return input.length;
+      },
     },
-  },
-});
+  });
+}
 ```
 
 This counts public identifiers; it does not verify account existence or ownership.

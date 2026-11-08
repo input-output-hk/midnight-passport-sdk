@@ -63,14 +63,17 @@ snapshot and retain connector/transport checks at each new dispatch.
 
 Supply `authenticated: () => lease` to offer the second route. A lease has an
 `account: PassportAccount` with `scheme: 'jubjub-schnorr'` and `check(): void`.
+Return the same lease object while that authentication is current; create a new
+object when it is replaced. Do not manufacture a wrapper on every lookup.
 The account must match the captured address/network/binding. The host first verifies
 live ownership and sealed-reader correspondence; `check` throws after expiry, lock
 or replacement. The coordinator does not perform those chain checks itself.
 
 It captures the selected scheme and checker function/receiver before review, then
-checks context, scheme, lease and selected account/check identity before the callback.
+checks context, scheme, lease-object and selected account/check identity before the callback.
 Replacing the checker in place cannot substitute a new lifetime decision, and an
-in-place scheme change cannot relabel an existing approval. Replacement or expiry refuses without choosing the
+in-place scheme change cannot relabel an existing approval. A different instance
+sharing a prototype checker is still a different lease. Replacement or expiry refuses without choosing the
 primary route. It rechecks after `read-holdings` and `sign-in` callbacks so stale
 private reads are not returned. Mutation receipts survive a later context change;
 retain them for reconciliation rather than presenting a dispatched result as absent.

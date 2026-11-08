@@ -87,6 +87,55 @@ test('captured owner checker keeps its receiver and identity throughout review a
   assert.equal(f.checks(), 3);
 });
 
+for (const boundary of /** @type {const} */ (['review', 'private-read', 'dispatched-mutation'])) {
+  test(`a replacement lease sharing the prototype checker is refused at ${boundary}, preserving dispatched receipts`, async () => {
+    const owner = account('jubjub-schnorr');
+    class Lease {
+      account = owner;
+      valid = true;
+      checks = 0;
+      check() {
+        this.checks++;
+        if (!this.valid) throw Error('expired replacement');
+      }
+    }
+    const original = new Lease(),
+      replacement = new Lease();
+    replacement.valid = false;
+    assert.equal(original.check, replacement.check);
+    let selected = original,
+      callbacks = 0;
+    const policy = createAccountAuthorisation({
+      primary: account(),
+      isContextCurrent: () => true,
+      authenticated: () => selected,
+      consent: {
+        async review() {
+          if (boundary === 'review') selected = replacement;
+          return true;
+        },
+      },
+    });
+    const operation = policy.run(
+      {
+        route: 'authenticated-owner',
+        flow: boundary === 'private-read' ? { kind: 'read-holdings' } : flow,
+      },
+      async () => {
+        callbacks++;
+        selected = replacement;
+        return { txHash: 'original-dispatched-receipt' };
+      },
+    );
+    if (boundary === 'dispatched-mutation') {
+      assert.equal((await operation).txHash, 'original-dispatched-receipt');
+    } else await assert.rejects(operation, { code: 'Unavailable' });
+    assert.equal(callbacks, boundary === 'review' ? 0 : 1);
+    assert.equal(replacement.checks, 0, 'a new lease cannot replace the captured authority');
+    assert.equal(original.checks, boundary === 'review' ? 1 : 2);
+  });
+}
+
 for (const route of /** @type {const} */ (['primary', 'authenticated-owner'])) {
   test(`${route}: in-place scheme replacement during review refuses before dispatch`, async () => {
     const f = fixture();

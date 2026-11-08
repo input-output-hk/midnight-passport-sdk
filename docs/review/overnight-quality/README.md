@@ -16,15 +16,15 @@ possible. Public docs live here; running checklist/evidence live in Obsidian.
 
 | ID | Deliverable | Required observable outcome | Status |
 | --- | --- | --- | --- |
-| O1 | Consent consolidation | One app review before each actual credential request; retain exact transaction/device/grant approval and create maintenance acknowledgement; cancel invokes no credential; retries are fresh; no stale-lease fallback | First tranche delivered locally |
-| O2 | Entry navigation | No Overview menu item. Signed-out entry offers Sign up/Log in; authenticated home navigation opens Account balances without another credential, account reset or lost draft | First tranche delivered locally |
-| O3 | SDK boundary defects | Grant-holder review/sign/send use one immutable admitted input; bounded decimals before BigInt; Node Buffer session reads do not erase retained keys | Fixed; grant-record follow-up in wave 2 |
-| O4 | Reusable API and domain readability | Extract cohesive responsibilities from measured large files, clear capability/custody/authority naming, no API/recipe churn or inflated quality ceilings | Typed JubJub rotation decomposition in wave 2 |
-| O5 | Input and platform contracts | Zod/branded admission where needed; safe malformed/oversized/mutating input handling; browser/Node import/type behavior preserved | Secret admission fixed; bounded config/MessagePort in wave 2 |
-| O6 | Browser coverage | Playwright journeys cover successful/cancel/retry/expiry/navigation flows and exact request counts; actual DOM/worker/storage tests distinguish synthetic account/chain from native evidence | 190 both-arm journeys passed wave 1; worker suite extended wave 2 |
+| O1 | Consent consolidation | One app review before each actual credential request; retain exact transaction/device/grant approval and create maintenance acknowledgement; cancel invokes no credential; retries are fresh; no stale-lease fallback | Delivered in waves 1 and 3; exact owner inputs join the actual ceremony review |
+| O2 | Entry navigation | No Overview menu item. Signed-out entry offers Sign up/Log in; authenticated home navigation opens Account balances without another credential, account reset or lost draft | Delivered and browser checked in wave 1 |
+| O3 | SDK boundary defects | Grant-holder review/sign/send use one immutable admitted input; bounded decimals before BigInt; Node Buffer session reads do not erase retained keys | Fixed, including immutable grant records/openings in wave 2 |
+| O4 | Reusable API and domain readability | Extract cohesive responsibilities from measured large files, clear capability/custody/authority naming, no API/recipe churn or inflated quality ceilings | JubJub rotation, P-256 enrollment and P-256 rotation phases; typed host-job modules in waves 2–4 |
+| O5 | Input and platform contracts | Zod/branded admission where needed; safe malformed/oversized/mutating input handling; browser/Node import/type behavior preserved | Bounded config/jobs, byte ownership, checker/lease identity, partial-init cleanup in waves 1–4 |
+| O6 | Browser coverage | Playwright journeys cover successful/cancel/retry/expiry/navigation flows and exact request counts; actual DOM/worker/storage tests distinguish synthetic account/chain from native evidence | 192 both-arm journeys and owned worker/storage checks pass wave 3; final overnight rerun remains |
 | O7 | Promptless upstream behavior | Pin current staging/public source; explain persisted-key restoration vs fresh authentication. Any implemented resume never infers private authority from machine trust or public hints | Research published locally; no implicit private persistence |
 | O8 | Human copy and docs | Remove redundant reassurance, keep meaningful action/scope/recovery information, align API examples, agent guide and architecture decisions | Library/demo paths and rendered/typechecked examples delivered; contract guides in wave 2 |
-| O9 | Independent handover | Sub-agent reviews plus independent exact-head review, signed local commits, passing gates/coverage/consumer checks, signed immutable packet and updated checkpoint | Wave 1 signed and independently reviewed; final overnight gates pending |
+| O9 | Independent handover | Sub-agent reviews plus independent exact-head review, signed local commits, passing gates/coverage/consumer checks, signed immutable packet and updated checkpoint | Waves 1–2 independently accepted; wave 3 review P2 fixed locally in wave 4; final review pending |
 
 ## First tranche verification
 
@@ -196,3 +196,80 @@ queue, response bytes are not bounded, discarded error streams are not cancelled
 and async observer rejection can escape. Fix those before calling this adapter
 robust under outage/load. Native populated lifecycle qualification remains blocked
 by retained hard-coded stack bindings; this run will not interrupt another stack.
+
+## Fourth tranche: readable jobs, stable leases and checked onboarding
+
+The independent review of signed `5971cf1` found one P2 in authorization: replacing
+a lease with another instance sharing its prototype checker could validate the old
+receiver. The local follow-up requires the same lease object. Regression tests
+first reproduced both pre-callback and post-private-read failures on the previous
+compiled source, then passed with the fix. A dispatched mutation still returns
+its original receipt after replacement. The guide now requires stable lease
+identity instead of manufacturing a wrapper on every lookup. Wave 3's immutable
+packet retains the finding; it is not labeled an accepted final handover.
+
+P-256 viewing-key rotation now has typed planning, material, publication/switch and
+completion phases. The entry falls from 523 lines / 506-line factory / complexity
+70 to 55 / 34 / 1. All new phase functions fit default budgets (maximum 68 lines,
+complexity 15), with no new unsafe assertions. Existing nested Flow, original owner
+session, exact nonce reads, duplicate inbox counts, grant exclusions, callback
+order and unknown receipts remain covered. The final grant-source lookup still
+happens inside its Flow callback, preserving host observer replacement behavior.
+
+Host jobs now separate identity/validation, public decoding, transport lifetime,
+observation and service scheduling into small typed modules. All three superseded
+legacy exceptions are removed. The service-owned queue honors validated active
+capacity; custom queue failures remain conservative unknowns. New deployment
+admission checks arm/scheme coherence without rewriting historical records. Native
+reply bytes are bounded using the actual maximum compact snapshot, discarded/late
+streams are cancelled, and async observers settle within the invocation budget.
+No automatic POST replay, replacement ID, lost-history repair or authority widening
+is introduced. Focused service/job tests pass 66 cases; P-256 rotation and existing
+related flow contracts pass 83.
+
+Developer onboarding now corrects stale navigation, address opening, grant UI,
+worker location, storage and historical key guidance. The package/runtime matrix
+distinguishes portable APIs, browser capabilities, Node service requirements and
+import safety. Optional account methods have explicit port/capability guards.
+Library examples take host ports and lifecycle callbacks; demo guides explain the
+reference application's choices separately. No declaration generator is claimed.
+
+Every TypeScript fence in the current site and both example modules enters a
+checked inventory. The source compiler runs in required lint, with no hidden
+placeholders or snippet execution. The current inventory has 27 complete examples,
+33 target instantiations across neutral ES2022, DOM, WebWorker and Node, and zero
+fragment exemptions. Documentation diagnostics preserve Markdown source lines and
+JSON receipts include snippet hashes. Node source compilation also exposed private
+DOM-global `CryptoKey` annotations; these now derive their type from the runtime's
+WebCrypto API without introducing a Node dependency or changing crypto recipes.
+
+Full integration, coverage, rendered docs and independent follow-up review are
+recorded after their frozen-candidate checks finish. Published RC7 and deployed
+Pages remain unchanged; all work is local. Native isolation planning is separate
+and does not establish proof acceptance.
+
+Wave 4's final full Nix gate passes **1,755 tests / seven existing skips**, including
+required documentation checks, all builds and all app typechecks. All-nine coverage
+floors pass at **94.55 / 93.08 / 85.89%** lines/functions/branches. That coverage
+candidate predates three checker-only regressions; package runtime is identical.
+The docs checker has eleven focused regression tests. Independent checker review reproduced
+stale-dist fallback, nested inventory gaps and ambient placeholder contamination;
+the follow-up requires actual source files, recursively accounts for examples,
+checks public import paths and rejects ambient host declarations/suppressions.
+The API and worker examples now take host capabilities as explicit parameters.
+
+Rendered docs have 43 pages and 1,957 valid local targets. Expanded desktop/mobile
+inspection caught a long hash escaping the mobile content width; `overflow-wrap`
+fixes it while code/table scroll regions remain usable. Failed and passing visual
+receipts are retained. Final hashes/render and independent signed-head review follow.
+No new browser/native/provider or released-artifact acceptance is inferred.
+
+The checker re-review additionally reproduced Node ambient injection through a
+triple-slash reference and private CommonJS `require` imports. Authored reference
+directives and require/import-equals shortcuts now refuse under the public ESM
+example contract. The original probes and re-review results remain preserved.
+
+Final bounded checker re-review accepts all original and follow-up controls;
+eleven focused regressions and the final full gate pass. Reference/type directives
+cannot add ambient Node capabilities to a neutral example, and CommonJS shortcuts
+cannot bypass public ESM imports. Earlier failed probes remain immutable evidence.

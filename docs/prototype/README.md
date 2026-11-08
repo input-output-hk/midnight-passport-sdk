@@ -1,5 +1,12 @@
 # Midnight Passport DApp prototype
 
+This folder documents the reference app and its historical qualification records.
+Reusable package installation/contracts live in the [library guide](../site/library-guide.md)
+and [runtime/export index](../site/packages.md#runtime-and-host-requirements).
+The [demo guide](../site/demo-guide.md) describes current host policy and composition.
+Later source-preview APIs are not part of published RC7; dated runs retain their
+original binding, source and provider limits.
+
 ## Approved UX implementation milestone
 
 See the [execution map](ux-milestone.md) for the current local naming/interaction
@@ -28,15 +35,16 @@ account owner's, so it is now the account API v1 (ADR 0007, D-8), and the dApp-f
 the later grant ceremony. It serves Lace epic LW-15579 (the Passport smart account as the Lace account model)
 and unblocks LW-15635 (a passkey Passport account) **on the standalone network**.
 
-A new user creates a passkey. The browser deploys a Passport account (the ACC), pays the fees,
-installs the passkey as the first device and publishes a random viewing secret sealed to that
+A new user creates a passkey. The browser requests a sponsored Passport account (ACC)
+deployment; the service pays fees. The flow installs the passkey as the first device and publishes a random viewing secret sealed to that
 device's PRF-derived reader. After a page reload the same passkey can reopen its envelope against
 the live ACC key. The built-in Midnight wallet is derived separately from the passkey.
 
 The account API v1 is versioned in `mn-passport-protocol` (`1.0.0-pre.0`); the prototype's
 `0.1.0-prototype` shapes remain as deprecated `…Prototype` types behind `createPassportConnector`. The design is in
 [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](../superpowers/specs/2026-10-06-passport-dapp-design.md).
-This folder describes what the code does today.
+Current sections describe the supported source composition; explicitly historical
+sections retain earlier designs and evidence without relabeling them as current.
 
 The CLI can start the browser with `pnpm demo up --arm jubjub --mock-passkey`.
 P-256 remains the default. Both browser arms now create a random viewing secret and sealed
@@ -72,9 +80,17 @@ the last wave does, so a deployed account can never be upgraded. The account API
 choose; there is no default.
 
 What does not work, or is not built, is in [limitations.md](./limitations.md). The main points: the
-registry is an off-chain file, the testnet is not wired, and the service has no authentication.
+registry is an off-chain file, the testnet is not wired, and the default public
+proof/sponsor routes have no caller authentication. Opt-in authenticated
+host-job/mutation routes are separate compositions.
 
 ## Components
+
+The diagram preserves the original prototype's legacy route/component view. Current
+source uses versioned service routes, the split library adapters, and an owned wallet
+Worker. The page owns credential review; neither importing the SDK nor navigating
+the demo starts a credential, worker or wallet. See the current
+[composition guide](../site/demo-guide.md#built-in-wallet-worker).
 
 ```mermaid
 flowchart LR
@@ -127,7 +143,7 @@ flowchart LR
   adapters to service ports and lazy-loads `adapter-midnight-js` for chain calls. The old service
   chain remains under its `./prototype` export for the e2e harness.
 - **The service** (`apps/passport-service`) serves the ZK artefacts, proves transactions, deploys
-  accounts, sponsors fees and keeps the registry. It holds the only funded key.
+  accounts, sponsors fees and keeps the registry. It owns the fee sponsor; the optional funding process and user wallet have separate keys.
 - **The localnet** (`infra/localnet`) is a node, an indexer and a proof server in Docker. The
   service talks to all three. The page talks to the indexer only.
 
@@ -156,15 +172,17 @@ not. It never stops anything for you.
 | State                                           | Where                                            | Notes                                                                                                                                       |
 | ----------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | The account: devices, nonce, encryption key     | The chain (the localnet's Docker volumes)        | The authority. `prototype:up` stops the containers and keeps the volumes, so accounts survive a restart.                                    |
-| Passkey to account mapping                      | `~/.midnight-passport/registry.json`             | Written by the service. Keyed `<networkId>/<credentialId>`. An untrusted hint: the connector checks it against the chain before it uses it. |
-| Accounts this service deployed                  | `~/.midnight-passport/registry.deployments.json` | Beside the registry. The sponsor funds calls only to accounts that are in both files.                                                       |
+| Passkey to account mapping | `~/.midnight-passport/registry.json.v1`; legacy `registry.json` lookup | Untrusted service hints. The connector verifies the live ACC and sealed reader before use. |
+| Accounts this service deployed | `~/.midnight-passport/registry.deployments.json` | Durable deployment allowlist used by the sponsor policy, separate from the user wallet and account authority. |
 | The passkey's private key                       | The authenticator                                | It never leaves it.                                                                                                                         |
-| Wallet seed, account encryption key, PRF output | Nowhere                                          | Derived on demand and zeroed. See [keys.md](./keys.md).                                                                                     |
-| Browser storage                                 | None                                             | The one exception is the dev-only mock passkey, which keeps its keys in `localStorage` (`passport-dev:mock-passkey:v1`).                    |
-| The evidence panel                              | The page, in memory                              | Lost on reload. Use "Copy evidence" first.                                                                                                  |
+| Wallet seed, account viewing secret, PRF output | Distinct operation/cache/wallet scopes | Raw PRF output is scoped; the random viewing secret is sealed on chain. Explicit routine access retains derived material in memory; a running wallet owns separate state. See [keys.md](./keys.md). |
+| Browser storage | Host-owned account records and encrypted recovery/grant journals | Durable metadata and unknown intent IDs survive reload. No automatic private-key restoration. The dev-only mock credential has its own test-only storage. |
+| Activity and Audit | The page, in memory, plus durable operation journals | Export public traces before reload; a disappearing UI trace does not clear a durable unknown operation. |
 
 `PASSPORT_REGISTRY_FILE` moves the registry. The deployed set follows it. The files are kept outside
-the repository so that accounts can be reopened later. After a chain reset, delete both. See
+the repository so that accounts can be reopened later. An intentional chain reset requires
+archiving and reconciling the old hints and transaction evidence before selecting fresh state.
+Never delete journals or unknown IDs to repair an ordinary restart or failed open. See
 [demo.md](./demo.md#troubleshooting).
 
 ## The other documents
@@ -299,3 +317,12 @@ These local actual-crypto/fake-chain and synthetic-browser checks do not establi
 real-provider prompt counts or new native proof acceptance. Read the
 [prompt guide](../site/passkey-prompts.md) and
 [separate demo composition guide](../site/demo-guide.md).
+
+## Host-job source hardening
+
+The opt-in operator job client now bounds native response bytes, cancels discarded
+streams and supervises asynchronous snapshot observers within its invocation
+budget. The service's owned queue honors configured active capacity; custom queue
+failures retain unknown original IDs. This does not switch the default demo to
+host jobs. See the [operator contract](../site/service-jobs.md#source-preview-bounded-observation-and-admission)
+for the source-versus-release boundary and explicit recovery semantics.

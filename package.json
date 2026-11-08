@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc -b tsconfig.build.json && tsc -p tsconfig.json",
     "test": "pnpm run build && node -e \"if(!fs.globSync('tests/**/*.test.mjs').length){console.error('no test files matched');process.exit(1)}\" && node --test \"tests/**/*.test.mjs\"",
-    "lint": "node scripts/lint-boundaries.mjs && node scripts/check-circuit-matrix.mjs && node scripts/code-quality.mjs",
+    "lint": "node scripts/lint-boundaries.mjs && node scripts/check-circuit-matrix.mjs && node scripts/code-quality.mjs && node scripts/docs/snippets.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "build:artefact": "node scripts/build-acc-artefact.mjs",
@@ -27,7 +27,8 @@
     "test:coverage": "pnpm run build && node scripts/test-coverage.mjs",
     "quality:report": "node scripts/code-quality.mjs --report",
     "quality:release": "pnpm run lint && pnpm run test:coverage",
-    "test:background": "pnpm --filter passport-dapp run test:background"
+    "test:background": "pnpm --filter passport-dapp run test:background",
+    "test:docs": "node scripts/docs/snippets.mjs"
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.20.0",

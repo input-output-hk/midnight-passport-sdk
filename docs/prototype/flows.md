@@ -111,6 +111,24 @@ Keep original journals/IDs for review; do not rewrite a transcript or replay an
 unknown effect to force compatibility. Pure-JubJub creation still uses the shared
 P-256 compatibility probe and needs separate optimization/qualification.
 
+## Current host integration boundary
+
+`createPassportAccounts` consumes typed host ports; `createBrowserPassport` composes
+the browser adapter. Neither creates this demo's DOM dialogs, routine lifetime,
+full-owner enrollment policy or cross-tab locking. Use the
+[library lifecycle](../site/library-guide.md),
+[runtime/export index](../site/packages.md#runtime-and-host-requirements) and
+[optional-method prerequisites](../site/api.md#optional-methods-and-host-prerequisites)
+when integrating a different host.
+
+Current browser P-256 unshielded withdrawal retains the core `withKeySession` guard
+but does not load unused PRF material; it requests one fresh strict `sign` normally.
+Other key flows/public PRF sessions remain eager, and profile retries are separately
+reviewed assertions. The demo stages immutable owner transfer/export fields into the
+actual derive/sign review and rechecks before POST/sensitive display. Matching bounded
+grant transfers keep standalone exact consent and no native credential call. Source
+and synthetic-browser receipts do not qualify provider/native behavior.
+
 ## Historical deterministic-key P-256 flow
 
 Terms used below:

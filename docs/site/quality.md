@@ -90,6 +90,7 @@ this is not a security audit or a proof of absence of floating promises.
 | Port/use-case | Both arms, exact consent inputs, live-state races, journals and unknown IDs | Real proving/transport implementation behavior |
 | Adapter contract | HTTP streaming limits, atomic stores, worker envelopes and owned cleanup | Production host trust or security hardening |
 | Browser | Mock/virtual credentials, dialogs, navigation, real workers/IndexedDB and late UI completions | Synced provider PRF behavior or real Midnight balances |
+| Source-preview consumer | Copied declared exports, no checkout SDK aliases, Node imports and strict Node/DOM/WebWorker types | Installation, registry provenance or provider support |
 | Installed consumer | Packed exports, dependencies and web/Node type/import/build contracts | Full Lace interoperability |
 | Native opt-in | Pinned proofs, indexer/prover restarts, observed ACC/wallet state and receipts | Unrun profiles, untested providers or mainnet safety |
 
@@ -164,3 +165,49 @@ routes. Bind it to the selected account/authentication revision and return false
 that scope changes. It runs before review, again before invoking the operation callback and after private
 reads; the SDK cannot infer UI selection from an immutable account object.
 Mutation acknowledgements remain available after a later context switch.
+
+### Copied-source consumer check
+
+Use this after a source build to catch public export/type/import regressions before
+packing or publishing:
+
+```sh
+nix develop -c pnpm run build
+nix develop -c node scripts/consumer/preview-quality.mjs --output /private/tmp/passport-preview-new
+```
+
+Choose a fresh external output directory with an existing parent. The runner copies
+the nine packages' manifest-declared files, rejects escaping or missing exports and
+SDK links back to the checkout, then strict-checks neutral ES2022, browser DOM and
+WebWorker consumers. Node imports each public module without accessing browser
+capabilities. An owned ephemeral memory secret-store round trip checks copy and
+lifecycle behavior; it does not create a persistent vault or background process.
+
+The runner fingerprints and reuses the checkout's physical **external** dependencies.
+No package-manager installation occurs. Receipt hashes before and after execution
+bind the copied SDK, external graph and tools to that run. This is source-preview
+evidence only. Keep packed/installed-package, actual registry, browser worker,
+provider and native proof qualification as separate lanes. A Node import succeeding
+does not make a browser adapter's credential or storage operations usable in Node.
+
+### Documentation is checked source
+
+Required lint runs `test:docs`'s checker without executing any example. The
+manifest at `docs/examples/checked-snippets.json` assigns every TypeScript fence
+and example module to neutral ES2022, browser DOM, WebWorker or Node. New fences
+must enter that inventory; a deliberately incomplete fragment needs an explicit
+reason. Complete examples have no injected globals or hidden host declarations.
+The compiler uses the current public source exports, strict unused/index/optional
+checks and the selected runtime's ambient types. Diagnostics point back to the Markdown source line. Use
+`node scripts/docs/snippets.mjs --json` inside Nix for a receipt with exact
+snippet hashes and target results.
+
+This checks the current source, including examples of APIs already present in RC7;
+it does not reinstall or verify the RC7 artifacts. The published-consumer lane
+checks released packages separately. A compiling integration module still needs
+real host ports, reviewed user actions and the documented runtime capabilities.
+
+Authored imports must use public ESM SDK exports or the checked documentation
+modules. Ambient declarations, reference directives and suppression comments
+cannot supply missing host helpers or change the chosen target. This is a source
+contract check for maintained examples, not a sandbox for hostile TypeScript.

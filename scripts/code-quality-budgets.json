@@ -148,14 +148,6 @@
       },
       "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
     },
-    "packages/account/src/p256-viewing-rotation.ts": {
-      "ceilings": {
-        "functionLines": 506,
-        "complexity": 70,
-        "nonNull": 10
-      },
-      "reason": "Q1: rotation extracted verbatim from baseline connector; preserve multi-transaction fences while reducing its internal complexity separately."
-    },
     "packages/account/src/preflight.ts": {
       "ceilings": {
         "complexity": 38
@@ -231,14 +223,6 @@
     "packages/adapter-midnight-js/src/holdings.ts": {
       "ceilings": {
         "nonNull": 1
-      },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
-    },
-    "packages/adapter-service/src/host-jobs.ts": {
-      "ceilings": {
-        "lines": 611,
-        "functionLines": 208,
-        "complexity": 59
       },
       "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
     },
@@ -329,15 +313,6 @@
       "ceilings": {
         "complexity": 32,
         "nonNull": 1
-      },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
-    },
-    "packages/service/src/host-jobs.ts": {
-      "ceilings": {
-        "lines": 610,
-        "functionLines": 292,
-        "complexity": 39,
-        "nonNull": 4
       },
       "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
     },

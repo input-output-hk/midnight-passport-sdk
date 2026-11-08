@@ -232,7 +232,7 @@ export function createAccountAuthorisation(options: {
         if (candidate) {
           const current = options.authenticated?.();
           if (
-            !current ||
+            current !== candidate ||
             current.account !== account ||
             current.check !== candidateCheck ||
             candidate.check !== candidateCheck

@@ -8,6 +8,18 @@ This is the reusable account/adapter reference. The [Library integration guide](
 explains host lifecycle and custody. The [Demo app guide]({{ '/demo-guide/' | relative_url }})
 describes the reference UI's chosen policies; those policies are not implicit API defaults.
 
+## On this page
+
+- [Release/source export map](#published-and-source-preview-surfaces)
+- [Account methods](#flow-methods) and [optional methods/host prerequisites](#optional-methods-and-host-prerequisites)
+- [Injected ports](#ports), [events/cancellation](#events-and-cancellation) and [errors](#errors)
+- [Browser composition](#browser-composition) and [source checked configuration](#source-preview-checked-configuration-contract)
+- [Source authorization/custody/background entries](#source-quality-apis-after-rc7)
+
+The [package runtime index]({{ '/packages/#runtime-and-host-requirements' | relative_url }})
+identifies the environment for each public entry. This is a handwritten API guide;
+exact declarations remain the source-linked contract, qualified by release/version.
+
 ## Published and source preview surfaces
 
 | Track | Exports and behavior |
@@ -40,14 +52,14 @@ The public flow is `createPassportAccounts(ports): PassportConnectorAPI` from `m
 import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
 import type { PassportPorts } from '@input-output-hk/mn-passport-account/ports';
 
-declare const ports: PassportPorts; // supplied by the host adapters
-const passport = createPassportAccounts(ports);
-const account = await passport.createAccount({
-  userName: 'alice',
-  retireAuthority: true,
-  onEvent: (event) => console.log(event.step, event.phase),
-});
-export const state = await account.state();
+// Invoke only after the host's explicit account-opening action and review.
+export async function openAndReadAccount(ports: PassportPorts) {
+  const passport = createPassportAccounts(ports);
+  const account = await passport.openAccount({
+    onEvent: (event) => console.log(event.step, event.phase),
+  });
+  return { account, state: await account.state() };
+}
 ```
 
 `retireAuthority` is required. `true` removes the maintenance authority after the last deployment wave and cannot be undone. A host must make that choice explicitly. The account connector supports P-256 WebAuthn and JubJub Schnorr creation and opening. The typed `k256-ecdsa` arm is not implemented.
@@ -59,6 +71,7 @@ export const state = await account.state();
 | `createAccount({ userName, retireAuthority, signal?, onEvent? })` | `PassportAccount`          | Creates a passkey, deploys the ACC, records a directory hint and activates the first device.                                   |
 | `openAccount({ signal?, onEvent? }?)`                             | `PassportAccount`          | Finds a registered account with a passkey, verifies ownership against the chain and reopens it.                                |
 | `openAccountAt(address, options?)` | `PassportAccount` | P-256 and JubJub: opens a live sealed ACC by address when its credential has no directory hint. Requires a live device entry and an envelope that opens the ledger `enc_key`. JubJub also checks one current matching device registration, then saves its hint and local use counter. |
+| `account.deviceRoster()` | `PassportDeviceRoster` | Public live device commitments and reader registrations, with completeness/ambiguity checks. Requires a chain view with device/inbox data; entry count alone is not a distinct-device roster. |
 | `account.state()`                                                 | `PassportAccountState`     | Reads `booted`, `authNonce`, `deviceEpoch`, `entryCount` and `specVersion`. `entryCount` counts entries, not distinct devices. |
 | `account.withdrawUnshielded({ color, amount, recipient }, options?)` | `PassportOwnerTransferResult` | P-256 and JubJub owners: signs the pinned `withdraw_unshielded` challenge and submits a transfer from ACC unshielded balance to a Midnight user address. The consent descriptor names the asset color, amount and recipient. Requires the `acc-s3r1.1` binding and an active live owner device. |
 | `account.withdrawShielded({ inboxIndex, color, amount, recipient }, options?)` | `PassportOwnerTransferResult` | Sealed P-256 and JubJub owners: selects one chain-matched qualified coin, binds it into the owner challenge and `held_coin` witness, then submits `withdraw_shielded_with_p256` or `withdraw_shielded_with_jubjub`. `recipient` is a 32-byte Zswap coin public key. Requires a `QualifiedHoldingSource`, owner key session, and chain adapter with a per-call witness. |
@@ -75,9 +88,45 @@ export const state = await account.state();
 
 The account object also exposes `address`, `networkId`, `bindingId`, `scheme` and, for passkeys, `credentialId`. `apiVersion` is currently `1.0.0-pre.0`. See [protocol `api.ts`](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/protocol/src/api.ts) and [account `connector.ts`](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/account/src/connector.ts).
 
-For an unshielded withdrawal, pass lowercase 64-character hex strings for `color` and `recipient`, and a canonical positive decimal `amount` no greater than `2^128 - 1`. The account confirms the selected device is still live, binds those exact fields and the current ACC nonce to the owner signature, and submits the arm's circuit. The returned `txHash` identifies the confirmed call and `nextUseCounter` is the counter after it. A rejected or indeterminate submission must be reconciled with the live ACC before retrying; a caller must not assume funds were untouched after a transport failure. A Lace hosted JubJub authoriser needs a matching `withdraw-unshielded` consent mapping before enabling this method in Lace.
+For an unshielded withdrawal, pass lowercase 64-character hex strings for `color` and `recipient`, and a canonical positive decimal `amount` no greater than `2^128 - 1`. The account confirms the selected device is still live, binds those exact fields and the current ACC nonce to the owner signature, and submits the arm's circuit. The returned `txHash` identifies the submitted call and `nextUseCounter` is the resulting counter. Confirm settlement according to the selected chain adapter before treating the transfer as final. A rejected or indeterminate submission must be reconciled with the live ACC before retrying; a caller must not assume funds were untouched after a transport failure. A Lace hosted JubJub authoriser needs a matching `withdraw-unshielded` consent mapping before enabling this method in Lace.
 
 A shielded withdrawal uses the `inboxIndex` returned by `readShieldedHoldings`, the coin's lowercase color, and the recipient's lowercase 32-byte Zswap coin public key. For now `amount` must equal the selected coin's full value. A smaller amount would create change that this API cannot yet capture and republish safely, so it is rejected before signing. The owner session verifies the current account key and live device, reopens the selected inbox description, matches it to an ACC output and unique Merkle index, and signs a challenge that includes that qualified coin. The proof remains authoritative for whether the output is still unspent; hosts must reconcile spent descriptions after a confirmed call. The Passport service's fee-only sponsor rejects shielded offers, so a host must use a value-capable wallet for this transaction. `mn-passport-adapter-midnight-js` exports `createMidnightWalletPorts(walletProvider, midnightProvider)` to adapt such a wallet to the chain port. The hosted Lace JubJub adapter currently rejects `withdraw-shielded` because its consent flow and hosted handle lack the required witness path; a host must provide both before exposing this method there.
+
+## Optional methods and host prerequisites
+
+`state()` and legacy `rotateEncryptionKey()` are required by the account interface;
+other account methods in the table are optional capabilities. Presence of a function
+is the first check, not proof that its binding, live state and supplied ports support
+the requested operation. A legacy rotation method can still refuse a sealed account.
+Use [preflight/capability inspection]({{ '/capabilities/' | relative_url }}) before key
+access, then preserve all live checks during execution.
+
+| Operation group | Minimum additional composition / lifetime responsibility |
+| --- | --- |
+| Public state/device/grant rosters | Pinned same-network chain/read source; unavailable or incomplete data stays unavailable. No private credential follows merely from navigation/read selection. |
+| Private holdings | Sealed viewing-key port and chain-backed verified holdings. Qualified shielded spending additionally needs unique Merkle positions and exact-value witnesses. |
+| Viewing-key rotation, removal, enrollment | Complete live device/reader set, verified holdings and active read-grant targets/openings as needed. Preserve partial transaction receipts; missing sources must not become empty rosters. |
+| Owner unshielded withdrawal | Live owner, matching challenge/binding and value-capable `Chain.call`; fee sponsorship alone cannot move value. Host owns exact review, route/lifetime checks and unknown-outcome handling. |
+| Grant issue/recovery/revocation | Applicable sealed-key/holding/read-target sources, live grant snapshot/detail/roster and durable journal/records. Recovery preserves original IDs and does not create a replacement issue. |
+
+This browser/Node host helper preserves the optional-method guard and propagates the
+caller's cancellation/events. It performs no authentication or fresh-passkey policy
+of its own:
+
+```ts
+import type { FlowOptions, PassportAccount } from '@input-output-hk/mn-passport-protocol';
+
+export async function readAvailableHoldings(account: PassportAccount, options: FlowOptions) {
+  const read = account.readShieldedHoldings;
+  if (!read) throw new Error('This account does not expose private holdings');
+  return read.call(account, options);
+}
+```
+
+A host should handle typed failures and retain original transaction/intent references.
+`PassportTxResult` carries `txHash` and optional height; the selected chain/value adapter
+owns submission/finality semantics. A transport acknowledgement is not universal proof
+of settlement. Disposing local keys cannot recall a submitted signature or transaction.
 
 ## Ports
 

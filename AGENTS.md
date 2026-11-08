@@ -784,3 +784,16 @@ TypeScript contexts, and imports them in Node without browser globals. The paren
 directory must exist and the output must not. It reuses fingerprinted physical
 external dependencies; it does not install packages or qualify registry tarballs.
 Keep that source-preview receipt distinct from installed/released-consumer checks.
+
+### Executable library documentation contracts
+
+`pnpm run lint` now checks every TypeScript fence in `docs/site` and both example
+modules against actual public source exports. The checked inventory is
+`docs/examples/checked-snippets.json`; register a new example's neutral, DOM,
+WebWorker or Node target. Keep complete examples free of hidden globals; deliberate
+fragments need a reason and remain visible in the receipt. `nix develop -c pnpm
+run test:docs` runs this alone. For hashes and Markdown-line diagnostics, use
+`nix develop -c node scripts/docs/snippets.mjs --json` with a fresh ignored output.
+It compiles without executing code, loading credentials or starting a host.
+Source compilation is separate from actual installed/released-package evidence.
+The library guide owns API contracts; demo guides describe its chosen composition.

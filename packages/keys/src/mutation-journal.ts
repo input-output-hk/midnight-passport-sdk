@@ -1,3 +1,4 @@
+import type { WebCryptoKey } from './web-crypto-key.js';
 import {
   mutationDocumentBytes,
   readMutationDocument,
@@ -26,7 +27,7 @@ export function encryptedMutationJournal(
     new TextEncoder().encode(
       JSON.stringify(['mn-passport:mutation-journal', 1, identity, id, revision]),
     );
-  const withKey = <T>(id: string, work: (key: CryptoKey) => Promise<T>): Promise<T> =>
+  const withKey = <T>(id: string, work: (key: WebCryptoKey) => Promise<T>): Promise<T> =>
     source.withSession(async () => {
       const raw = await source.deriveSecret({
         domain: 'mn-passport:mutation-journal:v1',

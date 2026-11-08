@@ -1,5 +1,11 @@
 # Limitations and production requirements
 
+This page describes demo/host limits. For reusable API contracts and exact runtime
+requirements, use the [library guide](../site/library-guide.md) and
+[public entry index](../site/packages.md#runtime-and-host-requirements). Source-preview
+consent/session/quality work is later than published RC7; dated evidence below keeps
+its original scope. A configurable port is not a qualified provider or production service.
+
 This is a localnet preview, with the supported routes and evidence listed in
 [the compatibility matrix](../compatibility.md) and [Lace consumer report](../lace-consumer-report.md).
 The demo exposes scoped spend grant issue/export/import/spend/revoke, device enrollment/removal,
@@ -27,17 +33,22 @@ operator boundary, alongside controlled ingress and caller authentication.
 ## The registry is an off-chain JSON file
 
 **Prototype.** The service keeps the passkey-to-account mapping in `~/.midnight-passport/registry.json`,
-beside `registry.deployments.json`. The registry belongs to one machine and one chain. A passkey
-synced to another machine finds no account there. The service writes the file with a plain
+beside `registry.deployments.json`. The legacy registry is local to that service deployment and chain. Current hints use
+`/v1/accounts` backed by `${PASSPORT_REGISTRY_FILE}.v1`, with legacy lookup retained. A different service deployment may lack the hint even when the passkey is synced;
+a second browser using the same directory can still obtain its hint. The service writes the file with a plain
 write-and-rename, with no locking beyond one process. The connector treats it as an untrusted hint
 and checks every record against the chain ([flows.md](./flows.md#open)). The records are
 write-once, except `deployed` to `active`. There is no proof of possession on `PUT /accounts`.
-After a chain reset the file is stale and must be deleted by hand.
+After an intentional chain reset these records may be stale. Archive and reconcile
+original account/transaction evidence before selecting fresh state; ordinary restart
+or failed authentication must not delete registries, journals or unknown IDs.
 
 **Production.** Keep the mapping on the ledger, with an identity registry contract (fork issue
 [#20](https://github.com/input-output-hk/midnight-passport-sdk/issues/20)), so that a new device
-can find an account. Until then, discovery on a new device needs a name lookup or a chain scan.
-Require proof of possession on writes.
+can find an account. An enrolled recoverable passkey can already open a known ACC by address without a
+directory hint; it must verify its live device and sealed registration/keyring. Unknown
+address discovery and total credential loss remain separate problems. Require proof
+of possession on directory writes.
 
 ## Recovery depends on enrolled, recoverable reader keys
 
@@ -102,7 +113,7 @@ sponsor.
 ## Other trust gaps
 
 - **The ledger source is not pinned.** The page takes the indexer and node endpoints from the
-  service's `/config`. The artefacts are pinned by hash and the ledger source is not, so a
+  service's `/v1/config`. The artefacts are pinned by hash and the ledger source is not, so a
   compromised service could fake the ledger that the open flow's checks read. **Production:** pin
   the endpoints at build time, as the manifest hash is.
 - **Authority retired for good.** The last deploy wave retires the maintenance authority, so a
@@ -111,20 +122,30 @@ sponsor.
 
 ## The Dust race
 
-**Prototype.** `/sponsor/balance` and `/deploy` are not coordinated. A balance and a deployment wave
+**Historical risk description.** Current source passes one `runExclusive` queue to
+versioned proving/deployment/sponsor handlers and legacy routes. This does not establish
+atomic distributed reservation across separate balance/submit calls or multiple service
+instances. Retain wallet coordination and uncertainty handling; qualify the actual host.
+
+**Earlier prototype.** `/sponsor/balance` and `/deploy` are not coordinated. A balance and a deployment wave
 that run together can pick the same Dust coin. The loser fails at submit. No funds are lost, and the
-caller retries. Proofs are queued, so they never overlap a deploy, but balancing is not.
+earlier caller retried. Proofs were queued, so they did not overlap a deploy, but balancing was not.
+Current hosts must first reconcile the original submission; a transport failure is
+not evidence that a replacement is safe.
 
 **Production.** Coordinate the sponsor's Dust use, or give each kind of work its own funded wallet.
 
 ## CI coverage
 
-**Prototype.** Pull request checks were restored on 2026/10/13. The workflow runs lint, formatting,
-build, unit and app tests, and typechecks. The checks that need a localnet and the compiled artefacts
-(`PASSPORT_IT=1`, `PASSPORT_CONTRACT_DIR`, `pnpm prototype:e2e`) are still run separately.
+**Current source.** Pull request checks include lint/format, builds and package/application
+types, package/application tests, both-arm synthetic Chromium journeys, and browser
+worker/IndexedDB contracts. These are not live passkey-provider or native proof
+acceptance. Coverage and opt-in native/image/installed-consumer qualification have
+separate commands and receipts; see the [quality guide](../site/quality.md).
 
-**Production.** CI will be redesigned from scratch. It should build the artefacts, run the
-integration tests against a localnet, and run the end-to-end script.
+**Production.** Require the relevant exact-source, packaged-consumer, target-network,
+provider and native/image qualification for the composition being deployed. Fast CI
+cannot substitute for those boundaries.
 
 ## Non-localnet networks are not release-qualified
 

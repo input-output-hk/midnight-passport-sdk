@@ -316,6 +316,40 @@ GET cursors are validated; a stale cursor still requires a fresh snapshot, not
 silent event loss. Ordinary waiting reads fresh bounded snapshots, so an event
 observer may see repeated events; it receives snapshots, not an exactly-once log.
 
+### Source preview: bounded observation and admission
+
+The source after RC7 hardens this same opt-in protocol; it does not change the
+default demo, recover missing host work or retry a POST. New deployment admission
+requires the declared first device arm to match its authoriser scheme. Existing
+retained records remain readable; a historical mismatch is not rewritten or
+permission to execute a replacement.
+
+A coordinator-owned serial queue now admits its configured `maxActive` capacity.
+If you inject a shared wallet queue, size and share it deliberately: a custom
+queue exception still leaves conservative uncertainty because it may have entered
+the effect before throwing. Increasing capacity never grants spending authority.
+
+Native HTTP job responses are bounded before JSON parsing. The current compact
+wire limit is **32,791 bytes**, derived from the maximum admitted 256-event tail,
+safe-integer cursors/timestamps and 64 tagged transaction watch IDs. Whitespace
+counts toward this limit. Oversized or malformed responses refuse under the
+original identity; error/404 bodies are cancelled without reading protected
+diagnostics. Late responses and pending reads are cancelled on interruption.
+A custom `FetchLike` exposing only `json()` owns allocation before it returns;
+a deadline bounds caller waiting but cannot forcibly stop arbitrary host work.
+
+`onSnapshot` accepts `void` or `Promise<void>`. It receives a cloned public snapshot
+and is awaited within the existing total invocation budget. A throw, rejection,
+abort or stalled observer stops that caller with sanitized `MutationUnsettled`;
+it does not cancel, rewrite or replay the durable job. Late rejection is handled,
+not emitted as an unhandled process error. Keep telemetry bounded and use the
+returned final receipt for confirmation, rather than assuming every observer
+snapshot is terminal or current.
+
+These source changes have deterministic fake-driver, real-stream and owned
+loopback transport tests. They do not extend the dated native/image results
+below or qualify a released artifact, real provider or Lace integration.
+
 ### Operational use cases and expected results
 
 | Situation | Action | Expected result |

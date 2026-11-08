@@ -1,3 +1,4 @@
+import type { WebCryptoKey } from './web-crypto-key.js';
 // Scoped-grant v1: a 94-byte container delivering the current ACC viewing secret to a grantee.
 import { x25519 } from '@noble/curves/ed25519.js';
 
@@ -21,7 +22,7 @@ const concat = (...parts: readonly Uint8Array[]): Uint8Array<ArrayBuffer> => {
 };
 const same = (left: Uint8Array, right: Uint8Array): boolean =>
   left.length === right.length && left.every((value, index) => value === right[index]);
-const wrappingKey = async (shared: Uint8Array, grantId: Uint8Array): Promise<CryptoKey> => {
+const wrappingKey = async (shared: Uint8Array, grantId: Uint8Array): Promise<WebCryptoKey> => {
   try {
     const material = await crypto.subtle.importKey(
       'raw',

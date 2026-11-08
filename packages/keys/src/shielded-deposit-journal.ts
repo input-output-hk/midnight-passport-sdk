@@ -1,3 +1,4 @@
+import type { WebCryptoKey } from './web-crypto-key.js';
 import {
   PassportConnectorError,
   readShieldedDepositDocument,
@@ -34,7 +35,7 @@ export function encryptedShieldedDepositJournal(
     new TextEncoder().encode(
       JSON.stringify(['mn-passport:shielded-deposit-journal', 1, context, requestId, revision]),
     );
-  const withKey = <T>(requestId: string, work: (key: CryptoKey) => Promise<T>) =>
+  const withKey = <T>(requestId: string, work: (key: WebCryptoKey) => Promise<T>) =>
     source.withSession(async () => {
       const bytes = await source.deriveSecret({
         domain: 'mn-passport:shielded-deposit-journal:v1',

@@ -245,3 +245,19 @@ wallet work/balances, plus actual wallet SDK import in a worker. Its receipt is
 included in the job summary. It does not contact a user's demo or start Docker.
 Measure warm hosted timing after an authorized push; local timing is not proof of
 the 30–45-second hosted target. The full browser journeys still run both arms.
+
+### Documentation type contracts — local source follow-up
+
+Required `lint` also runs `scripts/docs/snippets.mjs` (`pnpm test:docs` alone). It
+strict-checks the exact TypeScript fences and example modules against actual public
+source exports in four ambient targets. The inventory rejects unregistered pages,
+fences and modules rather than silently skipping new examples. It executes no
+example, starts no host and requires no Docker, keys or generated build output.
+Declaration-only pinned binding files remain checked source inputs.
+
+Keep code snippets complete and mark their release/runtime track beside the code.
+A source compile does not establish an installed RC's behavior, provider support
+or a successful transaction. Preserve the separate library and demo guide entry
+paths; do not import the demo's policy or UI into reusable API documentation.
+Measure the extra warm hosted time after an authorized push; local timing alone
+does not establish the required 30–45-second CI target. No push occurs tonight.

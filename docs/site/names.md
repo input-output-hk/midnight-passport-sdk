@@ -26,7 +26,7 @@ import {
 } from '@input-output-hk/mn-passport-account/names';
 
 // Supply an adapter from your trusted host composition root.
-async function inspectName(names: PassportNameService) {
+export async function inspectName(names: PassportNameService) {
   return resolvePassportName(names, {
     name: 'alice.passport.test',
     networkId: 'undeployed',

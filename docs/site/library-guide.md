@@ -15,7 +15,10 @@ storage choices are not SDK defaults. To run that application, use the
 [Install and connect]({{ '/getting-started/' | relative_url }}) is the **published
 `0.1.0-rc7`** path. Install matching exact versions and use the release-tagged browser
 quickstart. The [package map]({{ '/packages/' | relative_url }}) identifies the nine
-implemented libraries and their dependency direction.
+implemented libraries and their dependency direction. Its
+[runtime/export index]({{ '/packages/#runtime-and-host-requirements' | relative_url }})
+separates neutral APIs, browser capabilities, fetch transports and Node backend code;
+import/type support is not provider or transaction readiness.
 
 The checked-out source also has **unpublished additions after RC7**: validation,
 authorization, secret-store and background subpaths; interaction/naming/wallet helpers;

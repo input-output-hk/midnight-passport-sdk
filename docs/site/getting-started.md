@@ -56,8 +56,8 @@ npm install --save-exact \
   @input-output-hk/mn-passport-contract@0.1.0-rc7
 ```
 
-Node tooling requires Node 22 or newer. The repository uses `nix develop` to pin Node, pnpm and
-Compact. Keep all SDK packages on the same exact release. `next` is a moving preview tag;
+Node 22 is the repository's pinned/tested tooling baseline. Use `nix develop` to pin Node, pnpm and
+Compact; a newer Node version needs its own runtime verification. Keep all SDK packages on the same exact release. `next` is a moving preview tag;
 pin a version and lockfile for a reproducible integration.
 
 ## 3. Start and verify the backend
@@ -99,27 +99,63 @@ Review account effects separately or combine them with the actual request when t
 exact fields are already available. Neither login nor PRF derivation approves a transfer.
 See [the ceremony contract]({{ '/consent/#public-ceremony-hook' | relative_url }}).
 
-Call the API from explicit user actions:
+Initialize the linked `connectLocalPassport(records)` once with your persistent host
+store, then pass that returned API and a public progress callback to this complete
+caller module. Construction starts no credential operation. Invoke `create`/`open`
+from explicit user actions, after your own review; never create on page load.
 
 ```ts
-const passport = await connectLocalPassport(records);
+import type {
+  PassportConnectorAPI,
+  PassportEvent,
+} from '@input-output-hk/mn-passport-protocol';
+import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
 
-// In the Create button handler; do not create an account on every page load.
-const account = await passport.createAccount({
-  userName: 'alice',
-  retireAuthority: true,
-  onEvent: (event) => showProgress(event),
-});
-console.log(account.address, await account.state());
+export function accountActions(
+  passport: PassportConnectorAPI,
+  onEvent: (event: PassportEvent) => void,
+) {
+  let pending: AbortController | undefined;
+  const run = async <T,>(work: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+    if (pending) throw new Error('Finish or cancel the current account action first');
+    const controller = new AbortController();
+    pending = controller;
+    try {
+      return await work(controller.signal);
+    } finally {
+      pending = undefined;
+    }
+  };
+  return {
+    create(input: { userName: string; retireAuthority: boolean }) {
+      // Capture the reviewed primitive values before asynchronous work.
+      const { userName, retireAuthority } = input;
+      return run(signal => passport.createAccount({ userName, retireAuthority, signal, onEvent }));
+    },
+    open: () => run(signal => passport.openAccount({ signal, onEvent })),
+    cancel: () => pending?.abort(),
+  };
+}
 
-// In a later Open button handler, using the same persistent host store and passkey:
-const reopened = await passport.openAccount();
-console.log(reopened.address);
+export function publicFailureCode(error: unknown): string {
+  return error instanceof PassportConnectorError ? error.code : 'UnexpectedHostError';
+}
 ```
 
-Here `records` and `showProgress` are application-owned persistence and presentation; they are
-not additional SDK globals. `retireAuthority: true` retires the deployment maintenance authority,
-so the deployed ACC cannot later be upgraded through it. Make that choice explicitly.
+The caller awaits the returned promise, catches the typed code and updates its own
+UI. `onEvent` should project only public step/phase/timing and transaction references;
+never log arbitrary provider causes or key material. `UserCancelled`/`Aborted` stops
+future work, but a submitted or unknown transaction must be reconciled under its
+original ID. This helper serializes one local caller; durable/cross-tab coordination
+is a separate host responsibility. Each action gets a new cancellation controller.
+It does not automatically retry, supply consent or enroll/unlock a software owner.
+
+`retireAuthority: true` permanently removes the ACC maintenance authority; false is
+also an explicit host choice supported by the API. Present that decision before
+calling `create`. The demo always retires it. Host account records are metadata and
+sealed state, not a wallet seed store. The SDK has no generic `disconnect`/vault-close
+method on `PassportConnectorAPI`: close only the observers, stores, workers and key
+sources your host owns, while preserving journals and acknowledged receipts.
 
 Run at exactly `http://localhost:5173` for this local example. The passkey RP ID, origin and
 contract WebAuthn profile must agree. The reference [Vite configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc7/apps/passport-dapp/vite.config.ts)

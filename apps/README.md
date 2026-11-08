@@ -3,7 +3,7 @@
 ## Local prototype UX milestone
 
 The [execution map](../docs/prototype/ux-milestone.md) tracks the approved
-Settings/Activity/Audit redesign. The local demo composes five workspaces, a
+Settings/Activity/Audit redesign. The local demo composes four navigation workspaces, a
 responsive Activity panel/sheet and a dedicated Audit workspace using portable
 `account/interaction` models. [The UI guide](../docs/site/demo-ui.md) maps every
 action to its new location. **Passport account** now uses **Balances / Deposit /
@@ -12,7 +12,8 @@ shown at a time, and the open ACC/network remains visible. Contract counters are
 expandable. Deposit uses the configured demo funding wallet; navigation never
 starts a transfer or credential request. Form values survive same-page tab and
 workspace changes; Settings’ session-target shortcut opens Withdraw. The [optional React host example](../docs/site/react-example.md) uses synthetic
-public snapshots only; actual Lace Wallet connection remains a separate task.
+public snapshots only; the optional Lace Wallet reader has separate real-provider
+qualification and grants no ACC authority.
 These changes are source after RC7; keep existing launch commands and durable
 operation state. Optional host renderers must not initiate account actions while
 rendering, subscribing or cleaning up a presentation control.
@@ -29,7 +30,7 @@ lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](.
 
 | App                | What                                                                                                                                                                                                                                                  |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `passport-service` | Serves the ACC's ZK artefacts (`/zk/acc`), proves with server-side keys (`/prove`), deploys in waves (`/deploy`), sponsors fees (`/sponsor/*`) and keeps the passkey-to-account registry (`/accounts`). It also serves versioned config, binding-pinned artefacts, account hints, job-based prove/deploy and fee routes under `/v1`. It holds the only funded key. Binds `127.0.0.1:8787`. |
+| `passport-service` | Serves the ACC's ZK artefacts (`/zk/acc`), proves with server-side keys (`/prove`), deploys in waves (`/deploy`), sponsors fees (`/sponsor/*`) and keeps the passkey-to-account registry (`/accounts`). It also serves versioned config, binding-pinned artefacts, account hints, job-based prove/deploy and fee routes under `/v1`. It owns the fee sponsor; the optional funding wallet and user's built-in wallet are separate. Binds `127.0.0.1:8787`. |
 | `passport-key-service` | Standalone Node container for restoring, verifying and HTTP-serving the pinned ACC keys. It has no sponsor wallet; see its [image and operations guide](passport-key-service/README.md). |
 | `passport-funding-service` | Separate wallet-backed process for an authenticated, allowlisted unshielded deposit into a deployed ACC. See its [operations guide](passport-funding-service/README.md). |
 | `passport-dapp`    | The harness at `http://localhost:5173`: create and reopen a Passport account with a passkey, and fund the open ACC when launched with `demo up --funding`. Both arms seal a random ACC viewing secret; roster-safe rotation still needs chain-backed sources. The built-in wallet is separate from the ACC. |
@@ -330,7 +331,9 @@ and `assertionMaterial`.
   second live P-256 device. If read grants are active, the host must supply verified holdings and
   complete grant targets so the account rotates its viewing and roster keys and reseals every
   grantee before giving the joiner a fresh key. The joining host can call
-  `openAccountAt(address)` with its passkey; the demo does not yet expose that address-based flow.
+  `openAccountAt(address)` with its enrolled passkey. The demo exposes **Open by ACC address**;
+  the cold-first path verifies the authentic sealed registration and live device before opening.
+  It does not recover a lost passkey or discover an unknown address.
 - **The service binds loopback** (`127.0.0.1`). CORS lets only the dapp origin read its answers,
   which on its own does not stop a cross-site page from sending a request. So the service also
   answers `415` to any POST or PUT whose `content-type` is not `application/json` (that forces a
@@ -372,9 +375,13 @@ and `assertionMaterial`.
   from the service, which could otherwise vouch for its own tampered artefacts. The service
   verifies the same hash and every listed file at start-up. Changing the artefacts means
   restarting both.
-- **Built-in wallet.** An in-page wallet built with `HDWallet.fromSeed` from the passkey's
-  BIP-39 seed (above), exposed as `window.midnight.devwallet`. Lace has no phrase-derived
-  Midnight wallet in scope; this is the prototype's stand-in. Without PRF it fails with
+- **Built-in wallet.** The browser's owned Worker hosts `HDWallet.fromSeed`, wallet
+  subscriptions and synchronization. The page exposes its read-only descriptor as
+  `window.midnight.devwallet`; Node probes use the direct runtime. The seed is derived
+  from the passkey's root output, separately from the random sealed ACC viewing secret.
+  Matching reviewed routine access can supply the seed without a new PRF request.
+  This is the demo's read-only evaluation wallet, with separate external-wallet
+  provider selection and qualification. Without PRF it fails with
   `UnsupportedAuthenticator`: there is no fallback seed, so it never opens a different, empty
   wallet, and the web app never carries the genesis (sponsor) seed. The ACC flows do not depend
   on the wallet: fees are sponsored.
@@ -393,8 +400,10 @@ compromised service could fake the ledger that `openAccount`'s checks read.
 The packaged JubJub grant source is `createMidnightGrantSource` in
 `mn-passport-adapter-midnight-js`. A host supplies the pinned ACC binding, same-network public-data
 provider, and durable read-key openings. It reads the live grant map and checks opening hashes for
-viewing-key rotation; the standalone demo wires a browser-local encrypted opening store, but does
-not yet expose grant controls. An opening created elsewhere remains unavailable here.
+viewing-key rotation. The standalone demo wires a browser-local encrypted opening store
+and reviewed grant issue/export/import/spend/revoke/recovery controls in Settings → Permissions.
+An opening created elsewhere remains unavailable unless explicitly imported or reconstructed
+through the supported verified bookkeeping path.
 Grant issue also reads the roster's auth nonce and refuses a change after signing, before it
 stages an opening or submits the circuit.
 The owner flow now names the creation lock choice and full grant context in its key-session
@@ -430,7 +439,7 @@ descriptor for hosted signers; the demo's local passkey authoriser ignores that 
   compiled. It is only reproducible from the canonical `compile.sh` invocation.
 - **The service exits at start-up.** Its first line says why: usually missing artefacts or a
   hash mismatch.
-- **Stale directory after a chain reset.** The hint stores are only valid for the chain they were written on. `prototype:up` stops the localnet with its volumes kept, so accounts survive a restart. If you drop the volumes (`docker compose … down -v`, or `experiments/acc-0.35/run.sh`, which starts fresh), delete `~/.midnight-passport/registry.json`, `registry.json.v1` and `registry.deployments.json`, or opening fails with `AccountNotFound`.
+- **Stale directory after an intentional chain reset.** Hint stores describe their original chain. Ordinary restarts preserve the chain volumes and accounts. After a deliberate fresh-chain reset, archive and reconcile the old registry, `registry.json.v1`, deployment log and transaction evidence before selecting fresh state. Do not delete registries, journals or unknown IDs to repair failed authentication or a timeout.
 
 ### Local durability milestone
 
@@ -608,3 +617,13 @@ longer holds the wallet action open: it has a separate status and timestamp, wit
 shared in-flight reads and stale-result fences across refresh/reconnect. DUST
 failure does not hide a ready NIGHT balance. The browser journey deliberately
 holds DUST pending and checks NIGHT plus usable wallet controls before releasing it.
+
+### Opt-in job transport source follow-up
+
+The default demo continues to use its existing transport. Hosts explicitly using
+`remoteHostJobs` get bounded native JSON replies, discarded-body cleanup and
+`void | Promise<void>` snapshot observers supervised by the caller's existing
+deadline. A failed observer stops observation, not accepted durable work. Retain
+original IDs and use explicit same-intent recovery. The service-owned queue now
+matches its active capacity; injected shared queues keep host-owned backpressure.
+Read the [job contract](../docs/site/service-jobs.md#source-preview-bounded-observation-and-admission).

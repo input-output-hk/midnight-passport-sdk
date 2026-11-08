@@ -7,7 +7,11 @@ permalink: /demo-guide/
 The reference app shows one way to compose Passport accounts, local services, passkeys
 and a separate read-only wallet. Its UI, local journals, routine memory leases and
 funding setup belong to the demo. To integrate the packages into your own product,
-start with the [Library integration guide]({{ '/library-guide/' | relative_url }}).
+start with the [Library integration guide]({{ '/library-guide/' | relative_url }}) and
+[public runtime/export index]({{ '/packages/#runtime-and-host-requirements' | relative_url }}).
+The [complete caller example]({{ '/getting-started/#4-compose-the-browser-account-api' | relative_url }})
+uses injected API/presentation capabilities; it does not require this app's DOM,
+Web Locks, storage names or routine-owner composition.
 
 **This page describes local source after published RC7.** Installing `0.1.0-rc7`
 does not install these UI changes or enable its memory/session policies. A published

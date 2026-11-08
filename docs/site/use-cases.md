@@ -16,20 +16,22 @@ fences remain. These additions are not in published RC7.
 
 ## Local source navigation
 
-The local prototype after RC7 has **Overview, Passport account, Midnight wallet,
-Audit and Settings**. Create/open in Overview; use Passport account → Deposit/Withdraw for transfers;
+The local source after RC7 has four menu groups: **Passport account, Midnight wallet,
+Audit and Settings**. Sign up / Log in is a separate signed-out entry, with no Overview
+menu. Use Passport account → Deposit/Withdraw for transfers;
 refresh wallet balances in Midnight wallet. Devices, sessions, manual grants and
 wallet connection setup live in Settings. Developer tools and the mock name
 lookup are under its Developer tools submenu. Full logs/copy are in Audit.
 See [workspace and Activity controls]({{ '/demo-ui/' | relative_url }}). These UI
 changes are not in published RC7.
 
-In the latest local source, Overview is the **Sign up / Log in** landing. These
-labels invoke the existing create/open flows below; **Log in with an account
+The **Sign up / Log in** entry labels invoke the existing create/open flows below; **Log in with an account
 address** retains the enrolled-passkey address flow. Use **Demo tools → Settings**
 or **Demo tools → Audit** to reach the regular workspaces before opening an
-account. Successful account access selects Balances; it grants no new permission
-and does not connect or unlock the separate wallet automatically.
+account. Successful account access selects Balances. The header Home link returns
+to this entry before a verified open in the page, and to Balances afterwards; it
+starts no credential work and never logs out. Login can adopt the explicitly reviewed
+routine seed/reader lease, but does not connect the wallet or unlock/enroll a full owner.
 
 
 ## RC7 consent and capability inspection

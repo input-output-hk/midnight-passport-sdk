@@ -1,3 +1,4 @@
+import type { WebCryptoKey } from './web-crypto-key.js';
 // Lace Passport grant bookkeeping records: one 192-byte encrypted inbox entry per record part.
 // Kept internal to the key package until the complete AccountViewingKey port is assembled.
 import { sha256 } from '@noble/hashes/sha2.js';
@@ -66,7 +67,7 @@ const hkdf = async (
     ),
   );
 };
-const aeadKey = async (readerSecret: Uint8Array, info: Uint8Array): Promise<CryptoKey> => {
+const aeadKey = async (readerSecret: Uint8Array, info: Uint8Array): Promise<WebCryptoKey> => {
   const material = await crypto.subtle.importKey(
     'raw',
     readerSecret as Uint8Array<ArrayBuffer>,
@@ -90,7 +91,7 @@ const aeadKey = async (readerSecret: Uint8Array, info: Uint8Array): Promise<Cryp
 const recordKeys = async (
   readerSecret: Uint8Array,
   account: string,
-): Promise<{ key: CryptoKey; tagKey: Uint8Array }> => {
+): Promise<{ key: WebCryptoKey; tagKey: Uint8Array }> => {
   if (readerSecret.length !== KEY_LENGTH) throw new Error('reader secret must be 32 bytes');
   const accountBytes = bytes(account);
   return {
