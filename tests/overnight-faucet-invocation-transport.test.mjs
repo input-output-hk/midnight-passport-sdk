@@ -161,21 +161,26 @@ for (const phase of ['headers', 'fetch', 'json', 'native']) {
     let calls = 0,
       cancels = 0;
     /** @type {AbortSignal|undefined} */ let wire;
-    const remote = client(
-      async (_url, init) => {
-        calls++;
-        assert.ok(init?.signal instanceof AbortSignal);
-        wire = init.signal;
-        if (phase === 'fetch') return new Promise(() => {});
-        if (phase === 'native')
-          return new Response(
+    // This case measures a stalled body after headers, not cold Undici setup.
+    // Construct before the client's total budget starts (not inside fetch).
+    const native =
+      phase === 'native'
+        ? new Response(
             new ReadableStream({
               cancel() {
                 cancels++;
                 return new Promise(() => {});
               },
             }),
-          );
+          )
+        : undefined;
+    const remote = client(
+      async (_url, init) => {
+        calls++;
+        assert.ok(init?.signal instanceof AbortSignal);
+        wire = init.signal;
+        if (phase === 'fetch') return new Promise(() => {});
+        if (native) return native;
         return { ok: true, status: 200, json: () => new Promise(() => {}) };
       },
       20,
