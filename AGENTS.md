@@ -859,3 +859,22 @@ that metadata variable; the unchanged loader-override guard otherwise refuses
 before resources are created. Keep other inherited loader/seed/preload overrides
 forbidden. Retain failed receipts, use fresh roots, and never delete an occupied
 lease or touch unrelated containers to retry. Read the qualification guide.
+
+
+### Optional installed-source quality (local source after RC7)
+
+Use `scripts/consumer/installed-quality.mjs` only with an already prepared fresh
+external application, all nine local tarballs and independently pinned manifest/lock
+hashes. Follow `docs/site/quality.md`. The runner checks actual public JS/JSON imports,
+strict Node/DOM/WebWorker fixtures and public documentation against installed
+declarations; it refuses workspace SDK resolution and input drift. It does not
+pack, install, publish, generate keys, start services or establish registry provenance.
+Retain failed outputs and original build/pack/install receipts. Keep the copied-dist
+preview distinct: that lane resolves every runtime export and imports selected
+integration modules, with reused rather than installed external dependencies.
+
+`remoteV1Sponsor` explicit timeout now covers one whole observation, including
+encoding and bodies. Unset timeout still delegates to legacy behavior. No automatic
+POST retry or durable recovery query follows an observation failure. Preserve
+public typed errors even if encoding consumes the budget before dispatch. Read
+the HTTP selection map before substituting legacy and versioned clients.

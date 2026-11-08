@@ -179,8 +179,10 @@ nix develop -c node scripts/consumer/preview-quality.mjs --output /private/tmp/p
 Choose a fresh external output directory with an existing parent. The runner copies
 the nine packages' manifest-declared files, rejects escaping or missing exports and
 SDK links back to the checkout, then strict-checks neutral ES2022, browser DOM and
-WebWorker consumers. Node imports each public module without accessing browser
-capabilities. An owned ephemeral memory secret-store round trip checks copy and
+WebWorker consumers. Node resolves every public runtime export and imports the selected integration
+modules without accessing browser capabilities. Resolving an export is not the
+same as executing its module; the installed-consumer lane checks those imports
+separately. An owned ephemeral memory secret-store round trip checks copy and
 lifecycle behavior; it does not create a persistent vault or background process.
 
 The runner fingerprints and reuses the checkout's physical **external** dependencies.
@@ -189,6 +191,40 @@ bind the copied SDK, external graph and tools to that run. This is source-previe
 evidence only. Keep packed/installed-package, actual registry, browser worker,
 provider and native proof qualification as separate lanes. A Node import succeeding
 does not make a browser adapter's credential or storage operations usable in Node.
+
+### Installed current-source quality check
+
+The source-only `scripts/consumer/installed-quality.mjs` checks an **already prepared**
+fresh application containing all nine local candidate tarballs. It does not pack,
+install, publish, generate keys or start a wallet. Preparation and its independently
+recorded bundle/lock hashes belong to the
+[installed-consumer workflow]({{ '/qualification/#installed-candidate-interruption-tier' | relative_url }}).
+Use the exact source/toolchain corresponding to that candidate:
+
+```sh
+CONSUMER_ROOT=/absolute/path/to/prepared-consumer \
+RELEASE_VERSION=0.0.0-dev.source.gYOUR_SOURCE_REVISION \
+CONSUMER_MANIFEST_SHA256=YOUR_INDEPENDENT_MANIFEST_SHA256 \
+CONSUMER_LOCK_SHA256=YOUR_INDEPENDENT_LOCK_SHA256 \
+nix develop -c node scripts/consumer/installed-quality.mjs \
+  --output /absolute/path/to/prepared-consumer/quality-new
+```
+
+Replace the version and hashes with the prepared candidate's exact values. The output
+must be an absent, absolute direct child of the consumer; failed outputs are retained.
+The runner verifies installed SDK bytes against all nine archives before and after
+execution, checks strict Node/DOM/WebWorker fixtures and the maintained public
+examples through installed declarations, and **imports** every public JavaScript/JSON
+export in an owned bounded child. It rejects SDK resolutions back to the checkout,
+missing or throwing exports, compiler-input changes and dependency/tool drift.
+Documentation examples retain their declared ambient target and existing declaration
+checking policy; the quality fixtures additionally check dependency declarations.
+
+The receipt distinguishes actual module imports from export resolution. It fingerprints
+physical dependencies and tools; it does not establish how the installation was
+obtained. Pair it with the original build/pack and fresh frozen-offline installation
+receipts. Local tarball integrity is not registry provenance, a published release,
+provider support, native proof acceptance or full Lace interoperability.
 
 ### Documentation is checked source
 

@@ -153,7 +153,9 @@ It does not automatically retry, supply consent or enroll/unlock a software owne
 `retireAuthority: true` permanently removes the ACC maintenance authority; false is
 also an explicit host choice supported by the API. Present that decision before
 calling `create`. The demo always retires it. Host account records are metadata and
-sealed state, not a wallet seed store. The SDK has no generic `disconnect`/vault-close
+local counters, without sealed entries or wallet seeds. Pending hints and recovery
+journals have separate [persistence owners]({{ '/library-guide/#persistence-owners' | relative_url }}).
+The SDK has no generic `disconnect`/vault-close
 method on `PassportConnectorAPI`: close only the observers, stores, workers and key
 sources your host owns, while preserving journals and acknowledged receipts.
 

@@ -673,3 +673,21 @@ revocation uses typed internal phases with unchanged live checks/fresh approval.
 The later extraction is not qualified by an earlier frozen native receipt.
 Examples are strict-checked; the worker entry also has an exact-source execution
 regression. Preserve all pending journals, account records and user service state.
+
+
+### Library transport and installation checks (source after RC7)
+
+The reusable V1 sponsor now bounds the whole observation only when an explicit
+valid timeout is configured; the unset branch and legacy clients retain their
+existing behavior. No POST is automatically retried. A timeout does not prove
+that a value transaction was not submitted. Read the library HTTP client map in
+`docs/site/service.md`; these are adapter contracts, not a change to demo wallet
+or account authority. `docs/site/library-guide.md` identifies each persistence
+owner separately from demo memory leases and journals.
+
+After preparing all nine matching local tarballs in a fresh external application,
+`scripts/consumer/installed-quality.mjs` checks installed declarations, actual
+public-module imports and input hashes. It does not install or publish; follow
+`docs/site/quality.md` for the required bundle/lock pins and output path. Keep
+local installed-source results separate from released RC7 and native/provider
+evidence. The demo remains one composition of these libraries.

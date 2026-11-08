@@ -43,6 +43,11 @@ a chain, signer, prover, wallet or persistent store.
 | `account/validation`, `/authorization`, `/secret-store`, `/background`, `/names`, `/interaction` | Source after RC7; neutral browser/Node contracts | Per-port admission, consent/custody/lifecycle policy. Background needs a supplied channel/thread, storage is opt-in, interaction starts no effects. |
 | `adapter-browser/background`, `/secret-store`, `/wallet` | Source after RC7; explicit browser adapters | Owned Worker/MessagePort, explicitly approved plaintext IndexedDB, or selected wallet provider respectively. None grants ACC authority. |
 
+For the service clients, use the [public-import/protocol table]({{ '/service/#choose-an-http-client' | relative_url }}).
+The dedicated `/prover`, `/sponsor` and `/deployer` entries are legacy clients;
+`remoteV1*` and the durable host clients are root exports. HTTP route names do not
+create additional package subpaths.
+
 CJS/dynamic-import and browser-bundler evidence is tied to the exact installed-consumer
 lane/version; there is no separate `require` export family. Do not infer universal
 CommonJS loading, server rendering, React Native or real-provider support from ESM

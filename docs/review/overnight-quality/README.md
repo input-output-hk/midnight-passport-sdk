@@ -21,10 +21,10 @@ possible. Public docs live here; running checklist/evidence live in Obsidian.
 | O3 | SDK boundary defects | Grant-holder review/sign/send use one immutable admitted input; bounded decimals before BigInt; Node Buffer session reads do not erase retained keys | Fixed, including immutable grant records/openings in wave 2 |
 | O4 | Reusable API and domain readability | Extract cohesive responsibilities from measured large files, clear capability/custody/authority naming, no API/recipe churn or inflated quality ceilings | Typed rotation/enrollment/job phases in waves 2–4; keyring modules in wave 5; selective/all P-256 grant revocation in wave 7 |
 | O5 | Input and platform contracts | Zod/branded admission where needed; safe malformed/oversized/mutating input handling; browser/Node import/type behavior preserved | Waves 1–7: bounded config/jobs, owned key/coin inputs, invocation IDs, cleanup and total V1/raw-mutation observation lifetimes |
-| O6 | Browser coverage | Playwright journeys cover successful/cancel/retry/expiry/navigation flows and exact request counts; actual DOM/worker/storage tests distinguish synthetic account/chain from native evidence | 192 both-arm journeys pass again in wave 6; worker/storage checks retained; final overnight rerun follows the last runtime tranche |
+| O6 | Browser coverage | Playwright journeys cover successful/cancel/retry/expiry/navigation flows and exact request counts; actual DOM/worker/storage tests distinguish synthetic account/chain from native evidence | 192 both-arm journeys pass at the clean signed wave 7 head; worker/storage checks retained; final overnight rerun follows the last runtime tranche |
 | O7 | Promptless upstream behavior | Pin current staging/public source; explain persisted-key restoration vs fresh authentication. Any implemented resume never infers private authority from machine trust or public hints | Research published locally; no implicit private persistence |
 | O8 | Human copy and docs | Remove redundant reassurance, keep meaningful action/scope/recovery information, align API examples, agent guide and architecture decisions | Library/demo paths and rendered/typechecked examples delivered; contract guides in wave 2 |
-| O9 | Independent handover | Sub-agent reviews plus independent exact-head review, signed local commits, passing gates/coverage/consumer checks, signed immutable packet and updated checkpoint | Waves 1–6 signed and independently accepted; wave 3 finding closed in wave 4; final overnight review remains |
+| O9 | Independent handover | Sub-agent reviews plus independent exact-head review, signed local commits, passing gates/coverage/consumer checks, signed immutable packet and updated checkpoint | Waves 1–7 signed and independently accepted; wave 3 finding closed in wave 4; final overnight review remains |
 
 ## First tranche verification
 
@@ -489,3 +489,64 @@ effort; a refusing provider can retain an inert listener. New receipt/primary-er
 late-abort/actual-process closure tests and independent probe closure precede the
 final post-fix gate and signature. Earlier passing coverage/browser/consumer
 receipts retain their pre-fix hashes; they are not relabeled as final execution.
+
+## Wave 7 accepted; next bounded integration checks
+
+Signed head `02188b6fd5250de941912823945ed42de6fa0118` has a good intended GPG
+signature, DCO and Assisted-by. Independent clean-head Codex CLI review found no
+actionable issues in 166.46 seconds. The final full gate passes 2,026 tests with
+seven existing skips. Fresh clean-head coverage is 94.96% lines / 93.63% functions /
+86.81% branches; every package's 80% floors pass. All 192 synthetic browser journeys
+and the nine-package/33-subpath copied-source checks pass with stable fingerprints.
+The copied check resolves every runtime export and executes selected integration
+imports; it is neither an installation nor execution of every public module.
+
+Signed-source documentation renders 44 pages with 2,064 valid local targets.
+Owned desktop/mobile navigation, keyboard and overflow checks pass and close their
+browser/server. The exact worker documentation fence starts its server and passes
+its executable regression; all 34 configured TypeScript example targets pass.
+These local docs checks do not establish a deployed-site update.
+
+The signed immutable wave 7 packet retains the original cleanup probes, their
+independent closure and the earlier test-typing failure. All 2,288 artifact-index
+entries verify, preserving previous rows and bytes. No push or publication.
+The separate native run remains frozen at accepted wave 6, so it cannot qualify
+this later P-256 revocation extraction or transport changes. Its final outcome and
+owned cleanup will be reported separately.
+
+The next bounded slice addresses a demonstrated explicit-timeout gap in the
+synchronous V1 sponsor, checks actual offline-installed current-source tarballs,
+and clarifies persistence ownership and HTTP client selection in the developer
+guides. These are planned until their own implementation and receipts land.
+
+## Wave 8: explicit sponsor lifetime and installed quality
+
+The synchronous V1 sponsor now captures its factory fetch/timeout. Unset timeout
+keeps the exact legacy path; a valid explicit timeout covers encoding, one POST,
+headers, body and result projection. No default response cap, POST retry, caller
+signal forwarding or durable query is added. A known non-200 response retains its
+status classification when optional diagnostics stall. Expiry cannot undo a send.
+
+Independent review found an encoding-time admission edge: an already expired
+lifetime could expose its private interruption error. That is fixed and replayed
+independently; both valid 1 MiB/1 ms cases now return the public typed timeout with
+zero POSTs. The original probes remain retained. All 71 new and 23 compatibility
+cases pass; the independent focused closure passes 90 cases. Shared lifetime, body
+owner and legacy clients are unchanged.
+
+A small opt-in installed-quality runner reuses the existing tarball audit, public
+fixture text, documentation inventory and browser-access guard. Four helpers stay
+below default size/complexity/unsafe limits. Fourteen new boundary cases plus 15
+existing input/package tests pass. It checks matching audited installed roots,
+strict Node/DOM/Worker declarations, verbatim documentation, actual JS/JSON export
+imports and byte/tool/compiler drift. It neither installs nor publishes. Actual
+nine-package staged installation remains a separate next verification step, not
+a claim inferred from synthetic archives.
+
+Developer guides now correct AccountRecordStore to metadata/counter only, map
+each persistence owner, and distinguish actual public HTTP imports from wire
+routes and legacy subpaths. The source-evaluation path requires no running demo
+merely to check types/imports. Library policies stay separate from demo wiring.
+The final local full Nix gate passes **2,111 tests / seven existing skips**, with
+lint, formatting, builds and all app typechecks. Signing, exact-head review and
+fresh installed/coverage/browser/doc receipts follow this frozen candidate.

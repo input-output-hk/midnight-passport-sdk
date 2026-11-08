@@ -6,8 +6,9 @@ import type {
   Submitter,
 } from '@input-output-hk/mn-passport-account/ports';
 import { fromHex, toHex } from './hex.js';
-import { defaultFetch, postService, stringMember } from './service-client.js';
+import { defaultFetch, stringMember } from './service-client.js';
 import { requestV1Job, type V1RemoteOptions } from './v1-jobs.js';
+import { requestV1Sponsor } from './v1-sponsor-transport.js';
 
 const resultBytes = (answer: Record<string, unknown>, path: string): Uint8Array => {
   try {
@@ -78,30 +79,29 @@ export function remoteV1Sponsor(
   base: string,
   options: V1RemoteOptions = {},
 ): FeeSponsor & Submitter {
-  const fetchFn = options.fetch ?? defaultFetch;
+  const fetchFn = options.fetch ?? defaultFetch,
+    timeoutMs = options.timeoutMs;
   return {
     supportsShieldedOffers: false,
     async balanceAndSign(unbalancedTx) {
-      const answer = await postService(
+      return requestV1Sponsor(
         fetchFn,
         base,
         '/v1/sponsor/balance',
-        { tx: toHex(unbalancedTx) },
-        'sponsor',
-        options.timeoutMs,
+        unbalancedTx,
+        timeoutMs,
+        (answer) => resultBytes(answer, '/v1/sponsor/balance'),
       );
-      return resultBytes(answer, '/v1/sponsor/balance');
     },
     async submit(finalisedTx) {
-      const answer = await postService(
+      return requestV1Sponsor(
         fetchFn,
         base,
         '/v1/sponsor/submit',
-        { tx: toHex(finalisedTx) },
-        'sponsor',
-        options.timeoutMs,
+        finalisedTx,
+        timeoutMs,
+        (answer) => stringMember(answer, 'txId', '/v1/sponsor/submit'),
       );
-      return stringMember(answer, 'txId', '/v1/sponsor/submit');
     },
   };
 }

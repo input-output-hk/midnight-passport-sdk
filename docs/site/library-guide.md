@@ -27,6 +27,30 @@ or a source test does not make that feature available from RC7. Consult the
 [API release map]({{ '/api/#published-and-source-preview-surfaces' | relative_url }})
 before selecting an import. Keep source builds and published consumer evidence separate.
 
+### Evaluate the current source
+
+Use a checkout at the reviewed revision with its matching `flake.lock`,
+`pnpm-lock.yaml` and prepared dependencies. From that repository, build the declared
+packages and check the public documentation examples in the pinned tooling shell:
+
+```sh
+nix develop -c pnpm run build
+nix develop -c pnpm run test:docs
+```
+
+These steps need no running demo, chain, wallet or credential provider. They check
+source/build contracts; account operations still need the host ports below. Import
+through the public package entries, not `packages/*/src` paths. Browser examples
+need their declared DOM/worker and bundler capabilities; Node import acceptance
+does not supply native Node passkeys or browser IndexedDB.
+
+The [copied-source consumer check]({{ '/quality/#copied-source-consumer-check' | relative_url }})
+also checks built public exports in a fresh external directory. It copies declared
+SDK artifacts and reuses physical external dependencies; it does not perform a
+package-manager installation. Neither check changes RC7 package contents or makes
+source-only imports available from an RC7 install. Keep the source revision and
+the exact check receipt with your evaluation.
+
 ## Select the boundary you own
 
 | Host | SDK entry | Host responsibilities |
@@ -139,7 +163,22 @@ login or transaction-approval policy.
 
 ## Custody and cleanup
 
-`AccountRecordStore` contains account metadata and sealed state; it is not a seed store.
+### Persistence owners
+
+Each port stores different data. The host supplies storage and its scope; wiring
+one store does not automatically persist the others.
+
+| Port / data | Stored material | Host lifetime and recovery responsibility |
+| --- | --- | --- |
+| `AccountRecordStore` | Address, binding, scheme, optional credential ID and local use counter | Device/account metadata only. Preserve bigint/byte encodings and scope the host store by network, binding and device/account. The port has `read`, `write` and `exists`, with no generic remove/close method. |
+| `AccountDirectory` / `AccountHint` | Untrusted credential-to-account pointer, public device/policy fields and status; applicable pending hints can also retain boot salt and sealed `keyEntries` | Persist pending activation material before relying on recovery. Verify hints against the live ACC and selected key origin. Its `get`/`put` interface supplies no generic deletion or vault-close operation. |
+| Grant, mutation and deposit journals | Their original intents, protected outputs/openings, revisions and transaction/recovery references | Supply each required encrypted/durable provider; retain unknown and pending IDs. A metadata store is not their backing store. See [recovery contracts]({{ '/durability/' | relative_url }}). |
+| Optional source `SecretStore` | Explicitly chosen scoped secret bytes and version tokens | Host opts into custody, access and persistence. Versioned `remove` and local `close` have provider-specific persistence effects; neither revokes chain authority. See [secret custody]({{ '/secret-storage/' | relative_url }}). |
+
+Account records contain no sealed entries, viewing secret or wallet seed. Pending
+hints and journal plaintext can contain sensitive recovery/linkage data; do not
+turn them into public logs or delete them to bypass an unknown operation.
+
 The optional source `SecretStore` has explicit `(namespace, networkId, bindingId,
 account, id)` scope and compare-and-swap versions. Reads and successful writes return
 caller-owned byte copies. Clear those copies after use. Missing data, a provider outage

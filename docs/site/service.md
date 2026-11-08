@@ -26,6 +26,35 @@ ports. Use the versioned job clients for asynchronous proof/deploy progress,
 reconciliation, and the faucet client below for the separate funding service.
 Choosing a client does not configure an authenticated ingress or durable backend.
 
+## Choose an HTTP client
+
+Import entries below use the full prefix `@input-output-hk/mn-passport-`.
+The root `adapter-service` exports all these clients. Its dedicated `/prover`,
+`/sponsor` and `/deployer` entries expose the **legacy** clients, not aliases for
+`remoteV1*`. Wire routes such as `/v1/jobs` and `/v1/mutations` are not public
+package import subpaths.
+
+These names are available in RC7. The deadline/body behavior identified as source
+preview below is later hardening; it is not installed by upgrading a host's
+configuration while keeping RC7 package bytes.
+
+| Public import entry / client | Wire protocol | Current observation budget | Caller signal / progress | Retry and recovery |
+| --- | --- | --- | --- | --- |
+| `adapter-service`: `remoteV1Prover`, `remoteV1Deployer` | One `POST /v1/prove-tx` or `/v1/deploy`, then cursor `GET /v1/jobs/{id}` | Source preview: 600,000 ms total; 250 ms poll interval | Flow `signal` and validated synchronous `onEvent` | Only failed GET transport is retried, up to three times at the same cursor. No POST replay; a lost deployment acceptance may hide already-started work. |
+| `adapter-service`: `remoteV1Sponsor` | Synchronous `POST /v1/sponsor/balance` and `/v1/sponsor/submit` | Source preview: no default deadline; an explicit timeout bounds the whole observation, including body and result projection | No caller signal/progress forwarding | One POST, no automatic retry or durable query. Observation failure does not establish no submission. |
+| `adapter-service`: `remoteHostMutationPorts` | `POST /v1/mutations/execute` and same-ID `/reconcile` | Source preview: 600,000 ms total; 250 ms poll interval | Caller signal; no progress callback | No transport POST retry. Valid unknown can continue through original-ID reconciliation, which may finish approved preparation. See [host durability]({{ '/host-durability/' | relative_url }}). |
+| `adapter-service`: `remoteHostJobs`, `remoteHostJobPorts` | Durable `/v1/host-jobs` descriptors, status and explicit resume | 600,000 ms invocation; 10,000 ms per request; 250 ms poll interval | Caller signal; `onSnapshot` shares the invocation budget | GET is read-only; no automatic POST retry or legacy fallback. Preserve the original identity. See [service jobs]({{ '/service-jobs/' | relative_url }}). |
+| `adapter-service/prover`, `/deployer`, `/sponsor`: `remoteProver`, `remoteDeployer`, `remoteSponsor` | Legacy `/prove-tx`, `/deploy`, `/sponsor/*` | Prover defaults to 600,000 ms; deployer/sponsor have no default timeout. Explicit fetch abort does not bound an uncooperative body | Deployer checks pre-abort only; no active caller-signal/progress forwarding | No automatic retry. Use the matching server protocol and reconcile uncertain effects. |
+| `adapter-service/config`: `fetchCheckedConfig`, `fetchCheckedV1Config` | `GET /config` or `/v1/config` | Source preview: 30,000 ms whole read and 65,536 bytes | No caller signal/progress option | No automatic retry. Reacquire under the same trusted pins; a discovery result is not transaction evidence. See [config admission]({{ '/api/#source-preview-checked-configuration-contract' | relative_url }}). |
+| `adapter-service/faucet`: `remoteFaucet` | `POST /v1/faucet/fund` | No default deadline; optional fetch abort is not a whole-observation guarantee | Fresh header callback; no caller signal/progress option | Retain the caller's request ID. Completed IDs return recorded results; pending uncertainty requires operator reconciliation. |
+
+The total-budget and body-ownership contracts are per client, not a library-wide
+HTTP default. Generic V1 proof results have no universal byte ceiling; the raw
+mutation and host-job protocols have their own receipt limits. Fetch-capable Node
+and browser imports still need the corresponding runtime capabilities and trusted
+service. Keep funding/host-job tokens in a trusted backend or BFF; browser
+importability does not authorize embedding bearer credentials in a public page.
+
 ## Reference demo composition
 
 The prototype service runs on `127.0.0.1:8787` by default. It is a development composition, not an authenticated public API. Its wire types are in [`packages/protocol/src/service.ts`](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/protocol/src/service.ts). The reusable Node HTTP host and versioned proving, sponsorship, submission, deployment, directory, and funding handlers are in [`packages/service/src`](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/packages/service/src); the demo supplies its chain backend. The standalone funding process mounts the reusable funding handler; the Passport demo process mounts only a localnet browser proxy for it.
@@ -130,9 +159,37 @@ allocations and blocking JavaScript are outside caller-deadline preemption. The
 8 MiB service request cap does not establish a maximum proof result. This slice
 does not silently truncate larger custom-host replies.
 
-These changes concern versioned job clients. Legacy `postService` and synchronous
-`remoteV1Sponsor` remain separate: an unspecified sponsor timeout has no implicit
-deadline, and its old explicit signal alone does not bound an uncooperative
-transport/body. Do not infer durable recovery or a no-send result from that path.
+These changes concern versioned job clients. The synchronous sponsor has the
+separate explicit-timeout contract below; legacy `postService` remains unchanged.
 The [raw durable mutation observation contract]({{ '/host-durability/#source-preview-original-id-observation' | relative_url }})
 has a different receipt policy and no transport POST retry.
+
+## Source preview: explicit sponsor timeout
+
+After RC7, `remoteV1Sponsor(base, options)` captures `fetch` and `timeoutMs` when
+constructed. It does not poll or read `pollIntervalMs`. With no timeout, its
+balance/submit methods retain the legacy `postService` path: no implicit budget,
+request signal or response cap. Supplying a timeout selects the bounded path;
+it must be an integer from **1 to 2,147,483,647 ms**. Invalid values reject as
+`InternalError` before a POST, rather than selecting the unset branch.
+
+The explicit budget covers transaction encoding, the single POST, headers,
+body/JSON and result projection together. It settles even if injected fetch or
+JSON promises ignore abort. The adapter aborts its wire signal and cancels/releases
+owned native readers best effort; late bodies and rejecting cleanup cannot replace
+the settled outcome. It adds no response-size ceiling. Custom JSON allocations,
+blocking JavaScript and backend computation remain outside forced cancellation.
+
+An already observed non-200 status keeps its normal HTTP error classification if
+optional diagnostics stall until expiry. Missing-header/success-body expiry uses
+`InternalError`; non-200 responses retain `serviceFailure` mapping, including
+`SponsorRejected` for 403/429/5xx. Host code should use typed codes and redact any
+provider cause before logging. No caller `AbortSignal` or progress callback is
+added to this synchronous sponsor API.
+
+Submit observation failure does not prove the transaction was not broadcast.
+This client retries no POST and supplies no durable ID/query endpoint. Preserve
+available transaction evidence and reconcile through the chosen backend/chain;
+do not repeat balance/submit merely because waiting ended. This source-only
+correction does not change legacy `remoteSponsor`/`postService`, host jobs,
+configuration reads or published RC7 package bytes.
