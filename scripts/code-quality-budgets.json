@@ -21,12 +21,12 @@
     },
     "packages/account/src/durable-mutations.ts": {
       "ceilings": {
-        "functionLines": 498,
+        "functionLines": 477,
         "complexity": 37,
         "nonNull": 35,
         "unsafeCasts": 1
       },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+      "reason": "Q1 legacy orchestration/type debt, ratcheted after immutable invocation and requested-document admission extraction. No growth; see docs/review/overnight-quality/README.md."
     },
     "packages/account/src/grant-holder.ts": {
       "ceilings": {
@@ -217,12 +217,6 @@
     "packages/adapter-midnight-js/src/graphql-holding-indexer.ts": {
       "ceilings": {
         "functionLines": 195
-      },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
-    },
-    "packages/adapter-midnight-js/src/holdings.ts": {
-      "ceilings": {
-        "nonNull": 1
       },
       "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
     },

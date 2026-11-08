@@ -26,6 +26,43 @@ export interface HoldingIndexer {
 const hex = (value: Uint8Array): string =>
   Array.from(value, (byte) => byte.toString(16).padStart(2, '0')).join('');
 
+const typedArrayPrototype = Object.getPrototypeOf(Uint8Array.prototype);
+const typedArrayLength = Object.getOwnPropertyDescriptor(typedArrayPrototype, 'byteLength')?.get;
+const typedArrayName = Object.getOwnPropertyDescriptor(
+  typedArrayPrototype,
+  Symbol.toStringTag,
+)?.get;
+
+/** Admit actual byte storage before copying; Buffer and cross-realm Uint8Array are supported. */
+function ownedCoinBytes(value: Uint8Array): Uint8Array | undefined {
+  if (!typedArrayLength || !typedArrayName) return undefined;
+  try {
+    const name: unknown = Reflect.apply(typedArrayName, value, []);
+    const length: unknown = Reflect.apply(typedArrayLength, value, []);
+    if (name !== 'Uint8Array' || length !== 32) return undefined;
+    return new Uint8Array(value);
+  } catch {
+    return undefined;
+  }
+}
+function ownedCoin(coin: ShieldedCoin): ShieldedCoin | undefined {
+  try {
+    const { nonce, color, value } = coin;
+    if (typeof value !== 'bigint' || value < 0n || value >= 1n << 128n) return undefined;
+    const ownedNonce = ownedCoinBytes(nonce),
+      ownedColor = ownedCoinBytes(color);
+    if (!ownedNonce || !ownedColor) return undefined;
+    return { nonce: ownedNonce, color: ownedColor, value };
+  } catch {
+    return undefined;
+  }
+}
+const copyCoin = (coin: ShieldedCoin): ShieldedCoin => ({
+  nonce: new Uint8Array(coin.nonce),
+  color: new Uint8Array(coin.color),
+  value: coin.value,
+});
+
 /** Recompute the chain commitment rather than trusting a decryptable inbox description. */
 function coinCommitment(account: string, coin: ShieldedCoin): string | undefined {
   try {
@@ -37,6 +74,19 @@ function coinCommitment(account: string, coin: ShieldedCoin): string | undefined
   } catch {
     return undefined;
   }
+}
+
+/** Own every candidate before commitment/history, retaining its original inbox position. */
+function holdingCandidates(account: string, opened: readonly (OpenedInboxEntry | null)[]) {
+  const candidates: { index: number; commitment: string; coin: ShieldedCoin }[] = [];
+  for (let index = 0; index < opened.length; index++) {
+    const item = opened[index];
+    const coin = item?.kind === 'coin' ? ownedCoin(item.coin) : undefined;
+    if (!coin) continue;
+    const commitment = coinCommitment(account, coin);
+    if (commitment) candidates.push({ index, commitment, coin });
+  }
+  return candidates;
 }
 
 /**
@@ -52,13 +102,7 @@ export function createMidnightHoldingSource(indexer: HoldingIndexer): QualifiedH
     if (entries.length !== opened.length)
       throw new Error('the opened inbox does not match its entries');
     if (!/^[0-9a-f]{64}$/i.test(account)) throw new Error('invalid ACC address');
-    const candidates: { index: number; commitment: string; coin: ShieldedCoin }[] = [];
-    for (let index = 0; index < opened.length; index++) {
-      const item: OpenedInboxEntry | null = opened[index] ?? null;
-      if (item?.kind !== 'coin') continue;
-      const commitment = coinCommitment(account, item.coin);
-      if (commitment) candidates.push({ index, commitment, coin: item.coin });
-    }
+    const candidates = holdingCandidates(account, opened);
     if (candidates.length === 0) return [];
     const actions = await indexer.enumerateContractActions(account);
     const hashes = [...new Set(actions.map((action) => action.txHash))];
@@ -93,10 +137,11 @@ export function createMidnightHoldingSource(indexer: HoldingIndexer): QualifiedH
     for (const { index, commitment, coin } of candidates) {
       const found = received.get(commitment);
       if (!found || seen.has(commitment)) continue;
-      if (found.missing || found.indices.size !== 1)
+      const mtIndex = found.indices.values().next().value;
+      if (found.missing || found.indices.size !== 1 || mtIndex === undefined)
         throw new Error('the ACC holding has no unique verified Merkle index');
-      const mtIndex = [...found.indices][0]!;
-      if (spent.has((await indexer.coinNullifier(account, coin, mtIndex)).toLowerCase())) continue;
+      if (spent.has((await indexer.coinNullifier(account, copyCoin(coin), mtIndex)).toLowerCase()))
+        continue;
       seen.add(commitment);
       selected.push({ index, coin, mtIndex });
     }
@@ -110,9 +155,7 @@ export function createMidnightHoldingSource(indexer: HoldingIndexer): QualifiedH
       return (await verified(account, entries, opened)).map(({ index, coin, mtIndex }) => ({
         inboxIndex: index,
         coin: {
-          nonce: coin.nonce.slice(),
-          color: coin.color.slice(),
-          value: coin.value,
+          ...copyCoin(coin),
           mt_index: mtIndex,
         },
       }));

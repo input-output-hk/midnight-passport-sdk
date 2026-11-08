@@ -1,4 +1,9 @@
 import { durableCredentials } from './durable-credentials.js';
+import {
+  mutationInvocation,
+  loadMutationDocument,
+  admitResumeCancelled,
+} from './mutation-invocation.js';
 import { utf8ToBytes } from '@noble/hashes/utils.js';
 import { hmac } from '@noble/hashes/hmac.js';
 import { sha256 } from '@noble/hashes/sha2.js';
@@ -82,17 +87,7 @@ export function createDurablePassportMutations({
     manifestSha256: ports.network.manifestSha256,
     scheme: ports.authoriser.scheme,
   };
-  const load = async (id: string) => {
-    if (!/^[0-9a-f]{32}$/.test(id))
-      return mutationFailure('Mutation ID must be 16-byte lowercase hex.');
-    const d = await journal.read(id);
-    if (d) {
-      validateMutationDocument(d);
-      if (mutationDigest(d.pins) !== mutationDigest(pins))
-        return mutationFailure('Mutation network, binding or arm differs.');
-    }
-    return d;
-  };
+  const load = (id: string) => loadMutationDocument(journal, pins, id);
   const execute = async (
     intent: MutationIntent,
     options: MutationRunOptions,
@@ -113,7 +108,7 @@ export function createDurablePassportMutations({
       resuming: doc !== undefined,
     });
     checkpoint(options);
-    if (doc?.phase === 'cancelled' && !allowCancelled)
+    if (doc?.phase === 'cancelled' && allowCancelled !== true)
       return mutationFailure('Mutation is cancelled; explicitly approve resumption.');
     const save = async (update: Partial<MutationDocument>) => {
       const previous = doc;
@@ -533,11 +528,14 @@ export function createDurablePassportMutations({
     return answer;
   };
   return {
-    run: (intent: MutationIntent, options: MutationRunOptions) => execute(intent, options),
+    run: async (intent: MutationIntent, options: MutationRunOptions) =>
+      execute(intent, mutationInvocation(options)),
     async resume(options: MutationRunOptions & { readonly resumeCancelled?: boolean }) {
-      const doc = await load(options.id);
+      const invocation = mutationInvocation(options),
+        resumeCancelled = admitResumeCancelled(options.resumeCancelled);
+      const doc = await load(invocation.id);
       if (!doc) return mutationFailure('No durable mutation exists.');
-      return execute(doc.intent, options, options.resumeCancelled);
+      return execute(doc.intent, invocation, resumeCancelled);
     },
     async inspect(id: string): Promise<MutationAudit | undefined> {
       const doc = await load(id);

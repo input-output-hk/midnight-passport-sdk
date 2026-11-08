@@ -82,6 +82,18 @@ passkey check. The host callback executes the approved snapshot and the connecto
 retains dispatch checks. See the [authorization guide]({{ '/authorization/' | relative_url }})
 for a complete typed withdrawal example, route admission, errors and cancellation.
 
+Source durability calls also capture original invocation ID, signal/callback and
+explicit cancelled-resume choice before awaits. A host cannot change a pending
+call by editing its options. Journal documents must match the requested ID. The
+[durability contract]({{ '/durability/#source-preview-pin-one-invocation' | relative_url }})
+describes refusals and the boundary between original-intent recovery and replay.
+
+The Midnight holding adapter owns the coin bytes it verifies and returns fresh
+qualified values; an injected nullifier callback receives a separate copy. Supply
+the complete [holding-indexer contract]({{ '/api/#ports' | relative_url }}), not only
+an inbox decoder. Source snapshots protect tested asynchronous boundaries, not
+arbitrary hostile host code or external chain freshness.
+
 ## Source preview: checked service configuration
 
 Load service configuration against independently trusted pins before selecting runtime

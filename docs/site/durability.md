@@ -58,6 +58,31 @@ metadata, the host must return `unknown` for an interrupted submission.
 A multi-wave deployer needs its own durable wave journal; an interrupted partial
 deployment must not be reported as a completed deployment or deployed again.
 
+### Source preview: pin one invocation
+
+The local source after RC7 captures each `run` or `resume` invocation's original
+`id`, `signal` and `onEvent` before asynchronous work. Resume also captures the
+explicit `resumeCancelled` choice. Journal lookup, consent, CAS, effect correlation,
+reconciliation and result identity use that invocation. Changing the caller's
+options while a reader, consent dialog or backend is pending cannot select a new
+ID, signal or callback. The selected signal remains live: aborting it still stops
+future work; replacing the field on the caller's object does not replace it.
+
+IDs must be primitive 32-character lowercase hexadecimal strings. A journal
+returning a valid document for another ID refuses before consent or writes, for
+`run`, `resume`, `inspect` and `cancel`; structural document validity alone is
+insufficient. `resumeCancelled`, when present, must be a boolean. Resuming a
+cancelled document requires explicitly `true`, plus the usual fresh host approval
+and reconciliation. None of these checks grants permission to replay an unknown
+transaction or changes an existing journal's format.
+
+The encrypted journal also admits one document/revision before key derivation,
+keeping plaintext, authenticated revision and CAS identity consistent. It still
+requires a host store with real atomic, crash-durable acknowledgements. These
+source admission changes are not installed by published RC7 and do not make the
+reference demo's default account buttons durable. See the
+[demo composition]({{ '/demo-guide/' | relative_url }}) for that host's wiring.
+
 ### Host composition
 
 This example uses an already selected, authorised key origin. It does not enrol

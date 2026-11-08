@@ -647,3 +647,16 @@ and [Account keys and recovery](../docs/site/account-keys.md). For this applicat
 consent, worker and memory-lease choices, use [Demo composition](../docs/site/demo-guide.md).
 Public circuit artifacts and their HTTP cache are documented in the separate
 [proving-artifact guide](../docs/site/keys.md).
+
+
+### Source hardening: request and holding identity
+
+Reusable durable APIs pin the original invocation ID, signal/callback and explicit
+cancelled-resume choice across asynchronous work; a different journal document
+refuses before approval or writes. The Midnight holding source keeps owned coin
+bytes from commitment through qualification, with isolated callback/return copies.
+See [durability](../docs/site/durability.md#source-preview-pin-one-invocation) and
+[holding ports](../docs/site/api.md#ports). The demo's default buttons still use its
+existing account/consent composition; these library changes do not silently enable
+durable mode, reconnect wallets or change approval policy. Native runs require a
+matching frozen source receipt; synthetic tests alone do not qualify them.

@@ -342,3 +342,15 @@ retained legacy stack or the user's current demo. Its fake-stack/worker tests
 establish admission and teardown contracts only; native results need a frozen-source
 passing receipt. Follow the [runbook](../site/qualification.md#source-preview-isolated-populated-host-job-lifecycle),
 retain original unknown IDs and preserve all old fixtures and volumes.
+
+
+### Original invocation and verified holdings — source hardening
+
+The reusable durable coordinator now owns each invocation's original ID and flow
+options before awaits, validates the requested document namespace and requires an
+explicit boolean cancelled-resume choice. The chain holding source owns the coin
+it verifies and isolates host callback/returned byte copies. These changes protect
+asynchronous data consistency without adding a demo action or changing passkey
+policy. Read the library [durability](../site/durability.md#source-preview-pin-one-invocation)
+and [holding-source](../site/api.md#ports) contracts. Preserve original unknown IDs,
+exact-value shielded spending and the separate source/native/provider evidence tiers.

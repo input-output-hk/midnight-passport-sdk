@@ -835,3 +835,17 @@ This is separate from required fast PR checks and from the TypeScript example ga
 The checker never fetches external URLs, cannot qualify deployed Pages, and is not
 a CSS/layout check. Rerender/check links and inspect desktop/mobile layout after
 navigation/content changes; do not infer current rendering from an older receipt.
+
+
+### Durable invocation and verified coin ownership — local source
+
+Durable `run`/`resume` capture original ID, signal/callback and explicit cancelled
+resumption choice before awaits. Use primitive canonical IDs and boolean choices;
+foreign journal documents refuse before consent/writes. Do not mutate options to
+redirect a pending call. Keep original IDs and uncertainty fences. The holding
+adapter owns admitted coin bytes before commitment/history, gives the nullifier
+callback a separate copy and returns fresh qualified nonce/color arrays. Complete
+HoldingIndexer methods, unique positions and spent checks remain required. Read
+`docs/site/durability.md` and `docs/site/api.md`; these are source hardening, not a
+new release or demo policy. Root's full gate/review and frozen native receipt still
+need the actual final source; earlier unit/type results are not native acceptance.

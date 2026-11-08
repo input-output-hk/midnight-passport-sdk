@@ -93,18 +93,15 @@ test('output-limit interruption also permits bounded owned cleanup', async () =>
   }
 });
 
-test('parent interruption reaches the detached scenario and repeated signals preserve cleanup', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'passport-parent-interrupt-'));
-  const started = join(root, 'started.json'),
-    cleaned = join(root, 'cleaned.json'),
-    result = join(root, 'result.json');
-  const code = `const fs=require('node:fs');let stopping=false;const keep=setInterval(()=>{},1000);process.on('SIGTERM',()=>{if(stopping)return;stopping=true;setTimeout(()=>{fs.writeFileSync(${JSON.stringify(cleaned)},'cleaned');clearInterval(keep);},80);});fs.writeFileSync(${JSON.stringify(started)},JSON.stringify({pid:process.pid}));`;
+/** @param {string} root @param {string} code */
+async function parentFixture(root, code) {
+  const result = join(root, 'result.json');
   const entry = join(root, 'outer.mjs');
   const runner = new URL('../scripts/qualification/runner.mjs', import.meta.url).href;
   const catalog = new URL('../scripts/qualification/catalog.mjs', import.meta.url).href;
   await writeFile(
     entry,
-    `import {runSuite} from ${JSON.stringify(runner)};import{SCENARIOS}from ${JSON.stringify(catalog)};Object.assign(SCENARIOS['binding-source'],${JSON.stringify(scenario(code, 5000, 1000))},{tier:SCENARIOS['binding-source'].tier});const receipt=await runSuite('foundation',${JSON.stringify(result)});if(receipt.allRequiredPassed)throw Error('Interrupted suite cannot pass');`,
+    `import {runSuite} from ${JSON.stringify(runner)};import{SCENARIOS}from ${JSON.stringify(catalog)};Object.assign(SCENARIOS['binding-source'],${JSON.stringify(scenario(code, 30_000, 1000))},{tier:SCENARIOS['binding-source'].tier});const receipt=await runSuite('foundation',${JSON.stringify(result)});if(receipt.allRequiredPassed)throw Error('Interrupted suite cannot pass');`,
   );
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT;
@@ -116,16 +113,122 @@ test('parent interruption reaches the detached scenario and repeated signals pre
     detached: true,
     stdio: 'ignore',
   });
-  const closed = new Promise((resolve) => child.once('close', resolve));
+  let didClose = false;
+  child.once('error', () => {}); // The close/ready assertions diagnose failed fixture startup.
+  /** @type {Promise<number|null>} */
+  const closed = new Promise((resolve) =>
+    child.once('close', (code) => {
+      didClose = true;
+      resolve(code);
+    }),
+  );
+  return {
+    child,
+    closed,
+    isClosed: () => didClose || child.exitCode !== null || child.signalCode !== null,
+  };
+}
+
+/** @param {Awaited<ReturnType<typeof parentFixture>>} owned */
+async function outerExit(owned) {
+  /** @type {ReturnType<typeof setTimeout>|undefined} */ let timer;
+  try {
+    return await Promise.race([
+      owned.closed,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Owned outer runner did not close.')), 30_000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Read only this fixture's private fresh marker; never infer a PID from process matching.
+ * @param {string} path */
+async function markerPid(path) {
+  try {
+    const pid = JSON.parse(await readFile(path, 'utf8')).pid;
+    return Number.isSafeInteger(pid) && pid > 1 ? Number(pid) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** @param {number} pid */
+function groupGone(pid) {
+  try {
+    process.kill(-pid, 0);
+    return false;
+  } catch (error) {
+    return error instanceof Error && 'code' in error && error.code === 'ESRCH';
+  }
+}
+/** @param {number|undefined} pid @param {'SIGTERM'|'SIGKILL'} signal */
+function signalOwned(pid, signal) {
+  if (pid)
+    try {
+      process.kill(-pid, signal);
+    } catch {
+      /* Exact owned group already ended. */
+    }
+}
+
+/** Give the outer runner time to forward cleanup, then bound exact owned escalation/reaping.
+ * An unavailable PID remains unknown; retain failed evidence rather than guessing another group.
+ * @param {Awaited<ReturnType<typeof parentFixture>>} owned @param {string} started
+ * @param {number|undefined} innerPid */
+async function cleanupFixture(owned, started, innerPid) {
+  const end = performance.now() + 2000,
+    forceAt = end - 250;
+  if (!owned.isClosed()) signalOwned(owned.child.pid, 'SIGTERM');
+  while (performance.now() < forceAt) {
+    innerPid ??= await markerPid(started);
+    if (owned.isClosed() && innerPid && groupGone(innerPid))
+      return { outerClosed: true, innerPid, innerGone: true };
+    await delay(Math.min(10, Math.max(0, forceAt - performance.now())));
+  }
+  if (!owned.isClosed()) signalOwned(owned.child.pid, 'SIGKILL');
+  if (innerPid && !groupGone(innerPid)) signalOwned(innerPid, 'SIGKILL');
+  while (performance.now() < end) {
+    const recovered = await markerPid(started);
+    if (!innerPid && recovered) {
+      innerPid = recovered;
+      signalOwned(innerPid, 'SIGKILL');
+    }
+    if (owned.isClosed() && innerPid && groupGone(innerPid)) break;
+    await delay(Math.min(10, Math.max(0, end - performance.now())));
+  }
+  return {
+    outerClosed: owned.isClosed(),
+    innerPid: innerPid ?? null,
+    innerGone: innerPid ? groupGone(innerPid) : null,
+  };
+}
+
+test('parent interruption reaches the detached scenario and repeated signals preserve cleanup', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'passport-parent-interrupt-'));
+  const started = join(root, 'started.json'),
+    cleaned = join(root, 'cleaned.json'),
+    result = join(root, 'result.json');
+  const code = `const fs=require('node:fs');let stopping=false;const keep=setInterval(()=>{},1000);process.on('SIGTERM',()=>{if(stopping)return;stopping=true;setTimeout(()=>{fs.writeFileSync(${JSON.stringify(cleaned)},'cleaned');clearInterval(keep);},80);});fs.writeFileSync(${JSON.stringify(started)},JSON.stringify({pid:process.pid}));`;
+  const owned = await parentFixture(root, code),
+    { child } = owned;
   /** @type {number | undefined} */ let innerPid;
   let quiescent = false;
   try {
-    const deadline = performance.now() + 4000;
+    // runSuite fingerprints the workspace before spawning this scenario. Its startup
+    // competes with other package-test processes; interruption assertions begin only
+    // after the child acknowledges its handler, not after a startup-speed assumption.
+    const deadline = performance.now() + 30_000;
     while (performance.now() < deadline) {
       try {
         innerPid = JSON.parse(await readFile(started, 'utf8')).pid;
         break;
       } catch {
+        assert.equal(owned.isClosed(), false, 'Outer runner closed before the ready handshake');
+        assert.equal(child.exitCode, null, 'Outer runner exited before the ready handshake');
+        assert.equal(child.signalCode, null, 'Outer runner stopped before the ready handshake');
         await delay(10);
       }
     }
@@ -136,7 +239,7 @@ test('parent interruption reaches the detached scenario and repeated signals pre
     process.kill(-child.pid, 'SIGTERM');
     await delay(10);
     if (child.exitCode === null && child.signalCode === null) process.kill(-child.pid, 'SIGINT');
-    const exit = await closed;
+    const exit = await outerExit(owned);
     assert.equal(exit, 0);
     const observed = JSON.parse(await readFile(result, 'utf8'));
     assert.equal(observed.allRequiredPassed, false);
@@ -156,15 +259,56 @@ test('parent interruption reaches the detached scenario and repeated signals pre
     quiescent = true;
   } finally {
     if (!quiescent) {
-      for (const pid of [innerPid, child.pid])
-        if (pid)
-          try {
-            process.kill(-pid, 'SIGKILL');
-          } catch {
-            /* Owned group exited. */
-          }
-    }
-    await closed;
-    await rm(root, { recursive: true, force: true });
+      const cleanup = await cleanupFixture(owned, started, innerPid);
+      await writeFile(join(root, 'cleanup.json'), JSON.stringify(cleanup), {
+        mode: 0o600,
+        flag: 'wx',
+      });
+      t.diagnostic(`Preserved failed synthetic termination fixture: ${root}`);
+    } else await rm(root, { recursive: true, force: true });
   }
 });
+
+for (const readiness of ['missing', 'late']) {
+  test(`failed fixture cleanup forwards through the exact outer group with ${readiness} readiness`, async (t) => {
+    const root = await mkdtemp(join(tmpdir(), 'passport-unready-cleanup-'));
+    const started = join(root, 'started.json'),
+      handler = join(root, 'handler.json'),
+      cleaned = join(root, 'cleaned.json');
+    const later =
+      readiness === 'late'
+        ? `setTimeout(()=>fs.writeFileSync(${JSON.stringify(started)},JSON.stringify({pid:process.pid})),120);`
+        : '';
+    const code = `const fs=require('node:fs');let stopping=false;const keep=setInterval(()=>{},1000);process.on('SIGTERM',()=>{if(stopping)return;stopping=true;setTimeout(()=>{fs.writeFileSync(${JSON.stringify(cleaned)},'cleaned');clearInterval(keep);},80);});fs.writeFileSync(${JSON.stringify(handler)},JSON.stringify({pid:process.pid}));${later}`;
+    const owned = await parentFixture(root, code);
+    let oraclePid,
+      quiescent = false;
+    try {
+      const end = performance.now() + 30_000;
+      while (!(oraclePid = await markerPid(handler)) && performance.now() < end) {
+        assert.equal(owned.isClosed(), false, 'Fixture must acknowledge its real handler');
+        await delay(10);
+      }
+      assert.ok(oraclePid);
+      const before = performance.now(),
+        cleanup = await cleanupFixture(owned, started, undefined);
+      assert.ok(performance.now() - before < 3000, 'Fixture cleanup must remain bounded');
+      assert.equal(cleanup.outerClosed, true);
+      assert.equal(groupGone(oraclePid), true, 'Actual owned inner group must be gone');
+      assert.equal(await readFile(cleaned, 'utf8'), 'cleaned');
+      if (readiness === 'late') assert.equal(cleanup.innerPid, oraclePid);
+      else assert.equal(cleanup.innerPid, null);
+      quiescent = true;
+    } finally {
+      if (quiescent) await rm(root, { recursive: true, force: true });
+      else {
+        const cleanup = await cleanupFixture(owned, started, oraclePid);
+        await writeFile(join(root, 'cleanup.json'), JSON.stringify(cleanup), {
+          mode: 0o600,
+          flag: 'wx',
+        });
+        t.diagnostic(`Preserved failed synthetic cleanup control: ${root}`);
+      }
+    }
+  });
+}

@@ -309,6 +309,10 @@ The output parent must already exist; both the private output root and outer rec
 must be new. Read the plan first with `nix develop -c pnpm qualify plan
 host-job-lifecycle-isolated-native`. Keep all output and original IDs if it fails.
 
+The node reaches block 2 before indexer startup, matching the demo runbook.
+Canonical finalized-node/indexer readiness is checked before wallet setup and after
+restart; a healthy HTTP endpoint alone is insufficient.
+
 The intended cases use both **same-arm software owners**: populated grants/holdings,
 job-backed enrollment/removal/survivor rotation, original-ID recovery and wallet
 reconnect through the owned indexer's outage. Native acceptance requires an actual

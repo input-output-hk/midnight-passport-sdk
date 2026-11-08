@@ -359,3 +359,48 @@ Physical external dependencies are reused/fingerprinted, not installed. The rece
 retains unchanged before/after SDK/dependency hashes; this is source-preview evidence,
 not registry or released-artifact qualification. The final signed-source docs render
 and exact-head independent review are retained separately after commit.
+
+
+## Wave 6 — original invocation and verified coin ownership
+
+Durable run/resume now capture the primitive canonical original ID, signal,
+callback and explicit cancelled-resume choice before asynchronous journal access.
+All run/resume/inspect/cancel loads reject a valid but foreign journal document
+before consent or writes. The original signal remains live; replacing caller
+options cannot change the admitted invocation. Invalid resume choices do not
+authorize a cancelled intent. Existing original-ID, CAS, uncertainty and receipt
+semantics remain. A small typed helper reduces the existing factory budget; no
+new exception or retry is introduced.
+
+The Midnight holding adapter now owns admitted fixed-size nonce/color bytes and
+uint128 coin values before commitment/history work. Buffer aliases and changing
+caller fields cannot replace the coin qualified under that commitment. Nullifier
+callbacks and returned holdings receive separate owned copies. Existing inbox
+noise handling, unique Merkle positions, spent checks, first-output deduplication
+and eight-pair history batches remain. The complete indexer contract, not only
+an inbox decoder, is documented in the library API guide.
+
+The fresh isolated lifecycle lane waits for node block 2 before starting its
+owned indexer, matching the regular prototype startup's genesis/SPO race guard.
+Canonical finalized-indexer readiness remains a separate later prerequisite.
+This predicate change is independently reviewed, not a native acceptance result.
+
+The final integration gate passes **1,878 tests / seven existing skips**, all
+builds and app typechecks. Independent focused review reruns **67/67 tests** and
+finds no actionable issue. Those candidate checks ran on dirty base b7eafb4;
+exact committed-head static review and fresh coverage/browser/consumer/render
+receipts are retained separately rather than relabeling earlier evidence.
+
+Library docs own invocation admission, holding input/output ownership, complete
+ports and errors. Demo docs describe the selected app composition; these fixes
+do not automatically make that app durable or enable any session policy. All
+work remains local and unpublished. Native, provider, installed-release and full
+Lace acceptance remain distinct from source/unit/browser-synthetic evidence.
+
+The first post-documentation repeat exposed a synthetic test setup race: the
+parent-interruption fixture allowed four seconds for runSuite source fingerprinting
+and child readiness while coverage/browser checks competed for CPU. Its bounded
+ready handshake now allows 30 seconds and fails early if the outer child exits;
+the actual signal, cleanup-grace and no-later-scenario assertions are unchanged.
+This is not a runtime timeout increase. Original failed gate output is retained;
+a complete post-fix gate must pass before commit.

@@ -94,7 +94,8 @@ async function executeIsolatedLifecycle(env, profile, stack, deadline, processes
         r.ok &&
         typeof result.number === 'string' &&
         /^0x[0-9a-f]+$/.test(result.number) &&
-        BigInt(result.number) >= 1n
+        // The indexer SPO client needs block 1 to exist before it starts.
+        BigInt(result.number) >= 2n
       );
     } catch {
       return false;

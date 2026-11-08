@@ -138,7 +138,24 @@ of settlement. Disposing local keys cannot recall a submitted signature or trans
 
 Shielded ACC withdrawals need a `QualifiedShieldedCoin` private witness with 32-byte nonce and color, unsigned 128-bit value, and unsigned 64-bit Merkle index. `createMidnightChain` accepts it only as `Chain.call({ heldCoin })` for a `withdraw_shielded*` circuit. The adapter snapshots the value for that call and refuses a different color requested by `held_coin`. It does not add the coin to proof-service metadata; remote proving still receives the serialized transaction preimage needed to produce a proof. The account API obtains this input from `QualifiedHoldingSource`. The hosted ACC handle does not yet accept this witness.
 
-`createMidnightHoldingSource(indexer)` from `mn-passport-adapter-midnight-js` implements `VerifiedHoldingSource` using the Midnight ledger's contract-owned output commitment. The host supplies `enumerateContractActions(account)` and `queryShieldedOutputs(txHash)` from an indexer on the account's pinned network. The adapter selects the first inbox description for each distinct output the chain created for the ACC and ignores decryptable descriptions without such an output. Pass this source as `holdings` to `createBrowserPassport` when enabling JubJub rotation.
+`createMidnightHoldingSource(indexer)` from `mn-passport-adapter-midnight-js`
+implements the qualified holding source using Midnight's contract-owned output
+commitment. Supply **all four** `HoldingIndexer` methods: `enumerateContractActions`,
+`queryShieldedOutputs`, `queryShieldedInputs` and `coinNullifier`, on the account's
+pinned network. Returned outputs need their exact unique Merkle positions; the
+adapter checks spent nullifiers and selects the first inbox description for each
+distinct held output. A decryptable description alone is insufficient. Missing or
+ambiguous positions refuse. Supply this source as `holdings` when enabling the
+supported sealed JubJub or P-256 owner flows.
+
+**Source preview after RC7:** the adapter owns fixed 32-byte nonce/color and uint128
+value snapshots before computing commitments or awaiting history. The same admitted
+coin determines the nullifier and returned qualified coin. A host nullifier callback
+receives its own copy; its mutation cannot rewrite the verified result. Returned
+nonce/color arrays are fresh caller-owned bytes, including when input used Node
+Buffers. Malformed coin descriptions still remain non-holdings; existing alignment,
+account and unique-index errors retain their refusal behavior. This adds no proof,
+provider or full-wallet compatibility claim.
 
 The same source also implements `QualifiedHoldingSource.selectQualifiedHeldCoins`. When the indexer supplies each output event's `index` (the Merkle position exposed by Lace's indexer), it returns the chain-matched coin with `mt_index` for `held_coin`. A missing or ambiguous index is rejected. This confirms that the ACC received the output; it does not establish that the output is still unspent. The host must reconcile spent outputs, make the qualified coin available inside the owner signing session, and rely on the proof to reject a stale spend. The current read-holdings method does not spend it.
 
