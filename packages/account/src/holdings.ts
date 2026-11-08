@@ -84,8 +84,8 @@ export async function readQualifiedHolding(
   )
     throw new PassportConnectorError('TransferInvalid', 'The qualified coin is malformed.');
   return {
-    nonce: coin.nonce.slice(),
-    color: coin.color.slice(),
+    nonce: Uint8Array.from(coin.nonce),
+    color: Uint8Array.from(coin.color),
     value: coin.value,
     mt_index: coin.mt_index,
   };
@@ -101,7 +101,7 @@ export interface ReadVerifiedHoldingsPorts {
   readonly networkId: string;
   readonly chain: Chain;
   readonly authoriser: Pick<Authoriser, 'withKeySession'>;
-  readonly viewingKey: AccountViewingKey;
+  readonly viewingKey: AccountViewingKey | Pick<AccountViewingKey, 'openInbox'>;
   /** Confirms opened descriptions against distinct chain outputs held by this ACC. */
   readonly holdings: VerifiedHoldingSource;
 }

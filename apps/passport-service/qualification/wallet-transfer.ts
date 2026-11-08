@@ -9,12 +9,18 @@ import { privateFiles, boundedWait, publicEvent as emit } from './private-files.
 import { readHostConfirmation } from '../src/host-driver.ts';
 import { WALLET_WINDOWS } from '../../../scripts/qualification/live-expectations.mjs';
 
-const [, root] = process.argv.slice(2);
+import { nativeIsolationWorker } from '../../../scripts/qualification/native-isolation-worker.mjs';
+
+const [mode, root, arm] = process.argv.slice(2);
+const isolation = nativeIsolationWorker({ kind: 'wallet-transfer', root, arm, mode });
 assert.equal(process.env.PASSPORT_RC_LOCALNET, '1');
 assert.equal(process.env.MN_NETWORK_ID, 'undeployed');
-assert.equal(process.env.MN_INDEXER_URL, 'http://127.0.0.1:18098/api/v4/graphql');
-assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18098/api/v4/graphql/ws');
-assert.equal(process.env.MN_NODE_URL, 'http://127.0.0.1:19954');
+if (!isolation) {
+  assert.equal(process.env.MN_INDEXER_URL, 'http://127.0.0.1:18098/api/v4/graphql');
+  assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18098/api/v4/graphql/ws');
+  assert.equal(process.env.MN_NODE_URL, 'http://127.0.0.1:19954');
+}
+
 assert.equal(process.env.PASSPORT_SPONSOR_SEED, undefined);
 assert.equal(process.env.PASSPORT_SPONSOR_SEED_FILE, undefined);
 const files = privateFiles(root!);

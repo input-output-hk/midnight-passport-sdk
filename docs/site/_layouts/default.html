@@ -11,36 +11,64 @@
     <header>
       <a class="brand" href="{{ '/' | relative_url }}">Midnight Passport SDK</a>
       <nav aria-label="Documentation">
-        <a href="{{ '/getting-started/' | relative_url }}">Get started</a>
-        <a href="{{ '/problems/' | relative_url }}">Problems</a>
-        <a href="{{ '/packages/' | relative_url }}">Packages</a>
-        <a href="{{ '/api/' | relative_url }}">API</a>
-        <a href="{{ '/circuits/' | relative_url }}">Circuits</a>
-        <a href="{{ '/capabilities/' | relative_url }}">Capabilities</a>
-        <a href="{{ '/service/' | relative_url }}">Service</a>
-        <a href="{{ '/use-cases/' | relative_url }}">Demo use cases</a>
-        <a href="{{ '/demo-ui/' | relative_url }}">Demo UI</a>
-        <a href="{{ '/consumer-integration/' | relative_url }}">Integration</a>
-        <a href="{{ '/partner-integration/' | relative_url }}">Partner contracts</a>
-        <a href="{{ '/handover/' | relative_url }}">Handover</a>
-        <a href="{{ '/keys/' | relative_url }}">ZK keys</a>
-        <a href="{{ '/names/' | relative_url }}">Names</a>
-        <a href="{{ '/interaction/' | relative_url }}">Host controls (source)</a>
-        <a href="{{ '/react-example/' | relative_url }}">React example (source)</a>
-        <a href="{{ '/lace-wallet/' | relative_url }}">Lace Wallet (source)</a>
-        <a href="{{ '/durability/' | relative_url }}">Durability</a>
-        <a href="{{ '/grant-recovery/' | relative_url }}">Grant recovery</a>
-        <a href="{{ '/host-durability/' | relative_url }}">Host durability</a>
-        <a href="{{ '/service-jobs/' | relative_url }}">Service jobs</a>
-        <a href="{{ '/consent/' | relative_url }}">Consent</a>
-        <a href="{{ '/jubjub-sessions/' | relative_url }}">Sessions (source)</a>
-        <a href="{{ '/use-case-coverage/' | relative_url }}">Coverage</a>
-        <a href="{{ '/qualification/' | relative_url }}">Qualification</a>
-        <a href="{{ '/releasing/' | relative_url }}">Releasing</a>
+        <a href="{{ '/library-guide/' | relative_url }}">Library integration</a>
+        <a href="{{ '/demo-guide/' | relative_url }}">Demo app</a>
+        <details>
+          <summary>Library reference</summary>
+          <ul>
+            <li><a href="{{ '/getting-started/' | relative_url }}">Install and connect</a></li>
+            <li><a href="{{ '/packages/' | relative_url }}">Packages</a></li>
+            <li><a href="{{ '/api/' | relative_url }}">Account API</a></li>
+            <li><a href="{{ '/problems/' | relative_url }}">Problems and boundaries</a></li>
+            <li><a href="{{ '/circuits/' | relative_url }}">Circuits</a></li>
+            <li><a href="{{ '/capabilities/' | relative_url }}">Capability checks</a></li>
+            <li><a href="{{ '/consumer-integration/' | relative_url }}">Consumer integration</a></li>
+            <li><a href="{{ '/partner-integration/' | relative_url }}">Partner contracts</a></li>
+            <li><a href="{{ '/lace-handover/' | relative_url }}">Lace evaluation</a></li>
+            <li><a href="{{ '/account-keys/' | relative_url }}">Account keys and recovery</a></li>
+            <li><a href="{{ '/keys/' | relative_url }}">Public proving artifacts</a></li>
+            <li><a href="{{ '/names/' | relative_url }}">Naming port (source)</a></li>
+            <li><a href="{{ '/interaction/' | relative_url }}">Presentation models (source)</a></li>
+            <li><a href="{{ '/react-example/' | relative_url }}">React example (source)</a></li>
+            <li><a href="{{ '/lace-wallet/' | relative_url }}">Wallet reader (source)</a></li>
+            <li><a href="{{ '/secret-storage/' | relative_url }}">Secret custody (source)</a></li>
+            <li><a href="{{ '/authorization/' | relative_url }}">Operation authorization (source)</a></li>
+            <li><a href="{{ '/background/' | relative_url }}">Background tasks (source)</a></li>
+          </ul>
+        </details>
+        <details>
+          <summary>Demo reference</summary>
+          <ul>
+            <li><a href="{{ '/use-cases/' | relative_url }}">Demo use cases</a></li>
+            <li><a href="{{ '/demo-ui/' | relative_url }}">Navigation and Activity</a></li>
+            <li><a href="{{ '/consent/' | relative_url }}">Consent and key purposes</a></li>
+            <li><a href="{{ '/passkey-prompts/' | relative_url }}">Passkey request paths</a></li>
+            <li><a href="{{ '/quick-actions/' | relative_url }}">Routine access (source)</a></li>
+            <li><a href="{{ '/authenticated-owner/' | relative_url }}">Full-owner policy (source)</a></li>
+            <li><a href="{{ '/jubjub-sessions/' | relative_url }}">Bounded transfers (source)</a></li>
+            <li><a href="{{ '/use-case-coverage/' | relative_url }}">Use-case evidence</a></li>
+          </ul>
+        </details>
+        <details>
+          <summary>Operations and releases</summary>
+          <ul>
+            <li><a href="{{ '/service/' | relative_url }}">Service API</a></li>
+            <li><a href="{{ '/durability/' | relative_url }}">Recovery contracts</a></li>
+            <li><a href="{{ '/grant-recovery/' | relative_url }}">Grant recovery</a></li>
+            <li><a href="{{ '/host-durability/' | relative_url }}">Host durability</a></li>
+            <li><a href="{{ '/service-jobs/' | relative_url }}">Service jobs</a></li>
+            <li><a href="{{ '/shielded-deposit-recovery/' | relative_url }}">Shielded deposit recovery</a></li>
+            <li><a href="{{ '/quality/' | relative_url }}">Quality strategy</a></li>
+            <li><a href="{{ '/qualification/' | relative_url }}">Qualification limits</a></li>
+            <li><a href="{{ '/handover/' | relative_url }}">Historical RC5 funding</a></li>
+            <li><a href="{{ '/release-notes-rc7/' | relative_url }}">Published RC7</a></li>
+            <li><a href="{{ '/releasing/' | relative_url }}">Releasing</a></li>
+          </ul>
+        </details>
       </nav>
     </header>
     <main>
-      <p class="eyebrow">Prototype branch · API 1.0.0-pre.0</p>
+      <p class="eyebrow">SDK libraries and reference demo · Published RC7 / later source preview</p>
       <h1>{{ page.title | escape }}</h1>
       {{ content }}
     </main>

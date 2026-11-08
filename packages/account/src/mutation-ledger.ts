@@ -34,11 +34,11 @@ export function mutationLedger(view: AccLedgerView | undefined): MutationLedger 
     authNonce: view.authNonce,
     deviceEpoch: view.deviceEpoch,
     specVersion: view.specVersion,
-    encKey: view.encKey.slice(),
+    encKey: Uint8Array.from(view.encKey),
     entryCount: view.entryCount,
-    inboxEntries: view.inboxEntries.map((entry) => entry.slice()),
+    inboxEntries: view.inboxEntries.map((entry) => Uint8Array.from(entry)),
     deviceEntries: view.deviceEntries
-      .map((entry) => entry.slice())
+      .map((entry) => Uint8Array.from(entry))
       .sort((a, b) => toHex(a).localeCompare(toHex(b))),
   };
   if (
@@ -124,7 +124,7 @@ export function predictMutationLedger(
   if (op === 'add_device' || op === 'remove_device') {
     if (!(argument instanceof Uint8Array) || argument.length !== 32)
       return mutationFailure('Invalid durable device commitment.');
-    if (op === 'add_device') entries.set(toHex(argument), argument.slice());
+    if (op === 'add_device') entries.set(toHex(argument), Uint8Array.from(argument));
     else if (!entries.delete(toHex(argument)))
       return mutationFailure('Removal target is absent from the baseline.');
   }

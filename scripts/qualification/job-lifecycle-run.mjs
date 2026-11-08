@@ -41,13 +41,11 @@ export async function runJobBackedLifecycle(c) {
       const state = JSON.parse(c.docker(['inspect', containerId]))[0];
       if (!state.State.Running) c.docker(['start', containerId]);
       await c.wait(
-        () => c.ready('http://127.0.0.1:18797/healthz'),
+        () => c.ready(c.serviceUrl + '/healthz'),
         600000,
         () => !JSON.parse(c.docker(['inspect', containerId]))[0].State.Running,
       );
-      const health = /** @type {any} */ (
-        await (await fetch('http://127.0.0.1:18797/healthz')).json()
-      );
+      const health = /** @type {any} */ (await (await fetch(c.serviceUrl + '/healthz')).json());
       assert.equal(health.hostJobs, true);
     } else service = await c.host(root, arm, fault, operation);
   };
@@ -206,6 +204,7 @@ export async function runJobBackedLifecycle(c) {
     docker: c.docker,
     indexerId: c.ids[1],
     indexerReady: c.indexerReady,
+    nodeUrl: c.nodeUrl,
   });
   c.cases.push({
     arm,

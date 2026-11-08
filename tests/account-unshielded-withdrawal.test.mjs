@@ -48,6 +48,7 @@ test('P-256 owner withdrawal pins the challenge, passkey, consent and circuit ar
     userName: 'withdraw',
     retireAuthority: true,
   });
+  const sessionsAfterCreate = sessions.length;
   const ledger = fake.ledger.get(account.address);
   const hint = [...fake.directory.hints.values()][0];
   assert.ok(ledger && hint);
@@ -55,7 +56,12 @@ test('P-256 owner withdrawal pins the challenge, passkey, consent and circuit ar
   const request = { color: '01'.repeat(32), amount: '7', recipient: '02'.repeat(32) };
   const expectedCounter = ledger.authNonce;
   assert.ok(account.withdrawUnshielded);
-  const result = await account.withdrawUnshielded(request);
+  const callerInput = { ...request };
+  const pending = account.withdrawUnshielded(callerInput);
+  callerInput.amount = '999';
+  callerInput.recipient = 'ff'.repeat(32);
+  callerInput.color = 'ee'.repeat(32);
+  const result = await pending;
   assert.equal(result.txHash, 'withdraw-tx');
   assert.deepEqual(sessions.at(-1), {
     kind: 'withdraw-unshielded',
@@ -96,5 +102,5 @@ test('P-256 owner withdrawal pins the challenge, passkey, consent and circuit ar
     await assert.rejects(account.withdrawUnshielded(invalid), { code: 'TransferInvalid' });
   }
   assert.equal(transfers.length, 1);
-  assert.equal(sessions.length, 1);
+  assert.equal(sessions.length - sessionsAfterCreate, 1);
 });

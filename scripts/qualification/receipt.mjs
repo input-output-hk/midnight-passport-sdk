@@ -199,6 +199,7 @@ export function validateReceipt(value) {
         'UNSUPPORTED_NETWORK',
         'NOT_IMPLEMENTED',
         'TIME_LIMIT',
+        'INTERRUPTED',
         'OUTPUT_LIMIT',
         'TEST_FAILURE',
         'NO_TESTS',

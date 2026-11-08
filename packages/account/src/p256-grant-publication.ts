@@ -196,7 +196,7 @@ export async function publishP256GrantBookkeeping(
       return value as AccLedgerView & { encKey: Uint8Array; inboxEntries: readonly Uint8Array[] };
     };
     let view = await snapshot();
-    const oldKey = view.encKey.slice();
+    const oldKey = Uint8Array.from(view.encKey);
     const self = { bytes: fromHex(hint.address) };
     const appendTxHashes: string[] = [];
     let currentOpening = opening;

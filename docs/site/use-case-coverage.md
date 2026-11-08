@@ -47,6 +47,17 @@ These are mapped tests, not exhaustive coverage of every parameter, circuit,
 interleaving or provider. The 52 proof/66 pure circuit inventory does not imply
 52 fully supported typed/browser workflows.
 
+The current-source single-request login has separate actual-core regressions:
+P-256 ES256 verification, unchanged Lace PRF vectors and sealed readers reopen
+active P-256/JubJub accounts (including address recovery) with one credential call
+against a fake ledger. Tests also cover signed extra JSON/extension data,
+wrong-key/policy refusal, absent PRF, cancellation, no fallback, overlap refusal
+and output disposal. JubJub negatives distinguish its PRF-derived live owner and
+sealed-reader checks from P-256 signature verification, for which JubJub has no
+enrolled key. Browser journeys check combined-purpose consent and one-call
+login through their synthetic account driver. These are not real-provider or
+native-proof qualification. Login neither enrolls nor unlocks a companion owner.
+
 ## Run deterministic browser journeys
 
 With locked dependencies, Chrome and built SDK packages:
@@ -81,12 +92,47 @@ generation or native proof is added. The 30–45-second warm-job target still ne
 hosted timing evidence. Native proof/restart and actual provider qualification
 remain independent slower lanes; follow the [qualification guide]({{ '/qualification/' | relative_url }}).
 
-Local default runs both arms. CI now uses two complete owner-arm jobs rather than
-one serial browser job; `PASSPORT_DEMO_JOURNEY_ARM=p256` or `jubjub` selects a
-single profile and any other explicit value refuses. The final required
-**Lint, format, build, and test** check still requires the whole matrix to pass.
-Sharding does not skip scenarios, change the package cache trust model or turn
-local timings into hosted performance evidence.
+### Select one diagnostic group
+
+Local default runs both complete arms. `PASSPORT_DEMO_JOURNEY_ARM=p256` or
+`jubjub` selects one whole profile. An explicit group additionally requires one
+explicit arm; invalid selectors refuse before starting resources:
+
+```sh
+nix develop -c env PASSPORT_DEMO_JOURNEY_ARM=p256 \
+  PASSPORT_DEMO_JOURNEY_GROUP=account-actions \
+  pnpm test:demo-browser
+```
+
+Groups are `presentation`, `account-actions`, `scoped-sessions` and `owner-safety`.
+Each standalone group prepares its own required state through real demo controls:
+signed-out page, reviewed create/wallet/funding/session draft, or reviewed joiner
+handoff/wallet. Bootstrap time is recorded separately; bootstrap actions do not
+receive credit as canonical cases. Presentation exercises no successful credential
+access; the other groups retain their required purpose observations. Default full
+runs reuse their original preceding flow, without these extra bootstrap operations.
+
+CI runs all eight arm/group cells. Its separate inventory aggregate requires
+matching source/runtime/catalog identities, exact ordered case sets, purpose and
+cleanup evidence, and consistent monotonic timing. Missing, duplicated, stale,
+failed or skipped cells cannot pass. **Lint, format, build, and test** retains its
+required name and waits for both matrix and inventory checks. Local default and
+standalone receipts are separate evidence; neither proves hosted performance,
+native proofs, real-provider support or release readiness by itself.
+
+For local artifact aggregation, arrange each fresh receipt at
+`<root>/journey-<arm>-<group>/demo-journeys.json`, then run:
+
+```sh
+nix develop -c node scripts/qualification/demo-journey-receipts.mjs \
+  --input /absolute/path/to/eight-cell-artifacts --source FULL_COMMITTED_SOURCE_SHA
+```
+
+The CLI expects a clean source and a closed directory inventory. `--allow-dirty`
+is only for explicitly labelled local diagnostics and refuses in CI. The aggregate
+checks receipt structure and matching evidence; it does not launch tests or certify
+that a synthetic JSON fixture came from a browser. Keep the original runner logs,
+commands and source signatures alongside the receipts.
 
 ## Quantitative package coverage
 
@@ -96,14 +142,18 @@ nix develop -c pnpm test:coverage
 nix develop -c node scripts/test-coverage.mjs /private/new-coverage-directory
 ```
 
-This opt-in command uses Node's built-in V8 coverage and produces `tests.tap`,
-`lcov.info` and `summary.json` under a fresh ignored review directory. It measures
-**loaded package `dist` JavaScript in the root Node test suite**, not unimported
-files, TypeScript source statement coverage, application/UI coverage, contract
-constraint coverage or real-provider completeness. It records source, dirty state,
-runtime version and pass/fail/skip counts. No percentage substitutes for use-case
-or native evidence. The report is outside required fast CI; no arbitrary threshold
-has been imposed before a useful baseline exists.
+The local-source quality increment uses pinned c8/V8 coverage with compiler source
+maps and **all executable authored sources in the nine public packages**, including
+unimported files. It produces `tests.tap`, `lcov.info`, raw `coverage-summary.json`
+and an inventory/threshold receipt in `summary.json` under a fresh ignored review
+directory. It enforces 80% lines, functions and branches globally and per package,
+and refuses missing source records. Generated metadata, type-only stubs, testing
+helpers and private retired scaffolds are explicit exclusions. Release verification
+runs it; it stays outside the short required PR critical path. This is not UI,
+contract-constraint, native-proof or provider coverage. See [quality strategy](../quality/).
+
+The following earlier measurements used a **loaded-only JavaScript denominator**
+and are retained as historical evidence, not directly comparable current results.
 
 The initial 5 November development measurement covered 133 loaded files:
 95.47% lines, 94.14% functions and 84.50% branches (958 passed, five skips).
@@ -172,3 +222,35 @@ publications demonstrate consent boundaries, not native activation acceptance.
 The live proof receipts for the previous native slice remain pinned to their
 original source; they do not establish a real provider or combined browser/native
 pass for this UI change.
+
+
+## Current source: credential policy and audit map
+
+The latest policy supersedes earlier prompt-free **full-owner administration**.
+Verified login can warm an explicitly reviewed 10/15/30-minute routine lease;
+critical operations require fresh passkey approval even under an authenticated
+JubJub owner. A full owner retains full on-chain power. A bounded grant transfer
+remains separate and needs no credential request only inside its approved scope.
+
+The source review maps creation, both owner-arm logins, cold address-first P-256
+recovery, optional routine-key handoff, durable wrapper forwarding, independent
+wallet/holder identities and critical approval. See the
+[credential-path audit](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/credential-policy/README.md).
+This is an inventory with focused regressions, not proof of every credential path,
+circuit, interleaving or provider.
+
+| Regression layer | Actual code exercised | Boundary |
+| --- | --- | --- |
+| `tests/p256-credential-scope.test.mjs` | Browser WebAuthn adapter and real-core P-256 create/reopen, setup PRF reuse, cold address-first verification, cancellation/refusal | Software credential implementation and fake ledger, not native deployment/provider UI |
+| `tests/login-key-handoff.test.mjs` | Verified account-open hook inside login scope; wallet-seed-only handoff, scope disposal, failure and overlap | No implicit host lease; software credentials and fake chain |
+| `tests/durable-credential-session.test.mjs` | Prototype/receiver-bound optional login forwarding and legacy absence | Does not qualify every historical durable transcript |
+| `apps/passport-dapp/test/login-routine-adoption.test.ts` | Real derivation/envelopes, context binding, stale adoption, disposal and absolute lifetime | Host memory policy, not provider synchronization or wallet sync |
+| `apps/passport-dapp/test/critical-approval.test.ts` | Fresh owner/reader matching, refusal, lease loss, output disposal and unchanged expiry | Injected credential ports, not a real provider/native proof |
+| `tests/authenticated-operation-hook.test.mjs` | Argument capture before async approval, route/lease checks, no fallback and retention of dispatched receipts | Core host facade; cannot constrain a copied owner key on-chain |
+| Isolated Chromium journeys | Current demo review/operation UI and synthetic credential API calls, both selected owner arms | Account/chain/wallet drivers remain synthetic; final run receipts must pin the executed source |
+
+Historical prompt-free owner receipts remain evidence for their original policy;
+they do not establish today's fresh-approval behavior. Earlier native receipts,
+published RC7 hashes and provider limitations retain their exact original source
+identities. Real Google/iCloud restored-credential behavior, browser/native combined
+acceptance and eliminating the pure-JubJub creation probe are deferred.

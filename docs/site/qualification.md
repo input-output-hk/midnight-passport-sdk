@@ -54,6 +54,11 @@ as a new SDK binding. Its separate offline comparison does not substitute for
 fresh key hashes, proof/node acceptance, verifier-wave sizing or migration consent.
 See [ADR 0012](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0012-retain-binding-with-explicit-removal-and-recovery-limits.md).
 
+For earlier source-native runs and incident preservation rules, see the
+[historical live qualification record]({{ '/live-qualification/' | relative_url }}).
+Its retained projects, endpoints and unknown intents are not fresh-run defaults.
+Select a current lane and its isolated resource policy before starting work.
+
 ## Evidence tiers
 
 | Tier | Establishes | Does not establish |
@@ -261,6 +266,26 @@ Native proof, authenticated registry, actual host and manual-provider evidence
 remain independent tiers.
 
 
+### Installed imports, types and software crypto
+
+For a newly packed candidate, keep three records together:
+
+1. Original signed-source build/pack and fresh frozen installation receipts, with
+   independently trusted manifest/lock hashes and reviewed dependency selections.
+2. The [installed quality check]({{ '/quality/#installed-current-source-quality-check' | relative_url }}):
+   actual public module imports, strict Node/DOM/Worker declarations and maintained
+   documentation examples against installed packages.
+3. The [installed software-crypto check]({{ '/quality/#installed-software-crypto-check' | relative_url }}):
+   both generated signature arms, derivation, authenticated sealing and selected
+   runtime hash implementations, with unchanged input bytes.
+
+The last two tools consume an already prepared application. Neither installs,
+publishes or restores keys. They use fresh retained output directories and cannot
+turn an incomplete/failed child into a passing candidate. If preparation needed
+online cache warming, record that separately; a final offline install does not
+make the whole history offline. A software simulator receipt remains separate
+from native/provider/released-artifact qualification.
+
 ## Public signer tiers
 
 The [public-source signer lane]({{ '/consumer-integration/' | relative_url }}#public-source-signer-handlers)
@@ -271,3 +296,72 @@ to the native public-host baseline. Its 20 cases/20 canonical transactions are l
 not a new release or full hosted lifecycle. Denial/scope/expiry guards and byte tampering are
 checked. Existing failed fixtures and original identifiers stay retained. Slow lanes remain
 manual/opt-in, with cheap guards in ordinary CI; skips do not qualify as passes.
+
+
+## Source preview: isolated populated host-job lifecycle
+
+`host-job-lifecycle-isolated-native` is a separate **opt-in source lane** after RC7.
+It prepares a fresh random `mn-passport-joblife-<run-id>` project on loopback node
+`19964`, indexer `18108`, prover `16320` and service `18798`. These ports are shared
+with the isolated session lane, so the stable native-wallet lease serializes them.
+An occupied port or lease refuses; it does not stop or adopt its owner. The retained
+legacy stack's fixed endpoints remain a different lane.
+
+The supervisor creates a private descriptor with the exact source profile, run ID,
+output root and endpoints. Each worker checks its digest, scope, private file identity
+and relevant owner fixture before private setup. Partial descriptors, endpoint drift,
+retained-stack fallback, inherited sponsor/seed/preload overrides and incompatible
+worker modes refuse. It starts no real user browser or credential provider.
+
+Run only from a clean GPG-verified source, with built package outputs and physical
+workspace dependencies frozen for the duration. Prepare a fresh owned checkout when
+other development will continue. Use the existing verified contract export and key
+cache; the lane fingerprints the actual source, compiled outputs, physical dependencies,
+reference inputs and every required key before work and rechecks them at the end.
+It does not regenerate keys or pull replacement images. Reserve at least 15 GiB free
+disk and 24 GiB Docker memory before starting. Missing prerequisites are not a pass.
+
+```sh
+PASSPORT_ISOLATED_LIFECYCLE_NATIVE=1 \
+PASSPORT_RC_LOCALNET=1 MN_NETWORK_ID=undeployed \
+PASSPORT_CONTRACT_DIR=/absolute/path/to/verified/contract \
+PASSPORT_LIVE_ROOT=/absolute/path/to/fresh-private-output \
+nix develop -c env -u LD_DYLD_PATH pnpm qualify run host-job-lifecycle-isolated-native \
+  --output /absolute/path/to/fresh-outer-receipt.json
+```
+
+The pinned Nix shell adds `LD_DYLD_PATH` metadata. The command removes that single
+variable **inside** the shell; otherwise the loader-override guard refuses before
+resource creation. Keep the guard intact. Other inherited loader, seed, preload
+or routing overrides remain forbidden; do not remove them wholesale to bypass a
+refusal. Retain each failed attempt and use new output/receipt paths.
+
+The output parent must already exist; both the private output root and outer receipt
+must be new. Read the plan first with `nix develop -c pnpm qualify plan
+host-job-lifecycle-isolated-native`. Keep all output and original IDs if it fails.
+
+The node reaches block 2 before indexer startup, matching the demo runbook.
+Canonical finalized-node/indexer readiness is checked before wallet setup and after
+restart; a healthy HTTP endpoint alone is insufficient.
+
+The intended cases use both **same-arm software owners**: populated grants/holdings,
+job-backed enrollment/removal/survivor rotation, original-ID recovery and wallet
+reconnect through the owned indexer's outage. Native acceptance requires an actual
+passing receipt with every case; the existence of this runner or its fake-stack
+unit tests does not establish that acceptance. Mixed-arm lifecycle, real providers,
+browser/native combination, production images and released packages are independent.
+
+Work has a 160-minute internal deadline and a 175-minute total cleanup deadline.
+The outer runner allows 177 minutes plus at most three minutes of graceful termination.
+Signals latch cancellation, forward to the exact owned process group and retain a
+failed `INTERRUPTED` receipt even when graceful cleanup exits successfully. Repeated
+signals do not start a new operation. Closing an owned child cancels pending escalation;
+shutdown cannot later kill an unrelated reused process group. A forced OS termination
+cannot promise that application cleanup ran.
+
+Only IDs created and recorded by this run can be controlled. The supervisor rechecks
+container/image/network/volume identities before start/stop, waits for spawned workers
+to close, stops owned compute and retains volumes, containers, journals and failed/unknown
+fixtures. Uncertain creation or incomplete cleanup retains the exclusive lease for
+operator reconciliation. Never delete a lease or replace an unknown transaction to
+force a fresh run. No user stack is restarted or removed by this lane.

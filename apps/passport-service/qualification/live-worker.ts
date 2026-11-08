@@ -93,20 +93,25 @@ import { observeImageJobReplies } from '../../../scripts/qualification/image-job
 import { isNativeJobPendingError } from '../../../scripts/qualification/native-job-evidence.mjs';
 import { requireNoCurrentKey } from '../../../scripts/qualification/live-expectations.mjs';
 
+import { nativeIsolationWorker } from '../../../scripts/qualification/native-isolation-worker.mjs';
+
 const [mode, root, arm, operation = 'create', fault = 'none'] = process.argv.slice(2);
 assert.ok(
   root && ['host', 'owner', 'resume', 'probe', 'inspect', 'populate', 'prepare'].includes(mode!),
 );
 assert.ok(arm === 'p256' || arm === 'jubjub');
 assert.ok(isAbsolute(root));
-assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18098/api/v4/graphql/ws');
-assert.equal(process.env.PASSPORT_SERVICE_PORT, '18797');
+const isolation = nativeIsolationWorker({ kind: 'live', root, arm, mode, operation, fault });
+if (!isolation) {
+  assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18098/api/v4/graphql/ws');
+  assert.equal(process.env.PASSPORT_SERVICE_PORT, '18797');
+  assert.equal(process.env.MN_NODE_URL, 'http://127.0.0.1:19954');
+  assert.equal(process.env.MN_INDEXER_URL, 'http://127.0.0.1:18098/api/v4/graphql');
+  assert.equal(process.env.MN_PROOF_SERVER_URL, 'http://127.0.0.1:16310');
+}
 assert.equal(process.env.PASSPORT_REGISTRY_FILE, join(root, 'registry.json'));
 assert.equal(process.env.PASSPORT_RC_LOCALNET, '1');
 assert.equal(process.env.MN_NETWORK_ID, 'undeployed');
-assert.equal(process.env.MN_NODE_URL, 'http://127.0.0.1:19954');
-assert.equal(process.env.MN_INDEXER_URL, 'http://127.0.0.1:18098/api/v4/graphql');
-assert.equal(process.env.MN_PROOF_SERVER_URL, 'http://127.0.0.1:16310');
 assert.equal(process.env.PASSPORT_SPONSOR_SEED, undefined);
 assert.equal(process.env.PASSPORT_SPONSOR_SEED_FILE, undefined);
 mkdirSync(root, { recursive: true, mode: 0o700 });

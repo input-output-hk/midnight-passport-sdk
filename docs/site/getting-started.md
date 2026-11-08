@@ -4,11 +4,16 @@ title: Install and connect
 permalink: /getting-started/
 ---
 
-Use this path to evaluate the implemented libraries in a wallet host or browser application.
-To try the full reference UI first, use the [demo use cases]({{ '/use-cases/' | relative_url }})
-and [agent/local setup guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/AGENTS.md).
-The upstream app engine and dApp grant protocol are broader than this preview; the account-owner
-API is the implemented integration surface.
+**Library path · published RC7.** This page installs the released `0.1.0-rc7`
+libraries. Start with the [Library integration guide]({{ '/library-guide/' | relative_url }})
+for the lifecycle and host responsibilities, or the
+[Demo app guide]({{ '/demo-guide/' | relative_url }}) to run the reference application.
+Optional authorization, validation, storage/background and login/session helpers in the
+current source are **not RC7 imports**; see the [API release map]({{ '/api/#published-and-source-preview-surfaces' | relative_url }}).
+
+The path below produces a browser account integration module and a caller module for
+your own application. The upstream app engine and dApp grant protocol are broader than
+this preview; the account-owner API is the implemented integration surface.
 
 ## 1. Choose the integration boundary
 
@@ -44,19 +49,28 @@ Install the verified RC7 preview:
 ```sh
 npm install --save-exact \
   @input-output-hk/mn-passport-account@0.1.0-rc7 \
+  @input-output-hk/mn-passport-protocol@0.1.0-rc7 \
   @input-output-hk/mn-passport-adapter-browser@0.1.0-rc7 \
   @input-output-hk/mn-passport-adapter-service@0.1.0-rc7 \
   @input-output-hk/mn-passport-contract@0.1.0-rc7
 ```
 
-Node tooling requires Node 22 or newer. The repository uses `nix develop` to pin Node, pnpm and
-Compact. Keep all SDK packages on the same exact release. `next` is a moving preview tag;
+Node 22 is the repository's pinned/tested tooling baseline. Use `nix develop` to pin Node, pnpm and
+Compact; a newer Node version needs its own runtime verification. Keep all SDK packages on the same exact release. `next` is a moving preview tag;
 pin a version and lockfile for a reproducible integration.
 
-## 3. Start and verify the backend
+## 3. Choose and verify the backend
 
-For local evaluation use `nix develop -c pnpm demo up` with the pinned ACC export, as described
-in the setup guide. Packages alone do not start a chain, create keys or fund a fee wallet.
+The browser recipe below uses remote ports. Point them at an operator-controlled
+Passport service, or run the reference local stack for evaluation. Installing the
+libraries does not require the demo UI; executing this recipe does require its
+configured chain/prover and fee payer. A wallet host supplying its own typed ports
+can use its existing infrastructure instead of this HTTP composition.
+
+For the reference local stack, follow the
+[demo setup guide]({{ '/demo-guide/' | relative_url }}) and its pinned ACC export.
+Its endpoints below are deployment choices, not library defaults. Packages alone
+do not start a chain, create keys or fund a fee wallet.
 
 | Service | Default local endpoint | Purpose |
 | --- | --- | --- |
@@ -64,11 +78,11 @@ in the setup guide. Packages alone do not start a chain, create keys or fund a f
 | Key service | `http://127.0.0.1:8788` | Restore and verify prover keys, then serve pinned files over HTTP. Optional when using the Passport service's local artefacts. |
 | Funding service | `http://127.0.0.1:8789` | Authenticated, allowlisted wallet-to-ACC deposits; started by `--funding`. It is not a fee sponsor. |
 
-Check `/healthz` and `/v1/config` on the Passport service. The network must be `undeployed`,
+For this local recipe, check `/healthz` and `/v1/config` on the Passport service. The network must be `undeployed`,
 binding `acc-s3r1.1`, compiler manifest SHA-256
 `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f`.
 Derive this pin from the installed contract package or trusted release evidence, not from the
-server's answer. The example below uses `resolveBinding` and `fetchCheckedV1Config` to do that.
+server's answer. The linked composition uses `resolveBinding` and `fetchCheckedV1Config` to do that.
 
 Production hosts need explicit public URLs, authenticated ingress, fee/funding limits and durable
 state. A standalone network's public genesis wallet is for `undeployed` only. Linux images need
@@ -85,27 +99,72 @@ Implement its `read`, `write` and `exists` methods persistently before creating 
 shows validation and encoding. Store keys must distinguish network, binding and device/account;
 the demo keeps one selected record per network for evaluation.
 
-Call the API from explicit user actions:
+The quickstart wires the minimal account ports; it does not supply your product's
+blocking consent UI, lock policy or vault. RC7's optional `passkey.beforeCeremony`
+hook lets a host review each actual credential purpose and refuse access by throwing.
+Review account effects separately or combine them with the actual request when the
+exact fields are already available. Neither login nor PRF derivation approves a transfer.
+See [the ceremony contract]({{ '/consent/#public-ceremony-hook' | relative_url }}).
+
+Initialize the linked `connectLocalPassport(records)` once with your persistent host
+store, then pass that returned API and a public progress callback to this complete
+caller module. Construction starts no credential operation. Invoke `create`/`open`
+from explicit user actions, after your own review; never create on page load.
 
 ```ts
-const passport = await connectLocalPassport(records);
+import type {
+  PassportConnectorAPI,
+  PassportEvent,
+} from '@input-output-hk/mn-passport-protocol';
+import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
 
-// In the Create button handler; do not create an account on every page load.
-const account = await passport.createAccount({
-  userName: 'alice',
-  retireAuthority: true,
-  onEvent: (event) => showProgress(event),
-});
-console.log(account.address, await account.state());
+export function accountActions(
+  passport: PassportConnectorAPI,
+  onEvent: (event: PassportEvent) => void,
+) {
+  let pending: AbortController | undefined;
+  const run = async <T,>(work: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+    if (pending) throw new Error('Finish or cancel the current account action first');
+    const controller = new AbortController();
+    pending = controller;
+    try {
+      return await work(controller.signal);
+    } finally {
+      pending = undefined;
+    }
+  };
+  return {
+    create(input: { userName: string; retireAuthority: boolean }) {
+      // Capture the reviewed primitive values before asynchronous work.
+      const { userName, retireAuthority } = input;
+      return run(signal => passport.createAccount({ userName, retireAuthority, signal, onEvent }));
+    },
+    open: () => run(signal => passport.openAccount({ signal, onEvent })),
+    cancel: () => pending?.abort(),
+  };
+}
 
-// In a later Open button handler, using the same persistent host store and passkey:
-const reopened = await passport.openAccount();
-console.log(reopened.address);
+export function publicFailureCode(error: unknown): string {
+  return error instanceof PassportConnectorError ? error.code : 'UnexpectedHostError';
+}
 ```
 
-Here `records` and `showProgress` are application-owned persistence and presentation; they are
-not additional SDK globals. `retireAuthority: true` retires the deployment maintenance authority,
-so the deployed ACC cannot later be upgraded through it. Make that choice explicitly.
+The caller awaits the returned promise, catches the typed code and updates its own
+UI. `onEvent` should project only public step/phase/timing and transaction references;
+never log arbitrary provider causes or key material. `UserCancelled`/`Aborted` stops
+future work, but a submitted or unknown transaction must be reconciled under its
+original ID. This helper serializes one local caller; durable/cross-tab coordination
+is a separate host responsibility. Each action gets a new cancellation controller.
+It does not automatically retry, supply consent or enroll/unlock a software owner.
+
+`retireAuthority: true` permanently removes the ACC maintenance authority; false is
+also an explicit host choice supported by the API. Present that decision before
+calling `create`. The demo always retires it. Host account records are metadata and
+local counters, without sealed entries or wallet seeds. Pending hints and recovery
+journals have separate [persistence owners]({{ '/library-guide/#persistence-owners' | relative_url }}).
+The SDK has no generic `disconnect`/vault-close
+method on `PassportConnectorAPI`: close only the observers, stores, workers and key
+sources your host owns, while preserving journals and acknowledged receipts.
 
 Run at exactly `http://localhost:5173` for this local example. The passkey RP ID, origin and
 contract WebAuthn profile must agree. The reference [Vite configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc7/apps/passport-dapp/vite.config.ts)
@@ -144,3 +203,17 @@ and the [Lace compatibility boundary]({{ '/lace-handover/' | relative_url }}).
 ## Optional RC7 operator host-job integration
 
 For a trusted operator host/BFF, the [durable service-job runbook]({{ '/service-jobs/' | relative_url }}) describes opt-in encrypted reference-service settings, `remoteHostJobPorts` for the durable owner composition, explicit restart recovery and real HTTP/process tests. Client and service must both support identity hashes. Keep the bearer token out of a public browser page; portable browser imports do not make the token public. The default demo keeps its existing composition; RC7 host jobs require explicit opt-in.
+
+
+## Choose the next capability
+
+| Next step | Integration contract |
+| --- | --- |
+| Add private holdings, transfers or administration | [Account prerequisites]({{ '/api/#optional-methods-and-host-prerequisites' | relative_url }}): supply complete live sources and the correct value/proof path. |
+| Survive interruption or an unknown submission | [Durability]({{ '/durability/' | relative_url }}): retain the original IDs, protected outputs and journal; reconcile before another send. |
+| Choose storage, key lifetime and teardown | [Library custody and cleanup]({{ '/library-guide/#custody-and-cleanup' | relative_url }}): metadata, journals and secret custody have separate owners. |
+| Adopt source-only helpers | [Release map]({{ '/api/#published-and-source-preview-surfaces' | relative_url }}): build matching source; an RC7 install has no optional source authorization, secret-store, background or verified-login handoff entries. |
+
+The demo's routine cache and fresh critical-approval policy are explicit host choices.
+The quickstart enables neither that cache nor automatic full-owner enrollment. Keep
+receipts and recovery evidence when disposing your own keys, observers and handles.

@@ -23,6 +23,7 @@ export interface ActivityLabels {
 export function OperationStatus(
   onAudit: (operationId: string) => void,
   labels: ActivityLabels = {},
+  details?: HTMLElement,
 ) {
   const root = element('section');
   root.className = 'operation-status';
@@ -44,7 +45,9 @@ export function OperationStatus(
   audit.addEventListener('click', () => {
     if (operationId) onAudit(operationId);
   });
-  root.append(title, summary, stage, elapsed, references, audit);
+  root.append(title, summary, stage, elapsed);
+  if (details) root.append(details);
+  root.append(references, audit);
   const names = {
     running: 'In progress',
     succeeded: 'Completed',
@@ -113,8 +116,9 @@ export function ActivityPanel(
   store: Pick<ActivityStore, 'getSnapshot' | 'subscribe'>,
   onAudit: (operationId: string) => void,
   labels: ActivityLabels = {},
+  operationDetails?: HTMLElement,
 ): () => void {
-  const operation = OperationStatus(onAudit, labels);
+  const operation = OperationStatus(onAudit, labels, operationDetails);
   const journey = Journey(labels.journeyHeading);
   parent.append(operation.root, journey.root);
   const render = (snapshot: ActivitySnapshot) => {

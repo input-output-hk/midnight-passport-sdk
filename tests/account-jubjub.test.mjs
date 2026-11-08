@@ -3,9 +3,14 @@ import { test } from 'node:test';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { x25519 } from '@noble/curves/ed25519.js';
 import { jubjub } from '@noble/curves/misc.js';
+import { p256 } from '@noble/curves/nist.js';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 import { createPassportAccounts } from '../packages/account/dist/index.js';
-import { recipeDeviceKeyring, recipeJubjubAuthoriser } from '../packages/keys/dist/index.js';
+import {
+  recipeDeviceKeyring,
+  recipeJubjubAuthoriser,
+  createAuthenticatedJubjubOwner,
+} from '../packages/keys/dist/index.js';
 import { sealInboxCoin } from '../packages/keys/dist/inbox-coin.js';
 
 const address = 'ab'.repeat(32);
@@ -30,7 +35,9 @@ const grantCommitment = (staged, authNonce) =>
       : new Uint8Array(32),
   };
 
-function world() {
+function world(
+  /** @type {import('../packages/account/dist/ports/index.js').PrfKeySource | undefined} */ sourceOverride = undefined,
+) {
   /** @type {import('../packages/account/dist/ports/index.js').AccountHint | undefined} */
   let hint;
   /** @type {string[]} */
@@ -71,7 +78,7 @@ function world() {
   /** @type {string[]} */
   const activeGrantIds = [];
   /** @type {import('../packages/account/dist/ports/index.js').PrfKeySource} */
-  const source = {
+  const source = sourceOverride ?? {
     withSession: async (operation) => operation(),
     deviceSecret: async () => new Uint8Array(32).fill(7),
     deriveSecret: async (
@@ -431,7 +438,12 @@ test('JubJub owner withdrawal binds amount and recipient to consent and the sign
   const request = { color: '01'.repeat(32), amount: '7', recipient: '02'.repeat(32) };
   const callsBefore = w.calls.length;
   assert.ok(account.withdrawUnshielded);
-  const tx = await account.withdrawUnshielded(request);
+  const callerInput = { ...request };
+  const pending = account.withdrawUnshielded(callerInput);
+  callerInput.amount = '999';
+  callerInput.recipient = 'ff'.repeat(32);
+  callerInput.color = 'ee'.repeat(32);
+  const tx = await pending;
   assert.equal(tx.nextUseCounter, 3n);
   assert.deepEqual(w.calls.slice(callsBefore), ['withdraw_unshielded_with_jubjub']);
   assert.deepEqual(w.sessionFlows.at(-1), {
@@ -472,7 +484,12 @@ test('JubJub shielded spend binds the qualified coin to the signature and witnes
   const request = { inboxIndex, color: hex(coin.color), amount: '7', recipient: '02'.repeat(32) };
   const authNonce = w.grantNonce();
   assert.ok(account.withdrawShielded);
-  const tx = await account.withdrawShielded(request);
+  const callerInput = { ...request };
+  const pending = account.withdrawShielded(callerInput);
+  callerInput.amount = '999';
+  callerInput.recipient = 'ff'.repeat(32);
+  callerInput.color = 'ee'.repeat(32);
+  const tx = await pending;
   assert.ok(tx.txHash);
   assert.deepEqual(w.sessionFlows.at(-1), {
     kind: 'withdraw-shielded',
@@ -866,6 +883,59 @@ test('JubJub rotation seals a fresh key before updating the ACC and stays reopen
   assert.equal((await w.accounts.openAccount()).address, address);
 });
 
+test('an authenticated deterministic owner opens the real SDK account, administers and transfers, then fails closed at expiry', async () => {
+  const material = {
+    context: { account: address, networkId: 'undeployed', bindingId: 'acc-test', credentialId },
+    authoriser: new Uint8Array(32).fill(7),
+    walletSeed: new Uint8Array(64).fill(9),
+    pure: pureCircuits,
+    companionReader: false,
+  };
+  const original = createAuthenticatedJubjubOwner({ ...material, check() {} });
+  const w = world(original.prf);
+  const passkeyAccount = await w.accounts.createAccount({
+    userName: 'alice',
+    retireAuthority: true,
+  });
+  let active = true;
+  const owner = createAuthenticatedJubjubOwner({
+    ...material,
+    context: { ...material.context, bindingId: w.ports.network.bindingId },
+    check() {
+      if (!active) throw Error('owner expired');
+    },
+  });
+  const api = createPassportAccounts({
+    ...w.ports,
+    credentials: owner.credentials,
+    authoriser: owner.authoriser,
+    viewingKey: recipeDeviceKeyring(owner.prf),
+  });
+  assert.ok(api.openAccountAt);
+  const account = await api.openAccountAt(address);
+  assert.ok(account.rotateViewingKey);
+  assert.ok(account.withdrawUnshielded);
+  await account.rotateViewingKey();
+  await account.withdrawUnshielded({
+    color: '00'.repeat(32),
+    amount: '1',
+    recipient: '11'.repeat(32),
+  });
+  const sends = w.calls.length;
+  active = false;
+  await assert.rejects(account.rotateViewingKey(), /owner expired/);
+  await assert.rejects(
+    account.withdrawUnshielded({ color: '00'.repeat(32), amount: '1', recipient: '11'.repeat(32) }),
+    /owner expired/,
+  );
+  assert.equal(w.calls.length, sends);
+  owner.dispose();
+  assert.ok(passkeyAccount.rotateViewingKey);
+  await passkeyAccount.rotateViewingKey();
+  assert.ok(w.calls.length > sends, 'the original owner remains independently usable');
+  original.dispose();
+});
+
 test('JubJub enrollment delivers the current account keys before the joining entry becomes live', async () => {
   const w = world();
   const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
@@ -895,6 +965,67 @@ test('JubJub enrollment delivers the current account keys before the joining ent
   assert.equal((await account.state()).entryCount, 2);
   assert.equal((await w.accounts.openAccount()).address, address);
 });
+
+for (const withGrant of [false, true])
+  test(`a JubJub owner enrolls a P-256 owner with exact policy and mixed-roster rotation (read grant: ${withGrant})`, async () => {
+    const w = world();
+    const account = await w.accounts.createAccount({ userName: 'alice', retireAuthority: true });
+    const joining = await w.joiningDevice();
+    const grantee = withGrant ? x25519.keygen() : undefined;
+    if (grantee)
+      w.setReadGrantTargets([{ grantId: 'ac'.repeat(32), readPublicKey: hex(grantee.publicKey) }]);
+    const publicKey = hex(p256.getPublicKey(new Uint8Array(32).fill(4), true));
+    const reader = {
+      ...joining.reader,
+      devicePublicKey: publicKey,
+      scheme: /** @type {const} */ ('p256-webauthn'),
+      policy: {
+        rp_id_hash: sha256(new TextEncoder().encode('localhost')),
+        origin: new TextEncoder().encode('http://localhost:5173'),
+      },
+    };
+    const point = p256.Point.fromHex(publicKey).toAffine();
+    const entry = pureCircuits.derive_device_entry_with_p256(
+      { bytes: Buffer.from(address, 'hex') },
+      { ...point, identity: false },
+      reader.policy,
+      0n,
+      0n,
+    );
+    assert.ok(account.addDevice);
+    const enrolled = await account.addDevice(reader);
+    assert.equal(enrolled.commitmentHex, hex(entry));
+    if (withGrant) {
+      assert.ok(enrolled.rotationTxHash);
+      assert.ok(enrolled.sealedReadGrants?.some((entry) => entry.grantId === 'ac'.repeat(32)));
+    }
+    const opened = await joining.remoteViewingKey.openInbox(
+      'undeployed',
+      { account: address, encKey: w.encKey(), envelopes: [...w.inbox].reverse() },
+      w.inbox,
+    );
+    assert.ok(
+      opened.some(
+        (item) =>
+          item?.kind === 'device' &&
+          item.device.scheme === 'p256-webauthn' &&
+          item.device.devicePublicKey === publicKey,
+      ),
+    );
+    const count = w.calls.length;
+    await assert.rejects(
+      account.addDevice({
+        ...reader,
+        policy: { ...reader.policy, origin: new Uint8Array(21).fill(7) },
+      }),
+      { code: 'DeviceRosterInvalid' },
+    );
+    assert.equal(w.calls.length, count, 'conflicting policy must not publish another delivery');
+    assert.ok(account.rotateViewingKey);
+    await account.rotateViewingKey();
+    assert.equal((await account.state()).entryCount, 2);
+    grantee?.secretKey.fill(0);
+  });
 
 test('JubJub enrollment rejects bad or already live readers before changing the account', async () => {
   const w = world();
@@ -1483,6 +1614,36 @@ test('opened JubJub accounts read only chain-confirmed shielded holdings', async
   assert.deepEqual(await account.readShieldedHoldings(), [{ inboxIndex: 2, coin }]);
   w.setHeldIndices([0]);
   await assert.rejects(account.readShieldedHoldings(), { code: 'InternalError' });
+});
+
+test('JubJub routine reader retains live holdings checks and cannot service a critical owner flow', async () => {
+  const w = world();
+  await w.accounts.createAccount({ userName: 'routine', retireAuthority: true });
+  let reads = 0;
+  const account = await createPassportAccounts({
+    ...w.ports,
+    routineViewingKey: (context) => {
+      assert.equal(context.account, address);
+      assert.deepEqual(context.credentialId, credentialId);
+      reads++;
+      return { openInbox: w.viewingKey.openInbox };
+    },
+  }).openAccount();
+  const coin = { nonce: new Uint8Array(32).fill(4), color: new Uint8Array(32).fill(5), value: 7n };
+  w.inbox.push(await sealInboxCoin(w.encKey(), coin));
+  w.setHeldIndices([2]);
+  const before = w.sessionFlows.length;
+  assert.deepEqual(await account.readShieldedHoldings?.(), [{ inboxIndex: 2, coin }]);
+  assert.equal(w.sessionFlows.length, before);
+  assert.equal(reads, 1);
+  w.setHeldIndices([0]);
+  assert.ok(account.readShieldedHoldings);
+  await assert.rejects(account.readShieldedHoldings(), { code: 'InternalError' });
+  const beforeRotation = w.sessionFlows.length;
+  w.setHeldIndices([2]);
+  await account.rotateViewingKey?.();
+  assert.ok(w.sessionFlows.length > beforeRotation);
+  assert.equal(reads, 2);
 });
 
 test('a JubJub account without chain-backed holding verification refuses the read', async () => {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Detect separate class/context identities before a consumer starts an ACC deployment.
 import { createRequire } from 'node:module';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve, basename } from 'node:path';
 import { readFileSync, realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
@@ -31,7 +31,18 @@ export function checkMidnightRuntimeIdentity(consumer, entries) {
     // same physical package for both conditions without executing any runtime code.
     let folder;
     let manifest;
+    // Ignore NODE_PATH/global lookup roots: a consumer must not pass because a
+    // developer tool happens to supply a missing dependency from another workspace.
+    const localRoots = new Set();
+    let ancestor = dirname(from);
+    for (;;) {
+      if (basename(ancestor) !== 'node_modules') localRoots.add(join(ancestor, 'node_modules'));
+      const parent = dirname(ancestor);
+      if (parent === ancestor) break;
+      ancestor = parent;
+    }
     for (const search of createRequire(from).resolve.paths(name) ?? []) {
+      if (!localRoots.has(search)) continue;
       try {
         const candidate = realpathSync(join(search, name));
         const value = JSON.parse(readFileSync(join(candidate, 'package.json'), 'utf8'));

@@ -43,6 +43,7 @@ main {
   min-height: 65vh;
   margin: auto;
   padding: 2rem 1.5rem 5rem;
+  overflow-wrap: anywhere;
 }
 .eyebrow {
   color: #b6c1d5;
@@ -99,4 +100,74 @@ blockquote {
 }
 footer {
   color: #b6c1d5;
+}
+
+/* Library/demo entry links stay visible; native disclosures group the reference pages. */
+nav {
+  align-items: flex-start;
+}
+nav > a,
+nav summary {
+  box-sizing: border-box;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #3a4967;
+  border-radius: 0.35rem;
+}
+nav > a {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  text-decoration: none;
+}
+nav summary {
+  cursor: pointer;
+}
+nav details[open] summary {
+  background: #21304e;
+}
+nav ul {
+  max-width: 22rem;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem;
+  border: 1px solid #3a4967;
+  border-radius: 0.35rem;
+  list-style: none;
+}
+nav li + li {
+  margin-top: 0.2rem;
+}
+nav li a {
+  display: block;
+  padding: 0.35rem 0.45rem;
+  overflow-wrap: anywhere;
+}
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #b5dcff;
+  outline-offset: 3px;
+}
+@media (max-width: 48rem) {
+  header {
+    align-items: flex-start;
+  }
+  nav {
+    width: 100%;
+    gap: 0.5rem;
+  }
+  nav > a {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  nav details {
+    flex-basis: 100%;
+  }
+  nav ul {
+    max-width: none;
+  }
+  /* Reference tables remain readable within their horizontal scroll area. */
+  th,
+  td {
+    min-width: 12rem;
+  }
 }

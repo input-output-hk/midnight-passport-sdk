@@ -93,8 +93,8 @@ export function createHeldCoinWitness(heldCoin?: QualifiedShieldedCoin) {
   )
     throw new PassportConnectorError('TransferInvalid', 'Invalid qualified shielded coin.');
   const pinned = heldCoin && {
-    nonce: heldCoin.nonce.slice(),
-    color: heldCoin.color.slice(),
+    nonce: new Uint8Array(heldCoin.nonce),
+    color: new Uint8Array(heldCoin.color),
     value: heldCoin.value,
     mt_index: heldCoin.mt_index,
   };
@@ -112,7 +112,7 @@ export function createHeldCoinWitness(heldCoin?: QualifiedShieldedCoin) {
         );
       return [
         context.privateState,
-        { ...pinned, nonce: pinned.nonce.slice(), color: pinned.color.slice() },
+        { ...pinned, nonce: new Uint8Array(pinned.nonce), color: new Uint8Array(pinned.color) },
       ] as const;
     },
   };
@@ -201,7 +201,7 @@ export function createMidnightChain(opts: {
         const base = { id: crypto.randomUUID(), flowId: '', step, clock: 'client' as const };
         const at = Date.now();
         emit({ ...base, phase: 'start', at });
-        return (error?: unknown) => {
+        return (error?: unknown, detail?: PassportEvent['detail']) => {
           const end = Date.now();
           const failed = error === undefined ? undefined : toPassportError(error, step);
           const event: PassportEvent = {
@@ -209,16 +209,21 @@ export function createMidnightChain(opts: {
             phase: failed ? 'error' : 'end',
             at: end,
             durationMs: end - at,
+            ...(detail && { detail }),
             ...(failed && { error: { code: failed.code, message: failed.message } }),
           };
           emit(event);
         };
       };
-      const track = async <T>(step: PassportStep, work: () => Promise<T>): Promise<T> => {
+      const track = async <T>(
+        step: PassportStep,
+        work: () => Promise<T>,
+        detail?: (value: T) => PassportEvent['detail'],
+      ): Promise<T> => {
         const finish = report(step);
         try {
           const value = await work();
-          finish();
+          finish(undefined, detail?.(value));
           return value;
         } catch (error) {
           finish(error ?? 'failed');
@@ -255,18 +260,21 @@ export function createMidnightChain(opts: {
             ),
         }),
         midnightProvider: createMidnightProvider(async (tx) => {
-          const id = await track('sponsor.submit', () =>
-            submitter.submit(
-              tx.serialize(),
-              mutation
-                ? {
-                    mutation,
-                    address,
-                    circuit,
-                    ...(flowOptions.signal && { signal: flowOptions.signal }),
-                  }
-                : undefined,
-            ),
+          const id = await track(
+            'sponsor.submit',
+            () =>
+              submitter.submit(
+                tx.serialize(),
+                mutation
+                  ? {
+                      mutation,
+                      address,
+                      circuit,
+                      ...(flowOptions.signal && { signal: flowOptions.signal }),
+                    }
+                  : undefined,
+              ),
+            (txId) => ({ txId, circuit }),
           );
           finality = report('chain.finality');
           return id;

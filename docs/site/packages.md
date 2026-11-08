@@ -7,15 +7,62 @@ permalink: /packages/
 The [problem statement]({{ '/problems/' | relative_url }}) maps ACC distribution, proving keys,
 HTTP serving, sponsorship, circuit helpers, faucet funding, and the demo to their package owners.
 The nine implemented libraries are the current foundation, browser path, and Node service HTTP
-core of the upstream wallet/dApp/agent vision. Typed circuit and faucet subpaths will be released
-when they contain reusable implementations.
+core of the upstream wallet/dApp/agent vision. Contract/compiler helpers and the
+`adapter-service/faucet` client already exist in RC7; reserved `core`/`connect`
+scaffolds do not provide those capabilities.
+
+## Find the public entry you need
+
+[Runtime and host requirements](#runtime-and-host-requirements) distinguish import
+safety from operational support. [Package purposes](#why-rc1-has-13-packages) retain
+the historical package-count explanation; [dependency direction](#dependency-direction)
+explains composition. The [account API]({{ '/api/' | relative_url }}) lists optional
+methods and their required ports. Published examples use exact RC7 versions;
+source-preview subpaths below require a matching source build.
+
+## Runtime and host requirements
+
+The nine packages emit ESM with declarations (`type: module`, `types`/`default`
+exports). Node 22 is the repository's pinned/tested baseline. Browser support means
+the stated APIs/capabilities and bundler composition are available; it does not qualify
+every browser/provider version. A successful import or typecheck does not provision
+a chain, signer, prover, wallet or persistent store.
+
+| Public entry (`@input-output-hk/mn-passport-…`) | Track / runtime | Host requirements when used |
+| --- | --- | --- |
+| `protocol` | RC7; neutral types, constants and helpers | Account/service API shapes, not a wallet or transport. |
+| `account`; `account/ports`, `/errors`, `/testing`, `/preflight` | RC7; browser or Node with injected ports | Compatible binding, credentials/authorizer, crypto/randomness and chain/backend ports; records before creation. `ports` is types-only; `testing` supplies fakes, not production services. |
+| `keys` | RC7 portable key/codec APIs; some owner/session additions are source-only | Host-owned secret/PRF origin, crypto/encoding capabilities, explicit byte disposal and checked key lifetime. No automatic vault or native Node passkeys. |
+| `contract`; `contract/capabilities`, `/capabilities.json`; `/bindings/acc-s3r1.1` | RC7; metadata/inventory and generated binding are different layers | Pin manifest/compiler/runtime. Generated runtime needs the compatible Compact/Midnight stack; proving keys stay outside npm. See [partner contracts]({{ '/partner-integration/' | relative_url }}). |
+| `adapter-webauthn` | RC7 browser WebAuthn/PRF; later source session improvements | Credential API, canonical RP/origin and a qualified provider. Software injection in Node tests is not a native Node authenticator. |
+| `adapter-browser` | RC7 browser composition | The above capabilities plus backend ports, Buffer/WASM bundler setup and owned account records. Imports alone do not connect a wallet or start a worker. |
+| `adapter-browser/hosted-jubjub` | RC7 optional hosted bridge | Matching host branded values, supported lossless consent mapping and actual host transport. No full Lace compatibility follows from construction. |
+| `adapter-service`; `/config`, `/prover`, `/sponsor`, `/deployer`, `/directory`, `/faucet` | RC7; fetch-capable browser/Node | Inject fetch or provide fetch/URL/AbortController/timers. Pin configuration; keep funding/host-job bearer credentials in trusted backend code. Individual clients have distinct budgets and cancellation contracts. |
+| `adapter-midnight-js` | RC7 browser/Node adapter | Compatible ledger/Compact/Midnight runtime, provider/binding and proof/fee/value ports. Browser builds need the retained WASM/polyfill configuration; no SSR/React Native qualification. |
+| `service` | RC7 Node HTTP/backend library | Node HTTP/filesystem capabilities as selected, authenticated ingress, durable host state and owned chain/wallet/prover setup. Client portability does not make the server browser-compatible. |
+| `account/validation`, `/authorization`, `/secret-store`, `/background`, `/names`, `/interaction` | Source after RC7; neutral browser/Node contracts | Per-port admission, consent/custody/lifecycle policy. Background needs a supplied channel/thread, storage is opt-in, interaction starts no effects. |
+| `adapter-browser/background`, `/secret-store`, `/wallet` | Source after RC7; explicit browser adapters | Owned Worker/MessagePort, explicitly approved plaintext IndexedDB, or selected wallet provider respectively. None grants ACC authority. |
+
+For the service clients, use the [public-import/protocol table]({{ '/service/#choose-an-http-client' | relative_url }}).
+The dedicated `/prover`, `/sponsor` and `/deployer` entries are legacy clients;
+`remoteV1*` and the durable host clients are root exports. HTTP route names do not
+create additional package subpaths.
+
+CJS/dynamic-import and browser-bundler evidence is tied to the exact installed-consumer
+lane/version; there is no separate `require` export family. Do not infer universal
+CommonJS loading, server rendering, React Native or real-provider support from ESM
+packaging. The [quality guide]({{ '/quality/' | relative_url }}) and
+[consumer qualification]({{ '/consumer-integration/' | relative_url }}) name the tested
+layers. The optional React host is a [browser development example]({{ '/react-example/' | relative_url }}),
+not a foundation dependency or an SSR contract.
 
 ## Why RC1 has 13 packages
 
-The release script packed every publishable directory under `packages/`. Eight directories contain
-the current SDK surface; five are empty `export {}` scaffolds inherited from the earlier architecture.
+The RC1 release script packed every publishable directory under `packages/`. That
+release had eight implemented libraries and five empty `export {}` scaffolds inherited
+from the earlier architecture.
 Publishing the scaffolds in `0.1.0-rc1` did **not** deliver five more capabilities. The original
-[original architecture](https://github.com/midnightntwrk/midnight-passport-sdk/blob/dfdb3f87f2cc2941530ab398e117f46b348fab7f/docs/architecture.md#44-packaging)
+[architecture](https://github.com/midnightntwrk/midnight-passport-sdk/blob/dfdb3f87f2cc2941530ab398e117f46b348fab7f/docs/architecture.md#44-packaging)
 pictured a Passport app engine (`core`), a dApp library (`connect`), shared foundations, and platform
 adapters. The later, accepted [package decision](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0007-package-set-ports-and-flows.md)
 put account-owner flows and ports in `account`, split the prototype's large browser adapter by
@@ -82,12 +129,17 @@ npm install --save-exact @input-output-hk/mn-passport-account@0.1.0-rc7 @input-o
 
 ## Dependency direction
 
-`protocol` has no runtime dependencies. `account` depends on `protocol` and accepts platform services through [`PassportPorts`]({{ '/api/#ports' | relative_url }}). `keys` depends on the account's types-only `./ports` subpath; its `recipeEncryptionKey(source)` returns an `EncryptionKeySource` without exposing seed or PRF bytes across that port. It also supplies `recipeJubjubAuthoriser(source, pureCircuits)` for the ACC's PRF-derived JubJub signer, checked against Lace's reference vectors, and `recipeReaderKey(source)` for the per-network X25519 public key that receives sealed account envelopes. The internal device-envelope, coin, grant-record, and view-seal codecs match Lace's wire formats. `recipeDeviceKeyring(source)` implements the `AccountViewingKey` port: random secret creation and delivery, device and grant records, current and recent coin opening, re-encryption, and read-grant sealing. The JubJub account create/open, rotation, and read-grant issue/revoke paths use the authoriser and keyring. The account flow must establish that readers are live on the ledger before asking the keyring to seal to them. `adapter-webauthn` supplies `CredentialPort`, `PrfKeySource` and the P-256 `Authoriser`. The prototype branch adds `adapter-browser/hosted-jubjub` as a separate subpath for a Lace-style hosted signer, so importing the browser composition root does not load that bridge. `adapter-service` supplies transport ports and the separate funding client; the demo now runs its v1 clients against the service-library routes. `adapter-midnight-js` loads through `import()` when the browser composition root first needs the chain. The prototype's former service chain remains under `adapter-browser/prototype` during migration. `contract` carries the pinned grants ACC module, metadata, ZKIR and verifier bundle. Prover keys stay outside the npm tarball.
+`protocol` has no runtime dependencies. `account` depends on `protocol` and accepts platform services through [`PassportPorts`]({{ '/api/#ports' | relative_url }}). `keys` uses account port types and runtime account helpers for encrypted mutation/deposit
+journals; importing a key API is not a guarantee of a type-only account dependency.
+
+Its `recipeEncryptionKey(source)` returns an `EncryptionKeySource` without exposing seed or PRF bytes across that port. It also supplies `recipeJubjubAuthoriser(source, pureCircuits)` for the ACC's PRF-derived JubJub signer, checked against Lace's reference vectors, and `recipeReaderKey(source)` for the per-network X25519 public key that receives sealed account envelopes. The internal device-envelope, coin, grant-record, and view-seal codecs match Lace's wire formats. `recipeDeviceKeyring(source)` implements the `AccountViewingKey` port: random secret creation and delivery, device and grant records, current and recent coin opening, re-encryption, and read-grant sealing. The JubJub account create/open, rotation, and read-grant issue/revoke paths use the authoriser and keyring. The account flow must establish that readers are live on the ledger before asking the keyring to seal to them.
+
+`adapter-webauthn` supplies `CredentialPort`, `PrfKeySource` and the P-256 `Authoriser`. The prototype branch adds `adapter-browser/hosted-jubjub` as a separate subpath for a Lace-style hosted signer, so importing the browser composition root does not load that bridge. `adapter-service` supplies transport ports and the separate funding client; the demo now runs its v1 clients against the service-library routes. `adapter-midnight-js` loads through `import()` when the browser composition root first needs the chain. The prototype's former service chain remains under `adapter-browser/prototype` during migration. `contract` carries the pinned grants ACC module, metadata, ZKIR and verifier bundle. Prover keys stay outside the npm tarball.
 
 The release contract module is a versioned subpath:
 
 ```ts
-const binding = () => import('@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1');
+export const binding = () => import('@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1');
 ```
 
 Pass this lazy module to `createBrowserPassport` with a `NetworkConfig` that pins `bindingId: 'acc-s3r1.1'` and compiler manifest SHA-256 `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f`. The host also supplies the prover, fee sponsor, deployer and directory ports. The demo service selects `acc-s3r1.1`; its endpoints are described under [Service API]({{ '/service/' | relative_url }}).

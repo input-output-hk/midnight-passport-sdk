@@ -3,6 +3,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { test } from 'node:test';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { checkMidnightRuntimeIdentity } from '../scripts/check-midnight-runtime-identity.mjs';
 
 const compact = '@midnight-ntwrk/compact-js';
@@ -71,4 +73,27 @@ test('consumer runtime check refuses missing declared dependencies', (t) => {
   const { root } = fixture(t);
   rmSync(join(root, 'node_modules', ledger), { recursive: true });
   assert.throws(() => checkMidnightRuntimeIdentity(root, [protocol]), /cannot resolve installed/);
+});
+
+test('consumer runtime check cannot borrow a missing runtime through NODE_PATH', (t) => {
+  const { root, put } = fixture(t);
+  rmSync(join(root, 'node_modules', ledger), { recursive: true });
+  const borrowed = join(root, 'borrowed');
+  put(borrowed, ledger, versions[ledger]);
+  assert.throws(
+    () =>
+      execFileSync(
+        process.execPath,
+        [
+          fileURLToPath(new URL('../scripts/check-midnight-runtime-identity.mjs', import.meta.url)),
+          root,
+          protocol,
+        ],
+        {
+          env: { ...process.env, NODE_PATH: join(borrowed, 'node_modules') },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      ),
+    /cannot resolve installed/,
+  );
 });

@@ -3,16 +3,35 @@ layout: default
 title: Demo use cases
 permalink: /use-cases/
 ---
+**Updated local-source policy:** [Unlock account]({{ '/authenticated-owner/' | relative_url }})
+authenticates a deterministic JubJub **full owner** for all implemented owner operations.
+The current host policy requires fresh passkey approval for critical administration,
+permission changes, sensitive exports and owner transfers. Routine reads and wallet
+connection reuse bounded authentication; matching scoped transfers retain their grant route.
+The older reading-only/scoped-session mode below retains its passkey fallback; its
+child key is not a full owner. Operation reviews, local expiry and unknown-intent
+fences remain. These additions are not in published RC7.
+
+
 
 ## Local source navigation
 
-The local prototype after RC7 has **Overview, Passport account, Midnight wallet,
-Audit and Settings**. Create/open in Overview; fund/withdraw in Passport account;
+The local source after RC7 has four menu groups: **Passport account, Midnight wallet,
+Audit and Settings**. Sign up / Log in is a separate signed-out entry, with no Overview
+menu. Use Passport account → Deposit/Withdraw for transfers;
 refresh wallet balances in Midnight wallet. Devices, sessions, manual grants and
 wallet connection setup live in Settings. Developer tools and the mock name
-lookup are under its closed Advanced section. Full logs/copy are in Audit.
+lookup are under its Developer tools submenu. Full logs/copy are in Audit.
 See [workspace and Activity controls]({{ '/demo-ui/' | relative_url }}). These UI
 changes are not in published RC7.
+
+The **Sign up / Log in** entry labels invoke the existing create/open flows below; **Log in with an account
+address** retains the enrolled-passkey address flow. Use **Demo tools → Settings**
+or **Demo tools → Audit** to reach the regular workspaces before opening an
+account. Successful account access selects Balances. The header Home link returns
+to this entry before a verified open in the page, and to Balances afterwards; it
+starts no credential work and never logs out. Login can adopt the explicitly reviewed
+routine seed/reader lease, but does not connect the wallet or unlock/enroll a full owner.
 
 
 ## RC7 consent and capability inspection
@@ -87,11 +106,11 @@ wallet and included in its policy. The browser never receives its seed or fundin
 | Reopen after a reload | **Open with passkey**, selecting the enrolled credential. | The browser checks live membership and opens the sealed viewing secret; the ACC address stays the same. |
 | Open a known ACC on another enrolled device | Enter **Known Passport ACC address**, then **Open by ACC address**. | Opening works without this profile's local account hint. The address alone cannot grant access or recover a lost passkey. |
 | Inspect live account state | Open the ACC, then **Refresh ACC state**, **Read device roster** or **Read grant roster**. | Read live counters, device commitments and grant status. ACC balances require the funding backend. These reads do not require a passkey prompt. |
-| Receive localnet NIGHT or a test token | Run with `--funding`, open an ACC, select the asset and choose **Fund Passport account**. | The separate funding wallet deposits up to ten smallest units of an allowlisted asset into the ACC. This funds the ACC, not the built-in wallet. |
+| Receive localnet NIGHT or a test token | Run with `--funding`, open an ACC, choose **Passport account → Deposit**, select the asset and choose **Fund Passport account**. | The separate funding wallet deposits up to ten smallest units of an allowlisted asset into the ACC. This funds the ACC, not the built-in wallet. |
 | Connect the separate built-in HD wallet | **Connect built-in wallet**, then consent with the intended passkey. | A separate passkey-derived wallet exposes addresses and synced balances through the DApp Connector API. It is read-only in this demo. |
-| Receive an ACC withdrawal in that wallet | Copy the built-in wallet's unshielded address, enter it as the withdrawal recipient, choose the asset and amount, then **Withdraw from Passport account**. | Review the network, address and amount before owner passkey consent. The ACC balance decreases after confirmation. The recipient must be a valid unshielded address on the same network. |
+| Receive an ACC withdrawal in that wallet | Copy the built-in wallet's unshielded address, open **Passport account → Withdraw**, enter it as the withdrawal recipient, choose the asset and amount, then **Withdraw from Passport account**. | Review the network, address and amount before owner passkey consent. The ACC balance decreases after confirmation. The recipient must be a valid unshielded address on the same network. |
 | Update the displayed wallet balance | Connect the wallet once, then **Refresh wallet balance** in its panel. | Reuse its current connection to read NIGHT, token and DUST balances after sync, with no additional passkey prompt. The UTC snapshot time and public balances are logged. This does not update the ACC card. |
-| Inspect shielded holdings | Open an ACC that already has shielded deposits, then **Read shielded holdings**. | Only inbox coins verified against live ACC outputs, positions and spend state appear. Unshielded faucet deposits do not populate this panel. There is no shielded deposit/withdrawal control in this page. |
+| Inspect shielded holdings | Open an ACC that already has shielded deposits, choose **Passport account → Balances**, then **Read shielded holdings**. | Only inbox coins verified against live ACC outputs, positions and spend state appear. Unshielded faucet deposits do not populate this panel. There is no shielded deposit/withdrawal control in this page. |
 | Enrol a second device | In a second browser profile, enter the ACC address and **Prepare joining device**. Transfer its public handoff to the owner, compare fingerprints, then **Enroll joining device**. | The joining passkey is added to the live roster and receives a sealed viewing key. It can then open by ACC address. The handoff contains public keys only. |
 | Rotate viewing keys or remove a device | Read the live roster, then **Rotate sealed viewing key** or enter a complete commitment and **Remove device entry**. | The SDK checks devices, verified holdings and active read-grant openings before resealing. Missing openings stop the operation. Removal can span several transactions; inspect live state after interruptions. |
 | Delegate limited unshielded spending | Prepare a grant-holder passkey in a separate profile. The owner enters its public key, asset, fixed recipient, per-call limit and total cap, then **Issue scoped grant**. | A live grant restricts the named JubJub holder's spending scope. The owner uses **Export grant opening** to pass its opening directly to the holder. |

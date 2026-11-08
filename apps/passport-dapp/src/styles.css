@@ -193,6 +193,14 @@ code {
   font-weight: 500;
 }
 
+.brand-home {
+  display: inline-flex;
+  align-items: center;
+  gap: inherit;
+  color: inherit;
+  text-decoration: none;
+}
+
 .midnight-logo {
   display: block;
   height: 26px;
@@ -437,13 +445,9 @@ body[data-busy] .btn:disabled {
   font-weight: 500;
 }
 
-/* A small key-shaped dot: decorative, the text says it all. */
-.prompts::before {
-  content: '';
-  width: 0.55rem;
-  height: 0.55rem;
-  border: 2px solid var(--accent);
-  border-radius: 50%;
+.prompts:empty,
+.action-desc:empty {
+  display: none;
 }
 
 .action-desc,
@@ -921,20 +925,12 @@ body[data-busy] .btn:disabled {
   margin-block: 0.5rem;
 }
 .ceremony-notice {
-  position: fixed;
-  z-index: 50;
-  inset-block-start: 0.75rem;
-  inset-inline: 0.75rem;
-  max-width: 44rem;
-  max-height: 40vh;
-  margin: 0 auto;
-  padding: 0.75rem 1rem;
-  overflow: auto;
+  padding: 0.75rem;
   color: var(--text);
   background: var(--surface);
   border: 2px solid var(--midnight-blue);
   border-radius: 0.5rem;
-  box-shadow: 0 0.25rem 1rem rgb(0 0 0 / 20%);
+  overflow-wrap: anywhere;
 }
 
 #session-state {
@@ -942,22 +938,140 @@ body[data-busy] .btn:disabled {
 }
 
 /* Host-owned workspace composition; account/interaction has no CSS or branding dependency. */
+body.workspace-app {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+.workspace-app > .site-header,
+.workspace-app > .mock-banner {
+  flex-shrink: 0;
+}
+.workspace-app > .site-footer {
+  display: none;
+}
 main.workspace-shell {
+  flex: 1;
+  min-height: 0;
   max-width: 1600px;
-  grid-template-columns: 180px minmax(0, 1fr) 280px;
-  align-items: start;
+  grid-template-columns: 210px minmax(0, 1fr) 280px;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
   gap: 1rem;
+  padding-block: 1rem;
+  overflow: hidden;
 }
 main.workspace-shell[data-activity='collapsed'] {
-  grid-template-columns: 180px minmax(0, 1fr);
+  grid-template-columns: 210px minmax(0, 1fr);
+}
+main.workspace-shell[data-landing='true'] {
+  grid-template-columns: minmax(0, 1fr) 280px;
+}
+main.workspace-shell[data-landing='true'][data-activity='collapsed'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+main.workspace-shell[data-landing='true'] > .workspace-nav,
+main.workspace-shell[data-landing='true'] > .navigation-bar {
+  display: none;
 }
 .workspace-nav {
-  position: sticky;
-  top: 1rem;
-  display: grid;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
+  padding: 0.2rem;
 }
-.workspace-nav button {
+.workspace-nav-group {
+  flex-shrink: 0;
+}
+.passport-icon {
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+  vertical-align: middle;
+  pointer-events: none;
+}
+.workspace-nav-group > button,
+#create,
+#open {
+  gap: 0.65rem;
+}
+.navigation-bar[hidden] {
+  display: none;
+}
+.navigation-bar {
+  display: flex;
+}
+#navigation-toggle {
+  width: 100%;
+  justify-content: space-between;
+}
+#navigation-toggle::after {
+  content: '';
+  width: 1rem;
+  height: 0.6rem;
+  border-block: 2px solid currentColor;
+  margin-inline-start: 0.75rem;
+}
+#navigation-sheet {
+  width: min(92vw, 23rem);
+  max-width: none;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0 1rem 1rem 0;
+  background: var(--bg);
+  color: var(--text);
+}
+#navigation-sheet[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+#navigation-sheet::backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+.navigation-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+#navigation-sheet .workspace-nav {
+  flex: 1;
+}
+.workspace-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.workspace-nav-group {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.workspace-submenu {
+  display: grid;
+  gap: 0.25rem;
+  margin-inline-start: 0.8rem;
+  padding-inline-start: 0.5rem;
+  border-inline-start: 1px solid var(--border);
+}
+.workspace-submenu[hidden] {
+  display: none;
+}
+.workspace-nav .workspace-submenu a {
+  font-size: 0.875rem;
+  min-height: 32px;
+  padding: 0.25rem 0.5rem;
+}
+.workspace-nav :is(button, a) {
   min-height: 44px;
   padding: 0.65rem 0.8rem;
   border: 1px solid transparent;
@@ -967,17 +1081,35 @@ main.workspace-shell[data-activity='collapsed'] {
   font: inherit;
   text-align: left;
   cursor: pointer;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
 }
-.workspace-nav button[aria-current='page'] {
+.workspace-nav :is(button, a)[aria-current='page'] {
   color: var(--heading);
   background: var(--accent-soft);
   border-color: var(--border-strong);
 }
-.workspace-center,
+.workspace-center {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 0.2rem;
+  overflow-anchor: none;
+}
 .workspace-view {
   min-width: 0;
   display: grid;
+  align-content: start;
   gap: 1rem;
+}
+[data-workspace-page] {
+  min-width: 0;
+}
+[data-workspace-page][hidden] {
+  display: none;
 }
 .workspace-view[hidden],
 .activity-panel[hidden],
@@ -998,7 +1130,14 @@ main.workspace-shell[data-activity='collapsed'] {
 .panel-activity.is-idle .status {
   margin: 0;
 }
-.workspace-view > h2 {
+.workspace-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.workspace-heading > h2 {
   font-size: 1.6rem;
 }
 #activity-toggle {
@@ -1006,6 +1145,39 @@ main.workspace-shell[data-activity='collapsed'] {
 }
 .workspace-shell .actions {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+.overview-welcome {
+  max-width: 42rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  display: grid;
+  gap: 1.25rem;
+}
+.overview-welcome h3 {
+  font-size: 1.15rem;
+}
+.overview-welcome > p {
+  color: var(--dim);
+}
+.workspace-shell .overview-choices {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.overview-choices .action {
+  position: relative;
+}
+.overview-advanced {
+  border-block-start: 1px solid var(--border);
+  padding-block-start: 0.5rem;
+}
+.overview-advanced summary {
+  font-size: 0.9rem;
+}
+.overview-note {
+  color: var(--dim);
+  font-size: 0.875rem;
 }
 .workspace-shell .panel > h3,
 .workspace-shell .panel > p,
@@ -1024,10 +1196,10 @@ main.workspace-shell[data-activity='collapsed'] {
   margin-block-end: 1rem;
 }
 .activity-panel {
-  position: sticky;
-  top: 1rem;
-  max-height: calc(100vh - 2rem);
+  min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 #activity-content {
   display: grid;
@@ -1079,6 +1251,9 @@ main.workspace-shell[data-activity='collapsed'] {
   margin-block-end: 1rem;
 }
 @media (max-width: 900px) {
+  .workspace-shell .overview-choices {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .activity-panel {
     display: none;
   }
@@ -1086,14 +1261,19 @@ main.workspace-shell[data-activity='collapsed'] {
   main.workspace-shell[data-activity='collapsed'] {
     grid-template-columns: minmax(0, 1fr);
   }
-  .workspace-nav {
-    position: static;
-    display: flex;
-    gap: 0.25rem;
-    flex-wrap: wrap;
+  main.workspace-shell {
+    grid-template-rows: auto minmax(0, 1fr);
   }
-  .workspace-nav button {
-    font-size: 0.9rem;
+  main.workspace-shell[data-landing='true'] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .workspace-nav :is(button, a) {
+    font-size: 0.95rem;
+  }
+  .workspace-nav .workspace-submenu a {
+    min-height: 44px;
+    padding-block: 0.5rem;
   }
 }
 
@@ -1115,4 +1295,222 @@ main.workspace-shell[data-activity='collapsed'] {
 #lace-wallet-review button {
   min-height: 44px;
   margin: 0.5rem;
+}
+
+.activity-operation-details {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.activity-operation-details > *,
+.activity-operation-details .status,
+.activity-operation-details .progress-label {
+  margin-block-end: 0.75rem;
+}
+.activity-operation-details .panel-head[hidden] {
+  display: none;
+}
+#activity-toggle.has-attention {
+  border-color: var(--err);
+}
+
+/* Human-readable Settings: draft controls, retained permission and local key are distinct. */
+.session-panel,
+.session-card,
+.form-field,
+.wallet-snapshot,
+#name-service-form {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.session-panel {
+  gap: 1.25rem;
+}
+.session-panel > h2 {
+  margin-bottom: 0;
+  font-size: 1.35rem;
+}
+.section-intro {
+  max-width: 65ch;
+  color: var(--muted);
+}
+.session-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  margin: 0;
+  background: var(--surface-2);
+}
+.session-card > legend {
+  font-weight: 600;
+  padding-inline: 0.35rem;
+}
+.eyebrow {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+#session-state {
+  display: grid;
+  gap: 0.5rem;
+  border-inline-start: 3px solid var(--border-strong);
+  padding-inline-start: 0.8rem;
+}
+#session-state h3 {
+  font-size: 1.15rem;
+}
+#session-state[data-status='active'] {
+  border-color: var(--ok);
+}
+#session-state[data-status='blocked'] {
+  border-color: var(--err);
+}
+.session-limits,
+.session-management {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 1rem;
+  min-width: 0;
+}
+.form-field {
+  align-content: start;
+  gap: 0.45rem;
+}
+.form-field label {
+  font-weight: 500;
+}
+.session-card > .btn {
+  justify-self: start;
+}
+.checkbox-field {
+  display: flex;
+  align-items: start;
+  gap: 0.65rem;
+  min-height: 44px;
+  padding-block: 0.5rem;
+}
+.checkbox-field input {
+  flex: 0 0 auto;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0.25rem 0 0;
+}
+.session-security p + p {
+  margin-top: 0.75rem;
+}
+.exact-values :is(dt, dd) {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+#workspace-settings .actions > .action {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+#workspace-settings .action label {
+  margin-block-start: 0.4rem;
+}
+#workspace-settings > [data-settings-page] > label {
+  display: block;
+  margin-block: 0.75rem 0.4rem;
+}
+#workspace-settings > [data-settings-page] > input {
+  margin-block-end: 1rem;
+}
+#name-service-form {
+  max-width: 38rem;
+  margin-block: 1rem;
+}
+#name-service-form .btn {
+  justify-self: start;
+}
+.wallet-snapshot {
+  margin-block: 1rem;
+}
+#session-current-scope[hidden],
+#session-record[hidden],
+#session-clock[hidden] {
+  display: none;
+}
+
+#workspace-settings .actions {
+  align-items: start;
+}
+.session-panel .fact dd,
+.wallet-snapshot .fact dd {
+  overflow-wrap: anywhere;
+}
+
+/* Account task navigation: one form at a time; operation progress remains in Activity. */
+.account-context {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.workspace-nav .workspace-submenu [aria-current='page'] {
+  color: var(--heading);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.account-page {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.account-page[hidden] {
+  display: none;
+}
+.workspace-shell .account-actions {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 42rem;
+  margin-top: 1rem;
+}
+.account-transfer > h3 {
+  font-size: 1.3rem;
+}
+.account-transfer > p {
+  max-width: 65ch;
+}
+.account-transfer .action {
+  gap: 0.65rem;
+}
+.account-transfer .action label:not(:first-child) {
+  margin-top: 0.65rem;
+}
+.account-transfer .action > .btn,
+.account-page .account-actions .btn {
+  align-self: start;
+}
+#account-page-balances .panel > .account-actions {
+  margin-block: 1rem;
+}
+#account-state-details {
+  margin-block: 1rem;
+}
+#account-page-balances .panel > h3 {
+  margin-bottom: 0.75rem;
+}
+
+[data-settings-page][hidden] {
+  display: none;
+}
+.quick-access-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.routine-controls {
+  display: grid;
+  gap: 0.8rem;
+  padding-block: 1rem;
+  max-width: 44rem;
+}
+#workspace-settings .panel > .routine-controls {
+  margin-block-end: 2rem;
 }

@@ -1,3 +1,4 @@
+import type { WebCryptoKey } from './web-crypto-key.js';
 // The Lace/Midnight 192-byte coin-description inbox format. A sender needs only the public ACC
 // enc_key; a reader needs its secret. Only the sealing function is exported from the package root.
 import { x25519 } from '@noble/curves/ed25519.js';
@@ -14,7 +15,7 @@ const VALUE_LENGTH = 16;
 const MAX_VALUE = (1n << 128n) - 1n;
 const KEY_INFO = new TextEncoder().encode('midnight:custody:inbox:v1');
 
-const wrappingKey = async (shared: Uint8Array): Promise<CryptoKey> => {
+const wrappingKey = async (shared: Uint8Array): Promise<WebCryptoKey> => {
   try {
     const material = await crypto.subtle.importKey(
       'raw',

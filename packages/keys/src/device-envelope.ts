@@ -1,3 +1,4 @@
+import type { WebCryptoKey } from './web-crypto-key.js';
 // Lace Passport's 192-byte device envelope and registration wire format. This module is internal:
 // callers of the public key port never receive the raw account or roster secrets it opens.
 import { x25519 } from '@noble/curves/ed25519.js';
@@ -68,7 +69,7 @@ const require32 = (bytes: Uint8Array, name: string): void => {
   if (bytes.length !== KEY_LENGTH) throw new Error(`${name} must be 32 bytes`);
 };
 
-const aeadKey = async (material: Uint8Array, info: Uint8Array): Promise<CryptoKey> => {
+const aeadKey = async (material: Uint8Array, info: Uint8Array): Promise<WebCryptoKey> => {
   const imported = await crypto.subtle.importKey(
     'raw',
     material as Uint8Array<ArrayBuffer>,
@@ -103,7 +104,7 @@ const sealInto = async (
   entry: Uint8Array,
   nonceOffset: number,
   plaintext: Uint8Array,
-  key: CryptoKey,
+  key: WebCryptoKey,
   tagged = false,
 ): Promise<void> => {
   const tagOffset = nonceOffset + NONCE_LENGTH;
@@ -127,7 +128,7 @@ const openFrom = async (
   entry: Uint8Array,
   nonceOffset: number,
   plaintextLength: number,
-  key: CryptoKey,
+  key: WebCryptoKey,
   tagged = false,
 ): Promise<Uint8Array | null> => {
   const tagOffset = nonceOffset + NONCE_LENGTH;
@@ -180,7 +181,7 @@ export async function sealDeviceEnvelope(
   entry.set(crypto.getRandomValues(new Uint8Array(NONCE_LENGTH)), ENVELOPE_NONCE_OFFSET);
   try {
     const shared = x25519.getSharedSecret(ephemeral.secretKey, reader);
-    let key: CryptoKey;
+    let key: WebCryptoKey;
     try {
       key = await aeadKey(shared, ENVELOPE_KEY_INFO);
     } finally {
@@ -202,7 +203,7 @@ export async function openDeviceEnvelope(
 ): Promise<AccountSecrets | null> {
   require32(readerSecret, 'reader secret');
   if (!isAddressedTo(entry, x25519.getPublicKey(readerSecret))) return null;
-  let key: CryptoKey;
+  let key: WebCryptoKey;
   try {
     const shared = x25519.getSharedSecret(readerSecret, entry.slice(34, 66));
     try {

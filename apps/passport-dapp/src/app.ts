@@ -1,3 +1,4 @@
+import { renderSessionState, updateSessionClock } from './session-view.js';
 import { PassportConnectorError } from '@input-output-hk/mn-passport-account';
 import { fetchServiceConfig } from '@input-output-hk/mn-passport-adapter-service';
 import type {
@@ -5,6 +6,7 @@ import type {
   PassportConnectorAPI,
   PassportConnectorDescriptor,
   PassportTxResult,
+  PassportEvent,
 } from '@input-output-hk/mn-passport-protocol';
 import {
   ARM,
@@ -16,6 +18,7 @@ import {
   SERVICE_URL,
   installShim,
   exportDemoGrantOpening,
+  connect as connectAccount,
 } from './connector.js';
 import { DEPLOY_ESTIMATE_S, EVENT_STAGES, FLOWS, knownAccAddress } from './flows.js';
 import { withdrawalRequest } from './withdrawal.js';
@@ -28,10 +31,15 @@ import { Buffer } from 'buffer';
 import { parseDeviceHandoff, prepareDeviceHandoff } from './device-handoff.js';
 import { setOperationTraceSink, tracedFetch, traceOperation } from './operation-trace.js';
 import { createUi } from './ui.js';
-import type { DevWallet, DevWalletConnectedApi } from './wallet/dev-wallet.js';
-import { readWalletBalances } from './wallet/balances.js';
+import type { DevWallet } from './wallet/dev-wallet.js';
+import { createWalletPresentation } from './wallet/presentation.js';
 import { walletSeed } from './wallet/seed.js';
-import { beforeDemoCeremony, finishDemoConsent, reviewDemoAction } from './consent.js';
+import {
+  beforeDemoCeremony,
+  finishDemoConsent,
+  reviewDemoAction,
+  assertExactGrantExport,
+} from './consent.js';
 import { showDemoCapabilities } from './capabilities.js';
 import { createDemoSession } from './session.js';
 import { unlockDemoSessionKey } from './session-key.js';
@@ -42,6 +50,23 @@ import { showDemoNameService } from './name-service.js';
 import { createDemoWorkspace } from './workspace.js';
 import { ActivityPanel } from './activity-controls.js';
 import { installLaceWallet } from './lace-wallet.js';
+import {
+  routineKeys,
+  beginRoutineReview,
+  checkRoutineReview,
+  finishRoutineReview,
+  OWNER_ACTIONS,
+  withRoutineLogin,
+  beforeAuthenticatedOperation,
+  ensureRoutineReview,
+} from './routine-access.js';
+import { authenticateOwnerAccount, routeAuthenticatedAccount } from './owner-access.js';
+import { transactionReceipts, receiptStorageRequired } from './transaction-receipts.js';
+import { completeLocalCleanup } from './local-cleanup.js';
+import { createOwnerReview } from './owner-review.js';
+const retainedTransactions = transactionReceipts(localStorage, NETWORK_ID, BINDING_ID);
+let receiptStorageFailed = false;
+let reviewedRoutineMinutes = 15;
 
 installShim();
 const mockPasskey = (navigator.credentials as unknown as { mock?: boolean }).mock === true;
@@ -76,12 +101,40 @@ const ui = createUi(
   ARM,
   {
     before: async (action) => {
+      if (receiptStorageRequired(action)) {
+        if (receiptStorageFailed)
+          throw Error(
+            'Copy Audit before leaving: transaction receipt persistence failed. Restore storage before another key operation.',
+          );
+        retainedTransactions.assertWritable();
+      }
+      const routineMinutes = Number(
+        (document.getElementById('routine-minutes') as HTMLSelectElement).value,
+      );
+      const routineUnlocked = beginRoutineReview(primaryAccount ?? account, action);
       const approved = await reviewDemoAction(action, {
         network,
         arm: ARM,
         account: account?.address,
         target: ui.knownAddress(),
+        routineUnlocked,
+        ownerUnlocked: !!routineKeys.snapshot().ownerVerified && OWNER_ACTIONS.includes(action),
+        routineMinutes,
+        check: checkRoutineReview,
       });
+      if (approved) {
+        checkRoutineReview();
+        reviewedRoutineMinutes = routineMinutes;
+      }
+      if (approved)
+        await ensureRoutineReview(
+          primaryAccount ?? account,
+          action,
+          routineUnlocked,
+          reviewedRoutineMinutes,
+          RP_ID,
+          ORIGIN,
+        );
       if (
         approved &&
         ['withdraw', 'startSession', 'spendGrant', 'fund'].includes(action) &&
@@ -93,10 +146,23 @@ const ui = createUi(
       return approved;
     },
     run: demoOperationGuard(network, BINDING_ID, navigator.locks),
-    after: finishDemoConsent,
+    after: () => {
+      finishRoutineReview();
+      finishDemoConsent();
+      if (receiptStorageFailed)
+        ui.status(
+          'Transaction receipt storage failed. Local keys are locked. Copy Audit before leaving; restore storage before another key operation.',
+        );
+    },
   },
 );
-ActivityPanel(workspace.activityRoot, ui.activity, (id) => workspace.showAudit(id));
+ActivityPanel(
+  workspace.activityRoot,
+  ui.activity,
+  (id) => workspace.showAudit(id),
+  {},
+  workspace.operationDetails,
+);
 if (ARM === 'jubjub') {
   const note = document.getElementById('key-note');
   if (note)
@@ -107,20 +173,103 @@ const recoveryNote = document.getElementById('key-note');
 if (recoveryNote)
   recoveryNote.textContent +=
     ' Keep the original passkey: another enrolled reader cannot recover its grant openings. If an owner operation is interrupted, reconcile its transactions before retrying.';
-const { status, stage, record, event: onEvent } = ui;
+const { status, stage, record } = ui;
+function lockAllLocalKeys() {
+  return completeLocalCleanup([() => routineKeys.lock(), () => session.lock()]);
+}
+const onEvent = (event: PassportEvent) => {
+  let receipt: ReturnType<typeof retainedTransactions.observe>;
+  let failed = false;
+  // Durable receipt capture must be independent of rendering and other observers.
+  try {
+    receipt = retainedTransactions.observe(event);
+  } catch {
+    failed = receiptStorageFailed = true;
+    completeLocalCleanup([() => routineKeys.lock(), () => session.lock(), finishDemoConsent]);
+  }
+  try {
+    ui.event(event);
+  } catch {
+    /* The immutable receipt and key cleanup still stand. */
+  }
+  if (receipt) traceOperation('account.transaction.submitted', { ...receipt });
+  if (failed) {
+    try {
+      ui.note(
+        'Transaction receipt storage failed. Copy Audit before leaving; further key operations are blocked.',
+      );
+    } catch {
+      /* Cleanup has already completed independently. */
+    }
+  }
+};
+
+/** Record public receipts before a best-effort indexer refresh can fail or outlive a lease. */
+async function refreshAfterReceipt<T>(
+  receipt: {
+    action: string;
+    accountAddress: string;
+    txHash?: string;
+    txIds?: readonly string[];
+    grantId?: string;
+  },
+  read: () => Promise<T>,
+): Promise<T | undefined> {
+  record('accountOperationReceipt', receipt);
+  traceOperation('account.operation.receipt', receipt);
+  const refreshed = await ui.attempt('read', read);
+  if (refreshed === undefined)
+    status(
+      `Transaction receipt retained${receipt.txHash ? ` (${receipt.txHash.slice(0, 12)}…)` : ''}. Live state could not be refreshed. Inspect Audit and refresh the account before another operation; do not resubmit this transaction.`,
+    );
+  return refreshed;
+}
+
 setOperationTraceSink(ui.trace);
+try {
+  for (const receipt of retainedTransactions.load())
+    traceOperation('account.transaction.retained', { ...receipt });
+} catch {
+  receiptStorageFailed = true;
+  ui.note(
+    'Stored transaction receipts need inspection. Further key operations are blocked; preserve site data.',
+  );
+}
 installLaceWallet(network, ui.showExternalWalletConnection);
 showDemoCapabilities(ARM);
 showDemoNameService(createMockNameService(network), network);
 
 let api: PassportConnectorAPI | undefined;
 let devWallet: DevWallet | undefined;
+const walletPresentation = createWalletPresentation({
+  network,
+  showWallet: ui.showWallet,
+  record,
+  status,
+  trace: traceOperation,
+});
 let account: PassportAccount | undefined;
+let primaryAccount: PassportAccount | undefined;
+let authenticatedAccount: PassportAccount | undefined;
+const ownerReview = createOwnerReview({
+  current: () => account,
+  primary: () => primaryAccount,
+  authenticated: () => authenticatedAccount,
+  ownerSession: (primary) => routineKeys.ownerSession(primary),
+  lease: (primary) => routineKeys.lease(primary),
+  check: checkRoutineReview,
+  confirm: (text) => window.confirm(text),
+});
 let balanceAssetColor: string | undefined;
 const fundingUrl = new URL('/v1/demo/funding', SERVICE_URL);
+let sessionUsesRoutine = false;
 const session = createDemoSession({
   checkpoint: sessionCheckpoint(localStorage, network, BINDING_ID),
-  unlock: unlockDemoSessionKey,
+  unlock: async (account, context) => {
+    const key = await unlockDemoSessionKey(account, context);
+    sessionUsesRoutine = key.routineBound;
+    return key;
+  },
   opening: exportDemoGrantOpening,
   spend: spendDemoSessionGrant,
   changed(snapshot) {
@@ -137,25 +286,13 @@ const session = createDemoSession({
       txHash,
       intentId,
     } = snapshot;
-    document.getElementById('session-state')!.textContent =
-      `${phase.toUpperCase()}. ` +
-      (intentId ? `Intent ${intentId}. ` : '') +
-      (grantId ? `Grant ${grantId}. ` : '') +
-      (address ? `ACC ${address}. ` : '') +
-      (expiresAt ? `Expires ${new Date(expiresAt).toISOString()}. ` : '') +
-      (cap
-        ? `Spent ${spent} / ${cap}; per transfer ${perCallCap}. Asset ${color}; recipient ${recipient}. `
-        : '') +
-      (phase === 'blocked'
-        ? 'Reconcile the original transaction before any retry; the local key is locked.'
-        : phase === 'locked' || phase === 'expired'
-          ? 'Local key disposed. Any chain grant remains until expiry or confirmed revocation.'
-          : '');
+    if (!['active', 'spending', 'authorizing'].includes(phase)) sessionUsesRoutine = false;
+    renderSessionState(snapshot, network);
     const safetyNotice = document.getElementById('operation-safety-notice')!;
     safetyNotice.hidden = phase !== 'blocked';
     safetyNotice.textContent =
       phase === 'blocked'
-        ? `A session operation needs reconciliation${intentId ? ` (original intent ${intentId})` : ''}. The local key is locked. Do not retry a transfer; inspect Settings → Sessions and Audit.`
+        ? `A session operation needs reconciliation${intentId ? ` (original intent ${intentId})` : ''}. The local key is locked. Do not retry a transfer; inspect Settings → Quick actions and Audit.`
         : '';
     traceOperation('session.state', {
       phase,
@@ -173,17 +310,38 @@ const session = createDemoSession({
   },
 });
 const sessionUse = () => (document.getElementById('session-use') as HTMLInputElement).checked;
-setInterval(() => {
-  const current = session.snapshot();
-  const countdown = document.getElementById('session-title')!;
-  countdown.textContent =
-    current.status === 'active' && current.expiresAt
-      ? `Consented JubJub session — ${Math.max(0, Math.ceil((current.expiresAt - Date.now()) / 60_000))} min remaining`
-      : 'Consented JubJub session';
-}, 1000);
-window.addEventListener('pagehide', () => session.lock());
+const ownerAuthorization = () =>
+  authenticatedAccount && routineKeys.snapshot().ownerVerified
+    ? 'authenticated JubJub owner after fresh passkey approval'
+    : 'fresh owner passkey';
+setInterval(() => updateSessionClock(session.snapshot()), 1000);
+routineKeys.subscribe((snapshot) => {
+  if (snapshot.status !== 'active' || !snapshot.ownerVerified) authenticatedAccount = undefined;
+  ui.refreshPrompts();
+  document.getElementById('authenticated-owner-key')!.textContent =
+    snapshot.authority === 'owner' ? snapshot.publicKey! : 'Not unlocked';
+  document.getElementById('routine-status')!.textContent =
+    snapshot.status === 'active'
+      ? snapshot.authority === 'owner'
+        ? snapshot.ownerVerified
+          ? `Authenticated until ${new Date(snapshot.expiresAt!).toLocaleTimeString()}. Routine actions reuse unlocked keys. Critical owner actions require fresh passkey approval before the JubJub signature.`
+          : 'Verifying the deterministic JubJub owner. First enrollment may require passkey signatures.'
+        : `Unlocked until ${new Date(snapshot.expiresAt!).toLocaleTimeString()}. Reading and wallet connection need no new passkey. Transfers require a separate permission.`
+      : `Quick actions ${snapshot.status}. Unlock with your account passkey to continue.`;
+  document.getElementById('routine-summary')!.textContent =
+    snapshot.status === 'active' ? 'Quick actions unlocked' : `Quick actions ${snapshot.status}`;
+  if (
+    sessionUsesRoutine &&
+    snapshot.status !== 'active' &&
+    ['active', 'spending', 'authorizing'].includes(session.snapshot().status)
+  )
+    session.lock();
+});
+setInterval(() => routineKeys.snapshot(), 1000);
+document.getElementById('lock-routine')!.addEventListener('click', () => routineKeys.lock());
+window.addEventListener('pagehide', lockAllLocalKeys);
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) session.lock();
+  if (document.hidden) lockAllLocalKeys();
 });
 
 async function refreshAccountBalances(
@@ -251,7 +409,14 @@ const connector = async () => {
 };
 const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult) => {
   session.lock();
-  account = a;
+  primaryAccount = a;
+  authenticatedAccount = undefined;
+  account = routeAuthenticatedAccount(
+    a,
+    () => authenticatedAccount,
+    checkRoutineReview,
+    beforeAuthenticatedOperation,
+  );
   stage('read');
   const state = await a.state();
   record(how, { address: a.address, binding: a.bindingId, state, ...(lastTx && { lastTx }) });
@@ -275,6 +440,7 @@ const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult
     entryCount: state.entryCount,
   });
   status(`Account ${a.address.slice(0, 12)}… is ${how}.`);
+  workspace.showAccount();
 };
 
 if (injected()) {
@@ -285,6 +451,7 @@ if (injected()) {
 }
 
 ui.on('create', async () => {
+  routineKeys.lock();
   status(
     ARM === 'jubjub'
       ? `Creating a JubJub account… confirm the passkey ceremonies, then wait for deployment (about ${DEPLOY_ESTIMATE_S / 60} minutes).`
@@ -307,24 +474,74 @@ ui.on('create', async () => {
   await opened(a, 'created');
 });
 ui.on('open', async () => {
-  status(
-    ARM === 'jubjub'
-      ? 'Opening… choose your passkey and unlock its sealed ACC viewing secret.'
-      : 'Opening… choose your passkey, then unlock its sealed ACC viewing secret.',
+  status('Opening… choose your passkey once to open the account and enable routine access.');
+  await withRoutineLogin(reviewedRoutineMinutes, async () =>
+    opened(await (await connector()).openAccount({ onEvent }), 'reopened'),
   );
-  await opened(await (await connector()).openAccount({ onEvent }), 'reopened');
 });
 ui.on('openAt', async () => {
   const requestedAddress = knownAccAddress(ui.knownAddress());
   traceOperation('account.openByAddress.requested', { accountAddress: requestedAddress });
-  status('Opening the known ACC… choose an enrolled passkey and unlock its sealed viewing key.');
-  const accountApi = await connector();
-  if (!accountApi.openAccountAt) throw new Error('This Passport connector cannot open by address.');
-  const restored = await accountApi.openAccountAt(requestedAddress, { onEvent });
-  if (restored.address !== requestedAddress)
-    throw new Error('The connector returned a different ACC address.');
-  await opened(restored, 'opened by address');
-  traceOperation('account.openByAddress.verified', { accountAddress: restored.address });
+  status('Opening the known ACC… choose an enrolled passkey once.');
+  await withRoutineLogin(reviewedRoutineMinutes, async () => {
+    const accountApi = await connector();
+    if (!accountApi.openAccountAt)
+      throw new Error('This Passport connector cannot open by address.');
+    const restored = await accountApi.openAccountAt(requestedAddress, { onEvent });
+    if (restored.address !== requestedAddress)
+      throw new Error('The connector returned a different ACC address.');
+    await opened(restored, 'opened by address');
+    traceOperation('account.openByAddress.verified', { accountAddress: restored.address });
+  });
+});
+ui.on('unlockRoutine', async () => {
+  if (!account) throw new Error('Open a Passport account first.');
+  await routineKeys.unlock(account, reviewedRoutineMinutes, RP_ID, ORIGIN);
+  status(
+    'Quick actions unlocked. A PRF-derived JubJub key is ready; transfers still need a separate scoped permission.',
+  );
+  traceOperation('routine.unlocked', {
+    accountAddress: account.address,
+    expiresAt: routineKeys.snapshot().expiresAt,
+    publicKey: routineKeys.snapshot().publicKey,
+  });
+});
+ui.on('unlockOwner', async () => {
+  const primary = primaryAccount;
+  if (!primary) throw new Error('Open a Passport account first.');
+  try {
+    await routineKeys.unlock(primary, reviewedRoutineMinutes, RP_ID, ORIGIN, true);
+    const owner = routineKeys.ownerSession(primary)!;
+    stage('verify');
+    const api = await connectAccount(network, owner);
+    const authenticated = await authenticateOwnerAccount({
+      primary,
+      owner,
+      storage: localStorage,
+      options: { onEvent },
+      open: () => api.openAccountAt!(primary.address, { onEvent }),
+      confirm: async (publicKey, readerPublicKey) =>
+        window.confirm(
+          `Enable this deterministic JubJub key as a FULL owner of your Passport account?\n\nAccount: ${primary.address}\nOwner key: ${publicKey}\nReader key: ${readerPublicKey}\n\nIt can transfer assets, change devices, rotate keys, and issue or revoke permissions, just like your passkey. Local timeout only clears this browser's key. The on-chain owner remains until removed. This first enrollment needs passkey signatures.`,
+        ),
+      trace: traceOperation,
+    });
+    owner.check();
+    authenticatedAccount = authenticated;
+    routineKeys.verifyOwner(primary);
+    record('authenticatedOwner', {
+      accountAddress: primary.address,
+      publicKey: owner.publicKey,
+      readerPublicKey: owner.readerPublicKey,
+      expiresAt: routineKeys.snapshot().expiresAt,
+    });
+    status(
+      'Account unlocked. Routine actions reuse keys; critical operations require fresh passkey approval before using the JubJub owner.',
+    );
+  } catch (error) {
+    routineKeys.lock();
+    throw error;
+  }
 });
 ui.on('refresh', async () => {
   if (!account) throw new Error('Open a Passport account before refreshing it.');
@@ -346,8 +563,13 @@ ui.on('refresh', async () => {
   });
   const balancesRead = balanceAssetColor
     ? await ui.attempt('balances', async () => {
-        await refreshAccountBalances(current.address);
-        return true;
+        try {
+          await refreshAccountBalances(current.address);
+          return true;
+        } catch (error) {
+          ui.showAccountBalanceError(current.address);
+          throw error;
+        }
       })
     : undefined;
   status(
@@ -357,6 +579,7 @@ ui.on('refresh', async () => {
   );
 });
 ui.on('holdings', async () => {
+  checkRoutineReview();
   if (!account?.readShieldedHoldings)
     throw new Error('Open a sealed Passport account before reading its shielded holdings.');
   const current = account;
@@ -365,6 +588,7 @@ ui.on('holdings', async () => {
   status('Opening the sealed ACC inbox and checking coin commitments against the chain…');
   stage('verify');
   const verified = await read({ onEvent });
+  checkRoutineReview();
   const coins = verified.map((holding) => ({
     inboxIndex: holding.inboxIndex,
     color: Array.from(holding.coin.color, (byte) => byte.toString(16).padStart(2, '0')).join(''),
@@ -451,14 +675,15 @@ ui.on('issueGrant', async () => {
   const current = account;
   if (!current?.issueGrant || !current.grantRoster)
     throw new Error('Open a supported Passport account before issuing a grant.');
-  const scope = fixedUnshieldedGrant(network, ui.grantInput());
+  const input = ui.grantInput();
+  const scope = fixedUnshieldedGrant(network, input);
   stage('review');
   const before = await current.grantRoster();
   ui.showGrantRoster(current.address, before);
   const approved = window.confirm(
     `Issue a scoped ACC withdrawal grant?\n\nACC: ${current.address}\nNetwork: ${network}\n` +
       `Grantee JubJub key: ${scope.grantee.publicKey}\nAsset color: ${scope.color}\n` +
-      `Fixed recipient: ${ui.grantInput().recipient}\nPer-call cap: ${scope.perCallCap}\n` +
+      `Fixed recipient: ${input.recipient}\nPer-call cap: ${scope.perCallCap}\n` +
       `Total cap: ${scope.cap}\nExpiry: none\n\nThe grant can move ACC funds to this recipient until revoked.`,
   );
   if (!approved) {
@@ -468,8 +693,16 @@ ui.on('issueGrant', async () => {
   }
   stage('submit');
   const result = await current.issueGrant(scope, { onEvent });
-  stage('read');
-  const after = await current.grantRoster();
+  const after = await refreshAfterReceipt(
+    {
+      action: 'issueGrant',
+      accountAddress: current.address,
+      txHash: result.txHash,
+      grantId: result.grantId,
+    },
+    () => current.grantRoster!(),
+  );
+  if (!after) return;
   if (!after.entries.some((entry) => entry.id === result.grantId && entry.active))
     throw new Error('The issued grant is not active in the live roster.');
   ui.showGrantRoster(current.address, after);
@@ -499,17 +732,13 @@ ui.on('exportGrant', async () => {
   const roster = await current.grantRoster();
   if (!roster.entries.some((entry) => entry.id === grantId && entry.active))
     throw new Error('The grant is not active in the live ACC.');
-  const approved = window.confirm(
-    `Unlock the opening for active grant ${grantId}?\n\n` +
-      'Give the JSON only to the named grantee. It includes the scope opening needed to use the grant.',
-  );
-  if (!approved) {
-    status('Grant opening export cancelled.');
-    traceOperation('grant.export.cancelled', { accountAddress: current.address, grantId });
-    return;
-  }
+  ownerReview.stageGrantExportReview(current, grantId);
   stage('export');
   const handoff = await exportDemoGrantOpening(current.address, grantId);
+  checkRoutineReview();
+  assertExactGrantExport(handoff.account, handoff.grantId);
+  if (handoff.networkId !== network || handoff.bindingId !== BINDING_ID)
+    throw new Error('The exported grant belongs to another network or binding.');
   ui.showGrantHandoff(handoff);
   record('grantOpeningExported', { accountAddress: current.address, grantId });
   traceOperation('account.grants.openingExported', { accountAddress: current.address, grantId });
@@ -535,7 +764,7 @@ ui.on('spendGrant', async () => {
         `Spend this scoped grant?\n\nACC: ${fields.account}\nGrant: ${fields.grantId}\n` +
           `Asset color: ${fields.color}\nAmount: ${fields.amount} smallest units\n` +
           `Remaining cap: ${fields.remainingCap}\nFixed recipient: ${address}\n\n` +
-          'Confirm before the grantee passkey prompt.',
+          'Approve this exact transfer before signing and submission.',
       );
       if (approved) stage('submit');
       else
@@ -574,7 +803,7 @@ ui.on('revokeGrant', async () => {
   ui.showGrantRoster(current.address, before);
   const approved = window.confirm(
     `Revoke this ACC grant?\n\nACC: ${current.address}\nNetwork: ${network}\n` +
-      `Grant ID: ${grantId}\nGeneration: ${before.generation}\n\nConfirm before the passkey prompt.`,
+      `Grant ID: ${grantId}\nGeneration: ${before.generation}\n\nConfirm before signing.`,
   );
   if (!approved) {
     status('Grant revocation cancelled before signing.');
@@ -583,8 +812,11 @@ ui.on('revokeGrant', async () => {
   }
   stage('submit');
   const result = await current.revokeGrant(grantId, { onEvent });
-  stage('read');
-  const after = await current.grantRoster();
+  const after = await refreshAfterReceipt(
+    { action: 'revokeGrant', accountAddress: current.address, txHash: result.txHash, grantId },
+    () => current.grantRoster!(),
+  );
+  if (!after) return;
   if (!after.entries.some((entry) => entry.id === grantId && !entry.active))
     throw new Error('The grant revocation did not appear in the live roster.');
   ui.showGrantRoster(current.address, after);
@@ -607,8 +839,15 @@ ui.on('recoverGrants', async () => {
   stage('recover');
   status('Checking staged openings against the live ACC and resuming publication…');
   const result = await current.recoverPendingGrants({ onEvent });
-  stage('read');
-  const roster = await current.grantRoster();
+  const roster = await refreshAfterReceipt(
+    {
+      action: 'recoverGrants',
+      accountAddress: current.address,
+      txIds: result.published.flatMap((grant) => grant.appendTxHashes),
+    },
+    () => current.grantRoster!(),
+  );
+  if (!roster) return;
   ui.showGrantRoster(current.address, roster);
   const publicResult = {
     accountAddress: current.address,
@@ -658,8 +897,12 @@ ui.on('enrollDevice', async () => {
   }
   stage('submit');
   const enrolled = await addDevice(reader, { onEvent });
-  stage('read');
-  const [after, nextState] = await Promise.all([readRoster(), current.state()]);
+  const refreshed = await refreshAfterReceipt(
+    { action: 'enrollDevice', accountAddress: current.address, txHash: enrolled.txHash },
+    () => Promise.all([readRoster(), current.state()]),
+  );
+  if (!refreshed) return;
+  const [after, nextState] = refreshed;
   if (!after.commitments.includes(enrolled.commitmentHex))
     throw new Error('The joining device entry is absent from the confirmed ACC roster.');
   ui.showAccount({
@@ -717,8 +960,17 @@ ui.on('removeDevice', async () => {
     'Rotating sealed keys and removing the selected device; this takes multiple transactions…',
   );
   const removed = await current.removeDevice(target, { onEvent });
-  stage('read');
-  const [after, nextState] = await Promise.all([current.deviceRoster(), current.state()]);
+  const refreshed = await refreshAfterReceipt(
+    {
+      action: 'removeDevice',
+      accountAddress: current.address,
+      txHash: removed.txHash,
+      txIds: [removed.rotationTxHash, removed.txHash],
+    },
+    () => Promise.all([current.deviceRoster!(), current.state()]),
+  );
+  if (!refreshed) return;
+  const [after, nextState] = refreshed;
   if (
     after.commitments.includes(target) ||
     after.commitments.length !== before.commitments.length - 1
@@ -780,10 +1032,13 @@ ui.on('rotate', async () => {
   stage('submit');
   status('Sealing a new viewing secret to verified readers, then signing and confirming rotation…');
   const rotated = await current.rotateViewingKey({ onEvent });
+  const after = await refreshAfterReceipt(
+    { action: 'rotate', accountAddress: current.address, txHash: rotated.txHash },
+    () => current.state(),
+  );
+  if (!after) return;
   if (rotated.droppedDeviceEntries.length || rotated.unsealedGrantIds.length)
     throw new Error('Rotation reported an incomplete reader delivery; inspect the event log.');
-  stage('read');
-  const after = await current.state();
   if (after.authNonce <= before.authNonce)
     throw new Error('The ACC did not confirm a newer authorisation nonce.');
   ui.showAccount({
@@ -907,7 +1162,7 @@ ui.on('startSession', async () => {
     throw new Error('Choose 10–30 minutes.');
   if (
     !window.confirm(
-      `Authorize a scoped JubJub session?\n\nACC: ${current.address}\nNetwork: ${network}\nAsset: ${scope.color}\nRecipient: ${input.recipient}\nPer transfer: ${scope.perCallCap}\nTotal cap: ${scope.cap} smallest units\nAbsolute lifetime: ${minutes} minutes from authorization start (including proving).\n\nUnlock with the account passkey, then approve owner signatures to issue the grant. No owner or read authority is delegated. Critical actions still require your passkey. A copied key may spend until chain expiry or confirmed revocation.`,
+      `Authorize a scoped JubJub session?\n\nACC: ${current.address}\nNetwork: ${network}\nAsset: ${scope.color}\nRecipient: ${input.recipient}\nPer transfer: ${scope.perCallCap}\nTotal cap: ${scope.cap} smallest units\nAbsolute lifetime: ${minutes} minutes from authorization start (including proving).\n\nGrant issuer: ${ownerAuthorization()}. Unlock the separate scoped signer if needed, then approve issuing this grant. No owner or read authority is delegated. A copied key may spend until chain expiry or confirmed revocation.`,
     )
   ) {
     status('Session authorization declined before passkey access.');
@@ -920,7 +1175,11 @@ ui.on('startSession', async () => {
   );
 });
 ui.on('endSession', async () => {
-  session.lock();
+  const complete = lockAllLocalKeys();
+  if (!complete)
+    ui.note(
+      'Local key cleanup ran, but its checkpoint or presentation failed. Preserve Audit before leaving.',
+    );
   status(
     'Local session locked. Its on-chain grant is not revoked; already-submitted effects still require reconciliation.',
   );
@@ -930,7 +1189,7 @@ ui.on('revokeSession', async () => {
   const snapshot = session.snapshot();
   if (
     !window.confirm(
-      `Revoke session grant ${snapshot.grantId ?? '(unknown; reconcile the original issue)'} for ACC ${account.address}?\n\nThis requires fresh owner passkey approval and does not undo transfers.`,
+      `Revoke session grant ${snapshot.grantId ?? '(unknown; reconcile the original issue)'} for ACC ${account.address}?\n\nAuthorization: ${ownerAuthorization()}. This does not undo transfers.`,
     )
   ) {
     status('Session grant revocation cancelled before signing.');
@@ -984,20 +1243,25 @@ ui.on('withdraw', async () => {
       'Reconcile the original session transaction and revoke its grant before another withdrawal. No owner fallback is allowed.',
     );
   const useSession = sessionUse() && session.matches(current, transfer);
-  const route = useSession ? 'scoped JubJub session (no passkey prompt)' : 'fresh owner passkey';
-  const confirmed = window.confirm(
-    `Authorization: ${route}\n\nWithdraw from Passport ACC?\n\nNetwork: ${network}\nACC: ${current.address}\nAsset color: ${transfer.color}\nAmount: ${transfer.amount} smallest units\nFresh ACC balance: ${freshBalance}\nRecipient: ${input.recipient.trim()}\n\nConfirm this destination, amount and authorization route before signing.`,
-  );
-  if (!confirmed) {
-    status('Withdrawal cancelled before signing.');
-    traceOperation('withdrawal.cancelled', { accountAddress: current.address });
-    return;
-  }
+  const route = useSession ? 'scoped JubJub session (no passkey prompt)' : ownerAuthorization();
+  const review = {
+    ...transfer,
+    recipientAddress: input.recipient.trim(),
+    balance: freshBalance,
+    outsideSession: sessionUse() && !useSession,
+  };
+  if (useSession) {
+    if (!ownerReview.reviewScopedWithdrawal(current, review)) {
+      status('Withdrawal cancelled before signing.');
+      traceOperation('withdrawal.cancelled', { accountAddress: current.address });
+      return;
+    }
+  } else ownerReview.stageOwnerWithdrawalReview(current, review);
   stage('submit');
   status(
     useSession
       ? 'Signing the scoped withdrawal with the active JubJub session…'
-      : 'Confirm the owner withdrawal with your passkey; proving and submission may take time…',
+      : `Signing with ${route}; proving and submission may take time…`,
   );
   // A failed/unknown session spend never falls back to an owner send.
   const result = useSession
@@ -1045,10 +1309,11 @@ ui.on('walletRefresh', async () => {
   if (!devWallet) throw new Error('Connect the built-in wallet before refreshing its balance.');
   status('Waiting for wallet sync to refresh balances…');
   const w = await devWallet.descriptor.connect(network);
-  const balances = await ui.attempt('balances', () => readAndRecordWalletBalances(w));
-  showWalletBalanceResult(balances, 'refresh');
+  await ui.attempt('balances', () => walletPresentation.refresh(w, 'refresh'));
 });
 async function connectBuiltInWallet(): Promise<void> {
+  checkRoutineReview();
+  const lease = account && routineKeys.lease(account);
   status('Reading the service configuration…');
   const config = await fetchServiceConfig(SERVICE_URL, tracedFetch, network);
   if (config.networkId !== network) {
@@ -1058,19 +1323,28 @@ async function connectBuiltInWallet(): Promise<void> {
     );
   }
   stage('seed');
+  checkRoutineReview();
+  lease?.();
   // With an open account the PRF ceremony is pinned to its passkey (one prompt, no picker); with
   // none, the user picks a passkey first. Fails closed: without PRF this throws
   // UnsupportedAuthenticator, and no other wallet opens.
   status(
-    account
-      ? "Confirm with this account's passkey to derive the wallet seed (PRF)…"
-      : 'Choose your passkey, then confirm again to derive the wallet seed (PRF)…',
+    lease
+      ? 'Using the unlocked built-in wallet seed…'
+      : account
+        ? "Confirm with this account's passkey to derive the wallet seed (PRF)…"
+        : 'Choose your passkey once to derive the wallet seed (PRF)…',
   );
-  const seed = await walletSeed({
-    rpId: RP_ID,
-    accountCredentialId: account?.credentialId,
-    beforeCeremony: beforeDemoCeremony,
-  });
+  const cachedSeed = account && routineKeys.walletSeed(account);
+  if (lease && !cachedSeed)
+    throw new Error('Quick actions are locked or expired. Unlock again with your passkey.');
+  const seed =
+    cachedSeed ||
+    (await walletSeed({
+      rpId: RP_ID,
+      accountCredentialId: account?.credentialId,
+      beforeCeremony: beforeDemoCeremony,
+    }));
   traceOperation('wallet.seed.derived', {
     source: 'passkey PRF (Lace recipe v1)',
     accountPinned: !!account,
@@ -1082,9 +1356,20 @@ async function connectBuiltInWallet(): Promise<void> {
     const { createDevWallet } = await import('./wallet/dev-wallet.js');
     const previousWallet = devWallet;
     devWallet = undefined;
+    walletPresentation.invalidate();
     ui.clearWallet();
     await previousWallet?.stop();
-    devWallet = await createDevWallet(seed, config);
+    lease?.();
+    checkRoutineReview();
+    const started = await createDevWallet(seed, config);
+    try {
+      lease?.();
+      checkRoutineReview();
+    } catch (error) {
+      await started.stop();
+      throw error;
+    }
+    devWallet = started;
     traceOperation('wallet.facade.started', { networkId: network });
   } finally {
     seed.fill(0);
@@ -1109,50 +1394,5 @@ async function connectBuiltInWallet(): Promise<void> {
   ui.showWallet({ unshieldedAddress: unshielded.unshieldedAddress, dustAddress: dust.dustAddress });
   status('Built-in wallet connected; waiting for it to sync to read the balances…');
   // Reads that can time out while the wallet itself works: a failure marks only this step.
-  const balances = await ui.attempt('balances', () => readAndRecordWalletBalances(w));
-  showWalletBalanceResult(balances, 'connect');
-}
-
-async function readAndRecordWalletBalances(w: DevWalletConnectedApi) {
-  const [snapshot, shielded] = await Promise.all([readWalletBalances(w), w.getShieldedAddresses()]);
-  ui.showWallet({ shieldedAddress: shielded.shieldedAddress });
-  const { unshieldedBalances, dust: dustBalance, balanceUpdatedAt } = snapshot;
-  record('balances', { shielded, ...snapshot });
-  traceOperation('wallet.balances', {
-    networkId: network,
-    shieldedAddress: shielded.shieldedAddress,
-    unshieldedBalances: Object.fromEntries(
-      Object.entries(unshieldedBalances).map(([color, value]) => [color, value.toString()]),
-    ),
-    dustBalance: dustBalance.balance.toString(),
-    dustCap: dustBalance.cap.toString(),
-    balanceUpdatedAt,
-  });
-  return snapshot;
-}
-
-function showWalletBalanceResult(
-  balances: Awaited<ReturnType<typeof readWalletBalances>> | undefined,
-  action: 'connect' | 'refresh',
-) {
-  if (balances) {
-    ui.showWallet({ ...balances, balanceError: undefined });
-    status(
-      action === 'connect'
-        ? 'Built-in wallet connected through the DApp Connector API; balances read. Refresh after receiving funds.'
-        : 'Built-in wallet balance snapshot refreshed. Refresh again if the indexer has not yet observed incoming funds.',
-    );
-  } else {
-    ui.showWallet({
-      unshieldedBalances: undefined,
-      dust: undefined,
-      balanceUpdatedAt: undefined,
-      balanceError: 'See the event log; retry Refresh wallet balance.',
-    });
-    status(
-      action === 'connect'
-        ? 'Built-in wallet connected, but its balances could not be read (see the event log).'
-        : 'Wallet balance refresh failed; the wallet remains connected. See the event log and retry.',
-    );
-  }
+  await ui.attempt('balances', () => walletPresentation.refresh(w, 'connect'));
 }

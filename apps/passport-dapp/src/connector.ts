@@ -1,3 +1,4 @@
+import { exportGrantOpening } from './grant-opening.js';
 import type {
   AccountDirectory,
   ActiveReadGrantTargetSource,
@@ -8,6 +9,7 @@ import type { PrfKeySource } from '@input-output-hk/mn-passport-account/ports';
 import {
   createBrowserPassport,
   injectPassportConnector,
+  type BrowserLoginKeys,
 } from '@input-output-hk/mn-passport-adapter-browser';
 import {
   createRegistryClient,
@@ -22,12 +24,21 @@ import {
   type PassportConnectorAPI,
 } from '@input-output-hk/mn-passport-protocol';
 import { createGrantBookkeepingRecovery } from '@input-output-hk/mn-passport-account';
-import { recipeDeviceKeyring } from '@input-output-hk/mn-passport-keys';
+import {
+  recipeDeviceKeyring,
+  type AuthenticatedJubjubOwner,
+} from '@input-output-hk/mn-passport-keys';
 import { tracedFetch } from './operation-trace.js';
 import { browserAccountRecords, browserGrantJournal } from './grant-journal.js';
-import { demoValueCall } from './value-call.js';
+import { reviewedOwnerValueCall } from './reviewed-value-call.js';
 import { grantHandoffFromOpening, type GrantHandoff } from './grant-handoff.js';
 import { beforeDemoCeremony } from './consent.js';
+import {
+  routineKeys,
+  checkRoutineReview,
+  acceptRoutineLogin,
+  approveCriticalOwner,
+} from './routine-access.js';
 
 export const SERVICE_URL = import.meta.env.VITE_PASSPORT_SERVICE_URL ?? 'http://localhost:8787';
 /** The artefact manifest hash this build pins (R18); the service's /v1/config is checked against it. */
@@ -46,13 +57,29 @@ if (configuredArm !== 'p256' && configuredArm !== 'jubjub')
   throw new Error('VITE_PASSPORT_ARM must be p256 or jubjub');
 export const ARM: 'p256' | 'jubjub' = configuredArm;
 export const ORIGIN = 'http://localhost:5173';
+const loginOptions = {
+  onAccountOpened: (
+    account: import('@input-output-hk/mn-passport-protocol').PassportAccount,
+    keys: BrowserLoginKeys,
+  ) => acceptRoutineLogin(account, keys, RP_ID, ORIGIN),
+};
 let exportOpening: ((account: string, grantId: string) => Promise<GrantHandoff>) | undefined;
+let ownerExportOpening: typeof exportOpening;
 
 /** Owner-only handoff from the selected passkey's encrypted local journal. */
 export async function exportDemoGrantOpening(
   account: string,
   grantId: string,
 ): Promise<GrantHandoff> {
+  checkRoutineReview();
+  if (
+    routineKeys.snapshot().authority === 'owner' &&
+    routineKeys.snapshot().account === account &&
+    ownerExportOpening
+  ) {
+    await approveCriticalOwner(true);
+    return ownerExportOpening(account, grantId);
+  }
   if (!exportOpening) throw new Error('Connect and open the owner account first.');
   return exportOpening(account, grantId);
 }
@@ -72,7 +99,10 @@ function demoDirectory(): AccountDirectory {
   };
 }
 
-export async function connect(networkId: string): Promise<PassportConnectorAPI> {
+export async function connect(
+  networkId: string,
+  ownerSession?: AuthenticatedJubjubOwner,
+): Promise<PassportConnectorAPI> {
   const config = await fetchCheckedV1Config(
     SERVICE_URL,
     {
@@ -140,38 +170,50 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
     readActiveReadGrantTargets: async (account) =>
       (await grants()).readActiveReadGrantTargets(account),
   };
-  exportOpening = async (account, grantId) => {
-    if (!journal) throw new Error('The owner grant journal is unavailable.');
-    const staged = await journal.load(account, grantId);
-    if (!staged) throw new Error('This browser has no sealed opening for the grant.');
-    const source = await grants();
-    const [live, context] = await Promise.all([
-      source.readGrantCommitment(account, grantId),
-      source.readGrantSpendContext(account, grantId),
-    ]);
-    return grantHandoffFromOpening(
-      staged,
-      live,
-      context,
+  const exportFromJournal = (account: string, grantId: string) =>
+    exportGrantOpening(
+      journal,
+      grants,
       networkId,
-      (await import('./acc-module.js')).accModule.pureCircuits as unknown as Parameters<
-        typeof grantHandoffFromOpening
-      >[4],
+      async () =>
+        (await import('./acc-module.js')).accModule.pureCircuits as unknown as Parameters<
+          typeof grantHandoffFromOpening
+        >[4],
+      account,
+      grantId,
     );
-  };
+  if (ownerSession) ownerExportOpening = exportFromJournal;
+  else exportOpening = exportFromJournal;
+  let ownerRecord: Awaited<
+    ReturnType<import('@input-output-hk/mn-passport-account/ports').AccountRecordStore['read']>
+  >;
   return createBrowserPassport({
-    arm: ARM,
+    arm: ownerSession ? 'jubjub' : ARM,
+    ...(ownerSession && { ownerSession }),
     network,
+    ...(!ownerSession && loginOptions),
     binding: async () => (await import('./acc-module.js')).accModule,
     passkey: { rpId: RP_ID, origin: ORIGIN, beforeCeremony: beforeDemoCeremony },
     prover: remoteV1Prover(SERVICE_URL, { fetch: tracedFetch }),
     sponsor,
     sponsorKeys: config,
     submitter: sponsor,
-    valueCalls: { call: (request) => demoValueCall(SERVICE_URL, request) },
+    valueCalls: { call: (request) => reviewedOwnerValueCall(SERVICE_URL, request) },
     deployer: remoteV1Deployer(SERVICE_URL, { fetch: tracedFetch }),
     directory: demoDirectory(),
     holdings: holdingPort,
+    ...(!ownerSession && {
+      routineViewingKey: (
+        context: Parameters<
+          NonNullable<
+            import('@input-output-hk/mn-passport-account/ports').PassportPorts['routineViewingKey']
+          >
+        >[0],
+      ) => {
+        checkRoutineReview();
+        return routineKeys.viewer(context);
+      },
+    }),
     readGrants,
     grants: {
       readActiveGrantSnapshot: async (account) => (await grants()).readActiveGrantSnapshot(account),
@@ -203,7 +245,9 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
               sponsorKeys: config,
               submitter: sponsor,
             }),
-            viewingKey: recipeDeviceKeyring(prf),
+            viewingKey: ownerSession
+              ? recoveryKeyring(prf, ownerSession.originalReaderPrf)
+              : recipeDeviceKeyring(prf),
             commitments: {
               readGrantCommitment: async (address, id) =>
                 (await grants()).readGrantCommitment(address, id),
@@ -217,9 +261,43 @@ export async function connect(networkId: string): Promise<PassportConnectorAPI> 
       };
       return (journal = browserGrantJournal(networkId, prf));
     },
-    records: browserAccountRecords(networkId),
+    records: ownerSession
+      ? {
+          read: async () => ownerRecord,
+          write: async (record) => {
+            ownerRecord = record;
+          },
+          exists: async () => !!ownerRecord,
+        }
+      : browserAccountRecords(networkId),
     random: (length) => crypto.getRandomValues(new Uint8Array(length)),
   });
+}
+
+/** Both readers belong to the same authenticated passkey; preserve old publisher seals. */
+function recoveryKeyring(prf: PrfKeySource, original: PrfKeySource) {
+  const current = recipeDeviceKeyring(prf),
+    previous = recipeDeviceKeyring(original);
+  return {
+    ...current,
+    async openInbox(...args: Parameters<typeof current.openInbox>) {
+      const results = await Promise.allSettled([
+        current.openInbox(...args),
+        previous.openInbox(...args),
+      ]);
+      const opened = results
+        .filter(
+          (r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof current.openInbox>>> =>
+            r.status === 'fulfilled',
+        )
+        .map((r) => r.value);
+      if (!opened.length) throw (results[0] as PromiseRejectedResult).reason;
+      return Array.from(
+        { length: args[2].length },
+        (_, i) => opened[0]![i] ?? opened[1]?.[i] ?? null,
+      );
+    },
+  };
 }
 
 /** What lace-sdk would inject; the harness discovers it like any dApp would. */
@@ -229,6 +307,6 @@ export function installShim(): void {
     name: 'Midnight Passport (prototype)',
     apiVersion: PASSPORT_API_VERSION,
     bindings: [BINDING_ID],
-    connect,
+    connect: (networkId) => connect(networkId),
   });
 }

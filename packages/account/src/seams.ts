@@ -26,7 +26,8 @@ export interface PasskeyIdentity {
   readonly credentialId: Uint8Array;
   /**
    * True only when the assertion `identify()` already obtained verifies under `publicKey` and
-   * `policy` (wa-json134). It binds an untrusted registry record to the picked passkey without a
+   * `policy`. Local login may verify additional signed JSON/extension data; transaction signing
+   * still requires wa-json134. This binds an untrusted registry record to the picked passkey without a
    * second prompt (Ruling R10(b)); a record naming another account's key answers false.
    */
   owns(publicKey: P256PublicKey, policy: WebAuthnPolicy): boolean;

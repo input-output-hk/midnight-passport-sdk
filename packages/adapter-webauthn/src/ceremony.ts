@@ -1,6 +1,7 @@
 /** Public purpose only: no credential ID, challenge, PRF output or signature is exposed. */
 export interface PasskeyCeremony {
-  readonly purpose: 'create' | 'verify-created' | 'identify' | 'sign' | 'derive-keys';
+  readonly purpose:
+    'create' | 'verify-created' | 'identify' | 'identify-and-unlock' | 'sign' | 'derive-keys';
   readonly rpId: string;
   /** One-based assertion attempt; a known browser-profile retry is a new ceremony. */
   readonly attempt: number;

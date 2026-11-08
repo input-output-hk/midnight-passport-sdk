@@ -1,0 +1,461 @@
+{
+  "schemaVersion": 1,
+  "baseline": "b66e946f412dfc871d19d98804ccd90efa332149",
+  "policy": "New authored files use defaults. Existing exceptions may only decrease; additions require explicit review and a tracked rationale. Generated files excluded.",
+  "files": {
+    "scripts/consumer/public-signer-source.mjs": {
+      "ceilings": {
+        "functionLines": 284,
+        "complexity": 34
+      },
+      "reason": "C1: recursive consumer .mjs inventory first covered this legacy orchestration in W11 at SHA-256 7b82280351d90eddf2d86d404275c83eba0b9fc53c6f97c7ae5191fd46642266, measured at 284 function lines / complexity34. W12 replaces explicit JSDoc-any annotations with structural types (source SHA-256 8c7c89e28bfc679eb125b1951ff58b457c90c3de528cedb1c3dcc9822900f5b7); commentless runtime syntax is unchanged and ceilings do not grow. This is authored orchestration debt, not a generated-source exemption; other metrics and new modules use defaults."
+    },
+    "packages/account/src/background.ts": {
+      "ceilings": {
+        "unsafeCasts": 1
+      },
+      "reason": "Q4: one explicit structural timer bridge for browser/Node APIs without ambient DOM/Node types; no other unsafe cast allowed."
+    },
+    "packages/account/src/connector.ts": {
+      "ceilings": {
+        "lines": 763,
+        "functionLines": 673,
+        "complexity": 15,
+        "nonNull": 13,
+        "unsafeCasts": 2
+      },
+      "reason": "O4 wave9: typed activation, sealed-reader readiness/publication and account-open phases preserve late host-record reads, flow/session boundaries and durable effect IDs. Actual connector1057\u2192763lines, factory949\u2192673, non-null16\u219213; existing complexity15/unsafe2 unchanged. Remaining factory debt cannot grow. New helpers use defaults. See docs/review/overnight-quality/README.md."
+    },
+    "packages/account/src/durable-mutations.ts": {
+      "ceilings": {
+        "functionLines": 477,
+        "complexity": 37,
+        "nonNull": 35,
+        "unsafeCasts": 1
+      },
+      "reason": "Q1 legacy orchestration/type debt, ratcheted after immutable invocation and requested-document admission extraction. No growth; see docs/review/overnight-quality/README.md."
+    },
+    "packages/account/src/grant-holder.ts": {
+      "ceilings": {
+        "nonNull": 7,
+        "unsafeCasts": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/grant-scope.ts": {
+      "ceilings": {
+        "complexity": 33,
+        "nonNull": 2,
+        "unsafeCasts": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/holdings.ts": {
+      "ceilings": {
+        "nonNull": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/jubjub-connector.ts": {
+      "ceilings": {
+        "lines": 1083,
+        "functionLines": 938,
+        "nonNull": 15,
+        "unsafeCasts": 2
+      },
+      "reason": "O4: typed rotation preparation/publication/switch/completion phases extracted. Actual connector falls from1727lines/1563function span/complexity95/37non-null to1083/938/19/15; all new modules use default budgets. Remaining factory/type debt cannot grow. See docs/review/overnight-quality/README.md."
+    },
+    "packages/account/src/jubjub-device.ts": {
+      "ceilings": {
+        "unsafeCasts": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/jubjub-grant-issue.ts": {
+      "ceilings": {
+        "functionLines": 206,
+        "nonNull": 1,
+        "unsafeCasts": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md. One added line snapshots grant scope before async review/journal staging (Q3)."
+    },
+    "packages/account/src/jubjub-grant-publication.ts": {
+      "ceilings": {
+        "unsafeCasts": 2
+      },
+      "reason": "O4 wave10: typed JubJub grant preparation/append/completion phases remove legacy function/complexity/non-null exceptions. Original timer/random structural bridges remain; valid-provider flow, authority and journal semantics are preserved. New modules use defaults with zero assertions. See docs/review/overnight-quality/README.md."
+    },
+    "packages/account/src/jubjub-grant-revoke-all.ts": {
+      "ceilings": {
+        "functionLines": 175,
+        "nonNull": 1,
+        "unsafeCasts": 2
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/jubjub-grant-revoke.ts": {
+      "ceilings": {
+        "nonNull": 1,
+        "unsafeCasts": 2
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/jubjub-readers.ts": {
+      "ceilings": {
+        "complexity": 33,
+        "nonNull": 3
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/jubjub-withdrawals.ts": {
+      "ceilings": {
+        "functionLines": 223,
+        "nonNull": 6
+      },
+      "reason": "Q1: value flows extracted verbatim from the baseline JubJub connector; exact-value and signer checks retained. Narrow these proven branches before removing assertions."
+    },
+    "packages/account/src/mutation-codec.ts": {
+      "ceilings": {
+        "complexity": 55,
+        "unsafeCasts": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/mutation-ledger.ts": {
+      "ceilings": {
+        "complexity": 31,
+        "nonNull": 2
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/names.ts": {
+      "ceilings": {
+        "complexity": 28
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/p256-grant-issue.ts": {
+      "ceilings": {
+        "functionLines": 206,
+        "complexity": 28,
+        "nonNull": 12,
+        "unsafeCasts": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md. One added line snapshots grant scope before async review/journal staging (Q3)."
+    },
+    "packages/account/src/p256-grant-publication.ts": {
+      "ceilings": {
+        "functionLines": 289,
+        "complexity": 43,
+        "nonNull": 13,
+        "unsafeCasts": 2
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/preflight.ts": {
+      "ceilings": {
+        "complexity": 38
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/read-grant-deliveries.ts": {
+      "ceilings": {
+        "complexity": 29,
+        "nonNull": 1,
+        "unsafeCasts": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/shielded-deposit-recovery.ts": {
+      "ceilings": {
+        "functionLines": 274,
+        "complexity": 65,
+        "nonNull": 5,
+        "unsafeCasts": 2
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/testing/fakes.ts": {
+      "ceilings": {
+        "nonNull": 3
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/account/src/testing/p256.ts": {
+      "ceilings": {
+        "unsafeCasts": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/adapter-browser/src/authenticated-transports.ts": {
+      "ceilings": {
+        "nonNull": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/adapter-browser/src/compose.ts": {
+      "ceilings": {
+        "nonNull": 2
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/adapter-browser/src/wallet.ts": {
+      "ceilings": {
+        "nonNull": 2
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/adapter-midnight-js/src/chain.ts": {
+      "ceilings": {
+        "functionLines": 178
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/adapter-midnight-js/src/grants.ts": {
+      "ceilings": {
+        "functionLines": 168,
+        "nonNull": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/adapter-midnight-js/src/graphql-holding-indexer.ts": {
+      "ceilings": {
+        "functionLines": 195
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/adapter-webauthn/src/passkey.ts": {
+      "ceilings": {
+        "functionLines": 215,
+        "nonNull": 2
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/keys/src/device-envelope.ts": {
+      "ceilings": {
+        "nonNull": 3
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/keys/src/grant-record.ts": {
+      "ceilings": {
+        "nonNull": 3
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/keys/src/jubjub-authoriser.ts": {
+      "ceilings": {
+        "nonNull": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/keys/src/jubjub-signing.ts": {
+      "ceilings": {
+        "nonNull": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/keys/src/session-authoriser.ts": {
+      "ceilings": {
+        "nonNull": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/service/src/directory-route.ts": {
+      "ceilings": {
+        "complexity": 30,
+        "nonNull": 3
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/service/src/file-funding-store.ts": {
+      "ceilings": {
+        "functionLines": 163,
+        "complexity": 67,
+        "unsafeCasts": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/service/src/funding-reconciliation.ts": {
+      "ceilings": {
+        "nonNull": 2
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/service/src/host-job-route.ts": {
+      "ceilings": {
+        "complexity": 32,
+        "nonNull": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/service/src/host-mutations.ts": {
+      "ceilings": {
+        "complexity": 26,
+        "nonNull": 29
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/service/src/jobs.ts": {
+      "ceilings": {
+        "nonNull": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/service/src/server.ts": {
+      "ceilings": {
+        "nonNull": 2
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "packages/service/src/sponsor-policy.ts": {
+      "ceilings": {
+        "nonNull": 2
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/account-workspace.ts": {
+      "ceilings": {
+        "nonNull": 3
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/app.ts": {
+      "ceilings": {
+        "lines": 1398,
+        "nonNull": 15,
+        "unsafeCasts": 3
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/capabilities.ts": {
+      "ceilings": {
+        "nonNull": 2
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/connector.ts": {
+      "ceilings": {
+        "functionLines": 180,
+        "nonNull": 1,
+        "unsafeCasts": 3
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/consent.ts": {
+      "ceilings": {
+        "nonNull": 3
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/dev/mock-passkey.ts": {
+      "ceilings": {
+        "functionLines": 185,
+        "unsafeCasts": 2
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/device-handoff.ts": {
+      "ceilings": {
+        "complexity": 34,
+        "nonNull": 4
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/grant-handoff.ts": {
+      "ceilings": {
+        "unsafeCasts": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/grant-holder-demo.ts": {
+      "ceilings": {
+        "unsafeCasts": 4
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/grant-journal.ts": {
+      "ceilings": {
+        "functionLines": 165
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/lace-wallet.ts": {
+      "ceilings": {
+        "functionLines": 280,
+        "nonNull": 2,
+        "unsafeCasts": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/name-service.ts": {
+      "ceilings": {
+        "nonNull": 4
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/routine-access.ts": {
+      "ceilings": {
+        "nonNull": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/routine-keys.ts": {
+      "ceilings": {
+        "functionLines": 328,
+        "nonNull": 6
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/session-checkpoint.ts": {
+      "ceilings": {
+        "complexity": 26,
+        "unsafeCasts": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/session-view.ts": {
+      "ceilings": {
+        "nonNull": 8
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/session.ts": {
+      "ceilings": {
+        "functionLines": 357,
+        "complexity": 31,
+        "nonNull": 4
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/settings-workspace.ts": {
+      "ceilings": {
+        "nonNull": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/ui.ts": {
+      "ceilings": {
+        "lines": 1042,
+        "functionLines": 932,
+        "complexity": 51,
+        "nonNull": 1
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/workspace-pages.ts": {
+      "ceilings": {
+        "nonNull": 5
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-dapp/src/workspace.ts": {
+      "ceilings": {
+        "functionLines": 575,
+        "complexity": 26,
+        "nonNull": 11
+      },
+      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    }
+  }
+}

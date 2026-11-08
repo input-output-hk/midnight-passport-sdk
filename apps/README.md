@@ -3,11 +3,17 @@
 ## Local prototype UX milestone
 
 The [execution map](../docs/prototype/ux-milestone.md) tracks the approved
-Settings/Activity/Audit redesign. The local demo composes five workspaces, a
+Settings/Activity/Audit redesign. The local demo composes four navigation workspaces, a
 responsive Activity panel/sheet and a dedicated Audit workspace using portable
 `account/interaction` models. [The UI guide](../docs/site/demo-ui.md) maps every
-action to its new location. The [optional React host example](../docs/site/react-example.md) uses synthetic
-public snapshots only; actual Lace Wallet connection remains a separate task.
+action to its new location. **Passport account** now uses **Balances / Deposit /
+Withdraw** pages: refresh/shielded reads stay with balances, one transfer form is
+shown at a time, and the open ACC/network remains visible. Contract counters are
+expandable. Deposit uses the configured demo funding wallet; navigation never
+starts a transfer or credential request. Form values survive same-page tab and
+workspace changes; Settings’ session-target shortcut opens Withdraw. The [optional React host example](../docs/site/react-example.md) uses synthetic
+public snapshots only; the optional Lace Wallet reader has separate real-provider
+qualification and grants no ACC authority.
 These changes are source after RC7; keep existing launch commands and durable
 operation state. Optional host renderers must not initiate account actions while
 rendering, subscribing or cleaning up a presentation control.
@@ -24,22 +30,74 @@ lifting. Design: [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](.
 
 | App                | What                                                                                                                                                                                                                                                  |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `passport-service` | Serves the ACC's ZK artefacts (`/zk/acc`), proves with server-side keys (`/prove`), deploys in waves (`/deploy`), sponsors fees (`/sponsor/*`) and keeps the passkey-to-account registry (`/accounts`). It also serves versioned config, binding-pinned artefacts, account hints, job-based prove/deploy and fee routes under `/v1`. It holds the only funded key. Binds `127.0.0.1:8787`. |
+| `passport-service` | Serves the ACC's ZK artefacts (`/zk/acc`), proves with server-side keys (`/prove`), deploys in waves (`/deploy`), sponsors fees (`/sponsor/*`) and keeps the passkey-to-account registry (`/accounts`). It also serves versioned config, binding-pinned artefacts, account hints, job-based prove/deploy and fee routes under `/v1`. It owns the fee sponsor; the optional funding wallet and user's built-in wallet are separate. Binds `127.0.0.1:8787`. |
 | `passport-key-service` | Standalone Node container for restoring, verifying and HTTP-serving the pinned ACC keys. It has no sponsor wallet; see its [image and operations guide](passport-key-service/README.md). |
 | `passport-funding-service` | Separate wallet-backed process for an authenticated, allowlisted unshielded deposit into a deployed ACC. See its [operations guide](passport-funding-service/README.md). |
 | `passport-dapp`    | The harness at `http://localhost:5173`: create and reopen a Passport account with a passkey, and fund the open ACC when launched with `demo up --funding`. Both arms seal a random ACC viewing secret; roster-safe rotation still needs chain-backed sources. The built-in wallet is separate from the ACC. |
 
 ## Candidate consent and browser regression
 
-Every key-using demo action now has an operation review before access. Creation explicitly acknowledges permanent maintenance-authority retirement. In the source preview after RC7, the typed WebAuthn `beforeCeremony` hook waits for **Continue to passkey / Cancel operation** before every actual access and retry; a purpose banner is not approval. The two initial creation accesses register and verify the credential; later numbered P-256 setup signatures publish sealed viewing-key entries. Each gets a separate review; exact transaction reviews remain separate, and cancelled/unknown submissions are never described as rolled back. The capability panel inspects proof plans only, not readiness.
+The signed-out entry uses the upstream-inspired **Sign up / Log in** landing with local
+Passport artwork and **Powered by Lace** branding. The same create/open/address
+controls keep their existing consent and state handling; successful access opens
+**Passport account → Balances**. **Demo tools** exposes Audit and Settings while
+the landing rail is hidden. No automatic wallet connection, owner enrollment or
+JubJub owner unlock follows login. Reviewed login does warm the bounded routine
+reader/wallet lease; it does not grant owner authority. See the [UI guide](../docs/site/demo-ui.md).
+
+Active-account **Log in** and known-address opening now combine passkey discovery
+and both Lace PRF evaluations in one user-verified credential request, with the
+`identify-and-unlock` blocking review. Both sealed-key checks run within the same
+short-lived login scope. The demo's optional verified `onAccountOpened` hook derives
+a wallet-seed copy and adopts routine reader/wallet material for the reviewed
+10/15/30-minute lifetime before that scope ends. Raw PRF copies are cleared; no
+authenticated owner lease or wallet connection starts. Other hosts must opt in.
+Failed or stale login/adoption leaves routine keys locked. Missing PRF/cancellation refuses without
+an automatic second request. Pending setup and actual P-256 transactions may still
+need signatures. This is source-only, not published RC7 or measured provider UX.
+See [the prompt comparison](../docs/site/passkey-prompts.md).
+
+The demo's navigation and account entry actions include app-owned SVG outlines.
+They inherit the host theme and keep visible text labels; no icon library or
+branding dependency is added to the SDK packages. See the
+[UI guide](../docs/site/demo-ui.md#stable-navigation).
+
+One combined operation/credential review precedes each actual passkey API call;
+there is no extra generic dialog first. Creation includes the irreversible
+maintenance-retirement acknowledgement in its first review. The `beforeCeremony`
+hook pins actual purpose, attempt and RP; the host rechecks the captured lease
+before/after approval and immediately before access. Cached routine reads and
+wallet connection need no generic modal. Known owner withdrawal/export inputs
+join the first actual credential review, with the captured route and exact inputs
+checked again before POST/display. A matching scoped-grant transfer has no passkey
+call and retains its standalone exact decision. Other late-bound device/grant
+reviews remain separate. Retries still need fresh
+approval; cancel never rolls back a submitted transaction or clears its unknown
+outcome. The capability panel inspects proof plans, not readiness.
 
 Run `nix develop -c pnpm run build` then `nix develop -c pnpm test:demo-browser` for isolated Chromium journeys across both owner-arm selections. This lane needs Chrome but no Docker/provider/live service. It uses the actual UI and mock credential API with synthetic connector/chain/wallet drivers. It owns an ephemeral server and intercepts all requests; it never changes a running demo. See [the use-case evidence map](../docs/site/use-case-coverage.md), [consent guide](../docs/site/consent.md) and separate native/provider recipes.
 
 
+### Browser diagnostic groups
+
+The default browser command retains all192cases across P-256/JubJub in their
+original flow order. For a focused diagnostic, set one explicit arm and
+`PASSPORT_DEMO_JOURNEY_GROUP` to `presentation`, `account-actions`,
+`scoped-sessions` or `owner-safety`. Standalone groups create their prerequisites
+through the UI; their bootstrap time is separate and earns no canonical case
+credit. CI requires all eight cells plus an exact receipt-inventory aggregate.
+See the [browser evidence guide](../docs/site/use-case-coverage.md#select-one-diagnostic-group)
+and [CI policy](../docs/ci.md). Synthetic success does not establish provider or
+native acceptance. Current agent commands/state rules are in the
+[runbook](../docs/agent-runbook.md); historical guidance remains labelled and retained.
+
 ## Documentation
 
-The prototype's overview, the demo script, the flows, the key derivation and the limitations are in
-[`docs/prototype/`](../docs/prototype/README.md). This file covers setup and operation.
+This file documents the reference demo's setup, environment and operation.
+For reusable package integration, start with the [library guide](../docs/site/library-guide.md).
+For UI flows and composition, use the [demo guide](../docs/site/demo-guide.md) and
+[`docs/prototype/`](../docs/prototype/README.md). The demo's dialogs, local lease
+policy and wallet worker are host choices, not automatic library behavior.
 
 The [demo use cases](../docs/site/use-cases.md) cover the available browser scenarios.
 After connecting the built-in wallet, **Refresh wallet balance** rereads its synced NIGHT,
@@ -90,7 +148,7 @@ pnpm install && pnpm build
 | `PASSPORT_SERVICE_HOST`    | `127.0.0.1`                    | Service bind address. A non-loopback host exposes the sponsor to whoever can reach it.                                   |
 | `PASSPORT_SERVICE_PORT`    | `8787`                         | Service port. The dapp expects 8787 unless `VITE_PASSPORT_SERVICE_URL` says otherwise.                                   |
 | `PASSPORT_MAX_DEPLOYS`     | `20`                           | Deploy cap per service process.                                                                                          |
-| `PASSPORT_REGISTRY_FILE`   | `~/.midnight-passport/registry.json` | The passkey-to-account registry; the deployed set sits beside it as `registry.deployments.json`, and the v1 hint store is `registry.json.v1`. Kept outside the repository so accounts can be reopened later. Delete all three when you reset the chain. |
+| `PASSPORT_REGISTRY_FILE`   | `~/.midnight-passport/registry.json` | The passkey-to-account registry; the deployed set sits beside it as `registry.deployments.json`, and the v1 hint store is `registry.json.v1`. Kept outside the repository so accounts can be reopened later. Preserve them with their original chain; archive/reconcile unknown work before choosing fresh scoped state. |
 | `PASSPORT_SPONSOR_SEED`    | the localnet genesis dev seed, on `undeployed` only | The sponsor wallet's seed. The default is public knowledge and funded on the localnet only; another network requires this or `PASSPORT_SPONSOR_SEED_FILE`. |
 | `PASSPORT_SPONSOR_SEED_FILE` | unset | Path to a file containing the sponsor wallet's 32-byte lowercase hex seed. Preferred for the service image; mutually exclusive with `PASSPORT_SPONSOR_SEED`. |
 | `PASSPORT_DEMO_FUNDING_ENABLED` | unset | Set to `1` by `demo up --funding`. Enables the localnet-only browser funding route on the Passport service; requires the token and asset policy files described in the funding service guide. |
@@ -155,11 +213,25 @@ the network, ACC, asset, amount and destination for explicit confirmation before
 consent. It logs the confirmed transaction and rereads the ACC balance. The built-in wallet only
 reads addresses and balances; receiving an asset there does not give this demo wallet a send button.
 After an indeterminate submit error, inspect the live ACC and recipient before trying again.
-The page also has **Open by ACC address**: paste the public 64-character lowercase ACC address and
+The signed-out entry offers **Sign up** and **Log in**. There is no Overview
+navigation item. Home returns an already-open account to **Balances** without
+requesting credentials or resetting its state; in a fresh document it opens login.
+All four multi-page workspaces use consistent page links in a persistent left rail.
+Midnight wallet separates Built-in wallet and Lace Wallet. Audit separates Event log,
+Requests & responses and Export JSON. Content and navigation scroll independently;
+on compact screens use Menu to open the navigation drawer. Settings uses submenu
+pages rather than top-level accordions. **Quick actions**
+uses the reviewed login lease or an explicit unlock for 10/15/30 minutes, derives
+JubJub grant children without repeated PRF prompts, and keeps critical owner
+operations on the fresh-passkey path. A grant still needs separate owner approval;
+unlocking alone does not authorize transfers. See [the guide](../docs/site/quick-actions.md).
+Activity starts collapsed; its button sits beside the workspace title.
+Below the entry actions, expand **Log in with an account address**: paste the public 64-character lowercase ACC address and
 choose an already-enrolled passkey. This verifies its live device entry and sealed viewing key
 without relying on the local directory hint. It cannot discover an unknown address or recover a
 lost passkey. The requested and verified addresses appear in the operation trace.
-**Read shielded holdings** opens the ACC's sealed inbox with the current passkey and compares each
+**Read shielded holdings** opens the ACC's sealed inbox with the active routine reader
+(or an explicitly reviewed fresh PRF request) and compares each
 coin with the indexer's successful output event, exact Merkle index, and recorded ACC spend events.
 Only still-unspent coins appear with public color, value and inbox position; the page and exported
 log omit the viewing secret and coin nonce. This is separate from the unshielded balance shown in
@@ -170,7 +242,10 @@ balances without another passkey prompt.
 **Read grant roster** shows the live grant generation, nonce, public IDs and active/revoked status
 from one ACC chain snapshot. **Recover pending grants** checks encrypted openings staged in this
 browser against live commitments and resumes their sealed publication; unsettled IDs remain in
-the operation log. These actions do not create a grant or authorize a grantee spend.
+the operation log. Recovery/publication and sensitive opening export are critical
+operations requiring fresh passkey approval, even under an unlocked full owner.
+Public roster reads need no passkey. These actions do not create a grant or authorize
+a grantee spend.
 
 To add a second sealed device, open the demo in another browser profile at the same `localhost`
 origin. Put the owner ACC address in **Open by ACC address** and select **Prepare joining device**.
@@ -191,8 +266,8 @@ the target. If any opening or holding cannot be verified, removal stops. The ope
 multiple transactions; after an uncertain result, inspect the live roster and inbox before
 retrying. Clearing browser storage loses the local grant openings.
 
-Expand **Operation trace (requests and responses)** to inspect the chronological public-field
-trace. **Copy full log** includes that trace, Passport events (including deploy waves), account
+Choose **Audit → Requests & responses** to inspect the chronological public-field
+trace. **Event log** and **Export JSON** have their own Audit pages. **Copy full log** includes that trace, Passport events (including deploy waves), account
 state and built-in wallet addresses and balances; raw transaction bodies and secret material are
 excluded. Start a fresh page session before create/open if you need the complete sequence.
 
@@ -207,8 +282,9 @@ free (for another stack, only 8787 and 5173, and no Docker). If one is taken it 
 anything for you. `bash scripts/prototype-up.sh --check` runs only the port check. It then starts
 the node and proof server, waits for block 2 (the indexer's SPO client fails on a chain still at
 genesis), starts the indexer, then the service, then the dapp. On exit it stops only the containers
-it started and leaves their volumes, so a rerun resumes the same chain. To reset the chain, run
-`experiments/acc-0.35/run.sh "$D" down` and delete the registry file and its `.deployments.json`.
+it started and leaves their volumes, so a rerun resumes the same chain. For a fresh
+disposable environment, select a new owned project and scoped state. Preserve the old
+volumes, registries and original unknown intents; do not delete them to repair an error.
 
 Open `http://localhost:5173` in a browser with a platform passkey. `prototype:e2e` writes its
 evidence to `experiments/acc-0.35/results/x8-dapp-e2e.json`.
@@ -217,9 +293,11 @@ evidence to `experiments/acc-0.35/results/x8-dapp-e2e.json`.
 `http://localhost:5173/?mockPasskey`. A dev-only mock (`src/dev/mock-passkey.ts`) replaces
 `navigator.credentials` before the app loads, so the real UI path runs end to end: a WebCrypto
 P-256 key, `wa-json134` assertions (37-byte authenticator data, flags UP+UV) and PRF as
-HMAC-SHA256 under a random per-credential secret. As Google Password Manager is expected to, it answers
-both PRF salts already at create, so create asks twice; `?mockPasskey=noprf-results` answers only
-`prf.enabled` at create, so the third prompt (the separate PRF ceremony) can be clicked through.
+HMAC-SHA256 under a random per-credential secret. The default fixture returns both
+PRF results at create, so P-256 setup needs registration, its compatibility probe
+and the two actual publication signatures, without another PRF request.
+`?mockPasskey=noprf-results` returns only `prf.enabled` and adds one PRF request.
+These are mock API-call budgets, not measured Google/iCloud sheet counts.
 Its credentials, private keys and PRF secrets
 included, are kept in `localStorage` (`passport-dev:mock-passkey:v1`) so that "Open with passkey"
 works after a reload; a discoverable prompt picks the newest one. The page shows a "MOCK PASSKEY —
@@ -267,7 +345,9 @@ and `assertionMaterial`.
   second live P-256 device. If read grants are active, the host must supply verified holdings and
   complete grant targets so the account rotates its viewing and roster keys and reseals every
   grantee before giving the joiner a fresh key. The joining host can call
-  `openAccountAt(address)` with its passkey; the demo does not yet expose that address-based flow.
+  `openAccountAt(address)` with its enrolled passkey. The demo exposes **Open by ACC address**;
+  the cold-first path verifies the authentic sealed registration and live device before opening.
+  It does not recover a lost passkey or discover an unknown address.
 - **The service binds loopback** (`127.0.0.1`). CORS lets only the dapp origin read its answers,
   which on its own does not stop a cross-site page from sending a request. So the service also
   answers `415` to any POST or PUT whose `content-type` is not `application/json` (that forces a
@@ -309,9 +389,13 @@ and `assertionMaterial`.
   from the service, which could otherwise vouch for its own tampered artefacts. The service
   verifies the same hash and every listed file at start-up. Changing the artefacts means
   restarting both.
-- **Built-in wallet.** An in-page wallet built with `HDWallet.fromSeed` from the passkey's
-  BIP-39 seed (above), exposed as `window.midnight.devwallet`. Lace has no phrase-derived
-  Midnight wallet in scope; this is the prototype's stand-in. Without PRF it fails with
+- **Built-in wallet.** The browser's owned Worker hosts `HDWallet.fromSeed`, wallet
+  subscriptions and synchronization. The page exposes its read-only descriptor as
+  `window.midnight.devwallet`; Node probes use the direct runtime. The seed is derived
+  from the passkey's root output, separately from the random sealed ACC viewing secret.
+  Matching reviewed routine access can supply the seed without a new PRF request.
+  This is the demo's read-only evaluation wallet, with separate external-wallet
+  provider selection and qualification. Without PRF it fails with
   `UnsupportedAuthenticator`: there is no fallback seed, so it never opens a different, empty
   wallet, and the web app never carries the genesis (sponsor) seed. The ACC flows do not depend
   on the wallet: fees are sponsored.
@@ -330,8 +414,10 @@ compromised service could fake the ledger that `openAccount`'s checks read.
 The packaged JubJub grant source is `createMidnightGrantSource` in
 `mn-passport-adapter-midnight-js`. A host supplies the pinned ACC binding, same-network public-data
 provider, and durable read-key openings. It reads the live grant map and checks opening hashes for
-viewing-key rotation; the standalone demo wires a browser-local encrypted opening store, but does
-not yet expose grant controls. An opening created elsewhere remains unavailable here.
+viewing-key rotation. The standalone demo wires a browser-local encrypted opening store
+and reviewed grant issue/export/import/spend/revoke/recovery controls in Settings → Permissions.
+An opening created elsewhere remains unavailable unless explicitly imported or reconstructed
+through the supported verified bookkeeping path.
 Grant issue also reads the roster's auth nonce and refuses a change after signing, before it
 stages an opening or submits the circuit.
 The owner flow now names the creation lock choice and full grant context in its key-session
@@ -340,8 +426,8 @@ descriptor for hosted signers; the demo's local passkey authoriser ignores that 
 - **A port is taken.** The preflight names the container or process. The Passport localnet
   publishes the node, indexer and proof server on host ports 19944, 18088 and 16300
   (`infra/localnet/ports.env`), so it runs beside another localnet on the Midnight defaults
-  (9944/8088/6300). A clash usually means a stale run: stop it yourself, then retry. To move the
-  stack, edit `ports.env` and the URLs in `infra/networks/undeployed.env` together.
+  (9944/8088/6300). Identify the owner before acting: reuse a healthy intended stack or
+  select free ports for your own. Never stop an unrelated session. To move your stack, edit `ports.env` and the URLs in `infra/networks/undeployed.env` together.
 - **`localhost` or `127.0.0.1`.** Open the dapp at exactly `http://localhost:5173`: the passkey's
   relying party and the ACC's origin binding are tied to that origin, and `127.0.0.1` will not
   work. The service listens on `127.0.0.1` only. If the browser or Node resolves `localhost` to
@@ -355,19 +441,21 @@ descriptor for hosted signers; the demo's local passkey authoriser ignores that 
   `PASSPORT_CONTRACT_DIR`.
 - **`ProverUnavailable` after about 10 minutes.** The dapp gives up on `/prove` after 10 minutes,
   but proofs and deployments share one queue on the service. A rotation queued behind a `/deploy`
-  (10 waves) can time out while the service keeps proving it. Wait for the deployment to finish,
-  then retry.
+  (10 waves) can time out while the service keeps proving it. Inspect the original operation
+  stage, request/job ID and service logs, then reconcile the same intent. A client timeout does
+  not prove that no transaction was sent and must not trigger a replacement send.
 - **Indexer requests fail in the browser.** The page queries the localnet indexer at
   `http://localhost:18088` from `http://localhost:5173`. Whether the indexer sends CORS headers has
   not been checked yet; look for a CORS error in the browser console before suspecting the
   connector.
-- **Docker has too little memory.** Raise it to at least 24 GiB and retry. `/prove` otherwise
+- **Docker has too little memory.** Reserve at least 24 GiB before starting new proof work. Coordinate any engine restart with other stack owners; do not restart Docker as routine test cleanup. `/prove` otherwise
   reports `ProverUnavailable`.
-- **Manifest hash does not match.** Recompute `PASSPORT_MANIFEST_SHA256` from the artefacts you
-  compiled. It is only reproducible from the canonical `compile.sh` invocation.
+- **Manifest hash does not match.** Compare the selected binding, compiler and artifact bytes with the independently trusted
+  manifest pin. Do not change the trusted pin to match unexpected output. Restore the matching
+  verified cache or use the canonical `compile.sh` invocation in a separate fresh build.
 - **The service exits at start-up.** Its first line says why: usually missing artefacts or a
   hash mismatch.
-- **Stale directory after a chain reset.** The hint stores are only valid for the chain they were written on. `prototype:up` stops the localnet with its volumes kept, so accounts survive a restart. If you drop the volumes (`docker compose … down -v`, or `experiments/acc-0.35/run.sh`, which starts fresh), delete `~/.midnight-passport/registry.json`, `registry.json.v1` and `registry.deployments.json`, or opening fails with `AccountNotFound`.
+- **Stale directory after an intentional chain reset.** Hint stores describe their original chain. Ordinary restarts preserve the chain volumes and accounts. After a deliberate fresh-chain reset, archive and reconcile the old registry, `registry.json.v1`, deployment log and transaction evidence before selecting fresh state. Do not delete registries, journals or unknown IDs to repair failed authentication or a timeout.
 
 ### Local durability milestone
 
@@ -457,7 +545,7 @@ engineer guide for origin-form request-target rules.
 ## Source demo increment: consented JubJub sessions
 
 After opening/funding an ACC, set the withdrawal asset and recipient. Under
-**Consented JubJub session**, choose 10/15/30 minutes and caps, then approve the
+**Settings → Sessions → Configure a new session**, choose 10/15/30 minutes and caps, then approve the
 exact scope and fresh owner passkey ceremonies. Matching unshielded withdrawals
 use the PRF-derived child without another credential access. Owner administration
 and outside-scope spending still require fresh passkey consent. Hiding the tab,
@@ -465,6 +553,13 @@ reload, expiry and local lock dispose the signer; only chain expiry/revocation
 ends copied authority. Public checkpoint metadata retains unknown submission
 fences across reloads; never clear it to replay a transfer. No session private
 key or grant opening is persisted.
+
+The **Current session** card reports retained scope separately from draft target
+and limit inputs. Exact public IDs and the recorded UTC deadline stay under
+details; unknown outcomes still require reconciliation. Separate local Lock and
+on-chain Revoke cards explain their different effects. Settings action cards,
+capability/name form fields and external Lace balance facts use the same readable
+spacing; no credential count, signer policy or SDK package export changes.
 
 See [session setup and threat model](../docs/site/jubjub-sessions.md). The feature
 is a source preview after RC7, not a change to published RC7 artifacts. Browser
@@ -498,3 +593,146 @@ No ACC permission, recipient autofill, signing or transfer follows connection.
 Forget invalidates locally; extension permissions must be managed in the wallet.
 The new adapter-browser/wallet subpath is absent from published RC7. Both-arm
 synthetic browser cases qualify UI refusals, not an installed Lace extension.
+
+
+### Authenticated full owner (local source)
+
+Open the ACC, then Settings → Quick actions → **Unlock account**. Approve the pinned
+PRF unlock and, on first P-256 use, explicit companion-owner enrollment. The stable
+JubJub key uses Lace PRF output one and has full on-chain owner authority. The demo
+requires fresh, credential-pinned PRF approval before each critical reviewed
+operation, matching both owner and reader against the captured lease. This includes
+owner transfers, administration, permission changes and sensitive opening recovery
+or export. Multiple internal calls in the same operation share that approval; it
+neither renews the lease nor permits fallback after expiry. Exact operation reviews
+remain. This host rule supersedes the earlier all-owner-operations reuse policy; it
+does not constrain a copied full-owner key on-chain.
+**Unlock reading only** retains the earlier limited cache/grant behavior described
+above. Local timeout is not removal of the durable full owner; a connected built-in
+wallet also has a separate lifetime. Preserve pending enrollment markers and original
+Audit IDs; no automatic replay after uncertainty. See
+[owner authentication](../docs/site/authenticated-owner.md). Source-only preview;
+no new provider/native/full Lace or published-package acceptance.
+
+## Local-source package quality increment
+
+The built-in wallet runs its SDK, HD derivation, indexer subscriptions and dust
+sync in a dedicated browser worker. The page owns passkeys, consent and UI state;
+stop terminates only its worker and rejects late reads. Node wallet probes use the
+same runtime directly. No owner-key persistence or wallet spending is added.
+
+Run `nix develop -c pnpm run test:background` for isolated Chromium worker and real
+IndexedDB contract checks. Wallet CPU/balances are synthetic; a separate case
+imports the actual SDK in a worker without opening a network wallet. This lane
+never contacts a running demo. Full UI journeys remain `test:demo-browser`.
+See [quality strategy](../docs/site/quality.md), [secret custody](../docs/site/secret-storage.md)
+and the [local backlog](../docs/review/sdk-quality/README.md).
+
+NIGHT readiness is independent of shielded/DUST progress. A pending DUST read no
+longer holds the wallet action open: it has a separate status and timestamp, with
+shared in-flight reads and stale-result fences across refresh/reconnect. DUST
+failure does not hide a ready NIGHT balance. The browser journey deliberately
+holds DUST pending and checks NIGHT plus usable wallet controls before releasing it.
+
+### Opt-in job transport source follow-up
+
+The default demo continues to use its existing transport. Hosts explicitly using
+`remoteHostJobs` get bounded native JSON replies, discarded-body cleanup and
+`void | Promise<void>` snapshot observers supervised by the caller's existing
+deadline. A failed observer stops observation, not accepted durable work. Retain
+original IDs and use explicit same-intent recovery. The service-owned queue now
+matches its active capacity; injected shared queues keep host-owned backpressure.
+Read the [job contract](../docs/site/service-jobs.md#source-preview-bounded-observation-and-admission).
+
+### Source-only isolated lifecycle qualification
+
+The opt-in `host-job-lifecycle-isolated-native` lane uses fresh owned containers and
+state on ports 19964/18108/16320 with service 18798, independently of the running demo.
+Its closed descriptor and stable native lease refuse endpoint/fixture substitutions
+and concurrent qualification. Read the [qualification runbook](../docs/site/qualification.md#source-preview-isolated-populated-host-job-lifecycle)
+for fresh-root requirements, signed frozen source/dependencies/key hashes, work and
+cleanup deadlines, exact-owned cleanup and retained failure/unknown evidence.
+Fake-stack tests are cheap guard coverage; they do not constitute a native run.
+Never restart the user's stack or delete archived volumes/leases to run this lane.
+
+For reusable contracts, start with [Library integration](../docs/site/library-guide.md)
+and [Account keys and recovery](../docs/site/account-keys.md). For this application's
+consent, worker and memory-lease choices, use [Demo composition](../docs/site/demo-guide.md).
+Public circuit artifacts and their HTTP cache are documented in the separate
+[proving-artifact guide](../docs/site/keys.md).
+
+
+### Source hardening: request and holding identity
+
+Reusable durable APIs pin the original invocation ID, signal/callback and explicit
+cancelled-resume choice across asynchronous work; a different journal document
+refuses before approval or writes. The Midnight holding source keeps owned coin
+bytes from commitment through qualification, with isolated callback/return copies.
+See [durability](../docs/site/durability.md#source-preview-pin-one-invocation) and
+[holding ports](../docs/site/api.md#ports). The demo's default buttons still use its
+existing account/consent composition; these library changes do not silently enable
+durable mode, reconnect wallets or change approval policy. Native runs require a
+matching frozen source receipt; synthetic tests alone do not qualify them.
+
+
+### Library hardening versus demo composition — local source
+
+Read the separate library and demo entry guides. Versioned proof/deploy clients
+now bound total observation, and raw durable ports retain original-ID uncertainty
+without POST replay. These are library transport contracts; they do not make the
+default owner buttons durable or install a login/session policy. Generic V1 result
+size and legacy synchronous sponsor behavior remain separate limits. P-256 grant
+revocation uses typed internal phases with unchanged live checks/fresh approval.
+The later extraction is not qualified by an earlier frozen native receipt.
+Examples are strict-checked; the worker entry also has an exact-source execution
+regression. Preserve all pending journals, account records and user service state.
+
+
+### Library transport and installation checks (source after RC7)
+
+The reusable V1 sponsor now bounds the whole observation only when an explicit
+valid timeout is configured; the unset branch and legacy clients retain their
+existing behavior. No POST is automatically retried. A timeout does not prove
+that a value transaction was not submitted. Read the library HTTP client map in
+`docs/site/service.md`; these are adapter contracts, not a change to demo wallet
+or account authority. `docs/site/library-guide.md` identifies each persistence
+owner separately from demo memory leases and journals.
+
+After preparing all nine matching local tarballs in a fresh external application,
+`scripts/consumer/installed-quality.mjs` checks installed declarations, actual
+public-module imports and input hashes. It does not install or publish; follow
+`docs/site/quality.md` for the required bundle/lock pins and output path. Keep
+local installed-source results separate from released RC7 and native/provider
+evidence. The demo remains one composition of these libraries.
+
+
+### Funding-client intent ownership and browser timing (local source)
+
+`remoteFaucet` now validates and captures the original deposit request before fresh
+credentials, keeps its original ID for the wire and confirmation, and returns owned
+validated receipt fields. Only an explicit timeout bounds credentials through body
+observation; it never retries or invents an ID. See the library funding contract in
+`docs/site/service.md`. The demo's proxy, allowlist, wallet and reservation recovery
+policy are unchanged; an observation failure still needs original-ID reconciliation.
+
+Synthetic browser receipts now include monotonic setup, per-arm, checkpoint and
+cleanup timings, plus owned page/context counts. Checkpoint intervals include
+intervening UI setup and actions; they are not isolated test durations. All cases
+and consent assertions still run by default. Scheduling changes require measured
+groups and exact coverage inventory; timing data alone is not a CI speedup.
+
+
+### Library hardening and demo qualification (local source)
+
+The reusable background port now observes failed async teardown without delaying
+pending read rejection; the demo still owns its worker and UI lifecycle. Library
+contracts live in `docs/site/background.md`; demo wiring is in the demo guide.
+Grant bookkeeping now rejects missing required JubJub seal pairs before signing;
+publication recovery keeps the original staged grant, never a replacement issue.
+Read the API/grant-recovery guides before implementing a custom sealing adapter.
+
+The opt-in installed-crypto tool checks six software/generated-contract cases on
+an already prepared nine-package consumer. Follow `docs/site/quality.md` for exact
+manifest/lock pins and fresh retained output. It does not start this demo, a wallet
+or a proof stack; source tests, installed bytes and native/provider evidence remain
+separate. No new release or deployed documentation is implied by local checks.

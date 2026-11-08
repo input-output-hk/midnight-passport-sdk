@@ -19,11 +19,30 @@ API can rotate the P-256 viewing secret or remove an enrolled device after verif
 roster, chain-backed holdings and active read-grant targets. The demo supplies these sources and
 exposes reviewed sealed-key rotation; unavailable openings cause a refusal. The new
 browser composition explicitly refuses older
-deterministic-key P-256 accounts until migrated. See [ZK keys and recovery](../site/keys.md).
+deterministic-key P-256 accounts until migrated. See [library key and recovery contracts](../site/account-keys.md).
 The account API can read shielded holdings through this sealed P-256 keyring when a host provides
 chain-backed holding verification; the browser demo supplies that source through the indexer.
 Both authoriser arms validate the viewing key with a nonempty sealed-entry request; empty
 batches may do no work in a hosted encryption port.
+
+### Current roles and custody
+
+| Material | Current role and lifetime |
+| --- | --- |
+| Native P-256 private key | Stays in the authenticator; each required strict transaction signature is fresh. Normal unshielded withdrawal needs no unused PRF request. |
+| PRF output1 | Derives the deterministic JubJub full owner when explicitly selected; raw PRF copies are disposed after their operation scope. A local timer does not narrow that owner's on-chain power. |
+| PRF output2/root and derived wallet seed | Reproduce the separate HD wallet and reader recipe. Verified login may explicitly adopt derived routine material for 10/15/30 minutes in this demo. |
+| Reader secret | Opens the current account's ledger-matched sealed viewing secret; the companion owner has its separately scoped reader. |
+| Random ACC viewing secret | Defines `enc_key`; rotation reseals fresh material to verified surviving readers. It is not the HD wallet seed or a deterministic account-address secret. |
+| Bounded grant child | Separate PRF-derived signer, permitted only by its issued recipient/asset/caps/expiry. It is not a full owner. |
+
+The demo clears routine/owner material on its applicable lock/hidden/exit/expiry
+boundaries. A running wallet has a separate lifetime and owns its runtime state;
+locking the routine cache does not assert wallet shutdown or chain revocation.
+The reusable SDK starts none of these timers or persistence choices automatically.
+See [current custody](../site/library-guide.md#custody-and-cleanup),
+[owner authority](../site/authenticated-owner.md) and
+[bounded grants](../site/jubjub-sessions.md).
 
 ## Historical deterministic-key P-256 prototype
 
@@ -38,6 +57,10 @@ derives from anything. It authorises the account directly (see
 [the divergence from Lace](#the-divergence-from-lace)).
 
 ## Overview
+
+**Historical deterministic-key P-256 model.** This diagram and the `acc-enc:v1`
+recipe below preserve the earlier prototype; they do not describe current sealed
+ACC secrets or the current JubJub owner. Headings remain for existing links.
 
 ```mermaid
 flowchart TD
@@ -55,6 +78,9 @@ flowchart TD
 ```
 
 ## The PRF salts
+
+The labels remain the same; the role column describes the historical P-256-only
+flow. Current output1/output2 uses are listed above.
 
 One WebAuthn PRF evaluation takes two salts. Each salt is the SHA-256 of a UTF-8 label. The salts
 are public domain separators, not secrets.
@@ -94,6 +120,9 @@ Midnight wallet in scope yet, so this wallet is the prototype's stand-in.
 
 ## MIP-0015 to the account's encryption key
 
+**Historical derivation.** Current sealed accounts use a random viewing secret and
+PRF-derived readers; do not derive their ACC viewing secret with this old recipe.
+
 The account's `enc_key` is the X25519 public key of a secret that MIP-0015 v1
 `deriveSymmetricSecret` derives from the BIP-39 seed. The function is ported verbatim from Lace.
 
@@ -121,6 +150,10 @@ Lace: the network separates wallets through address encoding and the wallet's ne
 
 ## What is never stored
 
+**Historical custody notes.** The following bullets record that prototype's behavior.
+Current sealed-key and routine/owner custody is summarized above; JavaScript zeroing
+is not a guarantee of erasing engine temporaries or provider-owned storage.
+
 - **PRF outputs.** They live in memory only. Outputs the provider returned at creation sit in a
   module-private `WeakMap`, never on the credential object, so no spread, log, registry write or
   evidence can carry them. The encryption-key step takes them once and zeroes them. An entry nobody
@@ -139,10 +172,16 @@ Lace: the network separates wallets through address encoding and the wallet's ne
 - **Rotated encryption keys.** A rotation target is 32 random bytes from `crypto.getRandomValues`.
   Nothing keeps a copy, so data encrypted to a rotated key cannot be recovered.
 
-The built-in wallet has no stored seed either. It derives it again from a PRF ceremony every time it
-connects.
+That historical wallet derived again at each connection. Current source can reuse
+its explicitly reviewed routine seed lease for connection without another credential
+request; an already running wallet refresh does not request PRF. The demo does not
+silently restore private keys from persistent storage.
 
 ## The divergence from Lace
+
+**Historical comparison, not a statement about current Lace releases or both current
+SDK owner arms.** Current source supports P-256 and PRF-derived JubJub through their
+respective key paths; no full Lace/provider compatibility follows.
 
 Lace's ACC authoriser is a **JubJub** key, derived from PRF output #1. This prototype uses the
 ACC's **P-256 WebAuthn arm** instead. The passkey signs each call itself, and the ACC verifies the
@@ -154,6 +193,9 @@ Lace has no rotation recipe yet, so `rotateEncryptionKey` takes a random key. Th
 extension, not part of the recipe.
 
 ## The MIP-0015 labels are a draft
+
+**Historical deterministic-key warning.** Preserve it for accounts made under that
+prototype; current sealed ACC viewing secrets are random and use reader envelopes.
 
 The MIP-0015 domain `lace-passport:acc-enc:v1` and the context `<networkId>/0` are draft labels.
 They are the open MIP-0015 point in LW-15635. If Lace settles on other labels, the same passkey will

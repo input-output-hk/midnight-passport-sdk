@@ -22,28 +22,32 @@ export async function spendDemoGrant(
     origin: 'http://localhost:5173',
     beforeCeremony: beforeDemoCeremony,
   });
-  await keys.credentials.identify();
-  await keys.prf.withSession(async () => {
-    (await keys.prf.deviceSecret()).fill(0);
+  if (!keys.credentials.withLoginSession)
+    throw new Error('The fixture requires scoped login support');
+  return keys.credentials.withLoginSession(async () => {
+    await keys.credentials.identify();
+    await keys.prf.withSession(async () => {
+      (await keys.prf.deviceSecret()).fill(0);
+    });
+    if (!(await review({ ...handoff, amount, remainingCap: handoff.cap })))
+      throw new Error('Spend declined');
+    const response = await fetch('/__demo-fixture', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'spend', amount }),
+    });
+    if (!response.ok) throw new Error('Synthetic grant refused');
+    const state = await response.json();
+    if (state.grantUnsettled) {
+      const { SubmittedGrantSpendError } = await import('@input-output-hk/mn-passport-account');
+      throw new SubmittedGrantSpendError(state.txHash);
+    }
+    return {
+      txHash: state.txHash,
+      grantId: handoff.grantId,
+      spentTotal: BigInt(state.grant.spent),
+      grantNonce: 1n,
+    };
   });
-  if (!(await review({ ...handoff, amount, remainingCap: handoff.cap })))
-    throw new Error('Spend declined');
-  const response = await fetch('/__demo-fixture', {
-    method: 'POST',
-    body: JSON.stringify({ action: 'spend', amount }),
-  });
-  if (!response.ok) throw new Error('Synthetic grant refused');
-  const state = await response.json();
-  if (state.grantUnsettled) {
-    const { SubmittedGrantSpendError } = await import('@input-output-hk/mn-passport-account');
-    throw new SubmittedGrantSpendError(state.txHash);
-  }
-  return {
-    txHash: state.txHash,
-    grantId: handoff.grantId,
-    spentTotal: BigInt(state.grant.spent),
-    grantNonce: 1n,
-  };
 }
 
 // Real session signature/holder guards and generated pure circuits; synthetic chain state only.

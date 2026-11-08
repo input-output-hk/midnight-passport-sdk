@@ -2,14 +2,18 @@ import { PassportConnectorError } from '@input-output-hk/mn-passport-account/err
 import type {
   Authoriser,
   CredentialPort,
-  PasskeyCredential,
   PrfKeySource,
 } from '@input-output-hk/mn-passport-account/ports';
-import { deriveSymmetricSecret, seedFromRoot } from '@input-output-hk/mn-passport-keys';
 import { p256 as p256Curve } from '@noble/curves/nist.js';
 import { browserPasskey } from './passkey.js';
-import { passkeyPrf, type PasskeyPrfOutputs } from './prf.js';
+import { passkeyPrf } from './prf.js';
+import { identifyPasskeyWithPrf } from './login.js';
+import { createPasskeySessions, type PasskeyLoginKeys } from './sessions.js';
+import { createPasskeySelection } from './selection.js';
+import { pinnedPasskeyOptions } from './pinned-options.js';
 import type { PasskeyCeremonyOptions } from './ceremony.js';
+
+export type { PasskeyLoginKeys } from './sessions.js';
 
 /** Browser implementation of the account's credential, PRF and P-256 authoriser ports. */
 export function webauthnPasskey(
@@ -18,127 +22,111 @@ export function webauthnPasskey(
     origin: string;
     credentials?: CredentialsContainer;
   },
-): { credentials: CredentialPort; prf: PrfKeySource; p256: Authoriser } {
-  const seam = browserPasskey(opts);
-  const known = new Map<string, PasskeyCredential>();
-  let current: PasskeyCredential | undefined;
-  let selectedCredentialId: Uint8Array | undefined;
-  let session: PasskeyPrfOutputs | undefined;
-  let pendingSession: Promise<PasskeyPrfOutputs> | undefined;
-  let sessionUsers = 0;
-  const idHex = (id: Uint8Array): string =>
-    Array.from(id, (byte) => byte.toString(16).padStart(2, '0')).join('');
-  const selected = (): PasskeyCredential => {
-    if (!current) throw new PassportConnectorError('InternalError', 'No passkey was selected.');
-    return current;
-  };
+): {
+  credentials: CredentialPort;
+  prf: PrfKeySource;
+  p256: Authoriser;
+  /** Available only during a combined login for this exact selected credential. */
+  readLoginKeys(credentialId: Uint8Array | undefined): PasskeyLoginKeys;
+} {
+  let selection: ReturnType<typeof createPasskeySelection>;
+  const sessions = createPasskeySessions(
+    () => passkeyPrf({ ...options, ...selection.prfSelection() }),
+    () => selection.checkAvailable(),
+  );
+  selection = createPasskeySelection(
+    () => sessions.busy(),
+    () => sessions.canBind(),
+  );
+  const options = pinnedPasskeyOptions(opts, () => {
+    const selected = selection.checkpoint();
+    const owned = sessions.checkpoint();
+    return () => {
+      selected();
+      owned();
+    };
+  });
+  const seam = browserPasskey(options);
   const credentials: CredentialPort = {
+    async withLoginSession(work) {
+      selection.checkAvailable();
+      return sessions.withLoginSession(work);
+    },
     async create({ name }) {
-      const created = await seam.create(name);
-      current = created;
-      selectedCredentialId = created.credentialId;
-      known.set(idHex(created.credentialId), created);
-      return { credentialId: created.credentialId };
-    },
-    async identify() {
-      const identity = await seam.identify();
-      selectedCredentialId = identity.credentialId;
-      current = known.get(idHex(identity.credentialId));
-      return {
-        credentialId: identity.credentialId,
-        owns(key, policy) {
-          if (!policy || !identity.owns({ ...key, identity: false }, policy)) return false;
-          current = {
-            credentialId: identity.credentialId,
-            publicKey: { ...key, identity: false },
-            policy,
-          };
-          known.set(idHex(identity.credentialId), current);
-          return true;
-        },
-      };
-    },
-  };
-  const prf: PrfKeySource = {
-    async withSession<T>(operation: () => Promise<T>): Promise<T> {
-      // Reserve before awaiting the ceremony: overlapping users share one prompt and the outputs
-      // remain live until the last user finishes, even if an earlier operation finishes first.
-      sessionUsers++;
+      if (sessions.active())
+        throw new PassportConnectorError('NotAuthorised', 'Another login is active.');
+      const ticket = selection.begin();
       try {
-        if (!session) {
-          pendingSession ??= (async () => {
-            const credentialId = selectedCredentialId;
-            if (!credentialId)
-              throw new PassportConnectorError('InternalError', 'No passkey was selected.');
-            return passkeyPrf({
-              credentialId,
-              rpId: opts.rpId,
-              beforeCeremony: opts.beforeCeremony,
-              ...(opts.credentials && { credentials: opts.credentials }),
-              ...(current && { created: current }),
-            });
-          })().finally(() => {
-            pendingSession = undefined;
-          });
-          session = await pendingSession;
-        }
-        return await operation();
+        const created = await seam.create(name);
+        selection.commit(ticket, created.credentialId, created);
+        return { credentialId: Uint8Array.from(created.credentialId) };
       } finally {
-        sessionUsers--;
-        if (sessionUsers === 0 && session) {
-          session.authoriser.fill(0);
-          session.root.fill(0);
-          session = undefined;
-        }
+        selection.finish(ticket);
       }
     },
-    async deviceSecret() {
-      if (!session) return prf.withSession(() => prf.deviceSecret());
-      return session.authoriser.slice();
-    },
-    async deriveSecret({ domain, context, length }) {
-      if (!session)
-        return prf.withSession(() =>
-          prf.deriveSecret({ domain, context, ...(length === undefined ? {} : { length }) }),
-        );
-      const seed = seedFromRoot(session.root);
+    async identify() {
+      const login = sessions.loginEpoch();
+      const ticket = selection.begin(login?.phase === 'ready');
       try {
-        return deriveSymmetricSecret(seed, {
-          domain,
-          context,
-          ...(length === undefined ? {} : { length }),
-        });
+        const identity = login
+          ? await sessions.identify(() => identifyPasskeyWithPrf(options))
+          : await seam.identify();
+        sessions.checkLoginEpoch(login);
+        selection.commit(ticket, identity.credentialId);
+        return {
+          credentialId: Uint8Array.from(identity.credentialId),
+          owns: (key, policy) => selection.adopt(ticket, identity, key, policy),
+        };
       } finally {
-        seed.fill(0);
+        selection.finish(ticket);
       }
     },
   };
   const p256: Authoriser = {
     scheme: 'p256-webauthn',
-    devicePublicKey: async () => selected().publicKey,
+    devicePublicKey: async () => selection.snapshot().publicKey,
     devicePublicKeyHex: async () =>
-      Array.from(p256Curve.Point.fromAffine(selected().publicKey).toBytes(true), (byte) =>
+      Array.from(p256Curve.Point.fromAffine(selection.snapshot().publicKey).toBytes(true), (byte) =>
         byte.toString(16).padStart(2, '0'),
       ).join(''),
-    withKeySession: (operation) => prf.withSession(operation),
+    withKeySession: (operation, flow) =>
+      flow?.kind === 'withdraw-unshielded'
+        ? sessions.withScope(async () => {
+            selection.snapshot();
+            return operation();
+          })
+        : sessions.prf.withSession(operation),
     deviceBinding: async () => {
-      const credential = selected();
+      const credential = selection.snapshot();
       return { policy: credential.policy, credentialId: credential.credentialId };
     },
-    async authorise(request) {
-      const credential = request.credentialId && known.get(idHex(request.credentialId));
-      if (!credential || !(request.challenge instanceof Uint8Array)) {
-        throw new PassportConnectorError('InternalError', 'No passkey to sign this call with.');
-      }
-      const signed = await seam.sign(credential, request.challenge);
-      return {
-        scheme: 'p256-webauthn',
-        pk: credential.publicKey,
-        useCounter: request.useCounter,
-        authenticatorData: signed.authenticator_data,
-        sig: signed.sig,
-      };
+    authorise: (request) =>
+      sessions.withScope(async () => {
+        const pinned = selection.pin(request.credentialId);
+        const checkScope = sessions.checkpoint();
+        if (!(request.challenge instanceof Uint8Array))
+          throw new PassportConnectorError('InternalError', 'No challenge to sign this call with.');
+        const challenge = Uint8Array.from(request.challenge);
+        const useCounter = request.useCounter;
+        const signed = await seam.sign(pinned.credential, challenge);
+        pinned.check();
+        checkScope();
+        return {
+          scheme: 'p256-webauthn',
+          pk: pinned.credential.publicKey,
+          useCounter,
+          authenticatorData: signed.authenticator_data,
+          sig: signed.sig,
+        };
+      }),
+  };
+  return {
+    credentials,
+    prf: sessions.prf,
+    p256,
+    readLoginKeys(credentialId) {
+      const expected = credentialId && Uint8Array.from(credentialId);
+      return sessions.readLoginKeys(() => selection.checkCredential(expected));
     },
   };
-  return { credentials, prf, p256 };
 }

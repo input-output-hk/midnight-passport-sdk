@@ -6,6 +6,48 @@ import { gunzipSync } from 'node:zlib';
 import { checkConsumerTarballs, consumerSha256 } from '../consumer-inputs.mjs';
 
 const MAX_ARCHIVE = 256 * 1024 * 1024;
+/** PAX records update the current header overrides in their original encounter order.
+ * @param {Buffer} data @param {Record<string,string>} pax
+ */
+function readTarExtendedRecords(data, pax) {
+  for (let at = 0; at < data.length;) {
+    const space = data.indexOf(32, at);
+    const lengthText = data.subarray(at, space).toString();
+    const length = Number(lengthText);
+    if (
+      space < at ||
+      !/^[1-9][0-9]*$/.test(lengthText) ||
+      length <= space - at + 1 ||
+      at + length > data.length ||
+      data[at + length - 1] !== 10
+    )
+      throw Error('invalid tar extended record');
+    const record = data.subarray(space + 1, at + length - 1).toString('utf8');
+    const equal = record.indexOf('=');
+    if (equal < 1) throw Error('invalid tar extended record');
+    const key = record.slice(0, equal);
+    if (Object.hasOwn(pax, key) || key === 'linkpath') throw Error('unsafe tar override');
+    pax[key] = record.slice(equal + 1);
+    at += length;
+  }
+}
+
+/** Directory admission and regular-file keys use the same package-relative path policy.
+ * @param {string} name @param {string} type
+ */
+function regularPackagePath(name, type) {
+  if (type === '5' && name.replace(/\/$/, '') === 'package') return undefined;
+  const parts = name.replace(/\/$/, '').split('/');
+  if (
+    parts.shift() !== 'package' ||
+    !parts.length ||
+    parts.some((part) => !part || part === '.' || part === '..' || part.includes('\\'))
+  )
+    throw Error('unsafe tar package path');
+  if (type === '5') return undefined;
+  return parts.join('/');
+}
+
 /** Parse regular npm tar files without extracting untrusted paths or following links.
  * PAX path/size records are supported; links, global overrides and duplicate files are refused.
  * @param {Uint8Array} compressed
@@ -43,42 +85,15 @@ export function packageArchive(compressed) {
     offset += 512 + Math.ceil(size / 512) * 512;
     if (type === 'x') {
       if (Object.keys(pax).length) throw Error('stacked tar overrides');
-      for (let at = 0; at < data.length;) {
-        const space = data.indexOf(32, at);
-        const lengthText = data.subarray(at, space).toString();
-        const length = Number(lengthText);
-        if (
-          space < at ||
-          !/^[1-9][0-9]*$/.test(lengthText) ||
-          length <= space - at + 1 ||
-          at + length > data.length ||
-          data[at + length - 1] !== 10
-        )
-          throw Error('invalid tar extended record');
-        const record = data.subarray(space + 1, at + length - 1).toString('utf8');
-        const equal = record.indexOf('=');
-        if (equal < 1) throw Error('invalid tar extended record');
-        const key = record.slice(0, equal);
-        if (Object.hasOwn(pax, key) || key === 'linkpath') throw Error('unsafe tar override');
-        pax[key] = record.slice(equal + 1);
-        at += length;
-      }
+      readTarExtendedRecords(data, pax);
       continue;
     }
     const name = pax.path ?? rawName;
     if (pax.size !== undefined && pax.size !== String(size)) throw Error('tar size override');
     pax = Object.create(null);
     if (!['', '0', '5'].includes(type)) throw Error('tar links or special entries refused');
-    if (type === '5' && name.replace(/\/$/, '') === 'package') continue;
-    const parts = name.replace(/\/$/, '').split('/');
-    if (
-      parts.shift() !== 'package' ||
-      !parts.length ||
-      parts.some((part) => !part || part === '.' || part === '..' || part.includes('\\'))
-    )
-      throw Error('unsafe tar package path');
-    if (type === '5') continue;
-    const key = parts.join('/');
+    const key = regularPackagePath(name, type);
+    if (key === undefined) continue;
     if (files.has(key)) throw Error('duplicate tar file');
     files.set(key, data);
   }

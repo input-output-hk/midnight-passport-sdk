@@ -8,22 +8,12 @@ The ACC build produces three kinds of public artefact: ZKIR, verifier keys and p
 
 ### Account viewing secrets and recovery
 
-In Lace's JubJub Passport flow, a fresh random 32-byte account viewing secret determines the ACC's X25519 `enc_key`. The secret is sealed into 192-byte on-chain device envelopes. Each enrolled passkey derives a network-specific X25519 reader key with the MIP-0015 domain `lace-passport:reader:v1`; that reader opens its envelope during a key session. The PRF-derived JubJub signer, reader key, account viewing secret, and wallet HD seed have separate roles. `recipeDeviceKeyring` implements the typed viewing-key port: it creates and delivers envelopes, opens coin descriptions under live and recent secrets, re-encrypts coins during rotation, opens device and grant records, and seals a read grant to its recipient's X25519 key. The account create/open and host-backed rotation flows use this port. Grant-aware rotation and a chain-backed holding-verification adapter are implemented. Complete host sources and durable grant openings are required; interrupted-rotation recovery remains a preview limit.
-
-At Lace PR #2845 merged head `502b0794cc7bcfc76342230193fef4ebb63cae1c`, device envelopes (`0xd1`), JubJub registrations (`0xd2`) and grant records (`0xd3`) use suite `0x02`. The envelope recipient tag covers the entire sealed entry except its tag and the AEAD associated data excludes that tag; grant records use an HMAC tag over the same frame. The SDK writes that suite and opens both suite `0x02` and its earlier suite `0x01` records, so existing sealed SDK accounts remain readable. The 192-byte coin description keeps its separate custody suite `0x01`. Exact Lace known-answer bytes are checked in `tests/keys-lace-suite2-interop.test.mjs`; synthetic localnet cross-product opening has passed at the pinned Lace head. Real passkey-provider and complete hosted-flow qualification remain limited; see the Lace handover guide.
-
-If one enrolled device is lost, another enrolled device can open its own envelope and rotate the account secret while excluding the lost reader. A synced passkey may also be usable on a replacement device if its provider restores the same credential and PRF outputs. If all enrolled authorising devices and their recoverable passkeys are lost, the envelopes alone do not provide an account recovery path. When adding a device while read grants are live, `addDevice` rotates the viewing and roster keys before sealing to the joiner, so it can refuse enrollment if a live grantee or surviving device cannot receive the new secret. The browser's P-256 create/open flow now also generates a random ACC secret and checks its sealed device envelope against the live `enc_key`; accounts made with the earlier passkey-derived `lace-passport:acc-enc:v1` recipe are explicitly refused by the new browser composition until migrated.
-
-The keyring seals the current P-256 registration as a 192-byte suite `0x02` type `0xd5` record. Its authenticated plaintext contains a 32-byte X25519 reader key, canonical compressed 33-byte P-256 key, 32-byte RP id hash and 21-byte origin. It uses HKDF info `mn-passport:device-registration:p256-policy:v1`; the 118-byte plaintext leaves 44 zero padding bytes after the encrypted payload. The earlier type `0xd4` stores only the reader and P-256 key and remains readable, but lacks the policy needed to resolve another live P-256 device. JubJub registrations retain Lace's type `0xd2` and 32-byte compressed key. The P-256 registration is an SDK wire-format extension; Lace PR #2845 currently decodes only the JubJub `0xd2` record. The [wire-format decision](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0009-versioned-p256-device-registration.md) specifies type, suite, padding and downgrade behavior. The P-256 browser flow publishes its envelope and registration with `append_inbox_with_p256` before reporting the account active. It can resume publication after an interrupted create. The local demo now supplies chain-backed holding and grant sources for its supported owner flows; the two-browser ceremony still needs manual localnet validation.
-
-Before a JubJub rotation delivers a new account secret, `resolveJubjubReaders` matches each opened registration to a live on-chain device commitment at its current epoch and use counter. It excludes removed devices and drops conflicting reader/device claims. A registration in the inbox does not by itself grant access to the new secret. `rotateViewingKey` also requires a host to identify verified, distinct holdings from chain outputs; it refuses grant records until those readers can receive a fresh seal. The package flow has focused binding tests and a mixed-device localnet probe; a Lace-hosted consumer run remains open.
-The account package also exports `resolveRegisteredReaders` for mixed JubJub/P-256 rosters. It uses the registration's authenticated P-256 policy to derive each candidate ACC commitment, then retains only unique reader-to-live-entry matches. Earlier `0xd4` P-256 registrations have no policy and are dropped. Both owner arms use this resolver for mixed rotation when the key port supplies the P-256 decoder, and refuse a live device without a unique registered reader. Rotation also refuses any surviving read grant whose recipient cannot receive a fresh seal. Removal excludes the target from both the fresh viewing and roster keys.
-After a P-256 owner enrolls a second device, that passkey can call `openAccountAt(address)` with the ACC address supplied by its host. The flow verifies the selected credential and policy, locates its live ACC device entry, and opens an inbox envelope against the current ledger `enc_key`; it does not rely on a directory hint or expose the raw viewing secret. The demo's **Open by ACC address** action now exposes this path for either supported authoriser arm. It requires an already-enrolled passkey and a known address; it does not discover accounts or recover a lost passkey. P-256 rotation is available to hosts that supply verified holdings and a complete live read-grant source.
-`removeDevice` uses a fresh roster key as well as a fresh viewing secret, excludes the target
-reader before sealing, and refuses a surviving reader that shares a key with the target. It then
-calls the owner's `remove_device_with_jubjub` or `remove_device_with_p256` circuit and confirms the target left the live ACC set. The operation
-spans several chain transactions; an interruption may require the owner to resume from its new
-sealed keyring before trying removal again.
+`mn-passport-keys` derives and seals private account material; it does not contain
+prover keys. Readers, owners, viewing secrets and wallet seeds have different
+capabilities and recovery rules. See [Account keys and recovery]({{ '/account-keys/' | relative_url }})
+for device envelopes, registration suites, rotation/removal boundaries and key-source
+ownership. The demo's session and credential policy is documented separately in
+the [demo guide]({{ '/demo-guide/' | relative_url }}).
 
 These proving artefacts belong to `mn-passport-contract`. The separate `mn-passport-keys` package derives ACC secret material from a host-provided key source; it is not a package of prover keys. See [Problems and package boundaries]({{ '/problems/' | relative_url }}) for the distribution and serving responsibilities.
 
@@ -57,38 +47,6 @@ The [bundle builder](https://github.com/input-output-hk/midnight-passport-sdk/bl
 ### Release constraints
 
 GitHub Packages caps an npm version tarball below 256 MB, so the full key set cannot be packed there. The release contract package measures about 5.25 MB unpacked and 2.89 MB compressed. This exceeds the earlier 5 MB unpacked design estimate because it includes both bindings; the release inspector enforces the registry's tarball limit and rejects any `.prover` file.
-
-## Device-entry removal boundary
-
-`removeDevice` removes one opaque entry and excludes its reader from fresh sealed
-keys. It cannot certify complete compromised-key revocation or erase prior viewing
-knowledge. Ambiguous rosters and grants to the removed reader must be reconciled
-before removal. Total-loss recovery remains unavailable on the retained binding.
-See [Qualification and safety boundaries]({{ '/qualification/' | relative_url }}).
-
-Removal excludes target metadata from the fresh roster. A fresh legacy invocation
-may refuse after an interrupted key switch, as do other legacy rotations of that
-unresolved roster. An original protected continuation needs the opt-in RC6 durability API and an unchanged checked frontier; it is not provided by the legacy flow.
-The unanchored history port is removed. Earlier secrets remain bounded decryption
-candidates; they neither authenticate metadata nor evict genuine older holding keys.
-
-### Historical candidate correction — 2026/10/24
-
-The global sixteen-key truncation/refusal is withdrawn: anonymous earlier envelopes
-must neither evict a genuine old coin key nor lock sign-in. All distinct earlier
-secrets within the existing 4096-envelope bound remain decryption candidates, and
-are zeroed after use. Only the ledger-matching current secret/roster authenticates
-metadata; earlier candidates never identify device-removal targets. The regression
-places a real older coin behind seventeen forged envelopes and verifies metadata,
-coin reads, device delivery and new key creation remain usable. Large-inbox work
-still scales with candidate keys and coin entries; the existing 4096 limits and
-operator/resource qualification remain explicit. No unbounded-input guarantee.
-
-## RC6 opt-in durability boundary
-
-{% include durability-boundary.md %}
-
-
 
 ## RC7 operation/profile preflight
 

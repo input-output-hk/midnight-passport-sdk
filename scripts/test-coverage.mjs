@@ -1,9 +1,17 @@
 #!/usr/bin/env node
-// Opt-in package-JavaScript coverage, outside fast required CI. No new dependency.
+// All executable authored sources in the nine published packages. Outside fast required CI.
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { releasePackageDirectories } from './release-package-list.mjs';
+import { generatedSources, testHelperDirectory } from './source-policy.mjs';
+import { publishedSources } from './package-inventory.mjs';
+import {
+  coverageFailures,
+  coverageThresholds,
+  coverageInventoryFailures,
+} from './coverage-policy.mjs';
 
 /** @param {string} lcov */
 export function summarizeLcov(lcov) {
@@ -78,42 +86,102 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const output = resolve(process.argv[2] ?? `review/coverage-${Date.now()}`);
   mkdirSync(dirname(output), { recursive: true });
   mkdirSync(output); // Fresh path only: preserve earlier measurements and failures.
-  const result = spawnSync(
-    process.execPath,
-    [
-      '--test',
-      '--experimental-test-coverage',
-      '--test-coverage-include=packages/**/dist/**/*.js',
-      '--test-coverage-exclude=packages/contract/generated/**',
-      '--test-reporter=tap',
-      `--test-reporter-destination=${resolve(output, 'tests.tap')}`,
-      '--test-reporter=lcov',
-      `--test-reporter-destination=${resolve(output, 'lcov.info')}`,
-      'tests/**/*.test.mjs',
-    ],
-    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
-  );
+  const inventory = publishedSources();
+  const args = [
+    'exec',
+    'c8',
+    '--all',
+    '--src=packages',
+    '--include=packages/*/src/**/*.ts',
+    ...generatedSources.map((file) => `--exclude=${file}`),
+    `--exclude=${testHelperDirectory}/**`,
+    '--exclude-after-remap',
+    '--reporter=json-summary',
+    '--reporter=lcov',
+    `--reports-dir=${output}`,
+  ];
+  const included = new Set(inventory.map((file) => file.package));
+  for (const pkg of [
+    'core',
+    'connect',
+    'adapter-signer-local',
+    'adapter-signer-managed',
+    'adapter-prover-remote',
+  ]) {
+    if (!included.has(pkg)) args.push(`--exclude=packages/${pkg}/**`);
+  }
+  for (const file of inventory) if (!file.executable) args.push(`--exclude=${file.source}`);
+  args.push(process.execPath, '--test', 'tests/**/*.test.mjs');
+  const result = spawnSync('pnpm', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  writeFileSync(resolve(output, 'tests.tap'), result.stdout ?? '', { flag: 'wx' });
+  writeFileSync(resolve(output, 'stderr.log'), result.stderr ?? '', { flag: 'wx' });
   if (result.error) throw result.error;
   const summary = summarizeLcov(readFileSync(resolve(output, 'lcov.info'), 'utf8'));
+  const raw = JSON.parse(readFileSync(resolve(output, 'coverage-summary.json'), 'utf8'));
+  const measured = new Set(
+    Object.keys(raw)
+      .filter((name) => name !== 'total')
+      .map((name) => relative(process.cwd(), name)),
+  );
+  const failures = [
+    ...coverageFailures(raw.total),
+    ...coverageInventoryFailures(inventory, measured, releasePackageDirectories),
+  ];
+  /** @type {Record<string, unknown>} */
+  const packages = {};
+  for (const pkg of included) {
+    const counters = {
+      lines: { covered: 0, total: 0 },
+      functions: { covered: 0, total: 0 },
+      branches: { covered: 0, total: 0 },
+    };
+    for (const file of inventory.filter((entry) => entry.package === pkg && entry.executable)) {
+      const entry = raw[resolve(file.source)];
+      if (!entry) continue;
+      for (const metric of /** @type {const} */ (['lines', 'functions', 'branches'])) {
+        counters[metric].covered += entry[metric].covered;
+        counters[metric].total += entry[metric].total;
+      }
+    }
+    const rejected = coverageFailures(counters);
+    failures.push(...rejected.map((reason) => `${pkg}: ${reason}`));
+    packages[pkg] = counters;
+  }
   const tap = readFileSync(resolve(output, 'tests.tap'), 'utf8');
   const count = (/** @type {string} */ name) =>
     Number(tap.match(new RegExp(`^# ${name} (\\d+)$`, 'm'))?.[1] ?? 0);
   const source = spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' });
   const dirty = spawnSync('git', ['status', '--porcelain'], { encoding: 'utf8' });
   const receipt = {
-    schemaVersion: 1,
-    outcome: result.status === 0 ? 'passed' : 'failed',
+    schemaVersion: 2,
+    outcome: result.status === 0 && failures.length === 0 ? 'passed' : 'failed',
     sourceCommit: source.stdout.trim(),
     dirty: dirty.stdout.length > 0,
     node: process.version,
     tests: { passed: count('pass'), failed: count('fail'), skipped: count('skipped') },
     scope:
-      'Loaded package dist JavaScript in root Node tests; not unimported files, app/UI coverage, native proofs or provider acceptance.',
+      'All executable authored TypeScript in nine published packages, including unimported files; excludes generated metadata, type-only stubs, testing helpers and private legacy scaffolds. Not app, native or provider coverage.',
+    thresholds: coverageThresholds,
+    exclusions: {
+      generated: generatedSources,
+      helpers: 'packages/account/src/testing/**',
+      privateScaffolds: [
+        'core',
+        'connect',
+        'adapter-signer-local',
+        'adapter-signer-managed',
+        'adapter-prover-remote',
+      ],
+      typeOnly: inventory.filter((file) => !file.executable).map((file) => file.source),
+    },
+    failures,
+    inventory,
+    packages,
     ...summary,
   };
   writeFileSync(resolve(output, 'summary.json'), JSON.stringify(receipt, null, 2) + '\n', {
     flag: 'wx',
   });
   console.log(JSON.stringify({ output, ...receipt, files: summary.files.length }, null, 2));
-  process.exitCode = result.status ?? 1;
+  process.exitCode = result.status === 0 && failures.length === 0 ? 0 : 1;
 }

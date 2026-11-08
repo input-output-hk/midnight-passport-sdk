@@ -145,6 +145,55 @@ test('P-256 sealed accounts read only chain-confirmed shielded holdings', async 
   await assert.rejects(wrongPasskey.readShieldedHoldings(), { code: 'NotAuthorised' });
 });
 
+test('P-256 routine reader retains chain verification and never supplies owner key sessions', async () => {
+  const fake = createFakePorts({ binding: { pureCircuits } });
+  const viewer = viewingKey();
+  let ownerSessions = 0,
+    reads = 0;
+  const ports = {
+    ...fake,
+    viewingKey: viewer,
+    authoriser: {
+      ...fake.authoriser,
+      withKeySession: async (/** @type {() => Promise<any>} */ work) => {
+        ownerSessions++;
+        return work();
+      },
+    },
+    holdings: { selectHeldEntries: async () => [2] },
+    readGrants: {
+      readActiveReadGrantTargets: async () => ({
+        authNonce: [...fake.ledger.values()][0]?.authNonce ?? 0n,
+        targets: [],
+      }),
+    },
+    routineViewingKey: (
+      /** @type {Parameters<NonNullable<import('../packages/account/dist/ports/index.js').PassportPorts['routineViewingKey']>>[0]} */ context,
+    ) => {
+      assert.equal(context.networkId, 'undeployed');
+      assert.equal(context.bindingId, fake.network.bindingId);
+      reads++;
+      return { openInbox: viewer.openInbox };
+    },
+  };
+  const account = await createPassportAccounts(ports).createAccount({
+    userName: 'routine',
+    retireAuthority: true,
+  });
+  const ledger = fake.ledger.get(account.address);
+  assert.ok(ledger);
+  ledger.specVersion = 3;
+  const coin = { nonce: new Uint8Array(32).fill(4), color: new Uint8Array(32).fill(5), value: 7n };
+  ledger.inboxEntries.push(await sealInboxCoin(ledger.encKey, coin));
+  const before = ownerSessions;
+  assert.deepEqual(await account.readShieldedHoldings?.(), [{ inboxIndex: 2, coin }]);
+  assert.equal(ownerSessions, before);
+  assert.equal(reads, 1);
+  await account.rotateViewingKey?.();
+  assert.ok(ownerSessions > before);
+  assert.equal(reads, 1, 'rotation must not use the routine reader');
+});
+
 test('P-256 rotation reseals verified holdings and preserves the live reader', async () => {
   const fake = createFakePorts();
   /** @type {number[]} */

@@ -1,4 +1,4 @@
-// Native proof + service restart runner. Only the dedicated retained project is controllable.
+// Native proof/restarts: retained profile or a closed, freshly owned isolation context.
 import { dedicatedIndexerReadiness } from './indexer-readiness.mjs';
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
@@ -22,11 +22,13 @@ import {
 } from './image-journal-mirror.mjs';
 import { nativeJobProfile } from './job-lifecycle-spec.mjs';
 import { runJobBackedLifecycle } from './job-lifecycle-run.mjs';
+import { hostJobExecution } from './native-host-job-execution.mjs';
+import { observeNativeCompletion } from './native-worker-completion.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..'),
   PROJECT = 'mn-passport-qual-20261023';
 /** @param {string[]} args */
-const docker = (args) =>
+const retainedDocker = (args) =>
   execFileSync('docker', args, {
     encoding: 'utf8',
     timeout: 60000,
@@ -34,7 +36,7 @@ const docker = (args) =>
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 /** @param {()=>Promise<boolean>} check @param {number} ms @param {()=>boolean} [terminal] */
-async function wait(check, ms, terminal = () => false) {
+async function retainedWait(check, ms, terminal = () => false) {
   const deadline = Date.now() + ms;
   while (Date.now() < deadline) {
     if (terminal()) throw new Error('Owned worker stopped before required boundary.');
@@ -52,19 +54,26 @@ async function ready(path) {
     return false;
   }
 }
-async function indexerReady() {
+async function retainedIndexerReady() {
   return (await dedicatedIndexerReadiness()).ready;
 }
-/** @param {'source'|'image'} [lane] @param {'creation'|'lifecycle'} [profile] */
-export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
+/** @param {'source'|'image'} [lane] @param {'creation'|'lifecycle'} [profile]
+ * @param {import('./native-isolation-control.mjs').IsolatedHostContext} [isolation] */
+export async function runNativeHostJobs(lane = 'source', profile = 'creation', isolation) {
+  const execution = hostJobExecution(lane, profile, isolation, {
+    docker: retainedDocker,
+    wait: retainedWait,
+    indexerReady: retainedIndexerReady,
+  });
+  const { docker, wait, indexerReady, endpoints, serviceUrl, env: routeEnv } = execution;
   const options = nativeJobProfile(profile),
     lifecycle = profile === 'lifecycle';
   assert.ok(['source', 'image'].includes(lane));
-  assert.equal(process.env.IN_NIX_SHELL !== undefined, true);
-  assert.equal(process.env.PASSPORT_RC_LOCALNET, '1');
-  assert.equal(process.env.MN_NETWORK_ID, 'undeployed');
-  const output = process.env.PASSPORT_LIVE_ROOT ?? '',
-    contract = process.env.PASSPORT_CONTRACT_DIR ?? '';
+  assert.equal(routeEnv.IN_NIX_SHELL !== undefined, true);
+  assert.equal(routeEnv.PASSPORT_RC_LOCALNET, '1');
+  assert.equal(routeEnv.MN_NETWORK_ID, 'undeployed');
+  const output = routeEnv.PASSPORT_LIVE_ROOT ?? '',
+    contract = routeEnv.PASSPORT_CONTRACT_DIR ?? '';
   assert.ok(isAbsolute(output) && isAbsolute(contract));
   assert.equal((await lstat(contract)).isSymbolicLink(), false);
   const source = await workspaceIdentity(ROOT);
@@ -77,14 +86,10 @@ export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
     ),
     binding.compilerManifestSha256,
   );
-  const names = ['node', 'indexer', 'proof-server'].map((s) => `${PROJECT}-${s}-1`),
-    inspected = JSON.parse(docker(['inspect', ...names]));
-  const ids = inspected.map((/** @type {any} */ c, /** @type {number} */ n) =>
-    requireOwnedContainer(c, /** @type {string} */ (names[n])),
-  );
+  const { inspected, ids } = execution.containers(PROJECT, requireOwnedContainer);
   assert.ok(inspected.every((/** @type {any} */ c) => c.State.Running));
-  const imageId = process.env.PASSPORT_NATIVE_JOB_IMAGE ?? '',
-    depsVolume = process.env.PASSPORT_NATIVE_JOB_DEPS_VOLUME ?? '';
+  const imageId = routeEnv.PASSPORT_NATIVE_JOB_IMAGE ?? '',
+    depsVolume = routeEnv.PASSPORT_NATIVE_JOB_DEPS_VOLUME ?? '';
   if (lane === 'image') {
     assert.match(imageId, /^sha256:[a-f0-9]{64}$/);
     assert.equal(depsVolume, options.depsVolume);
@@ -126,20 +131,21 @@ export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
     assert.equal(linuxReference.lockSha256, reference.sources['package-lock.json']);
     assert.deepEqual(linuxReference.packages, reference.packages);
   }
-  await mkdir(output, { mode: 0o700 });
+  if (!isolation) await mkdir(output, { mode: 0o700 });
+  else assert.equal(output, isolation.profile.outputRoot);
   /** @type {NodeJS.ProcessEnv} */ const env = {
-    ...process.env,
+    ...execution.env,
     PASSPORT_LIVE_HOST_JOBS: '1',
     PASSPORT_LIVE_PROFILE: lifecycle ? 'lifecycle' : 'baseline',
     PASSPORT_RC_LOCALNET: '1',
     MN_NETWORK_ID: 'undeployed',
     MIDNIGHT_NETWORK: 'local',
-    MN_NODE_URL: 'http://127.0.0.1:19954',
-    MN_INDEXER_URL: 'http://127.0.0.1:18098/api/v4/graphql',
-    MN_INDEXER_WS_URL: 'ws://127.0.0.1:18098/api/v4/graphql/ws',
-    MN_PROOF_SERVER_URL: 'http://127.0.0.1:16310',
+    MN_NODE_URL: endpoints.nodeUrl,
+    MN_INDEXER_URL: endpoints.indexerUrl,
+    MN_INDEXER_WS_URL: endpoints.indexerWsUrl,
+    MN_PROOF_SERVER_URL: endpoints.proverUrl,
     PASSPORT_SERVICE_HOST: '127.0.0.1',
-    PASSPORT_SERVICE_PORT: '18797',
+    PASSPORT_SERVICE_PORT: String(execution.servicePort),
     PASSPORT_MANIFEST_SHA256: binding.compilerManifestSha256,
   };
   for (const k of ['PASSPORT_SPONSOR_SEED', 'PASSPORT_SPONSOR_SEED_FILE'])
@@ -199,6 +205,10 @@ export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
       { mode: 0o600 },
     );
   /** @param {import('node:child_process').ChildProcess} c */ const kill = (c) => {
+    if (isolation) {
+      isolation.kill(c);
+      return;
+    }
     if (c.pid && c.exitCode === null && c.signalCode === null)
       try {
         process.kill(-c.pid, 'SIGKILL');
@@ -208,6 +218,7 @@ export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
   };
   /** @param {string} mode @param {string} root @param {string} arm @param {string} operation @param {string} [fault] */
   const worker = (mode, root, arm, operation, fault = 'none') => {
+    execution.check();
     const child = spawn(
       process.execPath,
       [
@@ -245,6 +256,7 @@ export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
       },
     );
     children.add(child);
+    isolation?.register(child);
     /** @type {Array<Record<string,any>>} */ const messages = [];
     let pending = '',
       log = '',
@@ -300,23 +312,20 @@ export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
     };
     child.stdout.on('data', collect);
     child.stderr.on('data', collect);
-    const done = new Promise((resolveDone, reject) => {
-      child.once('error', reject);
-      child.once('close', async (code, signal) => {
-        children.delete(child);
-        await writeFile(
-          join(output, `worker-${arm}-${mode}-${operation}-${Date.now()}.private.log`),
-          log,
-          { mode: 0o600 },
-        );
-        resolveDone({ code, signal, exceeded, messages, logSha256: nativeJobHash(log) });
-      });
+    const done = observeNativeCompletion(child, async (code, signal) => {
+      children.delete(child);
+      await writeFile(
+        join(output, `worker-${arm}-${mode}-${operation}-${Date.now()}.private.log`),
+        log,
+        { mode: 0o600 },
+      );
+      return { code, signal, exceeded, messages, logSha256: nativeJobHash(log) };
     });
     return { child, messages, done };
   };
   /** @param {ReturnType<typeof worker>} w @param {number} [ms] */
   const finished = async (w, ms = 12 * 60000) => {
-    const timer = setTimeout(() => kill(w.child), ms);
+    const timer = setTimeout(() => kill(w.child), execution.remaining(ms));
     try {
       const r =
         /** @type {{code:number|null,signal:NodeJS.Signals|null,exceeded:boolean,messages:Array<Record<string,any>>,logSha256:string}} */ (
@@ -330,13 +339,14 @@ export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
   };
   /** @param {string} root @param {string} arm @param {string} fault @param {string} [operation] */
   const host = async (root, arm, fault, operation = 'create') => {
+    await isolation?.beforeHost();
     const w = worker('host', root, arm, operation, fault);
     await wait(
       async () => w.messages.some((m) => m.ready),
       240000,
       () => w.child.exitCode !== null || w.child.signalCode !== null,
     );
-    assert.equal(await ready('http://127.0.0.1:18797/healthz'), true);
+    assert.equal(await ready(serviceUrl + '/healthz'), true);
     return w;
   };
   /** @param {string} root @param {string} arm */
@@ -517,6 +527,9 @@ export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
           save,
           imageId,
           options,
+          nodeUrl: endpoints.nodeUrl,
+          serviceUrl,
+          remaining: execution.remaining,
         });
       } else if (lane === 'source') {
         /** @type {Awaited<ReturnType<typeof nativeJobSnapshot>>|undefined} */ let previous;
@@ -566,7 +579,7 @@ export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
           }
           if (fault === 'before-deploy-proof') {
             docker(['start', ids[2]]);
-            await wait(async () => ready('http://127.0.0.1:16310/health'), 120000);
+            await wait(async () => ready(endpoints.proverUrl + '/health'), 120000);
           }
           const snapshot = await nativeJobSnapshot(root);
           if (previous) assertNativeJobContinuation(previous, snapshot);
@@ -606,7 +619,7 @@ export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
         await finished(h, 15000);
         const before = await nativeJobSnapshot(root);
         docker(['start', ids[2]]);
-        await wait(async () => ready('http://127.0.0.1:16310/health'), 120000);
+        await wait(async () => ready(endpoints.proverUrl + '/health'), 120000);
         const live = await host(root, arm, 'none');
         const unknown = await finished(
           worker('resume', root, arm, 'rotate-prover', 'assert-unknown'),
@@ -635,13 +648,11 @@ export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
         const id = imageContainer(root, arm);
         docker(['start', id]);
         await wait(
-          async () => ready('http://127.0.0.1:18797/healthz'),
+          async () => ready(serviceUrl + '/healthz'),
           600000,
           () => !JSON.parse(docker(['inspect', id]))[0].State.Running,
         );
-        const config = /** @type {any} */ (
-          await (await fetch('http://127.0.0.1:18797/healthz')).json()
-        );
+        const config = /** @type {any} */ (await (await fetch(serviceUrl + '/healthz')).json());
         assert.equal(config.hostJobs, true);
         let previous;
         for (const [n, kind] of ['deploy', 'call'].entries()) {
@@ -689,7 +700,7 @@ export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
           });
           await save();
           await wait(
-            async () => ready('http://127.0.0.1:18797/healthz'),
+            async () => ready(serviceUrl + '/healthz'),
             600000,
             () => !JSON.parse(docker(['inspect', id]))[0].State.Running,
           );
@@ -800,8 +811,9 @@ export async function runNativeHostJobs(lane = 'source', profile = 'creation') {
       assert.equal(c.Config.Labels['passport.qualification'], options.label);
       if (c.State.Running) docker(['stop', '--time', '35', id]);
     }
-    for (const id of [ids[1], ids[2]])
-      if (!JSON.parse(docker(['inspect', id]))[0].State.Running) docker(['start', id]);
+    if (!isolation)
+      for (const id of [ids[1], ids[2]])
+        if (!JSON.parse(docker(['inspect', id]))[0].State.Running) docker(['start', id]);
   }
 }
 if (process.argv[1] === import.meta.filename)

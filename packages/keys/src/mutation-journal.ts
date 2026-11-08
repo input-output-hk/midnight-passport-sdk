@@ -1,3 +1,5 @@
+import { inputByteLength } from './key-input-bytes.js';
+import type { WebCryptoKey } from './web-crypto-key.js';
 import {
   mutationDocumentBytes,
   readMutationDocument,
@@ -9,10 +11,35 @@ import type {
   MutationByteStore,
   MutationJournal,
   MutationPins,
+  MutationDocument,
   PrfKeySource,
 } from '@input-output-hk/mn-passport-account/ports';
 
 const buffer = (value: Uint8Array): ArrayBuffer => new Uint8Array(value).buffer;
+/** Serialize and admit one synchronous document intent; no caller references cross crypto awaits. */
+function admittedWrite(
+  identity: string,
+  id: string,
+  expectedRevision: number | undefined,
+  next: MutationDocument,
+) {
+  const document = { ...next };
+  const revision = document.revision;
+  if (
+    document.id !== id ||
+    revision !== (expectedRevision === undefined ? 0 : expectedRevision + 1) ||
+    mutationDigest(document.pins) !== identity
+  )
+    return mutationFailure('Invalid mutation journal transition.');
+  return { revision, plain: mutationDocumentBytes(document) };
+}
+function admittedRecord(saved: { readonly revision: number; readonly bytes: Uint8Array }) {
+  const supplied = saved.bytes,
+    length = inputByteLength(supplied);
+  if (length < 29 || length > MUTATION_MAX_BYTES + 28)
+    return mutationFailure('Invalid encrypted mutation record size.');
+  return { revision: saved.revision, ciphertext: new Uint8Array(supplied) };
+}
 /** Authenticated continuation storage under an existing selected key origin. No raw backup API.
  * The byte store must provide real atomic CAS and crash-durable acknowledgements.
  */
@@ -26,7 +53,7 @@ export function encryptedMutationJournal(
     new TextEncoder().encode(
       JSON.stringify(['mn-passport:mutation-journal', 1, identity, id, revision]),
     );
-  const withKey = <T>(id: string, work: (key: CryptoKey) => Promise<T>): Promise<T> =>
+  const withKey = <T>(id: string, work: (key: WebCryptoKey) => Promise<T>): Promise<T> =>
     source.withSession(async () => {
       const raw = await source.deriveSecret({
         domain: 'mn-passport:mutation-journal:v1',
@@ -50,19 +77,18 @@ export function encryptedMutationJournal(
       if (!/^[0-9a-f]{32}$/.test(id)) return mutationFailure('Invalid mutation journal ID.');
       const saved = await store.read(id);
       if (!saved) return undefined;
-      if (saved.bytes.length < 29 || saved.bytes.length > MUTATION_MAX_BYTES + 28)
-        return mutationFailure('Invalid encrypted mutation record size.');
+      const { revision, ciphertext } = admittedRecord(saved);
       const plain = await withKey(id, async (key) => {
         try {
           return new Uint8Array(
             await crypto.subtle.decrypt(
               {
                 name: 'AES-GCM',
-                iv: buffer(saved.bytes.slice(0, 12)),
-                additionalData: buffer(aad(id, saved.revision)),
+                iv: buffer(ciphertext.subarray(0, 12)),
+                additionalData: buffer(aad(id, revision)),
               },
               key,
-              buffer(saved.bytes.slice(12)),
+              buffer(ciphertext.subarray(12)),
             ),
           );
         } catch {
@@ -71,11 +97,7 @@ export function encryptedMutationJournal(
       });
       try {
         const doc = readMutationDocument(plain);
-        if (
-          doc.id !== id ||
-          doc.revision !== saved.revision ||
-          mutationDigest(doc.pins) !== identity
-        )
+        if (doc.id !== id || doc.revision !== revision || mutationDigest(doc.pins) !== identity)
           return mutationFailure('Mutation storage context differs.');
         return doc;
       } finally {
@@ -83,21 +105,15 @@ export function encryptedMutationJournal(
       }
     },
     async compareAndSwap(id, expectedRevision, next) {
-      if (
-        next.id !== id ||
-        next.revision !== (expectedRevision === undefined ? 0 : expectedRevision + 1) ||
-        mutationDigest(next.pins) !== identity
-      )
-        return mutationFailure('Invalid mutation journal transition.');
-      const plain = mutationDocumentBytes(next),
-        iv = crypto.getRandomValues(new Uint8Array(12));
+      const { revision, plain } = admittedWrite(identity, id, expectedRevision, next);
+      const iv = crypto.getRandomValues(new Uint8Array(12));
       try {
         const ciphertext = await withKey(
           id,
           async (key) =>
             new Uint8Array(
               await crypto.subtle.encrypt(
-                { name: 'AES-GCM', iv: buffer(iv), additionalData: buffer(aad(id, next.revision)) },
+                { name: 'AES-GCM', iv: buffer(iv), additionalData: buffer(aad(id, revision)) },
                 key,
                 buffer(plain),
               ),
@@ -106,7 +122,7 @@ export function encryptedMutationJournal(
         const bytes = new Uint8Array(iv.length + ciphertext.length);
         bytes.set(iv);
         bytes.set(ciphertext, iv.length);
-        return await store.compareAndSwap(id, expectedRevision, { revision: next.revision, bytes });
+        return await store.compareAndSwap(id, expectedRevision, { revision, bytes });
       } finally {
         plain.fill(0);
       }

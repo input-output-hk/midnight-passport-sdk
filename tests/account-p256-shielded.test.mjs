@@ -95,7 +95,12 @@ test('P-256 shielded spend signs the qualified coin and sends the same private w
     recipient: '02'.repeat(32),
   };
   assert.ok(account.withdrawShielded);
-  const tx = await account.withdrawShielded(request);
+  const callerInput = { ...request };
+  const pending = account.withdrawShielded(callerInput);
+  callerInput.amount = '999';
+  callerInput.recipient = 'ff'.repeat(32);
+  callerInput.color = 'ee'.repeat(32);
+  const tx = await pending;
   assert.equal(tx.txHash, 'shielded-tx');
   assert.deepEqual(sessions.at(-1), {
     kind: 'withdraw-shielded',

@@ -1,5 +1,18 @@
+import { createAccountWorkspace } from './account-workspace.js';
+import { renderSessionDraft } from './session-view.js';
+import { createSettingsWorkspace } from './settings-workspace.js';
+import { createWorkspacePages } from './workspace-pages.js';
+import { createNavigationDrawer } from './navigation-drawer.js';
+import {
+  createWorkspaceNavigation,
+  entryWorkspace,
+  workspaceNames as names,
+  type WorkspaceId,
+} from './workspace-navigation.js';
+import { createLandingPage } from './landing.js';
+
 /** Demo-owned layout and navigation. Moving existing nodes keeps action state and IDs intact. */
-export type WorkspaceId = 'overview' | 'account' | 'wallet' | 'audit' | 'settings';
+export type { WorkspaceId } from './workspace-navigation.js';
 
 const node = <K extends keyof HTMLElementTagNameMap>(tag: K, text?: string) => {
   const result = document.createElement(tag);
@@ -20,38 +33,14 @@ export function createDemoWorkspace(config: {
   readonly manifestSha256: string;
 }) {
   const main = byId('main');
-  const nav = node('nav');
-  nav.className = 'workspace-nav';
-  nav.setAttribute('aria-label', 'Main navigation');
+  const { navigation: nav, views, buttons } = createWorkspaceNavigation();
   const center = node('div');
   center.className = 'workspace-center';
-  const names: Record<WorkspaceId, string> = {
-    overview: 'Overview',
-    account: 'Passport account',
-    wallet: 'Midnight wallet',
-    audit: 'Audit',
-    settings: 'Settings',
-  };
-  const views = {} as Record<WorkspaceId, HTMLElement>;
-  const buttons = {} as Record<WorkspaceId, HTMLButtonElement>;
-  for (const id of Object.keys(names) as WorkspaceId[]) {
-    const view = node('section');
-    view.id = `workspace-${id}`;
-    view.dataset.workspace = id;
-    view.className = 'workspace-view';
-    const heading = node('h2', names[id]);
-    heading.id = `workspace-${id}-title`;
-    heading.tabIndex = -1;
-    view.setAttribute('aria-labelledby', heading.id);
-    view.append(heading);
-    views[id] = view;
-    const button = node('button', names[id]);
-    button.type = 'button';
-    button.id = `nav-${id}`;
-    button.setAttribute('aria-controls', view.id);
-    buttons[id] = button;
-    nav.append(button);
-  }
+  center.id = 'workspace-content';
+  center.tabIndex = -1;
+  const skip = document.querySelector<HTMLAnchorElement>('.skip-link')!;
+  skip.href = '#workspace-content';
+  skip.textContent = 'Skip to content';
   // Keep relocated controls in the document: the existing UI intentionally resolves stable
   // IDs while composing later panels. Detaching a whole account card would hide its children.
   center.append(...Object.values(views));
@@ -66,18 +55,37 @@ export function createDemoWorkspace(config: {
     for (const id of ids) list.append(byId(id).closest('li')!);
     parent.append(list);
   };
-  actions(views.overview, ['create', 'open', 'openAt']);
+  createLandingPage(views.overview, (section) => show(section));
   const account = panelOf('account-title');
   const wallet = panelOf('wallet-title');
-  move('account', account);
-  actions(views.account, ['refresh', 'holdings', 'fund', 'withdraw']);
-  move('wallet', wallet);
+  const accountPages = createAccountWorkspace(views.account, account, (page) => {
+    routePage('account', page);
+  });
+  const builtIn = node('section');
+  builtIn.id = 'wallet-page-builtin';
+  builtIn.append(wallet);
+  const lace = node('section');
+  lace.id = 'wallet-page-lace';
+  const walletNote = node(
+    'p',
+    'These wallets are separate from your Passport account. A wallet connection grants no account permissions.',
+  );
+  views.wallet.append(walletNote, builtIn, lace);
+  const walletPages = createWorkspacePages(views.wallet, {
+    label: 'Midnight wallet pages',
+    className: 'wallet-nav',
+    initial: 'builtin' as 'builtin' | 'lace',
+    pages: {
+      builtin: { label: 'Built-in wallet', controlId: 'wallet-tab-builtin', section: builtIn },
+      lace: { label: 'Lace Wallet', controlId: 'wallet-tab-lace', section: lace },
+    },
+    onChange: (page) => routePage('wallet', page),
+  });
 
-  const security = node('details');
+  const security = node('section');
   security.id = 'settings-devices';
-  views.settings.append(node('h3', 'Security & access'));
   security.className = 'panel';
-  security.append(node('summary', 'Devices & passkeys'));
+  security.append(node('h3', 'Devices & passkeys'));
   views.settings.append(security);
   actions(security, ['prepareJoiner', 'roster', 'enrollDevice', 'removeDevice', 'rotate']);
   const moveBlock = (parent: HTMLElement, firstId: string, ids: readonly string[]) => {
@@ -89,31 +97,25 @@ export function createDemoWorkspace(config: {
   moveBlock(security, 'roster-empty', ['roster-empty', 'roster-facts']);
 
   const session = panelOf('session-title');
-  const sessions = node('details');
+  const sessions = node('section');
   sessions.id = 'settings-sessions';
   sessions.className = 'panel';
-  sessions.append(node('summary', 'Sessions'), session);
+  sessions.append(node('h3', 'Quick actions'), byId('routine-controls'), session);
   session.classList.remove('panel');
   move('settings', sessions);
-  const sessionScope = node('p');
-  sessionScope.id = 'session-target-summary';
-  session.prepend(sessionScope);
-  const editScope = node('button', 'Choose withdrawal asset and recipient');
-  editScope.type = 'button';
-  editScope.className = 'btn btn-ghost';
-  sessionScope.after(editScope);
+  const editScope = byId('session-edit-target');
   const scope = () => {
     const asset = byId('withdraw-asset') as HTMLSelectElement;
     const recipient = byId('withdraw-recipient') as HTMLInputElement;
-    sessionScope.textContent = `Session target: asset ${asset.value || 'not selected'}; recipient ${recipient.value || 'not selected'}. Review the exact scope before authorizing.`;
+    renderSessionDraft(asset.value, recipient.value);
   };
   byId('withdraw-asset').addEventListener('change', scope);
   byId('withdraw-recipient').addEventListener('input', scope);
   scope();
-  const access = node('details');
+  const access = node('section');
   access.id = 'settings-advanced-access';
   access.className = 'panel';
-  access.append(node('summary', 'Advanced access · manual grants'));
+  access.append(node('h3', 'Permissions · manual grants'));
   views.settings.append(access);
   actions(access, [
     'grantRoster',
@@ -174,11 +176,11 @@ export function createDemoWorkspace(config: {
   manage.id = 'manage-wallet-connections';
   manage.className = 'btn btn-secondary';
   manage.type = 'button';
-  wallet.append(manage);
-  const advanced = node('details');
+  views.wallet.insertBefore(manage, builtIn);
+  const advanced = node('section');
   advanced.id = 'settings-developer-tools';
   advanced.className = 'panel';
-  advanced.append(node('summary', 'Advanced · Developer tools'));
+  advanced.append(node('h3', 'Developer tools'));
   const configuration = node('section');
   configuration.id = 'demo-configuration';
   configuration.className = 'panel';
@@ -216,19 +218,88 @@ export function createDemoWorkspace(config: {
     advanced.append(example);
   }
   views.settings.append(advanced);
+  const settingsPages = createSettingsWorkspace(views.settings, (page) => {
+    routePage('settings', page);
+  });
+  const quick = node('p');
+  quick.className = 'quick-access-summary';
+  const quickStatus = node('span', 'Quick actions locked');
+  quickStatus.id = 'routine-summary';
+  const quickManage = node('button', 'Manage quick actions');
+  quickManage.type = 'button';
+  quickManage.className = 'btn btn-ghost';
+  quickManage.addEventListener('click', () => {
+    show('settings');
+    settingsPages.select('sessions');
+    byId('unlockRoutine').focus();
+  });
+  quick.append(quickStatus, quickManage);
+  views.account.querySelector('.account-context')!.append(quick);
   oldActions.remove();
 
   const progress = panelOf('activity-title');
   const auditLog = node('section');
+  auditLog.id = 'audit-page-events';
   auditLog.className = 'panel';
+  const auditToolbar = node('div');
+  auditToolbar.className = 'workspace-toolbar';
+  auditToolbar.append(byId('copy'));
+  views.audit.append(auditToolbar);
   auditLog.append(byId('log-title').parentElement!, byId('log-empty'), byId('log'));
-  move('audit', auditLog);
-  for (const id of ['trace', 'evidence']) move('audit', byId(id).closest('details')!);
+  const auditSections = { events: auditLog } as Record<
+    'events' | 'requests' | 'export',
+    HTMLElement
+  >;
+  for (const [id, contentId, title] of [
+    ['requests', 'trace', 'Requests & responses'],
+    ['export', 'evidence', 'Export JSON'],
+  ] as const) {
+    const original = byId(contentId).closest('details')!;
+    const section = node('section');
+    section.id = `audit-page-${id}`;
+    section.className = 'panel evidence';
+    section.append(node('h3', title));
+    for (const child of [...original.children])
+      if (child.tagName !== 'SUMMARY') section.append(child);
+    original.remove();
+    auditSections[id] = section;
+  }
   const auditNote = node(
     'p',
-    'Public operation history for this page. Full exchanges are redacted; durable unknown-intent guards remain separate and survive reload. Navigation never retries a transaction.',
+    'Review operation history, redacted requests and responses, or export the full public log.',
   );
-  views.audit.insertBefore(auditNote, auditLog);
+  views.audit.append(auditNote, ...Object.values(auditSections));
+  const auditPages = createWorkspacePages(views.audit, {
+    label: 'Audit pages',
+    className: 'audit-nav',
+    initial: 'events' as 'events' | 'requests' | 'export',
+    pages: {
+      events: { label: 'Event log', controlId: 'audit-tab-events', section: auditSections.events },
+      requests: {
+        label: 'Requests & responses',
+        controlId: 'audit-tab-requests',
+        section: auditSections.requests,
+      },
+      export: {
+        label: 'Export JSON',
+        controlId: 'audit-tab-export',
+        section: auditSections.export,
+      },
+    },
+    onChange: (page) => routePage('audit', page),
+  });
+  const pagesByWorkspace = {
+    account: accountPages,
+    wallet: walletPages,
+    audit: auditPages,
+    settings: settingsPages,
+  };
+  for (const [id, pages] of Object.entries(pagesByWorkspace)) {
+    const submenu = pages.navigation;
+    submenu.id = `nav-${id}-submenu`;
+    submenu.classList.add('workspace-submenu');
+    buttons.get(id as WorkspaceId)?.after(submenu);
+  }
   const activity = node('aside');
   activity.id = 'activity-panel';
   activity.className = 'panel activity-panel';
@@ -276,30 +347,65 @@ export function createDemoWorkspace(config: {
   });
   document.body.append(sheet);
   const mobile = matchMedia('(max-width: 900px)');
-  let expanded = true;
+  let expanded = false;
+  let ceremonySheet = false;
   let selected: WorkspaceId = 'overview';
+  let accountOpened = false;
+  const scrollPositions = new Map<WorkspaceId, number>();
+  let navigationDrawer: ReturnType<typeof createNavigationDrawer> | undefined;
   const updateActivity = () => {
     main.dataset.activity = expanded && !mobile.matches ? 'expanded' : 'collapsed';
     activity.hidden = mobile.matches || !expanded;
-    toggle.textContent = mobile.matches ? 'Activity' : expanded ? 'Hide Activity' : 'Show Activity';
+    const phase = content.querySelector<HTMLElement>('.operation-status')?.dataset.phase;
+    const attention =
+      !byId('operation-safety-notice').hidden || phase === 'unknown' || phase === 'failed';
+    const label = mobile.matches ? 'Activity' : expanded ? 'Hide Activity' : 'Show Activity';
+    const state = attention
+      ? 'Needs attention'
+      : phase === 'running'
+        ? 'In progress'
+        : phase === 'succeeded'
+          ? 'Completed'
+          : '';
+    const caption = state && (mobile.matches || !expanded) ? `${label} · ${state}` : label;
+    if (toggle.textContent !== caption) toggle.textContent = caption;
+    toggle.classList.toggle('has-attention', attention);
+    toggle.setAttribute('aria-live', 'polite');
     toggle.setAttribute('aria-expanded', String(mobile.matches ? sheet.open : expanded));
     toggle.setAttribute('aria-controls', mobile.matches ? sheet.id : activity.id);
   };
-  const show = (id: WorkspaceId, focus = true) => {
+  const show = (requested: WorkspaceId, focus = true) => {
+    const id = entryWorkspace(requested, accountOpened);
+    if (requested === 'overview' && accountOpened) accountPages.select('balances', false);
+    if (selected !== id) scrollPositions.set(selected, center.scrollTop);
     selected = id;
+    main.dataset.landing = String(id === 'overview');
     for (const view of Object.keys(views) as WorkspaceId[]) {
       views[view].hidden = view !== id;
-      if (view === id) buttons[view].setAttribute('aria-current', 'page');
-      else buttons[view].removeAttribute('aria-current');
+      if (view === id) buttons.get(view)?.setAttribute('aria-current', 'page');
+      else buttons.get(view)?.removeAttribute('aria-current');
+      if (view !== 'overview') pagesByWorkspace[view].setActive(view === id);
     }
     if (id === 'audit') expanded = false;
-    history.replaceState(null, '', `#${id}`);
+    views[id].querySelector('.workspace-heading')!.append(toggle);
+    history.replaceState(
+      null,
+      '',
+      id === 'overview' ? '#overview' : `#${id}/${pagesByWorkspace[id].selected()}`,
+    );
     updateActivity();
-    if (focus) byId(`workspace-${id}-title`).focus();
+    center.scrollTop = scrollPositions.get(id) ?? 0;
+    navigationDrawer?.label(names[id]);
+    if (focus) byId(`workspace-${id}-title`).focus({ preventScroll: true });
     scope();
+    document.dispatchEvent(new Event('passport:workspace-selected'));
   };
-  for (const id of Object.keys(names) as WorkspaceId[])
-    buttons[id].addEventListener('click', () => show(id));
+  function routePage(id: Exclude<WorkspaceId, 'overview'>, _page: string) {
+    show(id, false);
+    center.scrollTop = 0;
+    scrollPositions.set(id, 0);
+  }
+  for (const [id, button] of buttons) button.addEventListener('click', () => show(id));
   const closeSheet = (reason = '') => {
     if (sheet.open) sheet.close(reason);
   };
@@ -310,6 +416,7 @@ export function createDemoWorkspace(config: {
     if (sheet.returnValue !== 'audit') toggle.focus();
   });
   toggle.addEventListener('click', () => {
+    ceremonySheet = false;
     if (mobile.matches) {
       sheet.append(content);
       sheet.returnValue = '';
@@ -325,9 +432,13 @@ export function createDemoWorkspace(config: {
     closeSheet();
     updateActivity();
   });
-  manage.addEventListener('click', () => show('settings'));
+  manage.addEventListener('click', () => {
+    show('settings');
+    settingsPages.select('wallets');
+  });
   editScope.addEventListener('click', () => {
     show('account');
+    accountPages.select('withdraw');
     byId('withdraw-recipient').focus();
   });
   const safetyNotice = node('p');
@@ -335,18 +446,121 @@ export function createDemoWorkspace(config: {
   safetyNotice.className = 'operation-safety-notice';
   safetyNotice.setAttribute('role', 'alert');
   safetyNotice.hidden = true;
-  center.append(toggle, safetyNotice, progress, ...Object.values(views));
+  const operationDetails = node('div');
+  operationDetails.className = 'activity-operation-details';
+  progress.classList.remove('panel');
+  progress.querySelector<HTMLElement>('.panel-head')!.hidden = true;
+  progress.setAttribute('aria-label', 'Operation progress and result');
+  progress.removeAttribute('aria-labelledby');
+  const purpose = byId('ceremony-purpose');
+  operationDetails.append(purpose, safetyNotice, progress);
+  content.append(operationDetails);
+  center.append(...Object.values(views));
   main.replaceChildren(nav, center, activity);
   main.classList.add('workspace-shell');
-  const hash = location.hash.slice(1);
-  show(Object.hasOwn(names, hash) ? (hash as WorkspaceId) : 'overview', false);
+  document.body.classList.add('workspace-app');
+  navigationDrawer = createNavigationDrawer(main, nav, mobile, () => {
+    byId(`workspace-${selected}-title`).focus({ preventScroll: true });
+  });
+  skip.addEventListener('click', (event) => {
+    event.preventDefault();
+    center.focus({ preventScroll: true });
+  });
+  const [hash, accountPage] = location.hash.slice(1).split('/');
+  if (hash === 'account' && accountPage && accountPages.valid(accountPage))
+    accountPages.select(accountPage, false);
+  if (hash === 'wallet' && accountPage && walletPages.valid(accountPage))
+    walletPages.select(accountPage, false, false);
+  if (hash === 'audit' && accountPage && auditPages.valid(accountPage))
+    auditPages.select(accountPage, false, false);
+  if (hash === 'settings' && accountPage && settingsPages.valid(accountPage))
+    settingsPages.select(accountPage, false, false);
+  show(Object.hasOwn(names, hash ?? '') ? (hash as WorkspaceId) : 'overview', false);
+  byId('brand-home').addEventListener('click', (event) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)
+      return;
+    event.preventDefault();
+    show('overview');
+    navigationDrawer?.closeForNavigation();
+  });
+  window.addEventListener('hashchange', () => {
+    const [workspace, page] = location.hash.slice(1).split('/');
+    if (workspace === 'account' && page && accountPages.valid(page))
+      accountPages.select(page, false);
+    if (workspace === 'wallet' && page && walletPages.valid(page))
+      walletPages.select(page, false, false);
+    if (workspace === 'audit' && page && auditPages.valid(page))
+      auditPages.select(page, false, false);
+    if (workspace === 'settings' && page && settingsPages.valid(page))
+      settingsPages.select(page, false, false);
+    show(Object.hasOwn(names, workspace ?? '') ? (workspace as WorkspaceId) : 'overview');
+  });
+  // Presentation events never approve a credential or invoke an account command.
+  let presentedCredential = false;
+  document.addEventListener('passport:operation-started', () => {
+    presentedCredential = false;
+    if (!mobile.matches) expanded = true;
+    updateActivity();
+  });
+  document.addEventListener('passport:operation-finished', () => {
+    const phase = content.querySelector<HTMLElement>('.operation-status')?.dataset.phase;
+    if (
+      !mobile.matches ||
+      presentedCredential ||
+      !['succeeded', 'failed', 'unknown'].includes(phase ?? '')
+    )
+      return;
+    if (document.querySelector('dialog[open]:not(#activity-sheet)')) return;
+    if (!sheet.open) {
+      sheet.append(content);
+      sheet.returnValue = '';
+      sheet.showModal();
+      close.focus();
+    }
+    // Results without a credential ceremony stay readable, including session withdrawals
+    // and early failures. Never infer the actual path from a static prompt estimate.
+    ceremonySheet = false;
+    updateActivity();
+  });
+  document.addEventListener('passport:present-ceremony', () => {
+    presentedCredential = true;
+    if (document.querySelector('dialog[open]:not(#activity-sheet)')) return;
+    if (mobile.matches) {
+      if (!sheet.open) {
+        ceremonySheet = true;
+        sheet.append(content);
+        sheet.returnValue = '';
+        sheet.showModal();
+      }
+    } else expanded = true;
+    updateActivity();
+    purpose.scrollIntoView({ block: 'nearest' });
+  });
+  document.addEventListener('passport:ceremony-finished', () => {
+    if (ceremonySheet) closeSheet('ceremony-complete');
+    ceremonySheet = false;
+    updateActivity();
+  });
+  const notices = new MutationObserver(updateActivity);
+  notices.observe(safetyNotice, { attributes: true, childList: true, subtree: true });
+  notices.observe(progress, { childList: true, subtree: true });
   return {
     activityRoot: content,
+    operationDetails,
     show,
     selected: () => selected,
+    showAccount() {
+      accountOpened = true;
+      accountPages.select('balances', false);
+      scrollPositions.delete('account');
+      show('account');
+      navigationDrawer?.closeForNavigation();
+    },
     showAudit(operationId: string) {
       closeSheet('audit');
+      auditPages.select('events', false, false);
       show('audit');
+      navigationDrawer?.closeForNavigation();
       const entry = document.getElementById(`audit-${operationId}`);
       entry?.scrollIntoView({ block: 'nearest' });
     },

@@ -1,5 +1,7 @@
 import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
 import type { FetchLike } from '@input-output-hk/mn-passport-account/ports';
+import { readConfigJson } from './config-read.js';
+import { parseLegacyConfig } from './config-schema.js';
 
 /** What `GET /config` answers (apps/passport-service routes/zk.ts, plus the sponsor's keys). */
 export interface ServiceConfigWire {
@@ -126,50 +128,15 @@ export function stringMember(answer: Record<string, unknown>, name: string, what
   return value;
 }
 
+/** Legacy three-argument discovery has no deadline; optional timeoutMs bounds the whole read. */
 export async function fetchServiceConfig(
   base: string,
   fetchFn: FetchLike,
   networkId: string,
+  timeoutMs?: number,
 ): Promise<ServiceConfigWire> {
-  let res;
-  try {
-    res = await fetchFn(`${trimBase(base)}/config`);
-  } catch (cause) {
-    throw new PassportConnectorError('InternalError', 'service /config is unreachable', { cause });
-  }
-  if (!res.ok)
-    throw new PassportConnectorError('InternalError', `service /config failed: ${res.status}`);
-  const config = await readBody(res);
-  if (!isRecord(config)) {
-    throw new PassportConnectorError(
-      'InternalError',
-      'service /config answered a body that is not an object',
-    );
-  }
-  // The network is checked first: a service on another network is the more useful thing to say.
-  if (config.networkId !== networkId) {
-    throw new PassportConnectorError(
-      'NetworkMismatch',
-      `service is on ${String(config.networkId)}, connector is bound to ${networkId}`,
-    );
-  }
-  const text = (field: keyof ServiceConfigWire): string => {
-    const value = config[field];
-    if (typeof value !== 'string') {
-      throw new PassportConnectorError('InternalError', `service /config has no "${field}"`);
-    }
-    return value;
-  };
-  return {
-    networkId: text('networkId'),
-    bindingId: text('bindingId'),
-    manifestSha256: text('manifestSha256'),
-    indexerUri: text('indexerUri'),
-    indexerWsUri: text('indexerWsUri'),
-    nodeUri: text('nodeUri'),
-    proofServerUri: text('proofServerUri'),
-    zkBaseUrl: text('zkBaseUrl'),
-    coinPublicKey: text('coinPublicKey'),
-    encryptionPublicKey: text('encryptionPublicKey'),
-  };
+  return parseLegacyConfig(
+    await readConfigJson(fetchFn, `${trimBase(base)}/config`, '/config', timeoutMs),
+    networkId,
+  );
 }

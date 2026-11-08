@@ -3,7 +3,7 @@ import {
   toPassportError,
 } from '@input-output-hk/mn-passport-account/errors';
 import type { PasskeyCredential } from '@input-output-hk/mn-passport-account/ports';
-import { copyPrfOutput, takeCreatePrf } from './create-prf.js';
+import { takeCreatePrf } from './create-prf.js';
 import {
   accEncryptionKey,
   PRF_LABEL_AUTHORISER,
@@ -66,6 +66,69 @@ export interface PasskeyPrfOptions extends PasskeyCeremonyOptions {
   created?: PasskeyCredential | undefined;
 }
 
+/** PRF discovery is for local key derivation, not an ACC P-256 ownership/signature proof. */
+export interface DiscoverPasskeySeedOptions extends PasskeyCeremonyOptions {
+  rpId: string;
+  credentials?: CredentialsContainer | undefined;
+}
+
+const noPrf = () => new PassportConnectorError('UnsupportedAuthenticator', PRF_UNAVAILABLE);
+
+function checkedOutput(source: unknown): Uint8Array {
+  if (source instanceof ArrayBuffer && source.byteLength === 32)
+    return new Uint8Array(source.slice(0));
+  if (ArrayBuffer.isView(source) && source.byteLength === 32)
+    return new Uint8Array(source.buffer, source.byteOffset, source.byteLength).slice();
+  throw noPrf();
+}
+
+function checkedOutputs(
+  results: { first?: unknown; second?: unknown } | undefined,
+): PasskeyPrfOutputs {
+  let authoriser: Uint8Array | undefined;
+  try {
+    authoriser = checkedOutput(results?.first);
+    return { authoriser, root: checkedOutput(results?.second) };
+  } catch (error) {
+    authoriser?.fill(0);
+    throw error;
+  }
+}
+
+function checkedCredentialId(source: unknown): Uint8Array {
+  const bytes = source instanceof ArrayBuffer ? new Uint8Array(source) : source;
+  if (!(bytes instanceof Uint8Array) || bytes.length < 1 || bytes.length > 1023)
+    throw new PassportConnectorError('UnsupportedAuthenticator', 'Invalid passkey credential ID.');
+  return Uint8Array.from(bytes);
+}
+
+async function requestPrf(
+  opts: DiscoverPasskeySeedOptions,
+  credentialId?: Uint8Array,
+): Promise<PasskeyPrfOutputs> {
+  try {
+    await beforePasskeyCeremony(opts, credentialId ? 'derive-keys' : 'identify-and-unlock');
+    const credential = (await (opts.credentials ?? navigator.credentials).get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        rpId: opts.rpId,
+        userVerification: 'required',
+        ...(credentialId && {
+          allowCredentials: [{ type: 'public-key', id: new Uint8Array(credentialId) }],
+        }),
+        extensions: { prf: { eval: lacePrfSalts() } },
+      },
+    })) as PublicKeyCredential | null;
+    if (!credential)
+      throw new PassportConnectorError('UserCancelled', 'The passkey prompt was cancelled.');
+    const selected = checkedCredentialId(credential.rawId);
+    if (credentialId && !equalBytes(selected, credentialId)) throw wrongPasskey();
+    return checkedOutputs(credential.getClientExtensionResults().prf?.results);
+  } catch (error) {
+    throw toPassportError(error);
+  }
+}
+
 /**
  * Both Lace salts on a known credential (`first`: the authoriser, `second`: the root). It is a
  * SEPARATE ceremony: PRF output adds authenticator extension data, which the ACC's wa-json134
@@ -78,40 +141,39 @@ export interface PasskeyPrfOptions extends PasskeyCeremonyOptions {
  * prompt at all.
  */
 export async function passkeyPrf(opts: PasskeyPrfOptions): Promise<PasskeyPrfOutputs> {
+  const credentialId = checkedCredentialId(opts.credentialId);
   if (opts.created) {
-    if (!equalBytes(opts.created.credentialId, opts.credentialId)) {
+    if (!equalBytes(opts.created.credentialId, credentialId)) {
       throw new PassportConnectorError(
         'InternalError',
         'passkeyPrf: `created` is not the credential named by `credentialId`.',
       );
     }
     const atCreate = takeCreatePrf(opts.created);
-    if (atCreate) return atCreate;
+    if (atCreate) {
+      // The creation holder already owns these copies; transfer them once without duplicating
+      // their custody, and refuse malformed outputs rather than requesting another credential.
+      if (atCreate.authoriser.length === 32 && atCreate.root.length === 32) return atCreate;
+      atCreate.authoriser.fill(0);
+      atCreate.root.fill(0);
+      throw noPrf();
+    }
   }
-  let credential: PublicKeyCredential | null;
+  return requestPrf(opts, credentialId);
+}
+
+/** One discoverable UV-required PRF request, independent of ACC wa-json134 origin/profile.
+ * Both Lace outputs are validated and erased; caller owns and zeroes the resulting wallet seed.
+ * There is no separate identification request, retry, fallback seed or account ownership claim.
+ */
+export async function discoverPasskeySeed(opts: DiscoverPasskeySeedOptions): Promise<Uint8Array> {
+  const outputs = await requestPrf(opts);
   try {
-    await beforePasskeyCeremony(opts, 'derive-keys');
-    credential = (await (opts.credentials ?? navigator.credentials).get({
-      publicKey: {
-        challenge: crypto.getRandomValues(new Uint8Array(32)),
-        rpId: opts.rpId,
-        userVerification: 'required',
-        allowCredentials: [{ type: 'public-key', id: new Uint8Array(opts.credentialId) }],
-        extensions: { prf: { eval: lacePrfSalts() } },
-      },
-    })) as PublicKeyCredential | null;
-  } catch (e) {
-    throw toPassportError(e);
+    return seedFromRoot(outputs.root);
+  } finally {
+    outputs.authoriser.fill(0);
+    outputs.root.fill(0);
   }
-  if (!credential) {
-    throw new PassportConnectorError('UserCancelled', 'The passkey prompt was cancelled.');
-  }
-  if (!equalBytes(new Uint8Array(credential.rawId), opts.credentialId)) throw wrongPasskey();
-  const results = credential.getClientExtensionResults().prf?.results;
-  if (!results?.first || !results.second) {
-    throw new PassportConnectorError('UnsupportedAuthenticator', PRF_UNAVAILABLE);
-  }
-  return { authoriser: copyPrfOutput(results.first), root: copyPrfOutput(results.second) };
 }
 
 /**

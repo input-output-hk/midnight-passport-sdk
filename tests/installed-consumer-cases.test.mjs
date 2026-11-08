@@ -82,3 +82,55 @@ test('installed consumer remains opt-in, with missing input never satisfying a r
   assert.deepEqual(plan.missing, ['CONSUMER_ROOT']);
   assert.ok(!planSuite('release', {}).some((p) => p.id === plan.id));
 });
+
+test('receipt envelope and consent refusal precede later field access', () => {
+  const envelope = receipt();
+  envelope.realProvider = true;
+  Object.defineProperty(envelope, 'consent', {
+    get() {
+      throw new Error('consent must not be read');
+    },
+  });
+  assert.throws(() => validateInstalledCases(envelope), {
+    message: 'incomplete or overclaimed installed scenario results',
+  });
+  const consent = receipt();
+  consent.consent.secretCalls = 1;
+  const first = consent.cases[0];
+  assert.ok(first);
+  Object.defineProperty(first, 'verdict', {
+    get() {
+      throw new Error('cases must not be read');
+    },
+  });
+  assert.throws(() => validateInstalledCases(consent), {
+    message: 'missing or overclaimed installed consent boundary',
+  });
+});
+
+test('case identity and duplicate job checks retain short-circuit order', () => {
+  const wrongCase = receipt();
+  const first = wrongCase.cases[0];
+  assert.ok(first);
+  first.arm = 'unknown';
+  Object.defineProperty(first, 'verdict', {
+    get() {
+      throw new Error('invalid case must stop before verdict');
+    },
+  });
+  assert.throws(() => validateInstalledCases(wrongCase), {
+    message: 'invalid installed interruption evidence',
+  });
+  const duplicate = receipt();
+  const [one, two] = duplicate.cases;
+  assert.ok(one && two);
+  two.jobId = one.jobId;
+  Object.defineProperty(two, 'checks', {
+    get() {
+      throw new Error('duplicate must stop before checks');
+    },
+  });
+  assert.throws(() => validateInstalledCases(duplicate), {
+    message: 'invalid installed interruption evidence',
+  });
+});

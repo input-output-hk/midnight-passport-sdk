@@ -50,19 +50,29 @@ wallet is locked; the UI suggests checking it without claiming a cause.
 import {
   discoverWalletProviders,
   connectWalletReader,
+  type WalletProvider,
 } from '@input-output-hk/mn-passport-adapter-browser/wallet';
 
-// Supply the registry and address decoder explicitly. No SDK global discovery.
-const candidates = discoverWalletProviders(registry());
-const provider = await hostReviewAndSelect(candidates); // explicit user action
-const reader = await connectWalletReader(provider, {
-  networkId: configuredNetwork,
-  registry,
-  validateAddress: decodeUnshieldedAddressForNetwork,
-});
-const snapshot = await reader.read();
-// Retain exact bigint amounts; the returned snapshot is immutable.
-reader.forget(); // local invalidation, not extension permission revocation
+// The host supplies discovery, explicit user selection and its pinned address decoder.
+export async function readApprovedWallet(
+  registry: () => unknown,
+  configuredNetwork: string,
+  hostReviewAndSelect: (candidates: readonly WalletProvider[]) => Promise<WalletProvider | undefined>,
+  decodeUnshieldedAddressForNetwork: (address: string, network: string) => boolean,
+) {
+  const provider = await hostReviewAndSelect(discoverWalletProviders(registry()));
+  if (!provider) return undefined; // No permission request after a declined selection.
+  const reader = await connectWalletReader(provider, {
+    networkId: configuredNetwork,
+    registry,
+    validateAddress: decodeUnshieldedAddressForNetwork,
+  });
+  try {
+    return await reader.read(); // Immutable snapshot; preserve exact bigint amounts.
+  } finally {
+    reader.forget(); // Local invalidation, not extension permission revocation.
+  }
+}
 ```
 
 The provider object must be the exact frozen candidate returned by discovery.

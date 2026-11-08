@@ -70,28 +70,44 @@ immutable revision files, atomic publication and durability acknowledgements. Su
 Key derivation and consent/session budgets remain the host's responsibility.
 
 ```ts
-import { depositShielded, resumeShieldedDeposit } from '@input-output-hk/mn-passport-account';
+import {
+  depositShielded,
+  resumeShieldedDeposit,
+  type ShieldedDepositPins,
+  type ShieldedDepositPorts,
+  type ShieldedDepositRecovery,
+  type ShieldedDepositRequest,
+} from '@input-output-hk/mn-passport-account';
+import type { PrfKeySource } from '@input-output-hk/mn-passport-account/ports';
 import { encryptedShieldedDepositJournal } from '@input-output-hk/mn-passport-keys';
 import { fileMutationByteStore } from '@input-output-hk/mn-passport-service';
 
-// pins, journalKeySource, senderPorts and evidencePorts are the host's checked composition.
-const journal = encryptedShieldedDepositJournal(
-  pins, journalKeySource, fileMutationByteStore(privateDepositDirectory),
-);
-const ports = {
-  ...senderPorts,
-  recovery: { pins, journal, ...evidencePorts },
-};
-const receipt = await journalKeySource.withSession(() =>
-  depositShielded(originalRequest, ports),
-);
-// Later, after a lost response or restart: same ID/account/coin/pins, retained original journal.
-const sameReceipt = await journalKeySource.withSession(() =>
-  resumeShieldedDeposit(originalRequest, ports),
-);
+// Node composition only: the host supplies real sender and exact finality evidence.
+export function createApprovedDepositActions(
+  pins: ShieldedDepositPins,
+  journalKeySource: PrfKeySource,
+  privateDepositDirectory: string,
+  senderPorts: Omit<ShieldedDepositPorts, 'recovery'>,
+  evidence: Pick<ShieldedDepositRecovery, 'reconcileSender' | 'confirmTransaction'>,
+) {
+  const journal = encryptedShieldedDepositJournal(
+    pins, journalKeySource, fileMutationByteStore(privateDepositDirectory),
+  );
+  const ports = { ...senderPorts, recovery: { ...evidence, pins, journal } };
+  return {
+    deposit: (original: ShieldedDepositRequest) => journalKeySource.withSession(
+      () => depositShielded(original, ports),
+    ),
+    // A separately approved action after interruption; never automatically invoke it.
+    resume: (original: ShieldedDepositRequest) => journalKeySource.withSession(
+      () => resumeShieldedDeposit(original, ports),
+    ),
+  };
+}
 ```
 
-This sketch does not provide a native sender/finality adapter. Never substitute an unconditional
+This checked composition supplies separate deposit and resume actions. It does not
+provide a native sender/finality adapter. Never substitute an unconditional
 `true` confirmation or a balance-only probe in a production host.
 
 ## Bound one approved journal session

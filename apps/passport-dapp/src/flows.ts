@@ -3,6 +3,8 @@
 import type { PassportStep } from '@input-output-hk/mn-passport-protocol';
 
 export type ActionId =
+  | 'unlockOwner'
+  | 'unlockRoutine'
   | 'startSession'
   | 'endSession'
   | 'revokeSession'
@@ -38,9 +40,12 @@ export type PromptCount = number | readonly [min: number, max: number];
  *   Manager is expected to; otherwise 3 (create, verify, PRF).
  * - Current sealed accounts vary with the provider and publication state; the UI shows a
  *   qualitative prompt note for create and open instead of these legacy estimates.
- * - Wallet: 1 with an account open (pinned to its passkey), 2 without (pick, then PRF).
+ * - Wallet: one fresh request when locked, including discoverable PRF without an account;
+ *   an active routine lease uses no request.
  */
 export const PASSKEY_PROMPTS = {
+  unlockOwner: 1,
+  unlockRoutine: 1,
   startSession: 1,
   endSession: 0,
   revokeSession: 1,
@@ -55,7 +60,7 @@ export const PASSKEY_PROMPTS = {
   prepareGrantee: 2,
   issueGrant: 1,
   exportGrant: 1,
-  spendGrant: 2,
+  spendGrant: 1,
   revokeGrant: 1,
   recoverGrants: 1,
   enrollDevice: 1,
@@ -65,7 +70,7 @@ export const PASSKEY_PROMPTS = {
   withdraw: 1,
   walletRefresh: 0,
   walletWithAccount: 1,
-  walletWithoutAccount: 2,
+  walletWithoutAccount: 1,
 } as const satisfies Record<string, PromptCount>;
 
 export const promptsFor = (action: ActionId, accountOpen: boolean): PromptCount =>
@@ -96,22 +101,37 @@ export interface FlowDef {
 const read: StageDef = { id: 'read', label: 'Read the account from the chain' };
 
 export const FLOWS: Record<ActionId, FlowDef> = {
+  unlockOwner: {
+    title: 'Unlock account',
+    summary:
+      'Unlock a deterministic JubJub owner. Critical operations still require fresh passkey approval. Existing P-256 accounts need explicit first enrollment; local timeout does not revoke it.',
+    stages: [
+      { id: 'unlock', label: 'Unlock the passkey PRF' },
+      { id: 'verify', label: 'Verify or enroll the JubJub owner' },
+    ],
+  },
+  unlockRoutine: {
+    title: 'Unlock quick actions',
+    summary:
+      'Keep reading and built-in wallet keys in memory for a bounded session, and derive a separate JubJub key. No transfer permission is granted.',
+    stages: [{ id: 'unlock', label: 'Unlock routine keys with the account passkey' }],
+  },
   startSession: {
     title: 'Authorize JubJub session',
     summary:
-      'Review a fixed recipient, asset, caps and 10–30 minute expiry. Your owner passkey issues a scoped grant for a separate PRF-derived session signer.',
+      'Your owner key approves the recipient, limits and expiry. This adds a scoped signing permission, not another owner.',
     stages: [{ id: 'authorize', label: 'Derive session key and issue the expiring grant' }],
   },
   endSession: {
     title: 'Lock local session',
     summary:
-      'Dispose the local session key immediately. This does not revoke its on-chain grant or undo a submitted transaction.',
+      'Stop signing here immediately. The on-chain grant remains until expiry or confirmed revocation; submitted transfers are not undone.',
     stages: [{ id: 'lock', label: 'Dispose the local signing key' }],
   },
   revokeSession: {
     title: 'Revoke session grant',
     summary:
-      'Lock the local key, then use a fresh owner passkey ceremony to revoke the grant on chain.',
+      'Lock the local key and use your owner key to revoke the grant. Permission ends when revocation is confirmed on chain.',
     stages: [{ id: 'revoke', label: 'Approve and confirm grant revocation' }],
   },
   create: {
@@ -194,7 +214,7 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       'Unlock the owner journal, verify the active grant against the chain, and hand its opening directly to the named grantee.',
     stages: [
       { id: 'review', label: 'Verify active grant and owner journal' },
-      { id: 'export', label: 'Unlock the sealed opening with the owner passkey' },
+      { id: 'export', label: 'Open the sealed opening with authenticated owner keys' },
     ],
   },
   spendGrant: {
@@ -228,7 +248,7 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       'Review the joiner fingerprint, then sign and confirm its ACC entry and sealed key delivery.',
     stages: [
       { id: 'review', label: 'Validate handoff and read live roster' },
-      { id: 'submit', label: 'Sign with owner passkey and enroll' },
+      { id: 'submit', label: 'Sign with the selected owner and enroll' },
       read,
     ],
   },
@@ -297,6 +317,8 @@ export const FLOWS: Record<ActionId, FlowDef> = {
  * at the event's own time. Every other step is noted on the running stage with its duration.
  */
 export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep, string>>>> = {
+  unlockRoutine: {},
+  unlockOwner: {},
   startSession: {},
   endSession: {},
   revokeSession: {},

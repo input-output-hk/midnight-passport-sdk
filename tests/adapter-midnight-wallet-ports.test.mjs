@@ -120,3 +120,59 @@ test('a known fee-only sponsor rejects a shielded spend before proving', async (
   );
   assert.equal(proved, false);
 });
+
+test('submission progress retains the original accepted ID before a later call failure', async () => {
+  const unbound = await ledger.Transaction.fromParts('undeployed').prove(
+    {
+      check: async () => [],
+      prove: async () => new Uint8Array(),
+      lookupKey: async () => undefined,
+    },
+    ledger.CostModel.initialCostModel(),
+  );
+  const bound = unbound.bind();
+  /** @type {import('../packages/protocol/dist/index.js').PassportEvent[]} */
+  const seen = [];
+  const unused = async () => {
+    throw Error('unused');
+  };
+  const chain = createMidnightChain({
+    network: {
+      networkId: 'undeployed',
+      bindingId: 'acc-s3r1.1',
+      manifestSha256: 'a'.repeat(64),
+      indexerUrl: 'http://indexer',
+      indexerWsUrl: 'ws://indexer',
+      nodeUrl: 'http://node',
+      artefactUrl: 'http://artefacts',
+    },
+    binding: /** @type {any} */ ({ Contract: class {}, ledger: () => ({}), pureCircuits: {} }),
+    prover: { proveTx: unused },
+    sponsor: { balanceAndSign: unused },
+    sponsorKeys: { coinPublicKey: 'coin', encryptionPublicKey: 'enc' },
+    submitter: { submit: async () => 'ab'.repeat(32) },
+    publicDataProvider: /** @type {any} */ ({}),
+    submit: /** @type {any} */ (
+      async (/** @type {any} */ providers) => {
+        await providers.midnightProvider.submitTx({ version: 'v9', tx: bound });
+        throw Error('later call interrupted');
+      }
+    ),
+  });
+  await assert.rejects(
+    chain.call({
+      address: 'cd'.repeat(32),
+      circuit: 'rotate_enc_key_with_jubjub',
+      args: [],
+      onEvent: (e) => seen.push(e),
+    }),
+    /later call interrupted/,
+  );
+  const submitted = seen.find((e) => e.step === 'sponsor.submit' && e.phase === 'end');
+  assert.ok(submitted);
+  assert.deepEqual(submitted.detail, {
+    txId: 'ab'.repeat(32),
+    circuit: 'rotate_enc_key_with_jubjub',
+  });
+  assert.equal(seen.filter((e) => e.id === submitted.id).length, 2);
+});

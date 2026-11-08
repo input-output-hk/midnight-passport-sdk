@@ -777,6 +777,7 @@ export async function runLiveOutages(requestedProfile = 'baseline') {
           docker,
           indexerId: /** @type {string} */ (ids[1]),
           indexerReady,
+          nodeUrl: 'http://127.0.0.1:19954',
         });
         evidence.push({ round, ...wallet });
         await save();

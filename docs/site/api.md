@@ -4,6 +4,38 @@ title: Account API
 permalink: /api/
 ---
 
+This is the reusable account/adapter reference. The [Library integration guide]({{ '/library-guide/' | relative_url }})
+explains host lifecycle and custody. The [Demo app guide]({{ '/demo-guide/' | relative_url }})
+describes the reference UI's chosen policies; those policies are not implicit API defaults.
+
+## On this page
+
+- [Release/source export map](#published-and-source-preview-surfaces)
+- [Account methods](#flow-methods) and [optional methods/host prerequisites](#optional-methods-and-host-prerequisites)
+- [Injected ports](#ports), [events/cancellation](#events-and-cancellation) and [errors](#errors)
+- [Browser composition](#browser-composition) and [source checked configuration](#source-preview-checked-configuration-contract)
+- [Source authorization/custody/background entries](#source-quality-apis-after-rc7)
+
+The [package runtime index]({{ '/packages/#runtime-and-host-requirements' | relative_url }})
+identifies the environment for each public entry. This is a handwritten API guide;
+exact declarations remain the source-linked contract, qualified by release/version.
+
+## Published and source preview surfaces
+
+| Track | Exports and behavior |
+| --- | --- |
+| Published `0.1.0-rc7` | Account create/open/state, supported device/key/grant/value flows through host ports; browser/WebAuthn/service adapters; capability/preflight and documented opt-in recovery/service-job APIs. Use matching exact packages and release-tagged examples. |
+| Source after RC7 | `account/names`, `account/interaction`, `account/validation`, `account/authorization`, `account/secret-store`, `account/background`; browser wallet/custody/background subpaths; verified-login handoff and authenticated-owner/scoped-session helpers. These imports and policies require source builds until a release includes them. |
+
+For matching-checkout build/type evaluation, use the
+[source entry path]({{ '/library-guide/#evaluate-the-current-source' | relative_url }}).
+That check does not install newer APIs into an RC7 consumer.
+
+Validation, consent, verified ownership and dispatch/finality are different boundaries.
+A parser checks canonical input; a host review approves one exact operation; live
+account/key checks establish authority; a submission acknowledgement still needs
+settlement or same-intent recovery. Never use one as evidence for the next.
+
 Local source after RC7 adds the optional read-only
 [naming-service port and checked resolver]({{ '/names/' | relative_url }}):
 `PassportNameService` in `account/ports`, `resolvePassportName` in `account/names`.
@@ -18,23 +50,45 @@ The optional [wallet reader]({{ '/lace-wallet/' | relative_url }}) is a separate
 `adapter-browser/wallet` source subpath. It supplies no ACC ownership, viewing or
 spending permission and exposes no transfer/signing methods.
 
-The public flow is `createPassportAccounts(ports): PassportConnectorAPI` from `mn-passport-account`. The interfaces are in `mn-passport-protocol`; adapter authors import the contracts from `mn-passport-account/ports`. Source links below point to the exact prototype API.
+The public flow is `createPassportAccounts(ports): PassportConnectorAPI` from `mn-passport-account`. The interfaces are in `mn-passport-protocol`; adapter authors import the contracts from `mn-passport-account/ports`. Prototype-branch links describe current source; release-tagged examples describe RC7. Consult the release map before copying an additive export.
 
 ```ts
 import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
 import type { PassportPorts } from '@input-output-hk/mn-passport-account/ports';
 
-declare const ports: PassportPorts; // supplied by the host adapters
-const passport = createPassportAccounts(ports);
-const account = await passport.createAccount({
-  userName: 'alice',
-  retireAuthority: true,
-  onEvent: (event) => console.log(event.step, event.phase),
-});
-const state = await account.state();
+// Invoke only after the host's explicit account-opening action and review.
+export async function openAndReadAccount(ports: PassportPorts) {
+  const passport = createPassportAccounts(ports);
+  const account = await passport.openAccount({
+    onEvent: (event) => console.log(event.step, event.phase),
+  });
+  return { account, state: await account.state() };
+}
 ```
 
 `retireAuthority` is required. `true` removes the maintenance authority after the last deployment wave and cannot be undone. A host must make that choice explicitly. The account connector supports P-256 WebAuthn and JubJub Schnorr creation and opening. The typed `k256-ecdsa` arm is not implemented.
+
+## Public entry points and ownership
+
+Package names below use the `@input-output-hk/mn-passport-` prefix. Import public
+entries, not internal source/dist files. The core and its adapters are separate
+composition choices:
+
+| Entry | Use it for | What your host supplies |
+| --- | --- | --- |
+| `account` → `createPassportAccounts` | Portable account flows | Typed ports; credential/consent policy; persistence and transaction recovery. |
+| `account/ports` and `protocol` | Adapter contracts and account/event types | Implementations matching the selected network, binding and runtime. Type imports start no operation. |
+| `adapter-browser` → `createBrowserPassport` | Browser WebAuthn/keyring and Midnight composition | RP/origin, trusted network/backend ports, records, bundler capabilities and user-action handlers. |
+| `adapter-service` | Fetch-based remote proof/deploy/sponsor/directory clients | Backend URL/pins and appropriate authentication; no server is started. |
+| `service` | Embedded Node routes, stores and service policies | An HTTP host, verified artifacts, proof/wallet providers and operator policy. |
+
+Create the API for a chosen host composition, then call its methods from reviewed
+user actions. An opened `PassportAccount` identifies the selected account; retaining
+that object is not a timed key lease or an authenticated session. Methods still
+perform their documented live checks. There is no generic account `disconnect()`;
+your host owns key disposal, observers, worker channels and storage handles.
+See [lifecycle order]({{ '/library-guide/#integrate-in-lifecycle-order' | relative_url }})
+for persistence and teardown, separately from the demo's UI policy.
 
 ## Flow methods
 
@@ -43,6 +97,7 @@ const state = await account.state();
 | `createAccount({ userName, retireAuthority, signal?, onEvent? })` | `PassportAccount`          | Creates a passkey, deploys the ACC, records a directory hint and activates the first device.                                   |
 | `openAccount({ signal?, onEvent? }?)`                             | `PassportAccount`          | Finds a registered account with a passkey, verifies ownership against the chain and reopens it.                                |
 | `openAccountAt(address, options?)` | `PassportAccount` | P-256 and JubJub: opens a live sealed ACC by address when its credential has no directory hint. Requires a live device entry and an envelope that opens the ledger `enc_key`. JubJub also checks one current matching device registration, then saves its hint and local use counter. |
+| `account.deviceRoster()` | `PassportDeviceRoster` | Public live device commitments and reader registrations, with completeness/ambiguity checks. Requires a chain view with device/inbox data; entry count alone is not a distinct-device roster. |
 | `account.state()`                                                 | `PassportAccountState`     | Reads `booted`, `authNonce`, `deviceEpoch`, `entryCount` and `specVersion`. `entryCount` counts entries, not distinct devices. |
 | `account.withdrawUnshielded({ color, amount, recipient }, options?)` | `PassportOwnerTransferResult` | P-256 and JubJub owners: signs the pinned `withdraw_unshielded` challenge and submits a transfer from ACC unshielded balance to a Midnight user address. The consent descriptor names the asset color, amount and recipient. Requires the `acc-s3r1.1` binding and an active live owner device. |
 | `account.withdrawShielded({ inboxIndex, color, amount, recipient }, options?)` | `PassportOwnerTransferResult` | Sealed P-256 and JubJub owners: selects one chain-matched qualified coin, binds it into the owner challenge and `held_coin` witness, then submits `withdraw_shielded_with_p256` or `withdraw_shielded_with_jubjub`. `recipient` is a 32-byte Zswap coin public key. Requires a `QualifiedHoldingSource`, owner key session, and chain adapter with a per-call witness. |
@@ -50,7 +105,7 @@ const state = await account.state();
 | `account.rotateViewingKey(options?)`                              | `{ txHash, droppedDeviceEntries, sealedReadGrants, unsealedGrantIds }` | Sealed JubJub and P-256: seal a random secret to unique live devices and chain-confirmed read grantees, rotate the ACC key, then re-encrypt verified holdings. Requires host-backed holding and complete active read-grant sources; reports grants whose key opening or seal is unavailable. |
 | `account.removeDevice(commitmentHex, options?)` | `DeviceRemovalResult` | Sealed JubJub and P-256: refuse self-removal or an absent live target, rotate the viewing and roster keys while excluding the target, re-encrypt verified holdings and seal active read grants, then sign the arm's `remove_device` circuit. Requires the same complete host sources as rotation. Returns the rotation and removal transaction hashes. |
 | `account.addDevice(reader, options?)` | `DeviceEnrollmentResult` | JubJub and P-256: validates the joining reader, delivers sealed account keys, then enrolls the derived live commitment. A joining P-256 reader needs `scheme: 'p256-webauthn'` and the 32-byte RP hash/21-byte origin policy; a P-256 owner can also enroll a JubJub reader. With active read grants, either owner arm rotates the viewing and roster keys, reseals every active grantee, then delivers only fresh keys to the joiner. The result includes the rotation transaction and grant seals. |
-| `account.readShieldedHoldings(options?)`                           | `PassportShieldedHolding[]` | JubJub and sealed P-256: opens coin descriptions inside a `read-holdings` key session and returns those confirmed against chain-owned outputs. Requires the host's `VerifiedHoldingSource`. |
+| `account.readShieldedHoldings(options?)`                           | `PassportShieldedHolding[]` | JubJub and sealed P-256: opens coin descriptions and returns those confirmed against chain-owned outputs. Uses a `read-holdings` key session by default; the source-only routine-reader seam below can supply already-approved read access. Requires the host's `VerifiedHoldingSource`. |
 | `account.issueGrant(scope, options?)` | `PassportGrantIssueResult` | JubJub and sealed P-256: confirm the live grant and sealed bookkeeping before returning `active`. A read grant rotates the viewing secret before issue, then publishes a seal to the new grantee; the result includes `rotation` and `sealedReadGrant`. Requires the complete rotation ports, host-pinned origin, live grant source, local records and durable journal. |
 | `account.revokeGrant(grantId, options?)` | `PassportGrantRevokeResult` | JubJub and P-256: confirm the inactive ACC tombstone. A read grant rotates the viewing secret first, omits its grantee from new seals, re-encrypts verified holdings, and returns the rotation and surviving reader seals. P-256 requires sealed keys and live grant details; JubJub also requires local records. |
 | `account.revokeAllGrants(options?)` | `PassportGrantRevokeAllResult` | JubJub and sealed P-256: clear all grants and tombstones, then confirm the empty ACC map and advanced grant generation. When read grants are live, rotate the viewing secret away from every grantee first and include the rotation result. P-256 legacy accounts still refuse live read grants. |
@@ -59,9 +114,47 @@ const state = await account.state();
 
 The account object also exposes `address`, `networkId`, `bindingId`, `scheme` and, for passkeys, `credentialId`. `apiVersion` is currently `1.0.0-pre.0`. See [protocol `api.ts`](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/protocol/src/api.ts) and [account `connector.ts`](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/account/src/connector.ts).
 
-For an unshielded withdrawal, pass lowercase 64-character hex strings for `color` and `recipient`, and a canonical positive decimal `amount` no greater than `2^128 - 1`. The account confirms the selected device is still live, binds those exact fields and the current ACC nonce to the owner signature, and submits the arm's circuit. The returned `txHash` identifies the confirmed call and `nextUseCounter` is the counter after it. A rejected or indeterminate submission must be reconciled with the live ACC before retrying; a caller must not assume funds were untouched after a transport failure. A Lace hosted JubJub authoriser needs a matching `withdraw-unshielded` consent mapping before enabling this method in Lace.
+For an unshielded withdrawal, pass lowercase 64-character hex strings for `color` and `recipient`, and a canonical positive decimal `amount` no greater than `2^128 - 1`. The account confirms the selected device is still live, binds those exact fields and the current ACC nonce to the owner signature, and submits the arm's circuit. The returned `txHash` identifies the submitted call and `nextUseCounter` is the resulting counter. Confirm settlement according to the selected chain adapter before treating the transfer as final. A rejected or indeterminate submission must be reconciled with the live ACC before retrying; a caller must not assume funds were untouched after a transport failure. A Lace hosted JubJub authoriser needs a matching `withdraw-unshielded` consent mapping before enabling this method in Lace.
 
 A shielded withdrawal uses the `inboxIndex` returned by `readShieldedHoldings`, the coin's lowercase color, and the recipient's lowercase 32-byte Zswap coin public key. For now `amount` must equal the selected coin's full value. A smaller amount would create change that this API cannot yet capture and republish safely, so it is rejected before signing. The owner session verifies the current account key and live device, reopens the selected inbox description, matches it to an ACC output and unique Merkle index, and signs a challenge that includes that qualified coin. The proof remains authoritative for whether the output is still unspent; hosts must reconcile spent descriptions after a confirmed call. The Passport service's fee-only sponsor rejects shielded offers, so a host must use a value-capable wallet for this transaction. `mn-passport-adapter-midnight-js` exports `createMidnightWalletPorts(walletProvider, midnightProvider)` to adapt such a wallet to the chain port. The hosted Lace JubJub adapter currently rejects `withdraw-shielded` because its consent flow and hosted handle lack the required witness path; a host must provide both before exposing this method there.
+
+## Optional methods and host prerequisites
+
+`state()` and legacy `rotateEncryptionKey()` are required by the account interface;
+other account methods in the table are optional capabilities. Check for a function
+before exposing an action in your UI; keep the refusal path when prerequisites are
+unavailable. Presence of a function
+is the first check, not proof that its binding, live state and supplied ports support
+the requested operation. A legacy rotation method can still refuse a sealed account.
+Use [preflight/capability inspection]({{ '/capabilities/' | relative_url }}) before key
+access, then preserve all live checks during execution.
+
+| Operation group | Minimum additional composition / lifetime responsibility |
+| --- | --- |
+| Public state/device/grant rosters | Pinned same-network chain/read source; unavailable or incomplete data stays unavailable. No private credential follows merely from navigation/read selection. |
+| Private holdings | Sealed viewing-key port and chain-backed verified holdings. Qualified shielded spending additionally needs unique Merkle positions and exact-value witnesses. |
+| Viewing-key rotation, removal, enrollment | Complete live device/reader set, verified holdings and active read-grant targets/openings as needed. Preserve partial transaction receipts; missing sources must not become empty rosters. |
+| Owner unshielded withdrawal | Live owner, matching challenge/binding and value-capable `Chain.call`; fee sponsorship alone cannot move value. Host owns exact review, route/lifetime checks and unknown-outcome handling. |
+| Grant issue/recovery/revocation | Applicable sealed-key/holding/read-target sources, live grant snapshot/detail/roster and durable journal/records. Recovery preserves original IDs and does not create a replacement issue. |
+
+This browser/Node host helper preserves the optional-method guard and propagates the
+caller's cancellation/events. It performs no authentication or fresh-passkey policy
+of its own:
+
+```ts
+import type { FlowOptions, PassportAccount } from '@input-output-hk/mn-passport-protocol';
+
+export async function readAvailableHoldings(account: PassportAccount, options: FlowOptions) {
+  const read = account.readShieldedHoldings;
+  if (!read) throw new Error('This account does not expose private holdings');
+  return read.call(account, options);
+}
+```
+
+A host should handle typed failures and retain original transaction/intent references.
+`PassportTxResult` carries `txHash` and optional height; the selected chain/value adapter
+owns submission/finality semantics. A transport acknowledgement is not universal proof
+of settlement. Disposing local keys cannot recall a submitted signature or transaction.
 
 ## Ports
 
@@ -73,9 +166,32 @@ A shielded withdrawal uses the `inboxIndex` returned by `readShieldedHoldings`, 
 
 Shielded ACC withdrawals need a `QualifiedShieldedCoin` private witness with 32-byte nonce and color, unsigned 128-bit value, and unsigned 64-bit Merkle index. `createMidnightChain` accepts it only as `Chain.call({ heldCoin })` for a `withdraw_shielded*` circuit. The adapter snapshots the value for that call and refuses a different color requested by `held_coin`. It does not add the coin to proof-service metadata; remote proving still receives the serialized transaction preimage needed to produce a proof. The account API obtains this input from `QualifiedHoldingSource`. The hosted ACC handle does not yet accept this witness.
 
-`createMidnightHoldingSource(indexer)` from `mn-passport-adapter-midnight-js` implements `VerifiedHoldingSource` using the Midnight ledger's contract-owned output commitment. The host supplies `enumerateContractActions(account)` and `queryShieldedOutputs(txHash)` from an indexer on the account's pinned network. The adapter selects the first inbox description for each distinct output the chain created for the ACC and ignores decryptable descriptions without such an output. Pass this source as `holdings` to `createBrowserPassport` when enabling JubJub rotation.
+**Source hardening after RC7:** `createHeldCoinWitness` owns its admitted nonce/color
+and returns fresh copies on every witness call, including Node Buffer inputs and
+offset views. Later caller/result mutation cannot change the pinned coin. Scalar
+bounds, exact color matching, per-call private state and proof-service metadata
+remain unchanged; this does not establish current spentness or secure erasure.
 
-The same source also implements `QualifiedHoldingSource.selectQualifiedHeldCoins`. When the indexer supplies each output event's `index` (the Merkle position exposed by Lace's indexer), it returns the chain-matched coin with `mt_index` for `held_coin`. A missing or ambiguous index is rejected. This confirms that the ACC received the output; it does not establish that the output is still unspent. The host must reconcile spent outputs, make the qualified coin available inside the owner signing session, and rely on the proof to reject a stale spend. The current read-holdings method does not spend it.
+`createMidnightHoldingSource(indexer)` from `mn-passport-adapter-midnight-js`
+implements the qualified holding source using Midnight's contract-owned output
+commitment. Supply **all four** `HoldingIndexer` methods: `enumerateContractActions`,
+`queryShieldedOutputs`, `queryShieldedInputs` and `coinNullifier`, on the account's
+pinned network. Returned outputs need their exact unique Merkle positions; the
+adapter checks spent nullifiers and selects the first inbox description for each
+distinct held output. A decryptable description alone is insufficient. Missing or
+ambiguous positions refuse. Supply this source as `holdings` when enabling the
+supported sealed JubJub or P-256 owner flows.
+
+**Source preview after RC7:** the adapter owns fixed 32-byte nonce/color and uint128
+value snapshots before computing commitments or awaiting history. The same admitted
+coin determines the nullifier and returned qualified coin. A host nullifier callback
+receives its own copy; its mutation cannot rewrite the verified result. Returned
+nonce/color arrays are fresh caller-owned bytes, including when input used Node
+Buffers. Malformed coin descriptions still remain non-holdings; existing alignment,
+account and unique-index errors retain their refusal behavior. This adds no proof,
+provider or full-wallet compatibility claim.
+
+The same source also implements `QualifiedHoldingSource.selectQualifiedHeldCoins`. When the indexer supplies each output event's `index` (the Merkle position exposed by Lace's indexer), it returns the chain-matched coin with `mt_index` for `held_coin`. A missing or ambiguous index is rejected. It checks received outputs and observed spent nullifiers, but that history is not an atomic guarantee that a coin remains unspent at execution. The host must reconcile spent outputs, make the qualified coin available inside the owner signing session, and rely on the proof to reject a stale spend. The current read-holdings method does not spend it.
 
 `createHostedAccChain({ network, binding, readLedger, connectHandle })` from the same package adapts a host's existing ACC transaction handle to the account `Chain` port. Supply `binding` from the pinned `mn-passport-contract` registry as `{ id: network.bindingId, ...resolveBinding(network.bindingId) }`. A Lace host can supply its decoded ledger reader and `GatedContractHandle` instead of using the SDK's transaction-level prover path. The adapter checks the binding and manifest pin, refuses circuits absent from that binding, maps inbox and device entries, and refuses a finalized failure status or missing transaction ID. The host still owns the network-specific providers, proof, fee wallet, submission, and progress events. This seam has a fake-handle contract test, and the packed-package check compiles against Lace's exact generated ledger and handle types at merged PR #2845 head `502b0794cc7bcfc76342230193fef4ebb63cae1c`. Synthetic localnet hosted sign-in and authorising-only addition have evidence in the Lace consumer report; this is not full hosted creation, sealed-device or value-route compatibility.
 
@@ -83,7 +199,30 @@ The same source also implements `QualifiedHoldingSource.selectQualifiedHeldCoins
 
 `readVerifiedHoldings({ account, keyring }, { networkId, chain, authoriser, viewingKey, holdings })` is an additive account helper for a host that has already selected this device's sealed keyring from the live ledger. It checks the account and current `enc_key`, opens the inbox inside one `read-holdings` key session, and returns only opened coins whose inbox indices the chain-backed `VerifiedHoldingSource` confirms. It rejects duplicate, out-of-range, or non-coin selections. The caller supplies the keyring selection and indexer-backed holding source; the helper does not perform those host-specific steps or move funds. An empty inbox returns without a key session.
 
-An opened JubJub or sealed P-256 `PassportAccount` offers `readShieldedHoldings(options?)`. It selects the sealed keyring from the current ACC inbox, confirms the recorded owner device still has a live entry, then uses the same verified holding source and `read-holdings` consent flow. P-256 also checks the selected passkey against the account record and opens its current envelope against the ledger `enc_key` before reading. The pinned Lace v1 inbox prefix lets JubJub return an empty list without a key ceremony when there are no coin-description entries. The host must inject `holdings`; the SDK does not trust a decryptable inbox description without a matching chain output.
+An opened JubJub or sealed P-256 `PassportAccount` offers `readShieldedHoldings(options?)`. It selects the sealed keyring from the current ACC inbox, confirms the recorded owner device still has a live entry, then uses the verified holding source. Its ordinary path enters a `read-holdings` key session; P-256 also checks the selected passkey against the account record and opens its current envelope against the ledger `enc_key` before reading. The pinned Lace v1 inbox prefix lets JubJub return an empty list without a key ceremony when there are no coin-description entries. The host must inject `holdings`; the SDK does not trust a decryptable inbox description without a matching chain output.
+
+### Source preview: optional routine reader
+
+After RC7, `PassportPorts.routineViewingKey` and
+`BrowserPassportConfig.routineViewingKey` let a host supply already-approved private
+read access. The callback receives `(account, networkId, bindingId, credentialId)`
+as one context object, with an owned credential-ID copy, and returns
+`Pick<AccountViewingKey, 'openInbox'> | undefined`. Both owner arms consult it after
+live account/device checks. A returned reader supplies `openInbox` for verified
+holdings without entering the primary authorizer's key session. Live encryption-key
+and chain-backed holding checks remain required.
+
+| Host decision | Library behavior |
+| --- | --- |
+| No callback, or callback returns `undefined` | Continue through the ordinary key-session path. |
+| Callback returns a reader | Use that reader for this holdings read; the host must check its account/credential scope and lifetime, including asynchronous completion. |
+| Callback or supplied reader throws | Propagate the failure; do not replace that failed read with another signer or key source. |
+
+This seam is only for holdings reads, not owner signatures, key delivery, rotation
+or grants. The library installs no cache, timer or persistence. A host that must
+refuse an expired offered reader should throw rather than return `undefined` and
+select the ordinary path. The [demo routine lease]({{ '/quick-actions/' | relative_url }})
+is one explicit host policy, not the callback's default behavior.
 
 `addJubjubAuthorisingDevice(input, ports)` is the lower-level, authorisation-only helper. It derives a new JubJub entry from the joining device's public key, checks the current owner's live entry and ACC binding, signs the pinned `add_device_with_jubjub` challenge inside an `add-device` key session, calls the circuit, then persists the advanced use counter. It sends no account keys. A host must not present that device as able to read holdings. `account.addDevice(reader)` validates the joining device's compressed signing key against its commitment, seals the viewing and roster secrets to its reader key, confirms both entries in the inbox, then enrolls the device. When a read grant is live, it first rotates both secrets, re-encrypts verified holdings, and reseals every active read grantee before delivery; it refuses an unsealable grant or an unregistered surviving device. The result returns the confirmed grant seals for the host's durable grant record. If enrollment fails after the key switch, the owner can reopen the new keyring and retry; an exact prior joining registration is accepted, while conflicting registrations remain refused. The joining host must know the ACC address out of band. A JubJub joiner can call `openAccountAt(address)` to verify its live device entry, current registration and sealed viewing key, then save its directory hint. The authorising-only hosted addition has synthetic localnet evidence; sealed enrollment still needs a compatible hosted roster-read consent contract. See the compatibility matrix.
 
@@ -114,6 +253,16 @@ may be unable to open those records. Missing openings never imply an empty roste
 
 `publishP256GrantBookkeeping({ hint, grantId }, ports)` is the lower-level publication step for an already accepted P-256 issue on `acc-s3r1.1`. The host must durably stage the grant opening and supply the active grant source, journal, account record store, sealed viewing key, chain and P-256 authoriser. It waits for the live grant, validates the selected passkey and staged opening, appends only missing sealed grant records, and marks the journal published after the inbox settles. Read grants also receive a seal for the current ACC viewing key. This helper never submits an issue.
 
+**Source preview: custom JubJub sealing adapters.** When bookkeeping is missing,
+`sealGrant` must return both required sealed records in their declared order. An
+empty or incomplete pair is an invalid provider result, not an “already published”
+signal; the publisher refuses it before signing or appending. Already-held parts
+are identified from the verified inbox. Keep the original staged opening until
+the complete publication and final live commitment are confirmed. The journal
+stores the opening, not stable append request IDs or every generated ciphertext:
+a publication-only retry may seal missing logical parts again, but must not issue
+a replacement grant or duplicate an already observed part.
+
 `issueP256GrantCall(input, ports)` submits the pinned P-256 issue after validating the scope against an auth-nonce-pinned live roster and durably staging its opening. A read grant requires a host `rotateBeforeIssue` hook in the same owner session; the hook must preserve every active read grantee. `issueAndPublishP256Grant(input, ports)` composes that call with the publisher and returns active only after sealed records settle. If publication fails after submission, `SubmittedGrantSettlementError` carries the grant ID and transaction hash for a publication-only retry. A sealed P-256 account now exposes the same `account.issueGrant(scope)` and `account.recoverPendingGrants()` methods as JubJub when the host supplies records, grants, a durable journal and a trusted origin. Read issue additionally requires chain-backed holdings and read-grant targets; it refuses a key rotation that leaves any live reader unsealed. The demo wires these ports for its supported spend-only grant form. General read-grant issue is a host integration scenario and is not exposed by that form.
 
 `createMidnightGrantSource` also exposes `GrantCommitmentSource.readGrantCommitment(account, grantId)`, returning the live ACC object's commitment, read-key hash, read flag, active flag and auth nonce from one checked snapshot. Both grant publishers require this port and reject a staged opening that differs from the current on-chain grant before appending or marking it published. Hosts pass it as `grantCommitments` alongside `grants` and `grantJournal`; the inbox alone is not proof of the current grant's scope.
@@ -136,7 +285,7 @@ The `mn-passport-service` package now exports a bounded `createMemoryJobStore` a
 
 The same package exports `sponsorPolicy`, `viewOfLedgerTx`, and `guardedBalance`. An operator injects the ledger deserializer, current allowlist of Passport ACCs, and its own funded wallet through `GuardedBalanceDeps`. The policy refuses shielded or unshielded offers, Dust actions, non-call actions, unlisted contracts, and non-Dust value imbalances before it invokes the wallet. Fee sponsorship does not transfer value into an ACC; that needs the separate funding service.
 
-`mn-passport-adapter-service` exports `remoteV1Prover`, `remoteV1Deployer`, and `remoteV1Sponsor`. The first two submit a v1 job and poll it with a cursor; they forward validated service progress through `onEvent`, honor `signal`, enforce a total timeout, and preserve the service's error code. The sponsor uses the synchronous v1 fee endpoints. `fetchCheckedV1Config` checks the advertised network, binding, manifest, service API version and binding-specific artefact URL against host pins before a host uses these ports. The standalone browser demo uses these clients without changing the account core.
+The `mn-passport-adapter-service` root exports `remoteV1Prover`, `remoteV1Deployer`, and `remoteV1Sponsor`. The first two submit a v1 job and poll it with a cursor, forwarding service progress and caller cancellation. The strict whole-observation deadline and batch admission described in the [source V1 contract]({{ '/service/#source-preview-v1-job-observation-lifetime' | relative_url }}) are hardening after RC7. The sponsor uses its separate synchronous v1 fee endpoints. Use the [HTTP client selection table]({{ '/service/#choose-an-http-client' | relative_url }}) for actual public import entries, budgets and retry boundaries. `fetchCheckedV1Config` checks the advertised network, binding, manifest, service API version and binding-specific artefact URL against host pins before a host uses these ports. The standalone browser demo uses these clients without changing the account core.
 
 The separate `mn-passport-adapter-service/faucet` subpath exports `remoteFaucet` for `POST /v1/faucet/fund`. A caller supplies a stable UUID, pinned network/binding/manifest, ACC address, allowlisted asset color and decimal amount, plus a callback for fresh authorization headers. The result includes the transaction ID and confirmed credited ACC balance. `apps/passport-funding-service` composes the route with a dedicated wallet and durable reservations; the demo CLI can start it with `--funding`. On the qualified `undeployed` localnet it supports allowlisted NIGHT and non-native unshielded assets. NIGHT uses a journaled exact-value preparation transfer before deposit; an uncertain preparation/deposit must be reconciled under its original request ID. Other networks and shielded funding remain unqualified. See the [funding operator guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md).
 
@@ -154,7 +303,7 @@ A deployed JubJub `AccountHint` carries two sealed 192-byte `keyEntries` until t
 
 The JubJub authoriser also supplies `devicePublicKeyHex()`, a validated compressed point for the device registration. The WebAuthn credential adapter can select a discoverable passkey for a pinned PRF ceremony before a P-256 key is chosen; a JubJub flow verifies the resulting device key against the on-chain entry and the directory hint.
 
-Both browser authoriser arms use `AccountViewingKey` to create a random account secret, seal it to the passkey-derived reader, and validate it against the live ACC encryption key. They persist sealed entries before activation so `openAccount` can resume an interrupted create. Both rotation flows send new device envelopes and active read-grant seals before switching the ledger key, and refuse concurrent key, device-roster or read-grant-roster changes. Both read-grant issue paths require host supplied chain-backed holdings and read-target sources; the browser composition does not provide them by default. The `encryptionKey` port is retained only for explicit legacy P-256 hosts; the browser composition refuses their old account hints until migrated. See [key roles and recovery]({{ '/keys/#account-viewing-secrets-and-recovery' | relative_url }}).
+Both browser authoriser arms use `AccountViewingKey` to create a random account secret, seal it to the passkey-derived reader, and validate it against the live ACC encryption key. They persist sealed entries before activation so `openAccount` can resume an interrupted create. Both rotation flows send new device envelopes and active read-grant seals before switching the ledger key, and refuse concurrent key, device-roster or read-grant-roster changes. Both read-grant issue paths require host supplied chain-backed holdings and read-target sources; the browser composition does not provide them by default. The `encryptionKey` port is retained only for explicit legacy P-256 hosts; the browser composition refuses their old account hints until migrated. See [key roles and recovery]({{ '/account-keys/#account-viewing-secrets-and-recovery' | relative_url }}).
 
 `openGrantView(readSecret, { grantId, account, seal, expectedEncKey })` from `mn-passport-keys` lets a read grantee open the 94-byte seal returned by grant issue or viewing-key rotation. Supply the `expectedEncKey` from the live ACC ledger; the function returns `null` if the opened secret does not match it, or for a wrong reader, altered seal, account or grant ID. Clear the returned 32-byte viewing secret after use. The seal carries no proof that its grant is still active; verify the live grant map before using read access.
 
@@ -172,6 +321,11 @@ The exact-source consumer checks pin merged [Lace PR #2845](https://github.com/i
 ## Events and cancellation
 
 Each step reports `start` and exactly one `end` or `error` with the same `flowId` and `id`. `PassportEvent` includes `step`, `phase`, timestamp `at`, `clock`, optional `durationMs`, safe detail fields and an error code. Relevant steps include `passkey.create`, `deploy`, `activate`, `prove`, `sponsor.submit` and `chain.finality`. `signal` ends a flow with `Aborted`; it cannot reverse an already submitted transaction. See [events.ts](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/protocol/src/events.ts).
+
+Progress is not a durable transaction journal. Keep accepted transaction references
+and original intent IDs even when the page stops observing or a later step fails.
+A cancellation request does not establish that a POST or chain call was never sent;
+use the chosen adapter's receipt/reconciliation contract.
 
 ## Errors
 
@@ -258,3 +412,110 @@ seconds. Existing owner key derivation is unchanged. See the
 [session guide]({{ '/jubjub-sessions/' | relative_url }}) for authority, host
 composition, consent, lifecycle and evidence limits. This export is absent from
 the currently published `0.1.0-rc7` package.
+
+## Source quality APIs (after RC7)
+
+These optional subpaths add no package and are not present in published RC7:
+
+| Subpath | Purpose | Target |
+| --- | --- | --- |
+| `account/validation` | Zod constructors for distinct branded account, asset, recipient, amount, network and binding values | Web/Node |
+| `account/authorization` | Host consent port and a pinned passkey/authenticated-owner route per operation | Web/Node |
+| `account/secret-store` | Scoped async custody contract, errors and memory reference store | Web/Node |
+| `account/background` | Bounded read/computation worker protocol; no transaction retry | Web/Node |
+| `adapter-browser/secret-store` | Explicit plaintext IndexedDB reference adapter | Browser |
+| `adapter-browser/background` | Owned Web Worker/MessagePort structural bridge | Browser |
+
+Interfaces are available through the types-only `account/ports` entry. Hosts still
+verify live ownership and supply credential/consent UI. See [authorization]({{ '/authorization/' | relative_url }}),
+[secret custody]({{ '/secret-storage/' | relative_url }}),
+[background tasks]({{ '/background/' | relative_url }}) and
+[quality strategy]({{ '/quality/' | relative_url }}).
+
+
+## Host lifetime, admission and cleanup contract
+
+Current source captures supported public arguments before asynchronous authenticated
+approval, including owned byte copies and bounded canonical grant amounts. Host adapters
+must keep their own inputs stable, validate provider responses, and recheck account,
+network, binding, selected owner and lease at the actual dispatch boundary. Unsupported
+mutable object/prototype shapes do not become trusted merely because they cross a typed
+port. See the [authorization tests](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/tests/account-authorization.test.mjs)
+and [input snapshot tests](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/tests/request-snapshots.test.mjs).
+
+`createAccountAuthorisation` pins one reviewed route, but does not authenticate a user
+or acquire fresh passkey approval automatically. `ownerSession` is a previously verified
+software owner, not a spending-limited key. The demo implements additional fresh critical
+approval through its host guard. `onAccountOpened(account, keys)` is an optional verified
+source handoff inside the login scope; `BrowserLoginKeys.deriveWalletSeed()` gives the
+host an owned seed copy to manage. The SDK starts no routine timer, wallet connection,
+owner enrollment or persistent owner store on another host's behalf.
+See the [complete source login handoff]({{ '/account-keys/#source-preview-use-wallet-material-during-verified-login' | relative_url }})
+for callback lifetime and seed cleanup.
+
+Dispose owned secret copies and session helpers on lock/teardown; close owned storage,
+worker and observer handles. Preserve durable original intents and mutation receipts,
+including an acknowledgement arriving after local expiry. Fail unavailable/stale routes
+without falling back to another signer. Read the [library lifecycle]({{ '/library-guide/' | relative_url }})
+for custody/error distinctions and [demo policy]({{ '/demo-guide/' | relative_url }}) for
+its bounded routine lease, full-owner guard and independent capped-grant route.
+
+
+## Source preview: checked configuration contract
+
+The current source hardens discovery in `mn-passport-adapter-service/config`.
+**The limits and deadline behavior below are source preview after RC7**; the existence
+of a discovery export in RC7 does not imply that the published version has these changes.
+
+```ts
+import type { FetchLike, NetworkConfig } from '@input-output-hk/mn-passport-account/ports';
+import { fetchCheckedV1Config } from '@input-output-hk/mn-passport-adapter-service/config';
+
+export function loadPinnedConfig(
+  base: string,
+  pin: Pick<NetworkConfig, 'networkId' | 'bindingId' | 'manifestSha256' | 'artefactUrl'>,
+  fetch: FetchLike,
+) {
+  return fetchCheckedV1Config(base, { ...pin }, { fetch, timeoutMs: 30_000 });
+}
+```
+
+Obtain the pin from your trusted deployment configuration, never from the response
+being checked. `fetch` is an injected structural transport; omit it to use the adapter's
+default fetch. Browser and fetch-capable Node hosts can supply this transport; the
+default requires ambient `fetch`, URL, AbortController and timer capabilities. Importing
+this adapter does not create a worker or fetch configuration. Keep the returned ordinary mutable object private or capture a stable
+projection before asynchronous review. Neither the return type nor parsing freezes it.
+
+| API | Request and admission |
+| --- | --- |
+| `fetchCheckedConfig(base, pin, options?)` | Legacy `/config`; checks network, binding and case-insensitive 64-hex manifest pin. Legacy field schema accepts string fields, including empty strings, and strips extensions. |
+| `fetchCheckedV1Config(base, pin, options?)` | `/v1/config`; checks network, binding, manifest and supported API version; requires nonempty service URI/key strings. Retains response extensions. |
+| Both checked APIs | **65,536-byte** JSON limit; **30,000 ms** default whole-read deadline. `options.timeoutMs` is an integer **1–600,000**. Invalid values fail before transport dispatch. |
+| Legacy `fetchServiceConfig(base, fetch, networkId, timeoutMs?)` | Three-argument compatibility call has **no deadline**. Explicit fourth argument applies the same deadline range. It is not the pinned discovery API. |
+
+V1 also checks that `zkBaseUrl` is HTTP(S), has exactly `/v1/zk/<bindingId>` as its
+path, has no query/fragment and equals the independently pinned `artefactUrl` apart
+from a trailing slash. This is not artifact-content verification. Parsing other URI
+and public-key fields as nonempty strings does not validate their schemes, credentials,
+trust or cryptographic meaning. Check them in the selected host adapters before use.
+Legacy discovery does not apply the V1 URL checks.
+
+With a native response body, the reader bounds streamed bytes before JSON parsing.
+A custom transport exposing only `json()` must enforce its own allocation budget:
+the adapter can reject the encoded result's size only after that method allocates it.
+The single deadline covers headers and body/JSON, aborts the supplied transport signal,
+and cancels/releases a body reader best effort. It rejects promptly even if injected
+fetch/JSON work ignores abort, but cannot forcibly stop that provider's work. Late
+responses are discarded and their body is cancelled best effort. These APIs accept
+no caller `AbortSignal`; `RemoteOptions` contains only `fetch` and `timeoutMs`.
+
+Discovery has no automatic retry. Network, binding, manifest and API failures use
+`NetworkMismatch`, `BindingUnsupported`, `ArtefactIntegrity` and `ApiVersionUnsupported`.
+Malformed/unavailable/oversized/timed-out reads use `PassportConnectorError` with
+`InternalError`. Provider causes may be attached; redact them before public UI/logging.
+Do not use a config-read timeout as evidence about a transaction. Explicitly reacquire
+configuration under the same trusted pins when retrying. The
+[adapter boundary tests](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/tests/overnight-adapter-boundaries.test.mjs)
+exercise deadline, cancellation, size and pin-failure ordering with owned transports;
+they are source tests, not released-package or live-provider qualification.

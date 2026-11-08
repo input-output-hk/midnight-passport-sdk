@@ -1,0 +1,245 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "path": "docs/site/getting-started.md",
+      "fences": [
+        {
+          "targets": [
+            "web"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/packages.md",
+      "fences": [
+        {
+          "targets": [
+            "web"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/account-keys.md",
+      "fences": [
+        {
+          "targets": [
+            "web"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/api.md",
+      "fences": [
+        {
+          "targets": [
+            "web"
+          ]
+        },
+        {
+          "targets": [
+            "neutral"
+          ]
+        },
+        {
+          "targets": [
+            "web",
+            "node"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/authorization.md",
+      "fences": [
+        {
+          "targets": [
+            "neutral",
+            "web"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/secret-storage.md",
+      "fences": [
+        {
+          "targets": [
+            "neutral",
+            "node"
+          ]
+        },
+        {
+          "targets": [
+            "web"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/background.md",
+      "fences": [
+        {
+          "targets": [
+            "web"
+          ]
+        },
+        {
+          "targets": [
+            "worker"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/consent.md",
+      "fences": [
+        {
+          "targets": [
+            "web"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/service-jobs.md",
+      "fences": [
+        {
+          "targets": [
+            "node"
+          ]
+        },
+        {
+          "targets": [
+            "node"
+          ]
+        },
+        {
+          "targets": [
+            "node"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/host-durability.md",
+      "fences": [
+        {
+          "targets": [
+            "web",
+            "node"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/grant-recovery.md",
+      "fences": [
+        {
+          "targets": [
+            "web"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/interaction.md",
+      "fences": [
+        {
+          "targets": [
+            "web"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/lace-handover.md",
+      "fences": [
+        {
+          "targets": [
+            "web"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/durability.md",
+      "fences": [
+        {
+          "targets": [
+            "web",
+            "node"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/capabilities.md",
+      "fences": [
+        {
+          "targets": [
+            "web"
+          ]
+        },
+        {
+          "targets": [
+            "neutral"
+          ]
+        },
+        {
+          "targets": [
+            "neutral"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/lace-wallet.md",
+      "fences": [
+        {
+          "targets": [
+            "web"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/shielded-deposit-recovery.md",
+      "fences": [
+        {
+          "targets": [
+            "node"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/site/names.md",
+      "fences": [
+        {
+          "targets": [
+            "neutral"
+          ]
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "docs/examples/browser-quickstart.ts",
+      "targets": [
+        "web"
+      ]
+    },
+    {
+      "path": "docs/examples/jubjub-grant-scope.ts",
+      "targets": [
+        "neutral",
+        "node"
+      ]
+    }
+  ]
+}

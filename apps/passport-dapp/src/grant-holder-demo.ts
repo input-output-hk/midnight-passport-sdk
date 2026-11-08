@@ -64,19 +64,23 @@ export async function spendDemoGrant(
     beforeCeremony: beforeDemoCeremony,
     ...(credentials && { credentials }),
   });
-  await passkey.credentials.identify();
-  const grantee = recipeJubjubAuthoriser(passkey.prf, pure as JubjubDeviceCircuits);
-  return spendUnshieldedWithGrant(intent, {
-    pure: pure as unknown as UnshieldedGrantCallPure,
-    source,
-    chain: {
-      call: (request) => demoValueCall(SERVICE_URL, request),
-      readAccount: async () => {
-        throw new Error('Holder account reads are not exposed by this demo route.');
+  const login = passkey.credentials.withLoginSession?.bind(passkey.credentials);
+  if (!login) throw new Error('The passkey adapter cannot create a grant-holder login scope.');
+  return login(async () => {
+    await passkey.credentials.identify();
+    const grantee = recipeJubjubAuthoriser(passkey.prf, pure as JubjubDeviceCircuits);
+    return spendUnshieldedWithGrant(intent, {
+      pure: pure as unknown as UnshieldedGrantCallPure,
+      source,
+      chain: {
+        call: (request) => demoValueCall(SERVICE_URL, request),
+        readAccount: async () => {
+          throw new Error('Holder account reads are not exposed by this demo route.');
+        },
       },
-    },
-    grantee,
-    review,
+      grantee,
+      review,
+    });
   });
 }
 

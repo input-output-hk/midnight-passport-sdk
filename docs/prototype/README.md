@@ -1,5 +1,18 @@
 # Midnight Passport DApp prototype
 
+This folder documents the reference app and its historical qualification records.
+Reusable package installation/contracts live in the [library guide](../site/library-guide.md)
+and [runtime/export index](../site/packages.md#runtime-and-host-requirements).
+The [demo guide](../site/demo-guide.md) describes current host policy and composition.
+Later source-preview APIs are not part of published RC7; dated runs retain their
+original binding, source and provider limits.
+
+Current setup and agent operations are indexed in the [runbook](../agent-runbook.md).
+The [browser evidence guide](../site/use-case-coverage.md#select-one-diagnostic-group)
+explains default full-flow versus standalone semantic groups and their UI bootstraps.
+All192canonical cases remain required across both arms; neither these synthetic
+checks nor the retained historical traces below qualify a new native/provider run.
+
 ## Approved UX implementation milestone
 
 See the [execution map](ux-milestone.md) for the current local naming/interaction
@@ -28,15 +41,16 @@ account owner's, so it is now the account API v1 (ADR 0007, D-8), and the dApp-f
 the later grant ceremony. It serves Lace epic LW-15579 (the Passport smart account as the Lace account model)
 and unblocks LW-15635 (a passkey Passport account) **on the standalone network**.
 
-A new user creates a passkey. The browser deploys a Passport account (the ACC), pays the fees,
-installs the passkey as the first device and publishes a random viewing secret sealed to that
+A new user creates a passkey. The browser requests a sponsored Passport account (ACC)
+deployment; the service pays fees. The flow installs the passkey as the first device and publishes a random viewing secret sealed to that
 device's PRF-derived reader. After a page reload the same passkey can reopen its envelope against
 the live ACC key. The built-in Midnight wallet is derived separately from the passkey.
 
 The account API v1 is versioned in `mn-passport-protocol` (`1.0.0-pre.0`); the prototype's
 `0.1.0-prototype` shapes remain as deprecated `…Prototype` types behind `createPassportConnector`. The design is in
 [`docs/superpowers/specs/2026-10-06-passport-dapp-design.md`](../superpowers/specs/2026-10-06-passport-dapp-design.md).
-This folder describes what the code does today.
+Current sections describe the supported source composition; explicitly historical
+sections retain earlier designs and evidence without relabeling them as current.
 
 The CLI can start the browser with `pnpm demo up --arm jubjub --mock-passkey`.
 P-256 remains the default. Both browser arms now create a random viewing secret and sealed
@@ -72,9 +86,17 @@ the last wave does, so a deployed account can never be upgraded. The account API
 choose; there is no default.
 
 What does not work, or is not built, is in [limitations.md](./limitations.md). The main points: the
-registry is an off-chain file, the testnet is not wired, and the service has no authentication.
+registry is an off-chain file, the testnet is not wired, and the default public
+proof/sponsor routes have no caller authentication. Opt-in authenticated
+host-job/mutation routes are separate compositions.
 
 ## Components
+
+The diagram preserves the original prototype's legacy route/component view. Current
+source uses versioned service routes, the split library adapters, and an owned wallet
+Worker. The page owns credential review; neither importing the SDK nor navigating
+the demo starts a credential, worker or wallet. See the current
+[composition guide](../site/demo-guide.md#built-in-wallet-worker).
 
 ```mermaid
 flowchart LR
@@ -127,7 +149,7 @@ flowchart LR
   adapters to service ports and lazy-loads `adapter-midnight-js` for chain calls. The old service
   chain remains under its `./prototype` export for the e2e harness.
 - **The service** (`apps/passport-service`) serves the ZK artefacts, proves transactions, deploys
-  accounts, sponsors fees and keeps the registry. It holds the only funded key.
+  accounts, sponsors fees and keeps the registry. It owns the fee sponsor; the optional funding process and user wallet have separate keys.
 - **The localnet** (`infra/localnet`) is a node, an indexer and a proof server in Docker. The
   service talks to all three. The page talks to the indexer only.
 
@@ -156,15 +178,17 @@ not. It never stops anything for you.
 | State                                           | Where                                            | Notes                                                                                                                                       |
 | ----------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | The account: devices, nonce, encryption key     | The chain (the localnet's Docker volumes)        | The authority. `prototype:up` stops the containers and keeps the volumes, so accounts survive a restart.                                    |
-| Passkey to account mapping                      | `~/.midnight-passport/registry.json`             | Written by the service. Keyed `<networkId>/<credentialId>`. An untrusted hint: the connector checks it against the chain before it uses it. |
-| Accounts this service deployed                  | `~/.midnight-passport/registry.deployments.json` | Beside the registry. The sponsor funds calls only to accounts that are in both files.                                                       |
+| Passkey to account mapping | `~/.midnight-passport/registry.json.v1`; legacy `registry.json` lookup | Untrusted service hints. The connector verifies the live ACC and sealed reader before use. |
+| Accounts this service deployed | `~/.midnight-passport/registry.deployments.json` | Durable deployment allowlist used by the sponsor policy, separate from the user wallet and account authority. |
 | The passkey's private key                       | The authenticator                                | It never leaves it.                                                                                                                         |
-| Wallet seed, account encryption key, PRF output | Nowhere                                          | Derived on demand and zeroed. See [keys.md](./keys.md).                                                                                     |
-| Browser storage                                 | None                                             | The one exception is the dev-only mock passkey, which keeps its keys in `localStorage` (`passport-dev:mock-passkey:v1`).                    |
-| The evidence panel                              | The page, in memory                              | Lost on reload. Use "Copy evidence" first.                                                                                                  |
+| Wallet seed, account viewing secret, PRF output | Distinct operation/cache/wallet scopes | Raw PRF output is scoped; the random viewing secret is sealed on chain. Explicit routine access retains derived material in memory; a running wallet owns separate state. See [keys.md](./keys.md). |
+| Browser storage | Host-owned account records and encrypted recovery/grant journals | Durable metadata and unknown intent IDs survive reload. No automatic private-key restoration. The dev-only mock credential has its own test-only storage. |
+| Activity and Audit | The page, in memory, plus durable operation journals | Export public traces before reload; a disappearing UI trace does not clear a durable unknown operation. |
 
 `PASSPORT_REGISTRY_FILE` moves the registry. The deployed set follows it. The files are kept outside
-the repository so that accounts can be reopened later. After a chain reset, delete both. See
+the repository so that accounts can be reopened later. An intentional chain reset requires
+archiving and reconciling the old hints and transaction evidence before selecting fresh state.
+Never delete journals or unknown IDs to repair an ordinary restart or failed open. See
 [demo.md](./demo.md#troubleshooting).
 
 ## The other documents
@@ -231,3 +255,171 @@ The post-RC7 session lane passes at signed `b5eeff8` for both software owner
 arms. See the [exact native source receipt](../review/native-sessions/README.md).
 It includes real ten-minute expiry, original-hash observer recovery and cleanup;
 NIGHT, browser/provider and published-artifact claims keep their separate evidence.
+
+## Entry and workspace layout (source preview)
+
+Settings now uses separate Devices & passkeys / Quick actions / Permissions /
+Wallet connections / Developer tools submenu pages. [Quick actions](../site/quick-actions.md)
+provides an explicitly consented, bounded PRF unlock for routine reads and built-in
+wallet connection. Scoped JubJub transfers still require a separately approved
+grant; critical owner actions keep fresh passkey approval. No secret persists
+across reload or local lock, and unknown intents retain their original fences.
+
+Desktop navigation keeps all section groups visible in a stable, independently
+scrolling rail. Wallet has Built-in wallet and Lace Wallet pages; Audit has Event
+log, Requests & responses and Export JSON. Compact screens use a modal Menu
+drawer, with the same controls and no layout shift. Read the
+[UI guide](../site/demo-ui.md) for routes and keyboard behavior.
+
+The signed-out entry offers **Sign up / Log in**, with **Log in with an account
+address** as the secondary address-based opening flow. Overview is not a menu
+item. The brand Home link opens Account balances after verified opening; it does
+not log out, request a passkey or reset account state. The address still requires an enrolled passkey; it
+is not account recovery. Navigation/disclosure changes preserve the address draft
+and start no credential or transaction. Activity starts collapsed with its trigger
+beside the workspace title; approved credential requests reveal their explanation
+before access and retain their separate blocking consent dialog.
+
+
+## Authenticated owner policy update (local source)
+
+Current policy requires passkey login and fresh approval for critical owner
+operations, even while a deterministic Lace PRF-1 JubJub owner is unlocked.
+**Settings → Quick actions → Unlock account** verifies an existing owner or
+explicitly enrolls a P-256 companion; that key still has durable FULL on-chain
+authority. Fresh host approval matches owner and reader to the captured lease,
+without extending it. Routine holdings/wallet access reuses the approved lease;
+transfers within a separately approved recipient/asset/caps/expiry use their scoped
+JubJub grant. Outside that scope, a fresh owner passkey is required. Local lock is
+not chain revocation. Read [the authority/lifetime guide](../site/authenticated-owner.md).
+No new provider/native/full Lace or publication claim is implied.
+
+## Source quality and execution boundaries
+
+The [quality strategy](../site/quality.md) specifies the package coverage gate,
+web/Node contracts and worker test scope. The demo's built-in wallet now runs in
+an owned browser worker; credential consent stays on the page. Secret persistence
+is optional and does not change the existing memory-only owner authentication.
+See [the secret-store design](../adr/0016-host-secret-custody.md).
+
+NIGHT and DUST now have independent readiness and presentation. DUST runs as an
+observed background read; a pending/failing DUST sync does not hold a ready NIGHT
+balance or wallet action open. Refresh/reconnect revisions discard late results.
+
+## Exact review and P-256 withdrawal follow-up (source preview)
+
+A known owner withdrawal or grant-opening export now combines its exact decision
+with the first actual derive/sign ceremony review. The demo captures the selected
+account and actual signer, then rechecks that route and the exact transfer or grant
+ID before value dispatch or opening display. Navigation, mutation, expiry or a
+declined review refuses new effects without a fallback signer. Matching bounded
+grant transfers retain a standalone exact decision because they use no new
+credential call. Already dispatched receipts remain observable after local expiry.
+
+The P-256 browser adapter avoids unused PRF access for an unshielded withdrawal;
+the normal software-authenticator path obtains one fresh strict P-256 signature.
+Login, other operations and known-format retries keep their own credential paths.
+These local actual-crypto/fake-chain and synthetic-browser checks do not establish
+real-provider prompt counts or new native proof acceptance. Read the
+[prompt guide](../site/passkey-prompts.md) and
+[separate demo composition guide](../site/demo-guide.md).
+
+## Host-job source hardening
+
+The opt-in operator job client now bounds native response bytes, cancels discarded
+streams and supervises asynchronous snapshot observers within its invocation
+budget. The service's owned queue honors configured active capacity; custom queue
+failures retain unknown original IDs. This does not switch the default demo to
+host jobs. See the [operator contract](../site/service-jobs.md#source-preview-bounded-observation-and-admission)
+for the source-versus-release boundary and explicit recovery semantics.
+
+### Overnight hardening follow-up: ownership and qualification
+
+The reusable keyring now captures byte collections, recipient/policy metadata and
+rotation destinations before asynchronous key access. Mutation-journal encryption,
+AAD and storage CAS share a single admitted revision/document; grant view admission
+bounds input before copying. Existing wire suites and public signatures are unchanged.
+See the [library key contract](../site/account-keys.md) for input ownership and limits,
+not the demo's credential/lifetime policy.
+
+The new isolated populated-lifecycle runner has its own descriptor, fresh project,
+exclusive native lease and bounded exact-owned cleanup. It does not adopt the
+retained legacy stack or the user's current demo. Its fake-stack/worker tests
+establish admission and teardown contracts only; native results need a frozen-source
+passing receipt. Follow the [runbook](../site/qualification.md#source-preview-isolated-populated-host-job-lifecycle),
+retain original unknown IDs and preserve all old fixtures and volumes.
+
+
+### Original invocation and verified holdings — source hardening
+
+The reusable durable coordinator now owns each invocation's original ID and flow
+options before awaits, validates the requested document namespace and requires an
+explicit boolean cancelled-resume choice. The chain holding source owns the coin
+it verifies and isolates host callback/returned byte copies. These changes protect
+asynchronous data consistency without adding a demo action or changing passkey
+policy. Read the library [durability](../site/durability.md#source-preview-pin-one-invocation)
+and [holding-source](../site/api.md#ports) contracts. Preserve original unknown IDs,
+exact-value shielded spending and the separate source/native/provider evidence tiers.
+
+
+### Current source library and demo boundaries
+
+The library guide documents input ownership, original-ID recovery, total V1/raw
+mutation observation and optional source capabilities. The demo guide explains
+its selected consent, routine lease, wallet worker and UI composition. The SDK
+does not install those host policies automatically. New revocation phases retain
+fresh owner approval and chain-backed roster/key checks; uncertain calls are not
+replayed. Read the source-preview sections of the HTTP/host-durability guides for
+limits, including generic V1 size and the separate synchronous sponsor path.
+Strict examples and the executed worker entry supplement, rather than replace,
+actual browser/native qualification at a recorded source.
+
+
+### Library transport and installation checks (source after RC7)
+
+The reusable V1 sponsor now bounds the whole observation only when an explicit
+valid timeout is configured; the unset branch and legacy clients retain their
+existing behavior. No POST is automatically retried. A timeout does not prove
+that a value transaction was not submitted. Read the library HTTP client map in
+`docs/site/service.md`; these are adapter contracts, not a change to demo wallet
+or account authority. `docs/site/library-guide.md` identifies each persistence
+owner separately from demo memory leases and journals.
+
+After preparing all nine matching local tarballs in a fresh external application,
+`scripts/consumer/installed-quality.mjs` checks installed declarations, actual
+public-module imports and input hashes. It does not install or publish; follow
+`docs/site/quality.md` for the required bundle/lock pins and output path. Keep
+local installed-source results separate from released RC7 and native/provider
+evidence. The demo remains one composition of these libraries.
+
+
+### Funding-client intent ownership and browser timing (local source)
+
+`remoteFaucet` now validates and captures the original deposit request before fresh
+credentials, keeps its original ID for the wire and confirmation, and returns owned
+validated receipt fields. Only an explicit timeout bounds credentials through body
+observation; it never retries or invents an ID. See the library funding contract in
+`docs/site/service.md`. The demo's proxy, allowlist, wallet and reservation recovery
+policy are unchanged; an observation failure still needs original-ID reconciliation.
+
+Synthetic browser receipts now include monotonic setup, per-arm, checkpoint and
+cleanup timings, plus owned page/context counts. Checkpoint intervals include
+intervening UI setup and actions; they are not isolated test durations. All cases
+and consent assertions still run by default. Scheduling changes require measured
+groups and exact coverage inventory; timing data alone is not a CI speedup.
+
+
+### Library hardening and demo qualification (local source)
+
+The reusable background port now observes failed async teardown without delaying
+pending read rejection; the demo still owns its worker and UI lifecycle. Library
+contracts live in `docs/site/background.md`; demo wiring is in the demo guide.
+Grant bookkeeping now rejects missing required JubJub seal pairs before signing;
+publication recovery keeps the original staged grant, never a replacement issue.
+Read the API/grant-recovery guides before implementing a custom sealing adapter.
+
+The opt-in installed-crypto tool checks six software/generated-contract cases on
+an already prepared nine-package consumer. Follow `docs/site/quality.md` for exact
+manifest/lock pins and fresh retained output. It does not start this demo, a wallet
+or a proof stack; source tests, installed bytes and native/provider evidence remain
+separate. No new release or deployed documentation is implied by local checks.

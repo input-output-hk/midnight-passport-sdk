@@ -15,7 +15,11 @@ export function setOperationTraceSink(listener: (entry: OperationTraceEntry) => 
 }
 
 export function traceOperation(kind: string, details: Record<string, unknown>): void {
-  sink?.({ at: new Date().toISOString(), kind, details });
+  try {
+    sink?.({ at: new Date().toISOString(), kind, details });
+  } catch {
+    /* A UI observer must not discard a transport acknowledgement. */
+  }
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

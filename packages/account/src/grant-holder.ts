@@ -3,6 +3,8 @@ import { PassportConnectorError } from './errors.js';
 import { grantOriginHash, granteePoint, type GrantScopePure } from './grant-scope.js';
 import type { Authoriser, Chain, CurvePoint } from './ports/index.js';
 import type { FlowOptions, PassportTxResult } from '@input-output-hk/mn-passport-protocol';
+import { z } from 'zod';
+import { parseGrantU128 } from './grant-decimal.js';
 
 /** The first holder flow accepts only a recipient-pinned unshielded spend. */
 export interface UnshieldedGrantIntent {
@@ -96,7 +98,6 @@ export class SubmittedGrantSpendError extends PassportConnectorError {
   }
 }
 
-const U128 = (1n << 128n) - 1n;
 const invalid = (message: string): never => {
   throw new PassportConnectorError('GrantScopeInvalid', message);
 };
@@ -105,11 +106,38 @@ const bytes32 = (name: string, value: string): Uint8Array => {
   return fromHex(value);
 };
 const decimal = (name: string, value: string): bigint => {
-  if (!/^(0|[1-9][0-9]*)$/.test(value)) invalid(`${name} must be a decimal integer.`);
-  const parsed = BigInt(value);
-  if (parsed > U128) invalid(`${name} exceeds 128 bits.`);
+  const parsed = parseGrantU128(value, true);
+  if (parsed === undefined) return invalid(`${name} must be a bounded 128-bit decimal integer.`);
   return parsed;
 };
+const hex = z
+  .string()
+  .length(64)
+  .regex(/^[0-9a-f]{64}$/);
+const decimalText = z
+  .string()
+  .max(39)
+  .refine((value) => parseGrantU128(value, true) !== undefined);
+const intentSchema = z.object({
+  account: hex,
+  grantId: hex,
+  granteePublicKey: hex,
+  origin: z.string().min(1).max(1024),
+  slot: z.number().int().min(0).max(255),
+  scopeSalt: hex,
+  color: hex,
+  amount: decimalText,
+  recipient: hex,
+  maxCoinValue: decimalText,
+  spentPrev: decimalText,
+});
+
+/** One admitted public intent owns every later review, signature, read and receipt. */
+function snapshotIntent(input: UnshieldedGrantIntent): UnshieldedGrantIntent {
+  const parsed = intentSchema.safeParse(input);
+  if (!parsed.success) return invalid('The grant spend intent is malformed or oversized.');
+  return Object.freeze(parsed.data);
+}
 const same = (a: Uint8Array, b: Uint8Array): boolean =>
   a.length === b.length && a.every((value, index) => value === b[index]);
 
@@ -195,6 +223,7 @@ export async function spendUnshieldedWithGrant(
   ports: UnshieldedGrantSpendPorts,
   options: FlowOptions = {},
 ): Promise<UnshieldedGrantSpendResult> {
+  intent = snapshotIntent(intent);
   const { grantee, pure, source, chain } = ports;
   if (grantee.scheme !== 'jubjub-schnorr' || !grantee.withKeySession)
     throw new PassportConnectorError(

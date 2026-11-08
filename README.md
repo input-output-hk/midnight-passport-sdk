@@ -24,11 +24,24 @@ connector all resolve to authorised interactions with that on-chain account.
 
 ## Documentation
 
-The [SDK package and API guide](https://input-output-hk.github.io/midnight-passport-sdk/)
-is the GitHub Pages entry point (source in [`docs/site/`](./docs/site/)). It describes the
-prototype API. Start with [Install and connect](./docs/site/getting-started.md) for library use,
-or the [demo use cases](./docs/site/use-cases.md) for local evaluation. Registry publication
-is tracked separately from documentation deployment.
+The [SDK documentation site](https://input-output-hk.github.io/midnight-passport-sdk/)
+is built from [`docs/site/`](./docs/site/). Choose the path for your task:
+
+| Task | Start here |
+| --- | --- |
+| Integrate the reusable libraries | [Library integration](./docs/site/library-guide.md), then [Install and connect](./docs/site/getting-started.md) and [Public package/runtime requirements](./docs/site/packages.md). |
+| Understand private account keys | [Account keys and recovery](./docs/site/account-keys.md): owners, readers, viewing secrets, wallet seeds and input ownership. |
+| Deploy public proving artifacts | [ZK keys and distribution](./docs/site/keys.md): manifests, deterministic restoration, verified caches and HTTP serving. |
+| Run or extend the reference app | [Demo composition](./docs/site/demo-guide.md), [local runbook](./AGENTS.md) and [demo use cases](./docs/site/use-cases.md). |
+
+Library contracts cover ports, lifecycle and errors. Demo documentation explains
+this host's UI, consent, memory leases, workers, wallets and services. Installing a
+library does not opt into the demo's policies. Published RC7 and later source-only
+APIs are labeled separately; editing documentation locally does not update Pages.
+
+The [package quality strategy](./docs/site/quality.md) defines coverage, type safety,
+worker execution and release gates. [Secret custody](./docs/site/secret-storage.md)
+is an optional host seam; its browser reference is explicitly plaintext.
 
 The design lives in [`docs/`](./docs):
 

@@ -13,6 +13,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { checkQualityConsumer } from './consumer/quality-contracts.mjs';
 import { packedHostJobsSmoke } from './packed-host-jobs-smoke.mjs';
 import { validateInstalledCases } from './consumer/installed-cases.mjs';
 import { checkConsumerTarballs } from './consumer-inputs.mjs';
@@ -51,6 +52,7 @@ try {
     ],
     { stdio: 'inherit' },
   );
+  checkQualityConsumer(scratch);
   const installed = readdirSync(join(scratch, 'node_modules/.pnpm'));
   const compactVersions = new Set(
     installed
@@ -197,14 +199,18 @@ try {
   );
   writeFileSync(
     join(scratch, 'src/main.js'),
-    `import { remoteHostJobs } from '@input-output-hk/mn-passport-adapter-service';
+    `import { createMemorySecretStore } from '@input-output-hk/mn-passport-account/secret-store';
+     import { createBrowserSecretStore } from '@input-output-hk/mn-passport-adapter-browser/secret-store';
+     import { createAccountAuthorisation } from '@input-output-hk/mn-passport-account/authorization';
+     import { createBackgroundClient } from '@input-output-hk/mn-passport-account/background';
+     import { remoteHostJobs } from '@input-output-hk/mn-passport-adapter-service';
      import { BINDING_VERSION } from '@input-output-hk/mn-passport-contract';
      import { Contract } from '@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1';
      import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
      import { createBrowserPassport } from '@input-output-hk/mn-passport-adapter-browser';
      import { hostedJubjubAuthoriser } from '@input-output-hk/mn-passport-adapter-browser/hosted-jubjub';
      document.querySelector('#app').textContent =
-       [BINDING_VERSION, Contract.name, createPassportAccounts.name, createBrowserPassport.name, hostedJubjubAuthoriser.name, remoteHostJobs.name].join(' ');\n`,
+       [createMemorySecretStore.name, createBrowserSecretStore.name, createAccountAuthorisation.name, createBackgroundClient.name, BINDING_VERSION, Contract.name, createPassportAccounts.name, createBrowserPassport.name, hostedJubjubAuthoriser.name, remoteHostJobs.name].join(' ');\n`,
   );
   execFileSync('pnpm', ['exec', 'vite', 'build'], { cwd: scratch, stdio: 'inherit' });
   if (!existsSync(join(scratch, 'dist/index.html'))) throw new Error('scratch Vite build missing');

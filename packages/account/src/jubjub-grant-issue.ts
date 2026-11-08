@@ -1,3 +1,4 @@
+import { snapshotGrantScope } from './request-snapshots.js';
 import type {
   FlowOptions,
   PassportTxResult,
@@ -132,6 +133,7 @@ export async function issueJubjubGrantCall(
 ): Promise<SubmittedJubjubGrantCall> {
   const flow = startFlow(input, ports.random ?? random);
   try {
+    input = { ...input, scope: snapshotGrantScope(input.scope) };
     if (
       !input.scope.read &&
       (input.scope.operations.length !== 1 || input.scope.operations[0] !== 'withdraw-unshielded')

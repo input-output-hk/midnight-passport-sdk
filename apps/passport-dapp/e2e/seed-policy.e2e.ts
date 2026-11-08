@@ -58,13 +58,19 @@ assert.equal(gets.length, 1, 'one pinned PRF prompt');
 assert.deepEqual(pinnedTo(gets[0]), [ID]);
 assert.ok(gets[0]?.publicKey?.extensions?.prf, 'the pinned prompt is the PRF ceremony');
 
-// No open account: a discoverable picker (no allowCredentials), then the PRF pinned to the pick.
+// No open account: the discoverable request also evaluates PRF, with no second ceremony.
 gets.length = 0;
 assert.deepEqual(await walletSeed({ rpId: 'localhost', credentials: container(true) }), seed);
-assert.equal(gets.length, 2, 'picker, then PRF');
+assert.equal(gets.length, 1, 'one discoverable PRF request');
 assert.deepEqual(pinnedTo(gets[0]), []);
-assert.equal(gets[0]?.publicKey?.extensions, undefined);
-assert.deepEqual(pinnedTo(gets[1]), [ID]);
+assert.ok(gets[0]?.publicKey?.extensions?.prf?.eval?.first);
+assert.ok(gets[0]?.publicKey?.extensions?.prf?.eval?.second);
+
+gets.length = 0;
+await assert.rejects(walletSeed({ rpId: 'localhost', credentials: container(false) }), {
+  code: 'UnsupportedAuthenticator',
+});
+assert.equal(gets.length, 1, 'missing PRF never starts another request or a replacement wallet');
 
 // The picker answers with another passkey than the account's: a clear error, and no seed.
 await assert.rejects(

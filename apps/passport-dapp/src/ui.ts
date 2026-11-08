@@ -1,3 +1,5 @@
+import { walletFacts, type WalletView } from './wallet/view.js';
+export type { WalletView } from './wallet/view.js';
 // Presentation: the action buttons, the progress bar, the event log, the account and wallet cards
 // and the evidence. app.ts keeps the connector calls and drives this through `createUi`.
 // Every dynamic string goes in through textContent or an attribute, never innerHTML.
@@ -21,6 +23,8 @@ import { evidenceJson } from './evidence.js';
 import { progressView, segmentGrow } from './progress.js';
 import { createActivityStore } from '@input-output-hk/mn-passport-account/interaction';
 import { demoActivityObservation, operationForRun } from './activity-observations.js';
+import { routineKeys, OWNER_ACTIONS } from './routine-access.js';
+import { CRITICAL_ACTIONS } from './credential-policy.js';
 import type { OperationTraceEntry } from './operation-trace.js';
 
 export interface EvidenceHeader {
@@ -40,19 +44,9 @@ export interface AccountView {
   readonly lastTx?: PassportTxResult;
 }
 
-export interface WalletView {
-  readonly unshieldedAddress?: string;
-  readonly shieldedAddress?: string;
-  readonly dustAddress?: string;
-  /** Explicit undefined clears a previous snapshot after a failed read. */
-  readonly unshieldedBalances?: Record<string, bigint> | undefined;
-  readonly dust?: { balance: bigint; cap: bigint } | undefined;
-  /** Set when the balances could not be read (the wallet itself connected). */
-  readonly balanceError?: string | undefined;
-  readonly balanceUpdatedAt?: string | undefined;
-}
-
 const ACTIONS: readonly ActionId[] = [
+  'unlockRoutine',
+  'unlockOwner',
   'startSession',
   'endSession',
   'revokeSession',
@@ -103,11 +97,9 @@ const clockTime = (t: number) =>
 export const shorten = (value: string, head = 8, tail = 6): string =>
   value.length <= head + tail + 1 ? value : `${value.slice(0, head)}…${value.slice(-tail)}`;
 
-const formatAmount = (v: bigint) => v.toLocaleString('en-GB');
-
 export function createUi(
   header: EvidenceHeader,
-  arm: 'p256' | 'jubjub' = 'p256',
+  _arm: 'p256' | 'jubjub' = 'p256',
   consent?: {
     before(action: ActionId): Promise<boolean>;
     after(): void;
@@ -170,18 +162,29 @@ export function createUi(
 
   // The action cards: prompt counts and summaries come from flows.ts only.
   for (const action of ACTIONS) byId(`${action}-desc`).textContent = FLOWS[action].summary;
-  if (arm === 'jubjub') {
-    byId('create-desc').textContent =
-      'Creates a passkey, deploys a JubJub Passport account, and seals a random viewing secret to this device.';
-    byId('open-desc').textContent =
-      'Reopens the JubJub account with its passkey and checks its sealed viewing secret against the live ACC.';
-  }
+  byId('create-desc').textContent =
+    'Set up an account secured by a new passkey. The demo service pays the network fees.';
+  byId('open-desc').textContent = 'Use the passkey you previously registered for this account.';
+  byId('openAt-desc').textContent =
+    'You still need an enrolled passkey. An address alone cannot grant access or recover a lost passkey.';
   const renderPrompts = () => {
     for (const action of ACTIONS) {
       byId(`${action}-prompts`).textContent =
-        promptsFor(action, !!account) === 0
-          ? promptLabel(0)
-          : 'Passkey prompts vary by purpose, provider and transaction count.';
+        account &&
+        routineKeys.snapshot().status === 'active' &&
+        routineKeys.snapshot().account === account.address &&
+        (['holdings', 'wallet'].includes(action) ||
+          (routineKeys.snapshot().ownerVerified && OWNER_ACTIONS.includes(action)))
+          ? CRITICAL_ACTIONS.has(action)
+            ? action === 'withdraw'
+              ? 'Approved scoped transfer: no passkey · owner transfer: fresh passkey'
+              : 'Fresh passkey approval for this critical action'
+            : 'Uses unlocked keys · no new passkey request'
+          : ['create', 'open', 'openAt'].includes(action)
+            ? 'Passkey approval required'
+            : promptsFor(action, !!account) === 0
+              ? promptLabel(0)
+              : 'Passkey prompts vary by purpose, provider and transaction count.';
     }
   };
 
@@ -199,6 +202,8 @@ export function createUi(
   // --- buttons -----------------------------------------------------------------------------
   const renderButtons = () => {
     const busy = log.current !== undefined;
+    buttons.unlockRoutine.disabled = busy || !account;
+    buttons.unlockOwner.disabled = busy || !account;
     buttons.startSession.disabled = busy || !account || assetsByColor.size === 0;
     buttons.endSession.disabled = false;
     buttons.revokeSession.disabled = busy || !account;
@@ -253,9 +258,7 @@ export function createUi(
     withdrawalRecipient.disabled = busy || !account;
     buttons.withdraw.closest('li')?.toggleAttribute('hidden', assetsByColor.size === 0);
     copyButton.disabled = busy || (log.runs.length === 0 && log.traceEntries.length === 0);
-    // With an account open, rotating is the next thing to show; before that, creating is.
-    buttons.create.classList.toggle('btn-primary', !account);
-    buttons.create.classList.toggle('btn-secondary', !!account);
+    // Entry actions keep their stable primary/secondary hierarchy.
     buttons.rotate.classList.toggle('btn-primary', !!account);
     buttons.rotate.classList.toggle('btn-secondary', !account);
     byId('rotate-needs').hidden = !!account;
@@ -464,10 +467,17 @@ export function createUi(
       })),
       trace: log.traceJSON(),
     });
+  const auditVisible = (element: HTMLElement, details: HTMLDetailsElement | null) =>
+    details
+      ? details.open
+      : !element.closest<HTMLElement>('[data-workspace-page]')?.hidden &&
+        !element.closest<HTMLElement>('[data-workspace]')?.hidden;
   const renderEvidence = () => {
-    if (evidenceDetails?.open) evidenceEl.textContent = fullLog();
-    if (traceDetails?.open) traceEl.textContent = JSON.stringify(log.traceJSON(), null, 2);
+    if (auditVisible(evidenceEl, evidenceDetails)) evidenceEl.textContent = fullLog();
+    if (auditVisible(traceEl, traceDetails))
+      traceEl.textContent = JSON.stringify(log.traceJSON(), null, 2);
   };
+  document.addEventListener('passport:workspace-selected', renderEvidence);
   evidenceDetails?.addEventListener('toggle', renderEvidence);
   traceDetails?.addEventListener('toggle', renderEvidence);
 
@@ -514,11 +524,44 @@ export function createUi(
     byId('account-empty').hidden = !!account;
     const list = byId('account-facts');
     list.hidden = !account;
+    const context = byId('account-action-context');
+    context.hidden = !account;
+    byId('account-context-empty').hidden = !!account;
+    byId('account-state-details').hidden = !account;
+    byId('account-balances-empty').hidden = !account || !!accountBalances;
     if (!account) return;
     const { address, networkId, bindingId, state, lastTx } = account;
+    renderFacts(context, [
+      { label: 'Passport ACC', value: shorten(address, 10, 8), full: address, copy: address },
+      { label: 'Network', value: networkId },
+    ]);
     renderFacts(list, [
       { label: 'Address', value: shorten(address, 10, 8), full: address, copy: address },
       { label: 'Network', value: networkId },
+      ...(accountBalances?.address === address
+        ? [
+            {
+              label: 'NIGHT (Passport ACC)',
+              value: accountBalances.night ?? accountBalances.error ?? 'Reading…',
+              hint: accountBalances.error
+                ? 'Latest refresh unavailable. Any displayed amount is a prior snapshot, not a new balance.'
+                : 'Unshielded balance in smallest units.',
+            },
+            ...(accountBalances.color === '00'.repeat(32)
+              ? []
+              : [
+                  {
+                    label: `Test token ${shorten(accountBalances.color, 6, 4)}`,
+                    value: accountBalances.fundedAsset ?? accountBalances.error ?? 'Reading…',
+                    hint: accountBalances.error
+                      ? 'Latest refresh unavailable. Any displayed amount is a prior snapshot, not a new balance.'
+                      : 'Unshielded balance in smallest units.',
+                  },
+                ]),
+          ]
+        : []),
+    ]);
+    renderFacts(byId('account-state-facts'), [
       { label: 'Spec version', value: String(state.specVersion) },
       { label: 'Activated', value: state.booted ? 'Yes' : 'No' },
       { label: 'Auth nonce', value: state.authNonce.toString() },
@@ -529,24 +572,6 @@ export function createUi(
         hint: 'Entries in the device set, not a device count (erratum 8).',
       },
       { label: 'Binding', value: bindingId },
-      ...(accountBalances?.address === address
-        ? [
-            {
-              label: 'NIGHT (Passport ACC)',
-              value: accountBalances.night ?? accountBalances.error ?? 'Reading…',
-              hint: 'Unshielded balance in smallest units.',
-            },
-            ...(accountBalances.color === '00'.repeat(32)
-              ? []
-              : [
-                  {
-                    label: `Test token ${shorten(accountBalances.color, 6, 4)}`,
-                    value: accountBalances.fundedAsset ?? accountBalances.error ?? 'Reading…',
-                    hint: 'Unshielded balance in smallest units.',
-                  },
-                ]),
-          ]
-        : []),
       lastTx
         ? {
             label: 'Last transaction',
@@ -642,44 +667,7 @@ export function createUi(
     const list = byId('wallet-facts');
     list.hidden = !connected;
     if (!connected) return;
-    const facts: Fact[] = [];
-    const address = (label: string, value: string | undefined) => {
-      if (value) facts.push({ label, value: shorten(value, 14, 8), full: value, copy: value });
-    };
-    address('Unshielded address', wallet.unshieldedAddress);
-    address('Shielded address', wallet.shieldedAddress);
-    address('Dust address', wallet.dustAddress);
-    if (wallet.unshieldedBalances) {
-      const entries = Object.entries(wallet.unshieldedBalances);
-      if (!entries.some(([token]) => /^0+$/.test(token)))
-        facts.push({ label: 'NIGHT (built-in wallet)', value: '0', hint: 'Smallest unit.' });
-      for (const [token, amount] of entries) {
-        facts.push({
-          label: /^0+$/.test(token) ? 'NIGHT (built-in wallet)' : `Token ${shorten(token, 6, 4)}`,
-          value: formatAmount(amount),
-          full: token,
-          hint: 'Smallest unit.',
-        });
-      }
-    } else if (wallet.balanceError) {
-      facts.push({ label: 'Balances', value: 'Not read', hint: wallet.balanceError });
-    } else {
-      facts.push({ label: 'Balances', value: 'Waiting for the wallet to sync…' });
-    }
-    if (wallet.dust) {
-      facts.push({
-        label: 'DUST',
-        value: `${formatAmount(wallet.dust.balance)} of ${formatAmount(wallet.dust.cap)}`,
-        hint: 'Balance of cap, in Specks.',
-      });
-    }
-    if (wallet.balanceUpdatedAt)
-      facts.push({
-        label: 'Balances updated',
-        value: wallet.balanceUpdatedAt,
-        hint: 'Local read time (UTC), not the chain confirmation time. Refresh after receiving funds.',
-      });
-    renderFacts(list, facts);
+    renderFacts(list, walletFacts(wallet));
   };
 
   // --- wiring ------------------------------------------------------------------------------
@@ -725,6 +713,7 @@ export function createUi(
   renderEvidence();
 
   return {
+    refreshPrompts: renderPrompts,
     activity,
     status,
     knownAddress: () => knownAddress.value,
@@ -823,6 +812,7 @@ export function createUi(
           return;
         }
         log.start(action);
+        document.dispatchEvent(new Event('passport:operation-started'));
         try {
           const execute = async () => {
             if (consent && !(await consent.before(action))) {
@@ -853,6 +843,7 @@ export function createUi(
           status(`${FLOWS[action].title} attempt failed. ${explanation} (${err.code})`);
         } finally {
           consent?.after();
+          document.dispatchEvent(new Event('passport:operation-finished'));
           // The button was disabled while the action ran, which drops focus: give it back.
           if (document.activeElement === document.body && !button.disabled) button.focus();
         }

@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { walletSeed } from '../src/wallet/seed.ts';
+import { PRF_LABEL_ROOT, prfSalt, seedFromRoot } from '@input-output-hk/mn-passport-keys';
 
 const ID = Uint8Array.of(1, 2, 3);
 const OTHER = Uint8Array.of(9, 9, 9);
@@ -62,24 +63,25 @@ test('with an account open there is one prompt, pinned to its passkey, for the P
   assert.ok(publicKey.extensions?.prf?.eval?.first && publicKey.extensions.prf.eval.second);
 });
 
-test('without an account the picker comes first, asks for no PRF and pins nothing, then the PRF is pinned to the pick', async () => {
+test('without an account one discoverable request selects a passkey and evaluates both PRF salts', async () => {
   const { credentials, gets } = container((o) => withPrf(o, OTHER));
   const seed = await walletSeed({ rpId: 'example.test', credentials });
   assert.equal(seed.length, 64);
-  assert.equal(gets.length, 2);
+  assert.equal(gets.length, 1);
   const picker = gets[0]!.publicKey!;
   assert.equal(picker.rpId, 'example.test');
   assert.equal(picker.userVerification, 'required');
   assert.equal(picker.allowCredentials, undefined, 'discoverable: the user chooses');
-  assert.equal(picker.extensions, undefined);
-  assert.deepEqual(ids(gets[1]), [OTHER], 'the PRF prompt names the passkey that was picked');
-  assert.equal(gets[1]!.publicKey!.rpId, 'example.test');
+  assert.ok(picker.extensions?.prf?.eval?.first && picker.extensions.prf.eval.second);
+  assert.equal(gets[1], undefined, 'no additional pinned request follows discovery');
+  seed.fill(0);
 });
 
 test('an explicit undefined account id is the same as none: the user picks', async () => {
   const { credentials, gets } = container((o) => withPrf(o));
-  await walletSeed({ rpId: 'localhost', accountCredentialId: undefined, credentials });
-  assert.equal(gets.length, 2);
+  const seed = await walletSeed({ rpId: 'localhost', accountCredentialId: undefined, credentials });
+  assert.equal(gets.length, 1);
+  seed.fill(0);
 });
 
 test('each prompt carries its own fresh 32-byte challenge', async () => {
@@ -89,9 +91,9 @@ test('each prompt carries its own fresh 32-byte challenge', async () => {
   const challenges = gets.map((g) =>
     Buffer.from(g.publicKey!.challenge as Uint8Array).toString('hex'),
   );
-  assert.equal(challenges.length, 3);
+  assert.equal(challenges.length, 2);
   for (const c of challenges) assert.equal(c.length, 64);
-  assert.equal(new Set(challenges).size, 3);
+  assert.equal(new Set(challenges).size, 2);
 });
 
 test('the seed is the same on every connect for the same passkey, and differs between passkeys', async () => {
@@ -177,14 +179,21 @@ test('a dismissed or failing PRF prompt is mapped the same way, and yields no se
   );
 });
 
-test('picking one passkey and then confirming with another is the wrong-passkey error, not a seed', async () => {
-  const { credentials } = container((o) =>
-    o.publicKey?.extensions?.prf ? withPrf(o, OTHER) : credential(ID),
-  );
-  await assert.rejects(walletSeed({ rpId: 'localhost', credentials }), {
-    code: 'AccountNotFound',
-    message: 'This is not the passkey this account was created with; choose that passkey.',
+test('the account credential is snapshotted before asynchronous ceremony review', async () => {
+  const selected = ID.slice();
+  const { credentials, gets } = container((o) => withPrf(o, ID));
+  const seed = await walletSeed({
+    rpId: 'localhost',
+    accountCredentialId: selected,
+    credentials,
+    async beforeCeremony() {
+      selected.fill(9);
+      await Promise.resolve();
+    },
   });
+  assert.deepEqual(ids(gets[0]), [ID]);
+  assert.equal(seed.length, 64);
+  seed.fill(0);
 });
 
 test('a passkey with no PRF, or only half of it, is UnsupportedAuthenticator at either ceremony', async () => {
@@ -216,4 +225,93 @@ test('the pinned ceremony tells the wrong-passkey and no-PRF cases apart', async
     walletSeed({ rpId: 'localhost', accountCredentialId: ID, credentials: noPrf.credentials }),
     { code: 'UnsupportedAuthenticator' },
   );
+});
+
+test('discoverable wallet derivation has one compound consent and retains the exact Lace seed recipe', async () => {
+  const { credentials, gets } = container((o) => withPrf(o));
+  const purposes: string[] = [];
+  const derived = await walletSeed({
+    rpId: 'wallet.example.test',
+    credentials,
+    beforeCeremony: ({ purpose }) => {
+      purposes.push(purpose);
+    },
+  });
+  const root = new Uint8Array(sha256(Uint8Array.from(prfSalt(PRF_LABEL_ROOT))));
+  const expected = seedFromRoot(root);
+  try {
+    assert.deepEqual(derived, expected);
+    assert.deepEqual(purposes, ['identify-and-unlock']);
+    assert.equal(gets.length, 1);
+  } finally {
+    derived.fill(0);
+    root.fill(0);
+    expected.fill(0);
+  }
+});
+
+test('declining discovery consent makes no credential request', async () => {
+  const { credentials, gets } = container((o) => withPrf(o));
+  await assert.rejects(
+    walletSeed({
+      rpId: 'localhost',
+      credentials,
+      beforeCeremony() {
+        throw new DOMException('Declined', 'NotAllowedError');
+      },
+    }),
+    { code: 'UserCancelled' },
+  );
+  assert.equal(gets.length, 0);
+});
+
+for (const pinned of [false, true]) {
+  test(`${pinned ? 'pinned' : 'discoverable'} wallet derivation bounds credential IDs and exact PRF output lengths`, async () => {
+    for (const invalid of [
+      'empty ID',
+      'large ID',
+      'first length',
+      'second length',
+      'second missing',
+    ] as const) {
+      const { credentials, gets } = container((o) => {
+        const valid = withPrf(o);
+        if (invalid === 'empty ID') return { ...valid, rawId: new ArrayBuffer(0) };
+        if (invalid === 'large ID') return { ...valid, rawId: new ArrayBuffer(1024) };
+        return credential(ID, {
+          prf: {
+            results: {
+              first: new ArrayBuffer(invalid === 'first length' ? 31 : 32),
+              ...(invalid !== 'second missing' && {
+                second: new ArrayBuffer(invalid === 'second length' ? 33 : 32),
+              }),
+            },
+          },
+        });
+      });
+      await assert.rejects(
+        walletSeed({
+          rpId: 'localhost',
+          credentials,
+          ...(pinned && { accountCredentialId: ID }),
+        }),
+        { code: 'UnsupportedAuthenticator' },
+      );
+      assert.equal(gets.length, 1, 'a malformed reply never retries or falls back');
+    }
+  });
+}
+
+test('wallet derivation leaves provider-owned PRF buffers untouched', async () => {
+  const first = new Uint8Array(32).fill(7);
+  const second = new Uint8Array(32).fill(9);
+  const { credentials } = container(() =>
+    credential(ID, {
+      prf: { results: { first: first.buffer, second: second.buffer } },
+    }),
+  );
+  const derived = await walletSeed({ rpId: 'localhost', credentials });
+  derived.fill(0);
+  assert.ok(first.every((byte) => byte === 7));
+  assert.ok(second.every((byte) => byte === 9));
 });

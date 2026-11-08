@@ -41,3 +41,38 @@ test('held_coin refuses missing, malformed and out-of-range private inputs', () 
     assert.throws(() => createHeldCoinWitness(invalid), { code: 'TransferInvalid' });
   }
 });
+
+for (const kind of ['both', 'nonce', 'color', 'offset-view']) {
+  test(`held_coin owns Node Buffer inputs and repeated results (${kind})`, () => {
+    const bytes = (/** @type {number} */ value) =>
+      kind === 'offset-view'
+        ? Buffer.alloc(96, 99).subarray(24, 56).fill(value)
+        : Buffer.alloc(32, value);
+    const source = {
+      nonce: kind === 'color' ? new Uint8Array(32).fill(3) : bytes(3),
+      color: kind === 'nonce' ? new Uint8Array(32).fill(7) : bytes(7),
+      value: 9n,
+      mt_index: 4n,
+    };
+    const witness = createHeldCoinWitness(source);
+    source.nonce.fill(8);
+    source.color.fill(8);
+    source.value = 10n;
+    source.mt_index = 6n;
+    const state = { marker: 'owned-test' };
+    const [returnedState, first] = witness.held_coin({ privateState: state }, Buffer.alloc(32, 7));
+    assert.equal(returnedState, state);
+    assert.deepEqual(first, coin());
+    first.nonce.fill(6);
+    first.color.fill(6);
+    const secondState = { marker: 'second-call' };
+    const [returnedSecondState, second] = witness.held_coin({ privateState: secondState }, color);
+    assert.equal(returnedSecondState, secondState);
+    assert.deepEqual(second, coin());
+    assert.notEqual(first.nonce, second.nonce);
+    assert.notEqual(first.color, second.color);
+    assert.throws(() => witness.held_coin({ privateState: state }, Buffer.alloc(32, 8)), {
+      code: 'TransferInvalid',
+    });
+  });
+}

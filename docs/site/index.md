@@ -4,39 +4,68 @@ title: Build with Midnight Passport
 permalink: /
 ---
 
-Midnight Passport gives an application a passkey controlled Account Custody Contract (ACC). The account API creates an account, opens it again with its registered passkey, reads its state and makes a signed call. The browser adapter supplies WebAuthn and the local prototype service supplies deployment, proving and fee sponsorship.
-
-> **Preview RC7:** The nine implemented packages are published at `0.1.0-rc7` with private GitHub Packages access; three Linux/amd64 backend images are available on GHCR. ACC binding `acc-s3r1.1` remains pinned to Passport revision `6458ed5`. Shielded withdrawals require an exact-value coin; partial spends remain rejected. Synthetic hosted tests do not establish full Lace compatibility. Start with the [release notes]({{ '/release-notes-rc7/' | relative_url }}) and [Packages]({{ '/packages/' | relative_url }}).
-
-
-**RC7 additions:** [RC7 release notes]({{ '/release-notes-rc7/' | relative_url }}), [consent and passkey purposes]({{ '/consent/' | relative_url }})
-and the [use-case coverage map]({{ '/use-case-coverage/' | relative_url }}) describe
-RC7 additions. Their browser/native/provider evidence tiers remain separate.
+Midnight Passport provides libraries for passkey-controlled Account Custody Contracts
+(ACCs) on Midnight. A host composes account flows, key sources, checked chain access,
+proof/submission services and its own consent UI. The reference demo shows one browser
+and local-service composition of those libraries.
 
 ## Start here
 
-Start with [Install and connect]({{ '/getting-started/' | relative_url }}) for authenticated
-installation, an independently pinned service check, a browser composition example and common errors.
+### Integrate Passport into your product
 
-1. [Problems and package boundaries]({{ '/problems/' | relative_url }}) maps the seven integration needs to current and planned SDK surfaces.
-2. [Packages]({{ '/packages/' | relative_url }}) explains which package owns each part of the integration.
-3. [Account API]({{ '/api/' | relative_url }}) documents `createPassportAccounts`, its ports, events and errors.
-4. [Circuit capabilities]({{ '/circuits/' | relative_url }}) inventories every pinned ACC proof circuit and pure helper, with its inputs and current support status.
-5. [Service API]({{ '/service/' | relative_url }}) describes the local prototype endpoints and trust boundary.
-6. [ZK keys]({{ '/keys/' | relative_url }}) explains the artefact integrity pin and prover-key distribution decision.
-7. [Releasing]({{ '/releasing/' | relative_url }}) explains the guarded GitHub Packages workflow.
-8. [Preview RC7 release notes]({{ '/release-notes-rc7/' | relative_url }}) describe the current release.
-9. [Historical RC5 release notes]({{ '/release-notes-rc5/' | relative_url }}) list verified artefacts, checks and deferred work.
-10. [Preview RC4 release notes]({{ '/release-notes-rc4/' | relative_url }}) list validated behavior and deferred work.
-11. [Engineering handover]({{ '/handover/' | relative_url }}) traces the localnet NIGHT funding flow, operating steps, audit findings and release boundary.
+The [Library integration guide]({{ '/library-guide/' | relative_url }}) covers package
+selection, published/source API boundaries, host contracts, input validation, custody,
+cancellation and cleanup.
 
-For a local run, follow the [demo guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/AGENTS.md). The current service needs a compiled ACC and its own funded localnet; installing the TypeScript workspace alone is not enough to create an account.
+### Run the reference application
 
-The [demo use cases]({{ '/use-cases/' | relative_url }}) give the available actions,
-prerequisites, expected results and current evaluation limits, including a NIGHT round trip
-from the funding wallet through the ACC to the built-in wallet.
+The [Demo app guide]({{ '/demo-guide/' | relative_url }}) covers local setup, login and
+four workspaces, actual passkey reviews, routine access, owner approval and bounded transfers.
+
+The library path does not require the demo's UI, React, local storage layout or memory
+lease policy. The demo path needs a ready backend/chain/prover and configured wallets;
+installing TypeScript packages alone cannot create an account.
+
+## Published packages and current source
+
+### Published preview `0.1.0-rc7`
+
+Nine implemented libraries are available through private GitHub Packages, with
+release-tagged browser composition, capability/preflight APIs and opt-in recovery/service
+seams. Use matching exact versions and [RC7 release notes]({{ '/release-notes-rc7/' | relative_url }}).
+Three backend images are published for Linux/amd64.
+
+### Local source after RC7
+
+The checkout adds optional validation/authorization/custody/background APIs,
+verified-login adoption, owner/session helpers and current demo navigation/combined
+credential review. Source exports and local tests are not a new package release or
+proof of deployed-site behavior. Check each guide's release label.
+
+The binding remains `acc-s3r1.1`, pinned to Passport revision `6458ed5`. Shielded
+withdrawals require an exact-value coin; partial spending remains rejected. A scoped
+grant child and a full on-chain owner have different authority. Synthetic browser or
+hosted tests do not establish real-provider or full Lace compatibility.
+
+## Reference and operations
+
+Use [Packages]({{ '/packages/' | relative_url }}) and
+[Account API]({{ '/api/' | relative_url }}) for exported boundaries;
+[Circuits]({{ '/circuits/' | relative_url }}) and
+[Capabilities]({{ '/capabilities/' | relative_url }}) for pinned proof requirements.
+[Service API]({{ '/service/' | relative_url }}),
+[ZK keys]({{ '/keys/' | relative_url }}) and
+[Recovery contracts]({{ '/durability/' | relative_url }}) cover backend composition.
+
+[Qualification]({{ '/qualification/' | relative_url }}) identifies what was actually
+verified; [Quality strategy]({{ '/quality/' | relative_url }}) maps source contracts
+and tests. [Releasing]({{ '/releasing/' | relative_url }}) explains package publication.
+Historical [RC5]({{ '/release-notes-rc5/' | relative_url }}) and
+[RC4]({{ '/release-notes-rc4/' | relative_url }}) notes retain their original scope.
 
 ## Lace evaluation
 
-The [Lace handover guide]({{ '/lace-handover/' | relative_url }}) describes the RC7
-evaluation scope, package selection, private-registry access and supported integration boundaries.
+The [Lace handover guide]({{ '/lace-handover/' | relative_url }}) describes evaluation
+scope, package selection, private-registry access and supported integration boundaries.
+The separate [wallet reader]({{ '/lace-wallet/' | relative_url }}) is an optional
+source read-only connector; connecting it does not grant ACC ownership or spending.

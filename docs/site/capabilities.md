@@ -65,16 +65,16 @@ is not a substitute for artifact integrity verification.
 
 ```ts
 import { inspectAccountConfiguration } from '@input-output-hk/mn-passport-account/preflight';
+import type { PassportPorts } from '@input-output-hk/mn-passport-account/ports';
 
-// ports is your trusted host composition, implementing PassportPorts.
-const report = inspectAccountConfiguration(ports, {
-  operation: 'issue-grant',
-  grantRead: false, // issue must explicitly choose read/non-read
-});
-for (const issue of report.issues) {
-  console.log(issue.path, issue.message);
+// The host supplies its checked composition. Inspection invokes no credential.
+export function inspectSpendGrantPorts(ports: PassportPorts) {
+  return inspectAccountConfiguration(ports, {
+    operation: 'issue-grant',
+    grantRead: false,
+  });
 }
-// Even with no issues: report.status === 'runtime-validation-required'.
+// Inspect the returned issues. Even with none, status is runtime-validation-required.
 ```
 
 `sealed-owner-v1` inspects configuration for an **existing active sealed account**
@@ -143,16 +143,15 @@ it never plans a second issue proof. Shielded withdrawal still requires an exact
 import { getAccountProofRequirements } from '@input-output-hk/mn-passport-account/preflight';
 import { inspectAccProofProfile } from '@input-output-hk/mn-passport-contract/capabilities';
 
-const requirements = getAccountProofRequirements('jubjub-schnorr', {
-  operation: 'issue-grant', grantRead: true,
-});
-// profileAnswer and manifestAnswer are parsed /v1/profile and /v1/manifest JSON
-// from the host's chosen endpoint. Fetch them before requesting any key ceremony.
-const coverage = inspectAccProofProfile(
-  profileAnswer, manifestAnswer, requirements.proofCircuits,
-);
-// coverage.status: 'profile-incomplete' or 'profile-covers-request'
-// coverage.evidence is always 'advertised-metadata-only'.
+// Fetch the chosen endpoint's /v1/profile and /v1/manifest before credential access.
+// Unknown JSON is validated by the inspector; metadata is not proof readiness.
+export function inspectReadGrantProofs(profileAnswer: unknown, manifestAnswer: unknown) {
+  const requirements = getAccountProofRequirements('jubjub-schnorr', {
+    operation: 'issue-grant', grantRead: true,
+  });
+  return inspectAccProofProfile(profileAnswer, manifestAnswer, requirements.proofCircuits);
+}
+// status: profile-incomplete or profile-covers-request; evidence: advertised-metadata-only.
 ```
 
 Coverage checks the packaged binding/manifest identity, explicit prover **and**
