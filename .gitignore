@@ -54,3 +54,7 @@ apps/passport-dapp/src/acc/generated/
 # Real network stack files stay local; only *.env.example and the localnet stack are tracked.
 infra/networks/*.env
 !infra/networks/undeployed.env
+
+# Python documentation tooling
+__pycache__/
+*.py[cod]

@@ -12,6 +12,9 @@ as the Pages publishing source. Editing or locally rendering this source does no
   memory material, full-owner policy, bounded grants and operational evidence.
 - `getting-started.md` retains `/getting-started/` and the published RC7 install/composition
   path. `api.md` retains `/api/` and the export reference, with explicit source-only additions.
+- `account-keys.md` owns private account-key capabilities, wire formats, byte ownership
+  and recovery. `keys.md` owns public proving artifacts, hash pins, caches and serving;
+  its older account-viewing heading links to the private-key guide.
 - The layout groups Library reference, Demo reference and Operations/releases. Existing
   pages and permalinks remain; do not physically move pages just to classify navigation.
 
@@ -43,3 +46,38 @@ released browser quickstart remains in `docs/examples/browser-quickstart.ts`.
 The GitHub Actions workflow is the deployment build. Local source/permalink validation
 without Jekyll can detect missing pages, but cannot establish Liquid/Kramdown rendering,
 generated heading IDs or responsive layout. Report those verification gaps explicitly.
+
+
+### Compile source examples before review
+
+`nix develop -c pnpm test:docs` compiles every TypeScript fence and both example
+modules through `docs/examples/checked-snippets.json`. Required lint runs the same
+checker. Declare neutral, browser DOM, WebWorker or Node targets explicitly; complete
+examples receive their host capabilities as parameters. For a machine-readable receipt
+with source-line diagnostics and snippet hashes, use `nix develop -c node
+scripts/docs/snippets.mjs --json` and a fresh ignored output. The checker does not
+execute examples, install packages or authenticate a provider.
+
+
+### Check the rendered site before deployment
+
+The Pages workflow runs `scripts/docs/check-rendered.py` after Jekyll and before
+upload/deployment. It checks rendered local links, styles/scripts/images and HTML
+anchors under the configured base URL, including duplicate IDs and missing targets.
+It performs no network fetch, CSS parsing or deployed-site verification. Required
+fast PR checks remain unchanged; the Pages build owns this small post-render gate.
+
+After a local Jekyll render, use the repository-pinned Python with a fresh receipt:
+
+```sh
+nix shell --inputs-from . nixpkgs#python3 -c python3 -m unittest discover -s tests/docs -p 'test_*.py'
+nix shell --inputs-from . nixpkgs#python3 -c python3 scripts/docs/check-rendered.py \
+  /absolute/path/to/rendered-site --base-url /midnight-passport-sdk \
+  --output /absolute/path/to/fresh-docs-links.json
+```
+
+External URLs are counted but not checked. HTML pages are admitted with a bounded
+read; a path or symlink escaping the site refuses. Rendered `<base href>` directives refuse rather than silently applying the wrong
+relative-link resolution. Existing receipts are never
+overwritten, and a missing/empty render cannot produce a pass. Keep browser layout
+and actual deployment checks as separate evidence.

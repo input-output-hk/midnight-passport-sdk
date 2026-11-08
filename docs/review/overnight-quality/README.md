@@ -273,3 +273,89 @@ Final bounded checker re-review accepts all original and follow-up controls;
 eleven focused regressions and the final full gate pass. Reference/type directives
 cannot add ambient Node capabilities to a neutral example, and CommonJS shortcuts
 cannot bypass public ESM imports. Earlier failed probes remain immutable evidence.
+
+## Fifth tranche: key input ownership and fresh native isolation
+
+The keyring captures its input collections, recipient/device/policy values and
+rotation destination before asynchronous PRF access. A pending provider request
+can no longer let a mutable caller redirect delivery or extend the admitted inbox
+past its 4,096-entry limit. Exact wire entries are copied; malformed entries remain
+bounded non-opening noise. Caller buffers are not zeroed by alias. Small typed
+admission/material helpers replace the large keyring factory and remove its legacy
+function/non-null budget exceptions. Wire suites, domains and public signatures remain.
+
+The encrypted mutation journal now serializes one admitted document and uses the
+same revision for encryption AAD and the byte-store CAS. This prevents an acknowledged
+but unreadable record when a caller changes its revision during key derivation.
+Grant-view admission rejects oversized wire bytes before copying. Independent review
+also found shadowable expected-key length and twice-read policy fields; the follow-up
+uses intrinsic byte sizes and copies the same captured fields it validates. Tests
+cover real encrypted records, Buffer ownership, changing getters and pre-copy refusal.
+These are synchronous/async input controls, not a sandbox for malicious host code.
+
+The native runner gains a closed fresh source-lifecycle profile rather than adopting
+the archived legacy stack. Parent and three worker entries agree on a bounded private
+descriptor, run ID, canonical paths, exact endpoints and owner-fixture scope. Partial
+markers/overrides refuse before setup. Exact newly recorded container/image/volume/
+network identities govern control; a shared wallet lease prevents concurrent lanes.
+Source/dist, physical dependency, reference and key hashes are frozen and rechecked.
+Deadline/abort checks guard later worker/container effects; cleanup waits for owned
+children, stops only owned compute and preserves volumes, unknowns and failure roots.
+Uncertain creation or incomplete cleanup retains the lease. Offline fake-stack tests
+are not native proof acceptance; live receipts remain a separate measured result.
+
+The outer qualification runner now forwards parent SIGINT/SIGTERM to its detached
+owned scenario, permits the isolated lane's explicit cleanup grace and cancels delayed
+escalation on child close. Full-suite regression checks an interrupted receipt's
+closed schema and deferred scenario inventory, not just a child exit. Interrupted
+cleanup cannot turn the run into a pass or start the next scenario.
+
+Library documentation now separates private account keys/recovery from public
+proving artifacts. Agent and demo troubleshooting no longer recommend deleting
+credentials/state or replacing uncertain sends after a timeout. The library guide
+owns contracts; the demo guide owns its consent/lifetime/worker choices. Source
+compilation, rendered navigation/links and desktop/mobile checks follow the same
+documented gates. All changes stay local; published packages, images and Pages are
+unchanged. Final full-gate, coverage and independent exact-head evidence follow.
+
+
+Wave 5's initial full gate passes **1,821 tests / seven existing skips** and
+all app typechecks. Package runtime coverage passes all nine 80% floors at
+**94.58 / 93.17 / 85.88%** lines/functions/branches. The initial render has 44 pages
+and 2,050 valid local targets; owned desktop 1280/mobile 390 Chromium checks pass,
+including keyboard navigation and no page overflow. A later heading/readability
+pass needs its final rerender rather than inheriting the earlier count.
+
+Independent keys review accepts the two admission follow-ups, verifies caller
+Buffer ownership and unchanged wire source files, and retains actual/reconstructed
+probe provenance separately. Independent native-control review found two additional
+pre-run gaps: binary `.bzkir` inputs were absent from the frozen artifact inventory,
+and an async private-log write rejection could escape the worker completion promise
+and bypass normal supervisor cleanup. Both must be corrected and reviewed before
+any native attempt; the passing initial gate does not close those findings.
+
+
+The isolated-runner follow-up closes both P2s. Initial and final verification now
+use one frozen inventory of **208 artifacts across 52 circuits**, including binary
+ZKIR. Worker completion observes early spawn, synchronous callback and asynchronous
+private-log failures while preserving the original rejected promise. Seven new
+focused regressions pass, independently rerun; the full follow-up Nix gate passes
+**1,828 tests / seven existing skips**. Package runtime is unchanged from the
+reported coverage candidate. No native proof has started at this checkpoint.
+
+Rendered-link checking is now reproducible in the repo and runs after Jekyll,
+before Pages upload. Nine Python fixture tests cover base URLs, entities/Unicode,
+relative links, assets/anchors, path/symlink escapes, duplicate IDs, bounded HTML,
+empty renders, exclusive receipts and unsupported base-href directives. Independent
+review reproduced a false pass when an HTML `<base href>` changed browser resolution;
+the follow-up refuses such directives instead of guessing. Original failed probes
+are retained. Pinned actionlint passes. This small Pages-only check leaves fast PR
+runtime checks unchanged; external links, CSS, browser layout and deployment remain
+separate evidence.
+
+A fresh copied-output consumer passes for all nine packages and 33 public subpaths
+in strict neutral/Node, DOM and WebWorker contexts, plus Node runtime import.
+Physical external dependencies are reused/fingerprinted, not installed. The receipt
+retains unchanged before/after SDK/dependency hashes; this is source-preview evidence,
+not registry or released-artifact qualification. The final signed-source docs render
+and exact-head independent review are retained separately after commit.

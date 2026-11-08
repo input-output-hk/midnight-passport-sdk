@@ -1,3 +1,4 @@
+import { inputByteLength } from './key-input-bytes.js';
 import type { WebCryptoKey } from './web-crypto-key.js';
 // Scoped-grant v1: a 94-byte container delivering the current ACC viewing secret to a grantee.
 import { x25519 } from '@noble/curves/ed25519.js';
@@ -9,7 +10,7 @@ const INFO = new TextEncoder().encode('midnight:account:grant:view:v1');
 
 const bytes = (value: string): Uint8Array => {
   if (!/^[0-9a-f]{64}$/.test(value)) throw new Error('expected 32-byte lowercase hex');
-  return Uint8Array.from(value.match(/.{2}/g)!, (pair) => Number.parseInt(pair, 16));
+  return Uint8Array.from(value.match(/.{2}/g) ?? [], (pair) => Number.parseInt(pair, 16));
 };
 const concat = (...parts: readonly Uint8Array[]): Uint8Array<ArrayBuffer> => {
   const result = new Uint8Array(parts.reduce((size, part) => size + part.length, 0));
@@ -101,14 +102,17 @@ export async function openGrantView(
     readonly expectedEncKey: Uint8Array;
   },
 ): Promise<Uint8Array | null> {
-  if (readSecret.length !== KEY_LENGTH) throw new Error('read secret must be 32 bytes');
-  if (request.expectedEncKey.length !== KEY_LENGTH)
+  if (inputByteLength(readSecret) !== KEY_LENGTH) throw new Error('read secret must be 32 bytes');
+  const suppliedEncKey = request.expectedEncKey;
+  if (inputByteLength(suppliedEncKey) !== KEY_LENGTH)
     throw new Error('live ACC enc_key must be 32 bytes');
   const grantId = bytes(request.grantId);
   const account = bytes(request.account);
-  const seal = Uint8Array.from(request.seal);
-  const expectedEncKey = Uint8Array.from(request.expectedEncKey);
-  if (seal.length !== GRANT_VIEW_SEAL_LENGTH || seal[0] !== 1 || seal[1] !== 1) return null;
+  const suppliedSeal = request.seal;
+  if (inputByteLength(suppliedSeal) !== GRANT_VIEW_SEAL_LENGTH) return null;
+  const seal = new Uint8Array(suppliedSeal);
+  const expectedEncKey = new Uint8Array(suppliedEncKey);
+  if (seal[0] !== 1 || seal[1] !== 1) return null;
   let opened: Uint8Array | undefined;
   try {
     const key = await wrappingKey(

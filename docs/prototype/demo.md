@@ -12,7 +12,7 @@ Settings; capability/name diagnostics are under Advanced. Read the
 > [AGENTS.md](../../AGENTS.md).
 
 A script for presenting the Passport DApp prototype. It describes the page by its actions, because
-the layout may change. The actions are **Create account**, **Open with passkey**,
+the layout may change. The actions are **Sign up**, **Log in**,
 **Rotate sealed viewing key**, **Connect built-in wallet** and **Copy evidence**.
 
 The [demo use cases](../site/use-cases.md) list the available account, wallet, funding,
@@ -207,14 +207,14 @@ known variant up to five times, so prompt counts are not fixed. The event log re
 operation and the progress bar follows the SDK flow events.
 
 The account and operation log are in page memory. Reloading clears the page state, then
-**Open with passkey** checks the directory hint against the live ACC and opens this device's
+**Log in** checks the directory hint against the live ACC and opens this device's
 sealed envelope. A device with no live ACC entry cannot open it.
 
 ## The click-through
 
 ### 1. Create the ACC
 
-**Do.** Open exactly `http://localhost:5173/` and click **Create account**. Save the passkey with a
+**Do.** Open exactly `http://localhost:5173/` and click **Sign up**. Save the passkey with a
 PRF-capable provider when prompted. The browser makes a profile probe before deploying. The
 service then deploys the ACC in ten waves, activates the first device and publishes its sealed
 key envelope and registration. This can take several minutes. The page reports the full ACC
@@ -234,7 +234,7 @@ higher authorisation nonce without putting the secret or grant seals in the shar
 
 ### 3. Reload and reopen
 
-**Do.** Reload the page, click **Open with passkey**, and choose the enrolled passkey. Confirm that
+**Do.** Reload the page, click **Log in**, and choose the enrolled passkey. Confirm that
 the ACC address is unchanged and the rotated key opens. **Open by ACC address** is available to a
 second enrolled device that knows the address; it does not reconstruct a lost passkey.
 
@@ -266,10 +266,11 @@ virtual credentials, while a real Google or iCloud provider run remains a separa
 Mock mode needs no authenticator. It works under the Vite dev server (`pnpm prototype:dapp`, or
 `prototype:up`) and never in a production build.
 
-| URL                                                | Create asks | Use it to                                                                       |
-| -------------------------------------------------- | ----------- | ------------------------------------------------------------------------------- |
-| `http://localhost:5173/?mockPasskey`               | twice       | Rehearse the click-through. Behaves like a provider that returns PRF at create. |
-| `http://localhost:5173/?mockPasskey=noprf-results` | three times | Rehearse the path of a provider that returns only `prf.enabled`.                |
+| URL | Credential path |
+| --- | --- |
+| `http://localhost:5173/?mockPasskey` | Simulates create-time PRF outputs; actual strict probe and P-256 publication signatures remain separate calls. |
+| `http://localhost:5173/?mockPasskey=noprf-results` | Simulates a provider reporting PRF support without create-time outputs; setup needs a separate PRF request. |
+
 
 The mock replaces `navigator.credentials` before the app loads. Everything else is real: the page,
 the connector, the WebAuthn checks, the Lace recipe, the service, the proof server and the chain.
@@ -278,10 +279,11 @@ the connector, the WebAuthn checks, the Lace recipe, the service, the proof serv
 - The mock answers without any browser prompt, so there is nothing to click, but the calls are the
   same as for a real passkey.
 - Its credentials, private keys and PRF secrets included, are kept in `localStorage`
-  (`passport-dev:mock-passkey:v1`) so that **Open with passkey** works after a reload. A
+  (`passport-dev:mock-passkey:v1`) so that **Log in** works after a reload. A
   discoverable prompt picks the newest credential.
-- To start clean, clear that key (or the site's storage). A mock account does not open with a real
-  passkey, or the reverse.
+- Use a fresh isolated browser profile for a new mock rehearsal. Retain the old profile
+  and its pending IDs; clearing storage is not a recovery path. A mock account does not
+  open with a real passkey, or the reverse.
 - Never present mock mode as a real passkey run.
 
 ## Passkey provider advice
@@ -293,13 +295,13 @@ The account and the built-in wallet need the WebAuthn **PRF** extension.
 - **Do not choose Chrome's "Chrome profile" store.** It has no PRF. Neither do some security keys.
   The first real run failed this way: the provider reported PRF unavailable, and create was refused
   after the first prompt, with nothing deployed.
-- **Delete stale passkeys for `localhost`** before a demo. Both pickers (**Open with passkey**, and
-  the wallet with no account open) list every passkey for the site. An old passkey without PRF, or
-  from a chain that has since been reset, makes the demo fail in front of people. In Chrome, passkeys
-  are listed at `chrome://password-manager/passkeys`. For iCloud Keychain, use the Passwords app.
+- **Select the enrolled credential.** A discoverable picker may list several credentials
+  for the site. Provider support and the selected network/account must match. Use a
+  separate browser profile for a disposable rehearsal; do not delete an existing
+  credential to simplify the picker. It may be the only remaining access path.
 - A passkey in another profile or machine can open a known ACC address after it has been enrolled
   in that account and can recover its sealed reader key. The local directory is needed only for
-  **Open with passkey**, which discovers the address.
+  **Log in**, which discovers the address.
 
 ## Troubleshooting
 
@@ -313,9 +315,10 @@ When a step fails, the status line reads `Failed: <code> — <message>`, and the
 > provider: Google Password Manager or iCloud Keychain (the "Chrome profile" store and some
 > security keys have no PRF). Then create the account again.
 
-It appears right after the first prompt. Nothing is deployed. **Fix:** delete the passkey that was
-just saved (it exists in the provider that refused it), click **Create account** again, and
-choose a PRF-capable provider.
+When PRF is refused at the initial creation stage, inspect Activity/Audit to confirm
+that no deployment has started. Select a PRF-capable provider for a new reviewed
+creation attempt. The failed provider may still retain its credential; preserve it
+until you have checked which account or pending attempt it belongs to.
 
 A provider that does not say whether it supports PRF is not refused here. If it then returns no PRF
 output at the encryption-key prompt, you get the next error, still before any deploy.
@@ -329,8 +332,9 @@ output at the encryption-key prompt, you get the next error, still before any de
 
 It appears at a later PRF prompt: the encryption-key prompt of a three-prompt create, or the
 built-in wallet. The most common cause is a stale passkey. In the manual run the wallet's picker,
-with no account open, offered the old Chrome-profile passkey. **Fix:** delete the stale passkey, or
-open the account first so the wallet's prompt is pinned to its own passkey, then retry.
+with no account open, offered the old Chrome-profile passkey. **Fix:** open the account
+with its enrolled credential before connecting its wallet, so selection is pinned.
+Do not delete credentials or replace a pending account operation to bypass this refusal.
 
 Other `UnsupportedAuthenticator` texts: "The authenticator did not create an ES256 (P-256) key."
 
@@ -352,9 +356,11 @@ The code is `UnsupportedAuthenticator`. The detail names what differed, for exam
 exact assertion shape. Chromium's known signed GREASE field is retried up to five times without
 changing the signed bytes; a different format is refused.
 
-**Fix:** retry once, then try another PRF-capable provider if the profile error repeats. If the
-five bounded GREASE attempts are exhausted, retry the operation. An unknown assertion layout
-requires a contract/profile update before it can authorise an ACC call.
+**Fix:** each recognized format retry needs a new review and assertion. After bounded
+attempts are exhausted, inspect the operation stage and pending IDs before another action;
+multi-transaction setup or rotation may already have effects. A different provider cannot
+sign as an existing enrolled credential. An unknown assertion layout requires a compatible
+contract/profile before it can authorize an ACC call.
 
 Related: "Passkey enrolment origin mismatch: the page is `<origin>`, the policy is
 `http://localhost:5173`." The page was opened at another origin, such as `127.0.0.1`. Open
@@ -364,15 +370,17 @@ Related: "Passkey enrolment origin mismatch: the page is `<origin>`, the policy 
 
 > The passkey prompt was cancelled.
 
-Also "Passkey creation was cancelled." and "No passkey was chosen." Nothing was submitted. The
-browser reports the same error when a prompt times out. **Fix:** click the button again. A
-cancelled create may leave a passkey in the provider with no account. Delete it.
+Also "Passkey creation was cancelled." and "No passkey was chosen." The browser may
+report the same error when a prompt times out. Cancellation stops the current ceremony;
+it does not undo earlier transaction steps. Inspect Activity/Audit and retain any
+pending attempt or original transaction ID before deciding the next action. Creation
+may leave a credential in the provider even when account setup is incomplete.
 
 ### AccountNotFound after a chain reset
 
 The registry is only valid for the chain it was written on. If the localnet's volumes were dropped
 (`docker compose … down -v`, or `experiments/acc-0.35/run.sh`, which starts fresh), the registry
-still names accounts that no longer exist. **Open with passkey** then fails with one of:
+still names accounts that no longer exist. **Log in** then fails with one of:
 
 > No contract at `<address>`.
 
@@ -380,8 +388,10 @@ still names accounts that no longer exist. **Open with passkey** then fails with
 
 > This passkey has no live entry on the account.
 
-The code is `AccountNotFound` in each case. **Fix:** delete `~/.midnight-passport/registry.json` and
-`registry.deployments.json`, delete the old passkeys for `localhost`, and create a new account.
+The code is `AccountNotFound` in each case. **Fix:** verify the original chain identity,
+ACC address and enrolled credential. Preserve registries, deployment evidence, journals
+and old volumes; archive/reconcile them before selecting fresh scoped state for a new
+disposable chain. Do not delete a passkey or unknown intent to repair login.
 
 Two more texts have the same code, for a passkey the registry does not know, or a record that is not
 this passkey's:
@@ -394,12 +404,12 @@ this passkey's:
 
 | Error                                                                          | Meaning and fix                                                                                                                                                  |
 | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ProverUnavailable`, after about 10 minutes                                    | The page gave up on the proof. Proofs and deploys share one queue, so a rotation queued behind a deploy can time out. Wait for the deploy to finish, then retry. |
+| `ProverUnavailable`, after about 10 minutes                                    | The page gave up on the proof. Proofs and deploys share one queue, so a rotation queued behind a deploy can time out. Inspect and reconcile the original operation ID; the service may still be working. Do not replace an uncertain send. |
 | `ProverUnavailable` at once                                                    | The service is unreachable, or Docker has too little memory for a P-256 proof (about 13.5 GiB). Raise Docker to 24 GiB.                                          |
-| `SponsorRejected`: "deployment limit reached for this service instance"        | The service accepts 20 deploys per process, failures included. Restart the service.                                                                              |
-| `SponsorRejected`, other text                                                  | The sponsor policy refused the transaction, or the sponsor failed. A failure at submit can be the Dust race. Retry.                                              |
-| `ProverUnavailable` or `SponsorRejected`: "service busy: too many queued jobs" | More than eight jobs wait on the service. Wait, then retry.                                                                                                      |
-| `ArtefactIntegrity`                                                            | The service's manifest hash is not the one the page was built with. Restart both with the same `PASSPORT_MANIFEST_SHA256`.                                       |
+| `SponsorRejected`: "deployment limit reached for this service instance"        | The configured admission limit is reached. Inspect its operator policy and original deployment records; do not bypass it by restarting a shared service.                                                                              |
+| `SponsorRejected`, other text                                                  | The sponsor policy refused the transaction, or the sponsor failed. A failure at submit may be unknown; reconcile the original transaction and sponsor state before any new send.                                              |
+| `ProverUnavailable` or `SponsorRejected`: "service busy: too many queued jobs" | The configured queue is full. A confirmed pre-admission refusal can be reviewed again after capacity returns; retain admitted or unknown IDs.                                                                                                      |
+| `ArtefactIntegrity`                                                            | The service's manifest hash is not the one the page was built with. Verify both against the independently trusted binding pin; do not change that pin to match unexpected bytes.                                       |
 | `NetworkMismatch`                                                              | The service is on another network than `undeployed`.                                                                                                             |
 
 For ports, Docker memory, the manifest hash and the two-copies error, see the troubleshooting

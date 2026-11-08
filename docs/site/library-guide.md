@@ -113,6 +113,14 @@ The SDK still supplies no transaction dialog or automatic fresh-passkey policy f
 software full owner. The [demo consent guide]({{ '/consent/' | relative_url }}) describes
 how that host binds an exact transfer/export review to its actual credential call.
 
+## Private account keys and public proof artifacts
+
+Use [Account keys and recovery]({{ '/account-keys/' | relative_url }}) for owner, reader,
+viewing-secret and wallet-seed contracts. Use [Public proving artifacts]({{ '/keys/' | relative_url }})
+for ZKIR, verifier/prover hashes, cache restoration and HTTP serving. These are
+different APIs and deployment responsibilities. Neither determines your host's
+login or transaction-approval policy.
+
 ## Custody and cleanup
 
 `AccountRecordStore` contains account metadata and sealed state; it is not a seed store.

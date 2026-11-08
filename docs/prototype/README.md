@@ -326,3 +326,19 @@ budget. The service's owned queue honors configured active capacity; custom queu
 failures retain unknown original IDs. This does not switch the default demo to
 host jobs. See the [operator contract](../site/service-jobs.md#source-preview-bounded-observation-and-admission)
 for the source-versus-release boundary and explicit recovery semantics.
+
+### Overnight hardening follow-up: ownership and qualification
+
+The reusable keyring now captures byte collections, recipient/policy metadata and
+rotation destinations before asynchronous key access. Mutation-journal encryption,
+AAD and storage CAS share a single admitted revision/document; grant view admission
+bounds input before copying. Existing wire suites and public signatures are unchanged.
+See the [library key contract](../site/account-keys.md) for input ownership and limits,
+not the demo's credential/lifetime policy.
+
+The new isolated populated-lifecycle runner has its own descriptor, fresh project,
+exclusive native lease and bounded exact-owned cleanup. It does not adopt the
+retained legacy stack or the user's current demo. Its fake-stack/worker tests
+establish admission and teardown contracts only; native results need a frozen-source
+passing receipt. Follow the [runbook](../site/qualification.md#source-preview-isolated-populated-host-job-lifecycle),
+retain original unknown IDs and preserve all old fixtures and volumes.

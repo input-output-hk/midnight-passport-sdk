@@ -211,3 +211,21 @@ Authored imports must use public ESM SDK exports or the checked documentation
 modules. Ambient declarations, reference directives and suppression comments
 cannot supply missing host helpers or change the chosen target. This is a source
 contract check for maintained examples, not a sandbox for hostile TypeScript.
+
+
+## Documentation quality gates
+
+Library contracts and the reference demo have [separate starting points]({{ '/' | relative_url }}).
+Every site TypeScript example and both complete example modules are compiled from
+a checked inventory against source public exports in the declared neutral, DOM,
+WebWorker or Node context. Required lint runs this without executing code or
+installing dependencies. This catches source API drift; it does not validate a
+registry installation or a real provider.
+
+After Jekyll, the Pages workflow checks local rendered targets and HTML anchors
+before uploading the site. Its small Python fixture suite also runs there, outside
+the fast PR runtime gate. The checker reports missing assets, base-URL mistakes,
+duplicate IDs and out-of-tree targets; it does not fetch external links or qualify
+CSS/layout/deployment. The [source documentation runbook](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/README.md)
+contains the reproducible commands. Owned desktop/mobile browser checks remain a
+separate review step for navigation, readable layout and overflow.

@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { WALLET_WINDOWS } from './live-expectations.mjs';
 
-/** @param {{root:string,ownerArm?:'jubjub'|'p256',worker:(...args:any[])=>any,finished:(w:any,ms:number)=>Promise<any>,waitFor:(f:()=>Promise<boolean>,ms:number,terminal?:()=>boolean)=>Promise<void>,docker:(args:string[])=>string,indexerId:string,indexerReady:()=>Promise<boolean>}} c */
+/** @param {{root:string,nodeUrl:string,ownerArm?:'jubjub'|'p256',worker:(...args:any[])=>any,finished:(w:any,ms:number)=>Promise<any>,waitFor:(f:()=>Promise<boolean>,ms:number,terminal?:()=>boolean)=>Promise<void>,docker:(args:string[])=>string,indexerId:string,indexerReady:()=>Promise<boolean>}} c */
 export async function runWalletReconnect(c) {
   await mkdir(c.root, { mode: 0o700 });
   /** @param {string} name @param {unknown} value */
@@ -44,7 +44,7 @@ export async function runWalletReconnect(c) {
   // Submission awaited node Finalized, so this finalized height bounds offline inclusion.
   /** @param {string} method @param {unknown[]} [params] */
   const rpc = async (method, params = []) => {
-    const response = await fetch('http://127.0.0.1:19954', {
+    const response = await fetch(c.nodeUrl, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),

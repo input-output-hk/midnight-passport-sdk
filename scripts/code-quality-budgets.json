@@ -251,22 +251,9 @@
       },
       "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
     },
-    "packages/keys/src/device-keyring.ts": {
-      "ceilings": {
-        "functionLines": 288,
-        "nonNull": 1
-      },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md. Two formatted lines replace Buffer-aliasing slice with an owned Uint8Array roster-key copy (Q3)."
-    },
     "packages/keys/src/grant-record.ts": {
       "ceilings": {
         "nonNull": 3
-      },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
-    },
-    "packages/keys/src/grant-view-seal.ts": {
-      "ceilings": {
-        "nonNull": 1
       },
       "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
     },

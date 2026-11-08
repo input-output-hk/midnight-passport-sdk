@@ -19,7 +19,7 @@ API can rotate the P-256 viewing secret or remove an enrolled device after verif
 roster, chain-backed holdings and active read-grant targets. The demo supplies these sources and
 exposes reviewed sealed-key rotation; unavailable openings cause a refusal. The new
 browser composition explicitly refuses older
-deterministic-key P-256 accounts until migrated. See [ZK keys and recovery](../site/keys.md).
+deterministic-key P-256 accounts until migrated. See [library key and recovery contracts](../site/account-keys.md).
 The account API can read shielded holdings through this sealed P-256 keyring when a host provides
 chain-backed holding verification; the browser demo supplies that source through the indexer.
 Both authoriser arms validate the viewing key with a nonempty sealed-entry request; empty

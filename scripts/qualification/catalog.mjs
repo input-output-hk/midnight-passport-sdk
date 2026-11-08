@@ -1,6 +1,21 @@
 // Scope is explicit: a passing simulator test does not qualify recovery or a release.
 const node = process.execPath;
 export const SCENARIOS = Object.freeze({
+  'host-job-lifecycle-isolated-native': {
+    tier: 'proof-localnet',
+    command: [node, 'scripts/qualification/live-isolated-job-lifecycle.mjs'],
+    requires: [
+      'PASSPORT_ISOLATED_LIFECYCLE_NATIVE',
+      'PASSPORT_RC_LOCALNET',
+      'MN_NETWORK_ID',
+      'PASSPORT_CONTRACT_DIR',
+      'PASSPORT_LIVE_ROOT',
+    ],
+    timeoutMs: 177 * 60_000,
+    terminationGraceMs: 180_000,
+    establishes:
+      'Fresh owned isolated stack, both software owner arms, populated job-backed enrollment/removal/survivor rotation and original-ID recovery with grant/holding continuity and wallet reconnect. Stops only recorded owned IDs; preserves all volumes and failed evidence. No retained stack control, real provider, browser/native combination, image or released-artifact acceptance.',
+  },
   'consented-sessions-native': {
     tier: 'proof-localnet',
     command: [node, 'scripts/qualification/live-sessions.mjs'],
@@ -403,6 +418,7 @@ export const SCENARIOS = Object.freeze({
   },
 });
 export const SUITES = Object.freeze({
+  'host-job-lifecycle-isolated-native': ['host-job-lifecycle-isolated-native'],
   'host-job-lifecycle-native': ['host-job-lifecycle-native'],
   'host-job-lifecycle-image-native': ['host-job-lifecycle-image-native'],
   'host-jobs-native': ['host-jobs-native'],

@@ -4,6 +4,7 @@ import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { SCENARIOS, SUITES } from './catalog.mjs';
+import { createOwnedProcessStopper } from './process-stop.mjs';
 import {
   sha256,
   tapSummary,
@@ -14,7 +15,7 @@ import {
 } from './receipt.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
-/** @typedef {{tier: string, command: string[], requires: string[], timeoutMs: number, establishes: string}} Scenario */
+/** @typedef {{tier: string, command: string[], requires: string[], timeoutMs: number, terminationGraceMs?: number, establishes: string}} Scenario */
 /** @param {string} suite @param {NodeJS.ProcessEnv} env */
 export function planSuite(suite, env = process.env) {
   const ids = /** @type {Record<string,string[]>} */ (SUITES)[suite];
@@ -31,37 +32,20 @@ export function planSuite(suite, env = process.env) {
   });
 }
 
-/** Terminate only the process group created for this exact scenario.
- * @param {import('node:child_process').ChildProcess} child
- */
-function stop(child) {
-  const pid = child.pid;
-  if (!pid) return;
-  try {
-    process.kill(-pid, 'SIGTERM');
-  } catch {
-    /* already exited */
-  }
-  const killer = setTimeout(() => {
-    try {
-      process.kill(-pid, 'SIGKILL');
-    } catch {
-      /* exited */
-    }
-  }, 1000);
-  killer.unref();
-}
-
 /** @param {Scenario} scenario @param {{root?: string, env?: NodeJS.ProcessEnv, maxOutputBytes?: number}} options */
 export async function runCommand(
   scenario,
   { root = ROOT, env = process.env, maxOutputBytes = 512 * 1024 } = {},
 ) {
+  const graceMs = scenario.terminationGraceMs === undefined ? 1000 : scenario.terminationGraceMs;
   if (
     !scenario.command.length ||
     !scenario.command[0] ||
     !Number.isSafeInteger(scenario.timeoutMs) ||
-    scenario.timeoutMs < 1
+    scenario.timeoutMs < 1 ||
+    !Number.isSafeInteger(graceMs) ||
+    graceMs < 1 ||
+    graceMs > 180_000
   )
     throw new Error('invalid scenario command');
   const started = performance.now();
@@ -69,7 +53,8 @@ export async function runCommand(
   /** @type {Buffer[]} */ const errors = [];
   let total = 0,
     exceeded = false,
-    expired = false;
+    expired = false,
+    interrupted = false;
   // A declared test is an independent runner, even when invoked by another Node test.
   const childEnv = { ...env };
   delete childEnv.NODE_TEST_CONTEXT;
@@ -83,16 +68,23 @@ export async function runCommand(
     detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+  const stopper = createOwnedProcessStopper(child, graceMs);
+  const interrupt = () => {
+    interrupted = true;
+    stopper.stop();
+  };
+  process.on('SIGINT', interrupt);
+  process.on('SIGTERM', interrupt);
   const timer = setTimeout(() => {
     expired = true;
-    stop(child);
+    stopper.stop();
   }, scenario.timeoutMs);
   const collect = (/** @type {Buffer[]} */ target, /** @type {Buffer} */ chunk) => {
     total += chunk.length;
     if (total <= maxOutputBytes) target.push(chunk);
     else if (!exceeded) {
       exceeded = true;
-      stop(child);
+      stopper.stop();
     }
   };
   child.stdout?.on('data', (chunk) => collect(output, chunk));
@@ -106,35 +98,42 @@ export async function runCommand(
     child.once('close', (code, signal) => resolveExit({ code, signal }));
   });
   clearTimeout(timer);
+  stopper.dispose();
+  process.removeListener('SIGINT', interrupt);
+  process.removeListener('SIGTERM', interrupt);
   const stdout = Buffer.concat(output),
     stderr = Buffer.concat(errors);
   const tests = tapSummary(stdout.toString('utf8'));
   // A declared Node test command cannot qualify an empty or missing TAP run.
   const emptyTests = scenario.command.includes('--test') && !(tests.passed && tests.passed > 0);
-  const outcome = exceeded
-    ? 'output-limit'
-    : expired
-      ? 'timed-out'
-      : spawnFailed || exit.code !== 0 || tests.failed || tests.cancelled || emptyTests
-        ? 'failed'
-        : tests.skipped
-          ? 'passed-with-skips'
-          : 'passed';
-  const failureCode = exceeded
-    ? 'OUTPUT_LIMIT'
-    : expired
-      ? 'TIME_LIMIT'
-      : spawnFailed
-        ? 'SPAWN_FAILED'
-        : exit.code !== 0
-          ? 'PROCESS_EXIT'
-          : tests.failed || tests.cancelled
-            ? 'TEST_FAILURE'
-            : emptyTests
-              ? 'NO_TESTS'
-              : tests.skipped
-                ? 'TEST_SKIP'
-                : undefined;
+  const outcome = interrupted
+    ? 'failed'
+    : exceeded
+      ? 'output-limit'
+      : expired
+        ? 'timed-out'
+        : spawnFailed || exit.code !== 0 || tests.failed || tests.cancelled || emptyTests
+          ? 'failed'
+          : tests.skipped
+            ? 'passed-with-skips'
+            : 'passed';
+  const failureCode = interrupted
+    ? 'INTERRUPTED'
+    : exceeded
+      ? 'OUTPUT_LIMIT'
+      : expired
+        ? 'TIME_LIMIT'
+        : spawnFailed
+          ? 'SPAWN_FAILED'
+          : exit.code !== 0
+            ? 'PROCESS_EXIT'
+            : tests.failed || tests.cancelled
+              ? 'TEST_FAILURE'
+              : emptyTests
+                ? 'NO_TESTS'
+                : tests.skipped
+                  ? 'TEST_SKIP'
+                  : undefined;
   return {
     outcome,
     elapsedMs: Math.round(performance.now() - started),
@@ -171,9 +170,11 @@ export async function runSuite(suite, output, { root = ROOT, env = process.env }
   // A crash leaves the lock for reconciliation; a second run cannot overwrite uncertain evidence.
   const startedAt = new Date().toISOString();
   const results = [];
+  let interrupted = false;
   for (const scenario of plan) {
     let result;
-    if (scenario.status === 'not-implemented')
+    if (interrupted) result = { outcome: 'failed', elapsedMs: 0, failureCode: 'INTERRUPTED' };
+    else if (scenario.status === 'not-implemented')
       result = { outcome: 'not-implemented', elapsedMs: 0, failureCode: 'NOT_IMPLEMENTED' };
     else if (scenario.missing.length)
       result = { outcome: 'not-configured', elapsedMs: 0, failureCode: 'MISSING_INPUT' };
@@ -192,6 +193,7 @@ export async function runSuite(suite, output, { root = ROOT, env = process.env }
           }),
         },
       });
+    if (result.failureCode === 'INTERRUPTED') interrupted = true;
     results.push({ id: scenario.id, tier: scenario.tier, ...result });
   }
   const after = await workspaceIdentity(root);

@@ -361,8 +361,8 @@ contract's WebAuthn profile are bound to that origin.
 
 | Step                                                     | Passkey prompts                                          | Takes                                                                    |
 | -------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **Create account**                                       | Provider-dependent; includes PRF and two signed inbox publications | 10 deploy waves, activation, then two signed sealed-key publications |
-| Reload the page, then **Open with passkey**              | 1 credential API request; provider UI can vary           | Reads the live ACC key and opens the sealed envelope |
+| **Sign up**                                       | Provider-dependent; includes PRF and two signed inbox publications | 10 deploy waves, activation, then two signed sealed-key publications |
+| Reload the page, then **Log in**              | 1 credential API request; provider UI can vary           | Reads the live ACC key and opens the sealed envelope |
 | **Open by ACC address** with an already-enrolled passkey | 1 credential API request; provider UI can vary           | Opens the known ACC without a local directory hint; does not recover a lost passkey |
 | **Rotate sealed viewing key**                             | Provider-dependent owner signature ceremonies             | Reviews live devices, holdings and read grants, then reseals a fresh secret before the ACC key switch |
 | **Connect built-in wallet**                              | 0 with a matching routine lease; otherwise 1 reviewed PRF request | seconds; no ACC authority follows a connection |
@@ -373,7 +373,7 @@ The page shows a progress bar and an event log with each step's start, end, dura
 taken from the account API's progress events; the deploy's bar still fills against a 3-minute
 estimate until the service reports its waves.
 
-**Without a real authenticator:** open `http://localhost:5173/?mockPasskey`. This dev-only mock
+**Without a real authenticator:** use a fresh isolated browser profile and open `http://localhost:5173/?mockPasskey`. This dev-only mock
 keeps its keys in `localStorage`, so it is only for testing. `?mockPasskey=noprf-results` exercises
 the 3-prompt path.
 
@@ -405,28 +405,36 @@ Chrome may append a GREASE member to `clientDataJSON`. The adapter retries that 
 variant up to five times without changing signed data; an unknown format is still refused. The
 ACC's strict `wa-json134` profile remains a compatibility limit for real passkey providers.
 
-## 6. Where state lives, and how to reset it
+## 6. Preserve state across restarts
 
-| State                                                            | Where                                                                | Reset                                                                                                    |
-| ---------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| The chain (accounts, contracts)                                  | Docker volumes of the `mn-passport-sdk-localnet` compose project     | `docker compose -f infra/localnet/docker-compose.yml -f infra/localnet/docker-compose.macos.yml down -v` |
-| Passkey-to-account lookup, and the accounts the sponsor pays for | `~/.midnight-passport/registry.json`, `registry.json.v1` and `registry.deployments.json` | Delete all three **whenever you reset the chain**, or Open fails with `AccountNotFound` |
-| Your passkey                                                     | Your password manager                                                | Delete old `localhost` passkeys so the picker offers only the current one                                |
-| Mock passkey                                                     | The page's `localStorage` (`passport-dev:mock-passkey:v1`)           | Clear site data for `localhost:5173`                                                                     |
+| State | Location | Restart and investigation contract |
+| --- | --- | --- |
+| Chain accounts, contracts and balances | The selected localnet's Docker volumes | Stop only owned compute; retain the volumes and original network identity. |
+| Passkey-to-account hints | `PASSPORT_REGISTRY_FILE` (default `~/.midnight-passport/registry.json`) and its `.v1` file | Hints are untrusted. Preserve them and verify the live ACC and sealed reader before adopting an account. |
+| Sponsor deployment allowlist | The registry's sibling deployment log (default `registry.deployments.json`) | Preserve it with the corresponding chain; it is separate from owner authority. |
+| Passkey | The selected credential provider | Use the enrolled credential. Deleting it can remove the remaining account access path. |
+| Host account records and grant/recovery journals | Browser stores and configured service state | Preserve original IDs, pending attempts and unknown outcomes. Reload is not permission to replace an intent. |
+| Development-only mock credential | The page's mock `localStorage` entry | Use a fresh isolated browser context for tests; never clear a real demo profile as a test reset. |
+
+A fresh disposable chain is a separate environment, with a new owned project and
+fresh scoped state. Before any intentional retirement, archive/reconcile the old
+state and unknown transactions. Never delete registries, passkeys, journals or
+volumes to repair a failed login, timeout or ordinary restart. The active owner
+may have other sessions using the same Midnight stack.
 
 ## 7. Troubleshooting
 
 | You see                                                          | Do this                                                                                                                                                            |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `guard: …`                                                       | You are outside the Nix shell. Run `nix develop`.                                                                                                                  |
-| `prototype-up: port … is taken by …`                             | Another process or localnet holds a Passport port. Stop it yourself, or move the Passport stack in `infra/localnet/ports.env` and `infra/networks/undeployed.env`. |
-| `Docker has N GiB; P-256 proofs need at least 24`                | Raise Docker's memory, restart Docker, then retry.                                                                                                                 |
+| `prototype-up: port … is taken by …`                             | Identify the recorded owner; reuse a healthy intended stack or choose free ports. Stop only your owned resources. Configure a separate stack through `infra/localnet/ports.env` and `infra/networks/undeployed.env`. |
+| `Docker has N GiB; P-256 proofs need at least 24`                | Arrange sufficient capacity before new work. A Docker restart affects other sessions and needs owner approval; do not restart it automatically.                                                                                                                 |
 | `PASSPORT_MANIFEST_SHA256 does not match`                        | The contract wasn't built with `compile.sh … full` from the `6458ed5` export, or the build is incomplete. Rebuild.                                                 |
-| `UnsupportedAuthenticator: … does not support the PRF extension` | Create the passkey in Google Password Manager or iCloud Keychain, not the Chrome profile store. Nothing was deployed.                                              |
-| `The authenticator does not match the wa-json134 profile`        | Your browser produced WebAuthn data the contract's fixed format rejects. Nothing was deployed. Retry, or try another browser.                                      |
+| `UnsupportedAuthenticator: … does not support the PRF extension` | Create the passkey in Google Password Manager or iCloud Keychain, not the Chrome profile store. Check the recorded stage; never infer the absence of a prior submission from this error alone. |
+| `The authenticator does not match the wa-json134 profile`        | Your browser produced data outside the contract's fixed profile. Inspect the recorded stage and original pending IDs; do not replace submitted work. A new credential attempt needs fresh review.                                      |
 | `This is not the passkey this account was created with`          | Pick the passkey you created the account with.                                                                                                                     |
-| `AccountNotFound` after a chain reset                            | Delete `~/.midnight-passport/registry.json`, `registry.json.v1` and `registry.deployments.json`.                                                                    |
-| `ProverUnavailable` after about 10 minutes                       | A transaction queued behind a deploy timed out. Wait for the deploy to finish, then retry.                                                                         |
+| `AccountNotFound` after a chain reset                            | Check the original chain identity and enrolled ACC. Archive/reconcile old evidence before selecting fresh scoped state; never delete journals to bypass the failure.                                                                    |
+| `ProverUnavailable` after about 10 minutes                       | Inspect the original operation stage/ID and service logs. A timeout may leave work running; reconcile that intent before any new send.                                                                         |
 
 ## 8. Rules for coding agents working on this branch
 
@@ -797,3 +805,33 @@ run test:docs` runs this alone. For hashes and Markdown-line diagnostics, use
 It compiles without executing code, loading credentials or starting a host.
 Source compilation is separate from actual installed/released-package evidence.
 The library guide owns API contracts; demo guides describe its chosen composition.
+
+### Isolated populated lifecycle — local source after RC7
+
+Read `docs/site/qualification.md#source-preview-isolated-populated-host-job-lifecycle`
+before `host-job-lifecycle-isolated-native`. This is a fresh owned source stack,
+not permission to use the archived legacy indexer or another session's demo.
+The closed descriptor pins loopback ports 19964/18108/16320 plus service 18798;
+all workers validate it before private setup. Use the shared stable wallet lease,
+a new private output and clean signed/built/frozen source plus physical dependencies.
+Cached images and all key bytes are verified; no pulling/regeneration is required.
+Only exact newly recorded IDs may be controlled, with bounded process/container
+cleanup. Preserve stopped containers, volumes, failed/unknown fixtures and pending
+IDs. Incomplete cleanup retains its lease for reconciliation. Offline fake-stack
+checks are not a native pass; both-arm populated results require actual receipts.
+The normal user demo and every unrelated Midnight stack remain outside this lane.
+
+Private account key/recovery contracts now live in `docs/site/account-keys.md`;
+`docs/site/keys.md` covers public proving artifacts. Neither sets the demo's login,
+routine lease or owner-approval policy. Keep those host decisions in the demo docs.
+
+
+### Rendered documentation gate
+
+Pages now runs deterministic Python link-checker fixture tests, then verifies
+rendered local href/src targets and HTML anchors before artifact upload. See
+`docs/site/README.md` for repository-pinned Python commands and a fresh JSON receipt.
+This is separate from required fast PR checks and from the TypeScript example gate.
+The checker never fetches external URLs, cannot qualify deployed Pages, and is not
+a CSS/layout check. Rerender/check links and inspect desktop/mobile layout after
+navigation/content changes; do not infer current rendering from an older receipt.

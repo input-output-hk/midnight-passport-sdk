@@ -9,12 +9,18 @@ import {
 } from '../../passport-service/qualification/private-files.ts';
 import { createDevWallet, type DevWallet } from '../src/wallet/dev-wallet.ts';
 
-const [, root] = process.argv.slice(2);
+import { nativeIsolationWorker } from '../../../scripts/qualification/native-isolation-worker.mjs';
+
+const [mode, root, arm] = process.argv.slice(2);
+const isolation = nativeIsolationWorker({ kind: 'wallet-reconnect', root, arm, mode });
 assert.equal(process.env.PASSPORT_RC_LOCALNET, '1');
 assert.equal(process.env.MN_NETWORK_ID, 'undeployed');
-assert.equal(process.env.MN_INDEXER_URL, 'http://127.0.0.1:18098/api/v4/graphql');
-assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18098/api/v4/graphql/ws');
-assert.equal(process.env.MN_NODE_URL, 'http://127.0.0.1:19954');
+if (!isolation) {
+  assert.equal(process.env.MN_INDEXER_URL, 'http://127.0.0.1:18098/api/v4/graphql');
+  assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18098/api/v4/graphql/ws');
+  assert.equal(process.env.MN_NODE_URL, 'http://127.0.0.1:19954');
+}
+
 const files = privateFiles(root!);
 assert.equal(files.exists('wallet-fixture.json'), false, 'Do not replace a prior wallet identity.');
 const ownerFixture = process.env.PASSPORT_WALLET_OWNER_FIXTURE;

@@ -5,6 +5,8 @@ on:
     branches: [passport-acc-prototype]
     paths:
       - 'docs/site/**'
+      - 'scripts/docs/check-rendered.py'
+      - 'tests/docs/**'
       - '.github/workflows/docs-pages.yml'
   workflow_dispatch:
 
@@ -26,6 +28,10 @@ jobs:
         with:
           source: docs/site
           destination: _site
+      - name: Check rendered local links and anchors
+        run: |
+          python3 -m unittest discover -s tests/docs -p 'test_*.py'
+          python3 scripts/docs/check-rendered.py _site --base-url /midnight-passport-sdk
       - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
         with:
           path: _site

@@ -271,3 +271,62 @@ to the native public-host baseline. Its 20 cases/20 canonical transactions are l
 not a new release or full hosted lifecycle. Denial/scope/expiry guards and byte tampering are
 checked. Existing failed fixtures and original identifiers stay retained. Slow lanes remain
 manual/opt-in, with cheap guards in ordinary CI; skips do not qualify as passes.
+
+
+## Source preview: isolated populated host-job lifecycle
+
+`host-job-lifecycle-isolated-native` is a separate **opt-in source lane** after RC7.
+It prepares a fresh random `mn-passport-joblife-<run-id>` project on loopback node
+`19964`, indexer `18108`, prover `16320` and service `18798`. These ports are shared
+with the isolated session lane, so the stable native-wallet lease serializes them.
+An occupied port or lease refuses; it does not stop or adopt its owner. The retained
+legacy stack's fixed endpoints remain a different lane.
+
+The supervisor creates a private descriptor with the exact source profile, run ID,
+output root and endpoints. Each worker checks its digest, scope, private file identity
+and relevant owner fixture before private setup. Partial descriptors, endpoint drift,
+retained-stack fallback, inherited sponsor/seed/preload overrides and incompatible
+worker modes refuse. It starts no real user browser or credential provider.
+
+Run only from a clean GPG-verified source, with built package outputs and physical
+workspace dependencies frozen for the duration. Prepare a fresh owned checkout when
+other development will continue. Use the existing verified contract export and key
+cache; the lane fingerprints the actual source, compiled outputs, physical dependencies,
+reference inputs and every required key before work and rechecks them at the end.
+It does not regenerate keys or pull replacement images. Reserve at least 15 GiB free
+disk and 24 GiB Docker memory before starting. Missing prerequisites are not a pass.
+
+```sh
+PASSPORT_ISOLATED_LIFECYCLE_NATIVE=1 \
+PASSPORT_RC_LOCALNET=1 MN_NETWORK_ID=undeployed \
+PASSPORT_CONTRACT_DIR=/absolute/path/to/verified/contract \
+PASSPORT_LIVE_ROOT=/absolute/path/to/fresh-private-output \
+nix develop -c pnpm qualify run host-job-lifecycle-isolated-native \
+  --output /absolute/path/to/fresh-outer-receipt.json
+```
+
+The output parent must already exist; both the private output root and outer receipt
+must be new. Read the plan first with `nix develop -c pnpm qualify plan
+host-job-lifecycle-isolated-native`. Keep all output and original IDs if it fails.
+
+The intended cases use both **same-arm software owners**: populated grants/holdings,
+job-backed enrollment/removal/survivor rotation, original-ID recovery and wallet
+reconnect through the owned indexer's outage. Native acceptance requires an actual
+passing receipt with every case; the existence of this runner or its fake-stack
+unit tests does not establish that acceptance. Mixed-arm lifecycle, real providers,
+browser/native combination, production images and released packages are independent.
+
+Work has a 160-minute internal deadline and a 175-minute total cleanup deadline.
+The outer runner allows 177 minutes plus at most three minutes of graceful termination.
+Signals latch cancellation, forward to the exact owned process group and retain a
+failed `INTERRUPTED` receipt even when graceful cleanup exits successfully. Repeated
+signals do not start a new operation. Closing an owned child cancels pending escalation;
+shutdown cannot later kill an unrelated reused process group. A forced OS termination
+cannot promise that application cleanup ran.
+
+Only IDs created and recorded by this run can be controlled. The supervisor rechecks
+container/image/network/volume identities before start/stop, waits for spawned workers
+to close, stops owned compute and retains volumes, containers, journals and failed/unknown
+fixtures. Uncertain creation or incomplete cleanup retains the exclusive lease for
+operator reconciliation. Never delete a lease or replace an unknown transaction to
+force a fresh run. No user stack is restarted or removed by this lane.

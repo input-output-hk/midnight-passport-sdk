@@ -1,5 +1,6 @@
 // Native-session infrastructure is isolated from all retained localnets. No side effects.
 import assert from 'node:assert/strict';
+import { assertNativeContainer } from './native-container-shape.mjs';
 import { createHash } from 'node:crypto';
 import {
   existsSync,
@@ -28,33 +29,20 @@ export function sessionProject(runId) {
  */
 export function sessionContainer(c, project, service, image, running = true) {
   assert.match(project, /^mn-passport-session-[a-f0-9]{16}$/);
-  assert.equal(c.Config?.Labels?.['passport.session.project'], project);
-  assert.equal(c.Config?.Labels?.['passport.session.service'], service);
-  assert.equal(c.Name, `/${project}-${service}`);
-  assert.match(c.Id, /^[a-f0-9]{64}$/);
-  assert.equal(c.Image, image);
-  assert.equal(c.State?.Running, running);
-  const [inner, outer] =
+  const port =
     service === 'node'
-      ? [9944, SESSION_PORTS.node]
+      ? SESSION_PORTS.node
       : service === 'indexer'
-        ? [8088, SESSION_PORTS.indexer]
-        : [6300, SESSION_PORTS.prover];
-  const expected = { [`${inner}/tcp`]: [{ HostIp: '127.0.0.1', HostPort: String(outer) }] };
-  assert.deepEqual(c.HostConfig?.PortBindings, expected);
-  if (running) assert.deepEqual(c.NetworkSettings?.Ports, expected);
-  const mounts =
-    service === 'proof-server'
-      ? []
-      : [{ Name: `${project}-${service}-data`, Destination: '/data' }];
-  assert.equal(c.Mounts?.length, mounts.length);
-  for (const [i, m] of mounts.entries()) {
-    assert.equal(c.Mounts[i].Type, 'volume');
-    assert.equal(c.Mounts[i].Name, m.Name);
-    assert.equal(c.Mounts[i].Destination, m.Destination);
-  }
-  if (running) assert.ok(c.NetworkSettings?.Networks?.[project]?.IPAddress);
-  return c.Id;
+        ? SESSION_PORTS.indexer
+        : SESSION_PORTS.prover;
+  return assertNativeContainer(c, {
+    project,
+    labelPrefix: 'passport.session',
+    service,
+    image,
+    port,
+    running,
+  });
 }
 
 /** Audit executable workspace dependencies, recording only known workspace package links as

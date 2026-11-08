@@ -135,7 +135,7 @@ pnpm install && pnpm build
 | `PASSPORT_SERVICE_HOST`    | `127.0.0.1`                    | Service bind address. A non-loopback host exposes the sponsor to whoever can reach it.                                   |
 | `PASSPORT_SERVICE_PORT`    | `8787`                         | Service port. The dapp expects 8787 unless `VITE_PASSPORT_SERVICE_URL` says otherwise.                                   |
 | `PASSPORT_MAX_DEPLOYS`     | `20`                           | Deploy cap per service process.                                                                                          |
-| `PASSPORT_REGISTRY_FILE`   | `~/.midnight-passport/registry.json` | The passkey-to-account registry; the deployed set sits beside it as `registry.deployments.json`, and the v1 hint store is `registry.json.v1`. Kept outside the repository so accounts can be reopened later. Delete all three when you reset the chain. |
+| `PASSPORT_REGISTRY_FILE`   | `~/.midnight-passport/registry.json` | The passkey-to-account registry; the deployed set sits beside it as `registry.deployments.json`, and the v1 hint store is `registry.json.v1`. Kept outside the repository so accounts can be reopened later. Preserve them with their original chain; archive/reconcile unknown work before choosing fresh scoped state. |
 | `PASSPORT_SPONSOR_SEED`    | the localnet genesis dev seed, on `undeployed` only | The sponsor wallet's seed. The default is public knowledge and funded on the localnet only; another network requires this or `PASSPORT_SPONSOR_SEED_FILE`. |
 | `PASSPORT_SPONSOR_SEED_FILE` | unset | Path to a file containing the sponsor wallet's 32-byte lowercase hex seed. Preferred for the service image; mutually exclusive with `PASSPORT_SPONSOR_SEED`. |
 | `PASSPORT_DEMO_FUNDING_ENABLED` | unset | Set to `1` by `demo up --funding`. Enables the localnet-only browser funding route on the Passport service; requires the token and asset policy files described in the funding service guide. |
@@ -269,8 +269,9 @@ free (for another stack, only 8787 and 5173, and no Docker). If one is taken it 
 anything for you. `bash scripts/prototype-up.sh --check` runs only the port check. It then starts
 the node and proof server, waits for block 2 (the indexer's SPO client fails on a chain still at
 genesis), starts the indexer, then the service, then the dapp. On exit it stops only the containers
-it started and leaves their volumes, so a rerun resumes the same chain. To reset the chain, run
-`experiments/acc-0.35/run.sh "$D" down` and delete the registry file and its `.deployments.json`.
+it started and leaves their volumes, so a rerun resumes the same chain. For a fresh
+disposable environment, select a new owned project and scoped state. Preserve the old
+volumes, registries and original unknown intents; do not delete them to repair an error.
 
 Open `http://localhost:5173` in a browser with a platform passkey. `prototype:e2e` writes its
 evidence to `experiments/acc-0.35/results/x8-dapp-e2e.json`.
@@ -412,8 +413,8 @@ descriptor for hosted signers; the demo's local passkey authoriser ignores that 
 - **A port is taken.** The preflight names the container or process. The Passport localnet
   publishes the node, indexer and proof server on host ports 19944, 18088 and 16300
   (`infra/localnet/ports.env`), so it runs beside another localnet on the Midnight defaults
-  (9944/8088/6300). A clash usually means a stale run: stop it yourself, then retry. To move the
-  stack, edit `ports.env` and the URLs in `infra/networks/undeployed.env` together.
+  (9944/8088/6300). Identify the owner before acting: reuse a healthy intended stack or
+  select free ports for your own. Never stop an unrelated session. To move your stack, edit `ports.env` and the URLs in `infra/networks/undeployed.env` together.
 - **`localhost` or `127.0.0.1`.** Open the dapp at exactly `http://localhost:5173`: the passkey's
   relying party and the ACC's origin binding are tied to that origin, and `127.0.0.1` will not
   work. The service listens on `127.0.0.1` only. If the browser or Node resolves `localhost` to
@@ -427,16 +428,18 @@ descriptor for hosted signers; the demo's local passkey authoriser ignores that 
   `PASSPORT_CONTRACT_DIR`.
 - **`ProverUnavailable` after about 10 minutes.** The dapp gives up on `/prove` after 10 minutes,
   but proofs and deployments share one queue on the service. A rotation queued behind a `/deploy`
-  (10 waves) can time out while the service keeps proving it. Wait for the deployment to finish,
-  then retry.
+  (10 waves) can time out while the service keeps proving it. Inspect the original operation
+  stage, request/job ID and service logs, then reconcile the same intent. A client timeout does
+  not prove that no transaction was sent and must not trigger a replacement send.
 - **Indexer requests fail in the browser.** The page queries the localnet indexer at
   `http://localhost:18088` from `http://localhost:5173`. Whether the indexer sends CORS headers has
   not been checked yet; look for a CORS error in the browser console before suspecting the
   connector.
-- **Docker has too little memory.** Raise it to at least 24 GiB and retry. `/prove` otherwise
+- **Docker has too little memory.** Reserve at least 24 GiB before starting new proof work. Coordinate any engine restart with other stack owners; do not restart Docker as routine test cleanup. `/prove` otherwise
   reports `ProverUnavailable`.
-- **Manifest hash does not match.** Recompute `PASSPORT_MANIFEST_SHA256` from the artefacts you
-  compiled. It is only reproducible from the canonical `compile.sh` invocation.
+- **Manifest hash does not match.** Compare the selected binding, compiler and artifact bytes with the independently trusted
+  manifest pin. Do not change the trusted pin to match unexpected output. Restore the matching
+  verified cache or use the canonical `compile.sh` invocation in a separate fresh build.
 - **The service exits at start-up.** Its first line says why: usually missing artefacts or a
   hash mismatch.
 - **Stale directory after an intentional chain reset.** Hint stores describe their original chain. Ordinary restarts preserve the chain volumes and accounts. After a deliberate fresh-chain reset, archive and reconcile the old registry, `registry.json.v1`, deployment log and transaction evidence before selecting fresh state. Do not delete registries, journals or unknown IDs to repair failed authentication or a timeout.
@@ -627,3 +630,20 @@ deadline. A failed observer stops observation, not accepted durable work. Retain
 original IDs and use explicit same-intent recovery. The service-owned queue now
 matches its active capacity; injected shared queues keep host-owned backpressure.
 Read the [job contract](../docs/site/service-jobs.md#source-preview-bounded-observation-and-admission).
+
+### Source-only isolated lifecycle qualification
+
+The opt-in `host-job-lifecycle-isolated-native` lane uses fresh owned containers and
+state on ports 19964/18108/16320 with service 18798, independently of the running demo.
+Its closed descriptor and stable native lease refuse endpoint/fixture substitutions
+and concurrent qualification. Read the [qualification runbook](../docs/site/qualification.md#source-preview-isolated-populated-host-job-lifecycle)
+for fresh-root requirements, signed frozen source/dependencies/key hashes, work and
+cleanup deadlines, exact-owned cleanup and retained failure/unknown evidence.
+Fake-stack tests are cheap guard coverage; they do not constitute a native run.
+Never restart the user's stack or delete archived volumes/leases to run this lane.
+
+For reusable contracts, start with [Library integration](../docs/site/library-guide.md)
+and [Account keys and recovery](../docs/site/account-keys.md). For this application's
+consent, worker and memory-lease choices, use [Demo composition](../docs/site/demo-guide.md).
+Public circuit artifacts and their HTTP cache are documented in the separate
+[proving-artifact guide](../docs/site/keys.md).
