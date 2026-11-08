@@ -849,3 +849,13 @@ HoldingIndexer methods, unique positions and spent checks remain required. Read
 `docs/site/durability.md` and `docs/site/api.md`; these are source hardening, not a
 new release or demo policy. Root's full gate/review and frozen native receipt still
 need the actual final source; earlier unit/type results are not native acceptance.
+
+
+### Isolated native startup inside Nix
+
+For the isolated populated lifecycle lane, use `nix develop -c env -u LD_DYLD_PATH
+pnpm qualify run host-job-lifecycle-isolated-native ...`. The pinned shell adds
+that metadata variable; the unchanged loader-override guard otherwise refuses
+before resources are created. Keep other inherited loader/seed/preload overrides
+forbidden. Retain failed receipts, use fresh roots, and never delete an occupied
+lease or touch unrelated containers to retry. Read the qualification guide.

@@ -1,8 +1,32 @@
 ---
 layout: default
-title: Prototype service API
+title: HTTP service integration
 permalink: /service/
 ---
+
+The reusable Node host accepts your routes, chain backend, wallets and policy.
+The reference demo composes it into local development services. Package
+integration and that app's endpoints have different responsibilities; start with
+the [library guide]({{ '/library-guide/' | relative_url }}) or
+[demo guide]({{ '/demo-guide/' | relative_url }}) for your task.
+
+## Reusable Node host
+
+`mn-passport-service` supplies `createServer(config, routes)`, `v1ChainRoute`,
+`directoryRoute`, `fundingRoute`, `verifyArtefacts` and `pinnedZkRoute`. Your host
+injects the wallet, proving provider, network pins, authentication, policy,
+directory and funding backend. Verify the pinned artifact tree before listening.
+The package supplies neither the demo's reference-client loader nor its sponsor
+seed. [Problems and boundaries]({{ '/problems/' | relative_url }}) distinguishes
+artifact serving, fee sponsorship and funding an ACC from wallet-held assets.
+
+The browser/Node `adapter-service` clients implement the corresponding remote
+ports. Use the versioned job clients for asynchronous proof/deploy progress,
+[durable host ports]({{ '/host-durability/' | relative_url }}) for explicit original-ID
+reconciliation, and the faucet client below for the separate funding service.
+Choosing a client does not configure an authenticated ingress or durable backend.
+
+## Reference demo composition
 
 The prototype service runs on `127.0.0.1:8787` by default. It is a development composition, not an authenticated public API. Its wire types are in [`packages/protocol/src/service.ts`](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/packages/protocol/src/service.ts). The reusable Node HTTP host and versioned proving, sponsorship, submission, deployment, directory, and funding handlers are in [`packages/service/src`](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/packages/service/src); the demo supplies its chain backend. The standalone funding process mounts the reusable funding handler; the Passport demo process mounts only a localnet browser proxy for it.
 
@@ -11,8 +35,6 @@ When container-only `MN_*_URL` endpoints differ from the addresses a browser can
 `PASSPORT_PUBLIC_NODE_URL`, `PASSPORT_PUBLIC_INDEXER_URL`,
 `PASSPORT_PUBLIC_INDEXER_WS_URL`, and `PASSPORT_PUBLIC_PROOF_SERVER_URL` on the host. Both config
 routes advertise those public addresses while the backend continues using `MN_*_URL`.
-
-The [problem statement]({{ '/problems/' | relative_url }}) separates three server responsibilities: serving pinned proving artefacts, sponsoring eligible ACC calls, and transferring wallet-held assets into an ACC. `mn-passport-service` exports `createServer(config, routes)`, `v1ChainRoute`, `directoryRoute`, `fundingRoute`, `verifyArtefacts`, and `pinnedZkRoute`. An application injects its own wallet, proving provider, policy, network configuration, directory, and funding backend. Verify the pinned tree before listening. The package does not ship the demo's reference-client loader or sponsor seed.
 
 | Route                                | Role                                                                                                                       |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
@@ -69,3 +91,48 @@ redacted facts. The callback receives no error text, request URL, body, header, 
 Synchronous callback throws and asynchronous rejections are isolated; the server never awaits
 telemetry, so a stalled callback cannot delay the response. Expected `HttpError` messages remain the route's
 public API; route implementations must keep those messages safe to disclose.
+
+
+## Source preview: V1 job observation lifetime
+
+After RC7, `remoteV1Prover`, `remoteV1Deployer` and `requestV1Job` use one
+monotonic deadline for the original POST, response bodies, cursor polls and
+backoff. `timeoutMs` defaults to **600,000 ms**; `pollIntervalMs` defaults to
+**250 ms**. Timeouts accept integers 1–2,147,483,647; polling accepts
+0–2,147,483,647. Invalid values refuse before dispatch. Prover/deployer factories
+capture their fetch and polling options at construction; editing that options
+object later does not redirect a call. Throwing option getters can therefore fail
+at construction rather than on the first invocation.
+
+A cooperative fetch is not required for caller settlement: expiry/abort races
+headers and body observation, cancels/releases the owned native reader best
+effort, and disposes late-arriving bodies. Underlying custom promises or
+synchronous host code cannot be forcibly stopped. Owned timers are cleared when observation ends. Caller-listener detachment is
+best effort if a custom provider refuses cleanup; any retained callback becomes
+inert. Cleanup throws/rejections cannot discard an accepted receipt or replace the
+primary typed failure. Late work cannot emit progress or start another poll.
+
+The original prove/deploy POST is sent once. Only a failed GET transport can be
+retried, at the same job ID/cursor, up to three retries. Malformed answers, invalid
+cursors/states and caller interruption are not transport retries. The complete
+public event batch is validated before any callback or cursor advancement.
+Callbacks keep their synchronous ordering; returned async rejections are observed,
+but async callbacks are not awaited as part of job completion.
+
+Caller cancellation uses `Aborted`; deadline/unreachable observation retains
+`ProverUnavailable` or `SponsorRejected` for its role. These codes do not prove
+that deployment had no effect. A lost acceptance can hide a job ID even though
+work started. Never replay a deployment POST merely because observation failed.
+
+Generic V1 result/event types still have no universal byte ceiling. Hosts must
+choose trusted services and enforce their own resource limits; custom `json()`
+allocations and blocking JavaScript are outside caller-deadline preemption. The
+8 MiB service request cap does not establish a maximum proof result. This slice
+does not silently truncate larger custom-host replies.
+
+These changes concern versioned job clients. Legacy `postService` and synchronous
+`remoteV1Sponsor` remain separate: an unspecified sponsor timeout has no implicit
+deadline, and its old explicit signal alone does not bound an uncooperative
+transport/body. Do not infer durable recovery or a no-send result from that path.
+The [raw durable mutation observation contract]({{ '/host-durability/#source-preview-original-id-observation' | relative_url }})
+has a different receipt policy and no transport POST retry.

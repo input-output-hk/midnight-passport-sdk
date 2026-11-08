@@ -18,8 +18,18 @@ const resultBytes = (answer: Record<string, unknown>, path: string): Uint8Array 
   }
 };
 
+function capturedJobOptions(options: V1RemoteOptions): V1RemoteOptions {
+  const { fetch, timeoutMs, pollIntervalMs } = options;
+  return Object.freeze({
+    ...(fetch !== undefined && { fetch }),
+    ...(timeoutMs !== undefined && { timeoutMs }),
+    ...(pollIntervalMs !== undefined && { pollIntervalMs }),
+  });
+}
+
 /** Transaction-level prover over the v1 request-and-poll wire. */
 export function remoteV1Prover(base: string, options: V1RemoteOptions = {}): Prover {
+  const pinned = capturedJobOptions(options);
   return {
     async proveTx(unproven, context) {
       const answer = await requestV1Job(
@@ -27,7 +37,7 @@ export function remoteV1Prover(base: string, options: V1RemoteOptions = {}): Pro
         '/v1/prove-tx',
         { tx: toHex(unproven) },
         'prover',
-        options,
+        pinned,
         context.signal,
         context.onEvent,
       );
@@ -38,6 +48,7 @@ export function remoteV1Prover(base: string, options: V1RemoteOptions = {}): Pro
 
 /** Wave deployer over the v1 request-and-poll wire. */
 export function remoteV1Deployer(base: string, options: V1RemoteOptions = {}): Deployer {
+  const pinned = capturedJobOptions(options);
   return {
     async deploy(request) {
       const answer = await requestV1Job(
@@ -50,14 +61,14 @@ export function remoteV1Deployer(base: string, options: V1RemoteOptions = {}): D
           ...(request.firstArm && { firstArm: request.firstArm }),
         },
         'sponsor',
-        options,
+        pinned,
         request.signal,
         request.onEvent,
       );
       const ids = answer.txIds;
       if (!Array.isArray(ids) || !ids.every((id): id is string => typeof id === 'string'))
         throw new PassportConnectorError('InternalError', '/v1/deploy answered no txIds list');
-      return { address: stringMember(answer, 'address', '/v1/deploy'), txIds: ids };
+      return { address: stringMember(answer, 'address', '/v1/deploy'), txIds: [...ids] };
     },
   };
 }

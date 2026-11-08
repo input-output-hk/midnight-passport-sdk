@@ -13,8 +13,10 @@ is a separate host choice.
 
 ## Own a channel and admit method data
 
-`createBackgroundClient(port, options)` correlates requests and returns
-`Promise<unknown>`. `serveBackgroundTasks(port, options)` captures an explicit
+`createBackgroundClient(port, options)` returns a `BackgroundClient`; its
+`client.request(method, input)` correlates requests and returns `Promise<unknown>`.
+Construction can throw synchronously; request failures reject the returned promise.
+`serveBackgroundTasks(port, options)` captures an explicit
 allowlist of read/computation handlers. Both require a channel of 1–128 characters
 from alphanumerics and `._:-`. Methods start with a letter, then contain alphanumerics,
 up to 64 characters. Use a dedicated ordered channel with one client epoch; IDs
@@ -58,26 +60,34 @@ export async function countAccounts(accounts: readonly string[]): Promise<number
 }
 ```
 
-In `reader.worker.ts`, validate again at the receiving boundary:
+Use this complete `reader.worker.ts` entry. It explicitly starts the server when
+the worker module loads and validates again at the receiving boundary:
 
 ```ts
 import { serveBackgroundTasks } from '@input-output-hk/mn-passport-account/background';
-import { browserBackgroundPort } from '@input-output-hk/mn-passport-adapter-browser/background';
+import {
+  browserBackgroundPort,
+  type BrowserMessageEndpoint,
+} from '@input-output-hk/mn-passport-adapter-browser/background';
 
-export function serveAccountReads(scope: DedicatedWorkerGlobalScope) {
-  return serveBackgroundTasks(browserBackgroundPort(scope, () => scope.close()), {
-    channel: 'example.reads.v1',
-    methods: {
-      async countAccounts(input: unknown) {
-        if (!Array.isArray(input) || input.length > 256 ||
-            Array.from(input).some(value => typeof value !== 'string' || !/^[0-9a-f]{64}$/.test(value))) {
-          throw new Error('Invalid account list');
-        }
-        return input.length;
-      },
+const endpoint: BrowserMessageEndpoint = {
+  postMessage: message => globalThis.postMessage(message),
+  addEventListener: (type, listener) => globalThis.addEventListener(type, listener),
+  removeEventListener: (type, listener) => globalThis.removeEventListener(type, listener),
+};
+
+serveBackgroundTasks(browserBackgroundPort(endpoint, () => globalThis.close()), {
+  channel: 'example.reads.v1',
+  methods: {
+    async countAccounts(input: unknown) {
+      if (!Array.isArray(input) || input.length > 256 ||
+          Array.from(input).some(value => typeof value !== 'string' || !/^[0-9a-f]{64}$/.test(value))) {
+        throw new Error('Invalid account list');
+      }
+      return input.length;
     },
-  });
-}
+  },
+});
 ```
 
 This counts public identifiers; it does not verify account existence or ownership.
@@ -140,3 +150,8 @@ The same tests cover correlation, limits, timeouts, replay and independent-threa
 heartbeat. Browser worker/transport tests establish their exercised synthetic paths,
 not real wallet synchronization, native proving or provider acceptance. See
 [quality layers]({{ '/quality/' | relative_url }}).
+
+The [documentation worker regression](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/tests/docs-background-worker.test.mjs)
+also executes this exact worker entry in an owned Node worker with browser event
+capability shims. It checks startup and valid/invalid requests; it is not an actual
+browser-worker or provider qualification.

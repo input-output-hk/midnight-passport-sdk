@@ -4,11 +4,16 @@ title: Durable host submissions and deployment waves
 permalink: /host-durability/
 ---
 
-**RC6 preview host transport following the owner continuation API.** See the [RC6 release status]({{ "/release-notes-rc6/" | relative_url }}). This page describes
-the opt-in Node host transport for [mutation durability]({{ '/durability/' | relative_url }}).
-Published RC5 and the default demo owner buttons are unchanged. Docker was stopped
-during this slice: offline/process tests do not establish proof-backed localnet,
-real-provider or full Lace acceptance.
+**Introduced in RC6 and available in published RC7.** This is the opt-in Node
+host transport for [mutation durability]({{ '/durability/' | relative_url }}).
+The default browser/demo owner buttons use a different composition; they do not
+become durable by enabling a journal. Source-only observation hardening is labeled
+below. Dated simulator, HTTP, process and native evidence has its own scope in the
+[qualification guide]({{ '/qualification/' | relative_url }}).
+
+For integration, follow **Enable the Node reference host → Compose trusted host
+ports → RPC and state machine**. The later dated sections retain failure/recovery
+history; use them as evidence rather than additional setup steps.
 
 ## What the host persists
 
@@ -338,3 +343,43 @@ These use a fake chain driver, not native expiry or a new process. Existing
 native ledger expiry checks and the dedicated proof/outage lane keep their own
 scope. The SDK/host semantics are unchanged; complete race/provider acceptance
 is not inferred from these new tests.
+
+
+## Source preview: original-ID observation
+
+After RC7, `remoteHostMutationPorts` captures its token, pins, fetch and timing
+options at construction. Each invocation retains its original identity, signal
+and serialized request before asynchronous work. `timeoutMs` defaults to
+**600,000 ms**, covering execute, bodies, valid unknown-result continuation and
+polling pauses together. `pollIntervalMs` defaults to **250 ms**. Timeout integers
+are 1–2,147,483,647; polling integers are 0–2,147,483,647. Invalid settings refuse
+before fetch instead of relying on JavaScript timer clamping.
+
+The caller settles when that total monotonic budget expires or its original
+signal aborts, even if an injected fetch/JSON reader ignores cancellation. Native
+body cancellation and lock release are best effort; structural `json()` allocation
+and arbitrary synchronous host work are not preemptible. Late headers/bodies cannot
+replace the settled result or start another request. Owned timers are cleared;
+caller-listener removal is best effort for a failing custom provider. A retained
+callback becomes inert. Cleanup failures preserve the original accepted receipt
+or sanitized primary failure rather than replacing it with a cleanup diagnostic.
+
+Execute is sent once. A valid `unknown` reply can continue through reconcile under
+the same identity and remaining approval/budget; a failed execute/reconcile POST
+is never retried automatically. Explicit `outcomes.reconcile` is one new observation
+of the original effect. Reconcile may finish approved original preparation or
+remaining waves; it is not universally read-only. An uncertain prior broadcast is
+lookup-only and must not be replaced with new bytes or a new request ID.
+
+Confirmed receipts must match the original digest and call/deploy arm. Deploy
+watch IDs are copied into an owned array. Canonical host records allow at most
+**64 deployment steps**; the largest compact tagged-watch outcome is **4,610
+bytes**. The client admits **8,192 wire bytes**, including formatting allowance,
+for this narrow protected outcome. This is not the response limit for generic
+V1 proof jobs. Native streams are bounded before parsing; structural JSON-only
+transports are checked after their own allocation.
+
+Observation failures retain the sanitized `MutationUnsettled` outcome, including
+pre-aborted calls. It means the original effect requires reconciliation; it does
+not establish absence of a send. Keep the original journal, request ID, digest,
+prepared bytes and host key. Do not switch to legacy submission or clear state.

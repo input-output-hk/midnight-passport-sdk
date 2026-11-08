@@ -301,9 +301,15 @@ PASSPORT_ISOLATED_LIFECYCLE_NATIVE=1 \
 PASSPORT_RC_LOCALNET=1 MN_NETWORK_ID=undeployed \
 PASSPORT_CONTRACT_DIR=/absolute/path/to/verified/contract \
 PASSPORT_LIVE_ROOT=/absolute/path/to/fresh-private-output \
-nix develop -c pnpm qualify run host-job-lifecycle-isolated-native \
+nix develop -c env -u LD_DYLD_PATH pnpm qualify run host-job-lifecycle-isolated-native \
   --output /absolute/path/to/fresh-outer-receipt.json
 ```
+
+The pinned Nix shell adds `LD_DYLD_PATH` metadata. The command removes that single
+variable **inside** the shell; otherwise the loader-override guard refuses before
+resource creation. Keep the guard intact. Other inherited loader, seed, preload
+or routing overrides remain forbidden; do not remove them wholesale to bypass a
+refusal. Retain each failed attempt and use new output/receipt paths.
 
 The output parent must already exist; both the private output root and outer receipt
 must be new. Read the plan first with `nix develop -c pnpm qualify plan

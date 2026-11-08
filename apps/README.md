@@ -660,3 +660,16 @@ See [durability](../docs/site/durability.md#source-preview-pin-one-invocation) a
 existing account/consent composition; these library changes do not silently enable
 durable mode, reconnect wallets or change approval policy. Native runs require a
 matching frozen source receipt; synthetic tests alone do not qualify them.
+
+
+### Library hardening versus demo composition — local source
+
+Read the separate library and demo entry guides. Versioned proof/deploy clients
+now bound total observation, and raw durable ports retain original-ID uncertainty
+without POST replay. These are library transport contracts; they do not make the
+default owner buttons durable or install a login/session policy. Generic V1 result
+size and legacy synchronous sponsor behavior remain separate limits. P-256 grant
+revocation uses typed internal phases with unchanged live checks/fresh approval.
+The later extraction is not qualified by an earlier frozen native receipt.
+Examples are strict-checked; the worker entry also has an exact-source execution
+regression. Preserve all pending journals, account records and user service state.

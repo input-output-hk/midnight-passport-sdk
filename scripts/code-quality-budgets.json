@@ -11,13 +11,13 @@
     },
     "packages/account/src/connector.ts": {
       "ceilings": {
-        "lines": 1362,
-        "functionLines": 1252,
-        "complexity": 45,
-        "nonNull": 27,
+        "lines": 1057,
+        "functionLines": 949,
+        "complexity": 15,
+        "nonNull": 16,
         "unsafeCasts": 2
       },
-      "reason": "O4: typed P-256 enrollment phases extracted with exact outer/nested-rotation Flow and key-scope ordering. Actual root1696\u21921362lines, factory1585\u21921252, complexity47\u219245, non-null47\u219227. Remaining grant-revocation/factory debt cannot grow; new phases use default budgets. See docs/review/overnight-quality/README.md."
+      "reason": "O4: typed selective/all P-256 grant revocation phases preserve separate source/roster/signing/settlement policies. Actual connector1362\u21921057lines, factory1252\u2192949, complexity45\u219215, non-null27\u219216; remaining large factory/unsafe debt cannot grow. New modules use default budgets. See docs/review/overnight-quality/README.md."
     },
     "packages/account/src/durable-mutations.ts": {
       "ceilings": {
@@ -217,18 +217,6 @@
     "packages/adapter-midnight-js/src/graphql-holding-indexer.ts": {
       "ceilings": {
         "functionLines": 195
-      },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
-    },
-    "packages/adapter-service/src/host-mutations.ts": {
-      "ceilings": {
-        "functionLines": 172
-      },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
-    },
-    "packages/adapter-service/src/v1-jobs.ts": {
-      "ceilings": {
-        "complexity": 30
       },
       "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
     },

@@ -19,12 +19,12 @@ possible. Public docs live here; running checklist/evidence live in Obsidian.
 | O1 | Consent consolidation | One app review before each actual credential request; retain exact transaction/device/grant approval and create maintenance acknowledgement; cancel invokes no credential; retries are fresh; no stale-lease fallback | Delivered in waves 1 and 3; exact owner inputs join the actual ceremony review |
 | O2 | Entry navigation | No Overview menu item. Signed-out entry offers Sign up/Log in; authenticated home navigation opens Account balances without another credential, account reset or lost draft | Delivered and browser checked in wave 1 |
 | O3 | SDK boundary defects | Grant-holder review/sign/send use one immutable admitted input; bounded decimals before BigInt; Node Buffer session reads do not erase retained keys | Fixed, including immutable grant records/openings in wave 2 |
-| O4 | Reusable API and domain readability | Extract cohesive responsibilities from measured large files, clear capability/custody/authority naming, no API/recipe churn or inflated quality ceilings | JubJub rotation, P-256 enrollment and P-256 rotation phases; typed host-job modules in waves 2–4 |
-| O5 | Input and platform contracts | Zod/branded admission where needed; safe malformed/oversized/mutating input handling; browser/Node import/type behavior preserved | Bounded config/jobs, byte ownership, checker/lease identity, partial-init cleanup in waves 1–4 |
-| O6 | Browser coverage | Playwright journeys cover successful/cancel/retry/expiry/navigation flows and exact request counts; actual DOM/worker/storage tests distinguish synthetic account/chain from native evidence | 192 both-arm journeys and owned worker/storage checks pass wave 3; final overnight rerun remains |
+| O4 | Reusable API and domain readability | Extract cohesive responsibilities from measured large files, clear capability/custody/authority naming, no API/recipe churn or inflated quality ceilings | Typed rotation/enrollment/job phases in waves 2–4; keyring modules in wave 5; selective/all P-256 grant revocation in wave 7 |
+| O5 | Input and platform contracts | Zod/branded admission where needed; safe malformed/oversized/mutating input handling; browser/Node import/type behavior preserved | Waves 1–7: bounded config/jobs, owned key/coin inputs, invocation IDs, cleanup and total V1/raw-mutation observation lifetimes |
+| O6 | Browser coverage | Playwright journeys cover successful/cancel/retry/expiry/navigation flows and exact request counts; actual DOM/worker/storage tests distinguish synthetic account/chain from native evidence | 192 both-arm journeys pass again in wave 6; worker/storage checks retained; final overnight rerun follows the last runtime tranche |
 | O7 | Promptless upstream behavior | Pin current staging/public source; explain persisted-key restoration vs fresh authentication. Any implemented resume never infers private authority from machine trust or public hints | Research published locally; no implicit private persistence |
 | O8 | Human copy and docs | Remove redundant reassurance, keep meaningful action/scope/recovery information, align API examples, agent guide and architecture decisions | Library/demo paths and rendered/typechecked examples delivered; contract guides in wave 2 |
-| O9 | Independent handover | Sub-agent reviews plus independent exact-head review, signed local commits, passing gates/coverage/consumer checks, signed immutable packet and updated checkpoint | Waves 1–2 independently accepted; wave 3 review P2 fixed locally in wave 4; final review pending |
+| O9 | Independent handover | Sub-agent reviews plus independent exact-head review, signed local commits, passing gates/coverage/consumer checks, signed immutable packet and updated checkpoint | Waves 1–6 signed and independently accepted; wave 3 finding closed in wave 4; final overnight review remains |
 
 ## First tranche verification
 
@@ -404,3 +404,88 @@ ready handshake now allows 30 seconds and fails early if the outer child exits;
 the actual signal, cleanup-grace and no-later-scenario assertions are unchanged.
 This is not a runtime timeout increase. Original failed gate output is retained;
 a complete post-fix gate must pass before commit.
+
+
+## Wave 7 — smaller revocation services, transport lifetimes and usable examples
+
+P-256 selective and all-grant revocation now have typed preparation, signing,
+recheck, dispatch and settlement phases. Complete-roster and single-detail policies
+remain distinct. The original outer Flow and nested rotation Flow, credential
+scopes, challenge timing, live source receivers, read-key exclusions and final
+fresh assertion are retained. An unknown final dispatch is never retried or
+converted into a revoked result. New public-account contracts exercise authority
+mutation, exact traces, counter/generation rules and settlement/uncertainty.
+
+The connector falls **1,362 → 1,057 lines**, factory **1,252 → 949**, maximum
+complexity **45 → 15**, and non-null assertions **27 → 16**. Four new private
+modules use default budgets, zero unsafe assertions and runtime phase functions
+of at most 40 lines. Existing remaining factory/unsafe debt is still explicit;
+this does not claim every large file has disappeared. Actual ceilings ratchet down.
+
+Versioned proof/deploy jobs and raw durable mutation clients now use one monotonic
+observation budget, including headers, bodies, pauses and safe GET retries. An
+uncooperative injected fetch/JSON/cancel cannot keep the caller waiting past its
+budget. Late bodies are disposed best effort and losing rejections are observed.
+Small typed codec/outcome/response-owner/lifetime modules keep protocol retry,
+continuation and error decisions in their respective facades.
+
+The original V1 POST and raw execute POST are never replayed. GET retry preserves
+the same job/cursor, with three retries only for transport failures. Whole event
+batches are admitted before callbacks/cursor changes. Raw reconcile can finish
+original approved preparation under the same identity; a failed POST does not
+retry. Canonical mutation receipts have a derived 8,192-byte/64-step policy and
+owned transaction-ID arrays. Generic V1 results retain their previously unbounded
+size contract; it is not a universal proof-size limit. Synchronous V1 observer
+ordering remains; returned async rejections are observed without awaiting them.
+Legacy postService, synchronous sponsor, host-job/config transports remain separate.
+The known synchronous sponsor observation gap is retained for a bounded follow-up.
+
+Developer documentation fixes concrete contracts: cancellation/inspection do not
+invoke the coordinator's consent callback; completed cancellation returns its
+audit unchanged. The routine reader documents its scoped capability and the
+difference between returning undefined and throwing. A complete source-only
+verified-login handoff derives an owned wallet seed inside its callback and clears
+it in finally. Browser storage states its ambient UUID prerequisite. Library
+contracts and reference-app custody/approval policies stay in separate guides.
+
+The worker guide now contains a complete explicitly started entry, and accurately
+describes the client return shape. A regression executes that exact fence with
+the actual SDK in an owned Node worker and browser event-capability shims. Removing
+only startup produces the expected timeout; the worker is still terminated. This
+is distinct from actual browser/native/provider acceptance. All 34 strict example
+target compilations pass. Service docs now lead with reusable host integration,
+then the demo composition; dated evidence is identified as history, not setup steps.
+
+Focused results before root integration: **130 transport/compatibility tests**,
+**101 revocation tests** (41 new), and the exact-worker regression pass. Independent
+transport review reruns 90 cases and additional cursor/deadline probes with no
+actionable findings; its owned loopback HTTP scope and closures are recorded.
+The revocation and documentation cross-reviews, full root gate and fresh coverage
+remain separate receipts. The earlier frozen 8c35cc4 native lifecycle run does not
+qualify this later grant-revocation extraction or these transport changes.
+
+The first native command refused Nix-added LD_DYLD_PATH before resource creation.
+The documented command now removes that single metadata variable inside the
+pinned shell while preserving all other loader/seed/preload guards. A fresh second
+attempt owns new containers and frozen inputs; its result remains in progress.
+Failed receipts, original IDs and user/unrelated resources are preserved.
+
+Root integration first caught a test-only portability mismatch: the native Node
+Response declaration marks json readonly, while the scoped DOM check allowed the
+old assignment. The late-header fixture now wraps the actual native body/status/
+headers in the structural port without mutating Response or asserting away the
+type. Root Node-only strict checking and all 74 transport cases pass; the failed
+first gate remains retained. Package runtime and reviewed hashes are unchanged.
+Independent revocation review reruns 101 tests plus four source/authority timing
+probes with no actionable findings. Final root integration evidence follows.
+
+A final targeted teardown probe then found a P2 missed by the first broad transport
+review: a throwing structural removeEventListener could discard a confirmed
+receipt, and V1 could expose the cleanup diagnostic instead of its result/typed
+error. The original eight control/fault probes are retained. The follow-up clears
+owned timers, latches closed callbacks, catches synchronous cleanup failures and
+observes async cleanup rejection without awaiting it. Caller detach remains best
+effort; a refusing provider can retain an inert listener. New receipt/primary-error/
+late-abort/actual-process closure tests and independent probe closure precede the
+final post-fix gate and signature. Earlier passing coverage/browser/consumer
+receipts retain their pre-fix hashes; they are not relabeled as final execution.

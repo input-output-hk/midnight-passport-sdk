@@ -354,3 +354,16 @@ asynchronous data consistency without adding a demo action or changing passkey
 policy. Read the library [durability](../site/durability.md#source-preview-pin-one-invocation)
 and [holding-source](../site/api.md#ports) contracts. Preserve original unknown IDs,
 exact-value shielded spending and the separate source/native/provider evidence tiers.
+
+
+### Current source library and demo boundaries
+
+The library guide documents input ownership, original-ID recovery, total V1/raw
+mutation observation and optional source capabilities. The demo guide explains
+its selected consent, routine lease, wallet worker and UI composition. The SDK
+does not install those host policies automatically. New revocation phases retain
+fresh owner approval and chain-backed roster/key checks; uncertain calls are not
+replayed. Read the source-preview sections of the HTTP/host-durability guides for
+limits, including generic V1 size and the separate synchronous sponsor path.
+Strict examples and the executed worker entry supplement, rather than replace,
+actual browser/native qualification at a recorded source.

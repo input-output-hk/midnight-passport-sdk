@@ -39,6 +39,8 @@ before selecting an import. Keep source builds and published consumer evidence s
 The portable account/key layers do not create your DOM, React tree, wallet vault or
 worker. An ACC viewing secret, a passkey signer, a wallet seed, fee sponsorship and
 funding are different capabilities. Passing one does not grant the others.
+For an optional source-only seed handoff during verified open, see the
+[login lifecycle example]({{ '/account-keys/#source-preview-use-wallet-material-during-verified-login' | relative_url }}).
 
 ## Integrate in lifecycle order
 
@@ -93,6 +95,8 @@ qualified values; an injected nullifier callback receives a separate copy. Suppl
 the complete [holding-indexer contract]({{ '/api/#ports' | relative_url }}), not only
 an inbox decoder. Source snapshots protect tested asynchronous boundaries, not
 arbitrary hostile host code or external chain freshness.
+The optional [routine-reader seam]({{ '/api/#source-preview-optional-routine-reader' | relative_url }})
+accepts host-approved holdings access; its lifetime and refusal policy remain host-owned.
 
 ## Source preview: checked service configuration
 

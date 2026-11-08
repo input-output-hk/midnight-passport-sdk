@@ -22,6 +22,16 @@
       ]
     },
     {
+      "path": "docs/site/account-keys.md",
+      "fences": [
+        {
+          "targets": [
+            "web"
+          ]
+        }
+      ]
+    },
+    {
       "path": "docs/site/api.md",
       "fences": [
         {

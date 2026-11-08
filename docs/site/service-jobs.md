@@ -4,11 +4,17 @@ title: Durable host mutation jobs
 permalink: /service-jobs/
 ---
 
-**RC6 preview operator API for #233.** See the [RC6 release status]({{ "/release-notes-rc6/" | relative_url }}).
-RC6 publishes this opt-in API. The default demo and legacy `/v1/jobs` protocol
-keep their existing composition.
-Dated local native-proof results are scoped below; browser-provider and full Lace
-qualification remain open.
+**Introduced in RC6 and available in published RC7.** This opt-in descriptor-job
+API is separate from the process-local legacy `/v1/jobs` protocol and the default
+demo composition. Newer source changes and dated qualification results are labeled
+in their sections.
+
+For a new host, read **Problem and supported scope → Lifecycle and restart contract
+→ Node composition**, then configure the protected client described below. Keep
+original owner/effect IDs through recovery. The later dated reports record tested
+boundaries and incidents; they are not instructions to reset or reuse old fixtures.
+Use the [library guide]({{ '/library-guide/' | relative_url }}) for package wiring and
+[demo guide]({{ '/demo-guide/' | relative_url }}) for the reference app.
 
 ## Problem and supported scope
 

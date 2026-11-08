@@ -27,6 +27,55 @@ input ownership and lifecycle. The demo's [routine access]({{ '/quick-actions/' 
 not defaults of the key recipes. Published RC7 and later source features remain
 labeled in those guides.
 
+## Source preview: use wallet material during verified login
+
+The optional `BrowserPassportConfig.onAccountOpened` callback runs after a verified
+open/open-at, while that passkey's login scope is still active. It does not run for
+account creation or an authenticated `ownerSession` composition. Its
+`BrowserLoginKeys` exposes only `deriveWalletSeed()`, not raw PRF outputs, reader
+secrets or an owner signer. Each call returns a fresh caller-owned seed copy.
+
+This complete source-only module adds the callback to a host's normal passkey
+composition. The host supplies the wallet operation; the SDK does not connect a
+wallet or retain a session automatically:
+
+```ts
+import {
+  createBrowserPassport,
+  type BrowserPassportConfig,
+} from '@input-output-hk/mn-passport-adapter-browser';
+import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
+
+export function passportWithWalletLogin(
+  config: Omit<BrowserPassportConfig, 'onAccountOpened' | 'ownerSession'>,
+  useSeed: (account: PassportAccount, seed: Uint8Array) => Promise<void>,
+) {
+  return createBrowserPassport({
+    ...config,
+    onAccountOpened: async (account, keys) => {
+      const seed = keys.deriveWalletSeed();
+      try {
+        await useSeed(account, seed);
+      } finally {
+        seed.fill(0);
+      }
+    },
+  });
+}
+```
+
+Call `openAccount` or `openAccountAt` from the host's reviewed user action. Use the
+login handle inside the awaited callback; it refuses after that login scope ends.
+Do not save `keys` for a later click. If `useSeed` retains its own copy or creates a
+wallet runtime, the host owns that copy/runtime's lifetime and teardown; this
+example clears only the seed it derived. A callback failure rejects the open call,
+but does not delete an existing account or reverse earlier effects.
+
+The handoff is absent from published RC7. It does not enroll or unlock a full
+owner, grant authority, persist private material, or choose a routine lifetime.
+The [demo guide]({{ '/demo-guide/' | relative_url }}) describes that host's additional
+routine-reader and wallet policy; other hosts choose their own custody and consent.
+
 ## Source preview: caller-owned inputs
 
 The source after RC7 admits an owned keyring/recipient/entry snapshot **before**
@@ -66,7 +115,7 @@ At Lace PR #2845 merged head `502b0794cc7bcfc76342230193fef4ebb63cae1c`, device 
 
 ### Recovery and loss of a device
 
-If one enrolled device is lost, another enrolled device can open its own envelope and rotate the account secret while excluding the lost reader. A synced passkey may also be usable on a replacement device if its provider restores the same credential and PRF outputs. If all enrolled authorising devices and their recoverable passkeys are lost, the envelopes alone do not provide an account recovery path. When adding a device while read grants are live, `addDevice` rotates the viewing and roster keys before sealing to the joiner, so it can refuse enrollment if a live grantee or surviving device cannot receive the new secret. The browser's P-256 create/open flow now also generates a random ACC secret and checks its sealed device envelope against the live `enc_key`; accounts made with the earlier passkey-derived `lace-passport:acc-enc:v1` recipe are explicitly refused by the new browser composition until migrated.
+If one enrolled device is lost, another enrolled device can open its own envelope and use `removeDevice` to exclude the lost reader while rotating the viewing and roster keys. Supply the complete live device/grant and verified-holding sources required by removal; ordinary rotation does not decide which still-live device was lost. A synced passkey may also be usable on a replacement device if its provider restores the same credential and PRF outputs. If all enrolled authorising devices and their recoverable passkeys are lost, the envelopes alone do not provide an account recovery path. When adding a device while read grants are live, `addDevice` rotates the viewing and roster keys before sealing to the joiner, so it can refuse enrollment if a live grantee or surviving device cannot receive the new secret. The browser's P-256 create/open flow now also generates a random ACC secret and checks its sealed device envelope against the live `enc_key`; accounts made with the earlier passkey-derived `lace-passport:acc-enc:v1` recipe are explicitly refused by the new browser composition until migrated.
 
 ### P-256 registration policy
 

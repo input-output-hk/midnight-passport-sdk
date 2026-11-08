@@ -82,6 +82,9 @@ Inject the browser capability; importing the adapter accesses no global database
 import { createBrowserSecretStore } from '@input-output-hk/mn-passport-adapter-browser/secret-store';
 
 export function openApprovedPlaintextStore(indexedDB: IDBFactory) {
+  if (typeof globalThis.crypto?.randomUUID !== 'function') {
+    throw new Error('This browser needs crypto.randomUUID for secret-store versions');
+  }
   return createBrowserSecretStore({
     indexedDB,
     databaseName: 'partner-passport-demo',
@@ -95,6 +98,9 @@ This adapter reports `persistence: 'persistent', protection: 'none'`: it stores
 OS keychain, credential check or production wallet vault. The explicit `true` is
 required at runtime as well as in the type. Database names allow 1–128 characters
 from alphanumerics and `._:-`. The host owns the handle and must close it at teardown.
+Writes also require ambient `crypto.randomUUID()` for version tokens; injecting
+IndexedDB alone does not provide that capability. There is no injected UUID option.
+The neutral memory store does not use this browser capability.
 Close does not delete database records; use reviewed versioned removals first when
 required. Version changes close the handle. A blocked/opening failure is unavailable,
 and a late successful open after failure closes its handle.
