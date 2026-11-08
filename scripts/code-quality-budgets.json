@@ -11,13 +11,13 @@
     },
     "packages/account/src/connector.ts": {
       "ceilings": {
-        "lines": 1781,
-        "functionLines": 1670,
-        "complexity": 47,
-        "nonNull": 50,
+        "lines": 1362,
+        "functionLines": 1252,
+        "complexity": 45,
+        "nonNull": 27,
         "unsafeCasts": 2
       },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md. Three added lines snapshot async grant/device/legacy key inputs; still 481 lines below the original file. Reviewed under Q3 input ownership."
+      "reason": "O4: typed P-256 enrollment phases extracted with exact outer/nested-rotation Flow and key-scope ordering. Actual root1696\u21921362lines, factory1585\u21921252, complexity47\u219245, non-null47\u219227. Remaining grant-revocation/factory debt cannot grow; new phases use default budgets. See docs/review/overnight-quality/README.md."
     },
     "packages/account/src/durable-mutations.ts": {
       "ceilings": {
@@ -374,7 +374,7 @@
     },
     "apps/passport-dapp/src/app.ts": {
       "ceilings": {
-        "lines": 1409,
+        "lines": 1398,
         "nonNull": 15,
         "unsafeCasts": 3
       },
@@ -396,7 +396,7 @@
     },
     "apps/passport-dapp/src/consent.ts": {
       "ceilings": {
-        "nonNull": 6
+        "nonNull": 3
       },
       "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
     },

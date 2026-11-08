@@ -30,7 +30,7 @@ import {
 } from '@input-output-hk/mn-passport-keys';
 import { tracedFetch } from './operation-trace.js';
 import { browserAccountRecords, browserGrantJournal } from './grant-journal.js';
-import { demoValueCall } from './value-call.js';
+import { reviewedOwnerValueCall } from './reviewed-value-call.js';
 import { grantHandoffFromOpening, type GrantHandoff } from './grant-handoff.js';
 import { beforeDemoCeremony } from './consent.js';
 import {
@@ -198,7 +198,7 @@ export async function connect(
     sponsor,
     sponsorKeys: config,
     submitter: sponsor,
-    valueCalls: { call: (request) => demoValueCall(SERVICE_URL, request) },
+    valueCalls: { call: (request) => reviewedOwnerValueCall(SERVICE_URL, request) },
     deployer: remoteV1Deployer(SERVICE_URL, { fetch: tracedFetch }),
     directory: demoDirectory(),
     holdings: holdingPort,

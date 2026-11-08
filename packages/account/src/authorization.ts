@@ -32,6 +32,29 @@ export class AccountAuthorisationError extends Error {
 }
 
 const text = z.string().min(1).max(1024);
+const typedArrayByteLength = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Uint8Array.prototype),
+  'byteLength',
+)?.get;
+function publicByteLength(value: Uint8Array): number {
+  try {
+    const length: unknown = typedArrayByteLength?.call(value);
+    if (typeof length !== 'number') throw new AccountAuthorisationError('InvalidContext');
+    return length;
+  } catch {
+    throw new AccountAuthorisationError('InvalidContext');
+  }
+}
+function copyPublicBytes(value: Uint8Array, maximum: number): Uint8Array {
+  try {
+    if (publicByteLength(value) > maximum) throw new AccountAuthorisationError('InvalidContext');
+    // Typed-array construction uses internal elements, never instance iteration/length.
+    // Empty public bytes are admitted; detached views and proxies still refuse.
+    return new Uint8Array(value);
+  } catch {
+    throw new AccountAuthorisationError('InvalidContext');
+  }
+}
 const hex = z.string().regex(/^[0-9a-f]{64}$/);
 const decimal = z
   .string()
@@ -93,16 +116,23 @@ const flowSchema = z.object({
       scheme: z.enum(['jubjub-schnorr', 'p256-webauthn']).optional(),
       policy: z
         .object({
-          rp_id_hash: z.instanceof(Uint8Array).refine((bytes) => bytes.length === 32),
-          origin: z.instanceof(Uint8Array).refine((bytes) => bytes.length === 21),
+          rp_id_hash: z.instanceof(Uint8Array).refine((bytes) => publicByteLength(bytes) === 32),
+          origin: z.instanceof(Uint8Array).refine((bytes) => publicByteLength(bytes) === 21),
         })
         .optional(),
     })
     .optional(),
 });
+function parseFlow(flow: FlowDescriptor) {
+  try {
+    return flowSchema.safeParse(flow);
+  } catch {
+    throw new AccountAuthorisationError('InvalidContext');
+  }
+}
 /** Validate, strip provider extensions and copy byte fields before awaiting consent. */
 function copyFlow(flow: FlowDescriptor): FlowDescriptor {
-  const parsed = flowSchema.safeParse(flow);
+  const parsed = parseFlow(flow);
   if (!parsed.success) throw new AccountAuthorisationError('InvalidContext');
   // Zod's optional fields include undefined, whereas the port uses exact optional
   // properties. It accepts absence/undefined identically; only this boundary bridges them.
@@ -127,8 +157,8 @@ function copyFlow(flow: FlowDescriptor): FlowDescriptor {
       reader: {
         ...copy.reader,
         policy: {
-          rp_id_hash: Uint8Array.from(policy.rp_id_hash),
-          origin: Uint8Array.from(policy.origin),
+          rp_id_hash: copyPublicBytes(policy.rp_id_hash, 32),
+          origin: copyPublicBytes(policy.origin, 21),
         },
       },
     });
@@ -183,28 +213,38 @@ export function createAccountAuthorisation(options: {
       )
         throw new AccountAuthorisationError('Unavailable');
       const account = candidate?.account ?? primary;
+      const scheme = account.scheme;
+      const candidateCheck = candidate?.check;
       if (!sameAccount(account)) throw new AccountAuthorisationError('InvalidContext');
-      candidate?.check();
+      if (candidate && typeof candidateCheck !== 'function')
+        throw new AccountAuthorisationError('Unavailable');
+      candidateCheck?.call(candidate);
       const flow = copyFlow({ ...request.flow, account: context.account });
       const approved = await options.consent.review(
-        Object.freeze({ context, route, scheme: account.scheme, flow: copyFlow(flow) }),
+        Object.freeze({ context, route, scheme, flow: copyFlow(flow) }),
       );
       if (approved !== true) throw new AccountAuthorisationError('Declined');
       // Lock/replacement while the consent UI was open never chooses another key path.
       const checkCurrent = () => {
         checkContext();
-        candidate?.check();
-        if (!sameAccount(account)) throw new AccountAuthorisationError('InvalidContext');
+        if (!sameAccount(account) || account.scheme !== scheme)
+          throw new AccountAuthorisationError('InvalidContext');
         if (candidate) {
           const current = options.authenticated?.();
-          if (!current || current.account !== account || current.check !== candidate.check)
+          if (
+            !current ||
+            current.account !== account ||
+            current.check !== candidateCheck ||
+            candidate.check !== candidateCheck
+          )
             throw new AccountAuthorisationError('Unavailable');
         }
+        candidateCheck?.call(candidate);
       };
       checkCurrent();
       const result = await work(
         account,
-        Object.freeze({ context, route, scheme: account.scheme, flow: copyFlow(flow) }),
+        Object.freeze({ context, route, scheme, flow: copyFlow(flow) }),
       );
       if (flow.kind === 'read-holdings' || flow.kind === 'sign-in') checkCurrent();
       // Mutation receipts survive local expiry after dispatch. The selected connector's
@@ -280,9 +320,10 @@ function snapshotOperationArgs(method: keyof PassportAccount, args: readonly unk
     )
       return value;
     if (typeof value === 'string' || value instanceof Uint8Array) {
-      bytes -= value.length;
-      if (bytes < 0) throw new AccountAuthorisationError('InvalidContext');
-      return typeof value === 'string' ? value : Uint8Array.from(value);
+      const length = typeof value === 'string' ? value.length : publicByteLength(value);
+      if (length > bytes) throw new AccountAuthorisationError('InvalidContext');
+      bytes -= length;
+      return typeof value === 'string' ? value : copyPublicBytes(value, length);
     }
     if (typeof value === 'number' && Number.isFinite(value)) return value;
     if (typeof value !== 'object' || visiting.has(value))
@@ -321,9 +362,13 @@ function snapshotOperationArgs(method: keyof PassportAccount, args: readonly unk
       visiting.delete(value);
     }
   };
-  return args.map((value, index) =>
-    index === optionIndex ? snapshotFlowOptions(value) : copy(value),
-  );
+  try {
+    return args.map((value, index) =>
+      index === optionIndex ? snapshotFlowOptions(value) : copy(value),
+    );
+  } catch {
+    throw new AccountAuthorisationError('InvalidContext');
+  }
 }
 
 /**
@@ -364,6 +409,7 @@ export function routeAuthenticatedAccount(
         return typeof read === 'function' ? read.bind(target) : read;
       }
       const current = selected() ?? target;
+      const scheme = current.scheme;
       checkContext(current);
       const value: unknown = Reflect.get(current, property);
       if (typeof value !== 'function') return value;
@@ -371,6 +417,7 @@ export function routeAuthenticatedAccount(
         const checkCurrent = () => {
           check();
           checkContext(current);
+          if (current.scheme !== scheme) throw new AccountAuthorisationError('InvalidContext');
           if ((selected() ?? target) !== current)
             throw new AccountAuthorisationError('Unavailable');
         };

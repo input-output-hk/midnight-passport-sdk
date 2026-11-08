@@ -66,8 +66,11 @@ there is no extra generic dialog first. Creation includes the irreversible
 maintenance-retirement acknowledgement in its first review. The `beforeCeremony`
 hook pins actual purpose, attempt and RP; the host rechecks the captured lease
 before/after approval and immediately before access. Cached routine reads and
-wallet connection need no generic modal. Exact transaction/device/grant reviews
-remain separate when their final inputs are known later. Retries still need fresh
+wallet connection need no generic modal. Known owner withdrawal/export inputs
+join the first actual credential review, with the captured route and exact inputs
+checked again before POST/display. A matching scoped-grant transfer has no passkey
+call and retains its standalone exact decision. Other late-bound device/grant
+reviews remain separate. Retries still need fresh
 approval; cancel never rolls back a submitted transaction or clears its unknown
 outcome. The capability panel inspects proof plans, not readiness.
 

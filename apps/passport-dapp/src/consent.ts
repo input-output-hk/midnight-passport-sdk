@@ -3,6 +3,12 @@ import type { PasskeyCeremony } from '@input-output-hk/mn-passport-adapter-webau
 import { FLOWS, type ActionId } from './flows.js';
 import { traceOperation } from './operation-trace.js';
 import { CRITICAL_ACTIONS } from './credential-policy.js';
+import {
+  admitExactReview,
+  exactReviewText,
+  refuseExactReview,
+  type ExactReview,
+} from './exact-review.js';
 
 const PURPOSES: Partial<Record<ActionId, string>> = {
   unlockOwner:
@@ -92,10 +98,72 @@ interface ActiveConsent {
   signatures: number;
   reviewed: boolean;
   retirementApproved: boolean;
+  exact?: {
+    readonly intent: ExactReview;
+    readonly check: () => void;
+    approved: boolean;
+  };
 }
 let active: ActiveConsent | undefined;
 let pendingCeremony: { cancel(): void } | undefined;
 let ceremonyInFlight = false;
+
+/** Stage known exact fields for a route that must obtain a credential before its effect. */
+export function stageExactCredentialReview(input: ExactReview, check: () => void): void {
+  const consent = active;
+  if (!consent || consent.exact || consent.requests || ceremonyInFlight || pendingCeremony)
+    return refuseExactReview();
+  checkActive(consent);
+  const intent = admitExactReview(input);
+  const { context } = consent;
+  const route = context.ownerUnlocked ? 'authenticated-owner' : 'primary';
+  const scheme =
+    context.ownerUnlocked || context.arm === 'jubjub' ? 'jubjub-schnorr' : 'p256-webauthn';
+  if (
+    intent.kind !== consent.action ||
+    intent.account !== context.account ||
+    intent.networkId !== context.network ||
+    intent.route !== route ||
+    intent.scheme !== scheme
+  )
+    return refuseExactReview();
+  check();
+  consent.exact = { intent, check, approved: false };
+}
+
+function approvedExact(kind: ExactReview['kind']): ExactReview {
+  const consent = active;
+  if (!consent || !consent.exact?.approved || consent.exact.intent.kind !== kind)
+    return refuseExactReview();
+  checkActive(consent);
+  return consent.exact.intent;
+}
+
+/** Final host effect boundary. A staged intent, preparation access or another action is insufficient. */
+export function assertExactWithdrawal(input: {
+  account: string;
+  scheme: 'p256-webauthn' | 'jubjub-schnorr';
+  color: string;
+  amount: string;
+  recipient: string;
+}): void {
+  const intent = approvedExact('withdraw');
+  if (
+    intent.kind !== 'withdraw' ||
+    input.account !== intent.account ||
+    input.scheme !== intent.scheme ||
+    input.color !== intent.color ||
+    input.amount !== intent.amount ||
+    input.recipient !== intent.recipient
+  )
+    return refuseExactReview();
+}
+
+export function assertExactGrantExport(account: string, grantId: string): void {
+  const intent = approvedExact('exportGrant');
+  if (intent.kind !== 'exportGrant' || intent.account !== account || intent.grantId !== grantId)
+    return refuseExactReview();
+}
 
 /** Prepare one action; only the actual credential review grants passkey approval. */
 export async function reviewDemoAction(action: ActionId, input: ConsentContext): Promise<boolean> {
@@ -148,6 +216,7 @@ export async function reviewDemoAction(action: ActionId, input: ConsentContext):
 }
 
 function operationDetails(consent: ActiveConsent): string {
+  if (consent.exact) return exactReviewText(consent.exact.intent);
   const { action, context, purpose } = consent;
   const accountReview = reviewedAccount(action, context);
   const routine =
@@ -170,6 +239,7 @@ function checkActive(consent: ActiveConsent): void {
   if (active !== consent)
     throw new PassportConnectorError('UserCancelled', 'The operation approval ended.');
   consent.context.check?.();
+  consent.exact?.check();
 }
 
 async function reviewCeremony(consent: ActiveConsent, ceremonyId: string): Promise<boolean> {
@@ -227,12 +297,8 @@ export function finishDemoConsent(): void {
   document.dispatchEvent(new Event('passport:ceremony-finished'));
 }
 
-/** One combined review approves exactly this browser access; later calls and retries review again. */
-export async function beforeDemoCeremony(input: Readonly<PasskeyCeremony>): Promise<void> {
-  const consent = active;
-  const ceremony = Object.freeze({ ...input });
+function checkCeremony(ceremony: Readonly<PasskeyCeremony>): void {
   if (
-    !consent ||
     ceremony.rpId !== 'localhost' ||
     ceremonyInFlight ||
     !Object.hasOwn(CEREMONIES, ceremony.purpose) ||
@@ -241,9 +307,20 @@ export async function beforeDemoCeremony(input: Readonly<PasskeyCeremony>): Prom
     ceremony.attempt > 5
   )
     throw new PassportConnectorError('UserCancelled', 'Start an operation before using a passkey.');
+}
+
+/** One combined review approves exactly this browser access; later calls and retries review again. */
+export async function beforeDemoCeremony(input: Readonly<PasskeyCeremony>): Promise<void> {
+  const consent = active;
+  if (!consent)
+    throw new PassportConnectorError('UserCancelled', 'Start an operation before using a passkey.');
+  const ceremony = Object.freeze({ ...input });
+  checkCeremony(ceremony);
   ceremonyInFlight = true;
   try {
     checkActive(consent);
+    if (consent.exact && ceremony.purpose !== 'derive-keys' && ceremony.purpose !== 'sign')
+      return refuseExactReview();
     const request = ++consent.requests;
     if (ceremony.purpose === 'sign' && ceremony.attempt === 1) consent.signatures++;
     const ceremonyId = crypto.randomUUID();
@@ -331,6 +408,7 @@ export async function beforeDemoCeremony(input: Readonly<PasskeyCeremony>): Prom
         'The passkey explanation is not visible. Open Activity and approve the operation again.',
       );
     notice.dataset.ready = 'true';
+    if (consent.exact) consent.exact.approved = true;
   } finally {
     ceremonyInFlight = false;
   }

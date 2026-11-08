@@ -10,8 +10,9 @@ policy that allowed full-owner administration without fresh approval. Published
 RC7 and historical qualification receipts are unchanged.
 
 The [demo app]({{ '/demo-guide/' | relative_url }}) uses one combined operation/purpose
-review for each actual credential API call, including retries. An exact transaction,
-device or grant review may still be separate. The password manager's credential sheet
+review for each actual credential API call, including retries. Owner unshielded
+transfer and sensitive grant export include their exact intent in that review;
+other device/grant reviews may still be separate. The password manager's credential sheet
 is another event. Count actual credential calls separately from app dialogs and provider
 sheets/touches. The [library hook]({{ '/consent/#public-ceremony-hook' | relative_url }})
 provides metadata and refusal; it does not impose this demo UI on other hosts.
@@ -63,7 +64,8 @@ This cannot recover a lost credential or discover an unknown ACC address.
 | Private holdings / built-in wallet connection | Zero requests with the matching approved routine lease; otherwise an explicitly consented PRF path. An expired captured lease refuses without silently changing routes. |
 | Wallet connection without an ACC | One discoverable PRF request selects that wallet identity and derives its seed. It does not reuse an unrelated logged-in owner or start a routine cache automatically. |
 | Independent grant-holder spend | One combined discovery/PRF request for the holder, plus exact grant/transfer review. The holder must match the approved grant; it is not implicitly the ACC owner. |
-| Critical operation with the primary owner | Fresh PRF/signing access under the existing owner arm. P-256 requires a real signature for every gated circuit. |
+| P-256 owner unshielded withdrawal | Normally one fresh strict `sign` request, with no unused PRF access. The core session guard remains; known format retries are new requests. |
+| Other critical operation with the primary owner | Its required PRF/signing path under the existing owner arm. P-256 requires a real signature for every gated circuit; private reader/journal work still needs its own keys. |
 | Critical operation with an unlocked JubJub full owner | Fresh credential-pinned PRF approval, matching its derived owner and reader to the captured session. One approval covers that reviewed logical operation's internal calls; it does not extend the lease. |
 | Separately approved capped grant transfer | Zero further credential requests inside its recipient, asset, amount, aggregate cap and expiry. Outside scope refuses; no automatic owner fallback. |
 | Known P-256 format retry | A fresh assertion, at most five attempts, each separately reviewed. Signed bytes are never rewritten. |
@@ -73,6 +75,14 @@ rotation, grant issue/revoke/revoke-all, sensitive grant-opening export and pend
 opening recovery/publication. Public roster inspection is not grant recovery.
 An unlocked JubJub owner remains a **full on-chain owner**: fresh approval is the
 demo host's policy, not a contract spending restriction.
+
+Owner unshielded transfer and grant-opening export carry immutable exact fields into
+the first actual `derive-keys` or `sign` review. Staging them grants no approval; the
+host rechecks before the transfer POST or sensitive handoff display. An eligible
+scoped-grant transfer retains a standalone exact review with zero credential calls.
+The source P-256 optimization changes its unused PRF dependency, not transaction
+approval, derivation, login or the strict signing profile. See the
+[source design and test record](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/research/2026-11-08-p256-sign-only.md).
 
 ## Why P-256 can still ask several times
 

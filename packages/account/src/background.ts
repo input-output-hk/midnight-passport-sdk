@@ -85,20 +85,25 @@ export function createBackgroundClient(
       /* The channel is already unusable. */
     }
   };
-  unsubscribe = port.subscribe(
-    (message) => {
-      const parsed = replySchema.safeParse(message);
-      if (!parsed.success || parsed.data.channel !== channel) return;
-      const reply = parsed.data;
-      const request = pending.get(reply.id);
-      if (!request) return; // late, duplicate or from an earlier client epoch
-      pending.delete(reply.id);
-      timers.clearTimeout(request.timer);
-      if (reply.ok) request.resolve(reply.value);
-      else request.reject(new BackgroundError('Rejected'));
-    },
-    () => close('Unavailable'),
-  );
+  try {
+    unsubscribe = port.subscribe(
+      (message) => {
+        const parsed = replySchema.safeParse(message);
+        if (!parsed.success || parsed.data.channel !== channel) return;
+        const reply = parsed.data;
+        const request = pending.get(reply.id);
+        if (!request) return; // late, duplicate or from an earlier client epoch
+        pending.delete(reply.id);
+        timers.clearTimeout(request.timer);
+        if (reply.ok) request.resolve(reply.value);
+        else request.reject(new BackgroundError('Rejected'));
+      },
+      () => close('Unavailable'),
+    );
+  } catch {
+    close('Unavailable');
+    throw new BackgroundError('Unavailable');
+  }
   if (closed) {
     try {
       unsubscribe();
@@ -156,7 +161,7 @@ export function serveBackgroundTasks(
     try {
       port.post({ protocol: 'passport-background-v1', channel, id, ok, ...(ok && { value }) });
     } catch {
-      close();
+      fail();
     }
   };
   let unsubscribe = () => {};
@@ -169,29 +174,43 @@ export function serveBackgroundTasks(
       /* Teardown must not strand pending reads. */
     }
   };
-  unsubscribe = port.subscribe((message) => {
-    const parsed = requestSchema.safeParse(message);
-    if (!parsed.success || parsed.data.channel !== channel || closed) return;
-    const request = parsed.data;
-    // A dedicated MessagePort preserves send order. Do not execute replayed requests twice.
-    if (request.id <= lastId) return;
-    lastId = request.id;
-    const method = methods.get(request.method);
-    if (!method || active >= maxPending) {
-      reply(request.id, false);
-      return;
+  const fail = () => {
+    if (closed) return;
+    close();
+    try {
+      port.close();
+    } catch {
+      /* A fatal transport failure cannot expose provider teardown details. */
     }
-    active++;
-    void Promise.resolve()
-      .then(() => method(request.input))
-      .then(
-        (value) => reply(request.id, true, value),
-        () => reply(request.id, false), // No secret-bearing exception crosses the boundary.
-      )
-      .finally(() => {
-        active--;
-      });
-  }, close);
+  };
+  try {
+    unsubscribe = port.subscribe((message) => {
+      const parsed = requestSchema.safeParse(message);
+      if (!parsed.success || parsed.data.channel !== channel || closed) return;
+      const request = parsed.data;
+      // A dedicated MessagePort preserves send order. Do not execute replayed requests twice.
+      if (request.id <= lastId) return;
+      lastId = request.id;
+      const method = methods.get(request.method);
+      if (!method || active >= maxPending) {
+        reply(request.id, false);
+        return;
+      }
+      active++;
+      void Promise.resolve()
+        .then(() => method(request.input))
+        .then(
+          (value) => reply(request.id, true, value),
+          () => reply(request.id, false), // No secret-bearing exception crosses the boundary.
+        )
+        .finally(() => {
+          active--;
+        });
+    }, fail);
+  } catch {
+    fail();
+    throw new BackgroundError('Unavailable');
+  }
   if (closed) {
     try {
       unsubscribe();

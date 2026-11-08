@@ -67,8 +67,10 @@ The account must match the captured address/network/binding. The host first veri
 live ownership and sealed-reader correspondence; `check` throws after expiry, lock
 or replacement. The coordinator does not perform those chain checks itself.
 
-It checks context before review, then context, lease and selected account/check
-identity before the callback. Replacement or expiry refuses without choosing the
+It captures the selected scheme and checker function/receiver before review, then
+checks context, scheme, lease and selected account/check identity before the callback.
+Replacing the checker in place cannot substitute a new lifetime decision, and an
+in-place scheme change cannot relabel an existing approval. Replacement or expiry refuses without choosing the
 primary route. It rechecks after `read-holdings` and `sign-in` callbacks so stale
 private reads are not returned. Mutation receipts survive a later context change;
 retain them for reconciliation rather than presenting a dispatched result as absent.
@@ -86,7 +88,11 @@ without rounding/coercion; the withdrawal schema requires a positive U128 value.
 Shape validation does not establish ownership, live balances or valid grant authority.
 
 `run` validates known flow fields, strips extensions and copies device-policy byte
-arrays before awaiting review. The review and callback receive separate flow copies.
+arrays before awaiting review. Byte lengths use the typed array's intrinsic length;
+copying uses its actual elements, ignoring shadowed lengths and custom iterators.
+Reader-policy fields must have their exact 32/21-byte lengths; malformed/proxy/detached
+views refuse as `InvalidContext`. Buffer inputs become independent Uint8Array copies.
+The review and callback receive separate flow copies.
 Top-level readonly/frozen records are not a universal deep-freeze guarantee; typed
 arrays remain mutable. Keep your own inputs stable and do not treat a schema as a
 sandbox for hostile objects with getters or custom prototypes.
@@ -97,7 +103,8 @@ optional authenticated-operation hook performs the stricter argument admission:
 plain data objects, dense arrays, finite numeric values and owned byte copies;
 no accessors, symbols, cycles or custom object prototypes. Limits are depth 8,
 4,096 value nodes, arrays of 1,024 items, 64 keys per object, and an aggregate 65,536
-string-code-unit/byte-element budget. Supported flow options retain only the trusted
+string-code-unit/byte-length budget. Empty public byte arrays are allowed within
+that budget; secret-store values have their own nonempty rule. Supported flow options retain only the trusted
 `signal` and `onEvent` capabilities. Without that hook, the facade does not snapshot
 primary-route arguments or add fresh approval. Public state/roster reads stay on the
 primary account. Neither helper grants authority or supplies a credential UI.
@@ -120,5 +127,8 @@ a host callback timed out. See [recovery]({{ '/durability/' | relative_url }}).
 
 The [authorization tests](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/tests/account-authorization.test.mjs)
 and [snapshot tests](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/tests/request-snapshots.test.mjs)
-exercise selection, mutation isolation and stale scopes with controlled ports. They do
+exercise selection, mutation isolation and stale scopes with controlled ports. The
+[source boundary regressions](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/tests/overnight-authorization-boundaries.test.mjs)
+cover checker receiver/replacement, scheme changes, intrinsic byte admission and
+post-dispatch receipt retention. They do
 not qualify a real passkey provider or native transaction execution.

@@ -1800,10 +1800,15 @@ try {
       );
       assert.equal(calls.filter((c) => c === 'withdraw').length, withdrawals);
       await fill(owner, '#withdraw-recipient', recipient);
-      rejectNextDialog = true;
-      await approve(owner, 'withdraw');
-      await waitStatus(owner, /cancelled before signing/i);
-      assert.equal(rejectNextDialog, false, 'the exact withdrawal review must have appeared');
+      const beforeDeclinedOwnerTransfer = await credentialsUsed();
+      await approve(owner, 'withdraw', async () => {
+        const details = await owner.locator('#ceremony-details').textContent();
+        assert.ok(details?.includes(recipient));
+        assert.ok(details?.includes('Amount: 1 smallest units'));
+        await click(owner, '#ceremony-cancel');
+      });
+      await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+      assert.equal(await credentialsUsed(), beforeDeclinedOwnerTransfer);
       assert.equal(calls.filter((c) => c === 'withdraw').length, withdrawals);
       await approve(owner, 'withdraw');
       await waitStatus(owner, /Withdrawal confirmed/);
@@ -2001,8 +2006,10 @@ try {
           runs: result.runs.length,
           trace: result.trace.length,
           forbidden,
-          hasCancellation: result.runs.some(
-            (run) => run.result === 'done' && run.outcome === 'cancelled',
+          // Credential-review decline retains the raw failed attempt and semantic cancellation.
+          hasCancellation: result.runs.some((run) => run.outcome === 'cancelled'),
+          hasDeclinedAttempt: result.runs.some(
+            (run) => run.result === 'failed' && run.outcome === 'cancelled',
           ),
         };
       });
@@ -2010,6 +2017,7 @@ try {
       assert.ok(copied.runs > 0 && copied.trace > 0);
       assert.equal(copied.forbidden, false);
       assert.equal(copied.hasCancellation, true);
+      assert.equal(copied.hasDeclinedAttempt, true);
       assert.equal(calls.length, beforeAudit);
       done(
         'dedicated Audit renders and copies public exchanges without secrets, a real clipboard write or connector effects',
@@ -2102,9 +2110,14 @@ try {
         'grant review and submission retain the admitted recipient across an asynchronous roster read',
       );
       await fill(owner, '#export-grant-id', grantId);
-      rejectNextDialog = true;
-      await approve(owner, 'exportGrant');
-      await waitStatus(owner, /Grant opening export cancelled/);
+      const beforeDeclinedExport = await credentialsUsed();
+      await approve(owner, 'exportGrant', async () => {
+        assert.ok((await owner.locator('#ceremony-details').textContent())?.includes(grantId));
+        await click(owner, '#ceremony-cancel');
+      });
+      await waitStatus(owner, /UserCancelled/, /passkey request was declined/);
+      assert.equal(await credentialsUsed(), beforeDeclinedExport);
+      assert.equal(await owner.locator('#grant-opening-output').inputValue(), '');
       assert.equal(
         await owner.locator('.operation-status').getAttribute('data-phase'),
         'cancelled',
@@ -2714,9 +2727,20 @@ try {
         );
         await click(fullOwner, '#ceremony-continue');
       };
+      const ownerExactReviews: string[] = [];
       const criticalOwnerAction = async (action: string, expected: RegExp) => {
         const before = await ownerCredentials();
-        await approve(fullOwner, action);
+        await approve(
+          fullOwner,
+          action,
+          action === 'withdraw'
+            ? async () => {
+                ownerExactReviews.push(
+                  (await fullOwner.locator('#ceremony-details').textContent()) ?? '',
+                );
+              }
+            : undefined,
+        );
         await waitStatus(fullOwner, expected);
         assert.equal(
           await ownerCredentials(),
@@ -2789,15 +2813,16 @@ try {
       );
       await criticalOwnerAction('withdraw', /Withdrawal confirmed/);
       assert.ok(
-        ownerDialogs.some((text) =>
-          text.includes('Authorization: authenticated JubJub owner after fresh passkey approval'),
+        ownerExactReviews.some(
+          (text) =>
+            text.includes('Authorization: JubJub owner after fresh passkey approval') &&
+            text.includes('Amount: 1 smallest units') &&
+            text.includes(recipient),
         ),
       );
       assert.ok(
-        ownerDialogs.some(
-          (text) =>
-            text.includes('selected scoped session does not match') &&
-            text.includes('owner authority instead'),
+        ownerExactReviews.some((text) =>
+          text.includes('outside the selected session; owner approval is required'),
         ),
       );
       assert.equal(await ownerCredentials(), authenticatedCredentials + 8);

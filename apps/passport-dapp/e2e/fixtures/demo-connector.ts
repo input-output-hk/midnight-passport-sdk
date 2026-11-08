@@ -1,8 +1,12 @@
 // Loaded ONLY by the journey runner's private Vite plugin. Never imported by the demo.
 // Actual UI, mock credential API and ceremony hooks; deliberately synthetic account/chain.
 import { webauthnPasskey } from '@input-output-hk/mn-passport-adapter-webauthn';
-import type { FlowOptions, GrantScopeInput } from '@input-output-hk/mn-passport-protocol';
-import { beforeDemoCeremony } from '../../src/consent.ts';
+import type {
+  FlowOptions,
+  GrantScopeInput,
+  PassportUnshieldedWithdrawal,
+} from '@input-output-hk/mn-passport-protocol';
+import { beforeDemoCeremony, assertExactWithdrawal } from '../../src/consent.ts';
 import type { AuthenticatedJubjubOwner } from '@input-output-hk/mn-passport-keys';
 import {
   routineKeys,
@@ -231,8 +235,15 @@ const account = (credentialId: Uint8Array, owner?: AuthenticatedJubjubOwner) => 
       const s = await call('revoke', { grantId });
       return { ...tx(s), grantId, status: 'revoked' as const };
     },
-    async withdrawUnshielded(request: { amount: string }, _options?: FlowOptions) {
-      await signAccount();
+    async withdrawUnshielded(request: PassportUnshieldedWithdrawal, _options?: FlowOptions) {
+      // Actual-core adapter tests separately establish this sign-only P-256 path.
+      if (!owner && ARM === 'p256') await p256Signature();
+      else await signAccount();
+      assertExactWithdrawal({
+        account: ADDRESS,
+        scheme: owner || ARM === 'jubjub' ? 'jubjub-schnorr' : 'p256-webauthn',
+        ...request,
+      });
       return tx(await call('withdraw', { amount: request.amount }));
     },
   };

@@ -113,13 +113,19 @@ later replies**. It does not close its port or stop handlers already running. A
 server host must separately close its endpoint or terminate its owned worker when
 required. Cancellation of underlying computation is the handler/provider's contract.
 
-Current source has two transport limits awaiting further hardening: a custom port
-that throws synchronously from `subscribe` can escape a neutral factory without
-owned cleanup; a server reply-post failure unsubscribes without closing the endpoint,
-so the client may wait until timeout. The browser bridge handles its own registration
-failures, but an arbitrary port must provide equivalent safe startup. Server handlers
-must return cloneable results for native messaging. Host teardown must still own
-endpoint closure; do not infer immediate disconnect from every provider failure.
+Fatal transport failures have a separate cleanup path: synchronous `subscribe`
+exceptions are sanitized to `BackgroundError('Unavailable')` and close the owned
+endpoint. A server send failure, including an uncloneable native reply, unsubscribes
+and closes the channel best effort. Inline failure callbacks and throwing cleanup
+cannot strand the owned teardown. The port must surface close/failure to its peer;
+custom transports that do not report disconnect may leave that peer waiting until
+its timeout. Fatal close does not cancel computation already running in a handler.
+Handlers should return cloneable, validated data, and hosts still own orderly endpoint
+shutdown after an explicit server stop.
+
+The [async contract tests](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/tests/overnight-async-contracts.test.mjs)
+cover startup failure, throwing cleanup and native MessagePort clone/disconnect cases.
+These source checks do not turn an RPC timeout into transaction evidence.
 
 ## Node and evidence limits
 

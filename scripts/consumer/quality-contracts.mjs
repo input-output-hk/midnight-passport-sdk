@@ -35,12 +35,32 @@ export const qualityWebTypes = `
 import {createBrowserSecretStore} from '@input-output-hk/mn-passport-adapter-browser/secret-store';
 import {browserBackgroundPort} from '@input-output-hk/mn-passport-adapter-browser/background';
 import type {SecretStore,BackgroundPort} from '@input-output-hk/mn-passport-account/ports';
-export async function compose(worker:Worker) {
+export async function compose(worker:Worker,messagePort:MessagePort) {
   const store:SecretStore=await createBrowserSecretStore({indexedDB,databaseName:'example',allowPlaintext:true});
   const port:BackgroundPort=browserBackgroundPort(worker,()=>worker.terminate());
+  const channel:BackgroundPort=browserBackgroundPort(messagePort,()=>messagePort.close());
   // @ts-expect-error Plaintext persistence always needs an explicit true opt-in.
   createBrowserSecretStore({indexedDB,databaseName:'example',allowPlaintext:false});
-  return {store,port};
+  return {store,port,channel};
+}
+`;
+
+export const qualityWorkerTypes = `
+import {browserBackgroundPort} from '@input-output-hk/mn-passport-adapter-browser/background';
+import {serveBackgroundTasks} from '@input-output-hk/mn-passport-account/background';
+declare const scope:DedicatedWorkerGlobalScope;
+export function serve(port:MessagePort) {
+  const channel=browserBackgroundPort(port,()=>port.close());
+  const worker=browserBackgroundPort(scope,()=>scope.close());
+  return [serveBackgroundTasks(channel,{channel:'worker-port',methods:{async echo(input){return input;}}}),worker];
+}
+`;
+
+export const qualityConfigTypes = `
+import {fetchCheckedV1Config} from '@input-output-hk/mn-passport-adapter-service/config';
+import type {FetchLike,NetworkConfig} from '@input-output-hk/mn-passport-account/ports';
+export function configuration(pin:NetworkConfig,fetch:FetchLike) {
+  return fetchCheckedV1Config('https://service.example',pin,{fetch,timeoutMs:30000});
 }
 `;
 
@@ -59,8 +79,12 @@ assert.equal(typeof browserBackgroundPort,'function');
 const ref={namespace:'consumer',networkId:'undeployed',bindingId:'acc-s3r1.1',account:AccountAddressSchema.parse('ab'.repeat(32)),id:'sample'};
 const store=createMemorySecretStore();
 const result=await store.write(ref,Uint8Array.of(7),null);
-assert.deepEqual([...(await store.read(ref)).bytes],[7]);
-await store.remove(ref,result.version);store.close();result.bytes.fill(0);
+let read;
+try {
+  read=await store.read(ref);assert.ok(read);
+  assert.deepEqual([...read.bytes],[7]);
+  await store.remove(ref,result.version);
+} finally {store.close();result.bytes.fill(0);read?.bytes.fill(0);}
 console.log('quality API Node imports and custody contract passed');
 `;
 

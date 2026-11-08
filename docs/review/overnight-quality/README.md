@@ -143,3 +143,56 @@ neutral background initialization/send-failure cleanup and pinned checker/scheme
 byte-admission hardening. Current docs state the existing transport limitations;
 passing built-in browser tests do not qualify every custom port. Typed P-256
 enrollment decomposition and exact-intent consent consolidation follow separately.
+
+## Third tranche: exact review, P-256 phases and consumer boundaries
+
+P-256 enrollment now uses typed plan/execution records with the original reader
+snapshot, nested rotation Flow, challenge/nonce and acknowledgement semantics.
+The connector falls1696→1362lines and1585→1252maximum function span; complexity
+47→45 and non-null assertions47→27. New modules use default budgets. The remaining
+P-256 viewing-key rotation factory and service job orchestration are next debt.
+
+Neutral background initialization/send failures release owned resources even when
+a custom port fails partway through setup. Authorization pins its original
+checker/receiver/scheme and copies admitted native bytes without invoking caller
+iterators or trusting shadowed byte lengths. Delayed old credential work cannot
+resume after its owned scope ends. Selection/binding changes refuse without
+switching accounts or implicitly prompting again.
+
+P-256 browser unshielded withdrawals preserve the core key-session boundary but
+skip unused eager PRF work; actual-crypto software-authenticator tests show one
+fresh strict sign call and no PRF extension on the normal path. Other operations
+and public PRF sessions retain their established behavior. Strict-profile retries
+have fresh decisions. No broader live-provider/native prompt claim is inferred.
+
+The demo stages frozen owner withdrawal/export inputs and reviews them in the
+first actual derive/sign dialog. Account, actual signer, route, amount/asset/recipient
+or grant ID are rechecked before the exact POST/display. The facade and primary
+account are distinct objects and are deliberately captured separately. Matching
+scoped-grant transfers retain a standalone exact decision because they invoke no
+new credential call. The independent exact-review audit found no actionable issue
+under the stated trusted-host composition. It is user-decision state, not a
+cryptographic one-shot capability; custom hosts still own guarded effect ports.
+
+The frozen candidate passes **1,692 tests / seven existing skips**, full Nix lint,
+format/build and all app typechecks. All-nine80% floors pass at **94.22 /92.93 /
+85.64%** lines/functions/branches. **192 both-arm browser journeys pass**, with
+stable runtime hashes and all owned resources closed. An initial audit-copy test
+incorrectly required a raw completed attempt for a cancelled review; the corrected
+test checks semantic cancellation and retains the honestly failed raw attempt.
+Both original failure and passing rerun are preserved.
+
+An offline copied-dist consumer resolves all nine packages/33public subpaths and
+strict-checks neutral Node, DOM and WebWorker examples with zero diagnostics. All
+SDK bytes resolve within the external copied graph;79physical external dependencies
+are fingerprinted/reused, not installed. It is source-preview evidence, not package
+installation or registry/release qualification. Source/runtime hashes are unchanged
+across the successful run. Jekyll renders43pages with1935local targets valid, and
+desktop/mobile entry/library/demo/contract navigation has no horizontal overflow.
+Library contracts, host responsibility and demo defaults have separate guides.
+
+Next concrete audit findings: service job capacity can exceed its default serial
+queue, response bytes are not bounded, discarded error streams are not cancelled,
+and async observer rejection can escape. Fix those before calling this adapter
+robust under outage/load. Native populated lifecycle qualification remains blocked
+by retained hard-coded stack bindings; this run will not interrupt another stack.

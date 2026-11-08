@@ -34,7 +34,12 @@ import { createUi } from './ui.js';
 import type { DevWallet } from './wallet/dev-wallet.js';
 import { createWalletPresentation } from './wallet/presentation.js';
 import { walletSeed } from './wallet/seed.js';
-import { beforeDemoCeremony, finishDemoConsent, reviewDemoAction } from './consent.js';
+import {
+  beforeDemoCeremony,
+  finishDemoConsent,
+  reviewDemoAction,
+  assertExactGrantExport,
+} from './consent.js';
 import { showDemoCapabilities } from './capabilities.js';
 import { createDemoSession } from './session.js';
 import { unlockDemoSessionKey } from './session-key.js';
@@ -58,6 +63,7 @@ import {
 import { authenticateOwnerAccount, routeAuthenticatedAccount } from './owner-access.js';
 import { transactionReceipts, receiptStorageRequired } from './transaction-receipts.js';
 import { completeLocalCleanup } from './local-cleanup.js';
+import { createOwnerReview } from './owner-review.js';
 const retainedTransactions = transactionReceipts(localStorage, NETWORK_ID, BINDING_ID);
 let receiptStorageFailed = false;
 let reviewedRoutineMinutes = 15;
@@ -245,6 +251,15 @@ const walletPresentation = createWalletPresentation({
 let account: PassportAccount | undefined;
 let primaryAccount: PassportAccount | undefined;
 let authenticatedAccount: PassportAccount | undefined;
+const ownerReview = createOwnerReview({
+  current: () => account,
+  primary: () => primaryAccount,
+  authenticated: () => authenticatedAccount,
+  ownerSession: (primary) => routineKeys.ownerSession(primary),
+  lease: (primary) => routineKeys.lease(primary),
+  check: checkRoutineReview,
+  confirm: (text) => window.confirm(text),
+});
 let balanceAssetColor: string | undefined;
 const fundingUrl = new URL('/v1/demo/funding', SERVICE_URL);
 let sessionUsesRoutine = false;
@@ -717,18 +732,13 @@ ui.on('exportGrant', async () => {
   const roster = await current.grantRoster();
   if (!roster.entries.some((entry) => entry.id === grantId && entry.active))
     throw new Error('The grant is not active in the live ACC.');
-  const approved = window.confirm(
-    `Unlock the opening for active grant ${grantId}?\n\n` +
-      'Give the JSON only to the named grantee. It includes the scope opening needed to use the grant.',
-  );
-  if (!approved) {
-    status('Grant opening export cancelled.');
-    traceOperation('grant.export.cancelled', { accountAddress: current.address, grantId });
-    return;
-  }
+  ownerReview.stageGrantExportReview(current, grantId);
   stage('export');
   const handoff = await exportDemoGrantOpening(current.address, grantId);
   checkRoutineReview();
+  assertExactGrantExport(handoff.account, handoff.grantId);
+  if (handoff.networkId !== network || handoff.bindingId !== BINDING_ID)
+    throw new Error('The exported grant belongs to another network or binding.');
   ui.showGrantHandoff(handoff);
   record('grantOpeningExported', { accountAddress: current.address, grantId });
   traceOperation('account.grants.openingExported', { accountAddress: current.address, grantId });
@@ -1234,18 +1244,19 @@ ui.on('withdraw', async () => {
     );
   const useSession = sessionUse() && session.matches(current, transfer);
   const route = useSession ? 'scoped JubJub session (no passkey prompt)' : ownerAuthorization();
-  const unmatchedSession =
-    sessionUse() && !useSession
-      ? '\nThe selected scoped session does not match this transfer. This review requests owner authority instead.'
-      : '';
-  const confirmed = window.confirm(
-    `Authorization: ${route}${unmatchedSession}\n\nWithdraw from Passport ACC?\n\nNetwork: ${network}\nACC: ${current.address}\nAsset color: ${transfer.color}\nAmount: ${transfer.amount} smallest units\nFresh ACC balance: ${freshBalance}\nRecipient: ${input.recipient.trim()}\n\nConfirm this destination, amount and authorization route before signing.`,
-  );
-  if (!confirmed) {
-    status('Withdrawal cancelled before signing.');
-    traceOperation('withdrawal.cancelled', { accountAddress: current.address });
-    return;
-  }
+  const review = {
+    ...transfer,
+    recipientAddress: input.recipient.trim(),
+    balance: freshBalance,
+    outsideSession: sessionUse() && !useSession,
+  };
+  if (useSession) {
+    if (!ownerReview.reviewScopedWithdrawal(current, review)) {
+      status('Withdrawal cancelled before signing.');
+      traceOperation('withdrawal.cancelled', { accountAddress: current.address });
+      return;
+    }
+  } else ownerReview.stageOwnerWithdrawalReview(current, review);
   stage('submit');
   status(
     useSession

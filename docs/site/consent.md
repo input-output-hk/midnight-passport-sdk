@@ -44,7 +44,7 @@ const beforeCeremony: BeforePasskeyCeremony = async (ceremony) => {
   console.info(ceremony.purpose, ceremony.rpId, ceremony.attempt);
 };
 
-const keys = webauthnPasskey({
+export const keys = webauthnPasskey({
   rpId: 'localhost',
   origin: 'http://localhost:5173',
   beforeCeremony,
@@ -98,13 +98,29 @@ this UI composition. The public `beforeCeremony` contract itself remains optiona
 host-owned. The operation log associates each actual approval/refusal with its public
 ceremony and flow IDs and excludes key material and grant openings.
 
-Exact transaction/device/grant reviews remain. They inspect the live recipient, amount,
-caps, expiry, reader fingerprint or roster before signing. Some critical paths therefore
-still show an exact operation popup plus the combined credential review. Viewing access
-may also be needed before exact mutation details are available, as for rotation holdings
-or independent grant-holder identity. An approved read/unlock never permits substituting
-a different transaction. Consolidating an exact review requires carrying its immutable
-scope into the actual request, not treating an earlier click as blanket authorization.
+### Exact transfer and export approval
+
+Owner unshielded withdrawal and sensitive grant-opening export now stage immutable
+exact intent for the actual credential review. Transfer intent includes account,
+network/binding, route/scheme, asset, amount, observed balance and the human recipient
+plus its decoded bytes. Export binds the account and selected grant ID. Staging is
+not approval, and preparation-only identification cannot authorize an effect.
+
+The first actual `derive-keys` or `sign` review presents that intent alongside the
+actual credential purpose. Continue approves both for this captured operation; each
+subsequent credential call/retry still gets its own explicit review. The app checks
+the approved transfer prefix and signer scheme immediately before its value POST,
+and rechecks the selected export ID/account plus handoff network/binding before
+showing the sensitive opening. Missing review, changed fields, expiry or replacement
+refuses. The review is not a reusable next-credential token or a new signer permission.
+
+A matching scoped JubJub grant transfer keeps its standalone exact decision because
+it makes no native credential call. Other device/grant/rotation reviews remain where
+their final data arrives later. Viewing access may precede exact mutation details,
+as for rotation holdings or independent grant-holder identity. An approved read/unlock
+never permits substituting another transaction. These source cases are tested by
+[exact-review unit regressions](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-dapp/test/exact-review.test.ts);
+combined browser journey receipts qualify their exercised compositions separately.
 
 Login may separately approve a 10/15/30-minute routine memory lease of derived
 reader/wallet material. It does not approve later critical work or retain a full owner.
@@ -134,6 +150,13 @@ owner lease or remove either live key check. Unsupported PRF/cancellation does n
 trigger another prompt. Pending setup may still need genuine signatures. See
 [the comparison and evidence boundary]({{ '/passkey-prompts/' | relative_url }}).
 
+Normal P-256 unshielded withdrawal uses one fresh `sign` request without an unused
+PRF request: its browser key session owns the selected binding without loading keys
+until needed. The core session/host guard still runs. Direct PRF sessions remain eager,
+and a nested secret/journal read still obtains its own required PRF access. Neither
+login assertions nor software ownership replace a strict transaction signature. See
+[the source design and tests](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/research/2026-11-08-p256-sign-only.md).
+
 P-256 signs each account transaction through its authenticator, so a multi-transaction
 operation may need several prompts. JubJub signs in software after the approved PRF
 unlock. Provider behavior, held create outputs and profile retries also affect
@@ -154,8 +177,13 @@ publication. Preserve the original account/operation evidence and use the origin
 passkey's reopen/reconciliation path; do not create a replacement account merely
 because the final setup request was declined.
 
-The WebAuthn adapter shares PRF outputs among nested/overlapping users of one
-adapter until its last session exits, then clears its held buffers. This is
+The WebAuthn adapter shares PRF outputs among nested/overlapping users of the same
+selected adapter binding until its last owner exits, then clears its held buffers.
+Ordinary eager and lazy key owners both prevent create/identify/login from replacing
+the selection; an in-flight selector likewise prevents key-scope entry. Public binding
+values are copies, and old identity callbacks cannot repin a later/live operation.
+A failed load stays refused within its ownership epoch rather than silently prompting
+again. A fresh explicitly initiated scope can retry after all owners exit. This is
 **not** independent account/capability isolation for unrelated concurrent callers.
 Hosts should not share that adapter across unrelated approved operations. Broader
 session isolation and prompt-budget qualification remain
@@ -167,7 +195,8 @@ P-256 address-first opening authenticates the sealed registration before adoptin
 the selected public key; it cannot rely on an earlier directory-based open.
 The browser implementation clears login buffers
 at callback completion even if a misbehaving host leaves a child unawaited, and
-refuses late identification results. Hosts must await all work inside the callback.
+refuses late identification results. Captured ownership/selection checks also refuse
+late paused credential access or signature completion after that login has ended. Hosts must await all work inside the callback.
 Adapters without this optional port retain their existing login behavior.
 
 For a cached full owner, the demo requests fresh credential-pinned PRF approval

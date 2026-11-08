@@ -33,8 +33,10 @@ for holdings and built-in wallet connection without extra requests during that l
    require fresh credential-pinned PRF approval before using this owner. The derived
    owner **and reader** must match the captured session. Internal calls in the same
    reviewed operation share that one approval, never another operation's approval.
-   The original absolute lease is not extended. Exact reviews still name effects;
-   they can remain a separate popup before the actual credential review.
+   The original absolute lease is not extended. Owner unshielded transfer and sensitive
+   grant export include their immutable exact fields in the actual credential review;
+   the app rechecks them before the value POST or handoff display. Other exact
+   administration reviews can remain separate.
 5. **Lock account keys**, hidden tab, page exit or timeout disposes local owner,
    reader and seed copies. Reauthenticate to reproduce the same owner key. An already
    live owner is verified again; it is not enrolled again on every unlock.
@@ -110,6 +112,15 @@ The demo records completed owner receipts before its best-effort post-operation 
 failure cannot erase the transaction reference or trigger another submission.
 Uncertain grants/transfers retain their existing fences. Shielded withdrawals
 retain the exact-value guard; full ownership does not enable partial spends.
+
+## Primary P-256 transfer remains a separate route
+
+A P-256 owner unshielded withdrawal now normally obtains one fresh strict transaction
+signature without an unused PRF request. That is a browser-adapter session optimization;
+it does not unlock a JubJub owner or weaken the demo's fresh approval rule. The core
+session descriptor/host guard still runs, PRF-dependent private/journal flows keep their
+key access, and format retries get fresh approval. In-scope grant transfers remain the
+separate zero-request route. See [request paths]({{ '/passkey-prompts/' | relative_url }}).
 
 ## Engineer integration
 

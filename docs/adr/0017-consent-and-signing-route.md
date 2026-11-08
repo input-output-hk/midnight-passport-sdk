@@ -82,3 +82,29 @@ The router does not cancel a running operation or inject checks into an existing
 connector's private ports. Hosts must also bind their signer/transport guards
 and flow cancellation to this context lifetime for later in-flight dispatches.
 The callback boundary checks and private-result fence do not replace those guards.
+
+
+## Source follow-up: exact review and session ownership — 2026-11-08
+
+The reusable coordinator now captures the selected scheme and checker function with
+its receiver before review. It refuses replacement before dispatch/private-result
+release and retains mutation acknowledgements after dispatch. Public byte admission
+uses intrinsic lengths and actual elements, independent of custom iteration or
+shadowed lengths. These checks do not turn the trusted operation callback into a
+sandbox or inject lifecycle policy into arbitrary downstream ports.
+
+The browser P-256 `withdraw-unshielded` key session can own the stable selection
+without eagerly loading PRF outputs. The core still invokes `withKeySession` with
+its exact descriptor and obtains a fresh strict P-256 transaction signature. Direct
+PRF sessions, other key flows and login retain their existing key requirements.
+Selection/ownership epochs fence overlapping selectors and late work; known profile
+retries remain separately approved assertions. See the
+[source design record](../research/2026-11-08-p256-sign-only.md).
+
+The demo stages immutable owner-transfer/export intent into its actual `derive-keys`
+or `sign` review and verifies the approved fields at the value POST or sensitive
+handoff display boundary. Staging alone grants nothing. Prompt-free bounded grant
+transfers retain standalone exact consent; other administration reviews may remain
+separate. This is demo host composition, not an automatic library dialog or full-owner
+restriction. Source contract tests and synthetic browser qualification remain separate;
+no real-provider/native acceptance or published-RC7 behavior change is asserted.

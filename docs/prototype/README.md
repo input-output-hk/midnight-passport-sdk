@@ -281,3 +281,21 @@ See [the secret-store design](../adr/0016-host-secret-custody.md).
 NIGHT and DUST now have independent readiness and presentation. DUST runs as an
 observed background read; a pending/failing DUST sync does not hold a ready NIGHT
 balance or wallet action open. Refresh/reconnect revisions discard late results.
+
+## Exact review and P-256 withdrawal follow-up (source preview)
+
+A known owner withdrawal or grant-opening export now combines its exact decision
+with the first actual derive/sign ceremony review. The demo captures the selected
+account and actual signer, then rechecks that route and the exact transfer or grant
+ID before value dispatch or opening display. Navigation, mutation, expiry or a
+declined review refuses new effects without a fallback signer. Matching bounded
+grant transfers retain a standalone exact decision because they use no new
+credential call. Already dispatched receipts remain observable after local expiry.
+
+The P-256 browser adapter avoids unused PRF access for an unshielded withdrawal;
+the normal software-authenticator path obtains one fresh strict P-256 signature.
+Login, other operations and known-format retries keep their own credential paths.
+These local actual-crypto/fake-chain and synthetic-browser checks do not establish
+real-provider prompt counts or new native proof acceptance. Read the
+[prompt guide](../site/passkey-prompts.md) and
+[separate demo composition guide](../site/demo-guide.md).

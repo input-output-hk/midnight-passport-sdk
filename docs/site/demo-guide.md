@@ -54,12 +54,24 @@ requires an explicit acknowledgement that the demo permanently retires maintenan
 authority, so the ACC cannot be upgraded. Every later credential call or recognized
 signing-format retry needs a fresh review. Provider-controlled sheets follow separately.
 
-Exact transaction/device/grant reviews still inspect the live recipient, amount, holder,
-caps, expiry, fingerprint or roster before signing. Some critical flows therefore have
-an exact operation popup plus the combined credential review. Do not interpret this
-tranche as one popup for every complete operation. A read may also need its credential
-before exact mutation fields can be prepared. See [consent]({{ '/consent/' | relative_url }})
-and [request paths]({{ '/passkey-prompts/' | relative_url }}).
+For **owner unshielded withdrawal** and **sensitive grant-opening export**, immutable
+exact intent is now included in that actual credential review. The transfer names
+account/network/binding, signer route/scheme, asset, amount, observed balance and both
+human and decoded recipient. Export names the selected account and grant. Staging
+those fields is not approval. Only a positive actual `derive-keys` or `sign` review
+approves the captured intent; the app checks it again immediately before the value
+POST or before showing the grant handoff. A changed/stale intent refuses without a
+signer fallback.
+
+Normal P-256 unshielded withdrawal now needs one fresh strict `sign` request and
+has no unused PRF request. JubJub owner access uses its required PRF path; profile
+retries or multi-transaction work can still need additional credential reviews.
+Matching bounded-grant transfers keep their standalone exact decision and zero
+native credential calls. Device, grant-issue/revoke and other administration reviews
+can still be separate, and some exact fields require preparatory reader access.
+See [consent]({{ '/consent/' | relative_url }}) and
+[request paths]({{ '/passkey-prompts/' | relative_url }}). This is the implemented
+source contract; source unit evidence and the combined browser receipt are separate.
 
 ## Understand the three local authority choices
 

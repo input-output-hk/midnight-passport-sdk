@@ -67,9 +67,12 @@ Creation must acknowledge permanent maintenance-authority retirement before the
 first credential is created. Every subsequent access/retry still requires fresh
 approval. Check the captured routine lease before/after approval and after paint;
 expiry refuses without a credential or fallback. Routine cached reads/wallet
-connection show no generic modal. Exact transaction/device/grant reviews remain
-separate where their final inputs become available later. Do not remove those
-reviews merely to reduce dialog counts. Cancellation cannot undo submitted effects;
+connection show no generic modal. Known owner withdrawal/export inputs now join
+the first actual derive/sign review; captured route, account, amount/recipient or
+grant ID are checked again immediately before POST/display. Matching scoped-grant
+transfers have no credential call, so retain their separate exact decision. Other
+late-bound device/grant reviews remain separate. Do not remove required decisions
+merely to reduce dialog counts. Cancellation cannot undo submitted effects;
 retain original IDs and reconcile unknowns. Provider UI and multi-transaction
 P-256 signatures remain separate from app dialog counts.
 
@@ -764,3 +767,20 @@ observation/authority ordering; new modules use default AST budgets. Checked ser
 config now has bounded deadline/body admission; legacy discovery keeps its plainGET
 shape. Read `docs/review/overnight-quality/README.md` and actual focused test receipts
 before making broader qualification claims. Do not reset user state to run tests.
+
+### Narrow P-256 signing and source consumer checks — overnight follow-up
+
+The browser adapter's P-256 `withdraw-unshielded` key-session scope pins ownership
+without eagerly loading PRF material. The normal software-authenticator path makes
+one fresh strict transaction-signature request. Other key-session flows and public
+`prf.withSession` retain eager derivation; retries always need fresh review. This
+is neither assertion replay nor reuse of a login signature. See
+`docs/research/2026-11-08-p256-sign-only.md` and the prompt guide.
+
+After building, `nix develop -c node scripts/consumer/preview-quality.mjs --output
+/private/tmp/<fresh-directory>` copies all nine declared package outputs outside
+the checkout, resolves their public exports in neutral ES2022, DOM and WebWorker
+TypeScript contexts, and imports them in Node without browser globals. The parent
+directory must exist and the output must not. It reuses fingerprinted physical
+external dependencies; it does not install packages or qualify registry tarballs.
+Keep that source-preview receipt distinct from installed/released-consumer checks.

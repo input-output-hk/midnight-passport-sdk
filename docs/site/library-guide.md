@@ -87,6 +87,29 @@ that every advertised service is trusted or operational. See
 [configuration contracts]({{ '/api/#source-preview-checked-configuration-contract' | relative_url }})
 for limits, transport expectations, validation and a typed source example.
 
+## Source preview: P-256 signing without unused PRF access
+
+The browser adapter's P-256 unshielded withdrawal now enters a scoped ownership
+boundary without eagerly loading PRF outputs. That operation uses the selected public
+binding and live device counter, then obtains a **fresh strict P-256 transaction
+signature**. Its normal software-authenticator path has one `sign` credential request
+and no PRF request. Known format retries still require fresh requests and reviews.
+This does not reuse a login assertion as transaction approval.
+
+The core's `withKeySession` hook and exact flow descriptor remain available to host
+guards. Public `prf.withSession` and other key-session flows retain eager PRF access;
+a host that explicitly derives a secret inside this withdrawal still needs that
+reviewed access. Login, sealed reads, shielded/private holdings and journal work keep
+their own required key paths. Selection/binding ownership, refusal of overlapping
+selectors and disposal remain enforced; no timer, persistent session or new permission
+is installed. These are source changes after RC7, with actual-crypto/software-provider
+and fake-chain evidence, not native/provider qualification. See the
+[design and regression record](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/research/2026-11-08-p256-sign-only.md).
+
+The SDK still supplies no transaction dialog or automatic fresh-passkey policy for a
+software full owner. The [demo consent guide]({{ '/consent/' | relative_url }}) describes
+how that host binds an exact transfer/export review to its actual credential call.
+
 ## Custody and cleanup
 
 `AccountRecordStore` contains account metadata and sealed state; it is not a seed store.
