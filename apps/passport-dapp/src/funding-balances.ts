@@ -74,7 +74,7 @@ export function createFundingBalanceReader(options: {
           !/^\d+$/.test(balances.fundedAsset)
         )
           throw new Error('ACC balance response is invalid');
-        const discovery = parseFundingDiscovery(body);
+        const discovery = parseFundingDiscovery(body, { requireAvailability: true });
         if (!isCurrent()) return;
         options.show({
           address,

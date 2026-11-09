@@ -205,21 +205,42 @@ test('HTTP and malformed-response failures refuse immediately without polling a 
       ok: true,
       json: async () => ({ accountAddress: address, balances: { night: '-1', fundedAsset: '0' } }),
     },
+    response('bogus'),
+    {
+      ok: true,
+      json: async () => ({
+        ...(await response('available').json()),
+        assets: [{ color, amount: '10' }],
+      }),
+    },
   ]) {
-    const account = { address };
-    let failures = 0;
+    const account = { address },
+      projections: unknown[] = [];
+    let failures = 0,
+      reads = 0,
+      waits = 0;
     const read = createFundingBalanceReader({
       current: () => account,
       color: () => color,
       url: new URL('http://local/'),
-      fetch: async () => result,
-      show: () => assert.fail('invalid projection'),
+      fetch: async () => {
+        reads++;
+        return result;
+      },
+      show: (view) => {
+        projections.push(view);
+      },
       unavailable: () => {
         failures++;
       },
-      pause: async () => assert.fail('invalid response retry'),
+      pause: async () => {
+        waits++;
+      },
     });
     await assert.rejects(read(address));
     assert.equal(failures, 1);
+    assert.equal(reads, 1);
+    assert.equal(waits, 0);
+    assert.deepEqual(projections, []);
   }
 });

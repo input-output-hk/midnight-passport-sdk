@@ -73,7 +73,10 @@ export async function fundingExchange(
 }
 
 /** The policy list remains usable for balances/withdrawals when funding inventory is unavailable. */
-export function parseFundingDiscovery(value: unknown) {
+export function parseFundingDiscovery(
+  value: unknown,
+  options: { readonly requireAvailability?: boolean } = {},
+) {
   if (
     !object(value) ||
     !Array.isArray(value.assets) ||
@@ -91,6 +94,13 @@ export function parseFundingDiscovery(value: unknown) {
       BigInt(raw.amount) > (1n << 128n) - 1n
     )
       throw new Error('Invalid funding asset');
+    if (
+      options.requireAvailability &&
+      raw.availability !== 'available' &&
+      raw.availability !== 'insufficient' &&
+      raw.availability !== 'unavailable'
+    )
+      throw new Error('Invalid funding availability');
     return {
       color: raw.color,
       amount: raw.amount,
