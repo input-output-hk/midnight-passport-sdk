@@ -740,18 +740,17 @@ export function createPassportAccounts(ports: PassportPorts): PassportConnectorA
     createAccount: ({ userName, retireAuthority, onProgress, ...options }) =>
       run(
         options,
-        async (flow) =>
-          account(
-            await createP256Account(userName, retireAuthority, {
-              ports,
-              flow,
-              binding,
-              random,
-              recordDeployed,
-              finishSealed,
-              activate,
-            }),
-          ),
+        (flow) =>
+          createP256Account(userName, retireAuthority, {
+            ports,
+            flow,
+            binding,
+            random,
+            recordDeployed,
+            finishSealed,
+            activate,
+            account,
+          }),
         onProgress,
       ),
     openAccountAt: (address, options = {}) =>

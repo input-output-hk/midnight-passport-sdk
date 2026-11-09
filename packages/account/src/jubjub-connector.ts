@@ -1,3 +1,4 @@
+import { createJubjubAccount } from './jubjub-creation.js';
 import { withLoginSession } from './with-login-session.js';
 import { snapshotGrantScope, snapshotDeviceReader } from './request-snapshots.js';
 import {
@@ -997,60 +998,16 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
     createAccount: ({ userName, retireAuthority, onProgress, ...options }) =>
       run(
         options,
-        async (flow) => {
-          if (typeof retireAuthority !== 'boolean')
-            throw new PassportConnectorError('InternalError', 'retireAuthority must be a boolean.');
-          const { credentialId } = await flow.step('passkey.create', () =>
-            credentials.create({ name: userName }),
-          );
-          return authoriser.withKeySession!(
-            async () => {
-              const pk = await authoriser.devicePublicKey();
-              const devicePublicKey = await authoriser.devicePublicKeyHex!();
-              const keys = await flow.step('passkey.prf', () =>
-                viewingKey.createKeys(networkId, { devicePublicKey }),
-              );
-              const salt = fresh(32);
-              const pure = requirePure((await readBinding()).pureCircuits);
-              const boot = pure.derive_boot_commitment_with_jubjub(salt, pk);
-              const { address } = await flow.step('deploy', () =>
-                ports.deployer.deploy({
-                  boot,
-                  encKey: keys.encKey,
-                  firstArm: 'jubjub',
-                  retireAuthority,
-                  ...flow.ports,
-                }),
-              );
-              const record: JubjubHint = {
-                address,
-                scheme: 'jubjub-schnorr',
-                credentialId,
-                publicKey: pk,
-                salt,
-                keyEntries: [...keys.envelopes, ...keys.registrations],
-                status: 'deployed',
-              };
-              await flow.step(
-                'directory.write',
-                async () => {
-                  for (let attempt = 0; ; attempt++) {
-                    try {
-                      return await directory.put(networkId, record);
-                    } catch (error) {
-                      if (attempt >= 2) throw error;
-                      await sleep(200 * 2 ** attempt);
-                    }
-                  }
-                },
-                'always',
-              );
-              const view = await awaitDeployed(record);
-              return finish(flow, record, view);
-            },
-            { kind: 'create-account', lockAccount: retireAuthority },
-          );
-        },
+        (flow) =>
+          createJubjubAccount(userName, retireAuthority, {
+            ports,
+            flow,
+            fresh,
+            sleep,
+            awaitDeployed,
+            finish,
+            pure: async () => requirePure((await readBinding()).pureCircuits),
+          }),
         onProgress,
       ),
     openAccount: (options = {}) =>

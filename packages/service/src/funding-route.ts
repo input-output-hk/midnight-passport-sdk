@@ -2,11 +2,21 @@ import type { IncomingMessage } from 'node:http';
 import type { ServiceWire } from '@input-output-hk/mn-passport-protocol';
 import type { FundingCreditEvidence } from './funding-reconciliation.js';
 import { HttpError, json, readJson, type Route } from './http.js';
+import { FundingPreflightError } from './funding-inventory.js';
 
 const ADDRESS = /^[0-9a-f]{64}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const DECIMAL = /^[1-9][0-9]*$/;
 const MAX_AMOUNT = (1n << 128n) - 1n;
+const PREFLIGHT_STATUS = { FundingAssetUnavailable: 409, FundingWalletUnavailable: 503 } as const;
+
+function checkedPreflight(error: unknown, noSubmit: boolean): FundingPreflightError | undefined {
+  return noSubmit &&
+    error instanceof FundingPreflightError &&
+    ['FundingAssetUnavailable', 'FundingWalletUnavailable'].includes(error.code)
+    ? new FundingPreflightError(error.code)
+    : undefined;
+}
 
 export interface FundingAssetPolicy {
   readonly color: string;
@@ -160,10 +170,14 @@ export function fundingRoute(options: FundingRouteOptions): Route {
     if (reservation.state === 'conflict') throw new HttpError(409, 'funding request ID was reused');
     if (reservation.state === 'daily-limit')
       throw new HttpError(429, 'daily funding limit reached');
+    let stage: FundingProgress['stage'] | 'admitted' = 'admitted';
+    let noSubmit = false;
     try {
-      const result = await options.backend.fund(request, (progress) =>
-        options.store.recordProgress(request.requestId, progress),
-      );
+      const result = await options.backend.fund(request, async (progress) => {
+        await options.store.recordProgress(request.requestId, progress);
+        stage = progress.stage;
+        noSubmit = progress.stage === 'no-submit';
+      });
       if (
         result.requestId !== request.requestId ||
         !result.txId ||
@@ -173,8 +187,31 @@ export function fundingRoute(options: FundingRouteOptions): Route {
         throw new Error('funding backend returned an invalid confirmation');
       await options.store.complete(request.requestId, result);
       json(res, 200, result);
-    } catch {
-      log(`funding request ${request.requestId} needs reconciliation`);
+    } catch (error) {
+      const refusal = checkedPreflight(error, noSubmit);
+      if (refusal) {
+        try {
+          await options.store.releaseNoSubmit(request.requestId, 'funding-preflight');
+          log(
+            JSON.stringify({
+              requestId: request.requestId,
+              stage,
+              code: refusal.code,
+              submission: 'not-started',
+            }),
+          );
+          json(res, PREFLIGHT_STATUS[refusal.code], {
+            requestId: request.requestId,
+            code: refusal.code,
+            error: refusal.message,
+            submission: 'not-started',
+          });
+          return true;
+        } catch {
+          // A failed durable release is uncertain. Never invite a replacement request.
+        }
+      }
+      log(JSON.stringify({ requestId: request.requestId, stage, code: 'FundingOutcomeUnknown' }));
       throw new HttpError(502, 'funding outcome requires reconciliation');
     }
     return true;

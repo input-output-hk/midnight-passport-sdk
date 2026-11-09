@@ -749,3 +749,79 @@ Fresh critical approval uses the RP scope captured by the original lease; expiry
 renewal, changed credential or replaced review refuses without another signer.
 The reference connector remains localhost-pinned; real providers and deployment
 origins require their own acceptance. See the authenticated-owner and consent guides.
+
+### Source preview: funding inventory (after RC8)
+
+The reference funding service checks its existing wallet's spendable unshielded inventory
+before any preparation/deposit, allowing up to five seconds for unshielded catch-up after
+a confirmed deposit. It never retries a transfer or substitutes a stale balance while waiting.
+Both services must run matching source and the same asset policy; restarting only the page does
+not update a backend. Its private `/v1/faucet/assets` read is proxied to the demo with a
+seven-second deadline to cover the wallet wait and transport. It exposes neither the bearer
+token nor wallet balances. Empty or unsynchronized inventory disables deposits;
+configured assets remain usable for ACC balance reads and withdrawals. Refresh ACC state updates
+availability, and the backend checks it again inside the deposit queue. Provision custom tokens
+on the current chain; a policy entry alone does not mint them. See the
+[funding application's source-preview contract](passport-funding-service/README.md#source-preview-funding-inventory-admission-after-rc8).
+
+Only a durably tombstoned no-submit refusal can clear that exact browser request ID and allow a
+new explicit intent. Legacy pending/unknown requests stay intact. No automatic retry or token
+mint occurs. These source changes require a coordinated restart of both reference services;
+the published RC8 packages/images are unchanged. Do not restart a user's existing stack merely
+to update the UI or erase its funding records.
+
+The source-preview reference policy admits 1–64 distinct assets consistently in both services
+and the browser. Older balance responses, including failures, cannot overwrite a newer read
+or a reopened account’s availability. Inventory reads remain bounded even when subscription
+teardown throws.
+
+An unavailable selected deposit asset stays selected with funding disabled; refresh never
+switches it to another asset. A current availability-read failure also disables deposits
+until a successful refresh, preserving the asset list and withdrawal choices.
+
+### Source preview: owner signing comparison (after RC8)
+
+Choose `VITE_PASSPORT_SIGNING_MODE=passkey|jubjub`, or open the canonical demo with
+`?signing=passkey` / `?signing=jubjub`. Passkey remains the default; the existing
+`VITE_PASSPORT_ARM=p256|jubjub` is accepted, but conflicting build settings refuse.
+Repeated/invalid query modes also refuse. The mode is fixed for that document.
+**Settings → Developer tools → Owner signing demo** shows the mode and new-page links.
+These select the primary owner for account creation/opening, not an implicit conversion
+of an existing ACC or a change to independent scoped grants.
+
+JubJub mode uses the opt-in WebAuthn `jubjub-prf` registration profile. It derives the
+same Lace output-1 signing key and registers it as the initial owner, sharing one PRF
+scope across activation and sealed publications. Both outputs returned at registration
+need only one credential `create`; otherwise one pinned PRF `get` is added. The strict
+P-256 profile, probe and real setup signatures remain intact in passkey mode. API counts
+are not provider sheet/touch measurements.
+
+Sign-up reviews the selected owner and a bounded routine reader/wallet lease. Confirmed
+creation invokes the opt-in `onAccountCreated` handoff inside its setup scope; the demo
+adopts only derived reader/wallet material. No owner key/raw PRF is retained by this handoff,
+no wallet connects automatically, and later critical operations still require fresh passkey
+approval. Failed adoption does not undo creation: retain records and reopen/reconcile the
+original account instead of creating a replacement. Tracked in
+[#304](https://github.com/input-output-hk/midnight-passport-sdk/issues/304).
+
+## Source preview: consecutive deposits and availability recovery (after RC8)
+
+A confirmed deposit may temporarily put the funding wallet behind the indexer. The
+browser re-observes a valid `unavailable` inventory at most twice after the first
+GET, with one- and two-second pauses. Each observation has a 45-second deadline
+through JSON decoding. This is read-only recovery: it never repeats a deposit POST,
+changes a pending request ID or clears an unknown outcome. Insufficient stock is
+not polled, and transport/malformed-response failures refuse immediately.
+
+**Passport account → Deposit → Refresh availability** runs the existing public ACC
+refresh action, without a passkey or page reload. It remains available after the
+bounded checks end or a read fails. The selected token stays selected; an unavailable
+selection is disabled rather than replaced with NIGHT. Superseded reads and page
+exit cancel owned requests/waits, and account-identity/generation checks fence late
+results. The backend still performs its queued inventory preflight before a send.
+
+The synthetic Playwright funding recovery journeys exercise consecutive NIGHT and
+custom deposits, separate balances, finite catch-up, mobile manual refresh, read
+outages/insufficient stock and retained unknown IDs in both signing arms. Unit
+contracts additionally cover stopped/late reads and a stalled response decoder.
+These are UI/software evidence, not fresh native funds or provider qualification.

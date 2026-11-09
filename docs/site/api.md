@@ -8,13 +8,7 @@ This is the reusable account/adapter reference. The [Library integration guide](
 explains host lifecycle and custody. The [Demo app guide]({{ '/demo-guide/' | relative_url }})
 describes the reference UI's chosen policies; those policies are not implicit API defaults.
 
-## On this page
-
-- [Release/source export map](#published-and-source-preview-surfaces)
-- [Account methods](#flow-methods) and [optional methods/host prerequisites](#optional-methods-and-host-prerequisites)
-- [Injected ports](#ports), [events/cancellation](#events-and-cancellation) and [errors](#errors)
-- [Browser composition](#browser-composition) and [source checked configuration](#source-preview-checked-configuration-contract)
-- [Source authorization/custody/background entries](#source-quality-apis-after-rc7)
+<span id="on-this-page"></span>
 
 The [package runtime index]({{ '/packages/#runtime-and-host-requirements' | relative_url }})
 identifies the environment for each public entry. This is a handwritten API guide;
@@ -26,6 +20,10 @@ exact declarations remain the source-linked contract, qualified by release/versi
 | --- | --- |
 | Included since RC7; also in RC8 | Account create/open/state, supported device/key/grant/value flows through host ports; browser/WebAuthn/service adapters; capability/preflight and documented opt-in recovery/service-job APIs. Use matching exact packages and release-tagged examples. |
 | Added in published `0.1.0-rc8` | `account/names`, `account/interaction`, `account/validation`, `account/authorisation`, `account/secret-store`, `account/background`; browser wallet/custody/background subpaths; verified-login handoff and authenticated-owner/scoped-session helpers. Use matching RC8 packages; these imports are absent from RC7. Host policy remains explicit. |
+
+**After RC8:** optional verified-creation handoff and JubJub PRF-only registration
+are [unreleased source additions]({{ '/source-preview/' | relative_url }}).
+They are not present in installed RC8 packages.
 
 For matching-checkout build/type evaluation, use the
 [source entry path]({{ '/library-guide/#evaluate-the-current-source' | relative_url }}).

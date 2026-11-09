@@ -1,4 +1,5 @@
 import { authenticatedOwnerTransports } from './authenticated-transports.js';
+import { browserKeyHandoffs } from './creation-handoffs.js';
 import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
 import type {
   AccountDirectory,
@@ -50,11 +51,14 @@ export interface BrowserPassportConfig {
     readonly rpId: string;
     readonly origin: string;
     readonly credentials?: CredentialsContainer;
+    readonly registrationProfile?: 'p256' | 'jubjub-prf';
   };
   /** Opt-in adoption of root-derived routine keys after verified open, before login scope disposal.
    * The keys expose wallet derivation only and become invalid when this callback's login ends.
    * Not called for authenticated ownerSession compositions or account creation. */
   readonly onAccountOpened?: (account: PassportAccount, keys: BrowserLoginKeys) => Promise<void>;
+  /** Opt-in routine-key handoff after confirmed creation, before its PRF scope is disposed. */
+  readonly onAccountCreated?: (account: PassportAccount, keys: BrowserLoginKeys) => Promise<void>;
   readonly prover: Prover;
   readonly sponsor: FeeSponsor;
   readonly sponsorKeys: { readonly coinPublicKey: string; readonly encryptionPublicKey: string };
@@ -81,6 +85,9 @@ export interface BrowserPassportConfig {
 export function createBrowserPassport(config: BrowserPassportConfig): PassportConnectorAPI {
   const owner = config.ownerSession;
   const onAccountOpened = config.onAccountOpened;
+  const onAccountCreated = config.onAccountCreated;
+  if (config.passkey.registrationProfile === 'jubjub-prf' && config.arm !== 'jubjub')
+    throw new Error('PRF-only registration requires the JubJub owner arm.');
   if (
     owner &&
     (config.arm !== 'jubjub' ||
@@ -122,11 +129,7 @@ export function createBrowserPassport(config: BrowserPassportConfig): PassportCo
     network: config.network,
     binding,
     credentials: owner?.credentials ?? passkey.credentials,
-    ...(!owner &&
-      onAccountOpened && {
-        onAccountOpened: (account: PassportAccount) =>
-          onAccountOpened(account, passkey.readLoginKeys(account.credentialId)),
-      }),
+    ...browserKeyHandoffs(!!owner, passkey, onAccountOpened, onAccountCreated),
     authoriser,
     encryptionKey: recipeEncryptionKey(prf),
     viewingKey: recipeDeviceKeyring(prf),

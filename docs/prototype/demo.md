@@ -96,6 +96,21 @@ The command prints the transaction ID and confirmed ACC balance. The funding ser
 at `/v1/demo/funding`; it reads the token file on the server and forwards a fixed-size deposit to
 the separate funding service.
 
+### Consecutive deposits (source after RC8)
+
+After the first deposit confirms, stay in **Passport account → Deposit**. If the
+wallet is catching up, availability is checked again automatically using GETs only.
+Once ready, explicitly fund again: a confirmed deposit releases its completed local
+ID, and the next click creates a distinct intent. Select another stocked asset to
+repeat the flow. Its balance must change independently of NIGHT.
+
+If checks end without readiness, choose **Refresh availability** on the same page.
+This refresh needs no passkey and performs no deposit. An unavailable token remains
+selected, rather than silently switching to NIGHT. Failed/unknown deposits keep
+their original IDs; availability recovery never retries or reconciles them.
+The browser tests use synthetic funding/chain drivers for these scenarios; their
+results do not establish a new native deposit or genuine-provider pass.
+
 ## Optional owner withdrawal demonstration
 
 After the ACC holds an unshielded asset, enter an explicit destination in **Recipient unshielded
@@ -436,3 +451,43 @@ the passkey and original evidence and reopen/reconcile the existing account befo
 retrying. A matching consented JubJub session still avoids passkey requests for its
 scoped withdrawals; critical owner actions retain fresh passkey reviews. See the
 [consent guide](../site/consent.md).
+
+## Source preview: custom-token inventory guard (after RC8)
+
+Deposit discovery now labels each configured asset from the existing funding wallet's synced,
+spendable unshielded inventory. Empty/unavailable options are disabled without removing ACC
+balance or withdrawal controls. Refresh ACC state refreshes availability. A queued backend
+preflight prevents a stale discovery observation from entering wallet preparation or deposit.
+The existing wallet gets up to five seconds to catch up after a confirmed deposit; an
+unsynchronized observation never admits its stale balance or triggers a transfer retry.
+Only a typed inventory failure with a persisted no-submit marker and tombstone returns a safe
+no-start refusal; unknown and legacy requests retain their original IDs. No automatic mint,
+retry, reset or change to RC8 artifacts is included. See the reference funding README for
+wire responses, sanitized diagnostics and restart boundaries.
+
+The source-preview reference policy admits 1–64 distinct assets consistently in both services
+and the browser. Older balance responses, including failures, cannot overwrite a newer read
+or a reopened account’s availability. Inventory reads remain bounded even when subscription
+teardown throws.
+
+An unavailable selected deposit asset stays selected with funding disabled; refresh never
+switches it to another asset. A current availability-read failure also disables deposits
+until a successful refresh, preserving the asset list and withdrawal choices.
+
+## Source preview: signing mode and shared creation scope (after RC8)
+
+Issue [#304](https://github.com/input-output-hk/midnight-passport-sdk/issues/304) adds
+validated passkey/JubJub comparison modes to the reference app. Default passkey signing
+retains the strict P-256 probe and its two real sealed-publication signatures. Explicit
+`?signing=jubjub` uses PRF-only registration: the deterministic Lace authoriser is the
+initial registered ACC owner, and activation/publication use software signatures inside
+one creation PRF scope. This is a new-account choice, not automatic companion enrollment.
+
+The sign-up consent includes its routine lifetime. A new optional confirmed-creation
+handoff adopts derived reader/wallet seed material before that scope exits. Raw PRF and
+owner keys are not cached, wallet connection is explicit, and later critical approvals,
+scoped grants and original unknown-result fences are unchanged. Generic SDK hosts opt
+in to handoffs; the default adapters do not start a cache. Additive WebAuthn registration
+and account/browser handoff APIs are source preview, absent from RC8. No contract or
+key-recipe change. Software/generated-contract and synthetic browser evidence remains
+separate from genuine provider, native proof and released-package qualification.

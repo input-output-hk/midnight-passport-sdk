@@ -172,6 +172,14 @@ signs the sealed viewing-key inbox publications separately after activation
 has its own numbered setup review. These are not repeated login or wallet-transfer
 requests; the compatibility probe and signature checks remain enabled.
 
+**Source preview after RC8:** the demo's explicit JubJub signing mode opts into
+`registrationProfile: 'jubjub-prf'`. It registers a PRF-derived initial owner and signs
+setup in software, omitting the P-256 probe. Direct P-256 ports refuse that profile.
+The creation review includes its initial full-owner registration, irreversible maintenance
+retirement and bounded routine reader/wallet handoff. The host adopts those routine keys
+only after confirmed sealed setup; it retains neither raw PRF nor owner signing material.
+Failure/cancellation cannot convert an unknown creation into permission to redeploy.
+
 Declining a later setup signature does not remove the deployed ACC or an earlier
 publication. Preserve the original account/operation evidence and use the original
 passkey's reopen/reconciliation path; do not create a replacement account merely

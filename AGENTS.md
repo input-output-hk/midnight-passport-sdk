@@ -45,7 +45,7 @@ consumer or native qualification work.
 
 - Login needs passkey access. Critical operations need fresh approval even when
   a JubJub full-owner session is active. This supersedes earlier all-owner reuse.
-- Explicit verified-login adoption may warm only derived reader/wallet-seed
+- Explicit verified-login or verified-creation adoption may warm only derived reader/wallet-seed
   material for a reviewed 10/15/30-minute routine lease. Never retain raw PRF
   outputs or an owner key in that cache. Failed/stale adoption, hidden tab, page
   exit, lock and expiry invalidate it. Other hosts must opt in themselves.
@@ -75,7 +75,8 @@ consumer or native qualification work.
   journal/site data or enroll a real account automatically after uncertainty.
   Missing host/job records or transaction IDs do not prove that no send occurred.
 - Keep P-256 directory/counter state independent. Strict signing/enrollment probe
-  and real P-256 setup signatures remain required; older durable transcripts may
+  and real P-256 setup signatures remain required for direct P-256 registration.
+  Opt-in JubJub PRF-only registration never qualifies a P-256 signing port. Older durable transcripts may
   safely refuse a changed scope rather than being rewritten.
 
 ## Resources, state and secrets

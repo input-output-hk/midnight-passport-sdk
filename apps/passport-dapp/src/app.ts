@@ -10,6 +10,7 @@ import type {
 } from '@input-output-hk/mn-passport-protocol';
 import {
   ARM,
+  SIGNING_MODE,
   BINDING_ID,
   MANIFEST_SHA256,
   NETWORK_ID,
@@ -31,6 +32,13 @@ import { Buffer } from 'buffer';
 import { parseDeviceHandoff, prepareDeviceHandoff } from './device-handoff.js';
 import { setOperationTraceSink, tracedFetch, traceOperation } from './operation-trace.js';
 import { createUi } from './ui.js';
+import { createFundingBalanceReader, fundingReadMessage } from './funding-balances.js';
+import {
+  parseFundingDiscovery,
+  fundingRequestFailure,
+  fundingExchange,
+  fundingUnsettled,
+} from './funding.js';
 import type { DevWallet } from './wallet/dev-wallet.js';
 import { createWalletPresentation } from './wallet/presentation.js';
 import { walletSeed } from './wallet/seed.js';
@@ -64,6 +72,7 @@ import { authenticateOwnerAccount, routeAuthenticatedAccount } from './owner-acc
 import { transactionReceipts, receiptStorageRequired } from './transaction-receipts.js';
 import { completeLocalCleanup } from './local-cleanup.js';
 import { createOwnerReview } from './owner-review.js';
+import { showSigningMode } from './signing-mode.js';
 const retainedTransactions = transactionReceipts(localStorage, NETWORK_ID, BINDING_ID);
 let receiptStorageFailed = false;
 let reviewedRoutineMinutes = 15;
@@ -237,6 +246,7 @@ try {
 }
 installLaceWallet(network, ui.showExternalWalletConnection);
 showDemoCapabilities(ARM);
+showSigningMode(SIGNING_MODE);
 showDemoNameService(createMockNameService(network), network);
 
 let api: PassportConnectorAPI | undefined;
@@ -344,59 +354,43 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) lockAllLocalKeys();
 });
 
-async function refreshAccountBalances(
-  address: string,
-): Promise<{ night: string; fundedAsset: string } | undefined> {
-  if (!balanceAssetColor) return;
-  const url = new URL(fundingUrl);
-  url.searchParams.set('accountAddress', address);
-  const response = await tracedFetch(url.toString());
-  if (!response.ok) throw new Error('ACC balance read unavailable');
-  const body = (await response.json()) as Record<string, unknown>;
-  const balances = body.balances as Record<string, unknown> | undefined;
-  if (
-    body.accountAddress !== address ||
-    typeof balances?.night !== 'string' ||
-    !/^\d+$/.test(balances.night) ||
-    typeof balances.fundedAsset !== 'string' ||
-    !/^\d+$/.test(balances.fundedAsset)
-  ) {
-    throw new Error('ACC balance response is invalid');
-  }
-  ui.showAccountBalances(address, balanceAssetColor, balances.night, balances.fundedAsset);
-  traceOperation('account.balances', {
-    accountAddress: address,
-    night: balances.night,
-    color: balanceAssetColor,
-    fundedAsset: balances.fundedAsset,
-  });
-  return { night: balances.night, fundedAsset: balances.fundedAsset };
-}
+const refreshAccountBalances = createFundingBalanceReader({
+  current: () => account,
+  color: () => balanceAssetColor,
+  url: fundingUrl,
+  fetch: tracedFetch,
+  state: (state) => {
+    const output = document.getElementById('funding-read-status');
+    if (output) output.textContent = fundingReadMessage(state);
+  },
+  show: (view) => {
+    ui.enableFunding(view.assets);
+    ui.showAccountBalances(view.address, view.color, view.night, view.fundedAsset);
+    traceOperation('account.balances', {
+      accountAddress: view.address,
+      night: view.night,
+      color: view.color,
+      fundedAsset: view.fundedAsset,
+    });
+  },
+  unavailable: (address) => {
+    ui.showFundingUnavailable();
+    ui.showAccountBalanceError(address);
+  },
+});
+
+window.addEventListener('pagehide', () => refreshAccountBalances.stop());
 void tracedFetch(fundingUrl.toString())
   .then(async (response) => {
     if (!response.ok) return;
-    const data = (await response.json()) as { assets?: unknown; balanceAssetColor?: unknown };
-    if (
-      Array.isArray(data.assets) &&
-      data.assets.length > 0 &&
-      data.assets.every(
-        (asset: unknown) =>
-          typeof asset === 'object' &&
-          asset !== null &&
-          typeof (asset as Record<string, unknown>).color === 'string' &&
-          /^[0-9a-f]{64}$/.test(String((asset as Record<string, unknown>).color)) &&
-          typeof (asset as Record<string, unknown>).amount === 'string' &&
-          /^[1-9][0-9]*$/.test(String((asset as Record<string, unknown>).amount)),
-      ) &&
-      typeof data.balanceAssetColor === 'string' &&
-      data.assets.some((asset: { color: string }) => asset.color === data.balanceAssetColor)
-    ) {
-      balanceAssetColor = data.balanceAssetColor;
-      ui.enableFunding(data.assets as { color: string; amount: string }[]);
-      if (account) {
-        const address = account.address;
-        void refreshAccountBalances(address).catch(() => ui.showAccountBalanceError(address));
-      }
+    const data = parseFundingDiscovery(await response.json());
+    balanceAssetColor = data.balanceAssetColor;
+    ui.enableFunding(data.assets);
+    if (account) {
+      const address = account.address;
+      void refreshAccountBalances(address).catch(() => {
+        /* The guarded read renders current failures. */
+      });
     }
   })
   .catch(() => {
@@ -428,7 +422,6 @@ const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult
     ...(lastTx && { lastTx }),
   });
   void refreshAccountBalances(a.address).catch(() => {
-    ui.showAccountBalanceError(a.address);
     traceOperation('account.balances.unavailable', { accountAddress: a.address });
   });
   traceOperation('account.opened', {
@@ -457,20 +450,24 @@ ui.on('create', async () => {
       ? `Creating a JubJub account… confirm the passkey ceremonies, then wait for deployment (about ${DEPLOY_ESTIMATE_S / 60} minutes).`
       : `Creating… confirm the passkey and its reader key, then wait for deployment (about ${DEPLOY_ESTIMATE_S / 60} minutes) and two sealed-key publications.`,
   );
-  const a = await (
-    await connector()
-  ).createAccount({
-    userName: `passport-${Date.now()}`,
-    // The prototype has always retired the maintenance authority: irreversible, so the account
-    // can never be upgraded. The account API makes that the caller's explicit choice.
-    retireAuthority: true,
-    onEvent: (e) => {
-      onEvent(e);
-      const next = e.phase === 'start' ? EVENT_STAGES.create[e.step] : undefined;
-      const label = FLOWS.create.stages.find((x) => x.id === next)?.label;
-      if (label) status(`Creating: ${label.charAt(0).toLowerCase()}${label.slice(1)}…`);
-    },
-  });
+  const a = await withRoutineLogin(
+    reviewedRoutineMinutes,
+    async () =>
+      await (
+        await connector()
+      ).createAccount({
+        userName: `passport-${Date.now()}`,
+        // The prototype has always retired the maintenance authority: irreversible, so the account
+        // can never be upgraded. The account API makes that the caller's explicit choice.
+        retireAuthority: true,
+        onEvent: (e) => {
+          onEvent(e);
+          const next = e.phase === 'start' ? EVENT_STAGES.create[e.step] : undefined;
+          const label = FLOWS.create.stages.find((x) => x.id === next)?.label;
+          if (label) status(`Creating: ${label.charAt(0).toLowerCase()}${label.slice(1)}…`);
+        },
+      }),
+  );
   await opened(a, 'created');
 });
 ui.on('open', async () => {
@@ -563,13 +560,7 @@ ui.on('refresh', async () => {
   });
   const balancesRead = balanceAssetColor
     ? await ui.attempt('balances', async () => {
-        try {
-          await refreshAccountBalances(current.address);
-          return true;
-        } catch (error) {
-          ui.showAccountBalanceError(current.address);
-          throw error;
-        }
+        return (await refreshAccountBalances(current.address)) !== undefined;
       })
     : undefined;
   status(
@@ -1063,10 +1054,10 @@ ui.on('rotate', async () => {
   status('The ACC confirmed its new sealed viewing secret.');
 });
 ui.on('fund', async () => {
-  if (!account || !ui.selectedFundingAsset())
-    throw new Error('Open a Passport account before funding it.');
+  if (!account) throw new Error('Open a Passport account before funding it.');
+  const asset = ui.selectedFundingAsset();
+  if (!asset) throw new Error('Deposit availability changed. Refresh availability and try again.');
   const target = account.address;
-  const asset = ui.selectedFundingAsset()!;
   const key = `passport-demo:fund:${network}:${target}:${asset.color}`;
   const legacyKey = `passport-demo:fund:${network}:${target}`;
   let requestId = localStorage.getItem(key);
@@ -1089,18 +1080,22 @@ ui.on('fund', async () => {
   status(
     `Funding account ${target.slice(0, 12)}… with ${asset.amount} ${asset.color === '00'.repeat(32) ? 'NIGHT' : 'test units'}…`,
   );
-  const response = await tracedFetch(fundingUrl.toString(), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ accountAddress: target, requestId, color: asset.color }),
-  });
-  const result = (await response.json()) as Record<string, unknown>;
+  const { response, result } = await fundingExchange(() =>
+    tracedFetch(fundingUrl.toString(), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ accountAddress: target, requestId, color: asset.color }),
+    }),
+  );
   if (!response.ok) {
-    const error = new Error(
-      typeof result.error === 'string' ? result.error : 'Funding was refused',
-    );
-    error.name = 'FundingRejected';
-    throw error;
+    throw fundingRequestFailure({
+      status: response.status,
+      result,
+      requestId,
+      storage: localStorage,
+      keys: [key, legacyKey],
+      onNotStarted: (details) => traceOperation('funding.notStarted', details),
+    });
   }
   if (
     result.requestId !== requestId ||
@@ -1115,7 +1110,7 @@ ui.on('fund', async () => {
     typeof result.creditedBalance !== 'string' ||
     !/^\d+$/.test(result.creditedBalance)
   ) {
-    throw new Error('Funding service returned an invalid confirmation');
+    throw fundingUnsettled('Funding service returned an invalid confirmation');
   }
   record('funding', {
     requestId,
@@ -1128,7 +1123,6 @@ ui.on('fund', async () => {
   });
   ui.showFunding(target, asset.color, result.creditedBalance);
   void refreshAccountBalances(target).catch(() => {
-    ui.showAccountBalanceError(target);
     traceOperation('account.balances.unavailable', { accountAddress: target });
   });
   traceOperation('funding.confirmed', {

@@ -10,6 +10,21 @@ composition of those libraries; its navigation, memory leases, funding wallet an
 storage choices are not SDK defaults. To run that application, use the
 [Demo app guide]({{ '/demo-guide/' | relative_url }}).
 
+## Integration checklist
+
+A first integration should deliver one host module with:
+
+1. Exact package versions and independently checked network/binding/manifest configuration.
+2. Persistent account records and injected credential/chain/proof/submission ports.
+3. Explicit create/open actions, reviewed inputs and public progress/error projection.
+4. An unknown-outcome recovery path and cleanup for resources your host owns.
+
+Start with [Install and connect]({{ '/getting-started/' | relative_url }}) for a
+maintained browser example. For a custom wallet or Node host, use the
+[boundary table](#select-the-boundary-you-own) below. Add private holdings,
+transfers and administration only after supplying their
+[method prerequisites]({{ '/api/#optional-methods-and-host-prerequisites' | relative_url }}).
+
 ## Choose a release or evaluate source {#choose-released-packages-or-source-preview}
 
 [Install and connect]({{ '/getting-started/' | relative_url }}) is the **published
@@ -254,3 +269,20 @@ and [background tests](https://github.com/input-output-hk/midnight-passport-sdk/
 They establish those tested boundaries. They do not qualify a real passkey provider,
 full Lace Wallet compatibility or combined browser/native transaction proofs. Use the
 [qualification map]({{ '/qualification/' | relative_url }}) for the relevant evidence tier.
+
+## Source preview: registration and creation handoff (after RC8)
+
+`webauthnPasskey`/`browserPasskey` accept an optional `registrationProfile`:
+`p256` preserves strict on-chain signing admission; `jubjub-prf` is explicit PRF-only
+registration and disables direct P-256 signing. Browser composition accepts the latter
+only with `arm: 'jubjub'`. This changes neither the Lace derivation nor the ACC binding.
+The browser passkey itself remains an ES256 credential; the derived JubJub key is the ACC signer.
+
+`PassportPorts.onAccountCreated(account)` is an optional host callback after confirmed
+activation and sealed readiness, inside creation's existing key scope. Browser hosts may
+use `BrowserPassportConfig.onAccountCreated(account, keys)`; its scoped getter exposes
+only `deriveWalletSeed()`, returning fresh owned copies. Retained getters refuse after
+scope exit. The core and adapters start no routine cache or wallet themselves.
+Callback failure does not undo deployment: retain original records and reopen/reconcile,
+never create a replacement account merely because host adoption failed. Existing login
+handoff semantics remain separate. These additive APIs are absent from published RC8.

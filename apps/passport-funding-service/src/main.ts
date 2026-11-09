@@ -14,6 +14,7 @@ import { loadFundingConfig } from './config.ts';
 import { deployedAddresses } from './deployments.ts';
 import { prepareLocalnetNight, type NightWallet } from './night-preparation.ts';
 import { valueCallRoute } from './value-call.ts';
+import { inventoryRoute, walletInventory, type InventoryWallet } from './inventory.ts';
 import type { createMidnightWalletPorts } from '@input-output-hk/mn-passport-adapter-midnight-js';
 
 const config = loadFundingConfig(process.env);
@@ -65,11 +66,12 @@ const wallet = (await setup.setupWallet(config.walletSeed)) as {
     midnightProvider: Parameters<typeof createMidnightWalletPorts>[1];
   };
   walletCtx: {
-    wallet: NightWallet;
+    wallet: NightWallet & InventoryWallet;
     unshieldedKeystore: { signDataAsync(payload: Uint8Array): Promise<unknown> };
   };
 };
 const backend = createWalletFundingBackend({
+  inventory: () => walletInventory(wallet.walletCtx.wallet),
   deployed: (address) => deployedAddresses(config.deploymentsFile, config.networkId).has(address),
   connect: (address) => setup.connectAccount(wallet, address),
   ...(config.networkId === 'undeployed'
@@ -92,6 +94,7 @@ const authorized = (header: string | undefined): boolean => {
   return candidate.length === token.length && timingSafeEqual(candidate, token);
 };
 const server = createServer(config, [
+  inventoryRoute(config, () => walletInventory(wallet.walletCtx.wallet), authorized),
   async (request, response, url) => {
     if (request.method !== 'GET' || url.pathname !== '/healthz') return false;
     json(response, 200, {

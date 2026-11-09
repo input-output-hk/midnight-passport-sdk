@@ -413,6 +413,9 @@ export interface PassportPorts {
   /** Runs after a verified open, inside an optional credential login scope. Never runs on create
    * or failed open. A host may adopt already-unlocked routine keys; the core retains no secrets. */
   readonly onAccountOpened?: (account: PassportAccount) => Promise<void>;
+  /** Opt-in handoff after confirmed creation and sealed-key readiness, inside its key scope.
+   * Failure does not undo deployment; retain original creation records for reopening. */
+  readonly onAccountCreated?: (account: PassportAccount) => Promise<void>;
   readonly authoriser: Authoriser;
   readonly encryptionKey: EncryptionKeySource;
   /** Random ACC viewing secret behind sealed device envelopes. */

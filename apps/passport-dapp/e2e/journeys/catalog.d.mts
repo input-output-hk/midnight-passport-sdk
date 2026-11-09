@@ -18,3 +18,5 @@ export const receiptCases: Readonly<
 >;
 
 export const bootstrapPlans: Readonly<Record<JourneyGroup, readonly string[]>>;
+
+export function expectedCredentialPurposes(arm: string, group?: string): string[];

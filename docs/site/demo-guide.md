@@ -13,14 +13,15 @@ The [complete caller example]({{ '/getting-started/#4-compose-the-browser-accoun
 uses injected API/presentation capabilities; it does not require this app's DOM,
 Web Locks, storage names or routine-owner composition.
 
-**This page describes the RC8 reference app source.** Installing library packages
+**Version:** the base walkthrough describes the RC8 reference app.
+Sections labeled **Source preview** require later source; use the
+[unreleased change map]({{ '/source-preview/' | relative_url }}) before comparing behavior. Installing library packages
 does not install a demo UI or enable its memory/session policies. A published
 package, a deployed documentation site and a source checkout have separate versions.
 
 ## Run the local composition
 
-Follow the repository's [local setup guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/AGENTS.md)
-and [app configuration reference](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/README.md).
+Follow the developer [app setup and configuration reference](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/README.md).
 The demo needs Nix, the pinned ACC/compiler artifacts, a ready local chain/prover and
 configured service wallets. TypeScript package installation alone cannot deploy an ACC.
 Reuse a healthy existing stack and its canonical passkey origin; preserve original
@@ -31,7 +32,27 @@ services normally use `8787`, `8788` and `8789`. The optional funding wallet sup
 allowlisted ACC deposits; the fee sponsor and the user's built-in wallet are separate.
 Use the [demo use cases]({{ '/use-cases/' | relative_url }}) for action prerequisites and
 [historical RC5 funding trace]({{ '/handover/' | relative_url }}) for that dated evidence.
-Use the setup/app references above for current operation and state preservation.
+Use the app setup reference above for prerequisites and state preservation.
+
+### Launcher workflow
+
+From a source checkout, use these separate stages after preparing the prerequisites
+and matching ACC export described in the app reference:
+
+```sh
+nix develop -c pnpm demo check
+nix develop -c pnpm demo up
+```
+
+`check` checks tools, Docker memory and required ports; it does not prepare missing
+artifacts. `up` starts the configured reference services and keeps its
+launcher-owned processes in the foreground. Occupied application ports refuse;
+if a matching demo is already running, open it instead of launching a second one. For optional deposits, configure the funding wallet, private token and
+asset policy first, then use `nix develop -c pnpm demo up --funding`. The wallet
+must hold each asset on that chain. See the
+[funding operations guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md).
+Do not run a second wallet on occupied ports or delete existing state to repair a
+restart. An existing configured demo may already be ready to use.
 
 ## Enter and navigate
 
@@ -152,3 +173,51 @@ claim that every current source revision has a passing receipt. They do not esta
 Google/iCloud restoration, native proof/provider acceptance or full Lace support.
 Use the [evidence map]({{ '/use-case-coverage/' | relative_url }}) and
 [qualification limits]({{ '/qualification/' | relative_url }}) for recorded results.
+
+## Source preview: signing comparison (after RC8)
+
+For the local signing-mode comparison, open `?signing=passkey` or `?signing=jubjub`
+on the demo origin. The latter creates a JubJub-primary account from the passkey PRF;
+it does not enroll a companion on an existing account. Both retain login and fresh
+critical approval. Sign-up explicitly reviews its routine reader/wallet lease and
+shares confirmed setup's key scope. See [request paths]({{ '/passkey-prompts/' | relative_url }}).
+
+## Source preview: deposit availability (after RC8)
+
+The later reference source checks the funding wallet's current spendable unshielded inventory.
+An empty asset or unavailable wallet disables that deposit option. The policy list remains
+available for ACC balances and withdrawals. Allowlisting a test-token ID does not create tokens;
+the funding wallet must hold that asset on the same chain. Refreshing ACC state also refreshes
+this advisory availability; the backend checks again inside the deposit queue.
+The funding service waits up to five seconds for unshielded catch-up after a confirmed deposit.
+It refuses a longer synchronization gap without using a stale balance or retrying a transfer.
+The demo proxy allows seven seconds for that read, including transport overhead.
+Run both services from matching source and policy; refreshing the page alone cannot update them.
+
+A proved inventory refusal says **No transfer was started**. Only an exact server receipt,
+after a durable no-submit marker and request tombstone, lets the page forget that request ID.
+A later explicit click starts a new intent. Uncertain/legacy requests retain their original IDs
+and reconciliation requirement. No automatic retry or mint is added. This is later source
+behavior, not a change to the published RC8 runtime.
+
+The source-preview reference policy admits 1–64 distinct assets consistently in both services
+and the browser. Older balance responses, including failures, cannot overwrite a newer read
+or a reopened account’s availability. Inventory reads remain bounded even when subscription
+teardown throws.
+
+An unavailable selected deposit asset stays selected with funding disabled; refresh never
+switches it to another asset. A current availability-read failure also disables deposits
+until a successful refresh, preserving the asset list and withdrawal choices.
+
+### Repeat a deposit without reloading
+
+After confirmation, the source demo makes up to three GET observations when wallet
+availability is temporarily unknown, with one- and two-second pauses. Each read
+has a 45-second deadline including decoding. It never retries the deposit.
+Known insufficient stock is not polled; failed or malformed reads disable funding.
+
+Use **Deposit → Refresh availability** to check again after the bounded checks end
+or a service read fails. It uses the public ACC refresh action, needs no passkey
+and preserves your selected token. An unknown deposit retains its original ID
+regardless of availability recovery. Navigation, cancellation and refresh do not
+resolve that transfer; reconcile it separately in Audit.

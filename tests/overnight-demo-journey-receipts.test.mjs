@@ -41,7 +41,7 @@ function cellReceipt({ arm, group }) {
     pageErrors: [],
     caseAttestations: cases,
     cases: cases.map(({ arm, name }) => ({ arm, name })),
-    ceremonyPurposesByArm: { [arm]: group === 'presentation' ? [] : journeyPurposes(arm) },
+    ceremonyPurposesByArm: { [arm]: journeyPurposes(arm, group) },
     groupTimings: {
       [arm]: [
         {
@@ -88,10 +88,10 @@ function cellReceipt({ arm, group }) {
   };
 }
 const receipts = () => journeyCells.map(cellReceipt);
-test('eight independently labeled cells aggregate in canonical97/95 case order', () => {
+test('eight independently labeled cells aggregate in canonical104/102 case order', () => {
   const result = aggregateJourneyReceipts(receipts().reverse(), source);
-  assert.deepEqual(result.counts, { p256: 97, jubjub: 95 });
-  assert.equal(result.cases, 192);
+  assert.deepEqual(result.counts, { p256: 104, jubjub: 102 });
+  assert.equal(result.cases, 206);
   assert.equal(result.cells, 8);
   assert.equal(result.realProvider, false);
   assert.equal(result.nativeProofs, false);
@@ -203,7 +203,7 @@ test('timing validation permits measured inter-phase gaps and a nonzero checkpoi
   value.timings.cleanup.startMs += 3;
   value.timings.cleanup.endMs += 3;
   value.timings.totalMs += 3;
-  assert.equal(aggregateJourneyReceipts(values, source).cases, 192);
+  assert.equal(aggregateJourneyReceipts(values, source).cases, 206);
 });
 for (const defect of [
   'total',
@@ -350,7 +350,7 @@ test('artifact reader admits exactly eight regular single-file directories and r
     mkdirSync(folder);
     writeFileSync(join(folder, 'demo-journeys.json'), JSON.stringify(cellReceipt(cell)));
   }
-  assert.equal(aggregateJourneyReceipts(readJourneyCells(root), source).cases, 192);
+  assert.equal(aggregateJourneyReceipts(readJourneyCells(root), source).cases, 206);
   const first = journeyCells[0];
   assert.ok(first);
   const folder = join(root, first.artifact),
@@ -367,7 +367,7 @@ for (const cell of journeyCells)
   for (const reportedMs of [0, 0.001])
     test(`nonempty ${cell.arm}/${cell.group} refuses a zero-width body reporting ${reportedMs}ms`, () => {
       const values = receipts();
-      assert.equal(aggregateJourneyReceipts(values, source).cases, 192);
+      assert.equal(aggregateJourneyReceipts(values, source).cases, 206);
       const value = values.find(
         (item) => item.selectedArms[0] === cell.arm && item.selectedGroups[0] === cell.group,
       );
@@ -389,3 +389,31 @@ for (const cell of journeyCells)
         /Journey case completion outside group body/,
       );
     });
+
+test('scoped JubJub creation reuses its reviewed keys without a verification ceremony', () => {
+  assert.deepEqual(journeyPurposes('jubjub', 'scoped-sessions'), [
+    'create',
+    'derive-keys',
+    'identify-and-unlock',
+  ]);
+  for (const group of ['account-actions', 'owner-safety'])
+    assert.ok(journeyPurposes('jubjub', group).includes('verify-created'));
+  assert.ok(journeyPurposes('jubjub').includes('verify-created'));
+  assert.ok(journeyPurposes('p256', 'scoped-sessions').includes('verify-created'));
+});
+test('every cell retains exact credential-purpose admission', () => {
+  for (const cell of journeyCells) {
+    const values = receipts();
+    const receipt = values.find(
+      (value) => value.selectedArms[0] === cell.arm && value.selectedGroups[0] === cell.group,
+    );
+    assert.ok(receipt);
+    const expected = [...journeyPurposes(cell.arm, cell.group)];
+    receipt.ceremonyPurposesByArm[cell.arm] = [...expected, 'unexpected-purpose'].sort();
+    assert.throws(() => aggregateJourneyReceipts(values, source), /credential-purpose/);
+    for (const purpose of expected) {
+      receipt.ceremonyPurposesByArm[cell.arm] = expected.filter((value) => value !== purpose);
+      assert.throws(() => aggregateJourneyReceipts(values, source), /credential-purpose/);
+    }
+  }
+});

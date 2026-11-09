@@ -48,7 +48,7 @@ names for the selected arm and existing sealed-account operation. It invokes no
 credential or chain/prover port and cannot certify readiness. Merchant and reviewed
 deposit links lead to runnable engineer recipes, not unsupported transfer buttons.
 The [coverage map]({{ '/use-case-coverage/' | relative_url }}) distinguishes the new
-synthetic browser journeys from native/provider evidence and the current RC7 release.
+synthetic browser journeys from native/provider evidence and the current RC8 release.
 
 
 ## Library integration beyond the demo

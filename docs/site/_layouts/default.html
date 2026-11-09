@@ -4,83 +4,58 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ page.title | escape }} · {{ site.title | escape }}</title>
-    <meta name="description" content="{{ site.description | escape }}" />
+    <meta name="description" content="{{ page.description | default: site.description | escape }}" />
     <link rel="stylesheet" href="{{ '/assets/site.css' | relative_url }}" />
+    <script src="{{ '/assets/site.js' | relative_url }}" defer></script>
   </head>
   <body>
-    <header>
-      <a class="brand" href="{{ '/' | relative_url }}">Midnight Passport SDK</a>
-      <nav aria-label="Documentation">
-        <a href="{{ '/library-guide/' | relative_url }}">Library integration</a>
-        <a href="{{ '/demo-guide/' | relative_url }}">Demo app</a>
-        <details>
-          <summary>Library reference</summary>
-          <ul>
-            <li><a href="{{ '/getting-started/' | relative_url }}">Install and connect</a></li>
-            <li><a href="{{ '/packages/' | relative_url }}">Packages</a></li>
-            <li><a href="{{ '/api/' | relative_url }}">Account API</a></li>
-            <li><a href="{{ '/problems/' | relative_url }}">Problems and boundaries</a></li>
-            <li><a href="{{ '/circuits/' | relative_url }}">Circuits</a></li>
-            <li><a href="{{ '/capabilities/' | relative_url }}">Capability checks</a></li>
-            <li><a href="{{ '/consumer-integration/' | relative_url }}">Consumer integration</a></li>
-            <li><a href="{{ '/partner-integration/' | relative_url }}">Partner contracts</a></li>
-            <li><a href="{{ '/lace-handover/' | relative_url }}">Lace evaluation</a></li>
-            <li><a href="{{ '/account-keys/' | relative_url }}">Account keys and recovery</a></li>
-            <li><a href="{{ '/keys/' | relative_url }}">Public proving artifacts</a></li>
-            <li><a href="{{ '/names/' | relative_url }}">Naming port</a></li>
-            <li><a href="{{ '/interaction/' | relative_url }}">Presentation models</a></li>
-            <li><a href="{{ '/react-example/' | relative_url }}">React example</a></li>
-            <li><a href="{{ '/lace-wallet/' | relative_url }}">Wallet reader</a></li>
-            <li><a href="{{ '/secret-storage/' | relative_url }}">Secret custody</a></li>
-            <li><a href="{{ '/authorization/' | relative_url }}">Operation authorization</a></li>
-            <li><a href="{{ '/background/' | relative_url }}">Background tasks</a></li>
-          </ul>
-        </details>
-        <details>
-          <summary>Demo reference</summary>
-          <ul>
-            <li><a href="{{ '/use-cases/' | relative_url }}">Demo use cases</a></li>
-            <li><a href="{{ '/demo-ui/' | relative_url }}">Navigation and Activity</a></li>
-            <li><a href="{{ '/consent/' | relative_url }}">Consent and key purposes</a></li>
-            <li><a href="{{ '/passkey-prompts/' | relative_url }}">Passkey request paths</a></li>
-            <li><a href="{{ '/quick-actions/' | relative_url }}">Routine access</a></li>
-            <li><a href="{{ '/authenticated-owner/' | relative_url }}">Full-owner policy</a></li>
-            <li><a href="{{ '/jubjub-sessions/' | relative_url }}">Bounded transfers</a></li>
-            <li><a href="{{ '/use-case-coverage/' | relative_url }}">Use-case evidence</a></li>
-          </ul>
-        </details>
-        <details>
-          <summary>Operations and releases</summary>
-          <ul>
-            <li><a href="{{ '/service/' | relative_url }}">Service API</a></li>
-            <li><a href="{{ '/durability/' | relative_url }}">Recovery contracts</a></li>
-            <li><a href="{{ '/grant-recovery/' | relative_url }}">Grant recovery</a></li>
-            <li><a href="{{ '/host-durability/' | relative_url }}">Host durability</a></li>
-            <li><a href="{{ '/service-jobs/' | relative_url }}">Service jobs</a></li>
-            <li><a href="{{ '/shielded-deposit-recovery/' | relative_url }}">Shielded deposit recovery</a></li>
-            <li><a href="{{ '/quality/' | relative_url }}">Quality strategy</a></li>
-            <li><a href="{{ '/qualification/' | relative_url }}">Qualification limits</a></li>
-            <li><a href="{{ '/handover/' | relative_url }}">Historical RC5 funding</a></li>
-            <li><a href="{{ '/release-notes-rc8/' | relative_url }}">Published RC8</a></li>
-            <li><a href="{{ '/release-notes-rc7/' | relative_url }}">Historical RC7</a></li>
-            <li><a href="{{ '/releasing/' | relative_url }}">Releasing</a></li>
-          </ul>
-        </details>
-      </nav>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="{{ '/' | relative_url }}">Midnight Passport <span>SDK</span></a>
+      <div class="header-links">
+        <a href="{{ '/release-notes-rc8/' | relative_url }}">0.1.0-rc8</a>
+        <a href="https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype">GitHub</a>
+      </div>
     </header>
-    <main>
-      <p class="eyebrow">SDK libraries and reference demo · Published RC8 · exact-version integration</p>
-      <h1>{{ page.title | escape }}</h1>
-      {{ content }}
-    </main>
-    <footer>
-      <a href="https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype"
-        >Source</a
-      >
-      ·
-      <a href="https://github.com/input-output-hk/midnight-passport-sdk/issues/31"
-        >Packaging tracker</a
-      >
-    </footer>
+    <div class="docs-shell">
+      <aside class="sidebar">
+        <details class="docs-navigation" open>
+          <summary>Documentation menu</summary>
+          <nav aria-label="Documentation">
+            {% for group in site.data.navigation %}
+            <section class="nav-group">
+              <h2>{{ group.title | escape }}</h2>
+              <ul>
+                {% for item in group.pages %}
+                <li>
+                  <a href="{{ item.url | relative_url }}"{% if page.url == item.url %} aria-current="page"{% endif %}>{{ item.title | escape }}</a>
+                </li>
+                {% endfor %}
+              </ul>
+            </section>
+            {% endfor %}
+          </nav>
+        </details>
+      </aside>
+      <main id="main-content" tabindex="-1">
+        <div class="page-heading">
+          <p class="eyebrow">Developer documentation</p>
+          <h1>{{ page.title | escape }}</h1>
+          <p class="version-note">Published packages: <a href="{{ '/release-notes-rc8/' | relative_url }}">0.1.0-rc8</a> · <a href="{{ '/source-preview/' | relative_url }}">Unreleased source changes</a></p>
+        </div>
+        <details class="page-contents" hidden open>
+          <summary>On this page</summary>
+          <nav aria-label="On this page"><ul id="page-contents"></ul></nav>
+        </details>
+        <article class="page-content">{{ content }}</article>
+        <footer class="page-footer">
+          <a href="{{ '/troubleshooting/' | relative_url }}">Troubleshooting</a>
+          <a href="https://github.com/input-output-hk/midnight-passport-sdk/issues/new">Report a docs problem</a>
+          {% if page.path %}
+          <a href="https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/{{ page.path | escape }}">Page source</a>
+          {% endif %}
+        </footer>
+      </main>
+    </div>
   </body>
 </html>

@@ -14,8 +14,8 @@ scaffolds do not provide those capabilities.
 ## Find the public entry you need
 
 [Runtime and host requirements](#runtime-and-host-requirements) distinguish import
-safety from operational support. [Package purposes](#why-rc1-has-13-packages) retain
-the historical package-count explanation; [dependency direction](#dependency-direction)
+safety from operational support. [Package purposes](#package-purposes) describe the released libraries;
+[historical package counts](#why-rc1-has-13-packages) explain retired scaffolds; [dependency direction](#dependency-direction)
 explains composition. The [account API]({{ '/api/' | relative_url }}) lists optional
 methods and their required ports. Current examples use exact RC8 versions.
 All entries below ship in RC8; rows distinguish their introduction and runtime.
@@ -56,21 +56,11 @@ packaging. The [quality guide]({{ '/quality/' | relative_url }}) and
 layers. The optional React host is a [browser development example]({{ '/react-example/' | relative_url }}),
 not a foundation dependency or an SSR contract.
 
-## Why RC1 has 13 packages
+## Nine released packages {#package-purposes}
 
-The RC1 release script packed every publishable directory under `packages/`. That
-release had eight implemented libraries and five empty `export {}` scaffolds inherited
-from the earlier architecture.
-Publishing the scaffolds in `0.1.0-rc1` did **not** deliver five more capabilities. The original
-[architecture](https://github.com/midnightntwrk/midnight-passport-sdk/blob/dfdb3f87f2cc2941530ab398e117f46b348fab7f/docs/architecture.md#44-packaging)
-pictured a Passport app engine (`core`), a dApp library (`connect`), shared foundations, and platform
-adapters. The later, accepted [package decision](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0007-package-set-ports-and-flows.md)
-put account-owner flows and ports in `account`, split the prototype's large browser adapter by
-responsibility, reserved `core` and `connect` for later work, and retired three empty adapters.
-
-The table names each package in the source tree. “Active” means it exports an implementation;
-it does not mean every feature in the original vision is finished. Only the nine active packages
-are packed for RC7.
+These are the nine implemented RC8 libraries. “Implemented” describes their
+exported surface, not completion of every upstream Passport capability. Select
+packages by the boundary your host owns; the demo apps/images are separate.
 
 | Package (`@input-output-hk/mn-passport-*`) | Purpose and place in the vision | Current implementation |
 | --- | --- | --- |
@@ -83,28 +73,14 @@ are packed for RC7.
 | `service` | Node HTTP host and injected chain backend port for proof, sponsorship, submission, deployment and account directory handlers. It also verifies and serves a pinned artefact tree. | Active HTTP, artefact and directory core extracted from the demo. Its separate funding route, durable reservation store and unshielded wallet-backend helper are composed by `apps/passport-funding-service`; localnet non-native and exact-value NIGHT ACC deposits have been recorded. A completed request ID replays its result; a pending one requires reconciliation. |
 | `adapter-midnight-js` | Chain port that isolates the heavy Midnight runtime from `account` and lets hosts load it when needed. | Active; ledger reads and call pipeline over injected prover, sponsor, and submitter ports, plus a grant source that checks the complete ACC roster, signing nonce, and read-key hashes. |
 | `adapter-browser` | Optional browser composition root that wires `account`, passkeys, keys, and the lazy chain adapter; it can install `window.midnight.passport`. | Active; `./prototype` also retains older demo helpers during migration. A host can compose the ports itself. |
-| `core` | Intended Passport app engine for grants, private data, recovery, and DID beyond the shared account-owner flows. | Empty scaffold; reserved by ADR 0007. Do not install for RC1 features. |
-| `connect` | Intended thin dApp-side grant/connection library, separate from the account-owner API. | Empty scaffold; reserved. The current browser descriptor is an account API, not the finished dApp grant protocol. |
-| `adapter-signer-local` | Earlier plan for a local JubJub signer. | Empty scaffold; retired in favour of key providers in `keys`. |
-| `adapter-signer-managed` | Earlier plan for a managed-custody signer. | Empty scaffold; retired from this package map. |
-| `adapter-prover-remote` | Earlier plan for a remote proving adapter. | Empty scaffold; superseded by `adapter-service/prover`. |
-
-The `service` library was **not** among the 13 RC1 packages: the demo service then lived entirely
-under `apps/passport-service`. RC1 therefore had eight implemented packages and five published
-placeholders. The current source has extracted the server and chain HTTP handler behind an injected
-`ChainBackend`; the demo still owns the wallet, network, key cache and directory. The original
-vision also includes higher-level `core`, `connect`, and `agent` entry libraries for the Passport app,
-dApps, and agents. A host should not have to import every adapter. The five placeholders are now
-private workspace packages and are excluded by both release allowlists, so RC7 packs
-nine implemented packages. Existing RC1 package records remain historical artifacts.
 
 ## What an integrator installs
 
-Local source after RC7 adds a read-only naming-service port to `account/ports`
+RC8 includes a read-only naming-service port in `account/ports`
 and a checked resolver in `account/names`. The mock adapter belongs to the demo;
 production providers implement the same port. This adds no package or core
 framework dependency. See [naming adapters]({{ '/names/' | relative_url }}).
-These exports are not available in published RC7.
+These exports are absent from RC7.
 
 Partners may adopt the compiled ACC/assets layer while retaining their own account
 orchestration. The [partner contract guide]({{ '/partner-integration/' | relative_url }})
@@ -114,7 +90,7 @@ reference. This adds no new npm package; the export is published in RC7, not RC6
 RC7 also adds `contract/capabilities` (lightweight typed inventory),
 `contract/capabilities.json` (the same inventory for non-JavaScript consumers), and
 `account/preflight` (configuration inspection before a key ceremony). These are subpaths
-of existing packages, not new packages. See [capability and configuration checks]({{ '/capabilities/' | relative_url }}); published RC6 does not include them. Use RC7 for these exports.
+of existing packages, not new packages. See [capability and configuration checks]({{ '/capabilities/' | relative_url }}); published RC6 does not include them. Use RC8 for the current release; these exports were introduced in RC7.
 
 For a first connection and a minimal browser host, follow [Install and connect]({{ '/getting-started/' | relative_url }}).
 
@@ -145,3 +121,35 @@ export const binding = () => import('@input-output-hk/mn-passport-contract/bindi
 Pass this lazy module to `createBrowserPassport` with a `NetworkConfig` that pins `bindingId: 'acc-s3r1.1'` and compiler manifest SHA-256 `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f`. The host also supplies the prover, fee sponsor, deployer and directory ports. The demo service selects `acc-s3r1.1`; its endpoints are described under [Service API]({{ '/service/' | relative_url }}).
 
 See the [packaging design](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/superpowers/specs/2026-10-07-passport-sdk-packages-design.md) for the remaining service and binding work.
+
+## Historical package count {#why-rc1-has-13-packages}
+
+The RC1 release script packed every publishable directory under `packages/`. That
+release had eight implemented libraries and five empty `export {}` scaffolds inherited
+from the earlier architecture.
+Publishing the scaffolds in `0.1.0-rc1` did **not** deliver five more capabilities. The original
+[architecture](https://github.com/midnightntwrk/midnight-passport-sdk/blob/dfdb3f87f2cc2941530ab398e117f46b348fab7f/docs/architecture.md#44-packaging)
+pictured a Passport app engine (`core`), a dApp library (`connect`), shared foundations, and platform
+adapters. The later, accepted [package decision](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0007-package-set-ports-and-flows.md)
+put account-owner flows and ports in `account`, split the prototype's large browser adapter by
+responsibility, reserved `core` and `connect` for later work, and retired three empty adapters.
+
+The reserved/retired workspaces below are not released libraries. They are not
+needed by an RC8 consumer. Current releases pack only the nine implemented packages.
+
+| Package (`@input-output-hk/mn-passport-*`) | Purpose and place in the vision | Current implementation |
+| --- | --- | --- |
+| `core` | Intended Passport app engine for grants, private data, recovery, and DID beyond the shared account-owner flows. | Empty scaffold; reserved by ADR 0007. Do not install for RC1 features. |
+| `connect` | Intended thin dApp-side grant/connection library, separate from the account-owner API. | Empty scaffold; reserved. The current browser descriptor is an account API, not the finished dApp grant protocol. |
+| `adapter-signer-local` | Earlier plan for a local JubJub signer. | Empty scaffold; retired in favour of key providers in `keys`. |
+| `adapter-signer-managed` | Earlier plan for a managed-custody signer. | Empty scaffold; retired from this package map. |
+| `adapter-prover-remote` | Earlier plan for a remote proving adapter. | Empty scaffold; superseded by `adapter-service/prover`. |
+
+The `service` library was **not** among the 13 RC1 packages: the demo service then lived entirely
+under `apps/passport-service`. RC1 therefore had eight implemented packages and five published
+placeholders. The current source has extracted the server and chain HTTP handler behind an injected
+`ChainBackend`; the demo still owns the wallet, network, key cache and directory. The original
+vision also includes higher-level `core`, `connect`, and `agent` entry libraries for the Passport app,
+dApps, and agents. A host should not have to import every adapter. The five placeholders are now
+private workspace packages and are excluded by both release allowlists, so RC8 packs
+nine implemented packages. Existing RC1 package records remain historical artifacts.

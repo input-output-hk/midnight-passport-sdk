@@ -39,6 +39,7 @@ import {
   acceptRoutineLogin,
   approveCriticalOwner,
 } from './routine-access.js';
+import { demoSigningMode } from './signing-mode.js';
 
 export const SERVICE_URL = import.meta.env.VITE_PASSPORT_SERVICE_URL ?? 'http://localhost:8787';
 /** The artefact manifest hash this build pins (R18); the service's /v1/config is checked against it. */
@@ -52,13 +53,20 @@ export const BINDING_ID = 'acc-s3r1.1';
 const ARTEFACT_URL =
   import.meta.env.VITE_PASSPORT_ARTEFACT_URL ??
   `${SERVICE_URL.replace(/\/+$/, '')}/v1/zk/${BINDING_ID}`;
-const configuredArm = import.meta.env.VITE_PASSPORT_ARM ?? 'p256';
-if (configuredArm !== 'p256' && configuredArm !== 'jubjub')
-  throw new Error('VITE_PASSPORT_ARM must be p256 or jubjub');
-export const ARM: 'p256' | 'jubjub' = configuredArm;
+const signing = demoSigningMode({
+  mode: import.meta.env.VITE_PASSPORT_SIGNING_MODE,
+  legacyArm: import.meta.env.VITE_PASSPORT_ARM,
+  search: location.search,
+});
+export const ARM = signing.arm;
+export const SIGNING_MODE = signing.mode;
 export const ORIGIN = 'http://localhost:5173';
 const loginOptions = {
   onAccountOpened: (
+    account: import('@input-output-hk/mn-passport-protocol').PassportAccount,
+    keys: BrowserLoginKeys,
+  ) => acceptRoutineLogin(account, keys, RP_ID, ORIGIN),
+  onAccountCreated: (
     account: import('@input-output-hk/mn-passport-protocol').PassportAccount,
     keys: BrowserLoginKeys,
   ) => acceptRoutineLogin(account, keys, RP_ID, ORIGIN),
@@ -193,7 +201,12 @@ export async function connect(
     network,
     ...(!ownerSession && loginOptions),
     binding: async () => (await import('./acc-module.js')).accModule,
-    passkey: { rpId: RP_ID, origin: ORIGIN, beforeCeremony: beforeDemoCeremony },
+    passkey: {
+      rpId: RP_ID,
+      origin: ORIGIN,
+      beforeCeremony: beforeDemoCeremony,
+      ...(ARM === 'jubjub' && { registrationProfile: 'jubjub-prf' as const }),
+    },
     prover: remoteV1Prover(SERVICE_URL, { fetch: tracedFetch }),
     sponsor,
     sponsorKeys: config,

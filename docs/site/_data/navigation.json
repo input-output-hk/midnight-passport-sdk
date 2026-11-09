@@ -1,0 +1,229 @@
+[
+  {
+    "title": "Start here",
+    "pages": [
+      {
+        "title": "Start",
+        "url": "/"
+      },
+      {
+        "title": "Architecture and concepts",
+        "url": "/architecture/"
+      },
+      {
+        "title": "Install and connect",
+        "url": "/getting-started/"
+      },
+      {
+        "title": "Library integration",
+        "url": "/library-guide/"
+      },
+      {
+        "title": "Packages and runtimes",
+        "url": "/packages/"
+      }
+    ]
+  },
+  {
+    "title": "Account and host guides",
+    "pages": [
+      {
+        "title": "Account API",
+        "url": "/api/"
+      },
+      {
+        "title": "Operation authorization",
+        "url": "/authorization/"
+      },
+      {
+        "title": "Account keys and recovery",
+        "url": "/account-keys/"
+      },
+      {
+        "title": "Secret storage",
+        "url": "/secret-storage/"
+      },
+      {
+        "title": "Background tasks",
+        "url": "/background/"
+      },
+      {
+        "title": "Mutation durability",
+        "url": "/durability/"
+      },
+      {
+        "title": "Grant recovery",
+        "url": "/grant-recovery/"
+      },
+      {
+        "title": "Shielded deposit recovery",
+        "url": "/shielded-deposit-recovery/"
+      },
+      {
+        "title": "Durable host submissions",
+        "url": "/host-durability/"
+      },
+      {
+        "title": "Durable service jobs",
+        "url": "/service-jobs/"
+      }
+    ]
+  },
+  {
+    "title": "Adapters and integration",
+    "pages": [
+      {
+        "title": "Application contracts",
+        "url": "/partner-integration/"
+      },
+      {
+        "title": "Consumer qualification",
+        "url": "/consumer-integration/"
+      },
+      {
+        "title": "Lace evaluation",
+        "url": "/lace-handover/"
+      },
+      {
+        "title": "Lace Wallet reader",
+        "url": "/lace-wallet/"
+      },
+      {
+        "title": "React host example",
+        "url": "/react-example/"
+      },
+      {
+        "title": "Presentation models",
+        "url": "/interaction/"
+      },
+      {
+        "title": "Naming adapters",
+        "url": "/names/"
+      }
+    ]
+  },
+  {
+    "title": "Infrastructure",
+    "pages": [
+      {
+        "title": "HTTP service API",
+        "url": "/service/"
+      },
+      {
+        "title": "Public proving keys",
+        "url": "/keys/"
+      },
+      {
+        "title": "Capability checks",
+        "url": "/capabilities/"
+      },
+      {
+        "title": "Circuit reference",
+        "url": "/circuits/"
+      }
+    ]
+  },
+  {
+    "title": "Reference demo",
+    "pages": [
+      {
+        "title": "Run the demo",
+        "url": "/demo-guide/"
+      },
+      {
+        "title": "Use cases",
+        "url": "/use-cases/"
+      },
+      {
+        "title": "Navigation and Activity",
+        "url": "/demo-ui/"
+      },
+      {
+        "title": "Consent and key purposes",
+        "url": "/consent/"
+      },
+      {
+        "title": "Passkey requests",
+        "url": "/passkey-prompts/"
+      },
+      {
+        "title": "Routine access",
+        "url": "/quick-actions/"
+      },
+      {
+        "title": "Full-owner policy",
+        "url": "/authenticated-owner/"
+      },
+      {
+        "title": "Bounded transfers",
+        "url": "/jubjub-sessions/"
+      }
+    ]
+  },
+  {
+    "title": "Support and releases",
+    "pages": [
+      {
+        "title": "Troubleshooting",
+        "url": "/troubleshooting/"
+      },
+      {
+        "title": "Quality and testing",
+        "url": "/quality/"
+      },
+      {
+        "title": "Qualification limits",
+        "url": "/qualification/"
+      },
+      {
+        "title": "Use-case evidence",
+        "url": "/use-case-coverage/"
+      },
+      {
+        "title": "Published RC8",
+        "url": "/release-notes-rc8/"
+      },
+      {
+        "title": "Unreleased source changes",
+        "url": "/source-preview/"
+      },
+      {
+        "title": "Release procedure",
+        "url": "/releasing/"
+      }
+    ]
+  },
+  {
+    "title": "Design and history",
+    "pages": [
+      {
+        "title": "Problems and boundaries",
+        "url": "/problems/"
+      },
+      {
+        "title": "Historical live qualification",
+        "url": "/live-qualification/"
+      },
+      {
+        "title": "Historical RC5 funding",
+        "url": "/handover/"
+      },
+      {
+        "title": "RC7 notes",
+        "url": "/release-notes-rc7/"
+      },
+      {
+        "title": "RC6 notes",
+        "url": "/release-notes-rc6/"
+      },
+      {
+        "title": "RC5 notes",
+        "url": "/release-notes-rc5/"
+      },
+      {
+        "title": "RC4 notes",
+        "url": "/release-notes-rc4/"
+      }
+    ]
+  }
+]

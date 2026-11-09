@@ -5,29 +5,24 @@ import type {
   PrfKeySource,
 } from '@input-output-hk/mn-passport-account/ports';
 import { p256 as p256Curve } from '@noble/curves/nist.js';
-import { browserPasskey } from './passkey.js';
+import { browserPasskey, type PasskeyOptions } from './passkey.js';
 import { passkeyPrf } from './prf.js';
 import { identifyPasskeyWithPrf } from './login.js';
 import { createPasskeySessions, type PasskeyLoginKeys } from './sessions.js';
 import { createPasskeySelection } from './selection.js';
 import { pinnedPasskeyOptions } from './pinned-options.js';
-import type { PasskeyCeremonyOptions } from './ceremony.js';
 
 export type { PasskeyLoginKeys } from './sessions.js';
 
 /** Browser implementation of the account's credential, PRF and P-256 authoriser ports. */
-export function webauthnPasskey(
-  opts: PasskeyCeremonyOptions & {
-    rpId: string;
-    origin: string;
-    credentials?: CredentialsContainer;
-  },
-): {
+export function webauthnPasskey(opts: PasskeyOptions): {
   credentials: CredentialPort;
   prf: PrfKeySource;
   p256: Authoriser;
   /** Available only during a combined login for this exact selected credential. */
   readLoginKeys(credentialId: Uint8Array | undefined): PasskeyLoginKeys;
+  /** Wallet-only handoff during an active post-registration key scope; never owner material. */
+  readCreationKeys(credentialId: Uint8Array | undefined): PasskeyLoginKeys;
 } {
   let selection: ReturnType<typeof createPasskeySelection>;
   const sessions = createPasskeySessions(
@@ -120,13 +115,34 @@ export function webauthnPasskey(
         };
       }),
   };
+  const refusedP256 = async (): Promise<never> => {
+    throw new PassportConnectorError(
+      'BindingUnsupported',
+      'PRF-only registration cannot sign as a P-256 owner.',
+    );
+  };
   return {
     credentials,
     prf: sessions.prf,
-    p256,
+    p256:
+      options.registrationProfile === 'jubjub-prf'
+        ? {
+            scheme: 'p256-webauthn',
+            devicePublicKey: refusedP256,
+            devicePublicKeyHex: refusedP256,
+            deviceCommitments: refusedP256,
+            deviceBinding: refusedP256,
+            authorise: refusedP256,
+            withKeySession: refusedP256,
+          }
+        : p256,
     readLoginKeys(credentialId) {
       const expected = credentialId && Uint8Array.from(credentialId);
       return sessions.readLoginKeys(() => selection.checkCredential(expected));
+    },
+    readCreationKeys(credentialId) {
+      const expected = credentialId && Uint8Array.from(credentialId);
+      return sessions.readCreationKeys(() => selection.checkCredential(expected));
     },
   };
 }

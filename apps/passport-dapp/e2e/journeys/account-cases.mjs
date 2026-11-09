@@ -45,7 +45,13 @@ export default [
   {
     id: 'account-actions.the-second-initial-prompt-requires-separate-approval',
     name: 'the second initial prompt requires separate approval before the compatibility probe',
-    arms: ['p256', 'jubjub'],
+    arms: ['p256'],
+    group: 'account-actions',
+  },
+  {
+    id: 'account-actions.jubjub-creation-shares-one-credential-and-routine-keys',
+    name: 'JubJub creation uses one credential call with create-time PRF and adopts routine keys without retaining owner authority',
+    arms: ['jubjub'],
     group: 'account-actions',
   },
   {
@@ -283,8 +289,50 @@ export default [
     group: 'account-actions',
   },
   {
+    id: 'account-actions.empty-funding-inventory-disables-deposits-without-hiding-withdrawals',
+    name: 'empty funding inventory disables deposits without hiding withdrawals',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
+  {
+    id: 'account-actions.proved-funding-refusal-is-failed-and-allows-only-explicit-new-intents',
+    name: 'proved funding refusal is failed and allows only explicit new intents',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
+  {
     id: 'account-actions.balance-service-outage-labels-prior-snapshots-without',
     name: 'balance service outage labels prior snapshots without signing or inferring zero',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
+  {
+    id: 'account-actions.consecutive-night-deposits-recover-after-wallet-catch-up',
+    name: 'consecutive NIGHT deposits recover automatically after wallet catch-up without resending',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
+  {
+    id: 'account-actions.consecutive-custom-deposits-preserve-asset-and-separate-balances',
+    name: 'consecutive custom-token deposits preserve selection and separate token/NIGHT balances',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
+  {
+    id: 'account-actions.exhausted-availability-checks-recover-in-place-without-a-transfer',
+    name: 'exhausted availability checks recover through the Deposit page without a transfer or passkey',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
+  {
+    id: 'account-actions.funding-read-outage-recovers-without-switching-an-insufficient-selection',
+    name: 'funding read outage recovers without switching the selected insufficient asset',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
+  {
+    id: 'account-actions.availability-recovery-preserves-the-original-unknown-funding-intent',
+    name: 'availability recovery preserves the original unknown funding intent without a POST',
     arms: ['p256', 'jubjub'],
     group: 'account-actions',
   },
