@@ -4,7 +4,7 @@ title: Optional Lace Wallet connection
 permalink: /lace-wallet/
 ---
 
-**Local source after RC7.** This optional connection is separate from the
+**Available in RC8; absent from RC7.** This optional connection is separate from the
 Passport account API, the passkey-derived built-in wallet and `lace-sdk`.
 It is not available in published RC7. There is no new package: the small
 `mn-passport-adapter-browser/wallet` subpath has no global access on import,

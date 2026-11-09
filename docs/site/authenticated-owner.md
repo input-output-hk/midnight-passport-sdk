@@ -142,7 +142,7 @@ separate zero-request route. See [request paths]({{ '/passkey-prompts/' | relati
 
 ## Engineer integration
 
-**Source-only reusable helper.** `createAuthenticatedJubjubOwner` from
+**RC8 reusable helper.** `createAuthenticatedJubjubOwner` from
 `mn-passport-keys` is framework-neutral. It is absent from published RC7. Give it the existing
 PRF authoriser output, derived wallet seed, pinned pure circuits, account context,
 and a host `check()` that enforces the authenticated lifetime and revision. The

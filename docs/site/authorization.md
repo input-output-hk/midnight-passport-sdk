@@ -4,7 +4,7 @@ title: Operation authorization
 permalink: /authorization/
 ---
 
-**Source preview after RC7.** These optional `account/authorisation` and
+**Available in RC8; absent from RC7.** These optional `account/authorisation` and
 `account/validation` exports are not in published `0.1.0-rc7`. This is the reusable
 library contract. The [demo guide]({{ '/demo-guide/' | relative_url }}) describes its
 additional login, fresh-passkey and memory-lease policies.

@@ -10,20 +10,21 @@ composition of those libraries; its navigation, memory leases, funding wallet an
 storage choices are not SDK defaults. To run that application, use the
 [Demo app guide]({{ '/demo-guide/' | relative_url }}).
 
-## Choose released packages or source preview
+## Choose a release or evaluate source {#choose-released-packages-or-source-preview}
 
 [Install and connect]({{ '/getting-started/' | relative_url }}) is the **published
-`0.1.0-rc7`** path. Install matching exact versions and use the release-tagged browser
+`0.1.0-rc8`** path. Install matching exact versions and use the release-tagged browser
 quickstart. The [package map]({{ '/packages/' | relative_url }}) identifies the nine
 implemented libraries and their dependency direction. Its
 [runtime/export index]({{ '/packages/#runtime-and-host-requirements' | relative_url }})
 separates neutral APIs, browser capabilities, fetch transports and Node backend code;
 import/type support is not provider or transaction readiness.
 
-The checked-out source also has **unpublished additions after RC7**: validation,
+**RC8 adds** validation,
 authorization, secret-store and background subpaths; interaction/naming/wallet helpers;
 verified-login handoff; and authenticated-owner/scoped-session helpers. A source export
-or a source test does not make that feature available from RC7. Consult the
+or a source test does not establish registry integrity; the signed RC8 receipt verifies
+actual installed package bytes. These additions remain absent from RC7. Consult the
 [API release map]({{ '/api/#published-and-source-preview-surfaces' | relative_url }})
 before selecting an import. Keep source builds and published consumer evidence separate.
 
@@ -48,7 +49,7 @@ The [copied-source consumer check]({{ '/quality/#copied-source-consumer-check' |
 also checks built public exports in a fresh external directory. It copies declared
 SDK artifacts and reuses physical external dependencies; it does not perform a
 package-manager installation. Neither check changes RC7 package contents or makes
-source-only imports available from an RC7 install. Keep the source revision and
+RC8 imports available from an RC7 install. Keep the source revision and
 the exact check receipt with your evaluation.
 
 ## Select the boundary you own
@@ -64,7 +65,7 @@ the exact check receipt with your evaluation.
 The portable account/key layers do not create your DOM, React tree, wallet vault or
 worker. An ACC viewing secret, a passkey signer, a wallet seed, fee sponsorship and
 funding are different capabilities. Passing one does not grant the others.
-For an optional source-only seed handoff during verified open, see the
+For an optional RC8 seed handoff during verified open, see the
 [login lifecycle example]({{ '/account-keys/#source-preview-use-wallet-material-during-verified-login' | relative_url }}).
 
 ## Build one integration module first
@@ -109,7 +110,7 @@ transaction. A local key lock neither revokes an on-chain grant nor removes an e
 owner. Source owner/session helpers require host teardown and live authority checks;
 they are not durable, automatically restored sessions.
 
-## Source preview: input admission and operation policy
+## RC8: input admission and operation policy {#source-preview-input-admission-and-operation-policy}
 
 `account/validation` exports distinct branded account/asset/recipient values and bounded
 canonical decimal amounts. Parsing checks shape, not ownership, chain freshness or
@@ -139,7 +140,7 @@ Node Buffers; its exact color/value/index checks still apply.
 The optional [routine-reader seam]({{ '/api/#source-preview-optional-routine-reader' | relative_url }})
 accepts host-approved holdings access; its lifetime and refusal policy remain host-owned.
 
-## Source preview: checked service configuration
+## RC8: checked service configuration {#source-preview-checked-service-configuration}
 
 Load service configuration against independently trusted pins before selecting runtime
 ports. The checked discovery APIs bound response bytes and time; they do not establish
@@ -147,7 +148,7 @@ that every advertised service is trusted or operational. See
 [configuration contracts]({{ '/api/#source-preview-checked-configuration-contract' | relative_url }})
 for limits, transport expectations, validation and a typed source example.
 
-## Source preview: P-256 signing without unused PRF access
+## RC8: P-256 signing without unused PRF access {#source-preview-p-256-signing-without-unused-prf-access}
 
 The browser adapter's P-256 unshielded withdrawal now enters a scoped ownership
 boundary without eagerly loading PRF outputs. That operation uses the selected public

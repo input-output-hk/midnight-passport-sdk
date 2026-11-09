@@ -210,7 +210,7 @@ Sensitive opening export and recovery/publication are critical even when a user
 might perceive them as reads. A separately approved, capped grant transfer has its
 own exact review and can use zero credential calls while inside that scope.
 
-## Source preview: opt-in JubJub sessions
+## RC8: opt-in JubJub sessions {#source-preview-opt-in-jubjub-sessions}
 
 The local source after RC7 adds an explicitly approved, PRF-derived session child
 with a recipient/asset-pinned, capped grant and a mandatory 10–30 minute chain

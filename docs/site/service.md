@@ -122,7 +122,7 @@ telemetry, so a stalled callback cannot delay the response. Expected `HttpError`
 public API; route implementations must keep those messages safe to disclose.
 
 
-## Source preview: V1 job observation lifetime
+## RC8: V1 job observation lifetime {#source-preview-v1-job-observation-lifetime}
 
 After RC7, `remoteV1Prover`, `remoteV1Deployer` and `requestV1Job` use one
 monotonic deadline for the original POST, response bodies, cursor polls and
@@ -164,7 +164,7 @@ separate explicit-timeout contract below; legacy `postService` remains unchanged
 The [raw durable mutation observation contract]({{ '/host-durability/#source-preview-original-id-observation' | relative_url }})
 has a different receipt policy and no transport POST retry.
 
-## Source preview: explicit sponsor timeout
+## RC8: explicit sponsor timeout {#source-preview-explicit-sponsor-timeout}
 
 After RC7, `remoteV1Sponsor(base, options)` captures `fetch` and `timeoutMs` when
 constructed. It does not poll or read `pollIntervalMs`. With no timeout, its
@@ -190,11 +190,11 @@ added to this synchronous sponsor API.
 Submit observation failure does not prove the transaction was not broadcast.
 This client retries no POST and supplies no durable ID/query endpoint. Preserve
 available transaction evidence and reconcile through the chosen backend/chain;
-do not repeat balance/submit merely because waiting ended. This source-only
+do not repeat balance/submit merely because waiting ended. This RC8
 correction does not change legacy `remoteSponsor`/`postService`, host jobs,
 configuration reads or published RC7 package bytes.
 
-## Source preview: funding intent and observation
+## RC8: funding intent and observation {#source-preview-funding-intent-and-observation}
 
 After RC7, `remoteFaucet` captures its fetch, timeout and credential callback at
 construction, retaining the callback's original receiver. Every explicit `fund`

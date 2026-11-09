@@ -27,7 +27,7 @@ input ownership and lifecycle. The demo's [routine access]({{ '/quick-actions/' 
 not defaults of the key recipes. Published RC7 and later source features remain
 labeled in those guides.
 
-## Source preview: use wallet material during verified login
+## RC8: use wallet material during verified login {#source-preview-use-wallet-material-during-verified-login}
 
 The optional `BrowserPassportConfig.onAccountOpened` callback runs after a verified
 open/open-at, while that passkey's login scope is still active. It does not run for
@@ -35,7 +35,7 @@ account creation or an authenticated `ownerSession` composition. Its
 `BrowserLoginKeys` exposes only `deriveWalletSeed()`, not raw PRF outputs, reader
 secrets or an owner signer. Each call returns a fresh caller-owned seed copy.
 
-This complete source-only module adds the callback to a host's normal passkey
+This complete RC8 module adds the callback to a host's normal passkey
 composition. The host supplies the wallet operation; the SDK does not connect a
 wallet or retain a session automatically:
 
@@ -76,7 +76,7 @@ owner, grant authority, persist private material, or choose a routine lifetime.
 The [demo guide]({{ '/demo-guide/' | relative_url }}) describes that host's additional
 routine-reader and wallet policy; other hosts choose their own custody and consent.
 
-## Source preview: caller-owned inputs
+## RC8: caller-owned inputs {#source-preview-caller-owned-inputs}
 
 The source after RC7 admits an owned keyring/recipient/entry snapshot **before**
 opening an asynchronous key-source scope. Device delivery, key creation, coin

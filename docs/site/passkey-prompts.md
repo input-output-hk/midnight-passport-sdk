@@ -4,7 +4,7 @@ title: Understanding passkey requests
 permalink: /passkey-prompts/
 ---
 
-**Source preview after RC7.** Login and critical operations require passkey access.
+**Available in RC8; absent from RC7.** Login and critical operations require passkey access.
 Routine work can reuse a reviewed memory lease. This supersedes the earlier local
 policy that allowed full-owner administration without fresh approval. Published
 RC7 and historical qualification receipts are unchanged.

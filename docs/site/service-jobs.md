@@ -322,7 +322,7 @@ GET cursors are validated; a stale cursor still requires a fresh snapshot, not
 silent event loss. Ordinary waiting reads fresh bounded snapshots, so an event
 observer may see repeated events; it receives snapshots, not an exactly-once log.
 
-### Source preview: bounded observation and admission
+### RC8: bounded observation and admission {#source-preview-bounded-observation-and-admission}
 
 The source after RC7 hardens this same opt-in protocol; it does not change the
 default demo, recover missing host work or retry a POST. New deployment admission

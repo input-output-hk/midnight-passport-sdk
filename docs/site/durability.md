@@ -71,7 +71,7 @@ metadata, the host must return `unknown` for an interrupted submission.
 A multi-wave deployer needs its own durable wave journal; an interrupted partial
 deployment must not be reported as a completed deployment or deployed again.
 
-### Source preview: pin one invocation
+### RC8: pin one invocation {#source-preview-pin-one-invocation}
 
 The local source after RC7 captures each `run` or `resume` invocation's original
 `id`, `signal` and `onEvent` before asynchronous work. Resume also captures the

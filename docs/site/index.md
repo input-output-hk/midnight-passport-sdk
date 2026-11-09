@@ -26,21 +26,26 @@ The library path does not require the demo's UI, React, local storage layout or 
 lease policy. The demo path needs a ready backend/chain/prover and configured wallets;
 installing TypeScript packages alone cannot create an account.
 
-## Published packages and current source
+<span id="published-packages-and-current-source"></span>
+<span id="published-preview-010-rc7"></span>
+<span id="local-source-after-rc7"></span>
 
-### Published preview `0.1.0-rc7`
+## Published preview `0.1.0-rc8`
 
-Nine implemented libraries are available through private GitHub Packages, with
-release-tagged browser composition, capability/preflight APIs and opt-in recovery/service
-seams. Use matching exact versions and [RC7 release notes]({{ '/release-notes-rc7/' | relative_url }}).
-Three backend images are published for Linux/amd64.
+Nine implemented libraries are available through **private GitHub Packages** (`next`),
+with three public Linux/amd64 backend images. Use matching exact versions from the
+[installation guide]({{ '/getting-started/' | relative_url }}) and immutable image
+pins in the [signed release receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc8/rc8-publication-receipt.json).
+[RC8 release notes]({{ '/release-notes-rc8/' | relative_url }}) describe the supported
+increment, checks and limitations.
 
-### Local source after RC7
-
-The checkout adds optional validation/authorization/custody/background APIs,
-verified-login adoption, owner/session helpers and current demo navigation/combined
-credential review. Source exports and local tests are not a new package release or
-proof of deployed-site behavior. Check each guide's release label.
+RC8 adds validation/authorisation, explicit secret-store/background ports,
+verified-login adoption and bounded-session helpers. The reference app adds consistent
+nested navigation, Activity, combined credential review and a wallet worker. These
+host policies are optional; importing a library creates no wallet, thread or UI.
+Earlier RC7 packages do not export the added RC8 APIs. Historical qualification
+retains its recorded source/runtime identity; publication does not imply a new native
+or real-provider pass.
 
 The binding remains `acc-s3r1.1`, pinned to Passport revision `6458ed5`. Shielded
 withdrawals require an exact-value coin; partial spending remains rejected. A scoped
@@ -68,4 +73,4 @@ Historical [RC5]({{ '/release-notes-rc5/' | relative_url }}) and
 The [Lace handover guide]({{ '/lace-handover/' | relative_url }}) describes evaluation
 scope, package selection, private-registry access and supported integration boundaries.
 The separate [wallet reader]({{ '/lace-wallet/' | relative_url }}) is an optional
-source read-only connector; connecting it does not grant ACC ownership or spending.
+read-only connector (RC8); connecting it does not grant ACC ownership or spending.

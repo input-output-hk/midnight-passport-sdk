@@ -10,8 +10,8 @@ as the Pages publishing source. Editing or locally rendering this source does no
   input admission, authorization, custody, error handling and cleanup.
 - `demo-guide.md` is the reference app entry: local setup, UI/navigation, consent, routine
   memory material, full-owner policy, bounded grants and operational evidence.
-- `getting-started.md` retains `/getting-started/` and the published RC7 install/composition
-  path. `api.md` retains `/api/` and the export reference, with explicit source-only additions.
+- `getting-started.md` retains `/getting-started/` and the published RC8 install/composition
+  path. `api.md` retains `/api/` and the export reference, with explicit version boundaries.
 - `account-keys.md` owns private account-key capabilities, wire formats, byte ownership
   and recovery. `keys.md` owns public proving artifacts, hash pins, caches and serving;
   its older account-viewing heading links to the private-key guide.
@@ -26,10 +26,9 @@ described as automatic SDK caching, enrollment, wallet connection or key persist
 ## Release and evidence labels
 
 Keep installation/API instructions tied to exported source types and matching published
-versions. Current source adds APIs absent from published `0.1.0-rc7`; label those imports
-and examples before the code. Use release-tagged source for the RC7 quickstart and the
-prototype branch for explicitly labeled source examples. Do not imply a source-only
-example compiles against RC7 packages.
+versions. Current guides target published `0.1.0-rc8`. APIs introduced in RC8 remain absent
+from historical RC7; preserve that distinction. Use release-tagged source for exact
+release examples and label any later source additions before the code.
 
 Keep source unit/type, synthetic browser, native proof, provider, production image and
 released-consumer evidence distinct. Link test sources as a contract map; only a matching

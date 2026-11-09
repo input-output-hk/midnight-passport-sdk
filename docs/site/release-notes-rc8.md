@@ -1,17 +1,18 @@
 ---
 layout: default
-title: Preview RC8 candidate
+title: Preview RC8 release
 permalink: /release-notes-rc8/
 ---
 
-## 0.1.0-rc8 — partner-ready preview candidate
+## 0.1.0-rc8 — supported partner preview
 
-**Preparation status: not published.** Published RC7 remains the installation
-baseline until the signed RC8 release and its verification receipt exist. This
-page defines the next candidate's scope; it does not announce registry, image or
-Pages publication. Use the [library guide]({{ '/library-guide/' | relative_url }})
-for reusable APIs and the [demo guide]({{ '/demo-guide/' | relative_url }}) for
-reference application wiring.
+**Published:** nine private GitHub npm packages and three public Linux/amd64
+backend images, all versioned `0.1.0-rc8`. Use the
+[release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc8),
+[signed verification receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc8/rc8-publication-receipt.json)
+and [exact-version installation guide]({{ '/getting-started/' | relative_url }}).
+The [library guide]({{ '/library-guide/' | relative_url }}) describes reusable APIs;
+the [demo guide]({{ '/demo-guide/' | relative_url }}) describes the reference app.
 
 ## Included increment
 
@@ -27,7 +28,7 @@ build or empty UI/framework package is introduced.
 - **Reusable integration seams:** checked/branded input admission, explicit
   authorisation routing, optional secret-store custody and bounded background-task
   ports. Use canonical `account/authorisation`; the earlier `account/authorization`
-  spelling remains an identical compatibility alias. Both are absent from RC7.
+  spelling remains an identical compatibility alias. Both ship in RC8 and are absent from RC7.
 - **Routine versus owner authority:** an explicitly reviewed routine lease retains
   derived reader/wallet material, not an owner scalar or raw PRF. Login does not
   enroll/unlock a full owner, connect a wallet or issue a grant. Separate full-owner
@@ -50,17 +51,17 @@ build or empty UI/framework package is introduced.
   synthetic browser inventory and image filesystem admission. Handover exports
   exclude private process journals and contributor-only instructions.
 
-## Verification required before publication
+## Verification and evidence boundaries
 
-| Layer | Candidate evidence / release requirement |
+| Layer | Verified scope / explicit boundary |
 | --- | --- |
-| Source | Full required gate, good GPG signatures, DCO/Assisted-by and independent review at the selected head |
-| Coverage | At clean `2a9a0e9`: 95.26% lines, 94.00% functions, 87.34% branches across the nine public packages; not app/provider coverage |
+| Source | Signed/DCO source0fa9467, reviewed PR301, all22 PR checks; sdk-check and live source release checks passed, including coverage/reproducibility |
+| Coverage | At release source `0fa9467`: 95.26% lines, 94.00% functions, 87.34% branches across the nine public packages; not app/provider coverage |
 | Browser | Clean `ba33365`: 192 synthetic cases on both owner arms and owned-resource closure; subsequent documentation/tool changes do not relabel that run |
-| Local installed candidate | Nine ba33365 tarballs, 34 runtime imports, strict Node/DOM/Worker/docs and six generated-contract/software-crypto cases; no registry provenance |
+| Registry installation | Nine actual RC8 registry archives: private visibility, exact next tag, SHA-256/SRI and source/publisher attestations; fresh authenticated install, runtime imports, strict Node/DOM/Worker/docs, six generated-contract/software-crypto cases, synthetic interruptions, browser build and one-circuit restore |
 | Native source | Earlier clean `e100762`: 28 proof/localnet lifecycle observations with grants, holdings, survivor rotation and wallet/indexer reconnect; not a new RC8-image/provider run |
-| Images | Local ba33365 Linux/amd64 service/funding content/non-root/startup-refusal controls; actual published image digests and required mounted runtime/key HTTP acceptance still needed |
-| Publication | Signed tags, final-head checks, reproducible archives, source/publisher attestations, private visibility, registry SHA/SRI, fresh registry installation, image manifests and deployed docs |
+| Images | Published Linux/amd64 digests pulled: service/funding content/non-root/startup refusals; key profile10/all52 verifiers, full prover hash, Range/CORS, one-circuit deterministic regeneration. Wider service/funding readiness/native runtime qualification remains #299 |
+| Publication | Four verified signed tags, successful source/publisher/image workflows and signed machine-readable receipt. Published-doc verification is a separate signed release asset after Pages deployment |
 
 The [acceptance index](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/local-backlog-acceptance.md)
 separates implementation from remaining evidence. Exact receipts keep their source,
@@ -90,7 +91,7 @@ version and runtime identity; no earlier native/browser receipt is retagged as R
 
 ## Evaluation
 
-Until RC8 is published, use the source-preview instructions or matching RC7
-packages/backends. Do not substitute a local candidate version for a registry
-release. Once published, use the exact RC8 versions and immutable image digests
-from its signed receipt; keep tokens and operator state outside source control.
+Install exact RC8 versions and matching immutable image digests from the signed
+receipt. Request private package read access for each consuming user/repository.
+Keep tokens and operator state outside source control; core imports start no service,
+thread or wallet. Use the demo source tagged `sdk-v0.1.0-rc8` for a matching UI.

@@ -14,7 +14,7 @@ fences remain. These additions are not in published RC7.
 
 
 
-## Local source navigation
+## Reference app navigation {#local-source-navigation}
 
 The local source after RC7 has four menu groups: **Passport account, Midnight wallet,
 Audit and Settings**. Sign up / Log in is a separate signed-out entry, with no Overview
@@ -165,7 +165,7 @@ An engineer running a trusted host/BFF can submit an immutable call/deploy job,
 observe bounded status, reconnect after a lost proxy reply and explicitly resume
 the original approved identity after a service restart. The [service-job guide]({{ '/service-jobs/' | relative_url }}) gives setup, expected outcomes and the eight-case transport restart matrix. This is a separate opt-in API; the demo owner buttons retain their existing composition. RC6 exports the separate opt-in host-job API. Missing host records stay unknown, completed expiry does not recycle IDs, and no automatic retry or replacement transaction is created. Real passkey providers, native proofs and full Lace integration keep their separate evidence requirements.
 
-## Source preview after RC7: bounded authenticated session
+## RC8: bounded authenticated session {#source-preview-after-rc7-bounded-authenticated-session}
 
 Use **Authorize JubJub session** after selecting the withdrawal recipient and
 asset. Explicitly approve caps and 10/15/30 minute absolute expiry. A matching

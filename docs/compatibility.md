@@ -1,26 +1,27 @@
 # Compatibility matrix
 
-## Next RC8 candidate — 2026-11-09
+## RC8 published preview — 2026-11-09
 
-PR295 is merged; the next corrections settle RP-scope approval, public export
-spelling, full-owner custody disclosure and runtime-image contents. RC8 is **not
-published**. RC7 remains the distribution baseline. Binding `acc-s3r1.1` and the
-nine-package set are unchanged. See [candidate notes](site/release-notes-rc8.md)
-and [acceptance reconciliation](local-backlog-acceptance.md).
+Nine private GitHub npm packages are published at **`0.1.0-rc8`** (`next`), with
+three matching public Linux/amd64 images. GPG/DCO source/tag identity, archive
+SHA-256/SRI, source/publisher attestations, private visibility, fresh registry
+installation and image checks are recorded in the [signed receipt](release/rc8-publication-receipt.json).
+Binding/version axis remains `acc-s3r1.1` / Passport6458ed5 / Compact0.35.0 /
+language0.27.0 / runtime0.20.0 / account and service API1.0.0-pre.0.
 
-| Adoption layer | Candidate support | Explicit limit |
+| Adoption layer | RC8 support | Explicit limit |
 | --- | --- | --- |
 | Contract/artifacts | Existing verified binding, compiler dependency, manifests and public keys | No arbitrary custom ACC build or complete typed circuit coverage |
 | Neutral account/key APIs | Typed both-arm operations, owned inputs, consent/custody/background ports | Host owns credentials, persistence, consent and lifecycle; no framework dependency |
 | Browser demo | Combined login, routine access, fresh critical approval, independent capped grants, wallet worker | Synthetic browser evidence; real providers/extension/full lace-sdk remain unqualified |
 | Node services/adapters | Bounded transports, explicit original-ID mutation/job reconciliation and funding policy | Default demo is not automatically durable; no distributed wallet lock or unknown-send retry |
-| Installed candidates | Nine ba33365 archives, 34 imports and strict Node/DOM/Worker/docs with six crypto controls | Source candidate, not current registry bytes or full Lace runtime acceptance |
-| Release | Existing signed-tag package/image/docs paths | Final-head registry hashes/SRI/visibility/attestations, images and deployed docs still required |
+| Registry consumers | Nine exact RC8 archives, imports and strict Node/DOM/Worker/docs; generated-contract/software crypto and synthetic interruptions | No full Lace runtime/provider acceptance |
+| Images | Immutable published digests, non-root/content/refusal controls; key HTTP/profile/hash and one-circuit restore | No fresh native funds lifecycle on RC8 images; Linux-prepared mounts/operator policy required |
 
-Exact-value shielded withdrawal, no automatic full owner and no owner fallback
-from an expired/uncertain scoped grant remain unchanged. Historical qualification
-below keeps its source and runtime identity; it is not a fresh RC8 run.
-
+Exact-value shielded withdrawal, fresh critical consent, no automatic full owner
+and no owner fallback from an expired/uncertain scoped grant remain unchanged.
+Historical qualification below keeps its actual source/runtime identity; release
+publication never relabels earlier native/browser evidence.
 
 ## Consented session source preview — 2026/11/06
 
@@ -81,7 +82,7 @@ See the [partner guide](site/partner-integration.md),
 in [the review map](review/partner-contracts/README.md); do not infer a passed run
 from a case definition. Existing published release limits below remain in force. The [native receipt](review/partner-contracts/native-acceptance.json) distinguishes the failed original full suite (with a separately confirmed payment/credit) from the successful continuation using a separate intent. No successful payment was retried. The archived indexer’s prior running state was restored; qualification compute stopped and all volumes remain.
 
-> **Status:** published preview RC7 · local qualification updated 2026/10/30. Releases are lockstep across the
+> **Historical status:** published preview RC7 · local qualification updated 2026/10/30. Releases are lockstep across the
 > `@input-output-hk/mn-passport-*` packages. The binding data is pinned in
 > `packages/contract/acc-binding-v2.generated.json` and the generated registry.
 
@@ -90,7 +91,7 @@ private registry hashes/attestations, and published image digests. The current R
 shielded withdrawal guard. Partial spends (#201), complete typed circuit coverage (#82) and
 remaining live/value-host evidence (#202) are deferred; no full Lace compatibility is claimed.
 
-The current [RC7 signed publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc7/rc7-publication-receipt.json)
+The historical [RC7 signed publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc7/rc7-publication-receipt.json)
 records actual registry hashes/SRI, private package visibility, attestations,
 installation and image checks. Earlier evidence below remains source/version specific.
 
@@ -151,6 +152,7 @@ sources; they are not relabelled as fresh provider or released-image acceptance.
 | `0.1.0-rc4` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 | `0.1.0-rc5` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 | `0.1.0-rc6` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
+| `0.1.0-rc8` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 | `0.1.0-rc7` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 
 The package registry supports only `acc-s3r1.1`. The older provisional
@@ -167,6 +169,7 @@ Compact runtime.
 | `0.1.0-rc4` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 | `0.1.0-rc5` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 | `0.1.0-rc6` | `1.0.0-pre.0` | `1.0.0-pre.0` |
+| `0.1.0-rc8` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 | `0.1.0-rc7` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 
 The local demo service was not a published SDK package in RC1. The service API
@@ -490,6 +493,7 @@ The account API and the service wire types are versioned separately.
 | `0.1.0-rc4` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 | `0.1.0-rc5` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 | `0.1.0-rc6` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
+| `0.1.0-rc8` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 | `0.1.0-rc7` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 
 RC1 had eight implementations and five empty scaffolds. RC4 and RC5 contain nine

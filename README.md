@@ -12,8 +12,8 @@ authentication, scoped grants, recovery, storage, proving, and the dApp
 connector all resolve to authorised interactions with that on-chain account.
 
 > **Status:** `passport-acc-prototype` contains nine implemented SDK packages and three
-> backend applications. The `0.1.0-rc7` preview is published as nine private GitHub npm
-> packages and three public Linux/amd64 GHCR images. [Release notes](./docs/site/release-notes-rc7.md)
+> backend applications. The `0.1.0-rc8` preview is published as nine private GitHub npm
+> packages and three public Linux/amd64 GHCR images. [Release notes](./docs/site/release-notes-rc8.md)
 > link the verified hashes, image digests and evaluation limits. [Lace handover](./docs/site/lace-handover.md)
 > describes package selection and access. Shielded withdrawals retain the exact-value guard;
 > this preview does not claim full Lace compatibility.
@@ -36,8 +36,8 @@ is built from [`docs/site/`](./docs/site/). Choose the path for your task:
 
 Library contracts cover ports, lifecycle and errors. Demo documentation explains
 this host's UI, consent, memory leases, workers, wallets and services. Installing a
-library does not opt into the demo's policies. Published RC7 and later source-only
-APIs are labeled separately; editing documentation locally does not update Pages.
+library does not opt into the demo's policies. Current RC8 APIs and historical
+release boundaries are labeled separately; editing documentation locally does not update Pages.
 
 The [package quality strategy](./docs/site/quality.md) defines coverage, type safety,
 worker execution and release gates. [Secret custody](./docs/site/secret-storage.md)

@@ -4,12 +4,12 @@ title: Install and connect
 permalink: /getting-started/
 ---
 
-**Library path · published RC7.** This page installs the released `0.1.0-rc7`
+**Library path · published RC8.** This page installs the released `0.1.0-rc8`
 libraries. Start with the [Library integration guide]({{ '/library-guide/' | relative_url }})
 for the lifecycle and host responsibilities, or the
 [Demo app guide]({{ '/demo-guide/' | relative_url }}) to run the reference application.
-Optional authorization, validation, storage/background and login/session helpers in the
-current source are **not RC7 imports**; see the [API release map]({{ '/api/#published-and-source-preview-surfaces' | relative_url }}).
+Optional authorisation, validation, storage/background and login/session helpers
+are included in RC8 and absent from RC7; see the [API release map]({{ '/api/#published-and-source-preview-surfaces' | relative_url }}).
 
 The path below produces a browser account integration module and a caller module for
 your own application. The upstream app engine and dApp grant protocol are broader than
@@ -44,15 +44,15 @@ git-ignored project file; keep credentials in user configuration:
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
-Install the verified RC7 preview:
+Install the verified RC8 preview:
 
 ```sh
 npm install --save-exact \
-  @input-output-hk/mn-passport-account@0.1.0-rc7 \
-  @input-output-hk/mn-passport-protocol@0.1.0-rc7 \
-  @input-output-hk/mn-passport-adapter-browser@0.1.0-rc7 \
-  @input-output-hk/mn-passport-adapter-service@0.1.0-rc7 \
-  @input-output-hk/mn-passport-contract@0.1.0-rc7
+  @input-output-hk/mn-passport-account@0.1.0-rc8 \
+  @input-output-hk/mn-passport-protocol@0.1.0-rc8 \
+  @input-output-hk/mn-passport-adapter-browser@0.1.0-rc8 \
+  @input-output-hk/mn-passport-adapter-service@0.1.0-rc8 \
+  @input-output-hk/mn-passport-contract@0.1.0-rc8
 ```
 
 Node 22 is the repository's pinned/tested tooling baseline. Use `nix develop` to pin Node, pnpm and
@@ -90,12 +90,12 @@ Linux-prepared contract dependencies; mounting a macOS `node_modules` is not sup
 
 ## 4. Compose the browser account API
 
-The maintained [browser composition example](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc7/docs/examples/browser-quickstart.ts)
+The maintained [browser composition example](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/docs/examples/browser-quickstart.ts)
 creates a sealed P-256 account API using the checked local service and packaged binding. Its
 `connectLocalPassport(records)` argument is a host-owned `AccountRecordStore`, not a seed store.
 Implement its `read`, `write` and `exists` methods persistently before creating an account. Preserve
 `localUseCounter` as a bigint and `credentialId` as bytes when serialising. The reference demo's
-[record store](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc7/apps/passport-dapp/src/grant-journal.ts)
+[record store](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/apps/passport-dapp/src/grant-journal.ts)
 shows validation and encoding. Store keys must distinguish network, binding and device/account;
 the demo keeps one selected record per network for evaluation.
 
@@ -167,8 +167,8 @@ method on `PassportConnectorAPI`: close only the observers, stores, workers and 
 sources your host owns, while preserving journals and acknowledged receipts.
 
 Run at exactly `http://localhost:5173` for this local example. The passkey RP ID, origin and
-contract WebAuthn profile must agree. The reference [Vite configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc7/apps/passport-dapp/vite.config.ts)
-and [polyfill entrypoint](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc7/apps/passport-dapp/src/polyfills.ts)
+contract WebAuthn profile must agree. The reference [Vite configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/apps/passport-dapp/vite.config.ts)
+and [polyfill entrypoint](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/apps/passport-dapp/src/polyfills.ts)
 show the Buffer initialisation, WASM support and browser shims required by the pinned Midnight
 runtime. The minimal composition is type-checked against RC7 tarballs; registry verification confirms
 identical package contents. It is not a complete replacement for the reference app's bundler and UI configuration.
@@ -177,7 +177,7 @@ This minimal composition enables create/open/state only. Rotation and device cha
 verified holdings and complete device/read-grant sources. Grants additionally need live grant
 sources and a durable encrypted publication journal. Unshielded withdrawals need a value-capable
 call port; the fee-only sponsor cannot move those assets. See [Account API]({{ '/api/' | relative_url }})
-before enabling another action. The [reference connector](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc7/apps/passport-dapp/src/connector.ts)
+before enabling another action. The [reference connector](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/apps/passport-dapp/src/connector.ts)
 shows the fuller localnet composition, including those ports. Its `valueCalls` and
 `grantJournalFactory` options are exported by RC7. Use the matching release source and SDK
 version when copying this advanced composition.
@@ -212,7 +212,7 @@ For a trusted operator host/BFF, the [durable service-job runbook]({{ '/service-
 | Add private holdings, transfers or administration | [Account prerequisites]({{ '/api/#optional-methods-and-host-prerequisites' | relative_url }}): supply complete live sources and the correct value/proof path. |
 | Survive interruption or an unknown submission | [Durability]({{ '/durability/' | relative_url }}): retain the original IDs, protected outputs and journal; reconcile before another send. |
 | Choose storage, key lifetime and teardown | [Library custody and cleanup]({{ '/library-guide/#custody-and-cleanup' | relative_url }}): metadata, journals and secret custody have separate owners. |
-| Adopt source-only helpers | [Release map]({{ '/api/#published-and-source-preview-surfaces' | relative_url }}): build matching source; an RC7 install has no optional source authorization, secret-store, background or verified-login handoff entries. |
+| Adopt optional RC8 helpers | [Release map]({{ '/api/#published-and-source-preview-surfaces' | relative_url }}): install matching RC8 packages; RC7 has no optional authorisation, secret-store, background or verified-login handoff entries. |
 
 The demo's routine cache and fresh critical-approval policy are explicit host choices.
 The quickstart enables neither that cache nor automatic full-owner enrollment. Keep

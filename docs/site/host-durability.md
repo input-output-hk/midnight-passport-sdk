@@ -7,7 +7,7 @@ permalink: /host-durability/
 **Introduced in RC6 and available in published RC7.** This is the opt-in Node
 host transport for [mutation durability]({{ '/durability/' | relative_url }}).
 The default browser/demo owner buttons use a different composition; they do not
-become durable by enabling a journal. Source-only observation hardening is labeled
+become durable by enabling a journal. RC8 observation hardening is labeled
 below. Dated simulator, HTTP, process and native evidence has its own scope in the
 [qualification guide]({{ '/qualification/' | relative_url }}).
 
@@ -345,7 +345,7 @@ scope. The SDK/host semantics are unchanged; complete race/provider acceptance
 is not inferred from these new tests.
 
 
-## Source preview: original-ID observation
+## RC8: original-ID observation {#source-preview-original-id-observation}
 
 After RC7, `remoteHostMutationPorts` captures its token, pins, fetch and timing
 options at construction. Each invocation retains its original identity, signal

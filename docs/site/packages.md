@@ -32,7 +32,7 @@ a chain, signer, prover, wallet or persistent store.
 | --- | --- | --- |
 | `protocol` | RC7; neutral types, constants and helpers | Account/service API shapes, not a wallet or transport. |
 | `account`; `account/ports`, `/errors`, `/testing`, `/preflight` | RC7; browser or Node with injected ports | Compatible binding, credentials/authorizer, crypto/randomness and chain/backend ports; records before creation. `ports` is types-only; `testing` supplies fakes, not production services. |
-| `keys` | RC7 portable key/codec APIs; some owner/session additions are source-only | Host-owned secret/PRF origin, crypto/encoding capabilities, explicit byte disposal and checked key lifetime. No automatic vault or native Node passkeys. |
+| `keys` | Portable key/codec APIs and RC8 owner/session additions | Host-owned secret/PRF origin, crypto/encoding capabilities, explicit byte disposal and checked key lifetime. No automatic vault or native Node passkeys. |
 | `contract`; `contract/capabilities`, `/capabilities.json`; `/bindings/acc-s3r1.1` | RC7; metadata/inventory and generated binding are different layers | Pin manifest/compiler/runtime. Generated runtime needs the compatible Compact/Midnight stack; proving keys stay outside npm. See [partner contracts]({{ '/partner-integration/' | relative_url }}). |
 | `adapter-webauthn` | RC7 browser WebAuthn/PRF; later source session improvements | Credential API, canonical RP/origin and a qualified provider. Software injection in Node tests is not a native Node authenticator. |
 | `adapter-browser` | RC7 browser composition | The above capabilities plus backend ports, Buffer/WASM bundler setup and owned account records. Imports alone do not connect a wallet or start a worker. |
@@ -118,13 +118,13 @@ of existing packages, not new packages. See [capability and configuration checks
 
 For a first connection and a minimal browser host, follow [Install and connect]({{ '/getting-started/' | relative_url }}).
 
-The nine RC7 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their
-`0.1.0-rc7` release uses the `next` distribution tag and requires package read access. Install the
+The nine RC8 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their
+`0.1.0-rc8` release uses the `next` distribution tag and requires package read access. Install the
 entrypoints your code imports; their declared dependencies bring in the supporting packages. A
 browser host using the account API and packaged binding can start with:
 
 ```sh
-npm install --save-exact @input-output-hk/mn-passport-account@0.1.0-rc7 @input-output-hk/mn-passport-adapter-browser@0.1.0-rc7 @input-output-hk/mn-passport-contract@0.1.0-rc7
+npm install --save-exact @input-output-hk/mn-passport-account@0.1.0-rc8 @input-output-hk/mn-passport-adapter-browser@0.1.0-rc8 @input-output-hk/mn-passport-contract@0.1.0-rc8
 ```
 
 ## Dependency direction

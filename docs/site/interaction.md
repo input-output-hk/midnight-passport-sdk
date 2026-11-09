@@ -4,7 +4,7 @@ title: Reusable interaction models
 permalink: /interaction/
 ---
 
-**Local source after RC7.** This API is not in the published RC7 packages. It adds
+**Available in RC8; absent from RC7.** This API is not in the published RC7 packages. It adds
 no package, React dependency or browser requirement. Import the optional
 `@input-output-hk/mn-passport-account/interaction` subpath. The source compiles
 with only the ES2022 library; it does not load account cryptography.
