@@ -72,3 +72,38 @@ test('proxy refuses to forward a no-start receipt with a different identity or t
   ])
     assert.equal(preflightRefusal(bad, 'original'), undefined);
 });
+
+test('discovery observes a successful five-second wallet catch-up plus transport delay', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  t.mock.method(AbortSignal, 'timeout', (milliseconds: number) => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), milliseconds);
+    return controller.signal;
+  });
+  const config = {
+    networkId: 'undeployed',
+    bindingId: 'acc-s3r1.1',
+    manifestSha256: 'ab'.repeat(32),
+  };
+  const assets = [{ color: '00'.repeat(32), amount: '10' }];
+  const expected = [{ ...assets[0], availability: 'available' }];
+  const transport = t.mock.method(
+    globalThis,
+    'fetch',
+    (_input: unknown, init?: RequestInit) =>
+      new Promise<Response>((resolve, reject) => {
+        const signal = init?.signal;
+        assert.ok(signal);
+        const abort = () => reject(new Error('Observation timed out'));
+        signal.addEventListener('abort', abort, { once: true });
+        setTimeout(() => {
+          signal.removeEventListener('abort', abort);
+          resolve(Response.json({ ...config, assets: expected }));
+        }, 5100);
+      }),
+  );
+  const pending = availableDemoAssets(config, new URL('http://127.0.0.1'), 'synthetic', assets);
+  t.mock.timers.tick(5100);
+  assert.deepEqual(await pending, expected);
+  assert.equal(transport.mock.callCount(), 1);
+});

@@ -756,8 +756,9 @@ The reference funding service checks its existing wallet's spendable unshielded 
 before any preparation/deposit, allowing up to five seconds for unshielded catch-up after
 a confirmed deposit. It never retries a transfer or substitutes a stale balance while waiting.
 Both services must run matching source and the same asset policy; restarting only the page does
-not update a backend. Its private `/v1/faucet/assets` read is proxied to the demo without
-the bearer token or wallet balances. Empty or unsynchronized inventory disables deposits;
+not update a backend. Its private `/v1/faucet/assets` read is proxied to the demo with a
+seven-second deadline to cover the wallet wait and transport. It exposes neither the bearer
+token nor wallet balances. Empty or unsynchronized inventory disables deposits;
 configured assets remain usable for ACC balance reads and withdrawals. Refresh ACC state updates
 availability, and the backend checks it again inside the deposit queue. Provision custom tokens
 on the current chain; a policy entry alone does not mint them. See the

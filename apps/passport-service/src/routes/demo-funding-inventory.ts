@@ -21,7 +21,8 @@ export async function availableDemoAssets(
   try {
     const response = await fetch(new URL('/v1/faucet/assets', base), {
       headers: { authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(5000),
+      // The funding wallet can spend five seconds catching up; allow transport overhead too.
+      signal: AbortSignal.timeout(7000),
     });
     if (!response.ok) throw new Error('Inventory unavailable');
     const body = (await response.json()) as Record<string, unknown>;

@@ -162,6 +162,7 @@ the funding wallet must hold that asset on the same chain. Refreshing ACC state 
 this advisory availability; the backend checks again inside the deposit queue.
 The funding service waits up to five seconds for unshielded catch-up after a confirmed deposit.
 It refuses a longer synchronization gap without using a stale balance or retrying a transfer.
+The demo proxy allows seven seconds for that read, including transport overhead.
 Run both services from matching source and policy; refreshing the page alone cannot update them.
 
 A proved inventory refusal says **No transfer was started**. Only an exact server receipt,
