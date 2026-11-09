@@ -1,3 +1,4 @@
+import { canFund, preferredFundingAsset, type DemoFundingAsset } from './funding.js';
 import { walletFacts, type WalletView } from './wallet/view.js';
 export type { WalletView } from './wallet/view.js';
 // Presentation: the action buttons, the progress bar, the event log, the account and wallet cards
@@ -131,8 +132,8 @@ export function createUi(
   let account: AccountView | undefined;
   let wallet: WalletView = {};
   let externalWalletConnected = false;
-  let fundingAsset: { color: string; amount: string } | undefined;
-  let assetsByColor = new Map<string, { color: string; amount: string }>();
+  let fundingAsset: DemoFundingAsset | undefined;
+  let assetsByColor = new Map<string, DemoFundingAsset>();
   const fundingSelect = byId<HTMLSelectElement>('fund-asset');
   const withdrawalSelect = byId<HTMLSelectElement>('withdraw-asset');
   const withdrawalAmount = byId<HTMLInputElement>('withdraw-amount');
@@ -249,9 +250,9 @@ export function createUi(
     buttons.rotate.disabled = busy || !account;
     buttons.wallet.disabled = busy;
     buttons.walletRefresh.disabled = busy || !wallet.unshieldedAddress;
-    buttons.fund.disabled = busy || !account;
+    buttons.fund.disabled = !canFund(busy, !!account, assetsByColor.get(fundingSelect.value));
     fundingSelect.disabled = busy || !account;
-    buttons.fund.closest('li')?.toggleAttribute('hidden', !fundingAsset);
+    buttons.fund.closest('li')?.toggleAttribute('hidden', assetsByColor.size === 0);
     buttons.withdraw.disabled = busy || !account || assetsByColor.size === 0;
     withdrawalSelect.disabled = busy || !account;
     withdrawalAmount.disabled = busy || !account;
@@ -696,6 +697,7 @@ export function createUi(
       .catch(() => status('Copy failed: the browser refused clipboard access.'));
   });
   knownAddress.addEventListener('input', renderButtons);
+  fundingSelect.addEventListener('change', renderButtons);
   grantGrantee.addEventListener('input', renderButtons);
   revokeGrantId.addEventListener('input', renderButtons);
   exportGrantId.addEventListener('input', renderButtons);
@@ -887,7 +889,10 @@ export function createUi(
       renderHoldings();
       renderEvidence();
     },
-    enableFunding(assets: readonly { color: string; amount: string }[]) {
+    enableFunding(assets: readonly DemoFundingAsset[]) {
+      const previousFunding = fundingSelect.value;
+      const previousWithdrawal = withdrawalSelect.value;
+      const previousGrant = grantAsset.value;
       assetsByColor = new Map(assets.map((asset) => [asset.color, asset]));
       fundingSelect.replaceChildren(
         ...assets.map((asset) => {
@@ -899,6 +904,12 @@ export function createUi(
               : `Test token ${shorten(asset.color, 6, 4)} (${asset.amount} units)`,
           );
           option.value = asset.color;
+          option.disabled = asset.availability !== 'available';
+          if (option.disabled)
+            option.textContent +=
+              asset.availability === 'insufficient'
+                ? ' — insufficient funding balance'
+                : ' — funding unavailable';
           return option;
         }),
       );
@@ -928,19 +939,23 @@ export function createUi(
           return option;
         }),
       );
-      fundingAsset = assets.find((asset) => asset.color === '00'.repeat(32)) ?? assets[0];
-      if (fundingAsset) fundingSelect.value = fundingAsset.color;
+      fundingAsset = preferredFundingAsset(assets, previousFunding);
+      fundingSelect.value = fundingAsset?.color ?? '';
+      if (assetsByColor.has(previousWithdrawal)) withdrawalSelect.value = previousWithdrawal;
+      if (assetsByColor.has(previousGrant)) grantAsset.value = previousGrant;
       if (account && accountBalances?.address !== account.address)
         accountBalances = {
           address: account.address,
           color: assets.find((asset) => asset.color !== '00'.repeat(32))?.color ?? '00'.repeat(32),
         };
-      byId('fund-desc').textContent =
-        'Deposit the selected asset from the demo funding wallet into this account.';
+      byId('fund-desc').textContent = fundingAsset
+        ? 'Deposit the selected asset from the demo funding wallet into this account.'
+        : 'Deposits are unavailable. The funding wallet needs a synchronized balance of the selected asset.';
       renderButtons();
     },
     selectedFundingAsset() {
-      return assetsByColor.get(fundingSelect.value);
+      const selected = assetsByColor.get(fundingSelect.value);
+      return selected?.availability === 'available' ? selected : undefined;
     },
     withdrawalCallLimit: () => assetsByColor.get(withdrawalSelect.value)?.amount ?? '0',
     withdrawalInput() {

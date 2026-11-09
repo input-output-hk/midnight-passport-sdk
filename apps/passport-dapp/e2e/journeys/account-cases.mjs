@@ -283,6 +283,18 @@ export default [
     group: 'account-actions',
   },
   {
+    id: 'account-actions.empty-funding-inventory-disables-deposits-without-hiding-withdrawals',
+    name: 'empty funding inventory disables deposits without hiding withdrawals',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
+  {
+    id: 'account-actions.proved-funding-refusal-is-failed-and-allows-only-explicit-new-intents',
+    name: 'proved funding refusal is failed and allows only explicit new intents',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
+  {
     id: 'account-actions.balance-service-outage-labels-prior-snapshots-without',
     name: 'balance service outage labels prior snapshots without signing or inferring zero',
     arms: ['p256', 'jubjub'],

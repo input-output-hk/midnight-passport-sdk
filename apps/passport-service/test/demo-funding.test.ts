@@ -81,6 +81,22 @@ test('browser seam keeps token server-side and funds only a registered deployed 
       );
       return;
     }
+    if (req.url === '/v1/faucet/assets') {
+      assert.equal(req.headers.authorization, `Bearer ${token}`);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          networkId: config.networkId,
+          bindingId: config.bindingId,
+          manifestSha256,
+          assets: [
+            { color, amount: '10', availability: 'insufficient' },
+            { color: '00'.repeat(32), amount: '10', availability: 'available' },
+          ],
+        }),
+      );
+      return;
+    }
     if (req.url?.startsWith('/v1/faucet/balances?')) {
       assert.equal(req.headers.authorization, `Bearer ${token}`);
       assert.equal(
@@ -125,16 +141,16 @@ test('browser seam keeps token server-side and funds only a registered deployed 
     const discovery = await fetch(url);
     assert.deepEqual(await discovery.json(), {
       assets: [
-        { color: '00'.repeat(32), amount: '10' },
-        { color, amount: '10' },
+        { color: '00'.repeat(32), amount: '10', availability: 'available' },
+        { color, amount: '10', availability: 'insufficient' },
       ],
       balanceAssetColor: color,
     });
     const balances = await fetch(`${url}?accountAddress=${accountAddress}`);
     assert.deepEqual(await balances.json(), {
       assets: [
-        { color: '00'.repeat(32), amount: '10' },
-        { color, amount: '10' },
+        { color: '00'.repeat(32), amount: '10', availability: 'available' },
+        { color, amount: '10', availability: 'insufficient' },
       ],
       balanceAssetColor: color,
       accountAddress,

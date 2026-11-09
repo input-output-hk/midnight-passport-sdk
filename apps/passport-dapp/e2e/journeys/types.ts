@@ -12,6 +12,9 @@ export interface FixtureState {
 }
 export interface JourneyFlags {
   unknownFunding: boolean;
+  emptyFunding?: boolean;
+  multipleFundingAssets?: boolean;
+  rejectFundingPreflight?: boolean;
   unknownWithdrawal: boolean;
   unsettledGrantSpend: boolean;
   unknownSession: boolean;

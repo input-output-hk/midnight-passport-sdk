@@ -749,3 +749,19 @@ Fresh critical approval uses the RP scope captured by the original lease; expiry
 renewal, changed credential or replaced review refuses without another signer.
 The reference connector remains localhost-pinned; real providers and deployment
 origins require their own acceptance. See the authenticated-owner and consent guides.
+
+### Source preview: funding inventory (after RC8)
+
+The reference funding service now checks its existing wallet's spendable unshielded inventory
+before any preparation/deposit. Its private `/v1/faucet/assets` read is proxied to the demo without
+the bearer token or wallet balances. Empty or unsynchronized inventory disables deposits;
+configured assets remain usable for ACC balance reads and withdrawals. Refresh ACC state updates
+availability, and the backend checks it again inside the deposit queue. Provision custom tokens
+on the current chain; a policy entry alone does not mint them. See the
+[funding application's source-preview contract](passport-funding-service/README.md#source-preview-funding-inventory-admission-after-rc8).
+
+Only a durably tombstoned no-submit refusal can clear that exact browser request ID and allow a
+new explicit intent. Legacy pending/unknown requests stay intact. No automatic retry or token
+mint occurs. These source changes require a coordinated restart of both reference services;
+the published RC8 packages/images are unchanged. Do not restart a user's existing stack merely
+to update the UI or erase its funding records.

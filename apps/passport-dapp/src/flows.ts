@@ -381,6 +381,9 @@ const HINTS: Readonly<Record<string, string>> = {
   ProverUnavailable:
     'The proving service did not answer in time. It may be busy with a deployment; wait, then retry.',
   SponsorRejected: 'The service refused to sponsor the transaction.',
+  FundingAssetUnavailable: 'The funding wallet needs more of this asset. No transfer was started.',
+  FundingWalletUnavailable:
+    'The funding wallet is not ready. No transfer was started. Try again after it synchronizes.',
   FundingRejected:
     'The funding service refused or could not confirm this deposit. Check the operation log; a pending request needs operator reconciliation before another attempt.',
   NetworkMismatch: 'The service is on a different network from this page.',

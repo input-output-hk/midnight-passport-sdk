@@ -2,6 +2,11 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { ServiceWire } from '@input-output-hk/mn-passport-protocol';
 import type { FundingBackend } from './funding-route.js';
 import { serial } from './queue.js';
+import {
+  fundingInventory,
+  FundingPreflightError,
+  type FundingInventory,
+} from './funding-inventory.js';
 
 export interface FundingAccount {
   ledgerState(): Promise<{
@@ -19,6 +24,8 @@ export interface WalletFundingOptions {
   readonly deployed: (address: string) => boolean;
   /** Connect through the pinned ACC compiled contract using the dedicated funding wallet. */
   readonly connect: (address: string) => Promise<FundingAccount>;
+  /** Opt-in inventory admission, sampled inside the deposit queue before any wallet write. */
+  readonly inventory?: () => Promise<FundingInventory>;
   /** Optional wallet preparation, e.g. creating an exact-value NIGHT UTXO on localnet. */
   readonly prepareDeposit?: (color: Uint8Array, amount: bigint) => Promise<string | undefined>;
   readonly pollMs?: number;
@@ -74,6 +81,11 @@ export function createWalletFundingBackend(
           color = Uint8Array.from(Buffer.from(request.color, 'hex'));
           amount = BigInt(request.amount);
           if (amount > (1n << 128n) - 1n) throw new Error('deposit exceeds Uint128');
+          if (options.inventory) {
+            const snapshot = await fundingInventory(options.inventory);
+            if ((snapshot.balances[request.color] ?? 0n) < amount)
+              throw new FundingPreflightError('FundingAssetUnavailable');
+          }
           before = await balance(account, color);
           await recordProgress?.({ stage: 'balance-observed', balanceBefore: before.toString() });
         } catch (error) {

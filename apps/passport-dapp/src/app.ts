@@ -31,6 +31,12 @@ import { Buffer } from 'buffer';
 import { parseDeviceHandoff, prepareDeviceHandoff } from './device-handoff.js';
 import { setOperationTraceSink, tracedFetch, traceOperation } from './operation-trace.js';
 import { createUi } from './ui.js';
+import {
+  parseFundingDiscovery,
+  fundingRequestFailure,
+  fundingExchange,
+  fundingUnsettled,
+} from './funding.js';
 import type { DevWallet } from './wallet/dev-wallet.js';
 import { createWalletPresentation } from './wallet/presentation.js';
 import { walletSeed } from './wallet/seed.js';
@@ -363,6 +369,8 @@ async function refreshAccountBalances(
   ) {
     throw new Error('ACC balance response is invalid');
   }
+  const discovery = parseFundingDiscovery(body);
+  ui.enableFunding(discovery.assets);
   ui.showAccountBalances(address, balanceAssetColor, balances.night, balances.fundedAsset);
   traceOperation('account.balances', {
     accountAddress: address,
@@ -375,28 +383,12 @@ async function refreshAccountBalances(
 void tracedFetch(fundingUrl.toString())
   .then(async (response) => {
     if (!response.ok) return;
-    const data = (await response.json()) as { assets?: unknown; balanceAssetColor?: unknown };
-    if (
-      Array.isArray(data.assets) &&
-      data.assets.length > 0 &&
-      data.assets.every(
-        (asset: unknown) =>
-          typeof asset === 'object' &&
-          asset !== null &&
-          typeof (asset as Record<string, unknown>).color === 'string' &&
-          /^[0-9a-f]{64}$/.test(String((asset as Record<string, unknown>).color)) &&
-          typeof (asset as Record<string, unknown>).amount === 'string' &&
-          /^[1-9][0-9]*$/.test(String((asset as Record<string, unknown>).amount)),
-      ) &&
-      typeof data.balanceAssetColor === 'string' &&
-      data.assets.some((asset: { color: string }) => asset.color === data.balanceAssetColor)
-    ) {
-      balanceAssetColor = data.balanceAssetColor;
-      ui.enableFunding(data.assets as { color: string; amount: string }[]);
-      if (account) {
-        const address = account.address;
-        void refreshAccountBalances(address).catch(() => ui.showAccountBalanceError(address));
-      }
+    const data = parseFundingDiscovery(await response.json());
+    balanceAssetColor = data.balanceAssetColor;
+    ui.enableFunding(data.assets);
+    if (account) {
+      const address = account.address;
+      void refreshAccountBalances(address).catch(() => ui.showAccountBalanceError(address));
     }
   })
   .catch(() => {
@@ -1089,18 +1081,22 @@ ui.on('fund', async () => {
   status(
     `Funding account ${target.slice(0, 12)}… with ${asset.amount} ${asset.color === '00'.repeat(32) ? 'NIGHT' : 'test units'}…`,
   );
-  const response = await tracedFetch(fundingUrl.toString(), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ accountAddress: target, requestId, color: asset.color }),
-  });
-  const result = (await response.json()) as Record<string, unknown>;
+  const { response, result } = await fundingExchange(() =>
+    tracedFetch(fundingUrl.toString(), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ accountAddress: target, requestId, color: asset.color }),
+    }),
+  );
   if (!response.ok) {
-    const error = new Error(
-      typeof result.error === 'string' ? result.error : 'Funding was refused',
-    );
-    error.name = 'FundingRejected';
-    throw error;
+    throw fundingRequestFailure({
+      status: response.status,
+      result,
+      requestId,
+      storage: localStorage,
+      keys: [key, legacyKey],
+      onNotStarted: (details) => traceOperation('funding.notStarted', details),
+    });
   }
   if (
     result.requestId !== requestId ||
@@ -1115,7 +1111,7 @@ ui.on('fund', async () => {
     typeof result.creditedBalance !== 'string' ||
     !/^\d+$/.test(result.creditedBalance)
   ) {
-    throw new Error('Funding service returned an invalid confirmation');
+    throw fundingUnsettled('Funding service returned an invalid confirmation');
   }
   record('funding', {
     requestId,

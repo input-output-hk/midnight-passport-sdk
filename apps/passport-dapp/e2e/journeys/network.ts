@@ -85,6 +85,12 @@ async function accountRoute(h: JourneyHarness, route: Route) {
 }
 async function fundingRoute(h: JourneyHarness, route: Route, url: URL) {
   const { flags, state, fundedIds, fundingIds } = h;
+  const assets = [
+    { color: night, amount: '10', availability: flags.emptyFunding ? 'insufficient' : 'available' },
+    ...(flags.multipleFundingAssets
+      ? [{ color: 'cd'.repeat(32), amount: '10', availability: 'available' }]
+      : []),
+  ];
   if (flags.serviceUnavailable) {
     await route.fulfill({ status: 503, json: { error: 'Synthetic service unavailable' } });
     return;
@@ -92,6 +98,17 @@ async function fundingRoute(h: JourneyHarness, route: Route, url: URL) {
   if (route.request().method() === 'POST') {
     const data = route.request().postDataJSON() as { requestId: string };
     fundingIds.push(data.requestId);
+    if (flags.rejectFundingPreflight) {
+      await route.fulfill({
+        status: 409,
+        json: {
+          requestId: data.requestId,
+          code: 'FundingAssetUnavailable',
+          submission: 'not-started',
+        },
+      });
+      return;
+    }
     if (flags.unknownFunding) {
       await route.fulfill({
         status: 503,
@@ -115,12 +132,17 @@ async function fundingRoute(h: JourneyHarness, route: Route, url: URL) {
     await route.fulfill({
       json: {
         accountAddress: address,
+        assets,
+        balanceAssetColor: night,
         balances: { night: String(state.night), fundedAsset: String(state.night) },
       },
     });
   else
     await route.fulfill({
-      json: { assets: [{ color: night, amount: '10' }], balanceAssetColor: night },
+      json: {
+        assets,
+        balanceAssetColor: night,
+      },
     });
 }
 async function serviceRoute(h: JourneyHarness, route: Route, url: URL) {

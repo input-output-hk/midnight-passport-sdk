@@ -7,9 +7,19 @@ import {
   expectedCases,
   journeySelection,
 } from '../e2e/journeys/catalog.mjs';
+const fundingExtensionIds = new Set([
+  'account-actions.empty-funding-inventory-disables-deposits-without-hiding-withdrawals',
+  'account-actions.proved-funding-refusal-is-failed-and-allows-only-explicit-new-intents',
+]);
 const namesHash = (arm: string) =>
   createHash('sha256')
-    .update(JSON.stringify(expectedCases(arm).map((c) => c.name)))
+    .update(
+      JSON.stringify(
+        expectedCases(arm)
+          .filter((c) => !fundingExtensionIds.has(c.id))
+          .map((c) => c.name),
+      ),
+    )
     .digest('hex');
 test('canonical catalog preserves signed W9 full name order and both arm inventories', () => {
   assert.equal(
@@ -22,9 +32,9 @@ test('canonical catalog preserves signed W9 full name order and both arm invento
   );
   assert.deepEqual(
     ['p256', 'jubjub'].map((arm) => expectedCases(arm).length),
-    [97, 95],
+    [99, 97],
   );
-  assert.equal(new Set(journeyCatalog.map((c) => c.id)).size, 97);
+  assert.equal(new Set(journeyCatalog.map((c) => c.id)).size, 99);
   assert.equal(Object.isFrozen(journeyCatalog), true);
   for (const row of journeyCatalog) {
     assert.equal(Object.isFrozen(row), true);
@@ -39,11 +49,11 @@ test('four named groups partition the complete arm cases in original order witho
   }
   assert.deepEqual(
     journeyGroups.map((g) => expectedCases('p256', g).length),
-    [16, 48, 16, 17],
+    [16, 50, 16, 17],
   );
   assert.deepEqual(
     journeyGroups.map((g) => expectedCases('jubjub', g).length),
-    [16, 47, 16, 16],
+    [16, 49, 16, 16],
   );
 });
 test('partial or misspelled shard selection cannot silently become a full/default run', () => {

@@ -436,3 +436,14 @@ the passkey and original evidence and reopen/reconcile the existing account befo
 retrying. A matching consented JubJub session still avoids passkey requests for its
 scoped withdrawals; critical owner actions retain fresh passkey reviews. See the
 [consent guide](../site/consent.md).
+
+## Source preview: custom-token inventory guard (after RC8)
+
+Deposit discovery now labels each configured asset from the existing funding wallet's synced,
+spendable unshielded inventory. Empty/unavailable options are disabled without removing ACC
+balance or withdrawal controls. Refresh ACC state refreshes availability. A queued backend
+preflight prevents a stale discovery observation from entering wallet preparation or deposit.
+Only a typed inventory failure with a persisted no-submit marker and tombstone returns a safe
+no-start refusal; unknown and legacy requests retain their original IDs. No automatic mint,
+retry, reset or change to RC8 artifacts is included. See the reference funding README for
+wire responses, sanitized diagnostics and restart boundaries.

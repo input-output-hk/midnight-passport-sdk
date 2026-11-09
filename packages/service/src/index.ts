@@ -52,6 +52,12 @@ export {
   type WalletFundingOptions,
 } from './wallet-funding-backend.js';
 export {
+  fundingInventory,
+  FundingPreflightError,
+  type FundingInventory,
+  type FundingPreflightCode,
+} from './funding-inventory.js';
+export {
   sponsorPolicy,
   viewOfLedgerTx,
   guardedBalance,

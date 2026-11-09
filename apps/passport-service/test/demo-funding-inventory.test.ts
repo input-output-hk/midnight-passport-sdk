@@ -1,0 +1,53 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { createServer as httpServer } from 'node:http';
+import { availableDemoAssets, preflightRefusal } from '../src/routes/demo-funding-inventory.ts';
+
+test('demo inventory checks pins, exact policy membership and amounts, failing closed without losing the asset list', async (t) => {
+  const config = {
+    networkId: 'undeployed',
+    bindingId: 'acc-s3r1.1',
+    manifestSha256: 'ab'.repeat(32),
+  };
+  const assets = [{ color: '00'.repeat(32), amount: '10' }];
+  let body: unknown = { ...config, assets: [{ ...assets[0], availability: 'available' }] };
+  const server = httpServer((req, res) => {
+    assert.equal(req.headers.authorization, 'Bearer synthetic');
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify(body));
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise<void>((resolve) => server.close(() => resolve())));
+  const bound = server.address();
+  assert.ok(bound && typeof bound !== 'string');
+  const url = new URL(`http://127.0.0.1:${bound.port}`);
+  const read = () => availableDemoAssets(config, url, 'synthetic', assets);
+  assert.equal((await read())[0]?.availability, 'available');
+  for (const bad of [
+    null,
+    { ...config, networkId: 'other', assets: [{ ...assets[0], availability: 'available' }] },
+    { ...config, assets: [] },
+    { ...config, assets: [{ ...assets[0], amount: '1', availability: 'available' }] },
+    { ...config, assets: [null] },
+    { ...config, assets: [{ ...assets[0], availability: 'yes' }] },
+  ]) {
+    body = bad;
+    assert.deepEqual(await read(), [{ ...assets[0], availability: 'unavailable' }]);
+  }
+});
+test('proxy refuses to forward a no-start receipt with a different identity or transaction marker', () => {
+  const body = {
+    requestId: 'original',
+    code: 'FundingAssetUnavailable',
+    submission: 'not-started',
+    error: 'private details',
+  };
+  assert.doesNotMatch(JSON.stringify(preflightRefusal(body, 'original')), /private details/);
+  for (const bad of [
+    { ...body, requestId: 'other' },
+    { ...body, txId: 'ab'.repeat(32) },
+    { ...body, preparationTxId: 'ab'.repeat(32) },
+    { ...body, code: 'other' },
+  ])
+    assert.equal(preflightRefusal(bad, 'original'), undefined);
+});

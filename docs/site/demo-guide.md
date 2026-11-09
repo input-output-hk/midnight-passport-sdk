@@ -152,3 +152,17 @@ claim that every current source revision has a passing receipt. They do not esta
 Google/iCloud restoration, native proof/provider acceptance or full Lace support.
 Use the [evidence map]({{ '/use-case-coverage/' | relative_url }}) and
 [qualification limits]({{ '/qualification/' | relative_url }}) for recorded results.
+
+## Source preview: deposit availability (after RC8)
+
+The later reference source checks the funding wallet's current spendable unshielded inventory.
+An empty asset or unavailable wallet disables that deposit option. The policy list remains
+available for ACC balances and withdrawals. Allowlisting a test-token ID does not create tokens;
+the funding wallet must hold that asset on the same chain. Refreshing ACC state also refreshes
+this advisory availability; the backend checks again inside the deposit queue.
+
+A proved inventory refusal says **No transfer was started**. Only an exact server receipt,
+after a durable no-submit marker and request tombstone, lets the page forget that request ID.
+A later explicit click starts a new intent. Uncertain/legacy requests retain their original IDs
+and reconciliation requirement. No automatic retry or mint is added. This is later source
+behavior, not a change to the published RC8 runtime.

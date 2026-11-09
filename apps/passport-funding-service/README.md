@@ -134,6 +134,35 @@ The source has focused policy and backend tests. On the local `undeployed` netwo
 live `spec_version = 3` ACC and observed the credited balance. Repeating the same request ID
 returned the same transaction ID and balance. Historical RC2 evidence is retained below; use the current RC7 image in the next section.
 
+## Source preview: funding inventory admission (after RC8)
+
+The reference application reads spendable **unshielded** balances from its existing wallet.
+`GET /v1/faucet/assets` requires the funding bearer token and returns the pinned network,
+binding and manifest, plus each policy asset's demo amount and `availability`:
+`available`, `insufficient` or `unavailable`. It exposes neither wallet balances nor keys.
+An unsynchronized, failed or timed-out wallet read is unavailable, never a zero balance.
+DUST synchronization does not block this unshielded observation.
+
+Discovery is advisory. The funding backend samples inventory again **inside its deposit queue**,
+before preparation or deposit. For an inventory refusal, it durably records `no-submit`,
+tombstones the original request and releases its quota before returning `FundingAssetUnavailable`
+(409) or `FundingWalletUnavailable` (503), with that `requestId` and `submission: not-started`.
+A new explicit user attempt can then use a new ID. Replaying the tombstoned ID never executes it.
+A failed journal/release, legacy pending request, or exception after entering wallet preparation
+or deposit remains unknown and cannot use this response. Never infer no-submit from an SDK
+exception, missing transaction ID, unchanged balance or a current inventory snapshot.
+
+Safe diagnostic logs record the request ID, last durable stage and fixed failure code.
+They intentionally exclude the raw wallet exception, proof data, token and seed.
+The demo disables unavailable deposits while keeping configured assets visible for ACC balance
+reads and withdrawals. Allowlisting a custom color does not mint it: provision that exact asset
+in this funding wallet on this chain before offering it. Changing chains does not carry inventory
+from an older demo. No automatic faucet mint or old-reservation reset is performed.
+
+These changes require restarting both reference services at matching source; they are not
+included in the published RC8 packages/images. Preserve all wallet/journal/chain state and use
+only the recorded resources belonging to the demo being restarted.
+
 ## Container image
 
 The [funding image workflow](../../.github/workflows/publish-funding-image.yml) publishes

@@ -229,3 +229,19 @@ Preserve the ID and available transaction evidence, then use the operator's
 reconciliation policy. There is no automatic POST retry, fallback, new ID, pending
 reservation release or background reconciliation. Published RC7 predates these
 client hardening changes; the funding route, wallet policy and journals are unchanged.
+
+## Source preview: optional funding inventory port (after RC8)
+
+`createWalletFundingBackend` accepts an optional `inventory` callback returning
+`FundingInventory`: a synchronized observation and a map of spendable unshielded bigint balances.
+The host must bound this read and use the same wallet/network as the deposit path. The backend
+copies and validates the observation inside its serial queue, before preparation or deposit.
+The reference funding app opts in; existing hosts without this callback keep their previous
+behavior. Public `fundingInventory` validates observations; `FundingPreflightError` carries only
+fixed `FundingAssetUnavailable`/`FundingWalletUnavailable` diagnostics.
+
+`fundingRoute` returns a proved inventory refusal only after its progress callback durably
+records `no-submit` and the store releases/tombstones the request. Failed persistence and generic
+wallet exceptions retain unknown semantics. An old pending request is never executed again or
+retrospectively classified from today's balance. Logs include only request ID, last durable
+stage and a fixed code. The optional inventory contract is source preview, absent from RC8.

@@ -1,46 +1,12 @@
 import { readFileSync } from 'node:fs';
+import { demoAssets, availableDemoAssets, preflightRefusal } from './demo-funding-inventory.ts';
 import type { ServiceConfig } from '../config.ts';
 import { DeploymentLog, sponsoredAddresses } from '../deployments.ts';
 import { HttpError, json, readJson, type Route } from '../http.ts';
 
 const ADDRESS = /^[0-9a-f]{64}$/;
 const REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const DECIMAL = /^[1-9][0-9]*$/;
 const TX_ID = /^(?:[0-9a-f]{64}|[0-9a-f]{66})$/;
-
-interface DemoAsset {
-  readonly color: string;
-  readonly amount: string;
-}
-
-function demoAssets(file: string): { assets: DemoAsset[]; balanceAssetColor: string } {
-  const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
-  if (!Array.isArray(parsed) || parsed.length === 0)
-    throw new Error('demo funding needs a valid asset policy');
-  const assets = parsed.map((raw: unknown): DemoAsset => {
-    const item = raw as Record<string, unknown>;
-    if (
-      !item ||
-      typeof item !== 'object' ||
-      Array.isArray(item) ||
-      typeof item.color !== 'string' ||
-      !ADDRESS.test(item.color) ||
-      typeof item.maxPerRequest !== 'string' ||
-      !DECIMAL.test(item.maxPerRequest)
-    )
-      throw new Error('demo funding needs a valid asset policy');
-    const limit = BigInt(item.maxPerRequest);
-    return { color: item.color, amount: (limit < 10n ? limit : 10n).toString() };
-  });
-  if (new Set(assets.map((asset) => asset.color)).size !== assets.length)
-    throw new Error('demo funding needs distinct asset colors');
-  assets.sort((a, b) => Number(b.color === '00'.repeat(32)) - Number(a.color === '00'.repeat(32)));
-  return {
-    assets,
-    balanceAssetColor:
-      assets.find((asset) => asset.color !== '00'.repeat(32))?.color ?? '00'.repeat(32),
-  };
-}
 
 /** A localnet-only browser seam. The funding wallet and bearer token stay in their own process. */
 export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv): Route | undefined {
@@ -122,6 +88,7 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
     }
     if (requestUrl.pathname !== '/v1/demo/funding') return false;
     if (req.method === 'GET') {
+      const discovery = await availableDemoAssets(config, url, token, assets);
       const address = requestUrl.searchParams.get('accountAddress');
       if (address !== null) {
         if (!ADDRESS.test(address) || !sponsoredAddresses(config, deployments).has(address))
@@ -146,14 +113,14 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
           throw new HttpError(502, 'funding service returned invalid ACC balances');
         }
         json(res, 200, {
-          assets,
+          assets: discovery,
           balanceAssetColor,
           accountAddress: address,
           balances: { night: body.night, fundedAsset: body.fundedAsset },
         });
         return true;
       }
-      json(res, 200, { assets, balanceAssetColor });
+      json(res, 200, { assets: discovery, balanceAssetColor });
       return true;
     }
     if (req.method !== 'POST') {
@@ -198,6 +165,11 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
     });
     const result = (await response.json()) as Record<string, unknown>;
     if (!response.ok) {
+      const refusal = preflightRefusal(result, fields.requestId);
+      if (refusal && [409, 503].includes(response.status)) {
+        json(res, response.status, refusal);
+        return true;
+      }
       const message = typeof result.error === 'string' ? result.error : 'funding was refused';
       throw new HttpError(response.status, message);
     }
