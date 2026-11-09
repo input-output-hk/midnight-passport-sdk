@@ -14,6 +14,7 @@ on:
       - '.github/workflows/check-service-image.yml'
       - '.github/workflows/publish-service-image.yml'
       - 'scripts/smoke-service-image.sh'
+      - 'scripts/check-runtime-image.mjs'
       - '!**/*.md'
 
 permissions:

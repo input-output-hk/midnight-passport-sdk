@@ -6,7 +6,7 @@ Status: accepted for local implementation, 2026-11-07. Refs Q9, ADR 0015 and
 ## Decision
 
 Authentication unlocks a capability; it is not blanket operation consent.
-Expose `createAccountAuthorisation` from `account/authorization`. The host supplies
+Expose `createAccountAuthorisation` from `account/authorisation`. The host supplies
 the primary account, an optional authenticated-owner account/checked lease and
 a `consent.review` port and required synchronous `isContextCurrent(): boolean` host guard. The package supplies no dialog or framework dependency.
 
@@ -108,3 +108,28 @@ transfers retain standalone exact consent; other administration reviews may rema
 separate. This is demo host composition, not an automatic library dialog or full-owner
 restriction. Source contract tests and synthetic browser qualification remain separate;
 no real-provider/native acceptance or published-RC7 behavior change is asserted.
+
+
+## Residual risk: cached full owner in the reference host
+
+The explicit full-owner mode keeps a full-authority scalar in page memory. Code
+with that memory access can bypass host consent and retain a usable copy after
+the local lease expires. Fresh approval and JavaScript zeroing do not constrain
+such a copied key on chain. This is a custody limitation of the software-owner
+mode, not evidence that login or the routine reader lease contains an owner key.
+
+The preview retains this opt-in mode to demonstrate the supported software-owner
+composition. A different custody boundary needs a separately qualified signer or
+host integration; timers cannot supply it. Mitigations are explicit unlock risk
+copy, a ten-minute default (15/30 only by selection), memory-only owned copies,
+lock/hidden-tab/expiry disposal, fresh pinned critical approval and independently
+bounded grants for suitable transfers. No persistence or weaker consent is added.
+The normal routine-reader route remains owner-free. Contract-level removal and
+recovery retain their documented limitations; local lock is never described as
+complete revocation or guaranteed memory erasure.
+
+Fresh owner approval now uses the immutable RP ID/origin scope admitted with the
+lease. The operation controller captures that scope and rechecks its identity
+across asynchronous approval; renewal or replacement cannot substitute a new RP
+scope for an existing action. The reference connector is still localhost-pinned:
+this seam is not a claim of non-localhost provider/deployment qualification.

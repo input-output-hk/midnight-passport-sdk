@@ -37,6 +37,14 @@ export interface RoutineContext {
   readonly credentialId: Uint8Array;
 }
 
+function notifyRoutine(listener: (snapshot: RoutineState) => void, snapshot: RoutineState) {
+  try {
+    listener(snapshot);
+  } catch {
+    // Observers cannot prevent key disposal, initial presentation or other listeners.
+  }
+}
+
 const contextOf = (account: RoutineAccount): RoutineContext | undefined =>
   account.credentialId && {
     account: account.address,
@@ -65,6 +73,7 @@ export function createRoutineKeys(ports: {
   let reader: Uint8Array | undefined;
   let owner: AuthenticatedJubjubOwner | undefined;
   let origin = '';
+  let credentialScope: Readonly<{ rpId: string; origin: string }> | undefined;
   let revision = 0,
     deadline = 0,
     lastWall = 0,
@@ -73,13 +82,7 @@ export function createRoutineKeys(ports: {
   const listeners = new Set<(snapshot: RoutineState) => void>();
   const publish = (next: RoutineState) => {
     state = Object.freeze(next);
-    for (const listener of listeners) {
-      try {
-        listener(state);
-      } catch {
-        /* Observers cannot prevent key disposal or later observers. */
-      }
-    }
+    for (const listener of listeners) notifyRoutine(listener, state);
   };
   const lock = (status: 'locked' | 'expired' = 'locked') => {
     revision++;
@@ -91,6 +94,7 @@ export function createRoutineKeys(ports: {
     for (const child of children) child.dispose();
     children.clear();
     bound = undefined;
+    credentialScope = undefined;
     publish({ status });
   };
   const tick = () => {
@@ -219,6 +223,7 @@ export function createRoutineKeys(ports: {
       bound = context;
       // The existing grant protocol uses the trusted RP ID as its origin scope.
       origin = rpId;
+      credentialScope = Object.freeze({ rpId, origin: pageOrigin });
       reader = deriveSymmetricSecret(seed, {
         domain: READER_SECRET_DOMAIN,
         context: context.networkId,
@@ -248,11 +253,7 @@ export function createRoutineKeys(ports: {
     snapshot: tick,
     subscribe(listener: (snapshot: RoutineState) => void) {
       listeners.add(listener);
-      try {
-        listener(tick());
-      } catch {
-        /* Initial presentation is an observer too. */
-      }
+      notifyRoutine(listener, tick());
       return () => {
         listeners.delete(listener);
       };
@@ -298,6 +299,10 @@ export function createRoutineKeys(ports: {
         activate: (account, minutes, rpId, origin, load) =>
           activate(account, minutes, rpId, origin, false, load),
       }),
+    credentialScope(account: RoutineAccount) {
+      const context = contextOf(account);
+      return context && matches(context) ? credentialScope : undefined;
+    },
     ownerSession(account: RoutineAccount) {
       const context = contextOf(account);
       return context && matches(context) ? owner : undefined;

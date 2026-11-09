@@ -25,7 +25,7 @@ exact declarations remain the source-linked contract, qualified by release/versi
 | Track | Exports and behavior |
 | --- | --- |
 | Published `0.1.0-rc7` | Account create/open/state, supported device/key/grant/value flows through host ports; browser/WebAuthn/service adapters; capability/preflight and documented opt-in recovery/service-job APIs. Use matching exact packages and release-tagged examples. |
-| Source after RC7 | `account/names`, `account/interaction`, `account/validation`, `account/authorization`, `account/secret-store`, `account/background`; browser wallet/custody/background subpaths; verified-login handoff and authenticated-owner/scoped-session helpers. These imports and policies require source builds until a release includes them. |
+| Source after RC7 | `account/names`, `account/interaction`, `account/validation`, `account/authorisation`, `account/secret-store`, `account/background`; browser wallet/custody/background subpaths; verified-login handoff and authenticated-owner/scoped-session helpers. These imports and policies require source builds until a release includes them. |
 
 For matching-checkout build/type evaluation, use the
 [source entry path]({{ '/library-guide/#evaluate-the-current-source' | relative_url }}).
@@ -420,7 +420,7 @@ These optional subpaths add no package and are not present in published RC7:
 | Subpath | Purpose | Target |
 | --- | --- | --- |
 | `account/validation` | Zod constructors for distinct branded account, asset, recipient, amount, network and binding values | Web/Node |
-| `account/authorization` | Host consent port and a pinned passkey/authenticated-owner route per operation | Web/Node |
+| `account/authorisation` | Host consent port and a pinned passkey/authenticated-owner route per operation | Web/Node |
 | `account/secret-store` | Scoped async custody contract, errors and memory reference store | Web/Node |
 | `account/background` | Bounded read/computation worker protocol; no transaction retry | Web/Node |
 | `adapter-browser/secret-store` | Explicit plaintext IndexedDB reference adapter | Browser |

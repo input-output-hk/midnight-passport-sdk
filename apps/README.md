@@ -736,3 +736,16 @@ an already prepared nine-package consumer. Follow `docs/site/quality.md` for exa
 manifest/lock pins and fresh retained output. It does not start this demo, a wallet
 or a proof stack; source tests, installed bytes and native/provider evidence remain
 separate. No new release or deployed documentation is implied by local checks.
+
+
+### Next-preview owner approval and duration
+
+The shared routine/full-owner unlock control defaults to **10 minutes**; 15 and
+30 minutes require selection. The separate scoped-transfer grant retains its own
+expiry control. Full-owner unlock uses the existing blocking review to disclose
+that code with page-memory access could copy the owner key and bypass UI approval;
+local lock/expiry does not revoke copied authority. Login remains owner-free.
+Fresh critical approval uses the RP scope captured by the original lease; expiry,
+renewal, changed credential or replaced review refuses without another signer.
+The reference connector remains localhost-pinned; real providers and deployment
+origins require their own acceptance. See the authenticated-owner and consent guides.

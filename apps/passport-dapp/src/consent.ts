@@ -12,7 +12,7 @@ import {
 
 const PURPOSES: Partial<Record<ActionId, string>> = {
   unlockOwner:
-    'Use this account’s passkey PRF to unlock its deterministic JubJub OWNER key for 10–30 minutes. It has full on-chain owner authority; this host additionally requires fresh passkey approval for critical operations. On an existing P-256 account, first enrollment requires a separate explicit review and passkey signatures. Local lock or timeout clears local material, not the on-chain owner. Every operation still requires its own review.',
+    'Unlock the full JubJub owner key in this page for the selected duration (10 minutes by default). Critical actions still require fresh passkey approval, but malicious page code or an extension with page-memory access could copy this key and act as the owner without those approvals. Locking or expiry clears local copies; it does not revoke a copied key’s on-chain authority. On a P-256 account, adding this owner requires separate enrollment approval and passkey signatures.',
   unlockRoutine:
     'Use the open account’s passkey PRF to unlock routine reading and built-in wallet keys for the selected 10–30 minute lifetime. Keep these only in this page’s memory and derive a separate JubJub key. This does not add an owner or grant spending permission. Device changes, key rotation, and issuing/revoking permissions still require fresh passkey approval. Lock, hidden tab, page exit or expiry discards the routine key material.',
   startSession:

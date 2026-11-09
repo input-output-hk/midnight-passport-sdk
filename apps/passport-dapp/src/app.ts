@@ -522,7 +522,7 @@ ui.on('unlockOwner', async () => {
       open: () => api.openAccountAt!(primary.address, { onEvent }),
       confirm: async (publicKey, readerPublicKey) =>
         window.confirm(
-          `Enable this deterministic JubJub key as a FULL owner of your Passport account?\n\nAccount: ${primary.address}\nOwner key: ${publicKey}\nReader key: ${readerPublicKey}\n\nIt can transfer assets, change devices, rotate keys, and issue or revoke permissions, just like your passkey. Local timeout only clears this browser's key. The on-chain owner remains until removed. This first enrollment needs passkey signatures.`,
+          `Enable this deterministic JubJub key as a FULL owner of your Passport account?\n\nAccount: ${primary.address}\nOwner key: ${publicKey}\nReader key: ${readerPublicKey}\n\nIt can transfer assets, change devices, rotate keys, and issue or revoke permissions, just like your passkey. Local timeout only clears this browser's key. The on-chain owner remains until removed. Code with page-memory access could copy this key and bypass this app’s fresh-approval policy. This first enrollment needs passkey signatures.`,
         ),
       trace: traceOperation,
     });

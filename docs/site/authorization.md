@@ -4,10 +4,17 @@ title: Operation authorization
 permalink: /authorization/
 ---
 
-**Source preview after RC7.** These optional `account/authorization` and
+**Source preview after RC7.** These optional `account/authorisation` and
 `account/validation` exports are not in published `0.1.0-rc7`. This is the reusable
 library contract. The [demo guide]({{ '/demo-guide/' | relative_url }}) describes its
 additional login, fresh-passkey and memory-lease policies.
+
+The canonical public subpath is **`account/authorisation`**, matching
+`createAccountAuthorisation` and `AccountAuthorisationError`. The earlier source-preview
+`account/authorization` spelling remains a compatibility alias to the exact same module.
+Use the canonical spelling for new consumers. Both are absent from RC7; retaining
+an alias does not imply that either was published there. The existing documentation
+URL `/authorization/` remains stable.
 
 ## Review and execute the same operation
 
@@ -26,7 +33,7 @@ import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
 import {
   createAccountAuthorisation,
   type AccountConsent,
-} from '@input-output-hk/mn-passport-account/authorization';
+} from '@input-output-hk/mn-passport-account/authorisation';
 import { UnshieldedWithdrawalSchema } from '@input-output-hk/mn-passport-account/validation';
 
 export async function reviewedWithdrawal(

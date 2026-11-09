@@ -106,3 +106,17 @@ test('missing action, wrong RP, invalid attempt and terminated review never appr
     assert.equal(control(controls, 'ceremony-dialog').open, false);
     await assert.rejects(pending, /declined/);
   }));
+
+test('full-owner memory risk is part of the existing single ceremony review', async () =>
+  withUi(async (controls, frames) => {
+    await reviewDemoAction('unlockOwner', { ...context, routineMinutes: 10 });
+    const pending = beforeDemoCeremony({ ...ceremony, purpose: 'derive-keys' });
+    assert.equal(control(controls, 'ceremony-dialog').shows, 1);
+    const text = control(controls, 'ceremony-details').textContent;
+    assert.match(text, /page-memory access/);
+    assert.match(text, /does not revoke/);
+    assert.match(text, /10 minutes/);
+    await approve(controls, frames);
+    await pending;
+    assert.equal(control(controls, 'ceremony-dialog').shows, 1);
+  }));

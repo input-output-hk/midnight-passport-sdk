@@ -95,6 +95,24 @@ absolute wall/monotonic expiry, and zeros owned copies on lock. JavaScript canno
 guarantee erasure of engine temporaries. Secrets do not enter storage, Audit or logs.
 Public enrollment attempt IDs and transaction references persist for reconciliation.
 
+### Cached full-owner custody limitation
+
+**A full-owner unlock defaults to 10 minutes.** The Settings duration control is
+shared with routine reader/wallet unlock; 15 and 30 minutes remain explicit choices.
+The independently scoped transfer-grant duration is a different setting.
+
+Script with access to this page's memory, such as injected script or an extension
+with sufficient access, could copy the full-owner scalar and use it outside the
+app. Fresh passkey approval guards this host's normal dispatch path; it cannot
+restrict someone using a copied full-owner key. Local expiry is not a revocation
+mechanism, and entry removal does not erase earlier viewing knowledge.
+
+The existing unlock review discloses this custody choice without adding another
+dialog. Use routine reader/wallet access or an explicitly bounded grant when full
+ownership is unnecessary. The current preview does not provide process-isolated
+owner signing or encrypted persistent custody. See [the consent ADR's residual
+risk](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0017-consent-and-signing-route.md#residual-risk-cached-full-owner-in-the-reference-host).
+
 An approved owner operation whose lease expires stops without silently switching to
 P-256. A transaction already submitted may settle after local lock; keep its original
 IDs. Public state/device/grant-roster reads remain available after lock for reconciliation.

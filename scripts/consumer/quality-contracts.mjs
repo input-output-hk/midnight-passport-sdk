@@ -6,7 +6,8 @@ import { join } from 'node:path';
 export const qualityNodeTypes = `
 import {AccountAddressSchema,AssetIdSchema,AmountSchema,type AccountAddress,type AssetId,type Amount} from '@input-output-hk/mn-passport-account/validation';
 import {createMemorySecretStore} from '@input-output-hk/mn-passport-account/secret-store';
-import {createAccountAuthorisation} from '@input-output-hk/mn-passport-account/authorization';
+import {createAccountAuthorisation} from '@input-output-hk/mn-passport-account/authorisation';
+import {createAccountAuthorisation as legacyAuthorisation} from '@input-output-hk/mn-passport-account/authorization';
 import {createBackgroundClient} from '@input-output-hk/mn-passport-account/background';
 import type {SecretStore,BackgroundPort} from '@input-output-hk/mn-passport-account/ports';
 import type {PassportAccount} from '@input-output-hk/mn-passport-protocol';
@@ -19,6 +20,7 @@ const wrongAsset:AssetId=account;
 const unchecked:AccountAddress='ab';
 // @ts-expect-error Decimal amount brands must be validated.
 const uncheckedAmount:Amount='1';
+export { legacyAuthorisation };
 export function compose(primary:PassportAccount,port:BackgroundPort) {
   const store:SecretStore=createMemorySecretStore();
   const consent=createAccountAuthorisation({primary,isContextCurrent:()=>true /* fixed account scope for this compile fixture */,consent:{review:async(request)=>request.route==='primary'}});
@@ -68,11 +70,13 @@ export const qualityRuntimeSmoke = `
 import assert from 'node:assert/strict';
 import {createMemorySecretStore} from '@input-output-hk/mn-passport-account/secret-store';
 import {AccountAddressSchema} from '@input-output-hk/mn-passport-account/validation';
-import {createAccountAuthorisation} from '@input-output-hk/mn-passport-account/authorization';
+import {createAccountAuthorisation} from '@input-output-hk/mn-passport-account/authorisation';
+import {createAccountAuthorisation as legacyAuthorisation} from '@input-output-hk/mn-passport-account/authorization';
 import {createBackgroundClient} from '@input-output-hk/mn-passport-account/background';
 import {createBrowserSecretStore} from '@input-output-hk/mn-passport-adapter-browser/secret-store';
 import {browserBackgroundPort} from '@input-output-hk/mn-passport-adapter-browser/background';
 assert.equal(typeof createAccountAuthorisation,'function');
+assert.equal(legacyAuthorisation,createAccountAuthorisation);
 assert.equal(typeof createBackgroundClient,'function');
 assert.equal(typeof createBrowserSecretStore,'function'); // importing does not access IndexedDB
 assert.equal(typeof browserBackgroundPort,'function');

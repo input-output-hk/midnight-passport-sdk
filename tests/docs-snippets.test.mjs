@@ -96,6 +96,10 @@ test('manifest refuses unaccounted examples, unsafe paths and ambiguous target p
 test('source aliases derive from public declarations and do not expose private scaffolds', () => {
   const root = resolve(import.meta.dirname, '..');
   const paths = sourceExportPaths(root);
+  assert.deepEqual(
+    paths['@input-output-hk/mn-passport-account/authorisation'],
+    paths['@input-output-hk/mn-passport-account/authorization'],
+  );
   assert.deepEqual(paths['@input-output-hk/mn-passport-account/authorization'], [
     join(root, 'packages/account/src/authorization.ts'),
   ]);
