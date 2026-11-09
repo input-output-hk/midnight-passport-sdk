@@ -4,6 +4,13 @@ title: Releasing packages
 permalink: /releasing/
 ---
 
+## Next candidate
+
+[RC8 preparation notes]({{ '/release-notes-rc8/' | relative_url }}) define the next
+supported increment and outstanding artifact checks. **RC8 is not yet published.**
+RC7 below remains the actual release; local images/tarballs and source qualification
+do not replace registry, provenance, visibility or deployed-document verification.
+
 ## Current RC7 artifacts and verification
 
 The [RC7 release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc7)

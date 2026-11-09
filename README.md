@@ -47,7 +47,7 @@ The design lives in [`docs/`](./docs):
 
 - [`sdk-requirements.md`](./docs/sdk-requirements.md) — what the SDK must do, and why.
 - [`architecture.md`](./docs/architecture.md) — how it's built: layered core, seams, adapters, worked examples.
-- [`development-workflow.md`](./docs/development-workflow.md) — the `mn-passport-skills-*` skills that drive development, spec orchestration, and PR / issue traceability.
+- [`development-workflow.md`](./docs/development-workflow.md) — historical harness/workflow design; current repository procedures are in [AGENTS.md](./AGENTS.md) and the [agent runbook](./docs/agent-runbook.md).
 - [`beta-scope.md`](./docs/beta-scope.md) — the reduced first version.
 
 Component (`[C…]`) and promise (`[P…]`) references in these docs point to the
@@ -74,14 +74,14 @@ and roles are in [ADR 0007](./docs/adr/0007-package-set-ports-and-flows.md) and 
 
 ## Development
 
-Development is spec-driven and harness-assisted — see
-[`docs/development-workflow.md`](./docs/development-workflow.md). Every spec is
-planned into small, reviewable PRs anchored to a GitHub issue; progress and
-backlog are tracked in [`STATE.md`](./STATE.md).
+Current repository work follows [AGENTS.md](./AGENTS.md), the
+[agent runbook](./docs/agent-runbook.md) and [Contributing](./CONTRIBUTING.md).
+Use issue-linked coherent review slices, signed commits and the required checks.
+The [acceptance index](./docs/local-backlog-acceptance.md) distinguishes current
+implementation, observed evidence and remaining delivery.
 
-Repository contribution and review procedures are in
-[Contributing](./CONTRIBUTING.md) and the [historical workflow design](./docs/development-workflow.md). Current execution
-rules are in [AGENTS.md](./AGENTS.md).
+The [historical workflow design](./docs/development-workflow.md) records the earlier
+harness proposal; it grants no current operational or outward-action authority.
 Partner documentation uses the [handover policy](./docs/partner-handover.md);
 internal run journals are not part of that export.
 
