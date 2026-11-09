@@ -15,6 +15,18 @@ import { plainError } from '../src/flows.js';
 const color = 'ab'.repeat(32);
 const row = { color, amount: '10', availability: 'insufficient' } as const;
 test('inventory discovery preserves withdrawal assets but fails closed for deposits', () => {
+  const bounded = Array.from({ length: 65 }, (_, i) => ({
+    ...row,
+    color: (i + 1).toString(16).padStart(64, '0'),
+  }));
+  assert.equal(
+    parseFundingDiscovery({ assets: bounded.slice(0, 64), balanceAssetColor: bounded[0]?.color })
+      .assets.length,
+    64,
+  );
+  assert.throws(() =>
+    parseFundingDiscovery({ assets: bounded, balanceAssetColor: bounded[0]?.color }),
+  );
   assert.equal(canFund(false, true, { ...row, availability: 'available' }), true);
   assert.equal(canFund(false, true, row), false);
   assert.equal(

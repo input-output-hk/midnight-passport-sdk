@@ -62,8 +62,8 @@ function url(raw: string, name: string, schemes: readonly string[]): string {
 
 function assets(file: string): FundingAssetPolicy[] {
   const body: unknown = JSON.parse(readFileSync(file, 'utf8'));
-  if (!Array.isArray(body) || body.length === 0)
-    throw new Error('passport-funding-service: asset policy must be a nonempty array');
+  if (!Array.isArray(body) || body.length === 0 || body.length > 64)
+    throw new Error('passport-funding-service: asset policy must contain 1–64 assets');
   const out = body.map((value: unknown): FundingAssetPolicy => {
     if (!value || typeof value !== 'object' || Array.isArray(value))
       throw new Error('passport-funding-service: invalid asset policy');

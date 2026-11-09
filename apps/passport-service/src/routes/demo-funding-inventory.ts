@@ -76,7 +76,7 @@ export function preflightRefusal(result: Record<string, unknown>, requestId: str
 
 export function demoAssets(file: string): { assets: DemoAsset[]; balanceAssetColor: string } {
   const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
-  if (!Array.isArray(parsed) || parsed.length === 0)
+  if (!Array.isArray(parsed) || parsed.length === 0 || parsed.length > 64)
     throw new Error('demo funding needs a valid asset policy');
   const assets = parsed.map((raw: unknown): DemoAsset => {
     const item = raw as Record<string, unknown>;

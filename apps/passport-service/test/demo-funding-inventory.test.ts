@@ -1,7 +1,28 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createServer as httpServer } from 'node:http';
-import { availableDemoAssets, preflightRefusal } from '../src/routes/demo-funding-inventory.ts';
+import {
+  availableDemoAssets,
+  preflightRefusal,
+  demoAssets,
+} from '../src/routes/demo-funding-inventory.ts';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+test('demo policy uses the same64 asset bound as discovery and funding startup', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'demo-assets-bound-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const file = join(dir, 'assets.json');
+  const rows = Array.from({ length: 65 }, (_, i) => ({
+    color: (i + 1).toString(16).padStart(64, '0'),
+    maxPerRequest: '10',
+  }));
+  writeFileSync(file, JSON.stringify(rows.slice(0, 64)));
+  assert.equal(demoAssets(file).assets.length, 64);
+  writeFileSync(file, JSON.stringify(rows));
+  assert.throws(() => demoAssets(file), /asset policy/);
+});
 
 test('demo inventory checks pins, exact policy membership and amounts, failing closed without losing the asset list', async (t) => {
   const config = {

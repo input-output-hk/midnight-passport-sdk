@@ -220,3 +220,8 @@ The [key service image](../passport-key-service/README.md) restores and serves k
 prepare the funding image's contract tree on Linux with the same binding and manifest pin. The
 funding token must stay in a private file or secret mount. GHCR visibility and repository/team
 access are configured on the container package's settings page.
+
+The source-preview reference policy admits 1–64 distinct assets consistently in both services
+and the browser. Older balance responses, including failures, cannot overwrite a newer read
+or a reopened account’s availability. Inventory reads remain bounded even when subscription
+teardown throws.

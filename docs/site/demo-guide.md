@@ -166,3 +166,8 @@ after a durable no-submit marker and request tombstone, lets the page forget tha
 A later explicit click starts a new intent. Uncertain/legacy requests retain their original IDs
 and reconciliation requirement. No automatic retry or mint is added. This is later source
 behavior, not a change to the published RC8 runtime.
+
+The source-preview reference policy admits 1–64 distinct assets consistently in both services
+and the browser. Older balance responses, including failures, cannot overwrite a newer read
+or a reopened account’s availability. Inventory reads remain bounded even when subscription
+teardown throws.

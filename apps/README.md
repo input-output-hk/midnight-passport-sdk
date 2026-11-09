@@ -765,3 +765,8 @@ new explicit intent. Legacy pending/unknown requests stay intact. No automatic r
 mint occurs. These source changes require a coordinated restart of both reference services;
 the published RC8 packages/images are unchanged. Do not restart a user's existing stack merely
 to update the UI or erase its funding records.
+
+The source-preview reference policy admits 1–64 distinct assets consistently in both services
+and the browser. Older balance responses, including failures, cannot overwrite a newer read
+or a reopened account’s availability. Inventory reads remain bounded even when subscription
+teardown throws.

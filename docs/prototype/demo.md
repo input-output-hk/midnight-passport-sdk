@@ -447,3 +447,8 @@ Only a typed inventory failure with a persisted no-submit marker and tombstone r
 no-start refusal; unknown and legacy requests retain their original IDs. No automatic mint,
 retry, reset or change to RC8 artifacts is included. See the reference funding README for
 wire responses, sanitized diagnostics and restart boundaries.
+
+The source-preview reference policy admits 1–64 distinct assets consistently in both services
+and the browser. Older balance responses, including failures, cannot overwrite a newer read
+or a reopened account’s availability. Inventory reads remain bounded even when subscription
+teardown throws.

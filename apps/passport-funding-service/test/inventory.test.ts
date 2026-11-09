@@ -8,6 +8,31 @@ const night = '00'.repeat(32),
 const state = () => ({
   unshielded: { progress: { isStrictlyComplete: () => true }, balances: { [night]: 100n } },
 });
+
+test('throwing teardown rejects synchronous, asynchronous and timed-out reads instead of hanging', async (t) => {
+  for (const mode of ['synchronous', 'asynchronous', 'timeout']) {
+    if (mode === 'timeout') t.mock.timers.enable({ apis: ['setTimeout'] });
+    let attempts = 0;
+    const pending = walletInventory({
+      state: () => ({
+        subscribe(observer) {
+          if (mode === 'synchronous') observer.next(state());
+          if (mode === 'asynchronous') queueMicrotask(() => observer.next(state()));
+          return {
+            unsubscribe() {
+              attempts++;
+              throw Error('private teardown details');
+            },
+          };
+        },
+      }),
+    });
+    const refused = assert.rejects(pending, { code: 'FundingWalletUnavailable' });
+    if (mode === 'timeout') t.mock.timers.tick(5000);
+    await refused;
+    assert.equal(attempts, 1);
+  }
+});
 test('wallet inventory releases synchronous and asynchronous subscriptions and copies spendable balances', async () => {
   for (const synchronous of [true, false]) {
     let unsubscribed = 0;

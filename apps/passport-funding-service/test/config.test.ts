@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BINDING_VERSION, resolveBinding } from '@input-output-hk/mn-passport-contract';
@@ -25,6 +25,26 @@ const base = {
   PASSPORT_FUNDING_ASSETS_FILE: assetsFile,
   HOME: dir,
 };
+
+test('funding policy accepts64 distinct assets and refuses65 before starting a wallet', (t) => {
+  const file = join(dir, 'bounded-assets.json');
+  t.after(() => rmSync(file, { force: true }));
+  const rows = Array.from({ length: 65 }, (_, i) => ({
+    color: (i + 1).toString(16).padStart(64, '0'),
+    maxPerRequest: '10',
+    maxPerUtcDay: '100',
+  }));
+  writeFileSync(file, JSON.stringify(rows.slice(0, 64)));
+  assert.equal(
+    loadFundingConfig({ ...base, PASSPORT_FUNDING_ASSETS_FILE: file }).assets.length,
+    64,
+  );
+  writeFileSync(file, JSON.stringify(rows));
+  assert.throws(
+    () => loadFundingConfig({ ...base, PASSPORT_FUNDING_ASSETS_FILE: file }),
+    /asset policy/,
+  );
+});
 
 test('localnet uses the development wallet and the package manifest pin', () => {
   const config = loadFundingConfig(base);

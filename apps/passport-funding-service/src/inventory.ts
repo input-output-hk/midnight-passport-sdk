@@ -28,27 +28,30 @@ export function walletInventory(wallet: InventoryWallet): Promise<FundingInvento
   return new Promise((resolve, reject) => {
     let subscription: { unsubscribe(): void } | undefined;
     let settled = false;
+    let subscriptionFailed = false;
     const finish = (state?: InventoryState) => {
       if (settled) return;
       settled = true;
       clearTimeout(deadline);
-      subscription?.unsubscribe();
-      try {
-        if (!state) throw new Error('No wallet snapshot');
-        resolve({
-          synced: state.unshielded.progress.isStrictlyComplete(),
-          balances: { ...state.unshielded.balances },
-        });
-      } catch {
-        reject(new FundingPreflightError('FundingWalletUnavailable'));
-      }
+      // Defer synchronous emissions until subscribe has returned the owned teardown handle.
+      queueMicrotask(() => {
+        try {
+          subscription?.unsubscribe();
+          if (!state || subscriptionFailed) throw new Error('No wallet snapshot');
+          resolve({
+            synced: state.unshielded.progress.isStrictlyComplete(),
+            balances: { ...state.unshielded.balances },
+          });
+        } catch {
+          reject(new FundingPreflightError('FundingWalletUnavailable'));
+        }
+      });
     };
     const deadline = setTimeout(() => finish(), 5000);
     try {
       subscription = wallet.state().subscribe({ next: finish, error: () => finish() });
-      // BehaviorSubject may deliver synchronously, before subscribe returns its handle.
-      if (settled) subscription.unsubscribe();
     } catch {
+      subscriptionFailed = true;
       finish();
     }
   });

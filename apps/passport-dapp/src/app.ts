@@ -31,6 +31,7 @@ import { Buffer } from 'buffer';
 import { parseDeviceHandoff, prepareDeviceHandoff } from './device-handoff.js';
 import { setOperationTraceSink, tracedFetch, traceOperation } from './operation-trace.js';
 import { createUi } from './ui.js';
+import { createFundingBalanceReader } from './funding-balances.js';
 import {
   parseFundingDiscovery,
   fundingRequestFailure,
@@ -350,36 +351,24 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) lockAllLocalKeys();
 });
 
-async function refreshAccountBalances(
-  address: string,
-): Promise<{ night: string; fundedAsset: string } | undefined> {
-  if (!balanceAssetColor) return;
-  const url = new URL(fundingUrl);
-  url.searchParams.set('accountAddress', address);
-  const response = await tracedFetch(url.toString());
-  if (!response.ok) throw new Error('ACC balance read unavailable');
-  const body = (await response.json()) as Record<string, unknown>;
-  const balances = body.balances as Record<string, unknown> | undefined;
-  if (
-    body.accountAddress !== address ||
-    typeof balances?.night !== 'string' ||
-    !/^\d+$/.test(balances.night) ||
-    typeof balances.fundedAsset !== 'string' ||
-    !/^\d+$/.test(balances.fundedAsset)
-  ) {
-    throw new Error('ACC balance response is invalid');
-  }
-  const discovery = parseFundingDiscovery(body);
-  ui.enableFunding(discovery.assets);
-  ui.showAccountBalances(address, balanceAssetColor, balances.night, balances.fundedAsset);
-  traceOperation('account.balances', {
-    accountAddress: address,
-    night: balances.night,
-    color: balanceAssetColor,
-    fundedAsset: balances.fundedAsset,
-  });
-  return { night: balances.night, fundedAsset: balances.fundedAsset };
-}
+const refreshAccountBalances = createFundingBalanceReader({
+  current: () => account,
+  color: () => balanceAssetColor,
+  url: fundingUrl,
+  fetch: tracedFetch,
+  show: (view) => {
+    ui.enableFunding(view.assets);
+    ui.showAccountBalances(view.address, view.color, view.night, view.fundedAsset);
+    traceOperation('account.balances', {
+      accountAddress: view.address,
+      night: view.night,
+      color: view.color,
+      fundedAsset: view.fundedAsset,
+    });
+  },
+  unavailable: (address) => ui.showAccountBalanceError(address),
+});
+
 void tracedFetch(fundingUrl.toString())
   .then(async (response) => {
     if (!response.ok) return;
@@ -388,7 +377,9 @@ void tracedFetch(fundingUrl.toString())
     ui.enableFunding(data.assets);
     if (account) {
       const address = account.address;
-      void refreshAccountBalances(address).catch(() => ui.showAccountBalanceError(address));
+      void refreshAccountBalances(address).catch(() => {
+        /* The guarded read renders current failures. */
+      });
     }
   })
   .catch(() => {
@@ -420,7 +411,6 @@ const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult
     ...(lastTx && { lastTx }),
   });
   void refreshAccountBalances(a.address).catch(() => {
-    ui.showAccountBalanceError(a.address);
     traceOperation('account.balances.unavailable', { accountAddress: a.address });
   });
   traceOperation('account.opened', {
@@ -555,13 +545,7 @@ ui.on('refresh', async () => {
   });
   const balancesRead = balanceAssetColor
     ? await ui.attempt('balances', async () => {
-        try {
-          await refreshAccountBalances(current.address);
-          return true;
-        } catch (error) {
-          ui.showAccountBalanceError(current.address);
-          throw error;
-        }
+        return (await refreshAccountBalances(current.address)) !== undefined;
       })
     : undefined;
   status(
@@ -1124,7 +1108,6 @@ ui.on('fund', async () => {
   });
   ui.showFunding(target, asset.color, result.creditedBalance);
   void refreshAccountBalances(target).catch(() => {
-    ui.showAccountBalanceError(target);
     traceOperation('account.balances.unavailable', { accountAddress: target });
   });
   traceOperation('funding.confirmed', {
