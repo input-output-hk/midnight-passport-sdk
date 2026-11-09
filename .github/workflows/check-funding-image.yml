@@ -14,6 +14,7 @@ on:
       - '.github/workflows/check-funding-image.yml'
       - '.github/workflows/publish-funding-image.yml'
       - 'scripts/smoke-funding-image.sh'
+      - 'scripts/check-runtime-image.mjs'
       - '!**/*.md'
 
 permissions:

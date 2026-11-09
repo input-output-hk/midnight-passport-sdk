@@ -11,6 +11,7 @@ export async function checkFullOwnerEnrollmentIsExplicitDecliningCreates(h: Jour
   const { newPage, waitStatus, calls, arm, done } = h;
 
   const fullOwner = await newPage();
+  assert.equal(await fullOwner.locator('#routine-minutes').inputValue(), '10');
   await approve(fullOwner, 'create');
   await waitStatus(fullOwner, /created/);
   const ownerCredentials = () =>

@@ -483,3 +483,16 @@ they carry, and the imbalance check stays as a second line.
 its fees, so nothing of the sponsor's is at stake there. `POST /deploy` is limited by a cap of
 20 requests per service process (`PASSPORT_MAX_DEPLOYS`, failures counted, then `429`), not by this
 policy.
+
+
+### Next-preview owner approval and duration
+
+The shared routine/full-owner unlock control defaults to **10 minutes**; 15 and
+30 minutes require selection. The separate scoped-transfer grant retains its own
+expiry control. Full-owner unlock uses the existing blocking review to disclose
+that code with page-memory access could copy the owner key and bypass UI approval;
+local lock/expiry does not revoke copied authority. Login remains owner-free.
+Fresh critical approval uses the RP scope captured by the original lease; expiry,
+renewal, changed credential or replaced review refuses without another signer.
+The reference connector remains localhost-pinned; real providers and deployment
+origins require their own acceptance. See the authenticated-owner and consent guides.

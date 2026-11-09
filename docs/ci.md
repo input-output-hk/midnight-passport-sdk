@@ -74,7 +74,7 @@ checks or create stale outputs. Workspace packages are not published from CI cac
 
 Service and funding PR image checks use BuildKit's GitHub cache backend, with
 separate scopes and `mode=min` to bound storage. They load a local check image and
-run the existing startup smoke tests; they do not push an image. PR cache scope
+run the existing startup smoke tests plus the shared actual-image filesystem policy; they do not push an image. PR cache scope
 is separate from trusted base-branch scope. Release image publication keeps its
 existing independent build and signed-tag policy.
 
@@ -280,3 +280,16 @@ or a successful transaction. Preserve the separate library and demo guide entry
 paths; do not import the demo's policy or UI into reusable API documentation.
 Measure the extra warm hosted time after an authorized push; local timing alone
 does not establish the required 30–45-second CI target. No push occurs tonight.
+
+
+### Runtime-image content policy
+
+Both service/funding smoke scripts run `scripts/check-runtime-image.mjs` inside
+the built image as the configured non-root user, without network or writable root.
+Known private review paths and app/package `test`, `tests`, and `qualification`
+roots refuse. Their context exclusions precede either Dockerfile's COPY; the
+inspection covers the final filesystem rather than merely matching Dockerfile
+text. This is a bounded artifact-content policy, not a general secret scanner or
+functional native-proof/readiness test. Image publication still needs its existing
+pinned-export and actual runtime qualification. Local receipts identify the exact
+image ID; registry digests are established only by publication.

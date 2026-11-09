@@ -1,5 +1,54 @@
 # Local backlog acceptance audit
 
+## Current next-RC reconciliation — 2026-11-09
+
+This section supersedes the old planning/outcome statements below for current
+scheduling. Earlier source/version receipts remain historical. Published RC7 is
+still the distribution baseline. PR295 merged at `eb974e5`; the first next-RC
+correction is signed `ba33365`. An open historical ticket is not proof that its
+feature is unimplemented, and implementation alone is not complete acceptance.
+
+| Area / issues | Implemented and observed | Remaining acceptance / disposition |
+| --- | --- | --- |
+| Naming seam #288 | Portable name port/resolver, checked synthetic adapter and both-arm browser lookup; no recipient/credential side effects | Ready for supported mock-seam acceptance; production naming remains #247. |
+| Presentation #289/#290 | Portable interaction snapshots, optional host controls, responsive Activity/navigation, keyboard and in-flight operation isolation | Ready for supported synthetic UX acceptance. Later owner decisions moved progress to Activity and removed Overview; do not restore earlier layouts merely to satisfy stale wording. |
+| Settings/Audit #291 | Nested page links, explicit developer settings, separate account/wallet/sponsor, redacted Audit and unknown-result guards | Ready for current approved layout acceptance. Earlier Overview/collapsible-panel requirements are superseded by the owner's landing/submenu decisions. |
+| Optional React/Lace Wallet #292/#293 | Source-only optional React example, independent cleanup/remount, public read-only wallet connector contract and synthetic refusals | No React dependency in neutral packages; actual extension/provider, React Native and lace-sdk remain explicitly unqualified. |
+| Browser handover #294/#245/#246 | Merged combined login, fresh critical consent, lease/route fences, independent bounded grants and library/demo guides. Clean `ba33365`: 192 both-arm synthetic cases, 2,467 tests, seven existing skips and independent review | Real providers and prompt budgets remain #232; current-source code is not installed by RC7. Hosted CI and publication for the new correction remain distinct. |
+| Review follow-ups #296/#297/#298 | Lease-captured RP scope, canonical authorisation plus identical preview alias, ten-minute routine/full-owner default and concise single-dialog copied-key warning | Implemented/tested at `ba33365`; final release install/export and deployed documentation acceptance still required. |
+| Runtime images #299/#234 | Both actual Linux/amd64 candidate images pass content/non-root/startup-refusal smoke and injected-private-path rejection | Does not establish native functional readiness or registry image publication. Keep operational criteria open for the release head. |
+| Durable owner mutations #230 | Four-intent coordinator, typed journal/outcome/consent ports, original-ID fences and source/native lifecycle observations exist | Default demo buttons do not automatically use this coordinator. Complete the explicit supported interruption matrix; no universal crash window or value-call coverage claim. |
+| Durable jobs #233 | Serialized descriptors, accepted-before-ack/CAS claim, explicit original-record reconcile, bounded events/retention and Node HTTP/file/process tests; opt-in reference wiring | Arbitrary callback jobs remain process-local. Missing original host state stays unknown; no replay scanner, distributed-wallet lock or storage rollback guarantee. |
+| Grant loss #239 | Original-issuing-reader reconstruction against live complete commitments; wrong-reader/missing-opening refusals; grant/revocation controls and documentation | Another enrolled reader is not automatically the issuing reader. Incomplete publication requires original protected intent; no total-loss or private grantee-key reconstruction. |
+| Actual package adoption #81/#263 | Nine fresh tarballs installed frozen/offline at `ba33365`; 34 runtime exports, strict Node/DOM/Worker and maintained docs compile, no workspace SDK alias | This is a local candidate consumer. Current pinned Lace full-module/hosted runtime, registry provenance and actual provider flows require separate acceptance. |
+| Distribution #236/#31 | Existing signed-tag package/image/docs workflows and RC7 publication receipts | New packages/images/Pages must be built and checked at the chosen release head; no new release is implied by this reconciliation. |
+
+### Recorded current-source evidence
+
+At clean `ba33365`: full required gate 2,467 passed/seven existing skips;
+independent exact-head review found no actionable defects; 192 synthetic browser
+cases passed in 163.726 seconds with owned browser/server/cache closed. Installed
+candidate `0.0.0-dev.source.gba33365b5996` manifest SHA-256 is
+`d1fdc88038890967199210bbc055975babd48b00935b2e991665b738a87209d4`;
+nine archives and all 34 public runtime exports were checked. This is not registry
+provenance. Source-native final `e100762` qualified 28 lifecycle observations;
+that run keeps its original source and is not relabelled as this correction.
+
+### Supported-preview exit criteria
+
+Settle the public subpath before publishing; keep original mutation/job/grant
+identities and exact-value shielded guards; qualify final-head package installs,
+image/runtime/content and published docs; retain exact evidence and known
+unsupported paths. Measure hosted CI against the 30–45-second warm target without
+omitting cells or acceptance. Real-provider/full-Lace gaps must stay visible rather
+than becoming broad compatibility claims. Broader features remain #201/#82/#240.
+
+Do not blanket-close historical trackers from this table. Close a bounded issue
+only after its exact supported criteria and required review/delivery are reconciled;
+keep genuinely unmet host/provider/release criteria in the existing issues. No new
+implementation ticket is needed for a feature merely because its old box is unchecked.
+
+
 Candidate: nine `0.1.0-dev.12` packages; local only. Date: 2026-10-17.
 This audit covers issues #25, #205, #79, #161 and #81. It does not authorise a push or release.
 

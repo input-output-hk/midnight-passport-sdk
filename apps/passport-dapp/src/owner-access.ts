@@ -148,4 +148,4 @@ export async function authenticateOwnerAccount(input: {
   return account;
 }
 
-export { routeAuthenticatedAccount } from '@input-output-hk/mn-passport-account/authorization';
+export { routeAuthenticatedAccount } from '@input-output-hk/mn-passport-account/authorisation';

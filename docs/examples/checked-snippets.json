@@ -225,6 +225,10 @@
           ]
         }
       ]
+    },
+    {
+      "path": "docs/site/release-notes-rc8.md",
+      "fences": []
     }
   ],
   "files": [

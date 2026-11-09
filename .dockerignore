@@ -20,3 +20,10 @@ result*
 tests
 apps/passport-dapp
 apps/passport-key-service
+
+# Reference-app test/qualification sources and private engineering receipts are not runtime inputs.
+apps/*/test
+apps/*/qualification
+review
+coverage
+.nyc_output

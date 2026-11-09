@@ -9,7 +9,7 @@ The [library integration guide]({{ '/library-guide/' | relative_url }}) covers t
 ports and host-owned lifecycle; importing an adapter does not create this cache.
 
 **Source preview after RC7.** Quick actions retains explicitly approved routine
-reader/wallet material in this page's memory for **10, 15 or 30 minutes**. The demo
+reader/wallet material in this page's memory for **10, 15 or 30 minutes** (10 by default). The demo
 can prepare it during verified login without an extra PRF request. Critical
 operations still require fresh passkey approval, including under a full JubJub
 owner session. This supersedes the earlier full-owner reuse policy.

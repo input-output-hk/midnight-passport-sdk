@@ -1,5 +1,16 @@
 # Development workflow — the `mn-passport-skills` family
 
+> **Historical workflow design.** This document preserves the earlier harness
+> proposal, including old repository, register and outward-action procedures. It
+> is not current execution authority. Use [AGENTS.md](../AGENTS.md), the
+> [agent runbook](agent-runbook.md), [Contributing](../CONTRIBUTING.md) and the
+> owner's current scope. In particular, historical references to automatic private
+> register pushes or upstream issue creation grant no permission to perform them.
+> Current private notes use the owner's knowledge base; external writes remain
+> restricted to the authorised destination. Do not copy this process history into
+> partner documentation.
+
+
 > **Status:** workflow reference · updated 2026/10/20
 > **Companion to:** [`sdk-requirements.md`](./sdk-requirements.md) (the *what/why*)
 > and [`architecture.md`](./architecture.md) (the *how*). This document is the

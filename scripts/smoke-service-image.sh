@@ -2,6 +2,10 @@
 set -euo pipefail
 
 image=${1:?pass the built service image tag}
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+docker run --rm -i --network none --read-only --cap-drop ALL \
+  --security-opt no-new-privileges --entrypoint node "$image" \
+  --input-type=module - /opt/passport < "$script_dir/check-runtime-image.mjs"
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/passport-service-image.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT
 chmod 755 "$scratch"

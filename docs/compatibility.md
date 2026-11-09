@@ -1,5 +1,27 @@
 # Compatibility matrix
 
+## Next RC8 candidate — 2026-11-09
+
+PR295 is merged; the next corrections settle RP-scope approval, public export
+spelling, full-owner custody disclosure and runtime-image contents. RC8 is **not
+published**. RC7 remains the distribution baseline. Binding `acc-s3r1.1` and the
+nine-package set are unchanged. See [candidate notes](site/release-notes-rc8.md)
+and [acceptance reconciliation](local-backlog-acceptance.md).
+
+| Adoption layer | Candidate support | Explicit limit |
+| --- | --- | --- |
+| Contract/artifacts | Existing verified binding, compiler dependency, manifests and public keys | No arbitrary custom ACC build or complete typed circuit coverage |
+| Neutral account/key APIs | Typed both-arm operations, owned inputs, consent/custody/background ports | Host owns credentials, persistence, consent and lifecycle; no framework dependency |
+| Browser demo | Combined login, routine access, fresh critical approval, independent capped grants, wallet worker | Synthetic browser evidence; real providers/extension/full lace-sdk remain unqualified |
+| Node services/adapters | Bounded transports, explicit original-ID mutation/job reconciliation and funding policy | Default demo is not automatically durable; no distributed wallet lock or unknown-send retry |
+| Installed candidates | Nine ba33365 archives, 34 imports and strict Node/DOM/Worker/docs with six crypto controls | Source candidate, not current registry bytes or full Lace runtime acceptance |
+| Release | Existing signed-tag package/image/docs paths | Final-head registry hashes/SRI/visibility/attestations, images and deployed docs still required |
+
+Exact-value shielded withdrawal, no automatic full owner and no owner fallback
+from an expired/uncertain scoped grant remain unchanged. Historical qualification
+below keeps its source and runtime identity; it is not a fresh RC8 run.
+
+
 ## Consented session source preview — 2026/11/06
 
 Signed `b5eeff8` passes native source qualification for the actual session

@@ -10,8 +10,9 @@ worker creation are host choices, not automatic SDK behavior or prerequisites.
 
 - Continue on the branch already checked out; do not switch to `main` or overwrite
   somebody else's changes. Current owner/session instructions determine scope.
-- Current overnight work is local only: no push, release, tag or upstream action.
-  A documented command is not authorization to start services or move funds.
+- Follow the current owner-approved milestone and publication scope. A documented
+  command is not authorization to start services or move funds. Upstream remains
+  read-only; releases still require their complete signed-head acceptance.
 - Follow the [partner plan](docs/partner-adoption-plan.md) and issue275 for
   application-contract→deployed ACC integration. Do not require custom ACC builds
   or replacement of Lace orchestration to reuse packages. Keep business logic,
@@ -99,12 +100,14 @@ consumer or native qualification work.
 - Host-job bearer tokens do not belong in browser storage. Do not automatically
   persist an owner or raw PRF. Browser plaintext secret persistence needs explicit
   opt-in. Keep private auth in temporary user configuration, never logs/manifests.
-- Keep milestone decisions, redacted receipts and handovers in the owner's
-  Midnight Obsidian vault under `Initiatives/07 Midnight Passport ACC/SDK milestones/`;
-  update `Current checkpoint.md` and artifact index after meaningful progress
-  **unless current session instructions exclude vault access**. Public docs stay
-  here; private consumer notes stay private. Never copy wallet state, tokens,
-  passkeys, proof witnesses, giant keys or private source snapshots into the vault.
+- Keep milestone decisions, redacted receipts and handovers in the owner's private
+  knowledge base; use the current session checkpoint for its location and archive
+  protocol. Update its checkpoint and artifact index after meaningful progress
+  **unless current session instructions exclude that access**. Keep private run
+  journals and tool/operator-specific notes out of new public documentation.
+  Never copy wallet state, tokens, passkeys, proof witnesses, giant keys or private
+  source snapshots into the knowledge base. Public guides describe SDK contracts
+  and the reference application; partner exports follow the handover allowlist.
 
 ## Toolchain and required verification
 
@@ -149,14 +152,16 @@ nix develop -c bash -c 'pnpm run lint && pnpm run format:check && pnpm run build
   installed candidates do not establish registry provenance or a new release.
   Published RC7 and later source preview remain separate; never retag old evidence.
 - Use exact committed-head independent review and re-review substantive fixes.
-  Independent Codex CLI review is owner-authorized when Claude is quota-limited.
-  Full local gates, signing and hosted checks remain required when publishing.
+  Use the owner's approved independent reviewer and retain original findings and
+  corrections privately. Full local gates, signing and hosted checks remain
+  required when publishing.
 - Use conventional commits with `git commit -S -s` (GPG signature and DCO), ending
   with `Assisted-by: AI`. Never add a `Co-Authored-By` trailer naming a model.
   Check `git log --format='%h %G?' -1` shows `G` after each commit.
 - When separately authorized to publish, push/open PRs only in
   `input-output-hk/midnight-passport-sdk`, against `passport-acc-prototype`.
-  Never push, open issues or comment upstream. Current local-only work stays local.
+  Never push, open issues or comment upstream. If a session is local-only, its
+  implementation stays local until the owner authorizes publication.
 
 ## Repository map and historical guidance
 

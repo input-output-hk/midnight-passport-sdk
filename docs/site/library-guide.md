@@ -117,7 +117,7 @@ spending authority. Amounts are base units, with no rounding or numeric coercion
 Byte fields and nested grant/device inputs must be owned copies before the first await;
 `readonly` types alone do not prevent aliases or Buffer-backed mutation.
 
-`account/authorization` supplies `createAccountAuthorisation` for one captured account,
+`account/authorisation` supplies `createAccountAuthorisation` for one captured account,
 route and reviewed operation. It creates no credential UI, timer or automatic fresh
 passkey check. The host callback executes the approved snapshot and the connector
 retains dispatch checks. See the [authorization guide]({{ '/authorization/' | relative_url }})

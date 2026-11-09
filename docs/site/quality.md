@@ -121,7 +121,7 @@ Use `account/validation` to parse `AccountAddress`, `AssetId`, `Recipient`,
 share the same wire encoding. An ACC address is not an HD wallet address. Zod
 parsing is not an ownership or chain-existence check.
 
-Use `account/authorization` to select the configured primary signer or an authenticated full
+Use `account/authorisation` to select the configured primary signer or an authenticated full
 owner route for one reviewed operation. Authentication does not remove consent;
 route expiry must refuse rather than silently choose another signer. See
 [owner authentication](../authenticated-owner/) and

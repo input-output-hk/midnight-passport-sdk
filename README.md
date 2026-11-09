@@ -47,7 +47,7 @@ The design lives in [`docs/`](./docs):
 
 - [`sdk-requirements.md`](./docs/sdk-requirements.md) — what the SDK must do, and why.
 - [`architecture.md`](./docs/architecture.md) — how it's built: layered core, seams, adapters, worked examples.
-- [`development-workflow.md`](./docs/development-workflow.md) — the `mn-passport-skills-*` skills that drive development, spec orchestration, and PR / issue traceability.
+- [`development-workflow.md`](./docs/development-workflow.md) — historical harness/workflow design; current repository procedures are in [AGENTS.md](./AGENTS.md) and the [agent runbook](./docs/agent-runbook.md).
 - [`beta-scope.md`](./docs/beta-scope.md) — the reduced first version.
 
 Component (`[C…]`) and promise (`[P…]`) references in these docs point to the
@@ -74,23 +74,16 @@ and roles are in [ADR 0007](./docs/adr/0007-package-set-ports-and-flows.md) and 
 
 ## Development
 
-Development is spec-driven and harness-assisted — see
-[`docs/development-workflow.md`](./docs/development-workflow.md). Every spec is
-planned into small, reviewable PRs anchored to a GitHub issue; progress and
-backlog are tracked in [`STATE.md`](./STATE.md).
+Current repository work follows [AGENTS.md](./AGENTS.md), the
+[agent runbook](./docs/agent-runbook.md) and [Contributing](./CONTRIBUTING.md).
+Use issue-linked coherent review slices, signed commits and the required checks.
+The [acceptance index](./docs/local-backlog-acceptance.md) distinguishes current
+implementation, observed evidence and remaining delivery.
 
-The workflow ships as the **`mn-passport-skills` plugin** in [`mn-passport-skills/`](./mn-passport-skills):
-ten skills (`/mn-passport-skills:spec-author`, `/mn-passport-skills:spec-driver`, the four review
-lenses, `doc-sync`, `pr-open`, and the `deps` / `devenv` watchers), a PreToolUse
-hook that stops
-outward actions for human confirmation, and the scripts behind the CI gate
-([`.github/workflows/pr-checks.yml`](./.github/workflows/pr-checks.yml)).
-Claude Code auto-enables it when you trust the repo (via
-`.claude/settings.json`); manual fallback:
-`/plugin marketplace add .` then `/plugin install mn-passport-skills@midnight-passport-sdk`.
-
-Prerequisite: the private residual-risk register repo cloned as a sibling at
-`../mn-passport-sdk-debts` (checked by `/mn-passport-skills:devenv`).
+The [historical workflow design](./docs/development-workflow.md) records the earlier
+harness proposal; it grants no current operational or outward-action authority.
+Partner documentation uses the [handover policy](./docs/partner-handover.md);
+internal run journals are not part of that export.
 
 ### Local toolset (Nix)
 
