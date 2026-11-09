@@ -1,7 +1,16 @@
 {
   "schemaVersion": 1,
-  "sourceRoots": ["docs/site", "docs/examples"],
-  "excludedRoots": ["AGENTS.md", "CLAUDE.md", "docs/review", "review", ".mn-passport-skills"],
-  "textExtensions": [".md", ".html", ".css", ".svg", ".json", ".ts", ".js", ".mjs", ".map", ".yml"],
+  "sourceRoots": [
+    "docs/site",
+    "docs/examples"
+  ],
+  "excludedRoots": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "docs/review",
+    "review",
+    ".mn-passport-skills",
+    "docs/site/README.md"
+  ],
   "maximumFileBytes": 8388608
 }

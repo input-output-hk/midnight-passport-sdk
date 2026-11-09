@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -8,6 +9,7 @@ import {
   inspectHandoverTree,
   scanHandoverText,
   checkPartnerHandover,
+  inspectHandoverArchive,
 } from '../scripts/docs/check-handover.mjs';
 
 test('handover names refuse private/process roots, traversal, environment files and platform absolute paths', () => {
@@ -63,23 +65,28 @@ test('handover text admits SDK security documentation but refuses machine/vault/
 test('handover tree records exact bytes and refuses empty, oversized, linked and contaminated exports', () => {
   const root = mkdtempSync(join(tmpdir(), 'passport-handover-'));
   try {
-    const extensions = new Set(['.md']);
-    assert.throws(() => inspectHandoverTree(root, 'docs', extensions, 100), /Empty/);
+    assert.throws(() => inspectHandoverTree(root, 'docs', 100), /Empty/);
     writeFileSync(join(root, 'api.md'), 'public contract');
-    const accepted = inspectHandoverTree(root, 'docs', extensions, 100);
+    const accepted = inspectHandoverTree(root, 'docs', 100);
     assert.equal(accepted[0]?.bytes, 15);
     assert.equal(accepted[0]?.path, 'docs/api.md');
     assert.match(accepted[0]?.sha256 ?? '', /^[a-f0-9]{64}$/);
-    assert.throws(() => inspectHandoverTree(root, 'docs', extensions, 2), /Unsupported/);
-    assert.throws(() => inspectHandoverTree(root, 'docs', extensions, Infinity), /Invalid/);
+    assert.throws(() => inspectHandoverTree(root, 'docs', 2), /Unsupported/);
+    assert.throws(() => inspectHandoverTree(root, 'docs', Infinity), /Invalid/);
     symlinkSync(join(root, 'api.md'), join(root, 'other.md'));
-    assert.throws(() => inspectHandoverTree(root, 'docs', extensions, 100), /symlink/);
+    assert.throws(() => inspectHandoverTree(root, 'docs', 100), /symlink/);
     rmSync(join(root, 'other.md'));
     mkdirSync(join(root, 'review'));
-    assert.throws(() => inspectHandoverTree(root, 'docs', extensions, 100), /Unapproved/);
+    assert.throws(() => inspectHandoverTree(root, 'docs', 100), /Unapproved/);
     rmSync(join(root, 'review'), { recursive: true });
+    writeFileSync(join(root, 'notes.txt'), '/Users/private-person/internal');
+    assert.throws(() => inspectHandoverTree(root, 'docs', 100), /Private process/);
+    rmSync(join(root, 'notes.txt'));
+    writeFileSync(join(root, 'LICENSE'), '/Users/private-person/internal');
+    assert.throws(() => inspectHandoverTree(root, 'docs', 100), /Private process/);
+    rmSync(join(root, 'LICENSE'));
     writeFileSync(join(root, 'api.md'), '/Users/private-person/internal');
-    assert.throws(() => inspectHandoverTree(root, 'docs', extensions, 100), /Private process/);
+    assert.throws(() => inspectHandoverTree(root, 'docs', 100), /Private process/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -94,12 +101,13 @@ test('source allowlist and rendered content are checked independently; journals 
     const policy = {
       schemaVersion: 1,
       sourceRoots: ['docs/site'],
-      excludedRoots: ['docs/review'],
-      textExtensions: ['.md', '.html'],
+      excludedRoots: ['docs/review', 'docs/site/README.md'],
+
       maximumFileBytes: 1000,
     };
     writeFileSync(join(root, 'docs/partner-handover-policy.json'), JSON.stringify(policy));
     writeFileSync(join(root, 'docs/site/api.md'), 'public API');
+    writeFileSync(join(root, 'docs/site/README.md'), '/Users/private-person/contributor');
     writeFileSync(join(root, 'docs/review/private.md'), '/Users/private-person/journal');
     writeFileSync(join(root, 'rendered/index.html'), '<p>public API</p>');
     const result = checkPartnerHandover({ repository: root, rendered: join(root, 'rendered') });
@@ -113,6 +121,36 @@ test('source allowlist and rendered content are checked independently; journals 
     policy.sourceRoots = ['docs/review'];
     writeFileSync(join(root, 'docs/partner-handover-policy.json'), JSON.stringify(policy));
     assert.throws(() => checkPartnerHandover({ repository: root }), /Unapproved|excluded/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('archive admission checks internal package name/version and scans every filename', () => {
+  const root = mkdtempSync(join(tmpdir(), 'passport-handover-archive-'));
+  try {
+    mkdirSync(join(root, 'package'));
+    const expected = { name: '@input-output-hk/mn-passport-account', version: '0.1.0-test.1' };
+    const manifest = (/** @type {{name:string,version:string}} */ value) =>
+      writeFileSync(join(root, 'package/package.json'), JSON.stringify(value));
+    const packed = () =>
+      execFileSync('tar', ['-czf', '-', '--format=ustar', '-C', root, 'package']);
+    manifest(expected);
+    assert.equal(inspectHandoverArchive(packed(), expected, 1000).files, 1);
+    for (const change of [
+      { ...expected, name: 'wrong-package' },
+      { ...expected, version: '0.1.0-test.2' },
+    ]) {
+      manifest(change);
+      assert.throws(() => inspectHandoverArchive(packed(), expected, 1000), /identity differs/);
+    }
+    manifest(expected);
+    for (const name of ['notes.txt', 'LICENSE']) {
+      writeFileSync(join(root, 'package', name), '/Users/private-person/private');
+      assert.throws(() => inspectHandoverArchive(packed(), expected, 1000), /Private process/);
+      rmSync(join(root, 'package', name));
+    }
+    assert.throws(() => inspectHandoverArchive(packed(), expected, 2), /oversized/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

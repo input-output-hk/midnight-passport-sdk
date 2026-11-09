@@ -9,7 +9,8 @@ broader compatibility claim. Refs #300, #237, #238 and #236.
 `partner-handover-policy.json` is the explicit source allowlist:
 
 - `docs/site`: library and demo guides with their separate entry points, operator
-  and release references, layouts and assets. The build excludes its README.
+  and release references, layouts and assets. Its contributor-facing README is excluded from source
+  selection as well as from the rendered build.
 - `docs/examples`: maintained strict-checked integration examples and inventory.
 - Rendered output: supply the exact site prepared for handover; inspect its
   contents independently of the source selection.
@@ -38,6 +39,9 @@ checker records relative paths, byte counts and hashes but does not regenerate
 or independently establish its source provenance. Pair it with the render/link,
 installed-consumer, signed-source and publication receipts.
 
+Every admitted file is checked for known text markers regardless of filename or
+extension, including text under extensionless and binary-looking names. Each
+archive’s internal package name/version must match its candidate manifest identity.
 The policy refuses known machine/vault references and tool-specific quota/fallback
 text without echoing the matched private content. It rejects symlinks, escaping
 source roots, private process paths, oversized source/rendered files and empty

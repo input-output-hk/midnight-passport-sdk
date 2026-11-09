@@ -80,7 +80,8 @@ planned into small, reviewable PRs anchored to a GitHub issue; progress and
 backlog are tracked in [`STATE.md`](./STATE.md).
 
 Repository contribution and review procedures are in
-[Contributing](./CONTRIBUTING.md) and the [development workflow](./docs/development-workflow.md).
+[Contributing](./CONTRIBUTING.md) and the [historical workflow design](./docs/development-workflow.md). Current execution
+rules are in [AGENTS.md](./AGENTS.md).
 Partner documentation uses the [handover policy](./docs/partner-handover.md);
 internal run journals are not part of that export.
 
