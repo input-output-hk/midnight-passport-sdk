@@ -15,7 +15,7 @@ interface InventoryState {
   };
 }
 
-/** Read one snapshot from the existing wallet, without starting another wallet or waiting on DUST. */
+/** Observe the existing wallet without starting another wallet or waiting on DUST. */
 export interface InventoryWallet {
   state(): {
     subscribe(observer: { next(state: InventoryState): void; error(error: unknown): void }): {
@@ -49,7 +49,18 @@ export function walletInventory(wallet: InventoryWallet): Promise<FundingInvento
     };
     const deadline = setTimeout(() => finish(), 5000);
     try {
-      subscription = wallet.state().subscribe({ next: finish, error: () => finish() });
+      subscription = wallet.state().subscribe({
+        next(state) {
+          try {
+            // A confirmed deposit can precede the wallet's next indexed state. Allow
+            // bounded catch-up, without admitting stale balances or retrying a send.
+            if (state.unshielded.progress.isStrictlyComplete()) finish(state);
+          } catch {
+            finish();
+          }
+        },
+        error: () => finish(),
+      });
     } catch {
       subscriptionFailed = true;
       finish();

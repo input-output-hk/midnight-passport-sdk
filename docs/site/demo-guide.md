@@ -160,6 +160,9 @@ An empty asset or unavailable wallet disables that deposit option. The policy li
 available for ACC balances and withdrawals. Allowlisting a test-token ID does not create tokens;
 the funding wallet must hold that asset on the same chain. Refreshing ACC state also refreshes
 this advisory availability; the backend checks again inside the deposit queue.
+The funding service waits up to five seconds for unshielded catch-up after a confirmed deposit.
+It refuses a longer synchronization gap without using a stale balance or retrying a transfer.
+Run both services from matching source and policy; refreshing the page alone cannot update them.
 
 A proved inventory refusal says **No transfer was started**. Only an exact server receipt,
 after a durable no-submit marker and request tombstone, lets the page forget that request ID.

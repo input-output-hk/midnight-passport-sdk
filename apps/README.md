@@ -752,8 +752,11 @@ origins require their own acceptance. See the authenticated-owner and consent gu
 
 ### Source preview: funding inventory (after RC8)
 
-The reference funding service now checks its existing wallet's spendable unshielded inventory
-before any preparation/deposit. Its private `/v1/faucet/assets` read is proxied to the demo without
+The reference funding service checks its existing wallet's spendable unshielded inventory
+before any preparation/deposit, allowing up to five seconds for unshielded catch-up after
+a confirmed deposit. It never retries a transfer or substitutes a stale balance while waiting.
+Both services must run matching source and the same asset policy; restarting only the page does
+not update a backend. Its private `/v1/faucet/assets` read is proxied to the demo without
 the bearer token or wallet balances. Empty or unsynchronized inventory disables deposits;
 configured assets remain usable for ACC balance reads and withdrawals. Refresh ACC state updates
 availability, and the backend checks it again inside the deposit queue. Provision custom tokens

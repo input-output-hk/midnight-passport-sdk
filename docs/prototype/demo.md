@@ -443,6 +443,8 @@ Deposit discovery now labels each configured asset from the existing funding wal
 spendable unshielded inventory. Empty/unavailable options are disabled without removing ACC
 balance or withdrawal controls. Refresh ACC state refreshes availability. A queued backend
 preflight prevents a stale discovery observation from entering wallet preparation or deposit.
+The existing wallet gets up to five seconds to catch up after a confirmed deposit; an
+unsynchronized observation never admits its stale balance or triggers a transfer retry.
 Only a typed inventory failure with a persisted no-submit marker and tombstone returns a safe
 no-start refusal; unknown and legacy requests retain their original IDs. No automatic mint,
 retry, reset or change to RC8 artifacts is included. See the reference funding README for

@@ -142,6 +142,9 @@ binding and manifest, plus each policy asset's demo amount and `availability`:
 `available`, `insufficient` or `unavailable`. It exposes neither wallet balances nor keys.
 An unsynchronized, failed or timed-out wallet read is unavailable, never a zero balance.
 DUST synchronization does not block this unshielded observation.
+After a deposit confirms, the wallet may still be indexing that transaction. Inventory
+observations allow up to five seconds for unshielded catch-up before refusing; they never
+use stale balances or retry the deposit. A longer outage still returns unavailable.
 
 Discovery is advisory. The funding backend samples inventory again **inside its deposit queue**,
 before preparation or deposit. For an inventory refusal, it durably records `no-submit`,

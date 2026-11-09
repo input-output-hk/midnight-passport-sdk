@@ -56,22 +56,54 @@ test('wallet inventory releases synchronous and asynchronous subscriptions and c
     assert.equal(unsubscribed, 1);
   }
 });
-test('unsynced observations are distinct from zero; stream failures discard provider details', async () => {
+test('inventory waits for bounded unshielded catch-up and preserves a synchronized zero balance', async () => {
   const original = state();
   original.unshielded.progress.isStrictlyComplete = () => false;
-  assert.equal(
-    (
-      await walletInventory({
-        state: () => ({
-          subscribe(observer) {
-            observer.next(original);
-            return { unsubscribe() {} };
+  let unsubscribed = false;
+  const result = await walletInventory({
+    state: () => ({
+      subscribe(observer) {
+        observer.next(original);
+        queueMicrotask(() => {
+          assert.equal(unsubscribed, false);
+          const caughtUp = state();
+          caughtUp.unshielded.balances[night] = 0n;
+          observer.next(caughtUp);
+        });
+        return {
+          unsubscribe() {
+            unsubscribed = true;
           },
-        }),
-      })
-    ).synced,
-    false,
-  );
+        };
+      },
+    }),
+  });
+  assert.deepEqual(result, { synced: true, balances: { [night]: 0n } });
+  assert.equal(unsubscribed, true);
+});
+test('an unsynchronized stream times out without admitting its stale balance', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let unsubscribed = false;
+  const stale = state();
+  stale.unshielded.progress.isStrictlyComplete = () => false;
+  const pending = walletInventory({
+    state: () => ({
+      subscribe(observer) {
+        observer.next(stale);
+        return {
+          unsubscribe() {
+            unsubscribed = true;
+          },
+        };
+      },
+    }),
+  });
+  const rejected = assert.rejects(pending, { code: 'FundingWalletUnavailable' });
+  t.mock.timers.tick(5000);
+  await rejected;
+  assert.equal(unsubscribed, true);
+});
+test('stream failures discard provider details', async () => {
   for (const throwing of [true, false]) {
     await assert.rejects(
       walletInventory({
