@@ -85,6 +85,8 @@ export default defineConfig({
             { text: 'System and package layers', link: '/architecture/' },
             { text: 'Keys, wallets and trust', link: '/architecture/keys-wallets' },
             { text: 'Standards and upstream design', link: '/architecture/standards' },
+            { text: 'Architecture conformance', link: '/architecture/conformance' },
+            { text: 'Upstream SDK comparison', link: '/architecture/upstream-sdk' },
             { text: 'Glossary', link: '/architecture/glossary' },
           ],
         },
