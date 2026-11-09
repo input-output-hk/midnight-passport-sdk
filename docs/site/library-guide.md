@@ -10,6 +10,21 @@ composition of those libraries; its navigation, memory leases, funding wallet an
 storage choices are not SDK defaults. To run that application, use the
 [Demo app guide]({{ '/demo-guide/' | relative_url }}).
 
+## Integration checklist
+
+A first integration should deliver one host module with:
+
+1. Exact package versions and independently checked network/binding/manifest configuration.
+2. Persistent account records and injected credential/chain/proof/submission ports.
+3. Explicit create/open actions, reviewed inputs and public progress/error projection.
+4. An unknown-outcome recovery path and cleanup for resources your host owns.
+
+Start with [Install and connect]({{ '/getting-started/' | relative_url }}) for a
+maintained browser example. For a custom wallet or Node host, use the
+[boundary table](#select-the-boundary-you-own) below. Add private holdings,
+transfers and administration only after supplying their
+[method prerequisites]({{ '/api/#optional-methods-and-host-prerequisites' | relative_url }}).
+
 ## Choose a release or evaluate source {#choose-released-packages-or-source-preview}
 
 [Install and connect]({{ '/getting-started/' | relative_url }}) is the **published

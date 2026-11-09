@@ -19,7 +19,7 @@ connector all resolve to authorised interactions with that on-chain account.
 > this preview does not claim full Lace compatibility.
 
 > **Passport DApp prototype** (branch `passport-acc-prototype`): a working end-to-end demo on a
-> local Midnight network. To run it with Nix, follow [`AGENTS.md`](./AGENTS.md); the design and
+> local Midnight network. To run it with Nix, follow the [developer app setup](./apps/README.md); the design and
 > flows are in [`docs/prototype/`](./docs/prototype/README.md).
 
 ## Documentation
@@ -29,15 +29,17 @@ is built from [`docs/site/`](./docs/site/). Choose the path for your task:
 
 | Task | Start here |
 | --- | --- |
+| Understand account, wallet and key boundaries | [Architecture and concepts](./docs/site/architecture.md). |
 | Integrate the reusable libraries | [Library integration](./docs/site/library-guide.md), then [Install and connect](./docs/site/getting-started.md) and [Public package/runtime requirements](./docs/site/packages.md). |
 | Understand private account keys | [Account keys and recovery](./docs/site/account-keys.md): owners, readers, viewing secrets, wallet seeds and input ownership. |
 | Deploy public proving artifacts | [ZK keys and distribution](./docs/site/keys.md): manifests, deterministic restoration, verified caches and HTTP serving. |
-| Run or extend the reference app | [Demo composition](./docs/site/demo-guide.md), [local runbook](./AGENTS.md) and [demo use cases](./docs/site/use-cases.md). |
+| Run or extend the reference app | [Demo composition](./docs/site/demo-guide.md), [app setup and configuration](./apps/README.md) and [demo use cases](./docs/site/use-cases.md). |
 
 Library contracts cover ports, lifecycle and errors. Demo documentation explains
 this host's UI, consent, memory leases, workers, wallets and services. Installing a
 library does not opt into the demo's policies. Current RC8 APIs and historical
-release boundaries are labeled separately; editing documentation locally does not update Pages.
+release boundaries are labeled separately; [later source changes](./docs/site/source-preview.md)
+and [troubleshooting](./docs/site/troubleshooting.md) have dedicated entries; editing documentation locally does not update Pages.
 
 The [package quality strategy](./docs/site/quality.md) defines coverage, type safety,
 worker execution and release gates. [Secret custody](./docs/site/secret-storage.md)

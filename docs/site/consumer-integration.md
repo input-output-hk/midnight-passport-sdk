@@ -14,13 +14,13 @@ A public package install and a private source test are separate evidence.
 
 ## Current release and pinned qualification
 
-RC7 is the current published preview. Start with the [RC7 handover]({{ '/lace-handover/' | relative_url }})
+RC8 is the current published preview. Start with the [RC8 handover]({{ '/lace-handover/' | relative_url }})
 and [installation guide]({{ '/getting-started/' | relative_url }}). The host/native
 qualification below deliberately retains its measured RC6 package and source pins.
-Do not substitute RC7 into those receipts or infer that publishing RC7 repeats
+Do not substitute RC8 into those receipts or infer that publishing RC8 repeats
 native, full Lace or provider acceptance.
 
-## Current published host and RC6 — 2026/10/30
+## Historical published host and RC6 — 2026/10/30 {#current-published-host-and-rc6--20261030}
 
 Local source now adds an opt-in, retained consumer check for the actual published
 `@laceio/sdk@0.1.2-canary.2` and nine private SDK `0.1.0-rc6` packages. The

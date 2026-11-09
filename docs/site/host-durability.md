@@ -4,7 +4,7 @@ title: Durable host submissions and deployment waves
 permalink: /host-durability/
 ---
 
-**Introduced in RC6 and available in published RC7.** This is the opt-in Node
+**Introduced in RC6 and included in published RC8.** This is the opt-in Node
 host transport for [mutation durability]({{ '/durability/' | relative_url }}).
 The default browser/demo owner buttons use a different composition; they do not
 become durable by enabling a journal. RC8 observation hardening is labeled

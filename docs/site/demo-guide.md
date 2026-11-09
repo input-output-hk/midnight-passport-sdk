@@ -13,14 +13,15 @@ The [complete caller example]({{ '/getting-started/#4-compose-the-browser-accoun
 uses injected API/presentation capabilities; it does not require this app's DOM,
 Web Locks, storage names or routine-owner composition.
 
-**This page describes the RC8 reference app source.** Installing library packages
+**Version:** the base walkthrough describes the RC8 reference app.
+Sections labeled **Source preview** require later source; use the
+[unreleased change map]({{ '/source-preview/' | relative_url }}) before comparing behavior. Installing library packages
 does not install a demo UI or enable its memory/session policies. A published
 package, a deployed documentation site and a source checkout have separate versions.
 
 ## Run the local composition
 
-Follow the repository's [local setup guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/AGENTS.md)
-and [app configuration reference](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/README.md).
+Follow the developer [app setup and configuration reference](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/README.md).
 The demo needs Nix, the pinned ACC/compiler artifacts, a ready local chain/prover and
 configured service wallets. TypeScript package installation alone cannot deploy an ACC.
 Reuse a healthy existing stack and its canonical passkey origin; preserve original
@@ -31,7 +32,27 @@ services normally use `8787`, `8788` and `8789`. The optional funding wallet sup
 allowlisted ACC deposits; the fee sponsor and the user's built-in wallet are separate.
 Use the [demo use cases]({{ '/use-cases/' | relative_url }}) for action prerequisites and
 [historical RC5 funding trace]({{ '/handover/' | relative_url }}) for that dated evidence.
-Use the setup/app references above for current operation and state preservation.
+Use the app setup reference above for prerequisites and state preservation.
+
+### Launcher workflow
+
+From a source checkout, use these separate stages after preparing the prerequisites
+and matching ACC export described in the app reference:
+
+```sh
+nix develop -c pnpm demo check
+nix develop -c pnpm demo up
+```
+
+`check` checks tools, Docker memory and required ports; it does not prepare missing
+artifacts. `up` starts the configured reference services and keeps its
+launcher-owned processes in the foreground. Occupied application ports refuse;
+if a matching demo is already running, open it instead of launching a second one. For optional deposits, configure the funding wallet, private token and
+asset policy first, then use `nix develop -c pnpm demo up --funding`. The wallet
+must hold each asset on that chain. See the
+[funding operations guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md).
+Do not run a second wallet on occupied ports or delete existing state to repair a
+restart. An existing configured demo may already be ready to use.
 
 ## Enter and navigate
 

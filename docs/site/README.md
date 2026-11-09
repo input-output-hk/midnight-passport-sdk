@@ -15,8 +15,14 @@ as the Pages publishing source. Editing or locally rendering this source does no
 - `account-keys.md` owns private account-key capabilities, wire formats, byte ownership
   and recovery. `keys.md` owns public proving artifacts, hash pins, caches and serving;
   its older account-viewing heading links to the private-key guide.
-- The layout groups Library reference, Demo reference and Operations/releases. Existing
-  pages and permalinks remain; do not physically move pages just to classify navigation.
+- `architecture.md` defines concepts and boundaries; `troubleshooting.md` is the symptom-first support path.
+- `source-preview.md` records additions after the latest published release; keep it aligned with affected contracts.
+- `_data/navigation.json` owns the task-based sidebar taxonomy. Each published permalink belongs to one group.
+  Keep onboarding, account/host guides, adapters, infrastructure, demo, support/releases and history separate.
+  Existing pages and permalinks remain; do not physically move pages just to classify navigation.
+- The layout marks the current page, keeps the full link inventory usable without JavaScript and provides
+  a mobile disclosure. `assets/site.js` only adds responsive disclosure behavior and an H2 contents list.
+  Keep headings descriptive and their IDs stable; preserve old anchors when renaming sections.
 
 A reusable port contract belongs in the library path. The demo's chosen lifetime,
 Web Locks, dialogs, storage keys, service URLs and funding wallets belong in the demo

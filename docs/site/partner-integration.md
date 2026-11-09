@@ -151,6 +151,6 @@ provider acceptance remain pending unless explicitly recorded for the exact buil
 
 The [adoption execution plan](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/partner-adoption-plan.md)
 orders remaining work: real consumer adoption, precise capabilities, consent and
-recovery, reproducible operations and provider qualification. RC7 is the current published preview; exact-value shielded withdrawals, entry-removal and total-loss recovery
+recovery, reproducible operations and provider qualification. RC8 is the current published preview; exact-value shielded withdrawals, entry-removal and total-loss recovery
 limitations remain unchanged. See [qualification]({{ '/qualification/' | relative_url }})
 and [consumer integration]({{ '/consumer-integration/' | relative_url }}).

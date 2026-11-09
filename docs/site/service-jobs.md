@@ -4,7 +4,7 @@ title: Durable host mutation jobs
 permalink: /service-jobs/
 ---
 
-**Introduced in RC6 and available in published RC7.** This opt-in descriptor-job
+**Introduced in RC6 and included in published RC8.** This opt-in descriptor-job
 API is separate from the process-local legacy `/v1/jobs` protocol and the default
 demo composition. Newer source changes and dated qualification results are labeled
 in their sections.
