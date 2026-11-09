@@ -8,6 +8,7 @@ import {
   journeyGroups,
   expectedCases,
   bootstrapPlans,
+  expectedCredentialPurposes,
 } from '../../apps/passport-dapp/e2e/journeys/catalog.mjs';
 const arms = Object.freeze(['p256', 'jubjub']);
 export const journeyInventorySha256 = createHash('sha256')
@@ -43,16 +44,7 @@ function interval(value) {
     throw Error('Invalid complete journey timing');
   return { startMs: value.startMs, endMs: value.endMs, elapsedMs: value.elapsedMs };
 }
-/** @param {string} arm */
-export function journeyPurposes(arm) {
-  return [
-    'create',
-    'derive-keys',
-    'identify-and-unlock',
-    ...(arm === 'p256' ? ['sign'] : []),
-    'verify-created',
-  ];
-}
+export { expectedCredentialPurposes as journeyPurposes } from '../../apps/passport-dapp/e2e/journeys/catalog.mjs';
 /** @param {unknown} value @param {string} arm @param {string} group */
 function attestCases(value, arm, group) {
   if (!Array.isArray(value)) throw Error('Missing journey cases');
@@ -273,8 +265,7 @@ export function admitJourneyReceipt(value, source, allowDirty = false) {
   const purposes = value.ceremonyPurposesByArm[arm];
   if (
     Object.keys(value.ceremonyPurposesByArm).join(',') !== arm ||
-    JSON.stringify(purposes) !==
-      JSON.stringify(group === 'presentation' ? [] : journeyPurposes(arm))
+    JSON.stringify(purposes) !== JSON.stringify(expectedCredentialPurposes(arm, group))
   )
     throw Error('Journey credential-purpose scope differs');
   attestTiming(value, arm, group);

@@ -9,13 +9,18 @@ cells: P-256/JubJub × presentation/account-actions/scoped-sessions/owner-safety
 Each owns its browser/Vite server and fresh receipt. The default local command
 still runs the entire original flow for both arms in order. Standalone groups use
 explicit UI bootstraps rather than assigning authenticated state or grant authority.
-The catalog retains97P-256 and95JubJub cases, with stable IDs and original names.
+RC8 retained97P-256 and95JubJub cases. The current source catalog has104P-256
+and102JubJub cases, with stable historical IDs/names and explicit new cases.
 
 The stable required **Lint, format, build, and test** aggregate waits for both the
 matrix and **Complete browser journey inventory**. A failed, cancelled or skipped
 cell refuses. The inventory job downloads exactly eight current-run receipts and
 checks their source, runtime/catalog hashes, case order/union, purpose observations,
-complete setup/body/cleanup and monotonic timing accounting. A case count alone
+complete setup/body/cleanup and monotonic timing accounting. Credential-purpose
+expectations are shared with the browser observer and specific to each cell.
+The isolated JubJub scoped-session bootstrap reuses its reviewed creation keys
+and therefore has no `verify-created` access. The P-256 cell and other account/owner
+flows retain their verification expectations. Missing or unexpected purposes refuse. A case count alone
 cannot satisfy the gate. Real worker/IndexedDB contracts run once in the P-256
 presentation cell and remain required through that cell's outcome.
 

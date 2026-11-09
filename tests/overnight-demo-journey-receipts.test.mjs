@@ -41,7 +41,7 @@ function cellReceipt({ arm, group }) {
     pageErrors: [],
     caseAttestations: cases,
     cases: cases.map(({ arm, name }) => ({ arm, name })),
-    ceremonyPurposesByArm: { [arm]: group === 'presentation' ? [] : journeyPurposes(arm) },
+    ceremonyPurposesByArm: { [arm]: journeyPurposes(arm, group) },
     groupTimings: {
       [arm]: [
         {
@@ -389,3 +389,31 @@ for (const cell of journeyCells)
         /Journey case completion outside group body/,
       );
     });
+
+test('scoped JubJub creation reuses its reviewed keys without a verification ceremony', () => {
+  assert.deepEqual(journeyPurposes('jubjub', 'scoped-sessions'), [
+    'create',
+    'derive-keys',
+    'identify-and-unlock',
+  ]);
+  for (const group of ['account-actions', 'owner-safety'])
+    assert.ok(journeyPurposes('jubjub', group).includes('verify-created'));
+  assert.ok(journeyPurposes('jubjub').includes('verify-created'));
+  assert.ok(journeyPurposes('p256', 'scoped-sessions').includes('verify-created'));
+});
+test('every cell retains exact credential-purpose admission', () => {
+  for (const cell of journeyCells) {
+    const values = receipts();
+    const receipt = values.find(
+      (value) => value.selectedArms[0] === cell.arm && value.selectedGroups[0] === cell.group,
+    );
+    assert.ok(receipt);
+    const expected = [...journeyPurposes(cell.arm, cell.group)];
+    receipt.ceremonyPurposesByArm[cell.arm] = [...expected, 'unexpected-purpose'].sort();
+    assert.throws(() => aggregateJourneyReceipts(values, source), /credential-purpose/);
+    for (const purpose of expected) {
+      receipt.ceremonyPurposesByArm[cell.arm] = expected.filter((value) => value !== purpose);
+      assert.throws(() => aggregateJourneyReceipts(values, source), /credential-purpose/);
+    }
+  }
+});

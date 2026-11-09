@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import type { JourneyHarness } from './types.js';
-import type { JourneyGroup } from './catalog.mjs';
+import { expectedCredentialPurposes, type JourneyGroup } from './catalog.mjs';
 export async function collectPurposes(h: JourneyHarness, group: JourneyGroup | undefined) {
   assert.deepEqual(h.failures, []);
   assert.deepEqual(h.pageErrors, []);
@@ -33,16 +33,7 @@ export async function collectPurposes(h: JourneyHarness, group: JourneyGroup | u
       for (const value of observed.purposes) purposes.add(value.purpose);
     }
   if (group !== 'presentation')
-    for (const purpose of requiredPurposes(h.arm))
+    for (const purpose of expectedCredentialPurposes(h.arm, group))
       assert.ok(purposes.has(purpose), `missing observed ${purpose} access for ${h.arm}`);
   return [...purposes].sort();
-}
-export function requiredPurposes(arm: string) {
-  return [
-    'create',
-    'derive-keys',
-    'identify-and-unlock',
-    ...(arm === 'p256' ? ['sign'] : []),
-    'verify-created',
-  ].sort();
 }

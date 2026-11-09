@@ -45,3 +45,20 @@ export const bootstrapPlans = Object.freeze({
   'scoped-sessions': Object.freeze(['create', 'wallet', 'fund', 'session-draft']),
   'owner-safety': Object.freeze(['prepareJoiner', 'wallet']),
 });
+
+/** Credential access depends on which actual UI flows a cell exercises.
+ * @param {string} arm @param {string} [group] */
+export function expectedCredentialPurposes(arm, group) {
+  if (!['p256', 'jubjub'].includes(arm) || (group !== undefined && !journeyGroups.includes(group)))
+    throw Error('Unknown credential-purpose cell');
+  if (group === 'presentation') return [];
+  return [
+    'create',
+    'derive-keys',
+    'identify-and-unlock',
+    ...(arm === 'p256' ? ['sign'] : []),
+    // The isolated JubJub session bootstrap adopts creation keys. Other groups
+    // also exercise independent registration flows that still verify creation.
+    ...(arm === 'jubjub' && group === 'scoped-sessions' ? [] : ['verify-created']),
+  ];
+}
