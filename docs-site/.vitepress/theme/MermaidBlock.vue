@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, useId, watch } from 'vue';
 
 const props = defineProps<{ encoded: string }>();
 const host = ref<HTMLElement | null>(null);
 const failure = ref('');
+const diagramId = useId();
 let sequence = 0;
 
 async function draw() {
@@ -12,7 +13,7 @@ async function draw() {
     const { default: mermaid } = await import('mermaid');
     mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'neutral' });
     const { svg } = await mermaid.render(
-      `passport-diagram-${sequence++}`,
+      `passport-diagram-${diagramId}-${sequence++}`,
       decodeURIComponent(props.encoded),
     );
     host.value.innerHTML = svg;

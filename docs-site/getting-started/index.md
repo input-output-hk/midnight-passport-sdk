@@ -28,7 +28,7 @@ The [capability map](/packages/api) names the relevant public operations and opt
 ## How does an operation work?
 
 ```mermaid
-flowchart LR
+flowchart TB
   U[Person] --> A[Application]
   A --> S[Passport SDK]
   S --> C[Deployed Passport ACC]
