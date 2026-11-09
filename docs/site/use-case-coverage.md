@@ -254,3 +254,28 @@ they do not establish today's fresh-approval behavior. Earlier native receipts,
 published RC7 hashes and provider limitations retain their exact original source
 identities. Real Google/iCloud restored-credential behavior, browser/native combined
 acceptance and eliminating the pure-JubJub creation probe are deferred.
+
+
+## Next-preview acceptance boundary — 2026-11-09
+
+PR295 is merged. Source `ba33365` adds lease-pinned RP approval, the canonical
+`account/authorisation` export (the earlier spelling is an identical alias), a
+ten-minute routine/full-owner default and a warning about copied full-owner keys
+in the existing review. Its 192-case synthetic run retains every original case and
+now checks that default. Fresh nine-tarball local installation verifies 34 public
+runtime imports and strict Node/DOM/Worker/docs consumers. Those are current-source
+candidate results; published RC7 remains unchanged.
+
+The durable mutation API, host jobs and grant-recovery helpers are implemented
+opt-in seams. Default demo account buttons are not automatically durable; missing
+host receipts remain unknown, and another enrolled device cannot necessarily open
+the issuing reader's grant records. Local source-native lifecycle results retain
+their own source identity and are not browser/provider runs.
+
+The [acceptance index](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/local-backlog-acceptance.md)
+separates implementation, observed evidence and remaining delivery. Older issues
+still mentioning Overview, central progress or collapsible Settings do not override
+the owner's later landing, Activity and nested-navigation decisions. New registry
+installs, production image readiness, published Pages, real providers and pinned
+full Lace runtime remain separate acceptance steps. The exact-value shielded guard
+and no-full-Lace boundary remain.

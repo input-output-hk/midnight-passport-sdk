@@ -79,18 +79,10 @@ Development is spec-driven and harness-assisted — see
 planned into small, reviewable PRs anchored to a GitHub issue; progress and
 backlog are tracked in [`STATE.md`](./STATE.md).
 
-The workflow ships as the **`mn-passport-skills` plugin** in [`mn-passport-skills/`](./mn-passport-skills):
-ten skills (`/mn-passport-skills:spec-author`, `/mn-passport-skills:spec-driver`, the four review
-lenses, `doc-sync`, `pr-open`, and the `deps` / `devenv` watchers), a PreToolUse
-hook that stops
-outward actions for human confirmation, and the scripts behind the CI gate
-([`.github/workflows/pr-checks.yml`](./.github/workflows/pr-checks.yml)).
-Claude Code auto-enables it when you trust the repo (via
-`.claude/settings.json`); manual fallback:
-`/plugin marketplace add .` then `/plugin install mn-passport-skills@midnight-passport-sdk`.
-
-Prerequisite: the private residual-risk register repo cloned as a sibling at
-`../mn-passport-sdk-debts` (checked by `/mn-passport-skills:devenv`).
+Repository contribution and review procedures are in
+[Contributing](./CONTRIBUTING.md) and the [development workflow](./docs/development-workflow.md).
+Partner documentation uses the [handover policy](./docs/partner-handover.md);
+internal run journals are not part of that export.
 
 ### Local toolset (Nix)
 

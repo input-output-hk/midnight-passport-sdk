@@ -81,3 +81,23 @@ read; a path or symlink escaping the site refuses. Rendered `<base href>` direct
 relative-link resolution. Existing receipts are never
 overwritten, and a missing/empty render cannot produce a pass. Keep browser layout
 and actual deployment checks as separate evidence.
+
+
+### Partner handover admission
+
+The repository's `docs/partner-handover-policy.json` selects public site sources
+and executable examples. `scripts/docs/check-handover.mjs` checks those files,
+optionally the supplied rendered site and all nine hash-verified candidate
+archives, for known process/private-path contamination. Use a fresh receipt:
+
+```sh
+nix develop -c node scripts/docs/check-handover.mjs \
+  --output /absolute/path/to/new-handover-check.json \
+  --site /absolute/path/to/rendered-site \
+  --tarballs /absolute/path/to/candidate-bundle --version YOUR_EXACT_VERSION
+```
+
+This is a content/allowlist check, not render provenance, a general secret audit,
+history sanitisation, native/provider qualification or publication. Read the
+repository's `docs/partner-handover.md` before preparing an external proposal;
+removing a file from today's tree does not remove it from earlier commits.
