@@ -4,7 +4,9 @@ on:
   push:
     branches: [passport-acc-prototype]
     paths:
+      - 'docs-site/**'
       - 'docs/site/**'
+      - 'docs/examples/**'
       - 'scripts/docs/check-rendered.py'
       - 'tests/docs/**'
       - '.github/workflows/docs-pages.yml'
@@ -23,18 +25,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
-      - uses: actions/jekyll-build-pages@44a6e6beabd48582f863aeeb6cb2151cc1716697 # v1.0.13
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          source: docs/site
-          destination: _site
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+      - name: Install isolated documentation tools
+        run: npm ci --prefix docs-site
+      - name: Build VitePress under the Pages base path
+        env:
+          DOCS_BASE: /midnight-passport-sdk/
+        run: npm run build --prefix docs-site
       - name: Check rendered local links and anchors
         run: |
           python3 -m unittest discover -s tests/docs -p 'test_*.py'
-          python3 scripts/docs/check-rendered.py _site --base-url /midnight-passport-sdk
+          python3 scripts/docs/check-rendered.py docs-site/.vitepress/dist --base-url /midnight-passport-sdk
       - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
         with:
-          path: _site
+          path: docs-site/.vitepress/dist
 
   deploy:
     if: github.repository == 'input-output-hk/midnight-passport-sdk'

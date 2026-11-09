@@ -1,0 +1,50 @@
+:root {
+  --vp-c-brand-1: #3156bf;
+  --vp-c-brand-2: #4669d1;
+  --vp-c-brand-3: #253d8e;
+  --vp-c-brand-soft: #e7edff;
+  --vp-font-family-base: Inter, ui-sans-serif, system-ui, sans-serif;
+  --vp-content-width: 820px;
+}
+.dark {
+  --vp-c-brand-1: #9ab4ff;
+  --vp-c-brand-2: #b3c8ff;
+  --vp-c-brand-soft: #243154;
+}
+.VPDoc h1,
+.VPHome h1 {
+  letter-spacing: -0.025em;
+}
+.vp-doc p,
+.vp-doc li {
+  line-height: 1.7;
+}
+.vp-doc table {
+  display: block;
+  overflow-x: auto;
+}
+.passport-diagram {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  overflow-x: auto;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: #fff;
+}
+.passport-diagram svg {
+  max-width: 100%;
+  min-width: 540px;
+  height: auto;
+}
+.passport-diagram figcaption {
+  color: var(--vp-c-text-2);
+}
+.vp-doc .custom-block {
+  margin: 1.5rem 0;
+}
+@media (max-width: 640px) {
+  .passport-diagram {
+    margin-inline: -12px;
+    padding: 8px;
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "midnight-passport-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev . --host 127.0.0.1 --port 4173",
+    "build": "vitepress build . && node scripts/legacy-urls.mjs",
+    "preview": "vitepress preview . --host 127.0.0.1 --port 4174"
+  },
+  "devDependencies": {
+    "mermaid": "11.17.2",
+    "vitepress": "1.6.4"
+  }
+}
