@@ -14,6 +14,7 @@ export interface JourneyFlags {
   unknownFunding: boolean;
   emptyFunding?: boolean;
   multipleFundingAssets?: boolean;
+  customFundingUnavailable?: boolean;
   rejectFundingPreflight?: boolean;
   unknownWithdrawal: boolean;
   unsettledGrantSpend: boolean;

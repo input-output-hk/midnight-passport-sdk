@@ -88,7 +88,13 @@ async function fundingRoute(h: JourneyHarness, route: Route, url: URL) {
   const assets = [
     { color: night, amount: '10', availability: flags.emptyFunding ? 'insufficient' : 'available' },
     ...(flags.multipleFundingAssets
-      ? [{ color: 'cd'.repeat(32), amount: '10', availability: 'available' }]
+      ? [
+          {
+            color: 'cd'.repeat(32),
+            amount: '10',
+            availability: flags.customFundingUnavailable ? 'insufficient' : 'available',
+          },
+        ]
       : []),
   ];
   if (flags.serviceUnavailable) {

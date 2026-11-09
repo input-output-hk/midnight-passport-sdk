@@ -366,7 +366,10 @@ const refreshAccountBalances = createFundingBalanceReader({
       fundedAsset: view.fundedAsset,
     });
   },
-  unavailable: (address) => ui.showAccountBalanceError(address),
+  unavailable: (address) => {
+    ui.showFundingUnavailable();
+    ui.showAccountBalanceError(address);
+  },
 });
 
 void tracedFetch(fundingUrl.toString())

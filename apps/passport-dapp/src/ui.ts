@@ -714,6 +714,71 @@ export function createUi(
   renderWallet();
   renderEvidence();
 
+  const enableFunding = (assets: readonly DemoFundingAsset[]): void => {
+    const previousFunding = fundingSelect.value;
+    const previousWithdrawal = withdrawalSelect.value;
+    const previousGrant = grantAsset.value;
+    assetsByColor = new Map(assets.map((asset) => [asset.color, asset]));
+    fundingSelect.replaceChildren(
+      ...assets.map((asset) => {
+        const option = el(
+          'option',
+          undefined,
+          asset.color === '00'.repeat(32)
+            ? `NIGHT (${asset.amount} smallest units)`
+            : `Test token ${shorten(asset.color, 6, 4)} (${asset.amount} units)`,
+        );
+        option.value = asset.color;
+        option.disabled = asset.availability !== 'available';
+        if (option.disabled)
+          option.textContent +=
+            asset.availability === 'insufficient'
+              ? ' — insufficient funding balance'
+              : ' — funding unavailable';
+        return option;
+      }),
+    );
+    withdrawalSelect.replaceChildren(
+      ...assets.map((asset) => {
+        const option = el(
+          'option',
+          undefined,
+          asset.color === '00'.repeat(32)
+            ? 'NIGHT (smallest units)'
+            : `Test token ${shorten(asset.color, 6, 4)} (smallest units)`,
+        );
+        option.value = asset.color;
+        return option;
+      }),
+    );
+    grantAsset.replaceChildren(
+      ...assets.map((asset) => {
+        const option = el(
+          'option',
+          undefined,
+          asset.color === '00'.repeat(32)
+            ? 'NIGHT (smallest units)'
+            : `Test token ${shorten(asset.color, 6, 4)} (smallest units)`,
+        );
+        option.value = asset.color;
+        return option;
+      }),
+    );
+    fundingAsset = preferredFundingAsset(assets, previousFunding);
+    fundingSelect.value = fundingAsset?.color ?? '';
+    if (assetsByColor.has(previousWithdrawal)) withdrawalSelect.value = previousWithdrawal;
+    if (assetsByColor.has(previousGrant)) grantAsset.value = previousGrant;
+    if (account && accountBalances?.address !== account.address)
+      accountBalances = {
+        address: account.address,
+        color: assets.find((asset) => asset.color !== '00'.repeat(32))?.color ?? '00'.repeat(32),
+      };
+    byId('fund-desc').textContent = canFund(false, true, fundingAsset)
+      ? 'Deposit the selected asset from the demo funding wallet into this account.'
+      : 'Deposits are unavailable. The funding wallet needs a synchronized balance of the selected asset.';
+    renderButtons();
+  };
+
   return {
     refreshPrompts: renderPrompts,
     activity,
@@ -889,69 +954,14 @@ export function createUi(
       renderHoldings();
       renderEvidence();
     },
-    enableFunding(assets: readonly DemoFundingAsset[]) {
-      const previousFunding = fundingSelect.value;
-      const previousWithdrawal = withdrawalSelect.value;
-      const previousGrant = grantAsset.value;
-      assetsByColor = new Map(assets.map((asset) => [asset.color, asset]));
-      fundingSelect.replaceChildren(
-        ...assets.map((asset) => {
-          const option = el(
-            'option',
-            undefined,
-            asset.color === '00'.repeat(32)
-              ? `NIGHT (${asset.amount} smallest units)`
-              : `Test token ${shorten(asset.color, 6, 4)} (${asset.amount} units)`,
-          );
-          option.value = asset.color;
-          option.disabled = asset.availability !== 'available';
-          if (option.disabled)
-            option.textContent +=
-              asset.availability === 'insufficient'
-                ? ' — insufficient funding balance'
-                : ' — funding unavailable';
-          return option;
-        }),
+    enableFunding,
+    showFundingUnavailable() {
+      enableFunding(
+        [...assetsByColor.values()].map((asset) => ({
+          ...asset,
+          availability: 'unavailable' as const,
+        })),
       );
-      withdrawalSelect.replaceChildren(
-        ...assets.map((asset) => {
-          const option = el(
-            'option',
-            undefined,
-            asset.color === '00'.repeat(32)
-              ? 'NIGHT (smallest units)'
-              : `Test token ${shorten(asset.color, 6, 4)} (smallest units)`,
-          );
-          option.value = asset.color;
-          return option;
-        }),
-      );
-      grantAsset.replaceChildren(
-        ...assets.map((asset) => {
-          const option = el(
-            'option',
-            undefined,
-            asset.color === '00'.repeat(32)
-              ? 'NIGHT (smallest units)'
-              : `Test token ${shorten(asset.color, 6, 4)} (smallest units)`,
-          );
-          option.value = asset.color;
-          return option;
-        }),
-      );
-      fundingAsset = preferredFundingAsset(assets, previousFunding);
-      fundingSelect.value = fundingAsset?.color ?? '';
-      if (assetsByColor.has(previousWithdrawal)) withdrawalSelect.value = previousWithdrawal;
-      if (assetsByColor.has(previousGrant)) grantAsset.value = previousGrant;
-      if (account && accountBalances?.address !== account.address)
-        accountBalances = {
-          address: account.address,
-          color: assets.find((asset) => asset.color !== '00'.repeat(32))?.color ?? '00'.repeat(32),
-        };
-      byId('fund-desc').textContent = fundingAsset
-        ? 'Deposit the selected asset from the demo funding wallet into this account.'
-        : 'Deposits are unavailable. The funding wallet needs a synchronized balance of the selected asset.';
-      renderButtons();
     },
     selectedFundingAsset() {
       const selected = assetsByColor.get(fundingSelect.value);

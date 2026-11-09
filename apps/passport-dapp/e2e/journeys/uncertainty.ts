@@ -97,5 +97,10 @@ export async function checkBalanceServiceOutageLabelsPriorSnapshotsWithout(
   await waitStatus(owner, /refreshed|unavailable|failed/i);
   await reveal(owner, '#account-facts');
   assert.match(await owner.locator('#account-facts').innerText(), /Latest refresh unavailable/);
+  assert.equal(
+    await owner.locator('#fund').isDisabled(),
+    true,
+    'a failed current inventory read disables deposits',
+  );
   done('account-actions.balance-service-outage-labels-prior-snapshots-without');
 }

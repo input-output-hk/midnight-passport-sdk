@@ -770,3 +770,7 @@ The source-preview reference policy admits 1–64 distinct assets consistently i
 and the browser. Older balance responses, including failures, cannot overwrite a newer read
 or a reopened account’s availability. Inventory reads remain bounded even when subscription
 teardown throws.
+
+An unavailable selected deposit asset stays selected with funding disabled; refresh never
+switches it to another asset. A current availability-read failure also disables deposits
+until a successful refresh, preserving the asset list and withdrawal choices.

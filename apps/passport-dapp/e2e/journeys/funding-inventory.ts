@@ -32,6 +32,15 @@ export async function checkFundingInventory(h: JourneyHarness) {
     await click(stale, '#refresh');
     await h.waitStatus(stale, /refreshed/);
     assert.equal(await stale.locator('#fund-asset').inputValue(), 'cd'.repeat(32));
+    h.flags.customFundingUnavailable = true;
+    await click(stale, '#refresh');
+    await h.waitStatus(stale, /refreshed/);
+    assert.equal(
+      await stale.locator('#fund-asset').inputValue(),
+      'cd'.repeat(32),
+      'unavailable custom selection must never become NIGHT',
+    );
+    assert.equal(await stale.locator('#fund').isDisabled(), true);
     await select(stale, '#fund-asset', night);
     for (let attempt = 0; attempt < 2; attempt++) {
       await click(stale, '#fund');
@@ -55,6 +64,7 @@ export async function checkFundingInventory(h: JourneyHarness) {
   } finally {
     h.flags.rejectFundingPreflight = false;
     h.flags.multipleFundingAssets = false;
+    h.flags.customFundingUnavailable = false;
     await h.archiveObservations(stale, h.arm);
     await stale.close();
   }

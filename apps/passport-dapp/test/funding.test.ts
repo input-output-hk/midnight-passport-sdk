@@ -138,13 +138,15 @@ test('proved refusal is failed in Activity while an uncertain funding outcome st
   }
 });
 
-test('a funding refresh retains an available custom asset and falls back only when it becomes unavailable', () => {
+test('a funding refresh preserves intent even when the selected asset becomes unavailable', () => {
   const custom = { ...row, availability: 'available' } as const;
   const night = { ...custom, color: '00'.repeat(32) };
   assert.equal(preferredFundingAsset([night, custom], color)?.color, color);
   assert.equal(
     preferredFundingAsset([night, { ...custom, availability: 'insufficient' }], color)?.color,
-    night.color,
+    color,
   );
-  assert.equal(preferredFundingAsset([row], color), undefined);
+  assert.equal(canFund(false, true, preferredFundingAsset([row], color)), false);
+  assert.equal(preferredFundingAsset([night], 'removed'), undefined);
+  assert.equal(preferredFundingAsset([night], '')?.color, night.color);
 });
