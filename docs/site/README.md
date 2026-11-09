@@ -1,8 +1,10 @@
-# GitHub Pages source
+# Earlier Jekyll site source
 
-`docs/site` is the Jekyll source for the SDK's Pages site. `docs-pages.yml` builds and
-deploys it from `passport-acc-prototype`. The repository owner selects **GitHub Actions**
-as the Pages publishing source. Editing or locally rendering this source does not deploy it.
+`docs/site` holds the earlier Jekyll pages so the VitePress build can preserve their
+permalinks and heading anchors. The current developer site lives in
+[`docs-site/`](../../docs-site/README.md), and `.github/workflows/docs-pages.yml`
+builds that workspace. The notes below describe the earlier page inventory and
+checks still used for its TypeScript examples; they are not current publishing steps.
 
 ## Documentation paths
 
@@ -48,9 +50,9 @@ of `/midnight-passport-sdk`. Preserve existing page permalinks and heading ancho
 possible. Type-check executable snippets against the intended export/version; the
 released browser quickstart remains in `docs/examples/browser-quickstart.ts`.
 
-The GitHub Actions workflow is the deployment build. Local source/permalink validation
-without Jekyll can detect missing pages, but cannot establish Liquid/Kramdown rendering,
-generated heading IDs or responsive layout. Report those verification gaps explicitly.
+The VitePress workflow builds current pages and compatibility URLs from these legacy
+permalinks. Check its rendered links and layout as described in `docs-site/README.md`.
+The earlier Jekyll render guidance below is retained for historical source reviews.
 
 
 ### Compile source examples before review

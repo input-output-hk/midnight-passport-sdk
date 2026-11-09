@@ -1,9 +1,10 @@
 # Midnight Passport SDK
 
-The [problem statement and package boundaries](./docs/site/problems.md) map ACC distribution,
-proving keys, HTTP artefact serving, sponsorship, browser circuit helpers, faucet funding, and the
-demo to current and planned SDK components. It distinguishes ACC key derivation from proving-key
-distribution and fee sponsorship from moving assets into an ACC.
+Start with the [developer documentation](./docs-site/getting-started/index.md): what a
+Passport Account Custody Contract is, what the published SDK can do, and which
+integration path fits your host. The [documentation workspace](./docs-site/README.md)
+builds the VitePress site locally, including local search, diagrams, package guides,
+operator paths, and compatibility pages for earlier URLs.
 
 The developer SDK for **Midnight Passport** — the user-facing identity and
 wallet layer for the Midnight network. The SDK is the primary programmatic
@@ -25,21 +26,20 @@ connector all resolve to authorised interactions with that on-chain account.
 ## Documentation
 
 The [SDK documentation site](https://input-output-hk.github.io/midnight-passport-sdk/)
-is built from [`docs/site/`](./docs/site/). Choose the path for your task:
+is built from [`docs-site/`](./docs-site/). Choose the path for your task:
 
 | Task | Start here |
 | --- | --- |
-| Understand account, wallet and key boundaries | [Architecture and concepts](./docs/site/architecture.md). |
-| Integrate the reusable libraries | [Library integration](./docs/site/library-guide.md), then [Install and connect](./docs/site/getting-started.md) and [Public package/runtime requirements](./docs/site/packages.md). |
-| Understand private account keys | [Account keys and recovery](./docs/site/account-keys.md): owners, readers, viewing secrets, wallet seeds and input ownership. |
-| Deploy public proving artifacts | [ZK keys and distribution](./docs/site/keys.md): manifests, deterministic restoration, verified caches and HTTP serving. |
-| Run or extend the reference app | [Demo composition](./docs/site/demo-guide.md), [app setup and configuration](./apps/README.md) and [demo use cases](./docs/site/use-cases.md). |
+| Understand Passport and choose a path | [Getting started](./docs-site/getting-started/index.md). |
+| Integrate a browser application | [First integration](./docs-site/getting-started/first-integration.md). |
+| Select reusable packages or host ports | [Package selection](./docs-site/packages/index.md) and [host integration](./docs-site/guides/hosts.md). |
+| Understand keys, wallets and standards | [Architecture](./docs-site/architecture/index.md) and [standards map](./docs-site/architecture/standards.md). |
+| Deploy public proving artifacts or services | [Operations](./docs-site/operations/index.md). |
+| Run or extend the reference app | [Reference demo](./docs-site/demo/index.md) and [app setup](./apps/README.md). |
 
-Library contracts cover ports, lifecycle and errors. Demo documentation explains
-this host's UI, consent, memory leases, workers, wallets and services. Installing a
-library does not opt into the demo's policies. Current RC8 APIs and historical
-release boundaries are labeled separately; [later source changes](./docs/site/source-preview.md)
-and [troubleshooting](./docs/site/troubleshooting.md) have dedicated entries; editing documentation locally does not update Pages.
+The [migration map](./docs-site/MIGRATION.md) and build-generated compatibility pages
+keep earlier site paths and heading fragments usable. The former [`docs/site/`](./docs/site/)
+sources remain as versioned historical detail. Local edits and previews do not publish Pages.
 
 The [package quality strategy](./docs/site/quality.md) defines coverage, type safety,
 worker execution and release gates. [Secret custody](./docs/site/secret-storage.md)

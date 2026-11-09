@@ -233,6 +233,14 @@
   ],
   "files": [
     {
+      "path": "docs/examples/browser-first-integration.ts",
+      "targets": ["web"]
+    },
+    {
+      "path": "docs/examples/browser-first-app.ts",
+      "targets": ["web"]
+    },
+    {
       "path": "docs/examples/browser-quickstart.ts",
       "targets": [
         "web"

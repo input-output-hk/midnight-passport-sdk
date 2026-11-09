@@ -1,0 +1,54 @@
+# Old page migration map
+
+Every earlier Jekyll permalink remains available in the built site. Earlier heading fragments land on a compatibility anchor linked to the new task guide.
+
+| Earlier URL | Current guide |
+| --- | --- |
+| `/account-keys/` | `/architecture/keys-wallets` |
+| `/api/` | `/packages/api` |
+| `/architecture/` | `/architecture/` |
+| `/authenticated-owner/` | `/demo/signing-activity` |
+| `/authorization/` | `/guides/authorization` |
+| `/background/` | `/guides/durability` |
+| `/capabilities/` | `/packages/api` |
+| `/circuits/` | `/operations/artifacts` |
+| `/consent/` | `/guides/authorization` |
+| `/consumer-integration/` | `/guides/hosts` |
+| `/demo-guide/` | `/demo/` |
+| `/demo-ui/` | `/demo/signing-activity` |
+| `/durability/` | `/guides/durability` |
+| `/getting-started/` | `/getting-started/` |
+| `/grant-recovery/` | `/guides/devices-grants` |
+| `/handover/` | `/operations/archive` |
+| `/host-durability/` | `/guides/durability` |
+| `/` | `/` |
+| `/interaction/` | `/guides/hosts` |
+| `/jubjub-sessions/` | `/guides/devices-grants` |
+| `/keys/` | `/operations/artifacts` |
+| `/lace-handover/` | `/guides/hosts` |
+| `/lace-wallet/` | `/guides/hosts` |
+| `/library-guide/` | `/getting-started/first-integration` |
+| `/live-qualification/` | `/operations/archive` |
+| `/names/` | `/guides/hosts` |
+| `/packages/` | `/packages/` |
+| `/partner-integration/` | `/architecture/standards` |
+| `/passkey-prompts/` | `/guides/authorization` |
+| `/problems/` | `/getting-started/` |
+| `/qualification/` | `/operations/quality` |
+| `/quality/` | `/operations/quality` |
+| `/quick-actions/` | `/demo/signing-activity` |
+| `/react-example/` | `/guides/hosts` |
+| `/release-notes-rc4/` | `/operations/archive` |
+| `/release-notes-rc5/` | `/operations/archive` |
+| `/release-notes-rc6/` | `/operations/archive` |
+| `/release-notes-rc7/` | `/operations/archive` |
+| `/release-notes-rc8/` | `/operations/quality` |
+| `/releasing/` | `/operations/quality` |
+| `/secret-storage/` | `/guides/durability` |
+| `/service-jobs/` | `/operations/services` |
+| `/service/` | `/operations/services` |
+| `/shielded-deposit-recovery/` | `/guides/assets` |
+| `/source-preview/` | `/operations/archive` |
+| `/troubleshooting/` | `/operations/troubleshooting` |
+| `/use-case-coverage/` | `/operations/quality` |
+| `/use-cases/` | `/demo/scenarios` |
