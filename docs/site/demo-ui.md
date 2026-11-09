@@ -20,7 +20,7 @@ unknown-intent fences remain. These additions are not in published RC7.
 
 
 
-**Local source after RC7.** The redesigned prototype demonstrates how the existing
+**Available in RC8; absent from RC7.** The redesigned prototype demonstrates how the existing
 Passport packages can be composed. It does not add an npm UI package, change the
 ACC binding or establish new native/provider compatibility. Published RC7 and the
 deployed site remain separate from this local work.

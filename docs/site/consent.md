@@ -7,7 +7,7 @@ permalink: /consent/
 This page separates the reusable [library ceremony contract]({{ '/library-guide/' | relative_url }})
 from the [reference demo's host policy]({{ '/demo-guide/' | relative_url }}).
 The hook is published in RC7; the combined app review and routine/full-owner/session
-composition below describe later local source.
+composition below describe the matching RC8 demo source.
 
 **Current local-source policy:** reviewed login may prepare a bounded routine
 reader/wallet lease. Critical operations need fresh passkey approval even under
@@ -72,7 +72,7 @@ The hook is optional for backward compatibility, and is not contract enforcement
 
 ## Demo behavior
 
-The source preview stages a frozen operation context before work; staging does not
+The RC8 demo stages a frozen operation context before work; staging does not
 approve a credential. At the **actual credential callback**, one keyboard-accessible
 combined review presents the operation purpose, account/network, actual passkey
 purpose/attempt and reviewed routine lifetime where applicable. Creation adds an
@@ -210,9 +210,9 @@ Sensitive opening export and recovery/publication are critical even when a user
 might perceive them as reads. A separately approved, capped grant transfer has its
 own exact review and can use zero credential calls while inside that scope.
 
-## Source preview: opt-in JubJub sessions
+## RC8: opt-in JubJub sessions {#source-preview-opt-in-jubjub-sessions}
 
-The local source after RC7 adds an explicitly approved, PRF-derived session child
+RC8 adds an explicitly approved, PRF-derived session child
 with a recipient/asset-pinned, capped grant and a mandatory 10–30 minute chain
 expiry (15 minutes by default). Eligible unshielded withdrawals retain exact
 transfer consent and use JubJub without another passkey. Owner administration

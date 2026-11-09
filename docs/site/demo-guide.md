@@ -13,8 +13,8 @@ The [complete caller example]({{ '/getting-started/#4-compose-the-browser-accoun
 uses injected API/presentation capabilities; it does not require this app's DOM,
 Web Locks, storage names or routine-owner composition.
 
-**This page describes local source after published RC7.** Installing `0.1.0-rc7`
-does not install these UI changes or enable its memory/session policies. A published
+**This page describes the RC8 reference app source.** Installing library packages
+does not install a demo UI or enable its memory/session policies. A published
 package, a deployed documentation site and a source checkout have separate versions.
 
 ## Run the local composition

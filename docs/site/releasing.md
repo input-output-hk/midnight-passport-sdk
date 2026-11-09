@@ -4,14 +4,35 @@ title: Releasing packages
 permalink: /releasing/
 ---
 
-## Next candidate
+## Current release
 
-[RC8 preparation notes]({{ '/release-notes-rc8/' | relative_url }}) define the next
-supported increment and outstanding artifact checks. **RC8 is not yet published.**
-RC7 below remains the actual release; local images/tarballs and source qualification
+[RC8 release notes]({{ '/release-notes-rc8/' | relative_url }}) describe the
+supported increment and artifact checks. **RC8 publication is verified in the signed receipt.**
+Local images/tarballs and source qualification
 do not replace registry, provenance, visibility or deployed-document verification.
 
-## Current RC7 artifacts and verification
+## Current RC8 artifacts and verification
+
+Nine private GitHub npm packages are published as `0.1.0-rc8` (`next`), with three
+public Linux/amd64 images. The [release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc8)
+and [signed receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc8/rc8-publication-receipt.json)
+record source/publisher provenance, archive SHA-256/SRI, visibility and installation.
+Use exact matching client/backend versions; see [RC8 notes]({{ '/release-notes-rc8/' | relative_url }}).
+
+| Image (`ghcr.io/input-output-hk/`) | Version | Immutable digest |
+| --- | --- | --- |
+| `midnight-passport-keys` | `0.1.0-rc8` | `sha256:d59d552c9a51694130a71b1f0346c5bb91a12b9c273d15e846f66548515c42c7` |
+| `midnight-passport-service` | `0.1.0-rc8` | `sha256:45ee7282830fc302dcca7aba90b100ab830bb100393d8532c0e8447dbc0a1576` |
+| `midnight-passport-funding` | `0.1.0-rc8` | `sha256:14399771478b8b151aa90a222070196bf7f5f8ab01ab286e1d96a502c988e647` |
+
+Service/funding filesystem/non-root/startup refusal and key HTTP/profile/hash/
+single-circuit regeneration passed on the published digests. These checks do not
+establish a fresh native funds lifecycle, provider restoration or full Lace compatibility.
+Linux-prepared contract mounts and deliberate operator configuration remain required.
+
+<span id="current-rc7-artifacts-and-verification"></span>
+
+## Historical RC7 artifacts and verification
 
 The [RC7 release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc7)
 publishes the same nine implemented private GitHub npm packages at `0.1.0-rc7`

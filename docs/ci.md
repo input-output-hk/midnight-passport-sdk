@@ -4,7 +4,7 @@ Updated 2026/10/20. Refs #231, #235 and #236.
 
 ## Feedback budget
 
-Local source after RC7 runs the synthetic demo browser lane as eight independent
+RC8 source runs the synthetic demo browser lane as eight independent
 cells: P-256/JubJub × presentation/account-actions/scoped-sessions/owner-safety.
 Each owns its browser/Vite server and fresh receipt. The default local command
 still runs the entire original flow for both arms in order. Standalone groups use

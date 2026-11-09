@@ -6,7 +6,7 @@ permalink: /names/
 
 # Naming service adapters
 
-**Local source preview after RC7; not in the published RC7 packages.**
+**Available in RC8; absent from RC7.**
 This is a read-only seam, not a deployed Passport naming protocol. Registration,
 reservation, payment, reverse lookup and ownership proof are outside this API.
 Name creation remains outside onboarding. No additional npm package is introduced.

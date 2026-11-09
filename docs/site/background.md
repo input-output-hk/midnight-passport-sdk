@@ -4,8 +4,8 @@ title: Background read and computation tasks
 permalink: /background/
 ---
 
-**Source preview after RC7.** `account/background` and `adapter-browser/background`
-are optional source exports, absent from published `0.1.0-rc7`. The neutral protocol
+**Available in RC8; absent from RC7.** `account/background` and `adapter-browser/background`
+are optional RC8 exports, absent from published `0.1.0-rc7`. The neutral protocol
 works with a host-supplied browser or Node port. It creates no thread, wallet,
 credential request, persistent state or transaction retry by importing it. The
 [demo worker composition]({{ '/demo-guide/#built-in-wallet-worker' | relative_url }})

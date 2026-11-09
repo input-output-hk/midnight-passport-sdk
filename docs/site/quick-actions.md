@@ -8,7 +8,7 @@ This page documents the [demo's routine access policy]({{ '/demo-guide/' | relat
 The [library integration guide]({{ '/library-guide/' | relative_url }}) covers the optional
 ports and host-owned lifecycle; importing an adapter does not create this cache.
 
-**Source preview after RC7.** Quick actions retains explicitly approved routine
+**Available in RC8; absent from RC7.** Quick actions retains explicitly approved routine
 reader/wallet material in this page's memory for **10, 15 or 30 minutes** (10 by default). The demo
 can prepare it during verified login without an extra PRF request. Critical
 operations still require fresh passkey approval, including under a full JubJub
@@ -72,7 +72,7 @@ disconnect that already running wallet or erase its own internal material.
 
 ## Engineer integration
 
-**Source-only library seams, host-owned policy.** The foundation packages remain
+**RC8 library seams, host-owned policy.** The foundation packages remain
 framework-neutral. The optional
 `PassportPorts.routineViewingKey` / `BrowserPassportConfig.routineViewingKey`
 factory accepts an account, network, binding and credential context, and returns

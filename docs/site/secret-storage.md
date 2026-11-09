@@ -4,7 +4,7 @@ title: Optional secret storage
 permalink: /secret-storage/
 ---
 
-**Source preview after RC7.** These optional subpaths are absent from published
+**Available in RC8; absent from RC7.** These optional subpaths are absent from published
 `0.1.0-rc7`. `SecretStore` is a host custody contract for browser or Node integrations;
 it does not persist an existing owner automatically, change PRF derivation, replace
 encrypted journals or grant ACC authority. Public prover/verifier artifacts belong

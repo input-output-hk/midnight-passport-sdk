@@ -7,10 +7,19 @@ import { qualityFile } from '../installed-quality-inputs.mjs';
 /** The crypto lane executes WASM; this reviewed Node feature probe returns absent window.
  * This does not alter the stricter import-only guard or admit any dependency version. */
 export const cryptoFeatureProfiles = Object.freeze({
-  wasm: {
-    sha256: '94a66c4e3dacd46fb6beae76d82e03ebd31f03b76b5b8ef9b216ee34ec99250c',
-    functionName: '__wbg_static_accessor_WINDOW_f8727f0cf888e0bd',
-  },
+  wasm: Object.freeze([
+    Object.freeze({
+      version: '4.0.0-rc.4',
+      sha256: '94a66c4e3dacd46fb6beae76d82e03ebd31f03b76b5b8ef9b216ee34ec99250c',
+      functionName: '__wbg_static_accessor_WINDOW_f8727f0cf888e0bd',
+    }),
+    Object.freeze({
+      version: '4.0.0-rc.5',
+      // The JS delta is a generated closure-index comment; the probe is unchanged.
+      sha256: 'f5f2aa2a5ec808c5c7ef8ef4f82c19a2172e78a2581be8f0cf1c565e455418df',
+      functionName: '__wbg_static_accessor_WINDOW_f8727f0cf888e0bd',
+    }),
+  ]),
   zod: { sha256: 'd99bf396f177afe547703eff48b9746c360bfc2a2708adfd4a43e73768107b6c' },
 });
 
@@ -40,12 +49,10 @@ export function installedCryptoGuard(context) {
   for (const file of [wasm, zod])
     if (!file.path.startsWith(join(context.consumer, 'node_modules') + sep))
       throw Error('Crypto Node feature probe escapes consumer');
-  if (
-    wasm.sha256 !== cryptoFeatureProfiles.wasm.sha256 ||
-    zod.sha256 !== cryptoFeatureProfiles.zod.sha256
-  )
+  const wasmProfile = cryptoFeatureProfiles.wasm.find((profile) => profile.sha256 === wasm.sha256);
+  if (!wasmProfile || zod.sha256 !== cryptoFeatureProfiles.zod.sha256)
     throw Error('Unreviewed crypto Node feature probe bytes');
-  const functionName = cryptoFeatureProfiles.wasm.functionName;
+  const functionName = wasmProfile.functionName;
   if (
     !readFileSync(wasm.path, 'utf8').includes(
       `export function ${functionName}() {\n    const ret = typeof window === 'undefined' ? null : window;`,

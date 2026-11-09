@@ -20,12 +20,12 @@ The [package runtime index]({{ '/packages/#runtime-and-host-requirements' | rela
 identifies the environment for each public entry. This is a handwritten API guide;
 exact declarations remain the source-linked contract, qualified by release/version.
 
-## Published and source preview surfaces
+## Release availability {#published-and-source-preview-surfaces}
 
 | Track | Exports and behavior |
 | --- | --- |
-| Published `0.1.0-rc7` | Account create/open/state, supported device/key/grant/value flows through host ports; browser/WebAuthn/service adapters; capability/preflight and documented opt-in recovery/service-job APIs. Use matching exact packages and release-tagged examples. |
-| Source after RC7 | `account/names`, `account/interaction`, `account/validation`, `account/authorisation`, `account/secret-store`, `account/background`; browser wallet/custody/background subpaths; verified-login handoff and authenticated-owner/scoped-session helpers. These imports and policies require source builds until a release includes them. |
+| Included since RC7; also in RC8 | Account create/open/state, supported device/key/grant/value flows through host ports; browser/WebAuthn/service adapters; capability/preflight and documented opt-in recovery/service-job APIs. Use matching exact packages and release-tagged examples. |
+| Added in published `0.1.0-rc8` | `account/names`, `account/interaction`, `account/validation`, `account/authorisation`, `account/secret-store`, `account/background`; browser wallet/custody/background subpaths; verified-login handoff and authenticated-owner/scoped-session helpers. Use matching RC8 packages; these imports are absent from RC7. Host policy remains explicit. |
 
 For matching-checkout build/type evaluation, use the
 [source entry path]({{ '/library-guide/#evaluate-the-current-source' | relative_url }}).
@@ -36,7 +36,7 @@ A parser checks canonical input; a host review approves one exact operation; liv
 account/key checks establish authority; a submission acknowledgement still needs
 settlement or same-intent recovery. Never use one as evidence for the next.
 
-Local source after RC7 adds the optional read-only
+RC8 adds the optional read-only
 [naming-service port and checked resolver]({{ '/names/' | relative_url }}):
 `PassportNameService` in `account/ports`, `resolvePassportName` in `account/names`.
 These are independent of account creation and absent from published RC7.
@@ -44,13 +44,13 @@ These are independent of account creation and absent from published RC7.
 The optional [interaction models]({{ '/interaction/' | relative_url }}) subpath
 provides immutable public operation/journey snapshots and a presentation store
 for host-owned controls. It has no DOM, framework, credential or transaction
-access, and is also source-only after RC7.
+access, and is included in RC8, absent from RC7.
 
 The optional [wallet reader]({{ '/lace-wallet/' | relative_url }}) is a separate
-`adapter-browser/wallet` source subpath. It supplies no ACC ownership, viewing or
+`adapter-browser/wallet` subpath (RC8). It supplies no ACC ownership, viewing or
 spending permission and exposes no transfer/signing methods.
 
-The public flow is `createPassportAccounts(ports): PassportConnectorAPI` from `mn-passport-account`. The interfaces are in `mn-passport-protocol`; adapter authors import the contracts from `mn-passport-account/ports`. Prototype-branch links describe current source; release-tagged examples describe RC7. Consult the release map before copying an additive export.
+The public flow is `createPassportAccounts(ports): PassportConnectorAPI` from `mn-passport-account`. The interfaces are in `mn-passport-protocol`; adapter authors import the contracts from `mn-passport-account/ports`. Prototype-branch links describe current source; release-tagged examples describe their exact release; use RC8 for this guide. Consult the release map before copying an additive export.
 
 ```ts
 import { createPassportAccounts } from '@input-output-hk/mn-passport-account';
@@ -105,7 +105,7 @@ for persistence and teardown, separately from the demo's UI policy.
 | `account.rotateViewingKey(options?)`                              | `{ txHash, droppedDeviceEntries, sealedReadGrants, unsealedGrantIds }` | Sealed JubJub and P-256: seal a random secret to unique live devices and chain-confirmed read grantees, rotate the ACC key, then re-encrypt verified holdings. Requires host-backed holding and complete active read-grant sources; reports grants whose key opening or seal is unavailable. |
 | `account.removeDevice(commitmentHex, options?)` | `DeviceRemovalResult` | Sealed JubJub and P-256: refuse self-removal or an absent live target, rotate the viewing and roster keys while excluding the target, re-encrypt verified holdings and seal active read grants, then sign the arm's `remove_device` circuit. Requires the same complete host sources as rotation. Returns the rotation and removal transaction hashes. |
 | `account.addDevice(reader, options?)` | `DeviceEnrollmentResult` | JubJub and P-256: validates the joining reader, delivers sealed account keys, then enrolls the derived live commitment. A joining P-256 reader needs `scheme: 'p256-webauthn'` and the 32-byte RP hash/21-byte origin policy; a P-256 owner can also enroll a JubJub reader. With active read grants, either owner arm rotates the viewing and roster keys, reseals every active grantee, then delivers only fresh keys to the joiner. The result includes the rotation transaction and grant seals. |
-| `account.readShieldedHoldings(options?)`                           | `PassportShieldedHolding[]` | JubJub and sealed P-256: opens coin descriptions and returns those confirmed against chain-owned outputs. Uses a `read-holdings` key session by default; the source-only routine-reader seam below can supply already-approved read access. Requires the host's `VerifiedHoldingSource`. |
+| `account.readShieldedHoldings(options?)`                           | `PassportShieldedHolding[]` | JubJub and sealed P-256: opens coin descriptions and returns those confirmed against chain-owned outputs. Uses a `read-holdings` key session by default; the RC8 routine-reader seam below can supply already-approved read access. Requires the host's `VerifiedHoldingSource`. |
 | `account.issueGrant(scope, options?)` | `PassportGrantIssueResult` | JubJub and sealed P-256: confirm the live grant and sealed bookkeeping before returning `active`. A read grant rotates the viewing secret before issue, then publishes a seal to the new grantee; the result includes `rotation` and `sealedReadGrant`. Requires the complete rotation ports, host-pinned origin, live grant source, local records and durable journal. |
 | `account.revokeGrant(grantId, options?)` | `PassportGrantRevokeResult` | JubJub and P-256: confirm the inactive ACC tombstone. A read grant rotates the viewing secret first, omits its grantee from new seals, re-encrypts verified holdings, and returns the rotation and surviving reader seals. P-256 requires sealed keys and live grant details; JubJub also requires local records. |
 | `account.revokeAllGrants(options?)` | `PassportGrantRevokeAllResult` | JubJub and sealed P-256: clear all grants and tombstones, then confirm the empty ACC map and advanced grant generation. When read grants are live, rotate the viewing secret away from every grantee first and include the rotation result. P-256 legacy accounts still refuse live read grants. |
@@ -201,7 +201,7 @@ The same source also implements `QualifiedHoldingSource.selectQualifiedHeldCoins
 
 An opened JubJub or sealed P-256 `PassportAccount` offers `readShieldedHoldings(options?)`. It selects the sealed keyring from the current ACC inbox, confirms the recorded owner device still has a live entry, then uses the verified holding source. Its ordinary path enters a `read-holdings` key session; P-256 also checks the selected passkey against the account record and opens its current envelope against the ledger `enc_key` before reading. The pinned Lace v1 inbox prefix lets JubJub return an empty list without a key ceremony when there are no coin-description entries. The host must inject `holdings`; the SDK does not trust a decryptable inbox description without a matching chain output.
 
-### Source preview: optional routine reader
+### RC8: optional routine reader {#source-preview-optional-routine-reader}
 
 After RC7, `PassportPorts.routineViewingKey` and
 `BrowserPassportConfig.routineViewingKey` let a host supply already-approved private
@@ -400,7 +400,7 @@ keeps a single approved journal invocation inside the same source instance's
 session, with later same-ID continuation requiring a fresh independent unlock.
 
 
-## Source preview: bounded session authoriser
+## RC8: bounded session authoriser {#source-preview-bounded-session-authoriser}
 
 The source increment after RC7 adds `createSessionJubjubAuthoriser` and
 `SessionKeyContext` to `mn-passport-keys`. The helper derives a separate grant
@@ -413,7 +413,7 @@ seconds. Existing owner key derivation is unchanged. See the
 composition, consent, lifecycle and evidence limits. This export is absent from
 the currently published `0.1.0-rc7` package.
 
-## Source quality APIs (after RC7)
+## RC8 quality APIs {#source-quality-apis-after-rc7}
 
 These optional subpaths add no package and are not present in published RC7:
 
@@ -461,11 +461,11 @@ for custody/error distinctions and [demo policy]({{ '/demo-guide/' | relative_ur
 its bounded routine lease, full-owner guard and independent capped-grant route.
 
 
-## Source preview: checked configuration contract
+## RC8: checked configuration contract {#source-preview-checked-configuration-contract}
 
 The current source hardens discovery in `mn-passport-adapter-service/config`.
-**The limits and deadline behavior below are source preview after RC7**; the existence
-of a discovery export in RC7 does not imply that the published version has these changes.
+**The limits and deadline behavior below ship in RC8**; the existence
+of a discovery export in RC7 does not give that older release these changes.
 
 ```ts
 import type { FetchLike, NetworkConfig } from '@input-output-hk/mn-passport-account/ports';

@@ -4,28 +4,36 @@ title: Lace evaluation handover
 permalink: /lace-handover/
 ---
 
-## Current RC7 handover
+<span id="current-rc7-handover"></span>
 
-Use the [RC7 release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc7),
+## Current RC8 handover
+
+Use the [RC8 release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc8),
 [installation guide]({{ '/getting-started/' | relative_url }}) and
-[RC7 limitations]({{ '/release-notes-rc7/' | relative_url }}).
-All nine implemented packages are private GitHub Packages at `0.1.0-rc7` (`next`);
-the three public Linux/amd64 backend images have immutable pins in the signed
-[publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc7/rc7-publication-receipt.json).
-RC7 adds reusable contract/compiler and advisory capability/preflight surfaces,
-original-intent deposit safeguards, optional ceremony-purpose hooks and documented
-demo reviews with synthetic Playwright journeys. Consume the contract/assets,
-helpers or adapters at the boundary your host needs; our demo orchestration is optional.
+[RC8 limitations]({{ '/release-notes-rc8/' | relative_url }}).
+All nine implemented packages are private GitHub Packages at `0.1.0-rc8` (`next`);
+three public Linux/amd64 images have immutable pins in the
+[signed publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc8/rc8-publication-receipt.json).
 
-The binding is unchanged (`acc-s3r1.1`, Passport `6458ed5`). Exact-value shielded
-withdrawals remain guarded; no partial spends, total-loss recovery, complete
-compromised-key revocation or full Lace/provider compatibility is claimed.
-Longer-lived local JubJub session grants remain #281 / 0.2.0.
-The historical qualification below retains **RC6** and its actual source/runtime
-pins. It is not a fresh native/provider run against RC7. Current registry install,
-package hashes/attestations, browser UI, image startup and key HTTP checks are
-separate evidence tiers. The [use-case map]({{ '/use-case-coverage/' | relative_url }})
-explains each one.
+Adopt the contract/assets, helpers or adapters at the boundary your host needs;
+our demo orchestration is optional. RC8 adds checked input admission,
+`account/authorisation`, optional secret custody/background ports, combined verified
+login and bounded grants. Hosts still own consent, credentials, persistence,
+transaction routing and finality. A Lace Wallet connection is separate from ACC
+permission; no automatic ownership follows.
+
+Binding remains `acc-s3r1.1`, Passport `6458ed5`, Compact0.35.0, runtime0.20.0.
+Exact-value shielded withdrawals remain guarded. No partial spends, total-loss
+recovery, complete compromised-key revocation or full Lace/provider compatibility
+is claimed. Original issuing readers are needed for grant bookkeeping recovery.
+Page-memory full-owner keys retain durable authority if copied; local expiry is
+not chain revocation. Explicitly scoped JubJub children have independent caps/expiry.
+
+Actual registry install, package provenance/hashes, synthetic browser, image startup
+and key HTTP/regeneration are separate checks. Historical native/host qualification
+below keeps its original pins; it is not a fresh RC8-image/provider run. See the
+[use-case map]({{ '/use-case-coverage/' | relative_url }}) and
+[library guide]({{ '/library-guide/' | relative_url }}) for integration boundaries.
 
 ## Historical RC6 evaluation and host qualification
 

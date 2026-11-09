@@ -4,8 +4,8 @@ title: Package quality and test strategy
 permalink: /quality/
 ---
 
-> **Source preview after RC7:** the APIs and gates on this page are local release work.
-> They are not available in the published RC7 packages; use the matching source or a later verified release.
+> **RC8 APIs and repository quality gates.**
+> Optional APIs ship in RC8 and are absent from RC7. Quality gates run from the repository.
 
 ## What the release must establish
 
@@ -362,3 +362,13 @@ duplicate IDs and out-of-tree targets; it does not fetch external links or quali
 CSS/layout/deployment. The [source documentation runbook](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/README.md)
 contains the reproducible commands. Owned desktop/mobile browser checks remain a
 separate review step for navigation, readable layout and overflow.
+
+### Registry consumer runtime probe admission
+
+The installed software-crypto runner pins the complete Node feature-probe files.
+It admits onchain-runtime-v4 `4.0.0-rc.4` and `4.0.0-rc.5` by separate exact
+SHA-256 values; the latter JavaScript delta is a generated closure-index comment.
+Both use the unchanged window-probe function. Unknown file bytes, different call
+sites and browser-global access still refuse. This is harness admission, not a
+blanket dependency or native-runtime compatibility guarantee. The RC8 registry
+consumer selected rc.5 and passed the six software/generated-contract cases.
