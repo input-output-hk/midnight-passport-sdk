@@ -803,3 +803,25 @@ no wallet connects automatically, and later critical operations still require fr
 approval. Failed adoption does not undo creation: retain records and reopen/reconcile the
 original account instead of creating a replacement. Tracked in
 [#304](https://github.com/input-output-hk/midnight-passport-sdk/issues/304).
+
+## Source preview: consecutive deposits and availability recovery (after RC8)
+
+A confirmed deposit may temporarily put the funding wallet behind the indexer. The
+browser re-observes a valid `unavailable` inventory at most twice after the first
+GET, with one- and two-second pauses. Each observation has a 45-second deadline
+through JSON decoding. This is read-only recovery: it never repeats a deposit POST,
+changes a pending request ID or clears an unknown outcome. Insufficient stock is
+not polled, and transport/malformed-response failures refuse immediately.
+
+**Passport account → Deposit → Refresh availability** runs the existing public ACC
+refresh action, without a passkey or page reload. It remains available after the
+bounded checks end or a read fails. The selected token stays selected; an unavailable
+selection is disabled rather than replaced with NIGHT. Superseded reads and page
+exit cancel owned requests/waits, and account-identity/generation checks fence late
+results. The backend still performs its queued inventory preflight before a send.
+
+The synthetic Playwright funding recovery journeys exercise consecutive NIGHT and
+custom deposits, separate balances, finite catch-up, mobile manual refresh, read
+outages/insufficient stock and retained unknown IDs in both signing arms. Unit
+contracts additionally cover stopped/late reads and a stalled response decoder.
+These are UI/software evidence, not fresh native funds or provider qualification.

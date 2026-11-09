@@ -218,6 +218,7 @@ export function createUi(
     buttons.openAt.disabled = busy || !ready || !/^[0-9a-f]{64}$/.test(knownAddress.value.trim());
     knownAddress.disabled = busy;
     buttons.refresh.disabled = busy || !account;
+    byId<HTMLButtonElement>('refresh-funding').disabled = busy || !account;
     buttons.holdings.disabled = busy || !account;
     buttons.roster.disabled = busy || !account;
     buttons.grantRoster.disabled = busy || !account;
@@ -868,57 +869,61 @@ export function createUi(
     },
     /** Binds an action button: one action at a time, timed and logged, errors in plain language. */
     on(action: ActionId, fn: () => Promise<void>) {
-      const button = buttons[action];
-      button.addEventListener('click', async () => {
-        if (log.current) {
-          if (action === 'endSession') {
-            // An emergency local lock must work during a long issue/proof/settlement.
-            // Keep the original operation log/IDs and end its remaining credential consent.
-            try {
-              await fn();
-            } finally {
-              consent?.after();
+      const targets =
+        action === 'refresh'
+          ? [buttons[action], byId<HTMLButtonElement>('refresh-funding')]
+          : [buttons[action]];
+      for (const button of targets)
+        button.addEventListener('click', async () => {
+          if (log.current) {
+            if (action === 'endSession') {
+              // An emergency local lock must work during a long issue/proof/settlement.
+              // Keep the original operation log/IDs and end its remaining credential consent.
+              try {
+                await fn();
+              } finally {
+                consent?.after();
+              }
             }
+            return;
           }
-          return;
-        }
-        log.start(action);
-        document.dispatchEvent(new Event('passport:operation-started'));
-        try {
-          const execute = async () => {
-            if (consent && !(await consent.before(action))) {
-              status('Operation declined before passkey access or submission.');
-              log.trace({
-                at: new Date().toISOString(),
-                kind: 'action.declined',
-                details: { action },
-              });
+          log.start(action);
+          document.dispatchEvent(new Event('passport:operation-started'));
+          try {
+            const execute = async () => {
+              if (consent && !(await consent.before(action))) {
+                status('Operation declined before passkey access or submission.');
+                log.trace({
+                  at: new Date().toISOString(),
+                  kind: 'action.declined',
+                  details: { action },
+                });
+                log.finish();
+                return;
+              }
+              await fn();
               log.finish();
-              return;
-            }
-            await fn();
-            log.finish();
-          };
-          if (consent?.run) await consent.run(action, execute);
-          else await execute();
-        } catch (e) {
-          const err = plainError(e, header.serviceUrl);
-          log.fail(err);
-          const outcome = log.last && operationForRun(log, log.last, Date.now()).phase;
-          const explanation =
-            outcome === 'unknown'
-              ? 'The transaction outcome is unknown. Keep the original IDs and reconcile in Audit.'
-              : outcome === 'cancelled'
-                ? 'The attempt was cancelled. Earlier effects may remain; inspect Audit.'
-                : err.hint;
-          status(`${FLOWS[action].title} attempt failed. ${explanation} (${err.code})`);
-        } finally {
-          consent?.after();
-          document.dispatchEvent(new Event('passport:operation-finished'));
-          // The button was disabled while the action ran, which drops focus: give it back.
-          if (document.activeElement === document.body && !button.disabled) button.focus();
-        }
-      });
+            };
+            if (consent?.run) await consent.run(action, execute);
+            else await execute();
+          } catch (e) {
+            const err = plainError(e, header.serviceUrl);
+            log.fail(err);
+            const outcome = log.last && operationForRun(log, log.last, Date.now()).phase;
+            const explanation =
+              outcome === 'unknown'
+                ? 'The transaction outcome is unknown. Keep the original IDs and reconcile in Audit.'
+                : outcome === 'cancelled'
+                  ? 'The attempt was cancelled. Earlier effects may remain; inspect Audit.'
+                  : err.hint;
+            status(`${FLOWS[action].title} attempt failed. ${explanation} (${err.code})`);
+          } finally {
+            consent?.after();
+            document.dispatchEvent(new Event('passport:operation-finished'));
+            // The button was disabled while the action ran, which drops focus: give it back.
+            if (document.activeElement === document.body && !button.disabled) button.focus();
+          }
+        });
     },
     setReady(value: boolean) {
       ready = value;

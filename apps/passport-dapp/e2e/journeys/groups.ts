@@ -1,6 +1,7 @@
 import type { Page } from 'playwright-core';
 import type { JourneyHarness } from './types.js';
 import { checkFundingInventory } from './funding-inventory.js';
+import { checkFundingRecovery } from './funding-recovery.js';
 import {
   checkSignedOutLandingHidesWorkspaceNavigationAnd,
   checkSignedOutHomeReturnsFromDemoTools,
@@ -192,6 +193,7 @@ export async function runAccountActions(h: JourneyHarness, input: { owner: Page 
   await checkUncertainWithdrawalIsNotAutomaticallyReplayed(h, scope7);
   await checkFundingInventory(h);
   await checkBalanceServiceOutageLabelsPriorSnapshotsWithout(h, scope7);
+  await checkFundingRecovery(h);
   return { owner: scope7.owner, recipient: scope7.recipient, handoff: scope7.handoff };
 }
 

@@ -88,10 +88,10 @@ function cellReceipt({ arm, group }) {
   };
 }
 const receipts = () => journeyCells.map(cellReceipt);
-test('eight independently labeled cells aggregate in canonical99/97 case order', () => {
+test('eight independently labeled cells aggregate in canonical104/102 case order', () => {
   const result = aggregateJourneyReceipts(receipts().reverse(), source);
-  assert.deepEqual(result.counts, { p256: 99, jubjub: 97 });
-  assert.equal(result.cases, 196);
+  assert.deepEqual(result.counts, { p256: 104, jubjub: 102 });
+  assert.equal(result.cases, 206);
   assert.equal(result.cells, 8);
   assert.equal(result.realProvider, false);
   assert.equal(result.nativeProofs, false);
@@ -203,7 +203,7 @@ test('timing validation permits measured inter-phase gaps and a nonzero checkpoi
   value.timings.cleanup.startMs += 3;
   value.timings.cleanup.endMs += 3;
   value.timings.totalMs += 3;
-  assert.equal(aggregateJourneyReceipts(values, source).cases, 196);
+  assert.equal(aggregateJourneyReceipts(values, source).cases, 206);
 });
 for (const defect of [
   'total',
@@ -350,7 +350,7 @@ test('artifact reader admits exactly eight regular single-file directories and r
     mkdirSync(folder);
     writeFileSync(join(folder, 'demo-journeys.json'), JSON.stringify(cellReceipt(cell)));
   }
-  assert.equal(aggregateJourneyReceipts(readJourneyCells(root), source).cases, 196);
+  assert.equal(aggregateJourneyReceipts(readJourneyCells(root), source).cases, 206);
   const first = journeyCells[0];
   assert.ok(first);
   const folder = join(root, first.artifact),
@@ -367,7 +367,7 @@ for (const cell of journeyCells)
   for (const reportedMs of [0, 0.001])
     test(`nonempty ${cell.arm}/${cell.group} refuses a zero-width body reporting ${reportedMs}ms`, () => {
       const values = receipts();
-      assert.equal(aggregateJourneyReceipts(values, source).cases, 196);
+      assert.equal(aggregateJourneyReceipts(values, source).cases, 206);
       const value = values.find(
         (item) => item.selectedArms[0] === cell.arm && item.selectedGroups[0] === cell.group,
       );

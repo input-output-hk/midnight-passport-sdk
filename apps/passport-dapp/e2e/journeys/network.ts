@@ -1,6 +1,7 @@
 import type { Route } from 'playwright-core';
 import type { JourneyHarness } from './types.js';
-import { origin, address, night, target, grantId, manifest } from './constants.js';
+import { fundingRoute } from './funding-network.js';
+import { origin, target, grantId, manifest } from './constants.js';
 
 function effect(h: JourneyHarness, action: string, request: Record<string, unknown>) {
   const { state, calls } = h;
@@ -82,74 +83,6 @@ async function accountRoute(h: JourneyHarness, route: Route) {
         : { code: 'GrantRevoked' },
     });
   }
-}
-async function fundingRoute(h: JourneyHarness, route: Route, url: URL) {
-  const { flags, state, fundedIds, fundingIds } = h;
-  const assets = [
-    { color: night, amount: '10', availability: flags.emptyFunding ? 'insufficient' : 'available' },
-    ...(flags.multipleFundingAssets
-      ? [
-          {
-            color: 'cd'.repeat(32),
-            amount: '10',
-            availability: flags.customFundingUnavailable ? 'insufficient' : 'available',
-          },
-        ]
-      : []),
-  ];
-  if (flags.serviceUnavailable) {
-    await route.fulfill({ status: 503, json: { error: 'Synthetic service unavailable' } });
-    return;
-  }
-  if (route.request().method() === 'POST') {
-    const data = route.request().postDataJSON() as { requestId: string };
-    fundingIds.push(data.requestId);
-    if (flags.rejectFundingPreflight) {
-      await route.fulfill({
-        status: 409,
-        json: {
-          requestId: data.requestId,
-          code: 'FundingAssetUnavailable',
-          submission: 'not-started',
-        },
-      });
-      return;
-    }
-    if (flags.unknownFunding) {
-      await route.fulfill({
-        status: 503,
-        json: { error: 'Synthetic funding outcome unknown; reconcile original ID' },
-      });
-      return;
-    }
-    if (!fundedIds.has(data.requestId)) {
-      state.night += 10;
-      fundedIds.set(data.requestId, state.night);
-    }
-    await route.fulfill({
-      json: {
-        ...data,
-        amount: '10',
-        txId: '70'.repeat(32),
-        creditedBalance: String(fundedIds.get(data.requestId)),
-      },
-    });
-  } else if (url.searchParams.has('accountAddress'))
-    await route.fulfill({
-      json: {
-        accountAddress: address,
-        assets,
-        balanceAssetColor: night,
-        balances: { night: String(state.night), fundedAsset: String(state.night) },
-      },
-    });
-  else
-    await route.fulfill({
-      json: {
-        assets,
-        balanceAssetColor: night,
-      },
-    });
 }
 async function serviceRoute(h: JourneyHarness, route: Route, url: URL) {
   if (url.pathname === '/v1/demo/funding') return fundingRoute(h, route, url);

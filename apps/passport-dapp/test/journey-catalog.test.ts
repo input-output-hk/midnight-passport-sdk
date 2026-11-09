@@ -8,6 +8,12 @@ import {
   journeySelection,
 } from '../e2e/journeys/catalog.mjs';
 const fundingExtensionIds = new Set([
+  'account-actions.consecutive-night-deposits-recover-after-wallet-catch-up',
+  'account-actions.consecutive-custom-deposits-preserve-asset-and-separate-balances',
+  'account-actions.exhausted-availability-checks-recover-in-place-without-a-transfer',
+  'account-actions.funding-read-outage-recovers-without-switching-an-insufficient-selection',
+  'account-actions.availability-recovery-preserves-the-original-unknown-funding-intent',
+
   'account-actions.empty-funding-inventory-disables-deposits-without-hiding-withdrawals',
   'account-actions.proved-funding-refusal-is-failed-and-allows-only-explicit-new-intents',
 ]);
@@ -39,9 +45,9 @@ test('canonical catalog preserves signed W9 full name order and both arm invento
   );
   assert.deepEqual(
     ['p256', 'jubjub'].map((arm) => expectedCases(arm).length),
-    [99, 97],
+    [104, 102],
   );
-  assert.equal(new Set(journeyCatalog.map((c) => c.id)).size, 100);
+  assert.equal(new Set(journeyCatalog.map((c) => c.id)).size, 105);
   assert.ok(
     expectedCases('jubjub').some(
       (c) => c.id === 'account-actions.jubjub-creation-shares-one-credential-and-routine-keys',
@@ -66,11 +72,11 @@ test('four named groups partition the complete arm cases in original order witho
   }
   assert.deepEqual(
     journeyGroups.map((g) => expectedCases('p256', g).length),
-    [16, 50, 16, 17],
+    [16, 55, 16, 17],
   );
   assert.deepEqual(
     journeyGroups.map((g) => expectedCases('jubjub', g).length),
-    [16, 49, 16, 16],
+    [16, 54, 16, 16],
   );
 });
 test('partial or misspelled shard selection cannot silently become a full/default run', () => {

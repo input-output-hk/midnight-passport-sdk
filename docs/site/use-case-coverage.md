@@ -279,3 +279,19 @@ the owner's later landing, Activity and nested-navigation decisions. New registr
 installs, production image readiness, published Pages, real providers and pinned
 full Lace runtime remain separate acceptance steps. The exact-value shielded guard
 and no-full-Lace boundary remain.
+
+## Source preview: repeat-deposit regression (after RC8)
+
+The [funding recovery journeys](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-dapp/e2e/journeys/funding-recovery.ts)
+add five scenarios for each owner arm: consecutive NIGHT deposits, consecutive
+custom deposits with separate balances, exhausted availability checks and manual
+recovery, a read outage with a preserved insufficient selection, and unknown-ID
+preservation through availability recovery. The tests assert no extra POSTs or
+credential requests and use the actual Deposit controls, including a mobile view.
+
+The [reader unit contracts](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-dapp/test/funding-recovery.test.ts)
+also check finite retry/deadline budgets, malformed/HTTP refusals, response-body
+stall, supersession, same-address account replacement and stop/late completion.
+The canonical catalog checks retain the historical W9 name hashes while explicitly
+including these new source cases. Passing synthetic receipts remain separate from
+native deposit, real wallet synchronization and provider acceptance.

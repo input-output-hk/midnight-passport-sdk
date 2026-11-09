@@ -306,4 +306,34 @@ export default [
     arms: ['p256', 'jubjub'],
     group: 'account-actions',
   },
+  {
+    id: 'account-actions.consecutive-night-deposits-recover-after-wallet-catch-up',
+    name: 'consecutive NIGHT deposits recover automatically after wallet catch-up without resending',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
+  {
+    id: 'account-actions.consecutive-custom-deposits-preserve-asset-and-separate-balances',
+    name: 'consecutive custom-token deposits preserve selection and separate token/NIGHT balances',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
+  {
+    id: 'account-actions.exhausted-availability-checks-recover-in-place-without-a-transfer',
+    name: 'exhausted availability checks recover through the Deposit page without a transfer or passkey',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
+  {
+    id: 'account-actions.funding-read-outage-recovers-without-switching-an-insufficient-selection',
+    name: 'funding read outage recovers without switching the selected insufficient asset',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
+  {
+    id: 'account-actions.availability-recovery-preserves-the-original-unknown-funding-intent',
+    name: 'availability recovery preserves the original unknown funding intent without a POST',
+    arms: ['p256', 'jubjub'],
+    group: 'account-actions',
+  },
 ];

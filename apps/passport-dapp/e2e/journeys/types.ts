@@ -6,6 +6,7 @@ export interface FixtureState {
   epoch: number;
   entries: string[];
   night: number;
+  tokens?: Record<string, number>;
   wallet: number;
   txHash: string;
   grant?: { id: string; active: boolean; scope: Record<string, unknown>; spent: number };
@@ -16,6 +17,10 @@ export interface JourneyFlags {
   multipleFundingAssets?: boolean;
   customFundingUnavailable?: boolean;
   rejectFundingPreflight?: boolean;
+  unavailableFundingReads?: number;
+  unavailableAfterDeposit?: number;
+  fundingReadFailure?: boolean;
+  holdFundingRead?: () => Promise<void>;
   unknownWithdrawal: boolean;
   unsettledGrantSpend: boolean;
   unknownSession: boolean;

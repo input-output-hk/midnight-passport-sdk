@@ -96,6 +96,21 @@ The command prints the transaction ID and confirmed ACC balance. The funding ser
 at `/v1/demo/funding`; it reads the token file on the server and forwards a fixed-size deposit to
 the separate funding service.
 
+### Consecutive deposits (source after RC8)
+
+After the first deposit confirms, stay in **Passport account → Deposit**. If the
+wallet is catching up, availability is checked again automatically using GETs only.
+Once ready, explicitly fund again: a confirmed deposit releases its completed local
+ID, and the next click creates a distinct intent. Select another stocked asset to
+repeat the flow. Its balance must change independently of NIGHT.
+
+If checks end without readiness, choose **Refresh availability** on the same page.
+This refresh needs no passkey and performs no deposit. An unavailable token remains
+selected, rather than silently switching to NIGHT. Failed/unknown deposits keep
+their original IDs; availability recovery never retries or reconciles them.
+The browser tests use synthetic funding/chain drivers for these scenarios; their
+results do not establish a new native deposit or genuine-provider pass.
+
 ## Optional owner withdrawal demonstration
 
 After the ACC holds an unshielded asset, enter an explicit destination in **Recipient unshielded

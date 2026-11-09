@@ -32,7 +32,7 @@ import { Buffer } from 'buffer';
 import { parseDeviceHandoff, prepareDeviceHandoff } from './device-handoff.js';
 import { setOperationTraceSink, tracedFetch, traceOperation } from './operation-trace.js';
 import { createUi } from './ui.js';
-import { createFundingBalanceReader } from './funding-balances.js';
+import { createFundingBalanceReader, fundingReadMessage } from './funding-balances.js';
 import {
   parseFundingDiscovery,
   fundingRequestFailure,
@@ -359,6 +359,10 @@ const refreshAccountBalances = createFundingBalanceReader({
   color: () => balanceAssetColor,
   url: fundingUrl,
   fetch: tracedFetch,
+  state: (state) => {
+    const output = document.getElementById('funding-read-status');
+    if (output) output.textContent = fundingReadMessage(state);
+  },
   show: (view) => {
     ui.enableFunding(view.assets);
     ui.showAccountBalances(view.address, view.color, view.night, view.fundedAsset);
@@ -375,6 +379,7 @@ const refreshAccountBalances = createFundingBalanceReader({
   },
 });
 
+window.addEventListener('pagehide', () => refreshAccountBalances.stop());
 void tracedFetch(fundingUrl.toString())
   .then(async (response) => {
     if (!response.ok) return;
@@ -1049,10 +1054,10 @@ ui.on('rotate', async () => {
   status('The ACC confirmed its new sealed viewing secret.');
 });
 ui.on('fund', async () => {
-  if (!account || !ui.selectedFundingAsset())
-    throw new Error('Open a Passport account before funding it.');
+  if (!account) throw new Error('Open a Passport account before funding it.');
+  const asset = ui.selectedFundingAsset();
+  if (!asset) throw new Error('Deposit availability changed. Refresh availability and try again.');
   const target = account.address;
-  const asset = ui.selectedFundingAsset()!;
   const key = `passport-demo:fund:${network}:${target}:${asset.color}`;
   const legacyKey = `passport-demo:fund:${network}:${target}`;
   let requestId = localStorage.getItem(key);

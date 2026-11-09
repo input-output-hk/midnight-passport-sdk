@@ -208,3 +208,16 @@ teardown throws.
 An unavailable selected deposit asset stays selected with funding disabled; refresh never
 switches it to another asset. A current availability-read failure also disables deposits
 until a successful refresh, preserving the asset list and withdrawal choices.
+
+### Repeat a deposit without reloading
+
+After confirmation, the source demo makes up to three GET observations when wallet
+availability is temporarily unknown, with one- and two-second pauses. Each read
+has a 45-second deadline including decoding. It never retries the deposit.
+Known insufficient stock is not polled; failed or malformed reads disable funding.
+
+Use **Deposit → Refresh availability** to check again after the bounded checks end
+or a service read fails. It uses the public ACC refresh action, needs no passkey
+and preserves your selected token. An unknown deposit retains its original ID
+regardless of availability recovery. Navigation, cancellation and refresh do not
+resolve that transfer; reconcile it separately in Audit.
