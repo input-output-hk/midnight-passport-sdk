@@ -1,9 +1,9 @@
 ---
 layout: default
-title: Consented JubJub sessions (source preview)
+title: Consented JubJub sessions
 permalink: /jubjub-sessions/
 ---
-**Updated local-source policy:** [Unlock account]({{ '/authenticated-owner/' | relative_url }})
+**RC8 reference-app policy:** [Unlock account]({{ '/authenticated-owner/' | relative_url }})
 authenticates a deterministic JubJub **full owner** for all implemented owner operations.
 The current host policy requires fresh passkey approval for critical administration,
 permission changes, sensitive exports and owner transfers. Routine reads and wallet
@@ -16,14 +16,16 @@ fences remain. These additions are not in published RC7.
 
 ## Status and purpose
 
-This is the **local source increment after RC7**, tracked in
+This increment ships in **RC8 libraries and matching demo source**, tracked in
 [#281](https://github.com/input-output-hk/midnight-passport-sdk/issues/281).
 It is not part of the published `0.1.0-rc7` packages or images. The existing
 `acc-s3r1.1` binding already supports the grants used here; no contract or owner
 migration is required. Source `b5eeff8` has native qualification for both
 software owner arms, using the actual controller/SDK and a fresh test asset.
-Real providers, browser/native combined, registry/images and full Lace remain
-unqualified. Published RC7 does not gain this feature from a source test.
+Real providers, browser/native combined and full Lace remain unqualified. That
+native receipt does not qualify registry/images: RC8 publication has its separate
+[signed receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc8/rc8-publication-receipt.json).
+Published RC7 does not gain this feature from a source test.
 
 The demo lets a user explicitly approve a narrow, short-lived spending session.
 Authentication alone does not grant spending authority. The account owner must

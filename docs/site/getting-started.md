@@ -170,8 +170,11 @@ Run at exactly `http://localhost:5173` for this local example. The passkey RP ID
 contract WebAuthn profile must agree. The reference [Vite configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/apps/passport-dapp/vite.config.ts)
 and [polyfill entrypoint](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/apps/passport-dapp/src/polyfills.ts)
 show the Buffer initialisation, WASM support and browser shims required by the pinned Midnight
-runtime. The minimal composition is type-checked against RC7 tarballs; registry verification confirms
-identical package contents. It is not a complete replacement for the reference app's bundler and UI configuration.
+runtime. The RC8 registry installation checked the maintained examples against actual RC8
+package declarations, plus Node/DOM/Worker fixtures, runtime imports and a browser build.
+The historical RC7 quickstart check concerned RC7 tarballs only; RC7 and RC8 package
+contents are different. This module is not a complete replacement for the reference
+app's bundler and UI configuration.
 
 This minimal composition enables create/open/state only. Rotation and device changes require
 verified holdings and complete device/read-grant sources. Grants additionally need live grant
@@ -196,7 +199,7 @@ version when copying this advanced composition.
 
 For handover, export public logs and report the installed version, binding, manifest, network and
 service/image digests. Exclude PRF output, seed material, viewing secrets, grant openings and tokens.
-Shielded partial spends remain refused; see [preview limits]({{ '/release-notes-rc7/' | relative_url }})
+Shielded partial spends remain refused; see [preview limits]({{ '/release-notes-rc8/' | relative_url }})
 and the [Lace compatibility boundary]({{ '/lace-handover/' | relative_url }}).
 
 

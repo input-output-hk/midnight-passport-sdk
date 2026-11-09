@@ -5,7 +5,7 @@ permalink: /handover/
 ---
 
 This page retains the **historical RC5 localnet operation trace**. Use
-[RC7 notes]({{ '/release-notes-rc7/' | relative_url }}) for the published package/image
+[RC8 notes]({{ '/release-notes-rc8/' | relative_url }}) for the current package/image
 pins, the [library guide]({{ '/library-guide/' | relative_url }}) for integration and
 the [demo guide]({{ '/demo-guide/' | relative_url }}) for current source setup and UI.
 [RC6 notes]({{ '/release-notes-rc6/' | relative_url }}) retain the intervening release.

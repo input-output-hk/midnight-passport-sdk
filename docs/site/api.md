@@ -464,8 +464,8 @@ its bounded routine lease, full-owner guard and independent capped-grant route.
 ## RC8: checked configuration contract {#source-preview-checked-configuration-contract}
 
 The current source hardens discovery in `mn-passport-adapter-service/config`.
-**The limits and deadline behavior below are source preview after RC7**; the existence
-of a discovery export in RC7 does not imply that the published version has these changes.
+**The limits and deadline behavior below ship in RC8**; the existence
+of a discovery export in RC7 does not give that older release these changes.
 
 ```ts
 import type { FetchLike, NetworkConfig } from '@input-output-hk/mn-passport-account/ports';

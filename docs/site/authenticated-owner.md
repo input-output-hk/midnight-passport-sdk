@@ -8,7 +8,7 @@ The [demo guide]({{ '/demo-guide/' | relative_url }}) explains the UI steps.
 [Library integration]({{ '/library-guide/' | relative_url }}) explains how a different
 host supplies its own authentication, consent, custody and cleanup policy.
 
-**Local source preview, after RC7.** An enrolled JubJub owner has full contract
+**RC8 reference-app policy.** An enrolled JubJub owner has full contract
 authority. The demo now requires **fresh passkey approval for each critical
 operation**, even while its explicit owner session is active. This host policy
 supersedes the earlier all-owner-operations reuse behavior; it does not narrow the

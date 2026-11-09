@@ -150,7 +150,7 @@ nix develop -c bash -c 'pnpm run lint && pnpm run format:check && pnpm run build
   runs establish repeatability only for their declared scope.
 - Keep copied-output preview separate from actual tarball installation. Local
   installed candidates do not establish registry provenance or a new release.
-  Published RC7 and later source preview remain separate; never retag old evidence.
+  Published RC8, historical releases and later source preview remain separate; never retag old evidence.
 - Use exact committed-head independent review and re-review substantive fixes.
   Use the owner's approved independent reviewer and retain original findings and
   corrections privately. Full local gates, signing and hosted checks remain

@@ -6,8 +6,8 @@ publish, use a credential or move value. Follow the owner's current scope and us
 Nix. For library work start with the [library guide](site/library-guide.md); the
 [demo guide](site/demo-guide.md) describes this application's optional composition.
 
-Published RC7, later source preview and each retained qualification receipt have
-separate versions. The [unchanged guidance snapshot](review/agent-guidance/README.md)
+Published RC8, historical releases, later source previews and retained qualification
+receipts have separate versions. The [unchanged guidance snapshot](review/agent-guidance/README.md)
 preserves historical commands, original pins and incident notes. Its old “next”
 scopes and pending/PASS descriptions are not current-head acceptance. Consult exact-source review maps for acceptance; this consolidation does not
 report a new browser, consumer, native or release pass.

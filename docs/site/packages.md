@@ -17,8 +17,8 @@ scaffolds do not provide those capabilities.
 safety from operational support. [Package purposes](#why-rc1-has-13-packages) retain
 the historical package-count explanation; [dependency direction](#dependency-direction)
 explains composition. The [account API]({{ '/api/' | relative_url }}) lists optional
-methods and their required ports. Published examples use exact RC7 versions;
-source-preview subpaths below require a matching source build.
+methods and their required ports. Current examples use exact RC8 versions.
+All entries below ship in RC8; rows distinguish their introduction and runtime.
 
 ## Runtime and host requirements
 
@@ -30,18 +30,18 @@ a chain, signer, prover, wallet or persistent store.
 
 | Public entry (`@input-output-hk/mn-passport-…`) | Track / runtime | Host requirements when used |
 | --- | --- | --- |
-| `protocol` | RC7; neutral types, constants and helpers | Account/service API shapes, not a wallet or transport. |
-| `account`; `account/ports`, `/errors`, `/testing`, `/preflight` | RC7; browser or Node with injected ports | Compatible binding, credentials/authorizer, crypto/randomness and chain/backend ports; records before creation. `ports` is types-only; `testing` supplies fakes, not production services. |
+| `protocol` | RC8 (available since RC7); neutral types, constants and helpers | Account/service API shapes, not a wallet or transport. |
+| `account`; `account/ports`, `/errors`, `/testing`, `/preflight` | RC8 (available since RC7); browser or Node with injected ports | Compatible binding, credentials/authorizer, crypto/randomness and chain/backend ports; records before creation. `ports` is types-only; `testing` supplies fakes, not production services. |
 | `keys` | Portable key/codec APIs and RC8 owner/session additions | Host-owned secret/PRF origin, crypto/encoding capabilities, explicit byte disposal and checked key lifetime. No automatic vault or native Node passkeys. |
-| `contract`; `contract/capabilities`, `/capabilities.json`; `/bindings/acc-s3r1.1` | RC7; metadata/inventory and generated binding are different layers | Pin manifest/compiler/runtime. Generated runtime needs the compatible Compact/Midnight stack; proving keys stay outside npm. See [partner contracts]({{ '/partner-integration/' | relative_url }}). |
-| `adapter-webauthn` | RC7 browser WebAuthn/PRF; later source session improvements | Credential API, canonical RP/origin and a qualified provider. Software injection in Node tests is not a native Node authenticator. |
-| `adapter-browser` | RC7 browser composition | The above capabilities plus backend ports, Buffer/WASM bundler setup and owned account records. Imports alone do not connect a wallet or start a worker. |
-| `adapter-browser/hosted-jubjub` | RC7 optional hosted bridge | Matching host branded values, supported lossless consent mapping and actual host transport. No full Lace compatibility follows from construction. |
-| `adapter-service`; `/config`, `/prover`, `/sponsor`, `/deployer`, `/directory`, `/faucet` | RC7; fetch-capable browser/Node | Inject fetch or provide fetch/URL/AbortController/timers. Pin configuration; keep funding/host-job bearer credentials in trusted backend code. Individual clients have distinct budgets and cancellation contracts. |
-| `adapter-midnight-js` | RC7 browser/Node adapter | Compatible ledger/Compact/Midnight runtime, provider/binding and proof/fee/value ports. Browser builds need the retained WASM/polyfill configuration; no SSR/React Native qualification. |
-| `service` | RC7 Node HTTP/backend library | Node HTTP/filesystem capabilities as selected, authenticated ingress, durable host state and owned chain/wallet/prover setup. Client portability does not make the server browser-compatible. |
-| `account/validation`, `/authorization`, `/secret-store`, `/background`, `/names`, `/interaction` | Source after RC7; neutral browser/Node contracts | Per-port admission, consent/custody/lifecycle policy. Background needs a supplied channel/thread, storage is opt-in, interaction starts no effects. |
-| `adapter-browser/background`, `/secret-store`, `/wallet` | Source after RC7; explicit browser adapters | Owned Worker/MessagePort, explicitly approved plaintext IndexedDB, or selected wallet provider respectively. None grants ACC authority. |
+| `contract`; `contract/capabilities`, `/capabilities.json`; `/bindings/acc-s3r1.1` | RC8 (available since RC7); metadata/inventory and generated binding are different layers | Pin manifest/compiler/runtime. Generated runtime needs the compatible Compact/Midnight stack; proving keys stay outside npm. See [partner contracts]({{ '/partner-integration/' | relative_url }}). |
+| `adapter-webauthn` | RC8 browser WebAuthn/PRF; RC8 session improvements | Credential API, canonical RP/origin and a qualified provider. Software injection in Node tests is not a native Node authenticator. |
+| `adapter-browser` | RC8 browser composition | The above capabilities plus backend ports, Buffer/WASM bundler setup and owned account records. Imports alone do not connect a wallet or start a worker. |
+| `adapter-browser/hosted-jubjub` | RC8 optional hosted bridge | Matching host branded values, supported lossless consent mapping and actual host transport. No full Lace compatibility follows from construction. |
+| `adapter-service`; `/config`, `/prover`, `/sponsor`, `/deployer`, `/directory`, `/faucet` | RC8 (available since RC7); fetch-capable browser/Node | Inject fetch or provide fetch/URL/AbortController/timers. Pin configuration; keep funding/host-job bearer credentials in trusted backend code. Individual clients have distinct budgets and cancellation contracts. |
+| `adapter-midnight-js` | RC8 browser/Node adapter | Compatible ledger/Compact/Midnight runtime, provider/binding and proof/fee/value ports. Browser builds need the retained WASM/polyfill configuration; no SSR/React Native qualification. |
+| `service` | RC8 Node HTTP/backend library | Node HTTP/filesystem capabilities as selected, authenticated ingress, durable host state and owned chain/wallet/prover setup. Client portability does not make the server browser-compatible. |
+| `account/validation`, `/authorisation` (canonical; `/authorization` alias), `/secret-store`, `/background`, `/names`, `/interaction` | Added in RC8; neutral browser/Node contracts | Per-port admission, consent/custody/lifecycle policy. Background needs a supplied channel/thread, storage is opt-in, interaction starts no effects. |
+| `adapter-browser/background`, `/secret-store`, `/wallet` | Added in RC8; explicit browser adapters | Owned Worker/MessagePort, explicitly approved plaintext IndexedDB, or selected wallet provider respectively. None grants ACC authority. |
 
 For the service clients, use the [public-import/protocol table]({{ '/service/#choose-an-http-client' | relative_url }}).
 The dedicated `/prover`, `/sponsor` and `/deployer` entries are legacy clients;

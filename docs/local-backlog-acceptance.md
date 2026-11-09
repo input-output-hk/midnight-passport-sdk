@@ -1,12 +1,27 @@
 # Local backlog acceptance audit
 
-## Current next-RC reconciliation — 2026-11-09
+## RC8 release reconciliation — 2026-11-09
 
-This section supersedes the old planning/outcome statements below for current
-scheduling. Earlier source/version receipts remain historical. Published RC7 is
-still the distribution baseline. PR295 merged at `eb974e5`; the first next-RC
-correction is signed `ba33365`. An open historical ticket is not proof that its
-feature is unimplemented, and implementation alone is not complete acceptance.
+RC8 packages/images are published and verified in the [signed receipt](release/rc8-publication-receipt.json).
+All nine private packages share0.1.0-rc8/next; actual registry SHA/SRI,
+18source/publisher attestations, fresh installed Node/browser/worker consumers,
+software crypto and image/key HTTP checks passed. Final deployed-doc verification
+is a separate signed release asset after Pages deployment. Native/provider/full
+Lace evidence retains its original source/runtime boundaries.
+
+The bounded UX/review follow-ups #287–#294 and #296/#297/#298/#300 are closed.
+#299 remains open for wider valid-mounted service/funding runtime readiness;
+#81/#232 actual host/provider, #201/#82 value/circuit coverage, #229/#240
+revocation/total-loss, #230/#239/#269 durability/grant loss and #271 performance
+remain documented limits. A preview release does not close these wider trackers.
+
+### Historical preparation audit before RC8
+
+The table below records the earlier preparation point at signedba33365, when RC7
+was still the distribution baseline. It is retained as evidence of that review,
+not a claim that current artifacts are unpublished or already fully qualified.
+An open ticket alone does not prove missing implementation; implementation alone
+also does not prove completed acceptance.
 
 | Area / issues | Implemented and observed | Remaining acceptance / disposition |
 | --- | --- | --- |
