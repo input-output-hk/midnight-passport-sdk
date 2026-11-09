@@ -11,6 +11,11 @@ export async function checkFundingInventory(h: JourneyHarness) {
     await h.waitStatus(empty, /is created\./);
     await navClick(empty, '#account-tab-deposit');
     assert.equal(await empty.locator('#fund').isDisabled(), true);
+    assert.equal(
+      await empty.locator('#fund-asset').inputValue(),
+      night,
+      'empty inventory still displays the configured asset',
+    );
     assert.equal(await empty.locator('#fund-asset option').getAttribute('disabled'), '');
     assert.match(await empty.locator('#fund-desc').innerText(), /Deposits are unavailable/);
     await navClick(empty, '#account-tab-withdraw');
@@ -42,6 +47,7 @@ export async function checkFundingInventory(h: JourneyHarness) {
     );
     assert.equal(await stale.locator('#fund').isDisabled(), true);
     await select(stale, '#fund-asset', night);
+    assert.match(await stale.locator('#fund-desc').innerText(), /^Deposit the selected asset/);
     for (let attempt = 0; attempt < 2; attempt++) {
       await click(stale, '#fund');
       await h.waitStatus(stale, /No transfer was started/, /funding wallet/i);

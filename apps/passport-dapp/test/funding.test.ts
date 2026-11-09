@@ -7,6 +7,7 @@ import {
   fundingExchange,
   canFund,
   preferredFundingAsset,
+  fundingDescription,
 } from '../src/funding.js';
 import { EventLog } from '../src/event-log.js';
 import { demoActivityObservation } from '../src/activity-observations.js';
@@ -149,4 +150,7 @@ test('a funding refresh preserves intent even when the selected asset becomes un
   assert.equal(canFund(false, true, preferredFundingAsset([row], color)), false);
   assert.equal(preferredFundingAsset([night], 'removed'), undefined);
   assert.equal(preferredFundingAsset([night], '')?.color, night.color);
+  assert.equal(preferredFundingAsset([row], '')?.color, color);
+  assert.match(fundingDescription(row), /Deposits are unavailable/);
+  assert.match(fundingDescription(night), /^Deposit the selected asset/);
 });

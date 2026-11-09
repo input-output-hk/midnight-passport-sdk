@@ -8,12 +8,20 @@ export function canFund(busy: boolean, accountOpen: boolean, asset: DemoFundingA
   return !busy && accountOpen && asset?.availability === 'available';
 }
 
+export function fundingDescription(asset: DemoFundingAsset | undefined): string {
+  return canFund(false, true, asset)
+    ? 'Deposit the selected asset from the demo funding wallet into this account.'
+    : 'Deposits are unavailable. The funding wallet needs a synchronized balance of the selected asset.';
+}
+
 /** A balance refresh must not silently change the user's selected deposit asset. */
 export function preferredFundingAsset(assets: readonly DemoFundingAsset[], previous: string) {
   if (previous) return assets.find((asset) => asset.color === previous);
   return (
     assets.find((asset) => asset.color === '00'.repeat(32) && asset.availability === 'available') ??
-    assets.find((asset) => asset.availability === 'available')
+    assets.find((asset) => asset.availability === 'available') ??
+    assets.find((asset) => asset.color === '00'.repeat(32)) ??
+    assets[0]
   );
 }
 

@@ -1,4 +1,9 @@
-import { canFund, preferredFundingAsset, type DemoFundingAsset } from './funding.js';
+import {
+  canFund,
+  fundingDescription,
+  preferredFundingAsset,
+  type DemoFundingAsset,
+} from './funding.js';
 import { walletFacts, type WalletView } from './wallet/view.js';
 export type { WalletView } from './wallet/view.js';
 // Presentation: the action buttons, the progress bar, the event log, the account and wallet cards
@@ -251,6 +256,7 @@ export function createUi(
     buttons.wallet.disabled = busy;
     buttons.walletRefresh.disabled = busy || !wallet.unshieldedAddress;
     buttons.fund.disabled = !canFund(busy, !!account, assetsByColor.get(fundingSelect.value));
+    byId('fund-desc').textContent = fundingDescription(assetsByColor.get(fundingSelect.value));
     fundingSelect.disabled = busy || !account;
     buttons.fund.closest('li')?.toggleAttribute('hidden', assetsByColor.size === 0);
     buttons.withdraw.disabled = busy || !account || assetsByColor.size === 0;
@@ -773,9 +779,7 @@ export function createUi(
         address: account.address,
         color: assets.find((asset) => asset.color !== '00'.repeat(32))?.color ?? '00'.repeat(32),
       };
-    byId('fund-desc').textContent = canFund(false, true, fundingAsset)
-      ? 'Deposit the selected asset from the demo funding wallet into this account.'
-      : 'Deposits are unavailable. The funding wallet needs a synchronized balance of the selected asset.';
+
     renderButtons();
   };
 
