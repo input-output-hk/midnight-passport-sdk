@@ -23,6 +23,7 @@ export const ORIGIN = 'http://localhost:5173';
 export const BINDING_ID = 'acc-s3r1.1';
 export const ARM =
   new URL(location.href).searchParams.get('fixtureArm') === 'jubjub' ? 'jubjub' : 'p256';
+export const SIGNING_MODE = ARM === 'p256' ? 'passkey' : 'jubjub';
 const ADDRESS = 'a1'.repeat(32);
 interface State {
   ownerPublicKey?: string;
@@ -46,6 +47,7 @@ const passkey = webauthnPasskey({
   rpId: RP_ID,
   origin: ORIGIN,
   beforeCeremony: beforeDemoCeremony,
+  registrationProfile: ARM === 'jubjub' ? 'jubjub-prf' : 'p256',
 });
 const unlock = () =>
   passkey.prf.withSession(async () => {
@@ -253,16 +255,18 @@ const api = {
     if (options.retireAuthority !== true)
       throw new Error('Fixture expects the explicitly acknowledged demo policy');
     const ref = await passkey.credentials.create({ name: 'journey owner' });
-    await unlock();
-    await call('create');
-    if (ARM === 'p256') {
-      // Synthetic setup publications exercise separate post-deployment consent boundaries.
-      await p256Signature();
-      await call('publish-envelope');
-      await p256Signature();
-      await call('publish-registration');
-    }
-    return account(ref.credentialId);
+    return passkey.prf.withSession(async () => {
+      await call('create');
+      if (ARM === 'p256') {
+        await p256Signature();
+        await call('publish-envelope');
+        await p256Signature();
+        await call('publish-registration');
+      }
+      const created = account(ref.credentialId);
+      await acceptRoutineLogin(created, passkey.readCreationKeys(ref.credentialId), RP_ID, ORIGIN);
+      return created;
+    });
   },
   async openAccount() {
     const open = async () => {

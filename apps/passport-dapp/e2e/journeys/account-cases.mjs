@@ -45,7 +45,13 @@ export default [
   {
     id: 'account-actions.the-second-initial-prompt-requires-separate-approval',
     name: 'the second initial prompt requires separate approval before the compatibility probe',
-    arms: ['p256', 'jubjub'],
+    arms: ['p256'],
+    group: 'account-actions',
+  },
+  {
+    id: 'account-actions.jubjub-creation-shares-one-credential-and-routine-keys',
+    name: 'JubJub creation uses one credential call with create-time PRF and adopts routine keys without retaining owner authority',
+    arms: ['jubjub'],
     group: 'account-actions',
   },
   {

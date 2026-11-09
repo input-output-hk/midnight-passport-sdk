@@ -18,7 +18,9 @@ owner session. This supersedes the earlier full-owner reuse policy.
 
 1. Log in or open by ACC address using the existing passkey. Review the routine
    lifetime in its combined operation/passkey review; verified opening prepares that
-   lease in the same credential request. Creation does not silently start a routine lease.
+   lease in the same credential request. In source preview after RC8, sign-up also explicitly
+   reviews that routine lifetime: confirmed creation adopts derived reader/wallet keys inside
+   its setup scope. This adds no owner cache, wallet connection or spending approval.
 2. If access is locked, use **Passport account → Manage quick actions**, or
    **Settings → Quick actions**, choose a lifetime and select the explicit reading
    unlock. This separately reviewed renewal needs a pinned PRF request. It does not

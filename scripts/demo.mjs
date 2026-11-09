@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { demoSigningEnvironment } from './demo-signing.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const binding = JSON.parse(
@@ -17,7 +18,7 @@ const manifestPin = binding.manifestSha256;
 const keyPort = 8788;
 const fundingPort = 8789;
 
-/** @typedef {{ command: string, arm: 'p256' | 'jubjub', keyService: boolean, funding: boolean, open: boolean, mockPasskey: boolean, passportRepo?: string, contractDir?: string, account?: string, color?: string, amount?: string, requestId?: string, help?: boolean }} DemoOptions */
+/** @typedef {{ command: string, arm: 'p256' | 'jubjub', armExplicit?: true, keyService: boolean, funding: boolean, open: boolean, mockPasskey: boolean, passportRepo?: string, contractDir?: string, account?: string, color?: string, amount?: string, requestId?: string, help?: boolean }} DemoOptions */
 
 /** @param {string[]} argv @returns {DemoOptions} */
 export function parseArgs(argv) {
@@ -57,6 +58,7 @@ export function parseArgs(argv) {
       const value = args[++i];
       if (value !== 'p256' && value !== 'jubjub') throw new Error('--arm needs p256 or jubjub');
       options.arm = value;
+      options.armExplicit = true;
     } else if (arg === '--no-key-service') options.keyService = false;
     else if (arg === '--funding') options.funding = true;
     else if (arg === '--open') options.open = true;
@@ -341,6 +343,7 @@ async function waitForPage(child) {
 
 /** @param {DemoOptions} options */
 async function up(options) {
+  const signing = demoSigningEnvironment(options, process.env);
   await check(options);
   const contractDir = prepare(options);
   const artefactDir = join(contractDir, 'contracts/managed/account');
@@ -348,7 +351,7 @@ async function up(options) {
     ...process.env,
     PASSPORT_CONTRACT_DIR: contractDir,
     PASSPORT_MANIFEST_SHA256: manifestPin,
-    VITE_PASSPORT_ARM: options.arm,
+    ...signing,
     ...(options.funding ? { PASSPORT_DEMO_FUNDING_ENABLED: '1' } : {}),
   };
   /** @type {import('node:child_process').ChildProcess | undefined} */

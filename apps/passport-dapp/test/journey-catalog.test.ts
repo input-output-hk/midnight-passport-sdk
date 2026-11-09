@@ -17,7 +17,14 @@ const namesHash = (arm: string) =>
       JSON.stringify(
         expectedCases(arm)
           .filter((c) => !fundingExtensionIds.has(c.id))
-          .map((c) => c.name),
+          // #304 replaces only JubJub's obsolete strict-probe case with single-call creation.
+          // Normalize that documented evolution for historical W9 order verification;
+          // the current receipt inventory below must retain the actual new case and name.
+          .map((c) =>
+            c.id === 'account-actions.jubjub-creation-shares-one-credential-and-routine-keys'
+              ? 'the second initial prompt requires separate approval before the compatibility probe'
+              : c.name,
+          ),
       ),
     )
     .digest('hex');
@@ -34,7 +41,17 @@ test('canonical catalog preserves signed W9 full name order and both arm invento
     ['p256', 'jubjub'].map((arm) => expectedCases(arm).length),
     [99, 97],
   );
-  assert.equal(new Set(journeyCatalog.map((c) => c.id)).size, 99);
+  assert.equal(new Set(journeyCatalog.map((c) => c.id)).size, 100);
+  assert.ok(
+    expectedCases('jubjub').some(
+      (c) => c.id === 'account-actions.jubjub-creation-shares-one-credential-and-routine-keys',
+    ),
+  );
+  assert.ok(
+    !expectedCases('jubjub').some(
+      (c) => c.id === 'account-actions.the-second-initial-prompt-requires-separate-approval',
+    ),
+  );
   assert.equal(Object.isFrozen(journeyCatalog), true);
   for (const row of journeyCatalog) {
     assert.equal(Object.isFrozen(row), true);

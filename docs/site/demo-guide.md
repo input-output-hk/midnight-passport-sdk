@@ -153,6 +153,14 @@ Google/iCloud restoration, native proof/provider acceptance or full Lace support
 Use the [evidence map]({{ '/use-case-coverage/' | relative_url }}) and
 [qualification limits]({{ '/qualification/' | relative_url }}) for recorded results.
 
+## Source preview: signing comparison (after RC8)
+
+For the local signing-mode comparison, open `?signing=passkey` or `?signing=jubjub`
+on the demo origin. The latter creates a JubJub-primary account from the passkey PRF;
+it does not enroll a companion on an existing account. Both retain login and fresh
+critical approval. Sign-up explicitly reviews its routine reader/wallet lease and
+shares confirmed setup's key scope. See [request paths]({{ '/passkey-prompts/' | relative_url }}).
+
 ## Source preview: deposit availability (after RC8)
 
 The later reference source checks the funding wallet's current spendable unshielded inventory.

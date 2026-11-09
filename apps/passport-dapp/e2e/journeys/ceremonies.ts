@@ -200,6 +200,17 @@ export async function checkApprovedMobileAccessRevealsItsPurposeIn(
   await approve(owner, 'create');
   await owner.locator('#ceremony-dialog').waitFor({ state: 'visible' });
   await click(owner, '#ceremony-continue');
+  if (h.arm === 'jubjub') {
+    await waitStatus(owner, /is created/);
+    assert.equal(await credentialsUsed(), 1);
+    assert.match(await owner.locator('#routine-status').innerText(), /Unlocked until/);
+    assert.equal(await owner.locator('#authenticated-owner-key').textContent(), 'Not unlocked');
+    assert.equal(calls.filter((c) => c === 'create').length, 1);
+    await owner.setViewportSize({ width: 1280, height: 900 });
+    done('account-actions.approved-mobile-access-reveals-its-purpose-in');
+    done('account-actions.jubjub-creation-shares-one-credential-and-routine-keys');
+    return;
+  }
   await owner
     .locator('#ceremony-details')
     .filter({ hasText: /Verify that your new passkey can sign/ })
@@ -266,7 +277,7 @@ export async function checkAcknowledgedCreationAndOneExplicitApprovalPer(
 ) {
   const { waitStatus, done } = h;
   const { owner } = input;
-  await approve(owner, 'create');
+  if (h.arm === 'p256') await approve(owner, 'create');
   await waitStatus(owner, /is created/);
   await assertAccountWorkspace(owner);
   done('account-actions.acknowledged-creation-and-one-explicit-approval-per');

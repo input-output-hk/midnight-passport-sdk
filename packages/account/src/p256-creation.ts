@@ -8,6 +8,7 @@ import {
   type SealedP256Hint,
 } from './p256-device.js';
 import type { AccBinding, PassportPorts } from './ports/index.js';
+import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
 
 interface CreationControls {
   readonly ports: PassportPorts;
@@ -17,6 +18,7 @@ interface CreationControls {
   readonly recordDeployed: (flow: Flow, record: P256Hint) => Promise<void>;
   readonly finishSealed: (flow: Flow, record: SealedP256Hint) => Promise<P256Hint>;
   readonly activate: (flow: Flow, record: P256Hint) => Promise<P256Hint>;
+  readonly account: (record: P256Hint) => PassportAccount;
 }
 
 /** One post-registration PRF scope; every strict P-256 circuit still obtains its own signature. */
@@ -24,7 +26,7 @@ export async function createP256Account(
   userName: string,
   retireAuthority: boolean,
   controls: CreationControls,
-): Promise<P256Hint> {
+): Promise<PassportAccount> {
   const { ports, flow, binding, random } = controls;
   const { credentials, authoriser, viewingKey, encryptionKey } = ports;
   const { networkId } = ports.network;
@@ -95,9 +97,12 @@ export async function createP256Account(
     };
     // Persist the activation salt and original sealed entries before any activation/publication.
     await controls.recordDeployed(flow, deployed);
-    return viewingKey && isSealedP256(deployed)
+    const ready = await (viewingKey && isSealedP256(deployed)
       ? controls.finishSealed(flow, deployed)
-      : controls.activate(flow, deployed);
+      : controls.activate(flow, deployed));
+    const account = controls.account(ready);
+    await ports.onAccountCreated?.(account);
+    return account;
   };
   return authoriser.withKeySession
     ? authoriser.withKeySession(complete, { kind: 'create-account', lockAccount: retireAuthority })

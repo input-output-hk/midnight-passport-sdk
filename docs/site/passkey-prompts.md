@@ -56,9 +56,10 @@ This cannot recover a lost credential or discover an unknown ACC address.
 
 ## Request paths
 
-| Action | Current source credential path |
+| Action | Credential path and version boundary |
 | --- | --- |
 | Create account | Register, then the strict new-credential compatibility probe. P-256 creation shares one post-registration PRF scope across setup; it reuses both create-time outputs or makes one fallback PRF request. Actual setup signatures remain separate. |
+| Source-preview JubJub PRF-only creation (after RC8) | Register once; reuse both create-time PRF outputs, or make one pinned PRF request. The initial owner, activation and two sealed publications use JubJub. No P-256 signing probe or setup assertion. |
 | Open an active account, either arm | One combined `identify-and-unlock` request; routine adoption within that scope adds no request. Unfinished activation/publication may still need real signatures. |
 | Public state, balances and rosters; funding; external Lace connection | No Passport credential request. Funding has its own service authorization; Lace has its own extension consent. |
 | Private holdings / built-in wallet connection | Zero requests with the matching approved routine lease; otherwise an explicitly consented PRF path. An expired captured lease refuses without silently changing routes. |
@@ -94,8 +95,28 @@ passkey requests. A multi-transaction mutation can require several signatures.
 PRF-bearing assertions may contain extension data. They cannot replace the pinned
 `wa-json134` compatibility probe or transaction signatures. Flexible local login
 verification does not relax that contract profile. Shared credential creation still
-performs the P-256 probe even for a JubJub-primary account; eliminating that work
-needs a separately designed and qualified creation path.
+performs the P-256 probe even for a JubJub-primary account in published RC8 and
+the default registration profile. The source-preview `jubjub-prf` profile below
+explicitly replaces that path; it cannot be used for direct P-256 signing.
+
+## Source preview: compare signing modes (after RC8)
+
+The reference page accepts `?signing=passkey` or `?signing=jubjub`, with
+`VITE_PASSPORT_SIGNING_MODE=passkey|jubjub` as its build default. Passkey remains
+the default. **Settings → Developer tools → Owner signing demo** shows the selected
+mode and comparison links. A link opens a new document; it never replaces a live signer.
+Use an account created in that mode. Existing accounts are not migrated or given companions.
+
+JubJub mode registers the unchanged Lace PRF-output-1 key as the new ACC's initial owner.
+The passkey stays the authentication and deterministic key-recovery mechanism, but its
+P-256 public key is not also registered as an ACC owner. Creation reuses a single PRF
+scope through activation, sealed publication and an explicitly approved routine handoff.
+Later critical operations still require fresh passkey approval. Memory-only routine
+reader/wallet access and separately approved bounded grants retain their existing limits.
+
+Software-authenticator/generated-contract tests assert one `create` call with both
+PRF outputs at registration, or `create` plus one PRF `get` otherwise. These are
+credential API counts, not measured Google/iCloud sheets or biometric touches.
 
 ## Upstream comparison and evidence
 

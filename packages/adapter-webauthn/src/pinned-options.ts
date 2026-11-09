@@ -1,14 +1,10 @@
-import type { PasskeyCeremonyOptions } from './ceremony.js';
+import type { PasskeyOptions } from './passkey.js';
 
-type Options = PasskeyCeremonyOptions & {
-  rpId: string;
-  origin: string;
-  credentials?: CredentialsContainer;
-};
+type Options = PasskeyOptions;
 
 /** Capture methods with their native receiver before async host ceremony approval. */
 export function pinnedPasskeyOptions(options: Options, checkpoint: () => () => void): Options {
-  const { rpId, origin, beforeCeremony, credentials } = options;
+  const { rpId, origin, beforeCeremony, credentials, registrationProfile } = options;
   let held:
     | {
         receiver: CredentialsContainer;
@@ -26,6 +22,7 @@ export function pinnedPasskeyOptions(options: Options, checkpoint: () => () => v
   return {
     rpId,
     origin,
+    ...(registrationProfile !== undefined && { registrationProfile }),
     credentials: {
       get: (request) => pin().get(request),
       create: (request) => pin().create(request),

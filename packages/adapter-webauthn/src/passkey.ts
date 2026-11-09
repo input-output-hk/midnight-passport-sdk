@@ -5,15 +5,13 @@ import {
 import type { PasskeyCredential, PasskeySeam } from '@input-output-hk/mn-passport-account/ports';
 import {
   assertionMaterial,
-  bigintFromBytes,
   clientDataJSON,
   equalBytes,
-  fromBase64url,
-  validateP256Key,
   webauthnPolicy,
   type WebAuthnAssertion,
 } from './webauthn.js';
 import { holdCreatePrf } from './create-prf.js';
+import { registrationKey } from './registration-key.js';
 import { lacePrfSalts, PRF_UNSUPPORTED_AT_CREATE, wrongPasskey } from './prf.js';
 import { beforePasskeyCeremony, type PasskeyCeremonyOptions } from './ceremony.js';
 
@@ -22,14 +20,26 @@ type CreationOptionsWithHints = PublicKeyCredentialCreationOptions & {
   hints?: ('client-device' | 'security-key' | 'hybrid')[];
 };
 
+export type PasskeyOptions = PasskeyCeremonyOptions & {
+  rpId: string;
+  origin: string;
+  credentials?: CredentialsContainer;
+  /** Explicit software-owner registration. Never qualifies this credential for ACC P-256 signing. */
+  registrationProfile?: 'p256' | 'jubjub-prf';
+};
+
 /** wa-json134 passkeys; the private key never leaves the authenticator (spec §4.4). */
-export function browserPasskey(
-  opts: PasskeyCeremonyOptions & {
-    rpId: string;
-    origin: string;
-    credentials?: CredentialsContainer;
-  },
-): PasskeySeam {
+export function browserPasskey(opts: PasskeyOptions): PasskeySeam {
+  const profile = opts.registrationProfile ?? 'p256';
+  if (profile !== 'p256' && profile !== 'jubjub-prf')
+    throw new PassportConnectorError('InternalError', 'Invalid passkey registration profile.');
+  const requireP256 = () => {
+    if (profile !== 'p256')
+      throw new PassportConnectorError(
+        'BindingUnsupported',
+        'PRF-only registration cannot sign as a P-256 owner.',
+      );
+  };
   const policy = webauthnPolicy(opts.rpId, opts.origin);
   const container = () => opts.credentials ?? navigator.credentials;
   // Chromium deliberately adds this GREASE member to roughly one in five assertions. The
@@ -153,40 +163,22 @@ export function browserPasskey(
           throw new PassportConnectorError('UnsupportedAuthenticator', PRF_UNSUPPORTED_AT_CREATE);
         }
         const response = credential.response as AuthenticatorAttestationResponse;
-        const spki = response.getPublicKey();
-        if (response.getPublicKeyAlgorithm() !== -7 || !spki) {
-          throw new PassportConnectorError(
-            'UnsupportedAuthenticator',
-            'The authenticator did not create an ES256 (P-256) key.',
-          );
-        }
-        const key = await crypto.subtle.importKey(
-          'spki',
-          spki,
-          { name: 'ECDSA', namedCurve: 'P-256' },
-          true,
-          ['verify'],
-        );
-        const jwk = await crypto.subtle.exportKey('jwk', key);
-        const publicKey = {
-          x: bigintFromBytes(fromBase64url(jwk.x!)),
-          y: bigintFromBytes(fromBase64url(jwk.y!)),
-          identity: false as const,
-        };
-        validateP256Key(publicKey);
+        const publicKey = await registrationKey(response);
         const credentialId = new Uint8Array(credential.rawId);
         // Enrolment probe: one throwaway assertion proves this authenticator produces the exact
         // wa-json134 material (flags, 37-byte authData, origin, ES256) before anything is deployed.
-        const challenge = crypto.getRandomValues(new Uint8Array(32));
-        const probe = await assertion(credentialId, challenge, 'verify-created');
-        try {
-          assertionMaterial(challenge, policy, publicKey, probe);
-        } catch (e) {
-          throw new PassportConnectorError(
-            'UnsupportedAuthenticator',
-            `The authenticator does not match the wa-json134 profile: ${e instanceof Error ? e.message : String(e)}`,
-            { cause: e },
-          );
+        if (profile === 'p256') {
+          const challenge = crypto.getRandomValues(new Uint8Array(32));
+          const probe = await assertion(credentialId, challenge, 'verify-created');
+          try {
+            assertionMaterial(challenge, policy, publicKey, probe);
+          } catch (e) {
+            throw new PassportConnectorError(
+              'UnsupportedAuthenticator',
+              `The authenticator does not match the wa-json134 profile: ${e instanceof Error ? e.message : String(e)}`,
+              { cause: e },
+            );
+          }
         }
         const created: PasskeyCredential = { credentialId, publicKey, policy };
         // Outputs the provider returned at creation are held (never on `created` itself) for the
@@ -199,6 +191,7 @@ export function browserPasskey(
     },
     async identify() {
       try {
+        requireP256();
         const challenge = crypto.getRandomValues(new Uint8Array(32));
         const credential = await getCanonical({
           challenge: new Uint8Array(challenge),
@@ -225,6 +218,7 @@ export function browserPasskey(
     },
     async sign(credential, challenge) {
       try {
+        requireP256();
         const material = assertionMaterial(
           challenge,
           credential.policy,

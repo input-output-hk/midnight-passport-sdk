@@ -778,3 +778,28 @@ teardown throws.
 An unavailable selected deposit asset stays selected with funding disabled; refresh never
 switches it to another asset. A current availability-read failure also disables deposits
 until a successful refresh, preserving the asset list and withdrawal choices.
+
+### Source preview: owner signing comparison (after RC8)
+
+Choose `VITE_PASSPORT_SIGNING_MODE=passkey|jubjub`, or open the canonical demo with
+`?signing=passkey` / `?signing=jubjub`. Passkey remains the default; the existing
+`VITE_PASSPORT_ARM=p256|jubjub` is accepted, but conflicting build settings refuse.
+Repeated/invalid query modes also refuse. The mode is fixed for that document.
+**Settings → Developer tools → Owner signing demo** shows the mode and new-page links.
+These select the primary owner for account creation/opening, not an implicit conversion
+of an existing ACC or a change to independent scoped grants.
+
+JubJub mode uses the opt-in WebAuthn `jubjub-prf` registration profile. It derives the
+same Lace output-1 signing key and registers it as the initial owner, sharing one PRF
+scope across activation and sealed publications. Both outputs returned at registration
+need only one credential `create`; otherwise one pinned PRF `get` is added. The strict
+P-256 profile, probe and real setup signatures remain intact in passkey mode. API counts
+are not provider sheet/touch measurements.
+
+Sign-up reviews the selected owner and a bounded routine reader/wallet lease. Confirmed
+creation invokes the opt-in `onAccountCreated` handoff inside its setup scope; the demo
+adopts only derived reader/wallet material. No owner key/raw PRF is retained by this handoff,
+no wallet connects automatically, and later critical operations still require fresh passkey
+approval. Failed adoption does not undo creation: retain records and reopen/reconcile the
+original account instead of creating a replacement. Tracked in
+[#304](https://github.com/input-output-hk/midnight-passport-sdk/issues/304).

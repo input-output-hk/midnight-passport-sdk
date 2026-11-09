@@ -73,6 +73,22 @@ export function createPasskeySessions(
         },
       });
     },
+    readCreationKeys(checkCredential: () => void): PasskeyLoginKeys {
+      if (login || ownership.count() === 0 || !ownership.current())
+        throw new PassportConnectorError('NotAuthorised', 'No creation keys are available.');
+      checkCredential();
+      const check = ownership.checkpoint();
+      return Object.freeze({
+        deriveWalletSeed() {
+          check();
+          checkCredential();
+          const outputs = ownership.current();
+          if (login || !outputs)
+            throw new PassportConnectorError('NotAuthorised', 'The creation scope has ended.');
+          return seedFromRoot(outputs.root);
+        },
+      });
+    },
     async withLoginSession<T>(work: () => Promise<T>): Promise<T> {
       if (login || ownership.count() !== 0)
         throw new PassportConnectorError('NotAuthorised', 'Another credential session is active.');

@@ -10,6 +10,7 @@ import type {
 } from '@input-output-hk/mn-passport-protocol';
 import {
   ARM,
+  SIGNING_MODE,
   BINDING_ID,
   MANIFEST_SHA256,
   NETWORK_ID,
@@ -71,6 +72,7 @@ import { authenticateOwnerAccount, routeAuthenticatedAccount } from './owner-acc
 import { transactionReceipts, receiptStorageRequired } from './transaction-receipts.js';
 import { completeLocalCleanup } from './local-cleanup.js';
 import { createOwnerReview } from './owner-review.js';
+import { showSigningMode } from './signing-mode.js';
 const retainedTransactions = transactionReceipts(localStorage, NETWORK_ID, BINDING_ID);
 let receiptStorageFailed = false;
 let reviewedRoutineMinutes = 15;
@@ -244,6 +246,7 @@ try {
 }
 installLaceWallet(network, ui.showExternalWalletConnection);
 showDemoCapabilities(ARM);
+showSigningMode(SIGNING_MODE);
 showDemoNameService(createMockNameService(network), network);
 
 let api: PassportConnectorAPI | undefined;
@@ -442,20 +445,24 @@ ui.on('create', async () => {
       ? `Creating a JubJub account… confirm the passkey ceremonies, then wait for deployment (about ${DEPLOY_ESTIMATE_S / 60} minutes).`
       : `Creating… confirm the passkey and its reader key, then wait for deployment (about ${DEPLOY_ESTIMATE_S / 60} minutes) and two sealed-key publications.`,
   );
-  const a = await (
-    await connector()
-  ).createAccount({
-    userName: `passport-${Date.now()}`,
-    // The prototype has always retired the maintenance authority: irreversible, so the account
-    // can never be upgraded. The account API makes that the caller's explicit choice.
-    retireAuthority: true,
-    onEvent: (e) => {
-      onEvent(e);
-      const next = e.phase === 'start' ? EVENT_STAGES.create[e.step] : undefined;
-      const label = FLOWS.create.stages.find((x) => x.id === next)?.label;
-      if (label) status(`Creating: ${label.charAt(0).toLowerCase()}${label.slice(1)}…`);
-    },
-  });
+  const a = await withRoutineLogin(
+    reviewedRoutineMinutes,
+    async () =>
+      await (
+        await connector()
+      ).createAccount({
+        userName: `passport-${Date.now()}`,
+        // The prototype has always retired the maintenance authority: irreversible, so the account
+        // can never be upgraded. The account API makes that the caller's explicit choice.
+        retireAuthority: true,
+        onEvent: (e) => {
+          onEvent(e);
+          const next = e.phase === 'start' ? EVENT_STAGES.create[e.step] : undefined;
+          const label = FLOWS.create.stages.find((x) => x.id === next)?.label;
+          if (label) status(`Creating: ${label.charAt(0).toLowerCase()}${label.slice(1)}…`);
+        },
+      }),
+  );
   await opened(a, 'created');
 });
 ui.on('open', async () => {

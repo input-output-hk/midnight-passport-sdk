@@ -20,7 +20,7 @@ const PURPOSES: Partial<Record<ActionId, string>> = {
   revokeSession:
     'Lock the local session key, then use fresh owner passkey approval to revoke its grant on chain. Confirmed and already-submitted transfers cannot be undone.',
   create:
-    'Create a passkey and a sponsored Passport account. Setup verifies the passkey and publishes sealed reading keys. This demo permanently retires maintenance authority, so the account cannot be upgraded. Keep your passkey; the demo has no recovery if it is lost.',
+    'Create a passkey and a sponsored Passport account. Setup registers the selected owner and publishes sealed reading keys. After confirmed setup, keep routine reading and wallet keys in this tab for the reviewed lifetime. This does not connect a wallet or approve spending. This demo permanently retires maintenance authority, so the account cannot be upgraded. Keep your passkey; the demo has no recovery if it is lost.',
   open: 'Open your Passport with its passkey. Keep only reading and wallet keys in this tab for the reviewed lifetime. Login does not approve spending, enroll an owner or connect a wallet. Interrupted setup may need separate signatures.',
   openAt:
     'Open this account with an enrolled passkey. Keep only reading and wallet keys in this tab for the reviewed lifetime. Login does not approve spending or recover a lost passkey.',
@@ -189,17 +189,19 @@ export async function reviewDemoAction(action: ActionId, input: ConsentContext):
     revokeSession: 'Lock the local grant signer and revoke its on-chain permission after review.',
   };
   const purpose =
-    context.ownerUnlocked && ownerPurpose[action]
-      ? CRITICAL_ACTIONS.has(action)
-        ? action === 'withdraw'
-          ? `A matching scoped transfer uses its approved JubJub grant without a passkey. Owner transfers require fresh passkey approval before the JubJub signature. ${ownerPurpose[action]}`
-          : `Require fresh passkey approval before this critical action uses the authenticated JubJub owner. ${ownerPurpose[action]}`
-        : `Use the authenticated JubJub owner with no new passkey request. ${ownerPurpose[action]}`
-      : context.routineUnlocked && (action === 'holdings' || action === 'wallet')
-        ? action === 'holdings'
-          ? 'Use the account’s explicitly unlocked reader keys to read and verify private holdings. This action uses no new passkey request and grants no spending permission.'
-          : 'Use the explicitly unlocked keys to connect the separate built-in Midnight wallet. This action uses no new passkey request and grants no ACC spending permission.'
-        : PURPOSES[action];
+    action === 'create' && context.arm === 'jubjub'
+      ? `Derive a deterministic JubJub owner from this passkey’s PRF and register it as the new account’s initial full owner. The same approved creation scope signs activation and sealed setup publications in software. Later critical actions require fresh passkey approval. ${PURPOSES.create}`
+      : context.ownerUnlocked && ownerPurpose[action]
+        ? CRITICAL_ACTIONS.has(action)
+          ? action === 'withdraw'
+            ? `A matching scoped transfer uses its approved JubJub grant without a passkey. Owner transfers require fresh passkey approval before the JubJub signature. ${ownerPurpose[action]}`
+            : `Require fresh passkey approval before this critical action uses the authenticated JubJub owner. ${ownerPurpose[action]}`
+          : `Use the authenticated JubJub owner with no new passkey request. ${ownerPurpose[action]}`
+        : context.routineUnlocked && (action === 'holdings' || action === 'wallet')
+          ? action === 'holdings'
+            ? 'Use the account’s explicitly unlocked reader keys to read and verify private holdings. This action uses no new passkey request and grants no spending permission.'
+            : 'Use the explicitly unlocked keys to connect the separate built-in Midnight wallet. This action uses no new passkey request and grants no ACC spending permission.'
+          : PURPOSES[action];
   if (!purpose) return true;
   active = {
     action,
@@ -220,6 +222,7 @@ function operationDetails(consent: ActiveConsent): string {
   const { action, context, purpose } = consent;
   const accountReview = reviewedAccount(action, context);
   const routine =
+    action === 'create' ||
     action === 'unlockOwner' ||
     action === 'unlockRoutine' ||
     action === 'open' ||

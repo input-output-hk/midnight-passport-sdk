@@ -458,3 +458,21 @@ teardown throws.
 An unavailable selected deposit asset stays selected with funding disabled; refresh never
 switches it to another asset. A current availability-read failure also disables deposits
 until a successful refresh, preserving the asset list and withdrawal choices.
+
+## Source preview: signing mode and shared creation scope (after RC8)
+
+Issue [#304](https://github.com/input-output-hk/midnight-passport-sdk/issues/304) adds
+validated passkey/JubJub comparison modes to the reference app. Default passkey signing
+retains the strict P-256 probe and its two real sealed-publication signatures. Explicit
+`?signing=jubjub` uses PRF-only registration: the deterministic Lace authoriser is the
+initial registered ACC owner, and activation/publication use software signatures inside
+one creation PRF scope. This is a new-account choice, not automatic companion enrollment.
+
+The sign-up consent includes its routine lifetime. A new optional confirmed-creation
+handoff adopts derived reader/wallet seed material before that scope exits. Raw PRF and
+owner keys are not cached, wallet connection is explicit, and later critical approvals,
+scoped grants and original unknown-result fences are unchanged. Generic SDK hosts opt
+in to handoffs; the default adapters do not start a cache. Additive WebAuthn registration
+and account/browser handoff APIs are source preview, absent from RC8. No contract or
+key-recipe change. Software/generated-contract and synthetic browser evidence remains
+separate from genuine provider, native proof and released-package qualification.

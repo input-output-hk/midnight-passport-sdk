@@ -37,6 +37,16 @@ export async function checkSignedOutHomeReturnsFromDemoTools(
   assert.equal(await owner.locator('#workspace-audit').isVisible(), true);
   await navClick(owner, '#brand-home');
   assert.equal(await owner.locator('#main').getAttribute('data-landing'), 'true');
+  await navClick(owner, '#settings-tab-developer');
+  assert.match(
+    await owner.locator('#signing-mode-label').innerText(),
+    h.arm === 'p256' ? /direct P-256/ : /software signatures/,
+  );
+  assert.match(
+    (await owner.locator('#signing-mode-jubjub').getAttribute('href')) ?? '',
+    /signing=jubjub/,
+  );
+  await navClick(owner, '#brand-home');
   assert.equal(calls.length, 0);
   assert.equal(
     await owner.evaluate(
