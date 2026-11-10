@@ -30,6 +30,20 @@ contexts. Resume preserves the original key, plan bytes and waves rather than
 creating a replacement authority. Primitive platform-global casts and other
 remaining measured debt stay explicit.
 
+## Hosted CI timing
+
+Functional CI and its latency budget are separate checks. PR320 passed 22 checks,
+and three repeated complete warm attempts observed exact dependency-cache hits in
+all 45 substantive job executions. Package jobs still took 43–83 seconds and browser jobs
+48–92 seconds, so the 30–45 second goal remains open. Fresh builds, integrity checks, all test
+assertions and both credential arms remain required.
+
+The first source follow-up splits one slow 14-case publication test into three
+semantic files, preserving each case and its fresh fixture. Its performance benefit
+needs a new hosted measurement. See the [CI policy and measured runs](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/ci.md#pr320-hosted-cache-validation)
+for sample identities, whole-job costs and evidence limits. The published package
+API and RC9 release claims are unchanged.
+
 ## Choose the right evidence
 
 | Check | Establishes | Does not establish |

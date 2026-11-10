@@ -164,6 +164,52 @@ The30–45s target remains open: require at least three successful matching-sour
 matching-workflow runs with exact cache hits and every required job within45s.
 Do not infer a pass from body-only timings, mixed heads or an unexecuted warmer.
 
+### PR320 hosted cache validation
+
+[PR320](https://github.com/input-output-hk/midnight-passport-sdk/pull/320) passed all
+22 checks before merging. The prototype's trusted dependency warmer then passed
+at merge `1e4ef5f`. The original complete PR workflow was rerun at the same actual
+checkout for [attempt2](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/42911265471/attempts/2),
+[attempt3](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/42911265471/attempts/3)
+and [attempt4](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/42911265471/attempts/4).
+All three passed, with exact cache hits in all 45 substantive job executions.
+Every job still ran fresh installation, catalog/CAS verification, builds and its
+existing assertions. All four package profiles and eight browser receipts were
+retained for each warm attempt; the 36 ZIP digests match GitHub's artifact metadata.
+
+Observed whole-job times, including preparation and post steps:
+
+| Lane | Cold attempt1 | Three exact-hit warm attempts |
+| --- | --- | --- |
+| Lint and format | 44 s | 28–39 s |
+| Build and all types | 47 s | 45–50 s |
+| Applications/key service | 36 s | 38–48 s |
+| Four package shards | 48–87 s | 43–83 s |
+| Eight browser cells | 49–91 s | 48–92 s |
+
+Cache reuse and integrity passed; the 45-second latency target remains **unmet**.
+These samples do not establish a causal cache speedup or a universal cold/warm
+budget. Source-native, registry, image and provider lanes keep separate budgets.
+On reruns, offsets from the original run's creation include earlier attempts;
+the job's registered-to-start interval still combines queue/runner allocation.
+
+The profiles report actual checkout `d9480f6`, distinct from API PR head `998d8a7`.
+GitHub's immutable Git data confirms that checkout's whole tree equals the signed
+merged tree. This complements profile/test/workflow hashes; the API-only collector
+still leaves the executed workflow identity unverified and cannot establish
+repeated target acceptance by itself.
+
+### First measured scheduling follow-up
+
+The original publication-contract file alone took 50.47 seconds in its hosted cold profile.
+The source follow-up separates its 14 existing cases into publication/continuation,
+refusal and observer/lookup files. Every registration body, parameter and assertion
+is retained, and every test still obtains its own real generated-account fixture.
+No production package, test timeout, four-way Node shard policy or browser flow is
+changed. A new complete hosted profile is required before claiming an improvement.
+The case-by-case browser timing is a checkpoint delta including intervening setup;
+dependent flows must not be divided by apparent case duration alone.
+
 ### Docker build layers
 
 Service and funding PR image checks use BuildKit's GitHub cache backend, with
