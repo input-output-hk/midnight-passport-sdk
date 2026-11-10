@@ -106,3 +106,10 @@ validation stops at the first malformed item and emits one schema issue rather
 than accumulating an issue for every invalid ID. Positive confirmation and
 instrumented zero/multiple-record and malformed-ID controls cover these guards;
 invalid observations still remain unknown and never enter ledger decoding.
+
+## Follow-up delivery
+
+The owner requested the remaining P-256/demo decomposition and native bridge typing.
+The [follow-up review map](quality-debt-2026-11-10.md) records that implementation,
+its reduced budgets and required acceptance. This report's before/after metrics
+and earlier independent-review findings retain their original candidate scope.

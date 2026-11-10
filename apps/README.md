@@ -835,3 +835,13 @@ text before conversion. Host finality reads bound headers/body observations and
 JSON bytes, validate successful records and retain unknown outcomes on refusal.
 Neither a failed read nor a local timeout proves that a mutation did not submit.
 These source checks do not qualify a new Docker image or native/provider flow.
+
+## Reference host code structure
+
+The demo composes typed action controllers and per-instance presentation models;
+`app.ts` retains consent, receipt and lifecycle wiring. The Node service separates
+reference module admission, typed v9 contracts, mutation preparation and retained
+plan continuation. No runtime ledger constructor is replaced by a workspace import,
+and a recovered plan retains its original key, bytes and waves. The
+[quality review map](../docs/review/quality-debt-2026-11-10.md) distinguishes source,
+offline-ledger, browser and native/image qualification.

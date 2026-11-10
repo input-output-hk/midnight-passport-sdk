@@ -57,3 +57,16 @@ validates the record with the existing pinned Zod version. Header/body aborts an
 invalid observations remain unknown outcomes. Funding policy and tagged value amounts
 bound decimal length before BigInt conversion, preserving Uint128/Uint256 maxima.
 See the [quality guide]({{ '/quality/' | relative_url }}) for the scope and gates.
+
+## Typed operation and reference-host decomposition
+
+Source after RC8 separates P-256 operations, reference app controllers and DOM
+presentation, and the native reference loader/driver. Public account signatures,
+key recipes, circuit order, fresh critical approval, scoped-transfer restrictions
+and exact-value shielded withdrawal guards remain. The native bridge now uses
+actual v9 types and checked retained contexts; resume does not replan or create a
+replacement authority. This cleanup adds no package or framework requirement.
+
+The [review map](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/quality-debt-2026-11-10.md)
+identifies source, synthetic browser and offline-ledger regressions. Native proof,
+provider, installed-consumer and image/release acceptance remain separate evidence.

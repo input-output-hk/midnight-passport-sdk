@@ -18,13 +18,9 @@
     },
     "packages/account/src/connector.ts": {
       "ceilings": {
-        "lines": 763,
-        "functionLines": 673,
-        "complexity": 15,
-        "nonNull": 13,
         "unsafeCasts": 2
       },
-      "reason": "O4 wave9: typed activation, sealed-reader readiness/publication and account-open phases preserve late host-record reads, flow/session boundaries and durable effect IDs. Actual connector1057\u2192763lines, factory949\u2192673, non-null16\u219213; existing complexity15/unsafe2 unchanged. Remaining factory debt cannot grow. New helpers use defaults. See docs/review/overnight-quality/README.md."
+      "reason": "QA7 (2026-11-10): P-256 observation, transfers, private access, grants and composition extracted into typed bounded operations. Root153lines/108factory span; all size/complexity/non-null debt removed. Two unchanged platform-global casts remain explicit at the neutral timer/crypto boundary; no new operation inherits them. See docs/review/quality-debt-2026-11-10.md."
     },
     "packages/account/src/durable-mutations.ts": {
       "ceilings": {
@@ -322,11 +318,9 @@
     },
     "apps/passport-dapp/src/app.ts": {
       "ceilings": {
-        "lines": 1398,
-        "nonNull": 15,
-        "unsafeCasts": 3
+        "unsafeCasts": 2
       },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+      "reason": "QA8 (2026-11-10): app controllers and presentation separated with explicit typed host/state wiring. Root below600lines, all functions below150 and no non-null assertions. Two pre-existing browser credential/connector discovery casts remain at this host boundary only. New controllers use zero-escape defaults. See docs/review/quality-debt-2026-11-10.md."
     },
     "apps/passport-dapp/src/capabilities.ts": {
       "ceilings": {
@@ -434,15 +428,6 @@
       },
       "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
     },
-    "apps/passport-dapp/src/ui.ts": {
-      "ceilings": {
-        "lines": 1042,
-        "functionLines": 932,
-        "complexity": 51,
-        "nonNull": 1
-      },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
-    },
     "apps/passport-dapp/src/workspace-pages.ts": {
       "ceilings": {
         "nonNull": 5
@@ -456,22 +441,6 @@
         "nonNull": 11
       },
       "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
-    },
-    "apps/passport-service/src/host-driver.ts": {
-      "ceilings": {
-        "functionLines": 274,
-        "complexity": 54,
-        "explicitAny": 16,
-        "nonNull": 12
-      },
-      "reason": "QA3: existing native reference-ledger bridge enters the AST gate for the first time. Baseline2259102 has274factory lines/complexity54/17explicit-any/13non-null. Confirmation transport extracted to typed bounded schema;16/12remain. These measured legacy ceilings must not grow. Full structural typing and phase extraction require a separately scoped native qualification; no new module inherits this exception. See docs/review/pre-rc-quality-2026-11-10.md."
-    },
-    "apps/passport-service/src/reference-backend.ts": {
-      "ceilings": {
-        "functionLines": 164,
-        "explicitAny": 3
-      },
-      "reason": "QA3: pre-existing dynamic native-module composition enters static inventory. Preserve measured164line factory and3explicit runtime-module escapes until its native requalification slice. New app modules remain at zero escape defaults; this is explicit existing debt, not an allowance for new untyped modules. See docs/review/pre-rc-quality-2026-11-10.md."
     }
   }
 }

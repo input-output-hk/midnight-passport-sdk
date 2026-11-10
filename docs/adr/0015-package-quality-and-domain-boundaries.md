@@ -107,3 +107,19 @@ qualification; moving or renaming that debt cannot erase it. All new operations,
 transport parsers and app modules use the default size/complexity and zero unsafe
 escape limits. The JubJub connector's previous ceilings decrease after extracting
 cohesive typed phases. See the pre-RC audit for before/after evidence.
+
+## Follow-up: retire measured composition and dynamic-type debt
+
+The P-256 and reference demo roots now delegate coherent operations/controllers
+to typed contexts. Their file/function exceptions are removed. The native driver
+and loader use actual v9 types, explicit module capability admission and decoded
+retained JSON contexts; their dynamic-any/size exceptions are removed as well.
+The earlier measured ceilings above describe the initial inventory, not current
+permission to reintroduce that debt. New modules keep default budgets.
+
+Keep type-only ledger declarations distinct from the runtime module resolved by
+the reference tree. The deploy builder's minimal seam preserves its current
+constructor-generated signing key rather than inventing one to fit an upstream
+options declaration. Context decoding must not rewrite pending plans, reset IDs
+or replan/re-key a deployment. Native proof/image and provider evidence remain
+separate from type checks and offline serialization tests.

@@ -221,3 +221,17 @@ or a service read fails. It uses the public ACC refresh action, needs no passkey
 and preserves your selected token. An unknown deposit retains its original ID
 regardless of availability recovery. Navigation, cancellation and refresh do not
 resolve that transfer; reconcile it separately in Audit.
+
+## Reference implementation module map
+
+`app.ts` wires the demo's consent, durable receipts, routine access and lifecycle.
+Typed entry/device/grant/transfer/wallet controllers implement individual actions
+over injected host dependencies and app-owned state. `ui.ts` exposes the existing
+bound presentation methods; separate controls, Activity/Audit and account-card
+renderers read one per-instance presentation model. Wallet creation remains lazy
+and uses the existing worker composition. No controller bypasses credential
+review, original-ID recovery or stale-result checks.
+
+These files demonstrate one browser composition. Use the
+[SDK integration guide]({{ '/library-guide/' | relative_url }}) for reusable package
+contracts; other hosts need not adopt this DOM layout or controller structure.

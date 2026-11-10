@@ -95,12 +95,14 @@ across the consumer tools now use structural types. The exception is debt, not a
 exemption for generated templates or future consumer modules. Case admission and
 archive PAX/path validation are now separate bounded functions.
 The current source also checks backend app sources, including the key server's JavaScript,
-and the architecture checker itself. Two measured exceptions retain the existing
-native reference driver's and loader's dynamic-runtime debt. Their exact bounds
-are recorded in the policy; new backend modules get the normal zero-escape defaults.
-The [pre-RC audit](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/pre-rc-quality-2026-11-10.md)
-records why full native-bridge typing needs separate qualification. Public package
-sources introduce no explicit `any` allowance.
+and the architecture checker itself. The follow-up decomposition removes the native
+driver/loader dynamic-runtime exceptions and the P-256/demo size/function exceptions.
+Typed operations, app controllers and native boundary modules use default budgets;
+unchanged primitive platform-global casts remain explicitly measured at their
+original entry points. See the
+[follow-up review map](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/quality-debt-2026-11-10.md)
+for responsibilities and regression scope. Public package sources introduce no
+explicit `any` allowance. Typing does not replace native or provider qualification.
 
 Dependency checks parse literal imports, re-exports, type imports and `require`
 expressions with the TypeScript AST. Neutral packages reject both `node:fs` and

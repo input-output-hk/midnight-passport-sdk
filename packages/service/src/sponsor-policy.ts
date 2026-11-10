@@ -113,6 +113,12 @@ export interface LedgerTxLike {
   imbalances(segment: number): ReadonlyMap<{ readonly tag: string }, bigint>;
 }
 
+/** Inspection needs instanceof support, not permission to construct native actions. */
+interface ActionMatchers {
+  readonly ContractCall: Pick<Function, typeof Symbol.hasInstance>;
+  readonly ContractDeploy: Pick<Function, typeof Symbol.hasInstance>;
+  readonly MaintenanceUpdate: Pick<Function, typeof Symbol.hasInstance>;
+}
 type Ctor = abstract new (...args: never[]) => unknown;
 
 /** The ledger's action classes, from the same module instance that produced the transaction. */
@@ -122,7 +128,7 @@ export interface ActionClasses {
   readonly MaintenanceUpdate: Ctor;
 }
 
-function actionView(action: unknown, classes: ActionClasses): ActionView {
+function actionView(action: unknown, classes: ActionMatchers): ActionView {
   // `instanceof` first; the structural check covers a copy of the module loaded twice.
   const isCall =
     action instanceof classes.ContractCall ||
@@ -138,7 +144,7 @@ function actionView(action: unknown, classes: ActionClasses): ActionView {
 
 const present = (v: unknown): boolean => v !== undefined && v !== null;
 
-function intentView(intent: LedgerIntentLike, classes: ActionClasses): IntentView {
+function intentView(intent: LedgerIntentLike, classes: ActionMatchers): IntentView {
   const dust = intent.dustActions;
   const hasDust = present(dust) && (dust!.spends.length > 0 || dust!.registrations.length > 0);
   return {
@@ -154,7 +160,7 @@ function intentView(intent: LedgerIntentLike, classes: ActionClasses): IntentVie
 }
 
 /** A thin adapter from a deserialised ledger transaction to the view `sponsorPolicy` reads. */
-export function viewOfLedgerTx(tx: LedgerTxLike, classes: ActionClasses): SponsorTxView {
+export function viewOfLedgerTx(tx: LedgerTxLike, classes: ActionMatchers): SponsorTxView {
   const intents = tx.intents;
   const fallible = tx.fallibleOffer;
   const segments = new Set<number>([0, ...(intents?.keys() ?? []), ...(fallible?.keys() ?? [])]);
@@ -178,7 +184,7 @@ export function viewOfLedgerTx(tx: LedgerTxLike, classes: ActionClasses): Sponso
 export interface GuardedBalanceDeps {
   /** Deserialises an unbound transaction; throws when the bytes are not one. */
   deserialize(bytes: Uint8Array): LedgerTxLike;
-  readonly classes: ActionClasses;
+  readonly classes: ActionMatchers;
   /** The addresses the sponsor funds calls to, read afresh for each request. */
   allowed(): ReadonlySet<string>;
   /** The wallet's balancing; reached only for a transaction the policy accepts. */

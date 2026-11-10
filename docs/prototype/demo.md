@@ -501,3 +501,14 @@ text before conversion. The shared audit keeps original IDs and unknown-outcome 
 no automatic mutation retry, additional passkey request or wallet startup is introduced.
 The backend apps now participate in the static AST inventory. Native reference-runtime
 typing remains explicit debt requiring its own qualification scope.
+
+## Typed controller and presentation decomposition
+
+The source-quality follow-up keeps the same screens, actions and consent policy.
+`app-model.ts` describes host state/dependencies; entry, device, grant, transfer and
+wallet action controllers own their handlers. `ui-state.ts`, `ui-controls.ts`,
+`ui-activity.ts` and `ui-cards.ts` separate public presentation and safe DOM updates.
+The root still wires receipt capture independently of rendering, exact reviews,
+key disposal and the existing background wallet. These are reference app modules,
+not additional published SDK packages. See the
+[review map](../review/quality-debt-2026-11-10.md) for compatibility and test scope.
