@@ -1,61 +1,49 @@
 // Source SDK client; original creation/funding intents remain private after interruption.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { spawn } from 'node:child_process';
-import { closeSync, existsSync, openSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { isolatedProcesses } from '../qualification/native-isolation-control.mjs';
+import { sourceProcess } from './process-client.mjs';
 import { json, object, text } from './files.mjs';
 import { probeEnvironment } from './process.mjs';
 import { MOUNTED_PORTS } from './mounted-plan.mjs';
 import { MANIFEST } from './mounted-services.mjs';
 import { mountedHttp, waitMounted } from './mounted-services.mjs';
 
-/** @param {string} repository @param {string} root @param {()=>void} check @param {(phase:string)=>void} intent */
-export function mountedClient(repository, root, check, intent) {
-  const processes = isolatedProcesses();
-  let closed = false,
-    exit = -1;
+/** @param {string} repository @param {string} root @param {()=>void} check @param {(phase:string)=>void} intent
+ * @param {{runId:string,controller:import('./process-identity.mjs').ProcessIdentity,onLaunch:(value:import('./process-client.mjs').ProcessReference)=>void}} custody */
+export function mountedClient(repository, root, check, intent, custody) {
   const evidence = join(root, 'source-client.private.json');
+  const env = {
+    ...probeEnvironment(),
+    PASSPORT_RC_LOCALNET: '1',
+    MN_NETWORK_ID: 'undeployed',
+    PASSPORT_SERVICE_URL: `http://127.0.0.1:${MOUNTED_PORTS.service}`,
+    PASSPORT_FUNDING_URL: `http://127.0.0.1:${MOUNTED_PORTS.funding}`,
+    PASSPORT_FUNDING_TOKEN_FILE: join(root, 'funding-token.private'),
+    PASSPORT_RC_EVIDENCE: evidence,
+    PASSPORT_RC_SYNTHETIC_FIXTURE: join(root, 'synthetic-owner.private.json'),
+  };
+  const owned = sourceProcess({
+    root,
+    cwd: repository,
+    program: join(repository, 'scripts/qualify-rc-localnet.mjs'),
+    env,
+    check,
+    ...custody,
+  });
   return {
-    stop: () => processes.stop(8_000).then((result) => !result.incomplete),
-    start() {
+    stop: owned.stop,
+    async start() {
       intent('create-account-outcome-unknown'); // No subsequent run may assume absence of this effect.
-      /** @type {NodeJS.ProcessEnv} */ const env = {
-        ...probeEnvironment(),
-        PASSPORT_RC_LOCALNET: '1',
-        MN_NETWORK_ID: 'undeployed',
-        PASSPORT_SERVICE_URL: `http://127.0.0.1:${MOUNTED_PORTS.service}`,
-        PASSPORT_FUNDING_URL: `http://127.0.0.1:${MOUNTED_PORTS.funding}`,
-        PASSPORT_FUNDING_TOKEN_FILE: join(root, 'funding-token.private'),
-        PASSPORT_RC_EVIDENCE: evidence,
-        PASSPORT_RC_SYNTHETIC_FIXTURE: join(root, 'synthetic-owner.private.json'),
-      };
-      for (const name of ['GITHUB_TOKEN', 'GH_TOKEN', 'NODE_OPTIONS', 'NODE_PATH', 'LD_PRELOAD'])
-        delete env[name];
-      const log = openSync(join(root, 'source-client.private.log'), 'wx', 0o600);
-      try {
-        const child = spawn(process.execPath, ['scripts/qualify-rc-localnet.mjs'], {
-          cwd: repository,
-          env,
-          detached: true,
-          stdio: ['ignore', log, log],
-        });
-        processes.register(child);
-        child.once('close', (code) => {
-          closed = true;
-          exit = code ?? -1;
-        });
-      } finally {
-        closeSync(log);
-      }
+      await owned.start();
     },
     async created() {
       await waitMounted(
         check,
         async () => {
-          assert.equal(closed, false, 'Source client exited before account confirmation');
+          assert.equal(owned.closed, false, 'Source client exited before account confirmation');
           if (!existsSync(evidence)) return false;
           const result = json(evidence);
           return result.createActivateReadReopen === 'passed';
@@ -65,8 +53,8 @@ export function mountedClient(repository, root, check, intent) {
       intent('create-activate-read-reopen-confirmed-funding-pending');
     },
     async funded() {
-      await waitMounted(check, async () => closed, 1_800_000);
-      assert.equal(exit, 0);
+      await waitMounted(check, async () => owned.closed, 1_800_000);
+      assert.equal(owned.exit, 0);
       const result = json(evidence);
       assert.equal(result.verdict, 'PASS');
       return result;

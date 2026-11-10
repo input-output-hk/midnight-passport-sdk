@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, lstatSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { nativeLeasePath } from '../qualification/native-lease.mjs';
+import { readPrivate } from './process-files.mjs';
 import {
   claimIsolationLease,
   releaseIsolationLease,
@@ -206,18 +207,33 @@ export function claimReleaseLease(owner, path = nativeLeasePath()) {
   claimIsolationLease(path, owner);
   syncDirectory(dirname(path));
   const original = lstatSync(path);
+  const recorded = readPrivate(path, 4096);
+  assert.equal(recorded.dev, original.dev);
+  assert.equal(recorded.ino, original.ino);
+  assert.deepEqual(JSON.parse(recorded.bytes.toString('utf8')), owner);
+  const identity = { dev: recorded.dev, ino: recorded.ino, sha256: recorded.sha256 };
   return {
+    identity,
     release(/** @type {boolean} */ quiescent) {
       const current = lstatSync(path);
       assert.ok(
         current.ino === original.ino && current.dev === original.dev,
         'Acquired lease was substituted',
       );
-      releaseIsolationLease(path, owner, quiescent);
+      releaseIsolationLease(path, owner, quiescent, identity);
       syncDirectory(dirname(path));
       assert.equal(existsSync(path), false);
     },
   };
+}
+
+/** Explicit takeover closes only the original acquisition, never a current replacement.
+ * @param {import('../qualification/native-isolation-files.mjs').IsolationLeaseOwner} owner
+ * @param {{dev:number,ino:number,sha256:string}} identity @param {boolean} quiescent @param {string} [path] */
+export function releaseRecordedLease(owner, identity, quiescent, path = nativeLeasePath()) {
+  releaseIsolationLease(path, owner, quiescent, identity);
+  syncDirectory(dirname(path));
+  assert.equal(existsSync(path), false);
 }
 
 /** @param {{functional:boolean,inputs:boolean,quiescent:boolean,leaseReleased:boolean}} checks */

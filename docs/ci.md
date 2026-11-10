@@ -1,6 +1,6 @@
 # CI policy and artifact caches
 
-Updated 2026/10/20. Refs #231, #235 and #236.
+Updated 2026/11/10. Refs #231, #235, #236, #271 and #313.
 
 ## Feedback budget
 
@@ -76,12 +76,93 @@ tests do not establish actual registry/image/native acceptance or hosted timing.
 
 ### Dependency downloads
 
-`pr-checks.yml` caches only `.cache/pnpm`, keyed by format, OS/architecture, Node
+`pr-checks.yml` caches only the pnpm10 `files`/`index` downloads and v2 catalog
+under `.cache/pnpm`, keyed by format(`pnpm-v2`), OS/architecture, Node
 pin, pnpm version/root manifest, workspace policy, registry config and lockfile.
 An OS/architecture prefix can reuse older downloads. Every run still installs
 with the frozen lockfile and verifies dependency integrity. `node_modules`,
 TypeScript incremental state and `dist` are rebuilt; they do not get to suppress
 checks or create stale outputs. Workspace packages are not published from CI caches.
+
+`warm-dependencies.yml` populates that same download key on trusted prototype
+pushes affecting cache inputs, or an explicit prototype dispatch. A PR's merge-ref
+cache cannot warm another PR; PRs may restore their base branch's cache
+([GitHub cache access rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)).
+The warmer isolates npm configuration from user/global credentials, rejects
+private SDK scopes and non-public registry/tarball origins, disables lifecycle
+scripts, and performs a fresh frozen install with store-integrity verification.
+It independently hashes every pnpm10 content-addressed file with SHA-512 before
+restored bytes are used and before saving. Shared PR preparation performs the same
+checks before and after installation. This detects content corruption even when
+pnpm's installation fast path accepts it. Layout/CAS admission alone does not
+prove that an index came from a lockfile tarball; trusted cache scope and fresh
+frozen package installation remain required. The v2 catalog seals index metadata
+and all cached file bytes; restores must match it before installation. Missing
+or legacy catalogs refuse, and v1 keys are not restored. This is a substitution
+detector within trusted workflow cache scope, not a publisher signature or defense
+against someone authorized to replace both cache and catalog. Unsafe cache bytes fail the job;
+they are never silently accepted as a performance optimization.
+Project symlinks (`v10/projects`), workspace outputs, private registry archives,
+secrets and prover keys are excluded from the archived paths.
+PR builds still install and build freshly; a cache hit never skips assertions.
+
+### Bounded dependency metadata
+
+The seven-day gate resolves both committed revisions and all tracked supported
+lockfiles, including nested workspaces. It deduplicates package versions and
+requests public npm metadata with four concurrent requests, at most two attempts,
+an eight-second request deadline, a thirty-second overall deadline and bounded
+responses. Unsupported lock formats, failed fetches, redirects, missing versions
+or invalid/future publish dates refuse. A deliberate security override may
+acknowledge a known recent version; it cannot replace missing age evidence.
+Metadata is not cached. The gate never reads registry credentials or executes npm.
+
+### Measure before changing scheduling
+
+Use Nix and a new private evidence directory to collect existing completed PR
+runs without dispatching, rerunning or changing any workflow:
+
+```sh
+nix develop -c pnpm ci:timing --runs "$RUN_IDS_COMMA_SEPARATED" \
+  --output "$NEW_PRIVATE_TIMING_ROOT"
+```
+
+The collector records run/attempt/head/workflow hash and all twenty jobs, including
+eight browser cells and four package shards. Job wall time, step time, preparation,
+registration offsets and unobserved queue/allocation components remain distinct.
+The API head is labelled separately from the actual merge checkout. A workflow
+hash read from the PR head does not establish the executed workflow/action bytes.
+The collector therefore never establishes repeated warm-target acceptance from
+API/log metadata alone; actual executed-source binding remains required.
+Cache state requires the pinned action's own restore output: exact hit, prefix
+fallback, miss and unknown are separate. Missing logs cannot become warm evidence.
+Raw job logs remain private; do not mirror them into handover material.
+
+Package jobs retain a second reporter artifact beside normal TAP. It records all
+test-file hashes, process-inclusive timings and counts without collecting test
+stdout, fixture data or individual test names. All original built-in Node shards
+and their assertions remain unchanged. Download a single run attempt's four
+matching artifacts and obtain an **advisory** exhaustive partition:
+
+```sh
+nix develop -c pnpm ci:plan-shards --shards 4 \
+  "$PROFILE_1" "$PROFILE_2" "$PROFILE_3" "$PROFILE_4"
+```
+
+Admission rejects stale hashes, differing source/runtime/workflow/attempt,
+overlapping or omitted files, inconsistent counts and unsuccessful samples.
+Observed process-load sums are not predictions of hosted whole-job duration.
+The command changes no CI scheduling.
+
+On 2026-11-10 the read-only baseline for merged PR319
+([run42885501844](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/42885501844))
+showed cache misses in all fifteen substantive jobs. Package jobs took48–58s,
+browser jobs51–76s. Two earlier sampled runs also had fifteen misses each, and
+the trusted prototype had no matching dependency-download cache. These are
+historical cold measurements, not acceptance of this local source change.
+The30–45s target remains open: require at least three successful matching-source,
+matching-workflow runs with exact cache hits and every required job within45s.
+Do not infer a pass from body-only timings, mixed heads or an unexecuted warmer.
 
 ### Docker build layers
 

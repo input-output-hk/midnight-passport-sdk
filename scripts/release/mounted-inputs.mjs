@@ -7,8 +7,9 @@ import { object, sha256 } from './files.mjs';
 
 export const linuxTreeProgram =
   "const f=require('fs'),c=require('crypto'),p=require('path'),h=c.createHash('sha256');let files=0,links=0;function walk(d,r=''){for(const n of f.readdirSync(d).sort()){const a=p.join(d,n),b=p.join(r,n),s=f.lstatSync(a);if(s.isDirectory())walk(a,b);else if(s.isSymbolicLink()){links++;h.update('L'+b+'\\0'+f.readlinkSync(a)+'\\n')}else if(s.isFile()){files++;h.update('F'+b+'\\0'+c.createHash('sha256').update(f.readFileSync(a)).digest('hex')+'\\n')}else throw Error('unexpected dependency entry')}}walk('/deps');console.log(JSON.stringify({sha256:h.digest('hex'),files,links}));";
-/** @param {string} repository @param {ReturnType<import('./mounted-plan.mjs').mountedPlan>} plan @param {import('./resources.mjs').ResourceOwner} owner @param {string} image @param {()=>void} check */
-export function mountedCapture(repository, plan, owner, image, check) {
+/** @param {string} repository @param {ReturnType<import('./mounted-plan.mjs').mountedPlan>} plan @param {import('./resources.mjs').ResourceOwner} owner @param {string} image @param {()=>void} check @param {string} [label] */
+export function mountedCapture(repository, plan, owner, image, check, label = 'deps') {
+  assert.match(label, /^[a-z0-9-]{1,48}$/);
   let capture = 0;
   return async () => {
     check();
@@ -18,7 +19,7 @@ export function mountedCapture(repository, plan, owner, image, check) {
     assert.equal(sha256(lock), plan.linuxDependencies.lockSha256, 'Linux lock pin differs');
     const helper = owner.create(
       'container',
-      `passport-${owner.runId}-deps-${++capture}`,
+      `passport-${owner.runId}-${label}-${++capture}`,
       [
         '--platform',
         'linux/amd64',
