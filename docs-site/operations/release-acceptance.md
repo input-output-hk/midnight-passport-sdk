@@ -129,9 +129,49 @@ its ID. Every inventory read, dispatch intent and reply is retained. Bounded wai
 transport errors, missing or mismatched reply IDs and unknown outcomes stop qualification.
 
 Retain the complete ledger transaction identifier, including its tag, for deposit
-reconciliation. Parent hard-kill recovery remains a manual operator task: a retained
-lease is not proof of subprocess closure. Durable child process identity/closure
-records are a follow-up; this lane does not claim tested parent-SIGKILL recovery.
+reconciliation. A retained lease alone never proves subprocess closure.
+
+### Reconcile an interrupted controller
+
+**Source preview after RC9, repository tooling only.** New mounted runs use a
+schema-2 journal. Before account work, the controller saves a launch intent and
+the worker records its own process/start identity. A private authenticated local
+channel admits one GO; recovery uses that channel only to request self-exit.
+Neither process names nor an observed PID authorize an external OS signal.
+
+If the controller is gone, independently record the original `journal.json`
+SHA-256. Keep the signed source, compiled outputs, dependencies, reference export
+and keys frozen. Select the original private output directory and recorded hash:
+
+```sh
+PASSPORT_RECONCILE_MOUNTED=1 PASSPORT_RC_LOCALNET=1 MN_NETWORK_ID=undeployed \
+  nix develop -c pnpm reconcile:mounted \
+  --original "$ORIGINAL_MOUNTED_ROOT" --sha256 "$ORIGINAL_JOURNAL_SHA256"
+```
+
+The command refuses a live original controller, mismatched daemon, replaced lease
+or changed original journal. It obtains an exclusive recovery claim, asks the
+original source client to exit, stops only owned compute, checks original inputs
+and releases only the original acquired lease. It preserves the original journal,
+account/funding fixtures, volumes, IDs and request outcomes. It never sends GO,
+creates an account, retries a deposit or imports the account client.
+
+The new `reconciliation/summary.json` may report `RECONCILED_INTERRUPTION` with
+`functional: false`. That means infrastructure closure and input equality; it is
+not functional qualification, transaction rollback or permission to resubmit.
+Read the original intent and chain/service evidence separately before deciding
+what happened to a transaction.
+
+Missing control/identity records, an unresponsive worker, unknown group members,
+late Docker effects, input drift or failed cleanup retain uncertainty and the
+native lease. There is no PID-kill fallback. A killed/failed reconciler leaves its
+exclusive claim; another invocation refuses rather than adopting it. Preserve all
+records for manual review. Old schema-1 attempts also require manual review;
+recovery does not fabricate retrospective process or lease custody.
+
+Tests with synthetic processes, actual mounted hard-kill receipts and installed
+release/provider evidence remain separate. A command's availability is not proof
+that a particular release or operator attempt passed it.
 
 ## CI and integration boundaries
 

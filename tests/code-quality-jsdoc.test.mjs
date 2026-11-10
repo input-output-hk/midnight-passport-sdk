@@ -113,6 +113,7 @@ test('actual inventory CLI refuses nested consumer JSDoc any and wildcard under 
     mkdirSync(join(root, 'apps/passport-dapp/e2e/journeys'), { recursive: true });
     write('scripts/code-quality-budgets.json', '{"files":{}}');
     mkdirSync(join(root, 'scripts/release'));
+    mkdirSync(join(root, 'scripts/ci'));
     write('scripts/architecture-source.mjs', 'export const parser=1;');
     write('scripts/lint-boundaries.mjs', 'export const boundaries=1;');
     const path = 'scripts/consumer/new/nested.mjs';

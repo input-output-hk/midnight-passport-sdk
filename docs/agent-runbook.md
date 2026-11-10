@@ -456,6 +456,14 @@ an occupied descriptor, clear a lease or replay an account/funding operation.
 The source client saves a private synthetic identity and original intent before
 dispatch, but interrupted creation is not an automatic resumable-account API.
 
+New schema-2 runs also save an immutable launch intent, the worker's own kernel
+start identity and original lease inode/content pin. Parent hard-kill cleanup is
+explicit: read [interrupted-controller reconciliation](../docs-site/operations/release-acceptance.md#reconcile-an-interrupted-controller)
+before `reconcile:mounted`. Supply the independently recorded original journal
+hash and leave physical inputs frozen until final hashes and exact lease release.
+No external PID/group signal or account/funding replay is allowed. An interrupted
+reconciler retains its exclusive claim; old journals cannot be automatically adopted.
+
 The final fence includes source/dist, physical SDK/reference trees, binding,
 streamed keys and Linux dependency-volume bytes/identity. Cleanup-time fingerprint
 helpers also require closure. PASS/exit0 requires functional assertions, unchanged

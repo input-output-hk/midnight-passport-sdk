@@ -9,6 +9,16 @@ import { ISOLATED_PORTS } from '../qualification/native-isolation-profile.mjs';
 import { MOUNTED_PORTS } from './mounted-plan.mjs';
 import { command } from './process.mjs';
 
+/** @param {string} output @param {number} memory @param {()=>bigint} [diskBytes] */
+export function mountedCapacity(output, memory, diskBytes) {
+  const disk = statfsSync(dirname(output));
+  assert.ok(
+    (diskBytes?.() ?? BigInt(disk.bavail) * BigInt(disk.bsize)) >= 15n * 1024n ** 3n,
+    '15 GiB free disk required',
+  );
+  assert.ok(memory >= 24 * 1024 ** 3, '24 GiB Docker memory required');
+}
+
 /** @param {string} repository @param {string} expected */
 async function sourceCheck(repository, expected) {
   const source = await workspaceIdentity(repository);
@@ -27,12 +37,7 @@ async function sourceCheck(repository, expected) {
 export async function preflightMounted(repository, plan, output, engine, probes = {}) {
   const root = sessionOutputPath(output, [repository, plan.contract]);
   assert.equal(existsSync(root), false, 'Occupied attempt must be reconciled, never overwritten');
-  const disk = statfsSync(dirname(root));
-  assert.ok(
-    (probes.diskBytes?.() ?? BigInt(disk.bavail) * BigInt(disk.bsize)) >= 15n * 1024n ** 3n,
-    '15 GiB free disk required',
-  );
-  assert.ok(engine.info.MemTotal >= 24 * 1024 ** 3, '24 GiB Docker memory required');
+  mountedCapacity(root, engine.info.MemTotal, probes.diskBytes);
   await (probes.source ?? sourceCheck)(repository, plan.source);
   const dependencyVolume = JSON.parse(
     engine.docker(['volume', 'inspect', plan.linuxDependencies.volume]).stdout,

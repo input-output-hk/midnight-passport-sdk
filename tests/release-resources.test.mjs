@@ -176,7 +176,7 @@ test('occupied evidence root and durable journal preserve earlier attempt bytes'
 });
 
 test('identical-content substituted lease is refused; original own lease releases only after quiescence', () => {
-  const root = mkdtempSync(join(tmpdir(), 'release-lease-')),
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'release-lease-'))),
     path = join(root, 'lease');
   const owner = { runId, pid: process.pid, project: 'test', root };
   try {

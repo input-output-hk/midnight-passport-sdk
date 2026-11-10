@@ -21,6 +21,7 @@ function fixture() {
   write('apps/passport-dapp/src/app.ts', 'export const app = 1;');
   write('scripts/consumer/index.mjs', 'export const entry = 1;');
   mkdirSync(join(root, 'scripts/release'));
+  mkdirSync(join(root, 'scripts/ci'));
   write('scripts/architecture-source.mjs', 'export const parser = 1;');
   write('scripts/lint-boundaries.mjs', 'export const boundary = 1;');
   write('apps/passport-dapp/e2e/demo-journeys.e2e.ts', 'export const run = 1;');

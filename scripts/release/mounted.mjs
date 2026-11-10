@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { readFileSync, realpathSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   isolationProfile,
@@ -14,13 +14,15 @@ import { isolatedContainerArguments } from '../qualification/native-isolated-sta
 import { dedicatedIndexerReadiness } from '../qualification/indexer-readiness.mjs';
 import { mountedPlan } from './mounted-plan.mjs';
 import { preflightMounted } from './mounted-preflight.mjs';
-import { freshRoot, object, put, saveJournal, sha256 } from './files.mjs';
+import { freshRoot, object, saveJournal, sha256 } from './files.mjs';
 import { localDocker } from './docker.mjs';
 import { ResourceOwner, claimReleaseLease } from './resources.mjs';
 import { mountedInterval } from './mounted-interval.mjs';
 import { mountedCapture } from './mounted-inputs.mjs';
 import { mountedServices, waitMounted } from './mounted-services.mjs';
 import { mountedClient, repeatedFunding } from './mounted-client.mjs';
+import { writeMountedSummary } from './mounted-summary.mjs';
+import { observeProcess } from './process-identity.mjs';
 
 const REPOSITORY = realpathSync(resolve(import.meta.dirname, '../..'));
 /** @param {ReturnType<typeof mountedPlan>} plan @param {ResourceOwner} owner @param {string} root @param {()=>void} check */
@@ -107,6 +109,10 @@ export async function runMounted(input, output, env = process.env) {
   freshRoot(root);
   const runId = randomBytes(8).toString('hex'),
     project = `mn-passport-joblife-${runId}`;
+  const controller = observeProcess(process.pid);
+  assert.ok(controller, 'Controller identity required before acquiring a lease');
+  /** @type {import('./process-client.mjs').ProcessReference|null} */ let clientLaunch = null;
+  /** @type {{dev:number,ino:number,sha256:string}|null} */ let leaseIdentity = null;
   /** @type {import('./mounted-interval.mjs').IntervalReceipt} */
   const receipt = {
     verdict: 'IN_PROGRESS',
@@ -119,7 +125,7 @@ export async function runMounted(input, output, env = process.env) {
   const owner = new ResourceOwner(runId, engine.docker, () => save());
   const save = () =>
     saveJournal(root, {
-      schema: 1,
+      schema: 2,
       kind: 'mounted-production-source-client',
       runId,
       project,
@@ -127,6 +133,9 @@ export async function runMounted(input, output, env = process.env) {
       daemonId: engine.daemonId,
       endpoint: engine.endpoint,
       dependencyVolume,
+      controller,
+      leaseIdentity,
+      clientLaunch,
       resources: owner.resources,
       pending: owner.pending,
       cleanup: owner.cleanupChecks,
@@ -134,6 +143,7 @@ export async function runMounted(input, output, env = process.env) {
       receipt,
     });
   const lease = claimReleaseLease({ runId, pid: process.pid, project, root });
+  leaseIdentity = lease.identity;
   save();
   let interrupted = false;
   const interrupt = () => {
@@ -146,10 +156,23 @@ export async function runMounted(input, output, env = process.env) {
     assert.equal(interrupted, false, 'Mounted run interrupted');
     assert.ok(performance.now() < end, 'Mounted work deadline expired');
   };
-  const client = mountedClient(REPOSITORY, root, check, (phase) => {
-    operations.push({ phase, at: new Date().toISOString() });
-    save();
-  });
+  const client = mountedClient(
+    REPOSITORY,
+    root,
+    check,
+    (phase) => {
+      operations.push({ phase, at: new Date().toISOString() });
+      save();
+    },
+    {
+      runId,
+      controller,
+      onLaunch: (value) => {
+        clientLaunch = value;
+        save();
+      },
+    },
+  );
   try {
     let captureCount = 0;
     const cleanupGuard = () =>
@@ -177,7 +200,7 @@ export async function runMounted(input, output, env = process.env) {
         const services = mountedServices(plan, owner, root, profile.project, check);
         services.initialize();
         await services.service();
-        client.start();
+        await client.start();
         await client.created();
         await services.funding();
         const result = await client.funded();
@@ -195,30 +218,13 @@ export async function runMounted(input, output, env = process.env) {
   } finally {
     process.removeListener('SIGINT', interrupt);
     process.removeListener('SIGTERM', interrupt);
-    put(
-      join(root, 'summary.json'),
-      JSON.stringify(
-        {
-          kind: 'mounted-production-source-client',
-          source: plan.source,
-          runnerSha256: sha256(readFileSync(fileURLToPath(import.meta.url))),
-          verdict: receipt.verdict,
-          functional: receipt.functional,
-          inputsUnchanged: receipt.inputsUnchanged,
-          quiescent: receipt.quiescent,
-          leaseReleased: receipt.leaseReleased,
-          resources: owner.resources.map(({ kind, id, createdAt }) => ({ kind, id, createdAt })),
-          retainedVolumes: owner.resources.filter((row) => row.kind === 'volume').length + 1,
-          syntheticCredentials: true,
-          registryInstalledNative: false,
-          jobBackedImageFaults: false,
-          realProvider: false,
-          fullLace: false,
-        },
-        null,
-        2,
-      ) + '\n',
-    );
+    writeMountedSummary({
+      root,
+      source: plan.source,
+      runnerSha256: sha256(readFileSync(fileURLToPath(import.meta.url))),
+      receipt,
+      resources: owner.resources,
+    });
   }
 }
 

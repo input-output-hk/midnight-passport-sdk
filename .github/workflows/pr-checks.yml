@@ -196,9 +196,24 @@ jobs:
       - name: Fresh package outputs (script types run in build_types)
         run: pnpm exec tsc -b tsconfig.build.json
       - name: Run every package test through Node's disjoint file shards
+        env:
+          PASSPORT_PACKAGE_TIMING: '1'
+          PASSPORT_PACKAGE_SHARD: ${{ matrix.shard }}/4
+          PASSPORT_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           node -e "if(require('node:fs').globSync('tests/**/*.test.mjs').length < 4){console.error('expected at least four test files for four nonempty shards');process.exit(1)}"
-          node --test --test-shard=${{ matrix.shard }}/4 "tests/**/*.test.mjs"
+          node --test --test-shard=${{ matrix.shard }}/4 --test-reporter=tap --test-reporter=./scripts/ci/package-timing-reporter.mjs --test-reporter-destination=stdout --test-reporter-destination="$RUNNER_TEMP/package-profile.json" "tests/**/*.test.mjs"
+      - name: Retain actual per-file package timings
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: package-profile-${{ matrix.shard }}
+          path: ${{ runner.temp }}/package-profile.json
+          archive: true
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: false
+          overwrite: false
 
   # Preserve the required check name. A failed, cancelled or skipped dependency fails it.
   build-lint-test:

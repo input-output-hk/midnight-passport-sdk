@@ -1,0 +1,71 @@
+name: Warm public dependency downloads
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [passport-acc-prototype]
+    paths:
+      - .github/workflows/warm-dependencies.yml
+      - .github/actions/prepare-workspace/action.yml
+      - scripts/ci/public-cache.mjs
+      - scripts/ci/lock-versions.mjs
+      - scripts/ci/store-content.mjs
+      - scripts/ci/store-seal.mjs
+      - .nvmrc
+      - .npmrc
+      - package.json
+      - pnpm-workspace.yaml
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: warm-public-downloads-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  public-downloads:
+    if: github.ref == 'refs/heads/passport-acc-prototype'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      NPM_CONFIG_USERCONFIG: /dev/null
+      NPM_CONFIG_GLOBALCONFIG: /dev/null
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+      - name: Admit public download inputs before cache access
+        run: node scripts/ci/public-cache.mjs inputs "$GITHUB_WORKSPACE"
+      - name: Restore eligible public downloads
+        id: downloads
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            .cache/pnpm/v10/files
+            .cache/pnpm/v10/index
+            .cache/pnpm/.passport-downloads-v2.json
+          key: pnpm-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.nvmrc', 'package.json', 'pnpm-workspace.yaml', '.npmrc', 'pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-v2-${{ runner.os }}-${{ runner.arch }}-
+      - name: Fresh frozen install verifies restored/downloaded package integrity
+        run: |
+          node scripts/ci/public-cache.mjs restored "$GITHUB_WORKSPACE/.cache/pnpm"
+          corepack enable
+          pnpm install --frozen-lockfile --prefer-offline --ignore-scripts --ignore-pnpmfile --verify-store-integrity --store-dir "$GITHUB_WORKSPACE/.cache/pnpm"
+      - name: Refuse unsafe or unbounded cache contents
+        run: node scripts/ci/public-cache.mjs seal "$GITHUB_WORKSPACE/.cache/pnpm"
+      - name: Save only after both input and store admission pass
+        if: steps.downloads.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            .cache/pnpm/v10/files
+            .cache/pnpm/v10/index
+            .cache/pnpm/.passport-downloads-v2.json
+          key: ${{ steps.downloads.outputs.cache-primary-key }}
