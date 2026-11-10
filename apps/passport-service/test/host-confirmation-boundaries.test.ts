@@ -1,0 +1,136 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { readHostConfirmation, type HostConfirmationRuntime } from '../src/host-confirmation.ts';
+
+test('confirmation schema and byte limits refuse malformed observations before decoding a transaction', async () => {
+  const identifier = '00' + '22'.repeat(32);
+  const hash = '11'.repeat(32);
+  const record = {
+    __typename: 'RegularTransaction',
+    protocolVersion: 2001000,
+    transactionResult: { status: 'SUCCESS' },
+    identifiers: [identifier],
+    hash,
+    raw: 'aa',
+    block: { height: 0 },
+  };
+  const step = { tx: 'aa', identifiers: [identifier], phase: 'dispatching' as const };
+  let decodes = 0;
+  let fetches = 0;
+  const runtime: HostConfirmationRuntime = {
+    indexerUrl: 'http://fixture',
+    versionOfRecord: () => 'v9',
+    ledger: {
+      Transaction: {
+        deserialize() {
+          decodes++;
+          return { identifiers: () => [identifier], transactionHash: () => hash };
+        },
+      },
+    },
+    fetch: async () => {
+      fetches++;
+      return new Response(JSON.stringify({ data: { transactions: [record] } }));
+    },
+  };
+  assert.deepEqual(await readHostConfirmation(step, runtime), {
+    identifier,
+    txHash: hash,
+    blockHeight: 0,
+    succeeded: true,
+  });
+  assert.equal(decodes, 1);
+  for (const value of [
+    null,
+    [],
+    { errors: ['unavailable'], data: { transactions: [record] } },
+    { data: { transactions: [record, record] } },
+    { data: { transactions: [{ ...record, raw: 'a' }] } },
+    { data: { transactions: [{ ...record, hash: 'broken' }] } },
+    { data: { transactions: [{ ...record, block: { height: Number.MAX_SAFE_INTEGER + 1 } }] } },
+  ]) {
+    assert.equal(
+      await readHostConfirmation(step, {
+        ...runtime,
+        fetch: async () => new Response(JSON.stringify(value)),
+      }),
+      undefined,
+    );
+  }
+  assert.equal(
+    await readHostConfirmation(step, {
+      ...runtime,
+      fetch: async () =>
+        new Response(JSON.stringify({ data: { transactions: [record] } }), {
+          headers: { 'content-length': String(17 * 1024 * 1024 + 1) },
+        }),
+    }),
+    undefined,
+  );
+  assert.equal(decodes, 1, 'invalid/oversized observations never enter the ledger decoder');
+  assert.equal(await readHostConfirmation({ ...step, identifiers: [] }, runtime), undefined);
+  assert.equal(fetches, 1, 'an identity-less observation never invents a watch request');
+});
+
+test('confirmation refuses extra records and malformed identifiers without traversing rejected items', async () => {
+  const identifier = '00' + '22'.repeat(32);
+  const hash = '11'.repeat(32);
+  let inspections = 0;
+  let decodes = 0;
+  const record = {
+    get __typename() {
+      inspections++;
+      return 'RegularTransaction';
+    },
+    protocolVersion: 2001000,
+    transactionResult: { status: 'SUCCESS' },
+    identifiers: [identifier],
+    hash,
+    raw: 'aa',
+    block: { height: 0 },
+  };
+  let transactions: readonly unknown[] = [record];
+  const step = { tx: 'aa', identifiers: [identifier], phase: 'dispatching' as const };
+  const runtime: HostConfirmationRuntime = {
+    indexerUrl: 'http://fixture',
+    versionOfRecord: () => 'v9',
+    ledger: {
+      Transaction: {
+        deserialize() {
+          decodes++;
+          return { identifiers: () => [identifier], transactionHash: () => hash };
+        },
+      },
+    },
+    fetch: async () => new Response('{"schemaAdmissionProbe":true}'),
+  };
+  // Observe schema traversal without constructing a huge untrusted response.
+  // The real byte reader/parser runs; only this fixture's decoded value is instrumented.
+  const parse = JSON.parse;
+  JSON.parse = (text, reviver) =>
+    text === '{"schemaAdmissionProbe":true}' ? { data: { transactions } } : parse(text, reviver);
+  try {
+    assert.equal((await readHostConfirmation(step, runtime))?.succeeded, true);
+    assert.equal(inspections, 1, 'the positive control validates its one record');
+    for (const count of [0, 2, 1000]) {
+      inspections = 0;
+      transactions = Array(count).fill(record);
+      assert.equal(await readHostConfirmation(step, runtime), undefined);
+      assert.equal(inspections, 0, 'extra records are refused before per-record validation');
+    }
+    let rejectedItemReads = 0;
+    const identifiers: unknown[] = [null];
+    Object.defineProperty(identifiers, 1, {
+      get() {
+        rejectedItemReads++;
+        return null;
+      },
+    });
+    transactions = [{ ...record, identifiers }];
+    assert.equal(await readHostConfirmation(step, runtime), undefined);
+    assert.equal(rejectedItemReads, 0, 'identifier validation stops at its first invalid item');
+    assert.equal(decodes, 1, 'only the positive control enters the ledger decoder');
+  } finally {
+    JSON.parse = parse;
+  }
+});

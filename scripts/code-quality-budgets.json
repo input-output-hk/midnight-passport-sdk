@@ -18,13 +18,9 @@
     },
     "packages/account/src/connector.ts": {
       "ceilings": {
-        "lines": 763,
-        "functionLines": 673,
-        "complexity": 15,
-        "nonNull": 13,
         "unsafeCasts": 2
       },
-      "reason": "O4 wave9: typed activation, sealed-reader readiness/publication and account-open phases preserve late host-record reads, flow/session boundaries and durable effect IDs. Actual connector1057\u2192763lines, factory949\u2192673, non-null16\u219213; existing complexity15/unsafe2 unchanged. Remaining factory debt cannot grow. New helpers use defaults. See docs/review/overnight-quality/README.md."
+      "reason": "QA7 (2026-11-10): P-256 observation, transfers, private access, grants and composition extracted into typed bounded operations. Root153lines/108factory span; all size/complexity/non-null debt removed. Two unchanged platform-global casts remain explicit at the neutral timer/crypto boundary; no new operation inherits them. See docs/review/quality-debt-2026-11-10.md."
     },
     "packages/account/src/durable-mutations.ts": {
       "ceilings": {
@@ -58,12 +54,12 @@
     },
     "packages/account/src/jubjub-connector.ts": {
       "ceilings": {
-        "lines": 1083,
-        "functionLines": 938,
-        "nonNull": 15,
+        "lines": 600,
+        "functionLines": 531,
+        "nonNull": 4,
         "unsafeCasts": 2
       },
-      "reason": "O4: typed rotation preparation/publication/switch/completion phases extracted. Actual connector falls from1727lines/1563function span/complexity95/37non-null to1083/938/19/15; all new modules use default budgets. Remaining factory/type debt cannot grow. See docs/review/overnight-quality/README.md."
+      "reason": "O4: typed rotation preparation/publication/switch/completion phases extracted. Actual connector falls from1727lines/1563function span/complexity95/37non-null to1083/938/19/15; all new modules use default budgets. Remaining factory/type debt cannot grow. See docs/review/overnight-quality/README.md. QA2 (2026-11-10): checked capabilities, readiness, grants and holdings extracted as typed bounded operations. Actual root594lines/531factory span/complexity19/4non-null; every new module stays within defaults. See docs/review/pre-rc-quality-2026-11-10.md."
     },
     "packages/account/src/jubjub-device.ts": {
       "ceilings": {
@@ -322,11 +318,9 @@
     },
     "apps/passport-dapp/src/app.ts": {
       "ceilings": {
-        "lines": 1398,
-        "nonNull": 15,
-        "unsafeCasts": 3
+        "unsafeCasts": 2
       },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+      "reason": "QA8 (2026-11-10): app controllers and presentation separated with explicit typed host/state wiring. Root below600lines, all functions below150 and no non-null assertions. Two pre-existing browser credential/connector discovery casts remain at this host boundary only. New controllers use zero-escape defaults. See docs/review/quality-debt-2026-11-10.md."
     },
     "apps/passport-dapp/src/capabilities.ts": {
       "ceilings": {
@@ -430,15 +424,6 @@
     },
     "apps/passport-dapp/src/settings-workspace.ts": {
       "ceilings": {
-        "nonNull": 1
-      },
-      "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
-    },
-    "apps/passport-dapp/src/ui.ts": {
-      "ceilings": {
-        "lines": 1042,
-        "functionLines": 932,
-        "complexity": 51,
         "nonNull": 1
       },
       "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."

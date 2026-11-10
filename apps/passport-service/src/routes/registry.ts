@@ -88,12 +88,12 @@ export function registryRoute(config: ServiceConfig): Route {
   return async (req, res, url) => {
     if (!url.pathname.startsWith('/accounts/')) return false;
     const m = PATH.exec(url.pathname);
-    if (!m || m[2]!.length % 2 !== 0) {
+    const networkId = m?.[1];
+    const credentialIdHex = m?.[2];
+    if (!networkId || !credentialIdHex || credentialIdHex.length % 2 !== 0) {
       json(res, 400, { error: 'bad account path' });
       return true;
     }
-    const networkId = m[1]!;
-    const credentialIdHex = m[2]!;
     const key = `${networkId}/${credentialIdHex}`;
 
     if (req.method === 'GET') {
@@ -142,7 +142,7 @@ export function registryRoute(config: ServiceConfig): Route {
         return true;
       }
 
-      const ex = existing as NormalisedRecord;
+      const ex = existing;
 
       if (!same(rec, ex)) {
         // Different address, salt, publicKey or policy: write-once violation

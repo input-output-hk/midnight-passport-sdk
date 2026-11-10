@@ -79,6 +79,20 @@ your UI without adopting the demo's DOM or memory lease. React Native and full
 Lace integration are not qualified by the browser example. Follow
 [Library integration]({{ '/library-guide/' | relative_url }}) to select your boundary.
 
+## Operation modules and validation
+
+The source preview keeps the connector as a composition root. JubJub binding/capability
+checks, sealed readiness, grant operations and private holdings live in separate
+internal modules. Their contexts are typed capabilities; public method signatures,
+key-session descriptors and transaction ordering remain the integration contract.
+Hosts continue importing the public package entries rather than internal helpers.
+
+The Node reference host validates confirmation JSON after a bounded stream read,
+then checks the protocol era, transaction hash and every original prepared identifier.
+Malformed, oversized, aborted or incomplete observations remain unknown. Read failure
+never authorizes a replacement mutation ID or an automatic transaction retry.
+These are reference-service boundaries, separate from the portable account domain.
+
 ## Choose your next task
 
 | Task | Guide |
@@ -88,3 +102,21 @@ Lace integration are not qualified by the browser example. Follow
 | Operate proof, sponsor or funding infrastructure | [HTTP service API]({{ '/service/' | relative_url }}) |
 | Run the example application | [Reference demo]({{ '/demo-guide/' | relative_url }}) |
 | Check supported behavior before adoption | [RC8 limitations]({{ '/release-notes-rc8/' | relative_url }}) and [qualification]({{ '/qualification/' | relative_url }}) |
+
+## Source follow-up: operation and host composition
+
+The P-256 account factory composes observation, transfer, private-access and grant
+operations behind the existing public facade. Contexts retain captured factory
+references and identify the optional ports whose lookup must remain live across
+awaits. Splitting modules does not start another credential scope or transaction.
+
+The reference app separately composes typed action controllers and presentation
+models. Button availability, Activity/Audit and account/wallet facts have focused
+renderers; the main app owns consent, receipts and lifecycle policy. These DOM
+controllers are an application example, not a framework dependency of the SDK.
+
+The Node reference boundary uses actual v9 types while resolving runtime modules
+from the same reference tree as its wallet. Its journal decoder retains the
+existing constructor bytes, signing key and deployment waves on resume. See the
+[decomposition review map](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/quality-debt-2026-11-10.md)
+for the module map and qualification limits.

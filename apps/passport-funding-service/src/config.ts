@@ -60,32 +60,64 @@ function url(raw: string, name: string, schemes: readonly string[]): string {
   return raw;
 }
 
+function assetAmount(value: unknown): bigint {
+  // Uint128 needs at most39 decimal digits; reject text before invoking BigInt.
+  if (typeof value !== 'string' || value.length > 39 || !DECIMAL.test(value))
+    throw new Error('passport-funding-service: invalid asset policy');
+  const amount = BigInt(value);
+  if (amount > MAX_AMOUNT) throw new Error('passport-funding-service: invalid asset limits');
+  return amount;
+}
+
+function assetPolicy(value: unknown): FundingAssetPolicy {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new Error('passport-funding-service: invalid asset policy');
+  const item = value as Record<string, unknown>;
+  if (typeof item.color !== 'string' || !ADDRESS.test(item.color))
+    throw new Error('passport-funding-service: invalid asset policy');
+  const maxPerRequest = assetAmount(item.maxPerRequest);
+  const maxPerUtcDay = assetAmount(item.maxPerUtcDay);
+  if (maxPerUtcDay < maxPerRequest)
+    throw new Error('passport-funding-service: invalid asset limits');
+  return { color: item.color, maxPerRequest, maxPerUtcDay };
+}
+
 function assets(file: string): FundingAssetPolicy[] {
   const body: unknown = JSON.parse(readFileSync(file, 'utf8'));
   if (!Array.isArray(body) || body.length === 0 || body.length > 64)
     throw new Error('passport-funding-service: asset policy must contain 1–64 assets');
-  const out = body.map((value: unknown): FundingAssetPolicy => {
-    if (!value || typeof value !== 'object' || Array.isArray(value))
-      throw new Error('passport-funding-service: invalid asset policy');
-    const item = value as Record<string, unknown>;
-    if (
-      typeof item.color !== 'string' ||
-      !ADDRESS.test(item.color) ||
-      typeof item.maxPerRequest !== 'string' ||
-      !DECIMAL.test(item.maxPerRequest) ||
-      typeof item.maxPerUtcDay !== 'string' ||
-      !DECIMAL.test(item.maxPerUtcDay)
-    )
-      throw new Error('passport-funding-service: invalid asset policy');
-    const maxPerRequest = BigInt(item.maxPerRequest);
-    const maxPerUtcDay = BigInt(item.maxPerUtcDay);
-    if (maxPerRequest > MAX_AMOUNT || maxPerUtcDay > MAX_AMOUNT || maxPerUtcDay < maxPerRequest)
-      throw new Error('passport-funding-service: invalid asset limits');
-    return { color: item.color, maxPerRequest, maxPerUtcDay };
-  });
+  const out = body.map(assetPolicy);
   if (new Set(out.map((item) => item.color)).size !== out.length)
     throw new Error('passport-funding-service: duplicate asset color');
   return out;
+}
+
+function fundingEndpoints(
+  env: NodeJS.ProcessEnv,
+  indexerPort: string,
+): Pick<FundingConfig, 'nodeUri' | 'indexerUri' | 'indexerWsUri' | 'proofServerUri'> {
+  return {
+    nodeUri: url(
+      env.MN_NODE_URL ?? `http://localhost:${env.MN_NODE_PORT ?? '19944'}`,
+      'MN_NODE_URL',
+      ['http:', 'https:'],
+    ),
+    indexerUri: url(
+      env.MN_INDEXER_URL ?? `http://localhost:${indexerPort}/api/v4/graphql`,
+      'MN_INDEXER_URL',
+      ['http:', 'https:'],
+    ),
+    indexerWsUri: url(
+      env.MN_INDEXER_WS_URL ?? `ws://localhost:${indexerPort}/api/v4/graphql/ws`,
+      'MN_INDEXER_WS_URL',
+      ['ws:', 'wss:'],
+    ),
+    proofServerUri: url(
+      env.MN_PROOF_SERVER_URL ?? `http://127.0.0.1:${env.MN_PROOF_PORT ?? '16300'}`,
+      'MN_PROOF_SERVER_URL',
+      ['http:', 'https:'],
+    ),
+  };
 }
 
 export function loadFundingConfig(env: NodeJS.ProcessEnv): FundingConfig {
@@ -124,26 +156,7 @@ export function loadFundingConfig(env: NodeJS.ProcessEnv): FundingConfig {
     port: port(env.PASSPORT_FUNDING_PORT ?? '8789'),
     corsOrigin: env.PASSPORT_DAPP_ORIGIN ?? 'http://localhost:5173',
     networkId,
-    nodeUri: url(
-      env.MN_NODE_URL ?? `http://localhost:${env.MN_NODE_PORT ?? '19944'}`,
-      'MN_NODE_URL',
-      ['http:', 'https:'],
-    ),
-    indexerUri: url(
-      env.MN_INDEXER_URL ?? `http://localhost:${indexerPort}/api/v4/graphql`,
-      'MN_INDEXER_URL',
-      ['http:', 'https:'],
-    ),
-    indexerWsUri: url(
-      env.MN_INDEXER_WS_URL ?? `ws://localhost:${indexerPort}/api/v4/graphql/ws`,
-      'MN_INDEXER_WS_URL',
-      ['ws:', 'wss:'],
-    ),
-    proofServerUri: url(
-      env.MN_PROOF_SERVER_URL ?? `http://127.0.0.1:${env.MN_PROOF_PORT ?? '16300'}`,
-      'MN_PROOF_SERVER_URL',
-      ['http:', 'https:'],
-    ),
+    ...fundingEndpoints(env, indexerPort),
     contractDir,
     artefactDir: join(contractDir, 'contracts/managed/account'),
     bindingId: BINDING_VERSION,

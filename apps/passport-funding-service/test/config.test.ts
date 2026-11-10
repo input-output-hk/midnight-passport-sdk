@@ -131,3 +131,19 @@ test('deployment eligibility is network scoped and a corrupt log fails closed', 
   writeFileSync(deploymentsFile, JSON.stringify({ undeployed: ['bad'] }));
   assert.throws(() => deployedAddresses(deploymentsFile, 'undeployed'), /invalid/);
 });
+
+test('funding policy accepts the Uint128 maximum and refuses oversized or noncanonical decimals', (t) => {
+  const file = join(dir, 'decimal-bounds.json');
+  t.after(() => rmSync(file, { force: true }));
+  const maximum = ((1n << 128n) - 1n).toString();
+  const read = (value: string) => {
+    writeFileSync(
+      file,
+      JSON.stringify([{ color: 'cd'.repeat(32), maxPerRequest: value, maxPerUtcDay: value }]),
+    );
+    return loadFundingConfig({ ...base, PASSPORT_FUNDING_ASSETS_FILE: file });
+  };
+  assert.equal(read(maximum).assets[0]?.maxPerRequest, (1n << 128n) - 1n);
+  for (const value of ['0', '01', '-1', '1.0', (1n << 128n).toString(), '9'.repeat(100_000)])
+    assert.throws(() => read(value), /invalid asset/);
+});

@@ -43,3 +43,30 @@ not change the ACC's full-owner authority or key derivation recipe.
 Use [Published RC8]({{ '/release-notes-rc8/' | relative_url }}) for the released
 scope and [use-case evidence]({{ '/use-case-coverage/' | relative_url }}) for the
 distinction between source tests and recorded acceptance.
+
+## Pre-RC architecture and input quality
+
+Internal JubJub readiness, capability, grant and holdings modules now separate
+operation responsibilities from connector wiring. The public package set and method
+signatures are unchanged. The architecture lint checks actual literal import syntax,
+Node built-ins and cross-package source paths; all reference app sources enter the
+AST gate with explicit remaining native-bridge debt.
+
+The Node host's finality observation bounds response bytes before JSON parsing and
+validates the record with the existing pinned Zod version. Header/body aborts and
+invalid observations remain unknown outcomes. Funding policy and tagged value amounts
+bound decimal length before BigInt conversion, preserving Uint128/Uint256 maxima.
+See the [quality guide]({{ '/quality/' | relative_url }}) for the scope and gates.
+
+## Typed operation and reference-host decomposition
+
+Source after RC8 separates P-256 operations, reference app controllers and DOM
+presentation, and the native reference loader/driver. Public account signatures,
+key recipes, circuit order, fresh critical approval, scoped-transfer restrictions
+and exact-value shielded withdrawal guards remain. The native bridge now uses
+actual v9 types and checked retained contexts; resume does not replan or create a
+replacement authority. This cleanup adds no package or framework requirement.
+
+The [review map](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/quality-debt-2026-11-10.md)
+identifies source, synthetic browser and offline-ledger regressions. Native proof,
+provider, installed-consumer and image/release acceptance remain separate evidence.

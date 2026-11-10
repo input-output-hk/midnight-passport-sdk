@@ -69,7 +69,7 @@ responses, provider failures and cleanup after partial initialization.
 ### Static analysis
 
 `lint` combines dependency/circuit checks with TypeScript AST analysis of authored
-package and demo sources, the demo journey runner/phases/catalogs, and every
+package sources, all reference app TypeScript/JavaScript sources, the demo journey runner/phases/catalogs, and every
 `.mjs` module under `scripts/consumer`.
 The consumer inventory is recursive: adding a nested helper includes it in lint
 without maintaining another file list. New modules default to 600 lines, functions to 150 lines
@@ -94,6 +94,22 @@ the inventory. Its runtime implementation is unchanged; four explicit JSDoc-any 
 across the consumer tools now use structural types. The exception is debt, not an
 exemption for generated templates or future consumer modules. Case admission and
 archive PAX/path validation are now separate bounded functions.
+The current source also checks backend app sources, including the key server's JavaScript,
+and the architecture checker itself. The follow-up decomposition removes the native
+driver/loader dynamic-runtime exceptions and the P-256/demo size/function exceptions.
+Typed operations, app controllers and native boundary modules use default budgets;
+unchanged primitive platform-global casts remain explicitly measured at their
+original entry points. See the
+[follow-up review map](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/quality-debt-2026-11-10.md)
+for responsibilities and regression scope. Public package sources introduce no
+explicit `any` allowance. Typing does not replace native or provider qualification.
+
+Dependency checks parse literal imports, re-exports, type imports and `require`
+expressions with the TypeScript AST. Neutral packages reject both `node:fs` and
+bare built-ins such as `fs/promises`. Relative paths cannot cross a package root
+to bypass its public exports. Comments and prose create no edges. Computed dynamic
+module names still need host-specific review; this is not complete semantic analysis.
+
 The compiler, import graph, AST metrics and tests each catch different defects;
 this is not a security audit or a proof of absence of floating promises.
 

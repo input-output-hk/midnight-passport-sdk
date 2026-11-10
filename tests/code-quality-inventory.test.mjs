@@ -20,6 +20,8 @@ function fixture() {
   write('packages/example/src/index.ts', 'export const value: number = 1;');
   write('apps/passport-dapp/src/app.ts', 'export const app = 1;');
   write('scripts/consumer/index.mjs', 'export const entry = 1;');
+  write('scripts/architecture-source.mjs', 'export const parser = 1;');
+  write('scripts/lint-boundaries.mjs', 'export const boundary = 1;');
   write('apps/passport-dapp/e2e/demo-journeys.e2e.ts', 'export const run = 1;');
   mkdirSync(join(root, 'apps/passport-dapp/e2e/journeys'), { recursive: true });
   write('scripts/code-quality-budgets.json', JSON.stringify({ files: {} }));
@@ -41,8 +43,10 @@ test('consumer inventory discovers nested mjs while preserving existing TS scope
       'apps/passport-dapp/src/app.ts',
       'packages/example/src/hand.generated.ts',
       'packages/example/src/index.ts',
+      'scripts/architecture-source.mjs',
       'scripts/consumer/crypto/nested/check.mjs',
       'scripts/consumer/index.mjs',
+      'scripts/lint-boundaries.mjs',
     ]);
   } finally {
     f.close();
@@ -76,7 +80,7 @@ test('a new nested consumer module is rejected by the actual CLI default budget 
     });
     assert.ifError(accepted.error);
     assert.equal(accepted.status, 0, accepted.stderr);
-    assert.match(accepted.stdout, /AST quality budgets respected in 5 authored files/);
+    assert.match(accepted.stdout, /AST quality budgets respected in 7 authored files/);
   } finally {
     f.close();
   }
@@ -123,6 +127,39 @@ test('journey phases and catalogs keep default budgets through the permanent CLI
     for (const path of paths)
       assert.ok(child.stderr.includes(path + ': complexity: 27 exceeds 25'));
     assert.equal(child.stderr.includes('must not execute'), false);
+  } finally {
+    f.close();
+  }
+});
+
+test('backend application TypeScript and key-service JavaScript enter default budgets without execution', () => {
+  const f = fixture();
+  try {
+    const paths = [
+      'apps/passport-service/src/nested/route.ts',
+      'apps/passport-funding-service/src/nested/wallet.ts',
+      'apps/passport-key-service/src/nested/server.mjs',
+      'apps/passport-service/src/nested/bridge.mts',
+      'apps/passport-service/src/nested/bridge.cts',
+      'apps/passport-key-service/src/nested/entry.js',
+      'apps/passport-key-service/src/nested/entry.cjs',
+    ];
+    for (const path of paths) f.write(path, "throw Error('must never execute');\n" + complex);
+    const inventory = qualityInventory(f.root);
+    for (const path of paths)
+      assert.deepEqual(qualityFailures(inventory[path]?.metrics ?? {}), [
+        'complexity: 27 exceeds 25',
+      ]);
+    const child = spawnSync(process.execPath, [cli], {
+      cwd: f.root,
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+    assert.ifError(child.error);
+    assert.equal(child.status, 1);
+    for (const path of paths)
+      assert.ok(child.stderr.includes(path + ': complexity: 27 exceeds 25'));
+    assert.equal(child.stderr.includes('must never execute'), false);
   } finally {
     f.close();
   }

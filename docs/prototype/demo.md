@@ -491,3 +491,25 @@ in to handoffs; the default adapters do not start a cache. Additive WebAuthn reg
 and account/browser handoff APIs are source preview, absent from RC8. No contract or
 key-recipe change. Software/generated-contract and synthetic browser evidence remains
 separate from genuine provider, native proof and released-package qualification.
+
+### Source-preview quality follow-up
+
+Reference endpoints have separate admission, observation and response responsibilities.
+Host finality decoding is bounded and schema checked; oversized or malformed responses
+cannot confirm an operation. Funding policy and tagged integer parsers bound decimal
+text before conversion. The shared audit keeps original IDs and unknown-outcome fences;
+no automatic mutation retry, additional passkey request or wallet startup is introduced.
+The backend apps participate in the static AST inventory. The native reference
+bridge now uses typed v9 contracts and checked retained contexts. Native proof,
+provider and production-image qualification remain separate acceptance tiers.
+
+## Typed controller and presentation decomposition
+
+The source-quality follow-up keeps the same screens, actions and consent policy.
+`app-model.ts` describes host state/dependencies; entry, device, grant, transfer and
+wallet action controllers own their handlers. `ui-state.ts`, `ui-controls.ts`,
+`ui-activity.ts` and `ui-cards.ts` separate public presentation and safe DOM updates.
+The root still wires receipt capture independently of rendering, exact reviews,
+key disposal and the existing background wallet. These are reference app modules,
+not additional published SDK packages. See the
+[review map](../review/quality-debt-2026-11-10.md) for compatibility and test scope.

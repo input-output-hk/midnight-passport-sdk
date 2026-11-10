@@ -11,6 +11,7 @@ import {
 } from '@input-output-hk/mn-passport-service';
 import { gunzipSync } from 'node:zlib';
 import { createReferenceHostDriver, readHostConfirmation } from '../src/host-driver.ts';
+import type { V9Tx } from '../src/reference-runtime.ts';
 import type {
   HostMutationIdentity,
   HostMutationRecord,
@@ -172,12 +173,22 @@ test('driver builds real ledger deployment and maintenance bytes and refuses cha
   const getVerifierKey = async (name: string) =>
     new Uint8Array(Buffer.from(resources.files[`keys/${name}.verifier`], 'base64'));
   let observed: any;
+  const submitted: V9Tx[] = [];
+  const midnightProvider = {
+    async submitTx(value: V9Tx) {
+      assert.equal(this, midnightProvider, 'submission retains the provider receiver');
+      assert.equal(value.version, 'v9');
+      submitted.push(value);
+      return '00' + '55'.repeat(32);
+    },
+  };
   const providers = {
+    midnightProvider,
     zkConfigProvider: { getVerifierKey },
     walletProvider: {
       getCoinPublicKey: () => '11'.repeat(32),
       getEncryptionPublicKey: () => '22'.repeat(32),
-      balanceTx: async (r: any) => ({ version: 'v9', tx: r.tx.bind() }),
+      balanceTx: async (r: any) => ({ version: 'v9' as const, tx: r.tx.bind() }),
     },
     publicDataProvider: { queryContractState: async () => observed },
   };
@@ -281,6 +292,34 @@ test('driver builds real ledger deployment and maintenance bytes and refuses cha
   assert.equal(await driver.check(record, 0), true);
   const prepared = await driver.prepareStep(record, 0);
   assert.ok(prepared.identifiers.length);
+  assert.equal(await driver.submit(prepared), '00' + '55'.repeat(32));
+  assert.equal(submitted.length, 1);
+  assert.equal(hex(submitted[0]?.tx.serialize() ?? new Uint8Array()), prepared.tx);
+  const resumeOnly = createReferenceHostDriver({
+    ...runtime,
+    contracts: {
+      createUnprovenDeployTx: async () => {
+        throw new Error('must not create a replacement deployment');
+      },
+    },
+    signer: {
+      JubjubDevice: {
+        generate: () => {
+          throw new Error('must not regenerate birth authority');
+        },
+      },
+    },
+    waves: {
+      allCircuits: () => {
+        throw new Error('must not rediscover circuits on resume');
+      },
+      planWaves: () => {
+        throw new Error('must not replan a retained deployment');
+      },
+    },
+  });
+  assert.ok((await resumeOnly.prepareStep(record, 0)).identifiers.length);
+  assert.ok((await resumeOnly.prepareStep(record, 1)).identifiers.length);
   const decoded = L.Transaction.deserialize(
     'signature',
     'proof',

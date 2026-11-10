@@ -1,5 +1,5 @@
 /** Fast TypeScript-AST analysis. Legacy budgets are explicit ceilings, never auto-updated. */
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
@@ -125,12 +125,14 @@ export function qualityFailures(metrics, budget = {}) {
 export function qualityInventory(root = process.cwd()) {
   /** @type {Record<string,ReturnType<typeof inspectSource>>} */
   const inventory = {};
-  /** @param {string} directory @param {'.ts'|'.mjs'} [extension] */
+  /** @param {string} directory @param {'.ts'|'.mjs'|RegExp} [extension] */
   const walk = (directory, extension = '.ts') => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       const file = resolve(directory, entry.name);
       if (entry.isDirectory()) walk(file, extension);
-      else if (entry.name.endsWith(extension)) {
+      else if (
+        typeof extension === 'string' ? entry.name.endsWith(extension) : extension.test(entry.name)
+      ) {
         const path = relative(root, file).replaceAll('\\', '/');
         if (generatedSources.includes(path)) continue;
         inventory[path] = inspectSource(readFileSync(file, 'utf8'), path);
@@ -139,12 +141,18 @@ export function qualityInventory(root = process.cwd()) {
   };
   for (const pkg of readdirSync(resolve(root, 'packages')).sort())
     walk(resolve(root, 'packages', pkg, 'src'));
-  walk(resolve(root, 'apps/passport-dapp/src'));
+  for (const app of readdirSync(resolve(root, 'apps')).sort()) {
+    const source = resolve(root, 'apps', app, 'src');
+    if (!existsSync(source)) continue;
+    walk(source, /\.(?:[cm]?ts|[cm]?js)$/);
+  }
   const journeys = 'apps/passport-dapp/e2e/demo-journeys.e2e.ts';
   inventory[journeys] = inspectSource(readFileSync(resolve(root, journeys), 'utf8'), journeys);
   walk(resolve(root, 'apps/passport-dapp/e2e/journeys'));
   walk(resolve(root, 'apps/passport-dapp/e2e/journeys'), '.mjs');
   walk(resolve(root, 'scripts/consumer'), '.mjs');
+  for (const file of ['scripts/architecture-source.mjs', 'scripts/lint-boundaries.mjs'])
+    inventory[file] = inspectSource(readFileSync(resolve(root, file), 'utf8'), file);
   return inventory;
 }
 
