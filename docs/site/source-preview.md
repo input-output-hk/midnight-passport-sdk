@@ -43,3 +43,17 @@ not change the ACC's full-owner authority or key derivation recipe.
 Use [Published RC8]({{ '/release-notes-rc8/' | relative_url }}) for the released
 scope and [use-case evidence]({{ '/use-case-coverage/' | relative_url }}) for the
 distinction between source tests and recorded acceptance.
+
+## Pre-RC architecture and input quality
+
+Internal JubJub readiness, capability, grant and holdings modules now separate
+operation responsibilities from connector wiring. The public package set and method
+signatures are unchanged. The architecture lint checks actual literal import syntax,
+Node built-ins and cross-package source paths; all reference app sources enter the
+AST gate with explicit remaining native-bridge debt.
+
+The Node host's finality observation bounds response bytes before JSON parsing and
+validates the record with the existing pinned Zod version. Header/body aborts and
+invalid observations remain unknown outcomes. Funding policy and tagged value amounts
+bound decimal length before BigInt conversion, preserving Uint128/Uint256 maxima.
+See the [quality guide]({{ '/quality/' | relative_url }}) for the scope and gates.

@@ -1,18 +1,13 @@
 #!/usr/bin/env node
-// Import-level dependency-boundary lint (FS-0.1 D-3; architecture §4.4).
-// Every workspace package may import only the @input-output-hk/mn-passport-*
-// packages the architecture permits — most critically, `connect` must never
-// import `core` or any adapter, so a dApp can never pull the kernel into its
-// bundle. Also enforces platform neutrality at the import level: the four
-// packages that reach browser/PWA bundles (`protocol`, `contract`, `core`,
-// and `connect` — architecture §4.4) must not import Node built-ins; only
-// adapters may be platform-specific. The manifest-level twin lives in
-// tests/dependency-rules.test.mjs; both consume scripts/dependency-graph.mjs.
-// Design §1.2: an adapter imports `account/ports`, never the account root, and
-// only the Midnight entry points import a Midnight package statically (D-6).
-// Arguments, for tests: a repository root, and a JSON file of the graph.
+// Enforce the package graph and public source boundaries from literal AST imports.
+// Platform-neutral packages reject Node imports; explicit adapter entry points own
+// runtime-specific dependencies. Dynamic computed module names remain host review scope.
+// The manifest-level twin is tests/dependency-rules.test.mjs; both use dependency-graph.mjs.
+// Test arguments: repository root and an optional graph JSON file.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { builtinModules } from 'node:module';
+import { architectureSource } from './architecture-source.mjs';
 import {
   ACCOUNT_PORTS,
   ALLOWED,
@@ -25,22 +20,9 @@ const [root = '.', graphFile] = process.argv.slice(2);
 /** @type {Record<string, string[]>} */
 const graph = graphFile ? JSON.parse(readFileSync(graphFile, 'utf8')) : ALLOWED;
 
-// Matches static imports, re-exports, side-effect imports, require(), and
-// dynamic import() — with ', ", or ` around the specifier.
-const IMPORT_RE =
-  /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"`](@input-output-hk\/mn-passport-[^'"`/]+)(\/[^'"`]*)?/g;
-// A statement that survives compilation: not `import type`, not `import()`.
-const STATIC_MIDNIGHT_RE =
-  /^\s*(?:import|export)\s+(?!type\s)(?:[^'"`;]*?\sfrom\s*)?['"]((?:@midnight-ntwrk\/|@midnightntwrk\/)[^'"]+)['"]/gm;
-// Every specifier, relative ones included, for the rule on account's `./testing`.
-const ANY_IMPORT_RE =
-  /(?:^\s*(?:import|export)\b[^'"`;=()]*?\bfrom\s*|^\s*import\s*|\b(?:import|require)\s*\(\s*)['"`]([^'"`]+)['"`]/gm;
 const TESTING_DIR = 'packages/account/src/testing/';
-const NODE_BUILTIN_RE = /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"`](node:[^'"`]+)/g;
 const PLATFORM_NEUTRAL = new Set(['protocol', 'contract', 'core', 'connect', 'account', 'keys']);
-// Ambient global declarations bypass import scanning, so they are gated by
-// an explicit allowlist: only cross-platform standards may be assumed.
-const GLOBAL_DECLARATION_RE = /declare\s+(?:const|var|let|function)\s+(\w+)/g;
+const BUILTINS = new Set(builtinModules.map((name) => name.replace(/^node:/, '')));
 const ALLOWED_GLOBALS = new Set(['crypto']);
 
 /** @param {string} dir @returns {string[]} */
@@ -55,74 +37,78 @@ function sourceFiles(dir) {
   return out;
 }
 
+/** @param {string} file @param {string} pkg @param {string} spec */
+function crossesSourceBoundary(file, pkg, spec) {
+  if (isAbsolute(spec) || spec.startsWith('file:')) return true;
+  if (!spec.startsWith('.')) return false;
+  const target = relative(resolve(root, 'packages', pkg), resolve(dirname(file), spec));
+  return target === '..' || target.startsWith(`..${sep}`) || isAbsolute(target);
+}
+
 /** @type {string[]} */
 const violations = [];
 for (const [pkg, allowed] of Object.entries(graph)) {
-  const allowedNames = new Set(allowed.map((d) => SCOPE + d));
+  const allowedNames = new Set(allowed.map((name) => SCOPE + name));
   let files;
   try {
     files = sourceFiles(join(root, 'packages', pkg, 'src'));
-  } catch {
-    continue; // The package is not scaffolded yet — nothing to lint.
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') continue;
+    throw error;
   }
   for (const file of files) {
-    const text = readFileSync(file, 'utf8');
-    for (const match of text.matchAll(IMPORT_RE)) {
-      const target = match[1] ?? '';
-      const spec = target.slice(SCOPE.length) + (match[2] ?? '');
-      if (!allowedNames.has(target)) {
-        violations.push(`${file}: "${pkg}" must not import "${target}" (architecture §4.4).`);
-      } else if (
-        pkg.startsWith('adapter-') &&
-        target === `${SCOPE}account` &&
-        spec !== ACCOUNT_PORTS &&
-        // Concrete error mapping is the one runtime helper these adapters need.
-        !(
-          ['adapter-webauthn', 'adapter-service', 'adapter-midnight-js'].includes(pkg) &&
-          spec === 'account/errors'
-        ) &&
-        !COMPOSITION_ROOTS.includes(pkg)
-      ) {
-        violations.push(`${file}: "${pkg}" must import "${SCOPE}${ACCOUNT_PORTS}" (design §1.2).`);
-      }
-    }
+    const source = architectureSource(readFileSync(file, 'utf8'), file);
     const path = relative(root, file).split(sep).join('/');
-    if (!MIDNIGHT_ENTRY_POINTS.some((entry) => path.startsWith(entry))) {
-      for (const match of text.matchAll(STATIC_MIDNIGHT_RE)) {
-        violations.push(`${file}: "${pkg}" must reach "${match[1]}" through import() (D-6).`);
-      }
-    }
-    if (path.startsWith(TESTING_DIR)) {
-      for (const match of text.matchAll(ANY_IMPORT_RE)) {
-        const spec = match[1] ?? '';
-        const ok =
-          /^\.\/[^/]+$/.test(spec) || spec.startsWith('../ports/') || spec === `${SCOPE}protocol`;
-        if (!ok)
+    for (const { specifier: spec, runtimeStatic } of source.imports) {
+      if (crossesSourceBoundary(file, pkg, spec))
+        violations.push(`${file}: "${pkg}" must use a public package import instead of "${spec}".`);
+      if (spec.startsWith(SCOPE)) {
+        const target = spec.slice(SCOPE.length).split('/')[0];
+        if (!allowedNames.has(SCOPE + target))
           violations.push(
-            `${file}: account's ./testing imports only ./ports and protocol, not "${spec}" (design §1.1).`,
+            `${file}: "${pkg}" must not import "${SCOPE + target}" (architecture §4.4).`,
+          );
+        else if (
+          pkg.startsWith('adapter-') &&
+          target === 'account' &&
+          spec !== SCOPE + ACCOUNT_PORTS &&
+          !(
+            ['adapter-webauthn', 'adapter-service', 'adapter-midnight-js'].includes(pkg) &&
+            spec === SCOPE + 'account/errors'
+          ) &&
+          !COMPOSITION_ROOTS.includes(pkg)
+        )
+          violations.push(
+            `${file}: "${pkg}" must import "${SCOPE}${ACCOUNT_PORTS}" (design §1.2).`,
           );
       }
-    }
-    if (PLATFORM_NEUTRAL.has(pkg)) {
-      for (const match of text.matchAll(NODE_BUILTIN_RE)) {
+      if (
+        runtimeStatic &&
+        /^@(?:midnight-ntwrk|midnightntwrk)\//.test(spec) &&
+        !MIDNIGHT_ENTRY_POINTS.some((entry) => path.startsWith(entry))
+      )
+        violations.push(`${file}: "${pkg}" must reach "${spec}" through import() (D-6).`);
+      if (
+        path.startsWith(TESTING_DIR) &&
+        !(/^\.\/[^/]+$/.test(spec) || spec.startsWith('../ports/') || spec === `${SCOPE}protocol`)
+      )
         violations.push(
-          `${file}: "${pkg}" must not import "${match[1]}" — it ships to browser/PWA bundles (architecture §4.4).`,
+          `${file}: account's ./testing imports only ./ports and protocol, not "${spec}" (design §1.1).`,
         );
-      }
-      for (const match of text.matchAll(GLOBAL_DECLARATION_RE)) {
-        const name = match[1] ?? '';
-        if (!ALLOWED_GLOBALS.has(name)) {
+      if (PLATFORM_NEUTRAL.has(pkg) && (spec.startsWith('node:') || BUILTINS.has(spec)))
+        violations.push(
+          `${file}: "${pkg}" must not import "${spec}" — it ships to browser/PWA bundles (architecture §4.4).`,
+        );
+    }
+    if (PLATFORM_NEUTRAL.has(pkg))
+      for (const name of source.globals)
+        if (!ALLOWED_GLOBALS.has(name))
           violations.push(
             `${file}: "${pkg}" declares ambient global "${name}" — only allowlisted cross-platform globals are permitted (architecture §4.4).`,
           );
-        }
-      }
-    }
   }
 }
-
-if (violations.length > 0) {
-  for (const v of violations) console.error(`Boundary violation — ${v}`);
-  process.exit(1);
-}
-console.log('Dependency boundaries respected (architecture §4.4, design §1.2).');
+if (violations.length) {
+  for (const violation of violations) console.error(`Boundary violation — ${violation}`);
+  process.exitCode = 1;
+} else console.log('Dependency boundaries respected (architecture §4.4, design §1.2).');

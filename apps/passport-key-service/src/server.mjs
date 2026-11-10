@@ -77,6 +77,54 @@ function rangeFor(header, size) {
   return { start, end: Math.min(end, size - 1), partial: true };
 }
 
+function keyAsset(path, name, files, manifestBytes, keyManifestBytes, provers, keyDir) {
+  let bytes;
+  let diskPath;
+  let size;
+  if (path === '/v1/manifest') bytes = keyManifestBytes;
+  else if (name === 'compiler/contract-manifest.json') bytes = manifestBytes;
+  else if (name) {
+    bytes = files.get(name);
+    if (!bytes && name.startsWith('keys/') && name.endsWith('.prover')) {
+      const circuit = name.slice('keys/'.length, -'.prover'.length);
+      const pin = provers.get(`${circuit}.prover`);
+      if (circuitName.test(circuit) && pin) {
+        diskPath = join(keyDir, `${circuit}.prover`);
+        try {
+          size = statSync(diskPath).size;
+        } catch {
+          return { unavailable: true };
+        }
+        if (size !== pin.size) {
+          return { unavailable: true };
+        }
+      }
+    }
+  }
+  if (!bytes && !diskPath) return undefined;
+  return { bytes, diskPath, size: size ?? bytes.length };
+}
+
+function corsHeaders(req, res, corsOrigins) {
+  const origin = req.headers.origin;
+  if (corsOrigins.length) res.setHeader('vary', 'Origin');
+  if (origin && corsOrigins.includes(origin)) {
+    res.setHeader('access-control-allow-origin', origin);
+    res.setHeader('access-control-allow-methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('access-control-allow-headers', 'range');
+    res.setHeader('access-control-expose-headers', 'accept-ranges, content-range, content-length');
+  }
+}
+
+function keyPath(path, bindingId) {
+  const prefix = path.startsWith(`/v1/zk/${bindingId}/`)
+    ? `/v1/zk/${bindingId}/`
+    : path.startsWith('/zk/acc/')
+      ? '/zk/acc/'
+      : undefined;
+  return prefix && path.slice(prefix.length);
+}
+
 export function createKeyServer({
   bindingId,
   files,
@@ -97,16 +145,7 @@ export function createKeyServer({
     .sort();
   return createServer((req, res) => {
     const origin = req.headers.origin;
-    if (corsOrigins.length) res.setHeader('vary', 'Origin');
-    if (origin && corsOrigins.includes(origin)) {
-      res.setHeader('access-control-allow-origin', origin);
-      res.setHeader('access-control-allow-methods', 'GET, HEAD, OPTIONS');
-      res.setHeader('access-control-allow-headers', 'range');
-      res.setHeader(
-        'access-control-expose-headers',
-        'accept-ranges, content-range, content-length',
-      );
-    }
+    corsHeaders(req, res, corsOrigins);
     if (req.method === 'OPTIONS') {
       res.writeHead(origin && corsOrigins.includes(origin) ? 204 : 403).end();
       return;
@@ -128,12 +167,7 @@ export function createKeyServer({
       res.end(req.method === 'HEAD' ? undefined : JSON.stringify({ ...profile, verifierCircuits }));
       return;
     }
-    const prefix = path.startsWith(`/v1/zk/${bindingId}/`)
-      ? `/v1/zk/${bindingId}/`
-      : path.startsWith('/zk/acc/')
-        ? '/zk/acc/'
-        : undefined;
-    const name = prefix && path.slice(prefix.length);
+    const name = keyPath(path, bindingId);
     const circuitPath = /^(?:zkir|keys)\/([a-z][a-z0-9_]*)\.(?:zkir|bzkir|prover)$/.exec(
       name ?? '',
     );
@@ -141,36 +175,16 @@ export function createKeyServer({
       res.writeHead(404).end();
       return;
     }
-    let bytes;
-    let diskPath;
-    let size;
-    if (path === '/v1/manifest') bytes = keyManifestBytes;
-    else if (name === 'compiler/contract-manifest.json') bytes = manifestBytes;
-    else if (name) {
-      bytes = files.get(name);
-      if (!bytes && name.startsWith('keys/') && name.endsWith('.prover')) {
-        const circuit = name.slice('keys/'.length, -'.prover'.length);
-        const pin = provers.get(`${circuit}.prover`);
-        if (circuitName.test(circuit) && pin) {
-          diskPath = join(keyDir, `${circuit}.prover`);
-          try {
-            size = statSync(diskPath).size;
-          } catch {
-            res.writeHead(503).end();
-            return;
-          }
-          if (size !== pin.size) {
-            res.writeHead(503).end();
-            return;
-          }
-        }
-      }
+    const asset = keyAsset(path, name, files, manifestBytes, keyManifestBytes, provers, keyDir);
+    if (asset?.unavailable) {
+      res.writeHead(503).end();
+      return;
     }
-    if (!bytes && !diskPath) {
+    if (!asset) {
       res.writeHead(404).end();
       return;
     }
-    size ??= bytes.length;
+    const { bytes, diskPath, size } = asset;
     const range = rangeFor(req.headers.range, size);
     if (!range) {
       res.writeHead(416, { 'content-range': `bytes */${size}` }).end();

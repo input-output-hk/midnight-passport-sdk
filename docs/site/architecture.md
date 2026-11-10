@@ -79,6 +79,20 @@ your UI without adopting the demo's DOM or memory lease. React Native and full
 Lace integration are not qualified by the browser example. Follow
 [Library integration]({{ '/library-guide/' | relative_url }}) to select your boundary.
 
+## Operation modules and validation
+
+The source preview keeps the connector as a composition root. JubJub binding/capability
+checks, sealed readiness, grant operations and private holdings live in separate
+internal modules. Their contexts are typed capabilities; public method signatures,
+key-session descriptors and transaction ordering remain the integration contract.
+Hosts continue importing the public package entries rather than internal helpers.
+
+The Node reference host validates confirmation JSON after a bounded stream read,
+then checks the protocol era, transaction hash and every original prepared identifier.
+Malformed, oversized, aborted or incomplete observations remain unknown. Read failure
+never authorizes a replacement mutation ID or an automatic transaction retry.
+These are reference-service boundaries, separate from the portable account domain.
+
 ## Choose your next task
 
 | Task | Guide |

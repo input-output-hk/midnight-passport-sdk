@@ -148,6 +148,9 @@ importers:
       '@input-output-hk/mn-passport-service':
         specifier: workspace:*
         version: link:../../packages/service
+      zod:
+        specifier: 4.1.12
+        version: 4.1.12
     devDependencies:
       tsx:
         specifier: 4.23.15

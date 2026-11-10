@@ -825,3 +825,13 @@ custom deposits, separate balances, finite catch-up, mobile manual refresh, read
 outages/insufficient stock and retained unknown IDs in both signing arms. Unit
 contracts additionally cover stopped/late reads and a stalled response decoder.
 These are UI/software evidence, not fresh native funds or provider qualification.
+
+### Source-preview backend quality boundaries
+
+Backend app TypeScript/JavaScript is included in the AST quality inventory. The
+existing dynamic native ledger driver and loader retain explicit measured debt;
+new modules use normal defaults. Funding/value policies reject oversized decimal
+text before conversion. Host finality reads bound headers/body observations and
+JSON bytes, validate successful records and retain unknown outcomes on refusal.
+Neither a failed read nor a local timeout proves that a mutation did not submit.
+These source checks do not qualify a new Docker image or native/provider flow.

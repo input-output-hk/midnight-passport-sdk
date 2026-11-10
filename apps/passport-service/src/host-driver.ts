@@ -1,3 +1,5 @@
+import { readHostConfirmation } from './host-confirmation.ts';
+export { readHostConfirmation } from './host-confirmation.ts';
 import { randomUUID, createHash } from 'node:crypto';
 import { resolveBinding } from '@input-output-hk/mn-passport-contract';
 import {
@@ -6,8 +8,6 @@ import {
   type HostMutationDriver,
   type HostMutationRecord,
   type HostPreparedTransaction,
-  type HostMutationStep,
-  type HostConfirmation,
 } from '@input-output-hk/mn-passport-service';
 
 /** Dynamic modules all come from the same pinned reference tree. This isolated adapter is the
@@ -40,72 +40,6 @@ const object = (v: HostJson): Record<string, any> => {
 const OWNER =
   /^(activate_initial_device|append_inbox|rotate_enc_key|add_device|remove_device)_with_(p256|jubjub)$/;
 const HEX = /^[0-9a-f]{64}$/;
-const QUERY =
-  'query HostMutationReceipt($offset: TransactionOffset!) { transactions(offset:$offset) { __typename protocolVersion raw hash block { height } ... on RegularTransaction { identifiers transactionResult { status } } } }';
-
-/** Bounded single-read confirmation. Missing, failed, partial, malformed and era-mismatched
- * results stay unknown. Decode raw included bytes, validate hash AND the stored watch id.
- */
-export async function readHostConfirmation(
-  step: HostMutationStep,
-  runtime: Pick<ReferenceHostRuntime, 'ledger' | 'indexerUrl' | 'fetch' | 'versionOfRecord'>,
-): Promise<HostConfirmation | undefined> {
-  const identifier = step.submissionId ?? step.identifiers[0]!;
-  const controller = new AbortController(),
-    timer = setTimeout(() => controller.abort(), 4000);
-  try {
-    const res = await (runtime.fetch ?? fetch)(runtime.indexerUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ query: QUERY, variables: { offset: { identifier } } }),
-      signal: controller.signal,
-    });
-    if (!res.ok) return undefined;
-    const value: any = await res.json();
-    if (
-      value.errors ||
-      !Array.isArray(value.data?.transactions) ||
-      value.data.transactions.length !== 1
-    )
-      return undefined;
-    const r = value.data.transactions[0];
-    if (
-      r.__typename !== 'RegularTransaction' ||
-      runtime.versionOfRecord(r) !== 'v9' ||
-      r.transactionResult?.status !== 'SUCCESS' ||
-      !Array.isArray(r.identifiers) ||
-      !r.identifiers.includes(identifier) ||
-      typeof r.hash !== 'string' ||
-      !HEX.test(r.hash) ||
-      typeof r.raw !== 'string' ||
-      !/^(?:[0-9a-f]{2})+$/.test(r.raw) ||
-      r.raw.length > 16 * 1024 * 1024 ||
-      !Number.isSafeInteger(r.block?.height) ||
-      r.block.height < 0
-    )
-      return undefined;
-    const tx = runtime.ledger.Transaction.deserialize(
-      'signature',
-      'proof',
-      'binding',
-      bytes(r.raw),
-    );
-    const includedIds = tx.identifiers();
-    // A fee/watch identifier alone must not confirm a different transaction that omitted
-    // the account intent. Merged transactions may add IDs, never omit a prepared one.
-    if (
-      !step.identifiers.every((id) => includedIds.includes(id)) ||
-      tx.transactionHash() !== r.hash
-    )
-      return undefined;
-    return { identifier, txHash: r.hash, blockHeight: r.block.height, succeeded: true };
-  } catch {
-    return undefined;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutationDriver {
   const L = r.ledger;
   const decode = (tx: string) =>

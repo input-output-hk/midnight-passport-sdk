@@ -43,6 +43,15 @@ const canonicalPath = (path: string): string => {
     : resolve(canonicalPath(dirname(absolute)), basename(absolute));
 };
 
+function checkJournalDirectories(directory: string, jobDirectory: string | undefined): void {
+  if (jobDirectory) {
+    const a = canonicalPath(directory),
+      b = canonicalPath(jobDirectory);
+    if (a === b || a.startsWith(b + sep) || b.startsWith(a + sep))
+      throw new Error('Use distinct, non-nested host and job journal directories.');
+  }
+}
+
 export function configuredHostMutations(
   config: ServiceConfig,
   driver: HostMutationDriver | undefined,
@@ -70,12 +79,7 @@ export function configuredHostMutations(
     maxActive = bounded(env, 'PASSPORT_HOST_JOB_MAX_ACTIVE', 8, 1, 128),
     eventLimit = bounded(env, 'PASSPORT_HOST_JOB_EVENT_LIMIT', 32, 1, 256),
     completedTtlMs = bounded(env, 'PASSPORT_HOST_JOB_COMPLETED_TTL_MS', 600000, 0, 3650 * 86400000);
-  if (jobDirectory) {
-    const a = canonicalPath(directory),
-      b = canonicalPath(jobDirectory);
-    if (a === b || a.startsWith(b + sep) || b.startsWith(a + sep))
-      throw new Error('Use distinct, non-nested host and job journal directories.');
-  }
+  checkJournalDirectories(directory, jobDirectory);
   const secrets: Uint8Array[] = [];
   const read = (path: string) => {
     const stat = lstatSync(path);

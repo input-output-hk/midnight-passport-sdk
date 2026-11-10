@@ -93,3 +93,17 @@ The [c8 all-files option](https://github.com/bcoe/c8#ignoring-uncovered-lines-fu
 includes unexecuted files; [Zod schemas](https://zod.dev/api) validate boundary
 values; [Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers)
 execute independently of the page. Tool versions are pinned in the lockfile.
+
+## Source follow-up: architecture and backend inventory — 2026-11-10
+
+Literal dependency edges are parsed with the existing TypeScript compiler instead
+of regular expressions. Node built-ins and cross-package source paths are checked
+alongside the package graph. Computed dynamic module names remain a reviewed host
+boundary. New backend TypeScript/JavaScript sources join the AST gate.
+
+Two pre-existing native runtime files receive explicit measured ceilings when
+entering this inventory. Their dynamic ledger types need separate native
+qualification; moving or renaming that debt cannot erase it. All new operations,
+transport parsers and app modules use the default size/complexity and zero unsafe
+escape limits. The JubJub connector's previous ceilings decrease after extracting
+cohesive typed phases. See the pre-RC audit for before/after evidence.

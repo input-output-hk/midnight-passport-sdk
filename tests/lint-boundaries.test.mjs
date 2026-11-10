@@ -117,3 +117,43 @@ test('the repository itself respects every boundary', () => {
   });
   assert.equal(run.status, 0, run.stderr);
 });
+
+test('neutral packages reject bare, escaped and template-literal Node imports', async () => {
+  for (const source of [
+    "import { readFile } from 'fs/promises';",
+    "export { createHash } from 'crypto';",
+    'const fs = import(`node:fs`);',
+    "const fs = require('fs');",
+    "import type { Stats } from 'node\\x3afs';",
+    "type Stats = import('fs').Stats;",
+  ]) {
+    const result = await lint({ 'packages/account/src/bypass.ts': source });
+    assert.equal(result.status, 1, source);
+    assert.match(result.errors.join('\n'), /must not import/);
+  }
+});
+
+test('relative imports cannot bypass a package boundary or its public exports', async () => {
+  for (const source of [
+    "import { x } from '../../adapter-webauthn/src/adapter.js';",
+    "export type { X } from '../../protocol/src/index.js';",
+    "const core = import('../../adapter-webauthn/src/adapter.js');",
+  ]) {
+    const result = await lint({ 'packages/account/src/bypass.ts': source });
+    assert.equal(result.status, 1, source);
+    assert.match(result.errors.join('\n'), /public package/);
+  }
+});
+
+test('comments, prose and type-only Midnight imports create no runtime dependencies', async () => {
+  const result = await lint({
+    'packages/account/src/prose.ts': [
+      "// import { x } from '@input-output-hk/mn-passport-adapter-webauthn';",
+      '/* declare const document: unknown; */',
+      'const note = "from \'node:fs\'";',
+      "import { type Transaction } from '@midnightntwrk/ledger-v9';",
+      "export { type Transaction } from '@midnightntwrk/ledger-v9';",
+    ].join('\n'),
+  });
+  assert.equal(result.status, 0, result.errors.join('\n'));
+});

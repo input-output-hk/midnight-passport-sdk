@@ -64,3 +64,25 @@ test('value endpoint refuses other circuits and deposits above the demo policy b
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('tagged Uint256 amounts reject oversized text before BigInt conversion', () => {
+  const maximum = (1n << 256n) - 1n;
+  assert.equal(decodeValueArg({ $bigint: maximum.toString() }), maximum);
+  assert.throws(() => decodeValueArg({ $bigint: (maximum + 1n).toString() }), /256 bits/);
+  const original = globalThis.BigInt;
+  let conversions = 0;
+  globalThis.BigInt = new Proxy(original, {
+    apply(target, receiver, args) {
+      conversions++;
+      return Reflect.apply(target, receiver, args);
+    },
+  });
+  try {
+    assert.throws(() => decodeValueArg({ $bigint: '9'.repeat(100_000) }), /integer/);
+    assert.equal(conversions, 0);
+    assert.equal(decodeValueArg({ $bigint: '1' }), 1n);
+    assert.equal(conversions, 1);
+  } finally {
+    globalThis.BigInt = original;
+  }
+});

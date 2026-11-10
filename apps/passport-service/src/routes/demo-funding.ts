@@ -1,3 +1,4 @@
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { demoAssets, availableDemoAssets, preflightRefusal } from './demo-funding-inventory.ts';
 import type { ServiceConfig } from '../config.ts';
@@ -42,157 +43,199 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
     }
   };
 
+  const context: FundingContext = {
+    config,
+    url,
+    token,
+    assets,
+    balanceAssetColor,
+    deployments,
+    checkedBackend,
+  };
   return async (req, res, requestUrl) => {
-    if (requestUrl.pathname === '/v1/demo/value-call') {
-      if (req.method !== 'POST') throw new HttpError(405, 'method not allowed');
-      if (req.headers.origin !== config.corsOrigin)
-        throw new HttpError(403, 'demo value calls require the Passport demo origin');
-      const body = await readJson(req, 16 * 1024);
-      if (!body || typeof body !== 'object' || Array.isArray(body))
-        throw new HttpError(400, 'invalid value call');
-      const fields = body as Record<string, unknown>;
-      if (
-        Object.keys(fields).sort().join(',') !== 'accountAddress,args,circuit' ||
-        typeof fields.accountAddress !== 'string' ||
-        !ADDRESS.test(fields.accountAddress) ||
-        ![
-          'withdraw_unshielded_with_p256',
-          'withdraw_unshielded_with_jubjub',
-          'withdraw_unshielded_with_grant_jubjub',
-        ].includes(String(fields.circuit)) ||
-        !Array.isArray(fields.args)
-      )
-        throw new HttpError(400, 'invalid value call');
-      if (!sponsoredAddresses(config, deployments).has(fields.accountAddress))
-        throw new HttpError(403, 'account is not registered and deployed by this demo');
-      await checkedBackend();
-      const response = await fetch(new URL('/v1/value-call', url), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-        signal: AbortSignal.timeout(300_000),
-        body: JSON.stringify(body),
-      });
-      const result = (await response.json()) as Record<string, unknown>;
-      if (!response.ok)
-        throw new HttpError(
-          response.status,
-          typeof result.error === 'string' ? result.error : 'value call refused',
-        );
-      if (typeof result.txHash !== 'string' || !TX_ID.test(result.txHash))
-        throw new HttpError(502, 'value service returned an invalid transaction ID');
-      json(res, 200, {
-        txHash: result.txHash,
-        ...(typeof result.blockHeight === 'number' && { blockHeight: result.blockHeight }),
-      });
-      return true;
-    }
+    if (requestUrl.pathname === '/v1/demo/value-call') return valueCall(context, req, res);
     if (requestUrl.pathname !== '/v1/demo/funding') return false;
-    if (req.method === 'GET') {
-      const discovery = await availableDemoAssets(config, url, token, assets);
-      const address = requestUrl.searchParams.get('accountAddress');
-      if (address !== null) {
-        if (!ADDRESS.test(address) || !sponsoredAddresses(config, deployments).has(address))
-          throw new HttpError(403, 'account is not registered and deployed by this demo');
-        await checkedBackend();
-        const balanceUrl = new URL('/v1/faucet/balances', url);
-        balanceUrl.searchParams.set('accountAddress', address);
-        const response = await fetch(balanceUrl, {
-          headers: { authorization: `Bearer ${token}` },
-          signal: AbortSignal.timeout(30_000),
-        });
-        if (!response.ok) throw new HttpError(503, 'ACC balance read unavailable');
-        const body = (await response.json()) as Record<string, unknown>;
-        if (
-          body.accountAddress !== address ||
-          body.color !== balanceAssetColor ||
-          typeof body.night !== 'string' ||
-          !/^\d+$/.test(body.night) ||
-          typeof body.fundedAsset !== 'string' ||
-          !/^\d+$/.test(body.fundedAsset)
-        ) {
-          throw new HttpError(502, 'funding service returned invalid ACC balances');
-        }
-        json(res, 200, {
-          assets: discovery,
-          balanceAssetColor,
-          accountAddress: address,
-          balances: { night: body.night, fundedAsset: body.fundedAsset },
-        });
-        return true;
-      }
-      json(res, 200, { assets: discovery, balanceAssetColor });
-      return true;
-    }
-    if (req.method !== 'POST') {
-      json(res, 405, { error: 'method not allowed' });
-      return true;
-    }
-    if (req.headers.origin !== config.corsOrigin)
-      throw new HttpError(403, 'demo funding requires the Passport demo origin');
-    const body = await readJson(req, 512);
-    if (!body || typeof body !== 'object' || Array.isArray(body))
-      throw new HttpError(400, 'invalid funding request');
-    const fields = body as Record<string, unknown>;
-    if (
-      Object.keys(fields).sort().join(',') !== 'accountAddress,color,requestId' ||
-      typeof fields.accountAddress !== 'string' ||
-      !ADDRESS.test(fields.accountAddress) ||
-      typeof fields.requestId !== 'string' ||
-      !REQUEST_ID.test(fields.requestId) ||
-      typeof fields.color !== 'string' ||
-      !assets.some((asset) => asset.color === fields.color)
-    ) {
-      throw new HttpError(400, 'invalid funding request');
-    }
-    if (!sponsoredAddresses(config, deployments).has(fields.accountAddress))
-      throw new HttpError(403, 'account is not registered and deployed by this demo');
+    if (req.method === 'GET') return fundingDiscovery(context, res, requestUrl);
+    return deposit(context, req, res);
+  };
+}
 
+interface FundingContext {
+  readonly config: ServiceConfig;
+  readonly url: URL;
+  readonly token: string;
+  readonly assets: ReturnType<typeof demoAssets>['assets'];
+  readonly balanceAssetColor: string;
+  readonly deployments: DeploymentLog;
+  checkedBackend(): Promise<void>;
+}
+
+async function valueCall(context: FundingContext, req: IncomingMessage, res: ServerResponse) {
+  const { config, url, token, deployments, checkedBackend } = context;
+  if (req.method !== 'POST') throw new HttpError(405, 'method not allowed');
+  if (req.headers.origin !== config.corsOrigin)
+    throw new HttpError(403, 'demo value calls require the Passport demo origin');
+  const body = await readJson(req, 16 * 1024);
+  if (!body || typeof body !== 'object' || Array.isArray(body))
+    throw new HttpError(400, 'invalid value call');
+  const fields = body as Record<string, unknown>;
+  if (
+    Object.keys(fields).sort().join(',') !== 'accountAddress,args,circuit' ||
+    typeof fields.accountAddress !== 'string' ||
+    !ADDRESS.test(fields.accountAddress) ||
+    ![
+      'withdraw_unshielded_with_p256',
+      'withdraw_unshielded_with_jubjub',
+      'withdraw_unshielded_with_grant_jubjub',
+    ].includes(String(fields.circuit)) ||
+    !Array.isArray(fields.args)
+  )
+    throw new HttpError(400, 'invalid value call');
+  if (!sponsoredAddresses(config, deployments).has(fields.accountAddress))
+    throw new HttpError(403, 'account is not registered and deployed by this demo');
+  await checkedBackend();
+  const response = await fetch(new URL('/v1/value-call', url), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(300_000),
+    body: JSON.stringify(body),
+  });
+  const result = (await response.json()) as Record<string, unknown>;
+  if (!response.ok)
+    throw new HttpError(
+      response.status,
+      typeof result.error === 'string' ? result.error : 'value call refused',
+    );
+  if (typeof result.txHash !== 'string' || !TX_ID.test(result.txHash))
+    throw new HttpError(502, 'value service returned an invalid transaction ID');
+  json(res, 200, {
+    txHash: result.txHash,
+    ...(typeof result.blockHeight === 'number' && { blockHeight: result.blockHeight }),
+  });
+  return true;
+}
+
+async function fundingDiscovery(context: FundingContext, res: ServerResponse, requestUrl: URL) {
+  const { config, url, token, assets, balanceAssetColor, deployments, checkedBackend } = context;
+  const discovery = await availableDemoAssets(config, url, token, assets);
+  const address = requestUrl.searchParams.get('accountAddress');
+  if (address !== null) {
+    if (!ADDRESS.test(address) || !sponsoredAddresses(config, deployments).has(address))
+      throw new HttpError(403, 'account is not registered and deployed by this demo');
     await checkedBackend();
-    const asset = assets.find((candidate) => candidate.color === fields.color)!;
-    const response = await fetch(new URL('/v1/faucet/fund', url), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(180_000),
-      body: JSON.stringify({
-        requestId: fields.requestId,
-        networkId: config.networkId,
-        bindingId: config.bindingId,
-        manifestSha256: config.manifestSha256,
-        accountAddress: fields.accountAddress,
-        color: asset.color,
-        amount: asset.amount,
-      }),
+    const balanceUrl = new URL('/v1/faucet/balances', url);
+    balanceUrl.searchParams.set('accountAddress', address);
+    const response = await fetch(balanceUrl, {
+      headers: { authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(30_000),
     });
-    const result = (await response.json()) as Record<string, unknown>;
-    if (!response.ok) {
-      const refusal = preflightRefusal(result, fields.requestId);
-      if (refusal && [409, 503].includes(response.status)) {
-        json(res, response.status, refusal);
-        return true;
-      }
-      const message = typeof result.error === 'string' ? result.error : 'funding was refused';
-      throw new HttpError(response.status, message);
-    }
+    if (!response.ok) throw new HttpError(503, 'ACC balance read unavailable');
+    const body = (await response.json()) as Record<string, unknown>;
     if (
-      result.requestId !== fields.requestId ||
-      typeof result.txId !== 'string' ||
-      !TX_ID.test(result.txId) ||
-      (result.preparationTxId !== undefined &&
-        (typeof result.preparationTxId !== 'string' || !TX_ID.test(result.preparationTxId))) ||
-      typeof result.creditedBalance !== 'string' ||
-      !/^\d+$/.test(result.creditedBalance)
+      body.accountAddress !== address ||
+      body.color !== balanceAssetColor ||
+      typeof body.night !== 'string' ||
+      !/^\d+$/.test(body.night) ||
+      typeof body.fundedAsset !== 'string' ||
+      !/^\d+$/.test(body.fundedAsset)
     ) {
-      throw new HttpError(502, 'funding service returned an invalid confirmation');
+      throw new HttpError(502, 'funding service returned invalid ACC balances');
     }
     json(res, 200, {
+      assets: discovery,
+      balanceAssetColor,
+      accountAddress: address,
+      balances: { night: body.night, fundedAsset: body.fundedAsset },
+    });
+    return true;
+  }
+  json(res, 200, { assets: discovery, balanceAssetColor });
+  return true;
+}
+
+async function deposit(context: FundingContext, req: IncomingMessage, res: ServerResponse) {
+  const { config, url, token, assets, deployments, checkedBackend } = context;
+  if (req.method !== 'POST') {
+    json(res, 405, { error: 'method not allowed' });
+    return true;
+  }
+  if (req.headers.origin !== config.corsOrigin)
+    throw new HttpError(403, 'demo funding requires the Passport demo origin');
+  const body = await readJson(req, 512);
+  if (!body || typeof body !== 'object' || Array.isArray(body))
+    throw new HttpError(400, 'invalid funding request');
+  const fields = body as Record<string, unknown>;
+  if (
+    Object.keys(fields).sort().join(',') !== 'accountAddress,color,requestId' ||
+    typeof fields.accountAddress !== 'string' ||
+    !ADDRESS.test(fields.accountAddress) ||
+    typeof fields.requestId !== 'string' ||
+    !REQUEST_ID.test(fields.requestId) ||
+    typeof fields.color !== 'string' ||
+    !assets.some((asset) => asset.color === fields.color)
+  ) {
+    throw new HttpError(400, 'invalid funding request');
+  }
+  if (!sponsoredAddresses(config, deployments).has(fields.accountAddress))
+    throw new HttpError(403, 'account is not registered and deployed by this demo');
+
+  await checkedBackend();
+  const asset = assets.find((candidate) => candidate.color === fields.color);
+  if (!asset) throw new HttpError(400, 'invalid funding asset');
+  const response = await fetch(new URL('/v1/faucet/fund', url), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(180_000),
+    body: JSON.stringify({
       requestId: fields.requestId,
+      networkId: config.networkId,
+      bindingId: config.bindingId,
+      manifestSha256: config.manifestSha256,
       accountAddress: fields.accountAddress,
       color: asset.color,
       amount: asset.amount,
-      txId: result.txId,
-      ...(result.preparationTxId && { preparationTxId: result.preparationTxId }),
-      creditedBalance: result.creditedBalance,
-    });
-    return true;
-  };
+    }),
+  });
+  const result = (await response.json()) as Record<string, unknown>;
+  if (!response.ok) {
+    const refusal = preflightRefusal(result, fields.requestId);
+    if (refusal && [409, 503].includes(response.status)) {
+      json(res, response.status, refusal);
+      return true;
+    }
+    const message = typeof result.error === 'string' ? result.error : 'funding was refused';
+    throw new HttpError(response.status, message);
+  }
+  checkDepositConfirmation(result, fields.requestId);
+  json(res, 200, {
+    requestId: fields.requestId,
+    accountAddress: fields.accountAddress,
+    color: asset.color,
+    amount: asset.amount,
+    txId: result.txId,
+    ...(result.preparationTxId && { preparationTxId: result.preparationTxId }),
+    creditedBalance: result.creditedBalance,
+  });
+  return true;
+}
+
+function checkDepositConfirmation(
+  result: Record<string, unknown>,
+  requestId: string,
+): asserts result is Record<string, unknown> & {
+  txId: string;
+  preparationTxId?: string;
+  creditedBalance: string;
+} {
+  if (
+    result.requestId !== requestId ||
+    typeof result.txId !== 'string' ||
+    !TX_ID.test(result.txId) ||
+    (result.preparationTxId !== undefined &&
+      (typeof result.preparationTxId !== 'string' || !TX_ID.test(result.preparationTxId))) ||
+    typeof result.creditedBalance !== 'string' ||
+    !/^\d+$/.test(result.creditedBalance)
+  ) {
+    throw new HttpError(502, 'funding service returned an invalid confirmation');
+  }
 }

@@ -88,10 +88,12 @@ export function demoAssets(file: string): { assets: DemoAsset[]; balanceAssetCol
       typeof item.color !== 'string' ||
       !ADDRESS.test(item.color) ||
       typeof item.maxPerRequest !== 'string' ||
+      item.maxPerRequest.length > 39 ||
       !DECIMAL.test(item.maxPerRequest)
     )
       throw new Error('demo funding needs a valid asset policy');
     const limit = BigInt(item.maxPerRequest);
+    if (limit > (1n << 128n) - 1n) throw new Error('demo funding needs valid Uint128 limits');
     return { color: item.color, amount: (limit < 10n ? limit : 10n).toString() };
   });
   if (new Set(assets.map((asset) => asset.color)).size !== assets.length)

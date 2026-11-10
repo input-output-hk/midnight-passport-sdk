@@ -491,3 +491,13 @@ in to handoffs; the default adapters do not start a cache. Additive WebAuthn reg
 and account/browser handoff APIs are source preview, absent from RC8. No contract or
 key-recipe change. Software/generated-contract and synthetic browser evidence remains
 separate from genuine provider, native proof and released-package qualification.
+
+### Source-preview quality follow-up
+
+Reference endpoints have separate admission, observation and response responsibilities.
+Host finality decoding is bounded and schema checked; oversized or malformed responses
+cannot confirm an operation. Funding policy and tagged integer parsers bound decimal
+text before conversion. The shared audit keeps original IDs and unknown-outcome fences;
+no automatic mutation retry, additional passkey request or wallet startup is introduced.
+The backend apps now participate in the static AST inventory. Native reference-runtime
+typing remains explicit debt requiring its own qualification scope.

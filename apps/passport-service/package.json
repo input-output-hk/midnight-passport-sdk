@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "@input-output-hk/mn-passport-contract": "workspace:*",
-    "@input-output-hk/mn-passport-service": "workspace:*"
+    "@input-output-hk/mn-passport-service": "workspace:*",
+    "zod": "4.1.12"
   },
   "devDependencies": {
     "tsx": "4.23.15"

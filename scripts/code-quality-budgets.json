@@ -58,12 +58,12 @@
     },
     "packages/account/src/jubjub-connector.ts": {
       "ceilings": {
-        "lines": 1083,
-        "functionLines": 938,
-        "nonNull": 15,
+        "lines": 600,
+        "functionLines": 531,
+        "nonNull": 4,
         "unsafeCasts": 2
       },
-      "reason": "O4: typed rotation preparation/publication/switch/completion phases extracted. Actual connector falls from1727lines/1563function span/complexity95/37non-null to1083/938/19/15; all new modules use default budgets. Remaining factory/type debt cannot grow. See docs/review/overnight-quality/README.md."
+      "reason": "O4: typed rotation preparation/publication/switch/completion phases extracted. Actual connector falls from1727lines/1563function span/complexity95/37non-null to1083/938/19/15; all new modules use default budgets. Remaining factory/type debt cannot grow. See docs/review/overnight-quality/README.md. QA2 (2026-11-10): checked capabilities, readiness, grants and holdings extracted as typed bounded operations. Actual root594lines/531factory span/complexity19/4non-null; every new module stays within defaults. See docs/review/pre-rc-quality-2026-11-10.md."
     },
     "packages/account/src/jubjub-device.ts": {
       "ceilings": {
@@ -456,6 +456,22 @@
         "nonNull": 11
       },
       "reason": "Q1: existing orchestration/type debt; no growth. See docs/review/sdk-quality/README.md."
+    },
+    "apps/passport-service/src/host-driver.ts": {
+      "ceilings": {
+        "functionLines": 274,
+        "complexity": 54,
+        "explicitAny": 16,
+        "nonNull": 12
+      },
+      "reason": "QA3: existing native reference-ledger bridge enters the AST gate for the first time. Baseline2259102 has274factory lines/complexity54/17explicit-any/13non-null. Confirmation transport extracted to typed bounded schema;16/12remain. These measured legacy ceilings must not grow. Full structural typing and phase extraction require a separately scoped native qualification; no new module inherits this exception. See docs/review/pre-rc-quality-2026-11-10.md."
+    },
+    "apps/passport-service/src/reference-backend.ts": {
+      "ceilings": {
+        "functionLines": 164,
+        "explicitAny": 3
+      },
+      "reason": "QA3: pre-existing dynamic native-module composition enters static inventory. Preserve measured164line factory and3explicit runtime-module escapes until its native requalification slice. New app modules remain at zero escape defaults; this is explicit existing debt, not an allowance for new untyped modules. See docs/review/pre-rc-quality-2026-11-10.md."
     }
   }
 }
