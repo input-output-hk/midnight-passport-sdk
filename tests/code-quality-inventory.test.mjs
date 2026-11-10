@@ -20,6 +20,7 @@ function fixture() {
   write('packages/example/src/index.ts', 'export const value: number = 1;');
   write('apps/passport-dapp/src/app.ts', 'export const app = 1;');
   write('scripts/consumer/index.mjs', 'export const entry = 1;');
+  mkdirSync(join(root, 'scripts/release'));
   write('scripts/architecture-source.mjs', 'export const parser = 1;');
   write('scripts/lint-boundaries.mjs', 'export const boundary = 1;');
   write('apps/passport-dapp/e2e/demo-journeys.e2e.ts', 'export const run = 1;');
@@ -48,6 +49,24 @@ test('consumer inventory discovers nested mjs while preserving existing TS scope
       'scripts/consumer/index.mjs',
       'scripts/lint-boundaries.mjs',
     ]);
+  } finally {
+    f.close();
+  }
+});
+
+test('new release acceptance modules use default AST ceilings without executing operator code', () => {
+  const f = fixture();
+  try {
+    f.write('scripts/release/new/check.mjs', "throw Error('must not execute');\n" + complex);
+    const child = spawnSync(process.execPath, [cli], {
+      cwd: f.root,
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+    assert.ifError(child.error);
+    assert.equal(child.status, 1);
+    assert.match(child.stderr, /scripts\/release\/new\/check\.mjs: complexity: 27 exceeds 25/);
+    assert.equal(child.stderr.includes('must not execute'), false);
   } finally {
     f.close();
   }

@@ -64,6 +64,14 @@ Full key generation and P-256 transactions cannot meet a 45-second budget: all 5
 prover keys total 12,175,495,280 bytes and a P-256 proof alone can take tens of seconds.
 Keep complete local checks before every commit as specified in `AGENTS.md`.
 
+Source-preview #236/#313 tooling adds deterministic release transport/resource tests
+to the existing root `node --test` inventory. The explicit `release:accept` and
+`qualify:mounted` commands are opt-in operator/release lanes; no authenticated
+registry download, two-build reproduction, live Pages or mounted proof work is
+added to required PR jobs. See the [review map](review/release-acceptance/README.md)
+and [operator guide](../docs-site/operations/release-acceptance.md). Their synthetic
+tests do not establish actual registry/image/native acceptance or hosted timing.
+
 ## Cache inventory
 
 ### Dependency downloads

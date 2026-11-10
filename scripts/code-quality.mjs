@@ -151,6 +151,7 @@ export function qualityInventory(root = process.cwd()) {
   walk(resolve(root, 'apps/passport-dapp/e2e/journeys'));
   walk(resolve(root, 'apps/passport-dapp/e2e/journeys'), '.mjs');
   walk(resolve(root, 'scripts/consumer'), '.mjs');
+  walk(resolve(root, 'scripts/release'), '.mjs');
   for (const file of ['scripts/architecture-source.mjs', 'scripts/lint-boundaries.mjs'])
     inventory[file] = inspectSource(readFileSync(resolve(root, file), 'utf8'), file);
   return inventory;

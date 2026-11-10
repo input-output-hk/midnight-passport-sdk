@@ -48,6 +48,11 @@ feature-probe file still refuses. Failed roots and receipts are retained. These
 checks are outside the required fast PR jobs. An actual authenticated registry
 installation and source/publisher attestation checks remain necessary after publication.
 
+The source-preview [release acceptance tools](/operations/release-acceptance) compose
+these checks with actual registry/image/Pages verification. Their mounted lane uses
+a separately leased fresh standalone stack. Deterministic transport and interruption
+tests run in the normal unit gate; the live lanes remain opt-in release work.
+
 See the [RC9 release notes](/operations/rc9-preview) for the current increment and
 its signed artifact evidence. The [exact source review map](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/quality-debt-2026-11-10.md)
 explains the decomposition; it is source evidence, not a replacement release receipt.

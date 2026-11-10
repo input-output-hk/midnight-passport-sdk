@@ -23,6 +23,8 @@
     "prototype:e2e": "pnpm --filter passport-dapp e2e",
     "demo": "node scripts/demo.mjs",
     "qualify": "node scripts/qualify.mjs",
+    "release:accept": "node scripts/release/accept.mjs",
+    "qualify:mounted": "node scripts/release/mounted.mjs",
     "test:demo-browser": "pnpm --filter passport-dapp test:browser",
     "test:coverage": "pnpm run build && node scripts/test-coverage.mjs",
     "quality:report": "node scripts/code-quality.mjs --report",

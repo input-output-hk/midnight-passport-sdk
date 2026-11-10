@@ -109,6 +109,7 @@ export default defineConfig({
             { text: 'Public proof artifacts', link: '/operations/artifacts' },
             { text: 'Proof, sponsorship and funding', link: '/operations/services' },
             { text: 'Testing and releases', link: '/operations/quality' },
+            { text: 'Verify a release', link: '/operations/release-acceptance' },
             { text: 'RC9 release notes', link: '/operations/rc9-preview' },
             { text: 'Troubleshooting', link: '/operations/troubleshooting' },
             { text: 'History and migration', link: '/operations/archive' },
