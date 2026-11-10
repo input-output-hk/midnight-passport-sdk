@@ -499,8 +499,9 @@ Host finality decoding is bounded and schema checked; oversized or malformed res
 cannot confirm an operation. Funding policy and tagged integer parsers bound decimal
 text before conversion. The shared audit keeps original IDs and unknown-outcome fences;
 no automatic mutation retry, additional passkey request or wallet startup is introduced.
-The backend apps now participate in the static AST inventory. Native reference-runtime
-typing remains explicit debt requiring its own qualification scope.
+The backend apps participate in the static AST inventory. The native reference
+bridge now uses typed v9 contracts and checked retained contexts. Native proof,
+provider and production-image qualification remain separate acceptance tiers.
 
 ## Typed controller and presentation decomposition
 

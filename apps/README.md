@@ -829,8 +829,8 @@ These are UI/software evidence, not fresh native funds or provider qualification
 ### Source-preview backend quality boundaries
 
 Backend app TypeScript/JavaScript is included in the AST quality inventory. The
-existing dynamic native ledger driver and loader retain explicit measured debt;
-new modules use normal defaults. Funding/value policies reject oversized decimal
+typed native ledger driver and loader now meet normal defaults, as do their new
+operation modules. Funding/value policies reject oversized decimal
 text before conversion. Host finality reads bound headers/body observations and
 JSON bytes, validate successful records and retain unknown outcomes on refusal.
 Neither a failed read nor a local timeout proves that a mutation did not submit.
