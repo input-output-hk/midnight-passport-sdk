@@ -173,8 +173,9 @@ checkout for [attempt2](https://github.com/input-output-hk/midnight-passport-sdk
 [attempt3](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/42911265471/attempts/3)
 and [attempt4](https://github.com/input-output-hk/midnight-passport-sdk/actions/runs/42911265471/attempts/4).
 All three passed, with exact cache hits in all 45 substantive job executions.
-Every job still ran fresh installation, catalog/CAS verification, builds and its
-existing assertions. All four package profiles and eight browser receipts were
+Substantive jobs retained fresh installation and catalog/CAS verification;
+build/test jobs retained their existing fresh builds and assertions.
+All four package profiles and eight browser receipts were
 retained for each warm attempt; the 36 ZIP digests match GitHub's artifact metadata.
 
 Observed whole-job times, including preparation and post steps:
