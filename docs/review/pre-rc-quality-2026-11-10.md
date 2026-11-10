@@ -91,3 +91,10 @@ where claimed. The public API and package count do not change in this audit.
 The large P-256 and demo roots remain under their existing ceilings. Follow-up
 work should extract a complete responsibility with its race/ownership tests,
 rather than copy an arbitrary line range or hide dynamic types behind aliases.
+
+The independent review found one extraction regression: readiness read a replaced
+network port when saving the local binding, while the connector retained its
+original network object. The correction carries that captured object into
+readiness. A public-facade regression reproduces the mismatched record before the
+fix and verifies matching account/record binding afterwards; it also checks that
+activation and the two inbox publications execute once.

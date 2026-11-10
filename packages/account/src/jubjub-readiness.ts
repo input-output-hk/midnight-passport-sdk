@@ -19,7 +19,8 @@ import { JUBJUB_READER_SCAN_LIMIT } from './jubjub-readers.js';
 import { equal, samePoint, requirePure } from './jubjub-binding.js';
 
 export interface JubjubReadinessHost {
-  readonly ports: Pick<PassportPorts, 'records' | 'network'>;
+  readonly ports: Pick<PassportPorts, 'records'>;
+  readonly network: PassportPorts['network'];
   readonly authoriser: Authoriser;
   readonly viewingKey: AccountViewingKey;
   readonly directory: AccountDirectory;
@@ -203,7 +204,7 @@ export async function finishJubjubReadiness(
   record: JubjubHint,
   view: InboxLedgerView,
 ) {
-  const { readBinding, readChain, recordPure, directory, networkId, ports } = host;
+  const { readBinding, readChain, recordPure, directory, networkId, network, ports } = host;
 
   const pure = requirePure((await readBinding()).pureCircuits);
   recordPure.set(record, pure);
@@ -244,7 +245,7 @@ export async function finishJubjubReadiness(
     throw new PassportConnectorError('NotAuthorised', 'This device has no live ACC entry.');
   await ports.records?.write({
     address: active.address,
-    bindingId: ports.network.bindingId,
+    bindingId: network.bindingId,
     scheme: 'jubjub-schnorr',
     credentialId: Uint8Array.from(active.credentialId),
     localUseCounter: counter,

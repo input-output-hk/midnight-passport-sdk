@@ -88,6 +88,7 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
   const recordPure = new WeakMap<JubjubHint, JubjubPureCircuits>();
   const readiness: JubjubReadinessHost = {
     ports,
+    network,
     authoriser,
     directory,
     viewingKey,
@@ -463,7 +464,6 @@ export function createJubjubAccounts(ports: PassportPorts): PassportConnectorAPI
         options,
       ),
   });
-
   const api: PassportConnectorAPI = {
     apiVersion: PASSPORT_API_VERSION,
     networkId,

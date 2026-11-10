@@ -432,6 +432,36 @@ test('JubJub creation appends sealed keys, then opens from the live inbox', asyn
   assert.equal(w.calls.length, 3, 'open did not repeat completed calls');
 });
 
+test('JubJub readiness records the connector binding when a caller replaces its network port', async () => {
+  const w = world();
+  /** @type {import('../packages/account/dist/ports/index.js').AccountRecord[]} */
+  const records = [];
+  const ports = {
+    ...w.ports,
+    records: {
+      read: async () => records.at(-1),
+      exists: async () => records.length > 0,
+      write: async (
+        /** @type {import('../packages/account/dist/ports/index.js').AccountRecord} */ record,
+      ) => {
+        records.push(record);
+      },
+    },
+  };
+  const accounts = createPassportAccounts(ports);
+  const originalBinding = ports.network.bindingId;
+  ports.network = { ...ports.network, bindingId: 'replacement-binding' };
+  const account = await accounts.createAccount({ userName: 'binding', retireAuthority: true });
+  assert.equal(account.bindingId, originalBinding);
+  assert.equal(records.length, 1);
+  assert.equal(records[0]?.bindingId, originalBinding);
+  assert.deepEqual(w.calls, [
+    'activate_initial_device_with_jubjub',
+    'append_inbox_with_jubjub',
+    'append_inbox_with_jubjub',
+  ]);
+});
+
 test('JubJub owner withdrawal binds amount and recipient to consent and the signed circuit', async () => {
   const w = world();
   const account = await w.accounts.createAccount({ userName: 'withdraw', retireAuthority: true });
