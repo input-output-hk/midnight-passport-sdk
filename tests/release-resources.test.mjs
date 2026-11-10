@@ -11,7 +11,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ResourceOwner, claimReleaseLease } from '../scripts/release/resources.mjs';
+import { ResourceOwner, claimReleaseLease, resourceAbsent } from '../scripts/release/resources.mjs';
 import { mountedInterval } from '../scripts/release/mounted-interval.mjs';
 import { freshRoot, saveJournal } from '../scripts/release/files.mjs';
 import { isolatedProcesses } from '../scripts/qualification/native-isolation-control.mjs';
@@ -19,6 +19,47 @@ import { FakeDocker } from './fixtures/release-docker.mjs';
 
 const image = 'sha256:' + 'a'.repeat(64);
 const runId = 'a'.repeat(16);
+test('Docker29 network absence admits only exact object-specific diagnostics', () => {
+  const name = 'passport-owned-network';
+  assert.equal(
+    resourceAbsent('network', name, {
+      status: 1,
+      stdout: '[]\n',
+      stderr: `Error response from daemon: network ${name} not found\n`,
+    }),
+    true,
+  );
+  for (const reply of [
+    { status: 0, stdout: '[]', stderr: `Error response from daemon: network ${name} not found` },
+    {
+      status: 1,
+      stdout: '[]',
+      stderr: 'Cannot connect to the Docker daemon: no such file or directory',
+    },
+    { status: 1, stdout: '[]', stderr: 'permission denied' },
+    {
+      status: 1,
+      stdout: '[]',
+      stderr: 'Error response from daemon: network another-project not found',
+    },
+    {
+      status: 1,
+      stdout: '[]',
+      stderr: `Error response from daemon: network ${name} not found\ntransport error`,
+    },
+  ])
+    assert.equal(resourceAbsent('network', name, reply), false);
+});
+
+test('resource coordinator allocates fresh network and volumes with Docker29 diagnostics', () => {
+  const { owner } = setup();
+  const network = owner.create('network', 'passport-network', []);
+  const volume = owner.create('volume', 'passport-node-data', []);
+  assert.equal(network.kind, 'network');
+  assert.equal(volume.kind, 'volume');
+  assert.equal(owner.pending, null);
+  assert.equal(owner.cleanup(), true);
+});
 function setup() {
   const docker = new FakeDocker();
   /** @type {unknown[]} */ const writes = [];

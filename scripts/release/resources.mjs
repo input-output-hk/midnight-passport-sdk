@@ -24,6 +24,21 @@ function single(output) {
 const inspection = (kind, name) =>
   kind === 'container' ? ['inspect', name] : [kind, 'inspect', name];
 
+/** Docker 29 uses a distinct network diagnostic; transport failure never proves absence.
+ * @param {Kind} kind @param {string} name @param {Result} result */
+export function resourceAbsent(kind, name, result) {
+  if (result.status !== 1 || !['', '[]'].includes(result.stdout.trim())) return false;
+  const message = result.stderr.trim().toLowerCase();
+  const allowed = [
+    `error: no such ${kind}: ${name}`,
+    `error response from daemon: no such ${kind}: ${name}`,
+  ];
+  if (kind === 'container') allowed.push(`error: no such object: ${name}`);
+  if (kind === 'volume') allowed.push(`error response from daemon: get ${name}: no such volume`);
+  if (kind === 'network') allowed.push(`error response from daemon: network ${name} not found`);
+  return allowed.includes(message);
+}
+
 export class ResourceOwner {
   /** @type {Resource[]} */ resources = [];
   /** @type {Intent} */ pending = null;
@@ -74,7 +89,7 @@ export class ResourceOwner {
     if (kind === 'container') text(image, /^sha256:[a-f0-9]{64}$/);
     const existing = this.docker(inspection(kind, name), { allowFailure: true });
     assert.ok(
-      existing.status !== 0 && /no such (?:object|container|volume|network)/i.test(existing.stderr),
+      resourceAbsent(kind, name, existing),
       'Resource exists or absence could not be established',
     );
     this.pending = { kind, name, image };

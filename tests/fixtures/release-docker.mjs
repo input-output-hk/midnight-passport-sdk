@@ -21,7 +21,14 @@ export class FakeDocker {
         );
       return row
         ? { stdout: JSON.stringify([row]), stderr: '', status: 0 }
-        : { stdout: '[]', stderr: `Error: No such ${kind}: ${key}`, status: 1 };
+        : {
+            stdout: '[]',
+            stderr:
+              kind === 'network'
+                ? `Error response from daemon: network ${key} not found`
+                : `Error: No such ${kind}: ${key}`,
+            status: 1,
+          };
     }
     if (action === 'create') {
       const name = kind === 'container' ? args[args.indexOf('--name') + 1] : args.at(-1);
