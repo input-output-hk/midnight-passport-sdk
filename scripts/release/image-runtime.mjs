@@ -5,8 +5,22 @@ import { join } from 'node:path';
 import { object, put, sha256 } from './files.mjs';
 
 /** @typedef {ReturnType<import('./images.mjs').verifyImage>} PulledImage */
-/** @param {import('./resources.mjs').ResourceOwner} owner @param {PulledImage} image @param {string} name @param {string[]} args @param {string[]} [command] @param {string} [input] @param {string} [expected] @param {string} [root] */
-export function imageCase(owner, image, name, args, command = [], input, expected, root) {
+/** @param {import('./resources.mjs').ResourceOwner} owner @param {PulledImage} image @param {string} name @param {string[]} args @param {string[]} [command] @param {string} [input] @param {string} [expected] @param {string} [root] @param {'none'|'bridge'} [network] */
+export function imageCase(
+  owner,
+  image,
+  name,
+  args,
+  command = [],
+  input,
+  expected,
+  root,
+  network = 'none',
+) {
+  assert.ok(
+    network === 'none' || (network === 'bridge' && image.role === 'keys' && name === 'key-restore'),
+    'Only public-key restoration may fetch SRS data',
+  );
   const row = owner.create(
     'container',
     `passport-${owner.runId}-${name}`,
@@ -14,7 +28,7 @@ export function imageCase(owner, image, name, args, command = [], input, expecte
       '--platform',
       'linux/amd64',
       '--network',
-      'none',
+      network,
       '--read-only',
       '--tmpfs',
       '/tmp:mode=1777',

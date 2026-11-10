@@ -185,6 +185,7 @@ export async function keyRuntime(plan, root, owner, image) {
     undefined,
     undefined,
     root,
+    'bridge',
   );
   for (const extension of ['prover', 'verifier']) {
     const name = `deposit_unshielded.${extension}`;

@@ -59,6 +59,11 @@ the receipt records compressed and OS-header-byte differences separately without
 attributing every compressed difference to its header. Both
 independent builds on one platform must still match **exact archive hashes**.
 
+The one-circuit key-image restore may download Midnight's public SRS through its
+verified compiler. That helper alone uses bridge networking; backend refusal and
+content probes remain offline. The regenerated public key hashes must still equal
+the independently pinned manifest. No wallet or registry credential enters this helper.
+
 The checker writes private receipts and retains failed attempts. Sign and verify
 the reviewed receipt before using it as release evidence:
 

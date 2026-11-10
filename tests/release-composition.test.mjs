@@ -19,6 +19,8 @@ import {
 } from '../scripts/release/pages-policy.mjs';
 import { samePlatformArchives } from '../scripts/release/reproducibility.mjs';
 import { ResourceOwner } from '../scripts/release/resources.mjs';
+import { imageCase } from '../scripts/release/image-runtime.mjs';
+import { verifyImage } from '../scripts/release/images.mjs';
 import { sha256 } from '../scripts/release/files.mjs';
 import { createServer } from '../packages/service/dist/index.js';
 import { FakeDocker } from './fixtures/release-docker.mjs';
@@ -155,6 +157,46 @@ test('image coordinator reports unresolved cleanup when daemon identity verifica
   );
   assert.equal(complete, false);
   assert.equal(owner.resources[0]?.startAttempted, true);
+});
+
+test('only the public-key restore helper may fetch SRS; backend probes stay offline', () => {
+  const pin = release.images.find((/** @type {{role:string}} */ image) => image.role === 'keys');
+  const image = verifyImage(
+    {
+      Id: 'sha256:' + 'a'.repeat(64),
+      Os: 'linux',
+      Architecture: 'amd64',
+      RepoDigests: [pin.repository + '@' + pin.digest],
+      Config: { User: '10001:10001', Cmd: ['node'] },
+    },
+    pin,
+  );
+  const fake = new FakeDocker(),
+    owner = new ResourceOwner('a'.repeat(16), fake.run, () => {});
+  imageCase(owner, image, 'key-restore', [], [], undefined, undefined, undefined, 'bridge');
+  const create = fake.calls.find((args) => args[0] === 'create');
+  assert.ok(create);
+  assert.equal(create[create.indexOf('--network') + 1], 'bridge');
+  assert.throws(
+    () =>
+      imageCase(
+        owner,
+        { ...image, role: 'service' },
+        'service-probe',
+        [],
+        [],
+        undefined,
+        undefined,
+        undefined,
+        'bridge',
+      ),
+    /Only public-key/,
+  );
+  assert.equal(owner.resources.length, 1);
+  imageCase(owner, { ...image, role: 'service' }, 'service-offline', []);
+  const offline = fake.calls.filter((args) => args[0] === 'create').at(-1);
+  assert.ok(offline);
+  assert.equal(offline[offline.indexOf('--network') + 1], 'none');
 });
 
 test('fixture/evidence and temporary-record aliases refuse before dispatch', () => {
