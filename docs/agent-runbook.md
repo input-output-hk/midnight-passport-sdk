@@ -429,6 +429,47 @@ host grant types require an explicit JubJub check: no secp256k1 relabel/cast;
 consent requires hostedJubjubAuthoriser and validated constructors. Preserve
 unsupported rotation/withdrawal refusals and distinct evidence tiers.
 
+### Source-preview release acceptance and mounted images (#236/#313)
+
+Read [release acceptance](../docs-site/operations/release-acceptance.md) and its
+[review map](review/release-acceptance/README.md) before running `release:accept`
+or `qualify:mounted`. These commands use closed, independently hash-pinned private
+plans; examples in `scripts/release/` record RC9 or deliberately unfilled pins.
+They do not publish, create tags, update issues or authenticate real passkeys.
+
+Freeze the current signed/built runner and physical inputs. Distinguish runner,
+SDK artifacts, private publisher and docs deployment commits. Actual registry
+work requires authorized package/attestation access, a fresh external private
+root and temporary user auth; never expose private archives as public assets.
+Native requires explicit `PASSPORT_MOUNTED_NATIVE=1`, `PASSPORT_RC_LOCALNET=1`,
+`MN_NETWORK_ID=undeployed`, 15 GiB free disk, 24 GiB Docker memory, verified
+cached keys and prepared pinned Linux reference dependencies. The lane uses the
+existing stable native lease and dedicated node/indexer/proof ports19964/18108/
+16320 plus application ports18790/18791. A busy lease or port refuses. Leave
+owner-requested demos, archived indexers and other sessions untouched.
+
+Mounted allocation/start intents are fsynced before dispatch. An unknown create
+or not-yet-observed start blocks later allocations/starts; an earlier stopped
+snapshot does not resolve a delayed Docker side effect. Inspect and reconcile
+the original journal/daemon/IDs. Never adopt an unrelated object by name, delete
+an occupied descriptor, clear a lease or replay an account/funding operation.
+The source client saves a private synthetic identity and original intent before
+dispatch, but interrupted creation is not an automatic resumable-account API.
+
+The final fence includes source/dist, physical SDK/reference trees, binding,
+streamed keys and Linux dependency-volume bytes/identity. Cleanup-time fingerprint
+helpers also require closure. PASS/exit0 requires functional assertions, unchanged
+inputs, every own compute resource freshly quiescent and exact acquired-lease
+release. Drift or unknown compute retains the lease. Retain stopped containers,
+the two fresh chain volumes, service/funding/config volumes, the prepared Linux
+dependency volume, original IDs and failed/unknown records. No prune/reset.
+
+The deterministic fault/transport tests belong to normal root tests. Actual
+registry, two-build reproducibility, Docker, native proof and deployed Pages are
+slow opt-in work, never required fast PR jobs. Current source does not retroactively
+upgrade RC9 private-helper evidence or establish real-provider/full Lace acceptance.
+
+
 ### Native and public-source signer lanes
 
 All native lanes require clean signed/built/frozen source and physical inputs,

@@ -35,7 +35,18 @@ function readTarExtendedRecords(data, pax) {
 /** Directory admission and regular-file keys use the same package-relative path policy.
  * @param {string} name @param {string} type
  */
-function regularPackagePath(name, type) {
+function regularPackagePath(name, type, namespace = 'package') {
+  if (namespace === 'site') {
+    const normalized = name.replace(/^\.\//, '').replace(/\/$/, '');
+    if (type === '5' && ['.', ''].includes(normalized)) return undefined;
+    if (
+      normalized
+        .split('/')
+        .some((part) => !part || part === '.' || part === '..' || part.includes('\\'))
+    )
+      throw Error('unsafe tar site path');
+    return type === '5' ? undefined : normalized;
+  }
   if (type === '5' && name.replace(/\/$/, '') === 'package') return undefined;
   const parts = name.replace(/\/$/, '').split('/');
   if (
@@ -53,6 +64,12 @@ function regularPackagePath(name, type) {
  * @param {Uint8Array} compressed
  */
 export function packageArchive(compressed) {
+  return safeArchive(compressed, 'package');
+}
+
+/** Shared bounded parser for npm packages and uploaded Pages archives. No extraction.
+ * @param {Uint8Array} compressed @param {'package'|'site'} namespace */
+export function safeArchive(compressed, namespace) {
   const bytes = gunzipSync(compressed, { maxOutputLength: MAX_ARCHIVE });
   /** @type {Map<string, Buffer>} */ const files = new Map();
   /** @type {Record<string,string>} */ let pax = Object.create(null);
@@ -92,12 +109,16 @@ export function packageArchive(compressed) {
     if (pax.size !== undefined && pax.size !== String(size)) throw Error('tar size override');
     pax = Object.create(null);
     if (!['', '0', '5'].includes(type)) throw Error('tar links or special entries refused');
-    const key = regularPackagePath(name, type);
+    const key = regularPackagePath(name, type, namespace);
     if (key === undefined) continue;
     if (files.has(key)) throw Error('duplicate tar file');
     files.set(key, data);
   }
-  if (!ended || Object.keys(pax).length || !files.has('package.json'))
+  if (
+    !ended ||
+    Object.keys(pax).length ||
+    !files.has(namespace === 'package' ? 'package.json' : 'index.html')
+  )
     throw Error('incomplete npm tar archive');
   return files;
 }

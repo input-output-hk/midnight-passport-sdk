@@ -1,5 +1,15 @@
 # Local backlog acceptance audit
 
+## Source-preview #236/#313 — 2026-11-10
+
+The current local slice adds reusable closed-plan registry/image/Pages acceptance
+and a fresh, leased mounted-image lane. See the
+[review map](review/release-acceptance/README.md) and
+[operator guide](../docs-site/operations/release-acceptance.md). Actual receipts
+must name their signed runner, frozen inputs and distinct source/installed/native
+scope. RC9 artifacts remain immutable; adding these commands does not publish a
+new version, close GitHub issues or qualify provider/full Lace behavior.
+
 ## RC8 release reconciliation — 2026-11-09
 
 RC8 packages/images are published and verified in the [signed receipt](release/rc8-publication-receipt.json).

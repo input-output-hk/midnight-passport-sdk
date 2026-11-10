@@ -3,7 +3,11 @@
 // transfers exactly 10 base units of genesis NIGHT through the separate funding service; no real passkeys.
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, fsyncSync, openSync, readFileSync, writeFileSync } from 'node:fs';
+import { saveIsolationReceipt } from './qualification/native-isolation-files.mjs';
+import { admitSyntheticFixture } from './rc-qualification-private.mjs';
+import { syncDirectory } from './release/files.mjs';
+import { dirname } from 'node:path';
 import { waitForFundingReady, submitQualificationFunding } from './rc-qualification-http.mjs';
 import { createPassportAccounts } from '../packages/account/dist/index.js';
 import { createMidnightChain } from '../packages/adapter-midnight-js/dist/index.js';
@@ -48,6 +52,7 @@ if (existsSync(output))
   throw new Error(
     'evidence already exists; reconcile the saved request before selecting a fresh evidence path',
   );
+admitSyntheticFixture(output, process.env.PASSPORT_RC_SYNTHETIC_FIXTURE);
 const config = await fetchCheckedV1Config(service, {
   networkId: 'undeployed',
   bindingId: 'acc-s3r1.1',
@@ -76,6 +81,28 @@ const chain = createMidnightChain({
 const seed = new Uint8Array(randomBytes(32));
 const device = new Uint8Array(randomBytes(32));
 const credentialId = new Uint8Array(randomBytes(16));
+// Optional mounted-run capture, never a resume command or a real credential store.
+// Preserve synthetic identity BEFORE the first possible account transaction.
+const syntheticFixture = process.env.PASSPORT_RC_SYNTHETIC_FIXTURE;
+if (syntheticFixture) {
+  const fd = openSync(syntheticFixture, 'wx', 0o600);
+  try {
+    writeFileSync(
+      fd,
+      JSON.stringify({
+        schema: 1,
+        syntheticOnly: true,
+        seed: Buffer.from(seed).toString('hex'),
+        device: Buffer.from(device).toString('hex'),
+        credential: Buffer.from(credentialId).toString('hex'),
+      }) + '\n',
+    );
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+  syncDirectory(dirname(syntheticFixture));
+}
 /** @type {import('../packages/account/dist/ports/index.js').PrfKeySource} */
 const prf = {
   withSession: (operation) => operation(),
@@ -112,6 +139,14 @@ const accounts = () =>
     records: {
       read: async () => record,
       write: async (value) => {
+        if (syntheticFixture)
+          saveIsolationReceipt(syntheticFixture + '.record', {
+            ...value,
+            credentialId: value.credentialId
+              ? Buffer.from(value.credentialId).toString('hex')
+              : null,
+            localUseCounter: value.localUseCounter.toString(),
+          });
         record = value;
       },
       exists: async () => !!record,
@@ -126,11 +161,12 @@ const evidence = {
   verdict: 'IN_PROGRESS',
 };
 const save = () => {
-  writeFileSync(output + '.tmp', JSON.stringify(evidence, null, 2) + '\n', { mode: 0o600 });
-  renameSync(output + '.tmp', output);
+  saveIsolationReceipt(output, evidence);
 };
 save();
 try {
+  evidence.creationOutcome = 'unknown-until-confirmed';
+  save();
   const account = await accounts().createAccount({
     userName: 'rc5-container-qualification',
     retireAuthority: true,
@@ -141,6 +177,7 @@ try {
   assert.equal((await account.state()).entryCount, 1);
   assert.equal((await accounts().openAccount()).address, account.address);
   evidence.createActivateReadReopen = 'passed';
+  evidence.creationOutcome = 'confirmed';
   save();
   await waitForFundingReady(funding, pin.manifestSha256);
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };

@@ -148,7 +148,7 @@ proof/browser qualification remain on their own resource/time budgets. Hosted
 - #231: complete disposable proof/browser/outage suite and repeated evidence.
 - #232: actual provider and two-browser ceremonies.
 - #235: broader key-profile/consumer coverage.
-- #236: automated actual-registry/image/docs acceptance.
+- #236/#313: source-preview [release acceptance and mounted-image tooling](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs-site/operations/release-acceptance.md) separates actual registry, image, deployed-doc and standalone native receipts. A source test alone does not complete these live lanes.
 - #240: qualified total-loss recovery on a suitable binding.
 
 The [first-slice review map](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/stability-foundation/README.md)

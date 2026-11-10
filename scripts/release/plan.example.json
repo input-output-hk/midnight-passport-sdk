@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.0-rc9",
+  "source": "0293fac13c2b9913c778303bb3d4ae4d56eae7fb",
+  "sourceBundle": "/absolute/path/to/reviewed-source-bundle",
+  "sourceManifestSha256": "f42bc1e4637ec36917178135db9f1205e1b98ce046849343d33fb34ed59058ea",
+  "publisher": {
+    "repository": "input-output-hk/midnight-passport-sdk-publisher",
+    "source": "3db6bc1f9fbf85acf0e0baf1487a0f9f69c80ab3",
+    "workflow": "publish.yml"
+  },
+  "sourceAttestation": {
+    "repository": "input-output-hk/midnight-passport-sdk",
+    "source": "0293fac13c2b9913c778303bb3d4ae4d56eae7fb",
+    "workflow": "publish.yml"
+  },
+  "images": [
+    {
+      "role": "keys",
+      "repository": "ghcr.io/input-output-hk/midnight-passport-keys",
+      "digest": "sha256:c3d50d885a05e12ea9b360b8bce4be568936185261e0a38016380d9a4e658729",
+      "version": "0.1.0-rc9",
+      "sourceAlias": "sha-0293fac13c2b"
+    },
+    {
+      "role": "service",
+      "repository": "ghcr.io/input-output-hk/midnight-passport-service",
+      "digest": "sha256:4175aadf1759c195f248175a0278c2c623833df79326a6c7a0aad891d3564543",
+      "version": "0.1.0-rc9",
+      "sourceAlias": "sha-0293fac13c2b"
+    },
+    {
+      "role": "funding",
+      "repository": "ghcr.io/input-output-hk/midnight-passport-funding",
+      "digest": "sha256:be7b55b9772d71fc142b76b9ab5915d9841b834c88542ae5ecbf965cf5161647",
+      "version": "0.1.0-rc9",
+      "sourceAlias": "sha-0293fac13c2b"
+    }
+  ],
+  "pages": {
+    "repository": "input-output-hk/midnight-passport-sdk",
+    "runId": "42853569271",
+    "head": "577398bfe1b77820f80cdb77bcfe6d3b726bc1d8",
+    "artifactSha256": "6b1dec554496a5e51027670f6c08f0b7659b963e5f25b29b73e86d0931c909c2",
+    "base": "https://input-output-hk.github.io/midnight-passport-sdk/",
+    "routes": [
+      "",
+      "getting-started/",
+      "getting-started/installation.html",
+      "getting-started/first-integration.html",
+      "packages/",
+      "packages/api.html",
+      "packages/examples.html",
+      "demo/",
+      "demo/signing-activity.html",
+      "guides/authorization.html",
+      "guides/assets.html",
+      "operations/quality.html",
+      "operations/rc9-preview.html",
+      "operations/services.html",
+      "architecture/standards.html"
+    ],
+    "version": "0.1.0-rc9"
+  },
+  "documentationCheckout": "/absolute/path/to/sdk-checkout",
+  "tags": [
+    {
+      "checkout": "/absolute/path/to/sdk-checkout",
+      "tag": "sdk-v0.1.0-rc9",
+      "source": "0293fac13c2b9913c778303bb3d4ae4d56eae7fb",
+      "signer": "68177A52E5E37FDCF31DAEF04BEFC05538080D6E"
+    },
+    {
+      "checkout": "/absolute/path/to/sdk-checkout",
+      "tag": "keys-v0.1.0-rc9",
+      "source": "0293fac13c2b9913c778303bb3d4ae4d56eae7fb",
+      "signer": "68177A52E5E37FDCF31DAEF04BEFC05538080D6E"
+    },
+    {
+      "checkout": "/absolute/path/to/sdk-checkout",
+      "tag": "service-v0.1.0-rc9",
+      "source": "0293fac13c2b9913c778303bb3d4ae4d56eae7fb",
+      "signer": "68177A52E5E37FDCF31DAEF04BEFC05538080D6E"
+    },
+    {
+      "checkout": "/absolute/path/to/sdk-checkout",
+      "tag": "funding-v0.1.0-rc9",
+      "source": "0293fac13c2b9913c778303bb3d4ae4d56eae7fb",
+      "signer": "68177A52E5E37FDCF31DAEF04BEFC05538080D6E"
+    },
+    {
+      "checkout": "/absolute/path/to/publisher-checkout",
+      "tag": "sdk-v0.1.0-rc9",
+      "source": "3db6bc1f9fbf85acf0e0baf1487a0f9f69c80ab3",
+      "signer": "68177A52E5E37FDCF31DAEF04BEFC05538080D6E"
+    }
+  ],
+  "compilerManifest": "/absolute/path/to/contract/contracts/managed/account/compiler/contract-manifest.json",
+  "compilerManifestSha256": "77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f",
+  "publicKeys": "/absolute/path/to/contract/contracts/managed/account/keys",
+  "publication": {
+    "file": "rc9-publication-receipt.json",
+    "sha256": "9b05d6adc65e4852997da2cd1048f509d819c272557d83b18657b9e146c2db7e",
+    "pagesFile": "pages-verification.json",
+    "pagesSha256": "eb4ce865adca49528bb500d14028a62f2bcc5cc295e63837737219c651f80e4a",
+    "signer": "68177A52E5E37FDCF31DAEF04BEFC05538080D6E"
+  }
+}

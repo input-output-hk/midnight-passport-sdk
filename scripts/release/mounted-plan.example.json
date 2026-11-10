@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "source": "0000000000000000000000000000000000000000",
+  "contract": "/absolute/path/to/contract",
+  "linuxDependencies": {
+    "volume": "passport-your-prepared-linux-deps",
+    "lockSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "treeSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "images": [
+    {
+      "role": "service",
+      "repository": "ghcr.io/input-output-hk/midnight-passport-service",
+      "digest": "sha256:4175aadf1759c195f248175a0278c2c623833df79326a6c7a0aad891d3564543"
+    },
+    {
+      "role": "funding",
+      "repository": "ghcr.io/input-output-hk/midnight-passport-funding",
+      "digest": "sha256:be7b55b9772d71fc142b76b9ab5915d9841b834c88542ae5ecbf965cf5161647"
+    }
+  ],
+  "chainImages": [
+    {
+      "role": "node",
+      "tag": "midnightntwrk/midnight-node:2.1.0-rc.4",
+      "id": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "role": "indexer",
+      "tag": "ghcr.io/midnightntwrk/indexer-standalone:4.4.0-rc.6-b5e6c809",
+      "id": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "role": "proof-server",
+      "tag": "midnightntwrk/proof-server:9.0.0-rc.8",
+      "id": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ]
+}
