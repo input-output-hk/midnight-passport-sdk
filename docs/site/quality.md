@@ -382,9 +382,16 @@ separate review step for navigation, readable layout and overflow.
 ### Registry consumer runtime probe admission
 
 The installed software-crypto runner pins the complete Node feature-probe files.
-It admits onchain-runtime-v4 `4.0.0-rc.4` and `4.0.0-rc.5` by separate exact
-SHA-256 values; the latter JavaScript delta is a generated closure-index comment.
+It admits onchain-runtime-v4 `4.0.0-rc.4`, `4.0.0-rc.5` and `4.0.1` by separate
+exact SHA-256 values. Their JavaScript glue differs only in a generated
+closure-index comment; the executable feature-probe tokens are unchanged.
 Both use the unchanged window-probe function. Unknown file bytes, different call
 sites and browser-global access still refuse. This is harness admission, not a
 blanket dependency or native-runtime compatibility guarantee. The RC8 registry
 consumer selected rc.5 and passed the six software/generated-contract cases.
+
+The RC9 candidate's fresh local install selected `4.0.1` and correctly refused
+its previously unreviewed probe before crypto execution. The exact file and
+comment-only JavaScript delta were independently reviewed before adding that
+single hash. This is Node test-harness admission, not approval of all dependency
+or WASM behavior; actual software/native/release checks remain separate.

@@ -19,6 +19,12 @@ export const cryptoFeatureProfiles = Object.freeze({
       sha256: 'f5f2aa2a5ec808c5c7ef8ef4f82c19a2172e78a2581be8f0cf1c565e455418df',
       functionName: '__wbg_static_accessor_WINDOW_f8727f0cf888e0bd',
     }),
+    Object.freeze({
+      version: '4.0.1',
+      // Only the generated closure-index comment differs; the Node probe is unchanged.
+      sha256: '588dc1eec0e400c66b141d0a830659e0e40077429ece075af2fe790e6d7cabcf',
+      functionName: '__wbg_static_accessor_WINDOW_f8727f0cf888e0bd',
+    }),
   ]),
   zod: { sha256: 'd99bf396f177afe547703eff48b9746c360bfc2a2708adfd4a43e73768107b6c' },
 });
