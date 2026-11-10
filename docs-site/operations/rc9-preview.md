@@ -1,10 +1,14 @@
-# RC9 candidate: hardening and release validation
+# RC9: hardening and release validation
 
-**Status: preparation, not published.** The current install remains
-[`0.1.0-rc8`](/getting-started/installation). This page describes the proposed
-`0.1.0-rc9` increment after the merged signing/funding and quality work.
-[Release tracker #311](https://github.com/input-output-hk/midnight-passport-sdk/issues/311)
-records the actual acceptance and publication state.
+<span id="rc9-candidate-hardening-and-release-validation"></span>
+
+
+`0.1.0-rc9` publishes nine private GitHub npm packages (`next`) and three public
+Linux/amd64 backend images. [Install exact versions](/getting-started/installation).
+The [source release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc9),
+[private publisher release](https://github.com/input-output-hk/midnight-passport-sdk-publisher/releases/tag/sdk-v0.1.0-rc9)
+and [signed publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc9/rc9-publication-receipt.json)
+record actual source, package SHA-256/SRI, access, attestations and image digests.
 
 ## Changes since RC8
 
@@ -20,7 +24,7 @@ records the actual acceptance and publication state.
   Release checks exercise the installed package graph without borrowing workspace
   outputs or silently accepting unknown runtime feature-probe files.
 
-There are still nine published-package candidates and three backend images.
+The package set remains nine implemented libraries and three backend images.
 Binding `acc-s3r1.1`, Passport source `6458ed5`, Compact `0.35.0`, runtime `0.20.0`
 and the existing key derivation recipes remain unchanged. Framework choice and
 host consent/persistence/wallet policy remain the consumer's responsibility.
@@ -54,12 +58,32 @@ A distributed circuit or a compiling port is not a qualified product flow. The
 - The default demo and opt-in durable host composition have different guarantees.
   Preserve unknown original IDs; timeout or missing local records is not no-send evidence.
 
-## Before RC9 becomes the current install
+## Images
 
-Freeze a GPG/DCO-signed candidate, pass the full source/coverage/browser gates and
-independent review, then verify its exact installed packages and changed native
-bridge. Check valid Linux-prepared mounted service/funding functionality separately
-from image build and startup-refusal tests. Verify actual private registry visibility,
-SHA-256/SRI and source/publisher attestations, three image digests, public key
-HTTP/hash/restore behavior and deployed documentation. Publish a signed receipt
-before updating the current-version instructions. Older receipts keep their original pins.
+Use matching versions and immutable digests. Linux-prepared pinned contract
+mounts and deliberate wallet, state and operator policy remain required.
+
+| Image (`ghcr.io/input-output-hk/`) | Digest |
+| --- | --- |
+| `midnight-passport-keys:0.1.0-rc9` | `sha256:c3d50d885a05e12ea9b360b8bce4be568936185261e0a38016380d9a4e658729` |
+| `midnight-passport-service:0.1.0-rc9` | `sha256:4175aadf1759c195f248175a0278c2c623833df79326a6c7a0aad891d3564543` |
+| `midnight-passport-funding:0.1.0-rc9` | `sha256:be7b55b9772d71fc142b76b9ab5915d9841b834c88542ae5ecbf965cf5161647` |
+
+<span id="before-rc9-becomes-the-current-install"></span>
+
+## Verification scope
+
+Verified all nine actual registry packages: private visibility, exact `0.1.0-rc9`/`next`, SHA-256/SRI, source-equivalent archive contents and 18 source/publisher attestations. A fresh registry consumer passed public imports, strict Node/DOM/Worker examples, six software/generated-contract crypto cases, eight synthetic interruption cases, a browser build and single-circuit restore/export, with unchanged installed inputs and temporary auth removed.
+
+Source-native qualification passed 28 populated lifecycle cases across P-256/JubJub, including six original-operation resumptions. The actual pulled Linux/amd64 service/funding images passed create/activate/read/reopen, NIGHT deposits from 0→10→20 smallest units, same-ID replay without extra credit and an unavailable-token refusal before submission. That image flow used a source SDK client and synthetic JubJub credentials; it is separate from registry-installed native or job-backed image interruption qualification. Key HTTP checks verified all 52 verifier hashes, selected prover/range bytes/CORS and one-circuit regeneration. Inputs and owned cleanup were verified for each lane.
+
+Source-native, software credentials, synthetic browser, mounted local image,
+actual registry installation and pulled-image results keep their distinct recorded
+inputs. None establishes a real passkey provider, total-loss restoration or full Lace.
+
+The next stability iteration includes [CI latency](https://github.com/input-output-hk/midnight-passport-sdk/issues/271),
+[bounded read retries](https://github.com/input-output-hk/midnight-passport-sdk/issues/274)
+and [a reusable mounted-image lane](https://github.com/input-output-hk/midnight-passport-sdk/issues/313).
+The wider [0.1.0 milestone](https://github.com/input-output-hk/midnight-passport-sdk/milestone/1)
+and [0.2.0 capabilities](https://github.com/input-output-hk/midnight-passport-sdk/milestone/2)
+retain their unmet acceptance.

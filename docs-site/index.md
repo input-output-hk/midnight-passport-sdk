@@ -20,6 +20,6 @@ features:
     details: Adopt the browser composition, supply ports from an existing wallet, or use the contract and artifacts independently.
 ---
 
-This site documents the **input-output-hk SDK fork**, published as private GitHub Packages `0.1.0-rc8`. [Upstream Passport](https://github.com/midnightntwrk/passport) defines the broader architecture and reference contract. The [reference demo](/demo/) is one application built on the SDK; its UI and service policies are host choices.
+This site documents the **input-output-hk SDK fork**, published as private GitHub Packages `0.1.0-rc9`. [Upstream Passport](https://github.com/midnightntwrk/passport) defines the broader architecture and reference contract. The [reference demo](/demo/) is one application built on the SDK; its UI and service policies are host choices.
 
 Read [Getting started](/getting-started/) to understand the account, wallet, and service model before installing anything.

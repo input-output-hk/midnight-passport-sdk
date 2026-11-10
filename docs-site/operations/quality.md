@@ -2,7 +2,7 @@
 
 The repository checks public TypeScript documentation examples against package exports. The first browser integration is compiled in the browser target. The SDK's required lint, format, build, unit, app, and type checks are separate from proof generation or a funded localnet. The VitePress build checks page generation and internal links under the GitHub Pages base path; browser review checks navigation, search, responsive layout, and rendered diagrams.
 
-**Evidence has scope.** A source typecheck, fake-chain test, synthetic browser run, native proof, real passkey provider, installed package, and hosted Lace consumer each establish different behavior. A source-only change is not a published RC8 capability. The [RC8 release notes](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/docs/site/release-notes-rc8.md) and [signed publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc8/rc8-publication-receipt.json) are the release-specific sources. The [qualification guide at that tag](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/docs/site/qualification.md) names provider and native limits.
+**Evidence has scope.** A source typecheck, fake-chain test, synthetic browser run, native proof, real passkey provider, installed package, and hosted Lace consumer each establish different behavior. A source-only change is not a published RC9 capability. The [RC9 release notes](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/release-notes-rc9.md) and [signed publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc9/rc9-publication-receipt.json) are the release-specific sources. The [qualification guide at that tag](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc9/docs/site/qualification.md) names provider and native limits.
 
 To change the SDK, follow [contribution guidance](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/CONTRIBUTING.md) and the repository's signed commit/DCO policy. To publish packages, images, or Pages, use the repository's release procedures; a local documentation build publishes nothing. [History and migration](/operations/archive) keeps older release notes outside the learning path.
 
@@ -48,8 +48,8 @@ feature-probe file still refuses. Failed roots and receipts are retained. These
 checks are outside the required fast PR jobs. An actual authenticated registry
 installation and source/publisher attestation checks remain necessary after publication.
 
-See the [RC9 candidate scope](/operations/rc9-preview) for the next increment and
-its unfinished release gates. The [exact source review map](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/quality-debt-2026-11-10.md)
+See the [RC9 release notes](/operations/rc9-preview) for the current increment and
+its signed artifact evidence. The [exact source review map](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/review/quality-debt-2026-11-10.md)
 explains the decomposition; it is source evidence, not a replacement release receipt.
 
 The partner-handover content policy includes the current VitePress guide sources

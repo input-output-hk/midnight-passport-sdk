@@ -11,4 +11,4 @@
 | Funding returns conflict or unknown | Keep the same request ID and inspect durable reservation plus chain credit before retrying. Funding and sponsorship wallets differ. |
 | Submission times out | Preserve original operation/job/transaction IDs and inspect chain state. Cancellation does not undo a possible send. |
 
-The [tagged detailed troubleshooting guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/docs/site/troubleshooting.md) has service-specific diagnostics. Report public version, binding, network, manifest, operation IDs, and redacted logs; omit tokens, PRF output, owner/reader keys, viewing secrets, wallet seeds, witnesses, and grant openings.
+The [tagged detailed troubleshooting guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc9/docs/site/troubleshooting.md) has service-specific diagnostics. Report public version, binding, network, manifest, operation IDs, and redacted logs; omit tokens, PRF output, owner/reader keys, viewing secrets, wallet seeds, witnesses, and grant openings.

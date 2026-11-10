@@ -4,14 +4,42 @@ title: Releasing packages
 permalink: /releasing/
 ---
 
-## Current release
+<span id="current-release"></span>
+
+## Current RC9 release
+
+
+Nine private GitHub npm packages are `0.1.0-rc9` (`next`) with three public
+Linux/amd64 images. The [release notes]({{ '/release-notes-rc9/' | relative_url }}),
+[handover](../release/rc9-lace-handover.md) and
+[signed publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc9/rc9-publication-receipt.json)
+record exact versions, SHA-256/SRI, source/publisher attestations, private access
+and actual installed/pulled-image checks. Match client/backend versions.
+
+| Image (`ghcr.io/input-output-hk/`) | Version | Immutable digest |
+| --- | --- | --- |
+| `midnight-passport-keys` | `0.1.0-rc9` | `sha256:c3d50d885a05e12ea9b360b8bce4be568936185261e0a38016380d9a4e658729` |
+| `midnight-passport-service` | `0.1.0-rc9` | `sha256:4175aadf1759c195f248175a0278c2c623833df79326a6c7a0aad891d3564543` |
+| `midnight-passport-funding` | `0.1.0-rc9` | `sha256:be7b55b9772d71fc142b76b9ab5915d9841b834c88542ae5ecbf965cf5161647` |
+
+Verified all nine actual registry packages: private visibility, exact `0.1.0-rc9`/`next`, SHA-256/SRI, source-equivalent archive contents and 18 source/publisher attestations. A fresh registry consumer passed public imports, strict Node/DOM/Worker examples, six software/generated-contract crypto cases, eight synthetic interruption cases, a browser build and single-circuit restore/export, with unchanged installed inputs and temporary auth removed.
+
+Source-native qualification passed 28 populated lifecycle cases across P-256/JubJub, including six original-operation resumptions. The actual pulled Linux/amd64 service/funding images passed create/activate/read/reopen, NIGHT deposits from 0→10→20 smallest units, same-ID replay without extra credit and an unavailable-token refusal before submission. That image flow used a source SDK client and synthetic JubJub credentials; it is separate from registry-installed native or job-backed image interruption qualification. Key HTTP checks verified all 52 verifier hashes, selected prover/range bytes/CORS and one-circuit regeneration. Inputs and owned cleanup were verified for each lane.
+
+Keep Linux-prepared mounts/operator policy, exact-value shielded guards, fresh
+critical approval and original-ID reconciliation. Full Lace/provider recovery and
+wider-network NIGHT remain unqualified. Historical receipts below keep their own pins.
+
+## Historical RC8 release
 
 [RC8 release notes]({{ '/release-notes-rc8/' | relative_url }}) describe the
 supported increment and artifact checks. **RC8 publication is verified in the signed receipt.**
 Local images/tarballs and source qualification
 do not replace registry, provenance, visibility or deployed-document verification.
 
-## Current RC8 artifacts and verification
+<span id="current-rc8-artifacts-and-verification"></span>
+
+## Historical RC8 artifacts and verification
 
 Nine private GitHub npm packages are published as `0.1.0-rc8` (`next`), with three
 public Linux/amd64 images. The [release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc8)

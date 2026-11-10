@@ -17,8 +17,8 @@ scaffolds do not provide those capabilities.
 safety from operational support. [Package purposes](#package-purposes) describe the released libraries;
 [historical package counts](#why-rc1-has-13-packages) explain retired scaffolds; [dependency direction](#dependency-direction)
 explains composition. The [account API]({{ '/api/' | relative_url }}) lists optional
-methods and their required ports. Current examples use exact RC8 versions.
-All entries below ship in RC8; rows distinguish their introduction and runtime.
+methods and their required ports. Current examples use exact RC9 versions.
+All entries below ship in RC9; rows distinguish their introduction and runtime.
 
 ## Runtime and host requirements
 
@@ -90,17 +90,17 @@ reference. This adds no new npm package; the export is published in RC7, not RC6
 RC7 also adds `contract/capabilities` (lightweight typed inventory),
 `contract/capabilities.json` (the same inventory for non-JavaScript consumers), and
 `account/preflight` (configuration inspection before a key ceremony). These are subpaths
-of existing packages, not new packages. See [capability and configuration checks]({{ '/capabilities/' | relative_url }}); published RC6 does not include them. Use RC8 for the current release; these exports were introduced in RC7.
+of existing packages, not new packages. See [capability and configuration checks]({{ '/capabilities/' | relative_url }}); published RC6 does not include them. Use RC9 for the current release; these exports were introduced in RC7.
 
 For a first connection and a minimal browser host, follow [Install and connect]({{ '/getting-started/' | relative_url }}).
 
-The nine RC8 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their
-`0.1.0-rc8` release uses the `next` distribution tag and requires package read access. Install the
+The nine RC9 packages use the `@input-output-hk/mn-passport-*` scope on GitHub Packages. Their
+`0.1.0-rc9` release uses the `next` distribution tag and requires package read access. Install the
 entrypoints your code imports; their declared dependencies bring in the supporting packages. A
 browser host using the account API and packaged binding can start with:
 
 ```sh
-npm install --save-exact @input-output-hk/mn-passport-account@0.1.0-rc8 @input-output-hk/mn-passport-adapter-browser@0.1.0-rc8 @input-output-hk/mn-passport-contract@0.1.0-rc8
+npm install --save-exact @input-output-hk/mn-passport-account@0.1.0-rc9 @input-output-hk/mn-passport-adapter-browser@0.1.0-rc9 @input-output-hk/mn-passport-contract@0.1.0-rc9
 ```
 
 ## Dependency direction

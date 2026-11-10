@@ -19,11 +19,12 @@ exact declarations remain the source-linked contract, qualified by release/versi
 | Track | Exports and behavior |
 | --- | --- |
 | Included since RC7; also in RC8 | Account create/open/state, supported device/key/grant/value flows through host ports; browser/WebAuthn/service adapters; capability/preflight and documented opt-in recovery/service-job APIs. Use matching exact packages and release-tagged examples. |
-| Added in published `0.1.0-rc8` | `account/names`, `account/interaction`, `account/validation`, `account/authorisation`, `account/secret-store`, `account/background`; browser wallet/custody/background subpaths; verified-login handoff and authenticated-owner/scoped-session helpers. Use matching RC8 packages; these imports are absent from RC7. Host policy remains explicit. |
+| Added in published `0.1.0-rc8` | `account/names`, `account/interaction`, `account/validation`, `account/authorisation`, `account/secret-store`, `account/background`; browser wallet/custody/background subpaths; verified-login handoff and authenticated-owner/scoped-session helpers. Use matching RC8 or later packages; these imports are absent from RC7. Host policy remains explicit. |
 
-**After RC8:** optional verified-creation handoff and JubJub PRF-only registration
-are [unreleased source additions]({{ '/source-preview/' | relative_url }}).
-They are not present in installed RC8 packages.
+**Added in RC9:** optional verified-creation handoff and JubJub PRF-only registration
+are included in matching `0.1.0-rc9` packages. The
+[RC9 increment]({{ '/source-preview/' | relative_url }}) records their host-policy
+limits; these hooks are absent from RC8 packages.
 
 For matching-checkout build/type evaluation, use the
 [source entry path]({{ '/library-guide/#evaluate-the-current-source' | relative_url }}).
@@ -48,7 +49,7 @@ The optional [wallet reader]({{ '/lace-wallet/' | relative_url }}) is a separate
 `adapter-browser/wallet` subpath (RC8). It supplies no ACC ownership, viewing or
 spending permission and exposes no transfer/signing methods.
 
-The public flow is `createPassportAccounts(ports): PassportConnectorAPI` from `mn-passport-account`. The interfaces are in `mn-passport-protocol`; adapter authors import the contracts from `mn-passport-account/ports`. Prototype-branch links describe current source; release-tagged examples describe their exact release; use RC8 for this guide. Consult the release map before copying an additive export.
+The public flow is `createPassportAccounts(ports): PassportConnectorAPI` from `mn-passport-account`. The interfaces are in `mn-passport-protocol`; adapter authors import the contracts from `mn-passport-account/ports`. Prototype-branch links describe current source; release-tagged examples describe their exact release; use RC9 for this guide. Consult the release map before copying an additive export.
 
 ```ts
 import { createPassportAccounts } from '@input-output-hk/mn-passport-account';

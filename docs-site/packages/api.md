@@ -1,6 +1,6 @@
 # Public operations, types, and errors
 
-The published account API version is `1.0.0-pre.0`. Import from package root or declared subpaths, never an internal `src` path. The [RC8 API source](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/docs/site/api.md) has the full signatures; this page is a task map for selecting the right capability.
+The published account API version is `1.0.0-pre.0`. Import from package root or declared subpaths, never an internal `src` path. The [RC9 API source](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc9/docs/site/api.md) has the full signatures; this page is a task map for selecting the right capability.
 
 | Task | Public entry or method | Required host capability |
 | --- | --- | --- |
@@ -29,4 +29,20 @@ The published account API version is `1.0.0-pre.0`. Import from package root or 
 
 The public `protocol` export `PASSPORT_ERRORS` lists all codes and default retry metadata. A future minor version may add codes; treat an unknown code as `InternalError`.
 
-RC8 adds optional authorization, validation, secret-store, background, naming, and interaction subpaths. They supply contracts or opt-in adapters; they do not install host policy, persistence, or a UI. The [tagged API reference](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/docs/site/api.md) distinguishes method availability from `0.1.0-rc7`. Check [later source changes](/operations/archive) separately.
+RC8 adds optional authorization, validation, secret-store, background, naming, and interaction subpaths. They supply contracts or opt-in adapters; they do not install host policy, persistence, or a UI. The [tagged API reference](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc9/docs/site/api.md) distinguishes method availability from `0.1.0-rc7`. The RC9 creation hooks below are additive; consult [release notes](/operations/rc9-preview) for their limits.
+
+## RC9 creation and registration hooks
+
+For a JubJub account composition, `passkey.registrationProfile: 'jubjub-prf'`
+selects PRF-only registration. It must be paired with `arm: 'jubjub'`; it does
+not qualify that credential for direct P-256 signing. The default P-256 profile
+retains its strict signing and enrollment checks. Existing accounts are not migrated.
+
+`PassportPorts.onAccountCreated(account)` and
+`BrowserPassportConfig.onAccountCreated(account, keys)` are optional callbacks
+after confirmed creation, while its key scope remains active. The browser callback
+receives only a scoped `deriveWalletSeed()` getter, never a raw PRF result or
+reader-key getter. Reader access uses the account/viewing-key ports and their
+separate live checks. A host may explicitly adopt verified wallet material
+for routine access. Creation does not
+automatically enroll another owner, connect a wallet or issue a grant.

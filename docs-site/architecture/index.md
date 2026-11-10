@@ -25,7 +25,7 @@ The upstream [Passport architecture and plans](https://midnightntwrk.github.io/p
 ## Follow one boundary at a time
 
 - [Keys and wallets](/architecture/keys-wallets) separates owner, reader, viewing secret, HD wallet, sponsor, and funding wallet.
-- [Package selection](/packages/) maps the nine RC8 packages to host requirements.
+- [Package selection](/packages/) maps the nine RC9 packages to host requirements.
 - [Architecture conformance](/architecture/conformance) compares this SDK with the Passport architecture's v1.0 target and current reference implementation.
 - [Upstream SDK comparison](/architecture/upstream-sdk) maps this fork's implemented surfaces to the upstream SDK's latest design revision.
 - [Persistence and background work](/guides/durability) explains what must survive interruption.

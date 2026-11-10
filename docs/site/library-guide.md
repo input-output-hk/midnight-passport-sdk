@@ -28,7 +28,7 @@ transfers and administration only after supplying their
 ## Choose a release or evaluate source {#choose-released-packages-or-source-preview}
 
 [Install and connect]({{ '/getting-started/' | relative_url }}) is the **published
-`0.1.0-rc8`** path. Install matching exact versions and use the release-tagged browser
+`0.1.0-rc9`** path. Install matching exact versions and use the release-tagged browser
 quickstart. The [package map]({{ '/packages/' | relative_url }}) identifies the nine
 implemented libraries and their dependency direction. Its
 [runtime/export index]({{ '/packages/#runtime-and-host-requirements' | relative_url }})
@@ -270,7 +270,11 @@ They establish those tested boundaries. They do not qualify a real passkey provi
 full Lace Wallet compatibility or combined browser/native transaction proofs. Use the
 [qualification map]({{ '/qualification/' | relative_url }}) for the relevant evidence tier.
 
-## Source preview: registration and creation handoff (after RC8)
+<span id="source-preview-registration-and-creation-handoff-after-rc8"></span>
+
+## RC9: registration and creation handoff
+
+These additive hooks are included in RC9. Their host policy and qualification limits remain explicit.
 
 `webauthnPasskey`/`browserPasskey` accept an optional `registrationProfile`:
 `p256` preserves strict on-chain signing admission; `jubjub-prf` is explicit PRF-only

@@ -4,13 +4,13 @@
 
 Midnight Passport is a way to give a person an **Account Custody Contract (ACC)**: a deployed smart contract that holds assets and checks who may act for the account. A passkey can authorize supported account operations. The account can also recognize an enrolled JubJub owner key or a separately issued, bounded permission. Your application chooses the experience and supplies the wallet, credential access, storage, and network services around that contract.
 
-The [upstream Passport project](https://github.com/midnightntwrk/passport) contains the architecture, plans, and reference ACC. This site describes the **input-output-hk SDK fork** and its published `0.1.0-rc8` packages. The [reference demo](/demo/) is a separate example host. It shows one way to assemble the libraries, local network, proving service, sponsorship wallet, and optional funding wallet.
+The [upstream Passport project](https://github.com/midnightntwrk/passport) contains the architecture, plans, and reference ACC. This site describes the **input-output-hk SDK fork** and its published `0.1.0-rc9` packages. The [reference demo](/demo/) is a separate example host. It shows one way to assemble the libraries, local network, proving service, sponsorship wallet, and optional funding wallet.
 
 An ACC is **not** a person's Midnight hierarchical deterministic (HD) wallet. The wallet has its own seed, address, and balance. A fee sponsor pays transaction fees; a funding wallet can deposit assets into the ACC. Neither wallet becomes the ACC's owner merely by sending funds or paying fees. [See the key and wallet model](/architecture/keys-wallets).
 
 ## What can I build today?
 
-The current published preview is `0.1.0-rc8`, with binding `acc-s3r1.1`. These are implemented paths, subject to the listed host requirements:
+The current published preview is `0.1.0-rc9`, with binding `acc-s3r1.1`. These are implemented paths, subject to the listed host requirements:
 
 | Outcome | Availability and boundary |
 | --- | --- |
@@ -23,7 +23,7 @@ The current published preview is `0.1.0-rc8`, with binding `acc-s3r1.1`. These a
 | Distribute contract and proof artifacts | The contract package ships the pinned binding, ZKIR, and verifier material. Public prover keys are restored separately and can be served by the key service. These artifacts are not private account keys. |
 | Operate services | Separate reference applications provide proving/chain access, fee sponsorship, and wallet-backed funding. They require operator configuration, protected ingress, state, and wallets. An npm install starts none of them. |
 
-The [capability map](/packages/api) names the relevant public operations and optional ports. [Release notes](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc8) and [qualification limits](/operations/quality) distinguish published behavior, source work, and tested environments.
+The [capability map](/packages/api) names the relevant public operations and optional ports. [Release notes](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc9) and [qualification limits](/operations/quality) distinguish published behavior, source work, and tested environments.
 
 ## How does an operation work?
 

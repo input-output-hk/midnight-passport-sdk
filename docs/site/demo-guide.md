@@ -15,7 +15,7 @@ Web Locks, storage names or routine-owner composition.
 
 **Version:** the base walkthrough describes the RC8 reference app.
 Sections labeled **Source preview** require later source; use the
-[unreleased change map]({{ '/source-preview/' | relative_url }}) before comparing behavior. Installing library packages
+[RC9 increment and release map]({{ '/source-preview/' | relative_url }}) before comparing behavior. Installing library packages
 does not install a demo UI or enable its memory/session policies. A published
 package, a deployed documentation site and a source checkout have separate versions.
 
@@ -174,7 +174,9 @@ Google/iCloud restoration, native proof/provider acceptance or full Lace support
 Use the [evidence map]({{ '/use-case-coverage/' | relative_url }}) and
 [qualification limits]({{ '/qualification/' | relative_url }}) for recorded results.
 
-## Source preview: signing comparison (after RC8)
+<span id="source-preview-signing-comparison-after-rc8"></span>
+
+## RC9: signing comparison
 
 For the local signing-mode comparison, open `?signing=passkey` or `?signing=jubjub`
 on the demo origin. The latter creates a JubJub-primary account from the passkey PRF;
@@ -182,7 +184,9 @@ it does not enroll a companion on an existing account. Both retain login and fre
 critical approval. Sign-up explicitly reviews its routine reader/wallet lease and
 shares confirmed setup's key scope. See [request paths]({{ '/passkey-prompts/' | relative_url }}).
 
-## Source preview: deposit availability (after RC8)
+<span id="source-preview-deposit-availability-after-rc8"></span>
+
+## RC9: deposit availability
 
 The later reference source checks the funding wallet's current spendable unshielded inventory.
 An empty asset or unavailable wallet disables that deposit option. The policy list remains
