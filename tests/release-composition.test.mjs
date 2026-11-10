@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { releasePlan } from '../scripts/release/plan.mjs';
 import { mountedPlan } from '../scripts/release/mounted-plan.mjs';
 import { preflightMounted } from '../scripts/release/mounted-preflight.mjs';
-import { repeatedFunding } from '../scripts/release/mounted-client.mjs';
+import { fundingTransactionIdentity, repeatedFunding } from '../scripts/release/mounted-client.mjs';
 import { installedFence, imageInterval } from '../scripts/release/fences.mjs';
 import { admitSyntheticFixture } from '../scripts/rc-qualification-private.mjs';
 import { loggedCommand, probeEnvironment } from '../scripts/release/process.mjs';
@@ -80,6 +80,7 @@ test('read-only mounted preflight refuses missing image/occupied descriptor befo
       preflightMounted(root + '/repository', plan, output, engine, {
         source: async () => {},
         freePort: async () => {},
+        diskBytes: () => 30n * 1024n ** 3n,
       }),
     );
     assert.ok(calls.every((args) => args.includes('inspect')));
@@ -90,6 +91,7 @@ test('read-only mounted preflight refuses missing image/occupied descriptor befo
       preflightMounted(root + '/repository', plan, output, engine, {
         source: async () => {},
         freePort: async () => {},
+        diskBytes: () => 30n * 1024n ** 3n,
       }),
     );
     assert.equal(calls.length, 0);
@@ -252,6 +254,15 @@ test('timed-out actual command retains redacted partial bytes and probes drop au
 
 const tx = '0x' + 'a'.repeat(64),
   secondTx = '0x' + 'b'.repeat(64);
+test('funding identifiers preserve tagged ledger bytes and normalize only hex display wrappers', () => {
+  const tagged = '00' + 'a'.repeat(64);
+  assert.equal(fundingTransactionIdentity(tagged), tagged);
+  assert.equal(fundingTransactionIdentity('0x' + tagged), tagged);
+  assert.notEqual(fundingTransactionIdentity('01' + 'a'.repeat(64)), tagged);
+  assert.equal(fundingTransactionIdentity('ledger:opaque/id'), 'ledger:opaque/id');
+  for (const value of [undefined, null, {}, '', 'a'.repeat(257), 'id\n', 'id secret'])
+    assert.throws(() => fundingTransactionIdentity(value));
+});
 function originalFunding() {
   const request = {
     requestId: 'original-id',
@@ -271,6 +282,7 @@ function originalFunding() {
 }
 for (const variant of [
   'valid',
+  'tagged-ledger-id',
   'nonzero-baseline',
   'wrong-first-credit',
   'different-replay',
@@ -281,6 +293,10 @@ for (const variant of [
 ])
   test(`production repeated-funding assertions: ${variant}`, async (t) => {
     const result = originalFunding();
+    if (variant === 'tagged-ledger-id') {
+      result.funded.txId = '00' + 'a'.repeat(64);
+      result.replay.txId = result.funded.txId;
+    }
     if (variant === 'nonzero-baseline') result.before.night = '10';
     if (variant === 'wrong-first-credit') result.after.night = '20';
     if (variant === 'different-replay') result.replay.txId = secondTx;
@@ -311,7 +327,9 @@ for (const variant of [
                         ? tx
                         : variant === 'prefix-reused-tx'
                           ? tx.slice(2)
-                          : secondTx,
+                          : variant === 'tagged-ledger-id'
+                            ? '00' + 'b'.repeat(64)
+                            : secondTx,
                   }),
             };
         } else body = { night: variant === 'no-second-credit' ? '10' : '20' };
@@ -319,7 +337,7 @@ for (const variant of [
       },
     );
     const run = repeatedFunding('synthetic-token', result, (value) => retained.push(value));
-    if (variant === 'valid') {
+    if (variant === 'valid' || variant === 'tagged-ledger-id') {
       assert.equal((await run).repeatedDepositBalance, '20');
       assert.equal(retained.length, 4);
     } else await assert.rejects(run);

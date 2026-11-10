@@ -120,6 +120,11 @@ dispatch. This is an interruption-safe **infrastructure** lane, not an automatic
 account/job recovery API. An interrupted creation can remain unknown. There is no
 automatic rerun, new-ID retry, journal clearing or state reset.
 
+Retain the complete ledger transaction identifier, including its tag, for deposit
+reconciliation. Parent hard-kill recovery remains a manual operator task: a retained
+lease is not proof of subprocess closure. Durable child process identity/closure
+records are a follow-up; this lane does not claim tested parent-SIGKILL recovery.
+
 ## CI and integration boundaries
 
 Deterministic transport, process, ownership and coordinator tests run in the normal

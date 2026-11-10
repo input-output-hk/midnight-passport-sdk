@@ -10,6 +10,10 @@ must name their signed runner, frozen inputs and distinct source/installed/nativ
 scope. RC9 artifacts remain immutable; adding these commands does not publish a
 new version, close GitHub issues or qualify provider/full Lace behavior.
 
+Retain an operator follow-up under #313 for durable source-client PID, process-start
+identity and closure records. SIGINT/error cleanup is covered; parent-SIGKILL
+recovery is manual and unqualified. A retained lease never proves child closure.
+
 ## RC8 release reconciliation — 2026-11-09
 
 RC8 packages/images are published and verified in the [signed receipt](release/rc8-publication-receipt.json).

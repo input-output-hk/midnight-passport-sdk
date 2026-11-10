@@ -72,6 +72,15 @@ export function mountedClient(repository, root, check, intent) {
   };
 }
 
+/** Ledger identifiers are opaque; v9 uses tagged bytes, distinct from transactionHash().
+ * Normalize a hex display wrapper without discarding any ledger tag.
+ * @param {unknown} value */
+export function fundingTransactionIdentity(value) {
+  const id = text(value, /^[a-zA-Z0-9:._~+/%=-]{1,256}$/);
+  assert.equal(/\s/.test(id), false, 'Transaction identifier contains whitespace');
+  return /^(?:0x)?(?:[a-f0-9]{2})+$/i.test(id) ? id.replace(/^0x/i, '').toLowerCase() : id;
+}
+
 /** @param {string} token @param {Record<string,unknown>} result @param {(value:unknown)=>void} retain */
 export async function repeatedFunding(token, result, retain) {
   assert.equal(object(result.before).night, '0', 'Fresh account must begin at zero');
@@ -82,7 +91,7 @@ export async function repeatedFunding(token, result, retain) {
   assert.deepEqual(replay, funded, 'Original-ID replay differs');
   assert.equal(funded.requestId, original.requestId);
   assert.equal(funded.creditedBalance, '10');
-  const firstTx = text(funded.txId, /^(?:0x)?[a-f0-9]{64}$/).replace(/^0x/, '');
+  const firstTx = fundingTransactionIdentity(funded.txId);
   assert.equal(original.accountAddress, result.account);
   assert.equal(original.color, '00'.repeat(32));
   assert.equal(original.amount, '10');
@@ -103,7 +112,7 @@ export async function repeatedFunding(token, result, retain) {
   assert.equal(reply.status, 200);
   assert.equal(reply.body.requestId, next.requestId);
   assert.equal(reply.body.creditedBalance, '20');
-  const secondTx = text(reply.body.txId, /^(?:0x)?[a-f0-9]{64}$/).replace(/^0x/, '');
+  const secondTx = fundingTransactionIdentity(reply.body.txId);
   assert.notEqual(secondTx, firstTx, 'Second deposit must have a distinct confirmed transaction');
   const balance = await mountedHttp(
     base,
