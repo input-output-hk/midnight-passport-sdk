@@ -371,7 +371,7 @@ WebWorker or Node context. Required lint runs this without executing code or
 installing dependencies. This catches source API drift; it does not validate a
 registry installation or a real provider.
 
-After Jekyll, the Pages workflow checks local rendered targets and HTML anchors
+The current VitePress Pages workflow checks local rendered targets and HTML anchors
 before uploading the site. Its small Python fixture suite also runs there, outside
 the fast PR runtime gate. The checker reports missing assets, base-URL mistakes,
 duplicate IDs and out-of-tree targets; it does not fetch external links or qualify

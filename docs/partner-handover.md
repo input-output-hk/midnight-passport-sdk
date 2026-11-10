@@ -8,7 +8,9 @@ broader compatibility claim. Refs #300, #237, #238 and #236.
 
 `partner-handover-policy.json` is the explicit source allowlist:
 
-- `docs/site`: library and demo guides with their separate entry points, operator
+- `docs-site`: current VitePress library and demo guides. Dependencies, generated
+  builds/cache, contributor setup and build-tool configuration are excluded.
+- `docs/site`: versioned legacy detail and checked examples, operator
   and release references, layouts and assets. Its contributor-facing README is excluded from source
   selection as well as from the rendered build.
 - `docs/examples`: maintained strict-checked integration examples and inventory.

@@ -99,6 +99,26 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: nix develop -c node scripts/smoke-release-tarballs.mjs
+      - name: Verify installed quality and software crypto
+        id: installed_acceptance
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          consumer_parent=$(mktemp -d "$RUNNER_TEMP/installed-release.XXXXXX")
+          echo "parent=$consumer_parent" >> "$GITHUB_OUTPUT"
+          export CONSUMER_ROOT="$consumer_parent/consumer"
+          export RELEASE_TARBALL_DIR="$PWD/release-tarballs"
+          nix develop -c node scripts/qualify-installed-consumer.mjs prepare
+          export CONSUMER_MANIFEST_SHA256=$(nix develop -c node -p "JSON.parse(require('fs').readFileSync(process.env.CONSUMER_ROOT+'/qualification-inputs.json')).manifestSha256")
+          export CONSUMER_LOCK_SHA256=$(nix develop -c node -p "JSON.parse(require('fs').readFileSync(process.env.CONSUMER_ROOT+'/qualification-inputs.json')).lockSha256")
+          nix develop -c node scripts/consumer/installed-release.mjs --output "$CONSUMER_ROOT/release-checks"
+      - name: Retain installed-check receipts
+        if: always() && steps.installed_acceptance.outputs.parent != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: installed-release-receipts
+          path: ${{ steps.installed_acceptance.outputs.parent }}/consumer/*/receipt.json
+          if-no-files-found: ignore
       - name: Verify tarball reproducibility
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}

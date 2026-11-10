@@ -50,7 +50,8 @@ Internal JubJub readiness, capability, grant and holdings modules now separate
 operation responsibilities from connector wiring. The public package set and method
 signatures are unchanged. The architecture lint checks actual literal import syntax,
 Node built-ins and cross-package source paths; all reference app sources enter the
-AST gate with explicit remaining native-bridge debt.
+AST gate. The typed native-bridge follow-up below retires its earlier dynamic-any
+and size exceptions; separate live/native qualification remains required.
 
 The Node host's finality observation bounds response bytes before JSON parsing and
 validates the record with the existing pinned Zod version. Header/body aborts and

@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "sourceRoots": [
+    "docs-site",
     "docs/site",
     "docs/examples"
   ],
@@ -10,7 +11,13 @@
     "docs/review",
     "review",
     ".mn-passport-skills",
-    "docs/site/README.md"
+    "docs/site/README.md",
+    "docs-site/node_modules",
+    "docs-site/.vitepress",
+    "docs-site/scripts",
+    "docs-site/README.md",
+    "docs-site/package.json",
+    "docs-site/package-lock.json"
   ],
   "maximumFileBytes": 8388608
 }

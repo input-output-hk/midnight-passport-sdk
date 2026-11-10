@@ -15,3 +15,17 @@ An owner or matching bounded grant can authorize supported withdrawal circuits. 
 **Shielded withdrawal limit:** the released path accepts an exact-value coin. A partial shielded spend is refused; the SDK does not silently split or make change. This affects the specific withdrawal capability, even when deposits or unshielded withdrawals work. See the [RC8 release evidence](/operations/quality) before claiming production interoperability.
 
 Application contracts may call **into a deployed ACC** under the supported caller-bound design. That does not establish arbitrary ACC → other-contract calls. [See the implementation boundary](/architecture/standards).
+
+## Repeated deposits and uncertain results
+
+In the source candidate, each completed known deposit releases the demo's busy
+state, so the asset selector can be used for another approved deposit. Available
+funding inventory is a separate observation. A temporary inventory/read failure
+must not be mistaken for proof that the preceding transfer failed or that all
+assets were permanently disabled.
+
+If the outcome is unknown, keep the original request and transaction references
+and reconcile that operation in Audit/operator tooling. Do not generate a new ID
+to bypass an unresolved send. A later known completed deposit and a same-ID
+continuation are different actions. The [candidate release scope](/operations/rc9-preview)
+records the new behavior and the exact-version acceptance still required.
