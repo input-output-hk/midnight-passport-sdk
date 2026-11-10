@@ -368,7 +368,7 @@ commands. Lint checks every site TypeScript fence and both example modules throu
 `docs/examples/checked-snippets.json`; declare ES2022/DOM/WebWorker/Node targets.
 Complete examples inject host capabilities; intentional fragments need reasons.
 JSON diagnostics include Markdown lines/hashes. Compilation does not execute,
-install, authenticate or qualify released packages. Render Jekyll/local href/src/
+install, authenticate or qualify released packages. Build the current VitePress site and check local href/src/
 anchors, then inspect desktop/mobile layout; link checking never fetches external
 URLs, checks CSS or establishes deployed Pages. Do not reuse an older render receipt.
 
