@@ -1,6 +1,6 @@
 # Choose packages by responsibility
 
-All nine published libraries use the private `@input-output-hk/mn-passport-*` scope at exact version `0.1.0-rc8`. Install what your code imports; package dependencies bring supporting layers. The reference demo and service applications are **not** extra SDK packages. [Install and compatibility](/getting-started/installation) covers access and runtime pins.
+All nine published libraries use the private `@input-output-hk/mn-passport-*` scope at exact version `0.1.0-rc9`. Install what your code imports; package dependencies bring supporting layers. The reference demo and service applications are **not** extra SDK packages. [Install and compatibility](/getting-started/installation) covers access and runtime pins.
 
 | Package suffix | What it gives you | Runtime and host requirement |
 | --- | --- | --- |
@@ -14,6 +14,6 @@ All nine published libraries use the private `@input-output-hk/mn-passport-*` sc
 | `adapter-midnight-js` | Ledger reads and call pipeline for a compatible binding | Chain/indexer, proof, fee/value, and settlement ports |
 | `service` | Node HTTP/backend library used by reference services | Operator-owned chain, wallet, key cache, state, and protected ingress |
 
-`core`, `connect`, `agent`, and separate signer scaffolds are not part of the nine-package RC8 release. An importable interface does not imply that every runtime or provider has been qualified. [Public operations](/packages/api) lists method prerequisites; [host integration](/guides/hosts) explains how to replace adapters.
+`core`, `connect`, `agent`, and separate signer scaffolds are not part of the nine-package RC9 release. An importable interface does not imply that every runtime or provider has been qualified. [Public operations](/packages/api) lists method prerequisites; [host integration](/guides/hosts) explains how to replace adapters.
 
 The smallest browser path is [the first integration](/getting-started/first-integration). A wallet host can adopt `account` plus its ports without `adapter-browser`; a contract-only adopter can use `contract` and the [artifact guide](/operations/artifacts).

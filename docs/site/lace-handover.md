@@ -4,9 +4,25 @@ title: Lace evaluation handover
 permalink: /lace-handover/
 ---
 
+## Current RC9 handover
+
+Use the [RC9 handover](../release/rc9-lace-handover.md),
+[release notes]({{ '/release-notes-rc9/' | relative_url }}) and
+[signed publication receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc9/rc9-publication-receipt.json).
+All nine implemented private packages use `0.1.0-rc9`; three Linux/amd64 images
+have immutable pins in that receipt. Package access and host policy are explicit.
+
+RC9 adds opt-in PRF-only JubJub creation/verified creation handoff, safe repeated
+funding and bounded native input handling. The SDK remains independently adoptable;
+its demo is optional wiring. Native/source, synthetic browser, installed-registry
+and mounted/pulled-image evidence retain their own exact identities. No full Lace,
+real-provider recovery, partial shielded spend or total-loss recovery is claimed.
+
 <span id="current-rc7-handover"></span>
 
-## Current RC8 handover
+<span id="current-rc8-handover"></span>
+
+## Historical RC8 handover
 
 Use the [RC8 release](https://github.com/input-output-hk/midnight-passport-sdk/releases/tag/sdk-v0.1.0-rc8),
 [installation guide]({{ '/getting-started/' | relative_url }}) and

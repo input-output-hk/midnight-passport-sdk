@@ -750,7 +750,9 @@ renewal, changed credential or replaced review refuses without another signer.
 The reference connector remains localhost-pinned; real providers and deployment
 origins require their own acceptance. See the authenticated-owner and consent guides.
 
-### Source preview: funding inventory (after RC8)
+<span id="source-preview-funding-inventory-after-rc8"></span>
+
+### RC9: funding inventory
 
 The reference funding service checks its existing wallet's spendable unshielded inventory
 before any preparation/deposit, allowing up to five seconds for unshielded catch-up after
@@ -766,11 +768,11 @@ on the current chain; a policy entry alone does not mint them. See the
 
 Only a durably tombstoned no-submit refusal can clear that exact browser request ID and allow a
 new explicit intent. Legacy pending/unknown requests stay intact. No automatic retry or token
-mint occurs. These source changes require a coordinated restart of both reference services;
-the published RC8 packages/images are unchanged. Do not restart a user's existing stack merely
+mint occurs. These changes are included in RC9 and require matching reference services and
+asset policy; RC8 packages/images retain their original behavior. Do not restart a user's existing stack merely
 to update the UI or erase its funding records.
 
-The source-preview reference policy admits 1–64 distinct assets consistently in both services
+The RC9 reference policy admits 1–64 distinct assets consistently in both services
 and the browser. Older balance responses, including failures, cannot overwrite a newer read
 or a reopened account’s availability. Inventory reads remain bounded even when subscription
 teardown throws.
@@ -779,7 +781,9 @@ An unavailable selected deposit asset stays selected with funding disabled; refr
 switches it to another asset. A current availability-read failure also disables deposits
 until a successful refresh, preserving the asset list and withdrawal choices.
 
-### Source preview: owner signing comparison (after RC8)
+<span id="source-preview-owner-signing-comparison-after-rc8"></span>
+
+### RC9: owner signing comparison
 
 Choose `VITE_PASSPORT_SIGNING_MODE=passkey|jubjub`, or open the canonical demo with
 `?signing=passkey` / `?signing=jubjub`. Passkey remains the default; the existing
@@ -804,7 +808,9 @@ approval. Failed adoption does not undo creation: retain records and reopen/reco
 original account instead of creating a replacement. Tracked in
 [#304](https://github.com/input-output-hk/midnight-passport-sdk/issues/304).
 
-## Source preview: consecutive deposits and availability recovery (after RC8)
+<span id="source-preview-consecutive-deposits-and-availability-recovery-after-rc8"></span>
+
+## RC9: consecutive deposits and availability recovery
 
 A confirmed deposit may temporarily put the funding wallet behind the indexer. The
 browser re-observes a valid `unavailable` inventory at most twice after the first
@@ -845,3 +851,13 @@ plan continuation. No runtime ledger constructor is replaced by a workspace impo
 and a recovered plan retains its original key, bytes and waves. The
 [quality review map](../docs/review/quality-debt-2026-11-10.md) distinguishes source,
 offline-ledger, browser and native/image qualification.
+
+## Wallet ownership when funding is enabled
+
+The CLI forwards `PASSPORT_FUNDING_SEED_FILE` to the funding process. For a
+concurrent demo, point it at a distinct, already-funded wallet and keep that
+wallet’s persistent state separate from the sponsor. Both unset defaults select
+the public standalone genesis seed; use that shared default only in sequential
+single-wallet qualification with the other wallet process confirmed stopped.
+There is no cross-process wallet lock. Configuring a token color does not mint it.
+See the [funding image and operator guide](passport-funding-service/README.md).

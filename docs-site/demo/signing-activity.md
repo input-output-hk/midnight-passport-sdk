@@ -4,13 +4,13 @@ The demo distinguishes three local experiences. **Verified login** can warm deri
 
 Before an actual credential request, the demo combines operation purpose and key purpose in one review. Provider sheets may follow. Retries and later credential calls need a fresh review. For a critical owner transfer or sensitive export, the review shows exact intent and the demo rechecks it before dispatch/display. These are host UI policies composed with SDK hooks, not generic behavior of `PassportConnectorAPI`.
 
-**Activity** shows progress and results. **Audit** retains public operation evidence, including cancelled or unknown outcomes. Keep original transaction and request IDs; do not equate a vanished spinner or local lock with a failed chain send. [The demo composition at the release tag](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/docs/site/demo-guide.md) records exact UI behavior, while [durability](/guides/durability) states the reusable host contract.
+**Activity** shows progress and results. **Audit** retains public operation evidence, including cancelled or unknown outcomes. Keep original transaction and request IDs; do not equate a vanished spinner or local lock with a failed chain send. [The demo composition at the release tag](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc9/docs/site/demo-guide.md) records exact UI behavior, while [durability](/guides/durability) states the reusable host contract.
 
 The reference application uses Lace-inspired PRF recipes and may display a Lace wallet path. Lace is a separate wallet/host; this demo does not claim complete Lace interoperability. [Host integration](/guides/hosts) explains the bridge boundary.
 
 ## Compare the source demo signing modes
 
-The post-RC8 candidate accepts `VITE_PASSPORT_SIGNING_MODE=passkey|jubjub` or
+The RC9 demo accepts `VITE_PASSPORT_SIGNING_MODE=passkey|jubjub` or
 an explicit `?signing=passkey|jubjub` page choice. The default remains direct
 P-256. Conflicting build settings refuse, and changing a page mode does not
 migrate an existing account or silently select another signer.

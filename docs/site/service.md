@@ -230,7 +230,9 @@ reconciliation policy. There is no automatic POST retry, fallback, new ID, pendi
 reservation release or background reconciliation. Published RC7 predates these
 client hardening changes; the funding route, wallet policy and journals are unchanged.
 
-## Source preview: optional funding inventory port (after RC8)
+<span id="source-preview-optional-funding-inventory-port-after-rc8"></span>
+
+## RC9: optional funding inventory port
 
 `createWalletFundingBackend` accepts an optional `inventory` callback returning
 `FundingInventory`: a synchronized observation and a map of spendable unshielded bigint balances.
@@ -244,4 +246,4 @@ fixed `FundingAssetUnavailable`/`FundingWalletUnavailable` diagnostics.
 records `no-submit` and the store releases/tombstones the request. Failed persistence and generic
 wallet exceptions retain unknown semantics. An old pending request is never executed again or
 retrospectively classified from today's balance. Logs include only request ID, last durable
-stage and a fixed code. The optional inventory contract is source preview, absent from RC8.
+stage and a fixed code. The optional inventory contract is included in RC9 and absent from RC8.

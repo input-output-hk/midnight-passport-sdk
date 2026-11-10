@@ -12,7 +12,7 @@ checks still used for its TypeScript examples; they are not current publishing s
   input admission, authorization, custody, error handling and cleanup.
 - `demo-guide.md` is the reference app entry: local setup, UI/navigation, consent, routine
   memory material, full-owner policy, bounded grants and operational evidence.
-- `getting-started.md` retains `/getting-started/` and the published RC8 install/composition
+- `getting-started.md` retains `/getting-started/` and the published RC9 install/composition
   path. `api.md` retains `/api/` and the export reference, with explicit version boundaries.
 - `account-keys.md` owns private account-key capabilities, wire formats, byte ownership
   and recovery. `keys.md` owns public proving artifacts, hash pins, caches and serving;
@@ -34,7 +34,7 @@ described as automatic SDK caching, enrollment, wallet connection or key persist
 ## Release and evidence labels
 
 Keep installation/API instructions tied to exported source types and matching published
-versions. Current guides target published `0.1.0-rc8`. APIs introduced in RC8 remain absent
+versions. Current guides target published `0.1.0-rc9`. APIs introduced in RC8 remain absent
 from historical RC7; preserve that distinction. Use release-tagged source for exact
 release examples and label any later source additions before the code.
 

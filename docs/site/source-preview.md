@@ -1,13 +1,15 @@
 ---
 layout: default
-title: Unreleased source changes
-description: Changes after the published RC8 packages, with their integration and verification limits.
+title: RC9 increment after RC8
+description: RC9 changes after RC8, with their integration and verification limits.
 permalink: /source-preview/
 ---
 
-**Published packages remain `0.1.0-rc8`.** The changes below require a matching
-source checkout and build; they are not installed by selecting the registry's
-`next` tag. A deployed documentation page is not a package release.
+**RC9 packages are `0.1.0-rc9`.** The additive library hooks and backend fixes
+below are included in that release. Use matching exact packages and service images.
+Demo-only behavior requires the reference application at the RC9 source tag;
+installing an SDK package does not install a UI, adopt a routine session or
+provision a wallet. The signed release receipt defines the qualified subset.
 
 ## Changes after RC8
 
@@ -40,7 +42,7 @@ not change the ACC's full-owner authority or key derivation recipe.
 - Synthetic credentials/browser tests do not establish real-provider recovery,
   new native proof qualification or full Lace compatibility.
 
-Use [Published RC8]({{ '/release-notes-rc8/' | relative_url }}) for the released
+Use [Published RC9]({{ '/release-notes-rc9/' | relative_url }}) for the released
 scope and [use-case evidence]({{ '/use-case-coverage/' | relative_url }}) for the
 distinction between source tests and recorded acceptance.
 
@@ -61,7 +63,7 @@ See the [quality guide]({{ '/quality/' | relative_url }}) for the scope and gate
 
 ## Typed operation and reference-host decomposition
 
-Source after RC8 separates P-256 operations, reference app controllers and DOM
+RC9 separates P-256 operations, reference app controllers and DOM
 presentation, and the native reference loader/driver. Public account signatures,
 key recipes, circuit order, fresh critical approval, scoped-transfer restrictions
 and exact-value shielded withdrawal guards remain. The native bridge now uses

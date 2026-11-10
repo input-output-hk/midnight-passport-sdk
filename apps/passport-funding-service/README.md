@@ -132,9 +132,11 @@ files or a shared filesystem lock without a transactional implementation.
 
 The source has focused policy and backend tests. On the local `undeployed` network, this process deposited 10 units of a faucet-minted non-native unshielded asset into a
 live `spec_version = 3` ACC and observed the credited balance. Repeating the same request ID
-returned the same transaction ID and balance. Historical RC2 evidence is retained below; use the current RC7 image in the next section.
+returned the same transaction ID and balance. Historical RC2 evidence is retained below; use the current RC9 image in the next section.
 
-## Source preview: funding inventory admission (after RC8)
+<span id="source-preview-funding-inventory-admission-after-rc8"></span>
+
+## RC9: funding inventory admission
 
 The reference application reads spendable **unshielded** balances from its existing wallet.
 `GET /v1/faucet/assets` requires the funding bearer token and returns the pinned network,
@@ -162,24 +164,41 @@ reads and withdrawals. Allowlisting a custom color does not mint it: provision t
 in this funding wallet on this chain before offering it. Changing chains does not carry inventory
 from an older demo. No automatic faucet mint or old-reservation reset is performed.
 
-These changes require restarting both reference services at matching source; they are not
-included in the published RC8 packages/images. Preserve all wallet/journal/chain state and use
+These changes are included in RC9 and require matching reference service/funding versions.
+They are absent from RC8 packages/images. Preserve all wallet/journal/chain state and use
 only the recorded resources belonging to the demo being restarted.
+
+## Wallet and state ownership
+
+The service and funding process must use distinct funded wallet seeds when run
+concurrently. On `undeployed`, both defaults select the public genesis seed; use
+that shared default only for sequential single-wallet qualification, stopping and
+confirming the first process has exited before starting the second. Configure
+`PASSPORT_FUNDING_SEED_FILE` for the distinct asset wallet; changing the path
+without provisioning its funds does not create inventory.
+
+Keep separate persistent state directories/volumes for the two wallets. Put the
+trusted registry/deployment log in a separate shared directory, mounted read-only
+by funding, so atomic log replacement remains visible. Never share a wallet's
+LevelDB directory between processes. Linux-native state is required for durable
+image qualification; on Docker Desktop use managed Linux volumes rather than
+macOS bind mounts for those journals. Run as a non-root identity with explicit
+state and private-file permissions.
 
 ## Container image
 
 The [funding image workflow](../../.github/workflows/publish-funding-image.yml) publishes
 `ghcr.io/input-output-hk/midnight-passport-funding:<version>` and a commit-SHA tag after a
-signed `funding-v<version>` tag or an authorised workflow dispatch. Release `0.1.0-rc7` also has
-`sha-bbf883d9aecb`; its immutable digest is
-`sha256:77827206b4f6839b7f82fd8513d06adcffe85d7ebbe192e3465b6f61620579e3`.
-The published GHCR package is public. Pin this RC7 digest when deploying. It includes the
+signed `funding-v<version>` tag or an authorised workflow dispatch. Release `0.1.0-rc9` also has
+`sha-0293fac13c2b`; its immutable digest is
+`sha256:be7b55b9772d71fc142b76b9ab5915d9841b834c88542ae5ecbf965cf5161647`.
+The published GHCR package is public. Pin this RC9 digest when deploying. It includes the
 localnet NIGHT preparation path and passed current startup/refusal checks on Linux/amd64
-(emulated on the local ARM64 host). A fresh native deposit was not repeated on RC7.
+(emulated on the local ARM64 host). The published digest passed non-root readiness, NIGHT credit, same-original-ID replay without extra credit, a distinct repeated deposit and unavailable-token409 refusal before submission. It used synthetic credentials, a source SDK client and a sequential standalone wallet; no wider-network or real-provider acceptance is implied.
 The historical RC5 image passed a deposit from zero to ten smallest NIGHT units and
 an identical-request replay without a second transfer. Its
 [RC5 publication receipt](../../docs/release/rc5-publication-receipt.json) retains those transactions;
-the [RC7 signed receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc7/rc7-publication-receipt.json)
+the [RC9 signed receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc9/rc9-publication-receipt.json)
 records current package/image checks. NIGHT remains qualified only on `undeployed`;
 dedicated non-localnet wallet configuration does not extend that qualification.
 The image contains the SDK application, not the 11 GiB proving tree, any wallet seed, or tokens.
@@ -192,26 +211,39 @@ verifies the complete pinned key tree and manifest before readiness. Mount persi
 state at `/data/state`; its LevelDB wallet state and reservation file live there. The image runs
 as UID/GID `10001:10001` by default.
 
-For a local Docker Desktop demonstration, prepare the export and private files on the host, then
-run the image with the host user's UID so it can read the files and write state. The example uses
-the localnet containers' published host ports; set the four `MN_*_URL` values to your environment
-for another network.
+For a non-root Linux operator, prepare the export, separate state directories and private files, then
+run the image with that non-root operator's UID so it can read the files and write state.
+The example requires an already-funded, distinct `PASSPORT_FUNDING_SEED_FILE`.
+Omit that file override only for a sequential genesis-wallet qualification with
+the sponsor process confirmed stopped. Like the [service example](../passport-service/README.md),
+this native Linux command uses host networking and the default localnet ports 9944/8088/6300.
+It explicitly binds funding to loopback port 8789. Adjust endpoints for your existing stack;
+bridge-network deployments need their actual localnet network and service aliases instead.
 
 ```sh
+mkdir -p "$HOME/.midnight-passport/funding-state" "$HOME/.midnight-passport/registry"
+chmod 700 "$HOME/.midnight-passport/funding-state" "$HOME/.midnight-passport/registry"
 docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" \
-  -p 127.0.0.1:8789:8789 \
+  --network host \
+  -e PASSPORT_FUNDING_HOST=127.0.0.1 \
+  -e PASSPORT_FUNDING_PORT=8789 \
   -v "$PASSPORT_CONTRACT_DIR:/data/contract:ro" \
-  -v "$HOME/.midnight-passport:/data/state" \
+  -v "$HOME/.midnight-passport/funding-state:/data/state" \
+  -v "$HOME/.midnight-passport/funding-token:/run/passport-secrets/funding-token:ro" \
+  -v "$HOME/.midnight-passport/funding-assets.json:/run/passport-secrets/funding-assets.json:ro" \
+  -v "$HOME/.midnight-passport/registry:/data/deployments:ro" \
+  -v "$PASSPORT_FUNDING_SEED_FILE:/run/passport-secrets/funding-seed:ro" \
   -e HOME=/data/state \
-  -e PASSPORT_FUNDING_TOKEN_FILE=/data/state/funding-token \
-  -e PASSPORT_FUNDING_ASSETS_FILE=/data/state/funding-assets.json \
-  -e PASSPORT_FUNDING_DEPLOYMENTS_FILE=/data/state/registry.deployments.json \
+  -e PASSPORT_FUNDING_TOKEN_FILE=/run/passport-secrets/funding-token \
+  -e PASSPORT_FUNDING_ASSETS_FILE=/run/passport-secrets/funding-assets.json \
+  -e PASSPORT_FUNDING_DEPLOYMENTS_FILE=/data/deployments/registry.deployments.json \
+  -e PASSPORT_FUNDING_SEED_FILE=/run/passport-secrets/funding-seed \
   -e MN_NETWORK_ID=undeployed \
-  -e MN_NODE_URL=http://host.docker.internal:19944 \
-  -e MN_INDEXER_URL=http://host.docker.internal:18088/api/v4/graphql \
-  -e MN_INDEXER_WS_URL=ws://host.docker.internal:18088/api/v4/graphql/ws \
-  -e MN_PROOF_SERVER_URL=http://host.docker.internal:16300 \
-  ghcr.io/input-output-hk/midnight-passport-funding@sha256:77827206b4f6839b7f82fd8513d06adcffe85d7ebbe192e3465b6f61620579e3
+  -e MN_NODE_URL=http://127.0.0.1:9944 \
+  -e MN_INDEXER_URL=http://127.0.0.1:8088/api/v4/graphql \
+  -e MN_INDEXER_WS_URL=ws://127.0.0.1:8088/api/v4/graphql/ws \
+  -e MN_PROOF_SERVER_URL=http://127.0.0.1:6300 \
+  ghcr.io/input-output-hk/midnight-passport-funding@sha256:be7b55b9772d71fc142b76b9ab5915d9841b834c88542ae5ecbf965cf5161647
 ```
 
 The earlier RC2 Linux image build and mounted-tree run succeeded on `undeployed`: an image-backed
@@ -224,7 +256,7 @@ prepare the funding image's contract tree on Linux with the same binding and man
 funding token must stay in a private file or secret mount. GHCR visibility and repository/team
 access are configured on the container package's settings page.
 
-The source-preview reference policy admits 1–64 distinct assets consistently in both services
+The RC9 reference policy admits 1–64 distinct assets consistently in both services
 and the browser. Older balance responses, including failures, cannot overwrite a newer read
 or a reopened account’s availability. Inventory reads remain bounded even when subscription
 teardown throws.
@@ -232,3 +264,8 @@ teardown throws.
 An unavailable selected deposit asset stays selected with funding disabled; refresh never
 switches it to another asset. A current availability-read failure also disables deposits
 until a successful refresh, preserving the asset list and withdrawal choices.
+
+Direct published ports must match the configured internal service port because
+the HTTP server validates Host against its local socket. If changing a port, set
+`PASSPORT_SERVICE_PORT` or `PASSPORT_FUNDING_PORT` and both sides of the Docker
+port mapping together. A mismatched mapping returns HTTP 421; do not weaken Host validation.

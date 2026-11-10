@@ -1,5 +1,32 @@
 # Compatibility matrix
 
+## RC9 supported preview — 2026-11-10
+
+
+Nine private packages use `0.1.0-rc9` (`next`); three public images are Linux/amd64.
+The [signed receipt](release/rc9-publication-receipt.json) records actual registry
+bytes/SRI, source/publisher attestations, access, installation and immutable images.
+Binding acc-s3r1.1 / Passport6458ed5 / Compact0.35.0 / language0.27.0 / runtime0.20.0
+and account/service API1.0.0-pre.0 remain unchanged.
+
+| Adoption layer | RC9 support | Limit |
+| --- | --- | --- |
+| Contract and public keys | Existing binding/compiler export; pinned verifier/prover integrity and deterministic single-circuit restore | Distribution is not all-circuit typed/API or network qualification |
+| Account/browser/key libraries | Both-arm operations; opt-in JubJub PRF-only registration and verified-creation callbacks | Host owns credential/persistence/consent; no automatic owner, wallet or grant |
+| Demo | Signing comparison, routine handoff, fixed funding, repeated deposits, live holdings and explicit audit | Reference wiring; synthetic browser evidence is not real-provider acceptance |
+| Services and native bridge | Bounded input/retained context, explicit original-ID continuation and funding preflight | Default demo is not automatically job-backed; no unknown-send retry |
+| Installed packages | Nine exact private archives; strict Node/DOM/Worker/docs and software/generated-contract cases | Native source/mounted-image graphs retain their own exact inputs |
+| Images | Actual pulled service/funding digests passed non-root mounted readiness and a synthetic JubJub create/activate/read/reopen, NIGHT deposit/replay/repeated-deposit flow using a source SDK client. Source-native populated job lifecycle, registry installation and key HTTP/restore are separate recorded lanes; no provider or full Lace claim follows. | Linux-prepared mounts/operator policy; no full Lace/provider or wider-network NIGHT claim |
+
+Verified all nine actual registry packages: private visibility, exact `0.1.0-rc9`/`next`, SHA-256/SRI, source-equivalent archive contents and 18 source/publisher attestations. A fresh registry consumer passed public imports, strict Node/DOM/Worker examples, six software/generated-contract crypto cases, eight synthetic interruption cases, a browser build and single-circuit restore/export, with unchanged installed inputs and temporary auth removed.
+
+Source-native qualification passed 28 populated lifecycle cases across P-256/JubJub, including six original-operation resumptions. The actual pulled Linux/amd64 service/funding images passed create/activate/read/reopen, NIGHT deposits from 0→10→20 smallest units, same-ID replay without extra credit and an unavailable-token refusal before submission. That image flow used a source SDK client and synthetic JubJub credentials; it is separate from registry-installed native or job-backed image interruption qualification. Key HTTP checks verified all 52 verifier hashes, selected prover/range bytes/CORS and one-circuit regeneration. Inputs and owned cleanup were verified for each lane.
+
+Exact-value shielded withdrawal, fresh critical consent, capped grant scope and
+original-ID reconciliation are retained. Historical receipts below keep their
+actual source/runtime pins; later publication never relabels earlier evidence.
+
+
 ## RC8 published preview — 2026-11-09
 
 Nine private GitHub npm packages are published at **`0.1.0-rc8`** (`next`), with
@@ -152,6 +179,7 @@ sources; they are not relabelled as fresh provider or released-image acceptance.
 | `0.1.0-rc4` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 | `0.1.0-rc5` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 | `0.1.0-rc6` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
+| `0.1.0-rc9` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 | `0.1.0-rc8` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 | `0.1.0-rc7` | `acc-s3r1.1` | `6458ed5` (P-256 plus caller-pinned grants) | 0.35.0 | 0.27.0 | 0.20.0 | `77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f` |
 
@@ -169,6 +197,7 @@ Compact runtime.
 | `0.1.0-rc4` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 | `0.1.0-rc5` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 | `0.1.0-rc6` | `1.0.0-pre.0` | `1.0.0-pre.0` |
+| `0.1.0-rc9` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 | `0.1.0-rc8` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 | `0.1.0-rc7` | `1.0.0-pre.0` | `1.0.0-pre.0` |
 
@@ -493,6 +522,7 @@ The account API and the service wire types are versioned separately.
 | `0.1.0-rc4` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 | `0.1.0-rc5` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 | `0.1.0-rc6` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
+| `0.1.0-rc9` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 | `0.1.0-rc8` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 | `0.1.0-rc7` | `1.0.0-pre.0` | `1.0.0-pre.0` | `acc-s3r1.1` | `acc-s3r1.1` | `0.20.0` | midnight-js `5.0.0-rc.2`, ledger-v9 `1.0.0-rc.5` |
 

@@ -1,6 +1,6 @@
 # Standards and upstream design
 
-Read normative text at its source. The statuses below are from the [canonical proposal repository at `02fce36`](https://github.com/midnightntwrk/midnight-improvement-proposals/tree/02fce36cfa44541305310dc25fd38f399dbe8d92), inspected on 9 November 2026. A proposal's publication or status **does not establish SDK conformance**. The SDK's published `0.1.0-rc8` behavior is pinned separately to [its release source](https://github.com/input-output-hk/midnight-passport-sdk/tree/sdk-v0.1.0-rc8) and `acc-s3r1.1` binding.
+Read normative text at its source. The statuses below are from the [canonical proposal repository at `02fce36`](https://github.com/midnightntwrk/midnight-improvement-proposals/tree/02fce36cfa44541305310dc25fd38f399dbe8d92), inspected on 9 November 2026. A proposal's publication or status **does not establish SDK conformance**. The SDK's published `0.1.0-rc9` behavior is pinned separately to [its release source](https://github.com/input-output-hk/midnight-passport-sdk/tree/sdk-v0.1.0-rc9) and `acc-s3r1.1` binding.
 
 | Document | Problem addressed | Relevant SDK capability | Implementation boundary |
 | --- | --- | --- | --- |

@@ -57,7 +57,8 @@ const destinations = {
   'release-notes-rc5': '/operations/archive',
   'release-notes-rc6': '/operations/archive',
   'release-notes-rc7': '/operations/archive',
-  'release-notes-rc8': '/operations/quality',
+  'release-notes-rc8': '/operations/archive',
+  'release-notes-rc9': '/operations/rc9-preview',
   'source-preview': '/operations/archive',
 };
 

@@ -1,6 +1,6 @@
 # First browser integration
 
-This tutorial creates or reopens a P-256 passkey-controlled ACC with the **published `0.1.0-rc8`** exports. It uses the same pinned `acc-s3r1.1` binding as the release. Both TypeScript modules below are compiled by the repository's documentation check. They form a localnet evaluation application; add your product's accessible UI, error display, and durable operation journal around them.
+This tutorial creates or reopens a P-256 passkey-controlled ACC with the **published `0.1.0-rc9`** exports. It uses the same pinned `acc-s3r1.1` binding as the release. Both TypeScript modules below are compiled by the repository's documentation check. They form a localnet evaluation application; add your product's accessible UI, error display, and durable operation journal around them.
 
 ## Prepare the environment
 
@@ -15,16 +15,16 @@ This tutorial creates or reopens a P-256 passkey-controlled ACC with the **publi
 
    ```sh
    npm install --save-exact \
-     @input-output-hk/mn-passport-account@0.1.0-rc8 \
-     @input-output-hk/mn-passport-protocol@0.1.0-rc8 \
-     @input-output-hk/mn-passport-adapter-browser@0.1.0-rc8 \
-     @input-output-hk/mn-passport-adapter-service@0.1.0-rc8 \
-     @input-output-hk/mn-passport-contract@0.1.0-rc8
+     @input-output-hk/mn-passport-account@0.1.0-rc9 \
+     @input-output-hk/mn-passport-protocol@0.1.0-rc9 \
+     @input-output-hk/mn-passport-adapter-browser@0.1.0-rc9 \
+     @input-output-hk/mn-passport-adapter-service@0.1.0-rc9 \
+     @input-output-hk/mn-passport-contract@0.1.0-rc9
    ```
 
 3. Supply a running, compatible chain/indexer and a Passport service at `http://127.0.0.1:8787`. The service must expose `/healthz`, `/v1/config`, deployment, directory, proving, fee sponsorship, and submission. Its binding must be `acc-s3r1.1` on network `undeployed`. The module obtains the manifest pin from the **installed contract package**, then checks the service response; do not derive the trusted pin from the service being checked. For an evaluation stack, follow [demo setup](/demo/). An install does not create these services or their wallets.
 
-4. Run your browser app at `http://localhost:5173` with a compatible WebAuthn provider. The RP ID, origin, and ACC WebAuthn policy must agree. Configure the pinned Midnight WASM/Buffer/polyfill support shown in the [release demo's Vite setup](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/apps/passport-dapp/vite.config.ts) and [polyfill entry](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/apps/passport-dapp/src/polyfills.ts). The reference backend must have a funded **fee sponsor**; that does not fund the user's ACC.
+4. Run your browser app at `http://localhost:5173` with a compatible WebAuthn provider. The RP ID, origin, and ACC WebAuthn policy must agree. Configure the pinned Midnight WASM/Buffer/polyfill support shown in the [release demo's Vite setup](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc9/apps/passport-dapp/vite.config.ts) and [polyfill entry](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc9/apps/passport-dapp/src/polyfills.ts). The reference backend must have a funded **fee sponsor**; that does not fund the user's ACC.
 
 ## Add the account module
 

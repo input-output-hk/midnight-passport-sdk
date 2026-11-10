@@ -2,7 +2,7 @@
 
 The Passport DApp is a **reference application**, not an SDK prerequisite. It composes the browser SDK, a local Midnight chain/indexer, proof and fee-sponsor service, key distribution, and optional wallet-backed funding. Its screens, memory lease, review dialogs, Activity log, and wallet connection are choices made by this host.
 
-The maintained [application setup](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/apps/README.md) gives the full configuration and exact service options. Use an owned evaluation environment. Installing SDK npm packages does not start that stack, create a passkey, deploy an ACC, or supply a wallet.
+The maintained [application setup](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc9/apps/README.md) gives the full configuration and exact service options. Use an owned evaluation environment. Installing SDK npm packages does not start that stack, create a passkey, deploy an ACC, or supply a wallet.
 
 ## Before starting
 
@@ -27,7 +27,21 @@ PASSPORT_REPO=/path/to/passport nix develop -c pnpm demo up
 
 The command exports the pinned ACC, compiles or verifies its artifacts, builds the SDK, and starts the localnet, Passport service, browser app, and key service. It reuses a verified key cache on later runs. Open `http://localhost:5173/`; check `http://127.0.0.1:8787/healthz` and `/v1/config` before the first account action. The key service listens on `127.0.0.1:8788`. `--arm jubjub` selects the PRF-derived owner route; the default is P-256. A development mock passkey is available via `--mock-passkey`, but it is not real-provider evidence.
 
-For an optional **asset funding** scenario, configure the funding service's protected token and allowlist files as described in its [operations guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc8/apps/passport-funding-service/README.md), then use `demo up --funding`. That starts a separate wallet-backed process on `127.0.0.1:8789`; its token remains server-side. The local funding proxy offers fixed, bounded deposits for the demo. It does not change the fee sponsor's job. Do not use the demo's localnet policy as a production ingress design.
+## Optional asset funding
+
+The fee sponsor and asset funding process are separate wallet owners. For a
+concurrent browser demo, configure a **distinct, already-funded funding wallet**
+using `PASSPORT_FUNDING_SEED_FILE`, plus the protected token and asset allowlist in
+the [funding operations guide](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-funding-service/README.md).
+The CLI forwards that configuration to `demo up --funding`. Funding then listens
+on `127.0.0.1:8789`; its token stays server-side and deposits remain bounded.
+
+Both processes otherwise default to the same public standalone genesis seed.
+That default is for **one active wallet at a time**, as in sequential CLI
+qualification. Do not co-start that shared default for this concurrent recipe.
+Keep each wallet's persistent state separate; a token allowlist does not mint or
+provision funds. A production ingress also needs its own authentication and limits.
+
 
 The signed-out screen provides **Sign up** and **Log in**. After account access, use Passport account → Balances / Deposit / Withdraw; the separate Midnight wallet, Audit, and Settings workspaces have their own navigation. The demo shows **Powered by Lace** attribution for its Lace-inspired wallet and passkey experience. Lace remains a separate wallet/host with its own provider policy; this demo does not claim full Lace compatibility.
 
