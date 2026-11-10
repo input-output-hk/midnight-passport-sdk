@@ -98,3 +98,11 @@ original network object. The correction carries that captured object into
 readiness. A public-facade regression reproduces the mismatched record before the
 fix and verifies matching account/record binding afterwards; it also checks that
 activation and the two inbox publications execute once.
+
+A final transport probe also found validation amplification: an array schema
+visited every transaction before rejecting an invalid result count. The fixed
+one-record tuple refuses extra records before traversing them. Identifier
+validation stops at the first malformed item and emits one schema issue rather
+than accumulating an issue for every invalid ID. Positive confirmation and
+instrumented zero/multiple-record and malformed-ID controls cover these guards;
+invalid observations still remain unknown and never enter ledger decoding.

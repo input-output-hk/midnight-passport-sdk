@@ -8,7 +8,11 @@ const includedRecord = z
   .object({
     __typename: z.literal('RegularTransaction'),
     transactionResult: z.object({ status: z.literal('SUCCESS') }),
-    identifiers: z.array(z.string()),
+    // Refuse at the first invalid item without allocating an issue for every ID.
+    identifiers: z.custom<readonly string[]>(
+      (value: unknown) =>
+        Array.isArray(value) && value.every((id: unknown) => typeof id === 'string'),
+    ),
     hash: z.string().regex(/^[0-9a-f]{64}$/),
     raw: z
       .string()
@@ -19,7 +23,7 @@ const includedRecord = z
   .passthrough();
 const confirmationResponse = z.object({
   errors: z.unknown().optional(),
-  data: z.object({ transactions: z.array(includedRecord).length(1) }),
+  data: z.object({ transactions: z.tuple([includedRecord]) }),
 });
 
 export interface HostConfirmationRuntime {
