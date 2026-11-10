@@ -4,10 +4,12 @@ import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { closeSync, existsSync, openSync } from 'node:fs';
 import { join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { isolatedProcesses } from '../qualification/native-isolation-control.mjs';
 import { json, object, text } from './files.mjs';
 import { probeEnvironment } from './process.mjs';
 import { MOUNTED_PORTS } from './mounted-plan.mjs';
+import { MANIFEST } from './mounted-services.mjs';
 import { mountedHttp, waitMounted } from './mounted-services.mjs';
 
 /** @param {string} repository @param {string} root @param {()=>void} check @param {(phase:string)=>void} intent */
@@ -81,8 +83,48 @@ export function fundingTransactionIdentity(value) {
   return /^(?:0x)?(?:[a-f0-9]{2})+$/i.test(id) ? id.replace(/^0x/i, '').toLowerCase() : id;
 }
 
-/** @param {string} token @param {Record<string,unknown>} result @param {(value:unknown)=>void} retain */
-export async function repeatedFunding(token, result, retain) {
+/** Inventory is advisory: wait before dispatch, but never retry a POST refusal.
+ * The durable funding store treats preflight-released IDs as terminal.
+ * @param {string} base @param {string} token
+ * @param {string} phase @param {(value:unknown)=>void} retain @param {()=>void} check */
+async function waitFundingInventory(base, token, phase, retain, check) {
+  const deadline = performance.now() + 180_000;
+  for (;;) {
+    check();
+    assert.ok(
+      performance.now() < deadline,
+      'Funding wallet did not synchronize; no deposit dispatched',
+    );
+    const reply = await mountedHttp(base, '/v1/faucet/assets', token);
+    retain({ phase: `${phase}-inventory`, response: reply });
+    check();
+    assert.equal(reply.status, 200);
+    assert.equal(reply.body.networkId, 'undeployed');
+    assert.equal(reply.body.bindingId, 'acc-s3r1.1');
+    assert.equal(reply.body.manifestSha256, MANIFEST);
+    assert.ok(Array.isArray(reply.body.assets));
+    const assets = reply.body.assets.map(object);
+    assert.equal(assets.length, 2);
+    assert.deepEqual(assets.map((row) => row.color).sort(), ['00'.repeat(32), 'ab'.repeat(32)]);
+    for (const row of assets) {
+      assert.equal(row.amount, '10');
+      assert.ok(['available', 'unavailable', 'insufficient'].includes(String(row.availability)));
+    }
+    assert.ok(performance.now() < deadline, 'Funding inventory deadline expired');
+    if (!assets.every((row) => row.availability === 'unavailable')) {
+      assert.equal(assets.find((row) => row.color === '00'.repeat(32))?.availability, 'available');
+      assert.equal(
+        assets.find((row) => row.color === 'ab'.repeat(32))?.availability,
+        'insufficient',
+      );
+      return;
+    }
+    await delay(1_000);
+  }
+}
+
+/** @param {string} token @param {Record<string,unknown>} result @param {(value:unknown)=>void} retain @param {()=>void} [check] */
+export async function repeatedFunding(token, result, retain, check = () => {}) {
   assert.equal(object(result.before).night, '0', 'Fresh account must begin at zero');
   assert.equal(object(result.after).night, '10', 'First deposit must credit ten');
   const funded = object(result.funded),
@@ -97,15 +139,17 @@ export async function repeatedFunding(token, result, retain) {
   assert.equal(original.amount, '10');
   const base = `http://127.0.0.1:${MOUNTED_PORTS.funding}`;
   assert.equal((await mountedHttp(base, '/v1/faucet/assets')).status, 403);
-  assert.equal((await mountedHttp(base, '/v1/faucet/assets', token)).status, 200);
   const refused = { ...original, requestId: randomUUID(), color: 'ab'.repeat(32) };
+  await waitFundingInventory(base, token, 'unprovisioned-token', retain, check);
   retain({ phase: 'unprovisioned-token-outcome-unknown', request: refused });
   const rejection = await mountedHttp(base, '/v1/faucet/fund', token, refused);
   retain({ phase: 'unprovisioned-token-reply', request: refused, response: rejection });
   assert.equal(rejection.status, 409);
+  assert.equal(rejection.body.requestId, refused.requestId);
   assert.equal(rejection.body.submission, 'not-started');
   assert.equal(rejection.body.code, 'FundingAssetUnavailable');
   const next = { ...original, requestId: randomUUID() };
+  await waitFundingInventory(base, token, 'second-night-deposit', retain, check);
   retain({ phase: 'second-night-deposit-outcome-unknown', request: next });
   const reply = await mountedHttp(base, '/v1/faucet/fund', token, next);
   retain({ phase: 'second-night-deposit-reply', request: next, response: reply });

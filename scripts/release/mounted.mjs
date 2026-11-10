@@ -181,10 +181,15 @@ export async function runMounted(input, output, env = process.env) {
         await client.created();
         await services.funding();
         const result = await client.funded();
-        return repeatedFunding(services.token, result, (value) => {
-          operations.push(value);
-          save();
-        });
+        return repeatedFunding(
+          services.token,
+          result,
+          (value) => {
+            operations.push(value);
+            save();
+          },
+          check,
+        );
       },
     });
   } finally {

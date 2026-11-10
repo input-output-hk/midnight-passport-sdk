@@ -120,6 +120,14 @@ dispatch. This is an interruption-safe **infrastructure** lane, not an automatic
 account/job recovery API. An interrupted creation can remain unknown. There is no
 automatic rerun, new-ID retry, journal clearing or state reset.
 
+After a confirmed deposit, wallet inventory may still be catching up. Before each
+one-shot funding probe or deposit, the checker waits for an authenticated inventory
+snapshot matching the network, binding, manifest and configured assets. This is
+advisory; the service still rechecks inventory at submission. A preflight refusal
+releases its durable request ID, so the checker never retries that POST or replaces
+its ID. Every inventory read, dispatch intent and reply is retained. Bounded waits,
+transport errors, missing or mismatched reply IDs and unknown outcomes stop qualification.
+
 Retain the complete ledger transaction identifier, including its tag, for deposit
 reconciliation. Parent hard-kill recovery remains a manual operator task: a retained
 lease is not proof of subprocess closure. Durable child process identity/closure

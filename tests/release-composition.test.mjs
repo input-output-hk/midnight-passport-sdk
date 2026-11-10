@@ -290,6 +290,17 @@ for (const variant of [
   'reused-tx',
   'prefix-reused-tx',
   'no-second-credit',
+  'inventory-catchup',
+  'preflight-mismatched-id',
+  'preflight-unknown-submission',
+  'preflight-transport-error',
+  'preflight-terminal',
+  'inventory-aborted',
+  'inventory-expired',
+  'inventory-wrong-binding',
+  'inventory-duplicate-assets',
+  'refusal-missing-id',
+  'refusal-mismatched-id',
 ])
   test(`production repeated-funding assertions: ${variant}`, async (t) => {
     const result = originalFunding();
@@ -301,6 +312,10 @@ for (const variant of [
     if (variant === 'wrong-first-credit') result.after.night = '20';
     if (variant === 'different-replay') result.replay.txId = secondTx;
     /** @type {unknown[]} */ const retained = [];
+    /** @type {Record<string,unknown>[]} */ const submissions = [];
+    let refusedOnce = false;
+    let now = 0;
+    if (variant === 'inventory-expired') t.mock.method(performance, 'now', () => now);
     t.mock.method(
       globalThis,
       'fetch',
@@ -309,12 +324,52 @@ for (const variant of [
           body;
         if (url.includes('/assets')) {
           status = new Headers(init.headers).has('Authorization') ? 200 : 403;
-          body = {};
+          const catchingUp =
+            ['inventory-catchup', 'inventory-aborted'].includes(variant) && !refusedOnce;
+          if (status === 200) {
+            refusedOnce = true;
+            if (variant === 'inventory-expired') now = 180_000;
+          }
+          body = {
+            networkId: 'undeployed',
+            bindingId: variant === 'inventory-wrong-binding' ? 'different' : 'acc-s3r1.1',
+            manifestSha256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
+            assets: [
+              {
+                color: '00'.repeat(32),
+                amount: '10',
+                availability: catchingUp ? 'unavailable' : 'available',
+              },
+              {
+                color: (variant === 'inventory-duplicate-assets' ? '00' : 'ab').repeat(32),
+                amount: '10',
+                availability: catchingUp ? 'unavailable' : 'insufficient',
+              },
+            ],
+          };
         } else if (url.includes('/fund')) {
           const request = JSON.parse(String(init.body));
-          if (request.color === 'ab'.repeat(32)) {
+          submissions.push(request);
+          if (variant === 'preflight-transport-error') throw new Error('lost reply');
+          if (variant.startsWith('preflight-')) {
+            status = 503;
+            body = {
+              code: 'FundingWalletUnavailable',
+              submission: variant === 'preflight-unknown-submission' ? 'unknown' : 'not-started',
+              requestId: variant === 'preflight-mismatched-id' ? 'different-id' : request.requestId,
+            };
+          } else if (request.color === 'ab'.repeat(32)) {
             status = 409;
-            body = { code: 'FundingAssetUnavailable', submission: 'not-started' };
+            body = {
+              code: 'FundingAssetUnavailable',
+              submission: 'not-started',
+              ...(variant === 'refusal-missing-id'
+                ? {}
+                : {
+                    requestId:
+                      variant === 'refusal-mismatched-id' ? 'different-id' : request.requestId,
+                  }),
+            };
           } else
             body = {
               requestId: request.requestId,
@@ -336,11 +391,26 @@ for (const variant of [
         return new Response(JSON.stringify(body), { status });
       },
     );
-    const run = repeatedFunding('synthetic-token', result, (value) => retained.push(value));
-    if (variant === 'valid' || variant === 'tagged-ledger-id') {
+    const run = repeatedFunding(
+      'synthetic-token',
+      result,
+      (value) => retained.push(value),
+      () => {
+        assert.ok(!(variant === 'inventory-aborted' && refusedOnce), 'operator interrupted');
+      },
+    );
+    if (variant === 'valid' || variant === 'tagged-ledger-id' || variant === 'inventory-catchup') {
       assert.equal((await run).repeatedDepositBalance, '20');
-      assert.equal(retained.length, 4);
-    } else await assert.rejects(run);
+      assert.equal(retained.length, variant === 'inventory-catchup' ? 7 : 6);
+      assert.equal(submissions.length, 2);
+      assert.ok(submissions[0] && submissions[1]);
+      assert.notEqual(submissions[0].requestId, submissions[1].requestId);
+    } else {
+      await assert.rejects(run);
+      if (variant.startsWith('inventory-')) assert.equal(submissions.length, 0);
+      if (variant.startsWith('preflight-') || variant.startsWith('refusal-'))
+        assert.equal(submissions.length, 1);
+    }
   });
 
 test('Pages workflow identity and active rendered release selection cannot pass from historical mention', () => {
