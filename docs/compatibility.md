@@ -37,6 +37,12 @@ current holding. The scope covers one self-hosted profile. See
 [use-case coverage](site/use-case-coverage.md#passport-conformance-for-named-shielded-receive)
 for the Passport promise mapping and refusal evidence.
 
+The source-only named NIGHT payment qualified two original transactions on
+the same standalone profile. It interrupted after the JubJub withdrawal,
+reopened the journal, then consumed the exact wallet output in
+`deposit_unshielded`. Both ACC balances and canonical finality were checked.
+See the [named NIGHT conformance matrix](site/use-case-coverage.md#passport-conformance-for-a-named-night-payment).
+
 ## RC8 published preview — 2026-11-09
 
 Nine private GitHub npm packages are published at **`0.1.0-rc8`** (`next`), with

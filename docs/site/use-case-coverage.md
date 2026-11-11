@@ -34,8 +34,30 @@ a decrypted coin matched to a current on-chain holding.
 
 The [refusal tests](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-dapp/test/midnames-deposit.test.ts)
 exercise failures before broadcast and unknown outcomes after dispatch. The
-example covers wallet-to-ACC receive. ACC-to-ACC composition is tracked in
-[#318](https://github.com/input-output-hk/midnight-passport-sdk/issues/318).
+example covers wallet-to-ACC receive. The named NIGHT payment below uses a
+separate owner-authorized withdrawal and recipient deposit.
+
+## Passport conformance for a named NIGHT payment
+
+| Requirement | Evidence and boundary |
+| --- | --- |
+| P2 and MIP-0007 routing | The standalone registry record had a different profile default. The payer selected the verified ACC contract target, recorded the provider and full destination, and re-resolved before signing and before each dispatch. Automated tests refuse changed names, non-contract targets, and unsupported assets before the relevant step. |
+| P6 owner authorization | The synthetic device signs the source ACC's withdrawal challenge locally. It binds the NIGHT asset, amount and bridge user address. The durable review binds the name and target ACC to the permissionless deposit. The deployed withdrawal signature format does not include the name, registry or final ACC. |
+| P8 provider boundary | The isolated run uses a self-hosted prover, node and indexer. Alternative providers, browser credentials, and online registry profiles require separate evidence. |
+| Two-leg recovery | The source balance changed from 10 to 6 smallest NIGHT units while the target remained at zero. The reopened journal used the original withdrawal output to finish the deposit. The target then showed 4 and the source stayed at 6. Unknown dispatches stay fenced for original-ID reconciliation. |
+
+The [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local)
+covers the source-only NIGHT route. Shielded ACC-to-ACC sending remains outside
+this qualification.
+
+### Naming acceptance for #247
+
+The typed resolver and the standalone `.night` registry demonstrate
+operation-specific on-chain target lookup, supported-binding verification and
+separate account authorization. The claim, shielded receive and NIGHT payment
+fixtures cover those boundaries on `undeployed`. Production namespace and
+registrar policy, public registry substitution, binding transfers, and a
+native real-credential name-to-open flow still require separate evidence.
 
 ## Current published release and evidence tiers
 
@@ -61,6 +83,7 @@ Named shielded receive was qualified on later local source.
 | Compose an application→ACC payment | `mn-passport-export-compact`, merchant client example; engineer recipe link | Installed/compiler/offline checks; native positive payment and seven construction refusals | JubJub unshielded caller-pinned scope only; no browser merchant button, arbitrary contract acceptance or production privacy claim |
 | Review/resume a shielded deposit | `depositShielded`, protected journal and reviewed host example | Real encryption/filesystem revisions, captured original inputs, refusal, unknown and reconciliation tests | Host recipe, not a demo funding endpoint. Synthetic sender/finality tests do not establish native submission acceptance |
 | Deposit a shielded asset by name | Standalone Node sender using the real Midnames adapter and `deposit_shielded` | Native `undeployed` receipt: one finalized 10-unit test-token deposit to `alice.night`, with owner decryption and verified holding. Automated pre-dispatch refusal and unknown-outcome tests. | Source-only wallet-to-ACC receive on the standalone `.night` profile. |
+| Send NIGHT between named Passport ACCs | Standalone Node fixture using JubJub withdrawal and `deposit_unshielded` | Native `undeployed` payment interrupted after withdrawal. The reopened journal spent its exact output and confirmed 10→6 on the source, 0→4 on the target, with one dispatch per leg. Tests cover repoints, insufficient funds, invalid routes and retained receipts. | Source-only NIGHT route. Browser passkeys and online profiles require separate qualification. |
 
 These are mapped tests, not exhaustive coverage of every parameter, circuit,
 interleaving or provider. The 52 proof/66 pure circuit inventory does not imply

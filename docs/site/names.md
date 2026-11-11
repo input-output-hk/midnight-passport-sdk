@@ -238,12 +238,19 @@ reviewed recipient ACC and update its balance. The ACC signature binds the
 withdrawal, bridge, asset and amount. The host journal binds the name and
 recipient contract to the deposit, which is permissionless.
 
-The two transactions settle independently. If the deposit has yet to dispatch,
+The two transactions settle independently. Their shared unshielded wallet
+output links the transactions in the ledger. If the deposit has yet to dispatch,
 the original intent can continue once its withdrawal is confirmed. Once a leg
 has dispatched, the host checks its original transaction identifiers.
 Re-resolution can detect a repoint before either leg, based on the most recent
 observed registry state. After withdrawal, a repoint leaves the value in the
 controlled wallet pending reconciliation. Shielded ACC-to-ACC sends, browser
 passkey consent for this route and online profiles remain unqualified.
+
+The isolated run started at 10 and 0 smallest NIGHT units. It finalized the
+withdrawal at block 147 and paused at 6 and 0. After the journal was reopened,
+the original wallet output funded the deposit at block 150, leaving balances
+of 6 and 4. Both legs dispatched once. An independent indexer read matched
+the withdrawal output to the deposit input.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).
