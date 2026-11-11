@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium, type Page } from 'playwright-core';
 import { createServer } from 'vite';
+import { claimDispatchPath } from '../src/midnames/claim-dispatch.js';
 import { claimReceipt } from '../src/midnames/claim-receipt.js';
 import { reveal } from './journeys/ui.js';
 
@@ -19,6 +20,11 @@ const indexer = 'http://127.0.0.1:18108/api/v4/graphql';
 assert.equal(process.env.MN_INDEXER_URL, indexer);
 assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18108/api/v4/graphql/ws');
 const file = (name: string) => resolve(output, name);
+const sponsorPort = process.env.PASSPORT_MIDNAMES_SPONSOR_PORT;
+if (sponsorPort !== undefined) {
+  assert.match(sponsorPort, /^[0-9]{1,5}$/);
+  assert.ok(Number(sponsorPort) > 0 && Number(sponsorPort) <= 65535);
+}
 Object.assign(process.env, {
   PASSPORT_MANIFEST_SHA256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   PASSPORT_NETWORK_ID: 'undeployed',
@@ -29,6 +35,7 @@ Object.assign(process.env, {
   VITE_MIDNAMES_INDEXER_URL: indexer,
   VITE_MIDNAMES_INDEXER_WS_URL: process.env.MN_INDEXER_WS_URL,
 });
+if (sponsorPort) process.env.VITE_MIDNAMES_CLAIM_SPONSOR = '1';
 const manifest = process.env.PASSPORT_MANIFEST_SHA256;
 const connector = `
   export const ARM = 'p256', SIGNING_MODE = 'passkey', NETWORK_ID = 'undeployed';
@@ -55,7 +62,13 @@ const vite = await createServer({
   root: process.cwd(),
   cacheDir: file('vite-cache'),
   logLevel: 'error',
-  server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false },
+  server: {
+    host: '127.0.0.1',
+    port: sponsorPort ? 15189 : 0,
+    strictPort: !!sponsorPort,
+    hmr: false,
+    ...(sponsorPort && { proxy: { [claimDispatchPath]: 'http://127.0.0.1:' + sponsorPort } }),
+  },
   plugins: [
     {
       name: 'midnames-recovery-fixture',
@@ -84,7 +97,8 @@ async function openPage(page: Page, origin: string, alternate = false) {
       assert.ok(typeof query === 'string' && query.startsWith('query'));
       indexerRequests++;
     }
-    if (request.url().endsWith('/__drop-claim-response')) submissionRequests++;
+    if (request.url().endsWith(sponsorPort ? claimDispatchPath : '/__drop-claim-response'))
+      submissionRequests++;
   });
   page.on('pageerror', (error) => console.error('Demo page:', error.message));
   await page.goto(origin + (alternate ? '/?alternate' : '/'));
@@ -113,6 +127,48 @@ const openBrowser = () =>
       '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     headless: true,
   });
+
+async function submitWithLostSponsorResponse(page: Page) {
+  if (sponsorPort) {
+    const lost = page.waitForEvent('requestfailed', {
+      predicate: (request) => request.url().endsWith(claimDispatchPath),
+    });
+    await page.route('**' + claimDispatchPath, async (route) => {
+      try {
+        const response = await route.fetch({ maxRetries: 0, maxRedirects: 0 });
+        assert.equal(response.status(), 202);
+        writeFileSync(file('original-response-lost'), '', { flag: 'wx', mode: 0o600 });
+      } finally {
+        await route.abort('failed');
+      }
+    });
+    await page.locator('#claim-dispatch').click();
+    await lost;
+    await status(page, messages.pending);
+    assert.ok(existsSync(file('original-response-lost')));
+    return;
+  }
+  await page.route('**/__drop-claim-response', async (route) => {
+    assert.equal(route.request().method(), 'POST');
+    writeFileSync(file('allow-original-submit'), '', { flag: 'wx' });
+    const deadline = Date.now() + 120_000;
+    while (!existsSync(file('original-response-lost')) && Date.now() < deadline) await delay(250);
+    await route.abort('failed');
+  });
+  assert.equal(
+    await page.evaluate(async () => {
+      try {
+        await fetch('/__drop-claim-response', { method: 'POST' });
+        return 'received';
+      } catch {
+        return 'lost';
+      }
+    }),
+    'lost',
+  );
+  assert.ok(existsSync(file('original-response-lost')));
+}
+
 let browser: Awaited<ReturnType<typeof openBrowser>> | undefined;
 try {
   await vite.listen();
@@ -156,25 +212,7 @@ try {
   await first.locator('#claim-check-availability').click();
   await status(first, messages.pending);
 
-  await first.route('**/__drop-claim-response', async (route) => {
-    assert.equal(route.request().method(), 'POST');
-    writeFileSync(file('allow-original-submit'), '', { flag: 'wx' });
-    const deadline = Date.now() + 120_000;
-    while (!existsSync(file('original-response-lost')) && Date.now() < deadline) await delay(250);
-    await route.abort('failed');
-  });
-  assert.equal(
-    await first.evaluate(async () => {
-      try {
-        await fetch('/__drop-claim-response', { method: 'POST' });
-        return 'received';
-      } catch {
-        return 'lost';
-      }
-    }),
-    'lost',
-  );
-  assert.ok(existsSync(file('original-response-lost')));
+  await submitWithLostSponsorResponse(first);
   await browser.close();
   browser = await openBrowser();
 

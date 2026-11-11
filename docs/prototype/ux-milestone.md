@@ -112,7 +112,8 @@ standalone sponsor receipt after the user opens the target ACC. **Check original
 claim** reconciles the stored transaction and the current registry owner and
 target. **Check availability** verifies the open ACC and checks whether the
 name is registered. When a receipt already exists, the button reconciles the
-original claim. A lost response keeps the original receipt available across
+original claim. The loopback fixture offers **Send prepared claim** for an
+original receipt already saved to the open credential. A lost response keeps the original receipt available across
 browser reloads. See [the recovery flow](../site/names.md#recover-the-sponsors-original-claim-in-the-demo).
 
 ### Standalone shielded deposit by name

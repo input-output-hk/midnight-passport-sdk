@@ -83,5 +83,8 @@ identifiers, then durably create the dispatch fence before calling the node.
 Concurrent dispatch requests compete for the same fence. Once the fence
 exists, the original receipt stays pending until chain reconciliation, even
 if the submit response is lost. An opt-in loopback handler accepts an explicit
-browser acknowledgement for its one prepared receipt. Fee ceilings, two-DUST
-native admission, and browser proof preparation remain qualification work.
+browser acknowledgement for its one prepared receipt. The isolated native
+runner checks current availability, ACC binding, registry charge and payee,
+exact Ledger identifiers, time to expiry, two DUST spends and a fixture fee
+ceiling before submission. This runner still uses a separate owner process
+for proof preparation.

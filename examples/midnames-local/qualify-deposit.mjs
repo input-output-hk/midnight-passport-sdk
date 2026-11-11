@@ -55,12 +55,17 @@ const docker = (args) =>
 const info = JSON.parse(docker(['info', '--format', '{{json .}}']));
 assert.ok(info.MemTotal >= 24 * 1024 ** 3);
 const images = isolatedImages(docker, info.Architecture === 'aarch64' ? 'arm64' : 'amd64');
-assert.match(out ?? '', /^midnames-(?:deposit|night-send|claim-handoff)-[a-z0-9-]{1,48}$/);
-const fixtureMode = out.startsWith('midnames-claim-handoff-')
-  ? 'claim-handoff'
-  : out.startsWith('midnames-night-send-')
-    ? 'named-night-send'
-    : 'named-shielded-deposit';
+assert.match(
+  out ?? '',
+  /^midnames-(?:deposit|night-send|claim-handoff|claim-browser)-[a-z0-9-]{1,48}$/,
+);
+const fixtureMode = out.startsWith('midnames-claim-browser-')
+  ? 'claim-browser'
+  : out.startsWith('midnames-claim-handoff-')
+    ? 'claim-handoff'
+    : out.startsWith('midnames-night-send-')
+      ? 'named-night-send'
+      : 'named-shielded-deposit';
 const review = join(root, 'review');
 mkdirSync(review, { recursive: true, mode: 0o700 });
 assert.equal(realpathSync(review), review);
@@ -105,6 +110,7 @@ try {
   inputs = await isolatedInputs(root, ref, deadline.check);
   receipt.source = inputs.frozen.source;
   await Promise.all(Object.values(ISOLATED_PORTS).map(isolatedFreePort));
+  if (fixtureMode === 'claim-browser') await isolatedFreePort(15189);
   try {
     stack.create(images);
   } catch (error) {
