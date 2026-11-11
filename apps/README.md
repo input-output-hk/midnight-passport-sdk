@@ -871,6 +871,13 @@ deployed ACC binding before displaying it. The default remains the mock.
 
 ### Standalone Midnames claim recovery
 
+An opt-in host can supply the demo's preparation adapter. The user reviews the
+exact sponsor quote and explicitly approves preparation. The form saves the
+quote and owner commitment before the sponsor request and accepts only a receipt
+bound to both. After a lost response the original credential can recover or
+import that receipt. The standard build uses the receipt import flow until an
+owner-side prover and sponsor preparation host are wired in.
+
 On the pinned `standalone-0.35` registry with namespace `night`, the demo
 can retain a sponsor's original public receipt and reconcile it after a lost
 response. The form is under **Settings → Developer tools → Name service**.

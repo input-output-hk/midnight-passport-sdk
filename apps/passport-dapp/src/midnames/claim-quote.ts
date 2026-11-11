@@ -1,5 +1,11 @@
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
-import { claimHex, claimName, type ClaimReceipt, type ClaimScope } from './claim-receipt.js';
+import {
+  claimDigest,
+  claimHex,
+  claimName,
+  type ClaimReceipt,
+  type ClaimScope,
+} from './claim-receipt.js';
 
 type Destination = Omit<ClaimScope, 'ownerCommitment'>;
 
@@ -95,4 +101,8 @@ export function matchesDestination(a: ClaimQuote | ClaimReceipt, b: Destination)
     a.accountAddress === b.accountAddress &&
     a.name === b.name
   );
+}
+
+export function claimQuoteDigest(quote: ClaimQuote): Promise<string> {
+  return claimDigest(new TextEncoder().encode(JSON.stringify(claimQuote(quote))));
 }

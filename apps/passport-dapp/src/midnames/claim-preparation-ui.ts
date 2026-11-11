@@ -4,6 +4,7 @@ import type { ClaimJournal } from './claim-journal.js';
 import {
   claimOwnerProof,
   claimQuote,
+  claimQuoteDigest,
   matchesDestination,
   type ClaimPreparation,
   type ClaimQuote,
@@ -136,7 +137,11 @@ export function showClaimPreparation(
         return;
       }
       const original = claimReceipt(result);
-      if (!matchesDestination(original, selected) || original.ownerCommitment !== owner)
+      if (
+        !matchesDestination(original, selected) ||
+        original.ownerCommitment !== owner ||
+        original.quoteSha256 !== (await claimQuoteDigest(selected))
+      )
         throw new Error('Prepared receipt differs from the original quote.');
       // A late reply is still retained for the captured credential, even if the UI locked.
       await journal.retain(original, credential, selected);

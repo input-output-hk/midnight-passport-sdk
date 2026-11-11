@@ -1,10 +1,16 @@
 import { claimHex, claimReceipt, type ClaimReceipt } from './claim-receipt.js';
-import { claimQuote, matchesDestination, type ClaimQuote } from './claim-quote.js';
+import {
+  claimQuote,
+  claimQuoteDigest,
+  matchesDestination,
+  type ClaimQuote,
+} from './claim-quote.js';
 
 interface StoredClaim {
   readonly credential: string;
   readonly receipt?: ClaimReceipt;
   readonly quote?: ClaimQuote;
+  readonly quoteSha256?: string;
   readonly ownerCommitment?: string;
 }
 
@@ -18,17 +24,21 @@ function readStored(value: unknown): StoredClaim | undefined {
   if (!claimHex(row.credential)) throw new Error('Stored claim scope is invalid.');
   const quote = row.quote === undefined ? undefined : claimQuote(row.quote);
   const receipt = row.receipt === undefined ? undefined : claimReceipt(row.receipt);
-  const { ownerCommitment } = row;
+  const { ownerCommitment, quoteSha256 } = row;
   if (
     (!quote && !receipt) ||
+    (quote ? !claimHex(quoteSha256) : quoteSha256 !== undefined) ||
     (quote && receipt && !matchesDestination(receipt, quote)) ||
     (ownerCommitment !== undefined && (!quote || !claimHex(ownerCommitment))) ||
-    (quote && receipt && receipt.ownerCommitment !== ownerCommitment)
+    (quote &&
+      receipt &&
+      (receipt.ownerCommitment !== ownerCommitment || receipt.quoteSha256 !== quoteSha256))
   )
     throw new Error('Stored claim is invalid.');
   return {
     credential: row.credential,
     ...(quote && { quote }),
+    ...(typeof quoteSha256 === 'string' && { quoteSha256 }),
     ...(receipt && { receipt }),
     ...(ownerCommitment && { ownerCommitment }),
   };
@@ -96,6 +106,7 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
       return row?.quote ? { quote: row.quote, ownerCommitment: row.ownerCommitment } : undefined;
     },
     async reserve(quote: ClaimQuote, credential: string) {
+      const quoteSha256 = await claimQuoteDigest(quote);
       await access(quote.registryAddress, quote.name, credential, (previous) => {
         if (quote.expiresAt <= Date.now()) throw new Error('The claim quote expired.');
         if (previous) {
@@ -105,7 +116,7 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
           if (previous.ownerCommitment || previous.quote.expiresAt > Date.now())
             throw new Error('A different original claim is retained for this name.');
         }
-        return { credential, quote };
+        return { credential, quote, quoteSha256 };
       });
     },
     async bindOwner(quote: ClaimQuote, credential: string, ownerCommitment: string) {
@@ -119,6 +130,7 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
         )
           throw new Error('Naming authority differs from the original reviewed quote.');
         if (previous.ownerCommitment) return previous;
+        if (quote.expiresAt <= Date.now()) throw new Error('The claim quote expired.');
         first = true;
         return { ...previous, ownerCommitment };
       });
@@ -132,11 +144,13 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
               throw new Error('A different original claim is retained for this name.');
             return previous;
           }
+          if (quote && JSON.stringify(previous?.quote) !== JSON.stringify(quote))
+            throw new Error('The receipt does not match the original reviewed quote.');
           if (
-            JSON.stringify(previous?.quote) !== JSON.stringify(quote) ||
-            (quote &&
-              (!matchesDestination(receipt, quote) ||
-                previous?.ownerCommitment !== receipt.ownerCommitment))
+            previous?.quote &&
+            (!matchesDestination(receipt, previous.quote) ||
+              previous.ownerCommitment !== receipt.ownerCommitment ||
+              previous.quoteSha256 !== receipt.quoteSha256)
           )
             throw new Error('The receipt does not match the original reviewed quote.');
           return { ...previous, credential, receipt };
