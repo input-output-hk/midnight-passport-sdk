@@ -112,7 +112,8 @@ destination and sponsor terms. **Approve and prepare claim** saves the quote
 and owner commitment before the sponsor request. If the response is lost,
 **Recover prepared receipt** looks up that original. The user can also import
 the matching public receipt. The current browser preparation test uses a
-simulated host. Live browser proof preparation and receipt acknowledgement
+simulated wallet host. The loopback sponsor retains the quote and original
+balance intent independently of the browser. Live browser proof preparation and receipt acknowledgement
 have their own isolated evidence.
 
 The Name service panel under **Settings → Developer tools** can save a

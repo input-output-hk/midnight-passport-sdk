@@ -7,9 +7,9 @@ import {
   type ClaimScope,
 } from './claim-receipt.js';
 
-type Destination = Omit<ClaimScope, 'ownerCommitment'>;
+export type ClaimDestination = Omit<ClaimScope, 'ownerCommitment'>;
 
-export interface ClaimQuote extends Destination {
+export interface ClaimQuote extends ClaimDestination {
   readonly id: string;
   readonly sponsorAddress: string;
   readonly registryPayee: string;
@@ -20,7 +20,7 @@ export interface ClaimQuote extends Destination {
 
 /** Host composition for the opt-in standalone claim preparation flow. */
 export interface ClaimPreparation {
-  quote(destination: Destination): Promise<unknown>;
+  quote(destination: ClaimDestination): Promise<unknown>;
   /** Owner-side proof generation without a sponsor write. */
   prove(quote: ClaimQuote, account: PassportAccount): Promise<OwnerProvedClaim>;
   prepare(quote: ClaimQuote, original: OwnerProvedClaim): Promise<unknown>;
@@ -49,26 +49,27 @@ function positiveAmount(value: unknown): value is string {
   );
 }
 
-export function claimQuote(value: unknown): ClaimQuote {
+export function claimDestination(value: unknown): ClaimDestination {
   if (!value || typeof value !== 'object' || Array.isArray(value))
-    throw new Error('Invalid claim quote.');
-  const {
-    networkId,
-    registryAddress,
-    accountAddress,
-    name,
-    id,
-    sponsorAddress,
-    registryPayee,
-    night,
-    maximumDust,
-    expiresAt,
-  } = value as Record<string, unknown>;
+    throw new Error('Invalid claim destination.');
+  const { networkId, registryAddress, accountAddress, name } = value as Record<string, unknown>;
   if (
     networkId !== 'undeployed' ||
     !claimHex(registryAddress) ||
     !claimHex(accountAddress) ||
-    !claimName(name) ||
+    !claimName(name)
+  )
+    throw new Error('Invalid claim destination.');
+  return { networkId, registryAddress, accountAddress, name };
+}
+
+export function claimQuote(value: unknown): ClaimQuote {
+  const destination = claimDestination(value);
+  const { id, sponsorAddress, registryPayee, night, maximumDust, expiresAt } = value as Record<
+    string,
+    unknown
+  >;
+  if (
     !claimHex(id) ||
     !claimHex(sponsorAddress) ||
     !claimHex(registryPayee) ||
@@ -81,10 +82,7 @@ export function claimQuote(value: unknown): ClaimQuote {
   )
     throw new Error('Invalid claim quote.');
   return Object.freeze({
-    networkId,
-    registryAddress,
-    accountAddress,
-    name,
+    ...destination,
     id,
     sponsorAddress,
     registryPayee,
@@ -94,7 +92,7 @@ export function claimQuote(value: unknown): ClaimQuote {
   });
 }
 
-export function matchesDestination(a: ClaimQuote | ClaimReceipt, b: Destination): boolean {
+export function matchesDestination(a: ClaimQuote | ClaimReceipt, b: ClaimDestination): boolean {
   return (
     a.networkId === b.networkId &&
     a.registryAddress === b.registryAddress &&

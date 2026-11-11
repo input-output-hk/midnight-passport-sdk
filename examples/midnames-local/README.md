@@ -115,6 +115,16 @@ at `/v1/midnames/claim/dispatch`. It binds one private prepared journal and the
 host's live sponsor policy to that origin. Set `VITE_MIDNAMES_CLAIM_SPONSOR=1`
 with the standalone registry configuration and open the demo on `127.0.0.1`.
 
+For browser preparation, supply the handler's optional preparation ports and
+compose `createLocalClaimPreparation` with an owner-side proving function.
+The browser transport accepts the literal loopback origins `localhost` and
+`127.0.0.1`. Keep the handler and browser on the same origin. The sponsor
+retains the exact quote, checks its live terms before balancing, and records
+a durable intent before invoking the wallet. **Recover prepared receipt**
+reads that original journal after a lost response. An intent with no
+prepared receipt stays pending after restart. The dispatch handler rechecks
+the approved quote and original transaction before opening the dispatch fence.
+
 To exercise the actual loopback route on an isolated chain, run the same
 `qualify-deposit.mjs` command with a fresh name starting with
 `midnames-claim-browser-`. The browser driver uses port 15189 and a fresh

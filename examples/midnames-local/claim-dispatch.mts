@@ -25,7 +25,7 @@ function hasCode(error: unknown, code: string): boolean {
   return error instanceof Error && 'code' in error && error.code === code;
 }
 
-function readRecord(path: string, limit: number): unknown {
+export function readClaimRecord(path: string, limit: number): unknown {
   let file: number;
   try {
     file = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
@@ -59,7 +59,8 @@ function checkBytes(bytes: Uint8Array, receipt: ClaimReceipt): void {
 }
 
 function loadPrepared(path: string) {
-  const row = readRecord(path, maxRecord);
+  const row = readClaimRecord(path, maxRecord);
+  if (row === undefined) return undefined;
   if (!row || typeof row !== 'object' || !('receipt' in row) || !('bytes' in row))
     throw new Error('No original prepared claim to dispatch.');
   const receipt = claimReceipt(row.receipt);
@@ -97,7 +98,7 @@ export function openClaimDispatch(directory: string) {
   const fencePath = join(directory, 'claim-dispatch-fence.json');
 
   function fenced(receipt: ClaimReceipt): boolean {
-    const value = readRecord(fencePath, claimReceiptLimit);
+    const value = readClaimRecord(fencePath, claimReceiptLimit);
     if (value === undefined) return false;
     if (!sameReceipt(claimReceipt(value), receipt))
       throw new Error('Claim dispatch fence differs from the original receipt.');
@@ -105,6 +106,7 @@ export function openClaimDispatch(directory: string) {
   }
 
   return {
+    preparedReceipt: () => loadPrepared(preparedPath)?.receipt,
     retain(bytes: Uint8Array, original: ClaimReceipt): void {
       const receipt = claimReceipt(original);
       checkBytes(bytes, receipt);
@@ -115,7 +117,9 @@ export function openClaimDispatch(directory: string) {
     /** Receipt acknowledgement and current sponsor admission precede the irreversible fence. */
     async dispatch(acknowledged: ClaimReceipt, ports: ClaimDispatchPorts) {
       const expected = claimReceipt(acknowledged);
-      const { bytes, receipt } = loadPrepared(preparedPath);
+      const prepared = loadPrepared(preparedPath);
+      if (!prepared) throw new Error('No original prepared claim to dispatch.');
+      const { bytes, receipt } = prepared;
       if (!sameReceipt(expected, receipt)) throw new Error('Claim acknowledgement differs.');
       const pending = { status: 'pending' as const, receipt };
       if (fenced(receipt)) return pending;

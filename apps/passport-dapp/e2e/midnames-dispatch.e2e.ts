@@ -8,6 +8,11 @@ import { createServer } from 'vite';
 import { openClaimDispatch } from '../../../examples/midnames-local/claim-dispatch.mts';
 import { createClaimSponsorHandler } from '../../../examples/midnames-local/claim-sponsor-http.mts';
 import { claimDispatchPath } from '../src/midnames/claim-dispatch.js';
+import {
+  claimPreparePath,
+  claimPreparedPath,
+  claimQuotePath,
+} from '../src/midnames/claim-preparation-transport.js';
 import { claimQuoteDigest } from '../src/midnames/claim-quote.js';
 import type { ClaimReceipt } from '../src/midnames/claim-receipt.js';
 
@@ -28,7 +33,11 @@ const start = document.indexOf('<form id="claim-recovery"');
 const end = document.indexOf('</form>', start) + '</form>'.length;
 assert.ok(start > 0 && end > start);
 const fixturePage = '/__claim-dispatch-fixture';
-const preparationPath = '/__claim-preparation';
+const preparationPaths = new Map([
+  [claimQuotePath, 'quote'],
+  [claimPreparePath, 'prepare'],
+  [claimPreparedPath, 'find'],
+]);
 const quote = {
   networkId: receipt.networkId,
   registryAddress: receipt.registryAddress,
@@ -59,15 +68,23 @@ const vite = await createServer({
       name: 'midnames-browser-dispatch',
       configureServer(server) {
         server.middlewares.use((request, response, next) => {
-          if (request.url === preparationPath) {
+          const action = preparationPaths.get(request.url ?? '');
+          if (action) {
             let body = '';
             request.on('data', (part: Buffer) => {
               body += part.toString('utf8');
             });
             request.on('end', () => {
-              const { action, input } = JSON.parse(body);
+              const input = JSON.parse(body);
               preparationRequests.push(action);
-              if (action !== 'quote') assert.deepEqual(input, quote);
+              if (action === 'prepare')
+                assert.deepEqual(input, {
+                  quote,
+                  ownerCommitment: receipt.ownerCommitment,
+                  proof: '020305',
+                });
+              if (action === 'find')
+                assert.deepEqual(input, { quote, ownerCommitment: receipt.ownerCommitment });
               response.setHeader('Content-Type', 'application/json');
               const variants = [
                 { ...preparedReceipt, ownerCommitment: 'ff'.repeat(32) },
@@ -92,13 +109,10 @@ const vite = await createServer({
               `<script type="module">
           import { showClaimRecovery } from '/src/midnames/claim-recovery-ui.ts';
           import { requestClaimDispatch } from '/src/midnames/claim-dispatch.ts';
+          import { createLocalClaimPreparation } from '/src/midnames/claim-preparation-transport.ts';
           const original = ${JSON.stringify(receipt)};
           const other = new URLSearchParams(location.search).has('other');
           const preparing = new URLSearchParams(location.search).has('prepare');
-          const invoke = (action, input) => fetch(${JSON.stringify(preparationPath)}, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action, input }),
-          }).then(response => response.json());
           const account = { address: original.accountAddress, networkId: original.networkId,
             credentialId: new Uint8Array([other ? 2 : 1]) };
           showClaimRecovery({
@@ -106,12 +120,9 @@ const vite = await createServer({
             availability: async () => 'available',
             check: async ({ quoteSha256, ...saved }) => JSON.stringify(saved) === JSON.stringify(original) ? 'registered' : 'conflict',
             dispatch: requestClaimDispatch,
-            ...(preparing && { preparation: {
-              quote: input => invoke('quote', input),
-              prove: async () => ({ ownerCommitment: original.ownerCommitment, bytes: new Uint8Array([2, 3, 5]) }),
-              prepare: quote => invoke('prepare', quote),
-              findPrepared: quote => invoke('find', quote),
-            } }),
+            ...(preparing && { preparation: createLocalClaimPreparation(
+              async () => ({ ownerCommitment: original.ownerCommitment, bytes: new Uint8Array([2, 3, 5]) }),
+            ) }),
           }, () => account);
         </script>`,
           );
@@ -191,7 +202,7 @@ async function verifyPreparation(
     await name.fill(receipt.name);
     await page.locator('#claim-review-quote').click();
     await details.waitFor();
-    await page.route(origin + preparationPath, async (route) => {
+    await page.route(origin + claimPreparePath, async (route) => {
       assert.equal((await route.fetch()).status(), 200);
       await route.abort('failed');
     });
@@ -258,7 +269,7 @@ async function verifyPreparedImport(
     await page.locator('#claim-recovery-name').fill(receipt.name);
     await page.locator('#claim-review-quote').click();
     await page.locator('#claim-quote-summary').waitFor();
-    await page.route(origin + preparationPath, async (route) => {
+    await page.route(origin + claimPreparePath, async (route) => {
       assert.equal((await route.fetch()).status(), 200);
       await route.abort('failed');
     });
