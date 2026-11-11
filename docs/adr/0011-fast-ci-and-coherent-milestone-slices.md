@@ -24,6 +24,9 @@ Leave proof/browser/chain qualification and release publication in separate lane
 Store milestone research, private consumer notes, redacted evidence and handovers
 in the owner's Obsidian initiative. Keep public engineering docs in this repository.
 
+On 2026-11-11, the owner raised the warm required PR job target to 90 seconds.
+Keep reporting durations over 45 seconds for comparison. See [CI policy](../ci.md).
+
 ## Consequences and revisit
 
 Large PRs require explicit acceptance sections and a review map. A green fast gate

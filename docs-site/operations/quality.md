@@ -35,8 +35,9 @@ remaining measured debt stay explicit.
 Functional CI and its latency budget are separate checks. PR320 passed 22 checks,
 and three repeated complete warm attempts observed exact dependency-cache hits in
 all 45 substantive job executions. Package jobs still took 43–83 seconds and browser jobs
-48–92 seconds, so the 30–45 second goal remains open. Fresh builds, integrity checks, all test
-assertions and both credential arms remain required.
+48–92 seconds. The current warm target is 90 seconds per required job. Reports
+still list jobs over the former 45-second target. Fresh builds, integrity checks,
+all test assertions and both credential arms remain required.
 
 The first source follow-up splits one slow 14-case publication test into three
 semantic files, preserving each case and its fresh fixture. Its performance benefit

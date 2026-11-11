@@ -288,8 +288,9 @@ export function timingReport(runInput, jobsInput, workflowSha256, logs = new Map
     warmSample: jobs
       .filter((j) => j.role === 'substantive')
       .every((j) => j.cache.state === 'exact-hit'),
-    budgetMs: 45_000,
-    overBudget: jobs.filter((j) => j.milliseconds > 45_000).map((j) => j.name),
+    budgetMs: 90_000,
+    overBudget: jobs.filter((j) => j.milliseconds > 90_000).map((j) => j.name),
+    over45Seconds: jobs.filter((j) => j.milliseconds > 45_000).map((j) => j.name),
     coldOrFallbackCostsHidden: false,
     standaloneSampleEstablishesTarget: false,
   };
@@ -313,7 +314,9 @@ export function repeatedTiming(samples) {
       samples.length >= 3 &&
       samples.every((s) => s.executedWorkflowIdentityVerified) &&
       matching &&
-      samples.every((s) => s.gatePassed && s.warmSample && s.overBudget.length === 0),
+      samples.every(
+        (s) => s.budgetMs === 90_000 && s.gatePassed && s.warmSample && s.overBudget.length === 0,
+      ),
     extrapolatedPerformance: false,
   };
 }

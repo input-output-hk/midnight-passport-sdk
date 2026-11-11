@@ -439,7 +439,7 @@ Stated so the doc is decisive; each is revisitable.
 ## 6. Fast CI and qualification (2026/10/20)
 
 See [CI policy and cache design](ci.md). Keep every existing package, app, key-server
-and type check in the required PR lane. Target 30–45 seconds per warm required
+and type check in the required PR lane. Target 90 seconds per warm required
 job, measure cold starts separately, and cancel superseded PR runs. Key generation,
 proof-backed localnet/browser runs and release publication have separate evidence
 and time budgets; a green fast gate does not qualify a release.

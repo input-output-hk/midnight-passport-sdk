@@ -88,7 +88,7 @@ desktop/mobile screenshots. No mock key or storage dump is exported.
 
 PR CI runs this lane in a separate job alongside package/app/type checks. It uses
 the existing locked dependencies and runner Chrome; no browser download, large key
-generation or native proof is added. The 30–45-second warm-job target still needs
+generation or native proof is added. The warm-job target still needs
 hosted timing evidence. Native proof/restart and actual provider qualification
 remain independent slower lanes; follow the [qualification guide]({{ '/qualification/' | relative_url }}).
 

@@ -112,7 +112,7 @@ bind exact installed file hashes, lock, archive pins, public entry conditions an
 case names. A completed output is never overwritten or silently rerun. Keep raw
 private package-manager logs and locks outside shared artifacts; public summaries
 contain hashes/outcomes only. This opt-in lane adds no registry install or WASM
-build to the 30–45 second required CI jobs.
+build to the required PR jobs.
 
 
 ## Select a composition
