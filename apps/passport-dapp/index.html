@@ -771,6 +771,28 @@
         </form>
         <p id="name-service-status" role="status" aria-live="polite">No lookup yet.</p>
         <pre id="name-service-result" tabindex="0" aria-label="Name resolution result"></pre>
+        <form id="claim-recovery" hidden aria-labelledby="claim-recovery-title">
+          <h3 id="claim-recovery-title">Recover a standalone .night claim</h3>
+          <p>Save the sponsor’s original receipt, then check whether the claim registered.</p>
+          <label for="claim-recovery-name">Claim name</label>
+          <input id="claim-recovery-name" class="action-input" maxlength="38" required />
+          <label for="claim-recovery-receipt">Original public receipt (JSON)</label>
+          <textarea
+            id="claim-recovery-receipt"
+            class="action-input"
+            maxlength="8192"
+            rows="4"
+          ></textarea>
+          <div class="actions">
+            <button id="claim-recovery-retain" class="btn btn-secondary" type="submit">
+              Save original receipt
+            </button>
+            <button id="claim-recovery-check" class="btn btn-secondary" type="submit">
+              Check original claim
+            </button>
+          </div>
+          <p id="claim-recovery-status" role="status"></p>
+        </form>
       </section>
 
       <section class="panel panel-activity" aria-labelledby="activity-title">

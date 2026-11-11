@@ -104,3 +104,11 @@ The Name service panel can use an explicitly configured Midnames registry.
 A partial configuration disables lookup and shows the setup requirement.
 Lookup displays a checked contract target for inspection without initiating an
 account or wallet action. See the [configuration and evidence scope](../site/names.md#source-preview-midnames-210).
+
+### Standalone .night claim recovery
+
+The Name service panel under **Settings → Developer tools** can save a
+standalone sponsor receipt after the user opens the target ACC. **Check original
+claim** reconciles the stored transaction and the current registry owner and
+target. A lost response keeps the original receipt available across browser
+reloads. See [the recovery flow](../site/names.md#recover-the-sponsors-original-claim-in-the-demo).

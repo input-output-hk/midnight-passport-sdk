@@ -1,6 +1,7 @@
 import type { PassportNameService } from '@input-output-hk/mn-passport-account/names';
 import { createMidnamesNameService } from './resolver.js';
 import { registryProfile } from './registry-pins.js';
+import type { ClaimRecovery } from './claim-receipt.js';
 
 export interface MidnamesConfig {
   readonly registryProfile?: string | undefined;
@@ -30,7 +31,7 @@ export function configureMidnames(
   config: MidnamesConfig,
   expectedNetwork: string,
   bindingId: string,
-): PassportNameService | undefined {
+): (PassportNameService & { readonly recovery?: ClaimRecovery }) | undefined {
   const { registryAddress, namespace, networkId, indexerUrl, indexerWsUrl } = config;
   if (Object.values(config).every((value) => value === undefined)) return undefined;
   if (
@@ -59,11 +60,33 @@ export function configureMidnames(
       loaded = undefined;
       throw error;
     }));
-  return createMidnamesNameService(
-    { registryAddress, namespace, networkId },
-    {
-      readTarget: async (...args) => (await reads()).readTarget(...args),
-      isSupportedAccount: async (...args) => (await reads()).isSupportedAccount(...args),
+  const profile = { registryAddress, namespace, networkId };
+  const service = createMidnamesNameService(profile, {
+    readTarget: async (...args) => (await reads()).readTarget(...args),
+    isSupportedAccount: async (...args) => (await reads()).isSupportedAccount(...args),
+  });
+  if (profileId !== 'standalone-0.35' || namespace !== 'night') return service;
+  return {
+    ...service,
+    recovery: {
+      registryAddress,
+      async check(receipt) {
+        if (receipt.networkId !== networkId || receipt.registryAddress !== registryAddress)
+          return 'conflict';
+        const { confirmedClaim } = await import('./claim-finality.js');
+        if (!(await confirmedClaim(http, receipt))) return 'pending';
+        const reader = await reads();
+        const record = await reader.readClaim(receipt.name, profile);
+        if (!record) return 'pending';
+        if (
+          record.ownerCommitment !== receipt.ownerCommitment ||
+          record.target.kind !== 'contract' ||
+          record.target.address !== receipt.accountAddress ||
+          !(await reader.isSupportedAccount(receipt.accountAddress, networkId))
+        )
+          return 'conflict';
+        return 'registered';
+      },
     },
-  );
+  };
 }
