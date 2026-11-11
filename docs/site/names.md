@@ -163,8 +163,10 @@ wallet to the sponsor. The claim finalized with exactly two DUST spends. The
 registry reader returned the expected distinct claimant commitment and the
 activated ACC. After restarting the isolated node and indexer, a fresh process
 confirmed the original transaction identifiers and read the target again with
-zero submissions. This is standalone fixture evidence. Browser claim preparation,
-name-owner custody and online profile qualification remain open.
+zero submissions. A later standalone demo run used a Chromium virtual passkey
+to prove one reviewed claim, then recovered its original receipt after dropping
+the send response and restarting Chromium. Real passkey provider recovery and
+online profile qualification remain open.
 
 The host registry reader can inspect the stored owner commitment and target
 from the same verifier-checked snapshot. Generated-state tests check the
@@ -181,8 +183,8 @@ before reporting an unregistered name. Availability is an observation at the
 time of the read. A retained receipt takes precedence and is reconciled
 against the original transaction.
 
-A local host that supplies the demo's optional claim preparation adapter can
-enable **Review claim quote**. The form shows the exact name, network, ACC,
+Start the [standalone owner and sponsor services](../../examples/midnames-local/README.md#send-an-acknowledged-receipt-from-the-browser)
+to enable **Review claim quote** in the local demo. The form shows the exact name, network, ACC,
 registry, payee, sponsor, NIGHT price, DUST ceiling and expiry. **Approve and
 prepare claim** records that quote before owner-side proving. The form records
 the public owner commitment before asking the sponsor to balance the proved
@@ -227,7 +229,7 @@ demo recovered the same claim from the live indexer. This run used a synthetic
 browser credential. The form accepts the public receipt. Name ownership
 depends on retaining the separate owner secret.
 The [browser claim design](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0018-standalone-midnames-claim.md) describes
-the next proof and sponsor checks for browser-initiated onboarding.
+the proof and sponsor checks for browser-initiated onboarding.
 
 ### Deposit a shielded asset by name
 

@@ -23,6 +23,9 @@ registry address, namespace, matching demo network, and public indexer URLs.
 The adapter reads the registry's contract target and checks the deployed ACC
 verifier roster before displaying the result. On the pinned standalone registry,
 the demo checks name availability and reconciles retained sponsor receipts.
-The shielded deposit and two-leg NIGHT payment have standalone Node fixtures.
-Browser-initiated registration and online profiles require separate qualification.
+The opt-in standalone demo can prepare a reviewed claim with the open account's
+passkey. An isolated Chromium run recovered the original claim after one dispatch
+and a lost response. It used fixture login and a virtual passkey. The shielded
+deposit and two-leg NIGHT payment have standalone Node fixtures. Online profiles
+and real passkey provider recovery require separate qualification.
 See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).
