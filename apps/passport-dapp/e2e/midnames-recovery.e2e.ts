@@ -67,7 +67,11 @@ const vite = await createServer({
     port: sponsorPort ? 15189 : 0,
     strictPort: !!sponsorPort,
     hmr: false,
-    ...(sponsorPort && { proxy: { [claimDispatchPath]: 'http://127.0.0.1:' + sponsorPort } }),
+    ...(sponsorPort && {
+      proxy: {
+        [claimDispatchPath]: { target: 'http://127.0.0.1:' + sponsorPort, changeOrigin: false },
+      },
+    }),
   },
   plugins: [
     {
@@ -130,22 +134,24 @@ const openBrowser = () =>
 
 async function submitWithLostSponsorResponse(page: Page) {
   if (sponsorPort) {
+    let responseStatus: number | undefined;
     const lost = page.waitForEvent('requestfailed', {
       predicate: (request) => request.url().endsWith(claimDispatchPath),
     });
     await page.route('**' + claimDispatchPath, async (route) => {
       try {
-        const response = await route.fetch({ maxRetries: 0, maxRedirects: 0 });
-        assert.equal(response.status(), 202);
-        writeFileSync(file('original-response-lost'), '', { flag: 'wx', mode: 0o600 });
+        const response = await route
+          .fetch({ maxRetries: 0, maxRedirects: 0 })
+          .catch(() => undefined);
+        responseStatus = response?.status();
       } finally {
         await route.abort('failed');
       }
     });
     await page.locator('#claim-dispatch').click();
     await lost;
+    assert.equal(responseStatus, 202, 'The sponsor must accept the original before response loss.');
     await status(page, messages.pending);
-    assert.ok(existsSync(file('original-response-lost')));
     return;
   }
   await page.route('**/__drop-claim-response', async (route) => {
