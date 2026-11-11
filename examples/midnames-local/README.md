@@ -55,3 +55,10 @@ balancing, it reads the current ACC encryption key and resolves the name again
 before dispatch. The owner process decrypts the resulting inbox entry and
 matches the coin to the original transaction's on-chain commitment and current
 holdings. See [named shielded deposits](../../docs/site/names.md#deposit-a-shielded-asset-by-name).
+
+To display the payment and the independently verified owner result:
+
+```sh
+jq '{review, txHash, inboxIndex, dispatches}' review/midnames-deposit-example/sender/sender.json
+jq '{ownerOpenedReceipt, originalOutputMatched, verifiedHeld, commitment}' review/midnames-deposit-example/worker.json
+```

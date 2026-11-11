@@ -27,6 +27,16 @@ original-ID reconciliation are retained. Historical receipts below keep their
 actual source/runtime pins; later publication never relabels earlier evidence.
 
 
+## Local source after RC9
+
+The standalone named-deposit fixture qualified wallet-to-ACC shielded receive
+on Ledger 9 `undeployed` using Midnames 2.1.0, registry profile
+`standalone-0.35` and binding `acc-s3r1.1`. The independent sender's original
+transaction finalized and the owner matched the decrypted receipt to the
+current holding. The scope covers one self-hosted profile. See
+[use-case coverage](site/use-case-coverage.md#passport-conformance-for-named-shielded-receive)
+for the Passport promise mapping and refusal evidence.
+
 ## RC8 published preview — 2026-11-09
 
 Nine private GitHub npm packages are published at **`0.1.0-rc8`** (`next`), with
