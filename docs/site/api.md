@@ -289,8 +289,9 @@ For restart recovery, construct `createP256GrantSpendJournal(store)` from
 a dedicated crash-durable `MutationByteStore`. The Node service package
 provides `fileMutationByteStore(directory)` for a private local POSIX
 directory. Use `createMidnightP256GrantSubmitter` as the value chain's
-submitter. It admits one matching Ledger 9 call and persists the original
-transaction hash, exact byte digest and identifier list before forwarding.
+submitter. The Midnight chain keeps the approved call's communication
+commitment through proving and balancing. The submitter checks the
+commitment and exact payout, then persists the original transaction hash, exact byte digest and identifier list before forwarding.
 The journal retains no raw transaction or private opening.
 `recoverP256GrantSpend(requestId, journal, finality)` is an observation
 operation. The standalone service's finality helper verifies the exact

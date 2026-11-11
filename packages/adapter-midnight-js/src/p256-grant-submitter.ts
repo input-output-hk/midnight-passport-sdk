@@ -1,10 +1,12 @@
-import { ContractCall, Transaction } from '@midnightntwrk/ledger-v9';
+import { Transaction } from '@midnightntwrk/ledger-v9';
 import { P256_GRANT_SPEND_CIRCUIT } from '@input-output-hk/mn-passport-protocol';
 import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
 import type {
   P256GrantSpendReceiptStore,
   Submitter,
 } from '@input-output-hk/mn-passport-account/ports';
+
+import { checkGrantCommitment, checkGrantPayout, p256GrantCall } from './p256-grant-call.js';
 
 export interface MidnightP256GrantSubmitterOptions {
   readonly networkId: string;
@@ -27,7 +29,7 @@ export function createMidnightP256GrantSubmitter(
           'BindingUnsupported',
           'Expected a reserved P-256 grant call.',
         );
-      const { address, signal } = context;
+      const { address, signal, callCommitment } = context;
       const { requestId, intentSha256 } = context.mutation;
       if (!finalized.length || finalized.length > MAX_FINALIZED_BYTES) return unsettled();
       const bytes = Uint8Array.from(finalized);
@@ -42,15 +44,9 @@ export function createMidnightP256GrantSubmitter(
       )
         return unsettled();
       const tx = Transaction.deserialize('signature', 'proof', 'binding', bytes);
-      const actions = [...(tx.intents?.values() ?? [])].flatMap((intent) => [...intent.actions]);
-      const [call] = actions;
-      if (
-        actions.length !== 1 ||
-        !(call instanceof ContractCall) ||
-        call.address !== address ||
-        entryPoint(call.entryPoint) !== P256_GRANT_SPEND_CIRCUIT
-      )
-        return unsettled();
+      const call = p256GrantCall(tx, address);
+      checkGrantCommitment(call, callCommitment);
+      checkGrantPayout(call, row.reservation);
       const identity = {
         txHash: tx.transactionHash(),
         bytesSha256: hex(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))),
@@ -69,9 +65,6 @@ export function createMidnightP256GrantSubmitter(
     },
   };
 }
-
-const entryPoint = (value: Uint8Array | string) =>
-  typeof value === 'string' ? value : new TextDecoder().decode(value);
 
 function unsettled(): never {
   throw new PassportConnectorError(

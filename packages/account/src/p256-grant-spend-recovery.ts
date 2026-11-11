@@ -4,10 +4,10 @@ import { PassportConnectorError } from './errors.js';
 import { mutationDigest } from './mutation-codec.js';
 import type { MutationByteStore } from './mutation-types.js';
 import type { P256GrantSpendJournal, P256GrantSpendReservation } from './p256-grant-holder.js';
-import { NetworkIdSchema } from './validation.js';
+import { AmountSchema, NetworkIdSchema } from './validation.js';
 
 const hex = z.string().regex(/^[0-9a-f]{64}$/);
-const uuid = z.uuid().refine((value) => value === value.toLowerCase());
+const uuid = z.uuid();
 const u64 = z
   .string()
   .regex(/^(?:0|[1-9][0-9]{0,19})$/)
@@ -18,6 +18,9 @@ const reservationSchema = z.strictObject({
   networkId: NetworkIdSchema,
   account: hex,
   grantId: hex,
+  color: hex,
+  amount: AmountSchema,
+  recipient: hex,
   issuedAt: u64,
   previousNonce: u64,
   expectedSpentCommit: hex,
@@ -72,7 +75,7 @@ function unsettled(): never {
 
 function key(requestId: string): string {
   if (!uuid.safeParse(requestId).success) return unsettled();
-  return requestId.replaceAll('-', '');
+  return mutationDigest({ kind: 'p256-grant-spend', requestId }).slice(0, 32);
 }
 
 /**

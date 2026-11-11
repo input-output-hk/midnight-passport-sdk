@@ -26,6 +26,9 @@ export interface P256GrantSpendReservation extends MutationSubmissionContext {
   readonly networkId: string;
   readonly account: string;
   readonly grantId: string;
+  readonly color: string;
+  readonly amount: string;
+  readonly recipient: string;
   readonly issuedAt: string;
   readonly previousNonce: string;
   readonly expectedSpentCommit: string;
@@ -175,6 +178,9 @@ export async function spendUnshieldedWithP256Grant(
     networkId,
     account,
     grantId: opening.grantId,
+    color,
+    amount,
+    recipient,
     issuedAt: issuedAt.toString(),
     previousNonce: nonce.toString(),
     expectedSpentCommit: spend.nextSpentCommit,

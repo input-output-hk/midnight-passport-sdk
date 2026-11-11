@@ -41,8 +41,9 @@ provides a value-capable chain port and a durable journal. Reserve the
 request before dispatch and persist the returned transaction hash against
 that reservation. Use `createP256GrantSpendJournal` with a dedicated durable compare-and-swap
 store and wrap the value wallet submitter with
-`createMidnightP256GrantSubmitter`. The wrapper records the finalized
-transaction hash, exact byte digest and identifiers before its one send.
+`createMidnightP256GrantSubmitter`. The wrapper checks the call commitment and
+payout, then records the finalized transaction hash, exact byte digest and
+identifiers before its one send.
 On `MutationUnsettled`, call `recoverP256GrantSpend` with the original
 request ID and an observer for the same network. A matching successful
 transaction must be in a canonical finalized block. Keep the opening and

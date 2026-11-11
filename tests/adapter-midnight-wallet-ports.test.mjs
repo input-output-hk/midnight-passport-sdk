@@ -200,6 +200,9 @@ test('grant submitter rejects an unrelated finalized transaction before staging 
     networkId: 'undeployed',
     issuedAt: '0',
     previousNonce: '0',
+    color: '00'.repeat(32),
+    amount: '4',
+    recipient: '99'.repeat(32),
     expectedSpentCommit: '44'.repeat(32),
   };
   const submitter = createMidnightP256GrantSubmitter({
@@ -219,4 +222,38 @@ test('grant submitter rejects an unrelated finalized transaction before staging 
     code: 'BindingUnsupported',
   });
   await assert.rejects(submitter.submit(bytes, context), { code: 'MutationUnsettled' });
+});
+
+test('grant call comparison refuses changed commitments and payouts', async () => {
+  const { checkGrantCommitment, checkGrantPayout } =
+    await import('../packages/adapter-midnight-js/dist/p256-grant-call.js');
+  const original = { color: '00'.repeat(32), recipient: '11'.repeat(32), amount: '4' };
+  const call = /** @type {any} */ ({
+    communicationCommitment: 'original-call-commitment',
+    guaranteedTranscript: {
+      effects: {
+        claimedUnshieldedSpends: [
+          [
+            [
+              { tag: 'unshielded', raw: original.color },
+              { tag: 'user', address: original.recipient },
+            ],
+            4n,
+          ],
+        ],
+      },
+    },
+  });
+  checkGrantCommitment(call, 'original-call-commitment');
+  checkGrantPayout(call, original);
+  assert.throws(() => checkGrantCommitment(call, 'replacement-call-commitment'), {
+    code: 'MutationUnsettled',
+  });
+  for (const replacement of [
+    { ...original, amount: '5' },
+    { ...original, color: '22'.repeat(32) },
+    { ...original, recipient: '33'.repeat(32) },
+  ]) {
+    assert.throws(() => checkGrantPayout(call, replacement), { code: 'MutationUnsettled' });
+  }
 });

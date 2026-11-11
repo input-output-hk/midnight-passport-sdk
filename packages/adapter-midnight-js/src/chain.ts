@@ -25,8 +25,63 @@ import type {
   QualifiedShieldedCoin,
   Submitter,
 } from '@input-output-hk/mn-passport-account/ports';
-import type { PassportEvent, PassportStep } from '@input-output-hk/mn-passport-protocol';
-import { Transaction } from '@midnightntwrk/ledger-v9';
+import {
+  P256_GRANT_SPEND_CIRCUIT,
+  type PassportEvent,
+  type PassportStep,
+} from '@input-output-hk/mn-passport-protocol';
+import {
+  Transaction,
+  type SignatureEnabled,
+  type Proof,
+  type PreBinding,
+} from '@midnightntwrk/ledger-v9';
+import { checkGrantCommitment, p256GrantCall } from './p256-grant-call.js';
+
+function chainProgress(onEvent: ((event: PassportEvent) => void) | undefined) {
+  // Progress listeners are observers: a host's UI error must not interrupt a chain call.
+  const emit = (event: PassportEvent) => {
+    try {
+      onEvent?.(event);
+    } catch {
+      // The account operation remains authoritative.
+    }
+  };
+  const report = (step: PassportStep) => {
+    const base = { id: crypto.randomUUID(), flowId: '', step, clock: 'client' as const };
+    const at = Date.now();
+    emit({ ...base, phase: 'start', at });
+    return (error?: unknown, detail?: PassportEvent['detail']) => {
+      const end = Date.now();
+      const failed = error === undefined ? undefined : toPassportError(error, step);
+      const event: PassportEvent = {
+        ...base,
+        phase: failed ? 'error' : 'end',
+        at: end,
+        durationMs: end - at,
+        ...(detail && { detail }),
+        ...(failed && { error: { code: failed.code, message: failed.message } }),
+      };
+      emit(event);
+    };
+  };
+  const track = async <T>(
+    step: PassportStep,
+    work: () => Promise<T>,
+    detail?: (value: T) => PassportEvent['detail'],
+  ): Promise<T> => {
+    const finish = report(step);
+    try {
+      const value = await work();
+      finish(undefined, detail?.(value));
+      return value;
+    } catch (error) {
+      finish(error ?? 'failed');
+      throw error;
+    }
+  };
+  return { report, track };
+}
 
 interface LedgerShape {
   booted: boolean;
@@ -205,47 +260,8 @@ function createChain(opts: MidnightChainOptions): Chain {
           'The configured fee-only sponsor cannot balance a shielded ACC withdrawal; use a value-capable wallet.',
         );
       const compiledContract = heldCoin ? compileWithWitness(heldCoin) : unshieldedContract;
-      // Progress listeners are observers: a host's UI error must not interrupt a chain call.
-      const emit = (event: PassportEvent) => {
-        try {
-          onEvent?.(event);
-        } catch {
-          // The account operation remains authoritative.
-        }
-      };
-      const report = (step: PassportStep) => {
-        const base = { id: crypto.randomUUID(), flowId: '', step, clock: 'client' as const };
-        const at = Date.now();
-        emit({ ...base, phase: 'start', at });
-        return (error?: unknown, detail?: PassportEvent['detail']) => {
-          const end = Date.now();
-          const failed = error === undefined ? undefined : toPassportError(error, step);
-          const event: PassportEvent = {
-            ...base,
-            phase: failed ? 'error' : 'end',
-            at: end,
-            durationMs: end - at,
-            ...(detail && { detail }),
-            ...(failed && { error: { code: failed.code, message: failed.message } }),
-          };
-          emit(event);
-        };
-      };
-      const track = async <T>(
-        step: PassportStep,
-        work: () => Promise<T>,
-        detail?: (value: T) => PassportEvent['detail'],
-      ): Promise<T> => {
-        const finish = report(step);
-        try {
-          const value = await work();
-          finish(undefined, detail?.(value));
-          return value;
-        } catch (error) {
-          finish(error ?? 'failed');
-          throw error;
-        }
-      };
+      const { report, track } = chainProgress(onEvent);
+      let callCommitment: string | undefined;
       let finality: ReturnType<typeof report> | undefined;
       const providers = {
         publicDataProvider,
@@ -253,13 +269,26 @@ function createChain(opts: MidnightChainOptions): Chain {
         proofProvider: createProofProviderFromHandlers({
           currentEra: (tx) =>
             track('prove', async () => {
+              if (circuit === P256_GRANT_SPEND_CIRCUIT) {
+                const approved = p256GrantCall(tx, address);
+                if (callCommitment) checkGrantCommitment(approved, callCommitment);
+                callCommitment = approved.communicationCommitment;
+              }
               const result = await prover.proveTx(tx.serialize(), {
                 ...flowOptions,
                 networkId: network.networkId,
                 bindingId: network.bindingId,
                 circuits: [circuit],
               });
-              return Transaction.deserialize('signature', 'proof', 'pre-binding', result.tx);
+              const proved = Transaction.deserialize<SignatureEnabled, Proof, PreBinding>(
+                'signature',
+                'proof',
+                'pre-binding',
+                result.tx,
+              );
+              if (callCommitment)
+                checkGrantCommitment(p256GrantCall(proved, address), callCommitment);
+              return proved;
             }),
         }),
         walletProvider: createWalletProvider({
@@ -276,6 +305,8 @@ function createChain(opts: MidnightChainOptions): Chain {
             ),
         }),
         midnightProvider: createMidnightProvider(async (tx) => {
+          if (circuit === P256_GRANT_SPEND_CIRCUIT)
+            checkGrantCommitment(p256GrantCall(tx, address), callCommitment);
           const id = await track(
             'sponsor.submit',
             () =>
@@ -286,6 +317,7 @@ function createChain(opts: MidnightChainOptions): Chain {
                       mutation,
                       address,
                       circuit,
+                      ...(callCommitment && { callCommitment }),
                       ...(flowOptions.signal && { signal: flowOptions.signal }),
                     }
                   : undefined,

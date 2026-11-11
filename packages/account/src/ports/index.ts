@@ -492,6 +492,8 @@ export interface Submitter {
       readonly mutation: MutationSubmissionContext;
       readonly address: string;
       readonly circuit: string;
+      /** From the call built by the SDK before remote proving and balancing. */
+      readonly callCommitment?: string;
       readonly signal?: FlowOptions['signal'];
     },
   ): Promise<string>;

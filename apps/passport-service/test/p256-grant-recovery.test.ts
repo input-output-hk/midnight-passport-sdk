@@ -11,7 +11,7 @@ import {
 } from '../../../packages/account/dist/index.js';
 import { createP256GrantFinality } from '../src/p256-grant-finality.ts';
 
-const requestId = '549bd843-0a8f-40af-9b6f-d9eb8cf48871';
+const requestId = '549BD843-0A8F-40AF-9B6F-D9EB8CF48871';
 const reservation = {
   requestId,
   networkId: 'undeployed',
@@ -19,6 +19,9 @@ const reservation = {
   grantId: '22'.repeat(32),
   issuedAt: '3',
   previousNonce: '0',
+  color: '00'.repeat(32),
+  amount: '4',
+  recipient: '99'.repeat(32),
   expectedSpentCommit: '33'.repeat(32),
   intentSha256: '44'.repeat(32),
 };
@@ -43,6 +46,7 @@ test('a new host confirms the original fenced grant call with no acknowledgement
     1,
   );
   assert.deepEqual(await first.read(requestId), {});
+  assert.equal(await first.read(requestId.toLowerCase()), undefined);
   await assert.rejects(
     parallel.stageTransaction({ ...reservation, intentSha256: '00'.repeat(32) }, transaction),
     { code: 'MutationUnsettled' },
