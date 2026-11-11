@@ -215,6 +215,7 @@ export async function qualifyNightSend({
   const openPorts = (beforeDeposit) => ({
     names,
     journal: openJournal(directory),
+    isSupportedRecipient: (address, network) => reads.isSupportedAccount(address, network),
     async readSourceBalance(address) {
       return (await reads.isSupportedAccount(address, networkId)) ? balance(address) : undefined;
     },

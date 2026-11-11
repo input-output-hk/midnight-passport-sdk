@@ -63,6 +63,8 @@ interface PreparedLeg {
 interface NightSendPorts {
   readonly names: PassportNameService;
   readonly journal: NightSendJournal;
+  /** Verify the recipient activation and pinned binding independently of the name-service result. */
+  isSupportedRecipient(address: string, networkId: string): Promise<boolean>;
   /** Return undefined for a source that fails the pinned binding and activation checks. */
   readSourceBalance(source: string): Promise<bigint | undefined>;
   review(intent: NightSendIntent): Promise<boolean>;
@@ -87,10 +89,15 @@ function validate(request: NightSendRequest) {
     throw new Error('Unsupported or invalid standalone NIGHT payment.');
 }
 
-async function resolveIntent(request: NightSendRequest, names: PassportNameService) {
-  const target = await resolvePassportName(names, request);
+async function resolveIntent(
+  request: NightSendRequest,
+  ports: Pick<NightSendPorts, 'names' | 'isSupportedRecipient'>,
+) {
+  const target = await resolvePassportName(ports.names, request);
   if (!target || target.mode !== 'external' || target.accountAddress === request.source)
     throw new Error('The name must resolve to a different supported Passport ACC.');
+  if ((await ports.isSupportedRecipient(target.accountAddress, request.networkId)) !== true)
+    throw new Error('The named recipient is not an activated, supported Passport ACC.');
   return Object.freeze({
     ...request,
     target: target.accountAddress,
@@ -144,7 +151,7 @@ async function submitLeg(
 ) {
   const original = checkedLeg(prepared.original);
   if (prior) requireDistinctLegs(prior, original);
-  assertSameIntent(intent, await resolveIntent(intent, ports.names));
+  assertSameIntent(intent, await resolveIntent(intent, ports));
   await ports.journal.fenceLeg(leg, original);
   try {
     await prepared.dispatch();
@@ -167,7 +174,7 @@ export async function sendNightByName(input: NightSendRequest, ports: NightSendP
   });
   validate(request);
   const retained = await ports.journal.readIntent();
-  const intent = retained ?? (await resolveIntent(request, ports.names));
+  const intent = retained ?? (await resolveIntent(request, ports));
   // Preserve the stored scope even if the original name has moved since dispatch.
   assertSameIntent(intent, { ...intent, ...request, operations: NIGHT_SEND_OPERATIONS });
   const storedWithdrawal = await ports.journal.readLeg('withdraw');
@@ -178,13 +185,13 @@ export async function sendNightByName(input: NightSendRequest, ports: NightSendP
   let deposit = storedDeposit && checkedLeg(storedDeposit);
   if (withdrawal && deposit) requireDistinctLegs(withdrawal, deposit);
   if (!withdrawal) {
-    assertSameIntent(intent, await resolveIntent(request, ports.names));
+    assertSameIntent(intent, await resolveIntent(request, ports));
     const balance = await ports.readSourceBalance(intent.source);
     if (balance === undefined || balance < BigInt(intent.amount))
       throw new Error('Unsupported source account or insufficient NIGHT balance.');
     if ((await ports.review(intent)) !== true) throw new Error('NIGHT payment declined.');
     if (!retained) await ports.journal.createIntent(intent);
-    assertSameIntent(intent, await resolveIntent(request, ports.names));
+    assertSameIntent(intent, await resolveIntent(request, ports));
     withdrawal = await submitLeg('withdraw', intent, await ports.prepareWithdrawal(intent), ports);
   }
   const finalized = (original: NightSendLeg) => ports.finalized(original).catch(() => false);
@@ -192,7 +199,7 @@ export async function sendNightByName(input: NightSendRequest, ports: NightSendP
 
   if (!deposit) {
     try {
-      assertSameIntent(intent, await resolveIntent(request, ports.names));
+      assertSameIntent(intent, await resolveIntent(request, ports));
       deposit = await submitLeg(
         'deposit',
         intent,

@@ -26,6 +26,7 @@ function fixture() {
   const state = {
     address: target,
     validTarget: true,
+    supportedTarget: true,
     balance: 10n,
     stopBeforeDeposit: false,
     dropDepositReply: false,
@@ -50,6 +51,9 @@ function fixture() {
   );
   const ports = (): Parameters<typeof sendNightByName>[1] => ({
     names,
+    async isSupportedRecipient() {
+      return state.supportedTarget;
+    },
     journal: {
       async readIntent() {
         return intent && structuredClone(intent);
@@ -184,4 +188,19 @@ test('orphaned or duplicated leg receipts refuse before any owner approval', asy
   state.finalized.add(withdrawal.hash);
   await assert.rejects(sendNightByName(request, ports()), /distinct transactions/);
   assert.deepEqual(calls, ['review', 'sign', 'withdraw']);
+});
+
+test('a well-formed target requires an independent binding check before approval and dispatch', async () => {
+  const { state, calls, ports, legs } = fixture();
+  state.supportedTarget = false;
+  await assert.rejects(sendNightByName(request, ports()), /not an activated, supported/);
+  assert.deepEqual(calls, []);
+
+  state.supportedTarget = true;
+  state.duringWithdrawalProof = () => {
+    state.supportedTarget = false;
+  };
+  await assert.rejects(sendNightByName(request, ports()), /not an activated, supported/);
+  assert.deepEqual(calls, ['review', 'sign']);
+  assert.equal(legs.size, 0);
 });
