@@ -201,6 +201,9 @@ This recovery surface reads the isolated indexer. Claim preparation and
 submission run in a separate sponsor environment. Never paste passkey
 material, keys, raw transaction bytes or witnesses into the form. Recovering
 the receipt does not recover ownership after loss of the name-owner secret.
+The optional loopback sponsor fixture also accepts an explicit **Send prepared
+claim** action for a receipt already saved to the open credential. The result
+stays pending until the original receipt verifies against the indexer.
 The [browser claim design](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0018-standalone-midnames-claim.md) describes
 the next proof and sponsor checks for browser-initiated onboarding.
 
