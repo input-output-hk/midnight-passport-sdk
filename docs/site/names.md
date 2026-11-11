@@ -181,6 +181,22 @@ before reporting an unregistered name. Availability is an observation at the
 time of the read. A retained receipt takes precedence and is reconciled
 against the original transaction.
 
+A local host that supplies the demo's optional claim preparation adapter can
+enable **Review claim quote**. The form shows the exact name, network, ACC,
+registry, payee, sponsor, NIGHT price, DUST ceiling and expiry. **Approve and
+prepare claim** records that quote before owner-side proving. The form records
+the public owner commitment before asking the sponsor to balance the proved
+transaction. It then saves the matching receipt automatically. **Send prepared
+claim** is a separate action.
+
+If the preparation response is lost, reopen with the original credential,
+review the saved quote, and select **Recover prepared receipt**. The host
+looks up that original preparation. Once the owner commitment is recorded,
+the browser can recover the receipt after expiry and leaves preparation
+unchanged. The optional adapter requires an owner-side prover and a sponsor
+that can retrieve the prepared receipt by quote and owner commitment. The
+standard demo continues to support importing a public receipt.
+
 To recover an external claim, enter the name and paste the sponsor's original
 public receipt. Save it, then
 use **Check original claim**. After a reload, open the same account with the

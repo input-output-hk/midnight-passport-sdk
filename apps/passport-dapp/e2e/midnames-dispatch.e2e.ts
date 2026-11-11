@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { chromium } from 'playwright-core';
+import { chromium, type BrowserContext } from 'playwright-core';
 import { createServer } from 'vite';
 import { openClaimDispatch } from '../../../examples/midnames-local/claim-dispatch.mts';
 import { createClaimSponsorHandler } from '../../../examples/midnames-local/claim-sponsor-http.mts';
@@ -27,6 +27,21 @@ const start = document.indexOf('<form id="claim-recovery"');
 const end = document.indexOf('</form>', start) + '</form>'.length;
 assert.ok(start > 0 && end > start);
 const fixturePage = '/__claim-dispatch-fixture';
+const preparationPath = '/__claim-preparation';
+const quote = {
+  networkId: receipt.networkId,
+  registryAddress: receipt.registryAddress,
+  accountAddress: receipt.accountAddress,
+  name: receipt.name,
+  id: '91'.repeat(32),
+  sponsorAddress: '92'.repeat(32),
+  registryPayee: '93'.repeat(32),
+  night: '1',
+  maximumDust: '100000',
+  expiresAt: Date.now() + 300_000,
+};
+const preparationRequests: string[] = [];
+let lookups = 0;
 const root = realpathSync(mkdtempSync(join(tmpdir(), 'midnames-browser-dispatch-')));
 openClaimDispatch(root).retain(bytes, receipt);
 let handler: ReturnType<typeof createClaimSponsorHandler>;
@@ -41,6 +56,29 @@ const vite = await createServer({
       name: 'midnames-browser-dispatch',
       configureServer(server) {
         server.middlewares.use((request, response, next) => {
+          if (request.url === preparationPath) {
+            let body = '';
+            request.on('data', (part: Buffer) => {
+              body += part.toString('utf8');
+            });
+            request.on('end', () => {
+              const { action, input } = JSON.parse(body);
+              preparationRequests.push(action);
+              if (action !== 'quote') assert.deepEqual(input, quote);
+              response.setHeader('Content-Type', 'application/json');
+              const wrongOwner = action === 'find' && lookups++ === 0;
+              response.end(
+                JSON.stringify(
+                  action === 'quote'
+                    ? quote
+                    : wrongOwner
+                      ? { ...receipt, ownerCommitment: 'ff'.repeat(32) }
+                      : receipt,
+                ),
+              );
+            });
+            return;
+          }
           if (request.url?.split('?')[0] !== fixturePage) {
             void handler(request, response).then((handled) => {
               if (!handled) next();
@@ -56,6 +94,11 @@ const vite = await createServer({
           import { requestClaimDispatch } from '/src/midnames/claim-dispatch.ts';
           const original = ${JSON.stringify(receipt)};
           const other = new URLSearchParams(location.search).has('other');
+          const preparing = new URLSearchParams(location.search).has('prepare');
+          const invoke = (action, input) => fetch(${JSON.stringify(preparationPath)}, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, input }),
+          }).then(response => response.json());
           const account = { address: original.accountAddress, networkId: original.networkId,
             credentialId: new Uint8Array([other ? 2 : 1]) };
           showClaimRecovery({
@@ -63,6 +106,12 @@ const vite = await createServer({
             availability: async () => 'available',
             check: async (saved) => JSON.stringify(saved) === JSON.stringify(original) ? 'registered' : 'conflict',
             dispatch: requestClaimDispatch,
+            ...(preparing && { preparation: {
+              quote: input => invoke('quote', input),
+              prove: async () => ({ ownerCommitment: original.ownerCommitment, bytes: new Uint8Array([2, 3, 5]) }),
+              prepare: quote => invoke('prepare', quote),
+              findPrepared: quote => invoke('find', quote),
+            } }),
           }, () => account);
         </script>`,
           );
@@ -72,13 +121,86 @@ const vite = await createServer({
   ],
 });
 let browser: Awaited<ReturnType<typeof chromium.launchPersistentContext>> | undefined;
-const openBrowser = () =>
-  chromium.launchPersistentContext(join(root, 'chrome-profile'), {
+const openBrowser = (profile = 'chrome-profile') =>
+  chromium.launchPersistentContext(join(root, profile), {
     executablePath:
       process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ??
       '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     headless: true,
   });
+
+async function verifyPreparation(
+  origin: string,
+  pageUrl: string,
+  open: () => Promise<BrowserContext>,
+) {
+  let context = await open();
+  try {
+    const page = await context.newPage();
+    await page.goto(pageUrl + '?prepare');
+    const name = page.locator('#claim-recovery-name');
+    const details = page.locator('#claim-quote-summary');
+    const prepare = page.locator('#claim-prepare');
+    const status = page.locator('#claim-recovery-status');
+    await name.fill(receipt.name);
+    await page.locator('#claim-review-quote').click();
+    await details.filter({ hasText: 'Maximum sponsor fee 100000 SPECKs' }).waitFor();
+    assert.match(await details.innerText(), /Registry price 1 smallest NIGHT units/);
+    assert.match(await details.innerText(), new RegExp(quote.registryPayee));
+    assert.deepEqual(preparationRequests, ['quote']);
+
+    await name.fill('alice.night');
+    assert.equal(await prepare.isVisible(), false);
+    await name.fill(receipt.name);
+    await page.locator('#claim-review-quote').click();
+    await details.waitFor();
+    await page.route(origin + preparationPath, async (route) => {
+      assert.equal((await route.fetch()).status(), 200);
+      await route.abort('failed');
+    });
+    await prepare.click();
+    await status.filter({ hasText: 'Recover using the saved quote' }).waitFor();
+    assert.deepEqual(preparationRequests, ['quote', 'quote', 'prepare']);
+    await context.close();
+
+    context = await open();
+    const alternate = await context.newPage();
+    await alternate.goto(pageUrl + '?prepare&other');
+    await alternate.locator('#claim-recovery-name').fill(receipt.name);
+    await alternate.locator('#claim-review-quote').click();
+    await alternate
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /^Claim check unavailable/ })
+      .waitFor();
+    const resumed = await context.newPage();
+    await resumed.goto(pageUrl + '?prepare');
+    await resumed.locator('#claim-recovery-name').fill(receipt.name);
+    await resumed.locator('#claim-review-quote').click();
+    await resumed.getByRole('button', { name: 'Recover prepared receipt' }).click();
+    await resumed
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /^Claim check unavailable/ })
+      .waitFor();
+    await resumed.locator('#claim-recovery-check').click();
+    await resumed
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /Save the original claim receipt/ })
+      .waitFor();
+    await resumed.getByRole('button', { name: 'Recover prepared receipt' }).click();
+    await resumed
+      .locator('#claim-recovery-status')
+      .filter({ hasText: 'Original receipt saved' })
+      .waitFor();
+    assert.deepEqual(preparationRequests, ['quote', 'quote', 'prepare', 'find', 'find']);
+    await resumed.locator('#claim-recovery-check').click();
+    await resumed
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /^Registered/ })
+      .waitFor();
+  } finally {
+    await context.close();
+  }
+}
 try {
   await vite.listen();
   const origin = new URL(vite.resolvedUrls!.local[0]!).origin;
@@ -148,6 +270,9 @@ try {
   console.log(
     'PASS: browser acknowledgement, one sponsor call and original receipt recovery after restart',
   );
+  await verifyPreparation(origin, pageUrl, () => openBrowser('chrome-preparation-profile'));
+  assert.deepEqual(requests, [bytes]);
+  console.log('PASS: exact quote review, saved intent recovery and automatic receipt retention');
 } finally {
   await browser?.close();
   await vite.close();

@@ -1,3 +1,5 @@
+import type { ClaimPreparation } from './claim-quote.js';
+
 export interface ClaimScope {
   readonly networkId: 'undeployed';
   readonly registryAddress: string;
@@ -76,6 +78,7 @@ export async function claimDigest(value: Uint8Array): Promise<string> {
 
 export interface ClaimRecovery {
   readonly registryAddress: string;
+  readonly preparation?: ClaimPreparation;
   availability(
     name: string,
     accountAddress: string,
