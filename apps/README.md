@@ -876,3 +876,10 @@ can retain a sponsor's original public receipt and reconcile it after a lost
 response. The form is under **Settings → Developer tools → Name service**.
 The sponsor prepares and sends the claim separately. See the
 [receipt and recovery flow](../docs/site/names.md#recover-the-sponsors-original-claim-in-the-demo).
+
+### Standalone shielded deposit by name
+
+The independent Node sender example exercises the Midnames resolver and the
+shielded ACC deposit through a funded wallet. Its fixtures show the exact
+reviewed destination and verify the recipient holding. Follow the
+[standalone recipe](../examples/midnames-local/README.md#run-the-shielded-deposit-by-name).

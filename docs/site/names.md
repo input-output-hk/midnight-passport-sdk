@@ -195,3 +195,26 @@ This recovery surface reads the isolated indexer. Claim preparation and
 submission run in a separate sponsor environment. Never paste passkey
 material, keys, raw transaction bytes or witnesses into the form. Recovering
 the receipt does not recover ownership after loss of the name-owner secret.
+
+### Deposit a shielded asset by name
+
+The standalone Node example sends a shielded test token to `alice.night` using
+the configured Midnames 2.1.0 registry. The sender reviews the exact name,
+network, registry identifier, full ACC address, asset color and amount. The
+resolver requires the operation-specific contract target and checks the
+activated ACC against the 52-verifier binding. After building, proving and
+balancing the `deposit_shielded` call, the sender reads the current encryption
+key and resolves the name again. A changed destination or key, unavailable
+provider or incompatible account stops the send.
+
+The sender uses its own wallet and the ACC's public encryption key. The
+recipient retains its viewing secret and independently verifies that the
+decrypted inbox entry matches the output in the successful original transaction
+and is still held by the account. An uncertain send keeps its original
+identifiers for reconciliation.
+
+Run the [standalone fixture](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local)
+from a source checkout containing #317. The fixture uses local `.night` on
+`undeployed` and a self-hosted indexer and proof server. Public
+`passport.night`, provider substitution and ACC-to-ACC sends require separate
+qualification.
