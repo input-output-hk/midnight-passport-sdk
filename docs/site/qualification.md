@@ -140,7 +140,7 @@ receipt, GitHub cache or public handover.
 Every PR still runs the normal lint/format/build/test/type gate. New simulator and
 negative harness tests are part of that fast gate. Full key generation and real
 proof/browser qualification remain on their own resource/time budgets. Hosted
-30–45-second warm-job timing must be measured after a permitted push.
+Warm-job timing must be measured after a permitted push.
 
 ## Next acceptance gates
 

@@ -22,7 +22,7 @@ incremental connector lifecycle extraction#264, bounded polling#234. Avoid broad
 all refactors preserve cryptographic bytes, circuit order, public errors, consent and original
 unknown identifiers. Prefer coherent5k–10k authored PRs where warranted, never pad diffs.
 
-Keep substantive required jobs near30–45seconds. Verified warm caches may include public compiled
+Target 90 seconds per warm required PR job. Verified warm caches may include public compiled
 artifacts/keys, never private journals/witnesses/tokens. Large installs/native/image/browser/provider
 qualification stays manual/scheduled. Retain failed fixture roots and controlled state volumes;
 cleanup exact owned processes only. GPG/DCO and independent review before eligible merges.

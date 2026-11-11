@@ -178,7 +178,7 @@ that a particular release or operator attempt passed it.
 Deterministic transport, process, ownership and coordinator tests run in the normal
 unit gate. Authenticated downloads, two builds, Docker/native work and deployed
 Pages checks are explicit opt-in release work; they do not enter every fast PR job.
-The hosted 30–45-second warm target still needs independent measurement.
+See [CI timing](/operations/quality#hosted-ci-timing) for the warm PR job target.
 
 These tools do not change SDK authorization policy, exact-value shielded withdrawal
 guards, total-loss recovery or Lace compatibility. Keep library contracts in

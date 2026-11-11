@@ -107,6 +107,20 @@ test('complete hosted inventory separates whole-job, steps, registration and unk
   assert.equal(result.jobs[0]?.cache.state, 'not-applicable');
 });
 
+test('hosted timing reports the 90-second target and retains the 45-second comparison', () => {
+  const input = sample(1);
+  input.run.updated_at = new Date(Date.parse(input.run.created_at) + 120_000).toISOString();
+  const [first, second, third] = input.jobs;
+  assert.ok(first && second && third);
+  first.completed_at = new Date(Date.parse(first.started_at) + 46_000).toISOString();
+  second.completed_at = new Date(Date.parse(second.started_at) + 90_000).toISOString();
+  third.completed_at = new Date(Date.parse(third.started_at) + 91_000).toISOString();
+  const report = input.report();
+  assert.equal(report.budgetMs, 90_000);
+  assert.deepEqual(report.overBudget, [third.name]);
+  assert.deepEqual(report.over45Seconds, [first.name, second.name, third.name]);
+});
+
 for (const variant of [
   'missing',
   'duplicate',

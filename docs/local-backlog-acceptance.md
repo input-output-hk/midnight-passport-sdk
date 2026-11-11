@@ -68,7 +68,7 @@ that run keeps its original source and is not relabelled as this correction.
 Settle the public subpath before publishing; keep original mutation/job/grant
 identities and exact-value shielded guards; qualify final-head package installs,
 image/runtime/content and published docs; retain exact evidence and known
-unsupported paths. Measure hosted CI against the 30–45-second warm target without
+unsupported paths. Measure hosted CI against the 90-second warm target without
 omitting cells or acceptance. Real-provider/full-Lace gaps must stay visible rather
 than becoming broad compatibility claims. Broader features remain #201/#82/#240.
 
