@@ -217,6 +217,23 @@ export function checkUnshieldedGrant(
   };
 }
 
+function sameGrantContext(
+  current: UnshieldedGrantContext | undefined,
+  reviewed: UnshieldedGrantContext,
+): current is UnshieldedGrantContext {
+  return (
+    !!current?.active &&
+    current.issuedAt === reviewed.issuedAt &&
+    current.nonce === reviewed.nonce &&
+    current.withdrawUnshielded === reviewed.withdrawUnshielded &&
+    current.perCallCap === reviewed.perCallCap &&
+    current.cap === reviewed.cap &&
+    current.expiresAt === reviewed.expiresAt &&
+    same(current.objectCommit, reviewed.objectCommit) &&
+    same(current.spentCommit, reviewed.spentCommit)
+  );
+}
+
 /** Sign one grant-holder spend and confirm its live nonce and spent commitment. */
 export async function spendUnshieldedWithGrant(
   intent: UnshieldedGrantIntent,
@@ -246,13 +263,28 @@ export async function spendUnshieldedWithGrant(
     if (options.signal?.aborted)
       throw new PassportConnectorError('Aborted', 'Grant spend cancelled.');
     const read = () => source.readGrantSpendContext(intent.account, intent.grantId);
-    const live = await read();
-    const checked = checkUnshieldedGrant(
-      intent,
-      live,
-      pure,
-      (ports.nowSeconds ?? (() => Math.floor(Date.now() / 1000)))(),
-    );
+    const observed = await read();
+    if (!observed)
+      throw new PassportConnectorError('GrantNotFound', 'The grant is absent on chain.');
+    // Injected readers may reuse state objects and byte buffers across reads.
+    const live = {
+      ...observed,
+      objectCommit: new Uint8Array(observed.objectCommit),
+      spentCommit: new Uint8Array(observed.spentCommit),
+    };
+    const now = ports.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
+    const checked = checkUnshieldedGrant(intent, live, pure, now());
+    const recheck = async (before: 'signing' | 'submission') => {
+      const latest = await read();
+      if (!sameGrantContext(latest, live))
+        throw new PassportConnectorError(
+          'GrantRosterUnsettled',
+          `The grant changed before ${before}.`,
+        );
+      checkUnshieldedGrant(intent, latest, pure, now());
+      if (options.signal?.aborted)
+        throw new PassportConnectorError('Aborted', 'Grant spend cancelled.');
+    };
     const selected = await grantee.devicePublicKey();
     if (selected.x !== checked.grantee.x || selected.y !== checked.grantee.y)
       throw new PassportConnectorError(
@@ -265,9 +297,10 @@ export async function spendUnshieldedWithGrant(
       color: intent.color,
       amount: intent.amount,
       recipient: intent.recipient,
-      remainingCap: (live!.cap - checked.spentPrev).toString(),
+      remainingCap: (live.cap - checked.spentPrev).toString(),
     });
     if (!approved) throw new PassportConnectorError('UserCancelled', 'Grant spend was declined.');
+    await recheck('signing');
     const circuit = 'withdraw_unshielded_with_grant_jubjub';
     const signature = await grantee.authorise({
       account: intent.account,
@@ -296,30 +329,7 @@ export async function spendUnshieldedWithGrant(
       signature.pk.y !== checked.grantee.y
     )
       throw new PassportConnectorError('NotAuthorised', 'The signature names another grantee.');
-    const latest = await read();
-    if (
-      !latest?.active ||
-      latest.issuedAt !== checked.issuedAt ||
-      latest.nonce !== checked.nonce ||
-      latest.withdrawUnshielded !== live!.withdrawUnshielded ||
-      latest.perCallCap !== live!.perCallCap ||
-      latest.cap !== live!.cap ||
-      latest.expiresAt !== live!.expiresAt ||
-      !same(latest.objectCommit, live!.objectCommit) ||
-      !same(latest.spentCommit, live!.spentCommit)
-    )
-      throw new PassportConnectorError(
-        'GrantRosterUnsettled',
-        'The grant changed before submission.',
-      );
-    checkUnshieldedGrant(
-      intent,
-      latest,
-      pure,
-      (ports.nowSeconds ?? (() => Math.floor(Date.now() / 1000)))(),
-    );
-    if (options.signal?.aborted)
-      throw new PassportConnectorError('Aborted', 'Grant spend cancelled.');
+    await recheck('submission');
     const tx = await chain.call({
       address: intent.account,
       circuit,

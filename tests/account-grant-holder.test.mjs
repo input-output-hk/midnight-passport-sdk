@@ -149,6 +149,8 @@ test('declined review and a grant changed after review submit no transaction', a
   );
   let state = { ...live };
   let calls = 0;
+  let signatures = 0;
+  let revokeDuringSigning = false;
   const base = {
     pure: pureCircuits,
     source: { readGrantSpendContext: async () => state },
@@ -159,7 +161,16 @@ test('declined review and a grant changed after review submit no transaction', a
         return { txHash: 'ab'.repeat(32) };
       },
     },
-    grantee,
+    grantee: {
+      ...grantee,
+      /** @type {typeof grantee.authorise} */
+      authorise: async (request) => {
+        signatures++;
+        const signature = await grantee.authorise(request);
+        if (revokeDuringSigning) state.active = false;
+        return signature;
+      },
+    },
     nowSeconds: () => 1000,
   };
   await assert.rejects(spendUnshieldedWithGrant(intent, { ...base, review: async () => false }), {
@@ -169,7 +180,7 @@ test('declined review and a grant changed after review submit no transaction', a
     spendUnshieldedWithGrant(intent, {
       ...base,
       review: async () => {
-        state = { ...state, nonce: state.nonce + 1n };
+        state.nonce++;
         return true;
       },
     }),
@@ -189,7 +200,16 @@ test('declined review and a grant changed after review submit no transaction', a
     }),
     { code: 'GrantScopeInvalid' },
   );
+  assert.equal(signatures, 0, 'declined, changed or expired review never requests a signature');
   assert.equal(calls, 0, 'expiry during a slow review must refuse before submission');
+  state = { ...live };
+  revokeDuringSigning = true;
+  await assert.rejects(spendUnshieldedWithGrant(intent, { ...base, review: async () => true }), {
+    code: 'GrantRosterUnsettled',
+  });
+  assert.equal(signatures, 1);
+  assert.equal(calls, 0, 'revocation during signing must refuse before submission');
+  revokeDuringSigning = false;
   state = { ...live };
   await assert.rejects(
     spendUnshieldedWithGrant(intent, {
@@ -205,6 +225,7 @@ test('declined review and a grant changed after review submit no transaction', a
       return true;
     },
   );
+  assert.equal(signatures, 2);
   assert.equal(calls, 1, 'one submitted call with uncertain settlement needs reconciliation');
 });
 
