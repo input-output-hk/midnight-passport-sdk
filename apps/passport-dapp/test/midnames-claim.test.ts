@@ -11,7 +11,7 @@ const original = {
   accountAddress: '34'.repeat(32),
   name: 'alice.night',
   ownerCommitment: '56'.repeat(32),
-  transaction: { identifiers: ['78'.repeat(32)], sha256: '90'.repeat(32) },
+  transaction: { identifiers: ['00' + '78'.repeat(32)], sha256: '90'.repeat(32) },
 } as const;
 
 test('copies only the public original receipt fields and rejects ambiguous scopes', () => {
@@ -22,6 +22,8 @@ test('copies only the public original receipt fields and rejects ambiguous scope
     { name: 'alice.night\n' },
     { ownerCommitment: original.ownerCommitment.toUpperCase().replace('5', 'G') },
     { transaction: { ...original.transaction, identifiers: [] } },
+    { transaction: { ...original.transaction, identifiers: ['78'.repeat(32)] } },
+    { transaction: { ...original.transaction, identifiers: ['0x' + '78'.repeat(32)] } },
     {
       transaction: {
         ...original.transaction,

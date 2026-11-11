@@ -20,6 +20,10 @@ export const claimName = (value: unknown): value is string =>
 
 export const claimReceiptLimit = 8192;
 
+// Ledger 9 identifiers are 33-byte hex values, separate from 32-byte transaction hashes.
+const transactionIdentifier = (value: unknown): value is string =>
+  typeof value === 'string' && value.length === 66 && /^[0-9a-f]+$/.test(value);
+
 export function claimReceipt(value: unknown): ClaimReceipt {
   const invalid = () => new Error('Invalid standalone claim receipt.');
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw invalid();
@@ -41,7 +45,7 @@ export function claimReceipt(value: unknown): ClaimReceipt {
     !Array.isArray(identifiers) ||
     !identifiers.length ||
     identifiers.length > 64 ||
-    !identifiers.every(claimHex) ||
+    !identifiers.every(transactionIdentifier) ||
     new Set(identifiers).size !== identifiers.length
   )
     throw invalid();
