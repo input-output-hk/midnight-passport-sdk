@@ -20,14 +20,14 @@ export async function qualifyClaimHandoff({
   parentDomain,
   step,
   dispatch,
+  browserOwner = false,
 }) {
   const label = 'charlie';
   const { owner_address: registryPayee, payment_config: price } = parentDomain;
   assert.ok(price.buy_enabled);
   assert.ok(price.coin_color.every((byte) => byte === 0));
 
-  const browser = !!dispatch;
-  step(browser ? 'prove-claim-in-owner-chromium' : 'prove-claim-in-owner-process');
+  step(browserOwner ? 'prove-claim-in-owner-chromium' : 'prove-claim-in-owner-process');
   const owner = await proveInOwnerProcess(
     {
       ref,
@@ -48,7 +48,7 @@ export async function qualifyClaimHandoff({
       label,
       price,
     },
-    browser,
+    browserOwner,
   );
   const quote = {
     networkId: 'undeployed',
@@ -79,7 +79,7 @@ export async function qualifyClaimHandoff({
     dustSpends,
     dispatches: 0,
     ownerProvedInSeparateProcess: true,
-    ...(browser && { ownerCredentialRestored: owner.restored }),
+    ...(browserOwner && { ownerCredentialRestored: owner.restored }),
   });
   if (dispatch) {
     const result = await dispatch(quote, prepared.receipt);
@@ -90,5 +90,6 @@ export async function qualifyClaimHandoff({
     dustSpends,
     claimDispatches: 0,
     ownerProvedInSeparateProcess: true,
+    ...(browserOwner && { ownerCredentialRestored: owner.restored }),
   };
 }
