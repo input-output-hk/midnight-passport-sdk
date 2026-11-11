@@ -13,3 +13,19 @@ The account owner can issue a bounded permission to a separate signer. The suppo
 The host owns consent, the private grant opening, durable publication/recovery journal, and exact result display. Grant issuance may have a pending intermediate result; preserve its original ID, salt, scope, and sealed opening. Revoke or revoke-all changes on-chain authority after confirmation. Local expiry or clearing a key does not revoke a grant. [Durability](/guides/durability) covers uncertain changes.
 
 The [upstream scoped-grants draft](https://github.com/midnightntwrk/passport/blob/main/docs/mps-mip/mips/mip-xxxx-scoped-grants.md) is **not** a numbered canonical MIP. It helps explain the contract design; inspect the deployed binding and SDK release for the actual supported subset.
+
+### P-256 grantee opening in the SDK source
+
+`prepareP256UnshieldedGrant` from `mn-passport-account` prepares the
+pinned `acc-s3r1.1` issue fields for one asset and a fixed unshielded Midnight
+recipient. Supply the grantee's compressed P-256 public key, exact
+`wa-json134` WebAuthn origin, and SHA-256 relying-party ID hash from a
+verified credential. The origin is part of the grant ID. The relying-party
+hash has its own salted commitment. The owner supplies the live active-ID
+roster and reviews the recipient, caps and expiry before issuance.
+
+Keep the returned opening in protected host storage and deliver it only to
+the intended grantee. The helper prepares fields and commitments. Owner
+authorization, durable issue and P-256 holder spending still need the
+corresponding host flow. The existing `account.issueGrant` surface accepts
+JubJub grantees.

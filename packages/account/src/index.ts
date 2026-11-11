@@ -20,6 +20,7 @@ export type {
   RecoverableShieldedDepositPorts,
 } from './shielded-deposit-recovery.js';
 export * from './grant-scope.js';
+export * from './p256-grant-opening.js';
 export * from './grant-opening-check.js';
 export * from './grant-holder.js';
 export * from './jubjub-grant-issue.js';

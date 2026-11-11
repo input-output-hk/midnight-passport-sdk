@@ -3,7 +3,12 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { utf8ToBytes } from '@noble/hashes/utils.js';
 import type { GrantScopeInput } from '@input-output-hk/mn-passport-protocol';
 import { fromHex, toHex } from './codec.js';
-import { PassportConnectorError } from './errors.js';
+import {
+  activeGrantIds,
+  freshGrantScopeSalt,
+  grantScopeInvalid as invalid,
+  selectGrantSlot,
+} from './grant-issue-fields.js';
 import type { CurvePoint } from './ports/index.js';
 import { parseGrantU128 } from './grant-decimal.js';
 
@@ -72,7 +77,6 @@ export interface PreparedJubjubGrant {
   readonly scopeArgs: GrantScopeArgs;
 }
 
-const MAX_GRANTS = 16;
 const UINT64_MAX = (1n << 64n) - 1n;
 const CURVE25519_PRIME = (1n << 255n) - 19n;
 const ORIGIN_TAG = utf8ToBytes('midnight:account:grant:origin:v1');
@@ -92,9 +96,6 @@ const LOW_ORDER_X25519 = new Set([
   'dbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
 ]);
 
-const invalid = (message: string): never => {
-  throw new PassportConnectorError('GrantScopeInvalid', `Invalid grant scope: ${message}`);
-};
 const bytes32 = (name: string, value: string): Uint8Array => {
   if (!/^[0-9a-f]{64}$/.test(value)) invalid(`${name} must be 32-byte lowercase hex`);
   return fromHex(value);
@@ -129,9 +130,6 @@ export const granteePoint = (value: string): CurvePoint => {
   if (point.isSmallOrder()) invalid('grantee public key has small order');
   return point.toAffine();
 };
-const same = (a: Uint8Array, b: Uint8Array): boolean =>
-  a.length === b.length && a.every((value, index) => value === b[index]);
-
 /** The relying-party hash used to derive an ACC grant id. */
 export function grantOriginHash(origin: string): Uint8Array {
   if (!origin || origin.trim() !== origin) invalid('origin must be a nonempty rp id');
@@ -230,49 +228,26 @@ function scopeArgs(
 export function prepareJubjubGrant(
   input: PrepareJubjubGrantInput,
   pure: GrantScopePure,
-  random: (length: number) => Uint8Array = (length) =>
-    (
-      globalThis as unknown as { crypto: { getRandomValues(bytes: Uint8Array): Uint8Array } }
-    ).crypto.getRandomValues(new Uint8Array(length)),
+  random?: (length: number) => Uint8Array,
 ): PreparedJubjubGrant {
   const account = bytes32('account', input.account);
   const originHash = grantOriginHash(input.origin);
   if (!Number.isSafeInteger(input.nowSeconds) || input.nowSeconds < 0)
     invalid('nowSeconds must be whole seconds');
-  const active = new Set(input.activeGrantIds.map((id) => toHex(bytes32('active grant id', id))));
-  if (active.size >= MAX_GRANTS)
-    throw new PassportConnectorError(
-      'GrantLimitReached',
-      'Account has the maximum 16 active grants.',
-    );
+  const active = activeGrantIds(
+    input.activeGrantIds.map((id) => toHex(bytes32('active grant id', id))),
+  );
   const { args, grantee } = scopeArgs(input.scope, input.nowSeconds);
-  let slot = -1;
-  let grantId: Uint8Array | undefined;
-  for (let candidate = 0; candidate < 256; candidate++) {
-    const id = pure.derive_grant_id_with_jubjub(
-      { bytes: account },
-      grantee,
-      originHash,
-      BigInt(candidate),
-    );
-    if (id.length !== 32) invalid('binding returned an invalid grant id');
-    if (!active.has(toHex(id))) {
-      slot = candidate;
-      grantId = id;
-      break;
-    }
-  }
-  if (slot < 0 || grantId === undefined)
-    throw new PassportConnectorError('GrantLimitReached', 'No grant slot is free.');
-  const salt = random(32);
-  if (salt.length !== 32 || same(salt, EMPTY))
-    invalid('scope salt must be fresh 32-byte randomness');
+  const { grantId, slot } = selectGrantSlot(active, (candidate) =>
+    pure.derive_grant_id_with_jubjub({ bytes: account }, grantee, originHash, candidate),
+  );
+  const salt = freshGrantScopeSalt(random);
   const digest = pure.derive_grant_scope_digest(salt, ...args);
   const objectCommit = pure.derive_grant_object_commit(salt, args[4], args[5], args[6], args[7]);
   if (digest.length !== 32 || objectCommit.length !== 32)
     invalid('binding returned an invalid grant commitment');
   return {
-    grantId: toHex(grantId),
+    grantId,
     originHash,
     slot,
     scopeSalt: salt,

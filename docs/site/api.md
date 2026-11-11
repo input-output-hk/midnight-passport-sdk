@@ -264,6 +264,15 @@ a replacement grant or duplicate an already observed part.
 
 `issueP256GrantCall(input, ports)` submits the pinned P-256 issue after validating the scope against an auth-nonce-pinned live roster and durably staging its opening. A read grant requires a host `rotateBeforeIssue` hook in the same owner session; the hook must preserve every active read grantee. `issueAndPublishP256Grant(input, ports)` composes that call with the publisher and returns active only after sealed records settle. If publication fails after submission, `SubmittedGrantSettlementError` carries the grant ID and transaction hash for a publication-only retry. A sealed P-256 account now exposes the same `account.issueGrant(scope)` and `account.recoverPendingGrants()` methods as JubJub when the host supplies records, grants, a durable journal and a trusted origin. Read issue additionally requires chain-backed holdings and read-grant targets; it refuses a key rotation that leaves any live reader unsealed. The demo wires these ports for its supported spend-only grant form. General read-grant issue is a host integration scenario and is not exposed by that form.
 
+**Source preview: prepare a P-256 grantee opening.** The
+`prepareP256UnshieldedGrant(input, pure)` export derives a fixed-recipient
+unshielded opening and the issue-circuit arguments on `acc-s3r1.1`. The
+credential's exact `wa-json134` origin binds its grant ID. Its relying-party
+ID hash binds a separate salted commitment. Supply the verified credential
+policy and current active-ID roster. Store the opening securely before an
+owner issues a grant. This helper prepares fields only; the existing
+`account.issueGrant` flow accepts a JubJub grantee.
+
 `createMidnightGrantSource` also exposes `GrantCommitmentSource.readGrantCommitment(account, grantId)`, returning the live ACC object's commitment, read-key hash, read flag, active flag and auth nonce from one checked snapshot. Both grant publishers require this port and reject a staged opening that differs from the current on-chain grant before appending or marking it published. Hosts pass it as `grantCommitments` alongside `grants` and `grantJournal`; the inbox alone is not proof of the current grant's scope.
 
 JubJub create, device enrollment, grant issue, bookkeeping publication, and revoke pass a consent descriptor to `Authoriser.withKeySession`. The descriptor carries Lace's creation lock choice, account address, device commitment, or grant scope, slot, salt, and digest as appropriate. Publication reloads the durable opening after the session begins and refuses a scope that changed since consent. A hosted signer still needs a host adapter for branded Lace values and its transport; this descriptor alignment alone is not a tested Lace integration.
