@@ -11,11 +11,11 @@ import {
 import { grantOriginHash, type GrantScopeArgs, type GrantScopePure } from './grant-scope.js';
 import type { P256PublicKey } from './seams.js';
 
-const hex32 = z
+export const grantHex32 = z
   .string()
   .length(64)
   .regex(/^[0-9a-f]+$/);
-const decimal = z
+export const grantDecimal = z
   .string()
   .max(39)
   .refine((value) => parseGrantU128(value, true) !== undefined);
@@ -35,7 +35,7 @@ const policyOrigin = z
 
 const scope = z
   .strictObject({
-    account: hex32,
+    account: grantHex32,
     grantee: z
       .strictObject({
         scheme: z.literal('p256-webauthn'),
@@ -44,20 +44,20 @@ const scope = z
           .length(66)
           .regex(/^0[23][0-9a-f]{64}$/),
         origin: policyOrigin,
-        rpIdHash: hex32,
+        rpIdHash: grantHex32,
       })
       .readonly(),
-    color: hex32,
-    recipient: hex32.refine((value) => !/^0+$/.test(value)),
-    maxCoinValue: decimal,
-    perCallCap: decimal,
-    cap: decimal,
+    color: grantHex32,
+    recipient: grantHex32.refine((value) => !/^0+$/.test(value)),
+    maxCoinValue: grantDecimal,
+    perCallCap: grantDecimal,
+    cap: grantDecimal,
     expiresAt: seconds.nullable(),
   })
   .readonly();
 const preparation = z.strictObject({
   scope,
-  activeGrantIds: z.array(hex32).max(16).readonly(),
+  activeGrantIds: z.array(grantHex32).max(16).readonly(),
   nowSeconds: seconds,
 });
 
@@ -65,12 +65,15 @@ export type P256UnshieldedGrantScope = z.infer<typeof scope>;
 export type PrepareP256UnshieldedGrantInput = z.infer<typeof preparation>;
 
 /** Serializable opening for a direct, fixed-recipient P-256 grant. Deliver it only to the grantee. */
-export interface P256UnshieldedGrantOpening {
-  readonly scope: P256UnshieldedGrantScope;
-  readonly grantId: string;
-  readonly slot: number;
-  readonly scopeSalt: string;
-}
+export type P256UnshieldedGrantOpening = z.infer<typeof p256GrantOpeningSchema>;
+export const p256GrantOpeningSchema = z
+  .strictObject({
+    scope,
+    grantId: grantHex32,
+    slot: z.number().int().min(0).max(255),
+    scopeSalt: grantHex32.refine((value) => !/^0+$/.test(value)),
+  })
+  .readonly();
 
 export interface P256GrantOpeningPure extends Pick<
   GrantScopePure,
@@ -94,7 +97,7 @@ export interface PreparedP256UnshieldedGrant {
   readonly rpCommit: Uint8Array;
 }
 
-function granteePoint(compressed: string): P256PublicKey {
+export function p256GranteePoint(compressed: string): P256PublicKey {
   try {
     const point = p256.Point.fromBytes(fromHex(compressed));
     return { ...point.toAffine(), identity: false };
@@ -124,7 +127,7 @@ export function prepareP256UnshieldedGrant(
     return grantScopeInvalid('invalid fixed-recipient spend limits');
   if (scope.expiresAt !== null && scope.expiresAt <= nowSeconds)
     return grantScopeInvalid('expiresAt must be in the future');
-  const point = granteePoint(grantee.publicKey);
+  const point = p256GranteePoint(grantee.publicKey);
   const account = { bytes: fromHex(scope.account) };
   const originHash = grantOriginHash(grantee.origin);
   const active = activeGrantIds(parsed.data.activeGrantIds);

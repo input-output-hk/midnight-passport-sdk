@@ -20,7 +20,15 @@ export type {
   RecoverableShieldedDepositPorts,
 } from './shielded-deposit-recovery.js';
 export * from './grant-scope.js';
-export * from './p256-grant-opening.js';
+export { prepareP256UnshieldedGrant } from './p256-grant-opening.js';
+export type {
+  P256UnshieldedGrantScope,
+  PrepareP256UnshieldedGrantInput,
+  P256UnshieldedGrantOpening,
+  P256GrantOpeningPure,
+  PreparedP256UnshieldedGrant,
+} from './p256-grant-opening.js';
+export * from './p256-grant-holder.js';
 export * from './grant-opening-check.js';
 export * from './grant-holder.js';
 export * from './jubjub-grant-issue.js';

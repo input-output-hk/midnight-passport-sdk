@@ -271,9 +271,20 @@ credential's exact `wa-json134` origin binds its grant ID. Its relying-party
 ID hash binds a separate salted commitment. Supply the verified credential
 policy and current active-ID roster. Decode the unshielded recipient for
 the pinned network before passing its nonzero 32-byte value. Store the
-opening securely before an
-owner issues a grant. This helper prepares fields only; the existing
+opening securely before an owner issues a grant. The existing
 `account.issueGrant` flow accepts a JubJub grantee.
+
+`spendUnshieldedWithP256Grant(intent, ports)` accepts the issued opening,
+amount, prior spent total and stable request ID. Its live source exposes
+`readP256GrantSpendContext`, implemented by `createMidnightGrantSource`.
+The holder verifies the exact origin and RP, live epoch and generation,
+recipient and scope commitments before and after the passkey request.
+The value-capable chain receives the same request ID and intent digest
+after the durable journal has reserved them. A prior reservation refuses
+a new passkey request. `P256GrantSpendUnsettled` retains the request ID
+and transaction hash when known. Use the host's original receipt and live
+grant to resolve it. The source qualification uses the generated contract
+and software passkeys.
 
 `createMidnightGrantSource` also exposes `GrantCommitmentSource.readGrantCommitment(account, grantId)`, returning the live ACC object's commitment, read-key hash, read flag, active flag and auth nonce from one checked snapshot. Both grant publishers require this port and reject a staged opening that differs from the current on-chain grant before appending or marking it published. Hosts pass it as `grantCommitments` alongside `grants` and `grantJournal`; the inbox alone is not proof of the current grant's scope.
 

@@ -1104,8 +1104,8 @@ export const catalog: AccCapabilityCatalog = {
       authority: 'grant bearer',
       consent: 'grantee',
       flowOwner: 'account/grants',
-      support: 'artifact only',
-      testEvidence: [],
+      support: 'holder flow',
+      testEvidence: ['tests/account-p256-grant-spend.test.mjs'],
       keyProfiles: ['all'],
     },
     {
@@ -2109,8 +2109,8 @@ export const catalog: AccCapabilityCatalog = {
       authority: 'grant bearer',
       consent: 'grantee',
       flowOwner: 'account/grants',
-      support: 'binding only',
-      testEvidence: [],
+      support: 'holder flow',
+      testEvidence: ['tests/account-p256-grant-spend.test.mjs'],
       keyProfiles: [],
     },
     {
@@ -2392,8 +2392,8 @@ export const catalog: AccCapabilityCatalog = {
       authority: 'local helper',
       consent: 'none',
       flowOwner: 'contract',
-      support: 'binding only',
-      testEvidence: [],
+      support: 'scope helper',
+      testEvidence: ['tests/account-p256-grant-opening.test.mjs'],
       keyProfiles: [],
     },
     {
@@ -2426,8 +2426,8 @@ export const catalog: AccCapabilityCatalog = {
       authority: 'local helper',
       consent: 'none',
       flowOwner: 'contract',
-      support: 'binding only',
-      testEvidence: [],
+      support: 'scope helper',
+      testEvidence: ['tests/account-p256-grant-opening.test.mjs'],
       keyProfiles: [],
     },
     {

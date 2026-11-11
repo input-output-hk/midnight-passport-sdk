@@ -109,6 +109,14 @@ function evidence(name, isPure) {
     )
   )
     return ['holder flow', 'tests/account-grant-holder.test.mjs'];
+  if (
+    /^(withdraw_unshielded_with_grant_p256|challenge_withdraw_unshielded_with_grant_p256)$/.test(
+      name,
+    )
+  )
+    return ['holder flow', 'tests/account-p256-grant-spend.test.mjs'];
+  if (/^(derive_grant_id_with_p256|derive_grant_rp_commit)$/.test(name))
+    return ['scope helper', 'tests/account-p256-grant-opening.test.mjs'];
   if (name === 'deposit_shielded')
     return ['sender port', 'tests/account-shielded-deposit.test.mjs'];
   if (/^(issue_grant_with_jubjub|challenge_issue_grant_with_jubjub)$/.test(name))

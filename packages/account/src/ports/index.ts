@@ -1,3 +1,4 @@
+export type { LiveP256GrantSpendContext, P256GrantSpendSource } from './p256-grant-spend.js';
 import type { Authoriser, CredentialPort } from './authorisation.js';
 export type {
   Authoriser,

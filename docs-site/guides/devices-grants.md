@@ -14,7 +14,7 @@ The host owns consent, the private grant opening, durable publication/recovery j
 
 The [upstream scoped-grants draft](https://github.com/midnightntwrk/passport/blob/main/docs/mps-mip/mips/mip-xxxx-scoped-grants.md) is **not** a numbered canonical MIP. It helps explain the contract design; inspect the deployed binding and SDK release for the actual supported subset.
 
-### P-256 grantee opening in the SDK source
+### P-256 grantee withdrawals in the SDK source
 
 `prepareP256UnshieldedGrant` from `mn-passport-account` prepares the
 pinned `acc-s3r1.1` issue fields for one asset and a fixed unshielded Midnight
@@ -28,7 +28,20 @@ recipient. The owner reviews the network, address, caps and expiry before
 issuance.
 
 Keep the returned opening in protected host storage and deliver it only to
-the intended grantee. The helper prepares fields and commitments. Owner
-authorization, durable issue and P-256 holder spending still need the
-corresponding host flow. The existing `account.issueGrant` surface accepts
-JubJub grantees.
+the intended grantee. The existing `account.issueGrant` surface accepts
+JubJub grantees. P-256 grantee issuance needs a host to authorize and retain
+the prepared fields.
+
+For an issued grant, call `spendUnshieldedWithP256Grant` with the original
+opening, amount, prior spent total, and a stable request ID. Use
+`createMidnightGrantSource` for the pinned ledger snapshot and a
+credential-pinned WebAuthn signer. The host reviews the exact transfer and
+provides a value-capable chain port and a durable journal. Reserve the
+request before dispatch and persist the returned transaction hash against
+that reservation. On `MutationUnsettled`, look up the original request
+and verify its receipt and live grant before sending again. Keep the
+opening and passkey material out of audit logs.
+
+The source test uses the generated Compact contract and a software
+authenticator. Browser-provider behavior, native proving, and demo wiring
+remain to be qualified.

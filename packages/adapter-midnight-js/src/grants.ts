@@ -9,10 +9,13 @@ import type {
   GrantCommitmentSource,
   GrantRosterSource,
   NetworkConfig,
+  LiveP256GrantSpendContext,
 } from '@input-output-hk/mn-passport-account/ports';
 
 type Grant = {
   readonly active: boolean;
+  readonly epoch?: bigint;
+  readonly gen?: bigint;
   readonly issued_at?: bigint;
   readonly nonce?: bigint;
   readonly spent_commit?: Uint8Array;
@@ -24,11 +27,16 @@ type Grant = {
     readonly per_call_cap?: bigint;
     readonly cap?: bigint;
     readonly expires_at?: bigint;
+    readonly rp_commit?: Uint8Array;
+    readonly caller_commit?: Uint8Array;
+    readonly op_withdraw_shielded?: boolean;
+    readonly op_withdraw_shielded_to_contract?: boolean;
   };
 };
 type GrantLedger = {
   readonly auth_nonce: bigint;
   readonly grant_generation: bigint;
+  readonly device_epoch?: bigint;
   readonly grants: {
     size(): bigint;
     [Symbol.iterator](): Iterator<[Uint8Array, Grant]>;
@@ -77,6 +85,78 @@ const bytes32 = (value: string): Uint8Array<ArrayBuffer> | undefined =>
 const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
   a.length === b.length && a.every((value, index) => value === b[index]);
 
+const uint32 = (value: unknown): value is bigint =>
+  typeof value === 'bigint' && value >= 0n && value < 1n << 32n;
+
+const isCommitment = (value: unknown): value is Uint8Array =>
+  value instanceof Uint8Array && value.length === 32;
+
+function spendContext(grant: ListedGrant): LiveGrantSpendContext {
+  const { record } = grant;
+  const scope = record.scope;
+  if (
+    typeof record.issued_at !== 'bigint' ||
+    record.issued_at < 0n ||
+    typeof record.nonce !== 'bigint' ||
+    record.nonce < 0n ||
+    !(record.spent_commit instanceof Uint8Array) ||
+    record.spent_commit.length !== 32 ||
+    typeof scope.op_withdraw_unshielded !== 'boolean' ||
+    typeof scope.per_call_cap !== 'bigint' ||
+    scope.per_call_cap < 0n ||
+    typeof scope.cap !== 'bigint' ||
+    scope.cap < 0n ||
+    typeof scope.expires_at !== 'bigint' ||
+    scope.expires_at < 0n
+  )
+    throw new PassportConnectorError('BindingUnsupported', 'Malformed ACC grant spend context.');
+  return {
+    active: grant.active,
+    issuedAt: record.issued_at,
+    nonce: record.nonce,
+    spentCommit: record.spent_commit.slice(),
+    objectCommit: grant.objectCommit.slice(),
+    withdrawUnshielded: scope.op_withdraw_unshielded,
+    perCallCap: scope.per_call_cap,
+    cap: scope.cap,
+    expiresAt: scope.expires_at,
+  };
+}
+
+function p256SpendContext(
+  grant: ListedGrant,
+  generation: bigint,
+  deviceEpoch: bigint | undefined,
+): LiveP256GrantSpendContext {
+  const { epoch, gen, scope } = grant.record;
+  if (
+    !uint32(epoch) ||
+    !uint32(deviceEpoch) ||
+    !uint32(gen) ||
+    !isCommitment(scope.rp_commit) ||
+    !isCommitment(scope.caller_commit) ||
+    typeof scope.op_withdraw_shielded !== 'boolean' ||
+    typeof scope.op_withdraw_shielded_to_contract !== 'boolean'
+  ) {
+    throw new PassportConnectorError(
+      'BindingUnsupported',
+      'Malformed P-256 grant authorization context.',
+    );
+  }
+  return {
+    ...spendContext(grant),
+    grantEpoch: epoch,
+    deviceEpoch,
+    grantGeneration: gen,
+    generation,
+    rpCommit: Uint8Array.from(scope.rp_commit),
+    callerCommit: Uint8Array.from(scope.caller_commit),
+    read: scope.read,
+    withdrawShielded: scope.op_withdraw_shielded,
+    withdrawShieldedToContract: scope.op_withdraw_shielded_to_contract,
+  };
+}
+
 /** One checked ACC grant-map snapshot shared by the issue, revoke and rotation owner ports. */
 export function createMidnightGrantSource(
   options: MidnightGrantSourceOptions,
@@ -89,6 +169,10 @@ export function createMidnightGrantSource(
       account: string,
       grantId: string,
     ): Promise<LiveGrantSpendContext | undefined>;
+    readP256GrantSpendContext(
+      account: string,
+      grantId: string,
+    ): Promise<LiveP256GrantSpendContext | undefined>;
   } {
   const { network, binding, openings } = options;
   if (network.bindingId !== 'acc-s3r1.1')
@@ -151,7 +235,12 @@ export function createMidnightGrantSource(
         'BindingUnsupported',
         'The ACC grant count is inconsistent.',
       );
-    return { authNonce: ledger.auth_nonce, generation: ledger.grant_generation, grants };
+    return {
+      authNonce: ledger.auth_nonce,
+      generation: ledger.grant_generation,
+      deviceEpoch: ledger.device_epoch,
+      grants,
+    };
   };
   return {
     async readGrantRoster(account) {
@@ -195,38 +284,14 @@ export function createMidnightGrantSource(
       const { grants } = await snapshot(account);
       const grant = grants.find(({ id }) => id === grantId);
       if (!grant) return undefined;
-      const { record } = grant;
-      const scope = record.scope;
-      if (
-        typeof record.issued_at !== 'bigint' ||
-        record.issued_at < 0n ||
-        typeof record.nonce !== 'bigint' ||
-        record.nonce < 0n ||
-        !(record.spent_commit instanceof Uint8Array) ||
-        record.spent_commit.length !== 32 ||
-        typeof scope.op_withdraw_unshielded !== 'boolean' ||
-        typeof scope.per_call_cap !== 'bigint' ||
-        scope.per_call_cap < 0n ||
-        typeof scope.cap !== 'bigint' ||
-        scope.cap < 0n ||
-        typeof scope.expires_at !== 'bigint' ||
-        scope.expires_at < 0n
-      )
-        throw new PassportConnectorError(
-          'BindingUnsupported',
-          'Malformed ACC grant spend context.',
-        );
-      return {
-        active: grant.active,
-        issuedAt: record.issued_at,
-        nonce: record.nonce,
-        spentCommit: record.spent_commit.slice(),
-        objectCommit: grant.objectCommit.slice(),
-        withdrawUnshielded: scope.op_withdraw_unshielded,
-        perCallCap: scope.per_call_cap,
-        cap: scope.cap,
-        expiresAt: scope.expires_at,
-      };
+      return spendContext(grant);
+    },
+    async readP256GrantSpendContext(account, grantId) {
+      if (!bytes32(grantId)) return undefined;
+      const { grants, generation, deviceEpoch } = await snapshot(account);
+      const grant = grants.find(({ id }) => id === grantId);
+      if (!grant) return undefined;
+      return p256SpendContext(grant, generation, deviceEpoch);
     },
     async readActiveReadGrantTargets(account) {
       const { authNonce, grants } = await snapshot(account);
