@@ -32,6 +32,12 @@ with the host's finalized observation. The host finality source must verify the
 change's insertion index for that transaction. The recovery result contains a
 private coin description for subsequent inbox settlement.
 
+The source adapter has internal checks for the next value-wallet integration.
+It binds the signed arguments and qualified input before proving, then compares
+the call commitment, shielded effects, and concrete Ledger 9 offers before
+staging the serialized transaction. The account withdrawal entry points still
+enforce the exact-value guard while host finality and inbox recovery are in development.
+
 Application contracts may call **into a deployed ACC** under the supported caller-bound design. That does not establish arbitrary ACC → other-contract calls. [See the implementation boundary](/architecture/standards).
 
 ## Repeated deposits and uncertain results

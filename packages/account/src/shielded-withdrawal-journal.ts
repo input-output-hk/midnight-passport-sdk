@@ -4,6 +4,7 @@ import { PassportConnectorError } from './errors.js';
 import { finalizedTransactionIdentitySchema } from './finalized-transaction-identity.js';
 import { mutationDigest } from './mutation-codec.js';
 import type { MutationByteStore } from './mutation-types.js';
+import type { QualifiedShieldedCoin } from './ports/index.js';
 import { AmountSchema, NetworkIdSchema } from './validation.js';
 
 export const shieldedEffectHex = z.string().regex(/^[0-9a-f]{64}$/);
@@ -12,22 +13,29 @@ export const shieldedWithdrawCircuit = z.enum([
   'withdraw_shielded_with_jubjub',
 ]);
 
-export const shieldedWithdrawalReservation = z
-  .strictObject({
-    requestId: z.uuid(),
-    networkId: NetworkIdSchema,
-    bindingId: z.literal('acc-s3r1.1'),
-    account: shieldedEffectHex,
-    circuit: shieldedWithdrawCircuit,
-    callArgsSha256: shieldedEffectHex,
-    inputNullifier: shieldedEffectHex,
-    payoutCommitment: shieldedEffectHex,
-    changeCommitment: shieldedEffectHex,
-    change: z
-      .strictObject({ nonce: shieldedEffectHex, color: shieldedEffectHex, value: AmountSchema })
-      .readonly(),
-  })
-  .refine((value) => value.changeCommitment !== value.payoutCommitment)
+const reservationFields = z.strictObject({
+  requestId: z.uuid(),
+  networkId: NetworkIdSchema,
+  bindingId: z.literal('acc-s3r1.1'),
+  account: shieldedEffectHex,
+  circuit: shieldedWithdrawCircuit,
+  callArgsSha256: shieldedEffectHex,
+  inputNullifier: shieldedEffectHex,
+  payoutCommitment: shieldedEffectHex,
+  changeCommitment: shieldedEffectHex,
+  change: z
+    .strictObject({ nonce: shieldedEffectHex, color: shieldedEffectHex, value: AmountSchema })
+    .readonly(),
+});
+const distinctOutputs = (value: z.infer<typeof reservationFields>) =>
+  value.changeCommitment !== value.payoutCommitment;
+export const shieldedWithdrawalReservation = reservationFields
+  .extend({ heldCoinSha256: shieldedEffectHex })
+  .refine(distinctOutputs)
+  .readonly();
+export const retainedShieldedWithdrawalReservation = reservationFields
+  .extend({ heldCoinSha256: shieldedEffectHex.optional() })
+  .refine(distinctOutputs)
   .readonly();
 
 export const shieldedWithdrawalDispatch = z
@@ -40,7 +48,7 @@ export const shieldedWithdrawalDispatch = z
 const record = z
   .strictObject({
     version: z.literal(1),
-    reservation: shieldedWithdrawalReservation,
+    reservation: retainedShieldedWithdrawalReservation,
     dispatch: shieldedWithdrawalDispatch.optional(),
   })
   .readonly();
@@ -53,6 +61,11 @@ export type ShieldedWithdrawalRecord = Omit<z.infer<typeof record>, 'version'>;
 export interface ShieldedWithdrawalJournal {
   read(requestId: string): Promise<ShieldedWithdrawalRecord | undefined>;
   reserve(reservation: ShieldedWithdrawalReservation): Promise<boolean>;
+  matchesInvocation(
+    reservation: ShieldedWithdrawalReservation,
+    args: readonly unknown[],
+    heldCoin: QualifiedShieldedCoin,
+  ): boolean;
   /** Call after verifying the finalized call and before forwarding. Only the first CAS wins. */
   stageDispatch(
     reservation: ShieldedWithdrawalReservation,
@@ -116,6 +129,12 @@ export function createShieldedWithdrawalJournal(
     }
   }
   return {
+    matchesInvocation(reservation, args, heldCoin) {
+      return (
+        mutationDigest(args) === reservation.callArgsSha256 &&
+        mutationDigest(heldCoin) === reservation.heldCoinSha256
+      );
+    },
     async read(requestId) {
       const original = await load(requestId);
       return original && { reservation: original.reservation, dispatch: original.dispatch };

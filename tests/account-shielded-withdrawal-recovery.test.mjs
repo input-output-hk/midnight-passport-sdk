@@ -26,6 +26,7 @@ const reservation = {
   account,
   circuit: /** @type {const} */ ('withdraw_shielded_with_jubjub'),
   callArgsSha256: '22'.repeat(32),
+  heldCoinSha256: '23'.repeat(32),
   inputNullifier: '33'.repeat(32),
   payoutCommitment: '44'.repeat(32),
   changeCommitment,
@@ -250,4 +251,24 @@ test('recovery requires the original call, exact effects and a matching indexed 
     }),
     { kind: 'unknown' },
   );
+});
+
+test('a prior staged receipt remains recoverable without a held-coin admission digest', async () => {
+  const { heldCoinSha256: _digest, ...legacy } = reservation;
+  const bytes = Buffer.from(JSON.stringify({ version: 1, reservation: legacy, dispatch }));
+  const readOnly = {
+    read: async () => ({ revision: 1, bytes: new Uint8Array(bytes) }),
+    compareAndSwap: async () => assert.fail('Recovery is read only.'),
+  };
+  const journal = createShieldedWithdrawalJournal(readOnly, { ...readOnly });
+  const result = await recoverShieldedWithdrawal(reservation.requestId, {
+    journal,
+    deriveChangeCommitment: deriveMidnightContractCoinCommitment,
+    finality: {
+      networkId: reservation.networkId,
+      bindingId: reservation.bindingId,
+      readFinalized: async () => observed,
+    },
+  });
+  assert.equal(result.kind, 'change-found');
 });

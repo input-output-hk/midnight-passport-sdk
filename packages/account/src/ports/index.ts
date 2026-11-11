@@ -1,5 +1,9 @@
 export type { P256GrantSpendReceiptStore } from '../p256-grant-spend-recovery.js';
 export type { P256GrantSpendReservation } from '../p256-grant-holder.js';
+export type {
+  ShieldedWithdrawalJournal,
+  ShieldedWithdrawalReservation,
+} from '../shielded-withdrawal-journal.js';
 export type { LiveP256GrantSpendContext, P256GrantSpendSource } from './p256-grant-spend.js';
 import type { Authoriser, CredentialPort } from './authorisation.js';
 export type {

@@ -5,8 +5,8 @@ import { mutationDigest } from './mutation-codec.js';
 import type { QualifiedShieldedCoin, ShieldedCoin } from './ports/index.js';
 import {
   shieldedEffectHex,
+  retainedShieldedWithdrawalReservation,
   shieldedWithdrawalDispatch,
-  shieldedWithdrawalReservation,
   shieldedWithdrawCircuit,
   type ShieldedWithdrawalDispatch,
   type ShieldedWithdrawalJournal,
@@ -74,7 +74,7 @@ export async function recoverShieldedWithdrawal(
   if (!z.uuid().safeParse(requestId).success) return { kind: 'unknown' };
   const record = await journal.read(requestId);
   if (!record?.dispatch) return { kind: 'unknown' };
-  const reservation = shieldedWithdrawalReservation.safeParse(record.reservation);
+  const reservation = retainedShieldedWithdrawalReservation.safeParse(record.reservation);
   const dispatch = shieldedWithdrawalDispatch.safeParse(record.dispatch);
   if (
     !reservation.success ||
