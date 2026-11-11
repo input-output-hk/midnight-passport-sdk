@@ -187,8 +187,8 @@ The sponsor prepares this receipt before dispatch. Its fields are
 response is lost. IndexedDB retains public fields scoped to the original
 credential and protects the record from replacement by another tab. The
 checker reads the original identifiers, verifies the exact transaction bytes
-and registry call, and checks the current owner commitment and activated ACC
-target. An absent, partial, aggregated or changed transaction stays pending.
+and the registry inserts linking the name to its domain ID, owner commitment
+and contract target. It then checks the current owner and activated ACC target. An absent, partial, aggregated or changed transaction stays pending.
 A mismatched owner or target is reported as a conflict.
 
 This recovery surface reads the isolated indexer. Claim preparation and

@@ -1,5 +1,6 @@
 import { ContractCall, Transaction } from '@midnightntwrk/ledger-v9';
 import { claimDigest, claimHex, type ClaimReceipt } from './claim-receipt.js';
+import { matchesClaimWrites } from './claim-transcript.js';
 
 // This recovery profile is pinned to the isolated Ledger 9 standalone indexer.
 const protocolVersion = 2001000;
@@ -25,6 +26,31 @@ async function readBounded(response: Response): Promise<unknown> {
     void reader.cancel().catch(() => {});
     reader.releaseLock();
   }
+}
+
+function matchesOriginalCall(
+  tx: ReturnType<typeof Transaction.deserialize>,
+  original: ClaimReceipt,
+): boolean {
+  const actions = [...(tx.intents?.values() ?? [])].flatMap((intent) => intent.actions);
+  const [call] = actions;
+  if (
+    actions.length !== 1 ||
+    !(call instanceof ContractCall) ||
+    call.address !== original.registryAddress
+  )
+    return false;
+  const entry =
+    typeof call.entryPoint === 'string'
+      ? call.entryPoint
+      : new TextDecoder().decode(call.entryPoint);
+  return (
+    entry === 'create_domain' &&
+    matchesClaimWrites(
+      [call.guaranteedTranscript?.program ?? [], call.fallibleTranscript?.program ?? []],
+      original,
+    )
+  );
 }
 
 export async function confirmedClaim(
@@ -70,21 +96,13 @@ export async function confirmedClaim(
     if ((await claimDigest(bytes)) !== original.transaction.sha256) return false;
     const tx = Transaction.deserialize('signature', 'proof', 'binding', bytes);
     const ids = tx.identifiers();
-    return (
-      tx.transactionHash() === row.hash &&
-      ids.length === original.transaction.identifiers.length &&
-      original.transaction.identifiers.every((id) => ids.includes(id)) &&
-      [...(tx.intents?.values() ?? [])].some((intent) =>
-        intent.actions.some(
-          (call) =>
-            call instanceof ContractCall &&
-            call.address === original.registryAddress &&
-            (typeof call.entryPoint === 'string'
-              ? call.entryPoint
-              : new TextDecoder().decode(call.entryPoint)) === 'create_domain',
-        ),
-      )
-    );
+    if (
+      tx.transactionHash() !== row.hash ||
+      ids.length !== original.transaction.identifiers.length ||
+      !original.transaction.identifiers.every((id) => ids.includes(id))
+    )
+      return false;
+    return matchesOriginalCall(tx, original);
   } catch {
     return false;
   }

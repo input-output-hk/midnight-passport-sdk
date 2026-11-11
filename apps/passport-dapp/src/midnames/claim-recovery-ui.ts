@@ -36,6 +36,7 @@ export function showClaimRecovery(
     const selected = name.value.trim().toLowerCase();
     const saving = event.submitter === retain;
     const raw = receipt.value;
+    name.disabled = receipt.disabled = true;
     const ensureAccount = () => {
       if (account !== currentAccount()) throw new Error('Account changed.');
     };
@@ -88,7 +89,7 @@ export function showClaimRecovery(
           'Claim check unavailable. Keep the original receipt and verify the open account, name and registry.';
       })
       .finally(() => {
-        busy = retain.disabled = check.disabled = false;
+        busy = retain.disabled = check.disabled = name.disabled = receipt.disabled = false;
       });
   });
   return () => {
