@@ -19,6 +19,7 @@ export async function qualifyClaimHandoff({
   rootId,
   parentDomain,
   step,
+  dispatch,
 }) {
   const label = 'charlie';
   const { owner_address: registryPayee, payment_config: price } = parentDomain;
@@ -75,6 +76,7 @@ export async function qualifyClaimHandoff({
     dispatches: 0,
     ownerProvedInSeparateProcess: true,
   });
+  if (dispatch) return dispatch(quote, prepared.receipt);
   return {
     claimPrepared: true,
     dustSpends,

@@ -876,7 +876,8 @@ can retain a sponsor's original public receipt and reconcile it after a lost
 response. The form is under **Settings → Developer tools → Name service**.
 It also checks availability against the configured registry and verifies the
 open ACC's binding. A retained receipt takes precedence over availability.
-The sponsor prepares and sends the claim separately. See the
+The sponsor prepares the claim separately. The opt-in loopback fixture lets
+the user acknowledge a saved receipt with **Send prepared claim**. See the
 [receipt and recovery flow](../docs/site/names.md#recover-the-sponsors-original-claim-in-the-demo).
 
 ### Standalone shielded deposit by name

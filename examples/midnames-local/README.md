@@ -115,6 +115,19 @@ at `/v1/midnames/claim/dispatch`. It binds one private prepared journal and the
 host's live sponsor policy to that origin. Set `VITE_MIDNAMES_CLAIM_SPONSOR=1`
 with the standalone registry configuration and open the demo on `127.0.0.1`.
 
+To exercise the actual loopback route on an isolated chain, run the same
+`qualify-deposit.mjs` command with a fresh name starting with
+`midnames-claim-browser-`. The browser driver uses port 15189 and a fresh
+Chromium profile. The fixture delegates two synthetic NIGHT outputs to the
+sponsor's DUST address, then prepares the original claim using the separate
+owner process. The sponsor rechecks the registry price, payee, name
+availability and target ACC. It accepts only the original Ledger IDs and an
+unexpired claim with exactly two DUST spends under its configured fixture
+ceiling. The browser driver drops the HTTP response after the sponsor
+accepts the acknowledgement, restarts Chromium, and checks the original
+on the isolated indexer. Inspect `native-claim-dispatch.json` and
+`browser-claim-recovery.json` under the run's private evidence directory.
+
 Save the prepared public receipt while the matching ACC is open, then select
 **Send prepared claim**. **Check original claim** reads the original receipt
 after a reload or lost response. This route is a local fixture. Browser proof
