@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { claimReceipt, claimDigest } from '../src/midnames/claim-receipt.js';
+import { claimReceipt, claimDigest, normalizeClaimName } from '../src/midnames/claim-receipt.js';
 import type { AlignedValue, Op } from '@midnightntwrk/ledger-v9';
 import { matchesClaimWrites } from '../src/midnames/claim-transcript.js';
 import { confirmedClaim } from '../src/midnames/claim-finality.js';
@@ -13,6 +13,20 @@ const original = {
   ownerCommitment: '56'.repeat(32),
   transaction: { identifiers: ['00' + '78'.repeat(32)], sha256: '90'.repeat(32) },
 } as const;
+
+test('normalizes ASCII claim labels and refuses Unicode lookalikes and subdomains', () => {
+  assert.equal(normalizeClaimName('  Alice-2.NIGHT  '), 'alice-2.night');
+  assert.equal(normalizeClaimName('a.night'), 'a.night');
+  for (const value of [
+    'K.night',
+    'аlice.night',
+    '-alice.night',
+    'alice-.night',
+    'a.b.night',
+    'a'.repeat(33) + '.night',
+  ])
+    assert.equal(normalizeClaimName(value), undefined, value);
+});
 
 test('copies only the public original receipt fields and rejects ambiguous scopes', () => {
   assert.deepEqual(claimReceipt({ ...original, witness: 'discarded' }), original);

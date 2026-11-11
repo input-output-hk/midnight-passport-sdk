@@ -59,6 +59,13 @@ fixtures cover those boundaries on `undeployed`. Production namespace and
 registrar policy, public registry substitution, binding transfers, and a
 native real-credential name-to-open flow still require separate evidence.
 
+Both payment paths were rerun on merged source `22ae4594` against fresh isolated
+chains. The shielded deposit finalized at block 68. The NIGHT withdrawal and
+deposit finalized at blocks 94 and 97, and the deposit consumed the exact
+withdrawal output after reopening the journal. The browser's standalone claim
+availability check is a read-only preflight. Browser-initiated proof and sponsor
+submission are separate from the existing lost-response recovery evidence.
+
 ## Current published release and evidence tiers
 
 The published preview is **0.1.0-rc9**. Its

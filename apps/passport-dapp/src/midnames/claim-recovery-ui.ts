@@ -3,9 +3,9 @@ import { byId } from '../ui-dom.js';
 import { openClaimJournal } from './claim-journal.js';
 import {
   claimDigest,
-  claimName,
   claimReceipt,
   claimReceiptLimit,
+  normalizeClaimName,
   type ClaimRecovery,
 } from './claim-receipt.js';
 
@@ -16,6 +16,7 @@ export function showClaimRecovery(
   const form = byId<HTMLFormElement>('claim-recovery');
   const name = byId<HTMLInputElement>('claim-recovery-name');
   const receipt = byId<HTMLTextAreaElement>('claim-recovery-receipt');
+  const availability = byId<HTMLButtonElement>('claim-check-availability');
   const retain = byId<HTMLButtonElement>('claim-recovery-retain');
   const check = byId<HTMLButtonElement>('claim-recovery-check');
   const status = byId('claim-recovery-status');
@@ -27,13 +28,20 @@ export function showClaimRecovery(
     registered: 'Registered. The original claim and current registry record match this account.',
   } as const;
 
+  const availabilityMessages = {
+    available: 'Available at the last registry read. The name stays open until a claim finalizes.',
+    taken: 'This name is already registered.',
+    unsupported: 'This Passport account is not active on the configured registry’s network.',
+  } as const;
+
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     if (busy) return;
-    busy = retain.disabled = check.disabled = true;
+    busy = availability.disabled = retain.disabled = check.disabled = true;
     status.textContent = 'Checking claim details…';
     const account = currentAccount();
-    const selected = name.value.trim().toLowerCase();
+    const selected = normalizeClaimName(name.value);
+    const checkingAvailability = event.submitter === availability;
     const saving = event.submitter === retain;
     const raw = receipt.value;
     name.disabled = receipt.disabled = true;
@@ -45,7 +53,7 @@ export function showClaimRecovery(
         status.textContent = 'Open this Passport account with its passkey first.';
         return;
       }
-      if (!claimName(selected)) {
+      if (!selected) {
         status.textContent = 'Enter a single label ending in .night.';
         return;
       }
@@ -72,13 +80,19 @@ export function showClaimRecovery(
         }
         const original = await journal.read(recovery.registryAddress, selected, scope);
         ensureAccount();
-        if (!original || original.accountAddress !== account.address) {
-          status.textContent = 'Save the sponsor’s original receipt for this account and name.';
+        if (original?.accountAddress === account.address) {
+          const result = await recovery.check(original);
+          ensureAccount();
+          status.textContent = messages[result];
           return;
         }
-        const result = await recovery.check(original);
+        if (original || !checkingAvailability) {
+          status.textContent = 'Use the original account and receipt to check this claim.';
+          return;
+        }
+        const result = await recovery.availability(selected, account.address);
         ensureAccount();
-        status.textContent = messages[result];
+        status.textContent = availabilityMessages[result];
       } finally {
         journal.close();
       }
@@ -89,7 +103,8 @@ export function showClaimRecovery(
           'Claim check unavailable. Keep the original receipt and verify the open account, name and registry.';
       })
       .finally(() => {
-        busy = retain.disabled = check.disabled = name.disabled = receipt.disabled = false;
+        busy = availability.disabled = retain.disabled = check.disabled = false;
+        name.disabled = receipt.disabled = false;
       });
   });
   return () => {

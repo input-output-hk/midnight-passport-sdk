@@ -68,6 +68,7 @@ const vite = await createServer({
 });
 
 const messages = {
+  available: /^Available at the last registry read/,
   saved: /^Original receipt saved/,
   pending: /^Claim pending/,
   confirmed: /^Registered\./,
@@ -120,10 +121,12 @@ try {
   browser = await openBrowser();
   const first = await browser.newPage();
   await openPage(first, origin);
+  await first.locator('#claim-check-availability').click();
+  await status(first, messages.available);
   await first.locator('#claim-recovery-receipt').fill(JSON.stringify(original));
   await first.locator('#claim-recovery-retain').click();
   await status(first, messages.saved);
-  await first.locator('#claim-recovery-check').click();
+  await first.locator('#claim-check-availability').click();
   await status(first, messages.pending);
 
   await first.route('**/__drop-claim-response', async (route) => {
@@ -150,7 +153,7 @@ try {
 
   const wrong = await browser.newPage();
   await openPage(wrong, origin, true);
-  await wrong.locator('#claim-recovery-check').click();
+  await wrong.locator('#claim-check-availability').click();
   await status(wrong, messages.refused);
 
   const recovered = await browser.newPage();

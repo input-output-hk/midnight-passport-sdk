@@ -772,10 +772,12 @@
         <p id="name-service-status" role="status" aria-live="polite">No lookup yet.</p>
         <pre id="name-service-result" tabindex="0" aria-label="Name resolution result"></pre>
         <form id="claim-recovery" hidden aria-labelledby="claim-recovery-title">
-          <h3 id="claim-recovery-title">Recover a standalone .night claim</h3>
-          <p>Save the sponsor’s original receipt, then check whether the claim registered.</p>
+          <h3 id="claim-recovery-title">Standalone .night claims</h3>
           <label for="claim-recovery-name">Claim name</label>
           <input id="claim-recovery-name" class="action-input" maxlength="38" required />
+          <button id="claim-check-availability" class="btn btn-secondary" type="submit">
+            Check availability
+          </button>
           <label for="claim-recovery-receipt">Original public receipt (JSON)</label>
           <textarea
             id="claim-recovery-receipt"

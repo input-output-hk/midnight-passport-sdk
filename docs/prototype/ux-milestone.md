@@ -110,8 +110,10 @@ account or wallet action. See the [configuration and evidence scope](../site/nam
 The Name service panel under **Settings → Developer tools** can save a
 standalone sponsor receipt after the user opens the target ACC. **Check original
 claim** reconciles the stored transaction and the current registry owner and
-target. A lost response keeps the original receipt available across browser
-reloads. See [the recovery flow](../site/names.md#recover-the-sponsors-original-claim-in-the-demo).
+target. **Check availability** verifies the open ACC and checks whether the
+name is registered. When a receipt already exists, the button reconciles the
+original claim. A lost response keeps the original receipt available across
+browser reloads. See [the recovery flow](../site/names.md#recover-the-sponsors-original-claim-in-the-demo).
 
 ### Standalone shielded deposit by name
 

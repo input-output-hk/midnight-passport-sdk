@@ -70,6 +70,7 @@ export function createMidnamesLedgerReads(
   bindingId: string,
   profileId: MidnamesRegistryProfile = 'midnames-2.1.0',
 ): MidnamesReads & {
+  hasDomain(name: string, profile: Readonly<MidnamesProfile>): Promise<boolean>;
   readClaim(
     name: string,
     profile: Readonly<MidnamesProfile>,
@@ -119,6 +120,9 @@ export function createMidnamesLedgerReads(
       return (await readClaim(name, profile))?.target;
     },
     readClaim,
+    async hasDomain(name, profile) {
+      return (await readDomain(name, profile)) !== undefined;
+    },
     async isSupportedAccount(address, requestedNetwork) {
       if (requestedNetwork !== networkId) return false;
       const observed = await provider.queryContractState(address);

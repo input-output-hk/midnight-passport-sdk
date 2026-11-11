@@ -21,5 +21,8 @@ For application-contract → ACC calls, use the [standards and implementation ma
 The reference demo can use Midnames 2.1.0 for read-only lookup. Configure the
 registry address, namespace, matching demo network, and public indexer URLs.
 The adapter reads the registry's contract target and checks the deployed ACC
-verifier roster before displaying the result. Claim and payment require
-separate qualification. See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).
+verifier roster before displaying the result. On the pinned standalone registry,
+the demo checks name availability and reconciles retained sponsor receipts.
+The shielded deposit and two-leg NIGHT payment have standalone Node fixtures.
+Browser-initiated registration and online profiles require separate qualification.
+See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).

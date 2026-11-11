@@ -176,7 +176,13 @@ that the original transaction finalized successfully.
 
 For `standalone-0.35` with namespace `night`, open the target Passport ACC
 with its passkey and go to **Settings → Developer tools → Name service**.
-Enter the name and paste the sponsor's original public receipt. Save it, then
+**Check availability** reads the pinned registry and verifies the open ACC
+before reporting an unregistered name. Availability is an observation at the
+time of the read. A retained receipt takes precedence and is reconciled
+against the original transaction.
+
+To recover an external claim, enter the name and paste the sponsor's original
+public receipt. Save it, then
 use **Check original claim**. After a reload, open the same account with the
 same credential, enter the name again, and check the saved receipt.
 
@@ -195,6 +201,8 @@ This recovery surface reads the isolated indexer. Claim preparation and
 submission run in a separate sponsor environment. Never paste passkey
 material, keys, raw transaction bytes or witnesses into the form. Recovering
 the receipt does not recover ownership after loss of the name-owner secret.
+The [browser claim design](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0018-standalone-midnames-claim.md) describes
+the next proof and sponsor checks for browser-initiated onboarding.
 
 ### Deposit a shielded asset by name
 
