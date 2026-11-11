@@ -883,3 +883,10 @@ The independent Node sender example exercises the Midnames resolver and the
 shielded ACC deposit through a funded wallet. Its fixtures show the exact
 reviewed destination and verify the recipient holding. Follow the
 [standalone recipe](../examples/midnames-local/README.md#run-the-shielded-deposit-by-name).
+
+### Standalone ACC-to-ACC payment by name
+
+The Node fixture demonstrates a named NIGHT payment using a controlled wallet
+and a durable two-leg journal. The reference browser withdrawal remains a
+separate wallet-address flow. See the
+[standalone recipe](../examples/midnames-local/README.md#run-the-named-acc-to-acc-night-payment).

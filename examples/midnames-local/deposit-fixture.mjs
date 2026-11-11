@@ -61,7 +61,7 @@ const [
   import(pathToFileURL(join(ref, 'src/wallet/inbox.ts')).href),
 ]);
 const mode = process.env.PASSPORT_MIDNAMES_FIXTURE_MODE;
-assert.equal(mode, 'named-shielded-deposit');
+assert.ok(mode === 'named-shielded-deposit' || mode === 'named-night-send');
 const receipt = { transactions: [], steps: [], passed: false, mode };
 const save = () => saveIsolationReceipt(join(output, 'worker.json'), receipt);
 const step = (label) => {
@@ -104,31 +104,35 @@ try {
     acc.pureCircuits.compute_public_point_with_jubjub(
       BigInt('0x' + randomBytes(31).toString('hex')) + 1n,
     );
-  const pub = randomJubJubPoint();
-  const salt = new Uint8Array(randomBytes(32));
+  const deployAccount = async (label, pub, encKey) => {
+    const salt = new Uint8Array(randomBytes(32));
+    const privateStateId = 'midnames-' + label;
+    step('deploy-' + label);
+    const address = await wave.deployAccountInWaves(providers, accountCompiled, {
+      firstArm: 'jubjub',
+      retireAuthority: true,
+      privateStateId,
+      initialPrivateState: {},
+      args: [
+        acc.pureCircuits.derive_boot_commitment_with_jubjub(salt, pub),
+        encKey,
+        randomJubJubPoint(),
+        new Uint8Array(64),
+        60n,
+      ],
+    });
+    step('activate-' + label);
+    await contracts.submitCallTx(providers, {
+      compiledContract: accountCompiled,
+      contractAddress: address,
+      circuitId: 'activate_initial_device_with_jubjub',
+      privateStateId,
+      args: [pub, salt],
+    });
+    return address;
+  };
   const encKeys = inbox.generateEncKeyPair();
-  step('deploy-account');
-  const accountAddress = await wave.deployAccountInWaves(providers, accountCompiled, {
-    firstArm: 'jubjub',
-    retireAuthority: true,
-    privateStateId: 'midnames-acc',
-    initialPrivateState: {},
-    args: [
-      acc.pureCircuits.derive_boot_commitment_with_jubjub(salt, pub),
-      encKeys.publicKey,
-      randomJubJubPoint(),
-      new Uint8Array(64),
-      60n,
-    ],
-  });
-  step('activate-account');
-  await contracts.submitCallTx(providers, {
-    compiledContract: accountCompiled,
-    contractAddress: accountAddress,
-    circuitId: 'activate_initial_device_with_jubjub',
-    privateStateId: 'midnames-acc',
-    args: [pub, salt],
-  });
+  const accountAddress = await deployAccount('account', randomJubJubPoint(), encKeys.publicKey);
 
   const regProviders = {
     ...providers,
@@ -233,6 +237,8 @@ try {
   const rootId = registry.ledger(onChain.data).ROOT_ZONE_ID;
   await regProviders.privateStateProvider.setContractAddress(registryAddress);
   await regProviders.privateStateProvider.set(privateStateId, {});
+  const defaultField =
+    mode === 'named-night-send' ? { is_some: true, value: 'different-profile-default' } : noDefault;
   const nameKey = new Uint8Array(32).fill(255);
   nameKey.set(new TextEncoder().encode('alice'));
   process.env.TX_TTL_MS = '45000';
@@ -249,7 +255,7 @@ try {
       rootId,
       target,
       registry.AddressType.ContractAddr,
-      noDefault,
+      defaultField,
       price,
       fields,
     ],
@@ -261,6 +267,7 @@ try {
     observed.name_to_id.lookup({ domain: nameKey, parent_id: rootId }),
   );
   assert.deepEqual(record.target, target);
+  if (defaultField.is_some) assert.equal(record.default_field.value, defaultField.value);
   assert.deepEqual(record.owner_public_key, observed.id_to_data.lookup(rootId).owner_public_key);
   const tag = Buffer.alloc(32);
   tag.write('midnight.domains');
@@ -281,106 +288,136 @@ try {
     (await service.resolve({ networkId: 'undeployed', name: 'alice.night' }))?.accountAddress,
     accountAddress,
   );
-  await wallet.wallet.stop();
-  wallet = undefined;
-  Object.assign(receipt, {
-    accountAddress,
-    registryAddress,
-    claimIdentifier: receipt.transactions.at(-1).id,
-  });
-  step('start-independent-sender');
-  // Pass only the local registry and exact name. The sender resolves the
-  // address itself and opens a separate working directory for its wallet.
-  const sender = spawn(
-    process.execPath,
-    [
-      '--experimental-import-meta-resolve',
-      '--import',
-      'tsx',
-      join(import.meta.dirname, 'deposit-sender.mjs'),
+  const claimIdentifier = receipt.transactions.at(-1).id;
+  const getReferenceSigner = () => import(pathToFileURL(join(ref, 'src/wallet/signer.ts')).href);
+  if (mode === 'named-night-send') {
+    const { qualifyNightSend } = await import('./night-send-fixture.mjs');
+    const { JubjubDevice, jubjubChallenges } = await getReferenceSigner();
+    const device = JubjubDevice.generate();
+    const source = await deployAccount('source', device.pk, inbox.generateEncKeyPair().publicKey);
+    const proofReceipt = await qualifyNightSend({
       output,
-      ref,
+      get,
+      walletModule,
+      wallet,
+      providers,
+      accountCompiled,
+      contracts,
+      ledger,
+      binding: acc,
+      reads,
+      source,
+      device,
+      jubjubChallenges,
       registryAddress,
-      'alice.night',
-    ],
-    {
-      cwd: join(import.meta.dirname, '../../apps/passport-dapp'),
-      stdio: ['ignore', 'inherit', 'inherit'],
-    },
-  );
-  await new Promise((resolve, reject) => {
-    sender.once('error', reject);
-    sender.once('exit', (code, signal) =>
-      code === 0 ? resolve() : reject(Error(`Sender exited ${code}/${signal}`)),
+      target: accountAddress,
+      defaultField,
+      step,
+    });
+    Object.assign(receipt, { ...proofReceipt, claimIdentifier, registryAddress, passed: true });
+    step('verified-native-named-night-send');
+  } else {
+    await wallet.wallet.stop();
+    wallet = undefined;
+    Object.assign(receipt, {
+      accountAddress,
+      registryAddress,
+      claimIdentifier: receipt.transactions.at(-1).id,
+    });
+    step('start-independent-sender');
+    // Pass only the local registry and exact name. The sender resolves the
+    // address itself and opens a separate working directory for its wallet.
+    const sender = spawn(
+      process.execPath,
+      [
+        '--experimental-import-meta-resolve',
+        '--import',
+        'tsx',
+        join(import.meta.dirname, 'deposit-sender.mjs'),
+        output,
+        ref,
+        registryAddress,
+        'alice.night',
+      ],
+      {
+        cwd: join(import.meta.dirname, '../../apps/passport-dapp'),
+        stdio: ['ignore', 'inherit', 'inherit'],
+      },
     );
-  });
-  const sent = JSON.parse(readFileSync(join(output, 'sender', 'sender.json')));
-  assert.equal(sent.review.accountAddress, accountAddress);
-  assert.equal(sent.dispatches, 1);
-  const ownerState = acc.ledger(
-    (await providers.publicDataProvider.queryContractState(accountAddress)).data,
-  );
-  const entries = [...ownerState.inbox]
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([, entry]) => entry);
-  const coin = inbox.openInboxEntry(encKeys.secretKey, entries[sent.inboxIndex]);
-  assert.ok(coin);
-  assert.equal(coin.value, BigInt(sent.review.amount));
-  assert.equal(Buffer.from(coin.color).toString('hex'), sent.review.color);
-  const appDependency = (name) =>
-    import(
-      import.meta.resolve(
-        name,
-        pathToFileURL(join(import.meta.dirname, '../../apps/passport-dapp/package.json')).href,
-      )
+    await new Promise((resolve, reject) => {
+      sender.once('error', reject);
+      sender.once('exit', (code, signal) =>
+        code === 0 ? resolve() : reject(Error(`Sender exited ${code}/${signal}`)),
+      );
+    });
+    const sent = JSON.parse(readFileSync(join(output, 'sender', 'sender.json')));
+    assert.equal(sent.review.accountAddress, accountAddress);
+    assert.equal(sent.dispatches, 1);
+    const ownerState = acc.ledger(
+      (await providers.publicDataProvider.queryContractState(accountAddress)).data,
     );
-  const { createGraphqlHoldingIndexer, createMidnightHoldingSource } = await appDependency(
-    '@input-output-hk/mn-passport-adapter-midnight-js',
-  );
-  const holdingIndexer = createGraphqlHoldingIndexer({
-    networkId: 'undeployed',
-    url: process.env.MN_INDEXER_URL,
-    wsUrl: process.env.MN_INDEXER_WS_URL,
-  });
-  const commitment = ledger.ZswapOutput.newContractOwned(
-    {
-      type: sent.review.color,
-      nonce: Buffer.from(coin.nonce).toString('hex'),
-      value: coin.value,
-    },
-    undefined,
-    accountAddress,
-  ).commitment;
-  const outputs = await holdingIndexer.queryShieldedOutputs(sent.txHash);
-  assert.ok(
-    outputs.some(
-      (output) => output.contractAddress === accountAddress && output.commitment === commitment,
-    ),
-  );
-  const held = await createMidnightHoldingSource(holdingIndexer).selectHeldEntries(
-    accountAddress,
-    entries,
-    entries.map((_, index) => (index === sent.inboxIndex ? { kind: 'coin', coin } : null)),
-  );
-  assert.deepEqual(held, [sent.inboxIndex]);
-  encKeys.secretKey.fill(0);
-  Object.assign(receipt, {
-    ownerOpenedReceipt: true,
-    originalOutputMatched: true,
-    verifiedHeld: true,
-    commitment,
-  });
-  step('verified-owner-holding');
-  Object.assign(receipt, {
-    accountAddress,
-    registryAddress,
-    rootOwnedFixture: true,
-    ownerCommitmentMatched: true,
-    resolverMatched: true,
-    registryWaves: waves.length,
-    passed: true,
-  });
-  step('verified-native-named-shielded-deposit');
+    const entries = [...ownerState.inbox]
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([, entry]) => entry);
+    const coin = inbox.openInboxEntry(encKeys.secretKey, entries[sent.inboxIndex]);
+    assert.ok(coin);
+    assert.equal(coin.value, BigInt(sent.review.amount));
+    assert.equal(Buffer.from(coin.color).toString('hex'), sent.review.color);
+    const appDependency = (name) =>
+      import(
+        import.meta.resolve(
+          name,
+          pathToFileURL(join(import.meta.dirname, '../../apps/passport-dapp/package.json')).href,
+        )
+      );
+    const { createGraphqlHoldingIndexer, createMidnightHoldingSource } = await appDependency(
+      '@input-output-hk/mn-passport-adapter-midnight-js',
+    );
+    const holdingIndexer = createGraphqlHoldingIndexer({
+      networkId: 'undeployed',
+      url: process.env.MN_INDEXER_URL,
+      wsUrl: process.env.MN_INDEXER_WS_URL,
+    });
+    const commitment = ledger.ZswapOutput.newContractOwned(
+      {
+        type: sent.review.color,
+        nonce: Buffer.from(coin.nonce).toString('hex'),
+        value: coin.value,
+      },
+      undefined,
+      accountAddress,
+    ).commitment;
+    const outputs = await holdingIndexer.queryShieldedOutputs(sent.txHash);
+    assert.ok(
+      outputs.some(
+        (output) => output.contractAddress === accountAddress && output.commitment === commitment,
+      ),
+    );
+    const held = await createMidnightHoldingSource(holdingIndexer).selectHeldEntries(
+      accountAddress,
+      entries,
+      entries.map((_, index) => (index === sent.inboxIndex ? { kind: 'coin', coin } : null)),
+    );
+    assert.deepEqual(held, [sent.inboxIndex]);
+    encKeys.secretKey.fill(0);
+    Object.assign(receipt, {
+      ownerOpenedReceipt: true,
+      originalOutputMatched: true,
+      verifiedHeld: true,
+      commitment,
+    });
+    step('verified-owner-holding');
+    Object.assign(receipt, {
+      accountAddress,
+      registryAddress,
+      rootOwnedFixture: true,
+      ownerCommitmentMatched: true,
+      resolverMatched: true,
+      registryWaves: waves.length,
+      passed: true,
+    });
+    step('verified-native-named-shielded-deposit');
+  }
 } catch (error) {
   receipt.error = String(error);
   save();

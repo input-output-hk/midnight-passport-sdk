@@ -63,3 +63,25 @@ To display the payment and the independently verified owner result:
 jq '{review, txHash, inboxIndex, dispatches}' review/midnames-deposit-example/sender/sender.json
 jq '{ownerOpenedReceipt, originalOutputMatched, verifiedHeld, commitment}' review/midnames-deposit-example/worker.json
 ```
+
+## Run the named ACC-to-ACC NIGHT payment
+
+Use the same command with a fresh output name beginning with
+`midnames-night-send-`. This mode deploys a second ACC. The `alice.night`
+record has a different profile default so the run can verify operation-specific
+contract routing. The fixture starts the source ACC with 10 smallest NIGHT
+units and requests a payment of 4 to the named account.
+
+The synthetic owner approves a JubJub withdrawal to the controlled wallet and
+the recipient's separate `deposit_unshielded` call in one review. The fixture
+interrupts the flow after withdrawal finality. It reopens the durable intent
+and checks that the deposit consumes the exact original wallet output. A final
+read of the same intent must leave both dispatch counts at one. The journal
+and proof/node receipts are under `review/<output-name>/night-send/` and
+`worker.json`.
+
+If the withdrawal finalized and the deposit has no dispatch fence, continuing
+the original intent can prepare its deposit. After either dispatch fence, check
+the original identifiers. A failed or uncertain original deposit stays fenced
+for operator reconciliation. If the name changes after withdrawal, the flow
+keeps the funds in the controlled wallet and refuses to redirect them.
