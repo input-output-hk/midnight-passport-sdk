@@ -76,6 +76,16 @@ function coinCommitment(account: string, coin: ShieldedCoin): string | undefined
   }
 }
 
+/** Derive a Ledger 9 ACC-owned coin commitment locally from its private description. */
+export function deriveMidnightContractCoinCommitment(
+  account: string,
+  coin: ShieldedCoin,
+): string | undefined {
+  if (!/^[0-9a-f]{64}$/.test(account)) return undefined;
+  const owned = ownedCoin(coin);
+  return owned && coinCommitment(account, owned);
+}
+
 /** Own every candidate before commitment/history, retaining its original inbox position. */
 function holdingCandidates(account: string, opened: readonly (OpenedInboxEntry | null)[]) {
   const candidates: { index: number; commitment: string; coin: ShieldedCoin }[] = [];

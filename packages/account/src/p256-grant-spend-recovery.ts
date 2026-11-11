@@ -1,6 +1,7 @@
 import { utf8ToBytes } from '@noble/hashes/utils.js';
 import { z } from 'zod';
 import { PassportConnectorError } from './errors.js';
+import { finalizedTransactionIdentitySchema as identitySchema } from './finalized-transaction-identity.js';
 import { mutationDigest } from './mutation-codec.js';
 import type { MutationByteStore } from './mutation-types.js';
 import type { P256GrantSpendJournal, P256GrantSpendReservation } from './p256-grant-holder.js';
@@ -26,19 +27,6 @@ const reservationSchema = z.strictObject({
   expectedSpentCommit: hex,
   callArgsSha256: hex,
 });
-const identitySchema = z
-  .strictObject({
-    txHash: hex,
-    bytesSha256: hex,
-    identifiers: z
-      .array(z.string().regex(/^(?:[0-9a-f]{64}|[0-9a-f]{66})$/))
-      .min(1)
-      .max(64)
-      .refine((ids) => new Set(ids).size === ids.length)
-      .readonly(),
-  })
-  .readonly();
-
 export type P256GrantSpendTransaction = z.infer<typeof identitySchema>;
 
 const recordSchema = z.strictObject({

@@ -2,6 +2,14 @@ export * from './codec.js';
 export * from './errors.js';
 export * from './holdings.js';
 export * from './shielded-deposit.js';
+export { createShieldedWithdrawalJournal } from './shielded-withdrawal-journal.js';
+export type {
+  ShieldedWithdrawalDispatch,
+  ShieldedWithdrawalJournal,
+  ShieldedWithdrawalRecord,
+  ShieldedWithdrawalReservation,
+} from './shielded-withdrawal-journal.js';
+export * from './shielded-withdrawal-recovery.js';
 export {
   resumeShieldedDeposit,
   shieldedDepositIntentHash,

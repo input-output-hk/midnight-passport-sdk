@@ -22,6 +22,16 @@ Keep the coin descriptions private. Settling change requires the original
 finalized transaction, a matching commitment and Merkle index, and an
 owner-authorized inbox append sealed to the current viewing public key.
 
+The account package's `createShieldedWithdrawalJournal` stages a single original
+dispatch in protected, crash-durable compare-and-swap storage. Keep the
+request marker in a separate durable store so the original request remains
+reserved if its protected record becomes unavailable. Its read-only
+`recoverShieldedWithdrawal` checks the retained coin against a locally derived
+commitment and compares the original transaction identity, call and effects
+with the host's finalized observation. The host finality source must verify the
+change's insertion index for that transaction. The recovery result contains a
+private coin description for subsequent inbox settlement.
+
 Application contracts may call **into a deployed ACC** under the supported caller-bound design. That does not establish arbitrary ACC → other-contract calls. [See the implementation boundary](/architecture/standards).
 
 ## Repeated deposits and uncertain results
