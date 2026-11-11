@@ -61,8 +61,10 @@ receipt takes precedence over a fresh availability check.
 
 ## Local preparation fixture
 
-**Native qualification pending.** Earlier native receipts cover the paid
-claim and browser recovery using the previous sponsor fixture.
+The separate-process native preparation passed on local commit `72c9fbb`.
+It balanced a one-DUST claim and retained the exact receipt with zero claim
+broadcasts. Earlier native receipts cover the paid claim and browser recovery
+using the previous sponsor fixture.
 
 The standalone fixture passes serialized Ledger 9 proof bytes to the wallet
 balancing adapter. Admission checks the exact registry, root name, owner
@@ -75,5 +77,10 @@ commitment and proved bytes. The quoted NIGHT output accompanies the call in
 the owner-proved offer. Its segment must match the execution phase of the
 registry transcript, and that phase stays pinned during balancing. The sponsor
 supplies the wallet inputs and fees.
-Native transaction admission, fee ceilings and browser dispatch fencing remain
-qualification work.
+The reference Node journal stores the finalized bytes and public receipt
+together. The sponsor must verify current policy and exact transaction
+identifiers, then durably create the dispatch fence before calling the node.
+Concurrent dispatch requests compete for the same fence. Once the fence
+exists, the original receipt stays pending until chain reconciliation, even
+if the submit response is lost. Fee ceilings, two-DUST native admission and
+the browser integration remain qualification work.

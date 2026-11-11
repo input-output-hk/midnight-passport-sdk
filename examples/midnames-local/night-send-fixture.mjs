@@ -1,15 +1,5 @@
 import assert from 'node:assert/strict';
-import {
-  closeSync,
-  existsSync,
-  fsyncSync,
-  linkSync,
-  mkdirSync,
-  openSync,
-  readFileSync,
-  unlinkSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -18,27 +8,7 @@ import { createMidnamesNameService } from '../../apps/passport-dapp/src/midnames
 import { readHostConfirmation } from '../../apps/passport-service/src/host-confirmation.ts';
 import { prepareLocalnetNight } from '../../apps/passport-funding-service/src/night-preparation.ts';
 
-function createOnce(path, bytes) {
-  const temp = path + '.' + randomUUID() + '.pending';
-  const fd = openSync(temp, 'wx', 0o600);
-  try {
-    writeFileSync(fd, bytes);
-    fsyncSync(fd);
-  } finally {
-    closeSync(fd);
-  }
-  try {
-    linkSync(temp, path);
-  } finally {
-    unlinkSync(temp);
-  }
-  const dir = openSync(join(path, '..'), 'r');
-  try {
-    fsyncSync(dir);
-  } finally {
-    closeSync(dir);
-  }
-}
+import { createOnce } from './create-once.mts';
 
 function openJournal(directory) {
   const read = (name) => {

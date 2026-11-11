@@ -88,8 +88,8 @@ keeps the funds in the controlled wallet and refuses to redirect them.
 
 ## Prepare an owner-proved claim for the sponsor
 
-**Native qualification pending.** Earlier native receipts cover the paid
-claim and browser recovery using the previous sponsor fixture.
+Separate-process preparation passed on isolated Ledger 9 at local commit
+`72c9fbb`. The run used one DUST input and made zero claim broadcasts.
 
 Use the same isolated runner with a fresh output name starting with
 `midnames-claim-handoff-`. The setup activates a test ACC and deploys the pinned
@@ -101,7 +101,9 @@ bytes, then supplies the wallet inputs and fees.
 
 The fixture checks that the proved call and registry charge survive balancing
 and writes the prepared public receipt to `review/<output-name>/claim-handoff.json`.
-It leaves the sponsored claim at preparation. The setup transactions run on
+The matching bytes and receipt are retained together in a private journal.
+The journal supports one dispatch after exact receipt acknowledgement and a
+live sponsor policy check. This runner stops after preparation. The setup transactions run on
 the isolated chain. Keep the binary transaction and wallet material local.
 Browser initiation, sponsor dispatch, two-DUST admission and lost-response
 qualification are separate steps.
