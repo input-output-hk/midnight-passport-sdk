@@ -127,10 +127,9 @@ lifecycle-script blocking and the cooldown for other versions still apply.
 
 The generated registry and the Ledger 9 HTTP read format have a local test.
 A read-only check against the existing demo indexer also returned the expected
-missing-contract response for an absent address. A deployed registry with a
-known name, an independent chain read, and a known online profile each require
-their own acceptance evidence. Configure such a profile only after recording
-those pins and checking it against the corresponding chain.
+missing-contract response for an absent address. An online profile requires
+evidence for its deployed registry, a known name, and the corresponding chain
+before it is enabled.
 
 The 2.1.0 tarball includes a read generation and an older managed write
 generation. Its root export can fail at load because the managed module expects
@@ -146,3 +145,16 @@ For a disposable `undeployed` network, set
 above. This selects the independently pinned standalone verifier roster.
 The default profile remains `midnames-2.1.0`. A registry with a different
 roster is refused. See the [standalone preparation recipe](../../examples/midnames-local/README.md).
+
+The standalone qualification activated the pinned ACC and deployed the registry
+in two verifier waves. In two isolated runs the node explicitly rejected the
+positive-price claim with `OutsideTimeToDismiss`. Both transactions used one DUST spend. This matches the
+[Ledger 9 single-DUST admission issue](https://docs.midnight.network/relnotes/ledger-9#a-fee-paid-with-a-single-dust-spend-can-be-rejected).
+A shorter transaction TTL reproduced the rejection. Standalone registration
+and subsequent live lookup remain unqualified.
+
+The host registry reader can inspect the stored owner commitment and target
+from the same verifier-checked snapshot. Generated-state tests check the
+commitment of a claimant distinct from the root owner. Confirmation of a
+future claim requires both fields to match the original intent and evidence
+that the original transaction finalized successfully.

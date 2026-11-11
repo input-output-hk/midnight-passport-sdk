@@ -9,7 +9,7 @@ import { ContractState } from '@midnight-ntwrk/compact-runtime';
 import { PassportNameError } from '@input-output-hk/mn-passport-account/names';
 import { resolveBinding } from '@input-output-hk/mn-passport-contract';
 import { ledger } from '#acc';
-import type { MidnamesReads } from './resolver.js';
+import type { MidnamesProfile, MidnamesReads } from './resolver.js';
 import {
   MIDNAMES_REGISTRY_VERIFIERS,
   STANDALONE_REGISTRY_VERIFIERS,
@@ -18,6 +18,19 @@ import {
 } from './registry-pins.js';
 
 type RegistryProvider = Parameters<typeof getContractLedger>[0];
+type DomainRecord = Parameters<typeof getTargetFromDomainData>[0];
+type DomainTarget = NonNullable<Awaited<ReturnType<MidnamesReads['readTarget']>>>;
+
+function readDomainTarget(domain: DomainRecord): DomainTarget {
+  try {
+    const resolved = getTargetFromDomainData(domain);
+    return resolved.type === 'contract'
+      ? { kind: 'contract', address: resolved.address }
+      : { kind: 'other' };
+  } catch {
+    throw new PassportNameError('InvalidRecord');
+  }
+}
 
 const hex = (value: Uint8Array): string =>
   Array.from(value, (byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -56,7 +69,12 @@ export function createMidnamesLedgerReads(
   networkId: string,
   bindingId: string,
   profileId: MidnamesRegistryProfile = 'midnames-2.1.0',
-): MidnamesReads {
+): MidnamesReads & {
+  readClaim(
+    name: string,
+    profile: Readonly<MidnamesProfile>,
+  ): Promise<{ readonly ownerCommitment: string; readonly target: DomainTarget } | undefined>;
+} {
   const pinnedProfile = registryProfile(profileId, networkId);
   const registryVerifiers = new Map(
     Object.entries(
@@ -66,39 +84,41 @@ export function createMidnamesLedgerReads(
     ),
   );
   const accVerifiers = compatibleVerifiers(bindingId);
+  const readDomain = async (name: string, profile: Readonly<MidnamesProfile>) => {
+    if (profile.networkId !== networkId) throw new PassportNameError('InvalidQuery');
+    // Check the registry fingerprint and resolve from the same observed state.
+    const observed = await provider.queryContractState(profile.registryAddress);
+    if (!observed) throw new PassportNameError('Unavailable');
+    const snapshot: RegistryProvider = {
+      ...provider,
+      async queryContractState(address) {
+        if (address !== profile.registryAddress) throw new PassportNameError('InvalidQuery');
+        return observed;
+      },
+    };
+    const state = await queryContractState(snapshot, profile.registryAddress);
+    if (!state.success) throw new PassportNameError('Unavailable');
+    if (!(await matchesVerifiers(state.data, registryVerifiers)))
+      throw new PassportNameError('InvalidRecord');
+
+    const registry = await getContractLedger(snapshot, profile.registryAddress);
+    if (!registry.success || registry.data.TLD !== 'night')
+      throw new PassportNameError('InvalidRecord');
+    const id = resolveDomainIdInLedger(registry.data, name);
+    if (id === null) return undefined;
+    return registry.data.id_to_data.lookup(id);
+  };
+  const readClaim = async (name: string, profile: Readonly<MidnamesProfile>) => {
+    const domain = await readDomain(name, profile);
+    if (domain === undefined) return undefined;
+    if (domain.owner_public_key.length !== 32) throw new PassportNameError('InvalidRecord');
+    return { ownerCommitment: hex(domain.owner_public_key), target: readDomainTarget(domain) };
+  };
   return {
     async readTarget(name, profile) {
-      if (profile.networkId !== networkId) throw new PassportNameError('InvalidQuery');
-      // Check the registry fingerprint and resolve from the same observed state.
-      const observed = await provider.queryContractState(profile.registryAddress);
-      if (!observed) throw new PassportNameError('Unavailable');
-      const snapshot: RegistryProvider = {
-        ...provider,
-        async queryContractState(address) {
-          if (address !== profile.registryAddress) throw new PassportNameError('InvalidQuery');
-          return observed;
-        },
-      };
-      const state = await queryContractState(snapshot, profile.registryAddress);
-      if (!state.success) throw new PassportNameError('Unavailable');
-      if (!(await matchesVerifiers(state.data, registryVerifiers)))
-        throw new PassportNameError('InvalidRecord');
-
-      const registry = await getContractLedger(snapshot, profile.registryAddress);
-      if (!registry.success || registry.data.TLD !== 'night')
-        throw new PassportNameError('InvalidRecord');
-      const id = resolveDomainIdInLedger(registry.data, name);
-      if (id === null) return undefined;
-      const target = registry.data.id_to_data.lookup(id);
-      try {
-        const resolved = getTargetFromDomainData(target);
-        return resolved.type === 'contract'
-          ? { kind: 'contract', address: resolved.address }
-          : { kind: 'other' };
-      } catch {
-        throw new PassportNameError('InvalidRecord');
-      }
+      return (await readClaim(name, profile))?.target;
     },
+    readClaim,
     async isSupportedAccount(address, requestedNetwork) {
       if (requestedNetwork !== networkId) return false;
       const observed = await provider.queryContractState(address);

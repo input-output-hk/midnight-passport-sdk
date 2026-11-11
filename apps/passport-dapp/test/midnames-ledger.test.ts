@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
@@ -15,13 +16,14 @@ import { MIDNAMES_REGISTRY_VERIFIERS } from '../src/midnames/registry-pins.js';
 
 const profile = { networkId: 'undeployed', namespace: 'night', registryAddress: '11'.repeat(32) };
 const target = '33'.repeat(32);
+const claimSecret = new Uint8Array(32).fill(9);
 const coin = '00'.repeat(32);
 const payment = {
-  cost_short: 0n,
-  cost_med: 0n,
-  cost_long: 0n,
+  cost_short: 1n,
+  cost_med: 1n,
+  cost_long: 1n,
   coin_color: new Uint8Array(32),
-  buy_enabled: false,
+  buy_enabled: true,
 };
 const owner = { bytes: new Uint8Array(32).fill(4) };
 
@@ -41,8 +43,8 @@ async function registryFixture() {
   const { AddressType, Contract, ledger }: typeof import('@midnames/sdk') = await import(
     reader.href
   );
-  const secret = new Uint8Array(32).fill(3);
-  const contract = new Contract({ domainSecretKey: () => [{}, secret] });
+  const contract = new Contract({ domainSecretKey: () => [{}, new Uint8Array(32).fill(3)] });
+  const claimant = new Contract({ domainSecretKey: () => [{}, claimSecret] });
   const bytes = new Uint8Array(32).fill(0x33);
   const start = await contract.initialState(
     createConstructorContext({}, coin),
@@ -80,7 +82,7 @@ async function registryFixture() {
     privateState: {},
     time: 0,
   });
-  const created = await contract.circuits.create_domain(
+  const created = await claimant.circuits.create_domain(
     context,
     owner,
     key,
@@ -163,9 +165,19 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
     address: target,
   });
   assert.equal(queryCount, 1);
+  const ownerTag = Buffer.alloc(32);
+  ownerTag.write('midnight.domains');
+  const expectedOwner = createHash('sha256').update(ownerTag).update(claimSecret).digest('hex');
+  assert.deepEqual(await reads.readClaim('alice.night', profile), {
+    ownerCommitment: expectedOwner,
+    target: { kind: 'contract', address: target },
+  });
+  assert.equal(queryCount, 2);
   await assert.rejects(standalone.readTarget('alice.night', profile), { code: 'InvalidRecord' });
   assert.equal(await reads.readTarget('missing.night', profile), undefined);
+  assert.equal(await reads.readClaim('missing.night', profile), undefined);
   assert.equal(await reads.isSupportedAccount(target, 'undeployed'), false);
   registryState = Buffer.from(state.serialize()).toString('hex');
   await assert.rejects(reads.readTarget('alice.night', profile), { code: 'InvalidRecord' });
+  await assert.rejects(reads.readClaim('alice.night', profile), { code: 'InvalidRecord' });
 });
