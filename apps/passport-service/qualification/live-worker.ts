@@ -77,7 +77,7 @@ import {
 } from '../../../packages/adapter-midnight-js/dist/index.js';
 import { resolveBinding } from '../../../packages/contract/dist/index.js';
 import * as binding from '../../../packages/contract/generated/acc-s3r1.1/index.js';
-import type { PassportPorts } from '../../../packages/account/dist/ports/index.js';
+import type { Chain, PassportPorts } from '../../../packages/account/dist/ports/index.js';
 import type { MutationIntent } from '../../../packages/account/dist/index.js';
 import {
   createSoftwareIdentity,
@@ -552,7 +552,7 @@ if (mode === 'host') {
       return actualProver.proveTx(...args);
     },
   };
-  let chain = createMidnightChain({
+  let chain: Chain = createMidnightChain({
     network,
     binding: binding as any,
     prover,

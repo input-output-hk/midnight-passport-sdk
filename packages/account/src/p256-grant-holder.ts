@@ -12,7 +12,11 @@ import {
   type P256GrantSpendIntent,
   type P256GrantSpendPure,
 } from './p256-grant-spend-check.js';
-import type { Chain, MutationSubmissionContext, P256GrantSpendSource } from './ports/index.js';
+import type {
+  PinnedChain,
+  MutationSubmissionContext,
+  P256GrantSpendSource,
+} from './ports/index.js';
 import type { PasskeyCredential, PasskeySeam, PasskeySignature } from './seams.js';
 import { NetworkIdSchema } from './validation.js';
 
@@ -44,7 +48,7 @@ export interface P256GrantSpendPorts {
   readonly networkId: string;
   readonly pure: P256GrantSpendPure;
   readonly source: P256GrantSpendSource;
-  readonly chain: Pick<Chain, 'call'>;
+  readonly chain: Pick<PinnedChain, 'call' | 'networkId' | 'bindingId'>;
   readonly grantee: PasskeyCredential;
   readonly passkey: Pick<PasskeySeam, 'sign'>;
   readonly journal: P256GrantSpendJournal;
@@ -95,6 +99,7 @@ export async function spendUnshieldedWithP256Grant(
   const { account, color, recipient } = opening.scope;
   const { networkId, pure, source, chain, journal } = ports;
   if (!NetworkIdSchema.safeParse(networkId).success) return invalid('malformed network ID');
+  assertP256GrantPins(networkId, source, chain);
   const attempts = ports.attempts ?? 30;
   if (!Number.isSafeInteger(attempts) || attempts < 1 || attempts > 120)
     return invalid('invalid settlement polling bound');
@@ -106,6 +111,7 @@ export async function spendUnshieldedWithP256Grant(
   const spend = checkP256Spend(parsed.data, ports.grantee, pure);
   const read = () => source.readP256GrantSpendContext(account, opening.grantId);
   const first = await read();
+  assertP256GrantPins(networkId, source, chain);
   assertP256SpendLive(first, spend, now());
   const { issuedAt, nonce, grantEpoch, grantGeneration } = first;
   const isOriginal = (live: typeof first) =>
@@ -114,6 +120,7 @@ export async function spendUnshieldedWithP256Grant(
     live.grantGeneration === grantGeneration;
   const recheck = async () => {
     const latest = await read();
+    assertP256GrantPins(networkId, source, chain);
     assertP256SpendLive(latest, spend, now());
     if (!isOriginal(latest) || latest.nonce !== nonce)
       throw new PassportConnectorError(
@@ -218,6 +225,23 @@ export async function spendUnshieldedWithP256Grant(
     throw new P256GrantSpendUnsettled(requestId, txHash, error);
   }
   throw new P256GrantSpendUnsettled(requestId, txHash);
+}
+
+function assertP256GrantPins(
+  networkId: string,
+  source: P256GrantSpendSource,
+  chain: P256GrantSpendPorts['chain'],
+): void {
+  if (source.networkId !== networkId || chain.networkId !== networkId)
+    throw new PassportConnectorError(
+      'NetworkMismatch',
+      'The grant reader and chain must use the reviewed network.',
+    );
+  if (source.bindingId !== 'acc-s3r1.1' || chain.bindingId !== source.bindingId)
+    throw new PassportConnectorError(
+      'BindingUnsupported',
+      'The grant reader and chain must use acc-s3r1.1.',
+    );
 }
 
 function checkedAssertion(signature: PasskeySignature, rpIdHash: string): PasskeySignature {

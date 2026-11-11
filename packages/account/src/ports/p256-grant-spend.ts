@@ -14,6 +14,8 @@ export interface LiveP256GrantSpendContext extends UnshieldedGrantContext {
 }
 
 export interface P256GrantSpendSource {
+  readonly networkId: string;
+  readonly bindingId: string;
   readP256GrantSpendContext(
     account: string,
     grantId: string,

@@ -18,6 +18,7 @@ import type {
   AccPureCircuits,
   JubjubPureCircuits,
   Chain,
+  PinnedChain,
   FeeSponsor,
   NetworkConfig,
   Prover,
@@ -118,8 +119,7 @@ export function createHeldCoinWitness(heldCoin?: QualifiedShieldedCoin) {
   };
 }
 
-/** Injects the heavy Midnight call pipeline behind the account core's Chain port. */
-export function createMidnightChain(opts: {
+interface MidnightChainOptions {
   network: NetworkConfig;
   binding: MidnightBinding;
   prover: Prover;
@@ -131,7 +131,23 @@ export function createMidnightChain(opts: {
   publicDataProvider?: PublicDataProvider;
   /** A call substitute for local tests. */
   submit?: typeof submitCallTx;
-}): Chain {
+}
+
+/** Injects the Midnight call pipeline behind the account core's Chain port. */
+export function createMidnightChain(opts: MidnightChainOptions): PinnedChain {
+  const network = { ...opts.network };
+  return {
+    ...createChain({ ...opts, network }),
+    get networkId() {
+      return network.networkId;
+    },
+    get bindingId() {
+      return network.bindingId;
+    },
+  };
+}
+
+function createChain(opts: MidnightChainOptions): Chain {
   const { network, binding, prover, sponsor, submitter } = opts;
   if (!/^[0-9a-f]{64}$/i.test(network.manifestSha256)) {
     throw new PassportConnectorError(

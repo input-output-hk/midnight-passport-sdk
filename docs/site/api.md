@@ -279,6 +279,7 @@ amount, prior spent total and stable request ID. Its live source exposes
 `readP256GrantSpendContext`, implemented by `createMidnightGrantSource`.
 The holder verifies the exact origin and RP, live epoch and generation,
 recipient and scope commitments before and after the passkey request.
+The reader and chain must report the reviewed network and binding.
 The value-capable chain receives the same request ID and intent digest
 after the durable journal has reserved them. A prior reservation refuses
 a new passkey request. `P256GrantSpendUnsettled` retains the request ID

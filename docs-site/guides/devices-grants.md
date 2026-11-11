@@ -35,13 +35,14 @@ the prepared fields.
 For an issued grant, call `spendUnshieldedWithP256Grant` with the original
 opening, amount, prior spent total, and a stable request ID. Use
 `createMidnightGrantSource` for the pinned ledger snapshot and a
-credential-pinned WebAuthn signer. The host reviews the exact transfer and
+credential-pinned WebAuthn signer. The SDK checks that the reader and chain
+use the reviewed network and binding. The host reviews the exact transfer and
 provides a value-capable chain port and a durable journal. Reserve the
 request before dispatch and persist the returned transaction hash against
 that reservation. On `MutationUnsettled`, look up the original request
 and verify its receipt and live grant before sending again. Keep the
 opening and passkey material out of audit logs.
 
-The source test uses the generated Compact contract and a software
-authenticator. Browser-provider behavior, native proving, and demo wiring
-remain to be qualified.
+Source qualification used the generated Compact contract with software
+signatures and a separate Chromium virtual authenticator. Native proving,
+real passkey providers and demo wiring remain to be qualified.

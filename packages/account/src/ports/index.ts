@@ -318,6 +318,12 @@ export interface Chain {
   ): Promise<AccLedgerView | undefined>;
 }
 
+/** A chain that exposes the network and binding it uses for each call. */
+export interface PinnedChain extends Chain {
+  readonly networkId: string;
+  readonly bindingId: string;
+}
+
 export interface DeployRequest extends FlowOptions {
   readonly mutation?: MutationSubmissionContext;
   /** The 32-byte boot commitment, and the ACC's `enc_key`. */

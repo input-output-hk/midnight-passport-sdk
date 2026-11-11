@@ -148,6 +148,8 @@ test('P-256 grantee spends on the generated ACC and the SDK retains the original
       },
     },
     chain: {
+      networkId: 'undeployed',
+      bindingId: 'acc-s3r1.1',
       async call(call) {
         assert.equal(call.circuit, 'withdraw_unshielded_with_grant_p256');
         assert.equal(call.mutation?.requestId, requestId);
@@ -159,6 +161,20 @@ test('P-256 grantee spends on the generated ACC and the SDK retains the original
     },
   };
   const intent = { opening: prepared.opening, amount: '4', spentPrev: '0', requestId };
+  await assert.rejects(
+    spendUnshieldedWithP256Grant(intent, {
+      ...ports,
+      chain: { ...ports.chain, networkId: 'preview' },
+    }),
+    { code: 'NetworkMismatch' },
+  );
+  await assert.rejects(
+    spendUnshieldedWithP256Grant(intent, {
+      ...ports,
+      source: { ...source, bindingId: 'other-binding' },
+    }),
+    { code: 'BindingUnsupported' },
+  );
   const otherPolicy = { ...ports.grantee.policy, rp_id_hash: new Uint8Array(32).fill(3) };
   await assert.rejects(
     spendUnshieldedWithP256Grant(intent, {
@@ -172,6 +188,7 @@ test('P-256 grantee spends on the generated ACC and the SDK retains the original
     spendUnshieldedWithP256Grant(intent, {
       ...ports,
       source: {
+        ...source,
         async readP256GrantSpendContext(account, grantId) {
           const live = await read(account, grantId);
           return live && { ...live, callerCommit: new Uint8Array(32).fill(3) };
@@ -221,6 +238,8 @@ test('P-256 grantee spends on the generated ACC and the SDK retains the original
       },
     },
     chain: {
+      networkId: 'undeployed',
+      bindingId: 'acc-s3r1.1',
       async call(call) {
         assert.ok(nextReserved);
         assert.equal(call.mutation?.requestId, next.requestId);
@@ -234,6 +253,7 @@ test('P-256 grantee spends on the generated ACC and the SDK retains the original
     spendUnshieldedWithP256Grant(next, {
       ...nextPorts,
       source: {
+        ...source,
         async readP256GrantSpendContext(account, grantId) {
           const live = await read(account, grantId);
           return live && ++reads === 3 ? { ...live, deviceEpoch: live.deviceEpoch + 1n } : live;

@@ -10,6 +10,7 @@ import type {
   GrantRosterSource,
   NetworkConfig,
   LiveP256GrantSpendContext,
+  P256GrantSpendSource,
 } from '@input-output-hk/mn-passport-account/ports';
 
 type Grant = {
@@ -164,17 +165,15 @@ export function createMidnightGrantSource(
   GrantDetailSource &
   GrantCommitmentSource &
   ActiveReadGrantTargetSource &
-  GrantRosterSource & {
+  GrantRosterSource &
+  P256GrantSpendSource & {
     readGrantSpendContext(
       account: string,
       grantId: string,
     ): Promise<LiveGrantSpendContext | undefined>;
-    readP256GrantSpendContext(
-      account: string,
-      grantId: string,
-    ): Promise<LiveP256GrantSpendContext | undefined>;
   } {
-  const { network, binding, openings } = options;
+  const { binding, openings } = options;
+  const network = { ...options.network };
   if (network.bindingId !== 'acc-s3r1.1')
     throw new PassportConnectorError('BindingUnsupported', 'Unsupported ACC grant binding.');
   const provider =
@@ -243,6 +242,12 @@ export function createMidnightGrantSource(
     };
   };
   return {
+    get networkId() {
+      return network.networkId;
+    },
+    get bindingId() {
+      return network.bindingId;
+    },
     async readGrantRoster(account) {
       const { authNonce, generation, grants } = await snapshot(account);
       return {
