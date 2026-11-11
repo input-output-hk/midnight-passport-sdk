@@ -119,3 +119,10 @@ The independent sender exercise covers a named ACC's shielded receive path on
 `undeployed`. The owner receives and verifies a holding without supplying
 credentials or private state to the sender. See the
 [standalone recipe](../../examples/midnames-local/README.md#run-the-shielded-deposit-by-name).
+
+### Standalone ACC-to-ACC payment by name
+
+The isolated NIGHT fixture reviews both operations together and keeps original
+withdrawal and deposit references. An interrupted withdrawal-to-deposit flow
+remains visible in the journal. See the
+[standalone recipe](../../examples/midnames-local/README.md#run-the-named-acc-to-acc-night-payment).

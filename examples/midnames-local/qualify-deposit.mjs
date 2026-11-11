@@ -54,7 +54,7 @@ const docker = (args) =>
 const info = JSON.parse(docker(['info', '--format', '{{json .}}']));
 assert.ok(info.MemTotal >= 24 * 1024 ** 3);
 const images = isolatedImages(docker, info.Architecture === 'aarch64' ? 'arm64' : 'amd64');
-assert.match(out ?? '', /^midnames-deposit-[a-z0-9-]{1,48}$/);
+assert.match(out ?? '', /^midnames-(?:deposit|night-send)-[a-z0-9-]{1,48}$/);
 const review = join(root, 'review');
 mkdirSync(review, { recursive: true, mode: 0o700 });
 assert.equal(realpathSync(review), review);
@@ -149,7 +149,9 @@ try {
     ...isolationEnvironment(profile),
     MN_NETWORK_ID: 'undeployed',
     MIDNIGHT_NETWORK: 'local',
-    PASSPORT_MIDNAMES_FIXTURE_MODE: 'named-shielded-deposit',
+    PASSPORT_MIDNAMES_FIXTURE_MODE: out.startsWith('midnames-night-send-')
+      ? 'named-night-send'
+      : 'named-shielded-deposit',
   };
   const worker = spawn(
     process.execPath,
