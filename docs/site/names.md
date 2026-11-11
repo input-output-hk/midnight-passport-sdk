@@ -150,8 +150,14 @@ The standalone qualification activated the pinned ACC and deployed the registry
 in two verifier waves. In two isolated runs the node explicitly rejected the
 positive-price claim with `OutsideTimeToDismiss`. Both transactions used one DUST spend. This matches the
 [Ledger 9 single-DUST admission issue](https://docs.midnight.network/relnotes/ledger-9#a-fee-paid-with-a-single-dust-spend-can-be-rejected).
-A shorter transaction TTL reproduced the rejection. Standalone registration
-and subsequent live lookup remain unqualified.
+A shorter transaction TTL reproduced the rejection.
+
+A separate live fixture used the registry root owner to create a name. The
+Midnames 2.1.0 reader returned the expected owner commitment and the exact
+activated ACC address. The reference provider read the same registry through
+the same isolated indexer. This qualifies local lookup with the standalone
+profile. Independent paid registration and online profile qualification remain
+open.
 
 The host registry reader can inspect the stored owner commitment and target
 from the same verifier-checked snapshot. Generated-state tests check the
