@@ -107,6 +107,7 @@ export function createMidnamesLedgerReads(
       throw new PassportNameError('InvalidRecord');
     const id = resolveDomainIdInLedger(registry.data, name);
     if (id === null) return undefined;
+    if (!registry.data.id_to_data.member(id)) throw new PassportNameError('InvalidRecord');
     return registry.data.id_to_data.lookup(id);
   };
   const readClaim = async (name: string, profile: Readonly<MidnamesProfile>) => {

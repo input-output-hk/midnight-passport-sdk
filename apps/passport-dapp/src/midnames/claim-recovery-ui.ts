@@ -29,7 +29,7 @@ export function showClaimRecovery(
   } as const;
 
   const availabilityMessages = {
-    available: 'Available at the last registry read. The name stays open until a claim finalizes.',
+    available: 'Unregistered at the last registry read. Registration is a separate step.',
     taken: 'This name is already registered.',
     unsupported: 'This Passport account is not active on the configured registry’s network.',
   } as const;
@@ -78,21 +78,27 @@ export function showClaimRecovery(
             'Original receipt saved. Check it after the sponsor sends the claim.';
           return;
         }
-        const original = await journal.read(recovery.registryAddress, selected, scope);
+        const readOriginal = () => journal.read(recovery.registryAddress, selected, scope);
+        let original = await readOriginal();
         ensureAccount();
-        if (original?.accountAddress === account.address) {
-          const result = await recovery.check(original);
+        if (!original && checkingAvailability) {
+          const result = await recovery.availability(selected, account.address);
           ensureAccount();
-          status.textContent = messages[result];
-          return;
+          // A different tab may have retained a receipt during the registry read.
+          original = await readOriginal();
+          ensureAccount();
+          if (!original) {
+            status.textContent = availabilityMessages[result];
+            return;
+          }
         }
-        if (original || !checkingAvailability) {
+        if (original?.accountAddress !== account.address) {
           status.textContent = 'Use the original account and receipt to check this claim.';
           return;
         }
-        const result = await recovery.availability(selected, account.address);
+        const result = await recovery.check(original);
         ensureAccount();
-        status.textContent = availabilityMessages[result];
+        status.textContent = messages[result];
       } finally {
         journal.close();
       }
