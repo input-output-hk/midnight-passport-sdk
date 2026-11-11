@@ -1,6 +1,7 @@
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
 import { byId } from '../ui-dom.js';
 import { openClaimJournal } from './claim-journal.js';
+import { showClaimPreparation } from './claim-preparation-ui.js';
 import {
   claimDigest,
   claimReceipt,
@@ -22,6 +23,9 @@ export function showClaimRecovery(
   send.hidden = !recovery.dispatch;
   const check = byId<HTMLButtonElement>('claim-recovery-check');
   const status = byId('claim-recovery-status');
+  const preparation =
+    recovery.preparation &&
+    showClaimPreparation(recovery.preparation, recovery.registryAddress, status, name);
   form.hidden = false;
   let busy = false;
   const messages = {
@@ -40,6 +44,7 @@ export function showClaimRecovery(
     event.preventDefault();
     if (busy) return;
     busy = availability.disabled = retain.disabled = check.disabled = send.disabled = true;
+    preparation?.setBusy(true);
     status.textContent = 'Checking claim details…';
     const account = currentAccount();
     const selected = normalizeClaimName(name.value);
@@ -49,7 +54,8 @@ export function showClaimRecovery(
     const raw = receipt.value;
     name.disabled = receipt.disabled = true;
     const ensureAccount = () => {
-      if (account !== currentAccount()) throw new Error('Account changed.');
+      if (account !== currentAccount() || selected !== normalizeClaimName(name.value))
+        throw new Error('Claim context changed.');
     };
     void (async () => {
       if (account?.networkId !== 'undeployed' || !account.credentialId?.length) {
@@ -65,6 +71,16 @@ export function showClaimRecovery(
       const journal = await openClaimJournal(indexedDB);
       try {
         ensureAccount();
+        if (preparation?.handles(event.submitter)) {
+          await preparation.run(event.submitter, {
+            account,
+            name: selected,
+            credential: scope,
+            journal,
+            ensureAccount,
+          });
+          return;
+        }
         if (saving) {
           if (raw.length > claimReceiptLimit) throw new Error('Receipt is too large.');
           const original = claimReceipt(JSON.parse(raw));
@@ -127,11 +143,13 @@ export function showClaimRecovery(
           'Claim check unavailable. Keep the original receipt and verify the open account, name and registry.';
       })
       .finally(() => {
+        preparation?.setBusy(false);
         busy = availability.disabled = retain.disabled = check.disabled = send.disabled = false;
         name.disabled = receipt.disabled = false;
       });
   });
   return () => {
+    preparation?.clear();
     name.value = '';
     receipt.value = '';
     status.textContent = '';
