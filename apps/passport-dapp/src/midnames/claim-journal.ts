@@ -27,12 +27,13 @@ function readStored(value: unknown): StoredClaim | undefined {
   const { ownerCommitment, quoteSha256 } = row;
   if (
     (!quote && !receipt) ||
-    (quote ? !claimHex(quoteSha256) : quoteSha256 !== undefined) ||
-    (quote && receipt && !matchesDestination(receipt, quote)) ||
+    (quoteSha256 !== undefined && (!quote || !claimHex(quoteSha256))) ||
     (ownerCommitment !== undefined && (!quote || !claimHex(ownerCommitment))) ||
     (quote &&
       receipt &&
-      (receipt.ownerCommitment !== ownerCommitment || receipt.quoteSha256 !== quoteSha256))
+      (!matchesDestination(receipt, quote) ||
+        receipt.ownerCommitment !== ownerCommitment ||
+        receipt.quoteSha256 !== quoteSha256))
   )
     throw new Error('Stored claim is invalid.');
   return {
@@ -112,7 +113,8 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
         if (previous) {
           if (previous.receipt || !previous.quote)
             throw new Error('A different original claim is retained for this name.');
-          if (JSON.stringify(previous.quote) === JSON.stringify(quote)) return previous;
+          if (JSON.stringify(previous.quote) === JSON.stringify(quote))
+            return previous.quoteSha256 === undefined ? { ...previous, quoteSha256 } : previous;
           if (previous.ownerCommitment || previous.quote.expiresAt > Date.now())
             throw new Error('A different original claim is retained for this name.');
         }
@@ -137,6 +139,9 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
       return first;
     },
     async retain(receipt: ClaimReceipt, credential: string, quote?: ClaimQuote) {
+      const saved = await access(receipt.registryAddress, receipt.name, credential);
+      const expected = quote ?? saved?.quote;
+      const digest = expected && (await claimQuoteDigest(expected));
       return (
         await access(receipt.registryAddress, receipt.name, credential, (previous) => {
           if (previous?.receipt) {
@@ -144,16 +149,17 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
               throw new Error('A different original claim is retained for this name.');
             return previous;
           }
-          if (quote && JSON.stringify(previous?.quote) !== JSON.stringify(quote))
+          if (JSON.stringify(previous?.quote) !== JSON.stringify(expected))
             throw new Error('The receipt does not match the original reviewed quote.');
           if (
             previous?.quote &&
             (!matchesDestination(receipt, previous.quote) ||
               previous.ownerCommitment !== receipt.ownerCommitment ||
-              previous.quoteSha256 !== receipt.quoteSha256)
+              (previous.quoteSha256 !== undefined && previous.quoteSha256 !== digest) ||
+              receipt.quoteSha256 !== digest)
           )
             throw new Error('The receipt does not match the original reviewed quote.');
-          return { ...previous, credential, receipt };
+          return { ...previous, credential, receipt, ...(digest && { quoteSha256: digest }) };
         })
       )?.receipt;
     },
