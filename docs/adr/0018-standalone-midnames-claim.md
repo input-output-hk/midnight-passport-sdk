@@ -87,9 +87,12 @@ browser acknowledgement for its one prepared receipt. The isolated native
 runner checks current availability, ACC binding, registry charge and payee,
 exact Ledger identifiers, time to expiry, two DUST spends and a fixture fee
 ceiling before submission. The browser qualification uses a separate owner
-process to serve the proving page and relay requests to the owner-controlled
-local prover. Chromium derives the witness from WebAuthn PRF with a salt
+process to serve the proving page and relay requests to the fixed loopback
+prover. The browser, relay and prover form the trusted owner environment.
+Both the relay and prover receive witness-bearing proof payloads, so the
+prover must be owner-operated and kept separate from the sponsor. Chromium
+derives the witness from WebAuthn PRF with a salt
 scoped to the profile, registry and name. It checks the same commitment
-after reload using the original virtual credential. The witness stays within
-this owner environment. The demo's production credential wiring, backup
+after reload using the original virtual credential. The sponsor receives
+only the proved transaction and public result. The demo's production credential wiring, backup
 and recovery remain separate work.

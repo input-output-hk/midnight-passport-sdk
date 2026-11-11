@@ -124,6 +124,8 @@ sponsor's DUST address. A separate owner process launches a browser page on
 witness, constructs the call, and sends proving requests through the owner
 process to the fixed loopback prover. The browser checks the compiled
 `create_domain` artifact hashes. Both HTTP hops refuse redirects.
+The relay and loopback prover receive sensitive proof payloads and run within
+the owner trust boundary. Use a prover the owner controls.
 The owner process returns the proved transaction and public commitment to
 the sponsor after checking that the same credential yields the same commitment
 after a reload. The sponsor rechecks the registry price, payee, name
@@ -135,6 +137,11 @@ on the isolated indexer. Inspect `native-claim-dispatch.json` and
 `browser-claim-recovery.json` under the run's private evidence directory.
 This test uses a virtual owner credential. Production credential enrollment
 and recovery after loss of that credential need separate qualification.
+
+Use an output name starting with `midnames-claim-owner-browser-` to prepare
+and retain the browser-proved claim without dispatch. This mode exercises
+the proof, credential continuity and sponsor balancing independently of
+the fixture's two-DUST admission test.
 
 Save the prepared public receipt while the matching ACC is open, then select
 **Send prepared claim**. **Check original claim** reads the original receipt

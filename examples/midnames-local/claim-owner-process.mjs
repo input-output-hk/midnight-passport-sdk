@@ -24,7 +24,15 @@ export function proveInOwnerProcess(input, browser = false) {
       if (
         reply &&
         Object.keys(reply).length === 1 &&
-        ['initialize', 'prepare', 'prove'].includes(reply.failedAt)
+        [
+          'initialize',
+          'prepare',
+          'prove',
+          'browser-build',
+          'browser-enroll',
+          'browser-prove',
+          'browser-recover',
+        ].includes(reply.failedAt)
       ) {
         invalid = true;
         failedAt = reply.failedAt;

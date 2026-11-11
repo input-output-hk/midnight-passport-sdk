@@ -116,7 +116,12 @@ async function withNamingWitness(input, id, work) {
     },
   });
   const result = assertion?.getClientExtensionResults().prf?.results?.first;
-  const witness = result && new Uint8Array(result);
+  // View the authenticator's original storage even if a host returns a typed view.
+  const witness =
+    result &&
+    (ArrayBuffer.isView(result)
+      ? new Uint8Array(result.buffer, result.byteOffset, result.byteLength)
+      : new Uint8Array(result));
   try {
     if (hex(new Uint8Array(assertion?.rawId ?? [])) !== id || witness?.length !== 32)
       throw new Error('The original naming credential did not provide a PRF witness.');

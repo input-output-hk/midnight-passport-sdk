@@ -1,5 +1,12 @@
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { join, dirname } from 'node:path';
 import { Readable } from 'node:stream';
 
@@ -73,7 +80,7 @@ function ownerMiddleware(assets) {
   };
 }
 
-async function ownerPage(input) {
+export async function ownerPage(input, setPhase = () => {}) {
   assert.equal(input.proverUrl, endpoint);
   assert.equal(input.indexerUrl, 'http://127.0.0.1:18108/api/v4/graphql');
   assert.equal(input.indexerWsUrl, 'ws://127.0.0.1:18108/api/v4/graphql/ws');
@@ -83,107 +90,119 @@ async function ownerPage(input) {
     load('playwright-core'),
   ]);
   const root = mkdtempSync(join(dirname(input.modulePath), 'chromium-owner-'));
-  symlinkSync(join(input.ref, 'node_modules'), join(root, 'node_modules'));
-  copyFileSync(input.modulePath, join(root, 'registry.mjs'));
-  for (const name of ['registry-manifest.json', 'claim-owner-browser-entry.mjs'])
-    copyFileSync(new URL(name, import.meta.url), join(root, name));
-  writeFileSync(
-    join(root, 'index.html'),
-    '<!doctype html><title>Midnames owner qualification</title><script type="module" src="/claim-owner-browser-entry.mjs"></script>',
-  );
-  const config = {
-    root,
-    configFile: false,
-    logLevel: 'silent',
-    plugins: [wasm(), ownerMiddleware(input.assets)],
-    resolve: {
-      alias: [
-        {
-          find: /^(node:)?buffer$/,
-          replacement: new URL('node_modules/buffer/index.js', app).pathname,
-        },
-        { find: /^(node:)?assert$/, replacement: new URL('src/shims/assert.ts', app).pathname },
-        { find: 'isomorphic-ws', replacement: new URL('src/shims/ws.ts', app).pathname },
-      ],
-    },
-    build: { target: 'esnext' },
-    preview: { port: 0, host: 'localhost' },
-  };
-  await build(config);
-  const site = await preview(config);
-  let browser;
   try {
-    browser = await chromium.launch({
-      executablePath:
-        process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ??
-        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    });
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    const cdp = await context.newCDPSession(page);
-    await cdp.send('WebAuthn.enable');
-    await cdp.send('WebAuthn.addVirtualAuthenticator', {
-      options: {
-        protocol: 'ctap2',
-        transport: 'internal',
-        hasResidentKey: true,
-        hasUserVerification: true,
-        isUserVerified: true,
-        hasPrf: true,
-      },
-    });
-    const publicInput = {
-      registryAddress: input.registryAddress,
-      accountAddress: input.accountAddress,
-      indexerUrl: input.indexerUrl,
-      indexerWsUrl: input.indexerWsUrl,
-      walletKeys: input.walletKeys,
-      childOwnerAddress: input.childOwnerAddress,
-      rootId: input.rootId,
-      label: input.label,
-      price: input.price,
-    };
-    await page.goto(site.resolvedUrls.local[0]);
-    await page.waitForFunction(() => globalThis.midnamesOwner, undefined, { timeout: 15_000 });
-    const id = await page.evaluate(() => globalThis.midnamesOwner.enroll());
-    const result = await page.evaluate(
-      ({ scope, credential }) => globalThis.midnamesOwner.prove(scope, credential),
-      {
-        scope: publicInput,
-        credential: id,
-      },
+    symlinkSync(join(input.ref, 'node_modules'), join(root, 'node_modules'));
+    copyFileSync(input.modulePath, join(root, 'registry.mjs'));
+    for (const name of ['registry-manifest.json', 'claim-owner-browser-entry.mjs'])
+      copyFileSync(new URL(name, import.meta.url), join(root, name));
+    writeFileSync(
+      join(root, 'index.html'),
+      '<!doctype html><title>Midnames owner qualification</title><script type="module" src="/claim-owner-browser-entry.mjs"></script>',
     );
-    await page.reload();
-    await page.waitForFunction(() => globalThis.midnamesOwner, undefined, { timeout: 15_000 });
-    const restored = await page.evaluate(
-      ({ scope, credential }) => globalThis.midnamesOwner.commitment(scope, credential),
-      {
-        scope: publicInput,
-        credential: id,
+    const config = {
+      root,
+      configFile: false,
+      logLevel: 'silent',
+      plugins: [wasm(), ownerMiddleware(input.assets)],
+      resolve: {
+        alias: [
+          {
+            find: /^(node:)?buffer$/,
+            replacement: new URL('node_modules/buffer/index.js', app).pathname,
+          },
+          { find: /^(node:)?assert$/, replacement: new URL('src/shims/assert.ts', app).pathname },
+          { find: 'isomorphic-ws', replacement: new URL('src/shims/ws.ts', app).pathname },
+        ],
       },
-    );
-    assert.equal(restored, result.ownerCommitment);
-    return {
-      ownerCommitment: result.ownerCommitment,
-      bytes: Uint8Array.from(result.bytes),
-      restored: true,
+      build: { target: 'esnext' },
+      preview: { port: 0, host: 'localhost' },
     };
-  } finally {
+    setPhase('browser-build');
+    await build(config);
+    const site = await preview(config);
+    let browser;
     try {
-      await browser?.close();
+      browser = await chromium.launch({
+        executablePath:
+          process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ??
+          '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      });
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('WebAuthn.enable');
+      await cdp.send('WebAuthn.addVirtualAuthenticator', {
+        options: {
+          protocol: 'ctap2',
+          transport: 'internal',
+          hasResidentKey: true,
+          hasUserVerification: true,
+          isUserVerified: true,
+          hasPrf: true,
+        },
+      });
+      const publicInput = {
+        registryAddress: input.registryAddress,
+        accountAddress: input.accountAddress,
+        indexerUrl: input.indexerUrl,
+        indexerWsUrl: input.indexerWsUrl,
+        walletKeys: input.walletKeys,
+        childOwnerAddress: input.childOwnerAddress,
+        rootId: input.rootId,
+        label: input.label,
+        price: input.price,
+      };
+      await page.goto(site.resolvedUrls.local[0]);
+      await page.waitForFunction(() => globalThis.midnamesOwner, undefined, { timeout: 15_000 });
+      setPhase('browser-enroll');
+      const id = await page.evaluate(() => globalThis.midnamesOwner.enroll());
+      setPhase('browser-prove');
+      const result = await page.evaluate(
+        ({ scope, credential }) => globalThis.midnamesOwner.prove(scope, credential),
+        {
+          scope: publicInput,
+          credential: id,
+        },
+      );
+      setPhase('browser-recover');
+      await page.reload();
+      await page.waitForFunction(() => globalThis.midnamesOwner, undefined, { timeout: 15_000 });
+      const restored = await page.evaluate(
+        ({ scope, credential }) => globalThis.midnamesOwner.commitment(scope, credential),
+        {
+          scope: publicInput,
+          credential: id,
+        },
+      );
+      assert.equal(restored, result.ownerCommitment);
+      return {
+        ownerCommitment: result.ownerCommitment,
+        bytes: Uint8Array.from(result.bytes),
+        restored: true,
+      };
     } finally {
-      await new Promise((resolve) => site.httpServer.close(resolve));
+      try {
+        await browser?.close();
+      } finally {
+        await site.close();
+      }
     }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 }
 
-assert.ok(process.send);
-process.once('message', (input) => {
-  void ownerPage(input)
-    .catch((error) => {
-      console.error('Midnames owner qualification failed:', error?.message);
-      process.exitCode = 1;
+if (process.send) {
+  process.once('message', (input) => {
+    let failedAt = 'initialize';
+    void ownerPage(input, (phase) => {
+      failedAt = phase;
     })
-    .then((result) => new Promise((resolve) => process.send(result ?? null, resolve)))
-    .finally(() => process.disconnect?.());
-});
+      .catch(() => {
+        process.exitCode = 1;
+        return { failedAt };
+      })
+      .then((result) => new Promise((resolve) => process.send(result, resolve)))
+      .finally(() => process.disconnect?.());
+  });
+}

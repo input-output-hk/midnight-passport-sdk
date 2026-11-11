@@ -62,9 +62,16 @@ const [
 ]);
 const mode = process.env.PASSPORT_MIDNAMES_FIXTURE_MODE;
 assert.ok(
-  ['named-shielded-deposit', 'named-night-send', 'claim-handoff', 'claim-browser'].includes(mode),
+  [
+    'named-shielded-deposit',
+    'named-night-send',
+    'claim-handoff',
+    'claim-browser',
+    'claim-owner-browser',
+  ].includes(mode),
 );
-const claimFixture = mode === 'claim-handoff' || mode === 'claim-browser';
+const browserOwner = mode === 'claim-owner-browser' || mode === 'claim-browser';
+const claimFixture = mode === 'claim-handoff' || browserOwner;
 const receipt = { transactions: [], steps: [], passed: false, mode };
 const save = () => saveIsolationReceipt(join(output, 'worker.json'), receipt);
 const step = (label) => {
@@ -347,6 +354,7 @@ try {
       parentDomain: observed.id_to_data.lookup(rootId),
       step,
       dispatch,
+      browserOwner,
     });
     Object.assign(receipt, { ...handoff, passed: true });
     step(mode === 'claim-browser' ? 'verified-browser-claim' : 'verified-prepared-claim-handoff');
