@@ -116,7 +116,14 @@ host's live sponsor policy to that origin. Set `VITE_MIDNAMES_CLAIM_SPONSOR=1`
 with the standalone registry configuration and open the demo on `127.0.0.1`.
 
 For browser preparation, supply the handler's optional preparation ports and
-compose `createLocalClaimPreparation` with an owner-side proving function.
+start the owner-side server with `startDemoOwnerBundle`. It builds the owner
+module from the pinned generated registry and serves it on the demo origin
+through the Vite proxy. Start the demo on `http://localhost:5173` with both
+`VITE_MIDNAMES_CLAIM_SPONSOR=1` and `VITE_MIDNAMES_CLAIM_PREPARATION=1`.
+Set `PASSPORT_MIDNAMES_OWNER_PORT` and `PASSPORT_MIDNAMES_SPONSOR_PORT`
+to the separate local servers' ports. The owner server requires the sponsor's
+public wallet keys and the standalone registry and indexer configuration.
+Keep its relay and prover under the account owner's control.
 The browser transport accepts the literal loopback origins `localhost` and
 `127.0.0.1`. Keep the handler and browser on the same origin. The sponsor
 retains the exact quote, checks its live terms before balancing, and records

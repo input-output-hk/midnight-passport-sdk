@@ -44,6 +44,7 @@ import { demoOperationGuard } from './operation-guard.js';
 import { createMockNameService } from './mock-name-service.js';
 import { showDemoNameService, showNameConfigurationError } from './name-service.js';
 import { configureMidnames } from './midnames/config.js';
+import { demoClaimPreparation } from './midnames/claim-demo-owner.js';
 import { showClaimRecovery } from './midnames/claim-recovery-ui.js';
 import { createDemoWorkspace } from './workspace.js';
 import { ActivityPanel } from './activity-controls.js';
@@ -252,6 +253,10 @@ try {
     },
     network,
     BINDING_ID,
+    demoClaimPreparation(
+      import.meta.env.VITE_MIDNAMES_CLAIM_PREPARATION,
+      () => appState.primaryAccount,
+    ),
   );
   showDemoNameService(naming ?? createMockNameService(network), network);
   if (naming?.recovery)
