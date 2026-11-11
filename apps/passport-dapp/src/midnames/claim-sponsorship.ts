@@ -1,4 +1,10 @@
-import { Proof, Transaction, type Effects } from '@midnightntwrk/ledger-v9';
+import {
+  Proof,
+  Transaction,
+  type Effects,
+  type Signaturish,
+  type UnshieldedOffer,
+} from '@midnightntwrk/ledger-v9';
 import { findStandaloneClaimCall } from './claim-call.js';
 import {
   claimDigest,
@@ -48,6 +54,24 @@ export function matchesRegistryCharge(effects: Effects, quote: PaidClaimQuote): 
     effects.claimedContractCalls.length === 0 &&
     effects.shieldedMints.size === 0 &&
     effects.unshieldedMints.size === 0
+  );
+}
+
+export function matchesOwnerOffer(
+  offer: UnshieldedOffer<Signaturish> | undefined,
+  quote: PaidClaimQuote,
+): boolean {
+  const outputs = offer?.outputs ?? [];
+  const [output] = outputs;
+  return (
+    !!offer &&
+    offer.inputs.length === 0 &&
+    offer.signatures.length === 0 &&
+    outputs.length === 1 &&
+    !!output &&
+    output.type === nightType &&
+    output.owner === quote.registryPayee &&
+    output.value === quote.night
   );
 }
 
@@ -105,10 +129,10 @@ export async function prepareSponsoredClaim(
     owner.intents?.size !== 1 ||
     !intent ||
     intent.dustActions ||
-    intent.guaranteedUnshieldedOffer ||
+    !matchesOwnerOffer(intent.guaranteedUnshieldedOffer, expected) ||
     intent.fallibleUnshieldedOffer
   )
-    throw new Error('Owner proof must contain only the registration call.');
+    throw new Error('Owner proof must contain only the registration call and its quoted output.');
   const ownerCall = checkedCall(owner, expected);
   const ownerProof = await claimDigest(ownerCall.proof.serialize());
   const sponsored = await balance(original);

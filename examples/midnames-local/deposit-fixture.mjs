@@ -295,21 +295,16 @@ try {
     const { qualifyClaimHandoff } = await import('./claim-handoff-fixture.mjs');
     const handoff = await qualifyClaimHandoff({
       output,
+      ref,
+      assets,
+      modulePath,
+      registryManifestHash: pins.compiled['compiler/contract-manifest.json'],
       registryAddress,
       accountAddress,
-      regProviders,
-      contracts,
+      walletProvider: regProviders.walletProvider,
       ledger,
-      compiled,
-      registry,
       rootId,
-      owner,
       parentDomain: observed.id_to_data.lookup(rootId),
-      target,
-      noDefault,
-      price,
-      fields,
-      privateStateId,
       step,
     });
     Object.assign(receipt, { ...handoff, passed: true });

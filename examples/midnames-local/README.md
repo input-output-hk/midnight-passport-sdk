@@ -95,13 +95,13 @@ Use the same isolated runner with a fresh output name starting with
 `midnames-claim-handoff-`. The setup activates a test ACC and deploys the pinned
 registry. The fixture creates a distinct synthetic claimant for
 `charlie.night` and reads the NIGHT price and payee from the registry root.
-Its local prover produces the claim. The sponsor wallet adapter receives
-proved transaction bytes and supplies balancing and fees.
+A separate owner process builds the claim and uses the isolated local prover.
+The sponsor wallet adapter receives the public owner commitment and proved
+bytes, then supplies the wallet inputs and fees.
 
 The fixture checks that the proved call and registry charge survive balancing
 and writes the prepared public receipt to `review/<output-name>/claim-handoff.json`.
 It leaves the sponsored claim at preparation. The setup transactions run on
 the isolated chain. Keep the binary transaction and wallet material local.
-This is a single-process proof handoff fixture. Browser initiation, sponsor
-dispatch, two-DUST admission and lost-response qualification are separate
-steps.
+Browser initiation, sponsor dispatch, two-DUST admission and lost-response
+qualification are separate steps.
