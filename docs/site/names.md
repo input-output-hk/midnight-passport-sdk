@@ -197,13 +197,17 @@ and the registry inserts linking the name to its domain ID, owner commitment
 and contract target. It then checks the current owner and activated ACC target. An absent, partial, aggregated or changed transaction stays pending.
 A mismatched owner or target is reported as a conflict.
 
-This recovery surface reads the isolated indexer. Claim preparation and
-submission run in a separate sponsor environment. Never paste passkey
-material, keys, raw transaction bytes or witnesses into the form. Recovering
-the receipt does not recover ownership after loss of the name-owner secret.
-The optional loopback sponsor fixture also accepts an explicit **Send prepared
-claim** action for a receipt already saved to the open credential. The result
-stays pending until the original receipt verifies against the indexer.
+The isolated fixture prepares the proof in a separate owner process. The
+sponsor balances it and accepts an explicit **Send prepared claim** action
+for a receipt already saved to the open credential. It acknowledges the
+durable dispatch record while the wallet waits for the node. The demo shows
+the result as pending until the original receipt verifies against the indexer.
+
+In the standalone qualification, Chromium dropped the acknowledgement after
+one sponsored submission with two DUST spends. After restarting Chromium, the
+demo recovered the same claim from the live indexer. This run used a synthetic
+browser credential. The form accepts the public receipt. Name ownership
+depends on retaining the separate owner secret.
 The [browser claim design](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0018-standalone-midnames-claim.md) describes
 the next proof and sponsor checks for browser-initiated onboarding.
 

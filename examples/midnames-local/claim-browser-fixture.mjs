@@ -58,14 +58,6 @@ export async function qualifyBrowserClaim({ output, quote, receipt, ledger, subm
   };
   const save = () => saveIsolationReceipt(join(output, 'native-claim-dispatch.json'), evidence);
   let submission;
-  const submitOriginal = async (tx) => {
-    try {
-      evidence.originalSubmittedId = String(await submit({ version: 'v9', tx }));
-    } catch {
-      evidence.submitOutcome = 'unknown';
-    }
-    save();
-  };
   const handler = createClaimSponsorHandler('http://127.0.0.1:15189', output, {
     async authorize(bytes, acknowledged) {
       assert.ok(quote.night > 0n && quote.night <= fixtureNightCeiling);
@@ -87,11 +79,16 @@ export async function qualifyBrowserClaim({ output, quote, receipt, ledger, subm
     async submit(bytes) {
       const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
       evidence.dispatches += 1;
+      evidence.submitOutcome = 'pending';
       save();
       // The journal has fenced the original. Let HTTP acknowledge that
       // pending state while the wallet observes the isolated node.
-      submission = submitOriginal(tx);
-      void submission.catch(() => {});
+      submission = Promise.resolve()
+        .then(() => submit({ version: 'v9', tx }))
+        .then(
+          (id) => ({ submitOutcome: 'reported', originalSubmittedId: String(id) }),
+          () => ({ submitOutcome: 'unknown' }),
+        );
     },
   });
   const server = createServer((request, response) => {
@@ -102,12 +99,13 @@ export async function qualifyBrowserClaim({ output, quote, receipt, ledger, subm
       () => response.destroy(),
     );
   });
+  let browser;
   try {
     server.listen(0, '127.0.0.1');
     await once(server, 'listening');
     await runBrowser(output, server.address().port);
     assert.equal(evidence.dispatches, 1);
-    const browser = JSON.parse(readFileSync(join(output, 'browser-claim-recovery.json'), 'utf8'));
+    browser = JSON.parse(readFileSync(join(output, 'browser-claim-recovery.json'), 'utf8'));
     assert.equal(browser.originalDigest, receipt.transaction.sha256);
     assert.equal(browser.browserSubmissionRequests, 1);
     assert.ok(
@@ -115,7 +113,6 @@ export async function qualifyBrowserClaim({ output, quote, receipt, ledger, subm
         browser.lostResponse &&
         browser.alternateCredentialRefused,
     );
-    return { ...evidence, browser, ownerProvedInSeparateProcess: true };
   } finally {
     if (server.listening) {
       server.close();
@@ -125,13 +122,18 @@ export async function qualifyBrowserClaim({ output, quote, receipt, ledger, subm
     if (submission) {
       const finished = new AbortController();
       try {
-        await Promise.race([
+        const observed = await Promise.race([
           submission,
-          delay(30_000, undefined, { signal: finished.signal, ref: false }).catch(() => {}),
+          delay(30_000, undefined, { signal: finished.signal }),
         ]);
+        if (observed) {
+          Object.assign(evidence, observed);
+          save();
+        }
       } finally {
         finished.abort();
       }
     }
   }
+  return { ...evidence, browser, ownerProvedInSeparateProcess: true };
 }
