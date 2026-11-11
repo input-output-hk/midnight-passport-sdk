@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { createHash } from 'node:crypto';
 import type { HostMutationStep, HostConfirmation } from '@input-output-hk/mn-passport-service';
 import { fetchJsonBounded } from './bounded-json.ts';
 
@@ -18,7 +19,13 @@ const includedRecord = z
       .string()
       .max(RAW_HEX_LIMIT)
       .regex(/^(?:[0-9a-f]{2})+$/),
-    block: z.object({ height: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER) }),
+    block: z.object({
+      height: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+      hash: z
+        .string()
+        .regex(/^[0-9a-f]{64}$/)
+        .optional(),
+    }),
   })
   .passthrough();
 const confirmationResponse = z.object({
@@ -45,13 +52,14 @@ export interface HostConfirmationRuntime {
   readonly fetch?: typeof fetch;
 }
 const QUERY =
-  'query HostMutationReceipt($offset: TransactionOffset!) { transactions(offset:$offset) { __typename protocolVersion raw hash block { height } ... on RegularTransaction { identifiers transactionResult { status } } } }';
+  'query HostMutationReceipt($offset: TransactionOffset!) { transactions(offset:$offset) { __typename protocolVersion raw hash block { height hash } ... on RegularTransaction { identifiers transactionResult { status } } } }';
 
 /** Unknown, malformed, oversized or interrupted observations never confirm or replay a mutation. */
 export async function readHostConfirmation(
-  step: HostMutationStep,
+  step: Pick<HostMutationStep, 'identifiers'> & Partial<HostMutationStep>,
   runtime: HostConfirmationRuntime,
-): Promise<HostConfirmation | undefined> {
+  exact?: { readonly txHash: string; readonly bytesSha256: string },
+): Promise<(HostConfirmation & { readonly blockHash?: string }) | undefined> {
   const identifier = step.submissionId ?? step.identifiers[0];
   if (!identifier) return undefined;
   const controller = new AbortController();
@@ -63,6 +71,7 @@ export async function readHostConfirmation(
       {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
+        ...(exact && { redirect: 'error' as const }),
         body: JSON.stringify({ query: QUERY, variables: { offset: { identifier } } }),
         signal: controller.signal,
       },
@@ -78,19 +87,36 @@ export async function readHostConfirmation(
       !record.identifiers.includes(identifier)
     )
       return undefined;
+    const raw = Uint8Array.from(Buffer.from(record.raw, 'hex'));
+    if (
+      exact &&
+      (!record.block.hash ||
+        record.hash !== exact.txHash ||
+        createHash('sha256').update(raw).digest('hex') !== exact.bytesSha256)
+    )
+      return undefined;
     const transaction = runtime.ledger.Transaction.deserialize(
       'signature',
       'proof',
       'binding',
-      Uint8Array.from(Buffer.from(record.raw, 'hex')),
+      raw,
     );
     const includedIds = transaction.identifiers();
     if (
       !step.identifiers.every((id) => includedIds.includes(id)) ||
+      (exact &&
+        (includedIds.length !== step.identifiers.length ||
+          !step.identifiers.every((id, index) => includedIds[index] === id))) ||
       transaction.transactionHash() !== record.hash
     )
       return undefined;
-    return { identifier, txHash: record.hash, blockHeight: record.block.height, succeeded: true };
+    return {
+      identifier,
+      txHash: record.hash,
+      blockHeight: record.block.height,
+      succeeded: true,
+      ...(exact && record.block.hash && { blockHash: record.block.hash }),
+    };
   } catch {
     return undefined;
   } finally {

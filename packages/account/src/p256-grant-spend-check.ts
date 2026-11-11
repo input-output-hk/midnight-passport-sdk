@@ -18,7 +18,7 @@ export const p256GrantSpendSchema = z
     opening: p256GrantOpeningSchema,
     amount: grantDecimal,
     spentPrev: grantDecimal,
-    requestId: z.uuid(),
+    requestId: z.uuid().refine((value) => value === value.toLowerCase()),
   })
   .readonly();
 

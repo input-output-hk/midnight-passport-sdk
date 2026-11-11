@@ -29,6 +29,7 @@ export type {
   PreparedP256UnshieldedGrant,
 } from './p256-grant-opening.js';
 export * from './p256-grant-holder.js';
+export * from './p256-grant-spend-recovery.js';
 export * from './grant-opening-check.js';
 export * from './grant-holder.js';
 export * from './jubjub-grant-issue.js';

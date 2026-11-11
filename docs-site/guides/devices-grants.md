@@ -39,9 +39,14 @@ credential-pinned WebAuthn signer. The SDK checks that the reader and chain
 use the reviewed network and binding. The host reviews the exact transfer and
 provides a value-capable chain port and a durable journal. Reserve the
 request before dispatch and persist the returned transaction hash against
-that reservation. On `MutationUnsettled`, look up the original request
-and verify its receipt and live grant before sending again. Keep the
-opening and passkey material out of audit logs.
+that reservation. Use `createP256GrantSpendJournal` with a dedicated durable compare-and-swap
+store and wrap the value wallet submitter with
+`createMidnightP256GrantSubmitter`. The wrapper records the finalized
+transaction hash, exact byte digest and identifiers before its one send.
+On `MutationUnsettled`, call `recoverP256GrantSpend` with the original
+request ID and an observer for the same network. A matching successful
+transaction must be in a canonical finalized block. Keep the opening and
+passkey material out of audit logs.
 
 Source qualification used the generated Compact contract with software
 signatures and a separate Chromium virtual authenticator. Native proving,

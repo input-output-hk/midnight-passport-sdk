@@ -176,3 +176,47 @@ test('submission progress retains the original accepted ID before a later call f
   });
   assert.equal(seen.filter((e) => e.id === submitted.id).length, 2);
 });
+
+test('grant submitter rejects an unrelated finalized transaction before staging or sending', async () => {
+  const { createMidnightP256GrantSubmitter } =
+    await import('../packages/adapter-midnight-js/dist/index.js');
+  const bytes = (
+    await ledger.Transaction.fromParts('undeployed').prove(
+      {
+        check: async () => [],
+        prove: async () => new Uint8Array(),
+        lookupKey: async () => undefined,
+      },
+      ledger.CostModel.initialCostModel(),
+    )
+  )
+    .bind()
+    .serialize();
+  const reservation = {
+    requestId: '549bd843-0a8f-40af-9b6f-d9eb8cf48871',
+    intentSha256: '11'.repeat(32),
+    account: '22'.repeat(32),
+    grantId: '33'.repeat(32),
+    networkId: 'undeployed',
+    issuedAt: '0',
+    previousNonce: '0',
+    expectedSpentCommit: '44'.repeat(32),
+  };
+  const submitter = createMidnightP256GrantSubmitter({
+    networkId: reservation.networkId,
+    receipts: {
+      readRecord: async () => ({ reservation }),
+      stageTransaction: async () => assert.fail('unrelated call was staged'),
+    },
+    submitter: { submit: async () => assert.fail('unrelated call was sent') },
+  });
+  const context = {
+    address: reservation.account,
+    circuit: 'withdraw_unshielded_with_grant_p256',
+    mutation: { requestId: reservation.requestId, intentSha256: reservation.intentSha256 },
+  };
+  await assert.rejects(submitter.submit(bytes, { ...context, circuit: 'deposit_unshielded' }), {
+    code: 'BindingUnsupported',
+  });
+  await assert.rejects(submitter.submit(bytes, context), { code: 'MutationUnsettled' });
+});

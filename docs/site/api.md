@@ -283,9 +283,20 @@ The reader and chain must report the reviewed network and binding.
 The value-capable chain receives the same request ID and intent digest
 after the durable journal has reserved them. A prior reservation refuses
 a new passkey request. `P256GrantSpendUnsettled` retains the request ID
-and transaction hash when known. Use the host's original receipt and live
-grant to resolve it. The source qualification uses the generated contract
-and software passkeys.
+and transaction hash when known.
+
+For restart recovery, construct `createP256GrantSpendJournal(store)` from
+a dedicated crash-durable `MutationByteStore`. The Node service package
+provides `fileMutationByteStore(directory)` for a private local POSIX
+directory. Use `createMidnightP256GrantSubmitter` as the value chain's
+submitter. It admits one matching Ledger 9 call and persists the original
+transaction hash, exact byte digest and identifier list before forwarding.
+The journal retains no raw transaction or private opening.
+`recoverP256GrantSpend(requestId, journal, finality)` is an observation
+operation. The standalone service's finality helper verifies the exact
+indexed bytes and identifiers, the successful transaction result, and the
+canonical block at or below the node's finalized head. Missing or changed
+observations remain unknown. An unknown response never authorizes resubmission.
 
 `createMidnightGrantSource` also exposes `GrantCommitmentSource.readGrantCommitment(account, grantId)`, returning the live ACC object's commitment, read-key hash, read flag, active flag and auth nonce from one checked snapshot. Both grant publishers require this port and reject a staged opening that differs from the current on-chain grant before appending or marking it published. Hosts pass it as `grantCommitments` alongside `grants` and `grantJournal`; the inbox alone is not proof of the current grant's scope.
 

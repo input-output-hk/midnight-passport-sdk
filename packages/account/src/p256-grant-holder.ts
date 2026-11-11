@@ -1,4 +1,4 @@
-import type { FlowOptions } from '@input-output-hk/mn-passport-protocol';
+import { P256_GRANT_SPEND_CIRCUIT, type FlowOptions } from '@input-output-hk/mn-passport-protocol';
 import { toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { grantScopeInvalid as invalid } from './grant-issue-fields.js';
@@ -79,8 +79,6 @@ export class P256GrantSpendUnsettled extends PassportConnectorError {
     );
   }
 }
-
-const CIRCUIT = 'withdraw_unshielded_with_grant_p256';
 
 function checkpoint(options: FlowOptions): void {
   if (options.signal?.aborted)
@@ -163,7 +161,7 @@ export async function spendUnshieldedWithP256Grant(
   const reservation = Object.freeze({
     requestId,
     intentSha256: mutationDigest({
-      circuit: CIRCUIT,
+      circuit: P256_GRANT_SPEND_CIRCUIT,
       reviewed,
       nonce,
       issuedAt,
@@ -188,7 +186,7 @@ export async function spendUnshieldedWithP256Grant(
     const tx = await chain.call({
       ...options,
       address: account,
-      circuit: CIRCUIT,
+      circuit: P256_GRANT_SPEND_CIRCUIT,
       args: [
         spend.color,
         spend.amount,
