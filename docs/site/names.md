@@ -156,8 +156,16 @@ A separate live fixture used the registry root owner to create a name. The
 Midnames 2.1.0 reader returned the expected owner commitment and the exact
 activated ACC address. The reference provider read the same registry through
 the same isolated indexer. This qualifies local lookup with the standalone
-profile. Independent paid registration and online profile qualification remain
-open.
+profile.
+
+A separate positive-price fixture delegated DUST from a fresh synthetic funding
+wallet to the sponsor. The claim finalized with exactly two DUST spends. The
+registry reader returned the expected distinct claimant commitment and the
+activated ACC. After restarting the isolated node and indexer, a fresh process
+confirmed the original transaction identifiers and read the target again with
+zero submissions. This is standalone fixture evidence. The browser claim and
+its custody policy, live lost-response handling, and online profile qualification
+remain open.
 
 The host registry reader can inspect the stored owner commitment and target
 from the same verifier-checked snapshot. Generated-state tests check the
