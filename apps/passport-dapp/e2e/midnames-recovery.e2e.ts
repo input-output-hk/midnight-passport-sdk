@@ -68,7 +68,7 @@ const vite = await createServer({
 });
 
 const messages = {
-  available: /^Available at the last registry read/,
+  available: /^Unregistered at the last registry read/,
   saved: /^Original receipt saved/,
   pending: /^Claim pending/,
   confirmed: /^Registered\./,
@@ -123,9 +123,30 @@ try {
   await openPage(first, origin);
   await first.locator('#claim-check-availability').click();
   await status(first, messages.available);
-  await first.locator('#claim-recovery-receipt').fill(JSON.stringify(original));
-  await first.locator('#claim-recovery-retain').click();
-  await status(first, messages.saved);
+  const checking = await browser.newPage();
+  await openPage(checking, origin);
+  let releaseRead = () => {};
+  const permitRead = new Promise<void>((resolve) => {
+    releaseRead = resolve;
+  });
+  await checking.route(indexer, async (route) => {
+    if (route.request().method() === 'POST') await permitRead;
+    await route.continue();
+  });
+  const registryReadStarted = checking.waitForRequest(
+    (request) => request.url() === indexer && request.method() === 'POST',
+  );
+  try {
+    await checking.locator('#claim-check-availability').click();
+    await registryReadStarted;
+    await first.locator('#claim-recovery-receipt').fill(JSON.stringify(original));
+    await first.locator('#claim-recovery-retain').click();
+    await status(first, messages.saved);
+  } finally {
+    releaseRead();
+  }
+  await status(checking, messages.pending);
+  await checking.close();
   await first.locator('#claim-check-availability').click();
   await status(first, messages.pending);
 

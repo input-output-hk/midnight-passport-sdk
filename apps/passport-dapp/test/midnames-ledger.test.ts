@@ -6,9 +6,12 @@ import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import {
+  ChargedState,
   ContractOperation,
   ContractState,
   createConstructorContext,
+  StateMap,
+  StateValue,
 } from '@midnight-ntwrk/compact-runtime';
 import { LedgerParameters } from '@midnightntwrk/ledger-v9';
 import { createMidnamesIndexer, createMidnamesLedgerReads } from '../src/midnames/ledger-reader.js';
@@ -183,6 +186,16 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
     code: 'InvalidQuery',
   });
   assert.equal(await reads.isSupportedAccount(target, 'undeployed'), false);
+  // Keep the name-to-ID index but remove its record map.
+  const malformed = ContractState.deserialize(result.serialize());
+  const slots = malformed.data.state.asArray();
+  assert.ok(slots && slots[4]?.asMap());
+  slots[4] = StateValue.newMap(new StateMap());
+  malformed.data = new ChargedState(
+    slots.reduce((value, slot) => value.arrayPush(slot), StateValue.newArray()),
+  );
+  registryState = Buffer.from(malformed.serialize()).toString('hex');
+  await assert.rejects(reads.hasDomain('alice.night', profile), { code: 'InvalidRecord' });
   registryState = Buffer.from(state.serialize()).toString('hex');
   await assert.rejects(reads.readTarget('alice.night', profile), { code: 'InvalidRecord' });
   await assert.rejects(reads.readClaim('alice.night', profile), { code: 'InvalidRecord' });
