@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import {
   copyFileSync,
   mkdtempSync,
@@ -52,14 +53,22 @@ async function relayProof(request, response, origin) {
     .pipe(response);
 }
 
-function ownerMiddleware(assets) {
+function ownerMiddleware(assets, context, publicOrigin) {
   return {
     name: 'midnames-owner-local',
     configurePreviewServer(server) {
       server.middlewares.use((request, response, next) => {
-        const origin = server.resolvedUrls?.local[0]?.replace(/\/$/, '');
+        const origin = publicOrigin ?? server.resolvedUrls?.local[0]?.replace(/\/$/, '');
         if (!origin || request.headers.host !== new URL(origin).host) {
           response.writeHead(403).end();
+          return;
+        }
+        if (context && request.method === 'GET' && request.url === '/owner-claim/context') {
+          response.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store',
+          });
+          response.end(JSON.stringify(context));
           return;
         }
         if (request.url === '/owner-proof/check' || request.url === '/owner-proof/prove') {
@@ -80,6 +89,92 @@ function ownerMiddleware(assets) {
   };
 }
 
+function stageOwnerSources(input, root) {
+  const manifest = JSON.parse(
+    readFileSync(new URL('registry-manifest.json', import.meta.url), 'utf8'),
+  );
+  const registry = readFileSync(input.modulePath);
+  assert.equal(
+    createHash('sha256').update(registry).digest('hex'),
+    manifest.compiled['contract/index.js'],
+  );
+  symlinkSync(join(input.ref, 'node_modules'), join(root, 'node_modules'));
+  writeFileSync(join(root, 'registry.mjs'), registry);
+  for (const name of ['registry-manifest.json', 'claim-owner-browser-entry.mjs'])
+    copyFileSync(new URL(name, import.meta.url), join(root, name));
+}
+
+function ownerViteConfig(root, plugins) {
+  return {
+    root,
+    configFile: false,
+    logLevel: 'silent',
+    plugins,
+    resolve: {
+      alias: [
+        {
+          find: /^(node:)?buffer$/,
+          replacement: new URL('node_modules/buffer/index.js', app).pathname,
+        },
+        { find: /^(node:)?assert$/, replacement: new URL('src/shims/assert.ts', app).pathname },
+        { find: 'isomorphic-ws', replacement: new URL('src/shims/ws.ts', app).pathname },
+      ],
+    },
+    build: { target: 'esnext' },
+    preview: { port: 0, host: 'localhost' },
+  };
+}
+
+/** Serve the owner bundle behind the regular demo's localhost origin. */
+export async function startDemoOwnerBundle(input, publicContext, origin = 'http://localhost:5173') {
+  const demo = new URL(origin);
+  assert.equal(demo.origin, origin);
+  assert.equal(demo.protocol, 'http:');
+  assert.equal(demo.hostname, 'localhost');
+  const [{ build, preview }, { default: wasm }] = await Promise.all([
+    load('vite'),
+    load('vite-plugin-wasm'),
+  ]);
+  const root = mkdtempSync(join(dirname(input.modulePath), 'demo-owner-'));
+  try {
+    stageOwnerSources(input, root);
+    const { networkId, registryAddress, sponsorAddress, indexerUrl, indexerWsUrl, walletKeys } =
+      publicContext;
+    const context = {
+      networkId,
+      registryAddress,
+      sponsorAddress,
+      indexerUrl,
+      indexerWsUrl,
+      walletKeys: { coin: walletKeys.coin, encryption: walletKeys.encryption },
+    };
+    const config = ownerViteConfig(root, [wasm(), ownerMiddleware(input.assets, context, origin)]);
+    config.base = '/owner-claim/';
+    const entry = join(root, 'demo-entry.mjs');
+    writeFileSync(entry, "export { proveReviewedClaim } from './claim-owner-browser-entry.mjs';");
+    config.build.rollupOptions = {
+      input: entry,
+      preserveEntrySignatures: 'strict',
+      output: { entryFileNames: 'entry.js' },
+    };
+    await build(config);
+    const site = await preview(config);
+    return {
+      origin: new URL(site.resolvedUrls.local[0]).origin,
+      async close() {
+        try {
+          await site.close();
+        } finally {
+          rmSync(root, { recursive: true, force: true });
+        }
+      },
+    };
+  } catch (error) {
+    rmSync(root, { recursive: true, force: true });
+    throw error;
+  }
+}
+
 export async function ownerPage(input, setPhase = () => {}) {
   assert.equal(input.proverUrl, endpoint);
   assert.equal(input.indexerUrl, 'http://127.0.0.1:18108/api/v4/graphql');
@@ -91,32 +186,16 @@ export async function ownerPage(input, setPhase = () => {}) {
   ]);
   const root = mkdtempSync(join(dirname(input.modulePath), 'chromium-owner-'));
   try {
-    symlinkSync(join(input.ref, 'node_modules'), join(root, 'node_modules'));
-    copyFileSync(input.modulePath, join(root, 'registry.mjs'));
-    for (const name of ['registry-manifest.json', 'claim-owner-browser-entry.mjs'])
-      copyFileSync(new URL(name, import.meta.url), join(root, name));
+    stageOwnerSources(input, root);
+    copyFileSync(
+      new URL('claim-owner-qualification-entry.mjs', import.meta.url),
+      join(root, 'claim-owner-qualification-entry.mjs'),
+    );
     writeFileSync(
       join(root, 'index.html'),
-      '<!doctype html><title>Midnames owner qualification</title><script type="module" src="/claim-owner-browser-entry.mjs"></script>',
+      '<!doctype html><title>Midnames owner qualification</title><script type="module" src="/claim-owner-qualification-entry.mjs"></script>',
     );
-    const config = {
-      root,
-      configFile: false,
-      logLevel: 'silent',
-      plugins: [wasm(), ownerMiddleware(input.assets)],
-      resolve: {
-        alias: [
-          {
-            find: /^(node:)?buffer$/,
-            replacement: new URL('node_modules/buffer/index.js', app).pathname,
-          },
-          { find: /^(node:)?assert$/, replacement: new URL('src/shims/assert.ts', app).pathname },
-          { find: 'isomorphic-ws', replacement: new URL('src/shims/ws.ts', app).pathname },
-        ],
-      },
-      build: { target: 'esnext' },
-      preview: { port: 0, host: 'localhost' },
-    };
+    const config = ownerViteConfig(root, [wasm(), ownerMiddleware(input.assets)]);
     setPhase('browser-build');
     await build(config);
     const site = await preview(config);

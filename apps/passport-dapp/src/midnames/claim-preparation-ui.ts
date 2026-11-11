@@ -50,6 +50,9 @@ export function showClaimPreparation(
       `Registry price ${quote.night} smallest NIGHT units`,
       `Maximum sponsor fee ${quote.maximumDust} SPECKs`,
       `Quote expires ${new Date(quote.expiresAt).toISOString()}`,
+      ...(recovering
+        ? []
+        : ['Preparing uses the open account’s passkey to derive the naming key.']),
     ].join('\n');
     summary.hidden = false;
     prepare.textContent = recovering ? 'Recover prepared receipt' : 'Approve and prepare claim';

@@ -23,6 +23,25 @@ if (manifestSha256 !== binding.manifestSha256) {
 
 const buffer = path.resolve(here, 'node_modules/buffer/index.js');
 
+function loopbackPort(variable: string) {
+  const port = process.env[variable];
+  if (!port || !/^[1-9][0-9]{0,4}$/.test(port) || Number(port) > 65535 || port === '5173')
+    throw new Error(`Invalid loopback port for ${variable}.`);
+  return { target: `http://localhost:${port}`, changeOrigin: false };
+}
+
+function claimProxy() {
+  if (process.env.VITE_MIDNAMES_CLAIM_PREPARATION !== '1') return;
+  const owner = loopbackPort('PASSPORT_MIDNAMES_OWNER_PORT');
+  return {
+    '/owner-claim/': owner,
+    '/owner-artifact/': owner,
+    '/owner-proof/': owner,
+    '/v1/midnames/claim/': loopbackPort('PASSPORT_MIDNAMES_SPONSOR_PORT'),
+  };
+}
+
+const proxy = claimProxy();
 export default defineConfig({
   plugins: [wasm()],
   worker: { format: 'es', plugins: () => [wasm()] },
@@ -43,6 +62,7 @@ export default defineConfig({
     host: 'localhost',
     port: 5173,
     strictPort: true,
+    ...(proxy && { proxy }),
     fs: { allow: [here, path.resolve(here, '../..')] },
   },
   build: { target: 'esnext' },

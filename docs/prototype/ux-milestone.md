@@ -107,6 +107,12 @@ account or wallet action. See the [configuration and evidence scope](../site/nam
 
 ### Standalone .night claim recovery
 
+The opt-in localhost demo can use the open account's passkey to prepare a
+claim. The quote review describes the passkey request before the user approves.
+The owner bundle rechecks the current root price and payee before requesting
+the credential. Receipt recovery remains a read, and dispatch remains a
+separate action.
+
 With a host preparation adapter, **Review claim quote** shows the exact
 destination and sponsor terms. **Approve and prepare claim** saves the quote
 and owner commitment before the sponsor request. If the response is lost,

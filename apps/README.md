@@ -875,9 +875,10 @@ An opt-in host can supply the demo's preparation adapter. The user reviews the
 exact sponsor quote and explicitly approves preparation. The form saves the
 quote and owner commitment before the sponsor request and accepts only a receipt
 bound to both. After a lost response the original credential can recover or
-import that receipt. The optional loopback transport sends only proved bytes
-to the sponsor's preparation endpoint. The standard build uses receipt import
-until an owner-side prover and sponsor preparation host are wired in.
+import that receipt. The opt-in local demo loads an owner-side proving bundle
+on the same localhost origin. It requests PRF from the open account's passkey
+after quote approval and sends only proved bytes to the sponsor. See the
+[owner and sponsor setup](../examples/midnames-local/README.md#send-an-acknowledged-receipt-from-the-browser).
 
 On the pinned `standalone-0.35` registry with namespace `night`, the demo
 can retain a sponsor's original public receipt and reconcile it after a lost

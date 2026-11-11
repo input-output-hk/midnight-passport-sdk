@@ -16,7 +16,7 @@ import {
   createZKIR,
   zkConfigToProvingKeyMaterial,
 } from '@midnight-ntwrk/midnight-js-types';
-import { AddressType, Contract } from './registry.mjs';
+import { AddressType, Contract, ledger } from './registry.mjs';
 import manifest from './registry-manifest.json';
 
 const utf8 = (value) => new TextEncoder().encode(value);
@@ -81,7 +81,7 @@ function localProver(artifacts) {
   };
 }
 
-async function enroll() {
+export async function enroll() {
   const credential = await navigator.credentials.create({
     publicKey: {
       challenge: random(),
@@ -96,7 +96,7 @@ async function enroll() {
   return hex(new Uint8Array(credential.rawId));
 }
 
-async function withNamingWitness(input, id, work) {
+async function withNamingWitness(input, id, work, check = () => {}) {
   const salt = await sha(
     utf8(
       JSON.stringify([
@@ -107,6 +107,7 @@ async function withNamingWitness(input, id, work) {
       ]),
     ),
   );
+  check();
   const assertion = await navigator.credentials.get({
     publicKey: {
       challenge: random(),
@@ -123,6 +124,7 @@ async function withNamingWitness(input, id, work) {
       ? new Uint8Array(result.buffer, result.byteOffset, result.byteLength)
       : new Uint8Array(result));
   try {
+    check();
     if (hex(new Uint8Array(assertion?.rawId ?? [])) !== id || witness?.length !== 32)
       throw new Error('The original naming credential did not provide a PRF witness.');
     const commitment = new Uint8Array(64);
@@ -135,51 +137,104 @@ async function withNamingWitness(input, id, work) {
   }
 }
 
-async function prove(input, id) {
+export async function prove(input, id, check = () => {}) {
   setNetworkId('undeployed');
   const zkConfigProvider = new ClaimArtifacts();
-  return withNamingWitness(input, id, async (witness, ownerCommitment) => {
-    const compiledContract = CompiledContract.make('registry', Contract).pipe(
-      CompiledContract.withWitnesses({ domainSecretKey: () => [{}, witness] }),
-      CompiledContract.withCompiledFileAssets('.'),
-    );
-    const nameKey = new Uint8Array(32).fill(255);
-    nameKey.set(utf8(input.label));
-    const {
-      private: { unprovenTx },
-    } = await createUnprovenCallTx(
-      {
-        publicDataProvider: indexerPublicDataProvider(input.indexerUrl, input.indexerWsUrl),
-        walletProvider: {
-          getCoinPublicKey: () => input.walletKeys.coin,
-          getEncryptionPublicKey: () => input.walletKeys.encryption,
+  return withNamingWitness(
+    input,
+    id,
+    async (witness, ownerCommitment) => {
+      const compiledContract = CompiledContract.make('registry', Contract).pipe(
+        CompiledContract.withWitnesses({ domainSecretKey: () => [{}, witness] }),
+        CompiledContract.withCompiledFileAssets('.'),
+      );
+      const nameKey = new Uint8Array(32).fill(255);
+      nameKey.set(utf8(input.label));
+      const {
+        private: { unprovenTx },
+      } = await createUnprovenCallTx(
+        {
+          publicDataProvider: indexerPublicDataProvider(input.indexerUrl, input.indexerWsUrl),
+          walletProvider: {
+            getCoinPublicKey: () => input.walletKeys.coin,
+            getEncryptionPublicKey: () => input.walletKeys.encryption,
+          },
+          zkConfigProvider,
         },
-        zkConfigProvider,
-      },
-      {
-        compiledContract,
-        contractAddress: input.registryAddress,
-        circuitId: 'create_domain',
-        args: [
-          { bytes: input.childOwnerAddress },
-          nameKey,
-          BigInt(input.label.length),
-          input.rootId,
-          fromHex(input.accountAddress),
-          AddressType.ContractAddr,
-          { is_some: false, value: '' },
-          input.price,
-          Array.from({ length: 10 }, () => ({ is_some: false, value: ['', ''] })),
-        ],
-      },
-    );
-    const tx = await unprovenTx.prove(localProver(zkConfigProvider), CostModel.initialCostModel());
-    return { ownerCommitment, bytes: Array.from(tx.serialize()) };
-  });
+        {
+          compiledContract,
+          contractAddress: input.registryAddress,
+          circuitId: 'create_domain',
+          args: [
+            { bytes: input.childOwnerAddress },
+            nameKey,
+            BigInt(input.label.length),
+            input.rootId,
+            fromHex(input.accountAddress),
+            AddressType.ContractAddr,
+            { is_some: false, value: '' },
+            input.price,
+            Array.from({ length: 10 }, () => ({ is_some: false, value: ['', ''] })),
+          ],
+        },
+      );
+      check();
+      const tx = await unprovenTx.prove(
+        localProver(zkConfigProvider),
+        CostModel.initialCostModel(),
+      );
+      return { ownerCommitment, bytes: tx.serialize() };
+    },
+    check,
+  );
 }
 
-globalThis.midnamesOwner = {
-  enroll,
-  prove,
-  commitment: (input, id) => withNamingWitness(input, id, async (_witness, owner) => owner),
-};
+export const commitment = (input, id) =>
+  withNamingWitness(input, id, async (_witness, owner) => owner);
+
+/** The demo passes the approved terms and its already-open credential. */
+export async function proveReviewedClaim(quote, credentialId, check) {
+  const context = JSON.parse(new TextDecoder().decode(await binary('/owner-claim/context')));
+  if (
+    context.networkId !== quote.networkId ||
+    context.registryAddress !== quote.registryAddress ||
+    context.sponsorAddress !== quote.sponsorAddress ||
+    context.indexerUrl !== 'http://127.0.0.1:18108/api/v4/graphql' ||
+    context.indexerWsUrl !== 'ws://127.0.0.1:18108/api/v4/graphql/ws'
+  )
+    throw new Error('The local proof context differs from the approved quote.');
+  check();
+  setNetworkId('undeployed');
+  const source = indexerPublicDataProvider(context.indexerUrl, context.indexerWsUrl);
+  const state = await source.queryContractState(quote.registryAddress);
+  const record = ledger(state.data);
+  const rootId = record.ROOT_ZONE_ID;
+  const parent = record.id_to_data.lookup(rootId);
+  const label = quote.name.slice(0, -'.night'.length);
+  const payment = parent.payment_config;
+  const night =
+    label.length <= 3
+      ? payment.cost_short
+      : label.length === 4
+        ? payment.cost_med
+        : payment.cost_long;
+  if (
+    !payment.buy_enabled ||
+    !payment.coin_color.every((byte) => byte === 0) ||
+    String(night) !== quote.night ||
+    hex(parent.owner_address.bytes) !== quote.registryPayee
+  )
+    throw new Error('The live registry terms differ from the approved quote.');
+  return prove(
+    {
+      ...context,
+      accountAddress: quote.accountAddress,
+      childOwnerAddress: fromHex(quote.sponsorAddress),
+      rootId,
+      label,
+      price: { ...payment, buy_enabled: false },
+    },
+    hex(credentialId),
+    check,
+  );
+}
