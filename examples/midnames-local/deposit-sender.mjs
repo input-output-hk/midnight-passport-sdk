@@ -77,24 +77,34 @@ try {
   save();
   wallet = await walletModule.createWallet('0'.repeat(63) + '1');
   await walletModule.syncWallet(wallet, 'independent isolated sender wallet');
+  const { publicDataProvider, proofProvider, walletProvider, zkConfigProvider, midnightProvider } =
+    await walletModule.createProviders(wallet);
   const faucet = await setup.deployFaucet(wallet);
   const domain = new Uint8Array(randomBytes(32));
   const amount = 10n;
-  const walletState = await rx.firstValueFrom(
-    wallet.wallet.state().pipe(rx.filter((state) => state.isSynced)),
-  );
+  const walletState = await rx.firstValueFrom(wallet.wallet.state().pipe(rx.timeout(15_000)));
   receipt.faucetAddress = faucet.address;
+  // The reference faucet waits for successful inclusion of the original mint.
   receipt.mintIdentifier = await faucet.mint(
     domain,
     amount,
     new Uint8Array(randomBytes(32)),
     walletModule.coinPublicKeyBytes(walletState),
   );
+  assert.match(receipt.mintIdentifier, /^[a-f0-9]{66}$/);
   save();
   const color = ledger.encodeRawTokenType(ledger.rawTokenType(domain, faucet.address));
-  await delay(15_000);
-  const { publicDataProvider, proofProvider, walletProvider, zkConfigProvider, midnightProvider } =
-    await walletModule.createProviders(wallet);
+  const tokenType = Buffer.from(color).toString('hex');
+  await rx.firstValueFrom(
+    wallet.wallet.state().pipe(
+      rx.filter((state) =>
+        state.shielded.availableCoins.some(
+          ({ coin }) => coin.type === tokenType && coin.value === amount,
+        ),
+      ),
+      rx.timeout({ first: 120_000 }),
+    ),
+  );
   const compiledContract = CompiledContract.make('account', binding.Contract).pipe(
     CompiledContract.withWitnesses({
       held_coin: () => {
