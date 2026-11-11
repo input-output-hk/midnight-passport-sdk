@@ -177,10 +177,12 @@ test('submission progress retains the original accepted ID before a later call f
   assert.equal(seen.filter((e) => e.id === submitted.id).length, 2);
 });
 
-test('grant submitter rejects an unrelated finalized transaction before staging or sending', async () => {
-  const { createMidnightP256GrantSubmitter } =
-    await import('../packages/adapter-midnight-js/dist/index.js');
-  const bytes = (
+test('grant dispatch rejects another invocation with the same payout before proving', async () => {
+  const { prepareP256GrantDispatch, forwardP256GrantCall } =
+    await import('../packages/adapter-midnight-js/dist/p256-grant-submitter.js');
+  const { createP256GrantSpendJournal, mutationDigest } =
+    await import('../packages/account/dist/index.js');
+  const tx = (
     await ledger.Transaction.fromParts('undeployed').prove(
       {
         check: async () => [],
@@ -189,9 +191,8 @@ test('grant submitter rejects an unrelated finalized transaction before staging 
       },
       ledger.CostModel.initialCostModel(),
     )
-  )
-    .bind()
-    .serialize();
+  ).bind();
+  const args = [new Uint8Array(32), 4n, { bytes: new Uint8Array(32).fill(9) }, 7n];
   const reservation = {
     requestId: '549bd843-0a8f-40af-9b6f-d9eb8cf48871',
     intentSha256: '11'.repeat(32),
@@ -204,24 +205,50 @@ test('grant submitter rejects an unrelated finalized transaction before staging 
     amount: '4',
     recipient: '99'.repeat(32),
     expectedSpentCommit: '44'.repeat(32),
+    callArgsSha256: mutationDigest(args),
   };
-  const submitter = createMidnightP256GrantSubmitter({
-    networkId: reservation.networkId,
-    receipts: {
-      readRecord: async () => ({ reservation }),
-      stageTransaction: async () => assert.fail('unrelated call was staged'),
+  /** @type {{revision: number, bytes: Uint8Array} | undefined} */
+  let row;
+  const journal = createP256GrantSpendJournal({
+    async read() {
+      return row;
     },
-    submitter: { submit: async () => assert.fail('unrelated call was sent') },
+    async compareAndSwap(_key, revision, next) {
+      if (row?.revision !== revision) return false;
+      row = next;
+      return true;
+    },
   });
-  const context = {
+  assert.equal(await journal.reserve(reservation), true);
+  const request = {
     address: reservation.account,
-    circuit: 'withdraw_unshielded_with_grant_p256',
+    args,
     mutation: { requestId: reservation.requestId, intentSha256: reservation.intentSha256 },
   };
-  await assert.rejects(submitter.submit(bytes, { ...context, circuit: 'deposit_unshielded' }), {
-    code: 'BindingUnsupported',
-  });
-  await assert.rejects(submitter.submit(bytes, context), { code: 'MutationUnsettled' });
+  await assert.rejects(
+    prepareP256GrantDispatch(
+      { ...request, args: [...args.slice(0, 3), 8n] },
+      'undeployed',
+      journal,
+    ),
+    { code: 'MutationUnsettled' },
+  );
+  const admitted = await prepareP256GrantDispatch(request, 'undeployed', journal);
+  assert.deepEqual(admitted.args, args);
+  args[3] = 8n;
+  assert.equal(admitted.args[3], 7n);
+  await assert.rejects(
+    forwardP256GrantCall(
+      tx,
+      admitted.reservation,
+      'substituted',
+      journal,
+      { submit: async () => assert.fail('unrelated call was sent') },
+      undefined,
+    ),
+    { code: 'MutationUnsettled' },
+  );
+  assert.equal((await journal.readRecord(reservation.requestId))?.transaction, undefined);
 });
 
 test('grant call comparison refuses changed commitments and payouts', async () => {

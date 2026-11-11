@@ -23,6 +23,7 @@ const reservation = {
   amount: '4',
   recipient: '99'.repeat(32),
   expectedSpentCommit: '33'.repeat(32),
+  callArgsSha256: 'aa'.repeat(32),
   intentSha256: '44'.repeat(32),
 };
 const originalBytes = Buffer.from('abce', 'hex');

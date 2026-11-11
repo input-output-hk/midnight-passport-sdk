@@ -24,6 +24,7 @@ const reservationSchema = z.strictObject({
   issuedAt: u64,
   previousNonce: u64,
   expectedSpentCommit: hex,
+  callArgsSha256: hex,
 });
 const identitySchema = z
   .strictObject({
@@ -58,6 +59,8 @@ export interface P256GrantSpendRecord {
 
 export interface P256GrantSpendReceiptStore extends P256GrantSpendJournal {
   readRecord(requestId: string): Promise<P256GrantSpendRecord | undefined>;
+  /** Compare a local Compact invocation to the original reviewed signed arguments. */
+  matchesCallArguments(reservation: P256GrantSpendReservation, args: readonly unknown[]): boolean;
   /** Persist an immutable dispatch record. A false result refuses a second forward. */
   stageTransaction(
     reservation: P256GrantSpendReservation,
@@ -116,6 +119,9 @@ export function createP256GrantSpendJournal(store: MutationByteStore): P256Grant
     return slot;
   }
   return {
+    matchesCallArguments(reservation, args) {
+      return mutationDigest(args) === reservation.callArgsSha256;
+    },
     async read(requestId) {
       const row = await load(requestId);
       if (!row) return undefined;

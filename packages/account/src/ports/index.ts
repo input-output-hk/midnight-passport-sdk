@@ -1,4 +1,5 @@
 export type { P256GrantSpendReceiptStore } from '../p256-grant-spend-recovery.js';
+export type { P256GrantSpendReservation } from '../p256-grant-holder.js';
 export type { LiveP256GrantSpendContext, P256GrantSpendSource } from './p256-grant-spend.js';
 import type { Authoriser, CredentialPort } from './authorisation.js';
 export type {
@@ -492,8 +493,6 @@ export interface Submitter {
       readonly mutation: MutationSubmissionContext;
       readonly address: string;
       readonly circuit: string;
-      /** From the call built by the SDK before remote proving and balancing. */
-      readonly callCommitment?: string;
       readonly signal?: FlowOptions['signal'];
     },
   ): Promise<string>;

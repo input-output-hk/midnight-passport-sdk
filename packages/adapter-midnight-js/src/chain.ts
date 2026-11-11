@@ -19,6 +19,7 @@ import type {
   JubjubPureCircuits,
   Chain,
   PinnedChain,
+  P256GrantSpendReceiptStore,
   FeeSponsor,
   NetworkConfig,
   Prover,
@@ -37,6 +38,7 @@ import {
   type PreBinding,
 } from '@midnightntwrk/ledger-v9';
 import { checkGrantCommitment, p256GrantCall } from './p256-grant-call.js';
+import { forwardP256GrantCall, prepareP256GrantDispatch } from './p256-grant-submitter.js';
 
 function chainProgress(onEvent: ((event: PassportEvent) => void) | undefined) {
   // Progress listeners are observers: a host's UI error must not interrupt a chain call.
@@ -175,6 +177,8 @@ export function createHeldCoinWitness(heldCoin?: QualifiedShieldedCoin) {
 }
 
 interface MidnightChainOptions {
+  /** Required for the durable fixed-recipient P-256 grant holder path. */
+  p256GrantReceipts?: P256GrantSpendReceiptStore;
   network: NetworkConfig;
   binding: MidnightBinding;
   prover: Prover;
@@ -260,6 +264,15 @@ function createChain(opts: MidnightChainOptions): Chain {
           'The configured fee-only sponsor cannot balance a shielded ACC withdrawal; use a value-capable wallet.',
         );
       const compiledContract = heldCoin ? compileWithWitness(heldCoin) : unshieldedContract;
+      const receipts = opts.p256GrantReceipts;
+      const grant =
+        circuit === P256_GRANT_SPEND_CIRCUIT
+          ? await prepareP256GrantDispatch(
+              { address, args, ...(mutation && { mutation }) },
+              network.networkId,
+              receipts,
+            )
+          : undefined;
       const { report, track } = chainProgress(onEvent);
       let callCommitment: string | undefined;
       let finality: ReturnType<typeof report> | undefined;
@@ -305,23 +318,29 @@ function createChain(opts: MidnightChainOptions): Chain {
             ),
         }),
         midnightProvider: createMidnightProvider(async (tx) => {
-          if (circuit === P256_GRANT_SPEND_CIRCUIT)
-            checkGrantCommitment(p256GrantCall(tx, address), callCommitment);
           const id = await track(
             'sponsor.submit',
             () =>
-              submitter.submit(
-                tx.serialize(),
-                mutation
-                  ? {
-                      mutation,
-                      address,
-                      circuit,
-                      ...(callCommitment && { callCommitment }),
-                      ...(flowOptions.signal && { signal: flowOptions.signal }),
-                    }
-                  : undefined,
-              ),
+              grant && receipts
+                ? forwardP256GrantCall(
+                    tx,
+                    grant.reservation,
+                    callCommitment,
+                    receipts,
+                    submitter,
+                    flowOptions.signal,
+                  )
+                : submitter.submit(
+                    tx.serialize(),
+                    mutation
+                      ? {
+                          mutation,
+                          address,
+                          circuit,
+                          ...(flowOptions.signal && { signal: flowOptions.signal }),
+                        }
+                      : undefined,
+                  ),
             (txId) => ({ txId, circuit }),
           );
           finality = report('chain.finality');
@@ -330,11 +349,11 @@ function createChain(opts: MidnightChainOptions): Chain {
       };
       let result;
       try {
-        result = await (opts.submit ?? submitCallTx)(providers, {
+        result = await (grant ? submitCallTx : (opts.submit ?? submitCallTx))(providers, {
           compiledContract,
           contractAddress: address,
           circuitId: circuit,
-          args,
+          args: grant?.args ?? args,
         } as never);
       } catch (error) {
         finality?.(error ?? 'failed');

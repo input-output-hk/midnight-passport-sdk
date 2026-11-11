@@ -32,6 +32,7 @@ export interface P256GrantSpendReservation extends MutationSubmissionContext {
   readonly issuedAt: string;
   readonly previousNonce: string;
   readonly expectedSpentCommit: string;
+  readonly callArgsSha256: string;
 }
 
 export interface P256GrantSpendJournal {
@@ -161,6 +162,19 @@ export async function spendUnshieldedWithP256Grant(
   const assertion = checkedAssertion(signature, opening.scope.grantee.rpIdHash);
   await recheck();
 
+  const args = [
+    spend.color,
+    spend.amount,
+    spend.recipient,
+    spend.originHash,
+    spend.slot,
+    spend.salt,
+    1n,
+    spend.recipient.bytes,
+    spend.maxCoin,
+    spend.spentPrev,
+    { pk: spend.credential.publicKey, policy: spend.credential.policy, ...assertion },
+  ];
   const reservation = Object.freeze({
     requestId,
     intentSha256: mutationDigest({
@@ -184,6 +198,7 @@ export async function spendUnshieldedWithP256Grant(
     issuedAt: issuedAt.toString(),
     previousNonce: nonce.toString(),
     expectedSpentCommit: spend.nextSpentCommit,
+    callArgsSha256: mutationDigest(args),
   });
   let txHash: string | undefined;
   try {
@@ -193,19 +208,7 @@ export async function spendUnshieldedWithP256Grant(
       ...options,
       address: account,
       circuit: P256_GRANT_SPEND_CIRCUIT,
-      args: [
-        spend.color,
-        spend.amount,
-        spend.recipient,
-        spend.originHash,
-        spend.slot,
-        spend.salt,
-        1n,
-        spend.recipient.bytes,
-        spend.maxCoin,
-        spend.spentPrev,
-        { pk: spend.credential.publicKey, policy: spend.credential.policy, ...assertion },
-      ],
+      args,
       mutation: { requestId, intentSha256: reservation.intentSha256 },
     });
     txHash = tx.txHash;
