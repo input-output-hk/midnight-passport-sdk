@@ -63,19 +63,6 @@ const vite = await createServer({
       load(id) {
         if (id.split('?')[0] === resolve('src/connector.ts')) return connector;
       },
-      configureServer(server) {
-        server.middlewares.use('/__drop-claim-response', (_request, response) => {
-          writeFileSync(file('allow-original-submit'), '', { flag: 'wx' });
-          const until = Date.now() + 120_000;
-          const timer = setInterval(() => {
-            if (existsSync(file('original-response-lost')) || Date.now() >= until) {
-              clearInterval(timer);
-              response.destroy();
-            }
-          }, 250);
-          response.on('close', () => clearInterval(timer));
-        });
-      },
     },
   ],
 });
@@ -139,6 +126,13 @@ try {
   await first.locator('#claim-recovery-check').click();
   await status(first, messages.pending);
 
+  await first.route('**/__drop-claim-response', async (route) => {
+    assert.equal(route.request().method(), 'POST');
+    writeFileSync(file('allow-original-submit'), '', { flag: 'wx' });
+    const deadline = Date.now() + 120_000;
+    while (!existsSync(file('original-response-lost')) && Date.now() < deadline) await delay(250);
+    await route.abort('failed');
+  });
   assert.equal(
     await first.evaluate(async () => {
       try {
