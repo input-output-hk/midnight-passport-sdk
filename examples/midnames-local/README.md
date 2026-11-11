@@ -107,3 +107,22 @@ live sponsor policy check. This runner stops after preparation. The setup transa
 the isolated chain. Keep the binary transaction and wallet material local.
 Browser initiation, sponsor dispatch, two-DUST admission and lost-response
 qualification are separate steps.
+
+### Send an acknowledged receipt from the browser
+
+The local host can mount `createClaimSponsorHandler` on the demo's HTTP origin
+at `/v1/midnames/claim/dispatch`. It binds one private prepared journal and the
+host's live sponsor policy to that origin. Set `VITE_MIDNAMES_CLAIM_SPONSOR=1`
+with the standalone registry configuration and open the demo on `127.0.0.1`.
+
+Save the prepared public receipt while the matching ACC is open, then select
+**Send prepared claim**. **Check original claim** reads the original receipt
+after a reload or lost response. This route is a local fixture. Browser proof
+preparation and a live two-DUST dispatch still require qualification.
+
+The Chromium test runs the actual form, IndexedDB, and HTTP sponsor fence with a
+simulated node and indexer:
+
+```sh
+nix develop -c pnpm --filter passport-dapp exec node --import tsx e2e/midnames-dispatch.e2e.ts
+```

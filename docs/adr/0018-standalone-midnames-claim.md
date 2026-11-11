@@ -82,5 +82,6 @@ together. The sponsor must verify current policy and exact transaction
 identifiers, then durably create the dispatch fence before calling the node.
 Concurrent dispatch requests compete for the same fence. Once the fence
 exists, the original receipt stays pending until chain reconciliation, even
-if the submit response is lost. Fee ceilings, two-DUST native admission and
-the browser integration remain qualification work.
+if the submit response is lost. An opt-in loopback handler accepts an explicit
+browser acknowledgement for its one prepared receipt. Fee ceilings, two-DUST
+native admission, and browser proof preparation remain qualification work.

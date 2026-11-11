@@ -18,6 +18,8 @@ export function showClaimRecovery(
   const receipt = byId<HTMLTextAreaElement>('claim-recovery-receipt');
   const availability = byId<HTMLButtonElement>('claim-check-availability');
   const retain = byId<HTMLButtonElement>('claim-recovery-retain');
+  const send = byId<HTMLButtonElement>('claim-dispatch');
+  send.hidden = !recovery.dispatch;
   const check = byId<HTMLButtonElement>('claim-recovery-check');
   const status = byId('claim-recovery-status');
   form.hidden = false;
@@ -37,12 +39,13 @@ export function showClaimRecovery(
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     if (busy) return;
-    busy = availability.disabled = retain.disabled = check.disabled = true;
+    busy = availability.disabled = retain.disabled = check.disabled = send.disabled = true;
     status.textContent = 'Checking claim details…';
     const account = currentAccount();
     const selected = normalizeClaimName(name.value);
     const checkingAvailability = event.submitter === availability;
     const saving = event.submitter === retain;
+    const sending = event.submitter === send;
     const raw = receipt.value;
     name.disabled = receipt.disabled = true;
     const ensureAccount = () => {
@@ -99,6 +102,14 @@ export function showClaimRecovery(
           status.textContent = 'Use the original account and receipt to check this claim.';
           return;
         }
+        if (sending && recovery.dispatch) {
+          // Journal read above is the acknowledgement. A transport failure leaves
+          // the same receipt available for reconciliation on this device.
+          await recovery.dispatch(original).catch(() => undefined);
+          ensureAccount();
+          status.textContent = messages.pending;
+          return;
+        }
         const result = await recovery.check(original);
         ensureAccount();
         status.textContent = messages[result];
@@ -112,7 +123,7 @@ export function showClaimRecovery(
           'Claim check unavailable. Keep the original receipt and verify the open account, name and registry.';
       })
       .finally(() => {
-        busy = availability.disabled = retain.disabled = check.disabled = false;
+        busy = availability.disabled = retain.disabled = check.disabled = send.disabled = false;
         name.disabled = receipt.disabled = false;
       });
   });
