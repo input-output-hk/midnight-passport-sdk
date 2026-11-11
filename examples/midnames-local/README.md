@@ -35,7 +35,7 @@ Use the pinned Nix shell, at least 15 GiB of free space, Docker with at least
 From the SDK root, after preparing the registry above, run:
 
 ```sh
-env -u LD_DYLD_PATH PASSPORT_MIDNAMES_NATIVE=1 PASSPORT_RC_LOCALNET=1 \
+nix develop -c env -u LD_DYLD_PATH PASSPORT_MIDNAMES_NATIVE=1 PASSPORT_RC_LOCALNET=1 \
   node examples/midnames-local/qualify-deposit.mjs midnames-deposit-example \
   /absolute/path/to/prepared-registry \
   "$PWD/experiments/acc-0.35/work/acc-6458ed5/contract"
