@@ -48,7 +48,7 @@ const scope = z
       })
       .readonly(),
     color: hex32,
-    recipient: hex32,
+    recipient: hex32.refine((value) => !/^0+$/.test(value)),
     maxCoinValue: decimal,
     perCallCap: decimal,
     cap: decimal,
@@ -103,7 +103,11 @@ function granteePoint(compressed: string): P256PublicKey {
   }
 }
 
-/** Build owner-review and issue-circuit fields. The host retains the opening before issuing. */
+/**
+ * Build owner-review and issue-circuit fields. Before calling, the host decodes
+ * the user's unshielded address for its pinned network and supplies the verified
+ * 32-byte recipient as lowercase hex. The host retains the opening before issuing.
+ */
 export function prepareP256UnshieldedGrant(
   input: PrepareP256UnshieldedGrantInput,
   pure: P256GrantOpeningPure,

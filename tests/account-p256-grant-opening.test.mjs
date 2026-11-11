@@ -99,6 +99,7 @@ test('origin, RP and active-slot changes affect the corresponding commitments in
 
 test('malformed, expired and over-cap scopes fail before allocating private salt', () => {
   const invalid = [
+    { ...input.scope, recipient: '00'.repeat(32) },
     { ...input.scope, cap: '4' },
     { ...input.scope, cap: '0' },
     { ...input.scope, cap: '09' },

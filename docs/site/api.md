@@ -269,7 +269,9 @@ a replacement grant or duplicate an already observed part.
 unshielded opening and the issue-circuit arguments on `acc-s3r1.1`. The
 credential's exact `wa-json134` origin binds its grant ID. Its relying-party
 ID hash binds a separate salted commitment. Supply the verified credential
-policy and current active-ID roster. Store the opening securely before an
+policy and current active-ID roster. Decode the unshielded recipient for
+the pinned network before passing its nonzero 32-byte value. Store the
+opening securely before an
 owner issues a grant. This helper prepares fields only; the existing
 `account.issueGrant` flow accepts a JubJub grantee.
 

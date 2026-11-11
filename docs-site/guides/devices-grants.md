@@ -22,7 +22,10 @@ recipient. Supply the grantee's compressed P-256 public key, exact
 `wa-json134` WebAuthn origin, and SHA-256 relying-party ID hash from a
 verified credential. The origin is part of the grant ID. The relying-party
 hash has its own salted commitment. The owner supplies the live active-ID
-roster and reviews the recipient, caps and expiry before issuance.
+roster. Decode the recipient's unshielded address against the pinned
+network before passing its 32-byte value. The helper refuses an all-zero
+recipient. The owner reviews the network, address, caps and expiry before
+issuance.
 
 Keep the returned opening in protected host storage and deliver it only to
 the intended grantee. The helper prepares fields and commitments. Owner
