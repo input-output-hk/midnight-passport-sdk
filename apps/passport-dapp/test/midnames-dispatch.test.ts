@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { once } from 'node:events';
+import { createServer } from 'node:http';
 import {
   existsSync,
   mkdtempSync,
@@ -12,6 +14,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { openClaimDispatch } from '../../../examples/midnames-local/claim-dispatch.mts';
+import { createClaimSponsorHandler } from '../../../examples/midnames-local/claim-sponsor-http.mts';
+import { createOnce } from '../../../examples/midnames-local/create-once.mts';
+import { claimDispatchPath, isClaimSponsorOrigin } from '../src/midnames/claim-dispatch.js';
+import {
+  claimPreparePath,
+  claimPreparedPath,
+  claimQuotePath,
+} from '../src/midnames/claim-preparation-transport.js';
+import { claimDestination, claimQuote, claimQuoteDigest } from '../src/midnames/claim-quote.js';
 import type { ClaimReceipt } from '../src/midnames/claim-receipt.js';
 
 const bytes = Uint8Array.of(2, 3, 5);
@@ -127,4 +138,100 @@ test('fails closed on corrupted original bytes or a mismatched fence', async (t)
     JSON.stringify({ receipt: original, bytes: 'ab' }),
   );
   await assert.rejects(journal.dispatch(original, ports), /transaction differs/);
+});
+
+test('recovers a retained sponsor preparation over HTTP after reopening the journal', async (t) => {
+  assert.equal(isClaimSponsorOrigin('http://localhost:5173'), true);
+  assert.equal(isClaimSponsorOrigin('http://localhost.example:5173'), false);
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'midnames-prepare-')));
+  const journal = openClaimDispatch(root);
+  const destination = claimDestination(original);
+  const quote = claimQuote({
+    ...destination,
+    id: '91'.repeat(32),
+    sponsorAddress: '92'.repeat(32),
+    registryPayee: '93'.repeat(32),
+    night: '1',
+    maximumDust: '10000',
+    expiresAt: Date.now() + 30_000,
+  });
+  let handler: ReturnType<typeof createClaimSponsorHandler>;
+  const server = createServer((request, response) => {
+    void handler(request, response).then(
+      (handled) => {
+        if (!handled) response.writeHead(404).end();
+      },
+      () => response.destroy(),
+    );
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(async () => {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    rmSync(root, { recursive: true, force: true });
+  });
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const origin = 'http://127.0.0.1:' + address.port;
+  const dispatchPorts = {
+    async authorize() {},
+    async submit() {
+      assert.fail('This test must never broadcast.');
+    },
+  };
+  const preparation = {
+    async issue() {
+      return quote;
+    },
+    async authorizeQuote() {},
+    async balance(): Promise<Uint8Array> {
+      throw new Error('Unexpected second balance.');
+    },
+  };
+  const reopen = () => {
+    handler = createClaimSponsorHandler(origin, root, dispatchPorts, preparation);
+  };
+  reopen();
+  const post = (path: string, input: unknown, from = origin) =>
+    fetch(origin + path, {
+      method: 'POST',
+      headers: { Origin: from, 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+  assert.equal((await post(claimQuotePath, destination, 'http://127.0.0.1:1')).status, 403);
+  assert.deepEqual(await (await post(claimQuotePath, destination)).json(), quote);
+  const lookup = { quote, ownerCommitment: original.ownerCommitment };
+  assert.equal((await post(claimPreparedPath, lookup)).status, 404);
+  assert.equal((await post(claimPreparePath, { ...lookup, proof: '020305' })).status, 409);
+  const intentPath = join(root, 'claim-prepare-intent.json');
+  assert.equal(existsSync(intentPath), false);
+  const digest = await claimQuoteDigest(quote);
+  createOnce(
+    intentPath,
+    JSON.stringify({
+      quoteId: quote.id,
+      digest,
+      ownerCommitment: original.ownerCommitment,
+      proofSha256: createHash('sha256').update(bytes).digest('hex'),
+    }),
+  );
+  reopen();
+  assert.equal((await post(claimPreparedPath, lookup)).status, 202);
+  assert.equal((await post(claimPreparePath, { ...lookup, proof: '020305' })).status, 202);
+  assert.equal((await post(claimPreparePath, { ...lookup, proof: '020304' })).status, 409);
+  const retained = { ...original, quoteSha256: digest };
+  journal.retain(bytes, retained);
+  reopen();
+  assert.deepEqual(await (await post(claimPreparedPath, lookup)).json(), retained);
+  assert.deepEqual(
+    await (await post(claimPreparePath, { ...lookup, proof: '020305' })).json(),
+    retained,
+  );
+  assert.equal(
+    (await post(claimPreparedPath, { ...lookup, quote: { ...quote, night: '2' } })).status,
+    409,
+  );
+  handler = createClaimSponsorHandler(origin, root, dispatchPorts);
+  assert.equal((await post(claimDispatchPath, retained)).status, 409);
+  assert.equal(existsSync(join(root, 'claim-dispatch-fence.json')), false);
 });

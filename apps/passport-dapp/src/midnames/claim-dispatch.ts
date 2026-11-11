@@ -5,7 +5,11 @@ export const claimDispatchPath = '/v1/midnames/claim/dispatch';
 export function isClaimSponsorOrigin(origin: string): boolean {
   try {
     const url = new URL(origin);
-    return url.origin === origin && url.protocol === 'http:' && url.hostname === '127.0.0.1';
+    return (
+      url.origin === origin &&
+      url.protocol === 'http:' &&
+      (url.hostname === '127.0.0.1' || url.hostname === 'localhost')
+    );
   } catch {
     return false;
   }
