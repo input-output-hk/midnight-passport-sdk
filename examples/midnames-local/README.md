@@ -23,3 +23,43 @@ The standalone fixture has the upstream transitional registry administration
 semantics. A name claim needs an owner-controlled proof witness. Use synthetic
 wallets for this qualification and preserve all original transaction references
 when a submission has an uncertain result.
+
+## Run the shielded deposit by name
+
+Use a clean, GPG-signed SDK checkout with workspace dependencies installed and
+built, the Compact 0.35.0 reference ACC worktree and its verified cached keys.
+Use the pinned Nix shell, at least 15 GiB of free space, Docker with at least
+24 GiB of memory, and free native qualification ports. See the
+[qualification runbook](../../docs/agent-runbook.md#qualification-selection).
+
+From the SDK root, after preparing the registry above, run:
+
+```sh
+nix develop -c env -u LD_DYLD_PATH PASSPORT_MIDNAMES_NATIVE=1 PASSPORT_RC_LOCALNET=1 \
+  node examples/midnames-local/qualify-deposit.mjs midnames-deposit-example \
+  /absolute/path/to/prepared-registry \
+  "$PWD/experiments/acc-0.35/work/acc-6458ed5/contract"
+```
+
+Choose a new output name for each run. If Docker's default address pools are
+full, supply an unused private `10.x.x.x/24` to `/29` subnet as the final
+argument. The runner creates and stops its own isolated stack and preserves its
+volumes and evidence under `review/<output-name>/`. Resolve an uncertain
+submission from its recorded original identifiers before taking another action.
+
+The fixture activates an ACC and registers `alice.night` through the isolated
+registry. After setup stops its wallet, a separate sender process reopens the
+same synthetic genesis wallet. That process receives the registry address and
+name. The recipient's ACC signing and viewing keys stay in the owner fixture. It mints a synthetic shielded token and displays the full resolved
+destination, asset and amount before fixture approval. After proving and
+balancing, it reads the current ACC encryption key and resolves the name again
+before dispatch. The owner process decrypts the resulting inbox entry and
+matches the coin to the original transaction's on-chain commitment and current
+holdings. See [named shielded deposits](../../docs/site/names.md#deposit-a-shielded-asset-by-name).
+
+To display the payment and the independently verified owner result:
+
+```sh
+jq '{review, txHash, inboxIndex, dispatches}' review/midnames-deposit-example/sender/sender.json
+jq '{ownerOpenedReceipt, originalOutputMatched, verifiedHeld, commitment}' review/midnames-deposit-example/worker.json
+```

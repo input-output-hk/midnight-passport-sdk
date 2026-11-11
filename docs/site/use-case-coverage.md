@@ -18,14 +18,32 @@ unknown-ID retention during navigation, active-spend navigation and independent
 white-label renderer cleanup. These remain synthetic connector/credential tests;
 they do not widen native or real-provider acceptance.
 
+## Passport conformance for named shielded receive
+
+The standalone source fixture uses Midnames 2.1.0 on `undeployed` and the
+`acc-s3r1.1` binding. Run it from the
+[named deposit recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).
+The owner receipt requires exact successful original-transaction evidence and
+a decrypted coin matched to a current on-chain holding.
+
+| Passport requirement | Evidence | Scope |
+| --- | --- | --- |
+| P2 I-2.2/I-2.3 · authoritative on-chain name | The pinned registry resolves its unique name path to the operation-specific ACC contract target. The sender verifies the activated ACC and resolves again after proof and balance. The source tests cover absence, wrong network, non-contract and incompatible targets, repoints, and provider outage. | Local `.night` fixture. Public `passport.night` has separate network and registry requirements. |
+| P6 · secrets stay with their holder | A separate process reopens the synthetic genesis wallet used by setup. Its payment authority is independent of the recipient ACC. The owner alone decrypts the receipt and verifies the commitment. | Synthetic local owner and sender. |
+| P8 · substitutable providers | The fixture uses a self-hosted indexer and proof server and reads authoritative state from the chain. A failed read stops the send. | One pinned local profile was tested. Cross-provider substitution and a public provider remain unqualified. |
+
+The [refusal tests](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-dapp/test/midnames-deposit.test.ts)
+exercise failures before broadcast and unknown outcomes after dispatch. The
+example covers wallet-to-ACC receive. ACC-to-ACC composition is tracked in
+[#318](https://github.com/input-output-hk/midnight-passport-sdk/issues/318).
+
 ## Current published release and evidence tiers
 
-Published **RC7** adds ceremony-purpose hooks, consistent demo operation review,
-advisory proof plans and a deterministic browser-journey lane. The application→ACC
-merchant recipe retains its separately pinned local native receipt. The
-[release record]({{ '/release-notes-rc7/' | relative_url }}) verifies actual package
-publication; neither publication nor a source check requalifies every native or
-real-provider flow.
+The published preview is **0.1.0-rc9**. Its
+[release record]({{ '/release-notes-rc9/' | relative_url }}) describes the
+installed packages, mounted images and native source evidence. The
+application→ACC merchant recipe retains its own pinned local native receipt.
+Named shielded receive was qualified on later local source.
 
 ## Supported evaluation use cases
 
@@ -42,6 +60,7 @@ real-provider flow.
 | Plan operation proving requirements | `contract/capabilities`, `account/preflight`; SDK capabilities panel | Catalog drift, tamper, exact method/profile tests; browser operation/read-grant changes with no credential or driver calls | Advisory metadata only: no claim of host/key-endpoint readiness, ownership, available funds or proof success |
 | Compose an application→ACC payment | `mn-passport-export-compact`, merchant client example; engineer recipe link | Installed/compiler/offline checks; native positive payment and seven construction refusals | JubJub unshielded caller-pinned scope only; no browser merchant button, arbitrary contract acceptance or production privacy claim |
 | Review/resume a shielded deposit | `depositShielded`, protected journal and reviewed host example | Real encryption/filesystem revisions, captured original inputs, refusal, unknown and reconciliation tests | Host recipe, not a demo funding endpoint. Synthetic sender/finality tests do not establish native submission acceptance |
+| Deposit a shielded asset by name | Standalone Node sender using the real Midnames adapter and `deposit_shielded` | Native `undeployed` receipt: one finalized 10-unit test-token deposit to `alice.night`, with owner decryption and verified holding. Automated pre-dispatch refusal and unknown-outcome tests. | Source-only wallet-to-ACC receive on the standalone `.night` profile. |
 
 These are mapped tests, not exhaustive coverage of every parameter, circuit,
 interleaving or provider. The 52 proof/66 pure circuit inventory does not imply

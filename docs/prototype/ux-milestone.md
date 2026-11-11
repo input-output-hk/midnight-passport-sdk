@@ -112,3 +112,10 @@ standalone sponsor receipt after the user opens the target ACC. **Check original
 claim** reconciles the stored transaction and the current registry owner and
 target. A lost response keeps the original receipt available across browser
 reloads. See [the recovery flow](../site/names.md#recover-the-sponsors-original-claim-in-the-demo).
+
+### Standalone shielded deposit by name
+
+The independent sender exercise covers a named ACC's shielded receive path on
+`undeployed`. The owner receives and verifies a holding without supplying
+credentials or private state to the sender. See the
+[standalone recipe](../../examples/midnames-local/README.md#run-the-shielded-deposit-by-name).
