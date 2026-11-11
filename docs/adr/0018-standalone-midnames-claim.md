@@ -61,6 +61,9 @@ receipt takes precedence over a fresh availability check.
 
 ## Local preparation fixture
 
+**Native qualification pending.** Earlier native receipts cover the paid
+claim and browser recovery using the previous sponsor fixture.
+
 The standalone fixture passes serialized Ledger 9 proof bytes to the wallet
 balancing adapter. Admission checks the exact registry, root name, owner
 commitment, ACC target and NIGHT charge to the live parent registry recipient.
