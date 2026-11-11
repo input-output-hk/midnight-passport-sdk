@@ -69,6 +69,9 @@ balancing adapter. Admission checks the exact registry, root name, owner
 commitment, ACC target and NIGHT charge to the live parent registry recipient.
 After balancing, the fixture compares the original proof and communication
 commitment with the finalized call, then retains public receipt identifiers
-and the hash of the finalized bytes. The fixture uses one local process and an
-isolated local prover. Separate owner/sponsor processes, native transaction
-admission, fee ceilings and browser dispatch fencing remain qualification work.
+and the hash of the finalized bytes. The owner process generates the naming
+witness and uses the isolated local prover. It returns only the public owner
+commitment and proved bytes. The quoted NIGHT output accompanies the call in
+the owner-proved offer. The sponsor supplies the wallet inputs and fees.
+Native transaction admission, fee ceilings and browser dispatch fencing remain
+qualification work.

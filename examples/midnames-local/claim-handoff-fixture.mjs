@@ -1,81 +1,64 @@
 import assert from 'node:assert/strict';
-import { createHash, randomBytes } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { prepareSponsoredClaim } from '../../apps/passport-dapp/src/midnames/claim-sponsorship.ts';
 import { saveIsolationReceipt } from '../../scripts/qualification/native-isolation-files.mjs';
+import { proveInOwnerProcess } from './claim-owner-process.mjs';
 
-/** Prove in the owner environment. Pass only proved bytes to the sponsor adapter. */
+/** The sponsor balances a proved registration produced by the isolated owner process. */
 export async function qualifyClaimHandoff({
   output,
+  ref,
+  assets,
+  modulePath,
+  registryManifestHash,
   registryAddress,
   accountAddress,
-  regProviders,
-  contracts,
+  walletProvider,
   ledger,
-  compiled,
-  registry,
   rootId,
-  owner,
   parentDomain,
-  target,
-  noDefault,
-  price,
-  fields,
-  privateStateId,
   step,
 }) {
-  const claimant = new Uint8Array(randomBytes(32));
-  const tag = Buffer.alloc(32);
-  tag.write('midnight.domains');
   const label = 'charlie';
-  const nameKey = new Uint8Array(32).fill(255);
-  nameKey.set(new TextEncoder().encode(label));
-  const { owner_address: registryPayee, payment_config: payment } = parentDomain;
-  assert.ok(payment.buy_enabled);
-  assert.ok(payment.coin_color.every((byte) => byte === 0));
+  const { owner_address: registryPayee, payment_config: price } = parentDomain;
+  assert.ok(price.buy_enabled);
+  assert.ok(price.coin_color.every((byte) => byte === 0));
+
+  step('prove-claim-in-owner-process');
+  const owner = await proveInOwnerProcess({
+    ref,
+    assets,
+    modulePath,
+    registryManifestHash,
+    registryAddress,
+    accountAddress,
+    indexerUrl: process.env.MN_INDEXER_URL,
+    indexerWsUrl: process.env.MN_INDEXER_WS_URL,
+    proverUrl: process.env.MN_PROOF_SERVER_URL,
+    walletKeys: {
+      coin: await walletProvider.getCoinPublicKey(),
+      encryption: await walletProvider.getEncryptionPublicKey(),
+    },
+    childOwnerAddress: new Uint8Array(32).fill(0x33),
+    rootId,
+    label,
+    price,
+  });
   const quote = {
     networkId: 'undeployed',
     registryAddress,
     accountAddress,
     name: label + '.night',
-    ownerCommitment: createHash('sha256').update(tag).update(claimant).digest('hex'),
+    ownerCommitment: owner.ownerCommitment,
     registryPayee: Buffer.from(registryPayee.bytes).toString('hex'),
-    night: payment.cost_long,
+    night: price.cost_long,
   };
-  let bytes;
-  try {
-    step('prove-claim-in-owner-environment');
-    const {
-      private: { unprovenTx },
-    } = await contracts.createUnprovenCallTx(regProviders, {
-      compiledContract: compiled(claimant),
-      contractAddress: registryAddress,
-      circuitId: 'create_domain',
-      privateStateId,
-      args: [
-        owner,
-        nameKey,
-        BigInt(label.length),
-        rootId,
-        target,
-        registry.AddressType.ContractAddr,
-        noDefault,
-        price,
-        fields,
-      ],
-    });
-    const proven = await regProviders.proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
-    assert.equal(proven.version, 'v9');
-    bytes = proven.tx.serialize();
-  } finally {
-    claimant.fill(0);
-  }
 
   step('balance-owner-proof-with-sponsor');
-  const prepared = await prepareSponsoredClaim(quote, bytes, async (proved) => {
+  const prepared = await prepareSponsoredClaim(quote, owner.bytes, async (proved) => {
     const tx = ledger.Transaction.deserialize('signature', 'proof', 'pre-binding', proved);
-    const balanced = await regProviders.walletProvider.balanceTx({ version: 'v9', tx });
+    const balanced = await walletProvider.balanceTx({ version: 'v9', tx });
     assert.equal(balanced.version, 'v9');
     return balanced.tx.serialize();
   });
@@ -93,6 +76,12 @@ export async function qualifyClaimHandoff({
     quotedNight: String(quote.night),
     dustSpends,
     dispatches: 0,
+    ownerProvedInSeparateProcess: true,
   });
-  return { claimPrepared: true, dustSpends, claimDispatches: 0 };
+  return {
+    claimPrepared: true,
+    dustSpends,
+    claimDispatches: 0,
+    ownerProvedInSeparateProcess: true,
+  };
 }

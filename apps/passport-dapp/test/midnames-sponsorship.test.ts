@@ -3,11 +3,13 @@ import { test } from 'node:test';
 import {
   Intent,
   Transaction,
+  UnshieldedOffer,
   type Effects,
   type UnshieldedTokenType,
 } from '@midnightntwrk/ledger-v9';
 import {
   matchesRegistryCharge,
+  matchesOwnerOffer,
   prepareSponsoredClaim,
   type PaidClaimQuote,
 } from '../src/midnames/claim-sponsorship.js';
@@ -48,6 +50,22 @@ test('a standalone sponsor quote pins the registry recipient and exact NIGHT cha
   ]) {
     assert.equal(matchesRegistryCharge(changed, quote), false);
   }
+});
+
+test('admits only the single registry payment output in the owner-proved offer', () => {
+  const output = { value: quote.night, owner: quote.registryPayee, type: night.raw };
+  const expected = UnshieldedOffer.new([], [output], []);
+  assert.equal(matchesOwnerOffer(expected, quote), true);
+  for (const outputs of [
+    [],
+    [output, output],
+    [{ ...output, owner: quote.accountAddress }],
+    [{ ...output, value: quote.night + 1n }],
+    [{ ...output, type: '42'.repeat(32) }],
+  ]) {
+    assert.equal(matchesOwnerOffer(UnshieldedOffer.new([], outputs, []), quote), false);
+  }
+  assert.equal(matchesOwnerOffer(undefined, quote), false);
 });
 
 test('rejects unproved or malformed bytes before calling the sponsor wallet', async () => {
