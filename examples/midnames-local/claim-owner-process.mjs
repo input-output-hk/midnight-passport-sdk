@@ -1,13 +1,17 @@
 import { fork } from 'node:child_process';
 
 /** The local fixture passes public settings in and accepts one proved reply. */
-export function proveInOwnerProcess(input) {
-  const child = fork(new URL('./claim-owner-worker.mjs', import.meta.url), [], {
-    env: {},
+export function proveInOwnerProcess(input, browser = false) {
+  const entry = browser ? './claim-owner-browser-host.mjs' : './claim-owner-worker.mjs';
+  const child = fork(new URL(entry, import.meta.url), [], {
+    env: browser
+      ? { PLAYWRIGHT_CHROMIUM_EXECUTABLE: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
+      : {},
     serialization: 'advanced',
     stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
     execArgv: ['--experimental-import-meta-resolve'],
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(browser ? 150_000 : 120_000),
+    killSignal: browser ? 'SIGINT' : 'SIGTERM',
   });
   return new Promise((resolve, reject) => {
     let result;
@@ -29,7 +33,8 @@ export function proveInOwnerProcess(input) {
       if (
         result ||
         !reply ||
-        Object.keys(reply).length !== 2 ||
+        Object.keys(reply).length !== (browser ? 3 : 2) ||
+        (browser && reply.restored !== true) ||
         typeof reply.ownerCommitment !== 'string' ||
         !/^[0-9a-f]{64}$/.test(reply.ownerCommitment) ||
         !(reply.bytes instanceof Uint8Array) ||
@@ -39,7 +44,11 @@ export function proveInOwnerProcess(input) {
         invalid = true;
         return;
       }
-      result = { ownerCommitment: reply.ownerCommitment, bytes: reply.bytes };
+      result = {
+        ownerCommitment: reply.ownerCommitment,
+        bytes: reply.bytes,
+        ...(browser && { restored: true }),
+      };
     });
     child.once('close', (code, signal) => {
       if (!invalid && code === 0 && !signal && result) resolve(result);

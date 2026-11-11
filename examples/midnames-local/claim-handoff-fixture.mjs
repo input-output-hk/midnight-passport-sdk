@@ -26,26 +26,30 @@ export async function qualifyClaimHandoff({
   assert.ok(price.buy_enabled);
   assert.ok(price.coin_color.every((byte) => byte === 0));
 
-  step('prove-claim-in-owner-process');
-  const owner = await proveInOwnerProcess({
-    ref,
-    assets,
-    modulePath,
-    registryManifestHash,
-    registryAddress,
-    accountAddress,
-    indexerUrl: process.env.MN_INDEXER_URL,
-    indexerWsUrl: process.env.MN_INDEXER_WS_URL,
-    proverUrl: process.env.MN_PROOF_SERVER_URL,
-    walletKeys: {
-      coin: await walletProvider.getCoinPublicKey(),
-      encryption: await walletProvider.getEncryptionPublicKey(),
+  const browser = !!dispatch;
+  step(browser ? 'prove-claim-in-owner-chromium' : 'prove-claim-in-owner-process');
+  const owner = await proveInOwnerProcess(
+    {
+      ref,
+      assets,
+      modulePath,
+      registryManifestHash,
+      registryAddress,
+      accountAddress,
+      indexerUrl: process.env.MN_INDEXER_URL,
+      indexerWsUrl: process.env.MN_INDEXER_WS_URL,
+      proverUrl: process.env.MN_PROOF_SERVER_URL,
+      walletKeys: {
+        coin: await walletProvider.getCoinPublicKey(),
+        encryption: await walletProvider.getEncryptionPublicKey(),
+      },
+      childOwnerAddress: new Uint8Array(32).fill(0x33),
+      rootId,
+      label,
+      price,
     },
-    childOwnerAddress: new Uint8Array(32).fill(0x33),
-    rootId,
-    label,
-    price,
-  });
+    browser,
+  );
   const quote = {
     networkId: 'undeployed',
     registryAddress,
@@ -75,8 +79,12 @@ export async function qualifyClaimHandoff({
     dustSpends,
     dispatches: 0,
     ownerProvedInSeparateProcess: true,
+    ...(browser && { ownerCredentialRestored: owner.restored }),
   });
-  if (dispatch) return dispatch(quote, prepared.receipt);
+  if (dispatch) {
+    const result = await dispatch(quote, prepared.receipt);
+    return { ...result, ownerCredentialRestored: owner.restored };
+  }
   return {
     claimPrepared: true,
     dustSpends,
