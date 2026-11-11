@@ -7,7 +7,7 @@ function cancel(body: ReadableStream<Uint8Array> | null): void {
   }
 }
 
-function abortable<T>(
+export function abortable<T>(
   work: Promise<T>,
   signal: AbortSignal,
   late?: (value: T) => void,

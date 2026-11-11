@@ -33,18 +33,15 @@ const confirmationResponse = z.object({
   data: z.object({ transactions: z.tuple([includedRecord]) }),
 });
 
-export interface HostConfirmationRuntime {
+interface ReceiptTransaction {
+  identifiers(): readonly string[];
+  transactionHash(): string;
+}
+
+export interface HostConfirmationRuntime<T extends ReceiptTransaction = ReceiptTransaction> {
   readonly ledger: {
     readonly Transaction: {
-      deserialize(
-        s: 'signature',
-        p: 'proof',
-        b: 'binding',
-        raw: Uint8Array,
-      ): {
-        identifiers(): readonly string[];
-        transactionHash(): string;
-      };
+      deserialize(s: 'signature', p: 'proof', b: 'binding', raw: Uint8Array): T;
     };
   };
   readonly indexerUrl: string;
@@ -53,13 +50,41 @@ export interface HostConfirmationRuntime {
 }
 const QUERY =
   'query HostMutationReceipt($offset: TransactionOffset!) { transactions(offset:$offset) { __typename protocolVersion raw hash block { height hash } ... on RegularTransaction { identifiers transactionResult { status } } } }';
+const QUERY_SHIELDED = QUERY.replace(
+  'identifiers transactionResult',
+  'identifiers zswapLedgerEvents { raw } zswapStartIndex zswapEndIndex transactionResult',
+);
+
+type ExactTransaction = { readonly txHash: string; readonly bytesSha256: string };
+type HostIncludedConfirmation = HostConfirmation & { readonly blockHash?: string };
 
 /** Unknown, malformed, oversized or interrupted observations never confirm or replay a mutation. */
 export async function readHostConfirmation(
   step: Pick<HostMutationStep, 'identifiers'> & Partial<HostMutationStep>,
   runtime: HostConfirmationRuntime,
-  exact?: { readonly txHash: string; readonly bytesSha256: string },
-): Promise<(HostConfirmation & { readonly blockHash?: string }) | undefined> {
+  exact?: ExactTransaction,
+): Promise<HostIncludedConfirmation | undefined> {
+  return (await readHostReceipt(step, runtime, exact))?.confirmation;
+}
+
+/** Keep the checked transaction and its replay events from the same bounded indexer response. */
+export async function readHostReceipt<T extends ReceiptTransaction>(
+  step: Pick<HostMutationStep, 'identifiers'> & Partial<HostMutationStep>,
+  runtime: HostConfirmationRuntime<T>,
+  exact?: ExactTransaction,
+  queryShielded = false,
+): Promise<
+  | {
+      readonly confirmation: HostIncludedConfirmation;
+      readonly transaction: T;
+      readonly shielded: {
+        readonly events: unknown;
+        readonly start: unknown;
+        readonly end: unknown;
+      };
+    }
+  | undefined
+> {
   const identifier = step.submissionId ?? step.identifiers[0];
   if (!identifier) return undefined;
   const controller = new AbortController();
@@ -72,7 +97,10 @@ export async function readHostConfirmation(
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         ...(exact && { redirect: 'error' as const }),
-        body: JSON.stringify({ query: QUERY, variables: { offset: { identifier } } }),
+        body: JSON.stringify({
+          query: queryShielded ? QUERY_SHIELDED : QUERY,
+          variables: { offset: { identifier } },
+        }),
         signal: controller.signal,
       },
       RESPONSE_LIMIT,
@@ -111,11 +139,19 @@ export async function readHostConfirmation(
     )
       return undefined;
     return {
-      identifier,
-      txHash: record.hash,
-      blockHeight: record.block.height,
-      succeeded: true,
-      ...(exact && record.block.hash && { blockHash: record.block.hash }),
+      confirmation: {
+        identifier,
+        txHash: record.hash,
+        blockHeight: record.block.height,
+        succeeded: true,
+        ...(exact && record.block.hash && { blockHash: record.block.hash }),
+      },
+      transaction,
+      shielded: {
+        events: record.zswapLedgerEvents,
+        start: record.zswapStartIndex,
+        end: record.zswapEndIndex,
+      },
     };
   } catch {
     return undefined;

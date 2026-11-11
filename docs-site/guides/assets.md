@@ -38,6 +38,12 @@ the call commitment, shielded effects, and concrete Ledger 9 offers before
 staging the serialized transaction. The account withdrawal entry points still
 enforce the exact-value guard while host finality and inbox recovery are in development.
 
+The reference host observer checks the original transaction bytes, canonical
+finalized block, and matching Zswap events. It requires independent evidence
+for the change's insertion index. The Ledger 9 replay helper checks that index
+using authenticated state immediately before the transaction. Supplying this
+state and wiring encrypted inbox recovery are still required for live use.
+
 Application contracts may call **into a deployed ACC** under the supported caller-bound design. That does not establish arbitrary ACC → other-contract calls. [See the implementation boundary](/architecture/standards).
 
 ## Repeated deposits and uncertain results
