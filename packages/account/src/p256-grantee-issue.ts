@@ -140,20 +140,20 @@ export async function issueP256GranteeGrant(
   const admitted = issueInput.safeParse(input);
   if (!admitted.success)
     throw new PassportConnectorError('GrantScopeInvalid', 'Malformed grant issue.');
-  const { requestId, scope } = admitted.data;
+  const { requestId, scope: requestedScope } = admitted.data;
   const { networkId, grants, chain, authoriser, pure, journal, fence } = ports;
   const owner = structuredCloneOwner(ports.owner);
   pins(networkId, grants, chain);
   if (
     owner.status !== 'active' ||
-    owner.address !== scope.account ||
+    owner.address !== requestedScope.account ||
     !authoriser.withKeySession ||
     authoriser.scheme !== owner.scheme ||
     (owner.scheme !== 'p256-webauthn' && owner.scheme !== 'jubjub-schnorr')
   )
     throw new PassportConnectorError('NotAuthorised', 'An active owner key session is required.');
   if (owner.scheme === 'p256-webauthn') {
-    const grantee = p256GranteePoint(scope.grantee.publicKey);
+    const grantee = p256GranteePoint(requestedScope.grantee.publicKey);
     if (grantee.x === owner.publicKey.x && grantee.y === owner.publicKey.y)
       throw new PassportConnectorError('GrantScopeInvalid', 'Choose a distinct grantee passkey.');
   }
@@ -161,14 +161,15 @@ export async function issueP256GranteeGrant(
   const previous = await journal.read(requestId);
   if (previous || (await fence.has(requestId)))
     throw new P256GranteeIssueUnsettled(requestId, previous?.txHash);
-  const first = await ownerSnapshot(scope.account, { networkId, chain, grants });
+  const first = await ownerSnapshot(requestedScope.account, { networkId, chain, grants });
   const now = ports.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
   const prepared = prepareP256UnshieldedGrant(
-    { scope, activeGrantIds: first.ids, nowSeconds: now() },
+    { scope: requestedScope, activeGrantIds: first.ids, nowSeconds: now() },
     pure,
     ports.random,
   );
   const opening = Object.freeze(prepared.opening);
+  const { scope } = opening;
   const scopeDigest = toHex(prepared.scopeDigest);
   checkpoint(options);
   if (!(await ports.review(Object.freeze({ networkId, scope, grantId: opening.grantId }))))

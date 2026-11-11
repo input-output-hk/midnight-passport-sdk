@@ -165,6 +165,22 @@ for (const arm of /** @type {const} */ (['p256', 'jubjub'])) {
       },
     };
     const input = { requestId, scope };
+    let now = sim.now;
+    await assert.rejects(
+      issueP256GranteeGrant(input, {
+        ...ports,
+        nowSeconds: () => now,
+        review: async ({ scope: reviewed }) => {
+          assert.equal(reviewed.expiresAt, scope.expiresAt);
+          assert.equal(Reflect.set(reviewed, 'expiresAt', null), false);
+          assert.equal(Reflect.set(reviewed.grantee, 'rpIdHash', '0'.repeat(64)), false);
+          now = scope.expiresAt;
+          return true;
+        },
+      }),
+      { code: 'GrantRosterUnsettled' },
+    );
+    assert.deepEqual([signatures, submissions], [0, 0]);
     let reads = 0;
     await assert.rejects(
       issueP256GranteeGrant(input, {
