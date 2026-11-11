@@ -98,7 +98,11 @@ export function showClaimRecovery(
             return;
           }
         }
-        if (original?.accountAddress !== account.address) {
+        if (!original) {
+          status.textContent = 'Save the original claim receipt on this device first.';
+          return;
+        }
+        if (original.accountAddress !== account.address) {
           status.textContent = 'Use the original account and receipt to check this claim.';
           return;
         }

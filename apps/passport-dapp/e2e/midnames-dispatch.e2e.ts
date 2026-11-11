@@ -105,10 +105,15 @@ try {
   browser = await openBrowser();
   const first = await browser.newPage();
   await first.goto(pageUrl);
+  let browserDispatches = 0;
+  first.on('request', (request) => {
+    if (request.url() === origin + claimDispatchPath) browserDispatches += 1;
+  });
   await first.locator('#claim-recovery-name').fill(receipt.name);
   await first.locator('#claim-dispatch').click();
   const status = first.locator('#claim-recovery-status');
-  await status.filter({ hasText: 'Use the original account and receipt' }).waitFor();
+  await status.filter({ hasText: 'Save the original claim receipt' }).waitFor();
+  assert.equal(browserDispatches, 0);
   await first.locator('#claim-recovery-receipt').fill(JSON.stringify(receipt));
   await first.locator('#claim-recovery-retain').click();
   await status.filter({ hasText: 'Original receipt saved' }).waitFor();
@@ -119,6 +124,7 @@ try {
   });
   await first.locator('#claim-dispatch').click();
   await status.filter({ hasText: /^Claim pending/ }).waitFor();
+  assert.equal(browserDispatches, 1);
   assert.deepEqual(requests, [bytes]);
   await browser.close();
   browser = await openBrowser();
