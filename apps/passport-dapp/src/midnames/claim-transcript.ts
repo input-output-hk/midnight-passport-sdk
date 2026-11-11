@@ -1,5 +1,5 @@
 import type { AlignedValue, Op } from '@midnightntwrk/ledger-v9';
-import type { ClaimReceipt } from './claim-receipt.js';
+import type { ClaimScope } from './claim-receipt.js';
 
 // Ledger slots in the pinned standalone registry. The map insertions are the
 // public effect of create_domain, independent of the private witness.
@@ -57,7 +57,7 @@ function matchesBytes32(value: Uint8Array | undefined, expected: string): boolea
 /** Check the same new domain ID connects the root label to the stored owner and contract target. */
 export function matchesClaimWrites(
   programs: readonly (readonly Op<AlignedValue>[])[],
-  original: ClaimReceipt,
+  original: ClaimScope,
 ): boolean {
   const label = new Uint8Array(32).fill(255);
   label.set(new TextEncoder().encode(original.name.slice(0, -'.night'.length)));

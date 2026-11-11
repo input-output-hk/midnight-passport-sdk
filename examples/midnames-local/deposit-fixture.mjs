@@ -61,7 +61,7 @@ const [
   import(pathToFileURL(join(ref, 'src/wallet/inbox.ts')).href),
 ]);
 const mode = process.env.PASSPORT_MIDNAMES_FIXTURE_MODE;
-assert.ok(mode === 'named-shielded-deposit' || mode === 'named-night-send');
+assert.ok(['named-shielded-deposit', 'named-night-send', 'claim-handoff'].includes(mode));
 const receipt = { transactions: [], steps: [], passed: false, mode };
 const save = () => saveIsolationReceipt(join(output, 'worker.json'), receipt);
 const step = (label) => {
@@ -152,6 +152,7 @@ try {
       CompiledContract.withCompiledFileAssets(assets),
     );
   const owner = { bytes: walletModule.userAddressBytes(wallet) };
+  const registryPayee = mode === 'claim-handoff' ? { bytes: new Uint8Array(32).fill(0x22) } : owner;
   const price = {
     cost_short: 1n,
     cost_med: 1n,
@@ -175,7 +176,7 @@ try {
       registry.AddressType.ContractAddr,
       noDefault,
       price,
-      owner,
+      registryPayee,
       fields,
       { is_some: false, value: 0n },
       true,
@@ -290,7 +291,30 @@ try {
   );
   const claimIdentifier = receipt.transactions.at(-1).id;
   const getReferenceSigner = () => import(pathToFileURL(join(ref, 'src/wallet/signer.ts')).href);
-  if (mode === 'named-night-send') {
+  if (mode === 'claim-handoff') {
+    const { qualifyClaimHandoff } = await import('./claim-handoff-fixture.mjs');
+    const handoff = await qualifyClaimHandoff({
+      output,
+      registryAddress,
+      accountAddress,
+      regProviders,
+      contracts,
+      ledger,
+      compiled,
+      registry,
+      rootId,
+      owner,
+      parentDomain: observed.id_to_data.lookup(rootId),
+      target,
+      noDefault,
+      price,
+      fields,
+      privateStateId,
+      step,
+    });
+    Object.assign(receipt, { ...handoff, passed: true });
+    step('verified-prepared-claim-handoff');
+  } else if (mode === 'named-night-send') {
     const { qualifyNightSend } = await import('./night-send-fixture.mjs');
     const { JubjubDevice, jubjubChallenges } = await getReferenceSigner();
     const device = JubjubDevice.generate();
