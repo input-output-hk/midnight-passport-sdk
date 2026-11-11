@@ -75,9 +75,11 @@ test('original shielded withdrawal CAS admits one dispatch and a fresh process r
   const journal = createShieldedWithdrawalJournal(first, fileMutationByteStore(fenceRoot));
   const other = createShieldedWithdrawalJournal(parallel, fileMutationByteStore(fenceRoot));
   const id = reservation.requestId;
+  const alias = { ...reservation, requestId: id.toLowerCase() };
   assert.equal(await journal.reserve(reservation), true);
   assert.equal(await other.reserve(reservation), false);
-  assert.equal(await other.reserve({ ...reservation, requestId: id.toLowerCase() }), false);
+  assert.equal(await other.reserve(alias), false);
+  assert.equal((await other.read(alias.requestId))?.reservation.requestId, id);
   assert.deepEqual(
     await recoverShieldedWithdrawal(id, {
       journal,
@@ -99,8 +101,8 @@ test('original shielded withdrawal CAS admits one dispatch and a fresh process r
     identity: { ...dispatch.identity, txHash: 'cc'.repeat(32) },
   };
   const [won, lost] = await Promise.all([
-    journal.stageDispatch(reservation, dispatch),
-    other.stageDispatch(reservation, conflict),
+    journal.stageDispatch(alias, dispatch),
+    other.stageDispatch(alias, conflict),
   ]);
   assert.notEqual(won, lost);
   const original = won ? dispatch : conflict;
@@ -127,7 +129,7 @@ test('original shielded withdrawal CAS admits one dispatch and a fresh process r
     const args = JSON.parse(readFileSync(0, 'utf8'));
     const store = protectedMutationByteStore(args.root, new Uint8Array(args.key));
     const journal = createShieldedWithdrawalJournal(store, fileMutationByteStore(args.fenceRoot));
-    const value = await recoverShieldedWithdrawal(args.id, {
+    const value = await recoverShieldedWithdrawal(args.id.toLowerCase(), {
       journal,
       deriveChangeCommitment: deriveMidnightContractCoinCommitment,
       finality: {
@@ -141,6 +143,7 @@ test('original shielded withdrawal CAS admits one dispatch and a fresh process r
       },
     });
     assert.equal(value.kind, 'change-found');
+    assert.equal(value.requestId, args.id);
     assert.equal(value.txHash, args.evidence.dispatch.identity.txHash);
     assert.equal(value.change.mt_index, 42n);
     assert.equal(value.change.value, 12n);

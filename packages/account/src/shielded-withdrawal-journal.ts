@@ -92,7 +92,10 @@ export function createShieldedWithdrawalJournal(
     try {
       if (slot.bytes.length > 8192) return unsettled();
       const value = record.parse(JSON.parse(String.fromCharCode(...slot.bytes)));
-      if (value.reservation.requestId !== requestId || slot.revision !== (value.dispatch ? 1 : 0))
+      if (
+        value.reservation.requestId.toLowerCase() !== requestId.toLowerCase() ||
+        slot.revision !== (value.dispatch ? 1 : 0)
+      )
         return unsettled();
       return value;
     } catch {
@@ -136,7 +139,11 @@ export function createShieldedWithdrawalJournal(
       if (!reservation.success || !original.success) return unsettled();
       const { requestId } = reservation.data;
       const stored = await load(requestId);
-      if (!stored || mutationDigest(stored.reservation) !== mutationDigest(reservation.data))
+      if (
+        !stored ||
+        mutationDigest(stored.reservation) !==
+          mutationDigest({ ...reservation.data, requestId: stored.reservation.requestId })
+      )
         return unsettled();
       if (stored.dispatch) return false;
       return save({ ...stored, dispatch: original.data }, 0);

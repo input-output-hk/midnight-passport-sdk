@@ -58,6 +58,7 @@ export type ShieldedWithdrawalRecovery =
   | { readonly kind: 'unknown' }
   | {
       readonly kind: 'change-found';
+      readonly requestId: string;
       readonly txHash: string;
       readonly blockHash: string;
       readonly blockHeight: number;
@@ -75,7 +76,11 @@ export async function recoverShieldedWithdrawal(
   if (!record?.dispatch) return { kind: 'unknown' };
   const reservation = shieldedWithdrawalReservation.safeParse(record.reservation);
   const dispatch = shieldedWithdrawalDispatch.safeParse(record.dispatch);
-  if (!reservation.success || !dispatch.success || reservation.data.requestId !== requestId)
+  if (
+    !reservation.success ||
+    !dispatch.success ||
+    reservation.data.requestId.toLowerCase() !== requestId.toLowerCase()
+  )
     return { kind: 'unknown' };
   const expected = reservation.data;
   if (finality.networkId !== expected.networkId)
@@ -115,6 +120,7 @@ export async function recoverShieldedWithdrawal(
 
   return {
     kind: 'change-found',
+    requestId: expected.requestId,
     txHash: dispatch.data.identity.txHash,
     blockHash: data.blockHash,
     blockHeight: data.blockHeight,
