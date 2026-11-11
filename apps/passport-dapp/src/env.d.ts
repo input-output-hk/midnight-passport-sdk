@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_PASSPORT_SERVICE_URL?: string;
+  readonly VITE_MIDNAMES_REGISTRY_PROFILE?: string;
   readonly VITE_MIDNAMES_REGISTRY_ADDRESS?: string;
   readonly VITE_MIDNAMES_NAMESPACE?: string;
   readonly VITE_MIDNAMES_NETWORK_ID?: string;

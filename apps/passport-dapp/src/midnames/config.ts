@@ -1,7 +1,9 @@
 import type { PassportNameService } from '@input-output-hk/mn-passport-account/names';
 import { createMidnamesNameService } from './resolver.js';
+import { registryProfile } from './registry-pins.js';
 
 export interface MidnamesConfig {
+  readonly registryProfile?: string | undefined;
   readonly registryAddress?: string | undefined;
   readonly namespace?: string | undefined;
   readonly networkId?: string | undefined;
@@ -39,11 +41,17 @@ export function configureMidnames(
     !indexerWsUrl
   )
     throw new Error('Configure the registry, namespace, matching network, and both indexer URLs.');
+  const profileId = registryProfile(config.registryProfile, networkId);
   const http = endpoint(indexerUrl, 'https:', 'http:');
   const ws = endpoint(indexerWsUrl, 'wss:', 'ws:');
   const load = () =>
     import('./ledger-reader.js').then(({ createMidnamesIndexer, createMidnamesLedgerReads }) =>
-      createMidnamesLedgerReads(createMidnamesIndexer(networkId, http, ws), networkId, bindingId),
+      createMidnamesLedgerReads(
+        createMidnamesIndexer(networkId, http, ws),
+        networkId,
+        bindingId,
+        profileId,
+      ),
     );
   let loaded: ReturnType<typeof load> | undefined;
   const reads = () =>

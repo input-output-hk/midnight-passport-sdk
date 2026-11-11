@@ -138,3 +138,11 @@ runtime 0.15.0, and its write wrapper reports writes paused. The demo uses only
 the read subpaths. A claim flow requires compatible registry write artifacts
 and separate proof and submission checks. A local `.night` profile does not
 establish public `passport.night` issuance or name-control recovery.
+
+### Standalone registry profile
+
+For a disposable `undeployed` network, set
+`VITE_MIDNAMES_REGISTRY_PROFILE=standalone-0.35` alongside the five settings
+above. This selects the independently pinned standalone verifier roster.
+The default profile remains `midnames-2.1.0`. A registry with a different
+roster is refused. See the [standalone preparation recipe](../../examples/midnames-local/README.md).

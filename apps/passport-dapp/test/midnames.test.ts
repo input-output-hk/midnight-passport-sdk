@@ -89,7 +89,22 @@ test('configured name lookup requires an explicit matching network, registry and
     configureMidnames(config, profile.networkId, 'acc-s3r1.1')?.provider.mode,
     'external',
   );
+  assert.ok(
+    configureMidnames(
+      { ...config, registryProfile: 'standalone-0.35' },
+      profile.networkId,
+      'acc-s3r1.1',
+    ),
+  );
+  assert.throws(() =>
+    configureMidnames(
+      { ...config, networkId: 'preview', registryProfile: 'standalone-0.35' },
+      'preview',
+      'acc-s3r1.1',
+    ),
+  );
   for (const change of [
+    { registryProfile: 'unknown' },
     { registryAddress: undefined },
     { namespace: undefined },
     { networkId: 'preview' },

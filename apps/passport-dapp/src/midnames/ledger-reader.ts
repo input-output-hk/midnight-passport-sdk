@@ -10,7 +10,12 @@ import { PassportNameError } from '@input-output-hk/mn-passport-account/names';
 import { resolveBinding } from '@input-output-hk/mn-passport-contract';
 import { ledger } from '#acc';
 import type { MidnamesReads } from './resolver.js';
-import { MIDNAMES_REGISTRY_VERIFIERS } from './registry-pins.js';
+import {
+  MIDNAMES_REGISTRY_VERIFIERS,
+  STANDALONE_REGISTRY_VERIFIERS,
+  registryProfile,
+  type MidnamesRegistryProfile,
+} from './registry-pins.js';
 
 type RegistryProvider = Parameters<typeof getContractLedger>[0];
 
@@ -38,8 +43,6 @@ async function matchesVerifiers(
   return true;
 }
 
-const registryVerifiers = new Map(Object.entries(MIDNAMES_REGISTRY_VERIFIERS));
-
 function compatibleVerifiers(bindingId: string): ReadonlyMap<string, string> {
   return new Map(
     Object.entries(resolveBinding(bindingId).circuits).flatMap(([name, circuit]) =>
@@ -52,7 +55,16 @@ export function createMidnamesLedgerReads(
   provider: RegistryProvider,
   networkId: string,
   bindingId: string,
+  profileId: MidnamesRegistryProfile = 'midnames-2.1.0',
 ): MidnamesReads {
+  const pinnedProfile = registryProfile(profileId, networkId);
+  const registryVerifiers = new Map(
+    Object.entries(
+      pinnedProfile === 'standalone-0.35'
+        ? STANDALONE_REGISTRY_VERIFIERS
+        : MIDNAMES_REGISTRY_VERIFIERS,
+    ),
+  );
   const accVerifiers = compatibleVerifiers(bindingId);
   return {
     async readTarget(name, profile) {

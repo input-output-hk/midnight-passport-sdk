@@ -240,6 +240,7 @@ showSigningMode(SIGNING_MODE);
 try {
   const naming = configureMidnames(
     {
+      registryProfile: import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
       registryAddress: import.meta.env.VITE_MIDNAMES_REGISTRY_ADDRESS,
       namespace: import.meta.env.VITE_MIDNAMES_NAMESPACE,
       networkId: import.meta.env.VITE_MIDNAMES_NETWORK_ID,

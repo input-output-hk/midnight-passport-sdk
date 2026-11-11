@@ -146,20 +146,24 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
   );
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
-  const reads = createMidnamesLedgerReads(
-    createMidnamesIndexer(
-      'undeployed',
-      `http://127.0.0.1:${address.port}`,
-      `ws://127.0.0.1:${address.port}`,
-    ),
+  const indexer = createMidnamesIndexer(
+    'undeployed',
+    `http://127.0.0.1:${address.port}`,
+    `ws://127.0.0.1:${address.port}`,
+  );
+  const reads = createMidnamesLedgerReads(indexer, 'undeployed', 'acc-s3r1.1');
+  const standalone = createMidnamesLedgerReads(
+    indexer,
     'undeployed',
     'acc-s3r1.1',
+    'standalone-0.35',
   );
   assert.deepEqual(await reads.readTarget('alice.night', profile), {
     kind: 'contract',
     address: target,
   });
   assert.equal(queryCount, 1);
+  await assert.rejects(standalone.readTarget('alice.night', profile), { code: 'InvalidRecord' });
   assert.equal(await reads.readTarget('missing.night', profile), undefined);
   assert.equal(await reads.isSupportedAccount(target, 'undeployed'), false);
   registryState = Buffer.from(state.serialize()).toString('hex');
