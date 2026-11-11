@@ -18,6 +18,13 @@ export const claimName = (value: unknown): value is string =>
   value.endsWith('.night') &&
   /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?\.night$/.test(value);
 
+export function normalizeClaimName(input: string): string | undefined {
+  const trimmed = input.trim();
+  if (!/^[A-Za-z0-9.-]+$/.test(trimmed)) return undefined;
+  const name = trimmed.toLowerCase();
+  return claimName(name) ? name : undefined;
+}
+
 export const claimReceiptLimit = 8192;
 
 // Ledger 9 identifiers are 33-byte hex values, separate from 32-byte transaction hashes.
@@ -66,5 +73,9 @@ export async function claimDigest(value: Uint8Array): Promise<string> {
 
 export interface ClaimRecovery {
   readonly registryAddress: string;
+  availability(
+    name: string,
+    accountAddress: string,
+  ): Promise<'available' | 'taken' | 'unsupported'>;
   check(receipt: ClaimReceipt): Promise<'pending' | 'conflict' | 'registered'>;
 }

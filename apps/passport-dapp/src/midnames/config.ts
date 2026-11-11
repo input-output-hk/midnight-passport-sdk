@@ -1,7 +1,7 @@
 import type { PassportNameService } from '@input-output-hk/mn-passport-account/names';
 import { createMidnamesNameService } from './resolver.js';
 import { registryProfile } from './registry-pins.js';
-import type { ClaimRecovery } from './claim-receipt.js';
+import { claimHex, claimName, type ClaimRecovery } from './claim-receipt.js';
 
 export interface MidnamesConfig {
   readonly registryProfile?: string | undefined;
@@ -70,6 +70,14 @@ export function configureMidnames(
     ...service,
     recovery: {
       registryAddress,
+      async availability(name, accountAddress) {
+        if (!claimName(name) || !claimHex(accountAddress)) throw new Error('Invalid claim scope.');
+        const reader = await reads();
+        if (await reader.hasDomain(name, profile)) return 'taken';
+        return (await reader.isSupportedAccount(accountAddress, networkId))
+          ? 'available'
+          : 'unsupported';
+      },
       async check(receipt) {
         if (receipt.networkId !== networkId || receipt.registryAddress !== registryAddress)
           return 'conflict';

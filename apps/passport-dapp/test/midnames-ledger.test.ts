@@ -176,8 +176,15 @@ test('installed Midnames v2.1 reads its generated registry over the Ledger 9 ind
   await assert.rejects(standalone.readTarget('alice.night', profile), { code: 'InvalidRecord' });
   assert.equal(await reads.readTarget('missing.night', profile), undefined);
   assert.equal(await reads.readClaim('missing.night', profile), undefined);
+  assert.equal(await reads.hasDomain('alice.night', profile), true);
+  assert.equal(await reads.hasDomain('missing.night', profile), false);
+  await assert.rejects(standalone.hasDomain('missing.night', profile), { code: 'InvalidRecord' });
+  await assert.rejects(reads.hasDomain('missing.night', { ...profile, networkId: 'preview' }), {
+    code: 'InvalidQuery',
+  });
   assert.equal(await reads.isSupportedAccount(target, 'undeployed'), false);
   registryState = Buffer.from(state.serialize()).toString('hex');
   await assert.rejects(reads.readTarget('alice.night', profile), { code: 'InvalidRecord' });
   await assert.rejects(reads.readClaim('alice.night', profile), { code: 'InvalidRecord' });
+  await assert.rejects(reads.hasDomain('missing.night', profile), { code: 'InvalidRecord' });
 });

@@ -1,0 +1,59 @@
+# ADR 0018: Standalone Midnames claim ownership and sponsorship
+
+Status: proposed for #316. Applies to the standalone `undeployed` registry
+profile `standalone-0.35`, Midnames SDK 2.1.0, and ACC binding `acc-s3r1.1`.
+
+## Context
+
+The demo can retain and reconcile a sponsor fixture's original registration.
+The account name port resolves an operation-specific target. A claim belongs
+to host composition because it also needs owner custody, proof generation,
+sponsor payment policy, and durable transaction admission.
+
+In the pinned registry, `create_domain` uses the `domainSecretKey` witness to
+derive the published `midnight.domains` commitment. The local fixture uses a
+synthetic witness in its controlled proof environment. The proof requires the witness in addition to the public registry state. Passing the witness
+or its unproved transcript to a separate sponsor would give that service
+material used to control the name.
+
+## Proposed boundary
+
+1. The browser opens or activates the existing ACC. It reads the configured
+   registry and the intended contract target, and displays the name, network,
+   registry, ACC, sponsor and quoted registry price before authorization.
+2. The owner environment holds a distinct naming secret and proves the exact
+   registry call. Evaluate a host-controlled local prover first. The host must
+   document how the naming secret is recovered and rotated independently of the
+   ACC's viewing secret and any built-in wallet seed. A public commitment,
+   finalized proof and public receipt may cross the owner boundary.
+3. The sponsor verifies the proved call and applies a bounded policy for both
+   the registry payment and fees. The browser explicitly authorizes the
+   sponsor route. The service must refuse changes to the name, owner, registry,
+   target, network, or price. Sponsor failure leaves the reviewed request
+   unresolved or refused according to its known admission state.
+4. The sponsor prepares without broadcasting. The browser retains the exact
+   public receipt before authorizing dispatch. A durable server-side fence
+   identifies the same original transaction across tabs, retries and restarts.
+   A lost response reconciles by original identifiers. An empty registry or
+   indexer read cannot clear an uncertain dispatch. Only successful original
+   transaction evidence plus the matching current record yields registered
+   status.
+
+The SDK name port stays read-only. The standalone browser preflight accepts
+ASCII single-label `.night` names and uses a verifier-checked snapshot.
+Labels remain available to other claimants until registration, and a retained
+receipt takes precedence over a fresh availability check.
+
+## Proof and acceptance before enabling submission
+
+- Establish that an owner-proved Ledger 9 call can be balanced and sponsored
+  under this profile without disclosing the witness or altering the reviewed
+  call. Independently check the owner commitment and ACC target in the final
+  bytes. Qualify the positive-price path and its two-DUST admission behavior.
+- Exercise a lost response at every write boundary, a conflicting claim from
+  another tab or credential, registry repointing, unavailable or depleted
+  sponsorship, and restart after the original submission. Verify one dispatch
+  and no replacement while the original outcome is uncertain.
+- Verify how a surviving key origin restores the same naming authority.
+  Total-loss continuity remains a distinct recovery requirement under #240.
+- Qualify other networks and public namespace ownership under #315 and #247.
