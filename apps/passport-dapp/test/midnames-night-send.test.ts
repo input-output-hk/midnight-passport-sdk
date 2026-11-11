@@ -172,3 +172,16 @@ test('an unknown withdrawal remains original-only and cannot fund the next leg',
   assert.deepEqual(calls, ['review', 'sign', 'withdraw']);
   assert.equal(legs.size, 1);
 });
+
+test('orphaned or duplicated leg receipts refuse before any owner approval', async () => {
+  const { legs, ports, calls, state } = fixture();
+  legs.set('deposit', deposit);
+  await assert.rejects(sendNightByName(request, ports()), /journal is incomplete/);
+  assert.deepEqual(calls, []);
+  legs.clear();
+  await sendNightByName(request, ports());
+  legs.set('deposit', withdrawal);
+  state.finalized.add(withdrawal.hash);
+  await assert.rejects(sendNightByName(request, ports()), /distinct transactions/);
+  assert.deepEqual(calls, ['review', 'sign', 'withdraw']);
+});

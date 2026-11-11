@@ -4,6 +4,8 @@ import {
 } from '@input-output-hk/mn-passport-account/names';
 
 const ADDRESS = /^[a-f0-9]{64}$/;
+const isToken = (value: unknown, pattern: RegExp): value is string =>
+  typeof value === 'string' && pattern.test(value);
 const UUID = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/;
 export const NIGHT_SEND_OPERATIONS = Object.freeze([
   'withdraw_unshielded_with_jubjub',
@@ -76,10 +78,10 @@ function validate(request: NightSendRequest) {
   if (
     request.networkId !== 'undeployed' ||
     request.asset !== 'NIGHT' ||
-    !UUID.test(request.requestId) ||
-    !ADDRESS.test(request.source) ||
-    !ADDRESS.test(request.bridge) ||
-    !/^[1-9][0-9]{0,38}$/.test(request.amount) ||
+    !isToken(request.requestId, UUID) ||
+    !isToken(request.source, ADDRESS) ||
+    !isToken(request.bridge, ADDRESS) ||
+    !isToken(request.amount, /^[1-9][0-9]{0,38}$/) ||
     BigInt(request.amount) >= 1n << 128n
   )
     throw new Error('Unsupported or invalid standalone NIGHT payment.');
@@ -116,29 +118,40 @@ function assertSameIntent(a: NightSendIntent, b: NightSendIntent) {
     throw new Error('The original payment scope changed. Inspect the retained intent.');
 }
 
+function checkedLeg(leg: NightSendLeg): NightSendLeg {
+  if (
+    !isToken(leg.hash, ADDRESS) ||
+    !Array.isArray(leg.identifiers) ||
+    leg.identifiers.length === 0 ||
+    leg.identifiers.length > 32 ||
+    leg.identifiers.some((id) => !isToken(id, /^[a-f0-9]{66}$/))
+  )
+    throw new Error('Invalid Ledger 9 transaction identity.');
+  return Object.freeze({ hash: leg.hash, identifiers: Object.freeze([...leg.identifiers]) });
+}
+
+function requireDistinctLegs(withdrawal: NightSendLeg, deposit: NightSendLeg) {
+  if (withdrawal.hash === deposit.hash)
+    throw new Error('Withdrawal and deposit require distinct transactions.');
+}
+
 async function submitLeg(
   leg: 'withdraw' | 'deposit',
   intent: NightSendIntent,
   prepared: PreparedLeg,
   ports: NightSendPorts,
+  prior?: NightSendLeg,
 ) {
-  const { hash } = prepared.original;
-  const identifiers = Object.freeze([...prepared.original.identifiers]);
-  if (
-    !ADDRESS.test(hash) ||
-    identifiers.length === 0 ||
-    identifiers.length > 32 ||
-    identifiers.some((id) => !/^[a-f0-9]{66}$/.test(id))
-  )
-    throw new Error('Invalid prepared Ledger 9 transaction identity.');
+  const original = checkedLeg(prepared.original);
+  if (prior) requireDistinctLegs(prior, original);
   assertSameIntent(intent, await resolveIntent(intent, ports.names));
-  await ports.journal.fenceLeg(leg, { hash, identifiers });
+  await ports.journal.fenceLeg(leg, original);
   try {
     await prepared.dispatch();
   } catch {
     // The submission response can be lost after admission. Reconcile the original only.
   }
-  return { hash, identifiers };
+  return original;
 }
 
 /** Standalone wallet-mediated NIGHT payment with original-only reconciliation. */
@@ -157,7 +170,13 @@ export async function sendNightByName(input: NightSendRequest, ports: NightSendP
   const intent = retained ?? (await resolveIntent(request, ports.names));
   // Preserve the stored scope even if the original name has moved since dispatch.
   assertSameIntent(intent, { ...intent, ...request, operations: NIGHT_SEND_OPERATIONS });
-  let withdrawal = await ports.journal.readLeg('withdraw');
+  const storedWithdrawal = await ports.journal.readLeg('withdraw');
+  const storedDeposit = await ports.journal.readLeg('deposit');
+  if ((storedWithdrawal && !retained) || (storedDeposit && (!retained || !storedWithdrawal)))
+    throw new Error('The payment journal is incomplete. Inspect the original receipts.');
+  let withdrawal = storedWithdrawal && checkedLeg(storedWithdrawal);
+  let deposit = storedDeposit && checkedLeg(storedDeposit);
+  if (withdrawal && deposit) requireDistinctLegs(withdrawal, deposit);
   if (!withdrawal) {
     assertSameIntent(intent, await resolveIntent(request, ports.names));
     const balance = await ports.readSourceBalance(intent.source);
@@ -171,7 +190,6 @@ export async function sendNightByName(input: NightSendRequest, ports: NightSendP
   const finalized = (original: NightSendLeg) => ports.finalized(original).catch(() => false);
   if (!(await finalized(withdrawal))) return { phase: 'withdrawal-pending' as const, withdrawal };
 
-  let deposit = await ports.journal.readLeg('deposit');
   if (!deposit) {
     try {
       assertSameIntent(intent, await resolveIntent(request, ports.names));
@@ -180,6 +198,7 @@ export async function sendNightByName(input: NightSendRequest, ports: NightSendP
         intent,
         await ports.prepareDeposit(intent, withdrawal),
         ports,
+        withdrawal,
       );
     } catch (cause) {
       throw new NightDepositInterrupted(withdrawal, cause);

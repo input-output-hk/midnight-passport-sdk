@@ -128,6 +128,7 @@ export async function qualifyNightSend({
   registryAddress,
   target,
   defaultField,
+  priorSplitId,
   step,
 }) {
   const [{ versionOfRecord }, rx] = await Promise.all([
@@ -177,26 +178,29 @@ export async function qualifyNightSend({
     asset: 'NIGHT',
     amount: String(amount),
   };
-  step('split-exact-funding-night');
-  const splitId = await prepareLocalnetNight(
-    wallet.wallet,
-    bridgeBytes,
-    (bytes) => wallet.unshieldedKeystore.signDataAsync(bytes),
-    color,
-    fund,
-  );
+  step(priorSplitId ? 'observe-original-funding-night' : 'split-exact-funding-night');
+  const splitId =
+    priorSplitId ??
+    (await prepareLocalnetNight(
+      wallet.wallet,
+      bridgeBytes,
+      (bytes) => wallet.unshieldedKeystore.signDataAsync(bytes),
+      color,
+      fund,
+    ));
   createOnce(join(directory, 'funding-split-id.json'), JSON.stringify(splitId));
-  const syncedWallet = () =>
-    rx.firstValueFrom(
-      wallet.wallet.state().pipe(
-        rx.filter((view) => view.isSynced),
-        rx.timeout(15_000),
-      ),
-    );
+  // Wallet state can temporarily report unsynced while it catches the next block.
+  // For funding and deposit we require the exact coin, then verify the input on
+  // the finalized, balanced transaction before broadcasting.
+  const availableNight = async () => {
+    const view = await rx
+      .firstValueFrom(wallet.wallet.state().pipe(rx.timeout(5_000)))
+      .catch(() => undefined);
+    return view?.unshielded.availableCoins ?? [];
+  };
   assert.ok(
-    await until(async () =>
-      (await syncedWallet()).unshielded.availableCoins.some(({ utxo }) => utxo.value === fund),
-    ),
+    await until(async () => (await availableNight()).some(({ utxo }) => utxo.value === fund)),
+    'Exact setup funding output is unavailable in the wallet',
   );
   step('fund-source-acc-night');
   const funding = await makeCall(source, 'deposit_unshielded', [color, fund]);
@@ -269,9 +273,7 @@ export async function qualifyNightSend({
         coin.value === BigInt(intent.amount) &&
         coin.type === offer.outputs[0].type;
       assert.ok(
-        await until(async () =>
-          (await syncedWallet()).unshielded.availableCoins.some(({ utxo }) => matches(utxo)),
-        ),
+        await until(async () => (await availableNight()).some(({ utxo }) => matches(utxo))),
       );
       const balanced = await makeCall(target, intent.operations[1], [color, BigInt(intent.amount)]);
       const inputs = unshieldedOffers(balanced.tx).flatMap(({ offer: item }) => item.inputs);
@@ -280,7 +282,9 @@ export async function qualifyNightSend({
       return prepared('deposit', balanced);
     },
     async finalized(original) {
-      const confirmed = await until(() => canonicalReceipt(original, ledger, versionOfRecord));
+      const confirmed = await until(() =>
+        canonicalReceipt(original, ledger, versionOfRecord).catch(() => undefined),
+      );
       if (confirmed) finals.set(original.hash, confirmed);
       return !!confirmed;
     },
