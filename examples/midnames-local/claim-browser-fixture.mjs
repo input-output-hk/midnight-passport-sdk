@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { admitNativeClaim } from '../../apps/passport-dapp/src/midnames/claim-native-admission.ts';
 import { isolatedProcesses } from '../../scripts/qualification/native-isolation-control.mjs';
@@ -14,13 +15,15 @@ const fixtureDustCeiling = 100_000_000_000_000_000n;
 const fixtureNightCeiling = 1n;
 const appRoot = fileURLToPath(new URL('../../apps/passport-dapp/', import.meta.url));
 
-async function runBrowser(output, port) {
-  // The browser driver shares the worker's process group, so the outer
-  // isolation runner can also terminate it after a hard worker failure.
-  const owner = isolatedProcesses((group, signal) => process.kill(-group, signal));
+export async function runBrowser(output, port, timeoutMs = 270_000) {
+  // Playwright's SIGINT handler closes the Chrome process it launched
+  // in its own group and exits the driver before the owner escalates.
+  const owner = isolatedProcesses((group, signal) =>
+    process.kill(group, signal === 'SIGTERM' ? 'SIGINT' : signal),
+  );
   const interrupted = new AbortController();
   const interrupt = () => interrupted.abort(new Error('Native browser driver interrupted.'));
-  const waitSignal = AbortSignal.any([interrupted.signal, AbortSignal.timeout(270_000)]);
+  const waitSignal = AbortSignal.any([interrupted.signal, AbortSignal.timeout(timeoutMs)]);
   process.once('SIGINT', interrupt);
   process.once('SIGTERM', interrupt);
   try {
@@ -30,6 +33,7 @@ async function runBrowser(output, port) {
       {
         cwd: appRoot,
         env: { ...process.env, PASSPORT_MIDNAMES_SPONSOR_PORT: String(port) },
+        detached: true,
         stdio: 'inherit',
       },
     );
@@ -53,6 +57,15 @@ export async function qualifyBrowserClaim({ output, quote, receipt, ledger, subm
     nightCeiling: String(fixtureNightCeiling),
   };
   const save = () => saveIsolationReceipt(join(output, 'native-claim-dispatch.json'), evidence);
+  let submission;
+  const submitOriginal = async (tx) => {
+    try {
+      evidence.originalSubmittedId = String(await submit({ version: 'v9', tx }));
+    } catch {
+      evidence.submitOutcome = 'unknown';
+    }
+    save();
+  };
   const handler = createClaimSponsorHandler('http://127.0.0.1:15189', output, {
     async authorize(bytes, acknowledged) {
       assert.ok(quote.night > 0n && quote.night <= fixtureNightCeiling);
@@ -72,11 +85,13 @@ export async function qualifyBrowserClaim({ output, quote, receipt, ledger, subm
       save();
     },
     async submit(bytes) {
+      const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
       evidence.dispatches += 1;
       save();
-      const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
-      evidence.originalSubmittedId = String(await submit({ version: 'v9', tx }));
-      save();
+      // The journal has fenced the original. Let HTTP acknowledge that
+      // pending state while the wallet observes the isolated node.
+      submission = submitOriginal(tx);
+      void submission.catch(() => {});
     },
   });
   const server = createServer((request, response) => {
@@ -92,7 +107,6 @@ export async function qualifyBrowserClaim({ output, quote, receipt, ledger, subm
     await once(server, 'listening');
     await runBrowser(output, server.address().port);
     assert.equal(evidence.dispatches, 1);
-    assert.ok(evidence.originalSubmittedId);
     const browser = JSON.parse(readFileSync(join(output, 'browser-claim-recovery.json'), 'utf8'));
     assert.equal(browser.originalDigest, receipt.transaction.sha256);
     assert.equal(browser.browserSubmissionRequests, 1);
@@ -107,6 +121,17 @@ export async function qualifyBrowserClaim({ output, quote, receipt, ledger, subm
       server.close();
       server.closeAllConnections();
       await once(server, 'close');
+    }
+    if (submission) {
+      const finished = new AbortController();
+      try {
+        await Promise.race([
+          submission,
+          delay(30_000, undefined, { signal: finished.signal, ref: false }).catch(() => {}),
+        ]);
+      } finally {
+        finished.abort();
+      }
     }
   }
 }

@@ -24,6 +24,12 @@ const sponsorPort = process.env.PASSPORT_MIDNAMES_SPONSOR_PORT;
 if (sponsorPort !== undefined) {
   assert.match(sponsorPort, /^[0-9]{1,5}$/);
   assert.ok(Number(sponsorPort) > 0 && Number(sponsorPort) <= 65535);
+  // The native driver owns its own process group. If the worker is killed,
+  // SIGINT lets Playwright close its separately launched Chromium group.
+  const workerPid = process.ppid;
+  setInterval(() => {
+    if (process.ppid !== workerPid) process.kill(process.pid, 'SIGINT');
+  }, 250).unref();
 }
 Object.assign(process.env, {
   PASSPORT_MANIFEST_SHA256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
