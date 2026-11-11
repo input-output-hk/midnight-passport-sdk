@@ -115,15 +115,32 @@ at `/v1/midnames/claim/dispatch`. It binds one private prepared journal and the
 host's live sponsor policy to that origin. Set `VITE_MIDNAMES_CLAIM_SPONSOR=1`
 with the standalone registry configuration and open the demo on `127.0.0.1`.
 
-For browser preparation, supply the handler's optional preparation ports and
-start the owner-side server with `startDemoOwnerBundle`. It builds the owner
-module from the pinned generated registry and serves it on the demo origin
-through the Vite proxy. Start the demo on `http://localhost:5173` with both
-`VITE_MIDNAMES_CLAIM_SPONSOR=1` and `VITE_MIDNAMES_CLAIM_PREPARATION=1`.
-Set `PASSPORT_MIDNAMES_OWNER_PORT` and `PASSPORT_MIDNAMES_SPONSOR_PORT`
-to the separate local servers' ports. The owner server requires the sponsor's
-public wallet keys and the standalone registry and indexer configuration.
-Keep its relay and prover under the account owner's control.
+For browser preparation, supply the handler's optional preparation ports. Start
+the owner-side server with the prepared registry and the Compact reference ACC
+contract directory used by the isolated qualification command:
+
+```sh
+nix develop -c node --experimental-import-meta-resolve \
+  examples/midnames-local/claim-owner-demo-local.mjs \
+  /absolute/path/to/prepared-registry /absolute/path/to/acc-reference/contract \
+  /absolute/path/to/public-context.json
+```
+
+The JSON contains `networkId` (`undeployed`), `registryAddress`,
+`sponsorAddress`, `indexerUrl` (`http://127.0.0.1:18108/api/v4/graphql`),
+`indexerWsUrl` (`ws://127.0.0.1:18108/api/v4/graphql/ws`), and
+`walletKeys` with `coin` and `encryption` public keys. Use lowercase
+32-byte hex for the two addresses and two public keys. Obtain these from the
+same standalone registry and sponsor wallet used to issue the quote.
+Keep the owner relay and its proof server at `127.0.0.1:16320` under the account
+owner's control. The command checks the prepared hashes before serving.
+
+Copy the printed `PASSPORT_MIDNAMES_OWNER_PORT` to the demo environment and
+set `PASSPORT_MIDNAMES_SPONSOR_PORT` to the separate sponsor server's port.
+Set `VITE_MIDNAMES_CLAIM_SPONSOR=1` and `VITE_MIDNAMES_CLAIM_PREPARATION=1`
+alongside the [standalone name service settings](../../docs/site/names.md#standalone-registry-profile).
+Start the demo on `http://localhost:5173`. For a different localhost port,
+pass the exact demo origin as the last argument to the owner command.
 The browser transport accepts the literal loopback origins `localhost` and
 `127.0.0.1`. Keep the handler and browser on the same origin. The sponsor
 retains the exact quote, checks its live terms before balancing, and records
@@ -162,8 +179,10 @@ the fixture's two-DUST admission test.
 
 Save the prepared public receipt while the matching ACC is open, then select
 **Send prepared claim**. **Check original claim** reads the original receipt
-after a reload or lost response. This route is a local fixture. Browser proof
-preparation and a live two-DUST dispatch still require qualification.
+after a reload or lost response. This route is a local fixture. The live browser run used a fixture login for
+an already activated ACC and a Chromium virtual passkey to prove the reviewed
+claim. It observed one assertion, one proof, one wallet balance, one dispatch
+and original confirmation after restart.
 
 The Chromium test runs the actual form, IndexedDB, and HTTP sponsor fence with a
 simulated node and indexer:

@@ -148,7 +148,12 @@ export async function startDemoOwnerBundle(input, publicContext, origin = 'http:
       indexerWsUrl,
       walletKeys: { coin: walletKeys.coin, encryption: walletKeys.encryption },
     };
-    const config = ownerViteConfig(root, [wasm(), ownerMiddleware(input.assets, context, origin)]);
+    const removeStage = () => rmSync(root, { recursive: true, force: true });
+    const config = ownerViteConfig(root, [
+      wasm(),
+      ownerMiddleware(input.assets, context, origin),
+      { name: 'midnames-owner-stage', closePreviewServer: removeStage },
+    ]);
     config.base = '/owner-claim/';
     const entry = join(root, 'demo-entry.mjs');
     writeFileSync(entry, "export { proveReviewedClaim } from './claim-owner-browser-entry.mjs';");
@@ -161,13 +166,7 @@ export async function startDemoOwnerBundle(input, publicContext, origin = 'http:
     const site = await preview(config);
     return {
       origin: new URL(site.resolvedUrls.local[0]).origin,
-      async close() {
-        try {
-          await site.close();
-        } finally {
-          rmSync(root, { recursive: true, force: true });
-        }
-      },
+      close: () => site.close(),
     };
   } catch (error) {
     rmSync(root, { recursive: true, force: true });
