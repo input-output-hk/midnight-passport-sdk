@@ -9,6 +9,8 @@ export interface ClaimScope {
 }
 
 export interface ClaimReceipt extends ClaimScope {
+  /** Canonical quote digest for receipts generated through browser preparation. */
+  readonly quoteSha256?: string;
   readonly transaction: {
     readonly identifiers: readonly string[];
     readonly sha256: string;
@@ -39,14 +41,22 @@ const transactionIdentifier = (value: unknown): value is string =>
 export function claimReceipt(value: unknown): ClaimReceipt {
   const invalid = () => new Error('Invalid standalone claim receipt.');
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw invalid();
-  const { networkId, registryAddress, accountAddress, name, ownerCommitment, transaction } =
-    value as Record<string, unknown>;
+  const {
+    networkId,
+    registryAddress,
+    accountAddress,
+    name,
+    ownerCommitment,
+    quoteSha256,
+    transaction,
+  } = value as Record<string, unknown>;
   if (
     networkId !== 'undeployed' ||
     !claimHex(registryAddress) ||
     !claimHex(accountAddress) ||
     !claimName(name) ||
     !claimHex(ownerCommitment) ||
+    (quoteSha256 !== undefined && !claimHex(quoteSha256)) ||
     !transaction ||
     typeof transaction !== 'object'
   )
@@ -67,6 +77,7 @@ export function claimReceipt(value: unknown): ClaimReceipt {
     accountAddress,
     name,
     ownerCommitment,
+    ...(quoteSha256 && { quoteSha256 }),
     transaction: { identifiers: [...identifiers], sha256 },
   };
 }

@@ -107,6 +107,14 @@ account or wallet action. See the [configuration and evidence scope](../site/nam
 
 ### Standalone .night claim recovery
 
+With a host preparation adapter, **Review claim quote** shows the exact
+destination and sponsor terms. **Approve and prepare claim** saves the quote
+and owner commitment before the sponsor request. If the response is lost,
+**Recover prepared receipt** looks up that original. The user can also import
+the matching public receipt. The current browser preparation test uses a
+simulated host. Live browser proof preparation and receipt acknowledgement
+have their own isolated evidence.
+
 The Name service panel under **Settings → Developer tools** can save a
 standalone sponsor receipt after the user opens the target ACC. **Check original
 claim** reconciles the stored transaction and the current registry owner and

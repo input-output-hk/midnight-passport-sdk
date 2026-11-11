@@ -8,6 +8,7 @@ import { createServer } from 'vite';
 import { openClaimDispatch } from '../../../examples/midnames-local/claim-dispatch.mts';
 import { createClaimSponsorHandler } from '../../../examples/midnames-local/claim-sponsor-http.mts';
 import { claimDispatchPath } from '../src/midnames/claim-dispatch.js';
+import { claimQuoteDigest } from '../src/midnames/claim-quote.js';
 import type { ClaimReceipt } from '../src/midnames/claim-receipt.js';
 
 const bytes = Uint8Array.of(2, 3, 5);
@@ -42,6 +43,8 @@ const quote = {
 };
 const preparationRequests: string[] = [];
 let lookups = 0;
+const preparedReceipt = { ...receipt, quoteSha256: await claimQuoteDigest(quote) };
+const wrongQuoteReceipt = { ...preparedReceipt, quoteSha256: 'ee'.repeat(32) };
 const root = realpathSync(mkdtempSync(join(tmpdir(), 'midnames-browser-dispatch-')));
 openClaimDispatch(root).retain(bytes, receipt);
 let handler: ReturnType<typeof createClaimSponsorHandler>;
@@ -66,16 +69,13 @@ const vite = await createServer({
               preparationRequests.push(action);
               if (action !== 'quote') assert.deepEqual(input, quote);
               response.setHeader('Content-Type', 'application/json');
-              const wrongOwner = action === 'find' && lookups++ === 0;
-              response.end(
-                JSON.stringify(
-                  action === 'quote'
-                    ? quote
-                    : wrongOwner
-                      ? { ...receipt, ownerCommitment: 'ff'.repeat(32) }
-                      : receipt,
-                ),
-              );
+              const variants = [
+                { ...preparedReceipt, ownerCommitment: 'ff'.repeat(32) },
+                wrongQuoteReceipt,
+              ];
+              const found =
+                action === 'find' ? (variants[lookups++] ?? preparedReceipt) : preparedReceipt;
+              response.end(JSON.stringify(action === 'quote' ? quote : found));
             });
             return;
           }
@@ -104,7 +104,7 @@ const vite = await createServer({
           showClaimRecovery({
             registryAddress: original.registryAddress,
             availability: async () => 'available',
-            check: async (saved) => JSON.stringify(saved) === JSON.stringify(original) ? 'registered' : 'conflict',
+            check: async ({ quoteSha256, ...saved }) => JSON.stringify(saved) === JSON.stringify(original) ? 'registered' : 'conflict',
             dispatch: requestClaimDispatch,
             ...(preparing && { preparation: {
               quote: input => invoke('quote', input),
@@ -189,14 +189,64 @@ async function verifyPreparation(
     await resumed.getByRole('button', { name: 'Recover prepared receipt' }).click();
     await resumed
       .locator('#claim-recovery-status')
+      .filter({ hasText: /^Claim check unavailable/ })
+      .waitFor();
+    await resumed.getByRole('button', { name: 'Recover prepared receipt' }).click();
+    await resumed
+      .locator('#claim-recovery-status')
       .filter({ hasText: 'Original receipt saved' })
       .waitFor();
-    assert.deepEqual(preparationRequests, ['quote', 'quote', 'prepare', 'find', 'find']);
+    assert.deepEqual(preparationRequests, ['quote', 'quote', 'prepare', 'find', 'find', 'find']);
     await resumed.locator('#claim-recovery-check').click();
     await resumed
       .locator('#claim-recovery-status')
       .filter({ hasText: /^Registered/ })
       .waitFor();
+  } finally {
+    await context.close();
+  }
+}
+
+async function verifyPreparedImport(
+  origin: string,
+  pageUrl: string,
+  open: () => Promise<BrowserContext>,
+) {
+  const before = preparationRequests.length;
+  let context = await open();
+  try {
+    const page = await context.newPage();
+    await page.goto(pageUrl + '?prepare');
+    await page.locator('#claim-recovery-name').fill(receipt.name);
+    await page.locator('#claim-review-quote').click();
+    await page.locator('#claim-quote-summary').waitFor();
+    await page.route(origin + preparationPath, async (route) => {
+      assert.equal((await route.fetch()).status(), 200);
+      await route.abort('failed');
+    });
+    await page.locator('#claim-prepare').click();
+    await page
+      .locator('#claim-recovery-status')
+      .filter({ hasText: 'Recover using the saved quote' })
+      .waitFor();
+    await context.close();
+
+    context = await open();
+    const reopened = await context.newPage();
+    await reopened.goto(pageUrl + '?prepare');
+    await reopened.locator('#claim-recovery-name').fill(receipt.name);
+    const status = reopened.locator('#claim-recovery-status');
+    const receiptInput = reopened.locator('#claim-recovery-receipt');
+    const save = reopened.locator('#claim-recovery-retain');
+    await receiptInput.fill(JSON.stringify(wrongQuoteReceipt));
+    await save.click();
+    await status.filter({ hasText: /^Claim check unavailable/ }).waitFor();
+    await receiptInput.fill(JSON.stringify(preparedReceipt));
+    await save.click();
+    await status.filter({ hasText: 'Original receipt saved' }).waitFor();
+    await reopened.locator('#claim-recovery-check').click();
+    await status.filter({ hasText: /^Registered/ }).waitFor();
+    assert.deepEqual(preparationRequests.slice(before), ['quote', 'prepare']);
   } finally {
     await context.close();
   }
@@ -271,8 +321,11 @@ try {
     'PASS: browser acknowledgement, one sponsor call and original receipt recovery after restart',
   );
   await verifyPreparation(origin, pageUrl, () => openBrowser('chrome-preparation-profile'));
+  await verifyPreparedImport(origin, pageUrl, () => openBrowser('chrome-preparation-import'));
   assert.deepEqual(requests, [bytes]);
-  console.log('PASS: exact quote review, saved intent recovery and automatic receipt retention');
+  console.log(
+    'PASS: exact quote review, saved intent recovery and receipt import reject changed owner and quote',
+  );
 } finally {
   await browser?.close();
   await vite.close();

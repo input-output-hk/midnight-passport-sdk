@@ -191,7 +191,8 @@ claim** is a separate action.
 
 If the preparation response is lost, reopen with the original credential,
 review the saved quote, and select **Recover prepared receipt**. The host
-looks up that original preparation. Once the owner commitment is recorded,
+looks up that original preparation. You can also import the original public
+receipt when its quote digest and owner commitment match. Once the owner commitment is recorded,
 the browser can recover the receipt after expiry and leaves preparation
 unchanged. The optional adapter requires an owner-side prover and a sponsor
 that can retrieve the prepared receipt by quote and owner commitment. The
@@ -206,7 +207,8 @@ The sponsor prepares this receipt before dispatch. Its fields are
 `networkId` (`undeployed`), `registryAddress`, `accountAddress`, `name`,
 `ownerCommitment`, and `transaction` with the original finalized
 `identifiers` and byte `sha256`. Keep the original receipt available when a
-response is lost. IndexedDB retains public fields scoped to the original
+response is lost. The preparation adapter also returns `quoteSha256`, the
+SHA-256 digest of the canonical quote JSON. IndexedDB retains public fields scoped to the original
 credential and protects the record from replacement by another tab. The
 checker reads the original identifiers, verifies the exact transaction bytes
 and the registry inserts linking the name to its domain ID, owner commitment
