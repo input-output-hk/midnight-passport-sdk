@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { prepareSponsoredClaim } from '../../apps/passport-dapp/src/midnames/claim-sponsorship.ts';
 import { saveIsolationReceipt } from '../../scripts/qualification/native-isolation-files.mjs';
 import { proveInOwnerProcess } from './claim-owner-process.mjs';
+import { openClaimDispatch } from './claim-dispatch.mts';
 
 /** The sponsor balances a proved registration produced by the isolated owner process. */
 export async function qualifyClaimHandoff({
@@ -67,10 +67,7 @@ export async function qualifyClaimHandoff({
     (sum, intent) => sum + (intent.dustActions?.spends.length ?? 0),
     0,
   );
-  writeFileSync(join(output, 'claim-sponsored.private.bin'), prepared.bytes, {
-    mode: 0o600,
-    flag: 'wx',
-  });
+  openClaimDispatch(output).retain(prepared.bytes, prepared.receipt);
   saveIsolationReceipt(join(output, 'claim-handoff.json'), {
     receipt: prepared.receipt,
     quotedNight: String(quote.night),
