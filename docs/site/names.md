@@ -209,7 +209,8 @@ provider or incompatible account stops the send. This check uses the last
 observed registry and ACC state before broadcast. Registry updates and deposits
 are separate on-chain operations.
 
-The sender uses its own wallet and the ACC's public encryption key. The
+The sender reopens the fixture's synthetic genesis wallet after setup and uses
+the recipient ACC's public encryption key. The
 recipient retains its viewing secret and independently verifies that the
 decrypted inbox entry matches the output in the successful original transaction
 and is still held by the account. An uncertain send keeps its original

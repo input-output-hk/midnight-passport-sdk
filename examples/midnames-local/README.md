@@ -48,8 +48,9 @@ volumes and evidence under `review/<output-name>/`. Resolve an uncertain
 submission from its recorded original identifiers before taking another action.
 
 The fixture activates an ACC and registers `alice.night` through the isolated
-registry. A separate sender wallet process receives the registry address and
-name. It mints a synthetic shielded token and displays the full resolved
+registry. After setup stops its wallet, a separate sender process reopens the
+same synthetic genesis wallet. That process receives the registry address and
+name. The recipient's ACC signing and viewing keys stay in the owner fixture. It mints a synthetic shielded token and displays the full resolved
 destination, asset and amount before fixture approval. After proving and
 balancing, it reads the current ACC encryption key and resolves the name again
 before dispatch. The owner process decrypts the resulting inbox entry and

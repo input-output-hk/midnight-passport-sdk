@@ -29,7 +29,7 @@ a decrypted coin matched to a current on-chain holding.
 | Passport requirement | Evidence | Scope |
 | --- | --- | --- |
 | P2 I-2.2/I-2.3 · authoritative on-chain name | The pinned registry resolves its unique name path to the operation-specific ACC contract target. The sender verifies the activated ACC and resolves again after proof and balance. The source tests cover absence, wrong network, non-contract and incompatible targets, repoints, and provider outage. | Local `.night` fixture. Public `passport.night` has separate network and registry requirements. |
-| P6 · secrets stay with their holder | A separate wallet process deposits using public state and its own payment authority. The owner alone decrypts the receipt and verifies the commitment. | Synthetic local owner and sender. |
+| P6 · secrets stay with their holder | A separate process reopens the synthetic genesis wallet used by setup. Its payment authority is independent of the recipient ACC. The owner alone decrypts the receipt and verifies the commitment. | Synthetic local owner and sender. |
 | P8 · substitutable providers | The fixture uses a self-hosted indexer and proof server and reads authoritative state from the chain. A failed read stops the send. | One pinned local profile was tested. Cross-provider substitution and a public provider remain unqualified. |
 
 The [refusal tests](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/passport-dapp/test/midnames-deposit.test.ts)
