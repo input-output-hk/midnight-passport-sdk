@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { chromium, type BrowserContext } from 'playwright-core';
+import { chromium, type BrowserContext, type Page } from 'playwright-core';
 import { createServer } from 'vite';
 import { openClaimDispatch } from '../../../examples/midnames-local/claim-dispatch.mts';
 import { createClaimSponsorHandler } from '../../../examples/midnames-local/claim-sponsor-http.mts';
@@ -129,6 +129,43 @@ const openBrowser = (profile = 'chrome-profile') =>
     headless: true,
   });
 
+/** Reproduce the IndexedDB record written before quote digests were added. */
+async function restoreLegacyJournal(page: Page, complete = false) {
+  await page.evaluate(
+    ({ registry, name, complete }) =>
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('mn-passport:midnames-claims', 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const db = request.result;
+          const transaction = db.transaction('claims', 'readwrite');
+          const store = transaction.objectStore('claims');
+          const key = JSON.stringify(['undeployed', registry, name]);
+          const lookup = store.get(key);
+          lookup.onsuccess = () => {
+            const row = lookup.result;
+            if (!row?.quoteSha256 || !!row.receipt !== complete) {
+              transaction.abort();
+              return;
+            }
+            delete row.quoteSha256;
+            if (complete) delete row.receipt.quoteSha256;
+            store.put(row, key);
+          };
+          transaction.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          transaction.onabort = () => {
+            db.close();
+            reject(new Error('Could not seed legacy claim.'));
+          };
+        };
+      }),
+    { registry: receipt.registryAddress, name: receipt.name, complete },
+  );
+}
+
 async function verifyPreparation(
   origin: string,
   pageUrl: string,
@@ -161,6 +198,7 @@ async function verifyPreparation(
     await prepare.click();
     await status.filter({ hasText: 'Recover using the saved quote' }).waitFor();
     assert.deepEqual(preparationRequests, ['quote', 'quote', 'prepare']);
+    await restoreLegacyJournal(page);
     await context.close();
 
     context = await open();
@@ -229,6 +267,7 @@ async function verifyPreparedImport(
       .locator('#claim-recovery-status')
       .filter({ hasText: 'Recover using the saved quote' })
       .waitFor();
+    await restoreLegacyJournal(page);
     await context.close();
 
     context = await open();
@@ -244,6 +283,11 @@ async function verifyPreparedImport(
     await receiptInput.fill(JSON.stringify(preparedReceipt));
     await save.click();
     await status.filter({ hasText: 'Original receipt saved' }).waitFor();
+    await reopened.locator('#claim-recovery-check').click();
+    await status.filter({ hasText: /^Registered/ }).waitFor();
+    await restoreLegacyJournal(reopened, true);
+    await reopened.reload();
+    await reopened.locator('#claim-recovery-name').fill(receipt.name);
     await reopened.locator('#claim-recovery-check').click();
     await status.filter({ hasText: /^Registered/ }).waitFor();
     assert.deepEqual(preparationRequests.slice(before), ['quote', 'prepare']);
@@ -324,7 +368,7 @@ try {
   await verifyPreparedImport(origin, pageUrl, () => openBrowser('chrome-preparation-import'));
   assert.deepEqual(requests, [bytes]);
   console.log(
-    'PASS: exact quote review, saved intent recovery and receipt import reject changed owner and quote',
+    'PASS: exact quote review, legacy journal recovery and receipt import reject changed owner and quote',
   );
 } finally {
   await browser?.close();
