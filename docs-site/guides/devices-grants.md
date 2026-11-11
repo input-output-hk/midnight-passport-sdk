@@ -29,8 +29,18 @@ issuance.
 
 Keep the returned opening in protected host storage and deliver it only to
 the intended grantee. The existing `account.issueGrant` surface accepts
-JubJub grantees. P-256 grantee issuance needs a host to authorize and retain
-the prepared fields.
+JubJub grantees. Use `issueP256GranteeGrant` with a reviewed P-256 or JubJub owner
+session and a separate P-256 grantee credential. The owner path rechecks
+its live device entry and the grant roster, then durably reserves the
+original opening before sending. In a Node host, combine
+`createP256GranteeIssueJournal` with `protectedMutationByteStore` and a
+dedicated host key.
+Use `createP256GranteeIssueFence` with a separate crash-durable store.
+It retains the request ID even if the encrypted opening or its key is
+unavailable. Keep both stores and restore their original contents after
+an outage. After an uncertain response, use
+`recoverIssuedP256Grant` to verify the original opening against the live
+grant. A repeat request keeps the original ID and stays fenced.
 
 For an issued grant, call `spendUnshieldedWithP256Grant` with the original
 opening, amount, prior spent total, and a stable request ID. Use
@@ -49,6 +59,7 @@ request ID and an observer for the same network. A matching successful
 transaction must be in a canonical finalized block. Keep the opening and
 passkey material out of audit logs.
 
-Source qualification used the generated Compact contract with software
+Source qualification includes owner issuance and receipt-loss recovery
+against the generated Compact contract. Holder qualification used software
 signatures and a separate Chromium virtual authenticator. Native proving,
 real passkey providers and demo wiring remain to be qualified.

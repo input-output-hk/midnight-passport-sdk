@@ -33,7 +33,7 @@ const policyOrigin = z
     return canonical.success && canonical.data === value + '/';
   });
 
-const scope = z
+export const p256GranteeScopeSchema = z
   .strictObject({
     account: grantHex32,
     grantee: z
@@ -56,19 +56,19 @@ const scope = z
   })
   .readonly();
 const preparation = z.strictObject({
-  scope,
+  scope: p256GranteeScopeSchema,
   activeGrantIds: z.array(grantHex32).max(16).readonly(),
   nowSeconds: seconds,
 });
 
-export type P256UnshieldedGrantScope = z.infer<typeof scope>;
+export type P256UnshieldedGrantScope = z.infer<typeof p256GranteeScopeSchema>;
 export type PrepareP256UnshieldedGrantInput = z.infer<typeof preparation>;
 
 /** Serializable opening for a direct, fixed-recipient P-256 grant. Deliver it only to the grantee. */
 export type P256UnshieldedGrantOpening = z.infer<typeof p256GrantOpeningSchema>;
 export const p256GrantOpeningSchema = z
   .strictObject({
-    scope,
+    scope: p256GranteeScopeSchema,
     grantId: grantHex32,
     slot: z.number().int().min(0).max(255),
     scopeSalt: grantHex32.refine((value) => !/^0+$/.test(value)),

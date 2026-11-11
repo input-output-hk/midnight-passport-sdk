@@ -274,6 +274,23 @@ the pinned network before passing its nonzero 32-byte value. Store the
 opening securely before an owner issues a grant. The existing
 `account.issueGrant` flow accepts a JubJub grantee.
 
+`issueP256GranteeGrant({ requestId, scope }, ports)` issues this
+fixed-recipient grant using the active P-256 or JubJub owner. A P-256
+owner chooses a distinct grantee passkey. The host supplies exact owner
+review, a live owner and grant roster, and a confidential durable
+`P256GranteeIssueJournal`. For Node, combine
+`createP256GranteeIssueJournal` with `protectedMutationByteStore`,
+a private local POSIX directory, and a dedicated 32-byte host key.
+Use `createP256GranteeIssueFence` with a separate crash-durable store.
+It retains the request ID even if the encrypted opening or its key is
+unavailable. Keep both stores and restore their original contents after
+an outage.
+On an uncertain response, `recoverIssuedP256Grant` checks the original
+grant ID, issuance nonce, epoch, generation and scope against one live
+snapshot. Recovery is read-only. An absent or changed record stays
+unresolved. The protected opening is available only through the host's
+authorized journal access.
+
 `spendUnshieldedWithP256Grant(intent, ports)` accepts the issued opening,
 amount, prior spent total and stable request ID. Its live source exposes
 `readP256GrantSpendContext`, implemented by `createMidnightGrantSource`.

@@ -108,7 +108,10 @@ export function checkP256Spend(
 
 type CheckedSpend = ReturnType<typeof checkP256Spend>;
 
-export function matchesP256Scope(live: LiveP256GrantSpendContext, spend: CheckedSpend): boolean {
+export function matchesP256Scope(
+  live: LiveP256GrantSpendContext,
+  spend: Pick<CheckedSpend, 'perCallCap' | 'cap' | 'expiresAt' | 'rpCommit' | 'objectCommit'>,
+): boolean {
   return (
     live.withdrawUnshielded &&
     !live.withdrawShielded &&

@@ -78,3 +78,5 @@ export * from './host-mutation-route.js';
 export * from './host-jobs.js';
 export * from './host-job-store.js';
 export * from './host-job-route.js';
+
+export * from './protected-mutation-byte-store.js';
