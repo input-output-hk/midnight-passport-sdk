@@ -86,5 +86,10 @@ if the submit response is lost. An opt-in loopback handler accepts an explicit
 browser acknowledgement for its one prepared receipt. The isolated native
 runner checks current availability, ACC binding, registry charge and payee,
 exact Ledger identifiers, time to expiry, two DUST spends and a fixture fee
-ceiling before submission. This runner still uses a separate owner process
-for proof preparation.
+ceiling before submission. The browser qualification uses a separate owner
+process to serve the proving page and relay requests to the owner-controlled
+local prover. Chromium derives the witness from WebAuthn PRF with a salt
+scoped to the profile, registry and name. It checks the same commitment
+after reload using the original virtual credential. The witness stays within
+this owner environment. The demo's production credential wiring, backup
+and recovery remain separate work.

@@ -119,14 +119,22 @@ To exercise the actual loopback route on an isolated chain, run the same
 `qualify-deposit.mjs` command with a fresh name starting with
 `midnames-claim-browser-`. The browser driver uses port 15189 and a fresh
 Chromium profile. The fixture delegates two synthetic NIGHT outputs to the
-sponsor's DUST address, then prepares the original claim using the separate
-owner process. The sponsor rechecks the registry price, payee, name
+sponsor's DUST address. A separate owner process launches a browser page on
+`localhost`. Chromium uses a virtual WebAuthn credential to derive the naming
+witness, constructs the call, and sends proving requests through the owner
+process to the fixed loopback prover. The browser checks the compiled
+`create_domain` artifact hashes. Both HTTP hops refuse redirects.
+The owner process returns the proved transaction and public commitment to
+the sponsor after checking that the same credential yields the same commitment
+after a reload. The sponsor rechecks the registry price, payee, name
 availability and target ACC. It accepts only the original Ledger IDs and an
 unexpired claim with exactly two DUST spends under its configured fixture
 ceiling. The browser driver drops the HTTP response after the sponsor
 accepts the acknowledgement, restarts Chromium, and checks the original
 on the isolated indexer. Inspect `native-claim-dispatch.json` and
 `browser-claim-recovery.json` under the run's private evidence directory.
+This test uses a virtual owner credential. Production credential enrollment
+and recovery after loss of that credential need separate qualification.
 
 Save the prepared public receipt while the matching ACC is open, then select
 **Send prepared claim**. **Check original claim** reads the original receipt
