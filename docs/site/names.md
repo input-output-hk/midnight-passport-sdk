@@ -91,3 +91,50 @@ integration or qualified React Native support. Tests cover custom providers,
 invalid/mismatched/expired responses, delayed expiry, absence versus failure,
 scope mutation and redaction. Chromium exercises mock lookup/missing/invalid
 names without credential calls or recipient changes, not real-provider acceptance.
+
+## Source preview: Midnames 2.1.0
+
+The reference demo can opt into a read-only Midnames registry while keeping the
+published account package interface. The adapter is in
+`apps/passport-dapp/src/midnames/`. It loads the Midnames reader only when a
+configured lookup runs. The default demo still uses the synthetic provider.
+
+Set these public build inputs together. Use a registry and indexer for the same
+network as the Passport demo.
+
+| Input | Value |
+| --- | --- |
+| `VITE_MIDNAMES_NETWORK_ID` | Exact Passport demo network, such as `undeployed` |
+| `VITE_MIDNAMES_NAMESPACE` | `night` or an explicitly configured canonical namespace |
+| `VITE_MIDNAMES_REGISTRY_ADDRESS` | 64 lowercase hex characters for the pinned registry |
+| `VITE_MIDNAMES_INDEXER_URL` | Public HTTPS GraphQL endpoint, or HTTP on loopback |
+| `VITE_MIDNAMES_INDEXER_WS_URL` | Public WSS endpoint, or WS on loopback |
+
+The panel rejects partial configuration. It accepts exact canonical lowercase
+names within the chosen namespace. Each lookup checks the registry verifier
+roster and resolves the name from that observed state using the Midnames
+`/core` subpath. Only its contract target proceeds. The adapter then checks
+that the address is an activated ACC with the complete verifier roster for the
+pinned binding. Missing names, wrong target types and unavailable reads have
+separate outcomes. An indexer is a trusted read input, and a lookup reflects
+its observed state. The demo presents the result for inspection.
+
+Midnames 2.1.0 uses a Ledger 9 reader built with runtime 0.21.0 and Midnight JS
+5.0.0. The ACC still uses runtime 0.20.0. The indexer hands out tagged bytes,
+so each decoder uses its own runtime. The exact dependency exceptions in
+`pnpm-workspace.yaml` apply to this demo qualification. Registry integrity,
+lifecycle-script blocking and the cooldown for other versions still apply.
+
+The generated registry and the Ledger 9 HTTP read format have a local test.
+A read-only check against the existing demo indexer also returned the expected
+missing-contract response for an absent address. A deployed registry with a
+known name, an independent chain read, and a known online profile each require
+their own acceptance evidence. Configure such a profile only after recording
+those pins and checking it against the corresponding chain.
+
+The 2.1.0 tarball includes a read generation and an older managed write
+generation. Its root export can fail at load because the managed module expects
+runtime 0.15.0, and its write wrapper reports writes paused. The demo uses only
+the read subpaths. A claim flow requires compatible registry write artifacts
+and separate proof and submission checks. A local `.night` profile does not
+establish public `passport.night` issuance or name-control recovery.

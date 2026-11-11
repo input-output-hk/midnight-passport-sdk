@@ -97,3 +97,10 @@ target described in [CI policy](../ci.md).
 
 The local goal ends with docs, exact-head independent review and a clean signed
 handover. Push, merge, release and Pages publication are separate actions.
+
+### Midnames lookup source preview
+
+The Name service panel can use an explicitly configured Midnames registry.
+A partial configuration disables lookup and shows the setup requirement.
+Lookup displays a checked contract target for inspection without initiating an
+account or wallet action. See the [configuration and evidence scope](../site/names.md#source-preview-midnames-210).

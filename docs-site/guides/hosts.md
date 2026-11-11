@@ -15,3 +15,11 @@ Import `account` and `protocol`, then implement the typed `account/ports` bounda
 React, Vue, or another UI layer should create one integration module, bind explicit actions, project public progress, and dispose its own listeners/workers. Framework-neutral account contracts do not depend on React. The [reference React example](https://github.com/input-output-hk/midnight-passport-sdk/blob/sdk-v0.1.0-rc9/docs/site/react-example.md) is a browser development example, not an SSR or native compatibility claim.
 
 For application-contract → ACC calls, use the [standards and implementation map](/architecture/standards). Do not infer arbitrary reverse calls from a supported incoming call path.
+
+## Midnames source preview
+
+The reference demo can use Midnames 2.1.0 for read-only lookup. Configure the
+registry address, namespace, matching demo network, and public indexer URLs.
+The adapter reads the registry's contract target and checks the deployed ACC
+verifier roster before displaying the result. Claim and payment require
+separate qualification. See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).
