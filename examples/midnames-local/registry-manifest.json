@@ -1,0 +1,95 @@
+{
+  "midnamesSourceTag": "f8f2edd425221b95c9158d74e7318d2fbb4f61b2",
+  "compiler": "0.35.0",
+  "language": "0.27",
+  "runtime": "0.20.0",
+  "sourceSha256": "6958d01ee7873ffd7c502fa8a3e49d1a4f230ce137cc2f03433f8e4eae6eecea",
+  "standaloneSourceSha256": "b72b96e7903780af6fdbb0c752dfb0de7b1b75c247ba0d8b23ab39026c04a253",
+  "compiled": {
+    "contract/index.js": "ab96482bb0cb3a2ad5c8bb7fe9fa39609c3acf56cf04da55e946bf65e5927c8e",
+    "contract/index.d.ts": "d9c5d355b8811efd2d7aaffe1affa5134597f347eb87871abf9b37ff76ddd4ae",
+    "compiler/contract-info.json": "a97c7233f61e09ffada234683f4d180e6c0de97540193498e1242be9ac8fd3ac",
+    "compiler/contract-manifest.json": "12861a2c06b3159137d6c5f466cd3a528ba2763e09e095cc5cd9b9193c93b96a",
+    "contract/index.js.map": "f243628724f476519903132f4e688cb757b82d702422aee5f0304d436096890d"
+  },
+  "circuits": {
+    "add_domain_field": {
+      "zkir": "4433d90ba9366224eda28e634ef4c0022c4bf6ddfc63952f9cf08b25d9cb7394",
+      "prover": "6a860ac721cdcd9b48d61c80516a197f4bf19cb8865e5737a20fffc92e8cb2da",
+      "verifier": "3f3219c9abf0668ff2f56958cfc9348c66a56ddd694fcb9634da64c1f5420096",
+      "bzkir": "b6ae5c671677e303e4fad4ac11ed34b538b6131106dc2e2b2a9879bd6acfa1de"
+    },
+    "add_multiple_fields": {
+      "zkir": "cc03d63e04f0a213c08bbaf46ed71d31bb71c08186888946b46a7ce8ed3a824a",
+      "prover": "0ca2ccb4dca193dcae96932df9cb526bed83902f3606cae5e332e53d1e9714a6",
+      "verifier": "9386dce1213dec2696da80a81a755d8ab77efe133bc9bda0528da5552a59de49",
+      "bzkir": "8a879322f92b58422a496e8c5c9268811cc943c705283dc6164d0c9942f4e549"
+    },
+    "change_field_limit": {
+      "zkir": "5f9accb16d3c73c5d3e155113abfebf75e0d6a847e790c2007eb7988c161883b",
+      "prover": "f94cd50faead3ff2ee999dbcb20ff2b1af3d2294deea9096cbbed2231d9d649d",
+      "verifier": "a11b0d0425fc0453dbc12f845752845e408a878405314e5a761cd3c5ae8c6149",
+      "bzkir": "19aab8b4ab6716cb41eceb6bd015872c9ace450fab56c77ac1c337ea52826064"
+    },
+    "change_root_enable_subdomains": {
+      "zkir": "86027f7bf446d3b3e1cebd88fed5560272ca6d36f20fdfdb5baf3075b37a0518",
+      "prover": "2f6c6b39647a5d655b62e36640d89d5ea95f8ba6e010d9ab2ef49de137d6d19e",
+      "verifier": "a5abf5296f37e882b9480da753b3e6cc79be62889ca407f0c8abf993b78c1fbb",
+      "bzkir": "0b0e3161dee8a3276513b747bc5e252cab7110f87e8da5b9af69835a9866b2ea"
+    },
+    "clear_domain_fields": {
+      "zkir": "7a58fbbb410ba9c84a905e998c1715521d0dedae919f94491a78c42f850dde2e",
+      "prover": "d79106d3f4d60530aa6cd1e52addc59b3f8fa8ccd97167e9eb0ceb1f1867409a",
+      "verifier": "b68e1bbe96a1fcc2e546e791ace08e6aa81f53bd3f313700f874fbd31622da8d",
+      "bzkir": "bffcd5adef5a2c9dc417b980c6c4662d1eb3013d437c5e8843ecde78057f1ef1"
+    },
+    "create_domain": {
+      "zkir": "93b846ed882b8e2d170e0707e0a983db88dd37f122cbfd3d8215853c9976b24c",
+      "prover": "ff0b9096f9771c002bceba8b085879663c1f885ddd274466843bcb76ca9c554e",
+      "verifier": "141e6b004707ace4b508a02c4021fec05f9b0c664c9f91917f0adb8643b71191",
+      "bzkir": "e470868a96c6088a02301d615b688de2f4aa613d922f17727d65c494a0bdac76"
+    },
+    "lock_payment_config": {
+      "zkir": "5125850da1627c1c0a4b99e852b66ce7b972994f78728724cd5a636290765d01",
+      "prover": "9ec68e05da7c99705291588d9e8cc12f5184e8c94d138631d4b1314353df0dc8",
+      "verifier": "8b9a463d536cf87d9bb466108057b031342f801b7d7524ef082c054d026a50d7",
+      "bzkir": "5f0c822031edda1aff74371b5f6cde6b982d6797ac2b70d7c0eed511d723bb46"
+    },
+    "lock_target": {
+      "zkir": "cdbd8417a58411de25dc41348250ea0af8143847df47be8ce99421ebe2f52fc1",
+      "prover": "2fe9d87fa190fb18cb0294e5ae7209d888ee6ecaea61f27a8a3ec9cba6051476",
+      "verifier": "0222425b2e6dc411862c4a0bafc48d59e231befd46e86db6153b1a19f975e5bd",
+      "bzkir": "211804f61b1e6fa3b56cffd3171ee868c369fa60feeb8253dc6fbd48b2cc3fae"
+    },
+    "remove_domain_field": {
+      "zkir": "86c342414d23669bc1a49a171562b3419b184cf0b8be634e121965829524250b",
+      "prover": "6c22946a14a208034deb9de4ccbc140a6203b0d7d6653c3651811067142db87c",
+      "verifier": "35528235b84ce8188677d05504bede5427e25e82f1f0b704031ddd1454ffcd38",
+      "bzkir": "a2948f65faa67fe79474a9fcf322fd9923e5c83d4e94308e831988c93f9e42da"
+    },
+    "transfer_domain": {
+      "zkir": "ad7c817da2e90067feac7d72ce92e45f6376484b54d235e4b82d3ddf8f4633c4",
+      "prover": "0debe0d3a845c20e6e8b2d78c2f98e4d8309321600f993f0085821e2c212d215",
+      "verifier": "8973463762740672eb742b55a12281108b3c467b6133c74d781ca8e74596e6d2",
+      "bzkir": "d0258da4175af6723a123794b92291967989bbfb1452f9504f5a9d3563c9bce8"
+    },
+    "update_domain_default_field": {
+      "zkir": "d30e1d293f7200e8c33af9fb522d7d202c2a9b85c106ed81fb6017c0d8b0fcdd",
+      "prover": "585ab8881d1f416a31f46d736b24c85af4f0a884974ee5907ca8ad1e1fef563e",
+      "verifier": "28b61d979ddcd27fbc011683bad70733be1e99a7705c98e447d0e1895d2f9435",
+      "bzkir": "dd0aefb775c11ff826df97bd86fd5046df61a387b53bf74457bf3f20de7aee79"
+    },
+    "update_payment_config": {
+      "zkir": "e12ccfa5b068e78cc66b0107621a6c5e39c56ca938bb801138d145ac72ca778b",
+      "prover": "9182392348f2fad0c146f836ff530c61db52b674f8858a5dbdb1ff573276c4a3",
+      "verifier": "72e29eef34ea2f7ecf3d11e938fd06456d3ec8a0391b91ceb639d4df1408797d",
+      "bzkir": "8e656928e5ca41c1ad964883f3b76a617371c4947cdf39a4f257f14b0902d2aa"
+    },
+    "update_target": {
+      "zkir": "705bf14d47fb714798ab09edee1228f429deaa2eb7878018b9e51a9103c67741",
+      "prover": "e17d4f14d082ed5a4a5d4b7ff8217a6c26ae75b39fa1739f6c674c2dd61546ba",
+      "verifier": "3b989ba97e6f44c59925ed6164e04284674a820146446c040f6be451aa8a1542",
+      "bzkir": "1b99771592a114e1c0334363fcfbd19c94215a54477cdf687ef80a928f15671b"
+    }
+  }
+}

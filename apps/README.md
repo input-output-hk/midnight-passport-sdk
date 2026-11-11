@@ -861,3 +861,10 @@ the public standalone genesis seed; use that shared default only in sequential
 single-wallet qualification with the other wallet process confirmed stopped.
 There is no cross-process wallet lock. Configuring a token color does not mint it.
 See the [funding image and operator guide](passport-funding-service/README.md).
+
+## Midnames lookup source preview
+
+The demo's optional Midnames reader uses the existing **Name service** panel.
+Set all five build inputs in the [naming adapter guide](../docs/site/names.md#source-preview-midnames-210).
+A configured lookup uses the registry's contract target and verifies the
+deployed ACC binding before displaying it. The default remains the mock.

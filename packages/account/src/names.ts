@@ -28,6 +28,15 @@ export class PassportNameError extends Error {
   }
 }
 
+function providerError(error: unknown): PassportNameError {
+  if (
+    error instanceof PassportNameError &&
+    (error.code === 'InvalidQuery' || error.code === 'InvalidRecord' || error.code === 'Expired')
+  )
+    return new PassportNameError(error.code);
+  return new PassportNameError('Unavailable');
+}
+
 export interface ResolvedPassportName extends PassportNameRecord {
   readonly providerId: string;
   readonly mode: PassportNameProvider['mode'];
@@ -70,8 +79,8 @@ export async function resolvePassportName(
   let record: PassportNameRecord | undefined;
   try {
     record = await service.resolve(request);
-  } catch {
-    throw new PassportNameError('Unavailable');
+  } catch (error) {
+    throw providerError(error);
   }
   if (record === undefined) return undefined;
   if (

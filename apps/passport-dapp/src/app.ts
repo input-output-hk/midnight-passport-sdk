@@ -42,7 +42,8 @@ import { unlockDemoSessionKey } from './session-key.js';
 import { sessionCheckpoint } from './session-checkpoint.js';
 import { demoOperationGuard } from './operation-guard.js';
 import { createMockNameService } from './mock-name-service.js';
-import { showDemoNameService } from './name-service.js';
+import { showDemoNameService, showNameConfigurationError } from './name-service.js';
+import { configureMidnames } from './midnames/config.js';
 import { createDemoWorkspace } from './workspace.js';
 import { ActivityPanel } from './activity-controls.js';
 import { installLaceWallet } from './lace-wallet.js';
@@ -236,7 +237,23 @@ try {
 installLaceWallet(network, ui.showExternalWalletConnection);
 showDemoCapabilities(ARM);
 showSigningMode(SIGNING_MODE);
-showDemoNameService(createMockNameService(network), network);
+try {
+  const naming = configureMidnames(
+    {
+      registryProfile: import.meta.env.VITE_MIDNAMES_REGISTRY_PROFILE,
+      registryAddress: import.meta.env.VITE_MIDNAMES_REGISTRY_ADDRESS,
+      namespace: import.meta.env.VITE_MIDNAMES_NAMESPACE,
+      networkId: import.meta.env.VITE_MIDNAMES_NETWORK_ID,
+      indexerUrl: import.meta.env.VITE_MIDNAMES_INDEXER_URL,
+      indexerWsUrl: import.meta.env.VITE_MIDNAMES_INDEXER_WS_URL,
+    },
+    network,
+    BINDING_ID,
+  );
+  showDemoNameService(naming ?? createMockNameService(network), network);
+} catch {
+  showNameConfigurationError();
+}
 
 const walletPresentation = createWalletPresentation({
   network,

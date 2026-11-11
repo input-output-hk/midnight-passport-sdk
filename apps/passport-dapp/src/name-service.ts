@@ -3,6 +3,7 @@ import {
   resolvePassportName,
   type PassportNameService,
 } from '@input-output-hk/mn-passport-account/names';
+import { byId } from './ui-dom.js';
 
 /** Provider metadata describes the hint; neither mode establishes ownership on chain. */
 export const nameLookupMessage = (mode: 'mock' | 'external', found: boolean): string =>
@@ -20,8 +21,8 @@ export function showDemoNameService(service: PassportNameService, networkId: str
   const status = document.getElementById('name-service-status')!;
   const output = document.getElementById('name-service-result')!;
   if (service.provider.mode === 'external') {
-    document.getElementById('name-service-title')!.textContent = 'Name service · provider adapter';
-    document.getElementById('name-service-help')!.textContent =
+    byId('name-service-title').textContent = 'Name service · provider adapter';
+    byId('name-service-help').textContent =
       'Read-only provider lookup. The address is a hint, not a proof of name ownership. No name is registered, passkey requested or transfer destination changed.';
     input.value = '';
   }
@@ -59,4 +60,12 @@ export function showDemoNameService(service: PassportNameService, networkId: str
     revision++;
     form.removeEventListener('submit', submit);
   };
+}
+
+export function showNameConfigurationError(): void {
+  byId('name-service-title').textContent = 'Name service · configuration required';
+  byId('name-service-help').textContent =
+    'Configure the registry and indexer for this demo network to enable lookup.';
+  const button = document.getElementById('name-service-resolve') as HTMLButtonElement;
+  button.disabled = true;
 }

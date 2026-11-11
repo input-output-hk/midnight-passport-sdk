@@ -13,3 +13,15 @@ trustPolicy: no-downgrade
 minimumReleaseAgeExclude:
   # Renovate security update: pnpm@10.34.5
   - pnpm@10.34.5
+  # Owner-approved #315 compatibility qualification. Keep all other version checks.
+  - '@midnames/sdk@2.1.0'
+  - '@midnight-ntwrk/midnight-js-types@5.0.0'
+  - '@midnight-ntwrk/midnight-js-contracts@5.0.0'
+  - '@midnight-ntwrk/midnight-js-indexer-public-data-provider@5.0.0'
+  - '@midnight-ntwrk/wallet-sdk-address-format@4.0.0'
+  - '@midnight-ntwrk/midnight-js-protocol@5.0.0'
+  - '@midnight-ntwrk/midnight-js-utils@5.0.0'
+  - '@midnightntwrk/ledger-v9@1.0.0 || 1.0.1'
+  - '@midnight-ntwrk/compact-js@3.0.0'
+  - '@midnightntwrk/wallet-sdk-address-format@4.0.0'
+  - '@midnightntwrk/onchain-runtime-v4@4.0.0'
