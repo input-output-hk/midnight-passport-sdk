@@ -28,6 +28,7 @@ import {
   isolationDeadline,
 } from '../../scripts/qualification/native-isolation-control.mjs';
 import { dedicatedIndexerReadiness } from '../../scripts/qualification/indexer-readiness.mjs';
+import { verifyPreparedRegistry } from './verify-prepared.mjs';
 
 assert.ok(process.env.IN_NIX_SHELL);
 assert.equal(process.env.PASSPORT_MIDNAMES_NATIVE, '1');
@@ -95,6 +96,7 @@ try {
   };
   receipt.leasePin = pin;
   save();
+  await verifyPreparedRegistry(prepared, deadline.check);
   inputs = await isolatedInputs(root, ref, deadline.check);
   receipt.source = inputs.frozen.source;
   await Promise.all(Object.values(ISOLATED_PORTS).map(isolatedFreePort));
@@ -193,9 +195,16 @@ try {
   receipt.cleanup = { children, ...cleanup };
   try {
     if (inputs) {
-      await inputs.verify(() => assert.ok(deadline.cleanupRemaining() > 0));
+      const check = () => assert.ok(deadline.cleanupRemaining() > 0);
+      await inputs.verify(check);
+      await verifyPreparedRegistry(prepared, check);
       receipt.inputsUnchanged = true;
     }
+  } catch (error) {
+    receipt.status = 'FAIL';
+    receipt.verificationError = String(error);
+  }
+  try {
     if (claimed) {
       releaseIsolationLease(lease, owner, !children.incomplete && !cleanup.incomplete, pin);
       receipt.leaseReleased = true;

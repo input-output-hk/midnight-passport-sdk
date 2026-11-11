@@ -9,6 +9,7 @@ import {
   isolationProfile,
 } from '../../scripts/qualification/native-isolation-profile.mjs';
 import { saveIsolationReceipt } from '../../scripts/qualification/native-isolation-files.mjs';
+import { verifyPreparedRegistry } from './verify-prepared.mjs';
 
 const [output, prepared, ref] = process.argv.slice(2);
 assert.equal(process.env.PASSPORT_MIDNAMES_NATIVE, '1');
@@ -20,21 +21,9 @@ const expectedEnvironment = isolationEnvironment(
 for (const [key, value] of Object.entries(expectedEnvironment))
   assert.equal(process.env[key], value, `Unexpected fixture setting ${key}`);
 const sha = (b) => createHash('sha256').update(b).digest('hex');
-const pins = JSON.parse(readFileSync(new URL('./registry-manifest.json', import.meta.url)));
-const preparedPins = JSON.parse(readFileSync(join(prepared, 'prepared.json')));
-assert.deepEqual(preparedPins, pins);
+const pins = await verifyPreparedRegistry(prepared);
 const assets = join(prepared, 'managed');
 const asset = (path) => readFileSync(join(assets, path));
-for (const [file, hash] of Object.entries(pins.compiled)) assert.equal(sha(asset(file)), hash);
-for (const [name, h] of Object.entries(pins.circuits)) {
-  for (const [key, dir] of [
-    ['prover', 'keys'],
-    ['verifier', 'keys'],
-    ['zkir', 'zkir'],
-    ['bzkir', 'zkir'],
-  ])
-    assert.equal(sha(asset(dir + '/' + name + '.' + key)), h[key]);
-}
 // Keep the generated module and the host SDK on the same physical WASM runtime.
 const runtimeRoot = join(output, 'registry-runtime');
 mkdirSync(runtimeRoot);
