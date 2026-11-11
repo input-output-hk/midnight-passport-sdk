@@ -72,6 +72,8 @@ commitment with the finalized call, then retains public receipt identifiers
 and the hash of the finalized bytes. The owner process generates the naming
 witness and uses the isolated local prover. It returns only the public owner
 commitment and proved bytes. The quoted NIGHT output accompanies the call in
-the owner-proved offer. The sponsor supplies the wallet inputs and fees.
+the owner-proved offer. Its segment must match the execution phase of the
+registry transcript, and that phase stays pinned during balancing. The sponsor
+supplies the wallet inputs and fees.
 Native transaction admission, fee ceilings and browser dispatch fencing remain
 qualification work.

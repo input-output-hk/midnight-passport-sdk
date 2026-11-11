@@ -80,15 +80,23 @@ function checkedCall(tx: ReturnType<typeof Transaction.deserialize>, quote: Paid
     throw new Error('Unexpected claim transaction components.');
   const call = findStandaloneClaimCall(tx, quote);
   const proof = call?.proof;
+  const guaranteed = call?.guaranteedTranscript;
+  const fallible = call?.fallibleTranscript;
+  const transcript = guaranteed ?? fallible;
   if (
+    !call ||
     !(proof instanceof Proof) ||
-    !call?.guaranteedTranscript ||
-    call.fallibleTranscript ||
-    !matchesRegistryCharge(call.guaranteedTranscript.effects, quote)
+    !transcript ||
+    (guaranteed && fallible) ||
+    !matchesRegistryCharge(transcript.effects, quote)
   ) {
     throw new Error('Claim proof or registry charge differs from the quote.');
   }
-  return { proof, communicationCommitment: call.communicationCommitment };
+  return {
+    proof,
+    communicationCommitment: call.communicationCommitment,
+    phase: guaranteed ? ('guaranteed' as const) : ('fallible' as const),
+  };
 }
 
 function checkBytes(bytes: Uint8Array): void {
@@ -125,15 +133,18 @@ export async function prepareSponsoredClaim(
   const original = new Uint8Array(ownerProved);
   const owner = Transaction.deserialize('signature', 'proof', 'pre-binding', original);
   const [intent] = owner.intents?.values() ?? [];
+  const ownerCall = checkedCall(owner, expected);
+  const guaranteed = ownerCall.phase === 'guaranteed';
+  const offer = guaranteed ? intent?.guaranteedUnshieldedOffer : intent?.fallibleUnshieldedOffer;
+  const extra = guaranteed ? intent?.fallibleUnshieldedOffer : intent?.guaranteedUnshieldedOffer;
   if (
     owner.intents?.size !== 1 ||
     !intent ||
     intent.dustActions ||
-    !matchesOwnerOffer(intent.guaranteedUnshieldedOffer, expected) ||
-    intent.fallibleUnshieldedOffer
+    extra ||
+    !matchesOwnerOffer(offer, expected)
   )
     throw new Error('Owner proof must contain only the registration call and its quoted output.');
-  const ownerCall = checkedCall(owner, expected);
   const ownerProof = await claimDigest(ownerCall.proof.serialize());
   const sponsored = await balance(original);
   checkBytes(sponsored);
@@ -141,6 +152,7 @@ export async function prepareSponsoredClaim(
   const finalized = Transaction.deserialize('signature', 'proof', 'binding', bytes);
   const finalizedCall = checkedCall(finalized, expected);
   if (
+    finalizedCall.phase !== ownerCall.phase ||
     finalizedCall.communicationCommitment !== ownerCall.communicationCommitment ||
     (await claimDigest(finalizedCall.proof.serialize())) !== ownerProof
   )
