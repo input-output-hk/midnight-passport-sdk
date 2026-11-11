@@ -44,6 +44,7 @@ import { demoOperationGuard } from './operation-guard.js';
 import { createMockNameService } from './mock-name-service.js';
 import { showDemoNameService, showNameConfigurationError } from './name-service.js';
 import { configureMidnames } from './midnames/config.js';
+import { showClaimRecovery } from './midnames/claim-recovery-ui.js';
 import { createDemoWorkspace } from './workspace.js';
 import { ActivityPanel } from './activity-controls.js';
 import { installLaceWallet } from './lace-wallet.js';
@@ -237,6 +238,7 @@ try {
 installLaceWallet(network, ui.showExternalWalletConnection);
 showDemoCapabilities(ARM);
 showSigningMode(SIGNING_MODE);
+let resetClaimRecovery: (() => void) | undefined;
 try {
   const naming = configureMidnames(
     {
@@ -251,6 +253,8 @@ try {
     BINDING_ID,
   );
   showDemoNameService(naming ?? createMockNameService(network), network);
+  if (naming?.recovery)
+    resetClaimRecovery = showClaimRecovery(naming.recovery, () => appState.primaryAccount);
 } catch {
   showNameConfigurationError();
 }
@@ -407,6 +411,7 @@ const connector = async () => {
 const opened = async (a: PassportAccount, how: string, lastTx?: PassportTxResult) => {
   session.lock();
   appState.primaryAccount = a;
+  resetClaimRecovery?.();
   appState.authenticatedAccount = undefined;
   appState.account = routeAuthenticatedAccount(
     a,

@@ -163,12 +163,35 @@ wallet to the sponsor. The claim finalized with exactly two DUST spends. The
 registry reader returned the expected distinct claimant commitment and the
 activated ACC. After restarting the isolated node and indexer, a fresh process
 confirmed the original transaction identifiers and read the target again with
-zero submissions. This is standalone fixture evidence. The browser claim and
-its custody policy, live lost-response handling, and online profile qualification
-remain open.
+zero submissions. This is standalone fixture evidence. Browser claim preparation,
+name-owner custody and online profile qualification remain open.
 
 The host registry reader can inspect the stored owner commitment and target
 from the same verifier-checked snapshot. Generated-state tests check the
 commitment of a claimant distinct from the root owner. Confirmation of a
 future claim requires both fields to match the original intent and evidence
 that the original transaction finalized successfully.
+
+### Recover the sponsor's original claim in the demo
+
+For `standalone-0.35` with namespace `night`, open the target Passport ACC
+with its passkey and go to **Settings → Developer tools → Name service**.
+Enter the name and paste the sponsor's original public receipt. Save it, then
+use **Check original claim**. After a reload, open the same account with the
+same credential, enter the name again, and check the saved receipt.
+
+The sponsor prepares this receipt before dispatch. Its fields are
+`networkId` (`undeployed`), `registryAddress`, `accountAddress`, `name`,
+`ownerCommitment`, and `transaction` with the original finalized
+`identifiers` and byte `sha256`. Keep the original receipt available when a
+response is lost. IndexedDB retains public fields scoped to the original
+credential and protects the record from replacement by another tab. The
+checker reads the original identifiers, verifies the exact transaction bytes
+and registry call, and checks the current owner commitment and activated ACC
+target. An absent, partial, aggregated or changed transaction stays pending.
+A mismatched owner or target is reported as a conflict.
+
+This recovery surface reads the isolated indexer. Claim preparation and
+submission run in a separate sponsor environment. Never paste passkey
+material, keys, raw transaction bytes or witnesses into the form. Recovering
+the receipt does not recover ownership after loss of the name-owner secret.

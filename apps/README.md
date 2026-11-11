@@ -868,3 +868,11 @@ The demo's optional Midnames reader uses the existing **Name service** panel.
 Set all five build inputs in the [naming adapter guide](../docs/site/names.md#source-preview-midnames-210).
 A configured lookup uses the registry's contract target and verifies the
 deployed ACC binding before displaying it. The default remains the mock.
+
+### Standalone Midnames claim recovery
+
+On the pinned `standalone-0.35` registry with namespace `night`, the demo
+can retain a sponsor's original public receipt and reconcile it after a lost
+response. The form is under **Settings → Developer tools → Name service**.
+The sponsor prepares and sends the claim separately. See the
+[receipt and recovery flow](../docs/site/names.md#recover-the-sponsors-original-claim-in-the-demo).
