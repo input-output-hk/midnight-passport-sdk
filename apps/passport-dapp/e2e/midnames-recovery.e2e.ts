@@ -129,8 +129,14 @@ try {
   const permitRead = new Promise<void>((resolve) => {
     releaseRead = resolve;
   });
+  let interrupted = false;
   await checking.route(indexer, async (route) => {
-    if (route.request().method() === 'POST') await permitRead;
+    if (route.request().method() === 'POST' && !interrupted) {
+      interrupted = true;
+      await permitRead;
+      await route.abort('failed');
+      return;
+    }
     await route.continue();
   });
   const registryReadStarted = checking.waitForRequest(

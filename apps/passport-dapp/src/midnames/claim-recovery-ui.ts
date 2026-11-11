@@ -82,12 +82,15 @@ export function showClaimRecovery(
         let original = await readOriginal();
         ensureAccount();
         if (!original && checkingAvailability) {
-          const result = await recovery.availability(selected, account.address);
+          const result = await recovery
+            .availability(selected, account.address)
+            .catch(() => undefined);
           ensureAccount();
           // A different tab may have retained a receipt during the registry read.
           original = await readOriginal();
           ensureAccount();
           if (!original) {
+            if (result === undefined) throw new Error('Registry read failed.');
             status.textContent = availabilityMessages[result];
             return;
           }
