@@ -58,20 +58,30 @@ export class AccSimulator {
     this.coin = { bytes: new Uint8Array(randomBytes(32)) };
     this.now = 1_800_000_000;
     this.contract = new module.Contract({
-      held_coin() {
-        throw new Error('no coins in this simulation');
+      held_coin: ({ privateState }, color) => {
+        const coin = this.heldCoin;
+        if (!coin || hex(coin.color) !== hex(color))
+          throw new Error('no qualified coin of this color');
+        return [privateState, coin];
       },
     });
+    /** @type {import('@midnight-ntwrk/compact-runtime').EncodedQualifiedShieldedCoinInfo | undefined} */
+    this.heldCoin = undefined;
+    /** @type {import('@midnight-ntwrk/compact-runtime').EncodedZswapLocalState | undefined} */
+    this.lastZswap = undefined;
+    /** @type {import('@midnight-ntwrk/compact-runtime').Effects | undefined} */
+    this.lastEffects = undefined;
     /** @type {any} */
     this.state = undefined;
   }
 
-  /** @param {{owner?: SimDevice, recovery?: SimDevice, module?: typeof pinned, window?: bigint}} options */
+  /** @param {{owner?: SimDevice, recovery?: SimDevice, module?: typeof pinned, window?: bigint, encKey?: Uint8Array}} options */
   static async create({
     module = pinned,
     owner = simulationDevice('jubjub', module),
     recovery = simulationDevice('jubjub', module),
     window = 60n,
+    encKey = new Uint8Array(randomBytes(32)),
   } = {}) {
     const sim = new AccSimulator(module);
     sim.owner = owner;
@@ -85,7 +95,7 @@ export class AccSimulator {
     const init = await sim.contract.initialState(
       createConstructorContext({}, sim.coin),
       boot,
-      new Uint8Array(randomBytes(32)),
+      encKey,
       recovery.pk,
       new Uint8Array(64),
       window,
@@ -120,6 +130,8 @@ export class AccSimulator {
     if (!fn) throw new Error(`circuit unavailable: ${name}`);
     const result = await fn(context, ...args);
     this.state = result.context.callContext.currentQueryContext.state;
+    this.lastZswap = result.context.callContext.currentZswapLocalState;
+    this.lastEffects = result.context.callContext.currentQueryContext.effects;
     return result.result;
   }
 
@@ -139,8 +151,9 @@ export class AccSimulator {
 
   /** Real signatures over the binding's actual challenges, not fake chain-port behavior.
    * @param {string} operation @param {any[]} args @param {SimDevice} device @param {bigint} counter
+   * @param {any[]} witnesses
    */
-  async authorised(operation, args, device = this.owner, counter = 0n) {
+  async authorised(operation, args, device = this.owner, counter = 0n, witnesses = []) {
     const nonce = this.ledger().auth_nonce;
     const p = this.module.pureCircuits;
     const challenge = /** @type {Record<string, (...args: any[]) => Uint8Array>} */ (
@@ -151,7 +164,7 @@ export class AccSimulator {
       const auth = signJubjubChallenge(
         p,
         device.scalar,
-        (r, grind) => challenge(this.self, r, device.pk, ...args, nonce, grind),
+        (r, grind) => challenge(this.self, r, device.pk, ...args, ...witnesses, nonce, grind),
         counter,
       );
       return this.call(
@@ -164,7 +177,13 @@ export class AccSimulator {
         auth.grindNonce,
       );
     }
-    const bytes = challenge(this.self, { ...device.pk, identity: false }, ...args, nonce);
+    const bytes = challenge(
+      this.self,
+      { ...device.pk, identity: false },
+      ...args,
+      ...witnesses,
+      nonce,
+    );
     const data = new Uint8Array(37);
     data.set(device.policy.rp_id_hash);
     data[32] = 5; // UP + UV in this software authenticator only.

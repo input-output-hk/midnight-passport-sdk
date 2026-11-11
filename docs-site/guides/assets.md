@@ -14,6 +14,14 @@ An owner or matching bounded grant can authorize supported withdrawal circuits. 
 
 **Shielded withdrawal limit:** the released path accepts an exact-value coin. A partial shielded spend is refused; the SDK does not silently split or make change. This affects the specific withdrawal capability, even when deposits or unshielded withdrawals work. See the [RC9 release evidence](/operations/quality) before claiming production interoperability.
 
+For contract integrations, the source candidate exposes
+`deriveAccS3r1ShieldedWithdrawal` from
+`@input-output-hk/mn-passport-contract/shielded-withdrawal`. It predicts the
+recipient coin and optional ACC-owned change for the pinned `acc-s3r1.1` binding.
+Keep the coin descriptions private. Settling change requires the original
+finalized transaction, a matching commitment and Merkle index, and an
+owner-authorized inbox append sealed to the current viewing public key.
+
 Application contracts may call **into a deployed ACC** under the supported caller-bound design. That does not establish arbitrary ACC → other-contract calls. [See the implementation boundary](/architecture/standards).
 
 ## Repeated deposits and uncertain results

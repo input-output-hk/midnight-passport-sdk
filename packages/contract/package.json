@@ -12,6 +12,10 @@
       "types": "./generated/acc-s3r1.1/index.d.ts",
       "default": "./generated/acc-s3r1.1/index.js"
     },
+    "./shielded-withdrawal": {
+      "types": "./dist/shielded-withdrawal.d.ts",
+      "default": "./dist/shielded-withdrawal.js"
+    },
     "./capabilities": {
       "types": "./dist/capabilities.d.ts",
       "default": "./dist/capabilities.js"
