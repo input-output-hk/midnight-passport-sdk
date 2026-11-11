@@ -12,8 +12,9 @@ sponsor payment policy, and durable transaction admission.
 
 In the pinned registry, `create_domain` uses the `domainSecretKey` witness to
 derive the published `midnight.domains` commitment. The local fixture uses a
-synthetic witness in its controlled proof environment. The proof requires the witness in addition to the public registry state. Passing the witness
-or its unproved transcript to a separate sponsor would give that service
+synthetic witness in its controlled proof environment. The proof requires the
+witness and the public registry state. Passing the witness or its unproved
+transcript to a separate sponsor would give that service
 material used to control the name.
 
 ## Proposed boundary
@@ -57,3 +58,14 @@ receipt takes precedence over a fresh availability check.
 - Verify how a surviving key origin restores the same naming authority.
   Total-loss continuity remains a distinct recovery requirement under #240.
 - Qualify other networks and public namespace ownership under #315 and #247.
+
+## Local preparation fixture
+
+The standalone fixture passes serialized Ledger 9 proof bytes to the wallet
+balancing adapter. Admission checks the exact registry, root name, owner
+commitment, ACC target and NIGHT charge to the live parent registry recipient.
+After balancing, the fixture compares the original proof and communication
+commitment with the finalized call, then retains public receipt identifiers
+and the hash of the finalized bytes. The fixture uses one local process and an
+isolated local prover. Separate owner/sponsor processes, native transaction
+admission, fee ceilings and browser dispatch fencing remain qualification work.

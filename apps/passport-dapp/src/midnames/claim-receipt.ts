@@ -1,9 +1,12 @@
-export interface ClaimReceipt {
+export interface ClaimScope {
   readonly networkId: 'undeployed';
   readonly registryAddress: string;
   readonly accountAddress: string;
   readonly name: string;
   readonly ownerCommitment: string;
+}
+
+export interface ClaimReceipt extends ClaimScope {
   readonly transaction: {
     readonly identifiers: readonly string[];
     readonly sha256: string;

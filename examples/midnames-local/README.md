@@ -85,3 +85,20 @@ the original intent can prepare its deposit. After either dispatch fence, check
 the original identifiers. A failed or uncertain original deposit stays fenced
 for operator reconciliation. If the name changes after withdrawal, the flow
 keeps the funds in the controlled wallet and refuses to redirect them.
+
+## Prepare an owner-proved claim for the sponsor
+
+Use the same isolated runner with a fresh output name starting with
+`midnames-claim-handoff-`. The setup activates a test ACC and deploys the pinned
+registry. The fixture creates a distinct synthetic claimant for
+`charlie.night` and reads the NIGHT price and payee from the registry root.
+Its local prover produces the claim. The sponsor wallet adapter receives
+proved transaction bytes and supplies balancing and fees.
+
+The fixture checks that the proved call and registry charge survive balancing
+and writes the prepared public receipt to `review/<output-name>/claim-handoff.json`.
+It leaves the sponsored claim at preparation. The setup transactions run on
+the isolated chain. Keep the binary transaction and wallet material local.
+This is a single-process proof handoff fixture. Browser initiation, sponsor
+dispatch, two-DUST admission and lost-response qualification are separate
+steps.
