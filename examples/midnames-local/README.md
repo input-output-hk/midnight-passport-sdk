@@ -88,6 +88,9 @@ keeps the funds in the controlled wallet and refuses to redirect them.
 
 ## Prepare an owner-proved claim for the sponsor
 
+**Native qualification pending.** Earlier native receipts cover the paid
+claim and browser recovery using the previous sponsor fixture.
+
 Use the same isolated runner with a fresh output name starting with
 `midnames-claim-handoff-`. The setup activates a test ACC and deploys the pinned
 registry. The fixture creates a distinct synthetic claimant for
