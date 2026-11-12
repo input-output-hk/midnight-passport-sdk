@@ -334,7 +334,7 @@ export interface PinnedChain extends Chain {
 }
 
 export interface DeadlineFencedGrantIssueRequest extends CallRequest {
-  readonly circuit: 'issue_grant_with_jubjub';
+  readonly circuit: 'issue_grant_with_jubjub' | 'issue_grant_with_p256';
   readonly mutation: MutationSubmissionContext & { readonly validUntilSeconds: number };
 }
 

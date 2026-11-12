@@ -231,13 +231,14 @@ export function createDeadlineFencedGrantIssueChain(
     ...chain,
     async submitDeadlineFencedGrantIssue(request) {
       if (
-        request.circuit !== 'issue_grant_with_jubjub' ||
+        (request.circuit !== 'issue_grant_with_jubjub' &&
+          request.circuit !== 'issue_grant_with_p256') ||
         !Number.isSafeInteger(request.mutation?.validUntilSeconds) ||
         request.mutation.validUntilSeconds < 0
       )
         throw new PassportConnectorError(
           'BindingUnsupported',
-          'Deadline-fenced dispatch requires an original JubJub issue with a deadline.',
+          'Deadline-fenced dispatch requires an original owner grant issue with a deadline.',
         );
       return chain.call(request);
     },

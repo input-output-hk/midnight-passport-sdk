@@ -98,8 +98,9 @@ export function packet(value = request()) {
   return { request: encoded, proof: encode(makeProof(encoded, value.grantee.pk)) };
 }
 
-export async function ownerFixture() {
-  const fixture = await generatedGrantAccount('jubjub');
+/** @param {'jubjub'|'p256'} [arm] */
+export async function ownerFixture(arm = 'jubjub') {
+  const fixture = await generatedGrantAccount(arm);
   const { sim, account, initial, chain, grants } = fixture;
   assert.ok(initial.records && initial.grantJournal && initial.directory);
   const identity = await initial.credentials.identify();

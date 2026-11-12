@@ -164,7 +164,8 @@ live ACC state. Copying the opening requires fresh approval from the original
 holder passkey and another live check.
 
 A host integrating the direct agent SDK flow must review the agent's client
-label, exact scope and source of the ACC address. A lost response requires
+label, exact scope and source of the ACC address. The active P-256 or JubJub
+owner approves the exact signed slot. A lost response requires
 fresh owner approval before releasing the original opening. The direct holder
 API checks the returned scope and live grant before an injected signer is
 used. The demo continues to demonstrate the browser relay.

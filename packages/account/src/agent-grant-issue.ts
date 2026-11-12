@@ -18,10 +18,13 @@ import { PassportConnectorError } from './errors.js';
 import { timestamp } from './grant-request-wire.js';
 import {
   issueJubjubGrantCall,
+  type IssueJubjubGrantCallInput,
   type IssueJubjubGrantCallPorts,
+  type IssueJubjubGrantPure,
   type StagedJubjubGrant,
 } from './jubjub-grant-issue.js';
 import { mutationDigest } from './mutation-codec.js';
+import { issueP256GrantCall, type IssueP256GrantPure } from './p256-grant-issue.js';
 import type {
   AccountHint,
   ActiveGrantSnapshotSource,
@@ -40,7 +43,7 @@ export interface AgentJubjubGrantIssuePorts extends Pick<
   readonly networkId: string;
   readonly chain: PinnedChain & DeadlineFencedGrantIssuePort;
   readonly grants: ActiveGrantSnapshotSource & GrantRosterSource & P256GrantSpendSource;
-  readonly pure: IssueJubjubGrantCallPorts['pure'] & AgentGrantSettlementPure;
+  readonly pure: AgentGrantSettlementPure & (IssueJubjubGrantPure | IssueP256GrantPure);
   readonly nonces: AgentGrantNonceStore;
   readonly originalIssues: AgentGrantIssueJournal;
   readonly nowSeconds?: () => number;
@@ -58,14 +61,33 @@ export interface AgentJubjubGrantIssuePorts extends Pick<
 }
 
 function captureOwner(owner: AccountHint): AccountHint {
-  if (owner.scheme !== 'jubjub-schnorr' || owner.status !== 'active' || !owner.credentialId?.length)
-    throw new PassportConnectorError('NotAuthorised', 'An active JubJub owner route is required.');
+  const policy = owner.scheme === 'p256-webauthn' ? owner.policy : undefined;
+  if (
+    (owner.scheme !== 'jubjub-schnorr' && owner.scheme !== 'p256-webauthn') ||
+    owner.status !== 'active' ||
+    !owner.credentialId?.length ||
+    (owner.scheme === 'p256-webauthn' &&
+      (!(policy?.rp_id_hash instanceof Uint8Array) ||
+        policy.rp_id_hash.length !== 32 ||
+        !(policy.origin instanceof Uint8Array) ||
+        policy.origin.length !== 21))
+  )
+    throw new PassportConnectorError(
+      'NotAuthorised',
+      'An active credential-pinned owner route is required.',
+    );
   return {
     address: owner.address,
     scheme: owner.scheme,
     status: owner.status,
     credentialId: Uint8Array.from(owner.credentialId),
     publicKey: { ...owner.publicKey },
+    ...(policy && {
+      policy: {
+        rp_id_hash: Uint8Array.from(policy.rp_id_hash),
+        origin: Uint8Array.from(policy.origin),
+      },
+    }),
   };
 }
 
@@ -80,6 +102,8 @@ function route(ports: AgentJubjubGrantIssuePorts, options: FlowOptions) {
   const owner = captureOwner(ports.owner);
   const ownerRoute = mutationDigest(owner);
   const { authoriserOrigin, networkId, authoriser, chain, grants } = ports;
+  if (authoriser.scheme !== owner.scheme)
+    throw new PassportConnectorError('NotAuthorised', 'The owner credential route differs.');
   const now = ports.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
   const check = () => {
     checkPins(ports);
@@ -89,6 +113,7 @@ function route(ports: AgentJubjubGrantIssuePorts, options: FlowOptions) {
       ports.authoriserOrigin !== authoriserOrigin ||
       ports.networkId !== networkId ||
       ports.authoriser !== authoriser ||
+      authoriser.scheme !== owner.scheme ||
       ports.chain !== chain ||
       ports.grants !== grants ||
       !ports.isCurrent() ||
@@ -137,11 +162,47 @@ async function approve(
 
 type Route = ReturnType<typeof route>;
 
+type OwnerIssuePorts = Omit<IssueJubjubGrantCallPorts, 'pure' | 'rotateBeforeIssue'>;
+
+function selectOwnerIssue(ports: AgentJubjubGrantIssuePorts, owner: AccountHint) {
+  const { authoriser, pure } = ports;
+  if (
+    authoriser.withKeySession &&
+    owner.scheme === 'p256-webauthn' &&
+    authoriser.deviceBinding &&
+    'challenge_issue_grant_with_p256' in pure &&
+    'derive_device_entry_with_p256' in pure
+  ) {
+    return {
+      circuit: 'issue_grant_with_p256' as const,
+      issue: (input: IssueJubjubGrantCallInput, shared: OwnerIssuePorts) =>
+        issueP256GrantCall(input, { ...shared, pure }),
+    };
+  }
+  if (
+    authoriser.withKeySession &&
+    owner.scheme === 'jubjub-schnorr' &&
+    'challenge_issue_grant_with_jubjub' in pure &&
+    'derive_device_entry_with_jubjub' in pure
+  ) {
+    return {
+      circuit: 'issue_grant_with_jubjub' as const,
+      issue: (input: IssueJubjubGrantCallInput, shared: OwnerIssuePorts) =>
+        issueJubjubGrantCall(input, { ...shared, pure }),
+    };
+  }
+  throw new PassportConnectorError(
+    'BindingUnsupported',
+    'The owner issue signer or binding is unavailable.',
+  );
+}
+
 async function issueOriginal(
   request: VerifiedAgentGrant,
   requestId: string,
   admittedAt: number,
   current: Route,
+  ownerIssue: ReturnType<typeof selectOwnerIssue>,
   ports: AgentJubjubGrantIssuePorts,
   options: FlowOptions,
 ) {
@@ -152,7 +213,11 @@ async function issueOriginal(
     if (now < admittedAt || now > validUntilSeconds)
       throw new PassportConnectorError('GrantScopeInvalid', 'The signed agent request expired.');
   };
-  const view = await ports.chain.readAccount(request.account, { includeDevices: true });
+  const { circuit } = ownerIssue;
+  const view = await ports.chain.readAccount(request.account, {
+    includeDevices: true,
+    ...(circuit === 'issue_grant_with_p256' && { includeInbox: true }),
+  });
   const roster = await ports.grants.readGrantRoster(request.account);
   if (!view?.booted || view.authNonce !== roster.authNonce || view.specVersion !== 3)
     throw new PassportConnectorError('GrantRosterUnsettled', 'The live owner and roster disagree.');
@@ -198,7 +263,7 @@ async function issueOriginal(
     scopeDigest = signedScopeDigest;
   };
   checkDeadline();
-  await issueJubjubGrantCall(
+  await ownerIssue.issue(
     {
       ...options,
       hint: current.owner,
@@ -210,7 +275,6 @@ async function issueOriginal(
       bindingId: 'acc-s3r1.1',
       authoriser: ports.authoriser,
       records: ports.records,
-      pure: ports.pure,
       ...(ports.random && { random: ports.random }),
       nowSeconds: current.now,
       grants: ports.grants,
@@ -221,7 +285,7 @@ async function issueOriginal(
           if (
             !record ||
             !scopeDigest ||
-            call.circuit !== 'issue_grant_with_jubjub' ||
+            call.circuit !== circuit ||
             call.address !== request.account
           )
             throw new AgentGrantIssueUnsettled(requestId);
@@ -229,12 +293,13 @@ async function issueOriginal(
           checkDeadline();
           return ports.chain.submitDeadlineFencedGrantIssue({
             ...call,
-            circuit: call.circuit,
+            circuit,
             mutation: {
               requestId,
               validUntilSeconds,
               intentSha256: mutationDigest({
                 kind: 'agent-jubjub-grant-issue',
+                circuit,
                 record,
                 scopeDigest,
                 signedArguments: mutationDigest(call.args),
@@ -273,6 +338,7 @@ export async function issueAgentJubjubGrant(
       'Agent grant requires a deadline-fenced issue dispatcher.',
     );
   const current = route(ports, options);
+  const ownerIssue = selectOwnerIssue(ports, current.owner);
   const admittedAt = timestamp.parse(current.now());
   const request = current.verify(input, admittedAt);
   const admission = current.admission(request);
@@ -291,7 +357,15 @@ export async function issueAgentJubjubGrant(
   const { requestId, first } = await ports.nonces.claim(admission);
   if (!first) throw new AgentGrantIssueUnsettled(requestId);
   try {
-    const record = await issueOriginal(request, requestId, admittedAt, current, ports, options);
+    const record = await issueOriginal(
+      request,
+      requestId,
+      admittedAt,
+      current,
+      ownerIssue,
+      ports,
+      options,
+    );
     return await confirmed(current, ports, request, record);
   } catch (cause) {
     throw new AgentGrantIssueUnsettled(requestId, cause);

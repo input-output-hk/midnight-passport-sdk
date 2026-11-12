@@ -9,9 +9,9 @@ import {
 import { recipeJubjubAuthoriser } from '../packages/keys/dist/index.js';
 import { encode, ownerFixture, packet, storage } from './fixtures/agent-grant-wire.mjs';
 
-/** @param {import('node:test').TestContext} t @param {{selectAccount?:boolean, cap?:string}} [options] */
+/** @param {import('node:test').TestContext} t @param {{selectAccount?:boolean, cap?:string, arm?:'jubjub'|'p256'}} [options] */
 async function issued(t, options = {}) {
-  const { fixture, value: draft, ports: owner } = await ownerFixture();
+  const { fixture, value: draft, ports: owner } = await ownerFixture(options.arm);
   const value = {
     ...draft,
     grants: draft.grants.map((grant) => ({
@@ -129,58 +129,60 @@ test('the agent validates the exact return against one live read and a separatel
   );
 });
 
-test('a funded generated ACC honors an independent agent signature and the original cap and revocation', async (t) => {
-  const { fixture, owner, ports, requests } = await issued(t, { cap: '1' });
-  const { sim, ownerAccount, effects } = fixture;
-  const verified = await verifyAgentJubjubGrantResponse(requests, ports);
-  const color = Buffer.from(verified.scope.color, 'hex');
-  await sim.call('deposit_unshielded', color, 20n);
-  const agent = signer(ports.pure, 7);
-  const outsider = signer(ports.pure, 8);
-  const input = { ...requests, issuance: verified.issuance, amount: '1', spentPrev: '0' };
-  /** @type {import('../packages/account/dist/index.js').AgentJubjubGrantSpendPorts} */
-  const spend = {
-    ...ports,
-    chain: owner.chain,
-    grantee: agent.authoriser,
-    async review(details) {
-      assert.equal(details.account, verified.account);
-      assert.equal(details.recipient, verified.scope.recipient.value);
-      assert.equal(details.amount, '1');
-      return true;
-    },
-    attempts: 1,
-  };
-  await assert.rejects(spendWithAgentJubjubGrant({ ...input, amount: '2' }, spend), {
-    code: 'GrantScopeInvalid',
+for (const arm of /** @type {const} */ (['jubjub', 'p256'])) {
+  test(`${arm} a funded generated ACC honors an independent agent signature and the original cap and revocation`, async (t) => {
+    const { fixture, owner, ports, requests } = await issued(t, { cap: '1', arm });
+    const { sim, ownerAccount, effects } = fixture;
+    const verified = await verifyAgentJubjubGrantResponse(requests, ports);
+    const color = Buffer.from(verified.scope.color, 'hex');
+    await sim.call('deposit_unshielded', color, 20n);
+    const agent = signer(ports.pure, 7);
+    const outsider = signer(ports.pure, 8);
+    const input = { ...requests, issuance: verified.issuance, amount: '1', spentPrev: '0' };
+    /** @type {import('../packages/account/dist/index.js').AgentJubjubGrantSpendPorts} */
+    const spend = {
+      ...ports,
+      chain: owner.chain,
+      grantee: agent.authoriser,
+      async review(details) {
+        assert.equal(details.account, verified.account);
+        assert.equal(details.recipient, verified.scope.recipient.value);
+        assert.equal(details.amount, '1');
+        return true;
+      },
+      attempts: 1,
+    };
+    await assert.rejects(spendWithAgentJubjubGrant({ ...input, amount: '2' }, spend), {
+      code: 'GrantScopeInvalid',
+    });
+    assert.deepEqual(agent.counts(), [0, 0]);
+    await assert.rejects(
+      spendWithAgentJubjubGrant(input, { ...spend, grantee: outsider.authoriser }),
+      {
+        code: 'NotAuthorised',
+      },
+    );
+    assert.deepEqual(outsider.counts(), [1, 0]);
+    const before = effects.length;
+    const tx = await spendWithAgentJubjubGrant(input, spend);
+    assert.equal(tx.spentTotal, 1n);
+    assert.equal(tx.grantNonce, 1n);
+    assert.deepEqual(effects.slice(before), ['withdraw_unshielded_with_grant_jubjub']);
+    assert.equal(sim.ledger().unshielded_balances.lookup(color), 19n);
+    await assert.rejects(spendWithAgentJubjubGrant(input, spend), { code: 'GrantScopeInvalid' });
+    await assert.rejects(spendWithAgentJubjubGrant({ ...input, spentPrev: '1' }, spend), {
+      code: 'GrantScopeInvalid',
+      message: /remaining cap/,
+    });
+    assert.deepEqual(agent.counts(), [1, 1]);
+    assert.ok(ownerAccount.revokeGrant);
+    await ownerAccount.revokeGrant(verified.grantId);
+    await assert.rejects(spendWithAgentJubjubGrant({ ...input, spentPrev: '1' }, spend), {
+      code: 'GrantRevoked',
+    });
+    assert.deepEqual(agent.counts(), [1, 1]);
   });
-  assert.deepEqual(agent.counts(), [0, 0]);
-  await assert.rejects(
-    spendWithAgentJubjubGrant(input, { ...spend, grantee: outsider.authoriser }),
-    {
-      code: 'NotAuthorised',
-    },
-  );
-  assert.deepEqual(outsider.counts(), [1, 0]);
-  const before = effects.length;
-  const tx = await spendWithAgentJubjubGrant(input, spend);
-  assert.equal(tx.spentTotal, 1n);
-  assert.equal(tx.grantNonce, 1n);
-  assert.deepEqual(effects.slice(before), ['withdraw_unshielded_with_grant_jubjub']);
-  assert.equal(sim.ledger().unshielded_balances.lookup(color), 19n);
-  await assert.rejects(spendWithAgentJubjubGrant(input, spend), { code: 'GrantScopeInvalid' });
-  await assert.rejects(spendWithAgentJubjubGrant({ ...input, spentPrev: '1' }, spend), {
-    code: 'GrantScopeInvalid',
-    message: /remaining cap/,
-  });
-  assert.deepEqual(agent.counts(), [1, 1]);
-  assert.ok(ownerAccount.revokeGrant);
-  await ownerAccount.revokeGrant(verified.grantId);
-  await assert.rejects(spendWithAgentJubjubGrant({ ...input, spentPrev: '1' }, spend), {
-    code: 'GrantRevoked',
-  });
-  assert.deepEqual(agent.counts(), [1, 1]);
-});
+}
 
 test('expired and synthetically changed issuance cannot enter a key session', async (t) => {
   const { fixture, value, owner, ports, requests } = await issued(t);

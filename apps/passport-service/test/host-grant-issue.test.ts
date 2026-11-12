@@ -373,10 +373,11 @@ async function start(
   t: TestContext,
   driver: ReturnType<typeof createReferenceHostDriver>,
   root: string,
+  routePins: HostMutationIdentity['pins'] = pins,
 ) {
   const store = encryptedHostMutationStore(root, new Uint8Array(32).fill(7));
   const executor = createHostMutationExecutor(store, driver);
-  const route = hostMutationRoute({ executor, pins, token: Buffer.from(token, 'hex') });
+  const route = hostMutationRoute({ executor, pins: routePins, token: Buffer.from(token, 'hex') });
   const server = createServer({ host: '127.0.0.1', corsOrigin: 'https://passport.example' }, [
     route,
   ]);
@@ -402,12 +403,13 @@ function issueChain(
   built: Ledger.UnprovenTransaction,
   prover: Parameters<typeof createMidnightChain>[0]['prover'],
   grantIssueSponsor: NonNullable<Parameters<typeof createMidnightChain>[0]['grantIssueSponsor']>,
+  expectedCircuit: string = circuit,
 ) {
   const buildGrantIssue: NonNullable<
     Parameters<typeof createMidnightChain>[0]['buildGrantIssue']
   > = async (_providers: unknown, options: { contractAddress: string; circuitId: string }) => {
     assert.equal(options.contractAddress, address);
-    assert.equal(options.circuitId, circuit);
+    assert.equal(options.circuitId, expectedCircuit);
     return { private: { unprovenTx: built } } as never;
   };
   return createDeadlineFencedGrantIssueChain({
@@ -489,106 +491,131 @@ test('grant chain proves the selected issue before handing the exact unbound byt
   assert.deepEqual([proofs, handoffs], [4, 1]);
 });
 
-test('private grant sponsor RPC recovers the exact original dispatch after a lost reply and restart', async (t) => {
-  const root = await mkdtemp(join(tmpdir(), 'passport-grant-sponsor-'));
-  t.after(() => rm(root, { recursive: true, force: true }));
-  const built = unprovenCall(circuit, undefined, false, new Date(Date.now() + 3_600_000));
-  const proved = await built.prove(proving, Ledger.CostModel.initialCostModel());
-  const exact = proved.bind();
-  const expectedBytes = exact.serialize();
-  const r = runtime(pinnedState());
-  let balances = 0;
-  let sends = 0;
-  const driver = createReferenceHostDriver({
-    ...r,
-    providers: {
-      ...r.providers,
-      walletProvider: {
-        ...r.providers.walletProvider,
-        async balanceTx({ tx }, feeDeadline) {
-          balances++;
-          assert.ok(feeDeadline && feeDeadline.getTime() > Date.now());
-          assert.ok(feeDeadline.getTime() <= Date.now() + 45_000);
-          assert.deepEqual(tx.serialize(), proved.serialize());
-          return { version: 'v9', tx: exact };
+for (const scheme of ['jubjub-schnorr', 'p256-webauthn'] as const) {
+  test(`${scheme} private grant sponsor RPC recovers the exact original dispatch after a lost reply and restart`, async (t) => {
+    const circuit =
+      scheme === 'p256-webauthn' ? 'issue_grant_with_p256' : 'issue_grant_with_jubjub';
+    const routePins = { ...pins, scheme };
+    const root = await mkdtemp(join(tmpdir(), 'passport-grant-sponsor-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const built = unprovenCall(circuit, undefined, false, new Date(Date.now() + 3_600_000));
+    const proved = await built.prove(proving, Ledger.CostModel.initialCostModel());
+    const exact = proved.bind();
+    const expectedBytes = exact.serialize();
+    const r = runtime(pinnedState());
+    let balances = 0;
+    let sends = 0;
+    const driver = createReferenceHostDriver({
+      ...r,
+      providers: {
+        ...r.providers,
+        walletProvider: {
+          ...r.providers.walletProvider,
+          async balanceTx({ tx }, feeDeadline) {
+            balances++;
+            assert.ok(feeDeadline && feeDeadline.getTime() > Date.now());
+            assert.ok(feeDeadline.getTime() <= Date.now() + 45_000);
+            assert.deepEqual(tx.serialize(), proved.serialize());
+            return { version: 'v9', tx: exact };
+          },
+        },
+        midnightProvider: {
+          async submitTx({ tx }) {
+            sends++;
+            assert.deepEqual(tx.serialize(), expectedBytes);
+            throw new Error('Original wallet acknowledgement was lost');
+          },
         },
       },
-      midnightProvider: {
-        async submitTx({ tx }) {
-          sends++;
-          assert.deepEqual(tx.serialize(), expectedBytes);
-          throw new Error('Original wallet acknowledgement was lost');
-        },
+      async fetch() {
+        return Response.json({
+          data: {
+            transactions: sends
+              ? [
+                  {
+                    __typename: 'RegularTransaction',
+                    protocolVersion: 2001000,
+                    raw: Buffer.from(expectedBytes).toString('hex'),
+                    hash: exact.transactionHash(),
+                    identifiers: exact.identifiers(),
+                    block: { height: 7 },
+                    transactionResult: { status: 'SUCCESS' },
+                  },
+                ]
+              : [],
+          },
+        });
       },
-    },
-    async fetch() {
-      return Response.json({
-        data: {
-          transactions: sends
-            ? [
-                {
-                  __typename: 'RegularTransaction',
-                  protocolVersion: 2001000,
-                  raw: Buffer.from(expectedBytes).toString('hex'),
-                  hash: exact.transactionHash(),
-                  identifiers: exact.identifiers(),
-                  block: { height: 7 },
-                  transactionResult: { status: 'SUCCESS' },
-                },
-              ]
-            : [],
-        },
-      });
-    },
-  });
-  const first = await start(t, driver, root);
-  const request = {
-    requestId,
-    intentSha256,
-    address,
-    circuit,
-    validUntilSeconds: Math.floor(Date.now() / 1000) + 60,
-  };
-  const denied = remoteHostMutationPorts(first.base, { pins, token: '91'.repeat(32) }).grantIssue;
-  await assert.rejects(denied.execute(proved.serialize(), request), { code: 'MutationUnsettled' });
-  assert.deepEqual([balances, sends], [0, 0]);
-  const port = remoteHostMutationPorts(first.base, { pins, token }).grantIssue;
-  const chain = issueChain(
-    built,
-    {
-      async proveTx(bytes) {
-        assert.deepEqual(bytes, built.serialize());
-        return { tx: proved.serialize(), provenance: 'remote' };
-      },
-    },
-    port,
-  );
-  await assert.rejects(
-    chain.call({
+    });
+    const first = await start(t, driver, root, routePins);
+    const request = {
+      requestId,
+      intentSha256,
       address,
       circuit,
-      args: [],
-      mutation: { requestId, intentSha256, validUntilSeconds: request.validUntilSeconds },
-    }),
-    { code: 'MutationUnsettled' },
-  );
-  assert.deepEqual([balances, sends], [1, 1]);
-  await first.close();
-  const restarted = await start(t, driver, root);
-  const recovered = remoteHostMutationPorts(restarted.base, { pins, token }).grantIssue;
-  await assert.rejects(recovered.reconcile({ requestId, intentSha256: '15'.repeat(32) }), {
-    code: 'MutationUnsettled',
+      validUntilSeconds: Math.floor(Date.now() / 1000) + 60,
+    };
+    const denied = remoteHostMutationPorts(first.base, {
+      pins: routePins,
+      token: '91'.repeat(32),
+    }).grantIssue;
+    await assert.rejects(denied.execute(proved.serialize(), request), {
+      code: 'MutationUnsettled',
+    });
+    assert.deepEqual([balances, sends], [0, 0]);
+    const wrongScheme = remoteHostMutationPorts(first.base, {
+      pins: {
+        ...routePins,
+        scheme: scheme === 'p256-webauthn' ? 'jubjub-schnorr' : 'p256-webauthn',
+      },
+      token,
+    }).grantIssue;
+    await assert.rejects(wrongScheme.execute(proved.serialize(), request), {
+      code: 'MutationUnsettled',
+    });
+    assert.deepEqual([balances, sends], [0, 0]);
+    const port = remoteHostMutationPorts(first.base, { pins: routePins, token }).grantIssue;
+    const chain = issueChain(
+      built,
+      {
+        async proveTx(bytes) {
+          assert.deepEqual(bytes, built.serialize());
+          return { tx: proved.serialize(), provenance: 'remote' };
+        },
+      },
+      port,
+      circuit,
+    );
+    await assert.rejects(
+      chain.submitDeadlineFencedGrantIssue({
+        address,
+        circuit,
+        args: [],
+        mutation: { requestId, intentSha256, validUntilSeconds: request.validUntilSeconds },
+      }),
+      { code: 'MutationUnsettled' },
+    );
+    assert.deepEqual([balances, sends], [1, 1]);
+    await first.close();
+    const restarted = await start(t, driver, root, routePins);
+    const recovered = remoteHostMutationPorts(restarted.base, {
+      pins: routePins,
+      token,
+    }).grantIssue;
+    await assert.rejects(recovered.reconcile({ requestId, intentSha256: '15'.repeat(32) }), {
+      code: 'MutationUnsettled',
+    });
+    assert.deepEqual(await recovered.reconcile(request), {
+      txHash: exact.transactionHash(),
+      submissionId: exact.identifiers()[0],
+      blockHeight: 7,
+    });
+    await assert.rejects(recovered.execute((await provedCall()).serialize(), request), {
+      code: 'MutationUnsettled',
+    });
+    assert.deepEqual([balances, sends], [1, 1]);
   });
-  assert.deepEqual(await recovered.reconcile(request), {
-    txHash: exact.transactionHash(),
-    submissionId: exact.identifiers()[0],
-    blockHeight: 7,
-  });
-  await assert.rejects(recovered.execute((await provedCall()).serialize(), request), {
-    code: 'MutationUnsettled',
-  });
-  assert.deepEqual([balances, sends], [1, 1]);
-});
+}
 
 test('grant sponsor does not send a prepared issue after its request expires during balance', async (t) => {
   const now = Date.now();

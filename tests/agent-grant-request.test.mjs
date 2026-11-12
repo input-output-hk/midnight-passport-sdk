@@ -168,78 +168,92 @@ test('agent admission refuses browser transport, redirects, duplicates and misma
   rejects(valid, { ...context, authoriserOrigin: authoriserOrigin + '/' });
 });
 
-test('one generated owner issue survives a lost response and concurrent replay', async (t) => {
-  const { fixture, value, ports: base } = await ownerFixture();
-  const { sim, journal } = fixture;
-  const stores = await storage(t);
-  const input = packet(value);
-  const chosen = randomUUID();
-  let submissions = 0;
-  let recoveryApprovals = 0;
-  /** @type {import('../packages/account/dist/index.js').AgentJubjubGrantIssuePorts} */
-  const ports = {
-    ...base,
-    ...stores,
-    nonces: createAgentGrantNonceStore(stores.bytes, () => chosen),
-    chain: {
-      ...base.chain,
-      async submitDeadlineFencedGrantIssue(call) {
-        submissions++;
-        assert.equal(call.mutation?.requestId, chosen);
-        assert.equal(call.mutation?.validUntilSeconds, value.exp);
-        assert.match(call.mutation?.intentSha256 ?? '', /^[a-f0-9]{64}$/);
-        assert.ok(await stores.originalIssues.read(chosen));
-        await base.chain.call(call);
-        throw new Error('Lost original host response.');
+for (const arm of /** @type {const} */ (['jubjub', 'p256'])) {
+  test(`${arm} one generated owner issue survives a lost response and concurrent replay`, async (t) => {
+    const { fixture, value, ports: base } = await ownerFixture(arm);
+    const { sim, journal } = fixture;
+    const stores = await storage(t);
+    const input = packet(value);
+    const chosen = randomUUID();
+    let submissions = 0;
+    let recoveryApprovals = 0;
+    /** @type {import('../packages/account/dist/index.js').AgentJubjubGrantIssuePorts} */
+    const ports = {
+      ...base,
+      ...stores,
+      nonces: createAgentGrantNonceStore(stores.bytes, () => chosen),
+      chain: {
+        ...base.chain,
+        async submitDeadlineFencedGrantIssue(call) {
+          assert.equal(call.circuit, `issue_grant_with_${arm}`);
+          submissions++;
+          assert.equal(call.mutation?.requestId, chosen);
+          assert.equal(call.mutation?.validUntilSeconds, value.exp);
+          assert.match(call.mutation?.intentSha256 ?? '', /^[a-f0-9]{64}$/);
+          assert.ok(await stores.originalIssues.read(chosen));
+          await base.chain.call(call);
+          throw new Error('Lost original host response.');
+        },
       },
-    },
-    async approve({ operation, request }) {
-      assert.equal(request.slot, 7);
-      assert.equal(request.clientId, value.client_id);
-      assert.equal(request.accountSource, 'signed-request');
-      if (operation === 'recover') recoveryApprovals++;
-      return true;
-    },
-  };
-  const unsettled = { code: 'MutationUnsettled', requestId: chosen };
-  await Promise.all([
-    assert.rejects(issueAgentJubjubGrant(input, ports), unsettled),
-    assert.rejects(issueAgentJubjubGrant(input, ports), unsettled),
-  ]);
-  assert.equal(submissions, 1);
-  sim.now = value.exp + 1;
-  await assert.rejects(
-    recoverAgentJubjubGrant(chosen, packet({ ...value, client_id: 'self:other' }), ports),
-    unsettled,
-  );
-  assert.equal(recoveryApprovals, 0);
-  const result = await recoverAgentJubjubGrant(chosen, input, ports);
-  assert.equal(recoveryApprovals, 1);
-  assert.equal(result.result, 'granted');
-  assert.equal(result.chain, 'midnight:' + value.chain);
-  assert.equal(result.account, value.account);
-  const staged = journal.get(result.grant_id);
-  assert.equal(staged?.bookkeeping.slot, 7);
-  assert.equal(staged?.bookkeeping.scopeSalt, result.scope_salt);
-  assert.equal(staged?.origin, value.client_id);
-  const scope = JSON.parse(Buffer.from(result.scope, 'base64url').toString());
-  assert.equal(scope.recipient, value.grants[0]?.bounds.recipient.value);
-  assert.equal(scope.read, false);
-  assert.equal('state' in result || 'iss' in result || 'redirect_uri' in result, false);
-  const live = await ports.grants.readP256GrantSpendContext(value.account, result.grant_id);
-  assert.ok(live);
-  const stale = {
-    ...ports,
-    grants: {
-      ...ports.grants,
-      readP256GrantSpendContext: async () => ({ ...live, issuedAt: live.issuedAt + 1n }),
-    },
-  };
-  await assert.rejects(recoverAgentJubjubGrant(chosen, input, stale), unsettled);
-  sim.now += 300;
-  await assert.rejects(recoverAgentJubjubGrant(chosen, input, ports), unsettled);
-  assert.equal(submissions, 1);
-});
+      async approve({ operation, request }) {
+        assert.equal(request.slot, 7);
+        assert.equal(request.clientId, value.client_id);
+        assert.equal(request.accountSource, 'signed-request');
+        if (operation === 'recover') recoveryApprovals++;
+        return true;
+      },
+    };
+    const unsettled = { code: 'MutationUnsettled', requestId: chosen };
+    await Promise.all([
+      assert.rejects(issueAgentJubjubGrant(input, ports), unsettled),
+      assert.rejects(issueAgentJubjubGrant(input, ports), unsettled),
+    ]);
+    assert.equal(submissions, 1);
+    sim.now = value.exp + 1;
+    await assert.rejects(
+      recoverAgentJubjubGrant(chosen, packet({ ...value, client_id: 'self:other' }), ports),
+      unsettled,
+    );
+    if (arm === 'p256') {
+      const policy = base.owner.policy;
+      assert.ok(policy);
+      await assert.rejects(
+        recoverAgentJubjubGrant(chosen, input, {
+          ...ports,
+          owner: { ...base.owner, policy: { ...policy, origin: new Uint8Array(21) } },
+        }),
+        unsettled,
+      );
+    }
+    assert.equal(recoveryApprovals, 0);
+    const result = await recoverAgentJubjubGrant(chosen, input, ports);
+    assert.equal(recoveryApprovals, 1);
+    assert.equal(result.result, 'granted');
+    assert.equal(result.chain, 'midnight:' + value.chain);
+    assert.equal(result.account, value.account);
+    const staged = journal.get(result.grant_id);
+    assert.equal(staged?.bookkeeping.slot, 7);
+    assert.equal(staged?.bookkeeping.scopeSalt, result.scope_salt);
+    assert.equal(staged?.origin, value.client_id);
+    const scope = JSON.parse(Buffer.from(result.scope, 'base64url').toString());
+    assert.equal(scope.recipient, value.grants[0]?.bounds.recipient.value);
+    assert.equal(scope.read, false);
+    assert.equal('state' in result || 'iss' in result || 'redirect_uri' in result, false);
+    const live = await ports.grants.readP256GrantSpendContext(value.account, result.grant_id);
+    assert.ok(live);
+    const stale = {
+      ...ports,
+      grants: {
+        ...ports.grants,
+        readP256GrantSpendContext: async () => ({ ...live, issuedAt: live.issuedAt + 1n }),
+      },
+    };
+    await assert.rejects(recoverAgentJubjubGrant(chosen, input, stale), unsettled);
+    sim.now += 300;
+    await assert.rejects(recoverAgentJubjubGrant(chosen, input, ports), unsettled);
+    assert.equal(submissions, 1);
+  });
+}
 
 test('agent nonce namespace preserves browser records and rejects owner-route and digest changes', async (t) => {
   const { bytes, nonces } = await storage(t);
@@ -306,44 +320,47 @@ test('declined, stale-route and expired approval dispatch nothing', async (t) =>
   assert.equal(fixture.effectCount(), before);
 });
 
-test('a confirmed agent issue returns directly and an occupied signed slot cannot move', async (t) => {
-  const { fixture, value, ports: base } = await ownerFixture();
-  const stores = await storage(t);
-  const expiresAt = value.iat + 30;
-  const shortScope = {
-    ...value,
-    grants: value.grants.map((grant) => ({
-      ...grant,
-      bounds: { ...grant.bounds, expires_at: expiresAt },
-    })),
-  };
-  /** @type {import('../packages/account/dist/index.js').AgentJubjubGrantIssuePorts} */
-  const ports = {
-    ...base,
-    ...stores,
-    approve: async () => true,
-    chain: {
-      ...base.chain,
-      async submitDeadlineFencedGrantIssue(call) {
-        assert.equal(call.mutation?.validUntilSeconds, expiresAt - 1);
-        return base.chain.call(call);
+for (const arm of /** @type {const} */ (['jubjub', 'p256'])) {
+  test(`${arm} a confirmed agent issue returns directly and an occupied signed slot cannot move`, async (t) => {
+    const { fixture, value, ports: base } = await ownerFixture(arm);
+    const stores = await storage(t);
+    const expiresAt = value.iat + 30;
+    const shortScope = {
+      ...value,
+      grants: value.grants.map((grant) => ({
+        ...grant,
+        bounds: { ...grant.bounds, expires_at: expiresAt },
+      })),
+    };
+    /** @type {import('../packages/account/dist/index.js').AgentJubjubGrantIssuePorts} */
+    const ports = {
+      ...base,
+      ...stores,
+      approve: async () => true,
+      chain: {
+        ...base.chain,
+        async submitDeadlineFencedGrantIssue(call) {
+          assert.equal(call.circuit, `issue_grant_with_${arm}`);
+          assert.equal(call.mutation?.validUntilSeconds, expiresAt - 1);
+          return base.chain.call(call);
+        },
       },
-    },
-  };
-  const result = await issueAgentJubjubGrant(packet(shortScope), ports);
-  assert.equal(result.result, 'granted');
-  const before = fixture.effectCount();
-  await assert.rejects(
-    issueAgentJubjubGrant(packet({ ...value, nonce: '44'.repeat(32) }), ports),
-    (error) => {
-      assert.ok(error instanceof AgentGrantIssueUnsettled);
-      assert.ok(error.cause instanceof PassportConnectorError);
-      assert.equal(error.cause.code, 'GrantLimitReached');
-      return true;
-    },
-  );
-  assert.equal(fixture.effectCount(), before);
-});
+    };
+    const result = await issueAgentJubjubGrant(packet(shortScope), ports);
+    assert.equal(result.result, 'granted');
+    const before = fixture.effectCount();
+    await assert.rejects(
+      issueAgentJubjubGrant(packet({ ...value, nonce: '44'.repeat(32) }), ports),
+      (error) => {
+        assert.ok(error instanceof AgentGrantIssueUnsettled);
+        assert.ok(error.cause instanceof PassportConnectorError);
+        assert.equal(error.cause.code, 'GrantLimitReached');
+        return true;
+      },
+    );
+    assert.equal(fixture.effectCount(), before);
+  });
+}
 
 test('an ordinary chain without a deadline-fenced dispatcher is refused before review', async (t) => {
   const { value, ports: base } = await ownerFixture();
@@ -380,5 +397,61 @@ test('losing the protected record after nonce admission cannot dispatch or recov
   await assert.rejects(issueAgentJubjubGrant(input, ports), unsettled);
   await assert.rejects(issueAgentJubjubGrant(input, ports), unsettled);
   await assert.rejects(recoverAgentJubjubGrant(chosen, input, ports), unsettled);
+  assert.equal(fixture.effectCount(), before);
+});
+
+test('P-256 direct issue refuses a changed owner policy or a different live credential binding', async (t) => {
+  const { fixture, value, ports: base } = await ownerFixture('p256');
+  const stores = await storage(t);
+  const input = packet(value);
+  const policy = base.owner.policy;
+  assert.ok(policy && base.authoriser.deviceBinding);
+  const owner = {
+    ...base.owner,
+    policy: { ...policy, origin: Uint8Array.from(policy.origin) },
+  };
+  const before = fixture.effectCount();
+  await assert.rejects(
+    issueAgentJubjubGrant(input, {
+      ...base,
+      ...stores,
+      owner,
+      approve: async () => {
+        owner.policy.origin[0] = 0;
+        return true;
+      },
+    }),
+    { code: 'NotAuthorised' },
+  );
+  const chosen = randomUUID();
+  let signatures = 0;
+  await assert.rejects(
+    issueAgentJubjubGrant(input, {
+      ...base,
+      ...stores,
+      nonces: createAgentGrantNonceStore(stores.bytes, () => chosen),
+      authoriser: {
+        ...base.authoriser,
+        async deviceBinding() {
+          const binding = await base.authoriser.deviceBinding?.();
+          assert.ok(binding);
+          return { ...binding, policy: { ...binding.policy, rp_id_hash: new Uint8Array(32) } };
+        },
+        async authorise() {
+          signatures++;
+          return assert.fail('Mismatched P-256 policy must be refused before signing.');
+        },
+      },
+      approve: async () => true,
+    }),
+    (error) => {
+      assert.ok(error instanceof AgentGrantIssueUnsettled);
+      assert.equal(error.requestId, chosen);
+      assert.ok(error.cause instanceof PassportConnectorError);
+      assert.equal(error.cause.code, 'NotAuthorised');
+      return true;
+    },
+  );
+  assert.equal(signatures, 0);
   assert.equal(fixture.effectCount(), before);
 });

@@ -51,6 +51,8 @@ export interface IssueP256GrantCallInput extends FlowOptions {
   readonly hint: AccountHint;
   readonly origin: string;
   readonly scope: GrantScopeInput;
+  /** Pin the slot requested by an externally signed grant. */
+  readonly requestedSlot?: number;
 }
 
 export interface IssueP256GrantCallPorts {
@@ -113,6 +115,24 @@ const stage = (
   },
 });
 
+function checkIssueScope(scope: GrantScopeInput, origin: string, canRotate: boolean): void {
+  if (
+    !scope.read &&
+    (scope.operations.length !== 1 || scope.operations[0] !== 'withdraw-unshielded')
+  )
+    throw new PassportConnectorError(
+      'BindingUnsupported',
+      'A grant without read access supports only unshielded withdrawal.',
+    );
+  if (scope.read && !canRotate)
+    throw new PassportConnectorError('BindingUnsupported', 'Read-grant rotation is unavailable.');
+  if (scope.read && scope.rpId !== origin)
+    throw new PassportConnectorError(
+      'GrantScopeInvalid',
+      'The read grant rp id must match the host origin.',
+    );
+}
+
 /** Submit one pinned P-256 issue after durably staging its opening; settlement is separate. */
 export async function issueP256GrantCall(
   input: IssueP256GrantCallInput,
@@ -121,21 +141,7 @@ export async function issueP256GrantCall(
   const flow = startFlow(input, ports.random ?? randomDefault);
   try {
     input = { ...input, scope: snapshotGrantScope(input.scope) };
-    if (
-      !input.scope.read &&
-      (input.scope.operations.length !== 1 || input.scope.operations[0] !== 'withdraw-unshielded')
-    )
-      throw new PassportConnectorError(
-        'BindingUnsupported',
-        'A grant without read access supports only unshielded withdrawal.',
-      );
-    if (input.scope.read && !ports.rotateBeforeIssue)
-      throw new PassportConnectorError('BindingUnsupported', 'Read-grant rotation is unavailable.');
-    if (input.scope.read && input.scope.rpId !== input.origin)
-      throw new PassportConnectorError(
-        'GrantScopeInvalid',
-        'The read grant rp id must match the host origin.',
-      );
+    checkIssueScope(input.scope, input.origin, Boolean(ports.rotateBeforeIssue));
     const { hint } = input;
     if (
       hint.scheme !== 'p256-webauthn' ||
@@ -169,6 +175,7 @@ export async function issueP256GrantCall(
         origin: input.origin,
         scope: input.scope,
         activeGrantIds: activeIds,
+        ...(input.requestedSlot === undefined ? {} : { requestedSlot: input.requestedSlot }),
         nowSeconds: (ports.nowSeconds ?? (() => Math.floor(Date.now() / 1000)))(),
       },
       ports.pure,

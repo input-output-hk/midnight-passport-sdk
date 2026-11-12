@@ -257,7 +257,7 @@ exact scope and shows whether the request signed the ACC address or the owner
 selected it. Treat `rdns:` and `mais:` as operator assertions and `self:` as an
 owner label.
 
-Inject a credential-pinned JubJub owner authoriser, the original owner grant
+Inject a credential-pinned P-256 or JubJub owner authoriser, the original owner grant
 journal, a pinned deadline-fenced dispatcher, and the complete grant ledger
 source. `createDeadlineFencedGrantIssueChain` uses the private standalone
 grant sponsor and enforces the earliest request or scope deadline through
@@ -282,8 +282,8 @@ chain reads only, even if the original request's admission window has closed.
 Missing records or a revoked, expired or replaced grant leave the original
 unsettled. The direct return confirms the on-chain grant. Sealed owner
 bookkeeping publication remains a separate step using the original staged
-journal. The preview has generated ACC test evidence. Native agent spending,
-P-256 owner composition and vault or OWS integration remain open.
+journal. The preview has generated ACC issue and recovery evidence for both owner
+arms. Native agent spending and vault or OWS integration remain open.
 
 
 **Source preview · agent-side verification and spending.**

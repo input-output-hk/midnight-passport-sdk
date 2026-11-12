@@ -929,7 +929,8 @@ state and immediately before submitting the prepared transaction.
 The direct agent binding is a separate source-preview library flow.
 The reference app uses its browser relay here. See the
 [SDK grant API](../docs-site/guides/devices-grants.md#issue-and-recover-the-original-agent-grant)
-for direct-channel issuance and holder verification. The holder spend helper
+for direct-channel issuance with a P-256 or JubJub owner and holder
+verification. The holder spend helper
 uses an injected agent signer and a value-capable chain.
 
 The relay sponsors only the pinned fee-only owner issue circuit. The browser
