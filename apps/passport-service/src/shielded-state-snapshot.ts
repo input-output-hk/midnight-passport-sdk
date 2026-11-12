@@ -1,7 +1,11 @@
 import type * as Ledger from '@midnightntwrk/ledger-v9';
 import { z } from 'zod';
 import { abortable, hostChainRpc } from '@input-output-hk/mn-passport-service/finality';
-import { ledgerStateRootV18, maximumLedgerSnapshotBytes } from './ledger-state-root.ts';
+import {
+  ledgerStateRootV18,
+  maximumLedgerSnapshotBytes,
+  normalizeLedgerRootV18,
+} from './ledger-state-root.ts';
 import type { HostZswapStateSource } from './shielded-change-unspent.ts';
 
 const blockHashSchema = z.string().regex(/^[0-9a-f]{64}$/);
@@ -9,7 +13,6 @@ const byteLengthOf = Object.getOwnPropertyDescriptor(
   Object.getPrototypeOf(Uint8Array.prototype),
   'byteLength',
 )?.get;
-const rootSchema = z.array(z.number().int().min(0).max(255)).length(33);
 
 type ShieldedSnapshotRuntime = Parameters<typeof hostChainRpc>[0] & {
   readonly networkId: string;
@@ -41,17 +44,15 @@ export function createShieldedSnapshotSource(
           rpc('midnight_ledgerStateRoot', ['0x' + blockHash]),
           abortable(readLedgerSnapshot(blockHash, signal), signal),
         ]);
-        const expected = rootSchema.parse(root);
+        const expected = normalizeLedgerRootV18(root);
         if (
           !byteLengthOf ||
-          expected[0] !== 0 ||
           !(received instanceof Uint8Array) ||
           Reflect.apply(byteLengthOf, received, []) > maximumLedgerSnapshotBytes
         )
           return undefined;
         const snapshot = new Uint8Array(received);
-        if (ledgerStateRootV18(snapshot) !== Buffer.from(expected).toString('hex'))
-          return undefined;
+        if (ledgerStateRootV18(snapshot) !== expected) return undefined;
         signal.throwIfAborted();
         return { blockHash, state: ledger.LedgerState.deserialize(snapshot).zswap };
       } catch {

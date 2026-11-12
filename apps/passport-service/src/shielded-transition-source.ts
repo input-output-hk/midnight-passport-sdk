@@ -10,6 +10,8 @@ import {
   type ReplayLedger,
   type ReplayTarget,
 } from './ledger-block-replay.ts';
+import { createCanonicalLedgerBlockReader } from './canonical-ledger-block.ts';
+import { normalizeLedgerRootV18 } from './ledger-state-root.ts';
 
 const hash = z.string().regex(/^[0-9a-f]{64}$/);
 const requestSchema = z.object({
@@ -19,11 +21,6 @@ const requestSchema = z.object({
 });
 const header = z.object({ parentHash: z.string().regex(/^0x[0-9a-f]{64}$/) });
 const version = z.object({ specVersion: z.literal(2_001_000) });
-const root = z
-  .array(z.number().int().min(0).max(255))
-  .length(33)
-  .refine((value) => value[0] === 0)
-  .transform((value) => Buffer.from(value).toString('hex'));
 
 interface TransitionRequest {
   readonly blockHash: string;
@@ -34,21 +31,29 @@ interface TransitionRequest {
 type ShieldedTransitionRuntime = Parameters<typeof hostChainRpc>[0] & {
   readonly ledger: ReplayLedger;
   readonly genesisHash: string;
-  /** Same trusted node, with phase-ordered execution inputs and timestamps. Only parameters may come from an indexer. Bound reads at the transport. */
-  readonly readCanonicalBlock: (
-    blockHash: string,
-    signal: AbortSignal,
-  ) => Promise<CanonicalLedgerBlock | undefined>;
   /** Complete parent snapshot. The node's state root authenticates these bytes. */
   readonly readLedgerSnapshot: (
     blockHash: string,
     signal: AbortSignal,
   ) => Promise<Uint8Array | undefined>;
-};
+} & (
+    | {
+        /** Same trusted node, with phase-ordered execution inputs and timestamps. Only parameters may come from an indexer. Bound reads at the transport. */
+        readonly readCanonicalBlock: (
+          blockHash: string,
+          signal: AbortSignal,
+        ) => Promise<CanonicalLedgerBlock | undefined>;
+      }
+    | { readonly indexerUrl: string; readonly metadataSha256: string }
+  );
 
 /** Read-only evidence for the reference withdrawal and owner inbox append observers. */
 export function createShieldedTransitionSource(runtime: ShieldedTransitionRuntime) {
   const genesis = '0x' + hash.parse(runtime.genesisHash);
+  const readCanonicalBlock =
+    'readCanonicalBlock' in runtime
+      ? runtime.readCanonicalBlock
+      : createCanonicalLedgerBlockReader(runtime);
   async function transition(request: TransitionRequest, signal: AbortSignal) {
     try {
       signal.throwIfAborted();
@@ -65,7 +70,7 @@ export function createShieldedTransitionSource(runtime: ShieldedTransitionRuntim
           rpc('state_getRuntimeVersion', [hashArg]),
           rpc('midnight_ledgerStateRoot', [parentHash]),
           rpc('midnight_ledgerStateRoot', [hashArg]),
-          abortable(runtime.readCanonicalBlock(blockHash, signal), signal),
+          abortable(readCanonicalBlock(blockHash, signal), signal),
           abortable(runtime.readLedgerSnapshot(parentHash.slice(2), signal), signal),
         ]);
       if (
@@ -81,7 +86,7 @@ export function createShieldedTransitionSource(runtime: ShieldedTransitionRuntim
         runtime.ledger,
         block,
         snapshot,
-        { parent: root.parse(parentRoot), block: root.parse(blockRoot) },
+        { parent: normalizeLedgerRootV18(parentRoot), block: normalizeLedgerRootV18(blockRoot) },
         identity,
         signal,
       );

@@ -172,6 +172,9 @@ importers:
       '@midnight-ntwrk/compact-runtime':
         specifier: 0.20.0
         version: 0.20.0
+      '@polkadot/types':
+        specifier: 16.5.6
+        version: 16.5.6
       zod:
         specifier: 4.1.12
         version: 4.1.12

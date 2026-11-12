@@ -13,6 +13,7 @@
     "@input-output-hk/mn-passport-protocol": "workspace:*",
     "@input-output-hk/mn-passport-service": "workspace:*",
     "@midnight-ntwrk/compact-runtime": "0.20.0",
+    "@polkadot/types": "16.5.6",
     "zod": "4.1.12"
   },
   "devDependencies": {

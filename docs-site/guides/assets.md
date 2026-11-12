@@ -55,17 +55,19 @@ after the original successful append, even if other calls share the block.
 For the unspent check, the reference host requalifies the original change
 and dry-runs its spend against full Zswap state at the node's best block.
 It checks the block hash again before accepting. The reference host authenticates
-complete Ledger 9 v18 snapshots against the configured node's full ledger root.
+complete Ledger 9 v18 snapshots against the configured node's full ledger root,
+whether the node returns it inline or by reference.
 Filtered indexer state cannot supply this check.
 
-The replay host pins genesis and runtime spec `2001000`. It needs bounded reads
-for the complete parent snapshot and the same node's ordered execution inputs,
-including system transactions and timestamps. It may take serialized post-block
-fee parameters from the indexer because it verifies the full resulting state
-against the node before using any intermediate state. The end root alone cannot
-prove transaction order. Unsupported runtimes, absent snapshots and mismatched
-roots leave recovery unconfirmed. The default demo does not wire this source or
-enable partial shielded withdrawals.
+The replay host pins genesis and runtime spec `2001000`. Its block reader
+uses independently pinned runtime metadata and bounded RPC reads for the
+canonical block body, system event phases and timestamps. A phase shared by
+an explicit ledger call and an implicit system event leaves recovery unconfirmed.
+The host supplies the complete parent snapshot. It can take serialized
+post-block ledger parameters from the indexer because it verifies the full
+resulting state against the node before using any intermediate state.
+The end root alone cannot prove transaction order. The default demo does not
+wire this source or enable partial shielded withdrawals.
 
 The account package provides `appendShieldedChange` and
 `recoverShieldedBackfill` for a host that can verify the original withdrawal,
