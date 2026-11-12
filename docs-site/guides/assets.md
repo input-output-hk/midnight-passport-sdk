@@ -44,6 +44,11 @@ for the change's insertion index. The Ledger 9 replay helper checks that index
 using authenticated state immediately before the transaction. Supplying this
 state and wiring encrypted inbox recovery are still required for live use.
 
+For the unspent check, the reference host requalifies the original change
+and dry-runs its spend against full Zswap state at the node's best block.
+It checks the block hash again before accepting. The host needs a state
+source that authenticates the spent nullifier set for that block.
+
 The account package provides `appendShieldedChange` and
 `recoverShieldedBackfill` for a host that can verify the original withdrawal,
 confirm that the change remains unspent, and observe the original finalized
