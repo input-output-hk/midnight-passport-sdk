@@ -106,8 +106,12 @@ actual inbox index. Keep the encrypted journal and independent request marker
 when an acknowledgement is lost.
 
 The reference host can stage the original append's finalized bytes before
-forwarding and recover the exact receipt after a restart. It checks the owner
-call commitment and verifies the appended ciphertext and index against account
+forwarding and recover the exact receipt after a restart. It checks the embedded
+network when building, staging and recovering the append. A forwarding
+acknowledgement counts only if it names an identifier of the retained
+transaction. A missing or mismatched acknowledgement leaves the retained
+receipt available for read-only recovery. The host checks the owner call
+commitment and verifies the appended ciphertext and index against account
 state immediately before and after that transaction. Live use requires a source
 that authenticates this transaction-level state transition.
 

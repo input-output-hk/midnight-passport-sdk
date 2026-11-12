@@ -80,16 +80,15 @@ export function createHostShieldedAppendReceipts(
 }
 
 export type AppendLedger = HostConfirmationRuntime<Ledger.FinalizedTransaction>['ledger'] &
-  Pick<typeof Ledger, 'ContractCall'>;
+  Pick<typeof Ledger, 'ContractCall'> & {
+    readonly Transaction: Pick<typeof Ledger.Transaction, 'fromParts'> &
+      HostConfirmationRuntime<Ledger.FinalizedTransaction>['ledger']['Transaction'];
+  };
 
-export function readPinnedAppendCall<
-  S extends Ledger.Signaturish,
-  P extends Ledger.Proofish,
-  B extends Ledger.Bindingish,
->(
-  tx: Ledger.Transaction<S, P, B>,
+export function readPinnedAppendCall<P extends Ledger.Proofish, B extends Ledger.Bindingish>(
+  tx: Ledger.Transaction<Ledger.SignatureEnabled, P, B>,
   ledger: AppendLedger,
-  expected: Pick<HostShieldedAppendReceipt, 'account' | 'circuit'> & {
+  expected: Pick<HostShieldedAppendReceipt, 'account' | 'circuit' | 'networkId'> & {
     readonly callCommitment?: string;
   },
 ): Ledger.ContractCall<P> | undefined {
@@ -105,12 +104,31 @@ export function readPinnedAppendCall<
     typeof call.entryPoint === 'string'
       ? call.entryPoint
       : new TextDecoder().decode(call.entryPoint);
-  return circuit === expected.circuit &&
-    call.communicationCommitment &&
-    (expected.callCommitment === undefined ||
-      call.communicationCommitment === expected.callCommitment)
-    ? call
-    : undefined;
+  if (
+    circuit !== expected.circuit ||
+    !call.communicationCommitment ||
+    (expected.callCommitment !== undefined &&
+      call.communicationCommitment !== expected.callCommitment)
+  )
+    return undefined;
+  try {
+    // Ledger 9 validates the embedded network when merging standard transactions.
+    tx.eraseProofs().merge(ledger.Transaction.fromParts(expected.networkId).eraseProofs());
+    return call;
+  } catch {
+    return undefined;
+  }
+}
+
+const typedArrayPrototype = Object.getPrototypeOf(Uint8Array.prototype);
+const rawLength = Object.getOwnPropertyDescriptor(typedArrayPrototype, 'byteLength')?.get;
+const rawBuffer = Object.getOwnPropertyDescriptor(typedArrayPrototype, 'buffer')?.get;
+
+function copyFinalizedBytes(raw: Uint8Array): Uint8Array | undefined {
+  const length = raw instanceof Uint8Array ? rawLength?.call(raw) : undefined;
+  if (!length || length > 8 * 1024 * 1024 || rawBuffer?.call(raw) instanceof SharedArrayBuffer)
+    return undefined;
+  return new Uint8Array(raw);
 }
 
 /**
@@ -164,8 +182,8 @@ export async function forwardHostShieldedAppend(
     return undefined;
   const callCommitment = originalCall.communicationCommitment;
   const raw = await runtime.finalize(built);
-  if (!raw.length || raw.length > 8 * 1024 * 1024 || signal?.aborted) return undefined;
-  const bytes = Uint8Array.from(raw);
+  const bytes = copyFinalizedBytes(raw);
+  if (!bytes || signal?.aborted) return undefined;
   const tx = runtime.ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
   const record = {
     appendId: original.appendId,
@@ -191,5 +209,11 @@ export async function forwardHostShieldedAppend(
     signal?.aborted
   )
     return undefined;
-  return runtime.forward(bytes);
+  try {
+    const submissionId = await runtime.forward(bytes);
+    return record.identity.identifiers.includes(submissionId) ? submissionId : undefined;
+  } catch {
+    // Forwarding may have succeeded. The retained identity is the recovery source.
+    return undefined;
+  }
 }

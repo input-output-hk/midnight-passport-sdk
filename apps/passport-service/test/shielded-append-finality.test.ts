@@ -21,7 +21,8 @@ const indexerUrl = 'http://localhost:18108/api/v4/graphql';
 const networkId = 'undeployed';
 const txHash = 'ab'.repeat(32);
 const blockHash = 'cd'.repeat(32);
-const identifiers = ['ef'.repeat(32)];
+const submissionId = 'ef'.repeat(32);
+const identifiers = [submissionId];
 const circuit = 'append_inbox_with_jubjub';
 
 test('host forwards once and recovers the original finalized append at its executed index', async (t) => {
@@ -72,6 +73,15 @@ test('host forwards once and recovers the original finalized append at its execu
   const substituted = buildTransaction();
   const substitutedBytes = substituted.serialize();
   const bytes = transaction.serialize();
+  const [originalIntent] = transaction.intents?.values() ?? [];
+  assert.ok(originalIntent);
+  const otherNetwork = Ledger.Transaction.fromParts(
+    'preview',
+    undefined,
+    undefined,
+    originalIntent,
+  );
+  const otherNetworkBytes = otherNetwork.serialize();
   const original: ShieldedBackfillRecord = {
     version: 1,
     networkId,
@@ -94,13 +104,18 @@ test('host forwards once and recovers the original finalized append at its execu
   const ledger = {
     ContractCall: Ledger.ContractCall,
     Transaction: {
+      fromParts: Ledger.Transaction.fromParts,
       deserialize(_s: 'signature', _p: 'proof', _b: 'binding', raw: Uint8Array) {
-        const envelope = toHex(raw) === toHex(substitutedBytes) ? substituted : transaction;
+        const envelope = [transaction, substituted, otherNetwork].find(
+          (candidate) => toHex(raw) === toHex(candidate.serialize()),
+        );
+        assert.ok(envelope);
         assert.deepEqual(raw, envelope.serialize());
         // The native call and generated state transition are real. The finalized
         // envelope and inclusion evidence are fixture boundaries in this test.
         return {
           intents: envelope.intents,
+          eraseProofs: () => envelope.eraseProofs(),
           transactionHash: () => txHash,
           identifiers: () => identifiers,
         } as unknown as Ledger.FinalizedTransaction;
@@ -139,19 +154,74 @@ test('host forwards once and recovers the original finalized append at its execu
     }),
     undefined,
   );
-  assert.equal(await receipts.read(original.appendId), undefined);
-  const dispatched = await Promise.allSettled([
-    forwardHostShieldedAppend(input, runtime),
-    forwardHostShieldedAppend(input, runtime),
-  ]);
-  assert.deepEqual(
-    dispatched.filter(({ status }) => status === 'fulfilled'),
-    [{ status: 'fulfilled', value: undefined }],
+  assert.equal(
+    await forwardHostShieldedAppend(input, {
+      ...runtime,
+      build: async () => otherNetwork,
+      finalize: async () => assert.fail('A wrong-network build must not reach proving.'),
+    }),
+    undefined,
   );
-  const rejected = dispatched.find(({ status }) => status === 'rejected');
-  assert.ok(rejected?.status === 'rejected');
-  assert.match(rejected.reason?.message ?? '', /Lost forwarding reply/);
+  assert.equal(
+    await forwardHostShieldedAppend(input, {
+      ...runtime,
+      finalize: async () => otherNetworkBytes,
+      forward: async () => {
+        forwards++;
+        return submissionId;
+      },
+    }),
+    undefined,
+  );
+  assert.equal(forwards, 0);
+  const misleadingBytes = new Uint8Array(otherNetworkBytes);
+  misleadingBytes[Symbol.iterator] = bytes[Symbol.iterator].bind(bytes);
+  assert.equal(
+    await forwardHostShieldedAppend(input, {
+      ...runtime,
+      finalize: async () => misleadingBytes,
+      forward: async () => {
+        forwards++;
+        return submissionId;
+      },
+    }),
+    undefined,
+  );
+  assert.equal(forwards, 0);
+  const mismatchedAck = {
+    ...original,
+    appendId: 'da191e9e-4c67-4e60-9f65-33d624f4dd0e',
+  };
+  assert.equal(
+    await forwardHostShieldedAppend(
+      { original: mismatchedAck, args: approvedArgs, intentSha256: mutationDigest(mismatchedAck) },
+      { ...runtime, forward: async () => '11'.repeat(32) },
+    ),
+    undefined,
+  );
+  assert.deepEqual(
+    (await receipts.read(mismatchedAck.appendId))?.identity.identifiers,
+    identifiers,
+  );
+  assert.equal(await receipts.read(original.appendId), undefined);
+  assert.deepEqual(
+    await Promise.all([
+      forwardHostShieldedAppend(input, runtime),
+      forwardHostShieldedAppend(input, runtime),
+    ]),
+    [undefined, undefined],
+  );
   assert.equal(forwards, 1);
+
+  const matchedAck = { ...original, appendId: '697176a2-d462-4b2e-b55f-72f955f66fd3' };
+  assert.equal(
+    await forwardHostShieldedAppend(
+      { original: matchedAck, args: approvedArgs, intentSha256: mutationDigest(matchedAck) },
+      { ...runtime, forward: async () => submissionId },
+    ),
+    submissionId,
+  );
+  assert.deepEqual((await receipts.read(matchedAck.appendId))?.identity.identifiers, identifiers);
 
   const restarted = createHostShieldedAppendReceipts(fileMutationByteStore(root));
   assert.equal(
