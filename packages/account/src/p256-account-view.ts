@@ -35,6 +35,9 @@ export function p256AccountView(
     credentialId: Uint8Array.from(record.credentialId),
     withdrawUnshielded: withdrawals.withdrawUnshielded,
     withdrawShielded: withdrawals.withdrawShielded,
+    ...(ports.partialShieldedWithdrawal && {
+      withdrawShieldedPartial: withdrawals.withdrawShieldedPartial,
+    }),
     addDevice: (reader, options) => {
       return addP256Device(record, reader, options);
     },

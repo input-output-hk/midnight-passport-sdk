@@ -216,7 +216,7 @@ export async function stageShieldedWithdrawalDispatch(
   return bytes;
 }
 
-interface StagedShieldedWithdrawalRuntime {
+export interface StagedShieldedWithdrawalRuntime {
   readonly networkId: string;
   readonly bindingId: string;
   readonly journal: ShieldedWithdrawalJournal;

@@ -12,6 +12,14 @@ export type {
   ShieldedWithdrawalReservation,
 } from './shielded-withdrawal-journal.js';
 export * from './shielded-withdrawal-recovery.js';
+export {
+  reconcilePartialShieldedWithdrawal,
+  settlePartialShieldedWithdrawal,
+} from './partial-shielded-withdrawal.js';
+export type {
+  PartialShieldedWithdrawalHost,
+  PartialShieldedWithdrawalReview,
+} from './partial-shielded-withdrawal.js';
 export { createShieldedBackfillJournal } from './shielded-backfill-journal.js';
 export type {
   ShieldedBackfillContinuation,

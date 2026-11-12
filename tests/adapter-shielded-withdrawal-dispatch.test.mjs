@@ -16,6 +16,8 @@ import {
   verifyShieldedWithdrawalCall,
 } from '../packages/adapter-midnight-js/dist/shielded-withdrawal-dispatch.js';
 
+import { createMidnightPartialShieldedWithdrawalHost } from '../packages/adapter-midnight-js/dist/index.js';
+
 const require = createRequire(
   new URL('../packages/adapter-midnight-js/package.json', import.meta.url),
 );
@@ -63,11 +65,12 @@ const state = new ledger.ZswapChainState()
   .postBlockUpdate(new Date(), 3600n);
 const input = ledger.ZswapInput.newContractOwned(coin, undefined, account, state);
 const payoutRecipient = ledger.sampleCoinPublicKey();
+const payoutEncryptionKey = ledger.sampleEncryptionPublicKey();
 const payout = ledger.ZswapOutput.new(
   { ...coin, nonce: '33'.repeat(32), value: 5n },
   undefined,
   payoutRecipient,
-  ledger.sampleEncryptionPublicKey(),
+  payoutEncryptionKey,
 );
 const changeCoin = { ...coin, nonce: '44'.repeat(32), value: 12n };
 const change = ledger.ZswapOutput.newContractOwned(changeCoin, undefined, account);
@@ -278,6 +281,47 @@ function stagedRuntime(journal) {
   };
   return { runtime, status };
 }
+
+test('partial owner host predicts only its pinned wallet payout and dispatches the reserved call', async () => {
+  const journal = createShieldedWithdrawalJournal(memoryStore(), memoryStore());
+  const { runtime, status } = stagedRuntime(journal);
+  const host = createMidnightPartialShieldedWithdrawalHost({
+    ...runtime,
+    walletKeys: { coinPublicKey: payoutRecipient, encryptionPublicKey: payoutEncryptionKey },
+    finality: { ...pins, readFinalized: async () => undefined },
+    holdingIndexer: {
+      coinNullifier: async (address, coin, index) => {
+        assert.equal(address, account);
+        assert.deepEqual(coin, heldCoin);
+        assert.equal(index, heldCoin.mt_index);
+        return input.nullifier;
+      },
+    },
+    deriveWithdrawalCoins: async (coin, amount) => {
+      assert.deepEqual(coin, heldCoin);
+      assert.equal(amount, 5n);
+      return {
+        sent: { ...heldCoin, nonce: new Uint8Array(32).fill(0x33), value: amount },
+        change: privateChange().value,
+      };
+    },
+    reviewWithdrawal: async () => true,
+  });
+  const prediction = { account, coin: heldCoin, amount: 5n, recipient: payoutRecipient };
+  await assert.rejects(host.predict({ ...prediction, recipient: ledger.sampleCoinPublicKey() }), {
+    code: 'TransferInvalid',
+  });
+  const effects = await host.predict(prediction);
+  assert.deepEqual(effects, {
+    inputNullifier: reservation.inputNullifier,
+    payoutCommitment: reservation.payoutCommitment,
+    change: privateChange().value,
+  });
+  assert.equal(host.deriveChangeCommitment(account, effects.change), reservation.changeCommitment);
+  assert.equal(await journal.reserve(reservation), true);
+  await host.submitOriginal(reservation.requestId, request);
+  assert.deepEqual(status, { builds: 1, proves: 1, balances: 1, submissions: 1 });
+});
 
 test('one staged withdrawal wins concurrent submission and returns only the original identifiers', async () => {
   const journal = createShieldedWithdrawalJournal(memoryStore(), memoryStore());

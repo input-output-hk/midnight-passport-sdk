@@ -32,7 +32,7 @@ with the host's finalized observation. The host finality source must verify the
 change's insertion index for that transaction. The recovery result contains a
 private coin description for subsequent inbox settlement.
 
-The source adapter has an internal dispatch path for an already authorized
+The source adapter has a checked dispatch path for an already authorized
 and reserved partial withdrawal. It verifies the pinned midnight-js
 `private.result` against the retained change description, then verifies the
 embedded network, call commitment and shielded effects at each transaction
@@ -40,8 +40,36 @@ boundary. It preserves the serialized payout and change outputs, including the
 encrypted payout note, through proving and balancing. It stages the exact finalized bytes' identity before handing them
 to the value wallet's submitter. The response contains the submission ID and
 transaction hash for observation. After an uncertain acknowledgement, use
-the original request ID and read-only recovery. Account withdrawal entry
-points still enforce the exact-value guard.
+the original request ID and read-only recovery.
+
+### Opt-in partial owner withdrawal
+
+In the source candidate, a host can supply `PassportPorts.partialShieldedWithdrawal`
+to expose `account.withdrawShieldedPartial` for P-256 and JubJub owners. The
+ordinary `account.withdrawShielded` method requires an exact-value coin.
+Use `createMidnightPartialShieldedWithdrawalHost` from
+`@input-output-hk/mn-passport-adapter-midnight-js` with the pinned
+`acc-s3r1.1` predictor, finality source, holding indexer, value wallet and
+protected journal. This adapter pays out to the configured wallet's shielded
+coin public key. The host must review the exact recipient, asset, selected
+inbox entry, amount and expected change before the owner signs.
+
+Keep the original request UUID when calling `withdrawShieldedPartial`.
+A reused UUID observes the original operation. Use the account package's
+`reconcilePartialShieldedWithdrawal` for read-only status on both stages:
+
+- `withdrawal-pending` means the original withdrawal is unconfirmed.
+- `change-pending` includes the confirmed withdrawal hash. Change still
+  needs its own confirmed inbox append.
+- `change-published` includes both transaction hashes and the change's inbox
+  index.
+
+Use `settlePartialShieldedWithdrawal` with `kind: 'append'` for a new
+owner-approved append or `kind: 'resume'` to resume a retained append.
+Use the same withdrawal UUID for both. If the host reports an uncertain
+outcome, reconcile before retrying. Treat change as available only once the
+holdings reader qualifies the published entry. This source API requires
+a host that can qualify both stages on its target network.
 
 The holding reader includes committed shielded effects from partially successful
 transactions. It verifies that every decoded event names the transaction being

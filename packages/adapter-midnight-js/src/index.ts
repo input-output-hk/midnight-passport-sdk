@@ -4,3 +4,4 @@ export * from './holdings.js';
 export * from './graphql-holding-indexer.js';
 export * from './grants.js';
 export * from './wallet-ports.js';
+export * from './partial-shielded-withdrawal.js';

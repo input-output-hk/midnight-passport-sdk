@@ -1,3 +1,6 @@
+import type { PartialShieldedWithdrawalHost } from '../partial-shielded-withdrawal.js';
+export type { PartialShieldedWithdrawalHost } from '../partial-shielded-withdrawal.js';
+export type { ShieldedWithdrawalFinalitySource } from '../shielded-withdrawal-recovery.js';
 export type { P256UnshieldedGrantScope } from '../p256-grant-opening.js';
 export type {
   AgentGrantSpendReceiptStore,
@@ -468,6 +471,7 @@ export interface PassportPorts {
     readonly credentialId: Uint8Array;
   }) => Pick<AccountViewingKey, 'openInbox'> | undefined;
   readonly holdings?: VerifiedHoldingSource;
+  readonly partialShieldedWithdrawal?: PartialShieldedWithdrawalHost;
   readonly readGrants?: ActiveReadGrantTargetSource;
   /** Live ACC grant map, used to pin issue consent and confirm settlement. */
   readonly grants?: ActiveGrantSnapshotSource;

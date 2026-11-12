@@ -9,8 +9,10 @@ import {
   appendShieldedChange,
   createShieldedBackfillJournal,
   mutationDigest,
+  reconcilePartialShieldedWithdrawal,
   recoverShieldedBackfill,
   resumeShieldedBackfill,
+  settlePartialShieldedWithdrawal,
 } from '../packages/account/dist/index.js';
 import { AmountSchema, NetworkIdSchema } from '../packages/account/dist/validation.js';
 import { deriveMidnightContractCoinCommitment } from '../packages/adapter-midnight-js/dist/index.js';
@@ -421,7 +423,23 @@ for (const arm of /** @type {const} */ (['p256', 'jubjub'])) {
       txHash: appendTxHash,
       inboxIndex: 2,
     };
-    assert.deepEqual(await resumeShieldedBackfill(requestId, resumePorts), confirmed);
+    assert.deepEqual(await reconcilePartialShieldedWithdrawal(requestId, readOnly), {
+      kind: 'change-pending',
+      requestId,
+      txHash: withdrawalTxHash,
+    });
+    const published = {
+      kind: 'change-published',
+      requestId,
+      txHash: withdrawalTxHash,
+      appendTxHash,
+      inboxIndex: 2,
+    };
+    assert.deepEqual(
+      await settlePartialShieldedWithdrawal(requestId, { kind: 'resume', ports: resumePorts }),
+      published,
+    );
+    assert.deepEqual(await reconcilePartialShieldedWithdrawal(requestId, readOnly), published);
     assert.deepEqual([signatures, seals, submissions], completedCounts);
     assert.ok(seen);
     assert.equal(seen.inboxIndex, 2);

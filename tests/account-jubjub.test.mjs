@@ -4,6 +4,10 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { x25519 } from '@noble/curves/ed25519.js';
 import { jubjub } from '@noble/curves/misc.js';
 import { p256 } from '@noble/curves/nist.js';
+import {
+  exercisePartialWithdrawal,
+  partialWithdrawalFixture,
+} from './fixtures/partial-shielded-withdrawal.mjs';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 import { createPassportAccounts } from '../packages/account/dist/index.js';
 import {
@@ -338,6 +342,9 @@ function world(
     ports,
     activeGrantIds,
     grantNonce: () => nonce,
+    shiftNonce: (/** @type {bigint} */ delta) => {
+      nonce += delta;
+    },
     grantGeneration: () => grantGeneration,
     calls,
     shieldedCalls,
@@ -503,7 +510,9 @@ test('JubJub owner withdrawal binds amount and recipient to consent and the sign
 
 test('JubJub shielded spend binds the qualified coin to the signature and witness', async () => {
   const w = world();
-  const account = await w.accounts.createAccount({ userName: 'shielded', retireAuthority: true });
+  const partial = partialWithdrawalFixture(w.ports.network.networkId);
+  const accounts = createPassportAccounts({ ...w.ports, partialShieldedWithdrawal: partial.host });
+  const account = await accounts.createAccount({ userName: 'shielded', retireAuthority: true });
   const coin = {
     nonce: new Uint8Array(32).fill(5),
     color: new Uint8Array(32).fill(7),
@@ -556,6 +565,13 @@ test('JubJub shielded spend binds the qualified coin to the signature and witnes
     code: 'TransferInvalid',
   });
   assert.equal(w.signedRequests.length, signatures);
+  await exercisePartialWithdrawal(
+    account,
+    request,
+    partial,
+    () => w.signedRequests.length,
+    w.shiftNonce,
+  );
   assert.equal(w.shieldedCalls.length, 1);
 });
 

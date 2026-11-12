@@ -3,10 +3,15 @@ import { test } from 'node:test';
 import { createPassportAccounts } from '../packages/account/dist/index.js';
 import { createFakePorts } from '../packages/account/dist/testing/index.js';
 import { recipeDeviceKeyring } from '../packages/keys/dist/index.js';
+import {
+  exercisePartialWithdrawal,
+  partialWithdrawalFixture,
+} from './fixtures/partial-shielded-withdrawal.mjs';
 import { pureCircuits } from '../packages/contract/generated/acc-s3r1.1/index.js';
 
 test('P-256 shielded spend signs the qualified coin and sends the same private witness', async () => {
   const fake = createFakePorts({ binding: { pureCircuits } });
+  const partial = partialWithdrawalFixture(fake.network.networkId);
   const marker = new Uint8Array(192);
   marker[0] = 1;
   marker[1] = 1;
@@ -43,6 +48,7 @@ test('P-256 shielded spend signs the qualified coin and sends the same private w
   let selectedIndex = -1;
   const ports = {
     ...fake,
+    partialShieldedWithdrawal: partial.host,
     network: { ...fake.network, bindingId: 'acc-s3r1.1' },
     viewingKey,
     holdings: {
@@ -137,4 +143,14 @@ test('P-256 shielded spend signs the qualified coin and sends the same private w
   });
   assert.equal(transfers.length, 1);
   assert.equal(signatures.length, signatureCount);
+  await exercisePartialWithdrawal(
+    account,
+    request,
+    partial,
+    () => signatures.length,
+    (delta) => {
+      ledger.authNonce += delta;
+    },
+  );
+  assert.equal(transfers.length, 1);
 });

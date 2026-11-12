@@ -117,13 +117,30 @@ export interface PassportUnshieldedWithdrawal {
   readonly recipient: string;
 }
 
-/** Spend one chain-matched ACC shielded output in full to a user's Zswap coin key. */
+/** Select one chain-matched ACC shielded output and the recipient Zswap coin key. */
 export interface PassportShieldedWithdrawal extends PassportUnshieldedWithdrawal {
   /** Inbox entry returned by `readShieldedHoldings`; selects one qualified output. */
   readonly inboxIndex: number;
   /** Lowercase 32-byte Zswap coin public key of the recipient. */
   readonly recipient: string;
 }
+
+/** Explicitly opt in to durable owner withdrawal and change settlement. */
+export interface PassportPartialShieldedWithdrawal extends PassportShieldedWithdrawal {
+  /** Keep the same UUID when reconciling the original. */
+  readonly requestId: string;
+}
+
+export type PassportPartialShieldedWithdrawalResult =
+  | { readonly kind: 'withdrawal-pending'; readonly requestId: string }
+  | { readonly kind: 'change-pending'; readonly requestId: string; readonly txHash: string }
+  | {
+      readonly kind: 'change-published';
+      readonly requestId: string;
+      readonly txHash: string;
+      readonly appendTxHash: string;
+      readonly inboxIndex: number;
+    };
 
 export interface PassportOwnerTransferResult extends PassportTxResult {
   /** Counter held by the owner after the confirmed circuit call. */
@@ -237,11 +254,16 @@ export interface PassportAccount {
     request: PassportUnshieldedWithdrawal,
     options?: FlowOptions,
   ): Promise<PassportOwnerTransferResult>;
-  /** Spend one qualified shielded coin with a witness bound to the owner signature. */
+  /** Spend one qualified shielded coin in full with a witness bound to the owner signature. */
   withdrawShielded?(
     request: PassportShieldedWithdrawal,
     options?: FlowOptions,
   ): Promise<PassportOwnerTransferResult>;
+  /** Available only with an explicitly configured durable shielded host. */
+  withdrawShieldedPartial?(
+    request: PassportPartialShieldedWithdrawal,
+    options?: FlowOptions,
+  ): Promise<PassportPartialShieldedWithdrawalResult>;
   /** JubJub owner issue; the host pins the origin and supplies durable grant bookkeeping. */
   issueGrant?(scope: GrantScopeInput, options?: FlowOptions): Promise<PassportGrantIssueResult>;
   /** JubJub owner revoke for a grant without read access; confirms the inactive tombstone. */

@@ -1,3 +1,15 @@
+import type {
+  FlowOptions,
+  PassportPartialShieldedWithdrawal,
+} from '@input-output-hk/mn-passport-protocol';
+import {
+  assertSameOwnerShieldedInput,
+  exactOwnerShieldedDispatch,
+  existingPartialWithdrawal,
+  partialOwnerShieldedDispatch,
+  validatePartialWithdrawalHost,
+  type PrepareOwnerShieldedDispatch,
+} from './partial-shielded-withdrawal.js';
 import type { P256AccountContext, P256MethodArgs } from './p256-account-context.js';
 import type { P256Hint } from './p256-device.js';
 import { prepareShieldedWithdrawal, prepareUnshieldedWithdrawal } from './unshielded-withdrawal.js';
@@ -5,7 +17,7 @@ import { PassportConnectorError } from './errors.js';
 import { fromHex, toHex } from './codec.js';
 import { p256, isSealedP256 } from './p256-device.js';
 import { readQualifiedHolding } from './holdings.js';
-import type { QualifiedHoldingSource } from './ports/index.js';
+import type { Authoriser, QualifiedHoldingSource } from './ports/index.js';
 import {
   equalBytes,
   deviceBinding,
@@ -41,19 +53,7 @@ export class P256Withdrawals {
         throw new PassportConnectorError('AccountNotFound', 'The P-256 ACC is not active.');
       return authoriser.withKeySession(
         async () => {
-          const selected = await authoriser.devicePublicKey();
-          const selectedBinding = await deviceBinding(authoriser);
-          if (
-            selected.x !== record.publicKey.x ||
-            selected.y !== record.publicKey.y ||
-            !equalBytes(selectedBinding.credentialId, record.credentialId) ||
-            !equalBytes(selectedBinding.policy.rp_id_hash, record.policy.rp_id_hash) ||
-            !equalBytes(selectedBinding.policy.origin, record.policy.origin)
-          )
-            throw new PassportConnectorError(
-              'NotAuthorised',
-              'The selected passkey does not own this ACC.',
-            );
+          await assertOwnerCredential(record, authoriser);
           const { counter, authNonce } = await useCounter(flow, record);
           const circuit = 'withdraw_unshielded_with_p256';
           const challenge = withdrawChallenge(
@@ -119,10 +119,41 @@ export class P256Withdrawals {
       );
     });
   };
-  withdrawShielded = (
-    request: P256MethodArgs<'withdrawShielded'>[0],
-    options: P256MethodArgs<'withdrawShielded'>[1] = {},
+  withdrawShielded = (request: P256MethodArgs<'withdrawShielded'>[0], options: FlowOptions = {}) =>
+    this.withdrawShieldedUsing(request, options, exactOwnerShieldedDispatch);
+
+  withdrawShieldedPartial = async (
+    request: PassportPartialShieldedWithdrawal,
+    options: FlowOptions = {},
   ) => {
+    const { requestId } = request;
+    const transfer = { ...request };
+    const capturedOptions = { ...options };
+    const scope = {
+      account: this.record.address,
+      networkId: this.host.networkId,
+      bindingId: this.host.network.bindingId,
+    };
+    const host = validatePartialWithdrawalHost(
+      requestId,
+      scope,
+      this.host.ports.partialShieldedWithdrawal,
+    );
+    return (
+      (await existingPartialWithdrawal(requestId, scope, host)) ??
+      this.withdrawShieldedUsing(
+        transfer,
+        capturedOptions,
+        partialOwnerShieldedDispatch(requestId, scope, host),
+      )
+    );
+  };
+
+  private withdrawShieldedUsing<T>(
+    request: P256MethodArgs<'withdrawShielded'>[0],
+    options: FlowOptions,
+    prepareDispatch: PrepareOwnerShieldedDispatch<T>,
+  ) {
     const {
       ports,
       network,
@@ -159,19 +190,7 @@ export class P256Withdrawals {
         throw new PassportConnectorError('AccountNotFound', 'The P-256 ACC is not active.');
       return authoriser.withKeySession(
         async () => {
-          const selected = await authoriser.devicePublicKey();
-          const selectedBinding = await deviceBinding(authoriser);
-          if (
-            selected.x !== record.publicKey.x ||
-            selected.y !== record.publicKey.y ||
-            !equalBytes(selectedBinding.credentialId, record.credentialId) ||
-            !equalBytes(selectedBinding.policy.rp_id_hash, record.policy.rp_id_hash) ||
-            !equalBytes(selectedBinding.policy.origin, record.policy.origin)
-          )
-            throw new PassportConnectorError(
-              'NotAuthorised',
-              'The selected passkey does not own this ACC.',
-            );
+          await assertOwnerCredential(record, authoriser);
           const view = await readView(flow, record);
           if (!view.booted || view.specVersion !== 3)
             throw new PassportConnectorError('AccountNotFound', 'The P-256 ACC is not active.');
@@ -179,24 +198,38 @@ export class P256Withdrawals {
           if (counter === undefined) throw notHeld(record);
           await sealedKeyring(record, view, false, true);
           const chainPort = await chain();
-          const coin = await readQualifiedHolding(
-            {
-              account: record.address,
-              keyring: {
+          const loadCoin = (ledgerView: typeof view) =>
+            readQualifiedHolding(
+              {
                 account: record.address,
-                encKey: inboxView(view).encKey,
-                envelopes: [...inboxView(view).inboxEntries].reverse(),
+                keyring: {
+                  account: record.address,
+                  encKey: inboxView(ledgerView).encKey,
+                  envelopes: [...inboxView(ledgerView).inboxEntries].reverse(),
+                },
+                inboxIndex: transfer.inboxIndex,
+                color: transfer.color,
               },
-              inboxIndex: transfer.inboxIndex,
-              color: transfer.color,
-            },
-            { networkId, chain: chainPort, viewingKey, holdings: qualified },
-          );
-          if (transfer.amount !== coin.value)
-            throw new PassportConnectorError(
-              'TransferInvalid',
-              'A shielded owner withdrawal must spend the selected coin exactly until change settlement is available.',
+              { networkId, chain: chainPort, viewingKey, holdings: qualified },
             );
+          const coin = await loadCoin(view);
+          const frontier = { authNonce: view.authNonce, deviceEpoch: view.deviceEpoch };
+          const dispatch = await prepareDispatch({
+            chain: chainPort,
+            coin,
+            counter,
+            transfer,
+            flow,
+            async checkCurrent() {
+              const latest = await readView(flow, record);
+              if ((await findCounter(flow, record, latest)) !== counter)
+                throw new PassportConnectorError(
+                  'MutationUnsettled',
+                  'The reviewed owner entry changed.',
+                );
+              assertSameOwnerShieldedInput(frontier, latest, coin, await loadCoin(latest));
+            },
+          });
           const circuit = 'withdraw_shielded_with_p256';
           const challenge = shieldedChallenge(
             pure,
@@ -206,7 +239,7 @@ export class P256Withdrawals {
             transfer.color,
             transfer.amount,
             coin,
-            view.authNonce,
+            frontier.authNonce,
           );
           const signed = await flow.step('passkey.sign', () =>
             authoriser.authorise({
@@ -214,7 +247,7 @@ export class P256Withdrawals {
               circuit,
               args: [transfer.recipient, transfer.color, transfer.amount],
               witnessValues: [coin],
-              authNonce: view.authNonce,
+              authNonce: frontier.authNonce,
               useCounter: counter,
               challenge,
               credentialId: record.credentialId,
@@ -231,7 +264,7 @@ export class P256Withdrawals {
               'The signature names another device.',
             );
           flow.checkpoint();
-          const tx = await chainPort.call({
+          return dispatch({
             address: record.address,
             circuit,
             args: [
@@ -249,7 +282,6 @@ export class P256Withdrawals {
             heldCoin: coin,
             ...flow.ports,
           });
-          return { ...tx, nextUseCounter: counter + 1n };
         },
         {
           kind: 'withdraw-shielded',
@@ -261,5 +293,21 @@ export class P256Withdrawals {
         },
       );
     });
-  };
+  }
+}
+
+async function assertOwnerCredential(record: P256Hint, authoriser: Authoriser) {
+  const selected = await authoriser.devicePublicKey();
+  const selectedBinding = await deviceBinding(authoriser);
+  if (
+    selected.x !== record.publicKey.x ||
+    selected.y !== record.publicKey.y ||
+    !equalBytes(selectedBinding.credentialId, record.credentialId) ||
+    !equalBytes(selectedBinding.policy.rp_id_hash, record.policy.rp_id_hash) ||
+    !equalBytes(selectedBinding.policy.origin, record.policy.origin)
+  )
+    throw new PassportConnectorError(
+      'NotAuthorised',
+      'The selected passkey does not own this ACC.',
+    );
 }
