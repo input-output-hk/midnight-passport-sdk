@@ -57,7 +57,10 @@ request deadline.
 The adapter and host both check that deadline before starting their next
 submission step.
 
-The local HTTP fixture uses Ledger 9 serialization with a simulated call
-builder, prover, wallet and indexer. It exercises proof handoff and original
-dispatch recovery. The authenticated demo relay, browser screens and live
-sponsorship qualification remain open.
+The standalone native qualification used a software P-256 owner and a
+distinct P-256 grantee. The sponsor paid DUST, the original grant finalized,
+and the client recovered it after a simulated response loss without signing
+or submitting again. Chromium separately checked manifest-pinned verifier
+fetching and forwarding with a simulated prover and sponsor. The authenticated
+demo relay, separate holder screens and real passkey providers still need
+qualification.
