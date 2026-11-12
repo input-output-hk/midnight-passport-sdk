@@ -11,7 +11,7 @@ import {
 } from '@input-output-hk/mn-passport-service/finality';
 import { hex, same } from './host-ledger.ts';
 
-interface HostZswapStateSource {
+export interface HostZswapStateSource {
   readonly networkId: string;
   /**
    * Authenticate full, unfiltered Zswap state (including the spent nullifier

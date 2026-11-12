@@ -52,8 +52,11 @@ state and wiring encrypted inbox recovery are still required for live use.
 
 For the unspent check, the reference host requalifies the original change
 and dry-runs its spend against full Zswap state at the node's best block.
-It checks the block hash again before accepting. The host needs a state
-source that authenticates the spent nullifier set for that block.
+It checks the block hash again before accepting. The reference host can authenticate a complete Ledger 9 v18 snapshot against
+the configured node's full ledger root. It pins the genesis hash, verifies the
+snapshot's storage graph for the exact block, and then extracts Zswap state.
+The host supplies the complete snapshot. Filtered indexer state cannot supply
+this check. Intermediate transaction state still requires canonical replay.
 
 The account package provides `appendShieldedChange` and
 `recoverShieldedBackfill` for a host that can verify the original withdrawal,

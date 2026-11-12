@@ -5,6 +5,8 @@ import { toHex } from '../../../packages/account/dist/index.js';
 import type { ShieldedWithdrawalRecoveryPorts } from '../../../packages/account/dist/index.js';
 import { AmountSchema, NetworkIdSchema } from '../../../packages/account/dist/validation.js';
 import { createShieldedChangeUnspentCheck } from '../src/shielded-change-unspent.ts';
+import { createShieldedSnapshotSource } from '../src/shielded-state-snapshot.ts';
+import { ledgerStateRootV18 } from '../src/ledger-state-root.ts';
 
 const nodeUrl = 'http://localhost:19964';
 const networkId = NetworkIdSchema.parse('undeployed');
@@ -152,4 +154,65 @@ test('host dry-runs the exact change against authenticated, unchanged best-block
   moveTip = true;
   assert.equal(await isUnspent(account, f.qualified), false);
   assert.deepEqual(calls.splice(0), ['best', 'state', 'best']);
+});
+
+test('a node-anchored full snapshot preserves nullifier absence and presence', async () => {
+  const f = setup();
+  const genesisHash = '03'.repeat(32);
+  const unspent = new Ledger.LedgerState(networkId, f.state).serialize();
+  const spent = new Ledger.LedgerState(networkId, f.spent).serialize();
+  const unspentRoot = ledgerStateRootV18(unspent);
+  const spentRoot = ledgerStateRootV18(spent);
+  assert.notEqual(unspentRoot, spentRoot);
+
+  let genesis = genesisHash;
+  let root = unspentRoot;
+  let snapshot = unspent;
+  let reads = 0;
+  const fetchNode: typeof fetch = async (_url, init) => {
+    const request = JSON.parse(String(init?.body));
+    if (request.method === 'chain_getBlockHash') {
+      assert.ok(request.params.length === 0 || request.params[0] === 0);
+      return Response.json({ id: 1, result: '0x' + (request.params.length ? genesis : block) });
+    }
+    assert.equal(request.method, 'midnight_ledgerStateRoot');
+    assert.deepEqual(request.params, ['0x' + block]);
+    return Response.json({ id: 1, result: [...Buffer.from(root, 'hex')] });
+  };
+  const stateSource = createShieldedSnapshotSource({
+    networkId,
+    nodeUrl,
+    genesisHash,
+    ledger: Ledger,
+    fetch: fetchNode,
+    async readLedgerSnapshot(hash) {
+      assert.equal(hash, block);
+      reads++;
+      return snapshot;
+    },
+  });
+  const isUnspent = createShieldedChangeUnspentCheck(requestId, f.withdrawal, {
+    networkId,
+    nodeUrl,
+    ledger: Ledger,
+    fetch: fetchNode,
+    stateSource,
+  });
+  assert.equal(await isUnspent(account, f.qualified), true);
+
+  // The provider still serves the pre-spend bytes for this block.
+  root = spentRoot;
+  assert.equal(await isUnspent(account, f.qualified), false);
+  snapshot = spent;
+  const verified = await stateSource.readAuthenticatedState(block, AbortSignal.timeout(4000));
+  assert.ok(verified);
+  assert.deepEqual(verified.state.serialize(), f.spent.serialize());
+  assert.equal(await isUnspent(account, f.qualified), false);
+
+  const requestsBeforeWrongChain = reads;
+  genesis = '04'.repeat(32);
+  assert.equal(await isUnspent(account, f.qualified), false);
+  assert.equal(reads, requestsBeforeWrongChain);
+  assert.equal(await stateSource.readAuthenticatedState(block, AbortSignal.abort()), undefined);
+  assert.equal(reads, requestsBeforeWrongChain);
 });
