@@ -64,3 +64,18 @@ or submitting again. Chromium separately checked manifest-pinned verifier
 fetching and forwarding with a simulated prover and sponsor. The authenticated
 demo relay, separate holder screens and real passkey providers still need
 qualification.
+
+### Authenticated browser grant relay
+
+The standalone service can mount the source-preview relay described in the
+[reference app configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/README.md#source-preview-browser-grant-relay).
+The browser exchanges an owner assertion for a five-minute account-bound
+session. The relay independently verifies the holder's signed request and
+retains the first issue UUID and dispatch digest. A repeated execute cannot
+replace the proved transaction. Explicit reconciliation can continue only
+the retained original and rechecks owner access before any send.
+
+The relay authenticates the active owner and limits the sponsor to fees for
+the pinned issue circuit. The holder uses the original signed request and
+live ACC state to verify the opening's scope. The proved transaction alone
+does not disclose the private scope to the relay.

@@ -177,6 +177,12 @@ export function validateHostRecord(r: HostMutationRecord): void {
   )
     return hostFailure();
 }
+interface HostDispatchOptions {
+  readonly signal?: { readonly aborted: boolean };
+  /** Optional live host authorization checked immediately before the durable send fence. */
+  readonly beforeDispatch?: () => Promise<boolean>;
+}
+
 /** Host-side execution with revision fencing before EVERY broadcast. A successor may take over
  * ready preparation, but a dispatching/sent transaction is ONLY looked up, never re-sent.
  * The protected byte sequence and constructor plan are retained across process death.
@@ -210,12 +216,18 @@ export function createHostMutationExecutor(store: HostMutationStore, driver: Hos
             },
     };
   };
+  const canDispatch = async (
+    record: HostMutationRecord,
+    authorise?: HostDispatchOptions['beforeDispatch'],
+  ) =>
+    (await driver.check(record, record.steps.length - 1)) &&
+    (await (authorise?.() ?? true)) === true;
   const drive = async (
     identity: HostMutationIdentity,
     input?: HostJson,
-    signal?: { readonly aborted: boolean },
-    expectedInputSha256?: string,
+    options: HostDispatchOptions & { readonly expectedInputSha256?: string } = {},
   ): Promise<HostMutationOutcome> => {
+    const { signal, beforeDispatch, expectedInputSha256 } = options;
     identity = JSON.parse(hostCanonical(identity)) as HostMutationIdentity;
     if (input !== undefined) input = JSON.parse(hostCanonical(input)) as HostJson;
     let record = await read(identity);
@@ -279,7 +291,7 @@ export function createHostMutationExecutor(store: HostMutationStore, driver: Hos
       }
       if (step.phase === 'ready') {
         checkpoint();
-        if (!(await driver.check(record!, record!.steps.length - 1))) return { kind: 'unknown' };
+        if (!(await canDispatch(record!, beforeDispatch))) return { kind: 'unknown' };
         checkpoint();
         await advance({ ...step, phase: 'dispatching' });
         step = record!.steps.at(-1)!;
@@ -302,15 +314,12 @@ export function createHostMutationExecutor(store: HostMutationStore, driver: Hos
     return outcome(record!);
   };
   return {
-    execute: (
-      identity: HostMutationIdentity,
-      input: HostJson,
-      options: { signal?: { readonly aborted: boolean } } = {},
-    ) => drive(identity, input, options.signal),
+    execute: (identity: HostMutationIdentity, input: HostJson, options?: HostDispatchOptions) =>
+      drive(identity, input, options),
     resume: (
       identity: HostMutationIdentity,
-      options: { signal?: { readonly aborted: boolean }; expectedInputSha256?: string } = {},
-    ) => drive(identity, undefined, options.signal, options.expectedInputSha256),
+      options?: HostDispatchOptions & { readonly expectedInputSha256?: string },
+    ) => drive(identity, undefined, options),
     async inspect(identity: HostMutationIdentity) {
       const r = await read(identity);
       return r

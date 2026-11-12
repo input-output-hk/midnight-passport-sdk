@@ -144,3 +144,12 @@ The isolated NIGHT fixture reviews both operations together and keeps original
 withdrawal and deposit references. An interrupted withdrawal-to-deposit flow
 remains visible in the journal. See the
 [standalone recipe](../../examples/midnames-local/README.md#run-the-named-acc-to-acc-night-payment).
+
+### Browser grant authorization
+
+The opt-in reference relay has a separate, short-lived owner authentication
+step. Keep its session in memory and bind it to the selected account. Follow
+that authentication with the existing exact grant review and a fresh owner
+signature. Preserve the original holder request and issue ID for recovery.
+Show only the outcome and approved scope in the UI. Keep the assertion,
+callback state, opening and proof bytes out of Activity and Audit.

@@ -902,3 +902,30 @@ The Node fixture demonstrates a named NIGHT payment using a controlled wallet
 and a durable two-leg journal. The reference browser withdrawal remains a
 separate wallet-address flow. See the
 [standalone recipe](../examples/midnames-local/README.md#run-the-named-acc-to-acc-night-payment).
+
+### Source preview browser grant relay
+
+The standalone service can mount an authenticated relay for direct P-256 grant
+requests. Configure the private grant sponsor, set `PASSPORT_BROWSER_GRANT_DIR`
+to a separate private state directory, and set `PASSPORT_DAPP_ORIGIN` to the
+canonical HTTPS origin of the issuer. The pinned WebAuthn profile requires a
+21-byte origin and the full issuer hostname as RP ID. Route the relay paths
+through the same-origin HTTPS frontend. Keep `/v1/mutations/` and its bearer
+token on the private service boundary.
+
+The relay issues a single-use owner challenge and a five-minute session scoped
+to the verified credential and account. Keep the session token in memory and
+send it in the `PassportGrant` authorization header. The service checks live
+P-256 enrollment and the original holder signature before admitting a nonce.
+A device epoch change or observed removal invalidates the session. Before submitting, it checks the live owner again at the wallet's durable send
+fence. Retain the original holder request and issue ID for reconciliation.
+The host stores the proved call in its encrypted mutation journal. The browser
+relay's separate state directory retains the nonce and exact host input digest.
+The browser relay can reconcile after the holder's request deadline while
+the grant scope is still live.
+
+The relay sponsors only the pinned fee-only owner issue circuit. The browser
+still supplies the exact review and fresh owner circuit signature. The holder
+must validate the returned opening against the signed request and live ACC.
+Browser controls, callback navigation and real-provider tests are separate
+integration work.

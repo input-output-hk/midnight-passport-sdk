@@ -2,14 +2,20 @@ import { createReferenceHostDriver } from './host-driver.ts';
 import { randomBytes } from 'node:crypto';
 import type { ChainBackend } from './backend.ts';
 import type { ServiceConfig } from './config.ts';
-import { sponsoredAddresses } from './deployments.ts';
+import { directoryFile, sponsoredAddresses } from './deployments.ts';
+import { createFileDirectoryStore } from '@input-output-hk/mn-passport-service';
+import { createBrowserGrantOwnerReader } from './browser-grant-owner-reader.ts';
 import { guardedBalance } from './sponsor-policy.ts';
 import type { V9Tx, ReferenceProviders as Providers } from './reference-runtime.ts';
 import { loadReferenceModules } from './reference-modules.ts';
 /** The wallet's transaction seams read only `serialize()`, so raw bytes cross them in this wrapper. */
 const tag = (bytes: Uint8Array): V9Tx => ({ version: 'v9', tx: { serialize: () => bytes } });
 
-export async function loadReferenceBackend(config: ServiceConfig): Promise<ChainBackend> {
+export async function loadReferenceBackend(config: ServiceConfig): Promise<
+  ChainBackend & {
+    readBrowserGrantOwner: ReturnType<typeof createBrowserGrantOwnerReader>;
+  }
+> {
   const {
     providers,
     proving,
@@ -23,7 +29,12 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
     hostLedger,
     deployments,
   } = await loadReferenceModules(config);
+  const allowedAccount = (address: string) => sponsoredAddresses(config, deployments).has(address);
   return {
+    readBrowserGrantOwner: createBrowserGrantOwnerReader(
+      createFileDirectoryStore(directoryFile(config.registryFile)),
+      { ledger: hostLedger, providers, allowedAccount },
+    ),
     hostMutations: createReferenceHostDriver({
       ...(config.hostGrantIssue && { allowGrantIssue: true }),
       providers,
@@ -37,7 +48,7 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
       contracts,
       networkId: config.networkId,
       indexerUrl: config.indexerUri,
-      allowedAccount: (address) => sponsoredAddresses(config, deployments).has(address),
+      allowedAccount,
       deploymentCompleted: (address) => deployments.add(address),
     }),
     check: (preimage, keyLocation) => proving.check(preimage, keyLocation),

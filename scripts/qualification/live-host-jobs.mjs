@@ -154,7 +154,8 @@ export async function runNativeHostJobs(lane = 'source', profile = 'creation', i
     if (
       k.startsWith('PASSPORT_PUBLIC_') ||
       k.startsWith('PASSPORT_HOST_MUTATION_') ||
-      k.startsWith('PASSPORT_HOST_JOB_')
+      k.startsWith('PASSPORT_HOST_JOB_') ||
+      k.startsWith('PASSPORT_BROWSER_GRANT_')
     )
       delete env[k];
   delete env.PASSPORT_WALLET_OWNER_FIXTURE;

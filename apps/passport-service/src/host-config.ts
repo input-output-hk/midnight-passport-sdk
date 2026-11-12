@@ -3,6 +3,7 @@ import { resolve, dirname, basename, sep } from 'node:path';
 import {
   createHostMutationExecutor,
   encryptedHostMutationStore,
+  fileMutationByteStore,
   hostMutationRoute,
   createHostMutationJobs,
   encryptedHostJobStore,
@@ -13,6 +14,9 @@ import {
   serial,
 } from '@input-output-hk/mn-passport-service';
 import type { ServiceConfig } from './config.ts';
+import { createBrowserGrantSessions } from './browser-grant-sessions.ts';
+import { createBrowserGrantSponsor } from './browser-grant-sponsor.ts';
+import { browserGrantRelay } from './routes/browser-grant.ts';
 
 /** Callable for existing route composition; close only after stopping HTTP admission. */
 export type ConfiguredHostMutations = Route & {
@@ -52,16 +56,68 @@ function checkJournalDirectories(directory: string, jobDirectory: string | undef
   }
 }
 
+type ReadGrantOwner = Parameters<typeof createBrowserGrantSessions>[0]['readOwner'];
+
+function browserGrantSetup(
+  env: NodeJS.ProcessEnv,
+  config: ServiceConfig,
+  readOwner: ReadGrantOwner | undefined,
+) {
+  const directory = env.PASSPORT_BROWSER_GRANT_DIR;
+  if (directory === undefined) return undefined;
+  const mutations = env.PASSPORT_HOST_MUTATION_DIR;
+  if (
+    !directory ||
+    !mutations ||
+    !readOwner ||
+    !config.hostGrantIssue ||
+    config.networkId !== 'undeployed' ||
+    config.bindingId !== 'acc-s3r1.1'
+  )
+    throw new Error(
+      'Browser grant relay requires a distinct private directory, HTTPS issuer and host grant issue.',
+    );
+  checkJournalDirectories(mutations, directory);
+  const jobs = env.PASSPORT_HOST_JOB_DIR;
+  if (jobs) checkJournalDirectories(jobs, directory);
+  const issuer = config.corsOrigin;
+  const sessions = createBrowserGrantSessions({ issuer, readOwner });
+  return (
+    executor: ReturnType<typeof createHostMutationExecutor>,
+    pins: Parameters<typeof createBrowserGrantSponsor>[1],
+    runExclusive: ReturnType<typeof serial>,
+  ): Route => {
+    const relay = browserGrantRelay({
+      issuer,
+      store: fileMutationByteStore(directory),
+      authenticate: sessions.authenticate,
+      sponsor: createBrowserGrantSponsor(executor, pins, runExclusive),
+    });
+    return async (req, res, url) =>
+      (await sessions.route(req, res, url)) || (await relay(req, res, url));
+  };
+}
+
+function hostPath(path: string, relayEnabled: boolean): boolean {
+  return (
+    path.startsWith('/v1/mutations/') ||
+    path.startsWith('/v1/host-jobs/') ||
+    (relayEnabled && path.startsWith('/v1/browser-grant/'))
+  );
+}
+
 export function configuredHostMutations(
   config: ServiceConfig,
   driver: HostMutationDriver | undefined,
   env: NodeJS.ProcessEnv,
   runExclusive: ReturnType<typeof serial>,
   acceptDeployment: () => void,
+  readBrowserGrantOwner?: ReadGrantOwner,
 ): ConfiguredHostMutations | undefined {
   const directory = env.PASSPORT_HOST_MUTATION_DIR,
     keyFile = env.PASSPORT_HOST_MUTATION_KEY_FILE,
     tokenFile = env.PASSPORT_HOST_MUTATION_TOKEN_FILE;
+  const configureRelay = browserGrantSetup(env, config, readBrowserGrantOwner);
   const jobSettings = Object.keys(env).some(
     (k) => k.startsWith('PASSPORT_HOST_JOB_') && env[k] !== undefined,
   );
@@ -130,6 +186,7 @@ export function configuredHostMutations(
       bindingId: config.bindingId,
       manifestSha256: config.manifestSha256,
     };
+    const relay = configureRelay?.(executor, pins, runExclusive);
     const direct = hostMutationRoute({ executor, pins, token, runExclusive });
     if (jobDirectory && jobKey) jobStore = encryptedHostJobStore(jobDirectory, jobKey, { maxJobs });
     const jobs = jobStore
@@ -155,12 +212,15 @@ export function configuredHostMutations(
       await jobs?.drain();
     };
     const route: Route = async (req, res, url) => {
-      if (!url.pathname.startsWith('/v1/mutations/') && !url.pathname.startsWith('/v1/host-jobs/'))
-        return false;
+      if (!hostPath(url.pathname, relay !== undefined)) return false;
       if (!open) throw new HttpError(503, 'host service is draining; retain the original identity');
       inFlight++;
       try {
-        return (jobRoute && (await jobRoute(req, res, url))) || (await direct(req, res, url));
+        return (
+          (relay && (await relay(req, res, url))) ||
+          (jobRoute && (await jobRoute(req, res, url))) ||
+          (await direct(req, res, url))
+        );
       } finally {
         if (--inFlight === 0) {
           for (const done of waiters) done();

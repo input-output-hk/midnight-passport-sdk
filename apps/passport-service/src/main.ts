@@ -38,6 +38,7 @@ const hostMutations = configuredHostMutations(
   process.env,
   runExclusive,
   () => deploymentBudget.accept(),
+  backend.readBrowserGrantOwner,
 );
 const directory = createFileDirectoryStore(directoryFile(config.registryFile));
 const demoFunding = demoFundingRoute(config, process.env);
