@@ -95,9 +95,9 @@ and indexer to retain the block history. The live cursor continues independently
 A read of the current unfinalized best block replays only within
 `blocksPerAdvance`, checks the best hash again, and keeps the result in memory.
 The reader can replay an unindexed block with no ledger transactions by using
-zero block fullness and verifying the complete node ledger root. A block with
-ledger transactions still requires the indexer’s exact ledger parameters. Preserve the exact-value guard
-while SDK dispatch and lost-response recovery are being qualified.
+zero block fullness and verifying the complete node ledger root. The reader
+uses indexed parameters when they are available. A block with ledger
+transactions requires the indexer's exact parameters.
 
 The account package provides `appendShieldedChange` and
 `recoverShieldedBackfill` for a host that can verify the original withdrawal,
@@ -116,6 +116,18 @@ receipt available for read-only recovery. The host checks the owner call
 commitment and verifies the appended ciphertext and index against account
 state immediately before and after that transaction. Live use requires a source
 that authenticates this transaction-level state transition.
+
+An isolated qualification run paired each owner withdrawal with a separate
+shielded mint in the same finalized block. The P-256 withdrawal preceded its
+mint. The JubJub withdrawal followed its mint. In both cases the observer
+authenticated the original bytes and change index. It refused a nearby index
+and the mint's identity. Separate processes recovered the original withdrawal
+and append after lost acknowledgements. The reopened holding was then spent
+at exact value. The append transactions ran in separate blocks.
+
+The ordinary account entry points still require exact-value withdrawals.
+A missing dispatch or finality observation is inconclusive. Keep the original
+request and fence until the host can establish its outcome.
 
 Application contracts may call **into a deployed ACC** under the supported caller-bound design. That does not establish arbitrary ACC → other-contract calls. [See the implementation boundary](/architecture/standards).
 
