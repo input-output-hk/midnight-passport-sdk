@@ -182,3 +182,10 @@ before any verifier replacement or migration. Replacing a verifier preserves
 the current ledger state, including any bootstrap commitment or entry already
 present. Retired maintenance requires a migration path that preserves assets
 and access. [Upstream fix](https://github.com/midnightntwrk/passport/commit/8f635a10dde17d55d26bb72439a3a23e6e159295)
+
+The Compact 0.35.0 `--skip-zk` build of that exact fix generated declarations
+byte-identical to the pinned ACC. Its JavaScript SHA-256 is
+`5a9928cf4b8191a480efe610f4678be7c55c838a05fca1b145ba78acbd16b378`.
+Both generated-code cases kept the successor authorized and rejected the
+original activation. Regenerated verifier keys, node proof acceptance and
+deployment wave sizing are still required for adoption.
