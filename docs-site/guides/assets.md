@@ -63,11 +63,33 @@ The replay host pins genesis and runtime spec `2001000`. Its block reader
 uses independently pinned runtime metadata and bounded RPC reads for the
 canonical block body, system event phases and timestamps. A phase shared by
 an explicit ledger call and an implicit system event leaves recovery unconfirmed.
-The host supplies the complete parent snapshot. It can take serialized
-post-block ledger parameters from the indexer because it verifies the full
+The replay can take serialized post-block ledger parameters from the indexer because it verifies the full
 resulting state against the node before using any intermediate state.
 The end root alone cannot prove transaction order. The default demo does not
 wire this source or enable partial shielded withdrawals.
+
+For a Node reference host, `createLedgerCheckpointProvider` supplies
+`readLedgerSnapshot` to the transition and unspent observers. Create an owned
+directory with mode `0700`, then configure the trusted node, the indexer, the
+genesis hash and the independently recorded runtime metadata digest. Give one
+provider exclusive write ownership of the directory. On a host-managed schedule,
+call `advanceFinalized(signal)` until its height catches the reported finalized
+height. Each call reauthenticates the retained cursor and commits only blocks
+whose complete roots match. The provider runs replay and checkpoint I/O on
+a Node worker thread. A busy worker declines new requests without queuing them.
+
+The cache keeps 32 finalized snapshots by default. Set `retainedBlocks` from
+2 to 128 for the recovery window you need. Each snapshot can use up to 16 MiB.
+Changing the chain pin or retention selects a separate cache directory. Keep the
+original intent journals separately. An older snapshot outside the retention
+window leaves the original operation unconfirmed until it can be rebuilt. Use
+a separate owned cache and call `advanceFinalized(signal, throughHeight)`
+in bounded steps to rebuild through the required historical height. Serve the
+reconstructed snapshot by its exact hash. The live cursor continues independently.
+A read of the current
+unfinalized best block replays only within `blocksPerAdvance`, checks the best
+hash again, and keeps the result in memory. Preserve the exact-value guard
+while SDK dispatch and lost-response recovery are being qualified.
 
 The account package provides `appendShieldedChange` and
 `recoverShieldedBackfill` for a host that can verify the original withdrawal,

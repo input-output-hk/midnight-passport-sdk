@@ -87,14 +87,14 @@ function blockContext(block: CanonicalLedgerBlock): Ledger.BlockContext {
  * Both roots come from the node. A root alone cannot authenticate transaction
  * order, so the ordered calls must come from the same canonical node, not an indexer.
  */
-export function replayLedgerTransition(
+function replayLedgerBlock(
   ledger: ReplayLedger,
   input: CanonicalLedgerBlock,
   parentSnapshot: Uint8Array,
   roots: { readonly parent: string; readonly block: string },
-  target: ReplayTarget,
   signal: AbortSignal,
-): LedgerTransition | undefined {
+  target?: ReplayTarget,
+) {
   signal.throwIfAborted();
   const block = readBlock(input);
   const parent = copyBytes(parentSnapshot, maximumLedgerSnapshotBytes);
@@ -133,18 +133,40 @@ export function replayLedgerTransition(
       fullness.bytesWritten += cost.bytesWritten;
       fullness.bytesChurned += cost.bytesChurned;
     }
-    if (tx.transactionHash() !== target.txHash) continue;
+    if (!target || tx.transactionHash() !== target.txHash) continue;
     if (match || createHash('sha256').update(bytes).digest('hex') !== target.bytesSha256)
       return undefined;
     match = { before, after, result };
   }
-  if (!match || match.result.type === 'failure') return undefined;
+  if (target && (!match || match.result.type === 'failure')) return undefined;
   const normalized = state.parameters.normalizeFullness(fullness);
   state = state.postBlockUpdate(tblock, normalized, Math.max(...Object.values(normalized)));
   // WASM passes normalized fullness through f64. The indexer supplies the
   // precise serialized parameters; the final root authenticates them.
   state.parameters = ledger.LedgerParameters.deserialize(block.ledgerParameters);
   signal.throwIfAborted();
-  if (ledgerStateRootV18(state.serialize()) !== roots.block || signal.aborted) return undefined;
-  return match;
+  const snapshot = state.serialize();
+  if (ledgerStateRootV18(snapshot) !== roots.block || signal.aborted) return undefined;
+  return { snapshot, match };
+}
+
+export function replayLedgerTransition(
+  ledger: ReplayLedger,
+  block: CanonicalLedgerBlock,
+  parent: Uint8Array,
+  roots: { readonly parent: string; readonly block: string },
+  target: ReplayTarget,
+  signal: AbortSignal,
+): LedgerTransition | undefined {
+  return replayLedgerBlock(ledger, block, parent, roots, signal, target)?.match;
+}
+
+export function replayLedgerSnapshot(
+  ledger: ReplayLedger,
+  block: CanonicalLedgerBlock,
+  parent: Uint8Array,
+  roots: { readonly parent: string; readonly block: string },
+  signal: AbortSignal,
+): Uint8Array | undefined {
+  return replayLedgerBlock(ledger, block, parent, roots, signal)?.snapshot;
 }
