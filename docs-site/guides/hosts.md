@@ -36,7 +36,8 @@ On the standalone network, `PASSPORT_HOST_GRANT_ISSUE=1` opts the configured
 private host mutation service into sponsoring grant issuance. The host uses
 the pinned ACC verifier roster and admits one proved, unbound owner issue call.
 It checks the fee-only policy before balancing and verifies the call proof,
-commitment, transcripts and asset offers after balancing.
+commitment, transcripts, original intent segments and expiry after balancing.
+Additional intents may contain only Dust spends for fees.
 
 A server-side integration can use `remoteHostMutationPorts(...).grantIssue`
 with the existing private RPC token. Send the original issue UUID and intent

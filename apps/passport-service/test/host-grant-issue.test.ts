@@ -61,6 +61,7 @@ async function provedCall(
   name = circuit,
   random = Ledger.communicationCommitmentRandomness(),
   paysValue = false,
+  ttl = new Date(Date.now() + 60_000),
 ) {
   const empty = { value: [], alignment: [] };
   const call = new Ledger.ContractCallPrototype(
@@ -75,7 +76,7 @@ async function provedCall(
     random,
     'fixture',
   );
-  const intent = Ledger.Intent.new(new Date(Date.now() + 60_000)).addCall(call);
+  const intent = Ledger.Intent.new(ttl).addCall(call);
   if (paysValue)
     intent.guaranteedUnshieldedOffer = Ledger.UnshieldedOffer.new(
       [],
@@ -130,7 +131,8 @@ test('grant sponsor only admits the original proved owner call and rejects a wal
   const r = runtime(state);
   const driver = createReferenceHostDriver(r);
   const random = Ledger.communicationCommitmentRandomness();
-  const proved = await provedCall(circuit, random);
+  const ttl = new Date(Date.now() + 60_000);
+  const proved = await provedCall(circuit, random, false, ttl);
   const input = {
     kind: 'grant-issue-v1',
     tx: Buffer.from(proved.serialize()).toString('hex'),
@@ -155,11 +157,25 @@ test('grant sponsor only admits the original proved owner call and rejects a wal
       tx: Buffer.from(proved.bind().serialize()).toString('hex'),
     }),
   );
-  const paying = await provedCall(circuit, random, true);
+  const paying = await provedCall(circuit, random, true, ttl);
   await assert.rejects(
     driver.prepare(identity, { ...input, tx: Buffer.from(paying.serialize()).toString('hex') }),
   );
-  for (const substitute of [(await provedCall()).bind(), paying.bind()]) {
+  const extended = await provedCall(circuit, random, false, new Date(ttl.getTime() + 30_000));
+  const empty = Ledger.Transaction.fromParts(pins.networkId).addIntent(
+    { tag: 'specific', value: 2 },
+    Ledger.Intent.new(ttl),
+  );
+  const extra = proved
+    .bind()
+    .merge((await empty.prove(proving, Ledger.CostModel.initialCostModel())).bind());
+  assert.equal(extra.intents?.size, 2);
+  for (const substitute of [
+    (await provedCall(circuit, undefined, false, ttl)).bind(),
+    paying.bind(),
+    extended.bind(),
+    extra,
+  ]) {
     const substituted = createReferenceHostDriver({
       ...r,
       providers: {

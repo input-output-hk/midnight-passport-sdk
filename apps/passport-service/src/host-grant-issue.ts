@@ -104,11 +104,50 @@ export async function prepareHostGrantIssue(
   };
 }
 
+function checkBalancedIntents(
+  before: ReadonlyMap<number, { readonly ttl: number; readonly actions: number }>,
+  result: Ledger.FinalizedTransaction,
+  feeDeadline: number,
+) {
+  const after = result.intents;
+  if (!after) return hostFailure();
+  for (const [segment, intent] of before) {
+    const retained = after.get(segment);
+    if (
+      !retained ||
+      retained.ttl.getTime() !== intent.ttl ||
+      retained.actions.length !== intent.actions
+    )
+      return hostFailure();
+  }
+  for (const [segment, intent] of after) {
+    if (intent.dustActions?.registrations.length) return hostFailure();
+    if (
+      !before.has(segment) &&
+      (intent.actions.length !== 0 ||
+        !intent.dustActions?.spends.length ||
+        !(intent.ttl.getTime() <= feeDeadline))
+    )
+      return hostFailure();
+  }
+}
+
 /** Balance only the retained, proved fee-only issue call, and pin its commitment across the wallet. */
 export async function balanceHostGrantIssue(r: ReferenceHostRuntime, request: GrantIssueRequest) {
   const original = admittedInput(r, request);
   const approved = grantCall(r.ledger, original, request);
-  const { tx } = await r.providers.walletProvider.balanceTx({ version: 'v9', tx: original });
+  const before = new Map(
+    [...(original.intents ?? [])].map(
+      ([segment, intent]) =>
+        [segment, { ttl: intent.ttl.getTime(), actions: intent.actions.length }] as const,
+    ),
+  );
+  const feeDeadline = Math.min(...[...before.values()].map(({ ttl }) => ttl));
+  const { tx } = await r.providers.walletProvider.balanceTx(
+    { version: 'v9', tx: original },
+    new Date(feeDeadline),
+  );
+  checkBalancedIntents(before, tx, feeDeadline);
   const result = grantCall(r.ledger, tx, request);
   if (
     result.communicationCommitment !== approved.communicationCommitment ||
@@ -118,9 +157,6 @@ export async function balanceHostGrantIssue(r: ReferenceHostRuntime, request: Gr
   )
     return hostFailure();
   const view = viewOfLedgerTx(tx, r.ledger);
-  for (const intent of intents(tx)) {
-    if (intent.dustActions?.registrations.length) return hostFailure();
-  }
   // The wallet may add Dust spends for fees. It must not add any other asset
   // offers, rewards, or effects to the original call.
   const feeOnly = {
