@@ -137,10 +137,33 @@ signed the ACC address or the owner selected it. Requests carrying a
 redirect, browser state, WebAuthn proof
 or unsupported scope are refused.
 
-The host must provide durable nonce admission, fresh owner consent and
-original-request recovery before exposing issuance to agents. The lower-level
-JubJub owner issue call accepts an exact `requestedSlot`. Use the verified
-client ID and signed slot when preparing a grant. An occupied slot fails
-before signing. The generated ACC test covers one owner-signed issue with
-the verified scope. A non-browser host transport, structured return, agent
-vault integration and native agent spend remain open.
+### Issue and recover the original agent grant
+
+Call `issueAgentJubjubGrant` with the original wire packet and an active
+JubJub owner route. The host supplies fresh owner approval, a pinned chain
+and grant source, and two durable stores:
+
+| Store | Retain |
+| --- | --- |
+| `createAgentGrantNonceStore` | Atomic nonce admission, bound to the exact request and owner route. |
+| `createAgentGrantIssueJournal` | The protected scope salt and expected ledger identity. Use authenticated encryption and keep this separate from the nonce store. |
+
+The SDK stages the owner bookkeeping and protected record before dispatch.
+It passes the original UUID, intent digest and earliest allowed submission
+deadline to the host chain. The `granted` response contains the confirmed grant ID, account, chain,
+scope salt and encoded approved scope. Deliver it only over the trusted
+request channel. The holder must verify the commitments against the chain
+before spending. Keep the opening out of logs and URLs.
+
+If the outcome is uncertain, preserve the original UUID and wire packet.
+With fresh credential-pinned owner approval,
+`recoverAgentJubjubGrant(requestId, input, ports)` reads the chain and checks
+the original issuance nonce, owner epoch, grant generation and scope.
+It can recover a lost response after the request deadline while the grant
+is still live. A second request with the same nonce cannot submit again.
+
+Generated ACC tests cover issuance, a concurrent replay, response loss and
+recovery, and refusal after expiry or replacement. This source preview
+stages owner bookkeeping for later publication. Native agent spending,
+P-256 owner composition and vault or OWS integration still need
+qualification or implementation.

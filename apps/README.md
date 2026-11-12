@@ -924,6 +924,11 @@ relay's separate state directory retains the nonce and exact host input digest.
 The browser can read an original receipt after the grant expires.
 Continuing a prepared send requires both the signed request and scope to be live.
 
+The direct agent binding is a separate source-preview library flow.
+The reference app uses its browser relay here. See the
+[SDK grant API](../docs-site/guides/devices-grants.md#issue-and-recover-the-original-agent-grant)
+for the direct-channel integration contract.
+
 The relay sponsors only the pinned fee-only owner issue circuit. The browser
 still supplies the exact review and fresh owner circuit signature. The holder
 must validate the returned opening against the signed request and live ACC.

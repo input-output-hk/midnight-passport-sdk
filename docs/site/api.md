@@ -245,6 +245,44 @@ The grant holder path reads `createMidnightGrantSource(...).readGrantSpendContex
 
 For crash recovery, implement `GrantRecoveryJournal.pending(account)` and call `account.recoverPendingGrants()`. It publishes staged grants already active in the ACC and returns absent ones as `unsettledGrantIds`; it never submits a new issue call. Keep those openings durable until chain state explains whether the original issue landed. Invalid or duplicate pending IDs are refused before a key session. `recoverPendingJubjubGrants` and `recoverPendingP256Grants` expose the same path to hosts using the lower-level ports.
 
+
+**Source preview · direct agent grant requests.** A trusted non-browser host
+can pass the agent's original encoded `{ request, proof }` to
+`issueAgentJubjubGrant(input, ports, options?)` from
+`@input-output-hk/mn-passport-account`. The SDK verifies possession of the
+JubJub grantee key and binds the audience, network, account and requested slot.
+It supports one fixed-recipient unshielded withdrawal scope with finite
+per-call, total and coin limits, and an expiry. The review callback receives the
+exact scope and shows whether the request signed the ACC address or the owner
+selected it. Treat `rdns:` and `mais:` as operator assertions and `self:` as an
+owner label.
+
+Inject a credential-pinned JubJub owner authoriser, the original owner grant
+journal, the pinned chain with durable submission metadata, and the complete
+grant ledger source. Keep `isCurrent` bound to the selected owner and the
+trusted agent channel for the lifetime of the operation. Back
+`createAgentGrantNonceStore` with a durable atomic store. Back
+`createAgentGrantIssueJournal` with a separate authenticated, encrypted durable
+store. The nonce is bound to the original request and owner route before
+dispatch. The opening is staged before the call.
+
+Deliver the result only on the original trusted channel. The `granted`
+response includes the account, chain, grant ID, scope salt and base64url-encoded
+approved scope. The agent must independently recompute the ID and scope
+commitments and verify the live grant before use. Keep the opening out of URLs,
+telemetry and audit logs.
+
+On `AgentGrantIssueUnsettled`, retain the error's original `requestId` and the
+original wire packet. Call `recoverAgentJubjubGrant(requestId, input, ports)`
+only with fresh credential-pinned recovery approval. Recovery checks the
+original issuance nonce, epoch, generation, scope and live expiry. It performs
+chain reads only, even if the original request's admission window has closed.
+Missing records or a revoked, expired or replaced grant leave the original
+unsettled. The direct return confirms the on-chain grant. Sealed owner
+bookkeeping publication remains a separate step using the original staged
+journal. The preview has generated ACC test evidence. Native agent spending,
+P-256 owner composition and vault or OWS integration remain open.
+
 Losing a local profile is a separate case. [Published-bookkeeping reconstruction]({{ '/grant-recovery/' | relative_url }})
 uses the original issuing reader and authenticated live commitments; it does not
 recover a full staged scope or private grantee keys. Another enrolled reader alone

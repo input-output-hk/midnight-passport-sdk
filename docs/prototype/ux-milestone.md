@@ -163,6 +163,11 @@ separate explicit action. The holder verifies the returned opening against
 live ACC state. Copying the opening requires fresh approval from the original
 holder passkey and another live check.
 
+A host integrating the direct agent SDK flow must review the agent's client
+label, exact scope and source of the ACC address. A lost response requires
+fresh owner approval before releasing the original opening. The demo
+continues to demonstrate the browser relay.
+
 The [reference app guide](../../apps/README.md#source-preview-browser-grant-relay)
 covers build pins, service routes, the pre-enrolled owner requirement and
 the Chromium checks. The isolated chain also covered the browser owner

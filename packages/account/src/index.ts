@@ -76,3 +76,11 @@ export { verifyLiveP256GrantOpening } from './p256-grant-opening-live.js';
 
 export { grantRequestDigest } from './grant-request-wire.js';
 export * from './agent-grant-request.js';
+export { issueAgentJubjubGrant, recoverAgentJubjubGrant } from './agent-grant-issue.js';
+export type { AgentJubjubGrantIssuePorts } from './agent-grant-issue.js';
+export {
+  AgentGrantIssueUnsettled,
+  createAgentGrantIssueJournal,
+} from './agent-grant-issue-journal.js';
+export type { AgentGrantIssueJournal, AgentGrantIssueRecord } from './agent-grant-issue-journal.js';
+export type { GrantedAgentJubjubScope } from './agent-grant-settlement.js';
