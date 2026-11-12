@@ -11,6 +11,10 @@ import {
   parseBackfillRecord,
 } from '../../../packages/account/dist/shielded-backfill-journal.js';
 import { finalizedTransactionIdentitySchema } from '../../../packages/account/dist/finalized-transaction-identity.js';
+import {
+  decodeMutationValue,
+  encodeMutationValue,
+} from '../../../packages/account/dist/mutation-codec.js';
 import { NetworkIdSchema } from '../../../packages/account/dist/validation.js';
 import type { HostConfirmationRuntime } from './host-confirmation.ts';
 
@@ -78,11 +82,17 @@ export function createHostShieldedAppendReceipts(
 export type AppendLedger = HostConfirmationRuntime<Ledger.FinalizedTransaction>['ledger'] &
   Pick<typeof Ledger, 'ContractCall'>;
 
-export function readPinnedAppendCall(
-  tx: Ledger.FinalizedTransaction,
+export function readPinnedAppendCall<
+  S extends Ledger.Signaturish,
+  P extends Ledger.Proofish,
+  B extends Ledger.Bindingish,
+>(
+  tx: Ledger.Transaction<S, P, B>,
   ledger: AppendLedger,
-  expected: Pick<HostShieldedAppendReceipt, 'account' | 'circuit' | 'callCommitment'>,
-): Ledger.ContractCall<Ledger.Proof> | undefined {
+  expected: Pick<HostShieldedAppendReceipt, 'account' | 'circuit'> & {
+    readonly callCommitment?: string;
+  },
+): Ledger.ContractCall<P> | undefined {
   const actions = [...(tx.intents?.values() ?? [])].flatMap((intent) => intent.actions);
   const [call] = actions;
   if (
@@ -95,60 +105,79 @@ export function readPinnedAppendCall(
     typeof call.entryPoint === 'string'
       ? call.entryPoint
       : new TextDecoder().decode(call.entryPoint);
-  return circuit === expected.circuit && call.communicationCommitment === expected.callCommitment
+  return circuit === expected.circuit &&
+    call.communicationCommitment &&
+    (expected.callCommitment === undefined ||
+      call.communicationCommitment === expected.callCommitment)
     ? call
     : undefined;
 }
 
 /**
- * The host takes the commitment from the call it builds from these approved
- * arguments, before proof or balancing. Stage the exact finalized bytes once.
+ * Build from the owned approved arguments, pin the resulting call before proof
+ * and balancing, then stage and forward only the exact verified bytes.
  */
-export async function stageHostShieldedAppend(
+export async function forwardHostShieldedAppend(
   input: {
     readonly original: ShieldedBackfillRecord;
     readonly intentSha256: string;
     readonly args: readonly unknown[];
-    readonly builtCallCommitment: string;
-    readonly bytes: Uint8Array;
     readonly signal?: AbortSignal;
   },
   runtime: {
     readonly ledger: AppendLedger;
     readonly networkId: string;
     readonly receipts: HostShieldedAppendReceipts;
+    readonly build: (
+      account: string,
+      circuit: ShieldedBackfillRecord['circuit'],
+      args: readonly unknown[],
+    ) => Promise<Ledger.UnprovenTransaction>;
+    readonly finalize: (built: Ledger.UnprovenTransaction) => Promise<Uint8Array>;
+    readonly forward: (bytes: Uint8Array) => Promise<string>;
   },
-): Promise<Uint8Array | undefined> {
+): Promise<string | undefined> {
   const original = parseBackfillRecord(input.original);
+  const args = decodeMutationValue(encodeMutationValue(input.args));
+  if (!Array.isArray(args)) return undefined;
+  const { intentSha256, signal } = input;
   if (
-    input.signal?.aborted ||
+    signal?.aborted ||
     original.networkId !== runtime.networkId ||
-    mutationDigest(original) !== input.intentSha256 ||
-    mutationDigest(input.args) !== original.callArgsSha256 ||
-    !input.bytes.length ||
-    input.bytes.length > 8 * 1024 * 1024
+    mutationDigest(original) !== intentSha256 ||
+    mutationDigest(args) !== original.callArgsSha256 ||
+    (await runtime.receipts.read(original.appendId))
   )
     return undefined;
-  const [entry] = input.args;
+  const [entry] = args;
   if (
     !(entry instanceof Uint8Array) ||
     entry.length !== 192 ||
     Buffer.from(entry).toString('hex') !== original.entry
   )
     return undefined;
-  const bytes = Uint8Array.from(input.bytes);
+  const entrySha256 = createHash('sha256').update(entry).digest('hex');
+  if (signal?.aborted || mutationDigest(args) !== original.callArgsSha256) return undefined;
+  const built = await runtime.build(original.account, original.circuit, args);
+  const originalCall = readPinnedAppendCall(built, runtime.ledger, original);
+  if (!originalCall || signal?.aborted || mutationDigest(args) !== original.callArgsSha256)
+    return undefined;
+  const callCommitment = originalCall.communicationCommitment;
+  const raw = await runtime.finalize(built);
+  if (!raw.length || raw.length > 8 * 1024 * 1024 || signal?.aborted) return undefined;
+  const bytes = Uint8Array.from(raw);
   const tx = runtime.ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
   const record = {
     appendId: original.appendId,
-    intentSha256: input.intentSha256,
+    intentSha256,
     networkId: original.networkId,
     account: original.account,
     circuit: original.circuit,
     callArgsSha256: original.callArgsSha256,
-    entrySha256: createHash('sha256').update(entry).digest('hex'),
+    entrySha256,
     encKey: original.encKey,
     minInboxIndex: original.minInboxIndex,
-    callCommitment: input.builtCallCommitment,
+    callCommitment,
     identity: {
       txHash: tx.transactionHash(),
       bytesSha256: createHash('sha256').update(bytes).digest('hex'),
@@ -157,10 +186,10 @@ export async function stageHostShieldedAppend(
   };
   if (
     !readPinnedAppendCall(tx, runtime.ledger, record) ||
-    input.signal?.aborted ||
+    signal?.aborted ||
     !(await runtime.receipts.stage(record)) ||
-    input.signal?.aborted
+    signal?.aborted
   )
     return undefined;
-  return bytes;
+  return runtime.forward(bytes);
 }

@@ -71,6 +71,8 @@ export class AccSimulator {
     this.lastZswap = undefined;
     /** @type {import('@midnight-ntwrk/compact-runtime').Effects | undefined} */
     this.lastEffects = undefined;
+    /** @type {import('@midnight-ntwrk/compact-runtime').CallProofDataTrace | undefined} */
+    this.lastProofData = undefined;
     /** @type {any} */
     this.state = undefined;
   }
@@ -132,6 +134,7 @@ export class AccSimulator {
     this.state = result.context.callContext.currentQueryContext.state;
     this.lastZswap = result.context.callContext.currentZswapLocalState;
     this.lastEffects = result.context.callContext.currentQueryContext.effects;
+    this.lastProofData = result.context.callProofDataTrace;
     return result.result;
   }
 

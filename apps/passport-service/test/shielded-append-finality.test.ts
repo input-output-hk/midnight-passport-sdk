@@ -13,7 +13,7 @@ import { AccSimulator } from '../../../scripts/qualification/acc-simulator.mjs';
 import { createHostShieldedAppendFinality } from '../src/shielded-append-finality.ts';
 import {
   createHostShieldedAppendReceipts,
-  stageHostShieldedAppend,
+  forwardHostShieldedAppend,
 } from '../src/shielded-append-receipts.ts';
 
 const nodeUrl = 'http://localhost:19964';
@@ -24,7 +24,7 @@ const blockHash = 'cd'.repeat(32);
 const identifiers = ['ef'.repeat(32)];
 const circuit = 'append_inbox_with_jubjub';
 
-test('host stages once and recovers the original finalized append at its executed index', async (t) => {
+test('host forwards once and recovers the original finalized append at its executed index', async (t) => {
   const sim = await AccSimulator.create();
   const { address: account, owner } = sim;
   await sim.authorised('append_inbox', [new Uint8Array(192).fill(7)], owner, 0n);
@@ -39,33 +39,38 @@ test('host stages once and recovers the original finalized append at its execute
   await sim.authorised('append_inbox', [entry], owner, 1n);
   const after = sim.state;
   const approvedArgs = appendArgs;
+  const proof = sim.lastProofData?.[0];
+  assert.ok(proof);
+  const { input: proofInput, output: proofOutput } = proof;
   sim.state = before;
   await sim.authorised('append_inbox', [new Uint8Array(192).fill(8)], owner, 1n);
   const otherEntry = sim.state;
   assert.equal(readPinnedLedger(before).inbox_count, 1n);
   assert.equal(readPinnedLedger(after).inbox_count, 2n);
 
-  const empty = { value: [], alignment: [] };
-  const random = Ledger.communicationCommitmentRandomness();
-  const builtCallCommitment = Ledger.communicationCommitment(empty, empty, random);
-  const prototype = new Ledger.ContractCallPrototype(
-    account,
-    circuit,
-    new Ledger.ContractOperation(),
-    undefined,
-    undefined,
-    [],
-    empty,
-    empty,
-    random,
-    'fixture',
-  );
-  const transaction = Ledger.Transaction.fromParts(
-    networkId,
-    undefined,
-    undefined,
-    Ledger.Intent.new(new Date(Date.now() + 60_000)).addCall(prototype),
-  );
+  function buildTransaction() {
+    const prototype = new Ledger.ContractCallPrototype(
+      account,
+      circuit,
+      new Ledger.ContractOperation(),
+      undefined,
+      undefined,
+      [],
+      proofInput,
+      proofOutput,
+      Ledger.communicationCommitmentRandomness(),
+      'fixture',
+    );
+    return Ledger.Transaction.fromParts(
+      networkId,
+      undefined,
+      undefined,
+      Ledger.Intent.new(new Date(Date.now() + 60_000)).addCall(prototype),
+    );
+  }
+  const transaction = buildTransaction();
+  const substituted = buildTransaction();
+  const substitutedBytes = substituted.serialize();
   const bytes = transaction.serialize();
   const original: ShieldedBackfillRecord = {
     version: 1,
@@ -82,7 +87,7 @@ test('host stages once and recovers the original finalized append at its execute
     callArgsSha256: mutationDigest(approvedArgs),
   };
   const intentSha256 = mutationDigest(original);
-  const input = { original, args: approvedArgs, bytes, builtCallCommitment, intentSha256 };
+  const input = { original, args: approvedArgs, intentSha256 };
   const root = await mkdtemp(join(tmpdir(), 'passport-host-shielded-append-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const receipts = createHostShieldedAppendReceipts(fileMutationByteStore(root));
@@ -90,34 +95,69 @@ test('host stages once and recovers the original finalized append at its execute
     ContractCall: Ledger.ContractCall,
     Transaction: {
       deserialize(_s: 'signature', _p: 'proof', _b: 'binding', raw: Uint8Array) {
-        assert.deepEqual(raw, bytes);
+        const envelope = toHex(raw) === toHex(substitutedBytes) ? substituted : transaction;
+        assert.deepEqual(raw, envelope.serialize());
         // The native call and generated state transition are real. The finalized
         // envelope and inclusion evidence are fixture boundaries in this test.
         return {
-          intents: transaction.intents,
+          intents: envelope.intents,
           transactionHash: () => txHash,
           identifiers: () => identifiers,
         } as unknown as Ledger.FinalizedTransaction;
       },
     },
   };
-  const stage = { networkId, ledger, receipts };
+  let forwards = 0;
+  const runtime = {
+    networkId,
+    ledger,
+    receipts,
+    async build(target: string, entryPoint: string, args: readonly unknown[]) {
+      assert.equal(target, account);
+      assert.equal(entryPoint, circuit);
+      assert.deepEqual(args, approvedArgs);
+      return transaction;
+    },
+    async finalize(built: Ledger.UnprovenTransaction) {
+      assert.equal(built, transaction);
+      return bytes;
+    },
+    async forward(raw: Uint8Array): Promise<string> {
+      assert.deepEqual(raw, bytes);
+      forwards++;
+      throw new Error('Lost forwarding reply');
+    },
+  };
   assert.equal(
-    await stageHostShieldedAppend({ ...input, args: [new Uint8Array(192)] }, stage),
+    await forwardHostShieldedAppend({ ...input, args: [new Uint8Array(192)] }, runtime),
     undefined,
   );
   assert.equal(
-    await stageHostShieldedAppend({ ...input, builtCallCommitment: '15'.repeat(32) }, stage),
+    await forwardHostShieldedAppend(input, {
+      ...runtime,
+      finalize: async () => substitutedBytes,
+    }),
     undefined,
   );
-  const staged = await Promise.all([
-    stageHostShieldedAppend(input, stage),
-    stageHostShieldedAppend(input, stage),
+  assert.equal(await receipts.read(original.appendId), undefined);
+  const dispatched = await Promise.allSettled([
+    forwardHostShieldedAppend(input, runtime),
+    forwardHostShieldedAppend(input, runtime),
   ]);
-  assert.deepEqual(staged.filter(Boolean), [bytes]);
+  assert.deepEqual(
+    dispatched.filter(({ status }) => status === 'fulfilled'),
+    [{ status: 'fulfilled', value: undefined }],
+  );
+  const rejected = dispatched.find(({ status }) => status === 'rejected');
+  assert.ok(rejected?.status === 'rejected');
+  assert.match(rejected.reason?.message ?? '', /Lost forwarding reply/);
+  assert.equal(forwards, 1);
 
   const restarted = createHostShieldedAppendReceipts(fileMutationByteStore(root));
-  assert.equal(await stageHostShieldedAppend(input, { ...stage, receipts: restarted }), undefined);
+  assert.equal(
+    await forwardHostShieldedAppend(input, { ...runtime, receipts: restarted }),
+    undefined,
+  );
   const query = { appendId: original.appendId, intentSha256 };
   let raw = toHex(bytes);
   let finalizedHeight = '0x11';
