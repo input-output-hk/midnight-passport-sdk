@@ -46,17 +46,26 @@ indexer's account history.
 
 The reference host observer checks the original transaction bytes, canonical
 finalized block, and matching Zswap events. It requires independent evidence
-for the change's insertion index. The Ledger 9 replay helper checks that index
-using authenticated state immediately before the transaction. Supplying this
-state and wiring encrypted inbox recovery are still required for live use.
+for the change's insertion index. The reference host can replay the complete
+finalized block from an authenticated parent snapshot. It checks the original
+transaction hash and byte digest and finds the ACC change in the committed
+Zswap events. Inbox recovery uses the account state immediately before and
+after the original successful append, even if other calls share the block.
 
 For the unspent check, the reference host requalifies the original change
 and dry-runs its spend against full Zswap state at the node's best block.
-It checks the block hash again before accepting. The reference host can authenticate a complete Ledger 9 v18 snapshot against
-the configured node's full ledger root. It pins the genesis hash, verifies the
-snapshot's storage graph for the exact block, and then extracts Zswap state.
-The host supplies the complete snapshot. Filtered indexer state cannot supply
-this check. Intermediate transaction state still requires canonical replay.
+It checks the block hash again before accepting. The reference host authenticates
+complete Ledger 9 v18 snapshots against the configured node's full ledger root.
+Filtered indexer state cannot supply this check.
+
+The replay host pins genesis and runtime spec `2001000`. It needs bounded reads
+for the complete parent snapshot and the same node's ordered execution inputs,
+including system transactions and timestamps. It may take serialized post-block
+fee parameters from the indexer because it verifies the full resulting state
+against the node before using any intermediate state. The end root alone cannot
+prove transaction order. Unsupported runtimes, absent snapshots and mismatched
+roots leave recovery unconfirmed. The default demo does not wire this source or
+enable partial shielded withdrawals.
 
 The account package provides `appendShieldedChange` and
 `recoverShieldedBackfill` for a host that can verify the original withdrawal,

@@ -19,6 +19,7 @@ type LedgerReader = Pick<typeof Ledger, 'ContractCall'> & {
 
 interface VerifiedInsertion {
   readonly txHash: string;
+  readonly bytesSha256: string;
   readonly blockHash: string;
   readonly blockHeight: number;
   readonly account: string;
@@ -128,6 +129,7 @@ export function createShieldedWithdrawalFinality(
         if (index === undefined) return undefined;
         const insertion = Object.freeze({
           txHash,
+          bytesSha256: identity.data.bytesSha256,
           blockHash,
           blockHeight,
           account: effect.account,

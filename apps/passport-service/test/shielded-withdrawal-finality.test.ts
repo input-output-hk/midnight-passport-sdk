@@ -203,6 +203,7 @@ test('host observes only the original finalized withdrawal with independently ma
         { ...output, index: f.changeIndex },
         {
           txHash: f.identity.txHash,
+          bytesSha256: f.identity.bytesSha256,
           blockHash: block,
           blockHeight: 10,
           account,
