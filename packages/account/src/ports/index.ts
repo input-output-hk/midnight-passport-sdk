@@ -1,3 +1,4 @@
+export type { P256UnshieldedGrantScope } from '../p256-grant-opening.js';
 export type { P256GrantSpendReceiptStore } from '../p256-grant-spend-recovery.js';
 export type { P256GrantSpendReservation } from '../p256-grant-holder.js';
 export type {

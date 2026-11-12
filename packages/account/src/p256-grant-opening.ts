@@ -55,10 +55,12 @@ export const p256GranteeScopeSchema = z
     expiresAt: seconds.nullable(),
   })
   .readonly();
+export const grantSlot = z.number().int().min(0).max(255);
 const preparation = z.strictObject({
   scope: p256GranteeScopeSchema,
   activeGrantIds: z.array(grantHex32).max(16).readonly(),
   nowSeconds: seconds,
+  requestedSlot: grantSlot.optional(),
 });
 
 export type P256UnshieldedGrantScope = z.infer<typeof p256GranteeScopeSchema>;
@@ -70,7 +72,7 @@ export const p256GrantOpeningSchema = z
   .strictObject({
     scope: p256GranteeScopeSchema,
     grantId: grantHex32,
-    slot: z.number().int().min(0).max(255),
+    slot: grantSlot,
     scopeSalt: grantHex32.refine((value) => !/^0+$/.test(value)),
   })
   .readonly();
@@ -131,8 +133,10 @@ export function prepareP256UnshieldedGrant(
   const account = { bytes: fromHex(scope.account) };
   const originHash = grantOriginHash(grantee.origin);
   const active = activeGrantIds(parsed.data.activeGrantIds);
-  const identity = selectGrantSlot(active, (slot) =>
-    pure.derive_grant_id_with_p256(account, point, originHash, slot),
+  const identity = selectGrantSlot(
+    active,
+    (slot) => pure.derive_grant_id_with_p256(account, point, originHash, slot),
+    parsed.data.requestedSlot,
   );
   const salt = freshGrantScopeSalt(random);
   const color = fromHex(scope.color);

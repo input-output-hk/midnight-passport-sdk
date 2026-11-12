@@ -63,3 +63,39 @@ Source qualification includes owner issuance and receipt-loss recovery
 against the generated Compact contract. Holder qualification used software
 signatures and a separate Chromium virtual authenticator. Native proving,
 real passkey providers and demo wiring remain to be qualified.
+
+### Verify a browser grant request in the SDK source
+
+The WebAuthn adapter exports `browserGrantRequestDigest` and
+`verifyBrowserP256GrantRequest` for the direct P-256 request in the [pinned
+Passport scoped-grants draft](https://github.com/midnightntwrk/passport/blob/e0e4e0e6272399d71dfaaa7cae0689ab4e2363f3/docs/mps-mip/mips/mip-xxxx-scoped-grants.md).
+The dApp hashes the exact base64url request string, uses that digest as
+its WebAuthn challenge, and sends the original request and proof in the
+authoriser URL fragment. The verifier accepts one fixed-recipient
+unshielded withdrawal permission with a finite expiry and an HTTPS
+`wa-json134` origin. It checks the assertion's key, origin, full-host RP
+hash and user verification, then maps the signed bounds to the account
+SDK scope. Unsupported scopes, read-key delivery, caller pins and
+non-browser proofs are refused by this route.
+
+A host embedding the verifier still owns the connection:
+
+1. Require top-level navigation and remove the fragment from browser
+   history. Pass the original fragment string, the configured authoriser
+   origin and network, the selected account, and the current time.
+2. Check the account and capability against the pinned binding. Atomically
+   admit the one-time nonce against the original request and retain the
+   issuance ID before requesting consent. Keep the fragment, nonce and
+   callback state out of logs.
+3. Obtain separate owner consent for the verified scope. Call
+   `issueP256GranteeGrant` with that scope, the original issuance ID and
+   `requestedSlot` from the verified request. An occupied explicit slot
+   fails before review or signing. Reconcile uncertain issuance with the
+   same ID.
+4. Match the original callback URI and session state. The holder must
+   verify the returned opening and live grant on the pinned chain before
+   it uses the credential as a grantee.
+
+The SDK source currently covers proof admission and exact-slot issuance.
+The demo authoriser, replay store, redirect response, independent holder
+connection and unattended agent binding remain to be integrated and qualified.

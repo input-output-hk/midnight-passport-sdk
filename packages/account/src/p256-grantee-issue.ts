@@ -5,6 +5,7 @@ import { PassportConnectorError } from './errors.js';
 import { grantOriginHash } from './grant-scope.js';
 import { mutationDigest } from './mutation-codec.js';
 import {
+  grantSlot,
   p256GranteePoint,
   p256GranteeScopeSchema,
   p256GrantOpeningSchema,
@@ -82,7 +83,11 @@ export class P256GranteeIssueUnsettled extends PassportConnectorError {
   }
 }
 
-const issueInput = z.strictObject({ requestId: z.uuid(), scope: p256GranteeScopeSchema });
+const issueInput = z.strictObject({
+  requestId: z.uuid(),
+  scope: p256GranteeScopeSchema,
+  requestedSlot: grantSlot.optional(),
+});
 
 function pins(networkId: string, grants: P256GrantSpendSource, chain?: PinnedChain): void {
   if (
@@ -128,7 +133,12 @@ async function ownerSnapshot(
 
 /** Issue a direct unshielded grant to a distinct P-256 passkey using the active owner arm. */
 export async function issueP256GranteeGrant(
-  input: { readonly requestId: string; readonly scope: P256UnshieldedGrantScope },
+  input: {
+    readonly requestId: string;
+    readonly scope: P256UnshieldedGrantScope;
+    /** A caller-signed slot. An occupied slot fails instead of falling back to another. */
+    readonly requestedSlot?: number;
+  },
   ports: P256GranteeIssuePorts,
   options: FlowOptions = {},
 ): Promise<
@@ -140,7 +150,7 @@ export async function issueP256GranteeGrant(
   const admitted = issueInput.safeParse(input);
   if (!admitted.success)
     throw new PassportConnectorError('GrantScopeInvalid', 'Malformed grant issue.');
-  const { requestId, scope: requestedScope } = admitted.data;
+  const { requestId, scope: requestedScope, requestedSlot } = admitted.data;
   const { networkId, grants, chain, authoriser, pure, journal, fence } = ports;
   const owner = structuredCloneOwner(ports.owner);
   pins(networkId, grants, chain);
@@ -164,7 +174,7 @@ export async function issueP256GranteeGrant(
   const first = await ownerSnapshot(requestedScope.account, { networkId, chain, grants });
   const now = ports.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
   const prepared = prepareP256UnshieldedGrant(
-    { scope: requestedScope, activeGrantIds: first.ids, nowSeconds: now() },
+    { scope: requestedScope, activeGrantIds: first.ids, nowSeconds: now(), requestedSlot },
     pure,
     ports.random,
   );

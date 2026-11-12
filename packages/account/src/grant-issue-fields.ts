@@ -19,8 +19,10 @@ export function activeGrantIds(ids: readonly string[]): ReadonlySet<string> {
 export function selectGrantSlot(
   active: ReadonlySet<string>,
   derive: (slot: bigint) => Uint8Array,
+  requestedSlot?: number,
 ): { readonly grantId: string; readonly slot: number } {
-  for (let slot = 0; slot < 256; slot++) {
+  const lastSlot = requestedSlot ?? 255;
+  for (let slot = requestedSlot ?? 0; slot <= lastSlot; slot++) {
     const id = derive(BigInt(slot));
     if (id.length !== 32) grantScopeInvalid('binding returned an invalid grant id');
     const grantId = toHex(id);

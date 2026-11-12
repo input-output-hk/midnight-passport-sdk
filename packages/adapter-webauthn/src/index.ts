@@ -3,3 +3,9 @@ export type { PasskeyCeremony, BeforePasskeyCeremony, PasskeyCeremonyOptions } f
 export * from './passkey.js';
 export * from './prf.js';
 export * from './webauthn.js';
+export {
+  browserGrantRequestDigest,
+  verifyBrowserP256GrantRequest,
+  type BrowserGrantRequestContext,
+  type VerifiedBrowserP256GrantRequest,
+} from './browser-grant-request.js';

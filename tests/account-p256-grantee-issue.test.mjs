@@ -164,7 +164,7 @@ for (const arm of /** @type {const} */ (['p256', 'jubjub'])) {
         return true;
       },
     };
-    const input = { requestId, scope };
+    const input = { requestId, scope, ...(arm === 'jubjub' && { requestedSlot: 7 }) };
     let now = sim.now;
     await assert.rejects(
       issueP256GranteeGrant(input, {
@@ -229,6 +229,18 @@ for (const arm of /** @type {const} */ (['p256', 'jubjub'])) {
     const recovered = await recoverIssuedP256Grant(requestId, { ...ports, journal: restarted });
     assert.ok(recovered);
     assert.deepEqual(recovered.opening.scope, scope);
+    assert.equal(recovered.opening.slot, arm === 'jubjub' ? 7 : 0);
+    await assert.rejects(
+      issueP256GranteeGrant(
+        {
+          requestId: '15036fa1-15e8-4fe2-8a70-a518390fe1fb',
+          scope,
+          requestedSlot: recovered.opening.slot,
+        },
+        { ...ports, journal: restarted },
+      ),
+      { code: 'GrantLimitReached' },
+    );
     assert.equal(recovered.txHash, arm === 'p256' ? txHash : undefined);
     assert.equal(sim.ledger().auth_nonce, recovered.expectedIssuedAt);
     await assert.rejects(issueP256GranteeGrant(input, { ...ports, journal: restarted }), {
