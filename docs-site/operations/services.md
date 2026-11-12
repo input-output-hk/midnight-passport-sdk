@@ -14,9 +14,14 @@ a dedicated Chromium worker for proof computation. The worker verified the ACC
 key files and k16 public parameters by SHA-256. Its `@midnightntwrk/zkir-v3@3.2.1`
 prover rejected the constraints after the circuit check passed. The fixture
 exited before proving the DUST fee or submitting the transaction.
-The server dependency lock pins `midnight-zkir` `3.1.0-rc.1`. A WASM build from
-the server's source revision is a separate qualification candidate.
-[Proof-server dependency lock](https://github.com/midnightntwrk/midnight-ledger/blob/3361066cc6a899f9dbec02278f189d32b5dbb677/Cargo.lock)
+
+The Ledger release's own `zkir-v3-wasm` target builds the workspace's ZKIR
+`3.0.0`. That build failed to decode the same pinned circuit's binary ZKIR in
+Node and Chromium using a synthetic transaction. The server instead depends on
+`midnight-zkir` `3.1.0-rc.1` from the separate ZKIR repository. Pin that dependency
+when testing for parity with the server.
+[Ledger WASM dependencies](https://github.com/midnightntwrk/midnight-ledger/blob/3361066cc6a899f9dbec02278f189d32b5dbb677/zkir-v3-wasm/Cargo.toml)
+[Proof-server dependencies](https://github.com/midnightntwrk/midnight-ledger/blob/3361066cc6a899f9dbec02278f189d32b5dbb677/proof-server/Cargo.toml)
 
 Decoding ZKIR and matching artifact hashes are prerequisite checks. Before
 selecting a browser prover, pin the implementation alongside the Ledger
