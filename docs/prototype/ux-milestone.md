@@ -177,9 +177,9 @@ Confirmation settles that withdrawal and keeps the local signing key locked.
 
 The [reference app guide](../../apps/README.md#source-preview-browser-grant-relay)
 covers build pins, service routes, the pre-enrolled owner requirement and
-the Chromium checks. The isolated chain also covered the browser owner
-issue, one DUST-sponsored submission and recovery of the same finalized
-transaction after reload and response loss. The run stopped during holder
-callback verification. A separate browser check reproduced a CORS preflight
-failure and verified the corrected proxy. Native holder verification, opening export and real passkey
-providers remain open.
+the Chromium checks. The isolated chain covered browser owner issuance,
+one DUST-sponsored submission and recovery of the original after reload
+and response loss. The holder verified the return against live ACC state.
+Export cancellation kept the clipboard empty. A fresh approval with the
+original holder passkey allowed export. Real passkey providers and browser
+export after on-chain revocation still need qualification.

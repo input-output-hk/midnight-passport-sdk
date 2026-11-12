@@ -88,14 +88,15 @@ return path checks the private opening against the live ACC before offering
 it to the holder. An owner passkey must already be enrolled at the issuer
 origin.
 
-On the isolated chain, the issuer page proved the owner call and the sponsor
-paid DUST. The execute response was dropped after submission. After reload,
-explicit recovery returned the receipt for the finalized indexer transaction
-at block 82. Chromium used virtual passkeys. The run stopped during holder
-callback verification. A separate browser check reproduced a missing CORS
-header and verified the corrected HTTPS proxy with a fixture indexer.
-Native holder verification and export, and real passkey providers, remain
-open.
+The isolated run at source `d60eb4c` used Chromium virtual P-256 passkeys
+and two HTTPS origins. The issuer proved the owner call, and the sponsor
+submitted it once with one DUST spend while preserving the owner expiry.
+The relay dropped the execute response. After reload, the issuer recovered
+the exact original transaction from the canonical finalized chain. The holder
+verified the callback against live ACC state. Cancelling export left the
+clipboard empty, and a fresh holder passkey approval allowed export.
+Real-provider interoperability and browser export after on-chain revocation
+need separate qualification.
 
 For non-browser requests, the source-preview account package can verify a
 JubJub key-only proof and the signed scope. A host still needs to own

@@ -4,8 +4,9 @@ pageClass: comparison-page
 
 # Passport architecture conformance
 
-This 12 November 2026 review compares the SDK source through `254059e` with the
-Passport v1.0 architecture at `e0e4e0e`. The [promise catalogue](https://github.com/midnightntwrk/passport/blob/e0e4e0e6272399d71dfaaa7cae0689ab4e2363f3/docs/plans/PROMISES.md)
+This 12 November 2026 review compares SDK source through `254059e` with the
+Passport v1.0 architecture at `e0e4e0e`. The asset custody, signing and dApp
+connection rows include later isolated-chain evidence at SDK source `d60eb4c`. The [promise catalogue](https://github.com/midnightntwrk/passport/blob/e0e4e0e6272399d71dfaaa7cae0689ab4e2363f3/docs/plans/PROMISES.md)
 defines the invariants. The [component inventory](https://github.com/midnightntwrk/passport/blob/e0e4e0e6272399d71dfaaa7cae0689ab4e2363f3/docs/plans/components/README.md)
 defines the product boundaries. The [RC9 release record](/operations/rc9-preview)
 identifies published behavior. The rows below also include merged source and local
@@ -18,8 +19,8 @@ candidate work, with the evidence described for each capability.
 | C1 · Account custody | The `acc-s3r1.1` binding and [lifecycle API](/guides/account-lifecycle) cover deployment, activation and supported operations. MIP-0012/0013 are Proposed at the [reviewed pins](/architecture/standards). | The host supplies credential, proof, fee and settlement ports. Verify the deployed verifier roster and account readiness. [#23](https://github.com/input-output-hk/midnight-passport-sdk/issues/23) needs a bootstrap and maintenance-authority design before predeployment. |
 | C2 · Name service | The [Midnames demo](/guides/hosts#midnames-source-preview) uses a checked resolver, a standalone paid claim and two named value flows. MIP-0007 is Proposed. | The registry operator supplies the online profile and intended namespace. Verify name-owner continuity after ACC recovery independently of resolution. [#247](https://github.com/input-output-hk/midnight-passport-sdk/issues/247) |
 | C3 · DID | DID creation and resolution are outside the SDK. The upstream design is a workstream. | A DID implementer must choose a method and publish lifecycle, resolution and interoperability tests. |
-| C4 · Asset custody | [Supported asset routes](/guides/assets) hold value in the ACC. The public shielded route requires an exact-value coin. | The host supplies a value-capable wallet. Verify both owner schemes, original withdrawal, change append and spent-input exclusion on the isolated chain before exposing partial spends. [#201](https://github.com/input-output-hk/midnight-passport-sdk/issues/201) |
-| C5 · Signing | The SDK exposes [P-256 and PRF-derived JubJub](/architecture/keys-wallets) paths for supported circuits. MIP-0030 is Draft. | Partner signer providers must prove exact codec, policy and circuit compatibility. Explicitly qualify k256 and unsupported circuit families before broadening claims. [#82](https://github.com/input-output-hk/midnight-passport-sdk/issues/82) |
+| C4 · Asset custody | The standard shielded withdrawal requires an exact-value coin. The [opt-in partial owner flow](/guides/assets#opt-in-partial-owner-withdrawal) proved original withdrawal, change append recovery and spent-input exclusion for both owner schemes on an isolated chain. | A host supplies the pinned value wallet, finality source and protected journals. Qualify the deployed network and wallet profile before enabling partial spends. [#201](https://github.com/input-output-hk/midnight-passport-sdk/issues/201) |
+| C5 · Signing | The SDK exposes [P-256 and PRF-derived JubJub](/architecture/keys-wallets) paths for supported circuits. The [P-256 grantee spend](/guides/devices-grants#p-256-grantee-withdrawals-in-the-sdk-source) passed on an isolated chain with distinct software owner and grantee credentials. MIP-0030 is Draft. | Partner signer providers must prove exact codec, policy and circuit compatibility. Explicitly qualify k256 and unsupported circuit families before broadening claims. [#82](https://github.com/input-output-hk/midnight-passport-sdk/issues/82) |
 | C6 · Proof generation | [Proving and key delivery](/operations/services) have host ports and a standalone prover path. | The prover operator and browser host must qualify artifact identity, timing, memory, cancellation and supported browsers for in-tab proving. [#241](https://github.com/input-output-hk/midnight-passport-sdk/issues/241) |
 | C7 · Witness handling | The SDK routes witnesses through configured proving ports. The Midnames browser claim has an isolated owner-prover receipt. | The host defines witness custody and what leaves the browser. Capture outbound requests and inspect logs before claiming a privacy boundary. |
 | C8 · Domain separation | [Pinned key recipes](/architecture/keys-wallets) and binding-specific encodings have distinct purposes. MIP-0021 is Proposed. | Binding and signer maintainers must compare exact prefixes, encodings and known-answer vectors before adopting a new recipe. |
@@ -37,7 +38,7 @@ candidate work, with the evidence described for each capability.
 | C20 · Selective disclosure | The ACC proof path verifies custody operations. | A credential implementer must verify the disclosure statement and public inputs for its chosen credential profile. |
 | C21 · Credential nullifiers | Coin nullifiers belong to shielded asset accounting. | A credential implementer must test domain separation, replay rejection and unlinkability for the credential nullifier. |
 | C22 · Intents | Typed account calls and original-intent journals cover bounded operations. | A general intent or solver integration needs a versioned wire profile, explicit consent and end-to-end settlement tests. |
-| C23 · dApp connection | The source has an opt-in browser grant request and callback, and a direct non-browser JubJub request path. | Partner integration needs provider and redirect interoperability, authorization scope checks and installed-consumer qualification. General CAIP-25/EIP-6963 discovery remains open. [#242](https://github.com/input-output-hk/midnight-passport-sdk/issues/242) |
+| C23 · dApp connection | The opt-in browser flow proved issuance, original recovery and live holder callback and export across two HTTPS origins on an isolated chain. A direct non-browser JubJub request path is also available in source. | Partner integration needs provider and redirect interoperability, authorization scope checks and installed-consumer qualification. General CAIP-25/EIP-6963 discovery remains open. [#242](https://github.com/input-output-hk/midnight-passport-sdk/issues/242) |
 | C24 · Fees | The [service roles](/operations/services) distinguish DUST sponsorship and wallet-funded deposits. | Sponsor operators qualify ingress, funds, fees and durable reservations. The Preview smoke check establishes endpoint agreement. Hosted value routes need their own receipts. [#243](https://github.com/input-output-hk/midnight-passport-sdk/issues/243) |
 | C25 · Cross-chain integration | The current value routes use Midnight-native assets. The upstream component is a placeholder owned outside Passport. | Solver, bridge and external vault operators must first define their custody and settlement contracts. Signing support alone supplies no cross-chain settlement evidence. |
 | C26 · Agent skills | Repository runbooks describe engineering and qualification workflows. | Product and agent hosts own end-user guidance and delegated tool policy. Verify that the agent requests bounded authority and handles expiry, revocation and original receipts. |
@@ -77,8 +78,9 @@ issuance and recovered name ownership need separate evidence.
 
 The [recovery admission change](https://github.com/input-output-hk/midnight-passport-sdk/pull/326)
 landed in prototype source. Its isolated proof run used a corrected artifact
-outside the released binding. The public exact-value withdrawal guard stays
-in effect during #201 qualification. [Unknown-address discovery](https://github.com/input-output-hk/midnight-passport-sdk/issues/20)
+outside the released binding. The standard shielded withdrawal remains
+exact-value. The opt-in #201 path requires a separately qualified host.
+[Unknown-address discovery](https://github.com/input-output-hk/midnight-passport-sdk/issues/20)
 still needs a linkability policy and authenticated update design.
 
 ## Cryptographic integration gates

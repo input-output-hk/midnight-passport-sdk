@@ -59,10 +59,15 @@ request ID and an observer for the same network. A matching successful
 transaction must be in a canonical finalized block. Keep the opening and
 passkey material out of audit logs.
 
-Source qualification includes owner issuance and receipt-loss recovery
-against the generated Compact contract. Holder qualification used software
-signatures and a separate Chromium virtual authenticator. Native proving,
-real passkey providers and demo wiring remain to be qualified.
+On the isolated chain at source `d60eb4c`, a P-256 owner issued a grant
+to a separate software P-256 credential. The holder withdrew four NIGHT base
+units in one submission. A fresh process recovered the exact finalized
+transaction after a lost acknowledgement, and the ACC balance fell from
+ten to six. The original request and a new request after owner revocation
+were refused without another holder signature or submission. The browser
+relay qualification separately covers the holder's verification and export.
+Live provider signing and browser initiation of the spend remain separate
+qualification work.
 
 ### Verify a browser grant request in the SDK source
 
@@ -115,9 +120,10 @@ A denied, interrupted or expired admission never automatically starts another
 issuance from that nonce.
 
 The opt-in demo covers separate holder and issuer pages for the exact
-requested scope. See the [host guide](./hosts#authenticated-browser-grant-relay)
-for the isolated issuance and original-receipt check, and the remaining live
-holder verification and export. Attenuated grants remain open.
+requested scope. The isolated run covered native issuance, original-receipt
+recovery, live holder verification and fresh passkey approval for export.
+The [host guide](./hosts#authenticated-browser-grant-relay) records the tested
+profile. Attenuated grants remain open.
 
 ### Verify a non-browser agent request
 
