@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { Metadata, TypeRegistry, type Vec } from '@polkadot/types';
+import { Bytes, Metadata, Struct, TypeRegistry, type Vec } from '@polkadot/types';
 import type { EventRecord, Header } from '@polkadot/types/interfaces';
 import { z } from 'zod';
 import { fetchJsonBounded } from '@input-output-hk/mn-passport-service/finality';
@@ -96,6 +96,14 @@ export function orderedLedgerCalls(
   ];
 }
 
+export function readCanonicalSystemBytes(encoded: unknown): Uint8Array {
+  // Runtime 2001000 emits one struct containing the hash and a SCALE byte
+  // vector. The nested byte vector, without its length prefix, is the tx.
+  const serialized = encoded instanceof Struct && encoded.get('serializedSystemTransaction');
+  if (!(serialized instanceof Bytes)) throw new Error('Invalid system transaction event payload.');
+  return serialized.toU8a(true);
+}
+
 function decodeCalls(registry: TypeRegistry, extrinsics: readonly string[], events: unknown) {
   const explicit = extrinsics.map((raw): LedgerCall | undefined => {
     const extrinsic = registry.createType('Extrinsic', hexBytes(raw));
@@ -115,13 +123,13 @@ function decodeCalls(registry: TypeRegistry, extrinsics: readonly string[], even
     if (event.section !== 'midnightSystem' || event.method !== 'SystemTransactionApplied')
       return [];
     const encoded = event.data[0];
-    if (!encoded || event.data.length !== 1) throw new Error('Invalid system event payload.');
+    if (event.data.length !== 1) throw new Error('Invalid system event payload.');
     const position = phase.isApplyExtrinsic
       ? phase.asApplyExtrinsic.toNumber()
       : phase.isInitialization
         ? 'initialization'
         : 'finalization';
-    return [{ position, bytes: encoded.toU8a(true) }];
+    return [{ position, bytes: readCanonicalSystemBytes(encoded) }];
   });
   return orderedLedgerCalls(explicit, implicit);
 }
@@ -130,6 +138,14 @@ function decodeTimestamp(registry: TypeRegistry, raw: unknown): number {
   const bytes = hexBytes(raw);
   if (bytes.length !== 8) throw new Error('Invalid node timestamp storage.');
   return registry.createType('u64', bytes).toNumber();
+}
+
+function genesisTimestamp(registry: TypeRegistry): number {
+  const storage = registry.metadata.pallets
+    .find(({ name }) => name.toString() === 'Timestamp')
+    ?.storage.unwrapOrDefault();
+  const fallback = storage?.items.find(({ name }) => name.toString() === 'Now')?.fallback;
+  return decodeTimestamp(registry, fallback?.toHex());
 }
 
 export function createCanonicalLedgerBlockReader(runtime: CanonicalLedgerRuntime) {
@@ -166,10 +182,10 @@ export function createCanonicalLedgerBlockReader(runtime: CanonicalLedgerRuntime
     return rpcReply.parse(response.value).result;
   }
   async function readRegistry(parent: string, signal: AbortSignal) {
-    if (decoded) return decoded;
     const raw = hexBytes(await rpc('state_getMetadata', [parent], signal, metadataLimit));
     if (createHash('sha256').update(raw).digest('hex') !== metadataSha256)
       throw new Error('Canonical node metadata pin mismatch.');
+    if (decoded) return decoded;
     const registry = new TypeRegistry();
     registry.setMetadata(new Metadata(registry, raw));
     decoded = registry;
@@ -213,12 +229,16 @@ export function createCanonicalLedgerBlockReader(runtime: CanonicalLedgerRuntime
       signal.throwIfAborted();
       const header = registry.createType<Header>('Header', block.header);
       if (header.hash.toHex() !== hashArg) return undefined;
+      const height = header.number.toNumber();
       return {
         blockHash,
         parentHash: parentHash.slice(2),
-        height: header.number.toNumber(),
+        height,
         timestamp: decodeTimestamp(registry, now),
-        parentTimestamp: decodeTimestamp(registry, previous),
+        parentTimestamp:
+          previous === null && height === 1
+            ? genesisTimestamp(registry)
+            : decodeTimestamp(registry, previous),
         transactions: decodeCalls(registry, block.extrinsics, rawEvents),
         ledgerParameters,
       };
