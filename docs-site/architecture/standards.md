@@ -4,9 +4,9 @@ pageClass: comparison-page standards-page
 
 # Standards and upstream design
 
-Read normative text at its source. The statuses below are from the [canonical proposal repository at `02fce36`](https://github.com/midnightntwrk/midnight-improvement-proposals/tree/02fce36cfa44541305310dc25fd38f399dbe8d92), inspected on 9 November 2026. The [conformance map](/architecture/conformance) records which capabilities have SDK evidence. The SDK's published `0.1.0-rc9` behavior is pinned separately to [its release source](https://github.com/input-output-hk/midnight-passport-sdk/tree/sdk-v0.1.0-rc9) and `acc-s3r1.1` binding.
+Read normative text at its source. The proposal statuses use the [canonical repository at `02fce36`](https://github.com/midnightntwrk/midnight-improvement-proposals/tree/02fce36cfa44541305310dc25fd38f399dbe8d92) and the [MIP-0033 Draft at `4a85a87`](https://github.com/midnightntwrk/midnight-improvement-proposals/blob/4a85a87b4e4c5d59ee88a5786a8ecb11f5dc5c6f/mips/mip-0033-scoped-grants.md). The [conformance map](/architecture/conformance) records which capabilities have SDK evidence. The SDK's published `0.1.0-rc9` behavior is pinned separately to [its release source](https://github.com/input-output-hk/midnight-passport-sdk/tree/sdk-v0.1.0-rc9) and `acc-s3r1.1` binding.
 
-| Document | Problem addressed | Relevant SDK capability | Implementation boundary |
+| Document | Problem addressed | SDK capability | Implementation boundary |
 | --- | --- | --- | --- |
 | [MIP-0012 · native asset custody](https://github.com/midnightntwrk/midnight-improvement-proposals/blob/02fce36cfa44541305310dc25fd38f399dbe8d92/mips/mip-0012-native-asset-custody.md) (Proposed) | Contract holds Midnight-native assets | ACC deposit/withdraw binding | Exact supported circuits and asset paths only; shielded withdrawal needs exact-value coin. |
 | [MIP-0013 · account authorisation](https://github.com/midnightntwrk/midnight-improvement-proposals/blob/02fce36cfa44541305310dc25fd38f399dbe8d92/mips/mip-0013-account-authorisation.md) (Proposed) | Multi-key account authority | P-256/JubJub owner and device flows | ACC enrollment and host consent are separate checks. |

@@ -60,9 +60,9 @@ candidate work, with the evidence described for each capability.
 | P11 · Transaction safety | Pinned authorization, consent and retained dispatch across supported routes. | Test stale nonce, expiry, revocation, invalid signatures and ambiguous submit across each adopted circuit and provider. |
 | P12 · Value integrity | Verified holdings, partial-success event accounting and source-only staged change recovery. | Match pre/post values and committed effects on the canonical chain under same-block competition, indexer lag and restart. |
 | P13 · Funds availability | Exact-value spends and isolated native corrected recovery. | Qualify fee discovery, alternate operators, recovery of held assets and authenticated change backfill. |
-| P14 · Private proving | Host-selected proving and an isolated browser-owned claim using a loopback prover. | Verify in-browser proving with the external prover stopped. Inventory each hosted profile's witness and metadata disclosure. |
+| P14 · Private proving | Host-selected proving and an isolated browser-owned claim using a loopback prover. | Prove in-browser with the external prover stopped. For each profile, define a fixed, exhaustive leakage budget for inputs, witnesses and metadata. Show that combined prover, chain, guardian, network, transport and log observations follow from that budget. Reject unrelated identifiers and linkage. |
 | P15 · Guardian privacy | The source accepts authenticated guardian transport through a narrow port. | Publish the chosen transport and observer leakage profile. Verify chain data, logs and messages against it. |
-| P16 · Upgrade safety | Binding and artifact checks identify the source candidate and preserve version boundaries. | Verify key and ABI compatibility, maintenance authority and migration for existing state. Exercise recovery, holdings and operations after the upgrade. |
+| P16 · Upgrade safety | Binding and artifact checks identify the source candidate and preserve version boundaries. | Prove the account authorises the upgrade. Verify that the same devices can operate, holdings reconcile with fees attributed, and identity questions retain the same answers in the same ledger and credential context, including supported name observations. Check the adopted ABI, keys and migration. |
 
 ## 0.2.0 scope
 
