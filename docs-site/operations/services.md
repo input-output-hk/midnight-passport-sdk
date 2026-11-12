@@ -4,6 +4,28 @@
 
 The Passport service accepts checked configuration, prepares/deploys supported ACC operations, runs proof jobs, and submits final transactions through injected backend ports. The proof service receives operation witness data. Protect ingress, job state, and credentials; use a trusted chain/indexer and pinned binding. A service job may outlive the browser request. Keep its original ID and reconcile its result after a timeout or restart.
 
+### Browser-local proving qualification
+
+The host can supply its own proving implementation. On the isolated Ledger 9
+chain, `proof-server-9.0.0-rc.8` proved a transaction prepared against the deployed
+`acc-s3r1.1` binding for `append_inbox_with_jubjub`. The fixture stopped the
+server and handed the same serialized transaction to a Ledger host that called
+a dedicated Chromium worker for proof computation. The worker verified the ACC
+key files and k16 public parameters by SHA-256. Its `@midnightntwrk/zkir-v3@3.2.1`
+prover rejected the constraints after the circuit check passed. The fixture
+exited before proving the DUST fee or submitting the transaction.
+The server dependency lock pins `midnight-zkir` `3.1.0-rc.1`. A WASM build from
+the server's source revision is a separate qualification candidate.
+[Proof-server dependency lock](https://github.com/midnightntwrk/midnight-ledger/blob/3361066cc6a899f9dbec02278f189d32b5dbb677/Cargo.lock)
+
+Decoding ZKIR and matching artifact hashes are prerequisite checks. Before
+selecting a browser prover, pin the implementation alongside the Ledger
+runtime, ACC keys, and public parameters. Run a positive control on the same
+input, prove both the contract call and DUST fee with the external prover down,
+then verify the original submitted bytes and the expected state change on the
+canonical chain. Browser memory, cancellation and supported browser coverage
+need separate checks. [Browser proving qualification issue](https://github.com/input-output-hk/midnight-passport-sdk/issues/241)
+
 ## Fee sponsorship
 
 The sponsor wallet adds **fee inputs** to eligible account transactions after policy checks. It is not the person's wallet and does not move the asset being withdrawn or deposited. The reference policy restricts eligible account calls and refuses offers or unbalanced value actions on its public route. A caller still needs the value-capable path for an asset withdrawal.
