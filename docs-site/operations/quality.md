@@ -83,16 +83,15 @@ that historical repository material has been removed.
 Before qualifying wallet-to-ACC funding on a hosted network, obtain the expected
 genesis hash and runtime spec name and version from the network operator through a
 trusted channel. Use those pins with the node and indexer URLs for the specific
-environment. From a built SDK checkout, run `nix develop -c pnpm qualify hosted-network`
-with these environment variables:
+environment. Set the environment variables below and run
+`nix develop -c pnpm qualify hosted-network` from a built SDK checkout.
 
-| Variable | Value |
-| --- | --- |
-| `MN_NETWORK_ID` | The hosted network label used in your SDK configuration |
-| `MN_EXPECTED_GENESIS_HASH` | 64 lowercase hexadecimal characters without `0x` |
-| `MN_EXPECTED_RUNTIME_SPEC_NAME` | The expected node runtime spec name |
-| `MN_EXPECTED_RUNTIME_SPEC_VERSION` | The expected decimal runtime spec version |
-| `MN_NODE_URL` and `MN_INDEXER_URL` | HTTPS JSON-RPC and GraphQL endpoints without embedded credentials or query strings |
+- `MN_NETWORK_ID` is the hosted network label used in your SDK configuration.
+- `MN_EXPECTED_GENESIS_HASH` takes 64 lowercase hexadecimal characters without `0x`.
+- `MN_EXPECTED_RUNTIME_SPEC_NAME` and `MN_EXPECTED_RUNTIME_SPEC_VERSION` identify
+  the expected runtime spec and its decimal version.
+- `MN_NODE_URL` and `MN_INDEXER_URL` point to the HTTPS JSON-RPC and GraphQL
+  endpoints. Supply URLs without embedded credentials or query strings.
 
 The command exits successfully when the node matches the genesis pin, the runtime
 matches at a canonical finalized block, and the indexer returns that same block
