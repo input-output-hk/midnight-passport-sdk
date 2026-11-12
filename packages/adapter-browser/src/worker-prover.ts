@@ -5,7 +5,11 @@ import {
   serveBackgroundTasks,
 } from '@input-output-hk/mn-passport-account/background';
 import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
-import type { BackgroundPort, Prover } from '@input-output-hk/mn-passport-account/ports';
+import type {
+  BackgroundClient,
+  BackgroundPort,
+  Prover,
+} from '@input-output-hk/mn-passport-account/ports';
 import type { ProvingProvider } from '@midnightntwrk/ledger-v9';
 import { browserBackgroundPort, type BrowserMessageEndpoint } from './background.js';
 
@@ -78,11 +82,21 @@ export function createBrowserWorkerProver(
   options: { readonly channel: string; readonly timeoutMs?: number },
 ): BrowserWorkerProver {
   const port = browserBackgroundPort(worker, () => worker.terminate());
-  const client = createBackgroundClient(waitForWorker(port, options.channel), {
-    ...options,
-    timeoutMs: options.timeoutMs ?? 600_000,
-    maxPending: 1,
-  });
+  let client: BackgroundClient;
+  try {
+    client = createBackgroundClient(waitForWorker(port, options.channel), {
+      channel: options.channel,
+      timeoutMs: options.timeoutMs ?? 600_000,
+      maxPending: 1,
+    });
+  } catch (error) {
+    try {
+      port.close();
+    } catch {
+      // A teardown failure must not replace the configuration error.
+    }
+    throw error;
+  }
   let busy = false;
   return {
     close: () => client.close(),

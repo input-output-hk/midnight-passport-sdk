@@ -182,9 +182,9 @@ export function openProver() {
 }
 ```
 
-In `prover.worker.ts`, initialize the host's compatible WASM provider before
-starting the server. This example accepts the initialized provider as an
-argument so the artifact source and WASM packaging stay host-owned.
+This example expects `prover.worker.ts` to call `startProver(provider)` below at
+module startup, after initializing its local WASM provider. Supply that call in
+your worker entry with your own artifact source and WASM packaging.
 
 ```ts
 import {

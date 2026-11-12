@@ -33,7 +33,10 @@ In a production Chromium bundle it deserialized a synthetic signed JubJub
 inbox append and returned the proved transaction. The browser received the
 unproven bytes, then performed Ledger proving and proof computation in the
 worker. The fixture observed only local GET requests for its code and public
-artifacts. [Worker integration](/guides/hosts#browser-worker-proving-in-the-source-candidate)
+artifacts. A separate live run used the same production worker for the ACC
+proof and the earlier Chromium fixture for DUST. The Node host submitted once
+and confirmed the original bytes and one inbox append at canonical finality.
+Both proof workers ran with the external proof server stopped. [Worker integration](/guides/hosts#browser-worker-proving-in-the-source-candidate)
 
 The demo continues to use its configured proof service. Browser-hosted
 call construction, DUST assembly, artifact delivery, other circuits, memory

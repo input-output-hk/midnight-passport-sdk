@@ -1,13 +1,20 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import { pathToFileURL } from 'node:url';
+import { gunzipSync } from 'node:zlib';
 import { proveWorkerTransaction } from '../packages/adapter-browser/dist/ledger-worker-proof.js';
 import {
   createBrowserWorkerProver,
   serveBrowserWorkerProver,
 } from '../packages/adapter-browser/dist/worker-prover.js';
 
+const require = createRequire(new URL('../packages/adapter-browser/package.json', import.meta.url));
+const ledger =
+  /** @type {typeof import('../packages/adapter-browser/node_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts')} */ (
+    await import(pathToFileURL(require.resolve('@midnightntwrk/ledger-v9')).href)
+  );
 const channel = 'browser-prover-test';
 const circuit = 'append_inbox_with_jubjub';
 const scope = { networkId: 'undeployed', bindingId: 'acc-s3r1.1', circuits: [circuit] };
@@ -205,13 +212,6 @@ test('worker independently pins scope and sanitizes malformed Ledger input', asy
 });
 
 test('Ledger transaction admission refuses wrong-network and missing contract calls', async () => {
-  const require = createRequire(
-    new URL('../packages/adapter-browser/package.json', import.meta.url),
-  );
-  const ledger =
-    /** @type {typeof import('../packages/adapter-browser/node_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts')} */ (
-      await import(pathToFileURL(require.resolve('@midnightntwrk/ledger-v9')).href)
-    );
   const provider = {
     async check() {
       assert.fail('An inadmissible Ledger transaction reached the proving engine.');
@@ -231,4 +231,94 @@ test('Ledger transaction admission refuses wrong-network and missing contract ca
     proveWorkerTransaction(ledger.Transaction.fromParts('undeployed').serialize(), scope, provider),
     /circuits differ/,
   );
+});
+
+test('the public subpath resolves to the worker adapter from a consumer', async () => {
+  const entry = await import(
+    pathToFileURL(require.resolve('@input-output-hk/mn-passport-adapter-browser/worker-prover'))
+      .href
+  );
+  assert.equal(entry.createBrowserWorkerProver, createBrowserWorkerProver);
+  assert.equal(entry.serveBrowserWorkerProver, serveBrowserWorkerProver);
+});
+
+test('invalid startup settings release the dedicated worker', () => {
+  for (const options of [{ channel: ' ' }, { channel, timeoutMs: 0 }]) {
+    const endpoint = new Endpoint();
+    assert.throws(() => createBrowserWorkerProver(endpoint, options), { code: 'InvalidMessage' });
+    assert.equal(endpoint.terminations, 1);
+    assert.deepEqual(endpoint.posted, []);
+  }
+});
+
+const address = 'ab'.repeat(32);
+const hash = 'c7b4858b558b2d53ba36567ae2ff27f9f855593ad8910ebaf60f84b10d9bf601';
+const location = `contract:${address}/${circuit}?vk=${hash}`;
+
+/** @param {string} keyLocation */
+function contractTransaction(keyLocation) {
+  const empty = { value: [], alignment: [] };
+  const call = new ledger.ContractCallPrototype(
+    address,
+    circuit,
+    new ledger.ContractOperation(),
+    undefined,
+    undefined,
+    [],
+    empty,
+    empty,
+    ledger.communicationCommitmentRandomness(),
+    keyLocation,
+  );
+  return ledger.Transaction.fromParts(
+    scope.networkId,
+    undefined,
+    undefined,
+    ledger.Intent.new(new Date(2000000000000)).addCall(call),
+  ).serialize();
+}
+
+test('Ledger admits the exact binding key location before invoking the provider', async () => {
+  const resources = await readFile(
+    new URL('../packages/contract/resources/acc-s3r1.1.zkir.json.gz', import.meta.url),
+  );
+  const { files } = JSON.parse(gunzipSync(resources).toString());
+  const keyMaterial = {
+    proverKey: new Uint8Array(),
+    verifierKey: Buffer.from(files[`keys/${circuit}.verifier`], 'base64'),
+    ir: Buffer.from(files[`zkir/${circuit}.bzkir`], 'base64'),
+  };
+  /** @type {string[]} */
+  const seen = [];
+  const provider = {
+    /** @param {string} requested */
+    async lookupKey(requested) {
+      seen.push(requested);
+      return keyMaterial;
+    },
+    /** @param {Uint8Array} _preimage @param {string} requested */
+    async check(_preimage, requested) {
+      seen.push(requested);
+      return [];
+    },
+    /** @param {Uint8Array} _preimage @param {string} requested */
+    async prove(_preimage, requested) {
+      seen.push(requested);
+      return new ledger.Proof('0100').serialize();
+    },
+  };
+  const tx = await proveWorkerTransaction(contractTransaction(location), scope, provider);
+  const proved = ledger.Transaction.deserialize('signature', 'proof', 'pre-binding', tx);
+  assert.equal([...(proved.intents?.values() ?? [])][0]?.actions.length, 1);
+  assert.ok(seen.length >= 2 && seen.every((entry) => entry === location));
+  seen.length = 0;
+  await assert.rejects(
+    proveWorkerTransaction(
+      contractTransaction(location.replace(hash, '0'.repeat(64))),
+      scope,
+      provider,
+    ),
+    /Proving location differs from the binding/,
+  );
+  assert.deepEqual(seen, []);
 });
