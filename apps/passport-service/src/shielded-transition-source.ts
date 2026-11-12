@@ -101,7 +101,10 @@ export function createShieldedTransitionSource(runtime: ShieldedTransitionRuntim
     ): Promise<boolean> {
       const { txHash, bytesSha256, commitment, account, index } = output;
       const exact = await transition({ ...output, identity: { txHash, bytesSha256 } }, signal);
-      const matches = exact?.result.events
+      // The receipt observer requires full success. Replay must independently
+      // confirm it before using any surviving output from the original call.
+      if (exact?.result.type !== 'success' || signal.aborted) return false;
+      const matches = exact.result.events
         .map(({ content, source }) =>
           source.transactionHash === txHash &&
           content.tag === 'zswapOutput' &&
@@ -111,9 +114,9 @@ export function createShieldedTransitionSource(runtime: ShieldedTransitionRuntim
             : undefined,
         )
         .filter((content) => content !== undefined);
-      const match = matches?.[0];
+      const [match] = matches;
       return (
-        matches?.length === 1 &&
+        matches.length === 1 &&
         match?.contract === account &&
         match.mtIndex === index &&
         !signal.aborted

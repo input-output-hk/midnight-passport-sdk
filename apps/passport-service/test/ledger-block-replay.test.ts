@@ -79,13 +79,14 @@ test('replays a finalized Ledger 9 transaction and checks both full-state roots'
   );
 });
 
-test('only a canonical finalized block on the pinned runtime reaches the ordered replay input', async () => {
-  const f = setup();
-  let specVersion = 2_001_000;
-  let finalizedHeight = '0x2';
-  let chainGenesis = genesis;
-  let chainHash = blockHash;
-  let reads = 0;
+function setupSource(f: Pick<ReturnType<typeof setup>, 'block' | 'snapshot' | 'roots'>) {
+  const state = {
+    specVersion: 2_001_000,
+    finalizedHeight: '0x2',
+    chainGenesis: genesis,
+    chainHash: blockHash,
+    reads: 0,
+  };
   const source = createShieldedTransitionSource({
     genesisHash: genesis,
     nodeUrl,
@@ -99,18 +100,18 @@ test('only a canonical finalized block on the pinned runtime reaches the ordered
         case 'chain_getBlockHash':
           return Response.json({
             id: 1,
-            result: '0x' + (params[0] === 0 ? chainGenesis : chainHash),
+            result: '0x' + (params[0] === 0 ? state.chainGenesis : state.chainHash),
           });
         case 'chain_getFinalizedHead':
           return Response.json({ id: 1, result: '0x' + blockHash });
         case 'chain_getHeader':
           return Response.json({
             id: 1,
-            result: { number: finalizedHeight, parentHash: '0x' + parentHash },
+            result: { number: state.finalizedHeight, parentHash: '0x' + parentHash },
           });
         case 'state_getRuntimeVersion':
           assert.ok(['0x' + parentHash, '0x' + blockHash].includes(params[0]));
-          return Response.json({ id: 1, result: { specVersion } });
+          return Response.json({ id: 1, result: { specVersion: state.specVersion } });
         case 'midnight_ledgerStateRoot': {
           const expected = params[0] === '0x' + parentHash ? f.roots.parent : f.roots.block;
           return Response.json({ id: 1, result: [...Buffer.from(expected, 'hex')] });
@@ -121,7 +122,7 @@ test('only a canonical finalized block on the pinned runtime reaches the ordered
     },
     async readCanonicalBlock(hash) {
       assert.equal(hash, blockHash);
-      reads++;
+      state.reads++;
       return f.block;
     },
     async readLedgerSnapshot(hash) {
@@ -129,6 +130,12 @@ test('only a canonical finalized block on the pinned runtime reaches the ordered
       return f.snapshot;
     },
   });
+  return { source, state };
+}
+
+test('only a canonical finalized block on the pinned runtime reaches the ordered replay input', async () => {
+  const f = setup();
+  const { source, state } = setupSource(f);
   const signal = new AbortController().signal;
   const query = {
     ...f.target,
@@ -140,24 +147,24 @@ test('only a canonical finalized block on the pinned runtime reaches the ordered
   };
   const verify = () => source.verifyInsertion(query, signal);
 
-  finalizedHeight = '0x1';
+  state.finalizedHeight = '0x1';
   assert.equal(await verify(), false);
-  assert.equal(reads, 0);
-  finalizedHeight = '0x2';
-  chainGenesis = '77'.repeat(32);
+  assert.equal(state.reads, 0);
+  state.finalizedHeight = '0x2';
+  state.chainGenesis = '77'.repeat(32);
   assert.equal(await verify(), false);
-  assert.equal(reads, 0);
-  chainGenesis = genesis;
-  chainHash = '88'.repeat(32);
+  assert.equal(state.reads, 0);
+  state.chainGenesis = genesis;
+  state.chainHash = '88'.repeat(32);
   assert.equal(await verify(), false);
-  assert.equal(reads, 0);
-  chainHash = blockHash;
-  specVersion++;
+  assert.equal(state.reads, 0);
+  state.chainHash = blockHash;
+  state.specVersion++;
   assert.equal(await verify(), false);
-  assert.equal(reads, 1);
-  specVersion--;
+  assert.equal(state.reads, 1);
+  state.specVersion--;
   assert.equal(await verify(), false, 'a confirmed transaction without this output cannot qualify');
-  assert.equal(reads, 2);
+  assert.equal(state.reads, 2);
 });
 
 test('keeps the exact pre/post transaction state between system calls in the same block', () => {
@@ -215,4 +222,76 @@ test('keeps the exact pre/post transaction state between system calls in the sam
     replayLedgerTransition(Ledger, missingSuffix, snapshot, roots, target, signal),
     undefined,
   );
+});
+
+test('uses the original successful replay event and the exact account states in a mixed block', async (t) => {
+  const { block, tx, target } = setup();
+  const account = '55'.repeat(32);
+  const commitment = '66'.repeat(32);
+  const date = new Date(timestamp);
+  const locked = 10_000_000_000_000_000n;
+  const parent = Ledger.LedgerState.testingFromGenesis(
+    'undeployed',
+    locked,
+    locked,
+    4_000_000_000_000_000n,
+  ).updateIndex(account, new Ledger.ChargedState(Ledger.StateValue.newNull()), new Map());
+  const system = Ledger.SystemTransaction.deserialize(
+    Buffer.concat([Buffer.from('midnight:system-transaction[v9]:'), Buffer.of(7, 4)]),
+  );
+  const before = parent.applySystemTx(system, date)[0];
+  const nextData = new Ledger.ChargedState(
+    Ledger.StateValue.newArray().arrayPush(Ledger.StateValue.newNull()),
+  );
+  const after = before.updateIndex(account, nextData, new Map());
+  const fullness = before.parameters.normalizeFullness(tx.cost(before.parameters, true));
+  const end = after
+    .applySystemTx(system, date)[0]
+    .postBlockUpdate(date, fullness, Math.max(...Object.values(fullness)));
+  const snapshot = parent.serialize();
+  const systemCall = { kind: 'system' as const, bytes: system.serialize() };
+  const { source } = setupSource({
+    block: {
+      ...block,
+      transactions: [systemCall, ...block.transactions, systemCall],
+      ledgerParameters: end.parameters.serialize(),
+    },
+    snapshot,
+    roots: { parent: ledgerStateRootV18(snapshot), block: ledgerStateRootV18(end.serialize()) },
+  });
+  const event = {
+    source: { transactionHash: target.txHash },
+    content: { tag: 'zswapOutput', contract: account, commitment, mtIndex: 1n },
+  };
+  let events = [event];
+  let type: Ledger.TransactionResult['type'] = 'success';
+  // Replace only the regular call effects. Actual WASM decodes the transaction
+  // and executes both system calls, and real ledger roots bind the state changes.
+  const apply = Ledger.LedgerState.prototype.apply;
+  t.mock.method(
+    Ledger.LedgerState.prototype,
+    'apply',
+    function (this: Ledger.LedgerState, ...args: Parameters<typeof apply>) {
+      assert.equal(this.lockedPool, locked - 1n);
+      const [state, result] = apply.call(this, ...args);
+      Object.defineProperties(result, { events: { value: events }, type: { value: type } });
+      return [state.updateIndex(account, nextData, new Map()), result];
+    },
+  );
+  const signal = new AbortController().signal;
+  const request = { blockHash, blockHeight: block.height, account };
+  const insertion = { ...request, ...target, commitment, index: 1n };
+  const append = { ...request, identity: target };
+  assert.equal(await source.verifyInsertion(insertion, signal), true);
+  const transition = await source.readAuthenticatedTransition(append, signal);
+  assert.ok(transition);
+  assert.deepEqual(transition.before.serialize(), before.index(account)?.serialize());
+  assert.deepEqual(transition.after.serialize(), after.index(account)?.serialize());
+  assert.equal(await source.verifyInsertion({ ...insertion, index: 2n }, signal), false);
+  events = [event, { ...event, content: { ...event.content, mtIndex: 2n } }];
+  assert.equal(await source.verifyInsertion(insertion, signal), false);
+  events = [event];
+  type = 'partialSuccess';
+  assert.equal(await source.verifyInsertion(insertion, signal), false);
+  assert.equal(await source.readAuthenticatedTransition(append, signal), undefined);
 });
