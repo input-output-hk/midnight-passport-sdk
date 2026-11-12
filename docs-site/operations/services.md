@@ -28,9 +28,15 @@ Node and Chromium using a synthetic transaction. The server instead depends on
 when testing for parity with the server.
 [Ledger WASM dependencies](https://github.com/midnightntwrk/midnight-ledger/blob/3361066cc6a899f9dbec02278f189d32b5dbb677/zkir-v3-wasm/Cargo.toml), [proof-server dependencies](https://github.com/midnightntwrk/midnight-ledger/blob/3361066cc6a899f9dbec02278f189d32b5dbb677/proof-server/Cargo.toml)
 
-This qualifies one proof pair with host-side Ledger and wallet assembly.
+The source candidate also has an opt-in Ledger 9 transaction proving worker.
+In a production Chromium bundle it deserialized a synthetic signed JubJub
+inbox append and returned the proved transaction. The browser received the
+unproven bytes, then performed Ledger proving and proof computation in the
+worker. The fixture observed only local GET requests for its code and public
+artifacts. [Worker integration](/guides/hosts#browser-worker-proving-in-the-source-candidate)
+
 The demo continues to use its configured proof service. Browser-hosted
-transaction assembly, artifact delivery, other circuits, memory, cancellation
+call construction, DUST assembly, artifact delivery, other circuits, memory
 and browser support need separate checks. When choosing a prover, pin the
 implementation alongside the Ledger runtime, keys and public parameters. Run
 a positive control on the same input and confirm the canonical state change

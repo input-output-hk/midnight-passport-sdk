@@ -91,6 +91,16 @@
           "targets": [
             "worker"
           ]
+        },
+        {
+          "targets": [
+            "web"
+          ]
+        },
+        {
+          "targets": [
+            "worker"
+          ]
         }
       ]
     },

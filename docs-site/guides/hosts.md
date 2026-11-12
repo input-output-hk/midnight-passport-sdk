@@ -16,6 +16,20 @@ React, Vue, or another UI layer should create one integration module, bind expli
 
 For application-contract → ACC calls, use the [standards and implementation map](/architecture/standards). Do not infer arbitrary reverse calls from a supported incoming call path.
 
+## Browser worker proving in the source candidate
+
+Use `adapter-browser/worker-prover` to give the account's `Prover` port an
+owned module worker. The worker reads the unproven Ledger 9 transaction,
+checks its network and declared circuits against the pinned binding, and
+returns the proved transaction. The host supplies compatible WASM and verifies
+the public proving artifacts. The worker accepts one proof at a time.
+Cancellation or timeout terminates the worker.
+
+This profile handles ACC calls without DUST or shielded offers. Keep fee
+sponsorship and submission in their existing host ports. The demo still uses
+its configured proof service. [Browser proving qualification](/operations/services#browser-local-proving-qualification),
+[Type-checked source example](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/background.md#source-preview-prove-an-acc-transaction-in-a-dedicated-worker)
+
 ## Midnames source preview
 
 The reference demo can use Midnames 2.1.0 for read-only lookup. Configure the

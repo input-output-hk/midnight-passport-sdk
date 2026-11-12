@@ -165,3 +165,55 @@ The [documentation worker regression](https://github.com/input-output-hk/midnigh
 also executes this exact worker entry in an owned Node worker with browser event
 capability shims. It checks startup and valid/invalid requests; it is not an actual
 browser-worker or provider qualification.
+
+## Source preview: prove an ACC transaction in a dedicated worker
+
+`adapter-browser/worker-prover` implements the account's transaction-level
+`Prover` port. The page supplies an owned dedicated module worker, and the
+worker supplies a local Ledger 9 proving provider with verified artifacts.
+The page can pass the resulting handle as `prover` to `createBrowserPassport`.
+
+```ts
+import { createBrowserWorkerProver } from '@input-output-hk/mn-passport-adapter-browser/worker-prover';
+
+export function openProver() {
+  const worker = new Worker(new URL('./prover.worker.ts', import.meta.url), { type: 'module' });
+  return createBrowserWorkerProver(worker, { channel: 'example.proving.v1' });
+}
+```
+
+In `prover.worker.ts`, initialize the host's compatible WASM provider before
+starting the server. This example accepts the initialized provider as an
+argument so the artifact source and WASM packaging stay host-owned.
+
+```ts
+import {
+  serveBrowserWorkerProver,
+  type BrowserWorkerProverOptions,
+} from '@input-output-hk/mn-passport-adapter-browser/worker-prover';
+
+export function startProver(provider: BrowserWorkerProverOptions['provider']) {
+  return serveBrowserWorkerProver(globalThis, {
+    channel: 'example.proving.v1',
+    networkId: 'undeployed',
+    bindingId: 'acc-s3r1.1',
+    circuits: ['append_inbox_with_jubjub'],
+    provider,
+  });
+}
+```
+
+The worker announces readiness after installing its request listener. The
+client takes one proof at a time, with an 8 MiB transaction limit and a default
+ten-minute deadline that includes startup. Cancellation during a proof, a
+timeout, or closing the handle terminates the dedicated worker. Create a new
+worker and handle for a later attempt. Keep submission and original-intent
+recovery in the host's existing flow.
+
+The worker deserializes the transaction, checks its network and exact circuit
+set, and admits only proof locations derived from the binding's verifier hashes
+and the transaction's calls. The provider must still verify the bytes it loads.
+Use `contract.loadArtefact` for the pinned circuit material and independently
+pin the Ledger parameters and proving WASM. This profile proves ACC contract
+calls without DUST or shielded offers. Transaction construction, credentials,
+consent, fees and submission are owned by the host.

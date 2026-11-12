@@ -27,6 +27,10 @@
     "./background": {
       "types": "./dist/background.d.ts",
       "default": "./dist/background.js"
+    },
+    "./worker-prover": {
+      "types": "./dist/worker-prover.d.ts",
+      "default": "./dist/worker-prover.js"
     }
   },
   "files": [
@@ -48,7 +52,8 @@
     "@input-output-hk/mn-passport-keys": "workspace:*",
     "@input-output-hk/mn-passport-protocol": "workspace:*",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
-    "@noble/curves": "2.2.0"
+    "@noble/curves": "2.2.0",
+    "zod": "4.1.12"
   },
   "license": "Apache-2.0",
   "repository": {
