@@ -117,5 +117,30 @@ issuance from that nonce.
 The opt-in demo covers separate holder and issuer pages for the exact
 requested scope. See the [host guide](./hosts#authenticated-browser-grant-relay)
 for the isolated issuance and original-receipt check, and the remaining live
-holder verification and export. Attenuated grants and the non-browser agent
-binding remain open.
+holder verification and export. Attenuated grants remain open.
+
+### Verify a non-browser agent request
+
+The source-preview `verifyAgentJubjubGrantRequest` export in
+`mn-passport-account` accepts separate `request` and `proof` strings over an
+explicit non-browser channel. The host supplies its exact HTTPS authoriser
+origin, network, selected ACC and current time. The verifier checks a
+key-prefixed JubJub Schnorr proof over the original transmitted request,
+using the pinned ACC generator. This path supports a single unshielded
+withdrawal permission with a fixed recipient, caps and a finite expiry.
+
+Show `rdns:` and `mais:` labels as operator-asserted and `self:` labels as
+owner-chosen. A valid signature proves possession of the grant key. A
+trusted channel and owner review establish whether the requested permission
+is appropriate. Use `accountSource` to tell the owner whether the agent
+signed the ACC address or the owner selected it. Requests carrying a
+redirect, browser state, WebAuthn proof
+or unsupported scope are refused.
+
+The host must provide durable nonce admission, fresh owner consent and
+original-request recovery before exposing issuance to agents. The lower-level
+JubJub owner issue call accepts an exact `requestedSlot`. Use the verified
+client ID and signed slot when preparing a grant. An occupied slot fails
+before signing. The generated ACC test covers one owner-signed issue with
+the verified scope. A non-browser host transport, structured return, agent
+vault integration and native agent spend remain open.

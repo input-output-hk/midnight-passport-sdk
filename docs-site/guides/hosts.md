@@ -96,3 +96,8 @@ callback verification. A separate browser check reproduced a missing CORS
 header and verified the corrected HTTPS proxy with a fixture indexer.
 Native holder verification and export, and real passkey providers, remain
 open.
+
+For non-browser requests, the source-preview account package can verify a
+JubJub key-only proof and the signed scope. A host still needs to own
+transport admission, durable nonce handling and owner approval. See
+[non-browser agent requests](./devices-grants#verify-a-non-browser-agent-request).

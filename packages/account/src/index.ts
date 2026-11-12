@@ -73,3 +73,6 @@ export * from './p256-grantee-issue.js';
 export * from './p256-grantee-issue-journal.js';
 export * from './browser-grant-nonce.js';
 export { verifyLiveP256GrantOpening } from './p256-grant-opening-live.js';
+
+export { grantRequestDigest } from './grant-request-wire.js';
+export * from './agent-grant-request.js';

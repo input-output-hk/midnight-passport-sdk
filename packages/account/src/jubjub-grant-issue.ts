@@ -60,6 +60,8 @@ export interface IssueJubjubGrantCallInput extends FlowOptions {
   readonly hint: AccountHint;
   readonly origin: string;
   readonly scope: GrantScopeInput;
+  /** Pin the requested slot for a reviewed, externally signed grant. */
+  readonly requestedSlot?: number;
 }
 
 export interface IssueJubjubGrantCallPorts {
@@ -120,6 +122,24 @@ const bookkeeping = (
   },
 });
 
+function checkIssueScope(scope: GrantScopeInput, origin: string, canRotate: boolean): void {
+  if (
+    !scope.read &&
+    (scope.operations.length !== 1 || scope.operations[0] !== 'withdraw-unshielded')
+  )
+    throw new PassportConnectorError(
+      'BindingUnsupported',
+      'A grant without read access supports only unshielded withdrawal.',
+    );
+  if (scope.read && !canRotate)
+    throw new PassportConnectorError('BindingUnsupported', 'Read-grant rotation is unavailable.');
+  if (scope.read && scope.rpId !== origin)
+    throw new PassportConnectorError(
+      'GrantScopeInvalid',
+      'The read grant rp id must match the host origin.',
+    );
+}
+
 /**
  * Submit the owner-authorised `issue_grant_with_jubjub` call.
  * The journal stores its opening before chain submission. This lower-level call does not claim
@@ -134,21 +154,7 @@ export async function issueJubjubGrantCall(
   const flow = startFlow(input, ports.random ?? random);
   try {
     input = { ...input, scope: snapshotGrantScope(input.scope) };
-    if (
-      !input.scope.read &&
-      (input.scope.operations.length !== 1 || input.scope.operations[0] !== 'withdraw-unshielded')
-    )
-      throw new PassportConnectorError(
-        'BindingUnsupported',
-        'A grant without read access supports only unshielded withdrawal.',
-      );
-    if (input.scope.read && !ports.rotateBeforeIssue)
-      throw new PassportConnectorError('BindingUnsupported', 'Read-grant rotation is unavailable.');
-    if (input.scope.read && input.scope.rpId !== input.origin)
-      throw new PassportConnectorError(
-        'GrantScopeInvalid',
-        'The read grant rp id must match the host origin.',
-      );
+    checkIssueScope(input.scope, input.origin, Boolean(ports.rotateBeforeIssue));
     const { hint } = input;
     if (hint.scheme !== 'jubjub-schnorr' || hint.status !== 'active' || !hint.credentialId)
       throw new PassportConnectorError('NotAuthorised', 'The active JubJub account is required.');
@@ -180,6 +186,7 @@ export async function issueJubjubGrantCall(
         origin: input.origin,
         scope: input.scope,
         activeGrantIds,
+        ...(input.requestedSlot === undefined ? {} : { requestedSlot: input.requestedSlot }),
         nowSeconds: (ports.nowSeconds ?? (() => Math.floor(Date.now() / 1000)))(),
       },
       ports.pure,

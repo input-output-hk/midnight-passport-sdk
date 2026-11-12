@@ -43,7 +43,7 @@ const scope = {
 };
 const input = { hint, origin: 'example.org', scope };
 
-function fixture() {
+function fixture(expectedSlot = 0) {
   /** @type {string[]} */
   const calls = [];
   let grantNonce = 5n;
@@ -130,7 +130,7 @@ function fixture() {
         assert.equal(flow?.kind, 'issue-grant');
         assert.equal(flow?.account, account);
         assert.equal(flow?.scopeSalt, '09'.repeat(32));
-        assert.equal(flow?.slot, 0);
+        assert.equal(flow?.slot, expectedSlot);
         assert.deepEqual(flow?.scope, scope);
         assert.equal(flow?.scopeDigest?.length, 64);
         return operation();
@@ -195,6 +195,19 @@ test('issue call stages the grant opening before submission and advances the own
     'call',
     'record',
   ]);
+});
+
+test('an explicit grant slot reaches owner review, signing and the durable journal unchanged', async () => {
+  const first = fixture(7);
+  const result = await issueJubjubGrantCall({ ...input, requestedSlot: 7 }, first.ports);
+  assert.equal(result.slot, 7);
+  assert.equal(first.staged[0]?.bookkeeping.slot, 7);
+  const occupied = fixture(7);
+  occupied.setActiveIds([result.grantId]);
+  await assert.rejects(issueJubjubGrantCall({ ...input, requestedSlot: 7 }, occupied.ports), {
+    code: 'GrantLimitReached',
+  });
+  assert.deepEqual(occupied.calls, ['presence', 'ledger', 'roster']);
 });
 
 test('an indexer roster nonce behind the signing view is refused before consent', async () => {

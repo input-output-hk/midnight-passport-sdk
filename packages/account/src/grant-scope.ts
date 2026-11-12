@@ -63,6 +63,8 @@ export interface PrepareJubjubGrantInput {
   /** Active ids from the live ACC roster; revoked tombstones do not occupy a slot. */
   readonly activeGrantIds: readonly string[];
   readonly nowSeconds: number;
+  /** Use exactly this slot when it is bound by an externally signed request. */
+  readonly requestedSlot?: number;
 }
 
 export interface PreparedJubjubGrant {
@@ -238,8 +240,17 @@ export function prepareJubjubGrant(
     input.activeGrantIds.map((id) => toHex(bytes32('active grant id', id))),
   );
   const { args, grantee } = scopeArgs(input.scope, input.nowSeconds);
-  const { grantId, slot } = selectGrantSlot(active, (candidate) =>
-    pure.derive_grant_id_with_jubjub({ bytes: account }, grantee, originHash, candidate),
+  const requestedSlot = input.requestedSlot;
+  if (
+    requestedSlot !== undefined &&
+    (!Number.isInteger(requestedSlot) || requestedSlot < 0 || requestedSlot > 255)
+  )
+    invalid('requested slot must be an integer from 0 to 255');
+  const { grantId, slot } = selectGrantSlot(
+    active,
+    (candidate) =>
+      pure.derive_grant_id_with_jubjub({ bytes: account }, grantee, originHash, candidate),
+    requestedSlot,
   );
   const salt = freshGrantScopeSalt(random);
   const digest = pure.derive_grant_scope_digest(salt, ...args);
