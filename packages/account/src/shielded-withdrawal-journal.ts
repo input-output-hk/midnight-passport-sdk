@@ -21,6 +21,7 @@ const reservationFields = z.strictObject({
   account: shieldedEffectHex,
   circuit: shieldedWithdrawCircuit,
   callArgsSha256: shieldedEffectHex,
+  publicIntentSha256: shieldedEffectHex.optional(),
   inputNullifier: shieldedEffectHex,
   payoutCommitment: shieldedEffectHex,
   changeCommitment: shieldedEffectHex,

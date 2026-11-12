@@ -1,6 +1,7 @@
 import type { PassportPartialShieldedWithdrawal } from '@input-output-hk/mn-passport-protocol';
 import {
   assertSameOwnerShieldedInput,
+  capturePartialShieldedWithdrawal,
   exactOwnerShieldedDispatch,
   existingPartialWithdrawal,
   partialOwnerShieldedDispatch,
@@ -289,8 +290,8 @@ export function jubjubWithdrawals(
         request: PassportPartialShieldedWithdrawal,
         options: FlowOptions = {},
       ) {
-        const { requestId } = request;
-        const transfer = { ...request };
+        const { requestId, transfer, publicIntentSha256 } =
+          capturePartialShieldedWithdrawal(request);
         const capturedOptions = { ...options };
         const scope = { account: record.address, networkId, bindingId: network.bindingId };
         const host = validatePartialWithdrawalHost(
@@ -299,12 +300,12 @@ export function jubjubWithdrawals(
           ports.partialShieldedWithdrawal,
         );
         return (
-          (await existingPartialWithdrawal(requestId, scope, host)) ??
+          (await existingPartialWithdrawal(requestId, publicIntentSha256, scope, host)) ??
           withdrawShieldedUsing(
             context,
             transfer,
             capturedOptions,
-            partialOwnerShieldedDispatch(requestId, scope, host),
+            partialOwnerShieldedDispatch(requestId, publicIntentSha256, scope, host),
           )
         );
       },

@@ -20,6 +20,14 @@ function memoryStore() {
   });
 }
 
+function gate() {
+  let open = () => {};
+  const wait = new Promise((resolve) => {
+    open = () => resolve(undefined);
+  });
+  return { wait, open };
+}
+
 const inputNullifier = '11'.repeat(32);
 const payoutCommitment = '22'.repeat(32);
 const txHash = '33'.repeat(32);
@@ -37,7 +45,10 @@ export function partialWithdrawalFixture(networkId) {
     reviews:
       /** @type {import('../../packages/account/dist/index.js').PartialShieldedWithdrawalReview[]} */ ([]),
     submissions: 0,
-    duringReview: /** @type {(() => void) | undefined} */ (undefined),
+    duringReview:
+      /** @type {((review: import('../../packages/account/dist/index.js').PartialShieldedWithdrawalReview) => void | Promise<void>) | undefined} */ (
+        undefined
+      ),
   };
   /** @type {import('../../packages/account/dist/index.js').FinalizedShieldedWithdrawal | undefined} */
   let observation;
@@ -52,7 +63,7 @@ export function partialWithdrawalFixture(networkId) {
     },
     async reviewWithdrawal(review) {
       state.reviews.push(review);
-      state.duringReview?.();
+      await state.duringReview?.(review);
       return state.approve;
     },
     async submitOriginal(requestId, call) {
@@ -135,8 +146,34 @@ export async function exercisePartialWithdrawal(
   assert.equal(await host.journal.read(request.requestId), undefined);
 
   const pending = { kind: 'withdrawal-pending', requestId: request.requestId };
+  const competing = { ...request, recipient: 'aa'.repeat(32) };
+  const competingReviewed = gate();
+  const resumeCompeting = gate();
+  state.duringReview = async ({ recipient }) => {
+    if (recipient !== competing.recipient) return;
+    competingReviewed.open();
+    await resumeCompeting.wait;
+  };
+  const losing = assert.rejects(account.withdrawShieldedPartial(competing), {
+    code: 'MutationUnsettled',
+  });
+  await competingReviewed.wait;
+  try {
+    assert.deepEqual(await account.withdrawShieldedPartial(request), pending);
+  } finally {
+    resumeCompeting.open();
+  }
+  await losing;
   assert.deepEqual(await account.withdrawShieldedPartial(request), pending);
-  assert.deepEqual(await account.withdrawShieldedPartial(request), pending);
+  for (const changes of [
+    { amount: '5' },
+    { recipient: '88'.repeat(32) },
+    { color: '99'.repeat(32) },
+    { inboxIndex: exact.inboxIndex + 1 },
+  ])
+    await assert.rejects(account.withdrawShieldedPartial({ ...request, ...changes }), {
+      code: 'MutationUnsettled',
+    });
   state.finalized = true;
   assert.deepEqual(await account.withdrawShieldedPartial(request), {
     kind: 'change-pending',
@@ -144,6 +181,6 @@ export async function exercisePartialWithdrawal(
     txHash,
   });
   assert.equal(state.submissions, 1);
-  assert.equal(state.reviews.length, 3);
-  assert.equal(signatures(), before + 1);
+  assert.equal(state.reviews.length, 4);
+  assert.equal(signatures(), before + 2);
 }

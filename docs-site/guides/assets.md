@@ -52,10 +52,12 @@ Use `createMidnightPartialShieldedWithdrawalHost` from
 `acc-s3r1.1` predictor, finality source, holding indexer, value wallet and
 protected journal. This adapter pays out to the configured wallet's shielded
 coin public key. The host must review the exact recipient, asset, selected
-inbox entry, amount and expected change before the owner signs.
+inbox entry, amount and expected change before the owner signs. Require fresh credential-pinned approval when the
+host uses an authenticated JubJub owner session.
 
 Keep the original request UUID when calling `withdrawShieldedPartial`.
-A reused UUID observes the original operation. Use the account package's
+Reuse it with the same transfer fields to observe the original operation.
+A changed recipient, amount, asset or inbox entry is refused. Use the account package's
 `reconcilePartialShieldedWithdrawal` for read-only status on both stages:
 
 - `withdrawal-pending` means the original withdrawal is unconfirmed.

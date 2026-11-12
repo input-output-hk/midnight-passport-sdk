@@ -4,6 +4,7 @@ import type {
 } from '@input-output-hk/mn-passport-protocol';
 import {
   assertSameOwnerShieldedInput,
+  capturePartialShieldedWithdrawal,
   exactOwnerShieldedDispatch,
   existingPartialWithdrawal,
   partialOwnerShieldedDispatch,
@@ -126,8 +127,7 @@ export class P256Withdrawals {
     request: PassportPartialShieldedWithdrawal,
     options: FlowOptions = {},
   ) => {
-    const { requestId } = request;
-    const transfer = { ...request };
+    const { requestId, transfer, publicIntentSha256 } = capturePartialShieldedWithdrawal(request);
     const capturedOptions = { ...options };
     const scope = {
       account: this.record.address,
@@ -140,11 +140,11 @@ export class P256Withdrawals {
       this.host.ports.partialShieldedWithdrawal,
     );
     return (
-      (await existingPartialWithdrawal(requestId, scope, host)) ??
+      (await existingPartialWithdrawal(requestId, publicIntentSha256, scope, host)) ??
       this.withdrawShieldedUsing(
         transfer,
         capturedOptions,
-        partialOwnerShieldedDispatch(requestId, scope, host),
+        partialOwnerShieldedDispatch(requestId, publicIntentSha256, scope, host),
       )
     );
   };

@@ -1,6 +1,7 @@
 import type {
   FlowOptions,
   PassportOwnerTransferResult,
+  PassportPartialShieldedWithdrawal,
   PassportPartialShieldedWithdrawalResult,
 } from '@input-output-hk/mn-passport-protocol';
 import { z } from 'zod';
@@ -26,7 +27,7 @@ import {
   recoverShieldedWithdrawal,
   type ShieldedWithdrawalRecoveryPorts,
 } from './shielded-withdrawal-recovery.js';
-import type { prepareShieldedWithdrawal } from './unshielded-withdrawal.js';
+import { prepareShieldedWithdrawal } from './unshielded-withdrawal.js';
 
 export interface PartialShieldedWithdrawalReview {
   readonly requestId: string;
@@ -95,8 +96,22 @@ type OwnerScope = {
   readonly bindingId: string;
 };
 
+export function capturePartialShieldedWithdrawal(request: PassportPartialShieldedWithdrawal) {
+  const { requestId, inboxIndex, color, amount, recipient } = request;
+  const transfer = { inboxIndex, color, amount, recipient };
+  const validated = prepareShieldedWithdrawal(transfer);
+  const publicIntentSha256 = mutationDigest({
+    inboxIndex: validated.inboxIndex,
+    color: toHex(validated.color),
+    amount: validated.amount.toString(),
+    recipient: toHex(validated.recipient.bytes),
+  });
+  return { requestId, transfer, publicIntentSha256 };
+}
+
 export function partialOwnerShieldedDispatch(
   requestId: string,
+  publicIntentSha256: string,
   scope: OwnerScope,
   host: PartialShieldedWithdrawalHost,
 ): PrepareOwnerShieldedDispatch<PassportPartialShieldedWithdrawalResult> {
@@ -164,6 +179,7 @@ export function partialOwnerShieldedDispatch(
         ...pinned,
         circuit: shieldedWithdrawCircuit.parse(call.circuit),
         callArgsSha256: mutationDigest(call.args),
+        publicIntentSha256,
         heldCoinSha256,
         inputNullifier,
         payoutCommitment,
@@ -179,13 +195,20 @@ export function partialOwnerShieldedDispatch(
           'MutationUnsettled',
           'The signed withdrawal does not match its reservation.',
         );
-      if (!(await host.journal.reserve(reservation.data)))
-        return (
-          (await existingPartialWithdrawal(requestId, scope, host)) ?? {
-            kind: 'withdrawal-pending',
-            requestId,
-          }
+      if (!(await host.journal.reserve(reservation.data))) {
+        const original = await existingPartialWithdrawal(
+          requestId,
+          publicIntentSha256,
+          scope,
+          host,
         );
+        if (!original)
+          throw new PassportConnectorError(
+            'MutationUnsettled',
+            'The original withdrawal is reserved but its intent is unavailable.',
+          );
+        return original;
+      }
       flow.checkpoint();
       try {
         await host.submitOriginal(requestId, call);
@@ -254,6 +277,7 @@ async function observedWithdrawal(
 
 export async function existingPartialWithdrawal(
   requestId: string,
+  publicIntentSha256: string,
   scope: OwnerScope,
   host: PartialShieldedWithdrawalHost,
 ) {
@@ -267,6 +291,11 @@ export async function existingPartialWithdrawal(
     throw new PassportConnectorError(
       'MutationUnsettled',
       'The original withdrawal belongs to another account or network.',
+    );
+  if (row.reservation.publicIntentSha256 !== publicIntentSha256)
+    throw new PassportConnectorError(
+      'MutationUnsettled',
+      'The retained withdrawal intent is unavailable or differs from this request.',
     );
   return observedWithdrawal(requestId, scope, host);
 }
