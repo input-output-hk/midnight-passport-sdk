@@ -6,30 +6,35 @@ The Passport service accepts checked configuration, prepares/deploys supported A
 
 ### Browser-local proving qualification
 
-The host can supply its own proving implementation. On the isolated Ledger 9
-chain, `proof-server-9.0.0-rc.8` proved a transaction prepared against the deployed
-`acc-s3r1.1` binding for `append_inbox_with_jubjub`. The fixture stopped the
-server and handed the same serialized transaction to a Ledger host that called
-a dedicated Chromium worker for proof computation. The worker verified the ACC
-key files and k16 public parameters by SHA-256. Its `@midnightntwrk/zkir-v3@3.2.1`
-prover rejected the constraints after the circuit check passed. The fixture
-exited before proving the DUST fee or submitting the transaction.
+On an isolated Ledger 9 chain, a dedicated Chromium worker proved a live
+`append_inbox_with_jubjub` call against `acc-s3r1.1` and the wallet's DUST fee
+after `proof-server-9.0.0-rc.8` stopped. A Node host assembled and submitted the
+transaction, then matched its bytes to the canonical finalized record. The
+account recorded one inbox append. The worker checked artifact SHA-256 hashes
+and used k16 parameters for the ACC proof and k13 for DUST. In that run the
+two proofs took about 123 and 10 seconds respectively. The fixture observed
+zero remote browser requests during proving.
+
+The ACC proof used WASM built from `midnight-zkir` `3.1.0-rc.1` at the source
+revision pinned by the proof server. The DUST proof used `@midnightntwrk/zkir-v2`
+`2.2.0`. In an earlier live run, the server accepted the same input handed to
+`@midnightntwrk/zkir-v3@3.2.1`, which decoded the circuit and rejected the
+proof constraints. [ZKIR source pin](https://github.com/midnightntwrk/midnight-zkir/tree/e82d81d25aabcc5f5092e2bd559083487f577914)
 
 The Ledger release's own `zkir-v3-wasm` target builds the workspace's ZKIR
 `3.0.0`. That build failed to decode the same pinned circuit's binary ZKIR in
 Node and Chromium using a synthetic transaction. The server instead depends on
 `midnight-zkir` `3.1.0-rc.1` from the separate ZKIR repository. Pin that dependency
 when testing for parity with the server.
-[Ledger WASM dependencies](https://github.com/midnightntwrk/midnight-ledger/blob/3361066cc6a899f9dbec02278f189d32b5dbb677/zkir-v3-wasm/Cargo.toml)
-[Proof-server dependencies](https://github.com/midnightntwrk/midnight-ledger/blob/3361066cc6a899f9dbec02278f189d32b5dbb677/proof-server/Cargo.toml)
+[Ledger WASM dependencies](https://github.com/midnightntwrk/midnight-ledger/blob/3361066cc6a899f9dbec02278f189d32b5dbb677/zkir-v3-wasm/Cargo.toml), [proof-server dependencies](https://github.com/midnightntwrk/midnight-ledger/blob/3361066cc6a899f9dbec02278f189d32b5dbb677/proof-server/Cargo.toml)
 
-Decoding ZKIR and matching artifact hashes are prerequisite checks. Before
-selecting a browser prover, pin the implementation alongside the Ledger
-runtime, ACC keys, and public parameters. Run a positive control on the same
-input, prove both the contract call and DUST fee with the external prover down,
-then verify the original submitted bytes and the expected state change on the
-canonical chain. Browser memory, cancellation and supported browser coverage
-need separate checks. [Browser proving qualification issue](https://github.com/input-output-hk/midnight-passport-sdk/issues/241)
+This qualifies one proof pair with host-side Ledger and wallet assembly.
+The demo continues to use its configured proof service. Browser-hosted
+transaction assembly, artifact delivery, other circuits, memory, cancellation
+and browser support need separate checks. When choosing a prover, pin the
+implementation alongside the Ledger runtime, keys and public parameters. Run
+a positive control on the same input and confirm the canonical state change
+after proving with the external server down. [Browser proving qualification issue](https://github.com/input-output-hk/midnight-passport-sdk/issues/241)
 
 ## Fee sponsorship
 
