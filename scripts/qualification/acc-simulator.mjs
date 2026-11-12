@@ -96,7 +96,7 @@ export class AccSimulator {
       new Uint8Array(64),
       window,
     );
-    sim.state = init.currentContractState;
+    sim.state = init.currentContractState.data;
     if (activate)
       await sim.call(
         `activate_initial_device_with_${owner.arm}`,
