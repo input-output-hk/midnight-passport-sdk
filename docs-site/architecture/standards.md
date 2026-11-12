@@ -18,3 +18,14 @@ Relevant problem statements include [MPS-0018 · multi-key custody](https://gith
 The [Passport scoped-grants document](https://github.com/midnightntwrk/passport/blob/e0e4e0e6272399d71dfaaa7cae0689ab4e2363f3/docs/mps-mip/mips/mip-xxxx-scoped-grants.md) is a **Draft with placeholder `xxxx`**, not a numbered canonical MIP. The [reference contract](https://github.com/midnightntwrk/passport/tree/e0e4e0e6272399d71dfaaa7cae0689ab4e2363f3/contract) and [caller-bound design](https://github.com/midnightntwrk/passport/blob/e0e4e0e6272399d71dfaaa7cae0689ab4e2363f3/contract/GRANTS-CALLER.md) explain application-contract → ACC calls. The calling contract still needs its own claim policy, and the grantee signature and ACC grant checks still apply. This is not arbitrary ACC → other-contract support.
 
 For the wider design, use [upstream Passport architecture](https://midnightntwrk.github.io/passport/), its [plan](https://midnightntwrk.github.io/passport/site/plan.html), [planning documents](https://github.com/midnightntwrk/passport/tree/e0e4e0e6272399d71dfaaa7cae0689ab4e2363f3/docs/plans), and [MIP mapping](https://github.com/midnightntwrk/passport/blob/e0e4e0e6272399d71dfaaa7cae0689ab4e2363f3/docs/plans/MIPS.md). The [upstream SDK](https://github.com/midnightntwrk/midnight-passport-sdk) and this fork have different release and qualification histories.
+
+## Dormant account recovery
+
+The source-preview regression reproduces a limitation in the published
+`acc-s3r1.1` binding. If an account is recovered before its initial activation,
+the original JubJub or P-256 device can still open the retained bootstrap
+commitment after finalisation. The test uses generated contract code and
+software keys. The upstream finaliser clears the commitment when it installs
+the successor. Applying that change to an existing deployment requires
+checking its verifier, current ledger state and maintenance authority.
+[Upstream recovery analysis](https://github.com/midnightntwrk/passport/blob/8f635a10dde17d55d26bb72439a3a23e6e159295/contract/DORMANT-RECOVERY.md)

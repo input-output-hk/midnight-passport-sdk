@@ -77,23 +77,28 @@ export class AccSimulator {
     this.state = undefined;
   }
 
-  /** @param {{owner?: SimDevice, recovery?: SimDevice, module?: typeof pinned, window?: bigint, encKey?: Uint8Array}} options */
+  /** @param {{owner?: SimDevice, recovery?: SimDevice, module?: typeof pinned, window?: bigint, encKey?: Uint8Array, activate?: boolean, bootSalt?: Uint8Array}} options */
   static async create({
     module = pinned,
     owner = simulationDevice('jubjub', module),
     recovery = simulationDevice('jubjub', module),
     window = 60n,
     encKey = new Uint8Array(randomBytes(32)),
+    activate = true,
+    bootSalt = new Uint8Array(randomBytes(32)),
   } = {}) {
     const sim = new AccSimulator(module);
     sim.owner = owner;
     sim.recovery = recovery;
-    const salt = new Uint8Array(randomBytes(32));
     const p = module.pureCircuits;
     const boot =
       owner.arm === 'jubjub'
-        ? p.derive_boot_commitment_with_jubjub(salt, owner.pk)
-        : p.derive_boot_commitment_with_p256(salt, { ...owner.pk, identity: false }, owner.policy);
+        ? p.derive_boot_commitment_with_jubjub(bootSalt, owner.pk)
+        : p.derive_boot_commitment_with_p256(
+            bootSalt,
+            { ...owner.pk, identity: false },
+            owner.policy,
+          );
     const init = await sim.contract.initialState(
       createConstructorContext({}, sim.coin),
       boot,
@@ -102,13 +107,14 @@ export class AccSimulator {
       new Uint8Array(64),
       window,
     );
-    sim.state = init.currentContractState;
-    await sim.call(
-      `activate_initial_device_with_${owner.arm}`,
-      owner.arm === 'p256' ? { ...owner.pk, identity: false } : owner.pk,
-      salt,
-      ...(owner.arm === 'p256' ? [owner.policy] : []),
-    );
+    sim.state = init.currentContractState.data;
+    if (activate)
+      await sim.call(
+        `activate_initial_device_with_${owner.arm}`,
+        owner.arm === 'p256' ? { ...owner.pk, identity: false } : owner.pk,
+        bootSalt,
+        ...(owner.arm === 'p256' ? [owner.policy] : []),
+      );
     return sim;
   }
 
