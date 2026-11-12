@@ -155,16 +155,17 @@ function opening(
   };
   checkPins();
   checkTime();
-  async function read() {
+  async function read(mode: 'authorise' | 'settle' = 'authorise') {
     checkPins();
     const live = await grants.readP256GrantSpendContext(account, prepared.grantId);
     checkPins();
-    checkTime();
+    if (mode === 'authorise') checkTime();
     if (!live) throw new PassportConnectorError('GrantNotFound', 'The grant is absent on chain.');
     if (
-      !live.active ||
-      live.grantEpoch !== live.deviceEpoch ||
-      live.grantGeneration !== live.generation
+      mode === 'authorise' &&
+      (!live.active ||
+        live.grantEpoch !== live.deviceEpoch ||
+        live.grantGeneration !== live.generation)
     )
       throw new PassportConnectorError(
         'GrantRevoked',
@@ -252,8 +253,10 @@ export async function spendWithAgentJubjubGrant(
     amount: input.amount,
     spentPrev: input.spentPrev,
   };
+  let dispatchStarted = false;
   const read = async () => {
-    const live = await grant.read();
+    // Settlement verifies the original issuance even when its authorization has ended.
+    const live = await grant.read(dispatchStarted ? 'settle' : 'authorise');
     if (mutationDigest(grant.issuance(live)) !== digest)
       return invalid('The live grant differs from the retained original issuance.');
     return live;
@@ -263,7 +266,6 @@ export async function spendWithAgentJubjubGrant(
   if (options.signal?.aborted)
     throw new PassportConnectorError('Aborted', 'Agent grant spend cancelled.');
   const previousNonce = preflight.nonce;
-  let dispatchStarted = false;
   let txHash: string | undefined;
   try {
     return await spendUnshieldedWithGrant(

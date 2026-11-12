@@ -270,3 +270,37 @@ test('a lost spend response preserves the original grant and nonce for reconcili
   });
   assert.deepEqual(agent.counts(), [2, 2]);
 });
+
+test('a generated ACC spend accepted before expiry retains its receipt after expiry', async (t) => {
+  const { fixture, owner, ports, requests } = await issued(t);
+  const { sim } = fixture;
+  const verified = await verifyAgentJubjubGrantResponse(requests, ports);
+  const color = Buffer.from(verified.scope.color, 'hex');
+  await sim.call('deposit_unshielded', color, 20n);
+  const agent = signer(ports.pure, 7);
+  /** @type {import('../packages/account/dist/index.js').AgentJubjubGrantSpendPorts} */
+  const spend = {
+    ...ports,
+    chain: {
+      ...owner.chain,
+      async call(call) {
+        const receipt = await owner.chain.call(call);
+        sim.now = verified.scope.expiresAt;
+        return receipt;
+      },
+    },
+    grantee: agent.authoriser,
+    review: async () => true,
+    attempts: 1,
+  };
+  const input = { ...requests, issuance: verified.issuance, amount: '1', spentPrev: '0' };
+  const result = await spendWithAgentJubjubGrant(input, spend);
+  assert.match(result.txHash, /^generated-[0-9]+$/);
+  assert.equal(result.grantNonce, 1n);
+  assert.equal(result.spentTotal, 1n);
+  assert.equal(sim.ledger().unshielded_balances.lookup(color), 19n);
+  await assert.rejects(spendWithAgentJubjubGrant({ ...input, spentPrev: '1' }, spend), {
+    code: 'GrantScopeInvalid',
+  });
+  assert.deepEqual(agent.counts(), [1, 1]);
+});

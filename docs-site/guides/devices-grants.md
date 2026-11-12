@@ -189,7 +189,8 @@ smallest units. Inject the agent's JubJub key provider as the `grantee` and a
 value-capable pinned chain. The provider handles the private key and signs the
 ACC challenge. The owner can be offline. The SDK reviews the exact payment and
 rechecks the live grant, retained issuance, nonce and spent commitment before
-dispatch. This preview accepts the exact requested scope.
+dispatch. After dispatch, the original spend can still settle after grant
+expiry. This preview accepts the exact requested scope.
 
 If dispatch is uncertain, `AgentGrantSpendUnsettled` preserves the grant ID,
 previous grant nonce and any acknowledged transaction hash. Reconcile those
