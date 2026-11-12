@@ -9,6 +9,7 @@ import {
   p256GrantOpeningSchema,
   p256GranteePoint,
   type P256GrantOpeningPure,
+  type P256UnshieldedGrantOpening,
 } from './p256-grant-opening.js';
 import type { LiveP256GrantSpendContext } from './ports/p256-grant-spend.js';
 import type { P256PublicKey, PasskeyCredential } from './seams.js';
@@ -150,4 +151,38 @@ export function assertP256SpendLive(
   if (!matchesP256Scope(live, spend) || toHex(live.spentCommit) !== spend.spentCommit)
     invalid('opening or spent amount differs from the live grant');
   if (live.nonce < 0n || live.nonce >= (1n << 64n) - 1n) invalid('grant nonce cannot advance');
+}
+
+/** Check the commitments in an exact fixed-recipient opening without obtaining a signer. */
+export function checkP256GrantOpening(
+  opening: P256UnshieldedGrantOpening,
+  pure: Pick<
+    P256GrantOpeningPure,
+    'derive_grant_id_with_p256' | 'derive_grant_rp_commit' | 'derive_grant_object_commit'
+  >,
+) {
+  const { scope, grantId, scopeSalt, slot } = opening;
+  const salt = fromHex(scopeSalt);
+  const id = pure.derive_grant_id_with_p256(
+    { bytes: fromHex(scope.account) },
+    p256GranteePoint(scope.grantee.publicKey),
+    grantOriginHash(scope.grantee.origin),
+    BigInt(slot),
+  );
+  if (toHex(id) !== grantId) return invalid('grant ID differs from the grantee, origin or slot');
+  return {
+    perCallCap: BigInt(scope.perCallCap),
+    cap: BigInt(scope.cap),
+    expiresAt: BigInt(scope.expiresAt ?? 0),
+    rpCommit: toHex(pure.derive_grant_rp_commit(salt, fromHex(scope.grantee.rpIdHash))),
+    objectCommit: toHex(
+      pure.derive_grant_object_commit(
+        salt,
+        fromHex(scope.color),
+        1n,
+        fromHex(scope.recipient),
+        BigInt(scope.maxCoinValue),
+      ),
+    ),
+  };
 }

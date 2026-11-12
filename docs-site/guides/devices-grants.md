@@ -94,10 +94,19 @@ A host can compose the request verifier and existing owner issue flow through
    rechecks the signed deadline before signing and dispatch. Repeats only
    inspect the original issue and can recover after the request window closes
    while the matching grant remains active and unexpired.
-4. Return a granted opening only to the exact validated callback. The dApp
-   must match the expected issuer and state to its pending browser session,
-   then verify the opening, grant ID and current grant against the pinned
-   chain before using the credential as a grantee.
+4. Build the return URL with `browserP256GrantCallbackUrl` and deliver it to
+   the exact validated callback. Use a canonical browser URL as the requested
+   redirect, including a trailing slash when it has no path. Keep the private
+   opening in the fragment.
+5. On the holder, retain the signed request in the initiating browser session.
+   Capture the callback URL and remove its fragment from history. Call
+   `verifyBrowserP256GrantCallback` with the saved request, expected issuer
+   and a network-pinned grant reader. It checks the exact callback URL,
+   session state, slot and requested scope. It then recomputes the grant ID
+   and verifies the current grant, epoch, generation, expiry and commitments
+   before returning an opening. Promote the holder credential only on success.
+   On a mismatched opening, show that the grant was refused and offer owner
+   revocation from another trusted device.
 
 An `unresolved` result carries the original issuance ID. Keep the original
 request available to reconcile that ID. Missing evidence leaves the outcome
@@ -105,5 +114,6 @@ unresolved. A new nonce represents a new request and requires its own review.
 A denied, interrupted or expired admission never automatically starts another
 issuance from that nonce.
 
-The demo route, redirect response, independent holder return verification
-and unattended agent binding still need integration and qualification.
+The source callback covers successful grants with the exact requested scope.
+The demo route, separate browser holder journey, attenuated grants and
+unattended agent binding still need integration and qualification.

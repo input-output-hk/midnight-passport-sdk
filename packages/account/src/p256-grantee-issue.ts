@@ -1,8 +1,7 @@
 import type { FlowOptions, PassportTxResult } from '@input-output-hk/mn-passport-protocol';
 import { z } from 'zod';
-import { fromHex, toHex } from './codec.js';
+import { toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
-import { grantOriginHash } from './grant-scope.js';
 import { mutationDigest } from './mutation-codec.js';
 import {
   grantSlot,
@@ -14,7 +13,7 @@ import {
   type P256UnshieldedGrantOpening,
   type P256UnshieldedGrantScope,
 } from './p256-grant-opening.js';
-import { matchesP256Scope } from './p256-grant-spend-check.js';
+import { checkP256GrantOpening, matchesP256Scope } from './p256-grant-spend-check.js';
 import { signP256GranteeIssue, type P256GranteeOwnerPure } from './p256-grantee-owner.js';
 import type {
   AccountHint,
@@ -281,15 +280,13 @@ export async function recoverIssuedP256Grant(
     throw new P256GranteeIssueUnsettled(requestId);
   const parsed = p256GrantOpeningSchema.safeParse(record.opening);
   if (!parsed.success) throw new P256GranteeIssueUnsettled(requestId);
-  const { scope, grantId, scopeSalt, slot } = parsed.data;
-  const salt = fromHex(scopeSalt);
-  const id = pure.derive_grant_id_with_p256(
-    { bytes: fromHex(scope.account) },
-    p256GranteePoint(scope.grantee.publicKey),
-    grantOriginHash(scope.grantee.origin),
-    BigInt(slot),
-  );
-  if (toHex(id) !== grantId) throw new P256GranteeIssueUnsettled(requestId);
+  const { scope, grantId } = parsed.data;
+  let commitments;
+  try {
+    commitments = checkP256GrantOpening(parsed.data, pure);
+  } catch {
+    throw new P256GranteeIssueUnsettled(requestId);
+  }
   const live = await grants.readP256GrantSpendContext(scope.account, grantId);
   pins(networkId, grants);
   if (
@@ -299,21 +296,7 @@ export async function recoverIssuedP256Grant(
     live.generation !== record.grantGeneration ||
     live.grantGeneration !== record.grantGeneration ||
     live.issuedAt !== record.expectedIssuedAt ||
-    !matchesP256Scope(live, {
-      perCallCap: BigInt(scope.perCallCap),
-      cap: BigInt(scope.cap),
-      expiresAt: BigInt(scope.expiresAt ?? 0),
-      rpCommit: toHex(pure.derive_grant_rp_commit(salt, fromHex(scope.grantee.rpIdHash))),
-      objectCommit: toHex(
-        pure.derive_grant_object_commit(
-          salt,
-          fromHex(scope.color),
-          1n,
-          fromHex(scope.recipient),
-          BigInt(scope.maxCoinValue),
-        ),
-      ),
-    })
+    !matchesP256Scope(live, commitments)
   )
     return undefined;
   return { ...record, opening: parsed.data };

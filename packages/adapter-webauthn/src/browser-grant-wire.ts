@@ -7,7 +7,7 @@ export const grantWireHex32 = z
   .string()
   .length(64)
   .regex(/^[0-9a-f]{64}$/);
-const uint128 = z
+export const grantWireUint128 = z
   .string()
   .regex(/^(0|[1-9][0-9]{0,38})$/)
   .refine((value) => !/[^0-9]/.test(value) && BigInt(value) < 1n << 128n);
@@ -20,9 +20,9 @@ export const timestamp = z.number().int().nonnegative().max(Number.MAX_SAFE_INTE
 const bounds = z
   .strictObject({
     color: grantWireHex32,
-    per_call_cap: uint128,
-    cap: uint128,
-    max_coin_value: uint128,
+    per_call_cap: grantWireUint128,
+    cap: grantWireUint128,
+    max_coin_value: grantWireUint128,
     expires_at: timestamp,
     recipient: z.strictObject({ kind: z.literal('user'), value: grantWireHex32 }).readonly(),
   })

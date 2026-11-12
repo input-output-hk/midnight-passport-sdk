@@ -10,3 +10,8 @@ export {
   type BrowserGrantRequestContext,
   type VerifiedBrowserP256GrantRequest,
 } from './browser-grant-request.js';
+export {
+  browserP256CallbackScope,
+  decodeBrowserP256CallbackFragment,
+  encodeBrowserP256CallbackFragment,
+} from './browser-grant-callback-wire.js';

@@ -61,6 +61,7 @@ function checkRedirect(uri: string, origin: string): void {
   const target = new URL(uri);
   if (
     target.origin !== origin ||
+    target.href !== uri ||
     target.protocol !== 'https:' ||
     target.username ||
     target.password ||

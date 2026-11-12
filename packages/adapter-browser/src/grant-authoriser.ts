@@ -24,6 +24,7 @@ export type BrowserGrantAuthoriserResult =
       readonly status: 'granted';
       readonly requestId: string;
       readonly opening: P256UnshieldedGrantOpening;
+      readonly networkId: string;
       readonly txHash?: string;
       /** Exact validated return URI and holder state. Do not add them to audit events. */
       readonly redirectUri: string;
@@ -106,6 +107,7 @@ export async function authoriseBrowserP256Grant(
     status: 'granted',
     requestId,
     opening,
+    networkId,
     ...(txHash && { txHash }),
     redirectUri: verified.redirectUri,
     state: verified.state,

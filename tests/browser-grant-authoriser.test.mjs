@@ -10,7 +10,11 @@ import {
   createP256GranteeIssueFence,
   createP256GranteeIssueJournal,
 } from '../packages/account/dist/index.js';
-import { authoriseBrowserP256Grant } from '../packages/adapter-browser/dist/index.js';
+import {
+  authoriseBrowserP256Grant,
+  browserP256GrantCallbackUrl,
+  verifyBrowserP256GrantCallback,
+} from '../packages/adapter-browser/dist/index.js';
 import { createMidnightGrantSource } from '../packages/adapter-midnight-js/dist/index.js';
 import {
   browserGrantRequestDigest,
@@ -91,6 +95,55 @@ function holderRequest(account, now) {
     ).toString('base64url');
     return '#request=' + request + '&proof=' + proof;
   };
+}
+
+/** @param {string} url @param {string} key @param {string} value */
+function replaceCallbackParameter(url, key, value) {
+  const target = new URL(url);
+  const fields = new URLSearchParams(target.hash.slice(1));
+  fields.set(key, value);
+  target.hash = fields.toString();
+  return target.href;
+}
+
+/**
+ * @param {string} url
+ * @param {import('../packages/adapter-browser/dist/index.js').PendingBrowserP256Grant} pending
+ * @param {Parameters<typeof verifyBrowserP256GrantCallback>[2]} ports
+ */
+async function checkInvalidCallbacks(url, pending, ports) {
+  for (const changed of [
+    url.replace('/return#', '/return?injected=1#'),
+    url.replace('/return#', '/elsewhere#'),
+    replaceCallbackParameter(url, 'state', Buffer.alloc(16, 5).toString('base64url')),
+    replaceCallbackParameter(url, 'iss', 'https://attacker.example'),
+    replaceCallbackParameter(url, 'chain', 'midnight:preview'),
+    replaceCallbackParameter(url, 'account', 'bb'.repeat(32)),
+    replaceCallbackParameter(url, 'grant_id', '88'.repeat(32)),
+    replaceCallbackParameter(url, 'scope_salt', '72'.repeat(32)),
+    url + '&state=duplicate',
+  ]) {
+    await assert.rejects(verifyBrowserP256GrantCallback(changed, pending, ports), {
+      code: 'GrantScopeInvalid',
+    });
+  }
+  const fields = new URLSearchParams(new URL(url).hash.slice(1));
+  const scope = JSON.parse(Buffer.from(fields.get('scope') ?? '', 'base64url').toString());
+  for (const changed of [
+    { ...scope, cap: '100' },
+    { ...scope, read: true },
+    { ...scope, caller: '00'.repeat(32) },
+  ]) {
+    const encoded = Buffer.from(JSON.stringify(changed)).toString('base64url');
+    await assert.rejects(
+      verifyBrowserP256GrantCallback(
+        replaceCallbackParameter(url, 'scope', encoded),
+        pending,
+        ports,
+      ),
+      { code: 'GrantScopeInvalid' },
+    );
+  }
 }
 
 test('browser grant admission retains the original ID across concurrency, lost reply and expiry', async (t) => {
@@ -237,6 +290,52 @@ test('browser grant admission retains the original ID across concurrency, lost r
     );
     assert.equal((await authoriseBrowserP256Grant(expiring, restarted)).status, 'unresolved');
     assert.deepEqual([reviews, sessions, signatures, submissions], [1, 1, 1, 1]);
+    const callback = browserP256GrantCallbackUrl(recovered);
+    const pending = { issuer, originalFragment: fragment, account: sim.address };
+    const holderPorts = { networkId, source: grants, pure: pureCircuits, nowSeconds: () => now };
+    assert.deepEqual(
+      await verifyBrowserP256GrantCallback(callback, pending, holderPorts),
+      recovered.opening,
+    );
+    await checkInvalidCallbacks(callback, pending, holderPorts);
+    await assert.rejects(
+      verifyBrowserP256GrantCallback(
+        callback,
+        { ...pending, originalFragment: holderRequest(sim.address, sim.now)() },
+        holderPorts,
+      ),
+      { code: 'GrantScopeInvalid' },
+    );
+    await assert.rejects(
+      verifyBrowserP256GrantCallback(callback, pending, {
+        ...holderPorts,
+        nowSeconds: () => sim.now + 60,
+      }),
+      { code: 'GrantScopeInvalid' },
+    );
+    const live = await grants.readP256GrantSpendContext(sim.address, recovered.opening.grantId);
+    assert.ok(live);
+    await assert.rejects(
+      verifyBrowserP256GrantCallback(callback, pending, {
+        ...holderPorts,
+        source: {
+          ...grants,
+          async readP256GrantSpendContext() {
+            return { ...live, callerCommit: new Uint8Array(32).fill(9) };
+          },
+        },
+      }),
+      { code: 'GrantScopeInvalid' },
+    );
+    await sim.authorised(
+      'revoke_grant',
+      [Buffer.from(recovered.opening.grantId, 'hex')],
+      owner,
+      1n,
+    );
+    await assert.rejects(verifyBrowserP256GrantCallback(callback, pending, holderPorts), {
+      code: 'GrantRevoked',
+    });
   } finally {
     releaseReview.resolve();
     await first.catch(() => {});
