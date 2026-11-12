@@ -94,10 +94,13 @@ try {
     refused: true,
   });
   assert.equal(
-    await two.evaluate(async (url) => {
-      const source: Fixture = await import(url);
-      return (await source.crossAccountRefused()) && (await source.openingCiphertextRetained());
-    }, fixture),
+    await two.evaluate(
+      async ({ url, id }) => {
+        const source: Fixture = await import(url);
+        return (await source.openingCiphertextRetained()) && (await source.crossAccountRefused(id));
+      },
+      { url: fixture, id: requestId },
+    ),
     true,
   );
   await two.evaluate(async (url) => {

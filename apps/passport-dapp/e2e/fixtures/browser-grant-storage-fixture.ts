@@ -103,14 +103,28 @@ export async function recover(requestId: string, seed = 9) {
   }
 }
 
-export async function crossAccountRefused() {
+export async function crossAccountRefused(requestId: string) {
   const changedAccount = '83'.repeat(32);
+  // Copy the original ciphertext to the other account with the same synthetic
+  // key. The journal must reject the transplanted record, rather than miss it.
+  await editOpening((cursor, objectStore) => {
+    const parts: string[] = JSON.parse(String(cursor.key));
+    parts[3] = changedAccount;
+    objectStore.put(cursor.value, JSON.stringify(parts));
+  });
   const store = await stores(9, changedAccount);
   try {
-    await store.nonces.claim({ ...intent, account: changedAccount });
-    return false;
-  } catch (error) {
-    return error instanceof Error && 'code' in error && error.code === 'GrantScopeInvalid';
+    const nonceRefused = await store.nonces.claim({ ...intent, account: changedAccount }).then(
+      () => false,
+      (error: unknown) =>
+        error instanceof Error && 'code' in error && error.code === 'GrantScopeInvalid',
+    );
+    const openingRefused = await store.journal.read(requestId).then(
+      () => false,
+      (error: unknown) =>
+        error instanceof Error && 'code' in error && error.code === 'MutationUnsettled',
+    );
+    return nonceRefused && openingRefused;
   } finally {
     store.close();
   }
@@ -143,22 +157,29 @@ export async function openingCiphertextRetained() {
   }
 }
 
-export async function tamperOpeningRevision() {
+export function tamperOpeningRevision() {
+  return editOpening((cursor) => {
+    const stored: { version: string; bytes: Uint8Array } = cursor.value;
+    const revision = new DataView(stored.bytes.buffer, stored.bytes.byteOffset, 4);
+    revision.setUint32(0, revision.getUint32(0) + 1);
+    cursor.update(stored);
+  });
+}
+
+async function editOpening(edit: (cursor: IDBCursorWithValue, store: IDBObjectStore) => void) {
   const db = await openFixtureDatabase();
   try {
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction('secrets', 'readwrite');
-      const request = tx.objectStore('secrets').openCursor();
+      const store = tx.objectStore('secrets');
+      const request = store.openCursor();
       request.onsuccess = () => {
         const cursor = request.result;
         if (!cursor) return tx.abort();
-        const stored: { version: string; bytes: Uint8Array } = cursor.value;
-        const revision = new DataView(stored.bytes.buffer, stored.bytes.byteOffset, 4);
-        revision.setUint32(0, revision.getUint32(0) + 1);
-        cursor.update(stored);
+        edit(cursor, store);
       };
       tx.oncomplete = () => resolve();
-      tx.onabort = tx.onerror = () => reject(new Error('Cannot tamper with fixture record'));
+      tx.onabort = tx.onerror = () => reject(new Error('Cannot edit fixture record'));
     });
   } finally {
     db.close();
