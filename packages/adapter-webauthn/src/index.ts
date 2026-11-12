@@ -7,6 +7,7 @@ export {
   browserGrantRequestDigest,
   verifyBrowserP256GrantRequest,
   verifyOriginalBrowserP256GrantRequest,
+  verifyRetainedBrowserP256GrantRequest,
   type BrowserGrantRequestContext,
   type VerifiedBrowserP256GrantRequest,
 } from './browser-grant-request.js';

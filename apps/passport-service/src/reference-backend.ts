@@ -33,7 +33,7 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<
   return {
     readBrowserGrantOwner: createBrowserGrantOwnerReader(
       createFileDirectoryStore(directoryFile(config.registryFile)),
-      { ledger: hostLedger, providers, allowedAccount },
+      { providers, allowedAccount },
     ),
     hostMutations: createReferenceHostDriver({
       ...(config.hostGrantIssue && { allowGrantIssue: true }),

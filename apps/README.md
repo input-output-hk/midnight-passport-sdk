@@ -913,7 +913,7 @@ canonical HTTPS origin of the issuer. The pinned WebAuthn profile requires a
 through the same-origin HTTPS frontend. Keep `/v1/mutations/` and its bearer
 token on the private service boundary.
 
-The relay issues a single-use owner challenge and a five-minute session scoped
+The relay issues a stateless, single-use owner challenge ticket and a five-minute session scoped
 to the verified credential and account. Keep the session token in memory and
 send it in the `PassportGrant` authorization header. The service checks live
 P-256 enrollment and the original holder signature before admitting a nonce.
@@ -921,11 +921,23 @@ A device epoch change or observed removal invalidates the session. Before submit
 fence. Retain the original holder request and issue ID for reconciliation.
 The host stores the proved call in its encrypted mutation journal. The browser
 relay's separate state directory retains the nonce and exact host input digest.
-The browser relay can reconcile after the holder's request deadline while
-the grant scope is still live.
+The browser can read an original receipt after the grant expires.
+Continuing a prepared send requires both the signed request and scope to be live.
 
 The relay sponsors only the pinned fee-only owner issue circuit. The browser
 still supplies the exact review and fresh owner circuit signature. The holder
 must validate the returned opening against the signed request and live ACC.
 Browser controls, callback navigation and real-provider tests are separate
 integration work.
+
+Every relay request uses JSON and goes to the issuer origin. The session
+endpoints return their secrets with `Cache-Control: no-store`.
+
+| POST path under `/v1/browser-grant/` | Request | Success |
+| --- | --- | --- |
+| `session/challenge` | `account`, `credentialId` | `challenge` (base64url), `ticket`, `expiresAt` (Unix seconds) |
+| `session/verify` | The same account and credential, plus `challenge`, `challengeTicket`, `challengeExpiresAt`, and hex `authenticatorData`, `clientDataJSON`, `signature` | `session`, `expiresAt` |
+| `claim` | `account`, exact signed holder `fragment` | Original `requestId` and `first` |
+| `read` | `account`, exact signed holder `fragment` | Original `requestId` when retained |
+| `execute` | `account`, `fragment`, `requestId`, `intentSha256`, hex `proved` | Confirmed `txHash` and optional `blockHeight`, or HTTP 202 |
+| `reconcile` | `account`, `fragment`, original `requestId` and `intentSha256` | Same receipt, or HTTP 202 while the original remains unsettled |

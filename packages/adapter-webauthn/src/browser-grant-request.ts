@@ -88,7 +88,7 @@ export function verifyBrowserP256GrantRequest(
   fragment: string,
   context: BrowserGrantRequestContext,
 ): VerifiedBrowserP256GrantRequest {
-  return verifyRequest(fragment, context, false);
+  return verifyRequest(fragment, context, 'fresh');
 }
 
 /** Verify an original signature for read-only recovery. The host must require
@@ -97,13 +97,23 @@ export function verifyOriginalBrowserP256GrantRequest(
   fragment: string,
   context: BrowserGrantRequestContext,
 ): VerifiedBrowserP256GrantRequest {
-  return verifyRequest(fragment, context, true);
+  return verifyRequest(fragment, context, 'original');
+}
+
+/** Verify an expired grant only to look up an exact, previously admitted receipt.
+ * Do not use the returned scope to issue a grant, approve a spend or deliver an opening.
+ */
+export function verifyRetainedBrowserP256GrantRequest(
+  fragment: string,
+  context: BrowserGrantRequestContext,
+): VerifiedBrowserP256GrantRequest {
+  return verifyRequest(fragment, context, 'retained');
 }
 
 function verifyRequest(
   fragment: string,
   context: BrowserGrantRequestContext,
-  recovery: boolean,
+  mode: 'fresh' | 'original' | 'retained',
 ): VerifiedBrowserP256GrantRequest {
   try {
     const { request, proof } = grantFragmentParameters(fragment);
@@ -124,7 +134,7 @@ function verifyRequest(
       signed.chain.replace(/^midnight:/, '') !== network ||
       (signed.account !== undefined && signed.account !== account) ||
       signed.iat > now ||
-      (!recovery && signed.exp < now) ||
+      (mode === 'fresh' && signed.exp < now) ||
       signed.exp < signed.iat ||
       signed.exp - signed.iat > 600 ||
       decodeGrantBytes(signed.state).length < 16
@@ -133,7 +143,8 @@ function verifyRequest(
     const { expires_at, per_call_cap, cap, max_coin_value, recipient } = bounds;
     const perCall = BigInt(per_call_cap);
     if (
-      expires_at <= now ||
+      expires_at <= signed.iat ||
+      (mode !== 'retained' && expires_at <= now) ||
       perCall === 0n ||
       perCall > BigInt(cap) ||
       perCall > BigInt(max_coin_value) ||

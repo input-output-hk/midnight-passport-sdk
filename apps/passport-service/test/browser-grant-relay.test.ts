@@ -30,7 +30,7 @@ const time = 1794449000;
 const intentSha256 = 'ab'.repeat(32);
 const txHash = 'bc'.repeat(32);
 
-function holder({ cap = '10', selected = account, nonce = '51'.repeat(32) } = {}) {
+function holder({ cap = '10', selected = account, nonce = '51'.repeat(32), issuedAt = time } = {}) {
   const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   const jwk = publicKey.export({ format: 'jwk' });
   const key = Buffer.concat([
@@ -42,8 +42,8 @@ function holder({ cap = '10', selected = account, nonce = '51'.repeat(32) } = {}
       v: 1,
       chain: 'undeployed',
       aud: issuer,
-      iat: time,
-      exp: time + 20,
+      iat: issuedAt,
+      exp: issuedAt + 20,
       client_id: client,
       redirect_uri: client + '/return',
       account: selected,
@@ -57,7 +57,7 @@ function holder({ cap = '10', selected = account, nonce = '51'.repeat(32) } = {}
             per_call_cap: '1',
             cap,
             max_coin_value: '10',
-            expires_at: time + 60,
+            expires_at: issuedAt + 60,
             recipient: { kind: 'user', value: '72'.repeat(32) },
           },
         },
@@ -165,6 +165,9 @@ async function fixture(t: TestContext) {
     advance: () => {
       current = time + 25;
     },
+    expireGrant: () => {
+      current = time + 65;
+    },
     counts: () => [issued, observed],
   };
 }
@@ -223,12 +226,18 @@ test('browser relay fences the proved original and recovers it across restart af
   );
   const recovered = await restarted.send('reconcile', { ...input, requestId, intentSha256 });
   assert.deepEqual(recovered, { status: 200, cache: 'no-store', body: { txHash, blockHeight: 3 } });
+  f.expireGrant();
+  assert.deepEqual(
+    (await restarted.send('reconcile', { ...input, requestId, intentSha256 })).body,
+    { txHash, blockHeight: 3 },
+  );
+  assert.equal((await restarted.send('execute', dispatch)).status, 400);
   f.changeOwner();
   assert.equal(
     (await restarted.send('reconcile', { ...input, requestId, intentSha256 })).status,
     409,
   );
-  assert.deepEqual(f.counts(), [1, 1]);
+  assert.deepEqual(f.counts(), [1, 2]);
 });
 
 test('browser relay refuses a changed request under the same signed nonce', async (t) => {
@@ -281,6 +290,7 @@ test('live owner authorization is rechecked after wallet preparation and the ori
       },
       async submit() {
         submissions++;
+        t.mock.timers.setTime((time + 301) * 1000);
         return watchId;
       },
       async lookup() {
@@ -307,15 +317,23 @@ test('live owner authorization is rechecked after wallet preparation and the ori
   assert.ok(mounted);
   t.after(() => mounted.close());
   const host = await relay(t, f.options, mounted);
+  // Unauthenticated clients cannot exhaust the process-wide challenge store.
+  for (let index = 0; index < 129; index++) {
+    assert.equal((await host.send('session/challenge', selected)).status, 200);
+  }
   async function authenticate() {
     const challengeReply = await host.send('session/challenge', selected);
-    const { challenge } = z.object({ challenge: z.string() }).parse(challengeReply.body);
+    const { challenge, expiresAt, ticket } = z
+      .object({ challenge: z.string(), expiresAt: z.number(), ticket: z.string() })
+      .parse(challengeReply.body);
     const clientData = clientDataJSON(Buffer.from(challenge, 'base64url'), policy.origin);
     const auth = Buffer.concat([policy.rp_id_hash, Buffer.from([5, 0, 0, 0, 0])]);
     const material = Buffer.concat([auth, createHash('sha256').update(clientData).digest()]);
     const assertion = {
       ...selected,
       challenge,
+      challengeExpiresAt: expiresAt,
+      challengeTicket: ticket,
       authenticatorData: auth.toString('hex'),
       clientDataJSON: Buffer.from(clientData).toString('hex'),
       signature: sign('sha256', material, privateKey).toString('hex'),
@@ -324,8 +342,14 @@ test('live owner authorization is rechecked after wallet preparation and the ori
       (await host.send('session/verify', { ...assertion, account: '79'.repeat(32) })).status,
       401,
     );
-    const authenticated = await host.send('session/verify', assertion);
-    const { session } = z.object({ session: z.string() }).parse(authenticated.body);
+    const verified = await Promise.all([
+      host.send('session/verify', assertion),
+      host.send('session/verify', assertion),
+    ]);
+    assert.deepEqual(verified.map(({ status }) => status).sort(), [200, 401]);
+    const { session } = z
+      .object({ session: z.string() })
+      .parse(verified.find(({ status }) => status === 200)?.body);
     assert.equal((await host.send('session/verify', assertion)).status, 401);
     return { authorization: 'PassportGrant ' + session };
   }
@@ -334,13 +358,32 @@ test('live owner authorization is rechecked after wallet preparation and the ori
   const claimed = await host.send('claim', input, headers);
   const { requestId } = z.object({ requestId: z.uuid() }).parse(claimed.body);
   const original = { ...input, requestId, intentSha256 };
-  assert.equal((await host.send('execute', { ...original, proved: 'abcd' }, headers)).status, 409);
+  assert.equal((await host.send('execute', { ...original, proved: 'abcd' }, headers)).status, 202);
   assert.equal(submissions, 0);
   assert.equal((await host.send('reconcile', original, headers)).status, 401);
   enrolled = true;
   assert.equal((await host.send('reconcile', original, headers)).status, 401);
   const renewed = await authenticate();
   assert.deepEqual((await host.send('reconcile', original, renewed)).body, { txHash });
-  assert.deepEqual((await host.send('reconcile', original, renewed)).body, { txHash });
+  assert.equal((await host.send('reconcile', original, renewed)).status, 401);
+  const active = await authenticate();
+  assert.deepEqual((await host.send('reconcile', original, active)).body, { txHash });
+  assert.equal(submissions, 1);
+
+  const expiring = {
+    account,
+    fragment: holder({ nonce: '63'.repeat(32), issuedAt: time + 301 }),
+  };
+  const second = await host.send('claim', expiring, active);
+  const pending = {
+    ...expiring,
+    requestId: z.object({ requestId: z.uuid() }).parse(second.body).requestId,
+    intentSha256,
+  };
+  assert.equal((await host.send('execute', { ...pending, proved: 'abcd' }, active)).status, 202);
+  enrolled = true;
+  const fresh = await authenticate();
+  t.mock.timers.setTime((time + 366) * 1000);
+  assert.equal((await host.send('reconcile', pending, fresh)).status, 409);
   assert.equal(submissions, 1);
 });

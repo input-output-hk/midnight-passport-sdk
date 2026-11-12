@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import type { P256PublicKey, WebAuthnPolicy } from '@input-output-hk/mn-passport-account/ports';
 import {
@@ -28,6 +28,8 @@ const identity = z.strictObject({
 });
 const verify = identity.extend({
   challenge: z.string().regex(token),
+  challengeTicket: z.string().regex(token),
+  challengeExpiresAt: z.number().int().nonnegative(),
   authenticatorData: z.string().regex(/^[0-9a-f]{74}$/),
   clientDataJSON: z.string().regex(/^[0-9a-f]{268}$/),
   signature: z
@@ -87,7 +89,8 @@ export function createBrowserGrantSessions(options: BrowserGrantSessionOptions) 
     throw new Error('Browser grant owner sessions require a canonical HTTPS issuer.');
   const policy = webauthnPolicy(issuer.hostname, issuer.origin);
   const now = options.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
-  const challenges = new Map<string, Identity & Expiring>();
+  const challengeKey = randomBytes(32);
+  const usedChallenges = new Map<string, Expiring>();
   const sessions = new Map<
     string,
     Identity &
@@ -108,20 +111,33 @@ export function createBrowserGrantSessions(options: BrowserGrantSessionOptions) 
     return owner;
   }
 
+  function ticket(value: Identity, challenge: string, expiresAt: number) {
+    const material = JSON.stringify([
+      'mn-passport:browser-grant-challenge:v1',
+      issuer.origin,
+      value.account,
+      value.credentialId,
+      challenge,
+      expiresAt,
+    ]);
+    return createHmac('sha256', challengeKey).update(material).digest('base64url');
+  }
+
   async function verifyOwner(data: z.infer<typeof verify>) {
-    const original = challenges.get(data.challenge);
+    const { account, credentialId, challenge, challengeExpiresAt, challengeTicket } = data;
+    const identity = { account, credentialId };
+    const expected = ticket(identity, challenge, challengeExpiresAt);
+    const valid = () => challengeExpiresAt > now() && !usedChallenges.has(challenge);
     if (
-      !original ||
-      original.expiresAt <= now() ||
-      original.account !== data.account ||
-      original.credentialId !== data.credentialId
+      !valid() ||
+      challengeExpiresAt > now() + challengeTtl ||
+      !timingSafeEqual(Buffer.from(expected), Buffer.from(challengeTicket))
     )
       throw denied();
-    challenges.delete(data.challenge);
-    const owner = await live(original);
-    if (original.expiresAt <= now()) throw denied();
+    const owner = await live(identity);
+    if (!valid()) throw denied();
     try {
-      assertionMaterial(Buffer.from(data.challenge, 'base64url'), policy, owner.publicKey, {
+      assertionMaterial(Buffer.from(challenge, 'base64url'), policy, owner.publicKey, {
         authenticatorData: Buffer.from(data.authenticatorData, 'hex'),
         clientDataJSON: Buffer.from(data.clientDataJSON, 'hex'),
         signature: Buffer.from(data.signature, 'hex'),
@@ -129,14 +145,17 @@ export function createBrowserGrantSessions(options: BrowserGrantSessionOptions) 
     } catch {
       throw denied();
     }
-    sweep(sessions, now());
-    if (sessions.size >= capacity) throw new HttpError(429, 'Too many owner sessions.');
+    const time = now();
+    sweep(sessions, time);
+    sweep(usedChallenges, time);
+    if (sessions.size >= capacity || usedChallenges.size >= capacity)
+      throw new HttpError(429, 'Too many owner sessions.');
     const session = randomBytes(32).toString('base64url');
-    const expiresAt = now() + sessionTtl;
+    const expiresAt = time + sessionTtl;
+    usedChallenges.set(challenge, { expiresAt: challengeExpiresAt });
     sessions.set(relayDigest(session), {
-      account: original.account,
-      credentialId: original.credentialId,
-      credential: ownerDigest(original, owner),
+      ...identity,
+      credential: ownerDigest(identity, owner),
       deviceEpoch: owner.deviceEpoch,
       expiresAt,
     });
@@ -158,13 +177,9 @@ export function createBrowserGrantSessions(options: BrowserGrantSessionOptions) 
     } else {
       const data = identity.safeParse(body);
       if (!data.success) throw denied();
-      const time = now();
-      sweep(challenges, time);
-      if (challenges.size >= capacity) throw new HttpError(429, 'Too many owner challenges.');
       const challenge = randomBytes(32).toString('base64url');
-      const expiresAt = time + challengeTtl;
-      challenges.set(challenge, { ...data.data, expiresAt });
-      json(res, 200, { challenge, expiresAt });
+      const expiresAt = now() + challengeTtl;
+      json(res, 200, { challenge, expiresAt, ticket: ticket(data.data, challenge, expiresAt) });
     }
     return true;
   };

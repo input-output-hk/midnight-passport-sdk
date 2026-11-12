@@ -1,4 +1,5 @@
 import { ledger, pureCircuits } from '@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1';
+import { ContractState } from '@midnight-ntwrk/compact-runtime';
 import type { DirectoryStore } from '@input-output-hk/mn-passport-service';
 import type { ReferenceHostRuntime } from './reference-runtime.ts';
 import type { LiveP256GrantOwner } from './browser-grant-sessions.ts';
@@ -7,7 +8,7 @@ const hexCoordinate = /^(0|[1-9a-f][0-9a-f]{0,63})$/;
 
 export function createBrowserGrantOwnerReader(
   directory: DirectoryStore,
-  runtime: Pick<ReferenceHostRuntime, 'ledger' | 'providers' | 'allowedAccount'>,
+  runtime: Pick<ReferenceHostRuntime, 'providers' | 'allowedAccount'>,
 ) {
   return async function readOwner({
     account,
@@ -33,7 +34,7 @@ export function createBrowserGrantOwnerReader(
       return undefined;
     const snapshot = await runtime.providers.publicDataProvider.queryContractState(account);
     if (!snapshot) return undefined;
-    const state = ledger(runtime.ledger.ContractState.deserialize(snapshot.serialize()).data);
+    const state = ledger(ContractState.deserialize(snapshot.serialize()).data);
     if (!state.booted || state.spec_version !== 3n) return undefined;
     const publicKey = {
       x: BigInt('0x' + hint.publicKey.x),

@@ -7,6 +7,7 @@ import type {
 } from '@input-output-hk/mn-passport-account/ports';
 import {
   verifyOriginalBrowserP256GrantRequest,
+  verifyRetainedBrowserP256GrantRequest,
   type VerifiedBrowserP256GrantRequest,
 } from '@input-output-hk/mn-passport-adapter-webauthn';
 import { MAX_HOST_GRANT_ISSUE_BYTES } from '@input-output-hk/mn-passport-protocol';
@@ -117,6 +118,7 @@ async function admit(
   data: z.infer<typeof input>,
   options: BrowserGrantRelayOptions,
   now: number,
+  readOnly: boolean,
 ): Promise<Admission> {
   const owner = await options.authenticate(request, data.account);
   if (
@@ -131,7 +133,10 @@ async function admit(
 
   let holder: VerifiedBrowserP256GrantRequest;
   try {
-    holder = verifyOriginalBrowserP256GrantRequest(data.fragment, {
+    const verify = readOnly
+      ? verifyRetainedBrowserP256GrantRequest
+      : verifyOriginalBrowserP256GrantRequest;
+    holder = verify(data.fragment, {
       authoriserOrigin: options.issuer,
       networkId,
       account: data.account,
@@ -216,7 +221,13 @@ export function browserGrantRelay(options: BrowserGrantRelayOptions): Route {
     const parsed = operation.safeParse({ action, data: body });
     if (!parsed.success) throw new HttpError(400, 'Malformed browser grant request.');
     const command = parsed.data;
-    const admission = await admit(req, command.data, options, now());
+    const admission = await admit(
+      req,
+      command.data,
+      options,
+      now(),
+      command.action === 'read' || command.action === 'reconcile',
+    );
     const nonce = nonceIntent(admission, options.issuer);
     try {
       if (command.action === 'claim') {
@@ -237,7 +248,8 @@ export function browserGrantRelay(options: BrowserGrantRelayOptions): Route {
           command.action === 'execute'
             ? await execute(command.data, admission, signal)
             : await reconcile(command.data, admission, signal);
-        if ((await admission.owner.current()) !== true || signal.aborted) throw relayUnsettled();
+        // A confirmed original belongs to this already authenticated invocation.
+        // Session expiry after the send fence must not erase its receipt.
         json(
           res,
           result === undefined ? 202 : 200,
