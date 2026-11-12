@@ -10,6 +10,14 @@ export type {
   ShieldedWithdrawalReservation,
 } from './shielded-withdrawal-journal.js';
 export * from './shielded-withdrawal-recovery.js';
+export { createShieldedBackfillJournal } from './shielded-backfill-journal.js';
+export type {
+  ShieldedBackfillJournal,
+  ShieldedBackfillRecord,
+  ShieldedBackfillSlot,
+} from './shielded-backfill-journal.js';
+export * from './shielded-backfill.js';
+export type { ShieldedBackfillPure } from './shielded-backfill-sign.js';
 export {
   resumeShieldedDeposit,
   shieldedDepositIntentHash,

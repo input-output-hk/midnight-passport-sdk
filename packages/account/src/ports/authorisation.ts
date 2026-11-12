@@ -14,7 +14,8 @@ export interface FlowDescriptor {
     | 'revoke-grant'
     | 'revoke-all-grants'
     | 'withdraw-unshielded'
-    | 'withdraw-shielded';
+    | 'withdraw-shielded'
+    | 'backfill-shielded-change';
   /** The device entry a device flow targets. */
   readonly commitmentHex?: string;
   /** The ACC whose owner operation the signer is approving. */

@@ -44,6 +44,14 @@ for the change's insertion index. The Ledger 9 replay helper checks that index
 using authenticated state immediately before the transaction. Supplying this
 state and wiring encrypted inbox recovery are still required for live use.
 
+The account package provides `appendShieldedChange` and
+`recoverShieldedBackfill` for a host that can verify the original withdrawal,
+confirm that the change remains unspent, and observe the original finalized
+append. The append seals change to the current viewing public key and reserves
+one request per change commitment. Recovery checks the exact envelope at its
+actual inbox index. Keep the encrypted journal and independent request marker
+when an acknowledgement is lost.
+
 Application contracts may call **into a deployed ACC** under the supported caller-bound design. That does not establish arbitrary ACC → other-contract calls. [See the implementation boundary](/architecture/standards).
 
 ## Repeated deposits and uncertain results

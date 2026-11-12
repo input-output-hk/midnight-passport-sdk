@@ -139,7 +139,8 @@ export function hostedJubjubAuthoriser<
       if (
         descriptor?.kind === 'rotate-encryption-key' ||
         descriptor?.kind === 'withdraw-unshielded' ||
-        descriptor?.kind === 'withdraw-shielded'
+        descriptor?.kind === 'withdraw-shielded' ||
+        descriptor?.kind === 'backfill-shielded-change'
       )
         throw new Error(`the hosted signer has no ${descriptor.kind} consent descriptor`);
       const flow = descriptor === undefined ? undefined : convert.flow(descriptor);

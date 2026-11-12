@@ -75,7 +75,8 @@ test('current Lace seams fit the SDK ports with an explicit key-session flow gua
       if (
         kind === 'rotate-encryption-key' ||
         kind === 'withdraw-unshielded' ||
-        kind === 'withdraw-shielded'
+        kind === 'withdraw-shielded' ||
+        kind === 'backfill-shielded-change'
       )
         throw new Error(`Lace needs an explicit consent descriptor for ${kind}`);
       const laceFlow = kind

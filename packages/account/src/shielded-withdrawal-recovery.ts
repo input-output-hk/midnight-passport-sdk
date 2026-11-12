@@ -59,6 +59,8 @@ export type ShieldedWithdrawalRecovery =
   | {
       readonly kind: 'change-found';
       readonly requestId: string;
+      readonly account: string;
+      readonly changeCommitment: string;
       readonly txHash: string;
       readonly blockHash: string;
       readonly blockHeight: number;
@@ -121,6 +123,8 @@ export async function recoverShieldedWithdrawal(
   return {
     kind: 'change-found',
     requestId: expected.requestId,
+    account: expected.account,
+    changeCommitment: expected.changeCommitment,
     txHash: dispatch.data.identity.txHash,
     blockHash: data.blockHash,
     blockHeight: data.blockHeight,
