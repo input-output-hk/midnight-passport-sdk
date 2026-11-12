@@ -77,3 +77,32 @@ alongside the legacy examples, while excluding build caches, dependencies and
 contributor/tooling material. Rendered output and package archives are checked
 separately. This bounded content check is not a general secret audit or a claim
 that historical repository material has been removed.
+
+## Hosted network preflight
+
+Before qualifying wallet-to-ACC funding on a hosted network, obtain the expected
+genesis hash and runtime spec name and version from the network operator through a
+trusted channel. Use those pins with the node and indexer URLs for the specific
+environment. From a built SDK checkout, run `nix develop -c pnpm qualify hosted-network`
+with these environment variables:
+
+| Variable | Value |
+| --- | --- |
+| `MN_NETWORK_ID` | The hosted network label used in your SDK configuration |
+| `MN_EXPECTED_GENESIS_HASH` | 64 lowercase hexadecimal characters without `0x` |
+| `MN_EXPECTED_RUNTIME_SPEC_NAME` | The expected node runtime spec name |
+| `MN_EXPECTED_RUNTIME_SPEC_VERSION` | The expected decimal runtime spec version |
+| `MN_NODE_URL` and `MN_INDEXER_URL` | HTTPS JSON-RPC and GraphQL endpoints without embedded credentials or query strings |
+
+The command exits successfully when the node matches the genesis pin, the runtime
+matches at a canonical finalized block, and the indexer returns that same block
+with a timestamp within two minutes of the local clock. An unavailable or stale
+observation exits nonzero. The result contains the block identity and lag and
+omits endpoint URLs. The command reads chain metadata and starts no wallet,
+prover or service.
+
+This is the first check for [hosted funding qualification](https://github.com/input-output-hk/midnight-passport-sdk/issues/243).
+Value qualification still requires an operator-owned funded wallet, a verified
+ACC binding and asset policy, durable transactional reservations, and attributable
+proof-backed deposit and withdrawal receipts. Test concurrent senders, fee handling,
+indexer lag, partial failures and replay on the chosen network before enabling it.

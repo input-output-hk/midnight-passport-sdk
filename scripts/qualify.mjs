@@ -4,7 +4,13 @@ import { qualifyRepeatedRuns } from './qualification/receipt.mjs';
 import { SCENARIOS, SUITES } from './qualification/catalog.mjs';
 import { planSuite, runSuite } from './qualification/runner.mjs';
 const [command, suite, flag, output, ...rest] = process.argv.slice(2);
-if (command === 'repeat' && suite && flag && output && !rest.length) {
+if (command === 'hosted-network' && !suite) {
+  if (!process.env.IN_NIX_SHELL) throw new Error('run qualification through nix develop');
+  const { observeHostedNetwork } = await import('./qualification/hosted-network.mjs');
+  const result = await observeHostedNetwork(process.env);
+  console.log(JSON.stringify(result, null, 2));
+  if (!result.ready) process.exitCode = 1;
+} else if (command === 'repeat' && suite && flag && output && !rest.length) {
   const receipts = await Promise.all(
     [suite, flag, output].map(async (file) => JSON.parse(await readFile(file, 'utf8'))),
   );
@@ -26,5 +32,5 @@ if (command === 'repeat' && suite && flag && output && !rest.length) {
   if (!receipt.allRequiredPassed) process.exitCode = 1;
 } else
   throw new Error(
-    'usage: qualify.mjs list | plan <suite> | run <suite> --output <new-receipt.json> | repeat <receipt1> <receipt2> <receipt3>',
+    'usage: qualify.mjs hosted-network | list | plan <suite> | run <suite> --output <new-receipt.json> | repeat <receipt1> <receipt2> <receipt3>',
   );
