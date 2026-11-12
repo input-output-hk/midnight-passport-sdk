@@ -84,3 +84,45 @@ test('an entry added during pending recovery also survives the legacy finaliser'
     /unknown device entry/,
   );
 });
+
+for (const arm of /** @type {const} */ (['jubjub', 'p256'])) {
+  test(`${arm}: the pinned finaliser leaves the dormant initial device able to activate`, async () => {
+    const owner = simulationDevice(arm);
+    const successor = simulationDevice('jubjub');
+    const bootSalt = new Uint8Array(32).fill(7);
+    const sim = await AccSimulator.create({ owner, activate: false, bootSalt });
+    const before = sim.ledger();
+    assert.equal(before.booted, false);
+    assert.equal(before.device_count, 0n);
+    await sim.submitRecovery(successor);
+    await assert.rejects(sim.call('recover_finalise'), /veto window still open/);
+    sim.now += 61;
+    await sim.call('recover_finalise');
+
+    const recovered = sim.ledger();
+    assert.equal(recovered.booted, false);
+    assert.deepEqual(recovered.boot, before.boot);
+    assert.equal(recovered.device_epoch, 1n);
+    const originalEntry = sim.entry(owner);
+    const successorEntry = sim.entry(successor);
+    assert.equal(recovered.devices.member(successorEntry), true);
+    assert.equal(recovered.devices.member(originalEntry), false);
+
+    /** @param {Uint8Array} salt */
+    const activate = (salt) =>
+      sim.call(
+        `activate_initial_device_with_${arm}`,
+        owner.arm === 'p256' ? { ...owner.pk, identity: false } : owner.pk,
+        salt,
+        ...(owner.arm === 'p256' ? [owner.policy] : []),
+      );
+    await assert.rejects(activate(new Uint8Array(32)), /boot commitment mismatch/);
+    await activate(bootSalt);
+    const activated = sim.ledger();
+    assert.equal(activated.devices.member(originalEntry), true);
+    assert.equal(activated.devices.member(successorEntry), true);
+    assert.equal(activated.device_count, 1n, 'the count does not reflect both entries');
+    await sim.authorised('append_inbox', [new Uint8Array(192)], owner);
+    await sim.authorised('append_inbox', [new Uint8Array(192)], successor);
+  });
+}
