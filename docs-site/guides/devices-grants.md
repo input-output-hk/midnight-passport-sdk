@@ -172,3 +172,28 @@ that a different issuance nonce cannot recover the old opening. This source prev
 stages owner bookkeeping for later publication. Native agent spending,
 P-256 owner composition and vault or OWS integration still need
 qualification or implementation.
+
+
+### Verify and use the grant as the agent
+
+Retain the original signed request and its send time. If the request omitted
+the account, pin the chosen ACC through the trusted channel before processing
+the response. Give those pins, the original packet and the structured response
+to `verifyAgentJubjubGrantResponse`. The SDK checks the exact requested scope,
+grant ID and salted commitments against one live ACC read. Keep the returned
+`issuance`, including its bigint fields, in the agent's protected store.
+
+Pass the same request, response and retained issuance to
+`spendWithAgentJubjubGrant` with the amount and previous spent total in
+smallest units. Inject the agent's JubJub key provider as the `grantee` and a
+value-capable pinned chain. The provider handles the private key and signs the
+ACC challenge. The owner can be offline. The SDK reviews the exact payment and
+rechecks the live grant, retained issuance, nonce and spent commitment before
+dispatch. This preview accepts the exact requested scope.
+
+If dispatch is uncertain, `AgentGrantSpendUnsettled` preserves the grant ID,
+previous grant nonce and any acknowledged transaction hash. Reconcile those
+with the original spend and the live grant before considering another payment.
+The holder flow has no crash-durable dispatch journal. Generated ACC tests
+cover a funded spend, per-call and total caps, revocation, wrong-key refusal
+and lost responses. Native proof and vault integration remain separate.

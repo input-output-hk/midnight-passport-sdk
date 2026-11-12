@@ -199,6 +199,7 @@ export async function generatedGrantAccount(arm) {
     participants,
     initial,
     account: account.address,
+    ownerAccount: account,
     origin: 'localhost',
     pure: binding.pureCircuits,
     heldCoins: /** @type {const} */ (0),

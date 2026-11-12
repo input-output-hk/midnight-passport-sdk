@@ -2,9 +2,13 @@ import { utf8ToBytes } from '@noble/hashes/utils.js';
 import type { verifyAgentJubjubGrantRequest } from './agent-grant-request.js';
 import type { AgentGrantIssueRecord } from './agent-grant-issue-journal.js';
 import { fromHex, toHex } from './codec.js';
-import { prepareJubjubGrant, type GrantScopePure } from './grant-scope.js';
+import {
+  prepareJubjubGrant,
+  type GrantScopePure,
+  type PreparedJubjubGrant,
+} from './grant-scope.js';
 import { matchesP256Scope } from './p256-grant-spend-check.js';
-import type { P256GrantSpendSource } from './ports/index.js';
+import type { LiveP256GrantSpendContext, P256GrantSpendSource } from './ports/index.js';
 import { timestamp } from './grant-request-wire.js';
 
 export type VerifiedAgentGrant = ReturnType<typeof verifyAgentJubjubGrantRequest>;
@@ -30,18 +34,7 @@ export async function settledAgentGrant(
   pure: AgentGrantSettlementPure,
   now: () => number,
 ): Promise<GrantedAgentJubjubScope | undefined> {
-  const prepared = prepareJubjubGrant(
-    {
-      account: request.account,
-      origin: request.clientId,
-      scope: request.scope,
-      activeGrantIds: [],
-      requestedSlot: request.slot,
-      nowSeconds: record.admittedAt,
-    },
-    pure,
-    () => fromHex(record.salt),
-  );
+  const prepared = prepareAgentGrantOpening(request, record.salt, record.admittedAt, pure);
   // This source exposes the same raw grant ledger fields for either grantee arm.
   const live = await source.readP256GrantSpendContext(request.account, prepared.grantId);
   const current = timestamp.parse(now());
@@ -54,13 +47,7 @@ export async function settledAgentGrant(
     live.grantEpoch !== record.epoch ||
     live.generation !== record.generation ||
     live.grantGeneration !== record.generation ||
-    !matchesP256Scope(live, {
-      perCallCap: BigInt(request.scope.perCallCap),
-      cap: BigInt(request.scope.cap),
-      expiresAt: BigInt(request.scope.expiresAt),
-      rpCommit: toHex(pure.derive_grant_rp_commit(prepared.scopeSalt, new Uint8Array(32))),
-      objectCommit: toHex(prepared.objectCommit),
-    })
+    !matchesAgentGrantScope(live, request.scope, prepared, pure)
   )
     return undefined;
   return {
@@ -73,8 +60,43 @@ export async function settledAgentGrant(
   };
 }
 
-function wireScope(scope: VerifiedAgentGrant['scope']): string {
-  const json = JSON.stringify({
+export function prepareAgentGrantOpening(
+  request: VerifiedAgentGrant,
+  salt: string,
+  at: number,
+  pure: GrantScopePure,
+) {
+  return prepareJubjubGrant(
+    {
+      account: request.account,
+      origin: request.clientId,
+      scope: request.scope,
+      activeGrantIds: [],
+      requestedSlot: request.slot,
+      nowSeconds: at,
+    },
+    pure,
+    () => fromHex(salt),
+  );
+}
+
+export function matchesAgentGrantScope(
+  live: LiveP256GrantSpendContext,
+  scope: VerifiedAgentGrant['scope'],
+  prepared: PreparedJubjubGrant,
+  pure: AgentGrantSettlementPure,
+) {
+  return matchesP256Scope(live, {
+    perCallCap: BigInt(scope.perCallCap),
+    cap: BigInt(scope.cap),
+    expiresAt: BigInt(scope.expiresAt),
+    rpCommit: toHex(pure.derive_grant_rp_commit(prepared.scopeSalt, new Uint8Array(32))),
+    objectCommit: toHex(prepared.objectCommit),
+  });
+}
+
+export function agentGrantScopeFields(scope: VerifiedAgentGrant['scope']) {
+  return {
     op_withdraw_unshielded: true,
     op_withdraw_shielded: false,
     op_withdraw_shielded_to_contract: false,
@@ -86,7 +108,11 @@ function wireScope(scope: VerifiedAgentGrant['scope']): string {
     per_call_cap: scope.perCallCap,
     cap: scope.cap,
     expires_at: scope.expiresAt,
-  });
+  };
+}
+
+function wireScope(scope: VerifiedAgentGrant['scope']): string {
+  const json = JSON.stringify(agentGrantScopeFields(scope));
   return web
     .btoa(String.fromCharCode(...utf8ToBytes(json)))
     .replace(/\+/g, '-')

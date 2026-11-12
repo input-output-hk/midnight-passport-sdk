@@ -285,6 +285,24 @@ bookkeeping publication remains a separate step using the original staged
 journal. The preview has generated ACC test evidence. Native agent spending,
 P-256 owner composition and vault or OWS integration remain open.
 
+
+**Source preview · agent-side verification and spending.**
+`verifyAgentJubjubGrantResponse({ originalRequest, response }, ports)` requires
+the original request's trusted audience, network, account and send time. Pin
+the owner-selected ACC independently when it was omitted from the signed
+packet. The result includes the original issuance identity from the live
+grant. Retain it in protected storage. The verifier requires an exact scope
+match and recomputes the grant ID and commitments.
+
+`spendWithAgentJubjubGrant({ originalRequest, response, issuance, amount,
+spentPrev }, ports, options?)` requires an injected JubJub `Authoriser`, a
+pinned value-capable chain and exact spend review. The SDK rechecks the live
+grant, original issuance and spent commitment before the grantee signs and
+before dispatch. If the original result is uncertain,
+`AgentGrantSpendUnsettled` carries the grant ID, original nonce and any known
+transaction hash. The holder must retain its original spend and reconcile it
+before another payment. This API does not supply a crash-durable spend journal.
+
 Losing a local profile is a separate case. [Published-bookkeeping reconstruction]({{ '/grant-recovery/' | relative_url }})
 uses the original issuing reader and authenticated live commitments; it does not
 recover a full staged scope or private grantee keys. Another enrolled reader alone

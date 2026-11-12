@@ -84,3 +84,4 @@ export {
 } from './agent-grant-issue-journal.js';
 export type { AgentGrantIssueJournal, AgentGrantIssueRecord } from './agent-grant-issue-journal.js';
 export type { GrantedAgentJubjubScope } from './agent-grant-settlement.js';
+export * from './agent-grant-holder.js';
