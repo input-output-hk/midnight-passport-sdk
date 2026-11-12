@@ -28,14 +28,16 @@ const rpcReply = z.object({ id: z.literal(1), error: z.undefined(), result: z.un
 const indexedReply = z.object({
   errors: z.undefined(),
   data: z.object({
-    block: z.object({
-      hash,
-      ledgerParameters: z
-        .string()
-        .min(2)
-        .max(2 * parametersLimit)
-        .regex(/^[0-9a-f]+$/),
-    }),
+    block: z
+      .object({
+        hash,
+        ledgerParameters: z
+          .string()
+          .min(2)
+          .max(2 * parametersLimit)
+          .regex(/^[0-9a-f]+$/),
+      })
+      .nullable(),
   }),
 });
 
@@ -202,10 +204,11 @@ export function createCanonicalLedgerBlockReader(runtime: CanonicalLedgerRuntime
       signal,
     );
     if (!response.ok) throw new Error('Canonical block parameters unavailable.');
-    const { hash: indexedHash, ledgerParameters } = indexedReply.parse(response.value).data.block;
-    if (indexedHash !== blockHash)
+    const indexed = indexedReply.parse(response.value).data.block;
+    if (!indexed) return undefined;
+    if (indexed.hash !== blockHash)
       throw new Error('Indexer returned parameters for another block.');
-    return hexBytes('0x' + ledgerParameters);
+    return hexBytes('0x' + indexed.ledgerParameters);
   }
   return async (
     request: string,
@@ -220,23 +223,20 @@ export function createCanonicalLedgerBlockReader(runtime: CanonicalLedgerRuntime
         await rpc('chain_getBlock', [hashArg], signal, blockResponseLimit),
       );
       const { parentHash } = block.header;
-      const [registry, rawEvents, now, previous, indexedParameters] = await Promise.all([
+      const [registry, rawEvents, now, previous, ledgerParameters] = await Promise.all([
         readRegistry(parentHash, signal),
         rpc('state_getStorage', [eventsKey, hashArg], signal, blockResponseLimit),
         rpc('state_getStorage', [timestampKey, hashArg], signal),
         rpc('state_getStorage', [timestampKey, parentHash], signal),
-        allowUnindexedEmptyBlock ? undefined : readParameters(blockHash, signal),
+        readParameters(blockHash, signal),
       ]);
       signal.throwIfAborted();
       const header = registry.createType<Header>('Header', block.header);
       if (header.hash.toHex() !== hashArg) return undefined;
       const height = header.number.toNumber();
       const transactions = decodeCalls(registry, block.extrinsics, rawEvents);
-      const ledgerParameters =
-        allowUnindexedEmptyBlock && transactions.length > 0
-          ? await readParameters(blockHash, signal)
-          : indexedParameters;
-      signal.throwIfAborted();
+      if (!ledgerParameters && (!allowUnindexedEmptyBlock || transactions.length > 0))
+        return undefined;
       return {
         blockHash,
         parentHash: parentHash.slice(2),

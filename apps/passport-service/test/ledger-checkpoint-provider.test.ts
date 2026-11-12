@@ -20,7 +20,7 @@ const metadataSha256 = createHash('sha256')
 const hex = (value: number) => '0x' + value.toString(16);
 const signal = () => AbortSignal.timeout(15_000);
 
-function makeChain() {
+function makeChain(useZeroFullness: boolean) {
   const registry = new TypeRegistry();
   let state = Ledger.LedgerState.blank('undeployed');
   let parentHash = '0x' + '00'.repeat(32);
@@ -37,11 +37,14 @@ function makeChain() {
     const timestamp = Buffer.alloc(8);
     timestamp.writeBigUInt64LE(BigInt(height * 1000));
     if (height) {
-      state = state.postBlockUpdate(
-        new Date(height * 1000),
-        { readTime: 0, computeTime: 0, blockUsage: 0, bytesWritten: 0, bytesChurned: 0 },
-        0,
-      );
+      const at = new Date(height * 1000);
+      state = useZeroFullness
+        ? state.postBlockUpdate(
+            at,
+            { readTime: 0, computeTime: 0, blockUsage: 0, bytesWritten: 0, bytesChurned: 0 },
+            0,
+          )
+        : state.postBlockUpdate(at);
     }
     const snapshot = Buffer.from(state.serialize());
     const result = {
@@ -67,8 +70,8 @@ async function body(request: IncomingMessage) {
   };
 }
 
-async function serveChain(t: TestContext) {
-  const chain = makeChain();
+async function serveChain(t: TestContext, useZeroFullness = false) {
+  const chain = makeChain(useZeroFullness);
   const genesis = chain[0];
   assert.ok(genesis);
   const control = {
@@ -97,10 +100,9 @@ async function serveChain(t: TestContext) {
         return res.end(
           JSON.stringify({
             data: {
-              block: indexed && {
-                hash: indexed.hash.slice(2),
-                ledgerParameters: indexed.parameters,
-              },
+              block: indexed
+                ? { hash: indexed.hash.slice(2), ledgerParameters: indexed.parameters }
+                : null,
             },
           }),
         );
@@ -199,7 +201,7 @@ test('resumes an authenticated finalized cursor and reads exact retained and bes
 });
 
 test('authenticates an empty best block that the finalized-only indexer cannot serve', async (t) => {
-  const f = await serveChain(t);
+  const f = await serveChain(t, true);
   f.control.finalizedIndexerOnly = true;
   const provider = createLedgerCheckpointProvider(f.options);
   assert.equal((await provider.advanceFinalized(signal()))?.height, 2);
