@@ -284,3 +284,61 @@ test('grant call comparison refuses changed commitments and payouts', async () =
     assert.throws(() => checkGrantPayout(call, replacement), { code: 'MutationUnsettled' });
   }
 });
+
+test('a shared chain keeps basic JubJub spending and refuses an unreserved durable call', async () => {
+  const { createDurableAgentGrantSpendChain } =
+    await import('../packages/adapter-midnight-js/dist/index.js');
+  const { createAgentGrantSpendJournal } = await import('../packages/account/dist/index.js');
+  let reads = 0;
+  let calls = 0;
+  const unavailable = async () => assert.fail('Unexpected provider or receipt mutation.');
+  const chain = createDurableAgentGrantSpendChain({
+    network: {
+      networkId: 'undeployed',
+      bindingId: 'acc-s3r1.1',
+      manifestSha256: 'a'.repeat(64),
+      indexerUrl: 'http://indexer',
+      indexerWsUrl: 'ws://indexer',
+      nodeUrl: 'http://node',
+      artefactUrl: 'http://artefacts',
+    },
+    binding: /** @type {any} */ ({ Contract: class {}, ledger: () => ({}), pureCircuits: {} }),
+    prover: { proveTx: unavailable },
+    sponsor: { balanceAndSign: unavailable },
+    sponsorKeys: { coinPublicKey: 'coin', encryptionPublicKey: 'enc' },
+    submitter: { submit: unavailable },
+    publicDataProvider: /** @type {any} */ ({}),
+    agentGrantReceipts: createAgentGrantSpendJournal({
+      async read() {
+        reads++;
+        return undefined;
+      },
+      compareAndSwap: unavailable,
+    }),
+    submit: /** @type {any} */ (
+      async () => {
+        calls++;
+        return { public: { txHash: 'ab'.repeat(32), blockHeight: 7 } };
+      }
+    ),
+  });
+  const basic = {
+    address: 'a1'.repeat(32),
+    circuit: /** @type {const} */ ('withdraw_unshielded_with_grant_jubjub'),
+    args: [],
+  };
+  assert.deepEqual(await chain.call(basic), { txHash: 'ab'.repeat(32), blockHeight: 7 });
+  assert.deepEqual([reads, calls], [0, 1]);
+  await assert.rejects(
+    chain.submitDurableAgentGrantSpend({
+      ...basic,
+      mutation: {
+        requestId: '549bd843-0a8f-40af-9b6f-d9eb8cf48871',
+        intentSha256: '19'.repeat(32),
+        validUntilSeconds: Math.floor(Date.now() / 1000) + 60,
+      },
+    }),
+    { code: 'MutationUnsettled' },
+  );
+  assert.deepEqual([reads, calls], [1, 1]);
+});

@@ -200,7 +200,8 @@ For a crash-durable withdrawal, use `spendWithDurableAgentJubjubGrant` with a
 stable request UUID. Share one `createAgentGrantSpendJournal` with the SDK and
 the value-capable `createDurableAgentGrantSpendChain` adapter. The journal
 reserves the original issuance and grant nonce and keeps the finalized
-transaction identity before broadcast. Keep the journal across restarts.
+transaction identity before broadcast. Keep the journal across restarts. The
+same chain can also run the basic helper for callers that choose it explicitly.
 
 On `DurableAgentGrantSpendUnsettled`, keep the UUID and call
 `recoverAgentGrantSpend` with a trusted exact-finality reader and the pinned

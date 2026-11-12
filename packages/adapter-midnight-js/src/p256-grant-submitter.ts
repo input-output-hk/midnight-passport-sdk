@@ -156,7 +156,7 @@ export function selectGrantSpendDispatch(
 ) {
   if (request.circuit === P256_GRANT_SPEND_CIRCUIT)
     return dispatch(request, networkId, p256Receipts, P256_GRANT_SPEND_CIRCUIT);
-  if (request.circuit === AGENT_GRANT_SPEND_CIRCUIT && (agentReceipts || request.mutation))
+  if (request.circuit === AGENT_GRANT_SPEND_CIRCUIT && request.mutation !== undefined)
     return dispatch(request, networkId, agentReceipts, AGENT_GRANT_SPEND_CIRCUIT);
   return undefined;
 }

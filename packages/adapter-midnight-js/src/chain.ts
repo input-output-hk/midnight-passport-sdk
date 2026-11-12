@@ -371,12 +371,13 @@ function createChain(opts: MidnightChainOptions): Chain {
           'The configured fee-only sponsor cannot balance a shielded ACC withdrawal; use a value-capable wallet.',
         );
       const compiledContract = heldCoin ? compileWithWitness(heldCoin) : unshieldedContract;
-      const grant = await selectGrantSpendDispatch(
+      const dispatch = selectGrantSpendDispatch(
         request,
         network.networkId,
         opts.p256GrantReceipts,
         opts.agentGrantReceipts,
       );
+      const grant = dispatch && (await dispatch);
       const { report, track } = chainProgress(onEvent);
       let callCommitment: string | undefined;
       let finality: ReturnType<typeof report> | undefined;

@@ -558,15 +558,14 @@ test('durable agent withdrawal refuses a changed payout and expiry during the di
     chain: {
       ...f.chain,
       async submitDurableAgentGrantSpend(call) {
-        await assert.rejects(
-          async () =>
-            selectGrantSpendDispatch(
-              { address: call.address, circuit: call.circuit, args: call.args },
-              'undeployed',
-              undefined,
-              crossing,
-            ),
-          { code: 'MutationUnsettled' },
+        assert.equal(
+          selectGrantSpendDispatch(
+            { address: call.address, circuit: call.circuit, args: call.args },
+            'undeployed',
+            undefined,
+            crossing,
+          ),
+          undefined,
         );
         const dispatch = await selectGrantSpendDispatch(call, 'undeployed', undefined, crossing);
         assert.ok(dispatch);
