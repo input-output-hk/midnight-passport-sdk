@@ -927,25 +927,60 @@ Continuing a prepared send requires both the signed request and scope to be live
 The relay sponsors only the pinned fee-only owner issue circuit. The browser
 still supplies the exact review and fresh owner circuit signature. The holder
 must validate the returned opening against the signed request and live ACC.
-The demo source includes holder request preparation, an issuer journey and
-callback capture. The holder retains the signed request in the originating
-tab's session storage. Callback capture removes the fragment from browser
-history and retains it in memory for live ACC verification. On the issuer,
-the host provides the owner consent, pinned chain and encryption key for the
-IndexedDB opening journal.
+The demo exposes a dedicated `/grant.html` entry in an opt-in build. Set
+`VITE_PASSPORT_BROWSER_GRANT_RELAY=1` and pin two distinct canonical 21-byte
+HTTPS origins with `PASSPORT_BROWSER_GRANT_ISSUER_ORIGIN` and
+`PASSPORT_BROWSER_GRANT_HOLDER_ORIGIN`. Keep the network pin at `undeployed`.
+Serve the same build at both origins. The page selects its role from the
+origin pin. The default localhost app keeps its own passkey origin.
 
-For local development, `VITE_PASSPORT_BROWSER_GRANT_RELAY=1` and
-`PASSPORT_BROWSER_GRANT_PORT=<loopback service port>` add the Vite proxy for
-`/v1/browser-grant/`. An HTTPS frontend must preserve the issuer origin and
-route only these public relay paths to the service. The default localhost
-demo does not expose the issuer and holder pages.
+The issuer requires an active P-256 owner enrolled at the issuer origin with a
+verified directory entry and PRF support. An owner credential enrolled at
+`http://localhost:5173` cannot authenticate at this HTTPS origin. Provision
+the owner with a host that configures the SDK for the issuer origin and its
+full hostname as RP ID. The standalone grant page does not provision accounts.
+
+On the issuer frontend, forward the relay, GET configuration and account
+directory, proof creation/polling and pinned artifact reads to the trusted
+service. The holder needs GET configuration and browser-reachable indexer
+reads. Configure the service's `PASSPORT_PUBLIC_ZK_BASE_URL` to
+`<issuer origin>/v1/zk/acc-s3r1.1` and provide browser-reachable indexer
+URLs. Keep the grant sponsor's private mutation route and bearer on the
+service boundary. The issuer's proof service receives the unproven
+transaction, so use a trusted service on the isolated network. For local
+development behind a TLS frontend, the optional
+`PASSPORT_BROWSER_GRANT_PORT=<loopback service port>` sets up Vite forwarding
+to an already running service. Configure the frontend to admit only the
+methods and paths needed at each origin.
+
+1. Open `/grant.html` at the holder origin. Enter the account and a fixed
+   unshielded recipient, then review the asset, limits and expiry. The holder
+   creates a separate passkey and signs the request before navigating in the
+   same tab.
+2. At the issuer origin, enter the requested ACC address and review its scope.
+   **Approve permission** starts fresh owner verification, relay authentication
+   and the exact circuit signature review. **Recover original request** can
+   reconcile a previous attempt and may complete its retained submission.
+   Reopen the original signed request from the holder tab if needed.
+3. Return the permission in the same tab. The holder removes the callback
+   fragment from the URL and uses **Verify permission** to check it against the
+   original request and live ACC state. The verified opening is held in the
+   page until you leave. Copying for a trusted client requires fresh approval
+   from the original holder passkey and a new live ACC check.
+
+The originating tab retains the signed request in session storage. On the
+issuer, successful owner verification derives the key for the encrypted
+IndexedDB opening journal. The issuer's latest selected signed request can be
+reopened after reload. Raw PRF bytes, the session bearer, the private callback
+and the opening stay out of browser logs and public operation evidence. Clearing
+the holder's pending request does not revoke an on-chain permission.
 
 Run `pnpm --filter passport-dapp test:grant-relay` with Chrome and OpenSSL.
-The fixture uses two temporary HTTPS origins and separate virtual P-256
-passkeys. It drops an accepted execute response and checks that recovery
-returns the original receipt with one dispatch. The sponsor is simulated.
-Interactive navigation, native relay proving and provider testing remain
-open.
+The fixture exercises the pages across temporary HTTPS origins, virtual P-256
+credentials, account mismatch and cancellation, reload and invalid callbacks.
+A separate path in the fixture drops an accepted execute response and recovers
+the original receipt with one simulated sponsor dispatch. Native proving
+through the pages and real passkey providers still need qualification.
 
 Every relay request uses JSON and goes to the issuer origin. The session
 endpoints return their secrets with `Cache-Control: no-store`.

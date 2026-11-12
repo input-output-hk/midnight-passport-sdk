@@ -154,9 +154,16 @@ signature. Preserve the original holder request and issue ID for recovery.
 Show only the outcome and approved scope in the UI. Keep the assertion,
 callback state, opening and proof bytes out of Activity and Audit.
 
+The opt-in grant page runs in one tab across a configured holder origin and
+issuer origin. The holder signs a request for a fixed recipient and limited
+withdrawals. The issuer first reviews the request without using a passkey,
+then chooses approval or recovery. Each credential call explains the exact
+scope and its purpose. Recovery can resume a retained submission, so it has a
+separate explicit action. The holder verifies the returned opening against
+live ACC state. Copying the opening requires fresh approval from the original
+holder passkey and another live check.
+
 The [reference app guide](../../apps/README.md#source-preview-browser-grant-relay)
-documents the holder and issuer composition and the Chromium lost-response
-check. A holder keeps the signed request in the original tab. Returning to that
-tab scrubs the callback fragment from history and verifies the opening against
-live ACC state. User-facing navigation and native relay qualification remain
-open.
+covers build pins, service routes, the pre-enrolled owner requirement and
+the Chromium checks. Browser navigation and the simulated sponsor receipt
+path are covered. Native relay and real-provider qualification remain open.

@@ -20,3 +20,9 @@ declare const __PASSPORT_MANIFEST_SHA256__: string;
 
 /** The network id this build is bound to (PASSPORT_NETWORK_ID, default `undeployed`), injected by vite.config.ts. */
 declare const __PASSPORT_NETWORK_ID__: string;
+
+/** Optional standalone browser-grant roles, pinned at build time. */
+declare const __PASSPORT_GRANT_ORIGINS__: {
+  readonly issuer: string;
+  readonly holder: string;
+} | null;

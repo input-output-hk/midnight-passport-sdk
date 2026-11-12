@@ -1,0 +1,125 @@
+:root {
+  color-scheme: dark;
+  color: #f3f4ff;
+  background: #0c0d13;
+  font:
+    1rem/1.55 Outfit,
+    system-ui,
+    sans-serif;
+}
+body {
+  margin: 0;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem max(1.25rem, calc((100% - 64rem) / 2));
+  background: #131520;
+  border-bottom: 1px solid #33374c;
+  font-weight: 650;
+}
+header span:last-child {
+  color: #c4c7db;
+}
+main {
+  width: min(44rem, calc(100% - 2.5rem));
+  margin: clamp(2rem, 7vw, 5rem) auto;
+}
+h1 {
+  margin: 0 0 0.6rem;
+  line-height: 1.14;
+  font-size: clamp(2rem, 6vw, 3.1rem);
+}
+h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.35rem;
+}
+p {
+  color: #c4c7db;
+  margin: 0.5rem 0 1.1rem;
+}
+form,
+section,
+dialog {
+  background: #161823;
+  border: 1px solid #353a51;
+  border-radius: 0.8rem;
+  padding: clamp(1rem, 4vw, 1.6rem);
+}
+form,
+section {
+  margin: 1.4rem 0;
+}
+dialog form {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+dialog {
+  width: min(36rem, calc(100% - 4rem));
+  max-height: 85dvh;
+}
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.72);
+}
+label {
+  display: grid;
+  gap: 0.3rem;
+  margin-bottom: 1rem;
+  font-weight: 550;
+}
+input,
+select,
+button {
+  font: inherit;
+  color: inherit;
+  background: #0f111c;
+  border: 1px solid #5c6480;
+  border-radius: 0.48rem;
+  min-height: 2.7rem;
+  padding: 0.32rem 0.65rem;
+}
+input,
+select {
+  box-sizing: border-box;
+  width: 100%;
+}
+button {
+  font-weight: 650;
+  cursor: pointer;
+}
+button.primary {
+  background: #4147df;
+  border-color: #747aff;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+:focus-visible {
+  outline: 2px solid #aabaff;
+  outline-offset: 3px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+  gap: 0.8rem;
+}
+dl {
+  display: grid;
+  grid-template-columns: minmax(6rem, 0.4fr) minmax(0, 1fr);
+  gap: 0.4rem 1rem;
+}
+dt {
+  color: #c4c7db;
+}
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Withdrawal permissions · Midnight Passport</title>
+  </head>
+  <body>
+    <header><span>Midnight Passport</span><span>Powered by Lace</span></header>
+    <main id="grant-main"></main>
+    <dialog id="grant-consent" aria-labelledby="grant-consent-title">
+      <form method="dialog">
+        <h2 id="grant-consent-title"></h2>
+        <div id="grant-consent-details"></div>
+        <div class="actions">
+          <button value="cancel" autofocus>Cancel</button>
+          <button value="approve" class="primary">Continue</button>
+        </div>
+      </form>
+    </dialog>
+    <script type="module" src="/src/browser-grant-page.ts"></script>
+  </body>
+</html>

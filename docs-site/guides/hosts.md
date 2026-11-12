@@ -82,5 +82,9 @@ does not disclose the private scope to the relay.
 The demo's Chromium fixture uses separate HTTPS origins and virtual P-256
 credentials for the holder request and issuer relay session. It simulates a
 lost response after sponsor acceptance and confirms recovery of the original
-receipt with one dispatch. The fixture uses a simulated sponsor. The issuer and
-holder pages still need to be connected to these flows.
+receipt with one dispatch. The fixture uses a simulated sponsor. The source preview provides an opt-in holder and issuer page. The holder requests
+one fixed-recipient permission. The issuer reviews it before any owner
+credential call and chooses approval or original-request recovery. The
+return path checks the private opening against the live ACC before offering
+it to the holder. An owner passkey must already be enrolled at the issuer
+origin.

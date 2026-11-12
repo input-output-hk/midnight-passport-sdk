@@ -8,6 +8,8 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, type BrowserContext } from 'playwright-core';
 import { createServer } from 'vite';
+import wasm from 'vite-plugin-wasm';
+import { checkGrantPages } from './fixtures/browser-grant-page-check.js';
 import {
   createServer as createHttpService,
   fileMutationByteStore,
@@ -21,6 +23,7 @@ const appRoot = fileURLToPath(new URL('../', import.meta.url));
 const fixture = '/e2e/fixtures/browser-grant-relay-fixture.ts';
 const account = '31'.repeat(32);
 const txHash = '43'.repeat(32);
+const manifestSha256 = '18'.repeat(32);
 const temp = await mkdtemp(join(tmpdir(), 'passport-grant-browser-'));
 let vite: Awaited<ReturnType<typeof createServer>> | undefined;
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
@@ -88,6 +91,18 @@ try {
     configFile: false,
     cacheDir: join(temp, 'cache'),
     logLevel: 'error',
+    define: {
+      __PASSPORT_MANIFEST_SHA256__: JSON.stringify(manifestSha256),
+      __PASSPORT_GRANT_ORIGINS__: 'globalThis.testGrantOrigins',
+    },
+    resolve: {
+      alias: [
+        { find: /^node:buffer$/, replacement: resolve(appRoot, 'node_modules/buffer/index.js') },
+        { find: /^buffer$/, replacement: resolve(appRoot, 'node_modules/buffer/index.js') },
+        { find: /^(node:)?assert$/, replacement: resolve(appRoot, 'src/shims/assert.ts') },
+        { find: 'isomorphic-ws', replacement: resolve(appRoot, 'src/shims/ws.ts') },
+      ],
+    },
     server: {
       host: '127.0.0.1',
       port: 0,
@@ -110,6 +125,7 @@ try {
       fs: { allow: [resolve(appRoot, '../..')] },
     },
     plugins: [
+      wasm(),
       {
         name: 'isolated-browser-grant-fixture',
         configureServer(server) {
@@ -185,6 +201,22 @@ try {
   assert.equal(result.rejected, 2);
   assert.ok(result.auth >= 1 && result.auth <= 5);
   assert.deepEqual([lost, sends, reads], [1, 1, 1]);
+  const uiContext = await browser.newContext({ ignoreHTTPSErrors: true });
+  await uiContext.addInitScript((pins) => Object.assign(globalThis, { testGrantOrigins: pins }), {
+    issuer,
+    holder,
+  });
+  const ui = await originPage(uiContext, holder);
+  await checkGrantPages(ui, issuer, holder, account, manifestSha256, async () => {
+    const credential = await ui.evaluate(async (path) => (await import(path)).register(), fixture);
+    owner = credential;
+    return credential;
+  });
+  assert.deepEqual([lost, sends, reads], [1, 1, 1]);
+  await uiContext.close();
+  console.log(
+    'Grant pages passed holder navigation, exact scope, cancellation and original request reload',
+  );
   console.log('Browser grant relay passed with separate HTTPS origins and one original dispatch');
 } finally {
   await browser?.close();
