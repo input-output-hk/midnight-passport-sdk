@@ -927,8 +927,25 @@ Continuing a prepared send requires both the signed request and scope to be live
 The relay sponsors only the pinned fee-only owner issue circuit. The browser
 still supplies the exact review and fresh owner circuit signature. The holder
 must validate the returned opening against the signed request and live ACC.
-Browser controls, callback navigation and real-provider tests are separate
-integration work.
+The demo source includes holder request preparation, an issuer journey and
+callback capture. The holder retains the signed request in the originating
+tab's session storage. Callback capture removes the fragment from browser
+history and retains it in memory for live ACC verification. On the issuer,
+the host provides the owner consent, pinned chain and encryption key for the
+IndexedDB opening journal.
+
+For local development, `VITE_PASSPORT_BROWSER_GRANT_RELAY=1` and
+`PASSPORT_BROWSER_GRANT_PORT=<loopback service port>` add the Vite proxy for
+`/v1/browser-grant/`. An HTTPS frontend must preserve the issuer origin and
+route only these public relay paths to the service. The default localhost
+demo does not expose the issuer and holder pages.
+
+Run `pnpm --filter passport-dapp test:grant-relay` with Chrome and OpenSSL.
+The fixture uses two temporary HTTPS origins and separate virtual P-256
+passkeys. It drops an accepted execute response and checks that recovery
+returns the original receipt with one dispatch. The sponsor is simulated.
+Interactive navigation, native relay proving and provider testing remain
+open.
 
 Every relay request uses JSON and goes to the issuer origin. The session
 endpoints return their secrets with `Cache-Control: no-store`.

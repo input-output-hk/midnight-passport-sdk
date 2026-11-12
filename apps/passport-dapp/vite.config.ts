@@ -41,7 +41,12 @@ function claimProxy() {
   };
 }
 
-const proxy = claimProxy();
+const proxy = {
+  ...claimProxy(),
+  ...(process.env.VITE_PASSPORT_BROWSER_GRANT_RELAY === '1' && {
+    '/v1/browser-grant/': loopbackPort('PASSPORT_BROWSER_GRANT_PORT'),
+  }),
+};
 export default defineConfig({
   plugins: [wasm()],
   worker: { format: 'es', plugins: () => [wasm()] },
@@ -62,7 +67,7 @@ export default defineConfig({
     host: 'localhost',
     port: 5173,
     strictPort: true,
-    ...(proxy && { proxy }),
+    ...(Object.keys(proxy).length > 0 && { proxy }),
     fs: { allow: [here, path.resolve(here, '../..')] },
   },
   build: { target: 'esnext' },

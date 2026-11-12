@@ -60,6 +60,8 @@ const CEREMONIES: Record<PasskeyCeremony['purpose'], string> = {
   'identify-and-unlock':
     'Choose your passkey and unlock local account keys in this request (PRF). Raw PRF outputs are cleared when login ends.',
   sign: 'Sign the current ACC transaction. This is separate from unlocking local keys.',
+  'request-browser-grant': 'Sign the selected Passport withdrawal permission request.',
+  'authenticate-grant-relay': 'Sign in to the grant relay for the selected Passport account.',
   'derive-keys': 'Unlock this account’s local keys with the passkey (PRF).',
 };
 

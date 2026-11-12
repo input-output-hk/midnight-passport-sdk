@@ -13,7 +13,8 @@
     "virtual-authenticator": "../../experiments/acc-0.35/guard.sh && node --import tsx e2e/virtual-authenticator.e2e.ts",
     "test:browser": "node --import tsx e2e/demo-journeys.e2e.ts",
     "test:background": "node --import tsx e2e/background-quality.e2e.ts",
-    "test:grant-storage": "node --import tsx e2e/browser-grant-storage.e2e.ts"
+    "test:grant-storage": "node --import tsx e2e/browser-grant-storage.e2e.ts",
+    "test:grant-relay": "node --import tsx e2e/browser-grant-relay.e2e.ts"
   },
   "dependencies": {
     "@input-output-hk/mn-passport-account": "workspace:*",

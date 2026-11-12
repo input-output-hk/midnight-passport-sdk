@@ -28,8 +28,73 @@ export type PasskeyOptions = PasskeyCeremonyOptions & {
   registrationProfile?: 'p256' | 'jubjub-prf';
 };
 
+type BrowserGrantPurpose = 'authenticate-grant-relay' | 'request-browser-grant';
+
+async function grantAssertion(
+  credential: PasskeyCredential,
+  challenge: Uint8Array,
+  purpose: BrowserGrantPurpose,
+  policy: PasskeyCredential['policy'],
+  requireP256: () => void,
+  assertion: (
+    credentialId: Uint8Array,
+    challenge: Uint8Array,
+    purpose: BrowserGrantPurpose,
+  ) => Promise<WebAuthnAssertion>,
+): Promise<WebAuthnAssertion> {
+  try {
+    requireP256();
+    const credentialId = Uint8Array.from(credential.credentialId);
+    const publicKey = { ...credential.publicKey };
+    const original = Uint8Array.from(challenge);
+    if (
+      !equalBytes(credential.policy.origin, policy.origin) ||
+      !equalBytes(credential.policy.rp_id_hash, policy.rp_id_hash)
+    )
+      throw wrongPasskey();
+    const proof = await assertion(credentialId, original, purpose);
+    assertionMaterial(original, policy, publicKey, proof);
+    return proof;
+  } catch (e) {
+    throw toPassportError(e);
+  }
+}
+
+function creationOptions(rpId: string, userName: string): CreationOptionsWithHints {
+  return {
+    challenge: crypto.getRandomValues(new Uint8Array(32)),
+    rp: { id: rpId, name: 'Midnight Passport' },
+    user: {
+      id: crypto.getRandomValues(new Uint8Array(32)),
+      name: userName,
+      displayName: userName,
+    },
+    pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+    // Discoverable, so openAccount can find it without a stored id (spec §5.1).
+    authenticatorSelection: { userVerification: 'required', residentKey: 'required' },
+    attestation: 'none',
+    // Steer the browser to a passkey provider on this device (Google Password Manager,
+    // iCloud Keychain) rather than a security key, which often has no PRF.
+    hints: ['client-device'],
+    // PRF at creation with both Lace salts, as the Lace key source does: some providers enable
+    // PRF only for credentials created with the extension, and some evaluate it right away.
+    extensions: { prf: { eval: lacePrfSalts() } },
+  };
+}
+
 /** wa-json134 passkeys; the private key never leaves the authenticator (spec §4.4). */
-export function browserPasskey(opts: PasskeyOptions): PasskeySeam {
+export function browserPasskey(opts: PasskeyOptions): PasskeySeam & {
+  /** Sign a holder's exact browser grant request digest. */
+  assertGrantRequest(
+    credential: PasskeyCredential,
+    challenge: Uint8Array,
+  ): Promise<WebAuthnAssertion>;
+  /** Prove possession to the issuer's browser-grant relay with an enrolled P-256 passkey. */
+  assertGrantRelay(
+    credential: PasskeyCredential,
+    challenge: Uint8Array,
+  ): Promise<WebAuthnAssertion>;
+} {
   const profile = opts.registrationProfile ?? 'p256';
   if (profile !== 'p256' && profile !== 'jubjub-prf')
     throw new PassportConnectorError('InternalError', 'Invalid passkey registration profile.');
@@ -54,7 +119,7 @@ export function browserPasskey(opts: PasskeyOptions): PasskeySeam {
   const getCanonical = async (
     publicKey: PublicKeyCredentialRequestOptions,
     credentialId?: Uint8Array,
-    purpose: 'verify-created' | 'identify' | 'sign' = 'identify',
+    purpose: 'verify-created' | 'identify' | 'sign' | BrowserGrantPurpose = 'identify',
   ): Promise<{ id: Uint8Array; proof: WebAuthnAssertion }> => {
     const challenge = publicKey.challenge;
     const expected = clientDataJSON(
@@ -101,7 +166,7 @@ export function browserPasskey(opts: PasskeyOptions): PasskeySeam {
   const assertion = async (
     credentialId: Uint8Array,
     challenge: Uint8Array,
-    purpose: 'verify-created' | 'sign',
+    purpose: 'verify-created' | 'sign' | BrowserGrantPurpose,
   ): Promise<WebAuthnAssertion> => {
     return (
       await getCanonical(
@@ -128,25 +193,7 @@ export function browserPasskey(opts: PasskeyOptions): PasskeySeam {
             `Passkey enrolment origin mismatch: the page is ${pageOrigin}, the policy is ${opts.origin}.`,
           );
         }
-        const options: CreationOptionsWithHints = {
-          challenge: crypto.getRandomValues(new Uint8Array(32)),
-          rp: { id: opts.rpId, name: 'Midnight Passport' },
-          user: {
-            id: crypto.getRandomValues(new Uint8Array(32)),
-            name: userName,
-            displayName: userName,
-          },
-          pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
-          // Discoverable, so openAccount can find it without a stored id (spec §5.1).
-          authenticatorSelection: { userVerification: 'required', residentKey: 'required' },
-          attestation: 'none',
-          // Steer the browser to a passkey provider on this device (Google Password Manager,
-          // iCloud Keychain) rather than a security key, which often has no PRF.
-          hints: ['client-device'],
-          // PRF at creation with both Lace salts, as the Lace key source does: some providers enable
-          // PRF only for credentials created with the extension, and some evaluate it right away.
-          extensions: { prf: { eval: lacePrfSalts() } },
-        };
+        const options = creationOptions(opts.rpId, userName);
         await beforePasskeyCeremony(opts, 'create');
         const credential = (await container().create({
           publicKey: options,
@@ -216,6 +263,24 @@ export function browserPasskey(opts: PasskeyOptions): PasskeySeam {
         throw toPassportError(e);
       }
     },
+    assertGrantRequest: (credential, challenge) =>
+      grantAssertion(
+        credential,
+        challenge,
+        'request-browser-grant',
+        policy,
+        requireP256,
+        assertion,
+      ),
+    assertGrantRelay: (credential, challenge) =>
+      grantAssertion(
+        credential,
+        challenge,
+        'authenticate-grant-relay',
+        policy,
+        requireP256,
+        assertion,
+      ),
     async sign(credential, challenge) {
       try {
         requireP256();

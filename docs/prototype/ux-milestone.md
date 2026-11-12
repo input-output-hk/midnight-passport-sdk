@@ -153,3 +153,10 @@ that authentication with the existing exact grant review and a fresh owner
 signature. Preserve the original holder request and issue ID for recovery.
 Show only the outcome and approved scope in the UI. Keep the assertion,
 callback state, opening and proof bytes out of Activity and Audit.
+
+The [reference app guide](../../apps/README.md#source-preview-browser-grant-relay)
+documents the holder and issuer composition and the Chromium lost-response
+check. A holder keeps the signed request in the original tab. Returning to that
+tab scrubs the callback fragment from history and verifies the opening against
+live ACC state. User-facing navigation and native relay qualification remain
+open.

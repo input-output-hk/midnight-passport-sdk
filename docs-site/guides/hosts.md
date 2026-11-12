@@ -61,9 +61,8 @@ The standalone native qualification used a software P-256 owner and a
 distinct P-256 grantee. The sponsor paid DUST, the original grant finalized,
 and the client recovered it after a simulated response loss without signing
 or submitting again. Chromium separately checked manifest-pinned verifier
-fetching and forwarding with a simulated prover and sponsor. The authenticated
-demo relay, separate holder screens and real passkey providers still need
-qualification.
+fetching and forwarding with a simulated prover and sponsor. Native proving through the authenticated relay and testing with real passkey
+providers remain open.
 
 ### Authenticated browser grant relay
 
@@ -79,3 +78,9 @@ The relay authenticates the active owner and limits the sponsor to fees for
 the pinned issue circuit. The holder uses the original signed request and
 live ACC state to verify the opening's scope. The proved transaction alone
 does not disclose the private scope to the relay.
+
+The demo's Chromium fixture uses separate HTTPS origins and virtual P-256
+credentials for the holder request and issuer relay session. It simulates a
+lost response after sponsor acceptance and confirms recovery of the original
+receipt with one dispatch. The fixture uses a simulated sponsor. The issuer and
+holder pages still need to be connected to these flows.
