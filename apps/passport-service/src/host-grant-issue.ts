@@ -22,6 +22,7 @@ const circuit = z.enum(['issue_grant_with_p256', 'issue_grant_with_jubjub']);
 const requestSchema = z.strictObject({
   kind: z.literal('grant-issue-v1'),
   requestId: z.uuid(),
+  validUntilSeconds: z.number().int().nonnegative().optional(),
   address,
   circuit,
   tx: z
@@ -57,8 +58,20 @@ function grantCall<P extends Ledger.Proofish, B extends Ledger.Bindingish>(
   return call;
 }
 
+export function grantIssueWithinDeadline(request: GrantIssueRequest): boolean {
+  return (
+    request.validUntilSeconds === undefined ||
+    Math.floor(Date.now() / 1000) <= request.validUntilSeconds
+  );
+}
+
 function admittedInput(r: ReferenceHostRuntime, request: GrantIssueRequest): ProvenTx {
-  if (!r.allowGrantIssue || r.networkId !== 'undeployed' || !r.allowedAccount(request.address))
+  if (
+    !r.allowGrantIssue ||
+    r.networkId !== 'undeployed' ||
+    !r.allowedAccount(request.address) ||
+    !grantIssueWithinDeadline(request)
+  )
     return hostFailure();
   const tx = r.ledger.Transaction.deserialize<
     Ledger.SignatureEnabled,

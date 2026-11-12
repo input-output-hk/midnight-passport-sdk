@@ -1,4 +1,8 @@
-import { balanceHostGrantIssue, readHostGrantIssueRequest } from './host-grant-issue.ts';
+import {
+  balanceHostGrantIssue,
+  grantIssueWithinDeadline,
+  readHostGrantIssueRequest,
+} from './host-grant-issue.ts';
 import { prepareHostMutation } from './host-preparation.ts';
 import { readHostConfirmation } from './host-confirmation.ts';
 export { readHostConfirmation } from './host-confirmation.ts';
@@ -25,6 +29,14 @@ function prepareCallStep(r: ReferenceHostRuntime, record: HostMutationRecord) {
   return context.driver === 'reference-v9-grant-issue:1'
     ? balanceHostGrantIssue(r, readHostGrantIssueRequest(record.input))
     : context.transaction;
+}
+
+function allowRetainedCall(r: ReferenceHostRuntime, record: HostMutationRecord, count: number) {
+  return (
+    callContext(record).driver !== 'reference-v9-grant-issue:1' ||
+    (r.allowGrantIssue &&
+      (count !== 0 || grantIssueWithinDeadline(readHostGrantIssueRequest(record.input))))
+  );
 }
 
 export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutationDriver {
@@ -159,8 +171,7 @@ export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutation
       )
         return false;
       if (record.identity.kind === 'call') {
-        const context = callContext(record);
-        if (context.driver === 'reference-v9-grant-issue:1' && !r.allowGrantIssue) return false;
+        if (!allowRetainedCall(r, record, count)) return false;
         const state = await snapshot(requireHostPlan(record).address);
         return r.allowedAccount(requireHostPlan(record).address) && !!state && pinned(state);
       }

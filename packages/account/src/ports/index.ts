@@ -306,6 +306,7 @@ export interface QualifiedHoldingSource extends VerifiedHoldingSource {
 export interface MutationSubmissionContext {
   readonly requestId: string;
   readonly intentSha256: string;
+  readonly validUntilSeconds?: number;
 }
 export interface CallRequest extends FlowOptions {
   /** Host receipt correlation only; never substitute this for a finalized chain result. */
@@ -491,6 +492,15 @@ export interface FeeSponsor {
   readonly supportsShieldedOffers?: boolean;
   balanceAndSign(unbalancedTx: Uint8Array): Promise<Uint8Array>;
 }
+/** Hand a proved, unbound grant issue to a host that retains and dispatches the original. */
+export interface GrantIssueSponsorPort {
+  execute(
+    proven: Uint8Array,
+    request: MutationSubmissionContext & { readonly address: string; readonly circuit: string },
+    signal?: FlowOptions['signal'],
+  ): Promise<PassportTxResult>;
+}
+
 export interface Submitter {
   /** Answers the submission id. */
   submit(

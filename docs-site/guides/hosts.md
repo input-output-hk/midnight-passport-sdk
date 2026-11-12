@@ -47,6 +47,14 @@ in its encrypted journal. The dispatch fence prevents a second submission.
 Keep the token and transaction bytes on the server side of the browser trust
 boundary.
 
-The local HTTP fixture uses Ledger 9 serialization with a simulated prover,
-wallet and indexer. The demo relay, browser screens and live sponsorship
-qualification remain open.
+Set `grantIssueSponsor` on `createMidnightChain` to build and prove the
+owner call before handing its unbound bytes to the configured sponsor port.
+The SDK checks the exact call and the rest of the transaction with the proofs
+removed. It preserves the issue UUID, digest and signed request deadline.
+The adapter and host both check that deadline before starting their next
+submission step.
+
+The local HTTP fixture uses Ledger 9 serialization with a simulated call
+builder, prover, wallet and indexer. It exercises proof handoff and original
+dispatch recovery. The authenticated demo relay, browser screens and live
+sponsorship qualification remain open.

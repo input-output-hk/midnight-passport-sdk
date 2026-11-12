@@ -22,7 +22,11 @@ export interface RemoteHostGrantIssuePort {
   /** Send the proved, unbound owner call through the private host RPC. */
   execute(
     proven: Uint8Array,
-    request: HostGrantIssueReference & { readonly address: string; readonly circuit: string },
+    request: HostGrantIssueReference & {
+      readonly address: string;
+      readonly circuit: string;
+      readonly validUntilSeconds?: number;
+    },
     signal?: AbortSignalLike,
   ): Promise<{
     readonly txHash: string;
@@ -65,10 +69,13 @@ export function remoteGrantIssuePort(
   return {
     async execute(proven, request, signal) {
       const deadline = performance.now() + timeout;
-      const { address, circuit, requestId } = request;
+      const { address, circuit, requestId, validUntilSeconds } = request;
       if (
         (pinned.scheme !== 'p256-webauthn' && pinned.scheme !== 'jubjub-schnorr') ||
         circuit !== grantIssueOwnerCircuit(pinned.scheme) ||
+        (validUntilSeconds !== undefined &&
+          (!Number.isSafeInteger(validUntilSeconds) || validUntilSeconds < 0)) ||
+        typeof address !== 'string' ||
         address.length !== 64 ||
         !/^[0-9a-f]{64}$/.test(address) ||
         !(proven instanceof Uint8Array) ||
@@ -85,6 +92,7 @@ export function remoteGrantIssuePort(
           address,
           circuit,
           tx: toHex(new Uint8Array(proven)),
+          ...(validUntilSeconds !== undefined && { validUntilSeconds }),
         },
         signal,
         deadline,

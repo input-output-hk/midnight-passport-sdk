@@ -223,7 +223,8 @@ test('browser grant admission retains the original ID across concurrency, lost r
             hasEntry: (entry) => live.devices.member(entry),
           };
         },
-        async call({ circuit, args }) {
+        async call({ circuit, args, mutation }) {
+          assert.equal(mutation?.validUntilSeconds, sim.now + 20);
           submissions++;
           await sim.call(circuit, ...args);
           throw new Error('Lost original issue reply');

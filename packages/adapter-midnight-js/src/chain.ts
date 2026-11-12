@@ -1,5 +1,5 @@
 import { CompiledContract, type Contract } from '@midnight-ntwrk/compact-js';
-import { submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { createUnprovenCallTx, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -21,6 +21,7 @@ import type {
   PinnedChain,
   P256GrantSpendReceiptStore,
   FeeSponsor,
+  GrantIssueSponsorPort,
   NetworkConfig,
   Prover,
   QualifiedShieldedCoin,
@@ -37,6 +38,7 @@ import {
   type Proof,
   type PreBinding,
 } from '@midnightntwrk/ledger-v9';
+import { handoffGrantIssue } from './grant-issue-handoff.js';
 import { checkGrantCommitment, p256GrantCall } from './p256-grant-call.js';
 import { forwardP256GrantCall, prepareP256GrantDispatch } from './p256-grant-submitter.js';
 
@@ -177,6 +179,10 @@ export function createHeldCoinWitness(heldCoin?: QualifiedShieldedCoin) {
 }
 
 interface MidnightChainOptions {
+  /** Optional private-host route for an original P-256 grantee issue. */
+  grantIssueSponsor?: GrantIssueSponsorPort;
+  /** Unproven call fixture injection, analogous to the normal submit override. */
+  buildGrantIssue?: typeof createUnprovenCallTx;
   /** Required for the durable fixed-recipient P-256 grant holder path. */
   p256GrantReceipts?: P256GrantSpendReceiptStore;
   network: NetworkConfig;
@@ -206,6 +212,42 @@ export function createMidnightChain(opts: MidnightChainOptions): PinnedChain {
   };
 }
 
+function configureGrantIssue(
+  opts: MidnightChainOptions,
+  compiledContract: unknown,
+  providers: Pick<
+    Parameters<typeof createUnprovenCallTx>[0],
+    'publicDataProvider' | 'zkConfigProvider'
+  >,
+) {
+  const { grantIssueSponsor, network, prover, sponsorKeys } = opts;
+  if (!grantIssueSponsor) return undefined;
+  const walletProvider = createWalletProvider({
+    getCoinPublicKey: () => sponsorKeys.coinPublicKey,
+    getEncryptionPublicKey: () => sponsorKeys.encryptionPublicKey,
+    balanceTx: () => {
+      throw new Error('Grant balancing belongs to the private sponsor host.');
+    },
+  });
+  const build = opts.buildGrantIssue ?? createUnprovenCallTx;
+  return handoffGrantIssue(
+    network,
+    prover,
+    grantIssueSponsor,
+    async ({ address, circuit, args }) => {
+      const {
+        private: { unprovenTx },
+      } = await build({ ...providers, walletProvider }, {
+        compiledContract,
+        contractAddress: address,
+        circuitId: circuit,
+        args,
+      } as never);
+      return unprovenTx;
+    },
+  );
+}
+
 function createChain(opts: MidnightChainOptions): Chain {
   const { network, binding, prover, sponsor, submitter } = opts;
   if (!/^[0-9a-f]{64}$/i.test(network.manifestSha256)) {
@@ -230,6 +272,10 @@ function createChain(opts: MidnightChainOptions): Chain {
     expectedManifestHash: network.manifestSha256.toLowerCase(),
   });
 
+  const issue = configureGrantIssue(opts, unshieldedContract, {
+    publicDataProvider,
+    zkConfigProvider,
+  });
   return {
     async readAccount(address, options): Promise<AccLedgerView | undefined> {
       setNetworkId(network.networkId);
@@ -248,8 +294,11 @@ function createChain(opts: MidnightChainOptions): Chain {
         hasEntry: (entry) => ledger.devices.member(entry),
       };
     },
-    async call({ address, circuit, args, heldCoin, onEvent, mutation, ...flowOptions }) {
+    async call(request) {
+      const { address, circuit, args, heldCoin, onEvent, mutation, ...flowOptions } = request;
       setNetworkId(network.networkId);
+      if (issue && (circuit === 'issue_grant_with_p256' || circuit === 'issue_grant_with_jubjub'))
+        return issue(request, chainProgress(onEvent).track);
       const shieldedSpend = circuit.startsWith('withdraw_shielded');
       if (shieldedSpend !== (heldCoin !== undefined))
         throw new PassportConnectorError(

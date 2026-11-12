@@ -236,6 +236,7 @@ export async function issueP256GranteeGrant(
           epoch: first.epoch,
           generation: first.generation,
           signedArguments: mutationDigest(signed.args),
+          ...(requestValidUntilSeconds !== undefined && { requestValidUntilSeconds }),
         }),
       });
       let txHash: string | undefined;
@@ -249,7 +250,13 @@ export async function issueP256GranteeGrant(
           address: scope.account,
           circuit: signed.circuit,
           args: signed.args,
-          mutation: { requestId, intentSha256: record.intentSha256 },
+          mutation: {
+            requestId,
+            intentSha256: record.intentSha256,
+            ...(requestValidUntilSeconds !== undefined && {
+              validUntilSeconds: requestValidUntilSeconds,
+            }),
+          },
         });
         txHash = tx.txHash;
         await journal.recordTransaction(record, txHash);

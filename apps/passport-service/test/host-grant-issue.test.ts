@@ -14,6 +14,8 @@ import {
   hostMutationRoute,
   type HostMutationIdentity,
 } from '@input-output-hk/mn-passport-service';
+import { createMidnightChain } from '../../../packages/adapter-midnight-js/dist/index.js';
+import * as binding from '../../../packages/contract/generated/acc-s3r1.1/index.js';
 import { remoteHostMutationPorts } from '../../../packages/adapter-service/dist/index.js';
 import { createReferenceHostDriver } from '../src/host-driver.ts';
 import type { ReferenceHostRuntime } from '../src/reference-runtime.ts';
@@ -57,7 +59,7 @@ const identity: HostMutationIdentity = {
   intentSha256,
 };
 
-async function provedCall(
+function unprovenCall(
   name = circuit,
   random = Ledger.communicationCommitmentRandomness(),
   paysValue = false,
@@ -83,8 +85,11 @@ async function provedCall(
       [{ value: 5n, owner: '11'.repeat(32), type: '22'.repeat(32) }],
       [],
     );
-  const unproven = Ledger.Transaction.fromParts(pins.networkId, undefined, undefined, intent);
-  return unproven.prove(proving, Ledger.CostModel.initialCostModel());
+  return Ledger.Transaction.fromParts(pins.networkId, undefined, undefined, intent);
+}
+
+function provedCall(...args: Parameters<typeof unprovenCall>) {
+  return unprovenCall(...args).prove(proving, Ledger.CostModel.initialCostModel());
 }
 
 function pinnedState() {
@@ -143,6 +148,7 @@ test('grant sponsor only admits the original proved owner call and rejects a wal
   const plan = await driver.prepare(identity, input);
   const disabled = createReferenceHostDriver({ ...r, allowGrantIssue: false });
   await assert.rejects(disabled.prepare(identity, input));
+  await assert.rejects(driver.prepare(identity, { ...input, validUntilSeconds: 0 }));
   await assert.rejects(driver.prepare({ ...identity, requestId: '01'.repeat(16) + ':0' }, input));
   await assert.rejects(
     driver.prepare({ ...identity, pins: { ...pins, scheme: 'p256-webauthn' } }, input),
@@ -233,10 +239,93 @@ async function start(
   return { base, close };
 }
 
+function issueChain(
+  built: Ledger.UnprovenTransaction,
+  prover: Parameters<typeof createMidnightChain>[0]['prover'],
+  grantIssueSponsor: NonNullable<Parameters<typeof createMidnightChain>[0]['grantIssueSponsor']>,
+) {
+  const buildGrantIssue: NonNullable<
+    Parameters<typeof createMidnightChain>[0]['buildGrantIssue']
+  > = async (_providers: unknown, options: { contractAddress: string; circuitId: string }) => {
+    assert.equal(options.contractAddress, address);
+    assert.equal(options.circuitId, circuit);
+    return { private: { unprovenTx: built } } as never;
+  };
+  return createMidnightChain({
+    network: {
+      ...pins,
+      nodeUrl: 'http://localhost:19944',
+      indexerUrl: 'http://localhost:18088/api/v4/graphql',
+      indexerWsUrl: 'ws://localhost:18088/api/v4/graphql/ws',
+      artefactUrl: 'http://localhost:8787/v1/zk/acc-s3r1.1',
+    },
+    binding,
+    prover,
+    grantIssueSponsor,
+    buildGrantIssue,
+    sponsor: { balanceAndSign: unused },
+    submitter: { submit: unused },
+    sponsorKeys: { coinPublicKey: 'ab'.repeat(32), encryptionPublicKey: 'bc'.repeat(32) },
+  });
+}
+
+test('grant chain proves the selected issue before handing the exact unbound bytes to the sponsor', async (t) => {
+  const now = Date.now();
+  t.mock.timers.enable({ apis: ['Date'], now });
+  const random = Ledger.communicationCommitmentRandomness();
+  const ttl = new Date(now + 60_000);
+  const built = unprovenCall(circuit, random, false, ttl);
+  const proved = await built.prove(proving, Ledger.CostModel.initialCostModel());
+  const validUntilSeconds = Math.floor(Date.now() / 1000) + 60;
+  const mutation = { requestId, intentSha256, validUntilSeconds };
+  const request = { address, circuit, args: [], mutation };
+  let proofs = 0;
+  let handoffs = 0;
+  let substitute = proved;
+  let expireDuringProof = false;
+  const chain = issueChain(
+    built,
+    {
+      async proveTx(tx, context) {
+        proofs++;
+        assert.deepEqual(tx, built.serialize());
+        assert.deepEqual(context.circuits, [circuit]);
+        if (expireDuringProof) t.mock.timers.setTime(now + 61_000);
+        return { tx: substitute.serialize(), provenance: 'local' };
+      },
+    },
+    {
+      async execute(bytes, original) {
+        handoffs++;
+        assert.deepEqual(bytes, proved.serialize());
+        assert.deepEqual(original, { ...mutation, address, circuit });
+        return { txHash: 'ae'.repeat(32), blockHeight: 7 };
+      },
+    },
+  );
+  assert.deepEqual(await chain.call(request), { txHash: 'ae'.repeat(32), blockHeight: 7 });
+  substitute = await provedCall(circuit, random, false, new Date(now + 90_000));
+  await assert.rejects(chain.call(request), { code: 'MutationUnsettled' });
+  substitute = await provedCall(circuit, undefined, false, ttl);
+  await assert.rejects(chain.call(request), { code: 'MutationUnsettled' });
+  await assert.rejects(
+    chain.call({
+      ...request,
+      mutation: { ...mutation, validUntilSeconds: validUntilSeconds - 120 },
+    }),
+    { code: 'MutationUnsettled' },
+  );
+  substitute = proved;
+  expireDuringProof = true;
+  await assert.rejects(chain.call(request), { code: 'MutationUnsettled' });
+  assert.deepEqual([proofs, handoffs], [4, 1]);
+});
+
 test('private grant sponsor RPC recovers the exact original dispatch after a lost reply and restart', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'passport-grant-sponsor-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  const proved = await provedCall();
+  const built = unprovenCall();
+  const proved = await built.prove(proving, Ledger.CostModel.initialCostModel());
   const exact = proved.bind();
   const expectedBytes = exact.serialize();
   const r = runtime(pinnedState());
@@ -283,12 +372,36 @@ test('private grant sponsor RPC recovers the exact original dispatch after a los
     },
   });
   const first = await start(t, driver, root);
-  const request = { requestId, intentSha256, address, circuit };
+  const request = {
+    requestId,
+    intentSha256,
+    address,
+    circuit,
+    validUntilSeconds: Math.floor(Date.now() / 1000) + 60,
+  };
   const denied = remoteHostMutationPorts(first.base, { pins, token: '91'.repeat(32) }).grantIssue;
   await assert.rejects(denied.execute(proved.serialize(), request), { code: 'MutationUnsettled' });
   assert.deepEqual([balances, sends], [0, 0]);
   const port = remoteHostMutationPorts(first.base, { pins, token }).grantIssue;
-  await assert.rejects(port.execute(proved.serialize(), request), { code: 'MutationUnsettled' });
+  const chain = issueChain(
+    built,
+    {
+      async proveTx(bytes) {
+        assert.deepEqual(bytes, built.serialize());
+        return { tx: proved.serialize(), provenance: 'remote' };
+      },
+    },
+    port,
+  );
+  await assert.rejects(
+    chain.call({
+      address,
+      circuit,
+      args: [],
+      mutation: { requestId, intentSha256, validUntilSeconds: request.validUntilSeconds },
+    }),
+    { code: 'MutationUnsettled' },
+  );
   assert.deepEqual([balances, sends], [1, 1]);
   await first.close();
   const restarted = await start(t, driver, root);
@@ -305,4 +418,43 @@ test('private grant sponsor RPC recovers the exact original dispatch after a los
     code: 'MutationUnsettled',
   });
   assert.deepEqual([balances, sends], [1, 1]);
+});
+
+test('grant sponsor does not send a prepared issue after its request expires during balance', async (t) => {
+  const now = Date.now();
+  t.mock.timers.enable({ apis: ['Date'], now });
+  const root = await mkdtemp(join(tmpdir(), 'passport-grant-sponsor-deadline-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const store = encryptedHostMutationStore(root, new Uint8Array(32).fill(7));
+  t.after(() => store.close());
+  const proved = await provedCall();
+  const r = runtime(pinnedState());
+  let balances = 0;
+  const driver = createReferenceHostDriver({
+    ...r,
+    providers: {
+      ...r.providers,
+      walletProvider: {
+        ...r.providers.walletProvider,
+        async balanceTx() {
+          balances++;
+          t.mock.timers.setTime(now + 15_000);
+          return { version: 'v9', tx: proved.bind() };
+        },
+      },
+    },
+  });
+  const executor = createHostMutationExecutor(store, driver);
+  const result = await executor.execute(identity, {
+    kind: 'grant-issue-v1',
+    address,
+    circuit,
+    requestId,
+    validUntilSeconds: Math.floor(now / 1000) + 5,
+    tx: Buffer.from(proved.serialize()).toString('hex'),
+  });
+  assert.equal(result.kind, 'unknown');
+  assert.equal((await store.read(identity))?.steps[0]?.phase, 'ready');
+  assert.equal((await executor.resume(identity)).kind, 'unknown');
+  assert.equal(balances, 1);
 });
