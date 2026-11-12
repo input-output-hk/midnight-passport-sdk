@@ -105,6 +105,7 @@ export type LedgerModule = Pick<
   | 'signatureVerifyingKey'
 >;
 export interface ReferenceHostRuntime {
+  readonly allowGrantIssue?: boolean;
   readonly ledger: LedgerModule;
   readonly versionOfRecord: ProtocolModule['versionOfRecord'];
   readonly contracts: DeployBuilder;

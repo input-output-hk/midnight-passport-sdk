@@ -7,6 +7,7 @@ import {
   type HostMutationPlan,
   type HostPreparedTransaction,
 } from '@input-output-hk/mn-passport-service';
+import { prepareHostGrantIssue } from './host-grant-issue.ts';
 import type { ReferenceHostRuntime, Wave } from './reference-runtime.ts';
 import { bytes, hex, same, operation, intents, verifierSize } from './host-ledger.ts';
 export interface HostPreparationContext {
@@ -32,6 +33,11 @@ export async function prepareHostMutation(
   input: HostJson,
 ): Promise<HostMutationPlan> {
   const request = object(input);
+  if (request.kind === 'grant-issue-v1')
+    return prepareHostGrantIssue(env.r, identity, input, async (address) => {
+      const state = await env.snapshot(address);
+      return !!state && env.pinned(state);
+    });
   return identity.kind === 'call'
     ? prepareOwnerCall(env, identity, request)
     : prepareDeployment(env, identity, request);

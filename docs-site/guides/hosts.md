@@ -29,3 +29,23 @@ and a lost response. It used fixture login and a virtual passkey. The shielded
 deposit and two-leg NIGHT payment have standalone Node fixtures. Online profiles
 and real passkey provider recovery require separate qualification.
 See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).
+
+## Private grant sponsorship in the source candidate
+
+On the standalone network, `PASSPORT_HOST_GRANT_ISSUE=1` opts the configured
+private host mutation service into sponsoring grant issuance. The host uses
+the pinned ACC verifier roster and admits one proved, unbound owner issue call.
+It checks the fee-only policy before balancing and verifies the call proof,
+commitment, transcripts and asset offers after balancing.
+
+A server-side integration can use `remoteHostMutationPorts(...).grantIssue`
+with the existing private RPC token. Send the original issue UUID and intent
+digest with the proved bytes. After an uncertain response, reconcile those
+same values. The host retains the proved input and exact finalized transaction
+in its encrypted journal. The dispatch fence prevents a second submission.
+Keep the token and transaction bytes on the server side of the browser trust
+boundary.
+
+The local HTTP fixture uses Ledger 9 serialization with a simulated prover,
+wallet and indexer. The demo relay, browser screens and live sponsorship
+qualification remain open.

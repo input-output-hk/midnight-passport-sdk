@@ -14,6 +14,7 @@ export interface MidnightStack {
 }
 
 export interface ServiceConfig extends MidnightStack {
+  readonly hostGrantIssue?: true;
   /** Browser-reachable endpoints advertised by /config and /v1/config. */
   readonly publicStack: MidnightStack;
   readonly port: number;
@@ -167,7 +168,18 @@ const sponsorSeedFor = (env: NodeJS.ProcessEnv, networkId: string): string => {
 export function loadConfig(env: NodeJS.ProcessEnv): ServiceConfig {
   const contractDir = need(env, 'PASSPORT_CONTRACT_DIR');
   const stack = loadStack(env);
+  const grantIssue = env.PASSPORT_HOST_GRANT_ISSUE;
+  if (
+    grantIssue !== undefined &&
+    (grantIssue !== '1' ||
+      stack.networkId !== LOCALNET_ID ||
+      !env.PASSPORT_HOST_MUTATION_TOKEN_FILE)
+  )
+    throw new Error(
+      'Host grant issuance requires PASSPORT_HOST_GRANT_ISSUE=1 and a configured standalone host mutation route.',
+    );
   return {
+    ...(grantIssue === '1' && { hostGrantIssue: true as const }),
     port: parsePort(env.PASSPORT_SERVICE_PORT ?? '8787'),
     host: env.PASSPORT_SERVICE_HOST || '127.0.0.1',
     corsOrigin: env.PASSPORT_DAPP_ORIGIN ?? 'http://localhost:5173',

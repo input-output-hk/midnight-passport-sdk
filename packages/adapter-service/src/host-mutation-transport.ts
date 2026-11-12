@@ -28,6 +28,7 @@ export async function mutationRequest(
   const work = async () => {
     const response = await fetchFn(`${options.base}/v1/mutations/${path}`, {
       method: 'POST',
+      redirect: 'error',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${options.token}` },
       body,
       signal: lifetime.signal,

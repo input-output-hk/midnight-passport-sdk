@@ -252,3 +252,21 @@ test('the sponsor can read a dedicated seed file without putting its value in th
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('private grant sponsorship is an explicit standalone host option', () => {
+  assert.equal(loadConfig(BASE).hostGrantIssue, undefined);
+  assert.throws(
+    () => loadConfig({ ...BASE, PASSPORT_HOST_GRANT_ISSUE: '1' }),
+    /configured standalone host mutation route/,
+  );
+  const enabled = {
+    ...BASE,
+    PASSPORT_HOST_GRANT_ISSUE: '1',
+    PASSPORT_HOST_MUTATION_TOKEN_FILE: '/private/token',
+  };
+  assert.equal(loadConfig(enabled).hostGrantIssue, true);
+  assert.throws(
+    () => loadConfig({ ...enabled, MN_NETWORK_ID: 'preview' }),
+    /configured standalone host mutation route/,
+  );
+});

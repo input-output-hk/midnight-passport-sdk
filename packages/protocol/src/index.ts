@@ -6,3 +6,4 @@ export * from './errors.js';
 export * from './events.js';
 export type * as ServiceWire from './service.js';
 export * from './connector.js';
+export * from './grant-issue-transport.js';

@@ -125,6 +125,7 @@ export type FetchLike = (
   url: string,
   init?: {
     method?: string;
+    redirect?: 'error';
     headers?: Record<string, string>;
     body?: string;
     signal?: FetchAbortSignal;

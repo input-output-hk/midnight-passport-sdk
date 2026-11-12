@@ -98,7 +98,9 @@ test('call context retains prepared transaction IDs and refuses cross-kind or mu
     context: { kind: 'call', driver: 'reference-v9-owner-call:1', transaction },
   };
   const call = { ...base, identity: { ...base.identity, kind: 'call' as const }, plan };
-  assert.deepEqual(callContext(call).transaction, transaction);
+  const context = callContext(call);
+  assert.equal(context.driver, 'reference-v9-owner-call:1');
+  assert.deepEqual(context.transaction, transaction);
   assert.throws(() => deploymentContext(call), /host mutation/i);
   assert.throws(() => callContext({ ...call, plan: { ...plan, steps: 2 } }), /host mutation/i);
   assert.throws(

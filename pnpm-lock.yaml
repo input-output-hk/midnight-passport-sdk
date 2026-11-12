@@ -148,6 +148,9 @@ importers:
       '@input-output-hk/mn-passport-contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@input-output-hk/mn-passport-protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@input-output-hk/mn-passport-service':
         specifier: workspace:*
         version: link:../../packages/service

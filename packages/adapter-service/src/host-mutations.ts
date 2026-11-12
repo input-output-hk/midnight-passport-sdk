@@ -17,6 +17,8 @@ import {
   type RemoteOutcome,
 } from './host-mutation-outcome.js';
 import { mutationRequest } from './host-mutation-transport.js';
+import { remoteGrantIssuePort, type RemoteHostGrantIssuePort } from './host-grant-issue.js';
+export type { HostGrantIssueReference, RemoteHostGrantIssuePort } from './host-grant-issue.js';
 
 export interface RemoteHostMutationOptions {
   readonly pins: MutationPins;
@@ -37,7 +39,12 @@ const samePins = (a: MutationPins, b: MutationPins) =>
 export function remoteHostMutationPorts(
   base: string,
   options: RemoteHostMutationOptions,
-): { deployer: Deployer; submitter: Submitter; outcomes: MutationOutcomeSource } {
+): {
+  deployer: Deployer;
+  submitter: Submitter;
+  outcomes: MutationOutcomeSource;
+  grantIssue: RemoteHostGrantIssuePort;
+} {
   const token = options.token,
     sourcePins = options.pins;
   if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) return mutationFailure();
@@ -96,6 +103,7 @@ export function remoteHostMutationPorts(
     }
   };
   return {
+    grantIssue: remoteGrantIssuePort(pinned, finish, observe, timeout),
     deployer: {
       async deploy(r) {
         const deadline = performance.now() + timeout;

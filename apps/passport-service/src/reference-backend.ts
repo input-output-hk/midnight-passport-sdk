@@ -25,6 +25,7 @@ export async function loadReferenceBackend(config: ServiceConfig): Promise<Chain
   } = await loadReferenceModules(config);
   return {
     hostMutations: createReferenceHostDriver({
+      ...(config.hostGrantIssue && { allowGrantIssue: true }),
       providers,
       proving,
       setup,

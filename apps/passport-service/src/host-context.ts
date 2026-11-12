@@ -2,6 +2,8 @@
 import { z } from 'zod';
 import { hostFailure, type HostMutationRecord } from '@input-output-hk/mn-passport-service';
 
+import { grantIssueContext } from './host-grant-issue.ts';
+
 const hex = z.string().regex(/^(?:[0-9a-f]{2})+$/);
 const prepared = z.object({ tx: hex, identifiers: z.array(z.string()).min(1) });
 export const waveSchema = z.object({
@@ -14,11 +16,12 @@ export const waveSchema = z.object({
   verifierBytes: z.number().int().nonnegative().max(15000),
   retiresAuthority: z.boolean(),
 });
-const callSchema = z.object({
+const ownerCallSchema = z.object({
   kind: z.literal('call'),
   driver: z.literal('reference-v9-owner-call:1'),
   transaction: prepared,
 });
+const callSchema = z.discriminatedUnion('driver', [ownerCallSchema, grantIssueContext]);
 const deploySchema = z.object({
   kind: z.literal('deploy'),
   driver: z.literal('reference-v9-waves:1'),

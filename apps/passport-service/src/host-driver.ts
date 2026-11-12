@@ -1,3 +1,4 @@
+import { balanceHostGrantIssue, readHostGrantIssueRequest } from './host-grant-issue.ts';
 import { prepareHostMutation } from './host-preparation.ts';
 import { readHostConfirmation } from './host-confirmation.ts';
 export { readHostConfirmation } from './host-confirmation.ts';
@@ -19,6 +20,13 @@ import type { ReferenceHostRuntime } from './reference-runtime.ts';
 export type { ReferenceHostRuntime } from './reference-runtime.ts';
 import { callContext, deploymentContext, requireHostPlan } from './host-context.ts';
 import { bytes, hex, same, operation, intents } from './host-ledger.ts';
+function prepareCallStep(r: ReferenceHostRuntime, record: HostMutationRecord) {
+  const context = callContext(record);
+  return context.driver === 'reference-v9-grant-issue:1'
+    ? balanceHostGrantIssue(r, readHostGrantIssueRequest(record.input))
+    : context.transaction;
+}
+
 export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutationDriver {
   const L = r.ledger;
   const decode = (tx: string) =>
@@ -79,7 +87,7 @@ export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutation
     prepare: (identity, input) =>
       prepareHostMutation({ r, L, decode, prepared, snapshot, pinned }, identity, input),
     async prepareStep(record, index) {
-      if (record.identity.kind === 'call') return callContext(record).transaction;
+      if (record.identity.kind === 'call') return prepareCallStep(r, record);
       const context = deploymentContext(record);
       const state = full(record),
         wave = context.waves[index];
@@ -151,7 +159,8 @@ export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutation
       )
         return false;
       if (record.identity.kind === 'call') {
-        callContext(record);
+        const context = callContext(record);
+        if (context.driver === 'reference-v9-grant-issue:1' && !r.allowGrantIssue) return false;
         const state = await snapshot(requireHostPlan(record).address);
         return r.allowedAccount(requireHostPlan(record).address) && !!state && pinned(state);
       }
