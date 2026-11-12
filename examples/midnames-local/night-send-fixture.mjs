@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { sendNightByName } from '../../apps/passport-dapp/src/midnames/night-send.ts';
 import { createMidnamesNameService } from '../../apps/passport-dapp/src/midnames/resolver.ts';
-import { readHostConfirmation } from '../../apps/passport-service/src/host-confirmation.ts';
+import { readHostConfirmation } from '../../packages/service/dist/finality.js';
 import { prepareLocalnetNight } from '../../apps/passport-funding-service/src/night-preparation.ts';
 
 import { createOnce } from './create-once.mts';

@@ -179,7 +179,6 @@ signing key, session child ID, grant salt/opening or witness is stored there.
 An uncertain revocation also stays fenced across reload; it cannot be submitted
 again just because the local key is already locked.
 
-
 In the source preview, session withdrawals carry the browser's original UUID
 through the loopback value-call proxy to the funding host. The host verifies
 the Compact JubJub signature and its live scope and nonce before reserving
@@ -194,17 +193,19 @@ in Audit.
 pnpm --filter passport-funding-service run inspect --file /path/to/funding-reservations.json --session-spend --request-id "$session_request_id"
 ```
 
-An acknowledged receipt still needs an exact finality check. A repeated UUID
-or a competing UUID for the same grant nonce cannot submit a replacement.
-This path covers session withdrawals. Session issue and revocation retain
-their existing checkpoint behavior.
+Open the same account and select **Settings → Quick actions → Check original
+withdrawal**. The funding host checks the staged transaction bytes and identity
+against the pinned indexer and the node's finalized chain. It also verifies the
+original grant issuance, next nonce and expected spent commitment. On success,
+the browser settles only that withdrawal and keeps the local session locked.
+The check needs no passkey and sends no replacement.
 
-Inspect the operation log, original transaction IDs, owner grant roster and
-retained owner journal. Use existing operator inspection/reconciliation for the
-same intent; a missing acknowledgement never proves no send. The demo has no
-one-click operator attestation that clears an uncertain issue/spend. In that
-state, use the independent owner controls for investigation and revocation after
-reconciliation. **Do not clear site data or delete the checkpoint to retry a send.**
+If any evidence is missing or disagrees, the safety block stays in place.
+An acknowledged receipt alone cannot clear it. This flow covers withdrawals
+started with the current browser checkpoint format. Older checkpoints, issue
+and revocation still require operator inspection. Use Audit and the retained
+owner journal to investigate those original operations.
+**Do not clear site data or delete the checkpoint to retry a send.**
 The public checkpoint is a local crash/reload guard, not a tamper-proof distributed
 journal; production hosts must compose their durable operation policy.
 

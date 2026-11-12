@@ -6,6 +6,7 @@ import { GrantActions } from './app-grants-actions.js';
 import { TransferActions } from './app-transfers-actions.js';
 import { WalletActions } from './app-wallet-actions.js';
 import { renderSessionState, updateSessionClock } from './session-view.js';
+import { observeSessionWithdrawal } from './value-call.js';
 
 import type {
   PassportAccount,
@@ -294,6 +295,7 @@ const session = createDemoSession({
   },
   opening: exportDemoGrantOpening,
   spend: spendDemoSessionGrant,
+  recoverWithdrawal: (input) => observeSessionWithdrawal(SERVICE_URL, input),
   changed(snapshot) {
     const {
       status: phase,
@@ -505,6 +507,7 @@ ui.on('fund', transfersActions.fund);
 ui.on('startSession', transfersActions.startSession);
 ui.on('endSession', transfersActions.endSession);
 ui.on('revokeSession', transfersActions.revokeSession);
+ui.on('recoverSessionWithdrawal', transfersActions.recoverSessionWithdrawal);
 ui.on('withdraw', transfersActions.withdraw);
 ui.on('wallet', walletActions.connect);
 ui.on('walletRefresh', walletActions.walletRefresh);

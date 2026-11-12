@@ -4,9 +4,12 @@ import {
   type ShieldedWithdrawalFinalitySource,
 } from '../../../packages/account/dist/index.js';
 import { finalizedTransactionIdentitySchema } from '../../../packages/account/dist/finalized-transaction-identity.js';
-import { abortable } from './bounded-json.ts';
-import { readHostReceipt, type HostConfirmationRuntime } from './host-confirmation.ts';
-import { isHostFinalizedBlock } from './host-finalized-block.ts';
+import {
+  abortable,
+  isHostFinalizedBlock,
+  readHostReceipt,
+  type HostConfirmationRuntime,
+} from '@input-output-hk/mn-passport-service/finality';
 import { readShieldedChangeIndex } from './shielded-withdrawal-events.ts';
 
 type Observation = Pick<FinalizedShieldedWithdrawal, 'account' | 'circuit' | 'inputNullifier'>;

@@ -14,9 +14,10 @@ import {
 } from '@input-output-hk/mn-passport-account';
 import type { LiveP256GrantSpendContext } from '@input-output-hk/mn-passport-account/ports';
 import { pureCircuits as pure } from '@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1';
-import { fileMutationByteStore } from '@input-output-hk/mn-passport-service';
+import { createServer, fileMutationByteStore } from '@input-output-hk/mn-passport-service';
 import { signJubjubChallenge } from '../../../packages/keys/dist/jubjub-signing.js';
 import { submitSessionWithdrawal } from '../src/session-withdrawal.ts';
+import { sessionWithdrawalRecoveryRoute } from '../src/session-withdrawal-recovery.ts';
 
 const txHash = 'be'.repeat(32);
 const now = 1_800_000_000;
@@ -227,5 +228,88 @@ test('operator inspection returns the original session receipt without submittin
   assert.equal(inspected.original.transaction.txHash, txHash);
   assert.equal(inspected.requestId, requestId);
   assert.deepEqual(inspected.original, await f.ports.receipts.readRecord(requestId));
+  assert.equal(f.sends(), 1);
+});
+
+test('withdrawal recovery only observes the original staged transaction and exact grant spend state', async (t) => {
+  const f = await fixture(t);
+  const requestId = randomUUID();
+  const transportLost = {
+    ...f.ports,
+    chain: {
+      ...f.ports.chain,
+      async submitDurableAgentGrantSpend(
+        call: Parameters<typeof f.ports.chain.submitDurableAgentGrantSpend>[0],
+      ) {
+        await f.ports.chain.submitDurableAgentGrantSpend(call);
+        throw new Error('response lost');
+      },
+    },
+  };
+  await assert.rejects(
+    submitSessionWithdrawal({ requestId, account, args }, transportLost),
+    /response lost/,
+  );
+  const record = await f.ports.receipts.readRecord(requestId);
+  assert.ok(record?.transaction);
+  assert.equal(record.acknowledgedHash, undefined);
+  let observations = 0;
+  let finality: 'unknown' | 'different-bytes' | 'confirmed' = 'unknown';
+  const route = sessionWithdrawalRecoveryRoute({
+    receipts: createAgentGrantSpendJournal(f.bytes),
+    grants: f.ports.grants,
+    finality: {
+      networkId: 'undeployed',
+      async readFinalized(transaction) {
+        observations++;
+        assert.deepEqual(transaction, record.transaction);
+        if (finality === 'unknown') return undefined;
+        return {
+          ...transaction,
+          bytesSha256: finality === 'different-bytes' ? 'ff'.repeat(32) : transaction.bytesSha256,
+          blockHeight: 7,
+        };
+      },
+    },
+    eligible: (address) => [account, 'ff'.repeat(32)].includes(address),
+    authorize: (header) => header === 'Bearer test-only',
+  });
+  const server = createServer({ host: '127.0.0.1', corsOrigin: 'http://localhost:5173' }, [route]);
+  t.after(() => server.close());
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const original = { accountAddress: account, requestId, grantId, amount: '1' };
+  const observe = (patch = {}, token = 'Bearer test-only') =>
+    fetch(`http://127.0.0.1:${address.port}/v1/session-withdrawal/recover`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: token },
+      body: JSON.stringify({ ...original, ...patch }),
+    });
+  assert.equal((await observe({}, 'Bearer wrong')).status, 403);
+  for (const patch of [
+    { requestId: randomUUID() },
+    { accountAddress: 'ff'.repeat(32) },
+    { grantId: 'ff'.repeat(32) },
+    { amount: '2' },
+  ])
+    assert.deepEqual(await (await observe(patch)).json(), { kind: 'unknown' });
+  assert.equal(observations, 0);
+  assert.deepEqual(await (await observe()).json(), { kind: 'unknown' });
+  finality = 'different-bytes';
+  assert.deepEqual(await (await observe()).json(), { kind: 'unknown' });
+  finality = 'confirmed';
+  f.live.nonce++;
+  assert.deepEqual(await (await observe()).json(), { kind: 'unknown' });
+  f.live.spentCommit = pure.derive_grant_spent_commit(salt, 1n);
+  f.live.active = false;
+  f.live.expiresAt = BigInt(now - 1);
+  assert.deepEqual(await (await observe()).json(), {
+    kind: 'confirmed',
+    ...original,
+    txHash,
+    blockHeight: 7,
+  });
+  assert.deepEqual(await f.ports.receipts.readRecord(requestId), record);
   assert.equal(f.sends(), 1);
 });

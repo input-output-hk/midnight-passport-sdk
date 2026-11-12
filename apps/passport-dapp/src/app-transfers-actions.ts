@@ -137,6 +137,20 @@ export class TransferActions {
       'Local session locked. Its on-chain grant is not revoked; already-submitted effects still require reconciliation.',
     );
   };
+  recoverSessionWithdrawal = async () => {
+    const account = this.host.state.account?.address;
+    if (!account) throw new Error('Open the account for this original withdrawal.');
+    this.host.stage('read');
+    const result = await this.host.session.recoverWithdrawal(account);
+    if (!result) {
+      this.host.status('The original withdrawal is still unconfirmed. Transfers remain blocked.');
+      return;
+    }
+    this.host.status('Original withdrawal confirmed. The session remains locked on this device.');
+    void this.host.refreshAccountBalances(account).catch(() => {
+      traceOperation('account.balances.unavailable', { accountAddress: account });
+    });
+  };
   revokeSession = async () => {
     if (!this.host.state.account) throw new Error('Open the issuing ACC first.');
     const snapshot = this.host.session.snapshot();

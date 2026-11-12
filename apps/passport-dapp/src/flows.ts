@@ -8,6 +8,7 @@ export type ActionId =
   | 'startSession'
   | 'endSession'
   | 'revokeSession'
+  | 'recoverSessionWithdrawal'
   | 'create'
   | 'open'
   | 'openAt'
@@ -49,6 +50,7 @@ export const PASSKEY_PROMPTS = {
   startSession: 1,
   endSession: 0,
   revokeSession: 1,
+  recoverSessionWithdrawal: 0,
   create: [2, 3],
   open: [1, 2],
   openAt: [1, 2],
@@ -133,6 +135,11 @@ export const FLOWS: Record<ActionId, FlowDef> = {
     summary:
       'Lock the local key and use your owner key to revoke the grant. Permission ends when revocation is confirmed on chain.',
     stages: [{ id: 'revoke', label: 'Approve and confirm grant revocation' }],
+  },
+  recoverSessionWithdrawal: {
+    title: 'Check original withdrawal',
+    summary: 'Check finality and the recorded grant state for the original withdrawal.',
+    stages: [{ id: 'read', label: 'Check the original transaction and grant' }],
   },
   create: {
     title: 'Create account',
@@ -322,6 +329,7 @@ export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep
   startSession: {},
   endSession: {},
   revokeSession: {},
+  recoverSessionWithdrawal: {},
   create: {
     'passkey.create': 'passkey',
     'passkey.prf': 'prf',

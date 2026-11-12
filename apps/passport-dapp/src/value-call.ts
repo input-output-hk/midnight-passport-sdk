@@ -1,6 +1,10 @@
 import { PassportConnectorError } from '@input-output-hk/mn-passport-account';
 import type { CallRequest, TxResult } from '@input-output-hk/mn-passport-account/ports';
 import { tracedFetch } from './operation-trace.js';
+import type {
+  RecoverSessionWithdrawal,
+  SessionWithdrawalRecoveryRequest,
+} from './session-withdrawal-recovery.js';
 
 /** The server receives circuit arguments, never an arbitrary transaction to sign. */
 export async function demoValueCall(
@@ -61,4 +65,36 @@ export function demoSessionValueCall(
   // The service may prove and submit after POST acceptance. Observe its response even if
   // the key is disposed meanwhile; a real transport loss still leaves the session blocked.
   return demoValueCall(serviceUrl, observedRequest, requestId);
+}
+
+export async function observeSessionWithdrawal(
+  serviceUrl: string,
+  input: SessionWithdrawalRecoveryRequest,
+): ReturnType<RecoverSessionWithdrawal> {
+  const response = await tracedFetch(
+    new URL('/v1/demo/session-withdrawal/recover', serviceUrl).href,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      signal: AbortSignal.timeout(20_000),
+      body: JSON.stringify(input),
+    },
+  );
+  if (!response.ok) throw new Error('The original withdrawal could not be checked.');
+  const result = (await response.json()) as Record<string, unknown> | null;
+  if (result?.kind === 'unknown') return undefined;
+  if (
+    result?.kind !== 'confirmed' ||
+    result.requestId !== input.requestId ||
+    result.accountAddress !== input.accountAddress ||
+    result.grantId !== input.grantId ||
+    result.amount !== input.amount ||
+    typeof result.txHash !== 'string' ||
+    !/^[0-9a-f]{64}$/.test(result.txHash) ||
+    typeof result.blockHeight !== 'number' ||
+    !Number.isSafeInteger(result.blockHeight) ||
+    result.blockHeight < 1
+  )
+    throw new Error('The recovery response does not match the original withdrawal.');
+  return { txHash: result.txHash, blockHeight: result.blockHeight };
 }

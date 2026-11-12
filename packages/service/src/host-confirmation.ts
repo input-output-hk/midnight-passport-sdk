@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
-import type { HostMutationStep, HostConfirmation } from '@input-output-hk/mn-passport-service';
-import { fetchJsonBounded } from './bounded-json.ts';
+import type { HostMutationStep, HostConfirmation } from './host-mutations.js';
+import { fetchJsonBounded } from './bounded-json.js';
 
 const RAW_HEX_LIMIT = 16 * 1024 * 1024;
 const RESPONSE_LIMIT = RAW_HEX_LIMIT + 1024 * 1024;

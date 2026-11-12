@@ -68,6 +68,7 @@ test('demo funding is opt-in and restricted to loopback localnet', () => {
 
 test('browser seam keeps token server-side and funds only a registered deployed ACC', async () => {
   let forwarded = 0;
+  let observed = 0;
   let wrongManifest = false;
   const backend = createHttpServer(async (req, res) => {
     if (req.url === '/healthz') {
@@ -105,6 +106,18 @@ test('browser seam keeps token server-side and funds only a registered deployed 
       );
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ accountAddress, color, night: '0', fundedAsset: '20' }));
+      return;
+    }
+    if (req.url === '/v1/session-withdrawal/recover') {
+      assert.equal(req.method, 'POST');
+      assert.equal(req.headers.authorization, `Bearer ${token}`);
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk as Buffer);
+      const original = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      assert.deepEqual(original, { accountAddress, requestId, grantId: color, amount: '1' });
+      observed++;
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ kind: 'unknown', internalMetadata: 'redacted' }));
       return;
     }
     assert.equal(req.url, '/v1/faucet/fund');
@@ -177,9 +190,24 @@ test('browser seam keeps token server-side and funds only a registered deployed 
       creditedBalance: '20',
     });
     assert.equal(forwarded, 1);
+    const recover = (address: string, origin: string) =>
+      fetch(new URL('/v1/demo/session-withdrawal/recover', url), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin },
+        body: JSON.stringify({ accountAddress: address, requestId, grantId: color, amount: '1' }),
+      });
+    assert.equal((await recover(accountAddress, 'https://other.example')).status, 403);
+    assert.equal((await recover('e'.repeat(64), config.corsOrigin)).status, 403);
+    assert.equal(observed, 0);
+    const checked = await recover(accountAddress, config.corsOrigin);
+    assert.equal(checked.status, 200);
+    assert.deepEqual(await checked.json(), { kind: 'unknown' });
+    assert.equal(observed, 1);
     wrongManifest = true;
     assert.equal((await post(accountAddress, config.corsOrigin)).status, 503);
     assert.equal(forwarded, 1, 'a binding mismatch never reaches the funding wallet');
+    assert.equal((await recover(accountAddress, config.corsOrigin)).status, 503);
+    assert.equal(observed, 1, 'a binding mismatch never reaches recovery');
   } finally {
     server.close();
     backend.close();

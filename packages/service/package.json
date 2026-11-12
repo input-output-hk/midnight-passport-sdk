@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./finality": {
+      "types": "./dist/finality.d.ts",
+      "default": "./dist/finality.js"
     }
   },
   "files": [
@@ -14,7 +18,8 @@
     "!dist/.tsbuildinfo"
   ],
   "dependencies": {
-    "@input-output-hk/mn-passport-protocol": "workspace:*"
+    "@input-output-hk/mn-passport-protocol": "workspace:*",
+    "zod": "4.1.12"
   },
   "license": "Apache-2.0",
   "repository": {

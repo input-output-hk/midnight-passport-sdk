@@ -2,6 +2,16 @@ import type { DemoSessionSnapshot } from './session.js';
 
 const pending = (s: DemoSessionSnapshot) =>
   ['authorizing', 'spending', 'revoking', 'blocked'].includes(s.status);
+function validatePendingWithdrawal(v: Record<string, unknown>) {
+  if (
+    v.pendingWithdrawal !== undefined &&
+    (typeof v.pendingWithdrawal !== 'string' ||
+      !/^[1-9][0-9]{0,38}$/.test(v.pendingWithdrawal) ||
+      BigInt(v.pendingWithdrawal) >= 1n << 128n ||
+      !['spending', 'blocked'].includes(String(v.status)))
+  )
+    throw new Error('Invalid pending withdrawal.');
+}
 /** Public metadata, plus independent intent records that a stale display write cannot erase. */
 export function sessionCheckpoint(
   storage: Pick<Storage, 'getItem' | 'setItem' | 'key' | 'length'>,
@@ -32,6 +42,7 @@ export function sessionCheckpoint(
     'spent',
     'txHash',
     'intentId',
+    'pendingWithdrawal',
   ]);
   const invalid = (): DemoSessionSnapshot => ({ status: 'blocked', spent: '0' });
   const parse = (value: unknown): DemoSessionSnapshot => {
@@ -62,6 +73,7 @@ export function sessionCheckpoint(
         !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/.test(v.intentId))
     )
       throw new Error('Invalid intent identity.');
+    validatePendingWithdrawal(v);
     for (const field of ['cap', 'perCallCap'])
       if (
         v[field] !== undefined &&

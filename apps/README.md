@@ -939,8 +939,13 @@ The bounded session in the main demo sends its original browser UUID in
 withdrawal before reserving the grant nonce. Keep
 `<PASSPORT_FUNDING_RESERVATIONS_FILE>.session-spends` with the local
 reservation files. This private journal contains the transaction identity
-needed to investigate an uncertain result. The demo keeps its safety block
-until reconciliation.
+needed to investigate an uncertain result. For withdrawals begun with the
+current browser checkpoint, open the original ACC and use **Check original
+withdrawal** under Settings → Quick actions. The read-only request goes through
+`POST /v1/demo/session-withdrawal/recover` to the bearer-protected funding host.
+The host checks exact finality and the expected grant nonce and spent commitment.
+An unknown result keeps the block. Confirmation settles the matching browser
+withdrawal and keeps its signing key locked.
 
 The relay sponsors only the pinned fee-only owner issue circuit. The browser
 still supplies the exact review and fresh owner circuit signature. The holder

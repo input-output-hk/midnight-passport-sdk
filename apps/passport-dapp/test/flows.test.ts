@@ -29,6 +29,7 @@ const ACTIONS: readonly ActionId[] = [
   'startSession',
   'endSession',
   'revokeSession',
+  'recoverSessionWithdrawal',
   'create',
   'open',
   'openAt',
@@ -74,6 +75,7 @@ test('prompts per action, with and without an account open', () => {
   assert.equal(promptsFor('spendGrant', false), 1);
   assert.equal(promptsFor('revokeGrant', true), 1);
   assert.equal(promptsFor('recoverGrants', true), 1);
+  assert.equal(promptsFor('recoverSessionWithdrawal', true), 0);
   assert.equal(promptsFor('enrollDevice', true), 1);
   assert.equal(promptsFor('removeDevice', true), 1);
   assert.equal(promptsFor('rotate', false), 1);
@@ -100,6 +102,7 @@ test('the prompt table has an entry for each action and nothing the actions do n
     'prepareGrantee',
     'prepareJoiner',
     'recoverGrants',
+    'recoverSessionWithdrawal',
     'refresh',
     'removeDevice',
     'revokeGrant',
@@ -123,6 +126,7 @@ test('the prompt table has an entry for each action and nothing the actions do n
         Number.isInteger(min) &&
           min >=
             (action === 'endSession' ||
+            action === 'recoverSessionWithdrawal' ||
             action === 'fund' ||
             action === 'refresh' ||
             action === 'walletRefresh' ||

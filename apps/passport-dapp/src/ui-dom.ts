@@ -5,6 +5,7 @@ export const ACTIONS: readonly ActionId[] = [
   'startSession',
   'endSession',
   'revokeSession',
+  'recoverSessionWithdrawal',
   'create',
   'open',
   'openAt',

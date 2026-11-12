@@ -16,7 +16,7 @@ import {
   encodeMutationValue,
 } from '../../../packages/account/dist/mutation-codec.js';
 import { NetworkIdSchema } from '../../../packages/account/dist/validation.js';
-import type { HostConfirmationRuntime } from './host-confirmation.ts';
+import type { HostConfirmationRuntime } from '@input-output-hk/mn-passport-service/finality';
 
 const hex32 = z.string().regex(/^[0-9a-f]{64}$/);
 const schema = z

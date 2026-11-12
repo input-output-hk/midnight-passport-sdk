@@ -83,6 +83,9 @@ export function renderSessionDraft(color: string, recipient: string) {
 
 export function renderSessionState(snapshot: DemoSessionSnapshot, networkId: string) {
   const status = document.getElementById('session-state')!;
+  const recoveryCard = document.getElementById('session-recovery-card');
+  if (recoveryCard)
+    recoveryCard.hidden = snapshot.status !== 'blocked' || !snapshot.pendingWithdrawal;
   status.dataset.status = snapshot.status;
   status.dataset.intentId = snapshot.intentId ?? '';
   const presentation = sessionPresentation(snapshot);

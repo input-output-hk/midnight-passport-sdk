@@ -11,18 +11,12 @@ import {
   createMidnightWalletPorts,
 } from '@input-output-hk/mn-passport-adapter-midnight-js';
 import { remoteV1Prover } from '@input-output-hk/mn-passport-adapter-service';
-import {
-  fileMutationByteStore,
-  HttpError,
-  json,
-  readJson,
-  serial,
-} from '@input-output-hk/mn-passport-service';
+import { HttpError, json, readJson, serial } from '@input-output-hk/mn-passport-service';
 import type { FundingConfig } from './config.ts';
 import { deployedAddresses } from './deployments.ts';
 
-import { createAgentGrantSpendJournal } from '@input-output-hk/mn-passport-account';
 import { submitSessionWithdrawal } from './session-withdrawal.ts';
+import { sessionSpendJournal } from './session-withdrawal-runtime.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const SESSION_CIRCUIT = 'withdraw_unshielded_with_grant_jubjub';
@@ -148,9 +142,7 @@ export function valueCallRoute(
   authorized: (header: string | undefined) => boolean,
 ) {
   const runExclusive = serial(2);
-  const receipts = createAgentGrantSpendJournal(
-    fileMutationByteStore(`${config.reservationsFile}.session-spends`),
-  );
+  const receipts = sessionSpendJournal(config);
   return async (req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> => {
     if (url.pathname !== '/v1/value-call') return false;
     if (req.method !== 'POST') throw new HttpError(405, 'method not allowed');

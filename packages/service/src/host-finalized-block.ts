@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { fetchJsonBounded } from './bounded-json.ts';
+import { fetchJsonBounded } from './bounded-json.js';
 
 const rpcResponse = z.object({ id: z.literal(1), result: z.unknown(), error: z.undefined() });
 const rpcHash = z.string().regex(/^0x[0-9a-f]{64}$/);

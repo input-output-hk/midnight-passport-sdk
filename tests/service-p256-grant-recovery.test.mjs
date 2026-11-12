@@ -4,12 +4,12 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { fileMutationByteStore } from '@input-output-hk/mn-passport-service';
+import { fileMutationByteStore } from '../packages/service/dist/index.js';
 import {
   createP256GrantSpendJournal,
   recoverP256GrantSpend,
-} from '../../../packages/account/dist/index.js';
-import { createP256GrantFinality } from '../src/p256-grant-finality.ts';
+} from '../packages/account/dist/index.js';
+import { createHostTransactionFinality } from '../packages/service/dist/finality.js';
 
 const requestId = '549BD843-0A8F-40AF-9B6F-D9EB8CF48871';
 const reservation = {
@@ -73,11 +73,12 @@ test('a new host confirms the original fenced grant call with no acknowledgement
     code: 'MutationUnsettled',
   });
 
-  const queries: string[] = [];
+  /** @type {string[]} */
+  const queries = [];
   let indexedBytes = originalBytes.toString('hex');
   let finalizedHeight = '0x14';
   let canonicalBlock = block;
-  const finality = createP256GrantFinality({
+  const finality = createHostTransactionFinality({
     nodeUrl,
     indexerUrl,
     networkId: reservation.networkId,

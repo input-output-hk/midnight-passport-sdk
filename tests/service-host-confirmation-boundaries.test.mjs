@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readHostConfirmation, type HostConfirmationRuntime } from '../src/host-confirmation.ts';
+import { readHostConfirmation } from '../packages/service/dist/finality.js';
 
 test('confirmation schema and byte limits refuse malformed observations before decoding a transaction', async () => {
   const identifier = '00' + '22'.repeat(32);
@@ -14,10 +14,11 @@ test('confirmation schema and byte limits refuse malformed observations before d
     raw: 'aa',
     block: { height: 0 },
   };
-  const step = { tx: 'aa', identifiers: [identifier], phase: 'dispatching' as const };
+  const step = { tx: 'aa', identifiers: [identifier], phase: /** @type {const} */ ('dispatching') };
   let decodes = 0;
   let fetches = 0;
-  const runtime: HostConfirmationRuntime = {
+  /** @type {import('../packages/service/dist/finality.js').HostConfirmationRuntime} */
+  const runtime = {
     indexerUrl: 'http://fixture',
     versionOfRecord: () => 'v9',
     ledger: {
@@ -89,9 +90,11 @@ test('confirmation refuses extra records and malformed identifiers without trave
     raw: 'aa',
     block: { height: 0 },
   };
-  let transactions: readonly unknown[] = [record];
-  const step = { tx: 'aa', identifiers: [identifier], phase: 'dispatching' as const };
-  const runtime: HostConfirmationRuntime = {
+  /** @type {readonly unknown[]} */
+  let transactions = [record];
+  const step = { tx: 'aa', identifiers: [identifier], phase: /** @type {const} */ ('dispatching') };
+  /** @type {import('../packages/service/dist/finality.js').HostConfirmationRuntime} */
+  const runtime = {
     indexerUrl: 'http://fixture',
     versionOfRecord: () => 'v9',
     ledger: {
@@ -119,7 +122,7 @@ test('confirmation refuses extra records and malformed identifiers without trave
       assert.equal(inspections, 0, 'extra records are refused before per-record validation');
     }
     let rejectedItemReads = 0;
-    const identifiers: unknown[] = [null];
+    const identifiers = [null];
     Object.defineProperty(identifiers, 1, {
       get() {
         rejectedItemReads++;

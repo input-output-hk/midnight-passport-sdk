@@ -4,8 +4,11 @@ import {
   type ShieldedBackfillPorts,
   type ShieldedWithdrawalRecoveryPorts,
 } from '../../../packages/account/dist/index.js';
-import { abortable } from './bounded-json.ts';
-import { hostChainRpc, readHostBestHash } from './host-finalized-block.ts';
+import {
+  abortable,
+  hostChainRpc,
+  readHostBestHash,
+} from '@input-output-hk/mn-passport-service/finality';
 import { hex, same } from './host-ledger.ts';
 
 interface HostZswapStateSource {

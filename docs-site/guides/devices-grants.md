@@ -213,9 +213,15 @@ Generated ACC and offline dispatch tests cover a funded spend, caps,
 revocation, concurrent request IDs, expiry, receipt loss and a killed
 journal writer. Native proof and vault integration remain separate.
 
-
 The reference demo uses the same durable receipt pattern for bounded session
 withdrawals. Its loopback funding host uses
 `prepareSignedJubjubGrantWithdrawal` to verify the signed Compact arguments
 and the live grant before reserving the browser's original UUID. This is a
 host preflight for the pinned fixed-recipient JubJub circuit.
+
+For a lost demo withdrawal response, open the same account and choose
+**Settings → Quick actions → Check original withdrawal**. The loopback host
+uses the Node `@input-output-hk/mn-passport-service/finality` reader and
+`recoverAgentGrantSpend` to verify the original transaction and grant state.
+An unknown result keeps the block. Confirmation settles the pending withdrawal
+and leaves the signer locked.

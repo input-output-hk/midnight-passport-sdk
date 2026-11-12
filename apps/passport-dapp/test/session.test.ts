@@ -489,3 +489,76 @@ test('session lock disposes its key before unreadable storage and failing presen
   await assert.rejects(f.session.spend(f.account, transfer), /Reconcile|blocked|outside/);
   assert.equal(f.counters().spends, 0);
 });
+
+test('a withdrawal observation cannot settle a different pending operation', async () => {
+  const f = fixture();
+  const memory = new Map<string, string>();
+  const checkpoint = sessionCheckpoint(memoryStorage(memory), 'undeployed', 'acc-s3r1.1');
+  const original = {
+    status: 'spending' as const,
+    account: f.account.address,
+    grantId: '34'.repeat(32),
+    intentId: crypto.randomUUID(),
+    pendingWithdrawal: '1',
+    spent: '0',
+  };
+  checkpoint.begin(original);
+  let confirm!: () => void;
+  const observing = createDemoSession({
+    ...f.ports,
+    checkpoint,
+    recoverWithdrawal: async (request) => {
+      assert.equal(request.requestId, original.intentId);
+      await new Promise<void>((resolve) => {
+        confirm = resolve;
+      });
+      return { txHash: 'a1'.repeat(32), blockHeight: 5 };
+    },
+  });
+  const pending = observing.recoverWithdrawal(f.account.address);
+  const { pendingWithdrawal: _amount, ...cleared } = original;
+  checkpoint.settle({ ...cleared, status: 'locked', spent: '1' });
+  const next = { ...cleared, status: 'revoking' as const, intentId: crypto.randomUUID() };
+  checkpoint.begin(next);
+  confirm();
+  await assert.rejects(pending, /pending withdrawal changed/);
+  assert.equal(checkpoint.read()?.intentId, next.intentId);
+  assert.equal(checkpoint.read()?.status, 'blocked');
+  assert.deepEqual(f.counters(), { disposed: 0, issues: 0, spends: 0, revokes: 0 });
+});
+
+test('an acknowledged withdrawal stays recoverable when checkpoint settlement fails', async () => {
+  const f = fixture();
+  const memory = new Map<string, string>();
+  const checkpoint = sessionCheckpoint(memoryStorage(memory), 'undeployed', 'acc-s3r1.1');
+  const session = createDemoSession({
+    ...f.ports,
+    checkpoint: {
+      ...checkpoint,
+      settle(snapshot) {
+        if (snapshot.spent === '1') throw new Error('checkpoint settlement failed');
+        checkpoint.settle(snapshot);
+      },
+    },
+  });
+  await session.start(f.account, scope, 15, 'localhost');
+  await assert.rejects(session.spend(f.account, transfer), /checkpoint settlement failed/);
+  const pending = checkpoint.read();
+  assert.equal(pending?.status, 'blocked');
+  assert.equal(pending?.pendingWithdrawal, '1');
+  assert.equal(pending?.spent, '0');
+  assert.equal(pending?.txHash, 'ef'.repeat(32));
+  const reloaded = createDemoSession({
+    ...f.ports,
+    checkpoint,
+    async recoverWithdrawal(input) {
+      assert.equal(input.requestId, pending?.intentId);
+      return { txHash: 'ef'.repeat(32), blockHeight: 5 };
+    },
+  });
+  await reloaded.recoverWithdrawal(f.account.address);
+  assert.equal(checkpoint.read()?.status, 'locked');
+  assert.equal(checkpoint.read()?.spent, '1');
+  assert.equal(checkpoint.read()?.pendingWithdrawal, undefined);
+  assert.equal(f.counters().spends, 1);
+});

@@ -14,6 +14,7 @@ import { loadFundingConfig } from './config.ts';
 import { deployedAddresses } from './deployments.ts';
 import { prepareLocalnetNight, type NightWallet } from './night-preparation.ts';
 import { valueCallRoute } from './value-call.ts';
+import { sessionWithdrawalRecovery } from './session-withdrawal-runtime.ts';
 import { inventoryRoute, walletInventory, type InventoryWallet } from './inventory.ts';
 import type { createMidnightWalletPorts } from '@input-output-hk/mn-passport-adapter-midnight-js';
 
@@ -93,7 +94,9 @@ const authorized = (header: string | undefined): boolean => {
   const candidate = Buffer.from(header.slice(7), 'utf8');
   return candidate.length === token.length && timingSafeEqual(candidate, token);
 };
+const recoverSession = sessionWithdrawalRecovery(config, authorized);
 const server = createServer(config, [
+  ...(recoverSession ? [recoverSession] : []),
   inventoryRoute(config, () => walletInventory(wallet.walletCtx.wallet), authorized),
   async (request, response, url) => {
     if (request.method !== 'GET' || url.pathname !== '/healthz') return false;

@@ -2,9 +2,12 @@ import { createHash } from 'node:crypto';
 import type * as Ledger from '@midnightntwrk/ledger-v9';
 import { z } from 'zod';
 import type { ShieldedBackfillFinalitySource } from '../../../packages/account/dist/index.js';
-import { abortable } from './bounded-json.ts';
-import { readHostReceipt, type HostConfirmationRuntime } from './host-confirmation.ts';
-import { isHostFinalizedBlock } from './host-finalized-block.ts';
+import {
+  abortable,
+  isHostFinalizedBlock,
+  readHostReceipt,
+  type HostConfirmationRuntime,
+} from '@input-output-hk/mn-passport-service/finality';
 import {
   parseHostShieldedAppendReceipt,
   readPinnedAppendCall,

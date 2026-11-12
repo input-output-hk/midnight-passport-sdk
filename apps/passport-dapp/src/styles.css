@@ -1436,6 +1436,7 @@ main.workspace-shell[data-landing='true'] > .navigation-bar {
 }
 #session-current-scope[hidden],
 #session-record[hidden],
+#session-recovery-card[hidden],
 #session-clock[hidden] {
   display: none;
 }

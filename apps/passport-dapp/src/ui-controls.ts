@@ -57,6 +57,7 @@ export class ActionControls {
       busy || !this.model.account || this.model.assetsByColor.size === 0;
     this.dom.buttons.endSession.disabled = false;
     this.dom.buttons.revokeSession.disabled = busy || !this.model.account;
+    this.dom.buttons.recoverSessionWithdrawal.disabled = busy || !this.model.account;
     this.dom.buttons.create.disabled = busy || !this.model.ready;
     this.dom.buttons.open.disabled = busy || !this.model.ready;
     this.dom.buttons.openAt.disabled =

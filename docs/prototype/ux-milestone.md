@@ -170,7 +170,10 @@ fresh owner approval before releasing the original opening. The direct holder
 API checks the returned scope and live grant before an injected signer is
 used. A durable host retains the original withdrawal UUID for recovery. The
 demo correlates the bounded-session withdrawal with that UUID in Audit and
-in the funding host receipt journal.
+in the funding host receipt journal. **Check original withdrawal** in Settings →
+Quick actions observes the staged transaction and its expected grant state
+after a lost response. Unknown evidence leaves the retry block in place.
+Confirmation settles that withdrawal and keeps the local signing key locked.
 
 The [reference app guide](../../apps/README.md#source-preview-browser-grant-relay)
 covers build pins, service routes, the pre-enrolled owner requirement and

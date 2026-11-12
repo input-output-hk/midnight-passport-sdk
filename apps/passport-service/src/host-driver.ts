@@ -4,8 +4,8 @@ import {
   readHostGrantIssueRequest,
 } from './host-grant-issue.ts';
 import { prepareHostMutation } from './host-preparation.ts';
-import { readHostConfirmation } from './host-confirmation.ts';
-export { readHostConfirmation } from './host-confirmation.ts';
+import { readHostConfirmation } from '@input-output-hk/mn-passport-service/finality';
+export { readHostConfirmation } from '@input-output-hk/mn-passport-service/finality';
 import { createHash } from 'node:crypto';
 import { resolveBinding } from '@input-output-hk/mn-passport-contract';
 import {

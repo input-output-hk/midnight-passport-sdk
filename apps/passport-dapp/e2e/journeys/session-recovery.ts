@@ -304,6 +304,59 @@ export async function checkLostSessionSpendAcknowledgementBlocksRetryAnd(
     sendsAfterUnknown,
     'page reload retains uncertainty fence',
   );
+  await readSessionState(owner);
+  const requestId = await owner.locator('#session-state').getAttribute('data-intent-id');
+  const originalHash = h.state.txHash;
+  const recoveryUrl = '**/v1/demo/session-withdrawal/recover';
+  const purposes = () =>
+    owner.evaluate(
+      () =>
+        (window as typeof window & { __passportPurposeObservations: unknown[] })
+          .__passportPurposeObservations.length,
+    );
+  const beforeRecovery = await purposes();
+  let recoveryReads = 0;
+  await owner.route(recoveryUrl, async (route) => {
+    assert.equal(route.request().method(), 'POST');
+    const original = route.request().postDataJSON();
+    assert.equal(original.requestId, requestId);
+    assert.equal(original.grantId, h.state.grant?.id);
+    assert.equal(original.amount, '1');
+    recoveryReads++;
+    await route.fulfill({
+      json:
+        recoveryReads === 1
+          ? { kind: 'unknown' }
+          : {
+              kind: 'confirmed',
+              ...original,
+              requestId: recoveryReads === 2 ? '4c198afc-bd37-45a0-ab74-f29c22ece09f' : requestId,
+              txHash: originalHash,
+              blockHeight: 7,
+            },
+    });
+  });
+  try {
+    await click(owner, '#recoverSessionWithdrawal');
+    await waitStatus(owner, /still unconfirmed/);
+    assert.equal(await readSessionState(owner), 'blocked');
+    await click(owner, '#recoverSessionWithdrawal');
+    await waitStatus(owner, /failed\./, /does not match the original withdrawal/);
+    assert.equal(await readSessionState(owner), 'blocked');
+    await owner.evaluate(() => {
+      (window as typeof window & { __sessionClockOffset: number }).__sessionClockOffset =
+        16 * 60_000;
+    });
+    await click(owner, '#recoverSessionWithdrawal');
+    await waitStatus(owner, /Original withdrawal confirmed/);
+    assert.equal(await readSessionState(owner), 'locked');
+    assert.equal(await owner.locator('#recoverSessionWithdrawal').isVisible(), false);
+    assert.equal(await purposes(), beforeRecovery);
+    assert.equal(calls.filter((c) => c === 'spend' || c === 'withdraw').length, sendsAfterUnknown);
+    assert.equal(recoveryReads, 3);
+  } finally {
+    await owner.unroute(recoveryUrl);
+  }
   done('scoped-sessions.lost-session-spend-acknowledgement-blocks-retry-and');
 }
 
@@ -340,6 +393,8 @@ export async function checkUncertainRevocationIsNeverReplayedAndRemains(
   await waitStatus(revoker, /opened/);
   await approve(revoker, 'revokeSession');
   await waitStatus(revoker, /failed\./, /Reconcile/);
+  await readSessionState(revoker);
+  assert.equal(await revoker.locator('#recoverSessionWithdrawal').isVisible(), false);
   assert.equal(calls.filter((c) => c === 'revoke').length, revokeCalls + 1);
   done('scoped-sessions.uncertain-revocation-is-never-replayed-and-remains');
 }

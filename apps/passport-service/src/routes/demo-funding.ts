@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { readFileSync } from 'node:fs';
+import { fetchJsonBounded } from '@input-output-hk/mn-passport-service/finality';
+import { z } from 'zod';
 import { demoAssets, availableDemoAssets, preflightRefusal } from './demo-funding-inventory.ts';
 import type { ServiceConfig } from '../config.ts';
 import { DeploymentLog, sponsoredAddresses } from '../deployments.ts';
@@ -8,6 +10,18 @@ import { HttpError, json, readJson, type Route } from '../http.ts';
 const ADDRESS = /^[0-9a-f]{64}$/;
 const REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const TX_ID = /^(?:[0-9a-f]{64}|[0-9a-f]{66})$/;
+const recoveryResult = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('unknown') }),
+  z.object({
+    kind: z.literal('confirmed'),
+    requestId: z.string().regex(REQUEST_ID),
+    accountAddress: z.string().regex(ADDRESS),
+    grantId: z.string().regex(ADDRESS),
+    amount: z.string().regex(/^[1-9][0-9]{0,38}$/),
+    txHash: z.string().regex(ADDRESS),
+    blockHeight: z.number().int().positive(),
+  }),
+]);
 
 /** A localnet-only browser seam. The funding wallet and bearer token stay in their own process. */
 export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv): Route | undefined {
@@ -53,6 +67,8 @@ export function demoFundingRoute(config: ServiceConfig, env: NodeJS.ProcessEnv):
     checkedBackend,
   };
   return async (req, res, requestUrl) => {
+    if (requestUrl.pathname === '/v1/demo/session-withdrawal/recover')
+      return recoverSessionWithdrawal(context, req, res);
     if (requestUrl.pathname === '/v1/demo/value-call') return valueCall(context, req, res);
     if (requestUrl.pathname !== '/v1/demo/funding') return false;
     if (req.method === 'GET') return fundingDiscovery(context, res, requestUrl);
@@ -68,6 +84,42 @@ interface FundingContext {
   readonly balanceAssetColor: string;
   readonly deployments: DeploymentLog;
   checkedBackend(): Promise<void>;
+}
+
+async function recoverSessionWithdrawal(
+  { config, url, token, deployments, checkedBackend }: FundingContext,
+  req: IncomingMessage,
+  res: ServerResponse,
+) {
+  if (req.method !== 'POST') throw new HttpError(405, 'method not allowed');
+  if (req.headers.origin !== config.corsOrigin)
+    throw new HttpError(403, 'session recovery requires the Passport demo origin');
+  const body = await readJson(req, 512);
+  const accountAddress = (body as { accountAddress?: unknown } | null)?.accountAddress;
+  if (
+    typeof accountAddress !== 'string' ||
+    !ADDRESS.test(accountAddress) ||
+    !sponsoredAddresses(config, deployments).has(accountAddress)
+  )
+    throw new HttpError(403, 'account is not registered and deployed by this demo');
+  await checkedBackend();
+  const response = await fetchJsonBounded(
+    fetch,
+    new URL('/v1/session-withdrawal/recover', url),
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+      redirect: 'error',
+      signal: AbortSignal.timeout(15_000),
+    },
+    2048,
+  );
+  if (!response.ok) throw new HttpError(503, 'session withdrawal observation unavailable');
+  const result = recoveryResult.safeParse(response.value);
+  if (!result.success) throw new HttpError(502, 'invalid session withdrawal observation');
+  json(res, 200, result.data);
+  return true;
 }
 
 async function valueCall(context: FundingContext, req: IncomingMessage, res: ServerResponse) {

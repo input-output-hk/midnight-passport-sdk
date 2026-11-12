@@ -138,6 +138,12 @@ importers:
       '@input-output-hk/mn-passport-service':
         specifier: workspace:*
         version: link:../../packages/service
+      '@midnight-ntwrk/midnight-js-protocol':
+        specifier: 5.0.0-rc.2
+        version: 5.0.0-rc.2
+      '@midnightntwrk/ledger-v9':
+        specifier: 1.0.0-rc.5
+        version: 1.0.0-rc.5
       '@midnightntwrk/wallet-sdk-address-format':
         specifier: 4.0.0-rc.0
         version: 4.0.0-rc.0
@@ -365,6 +371,9 @@ importers:
       '@input-output-hk/mn-passport-protocol':
         specifier: workspace:*
         version: link:../protocol
+      zod:
+        specifier: 4.1.12
+        version: 4.1.12
 
 packages:
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { fetchJsonBounded } from '../src/bounded-json.ts';
+import { fetchJsonBounded } from '../packages/service/dist/finality.js';
 
 test('bounded JSON reads split UTF-8 and rejects malformed or oversized bytes', async () => {
   const bytes = new TextEncoder().encode('{"label":"€"}');
@@ -12,7 +12,8 @@ test('bounded JSON reads split UTF-8 and rejects malformed or oversized bytes', 
       },
     }),
   );
-  const read = (value: Response, maximum = bytes.length) =>
+  /** @param {Response} value */
+  const read = (value, maximum = bytes.length) =>
     fetchJsonBounded(
       async () => value,
       'http://fixture',
@@ -55,13 +56,14 @@ test('declared oversize and stream oversize cancel only the owned body', async (
 
 test('abort refuses stalled headers, disposes their late body and makes no replacement fetch', async () => {
   const controller = new AbortController();
-  let resolve!: (value: Response) => void;
+  /** @type {(value: Response) => void} */
+  let resolve = () => {};
   let calls = 0;
   let cancelled = 0;
   const result = fetchJsonBounded(
     () => {
       calls++;
-      return new Promise<Response>((done) => {
+      return new Promise((done) => {
         resolve = done;
       });
     },
@@ -80,7 +82,7 @@ test('abort refuses stalled headers, disposes their late body and makes no repla
       }),
     ),
   );
-  await new Promise<void>((done) => setImmediate(done));
+  await new Promise((done) => setImmediate(done));
   assert.equal(calls, 1);
   assert.equal(cancelled, 1);
 });
@@ -99,7 +101,7 @@ test('abort refuses a stalled decoder and closes its reader', async () => {
     { signal: controller.signal },
     16,
   );
-  await new Promise<void>((done) => setImmediate(done));
+  await new Promise((done) => setImmediate(done));
   controller.abort();
   await assert.rejects(result, /aborted/);
   assert.equal(cancelled, 1);

@@ -6,7 +6,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
 import { configureMidnames } from '../../apps/passport-dapp/src/midnames/config.ts';
 import { depositByName } from '../../apps/passport-dapp/src/midnames/deposit-by-name.ts';
-import { readHostConfirmation } from '../../apps/passport-service/src/host-confirmation.ts';
+import { readHostConfirmation } from '../../packages/service/dist/finality.js';
 import {
   isolationEnvironment,
   isolationProfile,

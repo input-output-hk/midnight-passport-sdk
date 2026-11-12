@@ -1,14 +1,19 @@
-import type { P256GrantSpendFinalitySource } from '../../../packages/account/dist/index.js';
-import { readHostConfirmation, type HostConfirmationRuntime } from './host-confirmation.ts';
-import { isHostFinalizedBlock } from './host-finalized-block.ts';
+import { readHostConfirmation, type HostConfirmationRuntime } from './host-confirmation.js';
+import { isHostFinalizedBlock } from './host-finalized-block.js';
 
-/** Read the exact v9 receipt and prove its block is at or below the node's finalized head. */
-export function createP256GrantFinality(
+interface ExactHostTransaction {
+  readonly identifiers: readonly string[];
+  readonly txHash: string;
+  readonly bytesSha256: string;
+}
+
+/** Read the exact v9 receipt and check its block against the node's finalized chain. */
+export function createHostTransactionFinality(
   runtime: HostConfirmationRuntime & { readonly networkId: string; readonly nodeUrl: string },
-): P256GrantSpendFinalitySource {
+) {
   return {
     networkId: runtime.networkId,
-    async readFinalized(transaction) {
+    async readFinalized<T extends ExactHostTransaction>(transaction: T) {
       const included = await readHostConfirmation(
         { identifiers: transaction.identifiers },
         runtime,

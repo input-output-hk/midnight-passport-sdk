@@ -7,6 +7,10 @@ import type {
 } from '@input-output-hk/mn-passport-protocol';
 import type { SessionKeyContext } from '@input-output-hk/mn-passport-keys';
 import type { GrantHandoff } from './grant-handoff.js';
+import {
+  createSessionWithdrawalObserver,
+  type RecoverSessionWithdrawal,
+} from './session-withdrawal-recovery.js';
 
 export interface DemoSessionKey {
   readonly publicKey: string;
@@ -33,6 +37,7 @@ export interface DemoSessionSnapshot {
   readonly spent: string;
   readonly txHash?: string;
   readonly intentId?: string;
+  readonly pendingWithdrawal?: string;
 }
 export interface DemoSessionPorts {
   readonly now?: () => number;
@@ -50,6 +55,7 @@ export interface DemoSessionPorts {
     signal: AbortSignal,
     requestId: string,
   ) => Promise<{ txHash: string; spentTotal: bigint }>;
+  readonly recoverWithdrawal?: RecoverSessionWithdrawal;
   readonly changed: (snapshot: DemoSessionSnapshot) => void;
   /** Public metadata only, to retain grant IDs and uncertainty fences across page reloads. */
   readonly checkpoint?: {
@@ -144,8 +150,8 @@ export function createDemoSession(ports: DemoSessionPorts) {
     return intentId;
   };
   const settle = (next: DemoSessionSnapshot) => {
+    ports.checkpoint?.settle(next);
     state = Object.freeze(next);
-    ports.checkpoint?.settle(state);
     ports.changed(state);
   };
   const syncSafely = () => {
@@ -354,10 +360,11 @@ export function createDemoSession(ports: DemoSessionPorts) {
         );
       busy = true;
       const version = revision;
+      let confirmedHash: string | undefined;
       try {
         const { txHash: _previousHash, ...currentGrant } = state;
         state = currentGrant;
-        const requestId = begin({ status: 'spending' });
+        const requestId = begin({ status: 'spending', pendingWithdrawal: transfer.amount });
         current(version);
         const result = await ports.spend(
           opening!,
@@ -367,10 +374,12 @@ export function createDemoSession(ports: DemoSessionPorts) {
           cancellation.signal,
           requestId,
         );
+        confirmedHash = result.txHash;
         // Capture a confirmed effect even if a local lock/expiry happened while it settled.
         const usable = revision === version && tick().status === 'spending';
+        const { pendingWithdrawal: _completedAmount, ...settled } = state;
         settle({
-          ...state,
+          ...settled,
           spent: result.spentTotal.toString(),
           txHash: result.txHash,
           status: usable ? 'active' : 'locked',
@@ -379,13 +388,18 @@ export function createDemoSession(ports: DemoSessionPorts) {
       } catch (error) {
         revision++;
         dispose();
-        const { txHash } = submittedIds(error);
+        const txHash = confirmedHash ?? submittedIds(error).txHash;
         publish({ status: 'blocked', ...(txHash && { txHash }) });
         throw error; // No fallback owner send and no automatic retry, including lost responses.
       } finally {
         busy = false;
       }
     },
+    recoverWithdrawal: createSessionWithdrawalObserver(
+      () => (busy ? undefined : tick()),
+      ports,
+      settle,
+    ),
     async revoke(account: PassportAccount, options: FlowOptions = {}) {
       tick();
       if (busy) throw new Error('A session operation is already running.');
