@@ -1,6 +1,9 @@
 import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
 import type {
   CallRequest,
+  FeeSponsor,
+  Prover,
+  Submitter,
   QualifiedShieldedCoin,
   ShieldedWithdrawalJournal,
   ShieldedWithdrawalReservation,
@@ -14,12 +17,20 @@ import {
   type SignatureEnabled,
   type Signaturish,
   type Binding,
+  type UnprovenTransaction,
   type Effects,
   type ZswapOffer,
 } from '@midnightntwrk/ledger-v9';
 import { singleContractCall } from './single-contract-call.js';
 
 const MAX_FINALIZED_BYTES = 8 * 1024 * 1024;
+const byteLengthOf = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Uint8Array.prototype),
+  'byteLength',
+)?.get;
+
+const toHex = (value: Uint8Array): string =>
+  Array.from(value, (byte) => byte.toString(16).padStart(2, '0')).join('');
 
 function changedCall(): never {
   throw new PassportConnectorError(
@@ -190,7 +201,7 @@ export async function stageShieldedWithdrawalDispatch(
   const txHash = serialized.transactionHash();
   const identifiers = [...serialized.identifiers()];
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
-  const bytesSha256 = Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  const bytesSha256 = toHex(digest);
   if (
     signal?.aborted ||
     !(await journal.stageDispatch(reservation, {
@@ -201,4 +212,128 @@ export async function stageShieldedWithdrawalDispatch(
   )
     return changedCall();
   return bytes;
+}
+
+interface StagedShieldedWithdrawalRuntime {
+  readonly networkId: string;
+  readonly bindingId: string;
+  readonly journal: ShieldedWithdrawalJournal;
+  readonly prover: Prover;
+  readonly wallet: FeeSponsor;
+  readonly submitter: Submitter;
+  /** Adapt the pinned midnight-js createUnprovenCallTx private.unprovenTx and private.result. */
+  readonly build: (
+    invocation: Pick<CallRequest, 'address' | 'circuit' | 'args'> & {
+      readonly heldCoin: QualifiedShieldedCoin;
+    },
+  ) => Promise<{
+    readonly private: { readonly unprovenTx: UnprovenTransaction; readonly result: unknown };
+  }>;
+}
+
+function requirePrivateChange(result: unknown, expected: ShieldedWithdrawalReservation['change']) {
+  if (
+    !result ||
+    typeof result !== 'object' ||
+    !('is_some' in result) ||
+    result.is_some !== true ||
+    !('value' in result) ||
+    !result.value ||
+    typeof result.value !== 'object'
+  )
+    return changedCall();
+  const change = result.value;
+  rejectSharedBuffers(change);
+  if (
+    !('nonce' in change) ||
+    !(change.nonce instanceof Uint8Array) ||
+    change.nonce.byteLength !== 32 ||
+    toHex(change.nonce) !== expected.nonce ||
+    !('color' in change) ||
+    !(change.color instanceof Uint8Array) ||
+    change.color.byteLength !== 32 ||
+    toHex(change.color) !== expected.color ||
+    !('value' in change) ||
+    typeof change.value !== 'bigint' ||
+    change.value !== BigInt(expected.value)
+  )
+    return changedCall();
+}
+
+function ownTransactionBytes(value: Uint8Array): Uint8Array<ArrayBuffer> {
+  const length = value instanceof Uint8Array ? byteLengthOf?.call(value) : undefined;
+  if (!length || length > MAX_FINALIZED_BYTES) return changedCall();
+  rejectSharedBuffers(value);
+  return new Uint8Array(value);
+}
+
+/** Internal source route for a previously consented and reserved partial withdrawal. */
+export async function submitStagedShieldedWithdrawal(
+  requestId: string,
+  request: CallRequest,
+  runtime: StagedShieldedWithdrawalRuntime,
+): Promise<{ readonly submissionId: string; readonly txHash: string }> {
+  const { journal, prover, wallet, submitter, build, networkId, bindingId } = runtime;
+  const { signal } = request;
+  const check = () => {
+    if (signal?.aborted) return changedCall();
+  };
+  try {
+    check();
+    if (wallet.supportsShieldedOffers !== true || request.mutation !== undefined)
+      return changedCall();
+    const { args, heldCoin, reservation } = await prepareShieldedWithdrawalDispatch(
+      requestId,
+      request,
+      { networkId, bindingId },
+      journal,
+    );
+    const { account: address, circuit } = reservation;
+    check();
+    const { private: built } = await build({ address, circuit, args, heldCoin });
+    requirePrivateChange(built.result, reservation.change);
+    const unprovenBytes = ownTransactionBytes(built.unprovenTx.serialize());
+    const unproven = Transaction.deserialize(
+      'signature',
+      'pre-proof',
+      'pre-binding',
+      unprovenBytes,
+    );
+    const commitment = verifyShieldedWithdrawalCall(unproven, reservation);
+    check();
+    const proof = await prover.proveTx(unprovenBytes, {
+      networkId,
+      bindingId,
+      circuits: [circuit],
+      ...(signal && { signal }),
+    });
+    const provedBytes = ownTransactionBytes(proof.tx);
+    const proved = Transaction.deserialize('signature', 'proof', 'pre-binding', provedBytes);
+    verifyShieldedWithdrawalCall(proved, reservation, commitment);
+    check();
+    const walletBytes = ownTransactionBytes(await wallet.balanceAndSign(provedBytes));
+    const finalized = Transaction.deserialize<SignatureEnabled, Proof, Binding>(
+      'signature',
+      'proof',
+      'binding',
+      walletBytes,
+    );
+    const identifiers = finalized.identifiers();
+    const txHash = finalized.transactionHash();
+    const bytes = await stageShieldedWithdrawalDispatch(
+      finalized,
+      reservation,
+      commitment,
+      journal,
+      signal,
+    );
+    check();
+    const submissionId = await submitter.submit(bytes);
+    if (!identifiers.includes(submissionId)) return changedCall();
+    return { submissionId, txHash };
+  } catch {
+    // The builder or wallet error can carry private circuit data. The retained
+    // dispatch, when present, is the only source for subsequent reconciliation.
+    return changedCall();
+  }
 }

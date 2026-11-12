@@ -1,10 +1,18 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { gunzipSync } from 'node:zlib';
 import { createRequire } from 'node:module';
 import { test } from 'node:test';
-import { createShieldedWithdrawalJournal, mutationDigest } from '../packages/account/dist/index.js';
+import {
+  createShieldedWithdrawalJournal,
+  mutationDigest,
+  recoverShieldedWithdrawal,
+} from '../packages/account/dist/index.js';
 import {
   prepareShieldedWithdrawalDispatch,
   stageShieldedWithdrawalDispatch,
+  submitStagedShieldedWithdrawal,
   verifyShieldedWithdrawalCall,
 } from '../packages/adapter-midnight-js/dist/shielded-withdrawal-dispatch.js';
 
@@ -14,6 +22,26 @@ const require = createRequire(
 const ledger = await import(require.resolve('@midnightntwrk/ledger-v9'));
 const account = 'ab'.repeat(32);
 const circuit = /** @type {const} */ ('withdraw_shielded_with_jubjub');
+const { files } = JSON.parse(
+  gunzipSync(
+    await readFile(
+      new URL('../packages/contract/resources/acc-s3r1.1.zkir.json.gz', import.meta.url),
+    ),
+  ).toString(),
+);
+/** @param {string} name */
+const resource = (name) =>
+  Buffer.from(files[name] ?? assert.fail('Missing fixture artifact.'), 'base64');
+const fixtureProving = {
+  check: async () => [],
+  // Dummy proof for testing the pinned wire format, with no native proof claim.
+  prove: async () => new ledger.Proof('0100').serialize(),
+  lookupKey: async () => ({
+    proverKey: new Uint8Array(),
+    verifierKey: resource('keys/' + circuit + '.verifier'),
+    ir: resource('zkir/' + circuit + '.bzkir'),
+  }),
+};
 const networkId = 'undeployed';
 const bindingId = /** @type {const} */ ('acc-s3r1.1');
 const coin = {
@@ -181,5 +209,237 @@ test('wallet staging refuses unproven bytes and leaves the durable dispatch open
   await assert.rejects(stageShieldedWithdrawalDispatch(tx, reservation, commitment, journal), {
     code: 'MutationUnsettled',
   });
+  assert.equal((await journal.read(reservation.requestId))?.dispatch, undefined);
+});
+
+function privateChange() {
+  return {
+    is_some: true,
+    value: {
+      nonce: Uint8Array.from(Buffer.from(changeCoin.nonce, 'hex')),
+      color: Uint8Array.from(Buffer.from(changeCoin.type, 'hex')),
+      value: changeCoin.value,
+    },
+  };
+}
+
+/** @param {ReturnType<typeof createShieldedWithdrawalJournal>} journal */
+function stagedRuntime(journal) {
+  const status = { builds: 0, proves: 0, balances: 0, submissions: 0 };
+  /** @type {Parameters<typeof submitStagedShieldedWithdrawal>[2]} */
+  const runtime = {
+    ...pins,
+    journal,
+    async build(invocation) {
+      status.builds++;
+      assert.deepEqual(invocation, request);
+      return { private: { unprovenTx: transaction(), result: privateChange() } };
+    },
+    prover: {
+      async proveTx(bytes, context) {
+        status.proves++;
+        assert.deepEqual(context.circuits, [circuit]);
+        const unsigned = ledger.Transaction.deserialize(
+          'signature',
+          'pre-proof',
+          'pre-binding',
+          bytes,
+        );
+        const proved = await unsigned.prove(fixtureProving, ledger.CostModel.initialCostModel());
+        return { tx: proved.serialize(), provenance: 'local' };
+      },
+    },
+    wallet: {
+      supportsShieldedOffers: true,
+      async balanceAndSign(bytes) {
+        status.balances++;
+        return ledger.Transaction.deserialize('signature', 'proof', 'pre-binding', bytes)
+          .bind()
+          .serialize();
+      },
+    },
+    submitter: {
+      async submit(bytes) {
+        status.submissions++;
+        const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
+        const retained = (await journal.read(reservation.requestId))?.dispatch;
+        assert.deepEqual(retained?.identity, {
+          txHash: tx.transactionHash(),
+          identifiers: tx.identifiers(),
+          bytesSha256: createHash('sha256').update(bytes).digest('hex'),
+        });
+        return tx.identifiers()[0] ?? assert.fail('Missing finalized transaction identifier.');
+      },
+    },
+  };
+  return { runtime, status };
+}
+
+test('one staged withdrawal wins concurrent submission and returns only the original identifiers', async () => {
+  const journal = createShieldedWithdrawalJournal(memoryStore(), memoryStore());
+  assert.equal(await journal.reserve(reservation), true);
+  const { runtime, status } = stagedRuntime(journal);
+  const submit = () => submitStagedShieldedWithdrawal(reservation.requestId, request, runtime);
+  const outcomes = await Promise.allSettled([submit(), submit()]);
+  const succeeded = outcomes.filter((outcome) => outcome.status === 'fulfilled');
+  assert.equal(succeeded.length, 1);
+  assert.equal(status.submissions, 1);
+  const retained = (await journal.read(reservation.requestId))?.dispatch;
+  assert.ok(retained);
+  assert.deepEqual(succeeded[0]?.value, {
+    submissionId: retained.identity.identifiers[0],
+    txHash: retained.identity.txHash,
+  });
+});
+
+test('missing or changed private change refuses before proving or staging', async () => {
+  const journal = createShieldedWithdrawalJournal(memoryStore(), memoryStore());
+  assert.equal(await journal.reserve(reservation), true);
+  const { runtime, status } = stagedRuntime(journal);
+  const valid = privateChange();
+  const invalid = [
+    undefined,
+    { ...valid, is_some: false },
+    { ...valid, value: { ...valid.value, value: 11n } },
+    { ...valid, value: { ...valid.value, nonce: new Uint8Array(32) } },
+    { ...valid, value: { ...valid.value, color: new Uint8Array(32) } },
+  ];
+  for (const result of invalid) {
+    await assert.rejects(
+      submitStagedShieldedWithdrawal(reservation.requestId, request, {
+        ...runtime,
+        build: async () => ({ private: { unprovenTx: transaction(), result } }),
+      }),
+      { code: 'MutationUnsettled' },
+    );
+  }
+  assert.equal(status.proves, 0);
+  assert.equal(status.submissions, 0);
+  assert.equal((await journal.read(reservation.requestId))?.dispatch, undefined);
+});
+
+test('lost acknowledgement retains the original dispatch and refuses replay after reopening', async () => {
+  const protectedStore = memoryStore();
+  const fence = memoryStore();
+  const journal = createShieldedWithdrawalJournal(protectedStore, fence);
+  assert.equal(await journal.reserve(reservation), true);
+  const { runtime, status } = stagedRuntime(journal);
+  const submit = runtime.submitter.submit;
+  await assert.rejects(
+    submitStagedShieldedWithdrawal(reservation.requestId, request, {
+      ...runtime,
+      submitter: {
+        async submit(bytes) {
+          await submit(bytes);
+          throw new Error('private wallet diagnostic');
+        },
+      },
+    }),
+    (error) =>
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'MutationUnsettled' &&
+      !String(error).includes('private wallet diagnostic'),
+  );
+  const reopened = createShieldedWithdrawalJournal(protectedStore, fence);
+  const retained = (await reopened.read(reservation.requestId))?.dispatch;
+  assert.ok(retained);
+  const recovered = await recoverShieldedWithdrawal(reservation.requestId, {
+    journal: reopened,
+    deriveChangeCommitment: (owner, coin) =>
+      ledger.ZswapOutput.newContractOwned(
+        {
+          nonce: Buffer.from(coin.nonce).toString('hex'),
+          type: Buffer.from(coin.color).toString('hex'),
+          value: coin.value,
+        },
+        undefined,
+        owner,
+      ).commitment,
+    finality: {
+      ...pins,
+      async readFinalized(identity) {
+        assert.deepEqual(identity, retained.identity);
+        return {
+          dispatch: retained,
+          account,
+          circuit,
+          bindingId,
+          blockHash: '77'.repeat(32),
+          blockHeight: 23,
+          inputNullifier: input.nullifier,
+          outputCommitments: [payout.commitment, change.commitment],
+          changeOutput: { account, commitment: change.commitment, index: 2n },
+        };
+      },
+    },
+  });
+  assert.equal(recovered.kind, 'change-found');
+  assert.equal(recovered.txHash, retained.identity.txHash);
+  assert.equal(recovered.change.value, changeCoin.value);
+  await assert.rejects(
+    submitStagedShieldedWithdrawal(reservation.requestId, request, {
+      ...runtime,
+      journal: reopened,
+    }),
+    { code: 'MutationUnsettled' },
+  );
+  assert.deepEqual(status, { builds: 1, proves: 1, balances: 1, submissions: 1 });
+});
+
+test('cancellation at the durable fence prevents dispatch and keeps the staged original', async () => {
+  const journal = createShieldedWithdrawalJournal(memoryStore(), memoryStore());
+  assert.equal(await journal.reserve(reservation), true);
+  const { runtime, status } = stagedRuntime(journal);
+  const controller = new AbortController();
+  await assert.rejects(
+    submitStagedShieldedWithdrawal(
+      reservation.requestId,
+      { ...request, signal: controller.signal },
+      {
+        ...runtime,
+        journal: {
+          ...journal,
+          async stageDispatch(...args) {
+            const staged = await journal.stageDispatch(...args);
+            controller.abort();
+            return staged;
+          },
+        },
+      },
+    ),
+    { code: 'MutationUnsettled' },
+  );
+  assert.equal(status.submissions, 0);
+  assert.ok((await journal.read(reservation.requestId))?.dispatch);
+});
+
+test('refuses a fee-only wallet and catches a wallet substitution before staging', async () => {
+  const journal = createShieldedWithdrawalJournal(memoryStore(), memoryStore());
+  assert.equal(await journal.reserve(reservation), true);
+  const { runtime, status } = stagedRuntime(journal);
+  await assert.rejects(
+    submitStagedShieldedWithdrawal(reservation.requestId, request, {
+      ...runtime,
+      wallet: { ...runtime.wallet, supportsShieldedOffers: false },
+    }),
+    { code: 'MutationUnsettled' },
+  );
+  assert.equal(status.builds, 0);
+  await assert.rejects(
+    submitStagedShieldedWithdrawal(reservation.requestId, request, {
+      ...runtime,
+      wallet: {
+        supportsShieldedOffers: true,
+        async balanceAndSign() {
+          return (await transaction().prove(fixtureProving, ledger.CostModel.initialCostModel()))
+            .bind()
+            .serialize();
+        },
+      },
+    }),
+    { code: 'MutationUnsettled' },
+  );
+  assert.equal(status.submissions, 0);
   assert.equal((await journal.read(reservation.requestId))?.dispatch, undefined);
 });

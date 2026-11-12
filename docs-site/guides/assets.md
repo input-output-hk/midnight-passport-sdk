@@ -32,11 +32,15 @@ with the host's finalized observation. The host finality source must verify the
 change's insertion index for that transaction. The recovery result contains a
 private coin description for subsequent inbox settlement.
 
-The source adapter has internal checks for the next value-wallet integration.
-It binds the signed arguments and qualified input before proving, then compares
-the call commitment, shielded effects, and concrete Ledger 9 offers before
-staging the serialized transaction. The account withdrawal entry points still
-enforce the exact-value guard while host finality and inbox recovery are in development.
+The source adapter has an internal dispatch path for an already authorized
+and reserved partial withdrawal. It verifies the pinned midnight-js
+`private.result` against the retained change description, then verifies the
+call commitment, shielded effects and Ledger 9 offers at each transaction
+boundary. It stages the exact finalized bytes' identity before handing them
+to the value wallet's submitter. The response contains the submission ID and
+transaction hash for observation. After an uncertain acknowledgement, use
+the original request ID and read-only recovery. Account withdrawal entry
+points still enforce the exact-value guard.
 
 The holding reader includes committed shielded effects from partially successful
 transactions. It verifies that every decoded event names the transaction being
@@ -85,7 +89,8 @@ original intent journals separately. An older snapshot outside the retention
 window leaves the original operation unconfirmed until it can be rebuilt. Use
 a separate owned cache and call `advanceFinalized(signal, throughHeight)`
 in bounded steps to rebuild through the required historical height. Serve the
-reconstructed snapshot by its exact hash. The live cursor continues independently.
+reconstructed snapshot by its exact hash. Historical rebuild needs the node
+and indexer to retain the block history. The live cursor continues independently.
 A read of the current
 unfinalized best block replays only within `blocksPerAdvance`, checks the best
 hash again, and keeps the result in memory. Preserve the exact-value guard
