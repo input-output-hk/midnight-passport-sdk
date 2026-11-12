@@ -28,22 +28,32 @@ Node and Chromium using a synthetic transaction. The server instead depends on
 when testing for parity with the server.
 [Ledger WASM dependencies](https://github.com/midnightntwrk/midnight-ledger/blob/3361066cc6a899f9dbec02278f189d32b5dbb677/zkir-v3-wasm/Cargo.toml), [proof-server dependencies](https://github.com/midnightntwrk/midnight-ledger/blob/3361066cc6a899f9dbec02278f189d32b5dbb677/proof-server/Cargo.toml)
 
-The source candidate also has an opt-in Ledger 9 transaction proving worker.
-In a production Chromium bundle it deserialized a synthetic signed JubJub
-inbox append and returned the proved transaction. The browser received the
-unproven bytes, then performed Ledger proving and proof computation in the
-worker. The fixture observed only local GET requests for its code and public
-artifacts. A separate live run used the same production worker for the ACC
-proof and the earlier Chromium fixture for DUST. The Node host submitted once
-and confirmed the original bytes and one inbox append at canonical finality.
-Both proof workers ran with the external proof server stopped. [Worker integration](/guides/hosts#browser-worker-proving-in-the-source-candidate)
+The source candidate also has an opt-in Ledger 9 transaction proving worker
+and a verified artifact loader. A production Chromium fixture generated the
+JubJub signing key, signed the inbox append, built the unproven transaction
+and proved it in the worker. The separate key service received GET requests
+for public artifacts. The fixture allowed only specific code, configuration
+and artifact paths and refused request bodies and query strings.
+[Worker integration](/guides/hosts#browser-worker-proving-in-the-source-candidate),
+[Artifact loader](/operations/artifacts#public-artifacts-for-the-browser-proving-worker)
 
-The demo continues to use its configured proof service. Browser-hosted
-call construction, DUST assembly, artifact delivery, other circuits, memory
-and browser support need separate checks. When choosing a prover, pin the
-implementation alongside the Ledger runtime, keys and public parameters. Run
-a positive control on the same input and confirm the canonical state change
-after proving with the external server down. [Browser proving qualification issue](https://github.com/input-output-hk/midnight-passport-sdk/issues/241)
+In an isolated live run, the browser generated the JubJub key and sent the
+public point for enrollment. After the proof server stopped, the browser
+signed and built the call from public chain and wallet data supplied by the host.
+The signing key and unproven transaction stayed in the browser. The host
+received the proved transaction, inbox-entry digest, account address and proof
+metadata. A separate
+Chromium worker computed the DUST proof. The Node host assembled the fee
+transaction, submitted once and matched the original bytes at canonical
+finality. The account recorded exactly one inbox append with the expected
+digest.
+
+The demo continues to use its configured proof service. Browser-owned fee
+assembly, real credentials, other circuits and browsers, and memory need
+separate checks. The fixture's transport observations describe this call path
+and its public artifact requests. A production privacy claim also requires
+a defined observation policy for chain, transport, browser and operator data.
+[Browser proving qualification issue](https://github.com/input-output-hk/midnight-passport-sdk/issues/241)
 
 ## Fee sponsorship
 
