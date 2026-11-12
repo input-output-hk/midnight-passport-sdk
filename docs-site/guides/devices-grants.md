@@ -78,24 +78,32 @@ hash and user verification, then maps the signed bounds to the account
 SDK scope. Unsupported scopes, read-key delivery, caller pins and
 non-browser proofs are refused by this route.
 
-A host embedding the verifier still owns the connection:
+A host can compose the request verifier and existing owner issue flow through
+`authoriseBrowserP256Grant` from `mn-passport-adapter-browser`.
 
-1. Require top-level navigation and remove the fragment from browser
-   history. Pass the original fragment string, the configured authoriser
-   origin and network, the selected account, and the current time.
-2. Check the account and capability against the pinned binding. Atomically
-   admit the one-time nonce against the original request and retain the
-   issuance ID before requesting consent. Keep the fragment, nonce and
-   callback state out of logs.
-3. Obtain separate owner consent for the verified scope. Call
-   `issueP256GranteeGrant` with that scope, the original issuance ID and
-   `requestedSlot` from the verified request. An occupied explicit slot
-   fails before review or signing. Reconcile uncertain issuance with the
-   same ID.
-4. Match the original callback URI and session state. The holder must
-   verify the returned opening and live grant on the pinned chain before
-   it uses the credential as a grantee.
+1. Require top-level navigation and remove the fragment from browser history.
+   Call the adapter with the original fragment, the configured issuer and a
+   signed-in owner session pinned to the account and network.
+2. Provide `createBrowserGrantNonceStore` from `mn-passport-account` with a
+   durable, atomic store shared by the issuer's replicas and a secure UUID
+   generator such as `() => crypto.randomUUID()`. Keep this store
+   independent of the protected opening journal and the issuance fence.
+   Keep the fragment, callback state and openings out of logs.
+3. Implement the owner review and fresh signing ceremony in the issue ports.
+   The adapter admits one issuance per nonce, preserves the signed slot and
+   rechecks the signed deadline before signing and dispatch. Repeats only
+   inspect the original issue and can recover after the request window closes
+   while the matching grant remains active and unexpired.
+4. Return a granted opening only to the exact validated callback. The dApp
+   must match the expected issuer and state to its pending browser session,
+   then verify the opening, grant ID and current grant against the pinned
+   chain before using the credential as a grantee.
 
-The SDK source currently covers proof admission and exact-slot issuance.
-The demo authoriser, replay store, redirect response, independent holder
-connection and unattended agent binding remain to be integrated and qualified.
+An `unresolved` result carries the original issuance ID. Keep the original
+request available to reconcile that ID. Missing evidence leaves the outcome
+unresolved. A new nonce represents a new request and requires its own review.
+A denied, interrupted or expired admission never automatically starts another
+issuance from that nonce.
+
+The demo route, redirect response, independent holder return verification
+and unattended agent binding still need integration and qualification.

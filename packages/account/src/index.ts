@@ -71,3 +71,4 @@ export { verifyGrantBookkeepingCommitment } from './grant-opening-check.js';
 
 export * from './p256-grantee-issue.js';
 export * from './p256-grantee-issue-journal.js';
+export * from './browser-grant-nonce.js';

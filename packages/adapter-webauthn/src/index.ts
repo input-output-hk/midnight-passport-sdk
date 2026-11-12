@@ -6,6 +6,7 @@ export * from './webauthn.js';
 export {
   browserGrantRequestDigest,
   verifyBrowserP256GrantRequest,
+  verifyOriginalBrowserP256GrantRequest,
   type BrowserGrantRequestContext,
   type VerifiedBrowserP256GrantRequest,
 } from './browser-grant-request.js';

@@ -87,6 +87,23 @@ export function verifyBrowserP256GrantRequest(
   fragment: string,
   context: BrowserGrantRequestContext,
 ): VerifiedBrowserP256GrantRequest {
+  return verifyRequest(fragment, context, false);
+}
+
+/** Verify an original signature for read-only recovery. The host must require
+ * an existing exact admission and may never dispatch from this result. */
+export function verifyOriginalBrowserP256GrantRequest(
+  fragment: string,
+  context: BrowserGrantRequestContext,
+): VerifiedBrowserP256GrantRequest {
+  return verifyRequest(fragment, context, true);
+}
+
+function verifyRequest(
+  fragment: string,
+  context: BrowserGrantRequestContext,
+  recovery: boolean,
+): VerifiedBrowserP256GrantRequest {
   try {
     const { request, proof } = grantFragmentParameters(fragment);
     const digest = browserGrantRequestDigest(request);
@@ -106,7 +123,8 @@ export function verifyBrowserP256GrantRequest(
       signed.chain.replace(/^midnight:/, '') !== network ||
       (signed.account !== undefined && signed.account !== account) ||
       signed.iat > now ||
-      signed.exp < now ||
+      (!recovery && signed.exp < now) ||
+      signed.exp < signed.iat ||
       signed.exp - signed.iat > 600 ||
       decodeGrantBytes(signed.state).length < 16
     )

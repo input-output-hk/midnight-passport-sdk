@@ -87,6 +87,7 @@ const issueInput = z.strictObject({
   requestId: z.uuid(),
   scope: p256GranteeScopeSchema,
   requestedSlot: grantSlot.optional(),
+  requestValidUntilSeconds: z.number().int().nonnegative().optional(),
 });
 
 function pins(networkId: string, grants: P256GrantSpendSource, chain?: PinnedChain): void {
@@ -138,6 +139,8 @@ export async function issueP256GranteeGrant(
     readonly scope: P256UnshieldedGrantScope;
     /** A caller-signed slot. An occupied slot fails instead of falling back to another. */
     readonly requestedSlot?: number;
+    /** Optional deadline for starting and dispatching an external signed request. */
+    readonly requestValidUntilSeconds?: number;
   },
   ports: P256GranteeIssuePorts,
   options: FlowOptions = {},
@@ -150,7 +153,12 @@ export async function issueP256GranteeGrant(
   const admitted = issueInput.safeParse(input);
   if (!admitted.success)
     throw new PassportConnectorError('GrantScopeInvalid', 'Malformed grant issue.');
-  const { requestId, scope: requestedScope, requestedSlot } = admitted.data;
+  const {
+    requestId,
+    scope: requestedScope,
+    requestedSlot,
+    requestValidUntilSeconds,
+  } = admitted.data;
   const { networkId, grants, chain, authoriser, pure, journal, fence } = ports;
   const owner = structuredCloneOwner(ports.owner);
   pins(networkId, grants, chain);
@@ -173,6 +181,11 @@ export async function issueP256GranteeGrant(
     throw new P256GranteeIssueUnsettled(requestId, previous?.txHash);
   const first = await ownerSnapshot(requestedScope.account, { networkId, chain, grants });
   const now = ports.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
+  const checkDeadline = () => {
+    if (requestValidUntilSeconds !== undefined && now() > requestValidUntilSeconds)
+      throw new PassportConnectorError('GrantScopeInvalid', 'The signed grant request expired.');
+  };
+  checkDeadline();
   const prepared = prepareP256UnshieldedGrant(
     { scope: requestedScope, activeGrantIds: first.ids, nowSeconds: now(), requestedSlot },
     pure,
@@ -186,6 +199,7 @@ export async function issueP256GranteeGrant(
     throw new PassportConnectorError('UserCancelled', 'Grant issue was declined.');
   const recheck = async () => {
     const live = await ownerSnapshot(scope.account, { networkId, chain, grants });
+    checkDeadline();
     if (
       live.epoch !== first.epoch ||
       live.nonce !== first.nonce ||
@@ -200,6 +214,8 @@ export async function issueP256GranteeGrant(
     checkpoint(options);
     return live.view;
   };
+  checkDeadline();
+  checkpoint(options);
   return authoriser.withKeySession(
     async () => {
       const view = await recheck();
