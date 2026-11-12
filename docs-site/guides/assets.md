@@ -35,8 +35,9 @@ private coin description for subsequent inbox settlement.
 The source adapter has an internal dispatch path for an already authorized
 and reserved partial withdrawal. It verifies the pinned midnight-js
 `private.result` against the retained change description, then verifies the
-call commitment, shielded effects and Ledger 9 offers at each transaction
-boundary. It stages the exact finalized bytes' identity before handing them
+embedded network, call commitment and shielded effects at each transaction
+boundary. It preserves the serialized payout and change outputs, including the
+encrypted payout note, through proving and balancing. It stages the exact finalized bytes' identity before handing them
 to the value wallet's submitter. The response contains the submission ID and
 transaction hash for observation. After an uncertain acknowledgement, use
 the original request ID and read-only recovery. Account withdrawal entry

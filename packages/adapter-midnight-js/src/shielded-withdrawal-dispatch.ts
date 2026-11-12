@@ -12,6 +12,8 @@ import {
   Transaction,
   type Bindingish,
   type FinalizedTransaction,
+  type PreBinding,
+  type PreProof,
   type Proof,
   type Proofish,
   type SignatureEnabled,
@@ -21,13 +23,13 @@ import {
   type Effects,
   type ZswapOffer,
 } from '@midnightntwrk/ledger-v9';
+import { sameBytes } from './grant-proof-transcript.js';
 import { singleContractCall } from './single-contract-call.js';
 
 const MAX_FINALIZED_BYTES = 8 * 1024 * 1024;
-const byteLengthOf = Object.getOwnPropertyDescriptor(
-  Object.getPrototypeOf(Uint8Array.prototype),
-  'byteLength',
-)?.get;
+const typedArrayPrototype = Object.getPrototypeOf(Uint8Array.prototype);
+const byteLengthOf = Object.getOwnPropertyDescriptor(typedArrayPrototype, 'byteLength')?.get;
+const bufferOf = Object.getOwnPropertyDescriptor(typedArrayPrototype, 'buffer')?.get;
 
 const toHex = (value: Uint8Array): string =>
   Array.from(value, (byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -243,16 +245,11 @@ function requirePrivateChange(result: unknown, expected: ShieldedWithdrawalReser
   )
     return changedCall();
   const change = result.value;
-  rejectSharedBuffers(change);
   if (
     !('nonce' in change) ||
-    !(change.nonce instanceof Uint8Array) ||
-    change.nonce.byteLength !== 32 ||
-    toHex(change.nonce) !== expected.nonce ||
+    !matchesChangeBytes(change.nonce, expected.nonce) ||
     !('color' in change) ||
-    !(change.color instanceof Uint8Array) ||
-    change.color.byteLength !== 32 ||
-    toHex(change.color) !== expected.color ||
+    !matchesChangeBytes(change.color, expected.color) ||
     !('value' in change) ||
     typeof change.value !== 'bigint' ||
     change.value !== BigInt(expected.value)
@@ -260,11 +257,52 @@ function requirePrivateChange(result: unknown, expected: ShieldedWithdrawalReser
     return changedCall();
 }
 
+function hasSharedBacking(value: Uint8Array): boolean {
+  return (
+    typeof SharedArrayBuffer !== 'undefined' && bufferOf?.call(value) instanceof SharedArrayBuffer
+  );
+}
+
+function matchesChangeBytes(value: unknown, expected: string): boolean {
+  return (
+    value instanceof Uint8Array &&
+    byteLengthOf?.call(value) === 32 &&
+    !hasSharedBacking(value) &&
+    toHex(new Uint8Array(value)) === expected
+  );
+}
+
 function ownTransactionBytes(value: Uint8Array): Uint8Array<ArrayBuffer> {
   const length = value instanceof Uint8Array ? byteLengthOf?.call(value) : undefined;
-  if (!length || length > MAX_FINALIZED_BYTES) return changedCall();
-  rejectSharedBuffers(value);
+  if (!length || length > MAX_FINALIZED_BYTES || hasSharedBacking(value)) return changedCall();
   return new Uint8Array(value);
+}
+
+type ProoflessTransaction = ReturnType<UnprovenTransaction['eraseProofs']>;
+
+function outputBytes(
+  tx: ProoflessTransaction,
+  pinnedNetwork: ProoflessTransaction,
+  reservation: ShieldedWithdrawalReservation,
+): readonly [Uint8Array, Uint8Array] {
+  // Ledger 9 checks the embedded network when merging two standard
+  // transactions. Use an empty probe because v9 has no network getter.
+  tx.merge(pinnedNetwork);
+  const offers = [...(tx.fallibleOffer?.values() ?? [])];
+  if (tx.guaranteedOffer) offers.push(tx.guaranteedOffer);
+  const outputs = offers.flatMap(({ outputs }) => outputs);
+  const payout = outputs.find(({ commitment }) => commitment === reservation.payoutCommitment);
+  const change = outputs.find(({ commitment }) => commitment === reservation.changeCommitment);
+  if (!payout || !change) return changedCall();
+  return [payout.serialize(), change.serialize()];
+}
+
+function requireSameOutputs(
+  [expectedPayout, expectedChange]: readonly [Uint8Array, Uint8Array],
+  [payout, change]: readonly [Uint8Array, Uint8Array],
+) {
+  if (!sameBytes(expectedPayout, payout) || !sameBytes(expectedChange, change))
+    return changedCall();
 }
 
 /** Internal source route for a previously consented and reserved partial withdrawal. */
@@ -293,13 +331,15 @@ export async function submitStagedShieldedWithdrawal(
     const { private: built } = await build({ address, circuit, args, heldCoin });
     requirePrivateChange(built.result, reservation.change);
     const unprovenBytes = ownTransactionBytes(built.unprovenTx.serialize());
-    const unproven = Transaction.deserialize(
+    const unproven = Transaction.deserialize<SignatureEnabled, PreProof, PreBinding>(
       'signature',
       'pre-proof',
       'pre-binding',
       unprovenBytes,
     );
     const commitment = verifyShieldedWithdrawalCall(unproven, reservation);
+    const pinnedNetwork = Transaction.fromParts(networkId).eraseProofs();
+    const originalOutputs = outputBytes(unproven.eraseProofs(), pinnedNetwork, reservation);
     check();
     const proof = await prover.proveTx(unprovenBytes, {
       networkId,
@@ -308,8 +348,17 @@ export async function submitStagedShieldedWithdrawal(
       ...(signal && { signal }),
     });
     const provedBytes = ownTransactionBytes(proof.tx);
-    const proved = Transaction.deserialize('signature', 'proof', 'pre-binding', provedBytes);
+    const proved = Transaction.deserialize<SignatureEnabled, Proof, PreBinding>(
+      'signature',
+      'proof',
+      'pre-binding',
+      provedBytes,
+    );
     verifyShieldedWithdrawalCall(proved, reservation, commitment);
+    requireSameOutputs(
+      originalOutputs,
+      outputBytes(proved.eraseProofs(), pinnedNetwork, reservation),
+    );
     check();
     const walletBytes = ownTransactionBytes(await wallet.balanceAndSign(provedBytes));
     const finalized = Transaction.deserialize<SignatureEnabled, Proof, Binding>(
@@ -317,6 +366,10 @@ export async function submitStagedShieldedWithdrawal(
       'proof',
       'binding',
       walletBytes,
+    );
+    requireSameOutputs(
+      originalOutputs,
+      outputBytes(finalized.eraseProofs(), pinnedNetwork, reservation),
     );
     const identifiers = finalized.identifiers();
     const txHash = finalized.transactionHash();

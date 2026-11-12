@@ -62,10 +62,11 @@ const state = new ledger.ZswapChainState()
   .tryApply(ledger.ZswapOffer.fromOutput(source))[0]
   .postBlockUpdate(new Date(), 3600n);
 const input = ledger.ZswapInput.newContractOwned(coin, undefined, account, state);
+const payoutRecipient = ledger.sampleCoinPublicKey();
 const payout = ledger.ZswapOutput.new(
   { ...coin, nonce: '33'.repeat(32), value: 5n },
   undefined,
-  ledger.sampleCoinPublicKey(),
+  payoutRecipient,
   ledger.sampleEncryptionPublicKey(),
 );
 const changeCoin = { ...coin, nonce: '44'.repeat(32), value: 12n };
@@ -106,6 +107,9 @@ function transaction({
   includeChange = true,
   extraOutput = false,
   offerInFalliblePhase = false,
+  payoutOutput = payout,
+  randomness = ledger.communicationCommitmentRandomness(),
+  network = networkId,
 } = {}) {
   const effect = {
     claimedNullifiers: [input.nullifier],
@@ -133,14 +137,14 @@ function transaction({
     [],
     empty,
     empty,
-    ledger.communicationCommitmentRandomness(),
+    randomness,
     'fixture',
   );
-  let offer = ledger.ZswapOffer.fromInput(input).merge(ledger.ZswapOffer.fromOutput(payout));
+  let offer = ledger.ZswapOffer.fromInput(input).merge(ledger.ZswapOffer.fromOutput(payoutOutput));
   if (includeChange) offer = offer.merge(ledger.ZswapOffer.fromOutput(change));
   if (extraOutput) offer = offer.merge(ledger.ZswapOffer.fromOutput(source));
   return ledger.Transaction.fromParts(
-    networkId,
+    network,
     offerInFalliblePhase ? undefined : offer,
     offerInFalliblePhase ? offer : undefined,
     ledger.Intent.new(new Date(Date.now() + 60_000)).addCall(call),
@@ -297,12 +301,15 @@ test('missing or changed private change refuses before proving or staging', asyn
   assert.equal(await journal.reserve(reservation), true);
   const { runtime, status } = stagedRuntime(journal);
   const valid = privateChange();
+  const fakeNonce = new Uint8Array(32);
+  fakeNonce[Symbol.iterator] = valid.value.nonce.values.bind(valid.value.nonce);
   const invalid = [
     undefined,
     { ...valid, is_some: false },
     { ...valid, value: { ...valid.value, value: 11n } },
     { ...valid, value: { ...valid.value, nonce: new Uint8Array(32) } },
     { ...valid, value: { ...valid.value, color: new Uint8Array(32) } },
+    { ...valid, value: { ...valid.value, nonce: fakeNonce } },
   ];
   for (const result of invalid) {
     await assert.rejects(
@@ -435,6 +442,117 @@ test('refuses a fee-only wallet and catches a wallet substitution before staging
           return (await transaction().prove(fixtureProving, ledger.CostModel.initialCostModel()))
             .bind()
             .serialize();
+        },
+      },
+    }),
+    { code: 'MutationUnsettled' },
+  );
+  assert.equal(status.submissions, 0);
+  assert.equal((await journal.read(reservation.requestId))?.dispatch, undefined);
+});
+
+test('refuses a substituted payout note with the same coin and call commitments', async () => {
+  const journal = createShieldedWithdrawalJournal(memoryStore(), memoryStore());
+  assert.equal(await journal.reserve(reservation), true);
+  const { runtime, status } = stagedRuntime(journal);
+  const randomness = ledger.communicationCommitmentRandomness();
+  const original = transaction({ randomness });
+  const other = ledger.ZswapOutput.new(
+    { ...coin, nonce: '33'.repeat(32), value: 5n },
+    undefined,
+    payoutRecipient,
+    ledger.sampleEncryptionPublicKey(),
+  );
+  assert.equal(other.commitment, payout.commitment);
+  assert.notDeepEqual(other.serialize(), payout.serialize());
+  const substituted = transaction({ randomness, payoutOutput: other });
+  assert.equal(
+    verifyShieldedWithdrawalCall(substituted, reservation),
+    verifyShieldedWithdrawalCall(original, reservation),
+  );
+  const proved = await substituted.prove(fixtureProving, ledger.CostModel.initialCostModel());
+  const walletBytes = proved.bind().serialize();
+  const build = async () => ({ private: { unprovenTx: original, result: privateChange() } });
+  await assert.rejects(
+    submitStagedShieldedWithdrawal(reservation.requestId, request, {
+      ...runtime,
+      build,
+      prover: {
+        async proveTx() {
+          return { tx: proved.serialize(), provenance: 'local' };
+        },
+      },
+    }),
+    { code: 'MutationUnsettled' },
+  );
+  assert.equal(status.balances, 0);
+  await assert.rejects(
+    submitStagedShieldedWithdrawal(reservation.requestId, request, {
+      ...runtime,
+      build,
+      wallet: {
+        supportsShieldedOffers: true,
+        async balanceAndSign() {
+          return walletBytes;
+        },
+      },
+    }),
+    { code: 'MutationUnsettled' },
+  );
+  assert.equal(status.submissions, 0);
+  assert.equal((await journal.read(reservation.requestId))?.dispatch, undefined);
+});
+
+test('refuses an unproven transaction built on another network before proving', async () => {
+  const journal = createShieldedWithdrawalJournal(memoryStore(), memoryStore());
+  assert.equal(await journal.reserve(reservation), true);
+  const { runtime, status } = stagedRuntime(journal);
+  await assert.rejects(
+    submitStagedShieldedWithdrawal(reservation.requestId, request, {
+      ...runtime,
+      async build() {
+        return {
+          private: { unprovenTx: transaction({ network: 'other' }), result: privateChange() },
+        };
+      },
+    }),
+    { code: 'MutationUnsettled' },
+  );
+  assert.equal(status.proves, 0);
+  assert.equal(status.submissions, 0);
+  assert.equal((await journal.read(reservation.requestId))?.dispatch, undefined);
+});
+
+test('refuses another network returned by the prover or wallet before staging', async () => {
+  const journal = createShieldedWithdrawalJournal(memoryStore(), memoryStore());
+  assert.equal(await journal.reserve(reservation), true);
+  const { runtime, status } = stagedRuntime(journal);
+  const randomness = ledger.communicationCommitmentRandomness();
+  const original = transaction({ randomness });
+  const other = transaction({ randomness, network: 'other' });
+  const proved = await other.prove(fixtureProving, ledger.CostModel.initialCostModel());
+  const build = async () => ({ private: { unprovenTx: original, result: privateChange() } });
+  await assert.rejects(
+    submitStagedShieldedWithdrawal(reservation.requestId, request, {
+      ...runtime,
+      build,
+      prover: {
+        async proveTx() {
+          return { tx: proved.serialize(), provenance: 'local' };
+        },
+      },
+    }),
+    { code: 'MutationUnsettled' },
+  );
+  assert.equal(status.balances, 0);
+  await assert.rejects(
+    submitStagedShieldedWithdrawal(reservation.requestId, request, {
+      ...runtime,
+      build,
+      wallet: {
+        supportsShieldedOffers: true,
+        async balanceAndSign() {
+          return proved.bind().serialize();
         },
       },
     }),
