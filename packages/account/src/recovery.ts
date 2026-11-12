@@ -156,6 +156,7 @@ export async function reviewRecoverySession(
 export {
   createRecoveryGuardianCollector,
   type AuthenticatedGuardianShare,
+  type GuardianCollectionAttempt,
   type GuardianSession,
   type GuardianShareRequest,
   type IndexedRecoveryShare,

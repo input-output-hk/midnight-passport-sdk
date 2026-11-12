@@ -85,20 +85,22 @@ endpoints and the share response. It binds each response to the original
 network, binding, ACC, session, guardian index and a fresh collection attempt.
 It checks the live session before contacting guardians and again before handing
 the threshold set to the reconstruction callback. It refuses overlapping work
-within the collector. Hosts coordinating multiple tabs or processes still need
+within the collector. Cancellation stops an unresponsive transport wait and
+clears any share it returns late. Hosts coordinating multiple tabs or processes still need
 their own shared admission policy.
 
 The transport transfers ownership of each 32-byte response. The collector
 clears those buffers and its copies after success, cancellation or failure.
-The callback owns reconstruction, field decoding and verification against the
-on-chain commitment. It should keep any derived material in private custody.
+The preparation callback receives the immutable attempt ID and owns
+reconstruction, field decoding and verification against the on-chain
+commitment. Submit only after preparation returns successfully. It should keep any derived material in private custody.
 The collector supplies no owner recognition, wire encoding, persistent share
 storage, or cryptographic reconstruction profile.
 
 `stageRecoveryViewingKey` checks the recovered viewing key against the
 original on-chain encryption public key. The host stages it in custody bound
-to the reviewed successor, reads it back, and rechecks the current recovery
-target. The function clears both transferred buffers. A custody adapter
+to the reviewed successor and collection attempt, reads it back, and
+rechecks the current recovery target. The function clears both transferred buffers. A custody adapter
 must keep staged data private and bound to the original attempt, including
 when a later check fails. JavaScript buffer clearing is best-effort memory
 hygiene. The adapter owns persistence, cleanup and process-restart behavior.

@@ -6,6 +6,7 @@ import { AccountContextSchema } from './validation.js';
 const viewingTarget = AccountContextSchema.unwrap()
   .strict()
   .extend({
+    attemptId: z.string().regex(/^[0-9a-f]{32}$/),
     successorEntry: z.string().regex(/^[0-9a-f]{64}$/),
     sessionId: z.string().regex(/^[0-9a-f]{64}$/),
     viewingPublicKey: z.string().regex(/^[0-9a-f]{64}$/),

@@ -21,8 +21,10 @@ const rosterSchema = z.strictObject({
 });
 
 export type GuardianSession = z.input<typeof contextSchema>;
-export interface GuardianShareRequest extends GuardianSession {
+export interface GuardianCollectionAttempt extends Readonly<GuardianSession> {
   readonly attemptId: string;
+}
+export interface GuardianShareRequest extends GuardianCollectionAttempt {
   readonly index: number;
 }
 export interface AuthenticatedGuardianShare extends GuardianShareRequest {
@@ -41,9 +43,44 @@ export interface IndexedRecoveryShare {
   readonly share: Uint8Array;
 }
 
+const cancelled = () =>
+  new PassportConnectorError('Aborted', 'Guardian share collection was cancelled.');
+
 function checkSignal(signal?: AbortSignalLike): void {
-  if (signal?.aborted)
-    throw new PassportConnectorError('Aborted', 'Guardian share collection was cancelled.');
+  if (signal?.aborted) throw cancelled();
+}
+
+function erase(response: AuthenticatedGuardianShare | undefined): void {
+  if (response?.share instanceof Uint8Array) response.share.fill(0);
+}
+
+function requestWithAbort(
+  transport: RecoveryGuardianTransport,
+  request: GuardianShareRequest,
+  signal?: AbortSignalLike,
+): Promise<AuthenticatedGuardianShare | undefined> {
+  const pending = transport.requestShare(request, signal);
+  if (!signal) return pending;
+  return new Promise((resolve, reject) => {
+    const detach = () => signal.removeEventListener('abort', abort);
+    const abort = () => {
+      detach();
+      reject(cancelled());
+    };
+    signal.addEventListener('abort', abort);
+    if (signal.aborted) abort();
+    void pending.then(
+      (response) => {
+        detach();
+        if (signal.aborted) erase(response);
+        else resolve(response);
+      },
+      (error: unknown) => {
+        detach();
+        reject(error);
+      },
+    );
+  });
 }
 
 function matches(response: AuthenticatedGuardianShare, request: GuardianShareRequest): boolean {
@@ -59,14 +96,17 @@ function matches(response: AuthenticatedGuardianShare, request: GuardianShareReq
   );
 }
 
-/** Use a mutually authenticated transport. Shares are in memory for one scoped callback. */
+/** Prepare recovery with mutually authenticated shares. The callback must not submit a mutation. */
 export function createRecoveryGuardianCollector(transport: RecoveryGuardianTransport) {
   let collecting = false;
   return async function withShares<T>(
     input: GuardianSession,
     roster: { readonly indices: readonly number[]; readonly threshold: number },
     assertCurrent: (session: GuardianSession) => Promise<void>,
-    use: (shares: readonly IndexedRecoveryShare[]) => Promise<T>,
+    prepare: (
+      shares: readonly IndexedRecoveryShare[],
+      attempt: GuardianCollectionAttempt,
+    ) => Promise<T>,
     signal?: AbortSignalLike,
   ): Promise<T> {
     if (collecting)
@@ -78,7 +118,7 @@ export function createRecoveryGuardianCollector(transport: RecoveryGuardianTrans
     const { indices, threshold } = rosterSchema.parse(roster);
     if (new Set(indices).size !== indices.length || threshold > indices.length)
       throw new TypeError('Invalid guardian roster or threshold.');
-    const attemptId = toHex(randomBytes(16));
+    const attempt = Object.freeze({ ...session, attemptId: toHex(randomBytes(16)) });
     const shares: IndexedRecoveryShare[] = [];
     collecting = true;
     try {
@@ -86,14 +126,14 @@ export function createRecoveryGuardianCollector(transport: RecoveryGuardianTrans
       await assertCurrent(session);
       for (const index of indices) {
         checkSignal(signal);
-        const request = Object.freeze({ ...session, attemptId, index });
-        const response = await transport.requestShare(request, signal);
+        const request = Object.freeze({ ...attempt, index });
+        const response = await requestWithAbort(transport, request, signal);
         try {
           checkSignal(signal);
           if (response && matches(response, request))
             shares.push(Object.freeze({ index, share: Uint8Array.from(response.share) }));
         } finally {
-          if (response?.share instanceof Uint8Array) response.share.fill(0);
+          erase(response);
         }
       }
       if (shares.length < threshold)
@@ -103,7 +143,9 @@ export function createRecoveryGuardianCollector(transport: RecoveryGuardianTrans
         );
       await assertCurrent(session);
       checkSignal(signal);
-      return await use(Object.freeze(shares));
+      const prepared = await prepare(Object.freeze(shares), attempt);
+      checkSignal(signal);
+      return prepared;
     } finally {
       for (const { share } of shares) share.fill(0);
       collecting = false;
