@@ -51,6 +51,10 @@
     "./background": {
       "types": "./dist/background.d.ts",
       "default": "./dist/background.js"
+    },
+    "./recovery": {
+      "types": "./dist/recovery.d.ts",
+      "default": "./dist/recovery.js"
     }
   },
   "files": [

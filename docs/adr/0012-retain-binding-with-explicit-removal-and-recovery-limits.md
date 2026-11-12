@@ -161,3 +161,31 @@ this supported subset. Restoring an unauthenticated historical-reader fallback o
 keeping a target registration in the fresh roster would weaken that exclusion.
 A new explicit signing-only primitive or an atomic contract change requires its
 own API/binding decision and acceptance; neither is silently introduced here.
+
+## Dormant bootstrap after recovery — 2026/11/12
+
+The pinned generated ACC can accept recovery before initial activation when a
+usable birth recovery key exists. After the veto window, finalisation installs
+the successor at the next epoch but preserves the dormant boot commitment.
+The original device can then open the commitment at that new epoch. The
+simulator regression covers both JubJub and P-256 initial devices. It rejects
+an incorrect salt, accepts the original opening, and demonstrates that both
+entries can sign even though the recorded device count is one.
+[Upstream dormant recovery analysis](https://github.com/midnightntwrk/passport/blob/8f635a10dde17d55d26bb72439a3a23e6e159295/contract/DORMANT-RECOVERY.md)
+
+Upstream changes the finaliser to clear the boot commitment and mark the
+account activated while installing the successor. The published binding remains
+pinned to its existing verifier artifacts. A new deployment needs a separately
+identified binding and verifier set. An existing account needs an assessment
+of its current entries, boot state, recovery authority and maintenance policy
+before any verifier replacement or migration. Replacing a verifier preserves
+the current ledger state, including any bootstrap commitment or entry already
+present. Retired maintenance requires a migration path that preserves assets
+and access. [Upstream fix](https://github.com/midnightntwrk/passport/commit/8f635a10dde17d55d26bb72439a3a23e6e159295)
+
+The Compact 0.35.0 `--skip-zk` build of that exact fix generated declarations
+byte-identical to the pinned ACC. Its JavaScript SHA-256 is
+`5a9928cf4b8191a480efe610f4678be7c55c838a05fca1b145ba78acbd16b378`.
+Both generated-code cases kept the successor authorized and rejected the
+original activation. Regenerated verifier keys, node proof acceptance and
+deployment wave sizing are still required for adoption.
