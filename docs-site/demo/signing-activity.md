@@ -26,3 +26,21 @@ Verified creation may warm only the explicitly reviewed routine reader/wallet
 material; it does not persist a raw PRF/owner key or automatically connect a
 wallet. [RC9 candidate scope](/operations/rc9-preview) distinguishes this source
 increment from the current published installation.
+
+## Browser grant storage in the source candidate
+
+The reference app has storage for the fixed-recipient P-256 browser grant flow.
+Open it only with an already authorized owner PRF source. The app derives a
+non-exportable AES-GCM key scoped to the network, binding, and ACC, then clears
+the raw key bytes. It keeps the encrypted openings in a separate IndexedDB
+database from the replay markers and issuance fences. Writes require strict
+IndexedDB durability, and concurrent tabs share an atomic compare-and-swap.
+A missing opening or failed decryption leaves the original issue fenced.
+These records belong to the browser profile and origin. Clearing site data
+removes local recovery evidence.
+
+Run `pnpm --filter passport-dapp test:grant-storage` with Chrome to exercise the
+two-tab race, reload, and rejection of the wrong key, account, or revision. The
+test owns its temporary origin and uses synthetic grant data. This source slice
+covers browser storage. The demo navigation and sponsor issuance route still
+need wiring.

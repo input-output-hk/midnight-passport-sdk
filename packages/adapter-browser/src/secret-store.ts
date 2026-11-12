@@ -16,9 +16,12 @@ export async function createBrowserSecretStore(options: {
   indexedDB: IDBFactory;
   databaseName: string;
   allowPlaintext: true;
+  /** Require IndexedDB strict commit durability for writes. */
+  strictWrites?: true;
 }): Promise<SecretStore> {
   if (options.allowPlaintext !== true || !/^[a-zA-Z0-9._:-]{1,128}$/.test(options.databaseName))
     throw new SecretStoreError('InvalidInput');
+  const strictWrites = options.strictWrites === true;
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
     let request: IDBOpenDBRequest;
     let rejected = false;
@@ -67,7 +70,16 @@ export async function createBrowserSecretStore(options: {
       }
       let tx: IDBTransaction;
       try {
-        tx = db.transaction('secrets', mode);
+        if (mode === 'readwrite' && strictWrites) {
+          tx = db.transaction('secrets', mode, { durability: 'strict' });
+          if (tx.durability !== 'strict') {
+            tx.abort();
+            reject(new SecretStoreError('Unavailable'));
+            return;
+          }
+        } else {
+          tx = db.transaction('secrets', mode);
+        }
       } catch {
         reject(new SecretStoreError('Unavailable'));
         return;

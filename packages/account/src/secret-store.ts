@@ -36,7 +36,7 @@ export function secretReferenceKey(value: SecretReference): string {
   const ref = parsed.data;
   return JSON.stringify([ref.namespace, ref.networkId, ref.bindingId, ref.account, ref.id]);
 }
-export function copySecretBytes(value: Uint8Array): Uint8Array {
+export function copySecretBytes(value: Uint8Array): Uint8Array<ArrayBuffer> {
   try {
     if (!(value instanceof Uint8Array)) throw new SecretStoreError('InvalidInput');
     const length: unknown = typedArrayByteLength?.call(value);
