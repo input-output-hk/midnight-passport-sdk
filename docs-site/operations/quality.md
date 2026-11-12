@@ -97,8 +97,28 @@ The command exits successfully when the node matches the genesis pin, the runtim
 matches at a canonical finalized block, and the indexer returns that same block
 with a timestamp within two minutes of the local clock. An unavailable or stale
 observation exits nonzero. The result contains the block identity and lag and
-omits endpoint URLs. The command reads chain metadata and starts no wallet,
+omits endpoint URLs. The command performs read-only queries and starts no wallet,
 prover or service.
+
+### Check the deployed Passport ACC
+
+Set all three additional pins to include an ACC check in the same command:
+
+- `MN_EXPECTED_ACC_ADDRESS` is the deployed ACC address, as 64 lowercase
+  hexadecimal characters without `0x`.
+- `MN_EXPECTED_ACC_BINDING_ID` is `acc-s3r1.1`, the binding this check supports.
+- `MN_EXPECTED_ACC_MANIFEST_SHA256` is the manifest hash from the intended
+  [binding and artifact profile](/operations/artifacts).
+
+The command checks the returned address and finalized block identity. It then
+checks the ledger format, the ACC specification version and activation, and the
+full circuit-to-verifier hash mapping. The result includes the pins, verifier
+count, and whether the observed maintenance committee can update the contract.
+Apply your own maintenance-authority policy before moving funds.
+
+The receipt records what the configured indexer reported at the pinned block.
+It does not verify a node storage proof. An unsupported, missing or oversized
+snapshot fails the ACC check.
 
 This is the first check for [hosted funding qualification](https://github.com/input-output-hk/midnight-passport-sdk/issues/243).
 Value qualification still requires an operator-owned funded wallet, a verified

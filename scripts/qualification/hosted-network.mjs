@@ -1,4 +1,5 @@
 import { fetchJsonBounded, hostChainRpc } from '../../packages/service/dist/finality.js';
+import { hostedAccProfile, observeHostedAcc } from './hosted-acc.mjs';
 
 const hash = /^[0-9a-f]{64}$/;
 const maximumLagMs = 120_000;
@@ -51,7 +52,8 @@ export function hostedNetworkProfile(env) {
  */
 export async function observeHostedNetwork(env, options = {}) {
   const profile = hostedNetworkProfile(env);
-  if (!profile) return { ready: false, reason: 'invalid-profile' };
+  const accountProfile = hostedAccProfile(env);
+  if (!profile || accountProfile === null) return { ready: false, reason: 'invalid-profile' };
   const { networkId, genesisHash, specName, specVersion, nodeUrl, indexerUrl } = profile;
   const fetcher = options.fetch ?? fetch;
   const signal = AbortSignal.timeout(8000);
@@ -80,7 +82,7 @@ export async function observeHostedNetwork(env, options = {}) {
       Math.abs(lagMs) > maximumLagMs
     )
       return { ready: false, reason: 'stale-indexer-block' };
-    return {
+    const receipt = {
       ready: true,
       networkId,
       genesisHash,
@@ -90,6 +92,15 @@ export async function observeHostedNetwork(env, options = {}) {
       finalizedHeight: height,
       lagMs,
     };
+    if (!accountProfile) return receipt;
+    const account = await observeHostedAcc(
+      accountProfile,
+      { hash: finalizedHash, height },
+      fetcher,
+      indexerUrl,
+      signal,
+    );
+    return account.ready ? { ...receipt, account: account.account } : account;
   } catch {
     return { ready: false, reason: 'observation-unavailable' };
   }
