@@ -57,6 +57,12 @@ one request per change commitment. Recovery checks the exact envelope at its
 actual inbox index. Keep the encrypted journal and independent request marker
 when an acknowledgement is lost.
 
+The reference host can stage the original append's finalized bytes before
+forwarding and recover the exact receipt after a restart. It checks the owner
+call commitment and verifies the appended ciphertext and index against account
+state immediately before and after that transaction. Live use requires a source
+that authenticates this transaction-level state transition.
+
 Application contracts may call **into a deployed ACC** under the supported caller-bound design. That does not establish arbitrary ACC → other-contract calls. [See the implementation boundary](/architecture/standards).
 
 ## Repeated deposits and uncertain results
