@@ -9,7 +9,7 @@ import {
 const require = createRequire(
   new URL('../packages/adapter-midnight-js/package.json', import.meta.url),
 );
-const { ZswapOutput, ZswapOffer, ZswapChainState, ZswapInput } = await import(
+const { Event, ZswapOutput, ZswapOffer, ZswapChainState, ZswapInput } = await import(
   require.resolve('@midnightntwrk/ledger-v9')
 );
 const account = 'ab'.repeat(32);
@@ -153,4 +153,78 @@ test('current Zswap state derives the same nullifier after a contract coin is sp
   const input = ZswapInput.newContractOwned(qualified, undefined, account, fresh);
   current = fresh.tryApply(ZswapOffer.fromInput(input))[0];
   assert.equal(await indexer.coinNullifier(account, coin, 0n), nullifier);
+});
+
+test('indexed partial success excludes committed spends and keeps committed outputs', async (t) => {
+  const deposit = '31'.repeat(32);
+  const spend = '32'.repeat(32);
+  const failed = '33'.repeat(32);
+  const unknown = '34'.repeat(32);
+  const foreign = '35'.repeat(32);
+  const regularDeposit = '36'.repeat(32);
+  const nullifier = '44'.repeat(32);
+  /** @param {string} transactionHash */
+  const output = (transactionHash) => ({
+    source: { transactionHash, logicalSegment: 0, physicalSegment: 4 },
+    content: { tag: 'zswapOutput', commitment: commitment(coin), contract: account, mtIndex: 11n },
+  });
+  const decoded = [
+    undefined,
+    output(deposit),
+    {
+      source: { transactionHash: spend, logicalSegment: 0, physicalSegment: 3 },
+      content: { tag: 'zswapInput', nullifier, contract: account },
+    },
+    output(regularDeposit),
+  ];
+  t.mock.method(Event, 'deserialize', (/** @type {Uint8Array} */ raw) => {
+    const event = decoded[raw[0] ?? 0];
+    assert.ok(event);
+    return event;
+  });
+  const rows = new Map([
+    [deposit, { status: 'PARTIAL_SUCCESS', events: [{ raw: '01' }] }],
+    [spend, { status: 'PARTIAL_SUCCESS', events: [{ raw: '02' }] }],
+    [failed, { status: 'FAILURE', events: [{ raw: '02' }] }],
+    [unknown, { status: 'UNKNOWN', events: [] }],
+    [foreign, { status: 'SUCCESS', events: [{ raw: '02' }] }],
+    [regularDeposit, { status: 'SUCCESS', events: [{ raw: '03' }] }],
+  ]);
+  const indexer = createGraphqlHoldingIndexer({
+    networkId: 'undeployed',
+    url: 'http://localhost:18088/api/v4/graphql',
+    wsUrl: 'ws://localhost:18088/api/v4/graphql/ws',
+    fetch: async (_url, options) => {
+      assert.equal(typeof options?.body, 'string');
+      const hash = JSON.parse(String(options?.body)).variables.offset.hash;
+      const row = rows.get(hash);
+      assert.ok(row);
+      return Response.json({
+        data: {
+          transactions: [
+            { hash, transactionResult: { status: row.status }, zswapLedgerEvents: row.events },
+          ],
+        },
+      });
+    },
+  });
+  const entries = [Uint8Array.of(1)];
+  const opened = [{ kind: /** @type {const} */ ('coin'), coin }];
+  /** @param {readonly string[]} hashes */
+  const holdings = (hashes) =>
+    createMidnightHoldingSource({
+      ...indexer,
+      enumerateContractActions: async () => hashes.map((txHash) => ({ txHash })),
+      coinNullifier: async () => nullifier,
+    });
+  assert.deepEqual(
+    await holdings([regularDeposit, spend]).selectHeldEntries(account, entries, opened),
+    [],
+  );
+  assert.deepEqual(
+    await holdings([deposit, failed]).selectHeldEntries(account, entries, opened),
+    [0],
+  );
+  await assert.rejects(indexer.queryShieldedInputs(unknown), /result is invalid/);
+  await assert.rejects(indexer.queryShieldedInputs(foreign), /different transaction/);
 });

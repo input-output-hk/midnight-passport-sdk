@@ -9,6 +9,39 @@ const ACTION = `transaction { hash }`;
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+type HoldingEvent =
+  | { kind: 'output'; contractAddress?: string; commitment: string; index: bigint }
+  | { kind: 'input'; contractAddress?: string; nullifier: string };
+
+function decodeHoldingEvent(item: unknown, txHash: string): HoldingEvent[] {
+  if (!record(item) || typeof item.raw !== 'string')
+    throw new Error('holding event bytes are invalid');
+  const raw = item.raw.replace(/^0x/i, '');
+  if (!/^(?:[0-9a-f]{2})+$/i.test(raw)) throw new Error('holding event bytes are invalid');
+  const bytes = Uint8Array.from(raw.match(/../g) ?? [], (byte) => Number.parseInt(byte, 16));
+  const { content, source } = Event.deserialize(bytes);
+  if (source.transactionHash !== txHash)
+    throw new Error('holding event belongs to a different transaction');
+  if (content.tag === 'zswapOutput' && 'commitment' in content)
+    return [
+      {
+        kind: 'output',
+        ...(content.contract && { contractAddress: content.contract }),
+        commitment: content.commitment,
+        index: content.mtIndex,
+      },
+    ];
+  if (content.tag === 'zswapInput' && 'nullifier' in content)
+    return [
+      {
+        kind: 'input',
+        ...(content.contract && { contractAddress: content.contract }),
+        nullifier: content.nullifier,
+      },
+    ];
+  return [];
+}
+
 export interface GraphqlHoldingIndexerOptions {
   readonly networkId: string;
   readonly url: string;
@@ -59,9 +92,6 @@ export function createGraphqlHoldingIndexer(options: GraphqlHoldingIndexerOption
       throw new Error('holding indexer returned an invalid ACC action');
     return raw.transaction.hash;
   };
-  type HoldingEvent =
-    | { kind: 'output'; contractAddress?: string; commitment: string; index: bigint }
-    | { kind: 'input'; contractAddress?: string; nullifier: string };
   const eventCache = new Map<string, Promise<readonly HoldingEvent[]>>();
   const eventsOf = (txHash: string): Promise<readonly HoldingEvent[]> => {
     if (!HEX32.test(txHash)) throw new Error('invalid transaction hash');
@@ -78,35 +108,15 @@ export function createGraphqlHoldingIndexer(options: GraphqlHoldingIndexerOption
       if (matching.length !== 1 || !record(matching[0]))
         throw new Error('holding transaction hash is not unique');
       const row = matching[0];
-      if (!record(row.transactionResult) || row.transactionResult.status !== 'SUCCESS') return [];
+      const status = record(row.transactionResult) ? row.transactionResult.status : undefined;
+      if (status === 'FAILURE') return [];
+      if (status !== 'SUCCESS' && status !== 'PARTIAL_SUCCESS')
+        throw new Error('holding transaction result is invalid');
+      // V4 returns events from Ledger execution, including effects committed
+      // by successful phases of a partially successful transaction.
       if (!Array.isArray(row.zswapLedgerEvents))
         throw new Error('holding transaction events are missing');
-      return row.zswapLedgerEvents.flatMap((item): HoldingEvent[] => {
-        if (!record(item) || typeof item.raw !== 'string')
-          throw new Error('holding event bytes are invalid');
-        const raw = item.raw.replace(/^0x/i, '');
-        if (!/^(?:[0-9a-f]{2})+$/i.test(raw)) throw new Error('holding event bytes are invalid');
-        const bytes = Uint8Array.from(raw.match(/../g) ?? [], (byte) => Number.parseInt(byte, 16));
-        const { content } = Event.deserialize(bytes);
-        if (content.tag === 'zswapOutput' && 'commitment' in content)
-          return [
-            {
-              kind: 'output',
-              ...(content.contract && { contractAddress: content.contract }),
-              commitment: content.commitment,
-              index: content.mtIndex,
-            },
-          ];
-        if (content.tag === 'zswapInput' && 'nullifier' in content)
-          return [
-            {
-              kind: 'input',
-              ...(content.contract && { contractAddress: content.contract }),
-              nullifier: content.nullifier,
-            },
-          ];
-        return [];
-      });
+      return row.zswapLedgerEvents.flatMap((item) => decodeHoldingEvent(item, txHash));
     })();
     eventCache.set(txHash, pending);
     void pending.then(

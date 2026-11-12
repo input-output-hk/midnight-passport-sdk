@@ -38,6 +38,12 @@ the call commitment, shielded effects, and concrete Ledger 9 offers before
 staging the serialized transaction. The account withdrawal entry points still
 enforce the exact-value guard while host finality and inbox recovery are in development.
 
+The holding reader includes committed shielded effects from partially successful
+transactions. It verifies that every decoded event names the transaction being
+read. A failed transaction contributes no holding effects, and an unreadable
+transaction result fails the read. This check depends on the configured
+indexer's account history.
+
 The reference host observer checks the original transaction bytes, canonical
 finalized block, and matching Zswap events. It requires independent evidence
 for the change's insertion index. The Ledger 9 replay helper checks that index
