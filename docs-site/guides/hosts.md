@@ -37,7 +37,8 @@ private host mutation service into sponsoring grant issuance. The host uses
 the pinned ACC verifier roster and admits one proved, unbound owner issue call.
 It checks the fee-only policy before balancing and verifies the call proof,
 commitment, transcripts, original intent segments and expiry after balancing.
-Additional intents may contain only Dust spends for fees.
+Additional intents may contain only Dust spends for fees. The sponsor caps
+the fee intent at 45 seconds and retains the original owner intent expiry.
 
 A server-side integration can use `remoteHostMutationPorts(...).grantIssue`
 with the existing private RPC token. Send the original issue UUID and intent
@@ -49,8 +50,10 @@ boundary.
 
 Set `grantIssueSponsor` on `createMidnightChain` to build and prove the
 owner call before handing its unbound bytes to the configured sponsor port.
-The SDK checks the exact call and the rest of the transaction with the proofs
-removed. It preserves the issue UUID, digest and signed request deadline.
+The SDK checks the entire proof-erased transaction. Ledger 9 can insert and
+meter no-ops when proving a call, so the SDK replays that transformation
+before comparing the bytes. It preserves the issue UUID, digest and signed
+request deadline.
 The adapter and host both check that deadline before starting their next
 submission step.
 

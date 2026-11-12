@@ -17,6 +17,10 @@ import { z } from 'zod';
 import { bytes, hex, intents, same } from './host-ledger.ts';
 import type { ProvenTx, ReferenceHostRuntime } from './reference-runtime.ts';
 
+// The pinned builder gives the owner intent a one-hour TTL. The Ledger 9
+// DUST dismissal window requires a separate, short expiry for the fee intent.
+const GRANT_FEE_TTL_MS = 45_000;
+
 const address = z.string().regex(/^[0-9a-f]{64}$/);
 const circuit = z.enum(['issue_grant_with_p256', 'issue_grant_with_jubjub']);
 const requestSchema = z.strictObject({
@@ -134,12 +138,11 @@ function checkBalancedIntents(
       return hostFailure();
   }
   for (const [segment, intent] of after) {
-    if (intent.dustActions?.registrations.length) return hostFailure();
+    const dust = intent.dustActions;
     if (
-      !before.has(segment) &&
-      (intent.actions.length !== 0 ||
-        !intent.dustActions?.spends.length ||
-        !(intent.ttl.getTime() <= feeDeadline))
+      dust?.registrations.length ||
+      (dust?.spends.length && !(intent.ttl.getTime() <= feeDeadline)) ||
+      (!before.has(segment) && (intent.actions.length !== 0 || !dust?.spends.length))
     )
       return hostFailure();
   }
@@ -155,7 +158,10 @@ export async function balanceHostGrantIssue(r: ReferenceHostRuntime, request: Gr
         [segment, { ttl: intent.ttl.getTime(), actions: intent.actions.length }] as const,
     ),
   );
-  const feeDeadline = Math.min(...[...before.values()].map(({ ttl }) => ttl));
+  const feeDeadline = Math.min(
+    Date.now() + GRANT_FEE_TTL_MS,
+    ...[...before.values()].map(({ ttl }) => ttl),
+  );
   const { tx } = await r.providers.walletProvider.balanceTx(
     { version: 'v9', tx: original },
     new Date(feeDeadline),

@@ -15,6 +15,8 @@ import {
   type HostMutationIdentity,
 } from '@input-output-hk/mn-passport-service';
 import { createMidnightChain } from '../../../packages/adapter-midnight-js/dist/index.js';
+import { matchesGrantProofTranscript } from '../../../packages/adapter-midnight-js/dist/grant-proof-transcript.js';
+import { singleContractCall } from '../../../packages/adapter-midnight-js/dist/single-contract-call.js';
 import * as binding from '../../../packages/contract/generated/acc-s3r1.1/index.js';
 import { remoteHostMutationPorts } from '../../../packages/adapter-service/dist/index.js';
 import { createReferenceHostDriver } from '../src/host-driver.ts';
@@ -64,13 +66,14 @@ function unprovenCall(
   random = Ledger.communicationCommitmentRandomness(),
   paysValue = false,
   ttl = new Date(Date.now() + 60_000),
+  transcript?: Ledger.Transcript<Ledger.AlignedValue>,
 ) {
   const empty = { value: [], alignment: [] };
   const call = new Ledger.ContractCallPrototype(
     address,
     name,
     new Ledger.ContractOperation(),
-    undefined,
+    transcript,
     undefined,
     [],
     empty,
@@ -130,6 +133,48 @@ function runtime(state: Ledger.ContractState): ReferenceHostRuntime {
     deploymentCompleted: unused,
   };
 }
+
+test('grant proof replay accepts metered noops and rejects a changed ledger operation or expiry', async () => {
+  const now = Date.now();
+  const ttl = new Date(now + 3_600_000);
+  const context = new Ledger.QueryContext(
+    new Ledger.ChargedState(Ledger.StateValue.newNull()),
+    address,
+  );
+  const transcript = {
+    gas: context.query([], Ledger.CostModel.initialCostModel()).gasCost,
+    effects: context.effects,
+    program: [{ push: { storage: false, value: { tag: 'null' as const } } }, 'pop' as const],
+  };
+  const commitment = Ledger.communicationCommitmentRandomness();
+  const original = unprovenCall(circuit, commitment, false, ttl, transcript);
+  const prove = (tx: Ledger.UnprovenTransaction) =>
+    tx.prove(
+      { ...proving, check: async () => [3n, undefined, 7n, undefined, 1n] },
+      Ledger.CostModel.initialCostModel(),
+    );
+  const matches = (tx: Awaited<ReturnType<typeof prove>>) =>
+    matchesGrantProofTranscript(
+      original,
+      singleContractCall(tx, address, circuit),
+      tx.eraseProofs().serialize(),
+      address,
+      circuit,
+      async () => resource('keys/issue_grant_with_jubjub.verifier'),
+    );
+  const proved = await prove(original);
+  assert.notDeepEqual(original.eraseProofs().serialize(), proved.eraseProofs().serialize());
+  assert.equal(await matches(proved), true);
+  const changed = unprovenCall(circuit, commitment, false, ttl, {
+    ...transcript,
+    program: [transcript.program[0]!, 'new'],
+  });
+  assert.equal(await matches(await prove(changed)), false);
+  const [segment, intent] = [...proved.intents!][0]!;
+  intent.ttl = new Date(now + 3_660_000);
+  proved.intents = new Map([[segment, intent]]);
+  assert.equal(await matches(proved), false);
+});
 
 test('grant sponsor only admits the original proved owner call and rejects a wallet substitution', async () => {
   const state = pinnedState();
@@ -324,7 +369,7 @@ test('grant chain proves the selected issue before handing the exact unbound byt
 test('private grant sponsor RPC recovers the exact original dispatch after a lost reply and restart', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'passport-grant-sponsor-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  const built = unprovenCall();
+  const built = unprovenCall(circuit, undefined, false, new Date(Date.now() + 3_600_000));
   const proved = await built.prove(proving, Ledger.CostModel.initialCostModel());
   const exact = proved.bind();
   const expectedBytes = exact.serialize();
@@ -337,8 +382,10 @@ test('private grant sponsor RPC recovers the exact original dispatch after a los
       ...r.providers,
       walletProvider: {
         ...r.providers.walletProvider,
-        async balanceTx({ tx }) {
+        async balanceTx({ tx }, feeDeadline) {
           balances++;
+          assert.ok(feeDeadline && feeDeadline.getTime() > Date.now());
+          assert.ok(feeDeadline.getTime() <= Date.now() + 45_000);
           assert.deepEqual(tx.serialize(), proved.serialize());
           return { version: 'v9', tx: exact };
         },

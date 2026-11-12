@@ -16,6 +16,7 @@ import {
   grantIssueHostRequestId,
   MAX_HOST_GRANT_ISSUE_BYTES,
 } from '@input-output-hk/mn-passport-protocol';
+import { matchesGrantProofTranscript, sameBytes } from './grant-proof-transcript.js';
 import { singleContractCall } from './single-contract-call.js';
 
 function unsettled(): never {
@@ -34,6 +35,7 @@ export function handoffGrantIssue(
   build: (
     request: Pick<CallRequest, 'address' | 'circuit' | 'args'>,
   ) => Promise<UnprovenTransaction>,
+  verifierKey: (circuit: string) => Promise<Uint8Array>,
 ) {
   return async (request: CallRequest, track: Track) => {
     const { address, circuit, mutation, signal } = request;
@@ -86,8 +88,10 @@ export function handoffGrantIssue(
       if (
         !finalCall ||
         finalCall.call.communicationCommitment !== initial.call.communicationCommitment ||
-        erased.length !== template.length ||
-        !erased.every((byte, index) => byte === template[index])
+        (!sameBytes(erased, template) &&
+          !(await matchesGrantProofTranscript(built, finalCall, erased, address, circuit, () =>
+            verifierKey(circuit),
+          )))
       )
         return unsettled();
       check();

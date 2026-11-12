@@ -245,6 +245,7 @@ function configureGrantIssue(
       } as never);
       return unprovenTx;
     },
+    (circuit) => providers.zkConfigProvider.getVerifierKey(circuit),
   );
 }
 
