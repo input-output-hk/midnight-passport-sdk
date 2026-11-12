@@ -25,3 +25,10 @@ presence or the pending veto window. It refuses the current `acc-s3r1.1`
 binding. Total-loss recovery still requires an approved binding, guardian
 transport and native qualification.
 [Recovery design](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0019-total-loss-recovery.md)
+
+The same source preview exposes `createRecoveryGuardianCollector` for a
+mutually authenticated guardian transport. It admits responses for one
+original session and checks the configured threshold. Use
+`stageRecoveryViewingKey` to verify the recovered key against the ACC's
+viewing public key and read it back from successor custody before submission.
+The host supplies owner recognition, reconstruction, and private storage.

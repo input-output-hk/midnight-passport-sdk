@@ -152,3 +152,17 @@ export async function reviewRecoverySession(
     observation: state,
   });
 }
+
+export {
+  createRecoveryGuardianCollector,
+  type AuthenticatedGuardianShare,
+  type GuardianSession,
+  type GuardianShareRequest,
+  type IndexedRecoveryShare,
+  type RecoveryGuardianTransport,
+} from './recovery-guardians.js';
+export {
+  stageRecoveryViewingKey,
+  type RecoveryViewingCustody,
+  type RecoveryViewingTarget,
+} from './recovery-viewing.js';
