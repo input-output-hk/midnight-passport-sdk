@@ -22,6 +22,9 @@ The [upstream requirements](https://github.com/midnightntwrk/midnight-passport-s
 | Naming and identity | **Partial / missing.** Optional checked read-only name resolution exists; DID operations do not ([name port](https://github.com/input-output-hk/midnight-passport-sdk/blob/0293fac13c2b9913c778303bb3d4ae4d56eae7fb/packages/account/src/names.ts)). | Upstream onboarding includes name claim and DID creation ([requirements](https://github.com/midnightntwrk/midnight-passport-sdk/blob/27721ed385248e1d40d6353a8ef74a38c94951d4/docs/sdk-requirements.md#onboarding)). Neither is implied by resolving a name. |
 | Agents and cross-chain | **Missing.** No public agent SDK or cross-chain call path ([package map](/packages/)). | Upstream plans `mn-passport-agent`, OWS grant keys, transaction joining, and later ecosystem adapters ([architecture](https://github.com/midnightntwrk/midnight-passport-sdk/blob/27721ed385248e1d40d6353a8ef74a38c94951d4/docs/architecture.md#packages)). These future designs have no upstream shipped implementation to compare yet. |
 
+For work after the RC9 snapshot, see the [current source conformance map](/architecture/conformance)
+for the standalone Midnames flows, grant routes and recovery admission.
+
 ## Integration consequence
 
 Choose this fork's [published package/API contract](/packages/api) and its pinned ACC binding when building against this release. Treat upstream's names, ceremony messages, package layout, and provider rules as design inputs requiring an explicit migration and compatibility review before use. Recheck both repository heads and release tags when this page is updated; neither a planning story nor a passing source test establishes release or network conformance.
