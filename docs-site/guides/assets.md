@@ -92,9 +92,11 @@ a separate owned cache and call `advanceFinalized(signal, throughHeight)`
 in bounded steps to rebuild through the required historical height. Serve the
 reconstructed snapshot by its exact hash. Historical rebuild needs the node
 and indexer to retain the block history. The live cursor continues independently.
-A read of the current
-unfinalized best block replays only within `blocksPerAdvance`, checks the best
-hash again, and keeps the result in memory. Preserve the exact-value guard
+A read of the current unfinalized best block replays only within
+`blocksPerAdvance`, checks the best hash again, and keeps the result in memory.
+The reader can replay an unindexed block with no ledger transactions by using
+zero block fullness and verifying the complete node ledger root. A block with
+ledger transactions still requires the indexer’s exact ledger parameters. Preserve the exact-value guard
 while SDK dispatch and lost-response recovery are being qualified.
 
 The account package provides `appendShieldedChange` and

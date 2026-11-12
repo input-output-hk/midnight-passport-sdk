@@ -60,6 +60,8 @@ test('replays a finalized Ledger 9 transaction and checks both full-state roots'
   assert.deepEqual(exact.before.serialize(), snapshot);
   assert.equal(replay(block, { ...roots, parent: roots.block }), undefined);
   assert.equal(replay(block, { ...roots, block: roots.parent }), undefined);
+  assert.throws(() => replay({ ...block, ledgerParameters: undefined }), /parameters are required/);
+  assert.ok(block.ledgerParameters);
   const wrongParameters = new Uint8Array(block.ledgerParameters);
   wrongParameters.set([(wrongParameters.at(0) ?? 0) ^ 1], 0);
   assert.throws(() => replay({ ...block, ledgerParameters: wrongParameters }));

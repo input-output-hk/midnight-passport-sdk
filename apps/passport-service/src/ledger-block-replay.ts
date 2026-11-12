@@ -22,7 +22,7 @@ const blockSchema = z.strictObject({
       }),
     )
     .max(1024),
-  ledgerParameters: bytesSchema,
+  ledgerParameters: bytesSchema.optional(),
 });
 
 export type CanonicalLedgerBlock = z.input<typeof blockSchema>;
@@ -69,7 +69,10 @@ function readBlock(input: CanonicalLedgerBlock) {
     remaining -= copy.length;
     return { kind, bytes: copy };
   });
-  const ledgerParameters = copyBytes(block.ledgerParameters, parametersByteLimit);
+  if (!block.ledgerParameters && transactions.length > 0)
+    throw new Error('Ledger parameters are required for blocks with ledger transactions.');
+  const ledgerParameters =
+    block.ledgerParameters && copyBytes(block.ledgerParameters, parametersByteLimit);
   return { ...block, transactions, ledgerParameters };
 }
 
@@ -141,9 +144,10 @@ function replayLedgerBlock(
   if (target && (!match || match.result.type === 'failure')) return undefined;
   const normalized = state.parameters.normalizeFullness(fullness);
   state = state.postBlockUpdate(tblock, normalized, Math.max(...Object.values(normalized)));
-  // WASM passes normalized fullness through f64. The indexer supplies the
-  // precise serialized parameters; the final root authenticates them.
-  state.parameters = ledger.LedgerParameters.deserialize(block.ledgerParameters);
+  // WASM passes normalized fullness through f64. Zero fullness for an empty
+  // block is exact; other blocks use the indexer's serialized parameters.
+  if (block.ledgerParameters)
+    state.parameters = ledger.LedgerParameters.deserialize(block.ledgerParameters);
   signal.throwIfAborted();
   const snapshot = state.serialize();
   if (ledgerStateRootV18(snapshot) !== roots.block || signal.aborted) return undefined;

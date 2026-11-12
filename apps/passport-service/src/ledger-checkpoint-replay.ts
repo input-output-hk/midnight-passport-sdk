@@ -110,7 +110,7 @@ export async function runLedgerCheckpointJob(
     const height = previous.height + 1;
     const blockHash = await canonicalHash(height);
     const [block, root, nodeHeader] = await Promise.all([
-      readBlock(blockHash, signal),
+      readBlock(blockHash, signal, height > finalHeight),
       readRoot(blockHash),
       readHeader(blockHash),
       requireVersion(blockHash),

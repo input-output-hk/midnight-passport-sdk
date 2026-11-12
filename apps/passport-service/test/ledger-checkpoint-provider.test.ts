@@ -36,7 +36,13 @@ function makeChain() {
     const hash = registry.createType<Header>('Header', raw).hash.toHex();
     const timestamp = Buffer.alloc(8);
     timestamp.writeBigUInt64LE(BigInt(height * 1000));
-    if (height) state = state.postBlockUpdate(new Date(height * 1000));
+    if (height) {
+      state = state.postBlockUpdate(
+        new Date(height * 1000),
+        { readTime: 0, computeTime: 0, blockUsage: 0, bytesWritten: 0, bytesChurned: 0 },
+        0,
+      );
+    }
     const snapshot = Buffer.from(state.serialize());
     const result = {
       hash,
@@ -70,6 +76,7 @@ async function serveChain(t: TestContext) {
     best: 5,
     invalidRootAt: -1,
     changeBest: false,
+    finalizedIndexerOnly: false,
     genesisReads: 0,
     beforeReply: async (_method: string) => {},
   };
@@ -82,7 +89,11 @@ async function serveChain(t: TestContext) {
       const reply = (result: unknown) => res.end(JSON.stringify({ id: 1, result }));
       await control.beforeReply(method ?? 'indexer');
       if (req.url === '/graphql') {
-        const indexed = chain.find(({ hash }) => hash.slice(2) === variables?.hash);
+        const indexed = chain.find(
+          ({ hash }, height) =>
+            hash.slice(2) === variables?.hash &&
+            (!control.finalizedIndexerOnly || height <= control.finalized),
+        );
         return res.end(
           JSON.stringify({
             data: {
@@ -185,6 +196,22 @@ test('resumes an authenticated finalized cursor and reads exact retained and bes
   f.control.changeBest = true;
   assert.equal(await reopened.readLedgerSnapshot(f.hash(5), signal()), undefined);
   assert.deepEqual((await readdir(f.directory)).sort(), beforeBest);
+});
+
+test('authenticates an empty best block that the finalized-only indexer cannot serve', async (t) => {
+  const f = await serveChain(t);
+  f.control.finalizedIndexerOnly = true;
+  const provider = createLedgerCheckpointProvider(f.options);
+  assert.equal((await provider.advanceFinalized(signal()))?.height, 2);
+  assert.equal((await provider.advanceFinalized(signal()))?.height, 4);
+  const before = (await readdir(f.directory)).sort();
+  assert.deepEqual(
+    await provider.readLedgerSnapshot(f.hash(5), signal()),
+    new Uint8Array(f.chain[5]?.snapshot ?? []),
+  );
+  f.control.invalidRootAt = 5;
+  assert.equal(await provider.readLedgerSnapshot(f.hash(5), signal()), undefined);
+  assert.deepEqual((await readdir(f.directory)).sort(), before);
 });
 
 test('rebuilds a historical finalized snapshot without moving the live cursor', async (t) => {

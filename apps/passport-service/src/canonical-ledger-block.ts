@@ -210,6 +210,7 @@ export function createCanonicalLedgerBlockReader(runtime: CanonicalLedgerRuntime
   return async (
     request: string,
     signal: AbortSignal,
+    allowUnindexedEmptyBlock = false,
   ): Promise<CanonicalLedgerBlock | undefined> => {
     try {
       signal.throwIfAborted();
@@ -219,17 +220,23 @@ export function createCanonicalLedgerBlockReader(runtime: CanonicalLedgerRuntime
         await rpc('chain_getBlock', [hashArg], signal, blockResponseLimit),
       );
       const { parentHash } = block.header;
-      const [registry, rawEvents, now, previous, ledgerParameters] = await Promise.all([
+      const [registry, rawEvents, now, previous, indexedParameters] = await Promise.all([
         readRegistry(parentHash, signal),
         rpc('state_getStorage', [eventsKey, hashArg], signal, blockResponseLimit),
         rpc('state_getStorage', [timestampKey, hashArg], signal),
         rpc('state_getStorage', [timestampKey, parentHash], signal),
-        readParameters(blockHash, signal),
+        allowUnindexedEmptyBlock ? undefined : readParameters(blockHash, signal),
       ]);
       signal.throwIfAborted();
       const header = registry.createType<Header>('Header', block.header);
       if (header.hash.toHex() !== hashArg) return undefined;
       const height = header.number.toNumber();
+      const transactions = decodeCalls(registry, block.extrinsics, rawEvents);
+      const ledgerParameters =
+        allowUnindexedEmptyBlock && transactions.length > 0
+          ? await readParameters(blockHash, signal)
+          : indexedParameters;
+      signal.throwIfAborted();
       return {
         blockHash,
         parentHash: parentHash.slice(2),
@@ -239,8 +246,8 @@ export function createCanonicalLedgerBlockReader(runtime: CanonicalLedgerRuntime
           previous === null && height === 1
             ? genesisTimestamp(registry)
             : decodeTimestamp(registry, previous),
-        transactions: decodeCalls(registry, block.extrinsics, rawEvents),
-        ledgerParameters,
+        transactions,
+        ...(ledgerParameters && { ledgerParameters }),
       };
     } catch {
       return undefined;
