@@ -212,3 +212,10 @@ past that spend, recovery reports unknown. It performs reads only.
 Generated ACC and offline dispatch tests cover a funded spend, caps,
 revocation, concurrent request IDs, expiry, receipt loss and a killed
 journal writer. Native proof and vault integration remain separate.
+
+
+The reference demo uses the same durable receipt pattern for bounded session
+withdrawals. Its loopback funding host uses
+`prepareSignedJubjubGrantWithdrawal` to verify the signed Compact arguments
+and the live grant before reserving the browser's original UUID. This is a
+host preflight for the pinned fixed-recipient JubJub circuit.

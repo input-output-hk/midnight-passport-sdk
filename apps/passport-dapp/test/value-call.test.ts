@@ -4,6 +4,8 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { demoValueCall, demoSessionValueCall } from '../src/value-call.ts';
 
+const requestId = '44376162-60ae-45f3-9c02-6332bd490aac';
+
 test('demo value call sends signed circuit arguments, not an unsigned transaction', async () => {
   const originalFetch = globalThis.fetch;
   let sent: Record<string, unknown> | undefined;
@@ -51,14 +53,18 @@ test('real value HTTP acknowledgement survives a local lock after request accept
   });
   let requests = 0;
   let sendReceipt!: () => void;
+  let posted = '';
   const server = createServer((request, response) => {
     requests++;
-    request.resume();
+    request.setEncoding('utf8');
+    request.on('data', (chunk: string) => {
+      posted += chunk;
+    });
+    request.on('end', accepted);
     sendReceipt = () => {
       response.writeHead(200, { 'content-type': 'application/json' });
       response.end(JSON.stringify({ txHash: 'AB'.repeat(32) }));
     };
-    accepted();
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -72,14 +78,18 @@ test('real value HTTP acknowledgement survives a local lock after request accept
     signal: controller.signal,
   };
   try {
-    const pending = demoSessionValueCall(`http://127.0.0.1:${address.port}`, intent);
+    const pending = demoSessionValueCall(`http://127.0.0.1:${address.port}`, intent, requestId);
     await seen;
+    assert.equal(JSON.parse(posted).requestId, requestId);
     controller.abort();
     sendReceipt();
     assert.equal((await pending).txHash, 'ab'.repeat(32));
-    await assert.rejects(demoSessionValueCall(`http://127.0.0.1:${address.port}`, intent), {
-      code: 'Aborted',
-    });
+    await assert.rejects(
+      demoSessionValueCall(`http://127.0.0.1:${address.port}`, intent, requestId),
+      {
+        code: 'Aborted',
+      },
+    );
     assert.equal(requests, 1);
   } finally {
     server.closeAllConnections();

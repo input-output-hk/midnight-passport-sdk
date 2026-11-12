@@ -126,6 +126,7 @@ export async function spendDemoSessionGrant(
   amount: string,
   spentPrev: string,
   signal: AbortSignal,
+  requestId: string,
 ) {
   const { source, pure } = await demoGrantContext(handoff.networkId);
   // The app has already displayed and approved these exact transfer fields.
@@ -135,7 +136,7 @@ export async function spendDemoSessionGrant(
       pure: pure as unknown as UnshieldedGrantCallPure,
       source,
       chain: {
-        call: (request) => demoSessionValueCall(SERVICE_URL, request),
+        call: (request) => demoSessionValueCall(SERVICE_URL, request, requestId),
         readAccount: async () => {
           throw new Error('Session holder cannot read owner state.');
         },

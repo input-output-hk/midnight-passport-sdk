@@ -1,4 +1,9 @@
-import { inspectFileFundingStore } from '@input-output-hk/mn-passport-service';
+import { existsSync } from 'node:fs';
+import { createAgentGrantSpendJournal } from '@input-output-hk/mn-passport-account';
+import {
+  fileMutationByteStore,
+  inspectFileFundingStore,
+} from '@input-output-hk/mn-passport-service';
 
 function argument(name: string): string | undefined {
   const at = process.argv.indexOf(name);
@@ -14,25 +19,52 @@ const requestId = argument('--request-id');
 if (requestId && !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(requestId))
   throw new Error('request ID must be a lowercase UUID');
 const all = process.argv.includes('--all');
-const allowed = new Set(['--file', file, '--request-id', requestId, '--all']);
+const sessionSpend = process.argv.includes('--session-spend');
+const allowed = new Set(['--file', file, '--request-id', requestId, '--all', '--session-spend']);
 if (process.argv.slice(2).some((value) => !allowed.has(value)))
   throw new Error('unexpected argument');
 
-const inspection = inspectFileFundingStore(file);
-const entries = inspection.entries.filter(
-  (entry) =>
-    (all || entry.state === 'pending') && (!requestId || entry.request.requestId === requestId),
-);
-if (requestId && entries.length === 0) throw new Error('request ID not found in selected view');
-console.log(
-  JSON.stringify(
-    {
-      lockPresent: inspection.lockPresent,
-      pendingCount: inspection.entries.filter((entry) => entry.state === 'pending').length,
-      entries,
-      note: 'Read-only inspection. A pending request must not be retried with a new ID until wallet and ledger evidence is reconciled.',
-    },
-    null,
-    2,
-  ),
-);
+if (sessionSpend) {
+  if (!requestId || all) throw new Error('--session-spend requires one --request-id');
+  const directory = `${file}.session-spends`;
+  const original = existsSync(directory)
+    ? await createAgentGrantSpendJournal(fileMutationByteStore(directory)).readRecord(requestId)
+    : undefined;
+  console.log(
+    JSON.stringify(
+      {
+        requestId,
+        state: original?.acknowledgedHash
+          ? 'acknowledged'
+          : original?.transaction
+            ? 'staged'
+            : original
+              ? 'reserved'
+              : 'unknown',
+        ...(original && { original }),
+        note: 'Receipt inspection only. A finality check must verify the original transaction before resolving the browser checkpoint.',
+      },
+      null,
+      2,
+    ),
+  );
+} else {
+  const inspection = inspectFileFundingStore(file);
+  const entries = inspection.entries.filter(
+    (entry) =>
+      (all || entry.state === 'pending') && (!requestId || entry.request.requestId === requestId),
+  );
+  if (requestId && entries.length === 0) throw new Error('request ID not found in selected view');
+  console.log(
+    JSON.stringify(
+      {
+        lockPresent: inspection.lockPresent,
+        pendingCount: inspection.entries.filter((entry) => entry.state === 'pending').length,
+        entries,
+        note: 'Read-only inspection. A pending request must not be retried with a new ID until wallet and ledger evidence is reconciled.',
+      },
+      null,
+      2,
+    ),
+  );
+}

@@ -198,7 +198,12 @@ export async function checkLostSessionAcknowledgementIsAnUnknownOutcome(
   await approve(owner, 'startSession');
   await waitStatus(owner, /JubJub session active/);
   h.flags.unknownSession = true;
+  const outgoing = owner.waitForRequest(
+    (request) =>
+      new URL(request.url()).pathname === '/v1/demo/value-call' && request.method() === 'POST',
+  );
   await approve(owner, 'withdraw');
+  const signedWithdrawal = (await outgoing).postDataJSON();
   await waitStatus(owner, /failed\./, /Synthetic session outcome unknown/);
   assert.equal(await owner.locator('.operation-status').getAttribute('data-phase'), 'unknown');
   assert.equal(await owner.locator('#progress').getAttribute('aria-valuenow'), null);
@@ -214,6 +219,7 @@ export async function checkLostSessionAcknowledgementIsAnUnknownOutcome(
   await readSessionState(owner);
   const unknownSessionIntent = await owner.locator('#session-state').getAttribute('data-intent-id');
   assert.ok(unknownSessionIntent);
+  assert.equal(signedWithdrawal.requestId, unknownSessionIntent);
   assert.ok(
     (await owner.locator('.activity-references').textContent())?.includes(unknownSessionIntent),
   );

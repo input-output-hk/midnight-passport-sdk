@@ -123,6 +123,9 @@ importers:
 
   apps/passport-funding-service:
     dependencies:
+      '@input-output-hk/mn-passport-account':
+        specifier: workspace:*
+        version: link:../../packages/account
       '@input-output-hk/mn-passport-adapter-midnight-js':
         specifier: workspace:*
         version: link:../../packages/adapter-midnight-js

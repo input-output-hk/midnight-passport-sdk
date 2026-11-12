@@ -1,7 +1,12 @@
-import { jubjub } from '@noble/curves/misc.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, concatBytes, hexToBytes } from '@noble/hashes/utils.js';
 import { z } from 'zod';
+import {
+  compactJubjubOrder,
+  compactJubjubPoint,
+  compactLittleEndian,
+  verifyCompactJubjub,
+} from './compact-jubjub.js';
 import { PassportConnectorError } from './errors.js';
 import {
   chainReference,
@@ -63,24 +68,11 @@ function invalid(): never {
   );
 }
 
-// Midnight's Compact embedded JubJub generator from acc-s3r1.1. The Zcash
-// generator bundled with noble is a different point on the same curve.
-const generator = jubjub.Point.fromAffine({
-  x: 0x3ea5c4673a121ca35ed37ee3b172f5ee04315c657fbe375f512dfea318d56fe5n,
-  y: 0x57137b83ea6edb4f78f7d30d3f616cb3b9aa6e8e40808413c10cea38d50c55cbn,
-});
-const order = jubjub.Point.CURVE().n;
-const littleEndian = (bytes: Uint8Array) =>
-  bytes.reduceRight((n, byte) => (n << 8n) | BigInt(byte), 0n);
-
 function readPoint(bytes: Uint8Array) {
-  const x = littleEndian(bytes.subarray(0, 32));
-  const y = littleEndian(bytes.subarray(32, 64));
-  if (x >= jubjub.Point.Fp.ORDER || y >= jubjub.Point.Fp.ORDER) return invalid();
-  const point = jubjub.Point.fromAffine({ x, y });
-  point.assertValidity();
-  if (point.is0() || !point.isTorsionFree()) return invalid();
-  return point;
+  return compactJubjubPoint({
+    x: compactLittleEndian(bytes.subarray(0, 32)),
+    y: compactLittleEndian(bytes.subarray(32, 64)),
+  });
 }
 
 function verifyProof(encodedKey: string, encodedSignature: string, digest: Uint8Array) {
@@ -89,11 +81,10 @@ function verifyProof(encodedKey: string, encodedSignature: string, digest: Uint8
   const commitment = wire.subarray(0, 64);
   const point = readPoint(key);
   const nonce = readPoint(commitment);
-  const scalar = littleEndian(wire.subarray(64));
-  if (scalar >= order) return invalid();
-  const challenge = littleEndian(sha256(concatBytes(commitment, key, digest))) % order;
-  if (!generator.multiplyUnsafe(scalar).equals(nonce.add(point.multiplyUnsafe(challenge))))
-    return invalid();
+  const scalar = compactLittleEndian(wire.subarray(64));
+  const challenge =
+    compactLittleEndian(sha256(concatBytes(commitment, key, digest))) % compactJubjubOrder;
+  if (!verifyCompactJubjub(point, nonce, scalar, challenge)) return invalid();
   return bytesToHex(point.toBytes());
 }
 

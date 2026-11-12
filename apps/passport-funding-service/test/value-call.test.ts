@@ -42,13 +42,14 @@ test('value endpoint refuses other circuits and deposits above the demo policy b
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   try {
     const port = (server.address() as { port: number }).port;
-    const post = (circuit: string, amount: string) =>
+    const post = (circuit: string, amount: string, requestId?: string) =>
       fetch(`http://127.0.0.1:${port}/v1/value-call`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           accountAddress: address,
           circuit,
+          ...(requestId !== undefined && { requestId }),
           args: [
             { $bytes: '0'.repeat(64) },
             { $bigint: amount },
@@ -59,6 +60,11 @@ test('value endpoint refuses other circuits and deposits above the demo policy b
       });
     assert.equal((await post('deposit_unshielded', '1')).status, 400);
     assert.equal((await post('withdraw_unshielded_with_p256', '11')).status, 400);
+    assert.equal(
+      (await post('withdraw_unshielded_with_p256', '1', '44376162-60ae-45f3-9c02-6332bd490aac'))
+        .status,
+      400,
+    );
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     rmSync(directory, { recursive: true, force: true });

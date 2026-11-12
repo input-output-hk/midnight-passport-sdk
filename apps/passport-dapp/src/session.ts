@@ -48,6 +48,7 @@ export interface DemoSessionPorts {
     amount: string,
     spent: string,
     signal: AbortSignal,
+    requestId: string,
   ) => Promise<{ txHash: string; spentTotal: bigint }>;
   readonly changed: (snapshot: DemoSessionSnapshot) => void;
   /** Public metadata only, to retain grant IDs and uncertainty fences across page reloads. */
@@ -58,6 +59,19 @@ export interface DemoSessionPorts {
     settle(snapshot: DemoSessionSnapshot): void;
   };
 }
+
+const submittedIds = (error: unknown) => {
+  if (!error || typeof error !== 'object') return {};
+  const value = error as { grantId?: unknown; txHash?: unknown };
+  return {
+    ...(typeof value.grantId === 'string' &&
+      /^[0-9a-f]{64}$/.test(value.grantId) && { grantId: value.grantId }),
+    ...(typeof value.txHash === 'string' &&
+      /^[0-9a-f]{64}(?:[0-9a-f]{2})?$/i.test(value.txHash) && {
+        txHash: value.txHash.toLowerCase(),
+      }),
+  };
+};
 
 /** One page, one delegated grant. No persisted secrets, silent renewals or uncertain-spend retries. */
 export function createDemoSession(ports: DemoSessionPorts) {
@@ -82,18 +96,6 @@ export function createDemoSession(ports: DemoSessionPorts) {
   let lastWall = 0;
   let lastMono = 0;
   let cancellation = new AbortController();
-  const submittedIds = (error: unknown) => {
-    if (!error || typeof error !== 'object') return {};
-    const value = error as { grantId?: unknown; txHash?: unknown };
-    return {
-      ...(typeof value.grantId === 'string' &&
-        /^[0-9a-f]{64}$/.test(value.grantId) && { grantId: value.grantId }),
-      ...(typeof value.txHash === 'string' &&
-        /^[0-9a-f]{64}(?:[0-9a-f]{2})?$/i.test(value.txHash) && {
-          txHash: value.txHash.toLowerCase(),
-        }),
-    };
-  };
   const publish = (patch: Partial<DemoSessionSnapshot>) => {
     state = Object.freeze({ ...state, ...patch });
     ports.checkpoint?.write(state);
@@ -135,9 +137,11 @@ export function createDemoSession(ports: DemoSessionPorts) {
     }
   };
   const begin = (patch: Partial<DemoSessionSnapshot>) => {
-    state = Object.freeze({ ...state, ...patch, intentId: crypto.randomUUID() });
+    const intentId = crypto.randomUUID();
+    state = Object.freeze({ ...state, ...patch, intentId });
     ports.checkpoint?.begin(state);
     ports.changed(state);
+    return intentId;
   };
   const settle = (next: DemoSessionSnapshot) => {
     state = Object.freeze(next);
@@ -353,7 +357,7 @@ export function createDemoSession(ports: DemoSessionPorts) {
       try {
         const { txHash: _previousHash, ...currentGrant } = state;
         state = currentGrant;
-        begin({ status: 'spending' });
+        const requestId = begin({ status: 'spending' });
         current(version);
         const result = await ports.spend(
           opening!,
@@ -361,6 +365,7 @@ export function createDemoSession(ports: DemoSessionPorts) {
           transfer.amount,
           state.spent,
           cancellation.signal,
+          requestId,
         );
         // Capture a confirmed effect even if a local lock/expiry happened while it settled.
         const usable = revision === version && tick().status === 'spending';

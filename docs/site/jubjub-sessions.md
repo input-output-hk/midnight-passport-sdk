@@ -179,6 +179,26 @@ signing key, session child ID, grant salt/opening or witness is stored there.
 An uncertain revocation also stays fenced across reload; it cannot be submitted
 again just because the local key is already locked.
 
+
+In the source preview, session withdrawals carry the browser's original UUID
+through the loopback value-call proxy to the funding host. The host verifies
+the Compact JubJub signature and its live scope and nonce before reserving
+the UUID. It rereads the grant before dispatch and persists the exact finalized
+transaction identity before broadcast. Session spend receipts live in the
+private directory `<PASSPORT_FUNDING_RESERVATIONS_FILE>.session-spends`.
+Preserve it with the browser checkpoint across restarts. Inspect the original
+receipt using the value of `PASSPORT_FUNDING_RESERVATIONS_FILE` and the UUID shown
+in Audit.
+
+```sh
+pnpm --filter passport-funding-service run inspect --file /path/to/funding-reservations.json --session-spend --request-id "$session_request_id"
+```
+
+An acknowledged receipt still needs an exact finality check. A repeated UUID
+or a competing UUID for the same grant nonce cannot submit a replacement.
+This path covers session withdrawals. Session issue and revocation retain
+their existing checkpoint behavior.
+
 Inspect the operation log, original transaction IDs, owner grant roster and
 retained owner journal. Use existing operator inspection/reconciliation for the
 same intent; a missing acknowledgement never proves no send. The demo has no

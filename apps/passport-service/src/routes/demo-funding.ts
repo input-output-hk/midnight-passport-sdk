@@ -79,8 +79,14 @@ async function valueCall(context: FundingContext, req: IncomingMessage, res: Ser
   if (!body || typeof body !== 'object' || Array.isArray(body))
     throw new HttpError(400, 'invalid value call');
   const fields = body as Record<string, unknown>;
+  const session = fields.requestId !== undefined;
   if (
-    Object.keys(fields).sort().join(',') !== 'accountAddress,args,circuit' ||
+    Object.keys(fields).sort().join(',') !==
+      (session ? 'accountAddress,args,circuit,requestId' : 'accountAddress,args,circuit') ||
+    (session &&
+      (fields.circuit !== 'withdraw_unshielded_with_grant_jubjub' ||
+        typeof fields.requestId !== 'string' ||
+        !REQUEST_ID.test(fields.requestId))) ||
     typeof fields.accountAddress !== 'string' ||
     !ADDRESS.test(fields.accountAddress) ||
     ![

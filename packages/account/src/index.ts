@@ -97,3 +97,4 @@ export type {
   AgentJubjubGrantSpendPorts,
 } from './agent-grant-holder.js';
 export * from './agent-grant-durable-spend.js';
+export * from './signed-jubjub-grant-withdrawal.js';

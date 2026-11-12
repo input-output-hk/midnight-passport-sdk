@@ -3,7 +3,11 @@ import type { CallRequest, TxResult } from '@input-output-hk/mn-passport-account
 import { tracedFetch } from './operation-trace.js';
 
 /** The server receives circuit arguments, never an arbitrary transaction to sign. */
-export async function demoValueCall(serviceUrl: string, request: CallRequest): Promise<TxResult> {
+export async function demoValueCall(
+  serviceUrl: string,
+  request: CallRequest,
+  requestId?: string,
+): Promise<TxResult> {
   if (
     request.heldCoin ||
     ![
@@ -18,7 +22,12 @@ export async function demoValueCall(serviceUrl: string, request: CallRequest): P
     headers: { 'content-type': 'application/json' },
     ...(request.signal && { signal: request.signal }),
     body: JSON.stringify(
-      { accountAddress: request.address, circuit: request.circuit, args: request.args },
+      {
+        accountAddress: request.address,
+        circuit: request.circuit,
+        args: request.args,
+        ...(requestId !== undefined && { requestId }),
+      },
       (_key, value: unknown) =>
         typeof value === 'bigint'
           ? { $bigint: value.toString() }
@@ -39,7 +48,11 @@ export async function demoValueCall(serviceUrl: string, request: CallRequest): P
 }
 
 /** Lock stops new sends, but must not discard the acknowledgement of a started value request. */
-export function demoSessionValueCall(serviceUrl: string, request: CallRequest): Promise<TxResult> {
+export function demoSessionValueCall(
+  serviceUrl: string,
+  request: CallRequest,
+  requestId: string,
+): Promise<TxResult> {
   if (request.signal?.aborted)
     return Promise.reject(
       new PassportConnectorError('Aborted', 'Session locked before value submission.'),
@@ -47,5 +60,5 @@ export function demoSessionValueCall(serviceUrl: string, request: CallRequest): 
   const { signal: _localKeyLifetime, ...observedRequest } = request;
   // The service may prove and submit after POST acceptance. Observe its response even if
   // the key is disposed meanwhile; a real transport loss still leaves the session blocked.
-  return demoValueCall(serviceUrl, observedRequest);
+  return demoValueCall(serviceUrl, observedRequest, requestId);
 }

@@ -57,6 +57,7 @@ export async function spendDemoSessionGrant(
   amount: string,
   spentPrev: string,
   signal: AbortSignal,
+  requestId: string,
 ) {
   const { spendUnshieldedWithGrant } = await import('@input-output-hk/mn-passport-account');
   const { pureCircuits: pure } =
@@ -101,6 +102,7 @@ export async function spendDemoSessionGrant(
           (await import('../../src/value-call.ts')).demoSessionValueCall(
             'http://localhost:8787',
             request,
+            requestId,
           ),
       },
       review: async () => !signal.aborted,

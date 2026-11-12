@@ -934,6 +934,14 @@ verification. The holder spend helper
 uses an injected agent signer and a value-capable chain. The durable SDK path
 uses a shared journal and reconciles the original transaction by request UUID.
 
+The bounded session in the main demo sends its original browser UUID in
+`POST /v1/demo/value-call`. The funding service verifies the signed Compact
+withdrawal before reserving the grant nonce. Keep
+`<PASSPORT_FUNDING_RESERVATIONS_FILE>.session-spends` with the local
+reservation files. This private journal contains the transaction identity
+needed to investigate an uncertain result. The demo keeps its safety block
+until reconciliation.
+
 The relay sponsors only the pinned fee-only owner issue circuit. The browser
 still supplies the exact review and fresh owner circuit signature. The holder
 must validate the returned opening against the signed request and live ACC.

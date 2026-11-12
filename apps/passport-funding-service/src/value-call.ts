@@ -5,14 +5,27 @@ import {
   pureCircuits,
 } from '@input-output-hk/mn-passport-contract/bindings/acc-s3r1.1';
 import {
+  createDurableAgentGrantSpendChain,
   createMidnightChain,
+  createMidnightGrantSource,
   createMidnightWalletPorts,
 } from '@input-output-hk/mn-passport-adapter-midnight-js';
 import { remoteV1Prover } from '@input-output-hk/mn-passport-adapter-service';
-import { HttpError, json, readJson, serial } from '@input-output-hk/mn-passport-service';
+import {
+  fileMutationByteStore,
+  HttpError,
+  json,
+  readJson,
+  serial,
+} from '@input-output-hk/mn-passport-service';
 import type { FundingConfig } from './config.ts';
 import { deployedAddresses } from './deployments.ts';
 
+import { createAgentGrantSpendJournal } from '@input-output-hk/mn-passport-account';
+import { submitSessionWithdrawal } from './session-withdrawal.ts';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const SESSION_CIRCUIT = 'withdraw_unshielded_with_grant_jubjub';
 const HEX32 = /^[0-9a-f]{64}$/;
 const CIRCUIT_LENGTH = new Map([
   ['withdraw_unshielded_with_p256', 4],
@@ -71,14 +84,21 @@ function admittedRequest(body: unknown): {
   accountAddress: string;
   circuit: string;
   args: unknown[];
+  requestId?: string;
 } {
   if (!body || typeof body !== 'object' || Array.isArray(body))
     throw new HttpError(400, 'invalid value call');
   const fields = body as Record<string, unknown>;
   if (typeof fields.circuit !== 'string') throw new HttpError(400, 'invalid value call');
   const count = CIRCUIT_LENGTH.get(fields.circuit);
+  const session = fields.requestId !== undefined;
   if (
-    Object.keys(fields).sort().join(',') !== 'accountAddress,args,circuit' ||
+    Object.keys(fields).sort().join(',') !==
+      (session ? 'accountAddress,args,circuit,requestId' : 'accountAddress,args,circuit') ||
+    (session &&
+      (fields.circuit !== SESSION_CIRCUIT ||
+        typeof fields.requestId !== 'string' ||
+        !UUID.test(fields.requestId))) ||
     typeof fields.accountAddress !== 'string' ||
     !HEX32.test(fields.accountAddress) ||
     count === undefined ||
@@ -86,7 +106,12 @@ function admittedRequest(body: unknown): {
     fields.args.length !== count
   )
     throw new HttpError(400, 'invalid value call');
-  return { accountAddress: fields.accountAddress, circuit: fields.circuit, args: fields.args };
+  return {
+    accountAddress: fields.accountAddress,
+    circuit: fields.circuit,
+    args: fields.args,
+    ...(typeof fields.requestId === 'string' && { requestId: fields.requestId }),
+  };
 }
 
 function checkAssetPolicy(args: readonly unknown[], config: FundingConfig): void {
@@ -123,6 +148,9 @@ export function valueCallRoute(
   authorized: (header: string | undefined) => boolean,
 ) {
   const runExclusive = serial(2);
+  const receipts = createAgentGrantSpendJournal(
+    fileMutationByteStore(`${config.reservationsFile}.session-spends`),
+  );
   return async (req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> => {
     if (url.pathname !== '/v1/value-call') return false;
     if (req.method !== 'POST') throw new HttpError(405, 'method not allowed');
@@ -139,7 +167,7 @@ export function valueCallRoute(
     checkAssetPolicy(args, config);
     const result = await runExclusive(async () => {
       const service = process.env.PASSPORT_SERVICE_URL ?? 'http://127.0.0.1:8787';
-      const chain = createMidnightChain({
+      const options = {
         network: {
           networkId: config.networkId,
           bindingId: config.bindingId,
@@ -155,10 +183,30 @@ export function valueCallRoute(
           wallet.providers.walletProvider,
           wallet.providers.midnightProvider,
         ),
-      });
-      const account = await chain.readAccount(fields.accountAddress);
-      if (!account?.booted || account.specVersion !== 3)
-        throw new HttpError(409, 'ACC is not active under the pinned binding');
+      };
+      const checkActive = async (chain: ReturnType<typeof createMidnightChain>) => {
+        const account = await chain.readAccount(fields.accountAddress);
+        if (!account?.booted || account.specVersion !== 3)
+          throw new HttpError(409, 'ACC is not active under the pinned binding');
+      };
+      if (fields.requestId) {
+        const chain = createDurableAgentGrantSpendChain({
+          ...options,
+          agentGrantReceipts: receipts,
+        });
+        await checkActive(chain);
+        const grants = createMidnightGrantSource({
+          network: options.network,
+          binding: { ledger },
+          openings: { readReadPublicKey: async () => undefined },
+        });
+        return submitSessionWithdrawal(
+          { requestId: fields.requestId, account: fields.accountAddress, args },
+          { chain, grants, pure: pureCircuits, networkId: config.networkId, receipts },
+        );
+      }
+      const chain = createMidnightChain(options);
+      await checkActive(chain);
       return chain.call({
         address: fields.accountAddress,
         circuit: fields.circuit,
