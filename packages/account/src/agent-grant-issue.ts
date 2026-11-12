@@ -25,6 +25,7 @@ import { mutationDigest } from './mutation-codec.js';
 import type {
   AccountHint,
   ActiveGrantSnapshotSource,
+  DeadlineFencedGrantIssuePort,
   GrantRosterSource,
   P256GrantSpendSource,
   PinnedChain,
@@ -37,7 +38,7 @@ export interface AgentJubjubGrantIssuePorts extends Pick<
   readonly owner: AccountHint;
   readonly authoriserOrigin: string;
   readonly networkId: string;
-  readonly chain: PinnedChain;
+  readonly chain: PinnedChain & DeadlineFencedGrantIssuePort;
   readonly grants: ActiveGrantSnapshotSource & GrantRosterSource & P256GrantSpendSource;
   readonly pure: IssueJubjubGrantCallPorts['pure'] & AgentGrantSettlementPure;
   readonly nonces: AgentGrantNonceStore;
@@ -225,8 +226,10 @@ async function issueOriginal(
           )
             throw new AgentGrantIssueUnsettled(requestId);
           await checkSnapshot();
-          return ports.chain.call({
+          checkDeadline();
+          return ports.chain.submitDeadlineFencedGrantIssue({
             ...call,
+            circuit: call.circuit,
             mutation: {
               requestId,
               validUntilSeconds,
@@ -264,6 +267,11 @@ export async function issueAgentJubjubGrant(
   ports: AgentJubjubGrantIssuePorts,
   options: FlowOptions = {},
 ): Promise<GrantedAgentJubjubScope> {
+  if (typeof ports.chain.submitDeadlineFencedGrantIssue !== 'function')
+    throw new PassportConnectorError(
+      'BindingUnsupported',
+      'Agent grant requires a deadline-fenced issue dispatcher.',
+    );
   const current = route(ports, options);
   const admittedAt = timestamp.parse(current.now());
   const request = current.verify(input, admittedAt);

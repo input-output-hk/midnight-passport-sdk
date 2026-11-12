@@ -14,7 +14,10 @@ import {
   hostMutationRoute,
   type HostMutationIdentity,
 } from '@input-output-hk/mn-passport-service';
-import { createMidnightChain } from '../../../packages/adapter-midnight-js/dist/index.js';
+import {
+  createDeadlineFencedGrantIssueChain,
+  createMidnightChain,
+} from '../../../packages/adapter-midnight-js/dist/index.js';
 import * as binding from '../../../packages/contract/generated/acc-s3r1.1/index.js';
 import { remoteHostMutationPorts } from '../../../packages/adapter-service/dist/index.js';
 import { createReferenceHostDriver } from '../src/host-driver.ts';
@@ -407,7 +410,7 @@ function issueChain(
     assert.equal(options.circuitId, circuit);
     return { private: { unprovenTx: built } } as never;
   };
-  return createMidnightChain({
+  return createDeadlineFencedGrantIssueChain({
     network: {
       ...pins,
       nodeUrl: 'http://localhost:19944',
@@ -434,7 +437,7 @@ test('grant chain proves the selected issue before handing the exact unbound byt
   const proved = await built.prove(proving, Ledger.CostModel.initialCostModel());
   const validUntilSeconds = Math.floor(Date.now() / 1000) + 60;
   const mutation = { requestId, intentSha256, validUntilSeconds };
-  const request = { address, circuit, args: [], mutation };
+  const request = { address, circuit, args: [], mutation } as const;
   let proofs = 0;
   let handoffs = 0;
   let substitute = proved;
@@ -459,13 +462,20 @@ test('grant chain proves the selected issue before handing the exact unbound byt
       },
     },
   );
-  assert.deepEqual(await chain.call(request), { txHash: 'ae'.repeat(32), blockHeight: 7 });
+  assert.deepEqual(await chain.submitDeadlineFencedGrantIssue(request), {
+    txHash: 'ae'.repeat(32),
+    blockHeight: 7,
+  });
   substitute = await provedCall(circuit, random, false, new Date(now + 90_000));
-  await assert.rejects(chain.call(request), { code: 'MutationUnsettled' });
+  await assert.rejects(chain.submitDeadlineFencedGrantIssue(request), {
+    code: 'MutationUnsettled',
+  });
   substitute = await provedCall(circuit, undefined, false, ttl);
-  await assert.rejects(chain.call(request), { code: 'MutationUnsettled' });
+  await assert.rejects(chain.submitDeadlineFencedGrantIssue(request), {
+    code: 'MutationUnsettled',
+  });
   await assert.rejects(
-    chain.call({
+    chain.submitDeadlineFencedGrantIssue({
       ...request,
       mutation: { ...mutation, validUntilSeconds: validUntilSeconds - 120 },
     }),
@@ -473,7 +483,9 @@ test('grant chain proves the selected issue before handing the exact unbound byt
   );
   substitute = proved;
   expireDuringProof = true;
-  await assert.rejects(chain.call(request), { code: 'MutationUnsettled' });
+  await assert.rejects(chain.submitDeadlineFencedGrantIssue(request), {
+    code: 'MutationUnsettled',
+  });
   assert.deepEqual([proofs, handoffs], [4, 1]);
 });
 

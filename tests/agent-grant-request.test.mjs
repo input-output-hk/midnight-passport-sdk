@@ -273,7 +273,12 @@ async function ownerFixture() {
       owner,
       authoriserOrigin,
       networkId: initial.network.networkId,
-      chain: { ...chain, networkId: initial.network.networkId, bindingId: 'acc-s3r1.1' },
+      chain: {
+        ...chain,
+        submitDeadlineFencedGrantIssue: chain.call,
+        networkId: initial.network.networkId,
+        bindingId: 'acc-s3r1.1',
+      },
       grants: grants({ readReadPublicKey: async () => undefined }),
       pure: pureCircuits,
       authoriser: initial.authoriser,
@@ -317,7 +322,7 @@ test('one generated owner issue survives a lost response and concurrent replay',
     nonces: createAgentGrantNonceStore(stores.bytes, () => chosen),
     chain: {
       ...base.chain,
-      async call(call) {
+      async submitDeadlineFencedGrantIssue(call) {
         submissions++;
         assert.equal(call.mutation?.requestId, chosen);
         assert.equal(call.mutation?.validUntilSeconds, value.exp);
@@ -458,7 +463,7 @@ test('a confirmed agent issue returns directly and an occupied signed slot canno
     approve: async () => true,
     chain: {
       ...base.chain,
-      async call(call) {
+      async submitDeadlineFencedGrantIssue(call) {
         assert.equal(call.mutation?.validUntilSeconds, expiresAt - 1);
         return base.chain.call(call);
       },
@@ -477,6 +482,19 @@ test('a confirmed agent issue returns directly and an occupied signed slot canno
     },
   );
   assert.equal(fixture.effectCount(), before);
+});
+
+test('an ordinary chain without a deadline-fenced dispatcher is refused before review', async (t) => {
+  const { value, ports: base } = await ownerFixture();
+  const stores = await storage(t);
+  const ports = {
+    ...base,
+    ...stores,
+    approve: async () => assert.fail('No owner review on an unsupported chain.'),
+    chain: { ...base.chain },
+  };
+  Reflect.deleteProperty(ports.chain, 'submitDeadlineFencedGrantIssue');
+  await assert.rejects(issueAgentJubjubGrant(packet(value), ports), { code: 'BindingUnsupported' });
 });
 
 test('losing the protected record after nonce admission cannot dispatch or recover a new grant', async (t) => {

@@ -333,6 +333,16 @@ export interface PinnedChain extends Chain {
   readonly bindingId: string;
 }
 
+export interface DeadlineFencedGrantIssueRequest extends CallRequest {
+  readonly circuit: 'issue_grant_with_jubjub';
+  readonly mutation: MutationSubmissionContext & { readonly validUntilSeconds: number };
+}
+
+/** Carry the original request through proving, balancing and final broadcast with its deadline. */
+export interface DeadlineFencedGrantIssuePort {
+  submitDeadlineFencedGrantIssue(request: DeadlineFencedGrantIssueRequest): Promise<TxResult>;
+}
+
 export interface DeployRequest extends FlowOptions {
   readonly mutation?: MutationSubmissionContext;
   /** The 32-byte boot commitment, and the ACC's `enc_key`. */

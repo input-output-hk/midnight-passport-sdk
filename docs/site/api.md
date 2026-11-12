@@ -258,8 +258,10 @@ selected it. Treat `rdns:` and `mais:` as operator assertions and `self:` as an
 owner label.
 
 Inject a credential-pinned JubJub owner authoriser, the original owner grant
-journal, the pinned chain with durable submission metadata, and the complete
-grant ledger source. Keep `isCurrent` bound to the selected owner and the
+journal, a pinned deadline-fenced dispatcher, and the complete grant ledger
+source. `createDeadlineFencedGrantIssueChain` uses the private standalone
+grant sponsor and enforces the earliest request or scope deadline through
+broadcast. Keep `isCurrent` bound to the selected owner and the
 trusted agent channel for the lifetime of the operation. Back
 `createAgentGrantNonceStore` with a durable atomic store. Back
 `createAgentGrantIssueJournal` with a separate authenticated, encrypted durable

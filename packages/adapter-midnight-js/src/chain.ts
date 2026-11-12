@@ -19,6 +19,7 @@ import type {
   JubjubPureCircuits,
   Chain,
   PinnedChain,
+  DeadlineFencedGrantIssuePort,
   P256GrantSpendReceiptStore,
   FeeSponsor,
   GrantIssueSponsorPort,
@@ -208,6 +209,37 @@ export function createMidnightChain(opts: MidnightChainOptions): PinnedChain {
     },
     get bindingId() {
       return network.bindingId;
+    },
+  };
+}
+
+/** A direct agent issue must use the private sponsor path through final broadcast. */
+export function createDeadlineFencedGrantIssueChain(
+  opts: MidnightChainOptions & { readonly grantIssueSponsor: GrantIssueSponsorPort },
+): PinnedChain & DeadlineFencedGrantIssuePort {
+  if (
+    typeof opts.grantIssueSponsor?.execute !== 'function' ||
+    opts.network.networkId !== 'undeployed' ||
+    opts.network.bindingId !== 'acc-s3r1.1'
+  )
+    throw new PassportConnectorError(
+      'BindingUnsupported',
+      'Deadline-fenced issue requires the private acc-s3r1.1 sponsor on undeployed.',
+    );
+  const chain = createMidnightChain(opts);
+  return {
+    ...chain,
+    async submitDeadlineFencedGrantIssue(request) {
+      if (
+        request.circuit !== 'issue_grant_with_jubjub' ||
+        !Number.isSafeInteger(request.mutation?.validUntilSeconds) ||
+        request.mutation.validUntilSeconds < 0
+      )
+        throw new PassportConnectorError(
+          'BindingUnsupported',
+          'Deadline-fenced dispatch requires an original JubJub issue with a deadline.',
+        );
+      return chain.call(request);
     },
   };
 }

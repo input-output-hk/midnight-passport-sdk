@@ -140,8 +140,11 @@ or unsupported scope are refused.
 ### Issue and recover the original agent grant
 
 Call `issueAgentJubjubGrant` with the original wire packet and an active
-JubJub owner route. The host supplies fresh owner approval, a pinned chain
-and grant source, and two durable stores:
+JubJub owner route. The host supplies fresh owner approval, a pinned grant
+source and a deadline-fenced chain. On standalone, use
+`createDeadlineFencedGrantIssueChain` from `mn-passport-adapter-midnight-js`
+with the private grant sponsor. A custom dispatcher must enforce the deadline
+through final broadcast. Supply two durable stores:
 
 | Store | Retain |
 | --- | --- |
@@ -163,7 +166,8 @@ It can recover a lost response after the request deadline while the grant
 is still live. A second request with the same nonce cannot submit again.
 
 Generated ACC tests cover issuance, a concurrent replay, response loss and
-recovery, and refusal after expiry or replacement. This source preview
+recovery, and refusal after expiry. A synthetic ledger observation checks
+that a different issuance nonce cannot recover the old opening. This source preview
 stages owner bookkeeping for later publication. Native agent spending,
 P-256 owner composition and vault or OWS integration still need
 qualification or implementation.
