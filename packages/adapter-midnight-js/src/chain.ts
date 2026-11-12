@@ -271,6 +271,7 @@ function createChain(opts: MidnightChainOptions): Chain {
   const zkConfigProvider = new FetchZkConfigProvider<string>(network.artefactUrl, {
     verify: 'require',
     expectedManifestHash: network.manifestSha256.toLowerCase(),
+    fetchFunc: (input, init) => globalThis.fetch(input, init),
   });
 
   const issue = configureGrantIssue(opts, unshieldedContract, {

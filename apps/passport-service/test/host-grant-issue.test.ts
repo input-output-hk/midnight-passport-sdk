@@ -15,11 +15,10 @@ import {
   type HostMutationIdentity,
 } from '@input-output-hk/mn-passport-service';
 import { createMidnightChain } from '../../../packages/adapter-midnight-js/dist/index.js';
-import { matchesGrantProofTranscript } from '../../../packages/adapter-midnight-js/dist/grant-proof-transcript.js';
-import { singleContractCall } from '../../../packages/adapter-midnight-js/dist/single-contract-call.js';
 import * as binding from '../../../packages/contract/generated/acc-s3r1.1/index.js';
 import { remoteHostMutationPorts } from '../../../packages/adapter-service/dist/index.js';
 import { createReferenceHostDriver } from '../src/host-driver.ts';
+import { balanceHostGrantIssue, readHostGrantIssueRequest } from '../src/host-grant-issue.ts';
 import type { ReferenceHostRuntime } from '../src/reference-runtime.ts';
 
 const address = 'ab'.repeat(32);
@@ -33,13 +32,13 @@ const pins = {
   manifestSha256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   scheme: 'jubjub-schnorr' as const,
 };
-const { files } = JSON.parse(
+const { files, manifest } = JSON.parse(
   gunzipSync(
     await readFile(
       new URL('../../../packages/contract/resources/acc-s3r1.1.zkir.json.gz', import.meta.url),
     ),
   ).toString(),
-) as { files: Record<string, string> };
+) as { files: Record<string, string>; manifest: string };
 const resource = (name: string) => Buffer.from(files[name] ?? '', 'base64');
 const proving = {
   check: async () => [],
@@ -134,7 +133,7 @@ function runtime(state: Ledger.ContractState): ReferenceHostRuntime {
   };
 }
 
-test('grant proof replay accepts metered noops and rejects a changed ledger operation or expiry', async () => {
+test('grant handoff accepts metered noops with the pinned verifier and rejects changed operations or expiry', async (t) => {
   const now = Date.now();
   const ttl = new Date(now + 3_600_000);
   const context = new Ledger.QueryContext(
@@ -153,27 +152,139 @@ test('grant proof replay accepts metered noops and rejects a changed ledger oper
       { ...proving, check: async () => [3n, undefined, 7n, undefined, 1n] },
       Ledger.CostModel.initialCostModel(),
     );
-  const matches = (tx: Awaited<ReturnType<typeof prove>>) =>
-    matchesGrantProofTranscript(
-      original,
-      singleContractCall(tx, address, circuit),
-      tx.eraseProofs().serialize(),
-      address,
-      circuit,
-      async () => resource('keys/issue_grant_with_jubjub.verifier'),
-    );
   const proved = await prove(original);
   assert.notDeepEqual(original.eraseProofs().serialize(), proved.eraseProofs().serialize());
-  assert.equal(await matches(proved), true);
+  let returned = proved;
+  let dispatches = 0;
+  let manifestReads = 0;
+  let verifierReads = 0;
+  t.mock.method(globalThis, 'fetch', async function (this: unknown, url: string) {
+    assert.equal(this, globalThis, 'Fetch requires its global receiver in browsers');
+    switch (new URL(url).pathname) {
+      case '/v1/zk/acc-s3r1.1/compiler/contract-manifest.json':
+        manifestReads++;
+        return new Response(manifest);
+      case '/v1/zk/acc-s3r1.1/keys/issue_grant_with_jubjub.verifier':
+        verifierReads++;
+        return new Response(new Uint8Array(resource('keys/issue_grant_with_jubjub.verifier')));
+      default:
+        return unused();
+    }
+  });
+  const chain = issueChain(
+    original,
+    {
+      async proveTx(bytes) {
+        assert.deepEqual(bytes, original.serialize());
+        return { tx: returned.serialize(), provenance: 'remote' };
+      },
+    },
+    {
+      async execute(bytes, request) {
+        dispatches++;
+        assert.deepEqual(bytes, proved.serialize());
+        assert.equal(request.requestId, requestId);
+        assert.equal(request.intentSha256, intentSha256);
+        return { txHash: 'cd'.repeat(32), submissionId: 'original' };
+      },
+    },
+  );
+  const request = { address, circuit, args: [], mutation: { requestId, intentSha256 } };
+  assert.deepEqual(await chain.call(request), { txHash: 'cd'.repeat(32) });
+  assert.deepEqual([dispatches, manifestReads, verifierReads], [1, 1, 1]);
   const changed = unprovenCall(circuit, commitment, false, ttl, {
     ...transcript,
     program: [transcript.program[0]!, 'new'],
   });
-  assert.equal(await matches(await prove(changed)), false);
+  returned = await prove(changed);
+  await assert.rejects(chain.call(request), { code: 'MutationUnsettled' });
   const [segment, intent] = [...proved.intents!][0]!;
   intent.ttl = new Date(now + 3_660_000);
   proved.intents = new Map([[segment, intent]]);
-  assert.equal(await matches(proved), false);
+  returned = proved;
+  await assert.rejects(chain.call(request), { code: 'MutationUnsettled' });
+  assert.equal(dispatches, 1);
+});
+
+function dustFeeIntent(now: Date, ttl: Date) {
+  const secret = Ledger.DustSecretKey.fromBigint(11n);
+  try {
+    const owner = secret.publicKey;
+    const backingNight = '22'.repeat(32);
+    const coin = {
+      initialValue: 1_000_000_000n,
+      owner,
+      nonce: 1n,
+      seq: 0,
+      ctime: new Date(now.getTime() - 60_000),
+      backingNight,
+      mtIndex: 0n,
+    };
+    const generation = { value: 10_000_000_000n, owner, nonce: backingNight, dtime: undefined };
+    const wallet = new Ledger.DustLocalState(Ledger.LedgerParameters.initialParameters().dust)
+      .insertGenerationInfo(0n, generation, backingNight)
+      .insertCommitment(0n, coin, true)
+      .addUtxo(Ledger.dustNullifier(coin, secret), coin);
+    const [, spend] = wallet.spend(secret, coin, 100n, now);
+    const fee = Ledger.Intent.new(ttl);
+    fee.dustActions = new Ledger.DustActions('signature', 'pre-proof', now, [spend], []);
+    return fee;
+  } finally {
+    secret.clear();
+  }
+}
+
+test('grant sponsor retains the owner expiry and rejects an overlong DUST fee intent', async (t) => {
+  const now = new Date(Math.floor(Date.now() / 1000) * 1000);
+  t.mock.timers.enable({ apis: ['Date'], now: now.getTime() });
+  const ownerExpiry = new Date(now.getTime() + 3_600_000);
+  const proved = await provedCall(circuit, undefined, false, ownerExpiry);
+  const [ownerSegment] = [...proved.intents!.keys()];
+  const feeSegment = ownerSegment === 1 ? 2 : 1;
+  const balance = async (ttl: Date) => {
+    const fee = Ledger.Transaction.fromParts(pins.networkId).addIntent(
+      { tag: 'specific', value: feeSegment },
+      dustFeeIntent(now, ttl),
+    );
+    return proved
+      .bind()
+      .merge((await fee.prove(proving, Ledger.CostModel.initialCostModel())).bind());
+  };
+  const feeExpiry = new Date(now.getTime() + 45_000);
+  let result = await balance(feeExpiry);
+  const r = runtime(pinnedState());
+  const request = readHostGrantIssueRequest({
+    kind: 'grant-issue-v1',
+    address,
+    circuit,
+    requestId,
+    tx: Buffer.from(proved.serialize()).toString('hex'),
+  });
+  const bound = {
+    ...r,
+    providers: {
+      ...r.providers,
+      walletProvider: {
+        ...r.providers.walletProvider,
+        async balanceTx(_transaction: unknown, ttl?: Date) {
+          assert.deepEqual(ttl, feeExpiry);
+          return { version: 'v9' as const, tx: result };
+        },
+      },
+    },
+  };
+  const original = await balanceHostGrantIssue(bound, request);
+  const exact = Ledger.Transaction.deserialize(
+    'signature',
+    'proof',
+    'binding',
+    Buffer.from(original.tx, 'hex'),
+  );
+  assert.deepEqual(exact.intents?.get(ownerSegment!)?.ttl, ownerExpiry);
+  assert.deepEqual(exact.intents?.get(feeSegment)?.ttl, feeExpiry);
+  assert.equal(exact.intents?.get(feeSegment)?.dustActions?.spends.length, 1);
+  result = await balance(new Date(now.getTime() + 46_000));
+  await assert.rejects(balanceHostGrantIssue(bound, request));
 });
 
 test('grant sponsor only admits the original proved owner call and rejects a wallet substitution', async () => {

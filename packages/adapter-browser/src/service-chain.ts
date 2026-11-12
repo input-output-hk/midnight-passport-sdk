@@ -259,6 +259,7 @@ export function createServiceChain(opts: {
     zkConfigProvider: new FetchZkConfigProvider<string>(config.zkBaseUrl, {
       verify: 'require',
       expectedManifestHash: pin,
+      fetchFunc: (input, init) => globalThis.fetch(input, init),
     }),
     // The proving, wallet and submit seams are made per call, below.
   };
