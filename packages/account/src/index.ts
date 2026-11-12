@@ -14,6 +14,7 @@ export type {
 export * from './shielded-withdrawal-recovery.js';
 export { createShieldedBackfillJournal } from './shielded-backfill-journal.js';
 export type {
+  ShieldedBackfillContinuation,
   ShieldedBackfillJournal,
   ShieldedBackfillRecord,
   ShieldedBackfillSlot,

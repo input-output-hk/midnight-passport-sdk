@@ -10,6 +10,7 @@ import {
   createShieldedBackfillJournal,
   mutationDigest,
   recoverShieldedBackfill,
+  resumeShieldedBackfill,
 } from '../packages/account/dist/index.js';
 import { AmountSchema, NetworkIdSchema } from '../packages/account/dist/validation.js';
 import { deriveMidnightContractCoinCommitment } from '../packages/adapter-midnight-js/dist/index.js';
@@ -157,7 +158,7 @@ async function originalWithdrawal(sim, owner) {
 }
 
 for (const arm of /** @type {const} */ (['p256', 'jubjub'])) {
-  test(`durable ${arm} change backfill recovers the original append after a lost reply`, async (t) => {
+  test(`durable ${arm} change backfill resumes the original after restart and recovers a lost reply`, async (t) => {
     const owner = simulationDevice(arm);
     let viewingKey = x25519.keygen();
     const sim = await AccSimulator.create({ owner, encKey: viewingKey.publicKey });
@@ -168,9 +169,12 @@ for (const arm of /** @type {const} */ (['p256', 'jubjub'])) {
     const store = protectedMutationByteStore(join(dir, 'records'), storageKey);
     t.after(() => store.close());
     const fence = fileMutationByteStore(join(dir, 'fence'));
-    const journal = createShieldedBackfillJournal(store, fence);
+    let journal = createShieldedBackfillJournal(store, fence);
     let signatures = 0;
     let submissions = 0;
+    let unavailable = true;
+    /** @type {string | undefined} */
+    let originalAppendId;
     let seals = 0;
     let unspent = true;
     let rotate = arm === 'p256';
@@ -251,6 +255,11 @@ for (const arm of /** @type {const} */ (['p256', 'jubjub'])) {
           assert.equal(record?.appendId, call.mutation.requestId);
           assert.equal(mutationDigest(record), call.mutation.intentSha256);
           assert.equal(record?.callArgsSha256, mutationDigest(call.args));
+          if (unavailable) {
+            originalAppendId = call.mutation.requestId;
+            throw new Error('synthetic failure before host dispatch');
+          }
+          assert.equal(call.mutation.requestId, originalAppendId);
           submissions++;
           // A permissionless deposit can advance the inbox without consuming the owner's nonce.
           await sim.call(
@@ -290,7 +299,129 @@ for (const arm of /** @type {const} */ (['p256', 'jubjub'])) {
       assert.deepEqual([signatures, seals, submissions], [1, 1, 0]);
     }
     await assert.rejects(appendShieldedChange(requestId, ports), { code: 'MutationUnsettled' });
+    assert.ok(originalAppendId);
     const completedCounts = arm === 'p256' ? [2, 2, 1] : [1, 1, 1];
+    assert.deepEqual([signatures, seals, submissions], [...completedCounts.slice(0, 2), 0]);
+    store.close();
+    const restored = protectedMutationByteStore(join(dir, 'records'), storageKey);
+    t.after(() => restored.close());
+    const restarted = createShieldedBackfillJournal(restored, fence);
+    journal = restarted;
+    const readOnly = {
+      withdrawal: original.withdrawal,
+      chain: ports.chain,
+      journal: restarted,
+      appendFinality: ports.appendFinality,
+    };
+    /** @type {import('../packages/account/dist/index.js').ShieldedBackfillResumePorts} */
+    const resumePorts = {
+      ...readOnly,
+      isUnspent: ports.isUnspent,
+      async reviewResume(review) {
+        assert.equal(review.appendId, originalAppendId);
+        assert.equal(review.account, sim.address);
+        assert.equal(review.networkId, networkId);
+        assert.equal(review.bindingId, bindingId);
+        assert.equal(review.color, hex(original.change.color));
+        assert.equal(review.amount, original.change.value.toString());
+        assert.equal(review.withdrawalTxHash, withdrawalTxHash);
+        return true;
+      },
+      async resumeOriginalAppend({ original: retained, args, intentSha256 }) {
+        assert.equal(retained.appendId, originalAppendId);
+        assert.equal(mutationDigest(retained), intentSha256);
+        return ports.chain.call({
+          address: retained.account,
+          circuit: retained.circuit,
+          args,
+          mutation: { requestId: retained.appendId, intentSha256 },
+        });
+      },
+    };
+    unavailable = false;
+    assert.deepEqual(
+      await resumeShieldedBackfill(requestId, {
+        ...resumePorts,
+        journal: { read: restarted.read, reserve: restarted.reserve },
+        reviewResume: async () => assert.fail('A legacy journal cannot resume.'),
+      }),
+      { kind: 'unknown' },
+    );
+    const resumeSlot = { networkId, account: sim.address, commitment: original.changeCommitment };
+    const continuation = await restarted.readContinuation?.(resumeSlot);
+    assert.ok(continuation);
+    await assert.rejects(
+      resumeShieldedBackfill(requestId, {
+        ...resumePorts,
+        journal: {
+          ...restarted,
+          readContinuation: async () => ({ ...continuation, signedArgs: '[]' }),
+        },
+        reviewResume: async () =>
+          assert.fail('Changed signed arguments must be refused before review.'),
+      }),
+      { code: 'MutationUnsettled' },
+    );
+
+    await assert.rejects(
+      resumeShieldedBackfill(requestId, {
+        ...resumePorts,
+        reviewResume: async () => false,
+      }),
+      { code: 'UserCancelled' },
+    );
+    const controller = new AbortController();
+    const options = { signal: controller.signal };
+    await assert.rejects(
+      resumeShieldedBackfill(
+        requestId,
+        {
+          ...resumePorts,
+          async reviewResume() {
+            options.signal = new AbortController().signal;
+            controller.abort();
+            return true;
+          },
+          resumeOriginalAppend: async () =>
+            assert.fail('Aborting the original signal prevents dispatch.'),
+        },
+        options,
+      ),
+      { code: 'Aborted' },
+    );
+    const expectedView = await ports.chain.readAccount(sim.address);
+    assert.ok(expectedView);
+    for (const delta of [
+      { encKey: new Uint8Array(32).fill(42) },
+      { authNonce: expectedView.authNonce + 1n },
+      { deviceEpoch: expectedView.deviceEpoch + 1n },
+      { hasEntry: () => false },
+      { inboxEntries: [...(expectedView.inboxEntries ?? []), new Uint8Array(192)] },
+    ]) {
+      assert.deepEqual(
+        await resumeShieldedBackfill(requestId, {
+          ...resumePorts,
+          chain: { ...ports.chain, readAccount: async () => ({ ...expectedView, ...delta }) },
+        }),
+        { kind: 'unknown' },
+      );
+    }
+    assert.deepEqual(
+      await resumeShieldedBackfill(requestId, {
+        ...resumePorts,
+        isUnspent: async () => false,
+      }),
+      { kind: 'unknown' },
+    );
+    assert.equal(submissions, 0);
+    const confirmed = {
+      kind: 'confirmed',
+      requestId,
+      appendId: originalAppendId,
+      txHash: appendTxHash,
+      inboxIndex: 2,
+    };
+    assert.deepEqual(await resumeShieldedBackfill(requestId, resumePorts), confirmed);
     assert.deepEqual([signatures, seals, submissions], completedCounts);
     assert.ok(seen);
     assert.equal(seen.inboxIndex, 2);
@@ -298,23 +429,29 @@ for (const arm of /** @type {const} */ (['p256', 'jubjub'])) {
     assert.deepEqual(await openInboxCoin(viewingKey.secretKey, entry), original.change);
     assert.deepEqual(sim.lastEffects?.claimedShieldedReceives, []);
     assert.deepEqual(sim.lastEffects?.claimedNullifiers, []);
-    store.close();
-    const restored = protectedMutationByteStore(join(dir, 'records'), storageKey);
-    t.after(() => restored.close());
-    const restarted = createShieldedBackfillJournal(restored, fence);
-    const readOnly = {
-      withdrawal: original.withdrawal,
-      chain: ports.chain,
-      journal: restarted,
-      appendFinality: ports.appendFinality,
-    };
-    assert.deepEqual(await recoverShieldedBackfill(requestId, readOnly), {
-      kind: 'confirmed',
-      requestId,
-      appendId: seen.appendId,
-      txHash: appendTxHash,
-      inboxIndex: 2,
-    });
+    assert.deepEqual(await recoverShieldedBackfill(requestId, readOnly), confirmed);
+    const legacyStore = protectedMutationByteStore(join(dir, 'legacy'), storageKey);
+    t.after(() => legacyStore.close());
+    const legacy = createShieldedBackfillJournal(
+      legacyStore,
+      fileMutationByteStore(join(dir, 'legacy-fence')),
+    );
+    const originalRecord = await restarted.read(resumeSlot);
+    assert.ok(originalRecord);
+    assert.equal('signedArgs' in originalRecord, false);
+    assert.equal(await legacy.reserve(originalRecord), true);
+    assert.equal(await legacy.readContinuation?.(resumeSlot), undefined);
+    assert.deepEqual(
+      await recoverShieldedBackfill(requestId, { ...readOnly, journal: legacy }),
+      confirmed,
+    );
+    assert.deepEqual(
+      await resumeShieldedBackfill(requestId, {
+        ...resumePorts,
+        reviewResume: async () => assert.fail('A finalized append is read only.'),
+      }),
+      confirmed,
+    );
     seen = { ...seen, inboxIndex: 1 };
     assert.deepEqual(await recoverShieldedBackfill(requestId, readOnly), { kind: 'unknown' });
     await assert.rejects(appendShieldedChange(requestId, { ...ports, journal: restarted }), {

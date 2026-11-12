@@ -203,6 +203,15 @@ test('host forwards once and recovers the original finalized append at its execu
     (await receipts.read(mismatchedAck.appendId))?.identity.identifiers,
     identifiers,
   );
+  await assert.rejects(
+    forwardHostShieldedAppend(input, {
+      ...runtime,
+      finalize: async () => {
+        throw new Error('Injected prover outage before staging');
+      },
+    }),
+    /before staging/,
+  );
   assert.equal(await receipts.read(original.appendId), undefined);
   assert.deepEqual(
     await Promise.all([
@@ -225,7 +234,11 @@ test('host forwards once and recovers the original finalized append at its execu
 
   const restarted = createHostShieldedAppendReceipts(fileMutationByteStore(root));
   assert.equal(
-    await forwardHostShieldedAppend(input, { ...runtime, receipts: restarted }),
+    await forwardHostShieldedAppend(input, {
+      ...runtime,
+      receipts: restarted,
+      build: async () => assert.fail('A staged original must be observed without another build.'),
+    }),
     undefined,
   );
   const query = { appendId: original.appendId, intentSha256 };

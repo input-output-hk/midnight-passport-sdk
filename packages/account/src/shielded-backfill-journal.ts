@@ -1,8 +1,9 @@
 import { utf8ToBytes } from '@noble/hashes/utils.js';
 import { z } from 'zod';
 import { PassportConnectorError } from './errors.js';
-import { mutationDigest } from './mutation-codec.js';
-import type { MutationByteStore } from './mutation-types.js';
+import { fromHex, toHex } from './codec.js';
+import { decodeMutationValue, mutationDigest } from './mutation-codec.js';
+import type { MutationByteStore, MutationValue } from './mutation-types.js';
 import { shieldedEffectHex } from './shielded-withdrawal-journal.js';
 import { NetworkIdSchema } from './validation.js';
 
@@ -28,13 +29,42 @@ const recordSchema = slotSchema
   })
   .readonly();
 
+const uint64 = z
+  .string()
+  .regex(/^(0|[1-9][0-9]{0,19})$/)
+  .refine((value) => value.length < 20 || value <= '18446744073709551615');
+const continuationSchema = z
+  .strictObject({
+    intentSha256: hex32,
+    signedArgs: z.string().min(1).max(4096),
+    deviceEntry: hex32,
+    deviceEpoch: uint64,
+    authNonce: uint64,
+  })
+  .readonly();
+const resumableRecord = z
+  .strictObject({
+    version: z.literal(2),
+    record: recordSchema,
+    continuation: continuationSchema,
+  })
+  .readonly();
+const storedSchema = z.union([recordSchema, resumableRecord]);
+const maxRecordBytes = 8192;
+
+export type ShieldedBackfillContinuation = z.input<typeof continuationSchema>;
 export type ShieldedBackfillSlot = z.input<typeof slotSchema>;
 export type ShieldedBackfillRecord = z.input<typeof recordSchema>;
 
 export interface ShieldedBackfillJournal {
   read(slot: ShieldedBackfillSlot): Promise<ShieldedBackfillRecord | undefined>;
   /** Atomically reserve the original append. A failed or interrupted reserve never authorizes retry. */
-  reserve(record: ShieldedBackfillRecord): Promise<boolean>;
+  reserve(
+    record: ShieldedBackfillRecord,
+    continuation?: ShieldedBackfillContinuation,
+  ): Promise<boolean>;
+  /** Read signed arguments only from protected storage and a matching independent fence. */
+  readContinuation?(slot: ShieldedBackfillSlot): Promise<ShieldedBackfillContinuation | undefined>;
 }
 
 export function backfillUnsettled(): never {
@@ -56,44 +86,87 @@ function keys(slot: ShieldedBackfillSlot) {
   return { record: key('shielded-backfill'), fence: key('shielded-backfill-fence') };
 }
 
+export function readBackfillArguments(
+  record: ShieldedBackfillRecord,
+  input: ShieldedBackfillContinuation,
+): readonly unknown[] {
+  try {
+    const continuation = continuationSchema.parse(input);
+    const args = decodeMutationValue(JSON.parse(continuation.signedArgs) as MutationValue);
+    if (
+      continuation.intentSha256 !== mutationDigest(record) ||
+      !Array.isArray(args) ||
+      args.length !== (record.circuit === 'append_inbox_with_p256' ? 2 : 6) ||
+      !(args[0] instanceof Uint8Array) ||
+      toHex(args[0]) !== record.entry ||
+      mutationDigest(args) !== record.callArgsSha256
+    )
+      return backfillUnsettled();
+    return args;
+  } catch {
+    return backfillUnsettled();
+  }
+}
+
 /** Keep the encrypted record and opaque change marker in independent, crash-durable CAS stores. */
 export function createShieldedBackfillJournal(
   protectedStore: MutationByteStore,
   fence: MutationByteStore,
 ): ShieldedBackfillJournal {
   if (protectedStore === fence) return backfillUnsettled();
+  async function readStored(slot: ShieldedBackfillSlot) {
+    const key = keys(slot);
+    const stored = await protectedStore.read(key.record);
+    if (!stored) {
+      if (await fence.read(key.fence)) return backfillUnsettled();
+      return undefined;
+    }
+    try {
+      if (stored.revision !== 0 || stored.bytes.length > maxRecordBytes) return backfillUnsettled();
+      const value = storedSchema.parse(JSON.parse(String.fromCharCode(...stored.bytes)));
+      const record = value.version === 2 ? value.record : value;
+      if (keys(record).record !== key.record) return backfillUnsettled();
+      return value;
+    } catch {
+      return backfillUnsettled();
+    } finally {
+      stored.bytes.fill(0);
+    }
+  }
   return {
     async read(slot) {
-      const key = keys(slot);
-      const stored = await protectedStore.read(key.record);
-      if (!stored) {
-        if (await fence.read(key.fence)) return backfillUnsettled();
-        return undefined;
-      }
-      try {
-        if (stored.revision !== 0 || stored.bytes.length > 4096) return backfillUnsettled();
-        const value = recordSchema.parse(JSON.parse(String.fromCharCode(...stored.bytes)));
-        if (keys(value).record !== key.record) return backfillUnsettled();
-        return value;
-      } catch {
-        return backfillUnsettled();
-      } finally {
-        stored.bytes.fill(0);
-      }
+      const stored = await readStored(slot);
+      return stored?.version === 2 ? stored.record : stored;
     },
-    async reserve(record) {
-      const parsed = recordSchema.safeParse(record);
-      if (!parsed.success) return backfillUnsettled();
-      const key = keys(parsed.data);
+    async readContinuation(slot) {
+      const stored = await readStored(slot);
+      if (stored?.version !== 2) return undefined;
+      const marker = await fence.read(keys(slot).fence);
       if (
-        !(await fence.compareAndSwap(key.fence, undefined, {
-          revision: 0,
-          bytes: Uint8Array.of(1),
-        }))
+        marker?.revision !== 0 ||
+        marker.bytes.length !== 32 ||
+        toHex(marker.bytes) !== mutationDigest(stored)
       )
-        return false;
-      const bytes = utf8ToBytes(JSON.stringify(parsed.data));
+        return backfillUnsettled();
+      return stored.continuation;
+    },
+    async reserve(record, continuation) {
+      const original = parseBackfillRecord(record);
+      const parsed = resumableRecord.safeParse({ version: 2, record: original, continuation });
+      if (continuation !== undefined && !parsed.success) return backfillUnsettled();
+      const stored = parsed.success ? parsed.data : original;
+      if (stored.version === 2) readBackfillArguments(stored.record, stored.continuation);
+      const key = keys(original);
+      const bytes = utf8ToBytes(JSON.stringify(stored));
       try {
+        if (bytes.length > maxRecordBytes) return backfillUnsettled();
+        if (
+          !(await fence.compareAndSwap(key.fence, undefined, {
+            revision: 0,
+            bytes: stored.version === 2 ? fromHex(mutationDigest(stored)) : Uint8Array.of(1),
+          }))
+        )
+          return false;
         return await protectedStore.compareAndSwap(key.record, undefined, { revision: 0, bytes });
       } finally {
         bytes.fill(0);

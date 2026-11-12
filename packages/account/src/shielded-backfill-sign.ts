@@ -21,13 +21,11 @@ function notOwner(): never {
 
 const samePoint = (a: CurvePoint, b: CurvePoint) => a.x === b.x && a.y === b.y;
 
-function findCounter(
-  view: AccLedgerView,
-  derive: (counter: bigint) => Uint8Array,
-  limit: bigint,
-): bigint {
-  for (let counter = 0n; counter < limit; counter++)
-    if (view.hasEntry(derive(counter))) return counter;
+function findCounter(view: AccLedgerView, derive: (counter: bigint) => Uint8Array, limit: bigint) {
+  for (let counter = 0n; counter < limit; counter++) {
+    const deviceEntry = derive(counter);
+    if (view.hasEntry(deviceEntry)) return { counter, deviceEntry };
+  }
   return notOwner();
 }
 
@@ -61,7 +59,7 @@ export async function signShieldedBackfill(
     )
       return notOwner();
     const pk = p256(selected);
-    const counter = findCounter(
+    const { counter, deviceEntry } = findCounter(
       view,
       (value) => pure.derive_device_entry_with_p256(self, pk, policy, view.deviceEpoch, value),
       64n,
@@ -85,6 +83,7 @@ export async function signShieldedBackfill(
       return notOwner();
     return {
       circuit,
+      deviceEntry,
       args: [
         entry(),
         {
@@ -99,7 +98,7 @@ export async function signShieldedBackfill(
   }
 
   if (owner.scheme !== 'jubjub-schnorr') return notOwner();
-  const counter = findCounter(
+  const { counter, deviceEntry } = findCounter(
     view,
     (value) => pure.derive_device_entry_with_jubjub(self, selected, view.deviceEpoch, value),
     JUBJUB_READER_SCAN_LIMIT,
@@ -123,6 +122,7 @@ export async function signShieldedBackfill(
     return notOwner();
   return {
     circuit,
+    deviceEntry,
     args: [entry(), selected, counter, { ...signed.sigR }, signed.sigS, signed.grindNonce],
   };
 }

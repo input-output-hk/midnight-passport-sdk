@@ -4,7 +4,7 @@ import { randomBytes } from '@noble/hashes/utils.js';
 import { z } from 'zod';
 import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
-import { mutationDigest } from './mutation-codec.js';
+import { encodeMutationValue, mutationDigest } from './mutation-codec.js';
 import type {
   AccountHint,
   Authoriser,
@@ -16,6 +16,7 @@ import {
   backfillCircuit,
   backfillUnsettled,
   parseBackfillRecord,
+  readBackfillArguments,
   type ShieldedBackfillJournal,
   type ShieldedBackfillRecord,
 } from './shielded-backfill-journal.js';
@@ -58,6 +59,29 @@ export interface ShieldedBackfillRecoveryPorts {
   readonly appendFinality: ShieldedBackfillFinalitySource;
 }
 
+type CheckUnspentChange = (account: string, coin: QualifiedShieldedCoin) => Promise<boolean>;
+
+export interface ShieldedBackfillResumePorts extends ShieldedBackfillRecoveryPorts {
+  readonly isUnspent: CheckUnspentChange;
+  readonly reviewResume: (input: {
+    readonly networkId: string;
+    readonly bindingId: 'acc-s3r1.1';
+    readonly account: string;
+    readonly color: string;
+    readonly amount: string;
+    readonly withdrawalTxHash: string;
+    readonly appendId: string;
+    readonly intentSha256: string;
+  }) => Promise<boolean>;
+  /** The same host dispatch store must fence both the original and its resumption. */
+  readonly resumeOriginalAppend: (input: {
+    readonly original: ShieldedBackfillRecord;
+    readonly intentSha256: string;
+    readonly args: readonly unknown[];
+    readonly signal?: FlowOptions['signal'];
+  }) => Promise<unknown>;
+}
+
 export interface ShieldedBackfillPorts extends ShieldedBackfillRecoveryPorts {
   readonly chain: PinnedChain;
   readonly owner: AccountHint;
@@ -65,7 +89,7 @@ export interface ShieldedBackfillPorts extends ShieldedBackfillRecoveryPorts {
   readonly pure: ShieldedBackfillPure;
   readonly sealCoin: (encKey: Uint8Array, coin: ShieldedCoin) => Promise<Uint8Array>;
   /** Confirm this exact qualified ACC output remains unspent using current chain evidence. */
-  readonly isUnspent: (account: string, coin: QualifiedShieldedCoin) => Promise<boolean>;
+  readonly isUnspent: CheckUnspentChange;
   readonly review: (input: {
     readonly account: string;
     readonly withdrawalTxHash: string;
@@ -158,23 +182,94 @@ async function observe(
   };
 }
 
+async function retainedAppend(
+  { slot, change }: NonNullable<Awaited<ReturnType<typeof originalChange>>>,
+  journal: ShieldedBackfillJournal,
+) {
+  const value = await journal.read(slot);
+  if (!value) return undefined;
+  const record = parseBackfillRecord(value);
+  if (
+    record.networkId !== slot.networkId ||
+    record.account !== slot.account ||
+    record.commitment !== slot.commitment ||
+    record.withdrawalId !== change.requestId ||
+    record.withdrawalTxHash !== change.txHash
+  )
+    return undefined;
+  return record;
+}
+
 /** Reconcile the original append without a signer, sealer or submission port. */
 export async function recoverShieldedBackfill(
   requestId: string,
   ports: ShieldedBackfillRecoveryPorts,
 ): Promise<ShieldedBackfillRecovery> {
   const original = await originalChange(requestId, ports);
+  const record = original && (await retainedAppend(original, ports.journal));
+  return record ? observe(record, ports) : { kind: 'unknown' };
+}
+
+/** Resume the approved original through the same host dispatch fence. */
+export async function resumeShieldedBackfill(
+  requestId: string,
+  ports: ShieldedBackfillResumePorts,
+  options: Pick<FlowOptions, 'signal'> = {},
+): Promise<ShieldedBackfillRecovery> {
+  const { signal } = options;
+  const flow = { ...(signal && { signal }) };
+  checkpoint(flow);
+  const original = await originalChange(requestId, ports);
   if (!original) return { kind: 'unknown' };
-  const { slot, change } = original;
-  const record = await ports.journal.read(slot);
+  const record = await retainedAppend(original, ports.journal);
+  if (!record) return { kind: 'unknown' };
+  const observed = await observe(record, ports);
+  if (observed.kind === 'confirmed') return observed;
+  const continuation = await ports.journal.readContinuation?.(original.slot);
+  if (!continuation) return { kind: 'unknown' };
+  const { deviceEpoch, authNonce, deviceEntry } = continuation;
+  const args = readBackfillArguments(record, continuation);
+  const { appendId, intentSha256 } = appendRequest(record);
+  const { account, withdrawalTxHash } = record;
+  checkpoint(flow);
   if (
-    !record ||
-    record.account !== slot.account ||
-    record.commitment !== slot.commitment ||
-    record.withdrawalId !== change.requestId ||
-    record.withdrawalTxHash !== change.txHash
+    !(await ports.reviewResume(
+      Object.freeze({
+        networkId: record.networkId,
+        bindingId: 'acc-s3r1.1',
+        account,
+        color: toHex(original.change.change.color),
+        amount: original.change.change.value.toString(),
+        withdrawalTxHash,
+        appendId,
+        intentSha256,
+      }),
+    ))
+  )
+    throw new PassportConnectorError('UserCancelled', 'Shielded backfill resume was declined.');
+  checkpoint(flow);
+  if (!(await ports.isUnspent(account, original.change.change))) return { kind: 'unknown' };
+  const current = await liveView(ports.chain, account);
+  if (
+    pins(ports) !== record.networkId ||
+    current.key !== record.encKey ||
+    current.count !== record.minInboxIndex ||
+    current.epoch.toString() !== deviceEpoch ||
+    current.nonce.toString() !== authNonce ||
+    !current.view.hasEntry(fromHex(deviceEntry))
   )
     return { kind: 'unknown' };
+  checkpoint(flow);
+  try {
+    await ports.resumeOriginalAppend({
+      original: record,
+      intentSha256,
+      args,
+      ...flow,
+    });
+  } catch {
+    // The original may have reached the host. Only observation can confirm it.
+  }
   return observe(record, ports);
 }
 
@@ -183,7 +278,7 @@ function checkpoint(options: FlowOptions) {
     throw new PassportConnectorError('Aborted', 'Shielded backfill cancelled.');
 }
 
-async function liveView(chain: ShieldedBackfillPorts['chain'], account: string) {
+async function liveView(chain: ShieldedBackfillRecoveryPorts['chain'], account: string) {
   const view = await chain.readAccount(account, { includeInbox: true, includeDevices: true });
   if (
     !view?.booted ||
@@ -288,7 +383,16 @@ export async function appendShieldedChange(
         minInboxIndex: first.count,
         callArgsSha256: mutationDigest(signed.args),
       });
-      if (!(await journal.reserve(record))) return backfillUnsettled();
+      if (
+        !(await journal.reserve(record, {
+          intentSha256: mutationDigest(record),
+          signedArgs: JSON.stringify(encodeMutationValue(signed.args)),
+          deviceEntry: toHex(signed.deviceEntry),
+          deviceEpoch: first.epoch.toString(),
+          authNonce: first.nonce.toString(),
+        }))
+      )
+        return backfillUnsettled();
       if (!(await ports.isUnspent(slot.account, coin()))) return backfillUnsettled();
       await recheck();
       const request = appendRequest(record);

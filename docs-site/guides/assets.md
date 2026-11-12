@@ -144,8 +144,22 @@ cannot prove cancellation through this operation. Use independent,
 crash-durable stores, and keep both on their current history. Restoring
 both stores to a snapshot from before dispatch can erase its evidence.
 
-Cancellation applies to the original withdrawal only. A shielded inbox
-append has its own request and fence.
+Cancellation applies to the original withdrawal. To continue a pending inbox
+append, use the source `resumeShieldedBackfill` operation with the original
+withdrawal ID and a host that uses the same durable append receipt store for
+initial and resumed dispatch. The protected account journal retains the
+original signed arguments. Its `read` method continues to expose the append
+identity without the signed arguments. Restrict `readContinuation` to the
+host that is authorized to resume the retained request.
+
+Resume first observes the original, then asks for explicit approval of the
+network, binding, account, asset and amount if it remains unresolved. It rechecks the unspent change, current viewing key, inbox
+count, device epoch, authorization nonce and owner entry before forwarding the
+same append ID and signed arguments. The host checks its receipt before
+building and can stage that ID only once. Recovery of an already finalized
+append needs only read access. Older records can still be recovered by
+observation. A changed account state or missing continuation leaves the
+original unresolved. Keep the original IDs and journals for reconciliation.
 
 Application contracts may call **into a deployed ACC** under the supported caller-bound design. That does not establish arbitrary ACC → other-contract calls. [See the implementation boundary](/architecture/standards).
 
