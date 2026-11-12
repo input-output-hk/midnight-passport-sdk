@@ -48,11 +48,18 @@ transaction, submitted once and matched the original bytes at canonical
 finality. The account recorded exactly one inbox append with the expected
 digest.
 
-The demo continues to use its configured proof service. Browser-owned fee
-assembly, real credentials, other circuits and browsers, and memory need
-separate checks. The fixture's transport observations describe this call path
-and its public artifact requests. A production privacy claim also requires
-a defined observation policy for chain, transport, browser and operator data.
+A follow-up isolated run used the Node wallet to select one DUST spend and
+prepare the balancing transaction. A Chromium worker computed the DUST proof.
+A separate worker refused a second ACC call in the fee slot, then bound and
+merged the original proved ACC and fee transactions. Node submitted the exact
+bytes produced by Chromium and checked them at finalized block 67. The ledger
+recorded one inbox append with the expected digest and one DUST spend.
+
+The demo continues to use its configured proof service. Browser wallet custody
+and DUST selection, real credentials, other circuits and browsers, and memory
+need separate checks. The fixture observations cover this call path. A
+production privacy claim also requires an observation policy for chain,
+transport, browser and operator data.
 [Browser proving qualification issue](https://github.com/input-output-hk/midnight-passport-sdk/issues/241)
 
 ## Fee sponsorship
