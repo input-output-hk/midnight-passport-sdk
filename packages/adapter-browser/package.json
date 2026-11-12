@@ -31,6 +31,10 @@
     "./worker-prover": {
       "types": "./dist/worker-prover.d.ts",
       "default": "./dist/worker-prover.js"
+    },
+    "./worker-proof-artifacts": {
+      "types": "./dist/worker-proof-artifacts.d.ts",
+      "default": "./dist/worker-proof-artifacts.js"
     }
   },
   "files": [

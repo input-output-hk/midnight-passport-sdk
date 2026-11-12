@@ -217,3 +217,11 @@ Use `contract.loadArtefact` for the pinned circuit material and independently
 pin the Ledger parameters and proving WASM. This profile proves ACC contract
 calls without DUST or shielded offers. Transaction construction, credentials,
 consent, fees and submission are owned by the host.
+
+For the key service's `/v1/zk/<bindingId>` endpoint, pass
+`createBrowserProofArtifacts` from `adapter-browser/worker-proof-artifacts` to
+the local engine as its key and parameter callbacks. Configure the manifest
+and circuit allowlist from the host's deployment configuration. The host
+also supplies each public parameter's URL, byte length and SHA-256. The engine
+must treat the cached bytes as read-only. The loader uses the packaged binding
+and requires HTTPS or loopback HTTP. It never sends the unproven transaction.

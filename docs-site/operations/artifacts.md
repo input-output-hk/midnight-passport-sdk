@@ -4,6 +4,24 @@ The `mn-passport-contract` package carries the generated `acc-s3r1.1` binding, c
 
 The application and operator must pin the manifest hash and artifact URL **independently** of the artifact server. `resolveBinding('acc-s3r1.1').manifestSha256` provides the packaged pin; a server's `/v1/config` can be checked against it. Public artifacts are not a reader, owner, viewing secret, wallet seed, proof witness, or authorization token.
 
+## Public artifacts for the browser proving worker
+
+The source candidate exports `createBrowserProofArtifacts` from
+`adapter-browser/worker-proof-artifacts`. Give its callbacks to the trusted
+local WASM prover inside the dedicated worker. Pin the binding manifest, circuit
+allowlist, and absolute `/v1/zk/<bindingId>` URL in the host. Pin each Ledger
+parameter URL, SHA-256 and byte size separately from the ACC manifest.
+
+The loader requests complete files using GET without credentials, referrer, or
+redirects. It bounds decoded response bytes and verifies the verifier key,
+binary ZKIR and prover key against the packaged binding. Unknown circuits and
+unexpected verifier hashes fail before a download. Configure allowed origins on
+the key service when serving cross-origin. The default 128 MiB limit applies per
+ACC file. Raising it for a larger prover key requires host memory qualification.
+The worker keeps the most recently loaded key set and parameter set in memory.
+Treat the verified byte arrays as read-only in the trusted proving engine.
+Pin the WASM build independently. [Worker integration](/guides/hosts#browser-worker-proving-in-the-source-candidate)
+
 For a source checkout with the Nix toolchain, the documented restore command is:
 
 ```sh
