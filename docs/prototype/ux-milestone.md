@@ -168,7 +168,8 @@ label, exact scope and source of the ACC address. The active P-256 or JubJub
 owner approves the exact signed slot. A lost response requires
 fresh owner approval before releasing the original opening. The direct holder
 API checks the returned scope and live grant before an injected signer is
-used. The demo continues to demonstrate the browser relay.
+used. A durable host retains the original withdrawal UUID for recovery. The
+demo continues to demonstrate the browser relay.
 
 The [reference app guide](../../apps/README.md#source-preview-browser-grant-relay)
 covers build pins, service routes, the pre-enrolled owner requirement and

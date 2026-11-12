@@ -84,4 +84,16 @@ export {
 } from './agent-grant-issue-journal.js';
 export type { AgentGrantIssueJournal, AgentGrantIssueRecord } from './agent-grant-issue-journal.js';
 export type { GrantedAgentJubjubScope } from './agent-grant-settlement.js';
-export * from './agent-grant-holder.js';
+export {
+  AgentGrantSpendUnsettled,
+  spendWithAgentJubjubGrant,
+  verifyAgentJubjubGrantResponse,
+} from './agent-grant-holder.js';
+export type {
+  AgentJubjubGrantIssuance,
+  AgentJubjubGrantResponseInput,
+  AgentJubjubGrantHolderPorts,
+  AgentJubjubGrantSpendInput,
+  AgentJubjubGrantSpendPorts,
+} from './agent-grant-holder.js';
+export * from './agent-grant-durable-spend.js';

@@ -4,6 +4,7 @@ import type { CreateAccountStep, PassportEvent } from './events.js';
 
 export const PASSPORT_NETWORK_UNDEPLOYED = 'undeployed';
 export const P256_GRANT_SPEND_CIRCUIT = 'withdraw_unshielded_with_grant_p256';
+export const AGENT_GRANT_SPEND_CIRCUIT = 'withdraw_unshielded_with_grant_jubjub';
 
 /** The authoriser arm an account's device key belongs to (#24). */
 export type AuthScheme = 'p256-webauthn' | 'jubjub-schnorr' | 'k256-ecdsa';

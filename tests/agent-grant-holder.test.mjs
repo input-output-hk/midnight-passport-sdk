@@ -1,13 +1,32 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { gunzipSync } from 'node:zlib';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import {
   AgentGrantSpendUnsettled,
+  createAgentGrantSpendJournal,
+  recoverAgentGrantSpend,
+  spendWithDurableAgentJubjubGrant,
   issueAgentJubjubGrant,
   spendWithAgentJubjubGrant,
   verifyAgentJubjubGrantResponse,
 } from '../packages/account/dist/index.js';
+import { selectGrantSpendDispatch } from '../packages/adapter-midnight-js/dist/p256-grant-submitter.js';
 import { recipeJubjubAuthoriser } from '../packages/keys/dist/index.js';
 import { encode, ownerFixture, packet, storage } from './fixtures/agent-grant-wire.mjs';
+
+import { barrier } from './fixtures/host-jobs.mjs';
+
+const ledger = await import(
+  pathToFileURL(
+    createRequire(new URL('../packages/adapter-midnight-js/package.json', import.meta.url)).resolve(
+      '@midnightntwrk/ledger-v9',
+    ),
+  ).href
+);
 
 /** @param {import('node:test').TestContext} t @param {{selectAccount?:boolean, cap?:string, arm?:'jubjub'|'p256'}} [options] */
 async function issued(t, options = {}) {
@@ -40,7 +59,7 @@ async function issued(t, options = {}) {
     nowSeconds: () => fixture.sim.now,
     pure: owner.pure,
   };
-  return { fixture, value, owner, requests, ports };
+  return { fixture, value, owner, requests, ports, stores };
 }
 
 /** @param {ReturnType<typeof recipeJubjubAuthoriser>} signer */
@@ -305,4 +324,283 @@ test('a generated ACC spend accepted before expiry retains its receipt after exp
     code: 'GrantScopeInvalid',
   });
   assert.deepEqual(agent.counts(), [1, 1]);
+});
+
+/** @param {string} account @param {string} color @param {string} recipient @param {bigint} amount */
+async function payoutFixture(account, color, recipient, amount) {
+  const packed = gunzipSync(
+    await readFile(
+      new URL('../packages/contract/resources/acc-s3r1.1.zkir.json.gz', import.meta.url),
+    ),
+  );
+  const { files } = JSON.parse(packed.toString());
+  const resource = (/** @type {string} */ key) => Buffer.from(files[key], 'base64');
+  const transcript = {
+    effects: {
+      claimedNullifiers: [],
+      claimedShieldedSpends: [],
+      claimedShieldedReceives: [],
+      claimedContractCalls: [],
+      shieldedMints: new Map(),
+      unshieldedMints: new Map(),
+      unshieldedInputs: new Map(),
+      unshieldedOutputs: new Map(),
+      claimedUnshieldedSpends: new Map([
+        [
+          [
+            { tag: 'unshielded', raw: color },
+            { tag: 'user', address: recipient },
+          ],
+          amount,
+        ],
+      ]),
+    },
+    gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },
+    program: [],
+  };
+  const empty = { value: [], alignment: [] };
+  const call = new ledger.ContractCallPrototype(
+    account,
+    'withdraw_unshielded_with_grant_jubjub',
+    new ledger.ContractOperation(),
+    transcript,
+    undefined,
+    [],
+    empty,
+    empty,
+    ledger.communicationCommitmentRandomness(),
+    'fixture',
+  );
+  return (
+    await ledger.Transaction.fromParts(
+      'undeployed',
+      undefined,
+      undefined,
+      ledger.Intent.new(new Date(Date.now() + 60000)).addCall(call),
+    ).prove(
+      {
+        check: async () => [],
+        prove: async () => new ledger.Proof('0100').serialize(),
+        lookupKey: async () => ({
+          proverKey: new Uint8Array(),
+          verifierKey: resource('keys/withdraw_unshielded_with_grant_jubjub.verifier'),
+          ir: resource('zkir/withdraw_unshielded_with_grant_jubjub.bzkir'),
+        }),
+      },
+      ledger.CostModel.initialCostModel(),
+    )
+  ).bind();
+}
+
+/** @param {import('node:test').TestContext} t */
+async function durableFixture(t) {
+  const f = await issued(t);
+  const { fixture, owner, ports, requests, stores } = f;
+  const verified = await verifyAgentJubjubGrantResponse(requests, ports);
+  const color = Buffer.from(verified.scope.color, 'hex');
+  await fixture.sim.call('deposit_unshielded', color, 20n);
+  const agent = signer(ports.pure, 7);
+  const receipts = createAgentGrantSpendJournal(stores.bytes);
+  const input = {
+    ...requests,
+    requestId: randomUUID(),
+    issuance: verified.issuance,
+    amount: '1',
+    spentPrev: '0',
+  };
+  return { ...f, verified, color, receipts, input, agent, chain: owner.chain };
+}
+
+test('durable agent withdrawal stages exact bytes, survives a lost reply, and fences concurrent request IDs', async (t) => {
+  const f = await durableFixture(t);
+  const { fixture, verified, receipts, input } = f;
+  const tx = await payoutFixture(
+    verified.account,
+    verified.scope.color,
+    verified.scope.recipient.value,
+    1n,
+  );
+  let forwards = 0;
+  let reviews = 0;
+  const arrived = barrier();
+  /** @type {import('../packages/account/dist/index.js').DurableAgentGrantSpendPorts} */
+  const ports = {
+    ...f.ports,
+    receipts,
+    chain: {
+      ...f.chain,
+      async submitDurableAgentGrantSpend(call) {
+        const dispatch = await selectGrantSpendDispatch(call, 'undeployed', undefined, receipts);
+        assert.ok(dispatch);
+        return dispatch
+          .forward(tx, dispatch.checkedCall(tx).communicationCommitment, {
+            async submit(bytes) {
+              forwards++;
+              const row = await receipts.readRecord(call.mutation.requestId);
+              assert.equal(row?.transaction?.txHash, tx.transactionHash());
+              assert.deepEqual(bytes, tx.serialize());
+              await f.chain.call(call);
+              throw new Error('Lost acknowledgement after executing the generated ACC call.');
+            },
+          })
+          .then((txHash) => ({ txHash }));
+      },
+    },
+    grantee: f.agent.authoriser,
+    async review() {
+      if (++reviews === 2) arrived.release();
+      await arrived.promise;
+      return true;
+    },
+    attempts: 1,
+  };
+  const other = { ...input, requestId: randomUUID() };
+  await Promise.all(
+    [input, other].map((attempt) =>
+      assert.rejects(spendWithDurableAgentJubjubGrant(attempt, ports), {
+        code: 'MutationUnsettled',
+        requestId: attempt.requestId,
+      }),
+    ),
+  );
+  assert.equal(forwards, 1);
+  assert.equal(fixture.sim.ledger().unshielded_balances.lookup(f.color), 19n);
+  const reopened = createAgentGrantSpendJournal(f.stores.bytes);
+  const original = (await reopened.readRecord(input.requestId)) ? input : other;
+  const row = await reopened.readRecord(original.requestId);
+  assert.ok(row?.transaction);
+  await assert.rejects(
+    spendWithDurableAgentJubjubGrant(original, { ...ports, receipts: reopened }),
+    {
+      code: 'MutationUnsettled',
+      requestId: original.requestId,
+      txHash: tx.transactionHash(),
+    },
+  );
+  const finality = {
+    networkId: 'undeployed',
+    readFinalized: async () => {
+      assert.ok(row.transaction);
+      return { ...row.transaction, blockHeight: 8 };
+    },
+  };
+  assert.deepEqual(
+    await recoverAgentGrantSpend(
+      original.requestId,
+      reopened,
+      {
+        ...finality,
+        readFinalized: async () => {
+          const seen = await finality.readFinalized();
+          return { ...seen, bytesSha256: '82'.repeat(32) };
+        },
+      },
+      ports.grants,
+    ),
+    { kind: 'unknown' },
+  );
+  const live = await ports.grants.readP256GrantSpendContext(verified.account, verified.grantId);
+  assert.ok(live);
+  assert.deepEqual(
+    await recoverAgentGrantSpend(original.requestId, reopened, finality, {
+      ...ports.grants,
+      readP256GrantSpendContext: async () => ({ ...live, nonce: live.nonce - 1n }),
+    }),
+    { kind: 'unknown' },
+  );
+  fixture.sim.now = verified.scope.expiresAt;
+  assert.deepEqual(
+    await recoverAgentGrantSpend(original.requestId, reopened, finality, ports.grants),
+    {
+      kind: 'confirmed',
+      requestId: original.requestId,
+      intentSha256: row.reservation.intentSha256,
+      txHash: tx.transactionHash(),
+      blockHeight: 8,
+    },
+  );
+  assert.equal(forwards, 1);
+});
+
+test('durable agent withdrawal refuses a changed payout and expiry during the dispatch write', async (t) => {
+  const f = await durableFixture(t);
+  const { fixture, verified, receipts, input } = f;
+  t.mock.timers.enable({ apis: ['Date'], now: fixture.sim.now * 1000 });
+  const changed = await payoutFixture(
+    verified.account,
+    verified.scope.color,
+    verified.scope.recipient.value,
+    2n,
+  );
+  const exact = await payoutFixture(
+    verified.account,
+    verified.scope.color,
+    verified.scope.recipient.value,
+    1n,
+  );
+  let staged = 0;
+  const crossing = {
+    ...receipts,
+    /** @type {typeof receipts.stageTransaction} */
+    async stageTransaction(original, transaction) {
+      const saved = await receipts.stageTransaction(original, transaction);
+      staged++;
+      t.mock.timers.setTime(verified.scope.expiresAt * 1000);
+      return saved;
+    },
+  };
+  /** @type {import('../packages/account/dist/index.js').DurableAgentGrantSpendPorts} */
+  const ports = {
+    ...f.ports,
+    receipts,
+    grantee: f.agent.authoriser,
+    review: async () => true,
+    chain: {
+      ...f.chain,
+      async submitDurableAgentGrantSpend(call) {
+        await assert.rejects(
+          async () =>
+            selectGrantSpendDispatch(
+              { address: call.address, circuit: call.circuit, args: call.args },
+              'undeployed',
+              undefined,
+              crossing,
+            ),
+          { code: 'MutationUnsettled' },
+        );
+        const dispatch = await selectGrantSpendDispatch(call, 'undeployed', undefined, crossing);
+        assert.ok(dispatch);
+        const submitter = {
+          submit: async () => assert.fail('An invalid or expired payout was broadcast.'),
+        };
+        await assert.rejects(
+          dispatch.forward(
+            changed,
+            dispatch.checkedCall(changed).communicationCommitment,
+            submitter,
+          ),
+          {
+            code: 'MutationUnsettled',
+          },
+        );
+        assert.equal(staged, 0);
+        const txHash = await dispatch.forward(
+          exact,
+          dispatch.checkedCall(exact).communicationCommitment,
+          submitter,
+        );
+        return { txHash };
+      },
+    },
+  };
+  await assert.rejects(spendWithDurableAgentJubjubGrant(input, ports), {
+    code: 'MutationUnsettled',
+    requestId: input.requestId,
+  });
+  assert.equal(staged, 1);
+  assert.equal(
+    (await receipts.readRecord(input.requestId))?.transaction?.txHash,
+    exact.transactionHash(),
+  );
+  assert.equal(fixture.sim.ledger().unshielded_balances.lookup(f.color), 20n);
 });

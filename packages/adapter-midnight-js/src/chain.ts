@@ -20,6 +20,8 @@ import type {
   Chain,
   PinnedChain,
   DeadlineFencedGrantIssuePort,
+  DurableAgentGrantSpendPort,
+  AgentGrantSpendReceiptStore,
   P256GrantSpendReceiptStore,
   FeeSponsor,
   GrantIssueSponsorPort,
@@ -29,7 +31,7 @@ import type {
   Submitter,
 } from '@input-output-hk/mn-passport-account/ports';
 import {
-  P256_GRANT_SPEND_CIRCUIT,
+  AGENT_GRANT_SPEND_CIRCUIT,
   type PassportEvent,
   type PassportStep,
 } from '@input-output-hk/mn-passport-protocol';
@@ -40,8 +42,8 @@ import {
   type PreBinding,
 } from '@midnightntwrk/ledger-v9';
 import { handoffGrantIssue } from './grant-issue-handoff.js';
-import { checkGrantCommitment, p256GrantCall } from './p256-grant-call.js';
-import { forwardP256GrantCall, prepareP256GrantDispatch } from './p256-grant-submitter.js';
+import { checkGrantCommitment, changedCall } from './p256-grant-call.js';
+import { selectGrantSpendDispatch } from './p256-grant-submitter.js';
 
 function chainProgress(onEvent: ((event: PassportEvent) => void) | undefined) {
   // Progress listeners are observers: a host's UI error must not interrupt a chain call.
@@ -186,6 +188,7 @@ interface MidnightChainOptions {
   buildGrantIssue?: typeof createUnprovenCallTx;
   /** Required for the durable fixed-recipient P-256 grant holder path. */
   p256GrantReceipts?: P256GrantSpendReceiptStore;
+  agentGrantReceipts?: AgentGrantSpendReceiptStore;
   network: NetworkConfig;
   binding: MidnightBinding;
   prover: Prover;
@@ -240,6 +243,26 @@ export function createDeadlineFencedGrantIssueChain(
           'BindingUnsupported',
           'Deadline-fenced dispatch requires an original owner grant issue with a deadline.',
         );
+      return chain.call(request);
+    },
+  };
+}
+
+/** A value-capable chain that stages the exact original agent transaction before broadcast. */
+export function createDurableAgentGrantSpendChain(
+  opts: MidnightChainOptions & { readonly agentGrantReceipts: AgentGrantSpendReceiptStore },
+): PinnedChain & DurableAgentGrantSpendPort {
+  if (!opts.agentGrantReceipts || opts.network.bindingId !== 'acc-s3r1.1') return changedCall();
+  const chain = createMidnightChain(opts);
+  return {
+    ...chain,
+    async submitDurableAgentGrantSpend(request) {
+      if (
+        request.circuit !== AGENT_GRANT_SPEND_CIRCUIT ||
+        !Number.isSafeInteger(request.mutation?.validUntilSeconds) ||
+        request.mutation.validUntilSeconds < 0
+      )
+        return changedCall();
       return chain.call(request);
     },
   };
@@ -348,15 +371,12 @@ function createChain(opts: MidnightChainOptions): Chain {
           'The configured fee-only sponsor cannot balance a shielded ACC withdrawal; use a value-capable wallet.',
         );
       const compiledContract = heldCoin ? compileWithWitness(heldCoin) : unshieldedContract;
-      const receipts = opts.p256GrantReceipts;
-      const grant =
-        circuit === P256_GRANT_SPEND_CIRCUIT
-          ? await prepareP256GrantDispatch(
-              { address, args, ...(mutation && { mutation }) },
-              network.networkId,
-              receipts,
-            )
-          : undefined;
+      const grant = await selectGrantSpendDispatch(
+        request,
+        network.networkId,
+        opts.p256GrantReceipts,
+        opts.agentGrantReceipts,
+      );
       const { report, track } = chainProgress(onEvent);
       let callCommitment: string | undefined;
       let finality: ReturnType<typeof report> | undefined;
@@ -366,8 +386,8 @@ function createChain(opts: MidnightChainOptions): Chain {
         proofProvider: createProofProviderFromHandlers({
           currentEra: (tx) =>
             track('prove', async () => {
-              if (circuit === P256_GRANT_SPEND_CIRCUIT) {
-                const approved = p256GrantCall(tx, address);
+              if (grant) {
+                const approved = grant.checkedCall(tx);
                 if (callCommitment) checkGrantCommitment(approved, callCommitment);
                 callCommitment = approved.communicationCommitment;
               }
@@ -383,8 +403,8 @@ function createChain(opts: MidnightChainOptions): Chain {
                 'pre-binding',
                 result.tx,
               );
-              if (callCommitment)
-                checkGrantCommitment(p256GrantCall(proved, address), callCommitment);
+              if (grant && callCommitment)
+                checkGrantCommitment(grant.checkedCall(proved), callCommitment);
               return proved;
             }),
         }),
@@ -405,15 +425,8 @@ function createChain(opts: MidnightChainOptions): Chain {
           const id = await track(
             'sponsor.submit',
             () =>
-              grant && receipts
-                ? forwardP256GrantCall(
-                    tx,
-                    grant.reservation,
-                    callCommitment,
-                    receipts,
-                    submitter,
-                    flowOptions.signal,
-                  )
+              grant
+                ? grant.forward(tx, callCommitment, submitter)
                 : submitter.submit(
                     tx.serialize(),
                     mutation

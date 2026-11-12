@@ -193,9 +193,21 @@ rechecks the live grant, retained issuance, nonce and spent commitment before
 dispatch. After dispatch, the original spend can still settle after grant
 expiry. This preview accepts the exact requested scope.
 
-If dispatch is uncertain, `AgentGrantSpendUnsettled` preserves the grant ID,
+For the basic helper, `AgentGrantSpendUnsettled` preserves the grant ID,
 previous grant nonce and any acknowledged transaction hash. Reconcile those
 with the original spend and the live grant before considering another payment.
-The holder flow has no crash-durable dispatch journal. Generated ACC tests
-cover a funded spend, per-call and total caps, revocation, wrong-key refusal
-and lost responses. Native proof and vault integration remain separate.
+For a crash-durable withdrawal, use `spendWithDurableAgentJubjubGrant` with a
+stable request UUID. Share one `createAgentGrantSpendJournal` with the SDK and
+the value-capable `createDurableAgentGrantSpendChain` adapter. The journal
+reserves the original issuance and grant nonce and keeps the finalized
+transaction identity before broadcast. Keep the journal across restarts.
+
+On `DurableAgentGrantSpendUnsettled`, keep the UUID and call
+`recoverAgentGrantSpend` with a trusted exact-finality reader and the pinned
+grant source. Recovery checks the recorded transaction and the original
+issuance, next nonce and spent commitment. If the ledger has already advanced
+past that spend, recovery reports unknown. It performs reads only.
+
+Generated ACC and offline dispatch tests cover a funded spend, caps,
+revocation, concurrent request IDs, expiry, receipt loss and a killed
+journal writer. Native proof and vault integration remain separate.

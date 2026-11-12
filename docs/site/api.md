@@ -301,7 +301,22 @@ grant, original issuance and spent commitment before the grantee signs and
 before dispatch. If the original result is uncertain,
 `AgentGrantSpendUnsettled` carries the grant ID, original nonce and any known
 transaction hash. The holder must retain its original spend and reconcile it
-before another payment. This API does not supply a crash-durable spend journal.
+before another payment.
+
+The source-preview durable entrypoint is
+`spendWithDurableAgentJubjubGrant({ ...input, requestId }, ports, options?)`.
+It shares `createAgentGrantSpendJournal(store)` with
+`createDurableAgentGrantSpendChain` in the Midnight.js adapter. Use a
+crash-durable atomic store and preserve the original UUID across restarts.
+The agent circuit has its own receipt and grant-nonce fence records. The
+adapter verifies the signed invocation, circuit, call commitment and payout
+before staging the finalized identity. Its last pre-broadcast check enforces
+the grant deadline.
+
+`recoverAgentGrantSpend(requestId, receipts, finality, grants)` uses a trusted
+exact-finality reader and the original ACC spend state. It never submits.
+If the receipt is unavailable or the ACC has advanced past the expected next
+nonce, the result stays unknown.
 
 Losing a local profile is a separate case. [Published-bookkeeping reconstruction]({{ '/grant-recovery/' | relative_url }})
 uses the original issuing reader and authenticated live commitments; it does not

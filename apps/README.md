@@ -931,7 +931,8 @@ The reference app uses its browser relay here. See the
 [SDK grant API](../docs-site/guides/devices-grants.md#issue-and-recover-the-original-agent-grant)
 for direct-channel issuance with a P-256 or JubJub owner and holder
 verification. The holder spend helper
-uses an injected agent signer and a value-capable chain.
+uses an injected agent signer and a value-capable chain. The durable SDK path
+uses a shared journal and reconciles the original transaction by request UUID.
 
 The relay sponsors only the pinned fee-only owner issue circuit. The browser
 still supplies the exact review and fresh owner circuit signature. The holder

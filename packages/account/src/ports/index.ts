@@ -1,5 +1,9 @@
 export type { P256UnshieldedGrantScope } from '../p256-grant-opening.js';
-export type { P256GrantSpendReceiptStore } from '../p256-grant-spend-recovery.js';
+export type {
+  AgentGrantSpendReceiptStore,
+  AgentGrantSpendReservation,
+  P256GrantSpendReceiptStore,
+} from '../p256-grant-spend-recovery.js';
 export type { P256GrantSpendReservation } from '../p256-grant-holder.js';
 export type {
   ShieldedWithdrawalJournal,
@@ -336,6 +340,15 @@ export interface PinnedChain extends Chain {
 export interface DeadlineFencedGrantIssueRequest extends CallRequest {
   readonly circuit: 'issue_grant_with_jubjub' | 'issue_grant_with_p256';
   readonly mutation: MutationSubmissionContext & { readonly validUntilSeconds: number };
+}
+
+export interface DurableAgentGrantSpendRequest extends CallRequest {
+  readonly circuit: 'withdraw_unshielded_with_grant_jubjub';
+  readonly mutation: MutationSubmissionContext & { readonly validUntilSeconds: number };
+}
+
+export interface DurableAgentGrantSpendPort {
+  submitDurableAgentGrantSpend(request: DurableAgentGrantSpendRequest): Promise<TxResult>;
 }
 
 /** Carry the original request through proving, balancing and final broadcast with its deadline. */

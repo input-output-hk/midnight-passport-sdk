@@ -1,5 +1,7 @@
 import { utf8ToBytes } from '@noble/hashes/utils.js';
 import { z } from 'zod';
+import { AGENT_GRANT_SPEND_CIRCUIT } from '@input-output-hk/mn-passport-protocol';
+import { toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { finalizedTransactionIdentitySchema as identitySchema } from './finalized-transaction-identity.js';
 import { mutationDigest } from './mutation-codec.js';
@@ -29,44 +31,45 @@ const reservationSchema = z.strictObject({
 });
 export type P256GrantSpendTransaction = z.infer<typeof identitySchema>;
 
-const recordSchema = z.strictObject({
-  version: z.literal(1),
-  reservation: reservationSchema,
-  transaction: identitySchema.optional(),
-  acknowledgedHash: hex.optional(),
+const agentReservationSchema = reservationSchema.extend({
+  circuit: z.literal(AGENT_GRANT_SPEND_CIRCUIT),
+  epoch: u64,
+  generation: u64,
+  validUntilSeconds: z.number().int().nonnegative(),
 });
+export type AgentGrantSpendReservation = z.infer<typeof agentReservationSchema>;
 
-type RecordData = z.infer<typeof recordSchema>;
-
-export interface P256GrantSpendRecord {
-  readonly reservation: P256GrantSpendReservation;
-  /** Exact finalized bytes were durably identified before the network submit was attempted. */
+interface GrantSpendRecord<R> {
+  readonly reservation: R;
+  /** Exact finalized bytes durably identified before broadcast. */
   readonly transaction?: P256GrantSpendTransaction;
   readonly acknowledgedHash?: string;
 }
 
-export interface P256GrantSpendReceiptStore extends P256GrantSpendJournal {
-  readRecord(requestId: string): Promise<P256GrantSpendRecord | undefined>;
-  /** Compare a local Compact invocation to the original reviewed signed arguments. */
-  matchesCallArguments(reservation: P256GrantSpendReservation, args: readonly unknown[]): boolean;
-  /** Persist an immutable dispatch record. A false result refuses a second forward. */
-  stageTransaction(
-    reservation: P256GrantSpendReservation,
-    transaction: P256GrantSpendTransaction,
-  ): Promise<boolean>;
+interface GrantSpendReceiptStore<R extends P256GrantSpendReservation> {
+  read(requestId: string): ReturnType<P256GrantSpendJournal['read']>;
+  readRecord(requestId: string): Promise<GrantSpendRecord<R> | undefined>;
+  matchesCallArguments(reservation: R, args: readonly unknown[]): boolean;
+  reserve(reservation: R): Promise<boolean>;
+  stageTransaction(reservation: R, transaction: P256GrantSpendTransaction): Promise<boolean>;
+  recordTransaction(reservation: R, txHash: string): Promise<void>;
 }
+
+export type P256GrantSpendRecord = GrantSpendRecord<P256GrantSpendReservation>;
+export type P256GrantSpendReceiptStore = GrantSpendReceiptStore<P256GrantSpendReservation>;
+export type AgentGrantSpendReceiptStore = GrantSpendReceiptStore<AgentGrantSpendReservation>;
 
 function unsettled(): never {
   throw new PassportConnectorError(
     'MutationUnsettled',
-    'The original P-256 grant spend record cannot be verified.',
+    'The original grant spend record cannot be verified.',
     { retryable: false },
   );
 }
 
-function key(requestId: string): string {
+function key(requestId: string, kind = 'p256-grant-spend'): string {
   if (!uuid.safeParse(requestId).success) return unsettled();
-  return mutationDigest({ kind: 'p256-grant-spend', requestId }).slice(0, 32);
+  return mutationDigest({ kind, requestId }).slice(0, 32);
 }
 
 /**
@@ -74,8 +77,59 @@ function key(requestId: string): string {
  * It keeps public correlation data and a digest, with no key, opening or raw transaction.
  */
 export function createP256GrantSpendJournal(store: MutationByteStore): P256GrantSpendReceiptStore {
+  return createGrantSpendJournal(store, 'p256-grant-spend', reservationSchema);
+}
+
+/** Independent receipt namespace for the direct JubJub agent spend circuit. */
+export function createAgentGrantSpendJournal(
+  store: MutationByteStore,
+): AgentGrantSpendReceiptStore {
+  const journal = createGrantSpendJournal(
+    store,
+    'agent-jubjub-grant-spend',
+    agentReservationSchema,
+  );
+  return {
+    ...journal,
+    async reserve(reservation) {
+      const original = agentReservationSchema.parse(reservation);
+      const { networkId, account, grantId, issuedAt, epoch, generation, previousNonce } = original;
+      const key = mutationDigest({
+        kind: 'agent-jubjub-grant-spend-nonce',
+        networkId,
+        account,
+        grantId,
+        issuedAt,
+        epoch,
+        generation,
+        previousNonce,
+      }).slice(0, 32);
+      if (
+        !(await store.compareAndSwap(key, undefined, {
+          revision: 0,
+          bytes: utf8ToBytes(original.requestId),
+        }))
+      )
+        return false;
+      return journal.reserve(original);
+    },
+  };
+}
+
+function createGrantSpendJournal<R extends P256GrantSpendReservation>(
+  store: MutationByteStore,
+  namespace: string,
+  schema: z.ZodType<R>,
+): GrantSpendReceiptStore<R> {
+  const recordSchema = z.strictObject({
+    version: z.literal(1),
+    reservation: schema,
+    transaction: identitySchema.optional(),
+    acknowledgedHash: hex.optional(),
+  });
+  type RecordData = z.infer<typeof recordSchema>;
   async function load(requestId: string) {
-    const slot = await store.read(key(requestId));
+    const slot = await store.read(key(requestId, namespace));
     if (!slot) return undefined;
     if (slot.bytes.length > 8192) return unsettled();
     try {
@@ -93,13 +147,13 @@ export function createP256GrantSpendJournal(store: MutationByteStore): P256Grant
     }
   }
   async function save(value: RecordData, expected: number | undefined) {
-    return store.compareAndSwap(key(value.reservation.requestId), expected, {
+    return store.compareAndSwap(key(value.reservation.requestId, namespace), expected, {
       revision: (expected ?? -1) + 1,
       bytes: utf8ToBytes(JSON.stringify(value)),
     });
   }
-  async function current(reservation: P256GrantSpendReservation) {
-    const expected = reservationSchema.safeParse(reservation);
+  async function current(reservation: R) {
+    const expected = schema.safeParse(reservation);
     if (!expected.success) return unsettled();
     const slot = await load(expected.data.requestId);
     if (!slot || mutationDigest(slot.value.reservation) !== mutationDigest(expected.data))
@@ -126,7 +180,7 @@ export function createP256GrantSpendJournal(store: MutationByteStore): P256Grant
       };
     },
     async reserve(reservation) {
-      const parsed = reservationSchema.safeParse(reservation);
+      const parsed = schema.safeParse(reservation);
       if (!parsed.success) return unsettled();
       return save({ version: 1, reservation: parsed.data }, undefined);
     },
@@ -180,18 +234,76 @@ export async function recoverP256GrantSpend(
     return unsettled();
   if (reservation.data.networkId !== finality.networkId)
     throw new PassportConnectorError('NetworkMismatch', 'The original spend used another network.');
-  const seen = await finality.readFinalized(original.data);
+  return observeGrantSpendFinality(reservation.data, original.data, finality);
+}
+
+async function observeGrantSpendFinality(
+  reservation: P256GrantSpendReservation,
+  original: P256GrantSpendTransaction,
+  finality: P256GrantSpendFinalitySource,
+): Promise<P256GrantSpendRecovery> {
+  const seen = await finality.readFinalized(original);
   if (!seen || !Number.isSafeInteger(seen.blockHeight) || seen.blockHeight < 1)
     return { kind: 'unknown' };
   const { blockHeight, ...transaction } = seen;
   const observed = identitySchema.safeParse(transaction);
-  if (!observed.success || mutationDigest(observed.data) !== mutationDigest(original.data))
+  if (!observed.success || mutationDigest(observed.data) !== mutationDigest(original))
     return { kind: 'unknown' };
   return {
     kind: 'confirmed',
-    requestId,
-    intentSha256: reservation.data.intentSha256,
-    txHash: original.data.txHash,
+    requestId: reservation.requestId,
+    intentSha256: reservation.intentSha256,
+    txHash: original.txHash,
     blockHeight,
   };
+}
+
+/** Recover only after exact transaction finality and the original ACC spend state agree. */
+export async function recoverAgentGrantSpend(
+  requestId: string,
+  receipts: Pick<AgentGrantSpendReceiptStore, 'readRecord'>,
+  finality: P256GrantSpendFinalitySource,
+  grants: import('./ports/p256-grant-spend.js').P256GrantSpendSource,
+): Promise<P256GrantSpendRecovery> {
+  key(requestId, 'agent-jubjub-grant-spend');
+  const record = await receipts.readRecord(requestId);
+  if (!record?.transaction) return { kind: 'unknown' };
+  const reservation = agentReservationSchema.safeParse(record.reservation);
+  const original = identitySchema.safeParse(record.transaction);
+  if (
+    !reservation.success ||
+    !original.success ||
+    reservation.data.requestId !== requestId ||
+    (record.acknowledgedHash !== undefined && record.acknowledgedHash !== original.data.txHash)
+  )
+    return unsettled();
+  const expected = reservation.data;
+  const checkPins = () => {
+    if (expected.networkId !== finality.networkId || expected.networkId !== grants.networkId)
+      throw new PassportConnectorError(
+        'NetworkMismatch',
+        'The original spend used another network.',
+      );
+    if (grants.bindingId !== 'acc-s3r1.1')
+      throw new PassportConnectorError(
+        'BindingUnsupported',
+        'Agent spend recovery requires acc-s3r1.1.',
+      );
+  };
+  checkPins();
+  const result = await observeGrantSpendFinality(expected, original.data, finality);
+  checkPins();
+  if (result.kind === 'unknown') return result;
+  const live = await grants.readP256GrantSpendContext(expected.account, expected.grantId);
+  checkPins();
+  if (
+    !live ||
+    live.issuedAt.toString() !== expected.issuedAt ||
+    live.grantEpoch.toString() !== expected.epoch ||
+    live.grantGeneration.toString() !== expected.generation ||
+    live.nonce !== BigInt(expected.previousNonce) + 1n ||
+    toHex(live.spentCommit) !== expected.expectedSpentCommit
+  )
+    return { kind: 'unknown' };
+  return result;
 }

@@ -14,6 +14,7 @@ import { PassportConnectorError } from './errors.js';
 import {
   checkUnshieldedGrant,
   spendUnshieldedWithGrant,
+  type CheckedUnshieldedGrant,
   type UnshieldedGrantIntent,
   type UnshieldedGrantSpendPorts,
 } from './grant-holder.js';
@@ -27,6 +28,8 @@ import {
 } from './grant-request-wire.js';
 import { mutationDigest } from './mutation-codec.js';
 import type {
+  CallRequest,
+  TxResult,
   LiveP256GrantSpendContext,
   P256GrantSpendSource,
   PinnedChain,
@@ -229,10 +232,32 @@ export class AgentGrantSpendUnsettled extends PassportConnectorError {
 }
 
 /** Check the original issuance before the key session and on every pre-submission read. */
-export async function spendWithAgentJubjubGrant(
+export function spendWithAgentJubjubGrant(
   input: AgentJubjubGrantSpendInput,
   ports: AgentJubjubGrantSpendPorts,
   options: FlowOptions = {},
+) {
+  return runAgentGrantSpend(input, ports, options);
+}
+
+export interface AgentGrantDispatch {
+  readonly call: CallRequest;
+  readonly networkId: string;
+  readonly expiresAt: number;
+  readonly intent: UnshieldedGrantIntent;
+  readonly checked: CheckedUnshieldedGrant;
+  readonly issuance: AgentJubjubGrantIssuance;
+  verify(): Promise<void>;
+}
+
+export async function runAgentGrantSpend(
+  input: AgentJubjubGrantSpendInput,
+  ports: AgentJubjubGrantSpendPorts,
+  options: FlowOptions,
+  durable?: {
+    beforeReview(): Promise<void>;
+    submit(dispatch: AgentGrantDispatch): Promise<TxResult>;
+  },
 ) {
   const { chain, pure, grantee, review, attempts, sleep } = ports;
   const grant = opening(input, ports, chain);
@@ -261,12 +286,21 @@ export async function spendWithAgentJubjubGrant(
       return invalid('The live grant differs from the retained original issuance.');
     return live;
   };
+  if (durable) await durable.beforeReview();
   const preflight = await read();
-  checkUnshieldedGrant(intent, preflight, pure, grant.checkTime());
+  const checked = checkUnshieldedGrant(intent, preflight, pure, grant.checkTime());
   if (options.signal?.aborted)
     throw new PassportConnectorError('Aborted', 'Agent grant spend cancelled.');
   const previousNonce = preflight.nonce;
   let txHash: string | undefined;
+  const verify = async () => {
+    const live = await read();
+    if (live.nonce !== previousNonce)
+      throw new PassportConnectorError('GrantRosterUnsettled', 'The agent grant nonce changed.');
+    checkUnshieldedGrant(intent, live, pure, grant.checkTime());
+    if (options.signal?.aborted)
+      throw new PassportConnectorError('Aborted', 'Agent grant spend cancelled.');
+  };
   try {
     return await spendUnshieldedWithGrant(
       intent,
@@ -295,8 +329,19 @@ export async function spendWithAgentJubjubGrant(
             grant.checkTime();
             if (call.signal?.aborted)
               throw new PassportConnectorError('Aborted', 'Agent grant spend cancelled.');
+            if (!durable) dispatchStarted = true;
+            const transaction = durable
+              ? await durable.submit({
+                  call,
+                  networkId: request.networkId,
+                  expiresAt: request.scope.expiresAt,
+                  intent,
+                  checked,
+                  issuance: expected.data,
+                  verify,
+                })
+              : await chain.call(call);
             dispatchStarted = true;
-            const transaction = await chain.call(call);
             txHash = transaction.txHash;
             return transaction;
           },

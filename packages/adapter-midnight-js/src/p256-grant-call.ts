@@ -9,11 +9,12 @@ import { P256_GRANT_SPEND_CIRCUIT } from '@input-output-hk/mn-passport-protocol'
 import { PassportConnectorError } from '@input-output-hk/mn-passport-account/errors';
 import { singleContractCall } from './single-contract-call.js';
 
-export function p256GrantCall<S extends Signaturish, P extends Proofish, B extends Bindingish>(
+export function checkedGrantCall<S extends Signaturish, P extends Proofish, B extends Bindingish>(
   tx: Transaction<S, P, B>,
   address: string,
+  circuit: string = P256_GRANT_SPEND_CIRCUIT,
 ): ContractCall<P> {
-  return singleContractCall(tx, address, P256_GRANT_SPEND_CIRCUIT)?.call ?? changedCall();
+  return singleContractCall(tx, address, circuit)?.call ?? changedCall();
 }
 
 export function checkGrantCommitment(
