@@ -165,5 +165,9 @@ holder passkey and another live check.
 
 The [reference app guide](../../apps/README.md#source-preview-browser-grant-relay)
 covers build pins, service routes, the pre-enrolled owner requirement and
-the Chromium checks. Browser navigation and the simulated sponsor receipt
-path are covered. Native relay and real-provider qualification remain open.
+the Chromium checks. The isolated chain also covered the browser owner
+issue, one DUST-sponsored submission and recovery of the same finalized
+transaction after reload and response loss. The run stopped during holder
+callback verification. A separate browser check reproduced a CORS preflight
+failure and verified the corrected proxy. Native holder verification, opening export and real passkey
+providers remain open.

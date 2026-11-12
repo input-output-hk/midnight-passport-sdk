@@ -979,8 +979,19 @@ Run `pnpm --filter passport-dapp test:grant-relay` with Chrome and OpenSSL.
 The fixture exercises the pages across temporary HTTPS origins, virtual P-256
 credentials, account mismatch and cancellation, reload and invalid callbacks.
 A separate path in the fixture drops an accepted execute response and recovers
-the original receipt with one simulated sponsor dispatch. Native proving
-through the pages and real passkey providers still need qualification.
+the original receipt with one simulated sponsor dispatch.
+
+The isolated run at source `3ec645e` also exercised the real owner proof and
+fee sponsor through the pages using virtual passkeys. The proxy dropped the
+execute response after submission. Recovery after issuer reload returned the
+same receipt the indexer reported at finalized block 82. The transaction
+included one DUST spend. The run stopped during the holder callback. A
+separate browser check reproduced a missing CORS header in the HTTPS
+proxy. For a separate holder origin, configure the
+indexer or gateway to accept POST preflight and the GraphQL request from that
+origin. The corrected proxy was checked in Chromium with a fixture indexer.
+A complete native holder verification and export, and real passkey providers,
+remain to be qualified.
 
 Every relay request uses JSON and goes to the issuer origin. The session
 endpoints return their secrets with `Cache-Control: no-store`.

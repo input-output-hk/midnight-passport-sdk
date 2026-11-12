@@ -61,8 +61,7 @@ The standalone native qualification used a software P-256 owner and a
 distinct P-256 grantee. The sponsor paid DUST, the original grant finalized,
 and the client recovered it after a simulated response loss without signing
 or submitting again. Chromium separately checked manifest-pinned verifier
-fetching and forwarding with a simulated prover and sponsor. Native proving through the authenticated relay and testing with real passkey
-providers remain open.
+fetching and forwarding with a simulated prover and sponsor.
 
 ### Authenticated browser grant relay
 
@@ -88,3 +87,12 @@ credential call and chooses approval or original-request recovery. The
 return path checks the private opening against the live ACC before offering
 it to the holder. An owner passkey must already be enrolled at the issuer
 origin.
+
+On the isolated chain, the issuer page proved the owner call and the sponsor
+paid DUST. The execute response was dropped after submission. After reload,
+explicit recovery returned the receipt for the finalized indexer transaction
+at block 82. Chromium used virtual passkeys. The run stopped during holder
+callback verification. A separate browser check reproduced a missing CORS
+header and verified the corrected HTTPS proxy with a fixture indexer.
+Native holder verification and export, and real passkey providers, remain
+open.

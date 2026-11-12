@@ -114,6 +114,8 @@ unresolved. A new nonce represents a new request and requires its own review.
 A denied, interrupted or expired admission never automatically starts another
 issuance from that nonce.
 
-The source callback covers successful grants with the exact requested scope.
-The demo route, separate browser holder journey, attenuated grants and
-unattended agent binding still need integration and qualification.
+The opt-in demo covers separate holder and issuer pages for the exact
+requested scope. See the [host guide](./hosts#authenticated-browser-grant-relay)
+for the isolated issuance and original-receipt check, and the remaining live
+holder verification and export. Attenuated grants and the non-browser agent
+binding remain open.
