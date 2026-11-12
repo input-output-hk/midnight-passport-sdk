@@ -628,3 +628,88 @@ test('grant sponsor does not send a prepared issue after its request expires dur
   assert.equal((await executor.resume(identity)).kind, 'unknown');
   assert.equal(balances, 1);
 });
+
+for (const phase of ['account snapshot', 'dispatch fence'] as const) {
+  test(`grant sponsor refuses broadcast when the signed deadline passes during the ${phase}`, async (t) => {
+    const now = Date.now();
+    t.mock.timers.enable({ apis: ['Date'], now });
+    const root = await mkdtemp(join(tmpdir(), 'passport-grant-final-deadline-'));
+    const store = encryptedHostMutationStore(root, new Uint8Array(32).fill(7));
+    t.after(async () => {
+      store.close();
+      await rm(root, { recursive: true, force: true });
+    });
+    const state = pinnedState();
+    const proved = await provedCall();
+    const r = runtime(state);
+    let sends = 0;
+    let expiredAtBoundary = false;
+    const expire = () => {
+      expiredAtBoundary = true;
+      t.mock.timers.setTime(now + 15_000);
+    };
+    const driver = createReferenceHostDriver({
+      ...r,
+      providers: {
+        ...r.providers,
+        publicDataProvider: {
+          async queryContractState() {
+            if (
+              phase === 'account snapshot' &&
+              (await store.read(identity))?.steps[0]?.phase === 'ready'
+            )
+              expire();
+            return state;
+          },
+        },
+        walletProvider: {
+          ...r.providers.walletProvider,
+          async balanceTx({ tx }) {
+            assert.deepEqual(tx.serialize(), proved.serialize());
+            return { version: 'v9', tx: proved.bind() };
+          },
+        },
+        midnightProvider: {
+          async submitTx() {
+            sends++;
+            throw new Error('Expired grant reached the provider.');
+          },
+        },
+      },
+      fetch: async () => Response.json({ data: { transactions: [] } }),
+    });
+    const executor = createHostMutationExecutor(
+      {
+        read: (key) => store.read(key),
+        async compareAndSwap(expected, next) {
+          const saved = await store.compareAndSwap(expected, next);
+          if (saved && phase === 'dispatch fence' && next.steps[0]?.phase === 'dispatching')
+            expire();
+          return saved;
+        },
+      },
+      driver,
+    );
+    const input = {
+      kind: 'grant-issue-v1',
+      address,
+      circuit,
+      requestId,
+      validUntilSeconds: Math.floor(now / 1000) + 5,
+      tx: Buffer.from(proved.serialize()).toString('hex'),
+    };
+    if (phase === 'account snapshot') {
+      assert.deepEqual(await executor.execute(identity, input), { kind: 'unknown' });
+    } else {
+      await assert.rejects(executor.execute(identity, input), /reconcile the original/);
+    }
+    assert.ok(expiredAtBoundary);
+    assert.equal(sends, 0);
+    assert.equal(
+      (await store.read(identity))?.steps[0]?.phase,
+      phase === 'account snapshot' ? 'ready' : 'dispatching',
+    );
+    assert.deepEqual(await executor.resume(identity), { kind: 'unknown' });
+    assert.equal(sends, 0);
+  });
+}

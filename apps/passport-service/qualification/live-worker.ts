@@ -397,7 +397,7 @@ if (mode === 'host') {
     },
     check: (record: HostMutationRecord, count: number) =>
       diagnose('check', () => original.check(record, count)),
-    submit: async (tx: Parameters<typeof original.submit>[0]) => {
+    submit: async (tx: Parameters<typeof original.submit>[0], record?: HostMutationRecord) => {
       const boundary = `${current.identity.kind}:${current.steps.length - 1}`;
       event({
         stage: 'send-enter',
@@ -406,7 +406,7 @@ if (mode === 'host') {
         ids: tx.identifiers,
         bytesSha256: hash(unhex(tx.tx)),
       });
-      const id = await original.submit(tx);
+      const id = await original.submit(tx, record);
       event({ stage: 'send-return', requestId: current.identity.requestId, boundary, id });
       if (crashesAfterSubmit(fault, current)) {
         await emitCrashAndExit(fault);

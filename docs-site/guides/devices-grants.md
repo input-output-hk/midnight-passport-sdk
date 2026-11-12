@@ -153,7 +153,8 @@ through final broadcast. Supply two durable stores:
 
 The SDK stages the owner bookkeeping and protected record before dispatch.
 It passes the original UUID, intent digest and earliest allowed submission
-deadline to the host chain. The `granted` response contains the confirmed grant ID, account, chain,
+deadline to the host chain. The standalone sponsor checks that deadline after
+reading the account and again immediately before broadcast. The `granted` response contains the confirmed grant ID, account, chain,
 scope salt and encoded approved scope. Deliver it only over the trusted
 request channel. The holder must verify the commitments against the chain
 before spending. Keep the opening out of logs and URLs.

@@ -321,6 +321,16 @@ frontier checks and the host's native validation remain distinct; changed or sta
 calls can still refuse/fail and must not become replacements. Keep the original
 ID, bytes and protected state. Unknown/pending is never evidence of no send.
 
+
+The source-preview executor supplies the persisted original record as the
+second argument to `HostMutationDriver.submit`. Existing driver implementations
+can keep accepting only the prepared transaction. The reference driver requires
+the record and uses its signed
+deadline after the account-state read and immediately before calling the
+broadcast provider. If the deadline passes after the dispatch fence is
+persisted, reconciliation looks up the retained transaction and preserves the
+original dispatch record. It cannot replace or submit that grant again.
+
 The earlier stale-producer regression released the old preparer after the
 successor completed. The following slice adds the held-successor interleaving,
 preparation refusal and authenticated HTTP combinations. This coverage does not

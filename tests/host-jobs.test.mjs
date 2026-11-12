@@ -503,10 +503,10 @@ test('duplicate local reconcile calls cannot consume admission behind an active 
     entered = barrier(),
     release = barrier(),
     original = f.driver.submit;
-  f.driver.submit = async (tx) => {
+  f.driver.submit = async (tx, record) => {
     entered.release();
     await release.promise;
-    return original(tx);
+    return original(tx, record);
   };
   const a = await f.jobs.accept(descriptor());
   await f.jobs.start(a.jobId);

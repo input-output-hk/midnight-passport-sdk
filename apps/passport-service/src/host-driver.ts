@@ -34,7 +34,7 @@ function prepareCallStep(r: ReferenceHostRuntime, record: HostMutationRecord) {
 function allowRetainedCall(r: ReferenceHostRuntime, record: HostMutationRecord, count: number) {
   return (
     callContext(record).driver !== 'reference-v9-grant-issue:1' ||
-    (r.allowGrantIssue &&
+    (r.allowGrantIssue === true &&
       (count !== 0 || grantIssueWithinDeadline(readHostGrantIssueRequest(record.input))))
   );
 }
@@ -152,13 +152,12 @@ export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutation
       const balanced = await r.providers.walletProvider.balanceTx({ version: 'v9', tx: proven });
       return prepared(balanced.tx);
     },
-    async submit(transaction) {
-      return String(
-        await (r.providers.midnightProvider ?? hostFailure()).submitTx({
-          version: 'v9',
-          tx: decode(transaction.tx),
-        }),
-      );
+    async submit(transaction, record) {
+      if (!record) return hostFailure();
+      const tx = decode(transaction.tx);
+      const provider = r.providers.midnightProvider ?? hostFailure();
+      if (record.identity.kind === 'call' && !allowRetainedCall(r, record, 0)) return hostFailure();
+      return String(await provider.submitTx({ version: 'v9', tx }));
     },
     lookup: (step) => readHostConfirmation(step, r),
     async check(record, count) {
@@ -173,7 +172,12 @@ export function createReferenceHostDriver(r: ReferenceHostRuntime): HostMutation
       if (record.identity.kind === 'call') {
         if (!allowRetainedCall(r, record, count)) return false;
         const state = await snapshot(requireHostPlan(record).address);
-        return r.allowedAccount(requireHostPlan(record).address) && !!state && pinned(state);
+        return (
+          r.allowedAccount(requireHostPlan(record).address) &&
+          !!state &&
+          pinned(state) &&
+          allowRetainedCall(r, record, count)
+        );
       }
       const observed = await snapshot(requireHostPlan(record).address);
       if (count === 0) return observed === undefined;

@@ -53,11 +53,12 @@ export interface HostMutationStore {
  * revision fence; it must not generate replacement intent/authority or dispatch.
  * lookup must verify the exact identifier and SucceedEntirely; absence/timeout is unknown.
  * check verifies the exact original verifier roster, authority/counter and account generation.
+ * The executor supplies the original record so submit can enforce dispatch-time constraints.
  */
 export interface HostMutationDriver {
   prepare(identity: HostMutationIdentity, input: HostJson): Promise<HostMutationPlan>;
   prepareStep(record: HostMutationRecord, index: number): Promise<HostPreparedTransaction>;
-  submit(transaction: HostPreparedTransaction): Promise<string>;
+  submit(transaction: HostPreparedTransaction, record?: HostMutationRecord): Promise<string>;
   lookup(transaction: HostMutationStep): Promise<HostConfirmation | undefined>;
   check(record: HostMutationRecord, confirmedSteps: number): Promise<boolean>;
 }
@@ -294,11 +295,12 @@ export function createHostMutationExecutor(store: HostMutationStore, driver: Hos
         if (!(await canDispatch(record!, beforeDispatch))) return { kind: 'unknown' };
         checkpoint();
         await advance({ ...step, phase: 'dispatching' });
-        step = record!.steps.at(-1)!;
+        const dispatching = record!;
+        step = dispatching.steps.at(-1)!;
         // The dispatch fence is the point of no return. A later cancellation stops
         // the next step, without stranding this committed dispatch before submit.
         // The persisted CAS is the fence. A stale earlier producer cannot enter submit.
-        const submissionId = await driver.submit(step);
+        const submissionId = await driver.submit(step, dispatching);
         if (!step.identifiers.includes(submissionId)) return hostFailure();
         await advance({ ...step, phase: 'submitted', submissionId });
         step = record!.steps.at(-1)!;

@@ -292,7 +292,7 @@ test('driver builds real ledger deployment and maintenance bytes and refuses cha
   assert.equal(await driver.check(record, 0), true);
   const prepared = await driver.prepareStep(record, 0);
   assert.ok(prepared.identifiers.length);
-  assert.equal(await driver.submit(prepared), '00' + '55'.repeat(32));
+  assert.equal(await driver.submit(prepared, record), '00' + '55'.repeat(32));
   assert.equal(submitted.length, 1);
   assert.equal(hex(submitted[0]?.tx.serialize() ?? new Uint8Array()), prepared.tx);
   const resumeOnly = createReferenceHostDriver({

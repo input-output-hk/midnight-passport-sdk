@@ -923,6 +923,8 @@ The host stores the proved call in its encrypted mutation journal. The browser
 relay's separate state directory retains the nonce and exact host input digest.
 The browser can read an original receipt after the grant expires.
 Continuing a prepared send requires both the signed request and scope to be live.
+The standalone sponsor also checks the retained deadline after reading account
+state and immediately before submitting the prepared transaction.
 
 The direct agent binding is a separate source-preview library flow.
 The reference app uses its browser relay here. See the
