@@ -1,5 +1,6 @@
 import { utf8ToBytes } from '@noble/hashes/utils.js';
 import { z } from 'zod';
+import { fromHex, toHex } from './codec.js';
 import { PassportConnectorError } from './errors.js';
 import { finalizedTransactionIdentitySchema } from './finalized-transaction-identity.js';
 import { mutationDigest } from './mutation-codec.js';
@@ -47,7 +48,7 @@ export const shieldedWithdrawalDispatch = z
   .readonly();
 const record = z
   .strictObject({
-    version: z.literal(1),
+    version: z.union([z.literal(1), z.literal(2)]),
     reservation: retainedShieldedWithdrawalReservation,
     dispatch: shieldedWithdrawalDispatch.optional(),
   })
@@ -73,6 +74,27 @@ export interface ShieldedWithdrawalJournal {
   ): Promise<boolean>;
 }
 
+const cancellationScope = reservationFields.pick({
+  requestId: true,
+  networkId: true,
+  bindingId: true,
+  account: true,
+});
+
+export type ShieldedWithdrawalCancellation = z.input<typeof cancellationScope>;
+
+export interface CancellableShieldedWithdrawalJournal extends ShieldedWithdrawalJournal {
+  /** True only if this original is durably excluded from submission. */
+  cancelBeforeDispatch(scope: ShieldedWithdrawalCancellation): Promise<boolean>;
+}
+
+const fenceStates = { reserved: '02', dispatch: '03', cancelled: '04' } as const;
+type FenceState = keyof typeof fenceStates;
+
+function fenceBytes(state: FenceState, reservation: ShieldedWithdrawalRecord['reservation']) {
+  return fromHex(fenceStates[state] + mutationDigest({ state, reservation }));
+}
+
 function unsettled(): never {
   throw new PassportConnectorError(
     'MutationUnsettled',
@@ -96,9 +118,10 @@ function slotKey(
 export function createShieldedWithdrawalJournal(
   store: MutationByteStore,
   requestFence: MutationByteStore,
-): ShieldedWithdrawalJournal {
+): CancellableShieldedWithdrawalJournal {
   if (store === requestFence) return unsettled();
   const recordKey = (requestId: string) => slotKey(requestId, 'shielded-withdrawal');
+  const fenceKey = (requestId: string) => slotKey(requestId, 'shielded-withdrawal-fence');
   async function load(requestId: string) {
     const slot = await store.read(recordKey(requestId));
     if (!slot) return undefined;
@@ -128,6 +151,20 @@ export function createShieldedWithdrawalJournal(
       bytes.fill(0);
     }
   }
+  async function claimFence(
+    reservation: ShieldedWithdrawalRecord['reservation'],
+    terminal: Exclude<FenceState, 'reserved'>,
+  ) {
+    const key = fenceKey(reservation.requestId);
+    const current = await requestFence.read(key);
+    if (!current || current.bytes.length !== 33) return false;
+    const actual = toHex(current.bytes);
+    const next = fenceBytes(terminal, reservation);
+    if (current.revision === 1) return terminal === 'cancelled' && actual === toHex(next);
+    if (current.revision !== 0 || actual !== toHex(fenceBytes('reserved', reservation)))
+      return false;
+    return requestFence.compareAndSwap(key, 0, { revision: 1, bytes: next });
+  }
   return {
     matchesInvocation(reservation, args, heldCoin) {
       return (
@@ -142,15 +179,15 @@ export function createShieldedWithdrawalJournal(
     async reserve(input) {
       const reservation = shieldedWithdrawalReservation.safeParse(input);
       if (!reservation.success) return unsettled();
-      const key = slotKey(reservation.data.requestId, 'shielded-withdrawal-fence');
+      const key = fenceKey(reservation.data.requestId);
       if (
         !(await requestFence.compareAndSwap(key, undefined, {
           revision: 0,
-          bytes: Uint8Array.of(1),
+          bytes: fenceBytes('reserved', reservation.data),
         }))
       )
         return false;
-      return save({ version: 1, reservation: reservation.data }, undefined);
+      return save({ version: 2, reservation: reservation.data }, undefined);
     },
     async stageDispatch(input, proposed) {
       const reservation = shieldedWithdrawalReservation.safeParse(input);
@@ -165,7 +202,31 @@ export function createShieldedWithdrawalJournal(
       )
         return unsettled();
       if (stored.dispatch) return false;
+      if (stored.version === 2 && !(await claimFence(stored.reservation, 'dispatch'))) return false;
+      if (stored.version === 1) {
+        const legacyFence = await requestFence.read(fenceKey(requestId));
+        if (
+          legacyFence?.revision !== 0 ||
+          legacyFence.bytes.length !== 1 ||
+          legacyFence.bytes[0] !== 1
+        )
+          return false;
+      }
       return save({ ...stored, dispatch: original.data }, 0);
+    },
+    async cancelBeforeDispatch(input) {
+      const scope = cancellationScope.safeParse(input);
+      if (!scope.success) return false;
+      const stored = await load(scope.data.requestId);
+      if (!stored || stored.version !== 2 || stored.dispatch) return false;
+      const { account, bindingId, networkId } = stored.reservation;
+      if (
+        account !== scope.data.account ||
+        bindingId !== scope.data.bindingId ||
+        networkId !== scope.data.networkId
+      )
+        return false;
+      return claimFence(stored.reservation, 'cancelled');
     },
   };
 }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -271,4 +271,51 @@ test('a prior staged receipt remains recoverable without a held-coin admission d
     },
   });
   assert.equal(result.kind, 'change-found');
+});
+
+test('a cancellation survives a process kill before its acknowledgement', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'passport-shielded-cancel-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const key = new Uint8Array(32).fill(8);
+  const recordRoot = join(root, 'records');
+  const fenceRoot = join(root, 'fences');
+  const first = protectedMutationByteStore(recordRoot, key);
+  t.after(() => first.close());
+  const journal = createShieldedWithdrawalJournal(first, fileMutationByteStore(fenceRoot));
+  assert.equal(await journal.reserve(reservation), true);
+  const scope = {
+    requestId: reservation.requestId.toLowerCase(),
+    networkId: reservation.networkId,
+    bindingId: reservation.bindingId,
+    account,
+  };
+  first.close();
+  const worker = `
+    import assert from 'node:assert/strict';
+    import { readFileSync } from 'node:fs';
+    import { createShieldedWithdrawalJournal }
+      from ${JSON.stringify(new URL('../packages/account/dist/index.js', import.meta.url).href)};
+    import { fileMutationByteStore, protectedMutationByteStore }
+      from ${JSON.stringify(new URL('../packages/service/dist/index.js', import.meta.url).href)};
+    const { recordRoot, fenceRoot, key, scope } = JSON.parse(readFileSync(0, 'utf8'));
+    const store = protectedMutationByteStore(recordRoot, new Uint8Array(key));
+    const journal = createShieldedWithdrawalJournal(store, fileMutationByteStore(fenceRoot));
+    assert.equal(await journal.cancelBeforeDispatch(scope), true);
+    process.kill(process.pid, 'SIGKILL');
+  `;
+  const stopped = spawnSync(process.execPath, ['--input-type=module', '-e', worker], {
+    input: JSON.stringify({ recordRoot, fenceRoot, key: [...key], scope }),
+    encoding: 'utf8',
+    timeout: 10_000,
+  });
+  assert.equal(stopped.signal, 'SIGKILL', stopped.stderr);
+  assert.equal(stopped.stdout, '');
+
+  const second = protectedMutationByteStore(recordRoot, key);
+  t.after(() => second.close());
+  const reopened = createShieldedWithdrawalJournal(second, fileMutationByteStore(fenceRoot));
+  assert.equal(await reopened.cancelBeforeDispatch(scope), true);
+  assert.equal(await reopened.stageDispatch(reservation, dispatch), false);
+  assert.equal(await reopened.reserve(reservation), false);
+  assert.equal((await reopened.read(scope.requestId))?.dispatch, undefined);
 });

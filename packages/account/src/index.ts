@@ -4,6 +4,8 @@ export * from './holdings.js';
 export * from './shielded-deposit.js';
 export { createShieldedWithdrawalJournal } from './shielded-withdrawal-journal.js';
 export type {
+  CancellableShieldedWithdrawalJournal,
+  ShieldedWithdrawalCancellation,
   ShieldedWithdrawalDispatch,
   ShieldedWithdrawalJournal,
   ShieldedWithdrawalRecord,

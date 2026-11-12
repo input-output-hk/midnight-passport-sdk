@@ -296,6 +296,149 @@ test('one staged withdrawal wins concurrent submission and returns only the orig
   });
 });
 
+test('cancellation during balancing prevents the original from reaching the submitter', async () => {
+  const protectedStore = memoryStore();
+  const fence = memoryStore();
+  const journal = createShieldedWithdrawalJournal(protectedStore, fence);
+  const reopened = createShieldedWithdrawalJournal(protectedStore, fence);
+  const scope = { ...pins, requestId: reservation.requestId, account };
+  assert.equal(await reopened.cancelBeforeDispatch(scope), false);
+  assert.equal(await journal.reserve(reservation), true);
+  assert.equal(await reopened.cancelBeforeDispatch({ ...scope, account: '11'.repeat(32) }), false);
+  assert.equal(await reopened.cancelBeforeDispatch({ ...scope, networkId: 'preview' }), false);
+  const { runtime, status } = stagedRuntime(journal);
+  const balance = runtime.wallet.balanceAndSign;
+  await assert.rejects(
+    submitStagedShieldedWithdrawal(reservation.requestId, request, {
+      ...runtime,
+      wallet: {
+        ...runtime.wallet,
+        async balanceAndSign(bytes) {
+          assert.equal(await reopened.cancelBeforeDispatch(scope), true);
+          return balance(bytes);
+        },
+      },
+    }),
+    { code: 'MutationUnsettled' },
+  );
+  assert.equal(status.balances, 1);
+  assert.equal(status.submissions, 0);
+  assert.equal(await reopened.cancelBeforeDispatch(scope), true);
+  assert.equal(await reopened.reserve(reservation), false);
+});
+
+test('staging wins over cancellation even if either retained store has an older view', async () => {
+  const protectedStore = memoryStore();
+  const fence = memoryStore();
+  const journal = createShieldedWithdrawalJournal(protectedStore, fence);
+  const scope = { ...pins, requestId: reservation.requestId, account };
+  assert.equal(await journal.reserve(reservation), true);
+  /** @param {string} kind */
+  const key = (kind) => mutationDigest({ kind, requestId: scope.requestId }).slice(0, 32);
+  const oldRecord = await protectedStore.read(key('shielded-withdrawal'));
+  const oldFence = await fence.read(key('shielded-withdrawal-fence'));
+  const { runtime, status } = stagedRuntime(journal);
+  const submit = runtime.submitter.submit;
+  await submitStagedShieldedWithdrawal(reservation.requestId, request, {
+    ...runtime,
+    submitter: {
+      async submit(bytes) {
+        assert.equal(await journal.cancelBeforeDispatch(scope), false);
+        return submit(bytes);
+      },
+    },
+  });
+  assert.equal(status.submissions, 1);
+  const staleRecord = createShieldedWithdrawalJournal(
+    { ...protectedStore, read: async () => structuredClone(oldRecord) },
+    fence,
+  );
+  assert.equal(await staleRecord.cancelBeforeDispatch(scope), false);
+  const staleFence = createShieldedWithdrawalJournal(protectedStore, {
+    ...fence,
+    read: async () => structuredClone(oldFence),
+  });
+  assert.equal(await staleFence.cancelBeforeDispatch(scope), false);
+  const stagedFence = await fence.read(key('shielded-withdrawal-fence'));
+  assert.ok(stagedFence);
+  stagedFence.bytes[0] = 4;
+  const changedMarker = createShieldedWithdrawalJournal(
+    { ...protectedStore, read: async () => structuredClone(oldRecord) },
+    { ...fence, read: async () => structuredClone(stagedFence) },
+  );
+  assert.equal(await changedMarker.cancelBeforeDispatch(scope), false);
+});
+
+test('interrupted dispatch admission leaves an inconclusive original without forwarding', async () => {
+  const protectedStore = memoryStore();
+  const fence = memoryStore();
+  const journal = createShieldedWithdrawalJournal(
+    {
+      ...protectedStore,
+      async compareAndSwap(key, expected, next) {
+        if (expected === 0) throw new Error('injected crash after dispatch fence');
+        return protectedStore.compareAndSwap(key, expected, next);
+      },
+    },
+    fence,
+  );
+  assert.equal(await journal.reserve(reservation), true);
+  const { runtime, status } = stagedRuntime(journal);
+  await assert.rejects(submitStagedShieldedWithdrawal(reservation.requestId, request, runtime), {
+    code: 'MutationUnsettled',
+  });
+  assert.equal(status.balances, 1);
+  assert.equal(status.submissions, 0);
+  const reopened = createShieldedWithdrawalJournal(protectedStore, fence);
+  assert.equal(
+    await reopened.cancelBeforeDispatch({ ...pins, requestId: reservation.requestId, account }),
+    false,
+  );
+  assert.equal((await reopened.read(reservation.requestId))?.dispatch, undefined);
+  await assert.rejects(
+    submitStagedShieldedWithdrawal(reservation.requestId, request, {
+      ...runtime,
+      journal: reopened,
+    }),
+    { code: 'MutationUnsettled' },
+  );
+  assert.equal(status.submissions, 0);
+});
+
+test('a legacy reserved request can stage but cannot prove cancellation', async () => {
+  const protectedStore = memoryStore();
+  const fence = memoryStore();
+  const scope = { ...pins, requestId: reservation.requestId, account };
+  const recordKey = mutationDigest({
+    kind: 'shielded-withdrawal',
+    requestId: scope.requestId,
+  }).slice(0, 32);
+  const fenceKey = mutationDigest({
+    kind: 'shielded-withdrawal-fence',
+    requestId: scope.requestId,
+  }).slice(0, 32);
+  assert.equal(
+    await protectedStore.compareAndSwap(recordKey, undefined, {
+      revision: 0,
+      bytes: new TextEncoder().encode(JSON.stringify({ version: 1, reservation })),
+    }),
+    true,
+  );
+  assert.equal(
+    await fence.compareAndSwap(fenceKey, undefined, {
+      revision: 0,
+      bytes: Uint8Array.of(1),
+    }),
+    true,
+  );
+  const journal = createShieldedWithdrawalJournal(protectedStore, fence);
+  assert.equal(await journal.cancelBeforeDispatch(scope), false);
+  const { runtime, status } = stagedRuntime(journal);
+  await submitStagedShieldedWithdrawal(reservation.requestId, request, runtime);
+  assert.equal(status.submissions, 1);
+  assert.equal(await journal.cancelBeforeDispatch(scope), false);
+});
+
 test('missing or changed private change refuses before proving or staging', async () => {
   const journal = createShieldedWithdrawalJournal(memoryStore(), memoryStore());
   assert.equal(await journal.reserve(reservation), true);

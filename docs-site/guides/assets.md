@@ -129,6 +129,24 @@ The ordinary account entry points still require exact-value withdrawals.
 A missing dispatch or finality observation is inconclusive. Keep the original
 request and fence until the host can establish its outcome.
 
+The source journal returned by `createShieldedWithdrawalJournal` can
+explicitly cancel a newly reserved original with
+`cancelBeforeDispatch({ requestId, networkId, bindingId, account })`.
+Use this only when the host intends to abandon that exact request. A
+`true` result means cancellation won the same durable fence that admits
+submission. The original can never be submitted through that journal.
+After a lost cancellation reply, ask again with the same scope.
+
+A `false` result or storage error is inconclusive. In particular, an
+original that has entered dispatch admission can require reconciliation
+even if its protected transaction record is missing. Older reservations
+cannot prove cancellation through this operation. Use independent,
+crash-durable stores, and keep both on their current history. Restoring
+both stores to a snapshot from before dispatch can erase its evidence.
+
+Cancellation applies to the original withdrawal only. A shielded inbox
+append has its own request and fence.
+
 Application contracts may call **into a deployed ACC** under the supported caller-bound design. That does not establish arbitrary ACC → other-contract calls. [See the implementation boundary](/architecture/standards).
 
 ## Repeated deposits and uncertain results
