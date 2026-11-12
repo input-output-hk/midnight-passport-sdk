@@ -30,6 +30,13 @@ sponsorship and submission in their existing host ports. The demo still uses
 its configured proof service. [Browser proving qualification](/operations/services#browser-local-proving-qualification),
 [Type-checked source example](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/background.md#source-preview-prove-an-acc-transaction-in-a-dedicated-worker)
 
+The separate source-preview `adapter-browser/dust-fee-assembly` helper combines
+the original proved ACC call and a proved fee-only DUST intent. Supply the
+trusted call digest, exact network, binding, account and circuit, and your
+approved DUST limit and fee deadline. It returns finalized bytes for the host
+to submit and reconcile. Fee selection and proof generation remain host
+responsibilities. [Source example](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/background.md#assemble-a-proved-acc-call-with-a-dust-fee)
+
 ## Midnames source preview
 
 The reference demo can use Midnames 2.1.0 for read-only lookup. Configure the

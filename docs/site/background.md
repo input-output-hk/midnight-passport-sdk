@@ -225,3 +225,34 @@ and circuit allowlist from the host's deployment configuration. The host
 also supplies each public parameter's URL, byte length and SHA-256. The engine
 must treat the cached bytes as read-only. The loader uses the packaged binding
 and requires HTTPS or loopback HTTP. It never sends the unproven transaction.
+
+### Assemble a proved ACC call with a DUST fee
+
+The source preview exports `assembleDustFee` from
+`adapter-browser/dust-fee-assembly`. Call it in a worker when your host already
+has the original proved ACC call and a separate proved DUST fee transaction.
+Use the SHA-256 of the original proved bytes from your trusted call pipeline.
+Set the network, binding, account and circuit from the reviewed call, and set
+the maximum DUST spend and fee expiry from your fee policy.
+
+```ts
+import {
+  assembleDustFee,
+  type DustFeeAssemblyInput,
+} from '@input-output-hk/mn-passport-adapter-browser/dust-fee-assembly';
+
+export function finalizeInWorker(approved: DustFeeAssemblyInput): Promise<Uint8Array> {
+  return assembleDustFee(approved);
+}
+```
+
+The helper binds and merges a single ACC call and a single fee intent. It
+checks the original bytes, contract and circuit, requires the same network,
+and refuses expired intents, asset offers, non-DUST imbalances, rewards and
+DUST registrations.
+It caps the sum of the DUST spends and requires the fee to expire within the
+approved deadline and the original call's expiry. Retain the finalized bytes
+before submitting. Binding and merging may produce different bytes when
+repeated, so use the retained original for reconciliation. Your host supplies
+fee selection, proofs, authorization and submission, and the chain validates
+the assembled transaction.

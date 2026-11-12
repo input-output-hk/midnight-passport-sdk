@@ -35,6 +35,10 @@
     "./worker-proof-artifacts": {
       "types": "./dist/worker-proof-artifacts.d.ts",
       "default": "./dist/worker-proof-artifacts.js"
+    },
+    "./dust-fee-assembly": {
+      "types": "./dist/dust-fee-assembly.d.ts",
+      "default": "./dist/dust-fee-assembly.js"
     }
   },
   "files": [
