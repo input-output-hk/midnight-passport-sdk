@@ -148,8 +148,9 @@ The retained deployments also supported a negative proof test. With the
 canonical registry `register` proof artifacts pinned, a caller module that used
 an alternate account entry point produced an unproven transaction containing
 `register` and `alternate_registration`. The canonical call proved, while the
-substituted call failed the proof server's `/check` step with a public transcript
-input mismatch. No transaction from that negative test was submitted. Across
+substituted call failed the proof server's `/check` step; its retained private
+server trace reports a public transcript input mismatch. The substituted
+registration call was not submitted. Across
 later finalized blocks, both complete contract state hashes, the owner nonce,
 and the registry record count were unchanged. This is proof-construction
 rejection, not evidence of node-side rejection of a submitted transaction.
