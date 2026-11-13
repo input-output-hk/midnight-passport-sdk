@@ -3,6 +3,7 @@ import { byId } from '../ui-dom.js';
 import type { ClaimJournal } from './claim-journal.js';
 import {
   claimOwnerProof,
+  ClaimPreIntentRefusal,
   claimQuote,
   claimQuoteDigest,
   matchesDestination,
@@ -17,6 +18,44 @@ interface PreparationContext {
   readonly credential: string;
   readonly journal: ClaimJournal;
   ensureAccount(): void;
+}
+
+export function claimQuoteSummary(quote: ClaimQuote): string {
+  return [
+    `Name ${quote.name}`,
+    `Network ${quote.networkId}`,
+    `Passport account ${quote.accountAddress}`,
+    `Registry ${quote.registryAddress}`,
+    `Registry payee ${quote.registryPayee}`,
+    `Sponsor ${quote.sponsorAddress}`,
+    `Registry price ${quote.night} smallest NIGHT units`,
+    `Maximum sponsor fee ${quote.maximumDust} SPECKs`,
+    `Quote expires ${new Date(quote.expiresAt).toISOString()}`,
+  ].join('\n');
+}
+
+const refusedBeforeIntent = Symbol('refused-before-intent');
+
+async function preparationReply(
+  request: Promise<unknown>,
+  journal: ClaimJournal,
+  quote: ClaimQuote,
+  credential: string,
+  owner: string,
+): Promise<unknown> {
+  try {
+    return await request;
+  } catch (error) {
+    if (!(error instanceof ClaimPreIntentRefusal)) return undefined;
+    await journal.releaseRefused(quote, credential, owner);
+    return refusedBeforeIntent;
+  }
+}
+
+function currentReservation(reservation: Awaited<ReturnType<ClaimJournal['readPreparation']>>) {
+  return reservation && (reservation.ownerCommitment || reservation.quote.expiresAt > Date.now())
+    ? reservation
+    : undefined;
 }
 
 export function showClaimPreparation(
@@ -41,15 +80,7 @@ export function showClaimPreparation(
   function display(quote: ClaimQuote, account: PassportAccount, recovering: boolean) {
     reviewed = { quote, account };
     summary.textContent = [
-      `Name ${quote.name}`,
-      `Network ${quote.networkId}`,
-      `Passport account ${quote.accountAddress}`,
-      `Registry ${quote.registryAddress}`,
-      `Registry payee ${quote.registryPayee}`,
-      `Sponsor ${quote.sponsorAddress}`,
-      `Registry price ${quote.night} smallest NIGHT units`,
-      `Maximum sponsor fee ${quote.maximumDust} SPECKs`,
-      `Quote expires ${new Date(quote.expiresAt).toISOString()}`,
+      claimQuoteSummary(quote),
       ...(recovering
         ? []
         : ['Preparing uses the open account’s passkey to derive the naming key.']),
@@ -78,10 +109,7 @@ export function showClaimPreparation(
       };
       const reservation = await journal.readPreparation(registryAddress, name, credential);
       ensureAccount();
-      const stored =
-        reservation && (reservation.ownerCommitment || reservation.quote.expiresAt > Date.now())
-          ? reservation
-          : undefined;
+      const stored = currentReservation(reservation);
       if (await journal.read(registryAddress, name, credential)) {
         ensureAccount();
         clear();
@@ -133,7 +161,13 @@ export function showClaimPreparation(
         request = first ? host.prepare(selected, proved) : host.findPrepared(selected, owner);
       }
       display(selected, account, true);
-      const result = await request.catch(() => undefined);
+      const result = await preparationReply(request, journal, selected, credential, owner);
+      if (result === refusedBeforeIntent) {
+        ensureAccount();
+        clear();
+        status.textContent = 'The sponsor refused before preparation. Review a fresh quote.';
+        return;
+      }
       if (result === undefined) {
         ensureAccount();
         status.textContent = 'Preparation response unavailable. Recover using the saved quote.';

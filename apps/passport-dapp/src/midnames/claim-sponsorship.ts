@@ -1,4 +1,5 @@
 import {
+  addressFromKey,
   Proof,
   Transaction,
   type Effects,
@@ -73,6 +74,35 @@ export function matchesOwnerOffer(
     output.owner === quote.registryPayee &&
     output.value === quote.night
   );
+}
+
+/** Finalized bytes may add sponsor inputs and change, but no other recipient. */
+export function matchesSponsoredOutputs(
+  tx: ReturnType<typeof Transaction.deserialize>,
+  quote: PaidClaimQuote,
+): boolean {
+  let payees = 0;
+  let inputs = 0n;
+  let outputs = 0n;
+  for (const intent of tx.intents?.values() ?? []) {
+    for (const offer of [intent.guaranteedUnshieldedOffer, intent.fallibleUnshieldedOffer]) {
+      if (!offer) continue;
+      const owners = new Set<string>();
+      for (const input of offer.inputs) {
+        if (input.type !== nightType || input.value <= 0n) return false;
+        owners.add(addressFromKey(input.owner));
+        inputs += input.value;
+      }
+      for (const output of offer.outputs) {
+        if (output.type !== nightType || output.value <= 0n) return false;
+        outputs += output.value;
+        if (output.owner === quote.registryPayee && output.value === quote.night && payees === 0) {
+          payees++;
+        } else if (!owners.has(output.owner)) return false;
+      }
+    }
+  }
+  return payees === 1 && inputs === outputs;
 }
 
 function checkedCall(tx: ReturnType<typeof Transaction.deserialize>, quote: PaidClaimQuote) {
@@ -151,6 +181,8 @@ export async function prepareSponsoredClaim(
   const bytes = new Uint8Array(sponsored);
   const finalized = Transaction.deserialize('signature', 'proof', 'binding', bytes);
   const finalizedCall = checkedCall(finalized, expected);
+  if (!matchesSponsoredOutputs(finalized, expected))
+    throw new Error('Sponsor added an unquoted NIGHT output.');
   if (
     finalizedCall.phase !== ownerCall.phase ||
     finalizedCall.communicationCommitment !== ownerCall.communicationCommitment ||

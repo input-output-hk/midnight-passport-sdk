@@ -189,7 +189,9 @@ registry, payee, sponsor, NIGHT price, DUST ceiling and expiry. **Approve and
 prepare claim** records that quote before owner-side proving. The form records
 the public owner commitment before asking the sponsor to balance the proved
 transaction. It then saves the matching receipt automatically. **Send prepared
-claim** is a separate action.
+claim** shows the saved payment terms again and requires a second confirmation
+click before dispatch. A public receipt imported without the matching saved
+quote can be checked and reconciled, but cannot be sent from this browser.
 
 If the preparation response is lost, reopen with the original credential,
 review the saved quote, and select **Recover prepared receipt**. The host
@@ -199,6 +201,10 @@ the browser can recover the receipt after expiry and leaves preparation
 unchanged. The optional adapter requires an owner-side prover and a sponsor
 that can retrieve the prepared receipt by quote and owner commitment. The
 standard demo continues to support importing a public receipt.
+When the sponsor durably refuses before recording any balance intent, the
+browser releases that refused quote and asks the user to review fresh terms.
+An unavailable response or an already recorded intent keeps the original
+quote for recovery.
 
 To recover an external claim, enter the name and paste the sponsor's original
 public receipt. Save it, then
@@ -219,7 +225,9 @@ A mismatched owner or target is reported as a conflict.
 
 The isolated fixture prepares the proof in a separate owner process. The
 sponsor balances it and accepts an explicit **Send prepared claim** action
-for a receipt already saved to the open credential. It acknowledges the
+for a quote-bound receipt already saved to the open credential. The sponsor
+checks the exact registry payment and permits NIGHT change only back to the
+input owner's address. It acknowledges the
 durable dispatch record while the wallet waits for the node. The demo shows
 the result as pending until the original receipt verifies against the indexer.
 

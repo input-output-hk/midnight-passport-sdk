@@ -3,6 +3,7 @@ import {
   claimDestination,
   claimQuote,
   claimQuoteDigest,
+  ClaimPreIntentRefusal,
   matchesDestination,
   type ClaimDestination,
   type ClaimQuote,
@@ -58,6 +59,30 @@ export function createClaimPreparationJournal(
 ) {
   const intentPath = join(directory, 'claim-prepare-intent.json');
   const quotePath = (id: string) => join(directory, 'quote-' + id + '.json');
+  const decisionPath = (id: string) => join(directory, 'quote-decision-' + id + '.json');
+
+  function wasRefused(id: string, digest: string): boolean {
+    const marker = readClaimRecord(decisionPath(id), claimReceiptLimit);
+    if (marker === undefined) return false;
+    if (
+      !marker ||
+      typeof marker !== 'object' ||
+      !('kind' in marker) ||
+      !('digest' in marker) ||
+      marker.digest !== digest ||
+      !['refused', 'intent'].includes(String(marker.kind))
+    )
+      throw new Error('Claim decision differs from the original quote.');
+    return marker.kind === 'refused';
+  }
+
+  function refuseBeforeIntent(id: string, digest: string): never {
+    if (readClaimRecord(intentPath, claimReceiptLimit) !== undefined)
+      throw new Error('The original preparation may already have started.');
+    if (!recordOnce(decisionPath(id), { kind: 'refused', digest }) && !wasRefused(id, digest))
+      throw new Error('The original preparation may already have started.');
+    throw new ClaimPreIntentRefusal('The sponsor refused before any balance intent.');
+  }
 
   async function approved(input: unknown) {
     const { quote, ownerCommitment } = requestFields(input);
@@ -108,7 +133,10 @@ export function createClaimPreparationJournal(
     },
     async findPrepared(input: unknown) {
       const { quote, digest, ownerCommitment } = await approved(input);
-      return find(quote.id, digest, ownerCommitment);
+      const result = find(quote.id, digest, ownerCommitment);
+      if (!result && wasRefused(quote.id, digest))
+        throw new ClaimPreIntentRefusal('The sponsor refused before any balance intent.');
+      return result;
     },
     async authorizeDispatch(bytes: Uint8Array, receipt: ClaimReceipt) {
       const intent = readClaimRecord(intentPath, claimReceiptLimit);
@@ -151,14 +179,34 @@ export function createClaimPreparationJournal(
       const proofSha256 = await claimDigest(bytes);
       const previous = find(quote.id, digest, ownerCommitment, proofSha256);
       if (previous) return previous;
-      if (dispatch.preparedReceipt() || quote.expiresAt <= Date.now())
-        throw new Error('This claim cannot be prepared.');
-      await ports.authorizeQuote(quote);
+      if (wasRefused(quote.id, digest))
+        throw new ClaimPreIntentRefusal('The sponsor refused before any balance intent.');
+      if (dispatch.preparedReceipt()) throw new Error('This claim cannot be prepared.');
+      if (quote.expiresAt <= Date.now()) refuseBeforeIntent(quote.id, digest);
+      try {
+        await ports.authorizeQuote(quote);
+      } catch {
+        refuseBeforeIntent(quote.id, digest);
+      }
       const paid = { ...quote, ownerCommitment, night: BigInt(quote.night) };
       const occupied = new Error('Preparation already started.');
+      let enteredBalance = false;
       try {
         const prepared = await prepareSponsoredClaim(paid, bytes, async (proved) => {
           if (quote.expiresAt <= Date.now()) throw new Error('The claim quote expired.');
+          if (
+            !recordOnce(decisionPath(quote.id), {
+              kind: 'intent',
+              digest,
+              ownerCommitment,
+              proofSha256,
+            })
+          ) {
+            if (wasRefused(quote.id, digest))
+              throw new ClaimPreIntentRefusal('The sponsor refused before any balance intent.');
+            throw occupied;
+          }
+          enteredBalance = true;
           if (!recordOnce(intentPath, { quoteId: quote.id, digest, ownerCommitment, proofSha256 }))
             throw occupied;
           return ports.balance(proved);
@@ -168,6 +216,8 @@ export function createClaimPreparationJournal(
         dispatch.retain(prepared.bytes, receipt);
         return { receipt };
       } catch (error) {
+        if (!enteredBalance && readClaimRecord(intentPath, claimReceiptLimit) === undefined)
+          refuseBeforeIntent(quote.id, digest);
         if (error !== occupied) throw error;
         const result = find(quote.id, digest, ownerCommitment, proofSha256);
         if (!result) throw new Error('The original preparation record is unavailable.');

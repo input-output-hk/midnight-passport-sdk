@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { openClaimDispatch } from '../../../examples/midnames-local/claim-dispatch.mts';
 import { createClaimSponsorHandler } from '../../../examples/midnames-local/claim-sponsor-http.mts';
+import { createClaimPreparationJournal } from '../../../examples/midnames-local/claim-preparation.mts';
 import { createOnce } from '../../../examples/midnames-local/create-once.mts';
 import { claimDispatchPath, isClaimSponsorOrigin } from '../src/midnames/claim-dispatch.js';
 import {
@@ -23,6 +24,7 @@ import {
   claimQuotePath,
 } from '../src/midnames/claim-preparation-transport.js';
 import { claimDestination, claimQuote, claimQuoteDigest } from '../src/midnames/claim-quote.js';
+import { ClaimPreIntentRefusal } from '../src/midnames/claim-quote.js';
 import type { ClaimReceipt } from '../src/midnames/claim-receipt.js';
 
 const bytes = Uint8Array.of(2, 3, 5);
@@ -140,6 +142,47 @@ test('fails closed on corrupted original bytes or a mismatched fence', async (t)
   await assert.rejects(journal.dispatch(original, ports), /transaction differs/);
 });
 
+test('changed registry terms durably refuse before sponsor intent and allow a new quote', async (t) => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'midnames-refused-')));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const destination = claimDestination(original);
+  const quote = claimQuote({
+    ...destination,
+    id: '91'.repeat(32),
+    sponsorAddress: '92'.repeat(32),
+    registryPayee: '93'.repeat(32),
+    night: '1',
+    maximumDust: '10000',
+    expiresAt: Date.now() + 30_000,
+  });
+  const next = claimQuote({ ...quote, id: '94'.repeat(32), night: '2' });
+  let current = quote;
+  const prep = createClaimPreparationJournal(root, openClaimDispatch(root), {
+    async issue() {
+      return current;
+    },
+    async authorizeQuote(candidate) {
+      if (candidate.night !== current.night) throw new Error('Registry price changed.');
+    },
+    async balance() {
+      assert.fail('Refusal must precede balance.');
+    },
+  });
+  await prep.issue(destination);
+  current = next;
+  const request = { quote, ownerCommitment: original.ownerCommitment, proof: '020305' };
+  await assert.rejects(prep.prepare(request), ClaimPreIntentRefusal);
+  assert.equal(existsSync(join(root, 'claim-prepare-intent.json')), false);
+  await assert.rejects(prep.findPrepared(request), ClaimPreIntentRefusal);
+  await assert.rejects(prep.prepare(request), ClaimPreIntentRefusal);
+  assert.equal(existsSync(join(root, 'claim-prepare-intent.json')), false);
+  assert.deepEqual(await prep.issue(destination), next);
+  assert.equal(
+    await prep.findPrepared({ quote: next, ownerCommitment: original.ownerCommitment }),
+    undefined,
+  );
+});
+
 test('recovers a retained sponsor preparation over HTTP after reopening the journal', async (t) => {
   assert.equal(isClaimSponsorOrigin('http://localhost:5173'), true);
   assert.equal(isClaimSponsorOrigin('http://localhost.example:5173'), false);
@@ -202,7 +245,7 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
   assert.deepEqual(await (await post(claimQuotePath, destination)).json(), quote);
   const lookup = { quote, ownerCommitment: original.ownerCommitment };
   assert.equal((await post(claimPreparedPath, lookup)).status, 404);
-  assert.equal((await post(claimPreparePath, { ...lookup, proof: '020305' })).status, 409);
+  assert.equal((await post(claimPreparePath, { ...lookup, proof: 'invalid' })).status, 409);
   const intentPath = join(root, 'claim-prepare-intent.json');
   assert.equal(existsSync(intentPath), false);
   const digest = await claimQuoteDigest(quote);

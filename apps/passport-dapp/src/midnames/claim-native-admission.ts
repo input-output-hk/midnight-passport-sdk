@@ -1,7 +1,11 @@
 import { LedgerParameters, Transaction } from '@midnightntwrk/ledger-v9';
 import { findStandaloneClaimCall } from './claim-call.js';
 import type { ClaimReceipt } from './claim-receipt.js';
-import { matchesRegistryCharge, type PaidClaimQuote } from './claim-sponsorship.js';
+import {
+  matchesRegistryCharge,
+  matchesSponsoredOutputs,
+  type PaidClaimQuote,
+} from './claim-sponsorship.js';
 
 /** Check exact retained bytes against the standalone fixture's explicit DUST budget. */
 export function admitNativeClaim(
@@ -20,6 +24,8 @@ export function admitNativeClaim(
   const effects = call?.guaranteedTranscript?.effects ?? call?.fallibleTranscript?.effects;
   if (!effects || !matchesRegistryCharge(effects, quote))
     throw new Error('Finalized claim or NIGHT charge differs from the live quote.');
+  if (!matchesSponsoredOutputs(tx, quote))
+    throw new Error('Finalized claim contains an unquoted NIGHT output.');
   const intents = [...(tx.intents?.values() ?? [])];
   const minimumTtl = Math.min(...intents.map(({ ttl }) => ttl.getTime()));
   if (!Number.isFinite(minimumTtl) || minimumTtl < now + 10_000)

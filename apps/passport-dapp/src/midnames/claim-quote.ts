@@ -32,6 +32,9 @@ export interface OwnerProvedClaim {
   readonly bytes: Uint8Array;
 }
 
+/** The sponsor durably refused this quote before recording any balance intent. */
+export class ClaimPreIntentRefusal extends Error {}
+
 export function claimOwnerProof(value: OwnerProvedClaim): OwnerProvedClaim {
   if (
     !claimHex(value.ownerCommitment) ||
@@ -103,4 +106,20 @@ export function matchesDestination(a: ClaimQuote | ClaimReceipt, b: ClaimDestina
 
 export function claimQuoteDigest(quote: ClaimQuote): Promise<string> {
   return claimDigest(new TextEncoder().encode(JSON.stringify(claimQuote(quote))));
+}
+
+/** Imported legacy receipts remain useful for reconciliation, never for dispatch. */
+export async function reviewedDispatchQuote(
+  receipt: ClaimReceipt,
+  saved: { quote: ClaimQuote; ownerCommitment: string | undefined } | undefined,
+): Promise<ClaimQuote | undefined> {
+  if (!saved || !receipt.quoteSha256 || !saved.ownerCommitment) return undefined;
+  const quote = claimQuote(saved.quote);
+  if (
+    !matchesDestination(receipt, quote) ||
+    receipt.ownerCommitment !== saved.ownerCommitment ||
+    receipt.quoteSha256 !== (await claimQuoteDigest(quote))
+  )
+    return undefined;
+  return quote;
 }

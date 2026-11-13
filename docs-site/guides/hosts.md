@@ -24,8 +24,12 @@ The adapter reads the registry's contract target and checks the deployed ACC
 verifier roster before displaying the result. On the pinned standalone registry,
 the demo checks name availability and reconciles retained sponsor receipts.
 The opt-in standalone demo can prepare a reviewed claim with the open account's
-passkey. An isolated Chromium run recovered the original claim after one dispatch
-and a lost response. It used fixture login and a virtual passkey. The shielded
+passkey. A definitive sponsor refusal before any balance intent permits a fresh
+quote review; an unknown outcome keeps the original. The browser shows the saved
+price, payee, fee ceiling and expiry before a second click sends. Imported
+quote-less receipts can only be reconciled. An earlier isolated Chromium run
+recovered the original claim after one dispatch and a lost response. It used
+fixture login and a virtual passkey. The shielded
 deposit and two-leg NIGHT payment have standalone Node fixtures. Online profiles
 and real passkey provider recovery require separate qualification.
 See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).

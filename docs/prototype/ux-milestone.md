@@ -121,6 +121,8 @@ the matching public receipt. The current browser preparation test uses a
 simulated wallet host. The loopback sponsor retains the quote and original
 balance intent independently of the browser. Live browser proof preparation and receipt acknowledgement
 have their own isolated evidence.
+If the sponsor durably refuses changed terms before recording an intent, the
+browser can review a new quote. An unknown result stays bound to the original.
 
 The Name service panel under **Settings → Developer tools** can save a
 standalone sponsor receipt after the user opens the target ACC. **Check original
@@ -129,7 +131,9 @@ target. **Check availability** verifies the open ACC and checks whether the
 name is registered. When a receipt already exists, the button reconciles the
 original claim. The loopback fixture offers **Send prepared claim** for an
 original receipt already saved to the open credential. A lost response keeps the original receipt available across
-browser reloads. See [the recovery flow](../site/names.md#recover-the-sponsors-original-claim-in-the-demo).
+browser reloads. Sending requires a saved matching quote and a second click
+after the exact payment terms are displayed. Older quote-less receipts remain
+available for reconciliation only. See [the recovery flow](../site/names.md#recover-the-sponsors-original-claim-in-the-demo).
 
 ### Standalone shielded deposit by name
 

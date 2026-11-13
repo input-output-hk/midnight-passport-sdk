@@ -66,7 +66,7 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
     registry: string,
     name: string,
     credential: string,
-    update?: (previous: StoredClaim | undefined) => StoredClaim,
+    update?: (previous: StoredClaim | undefined) => StoredClaim | undefined,
   ): Promise<StoredClaim | undefined> {
     return new Promise((resolve, reject) => {
       const key = JSON.stringify(['undeployed', registry, name]);
@@ -91,7 +91,10 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
           )
             throw new Error('A different original claim is retained for this name.');
           result = update ? update(previous) : previous;
-          if (result && result !== previous) store.put(result, key);
+          if (result !== previous) {
+            if (result) store.put(result, key);
+            else store.delete(key);
+          }
         } catch (error) {
           failure = error;
           tx.abort();
@@ -137,6 +140,18 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
         return { ...previous, ownerCommitment };
       });
       return first;
+    },
+    async releaseRefused(quote: ClaimQuote, credential: string, ownerCommitment: string) {
+      await access(quote.registryAddress, quote.name, credential, (previous) => {
+        if (
+          !previous ||
+          previous.receipt ||
+          previous.ownerCommitment !== ownerCommitment ||
+          JSON.stringify(previous.quote) !== JSON.stringify(quote)
+        )
+          throw new Error('The refused preparation differs from the retained original.');
+        return undefined;
+      });
     },
     async retain(receipt: ClaimReceipt, credential: string, quote?: ClaimQuote) {
       const saved = await access(receipt.registryAddress, receipt.name, credential);

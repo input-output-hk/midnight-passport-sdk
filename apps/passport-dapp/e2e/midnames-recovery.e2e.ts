@@ -8,6 +8,7 @@ import { chromium, type Page } from 'playwright-core';
 import { createServer } from 'vite';
 import { claimDispatchPath } from '../src/midnames/claim-dispatch.js';
 import { claimReceipt } from '../src/midnames/claim-receipt.js';
+import { claimQuote } from '../src/midnames/claim-quote.js';
 import { reveal } from './journeys/ui.js';
 
 assert.equal(process.env.PASSPORT_MIDNAMES_NATIVE, '1');
@@ -31,6 +32,9 @@ if (sponsorPort !== undefined) {
     if (process.ppid !== workerPid) process.kill(process.pid, 'SIGINT');
   }, 250).unref();
 }
+const reviewedQuote = sponsorPort
+  ? claimQuote(JSON.parse(readFileSync(file('original-quote.json'), 'utf8')))
+  : undefined;
 Object.assign(process.env, {
   PASSPORT_MANIFEST_SHA256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   PASSPORT_NETWORK_ID: 'undeployed',
@@ -155,6 +159,8 @@ async function submitWithLostSponsorResponse(page: Page) {
       }
     });
     await page.locator('#claim-dispatch').click();
+    await status(page, /Review the saved payment terms above/);
+    await page.locator('#claim-dispatch').click();
     await lost;
     assert.equal(responseStatus, 202, 'The sponsor must accept the original before response loss.');
     await status(page, messages.pending);
@@ -179,6 +185,34 @@ async function submitWithLostSponsorResponse(page: Page) {
     'lost',
   );
   assert.ok(existsSync(file('original-response-lost')));
+}
+
+async function seedReviewedOriginal(page: Page) {
+  assert.ok(reviewedQuote);
+  // This native fixture's owner process completed the exact quote review and
+  // proof before the browser recovery driver starts. Restore that durable row.
+  await page.evaluate(
+    async ({ quote, receipt }) => {
+      const journalUrl = '/src/midnames/claim-journal.ts';
+      const receiptUrl = '/src/midnames/claim-receipt.ts';
+      const { openClaimJournal } = (await import(
+        journalUrl
+      )) as typeof import('../src/midnames/claim-journal.js');
+      const { claimDigest } = (await import(
+        receiptUrl
+      )) as typeof import('../src/midnames/claim-receipt.js');
+      const journal = await openClaimJournal(indexedDB);
+      try {
+        const credential = await claimDigest(new Uint8Array(32).fill(1));
+        await journal.reserve(quote, credential);
+        await journal.bindOwner(quote, credential, receipt.ownerCommitment);
+        await journal.retain(receipt, credential, quote);
+      } finally {
+        journal.close();
+      }
+    },
+    { quote: reviewedQuote, receipt: original },
+  );
 }
 
 let browser: Awaited<ReturnType<typeof openBrowser>> | undefined;
@@ -213,6 +247,7 @@ try {
   try {
     await checking.locator('#claim-check-availability').click();
     await registryReadStarted;
+    if (sponsorPort) await seedReviewedOriginal(first);
     await first.locator('#claim-recovery-receipt').fill(JSON.stringify(original));
     await first.locator('#claim-recovery-retain').click();
     await status(first, messages.saved);

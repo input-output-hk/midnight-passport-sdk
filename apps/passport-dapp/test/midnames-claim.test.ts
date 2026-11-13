@@ -4,6 +4,11 @@ import { claimReceipt, claimDigest, normalizeClaimName } from '../src/midnames/c
 import type { AlignedValue, Op } from '@midnightntwrk/ledger-v9';
 import { matchesClaimWrites } from '../src/midnames/claim-transcript.js';
 import { confirmedClaim } from '../src/midnames/claim-finality.js';
+import {
+  claimQuote,
+  claimQuoteDigest,
+  reviewedDispatchQuote,
+} from '../src/midnames/claim-quote.js';
 
 const original = {
   networkId: 'undeployed',
@@ -46,6 +51,34 @@ test('copies only the public original receipt fields and rejects ambiguous scope
     },
   ])
     assert.throws(() => claimReceipt({ ...original, ...change }), /Invalid standalone/);
+});
+
+test('only a saved exact quote can authorize a prepared receipt for send review', async () => {
+  const quote = claimQuote({
+    ...original,
+    id: '91'.repeat(32),
+    sponsorAddress: '92'.repeat(32),
+    registryPayee: '93'.repeat(32),
+    night: '7',
+    maximumDust: '10000',
+    expiresAt: Date.now() + 60_000,
+  });
+  const saved = { quote, ownerCommitment: original.ownerCommitment };
+  const receipt = claimReceipt({ ...original, quoteSha256: await claimQuoteDigest(quote) });
+  assert.deepEqual(await reviewedDispatchQuote(receipt, saved), quote);
+  assert.equal(await reviewedDispatchQuote(claimReceipt(original), saved), undefined);
+  assert.equal(await reviewedDispatchQuote(receipt, undefined), undefined);
+  assert.equal(
+    await reviewedDispatchQuote(receipt, {
+      quote: { ...quote, night: '8' },
+      ownerCommitment: original.ownerCommitment,
+    }),
+    undefined,
+  );
+  assert.equal(
+    await reviewedDispatchQuote(receipt, { quote, ownerCommitment: 'ab'.repeat(32) }),
+    undefined,
+  );
 });
 
 test('requires an exact successful indexed claim, and looks up the original identifier', async () => {

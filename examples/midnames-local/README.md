@@ -148,6 +148,11 @@ a durable intent before invoking the wallet. **Recover prepared receipt**
 reads that original journal after a lost response. An intent with no
 prepared receipt stays pending after restart. The dispatch handler rechecks
 the approved quote and original transaction before opening the dispatch fence.
+If live terms change before any intent is recorded, the sponsor durably refuses
+that quote and the browser asks for fresh review. An uncertain response keeps
+the original quote. The browser requires a matching saved quote and a second
+send click after displaying the payment terms; quote-less imports are only
+reconciled.
 
 To exercise the actual loopback route on an isolated chain, run the same
 `qualify-deposit.mjs` command with a fresh name starting with
@@ -178,7 +183,7 @@ the proof, credential continuity and sponsor balancing independently of
 the fixture's two-DUST admission test.
 
 Save the prepared public receipt while the matching ACC is open, then select
-**Send prepared claim**. **Check original claim** reads the original receipt
+**Send prepared claim**, review the saved terms, and confirm. **Check original claim** reads the original receipt
 after a reload or lost response. This route is a local fixture. The live browser run used a fixture login for
 an already activated ACC and a Chromium virtual passkey to prove the reviewed
 claim. It observed one assertion, one proof, one wallet balance, one dispatch

@@ -18,6 +18,7 @@ import {
   createClaimPreparationJournal,
   type ClaimSponsorPreparationPorts,
 } from './claim-preparation.mts';
+import { ClaimPreIntentRefusal } from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
 
 async function readJson(request: IncomingMessage, limit: number): Promise<unknown> {
   const chunks: Buffer[] = [];
@@ -69,8 +70,11 @@ export function createClaimSponsorHandler(
         await journal.dispatch(claimReceipt(input), {
           async authorize(bytes, receipt) {
             await ports.authorize(bytes, receipt);
-            if (receipt.quoteSha256) {
-              if (!prep) throw new Error('The original quote sponsor is unavailable.');
+            if (receipt.quoteSha256 && !prep)
+              throw new Error('The original quote sponsor is unavailable.');
+            if (prep) {
+              if (!receipt.quoteSha256)
+                throw new Error('A reviewed claim quote is required for dispatch.');
               await prep.authorizeDispatch(bytes, receipt);
             }
           },
@@ -86,8 +90,8 @@ export function createClaimSponsorHandler(
         if (result?.receipt) sendJson(response, result.receipt);
         else response.writeHead(result ? 202 : 404).end();
       }
-    } catch {
-      response.writeHead(409).end();
+    } catch (error) {
+      response.writeHead(error instanceof ClaimPreIntentRefusal ? 412 : 409).end();
     }
     return true;
   };

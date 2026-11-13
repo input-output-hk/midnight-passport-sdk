@@ -344,15 +344,10 @@ try {
   await first.locator('#claim-recovery-receipt').fill(JSON.stringify(receipt));
   await first.locator('#claim-recovery-retain').click();
   await status.filter({ hasText: 'Original receipt saved' }).waitFor();
-  await first.route(origin + claimDispatchPath, async (route) => {
-    const response = await route.fetch();
-    assert.equal(response.status(), 202);
-    await route.abort('failed');
-  });
   await first.locator('#claim-dispatch').click();
-  await status.filter({ hasText: /^Claim pending/ }).waitFor();
-  assert.equal(browserDispatches, 1);
-  assert.deepEqual(requests, [bytes]);
+  await status.filter({ hasText: /no matching reviewed quote/ }).waitFor();
+  assert.equal(browserDispatches, 0);
+  assert.deepEqual(requests, []);
   await browser.close();
   browser = await openBrowser();
   const other = await browser.newPage();
@@ -371,13 +366,62 @@ try {
     .locator('#claim-recovery-status')
     .filter({ hasText: /^Registered/ })
     .waitFor();
-  assert.deepEqual(requests, [bytes]);
-  console.log(
-    'PASS: browser acknowledgement, one sponsor call and original receipt recovery after restart',
-  );
+  assert.deepEqual(requests, []);
+  console.log('PASS: imported quote-less receipt cannot send and remains available after restart');
   await verifyPreparation(origin, pageUrl, () => openBrowser('chrome-preparation-profile'));
+  browser = await openBrowser('chrome-preparation-profile');
+  const prepared = await browser.newPage();
+  await prepared.goto(pageUrl + '?prepare');
+  await prepared.locator('#claim-recovery-name').fill(receipt.name);
+  let quotedDispatches = 0;
+  await prepared.route(origin + claimDispatchPath, async (route) => {
+    quotedDispatches++;
+    assert.deepEqual(route.request().postDataJSON(), preparedReceipt);
+    await route.fulfill({ status: 202 });
+  });
+  await prepared.locator('#claim-dispatch').click();
+  await prepared
+    .locator('#claim-recovery-status')
+    .filter({ hasText: /Review the saved payment terms above/ })
+    .waitFor();
+  assert.match(
+    await prepared.locator('#claim-quote-summary').innerText(),
+    /Registry price 1 smallest NIGHT units/,
+  );
+  assert.equal(quotedDispatches, 0);
+  await prepared.locator('#claim-dispatch').click();
+  await prepared
+    .locator('#claim-recovery-status')
+    .filter({ hasText: /^Claim pending/ })
+    .waitFor();
+  assert.equal(quotedDispatches, 1);
+  await browser.close();
   await verifyPreparedImport(origin, pageUrl, () => openBrowser('chrome-preparation-import'));
-  assert.deepEqual(requests, [bytes]);
+  browser = await openBrowser('chrome-refused-profile');
+  const refused = await browser.newPage();
+  await refused.goto(pageUrl + '?prepare');
+  await refused.locator('#claim-recovery-name').fill(receipt.name);
+  await refused.locator('#claim-review-quote').click();
+  await refused
+    .locator('#claim-quote-summary')
+    .filter({ hasText: /Registry price 1/ })
+    .waitFor();
+  await refused.route(origin + claimPreparePath, (route) => route.fulfill({ status: 412 }));
+  await refused.locator('#claim-prepare').click();
+  await refused
+    .locator('#claim-recovery-status')
+    .filter({ hasText: /Review a fresh quote/ })
+    .waitFor();
+  const repriced = { ...quote, id: '94'.repeat(32), night: '2' };
+  await refused.route(origin + claimQuotePath, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(repriced) }),
+  );
+  await refused.locator('#claim-review-quote').click();
+  await refused
+    .locator('#claim-quote-summary')
+    .filter({ hasText: /Registry price 2/ })
+    .waitFor();
+  assert.deepEqual(requests, []);
   console.log(
     'PASS: exact quote review, legacy journal recovery and receipt import reject changed owner and quote',
   );
@@ -386,3 +430,5 @@ try {
   await vite.close();
   rmSync(root, { recursive: true, force: true });
 }
+// Vite and persistent Chromium can leave helper handles after owned cleanup.
+process.exit(0);

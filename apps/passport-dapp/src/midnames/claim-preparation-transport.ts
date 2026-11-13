@@ -1,6 +1,6 @@
 import { isClaimSponsorOrigin } from './claim-dispatch.js';
 import { claimReceiptLimit } from './claim-receipt.js';
-import { claimOwnerProof, type ClaimPreparation } from './claim-quote.js';
+import { ClaimPreIntentRefusal, claimOwnerProof, type ClaimPreparation } from './claim-quote.js';
 
 export const claimQuotePath = '/v1/midnames/claim/quote';
 export const claimPreparePath = '/v1/midnames/claim/prepare';
@@ -16,6 +16,8 @@ async function request(path: string, input: unknown): Promise<unknown> {
     signal: AbortSignal.timeout(60_000),
   });
   if (response.status === 202 || response.status === 404) return undefined;
+  if ((path === claimPreparePath || path === claimPreparedPath) && response.status === 412)
+    throw new ClaimPreIntentRefusal('The sponsor refused this quote before preparation began.');
   if (!response.ok || !response.body)
     throw new Error('The local claim sponsor refused the request.');
   const reader = response.body.getReader();

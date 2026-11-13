@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  addressFromKey,
   Intent,
+  sampleSigningKey,
+  signatureVerifyingKey,
   Transaction,
   UnshieldedOffer,
   type Effects,
@@ -10,6 +13,7 @@ import {
 import {
   matchesRegistryCharge,
   matchesOwnerOffer,
+  matchesSponsoredOutputs,
   prepareSponsoredClaim,
   type PaidClaimQuote,
 } from '../src/midnames/claim-sponsorship.js';
@@ -66,6 +70,47 @@ test('admits only the single registry payment output in the owner-proved offer',
     assert.equal(matchesOwnerOffer(UnshieldedOffer.new([], outputs, []), quote), false);
   }
   assert.equal(matchesOwnerOffer(undefined, quote), false);
+});
+
+test('finalized bytes admit the registry payment and sponsor change only', () => {
+  const key = signatureVerifyingKey(sampleSigningKey());
+  const sponsor = addressFromKey(key);
+  const input = {
+    value: 10n,
+    owner: key,
+    type: night.raw,
+    intentHash: 'ab'.repeat(32),
+    outputNo: 0,
+  };
+  const registry = { value: quote.night, owner: quote.registryPayee, type: night.raw };
+  const change = { value: 3n, owner: sponsor, type: night.raw };
+  const finalized = (outputs: (typeof registry)[]) => {
+    const intent = Intent.new(new Date(Date.now() + 60_000));
+    intent.guaranteedUnshieldedOffer = UnshieldedOffer.new([input], outputs, []);
+    const bytes = Transaction.fromParts('undeployed', undefined, undefined, intent)
+      .mockProve()
+      .serialize();
+    return Transaction.deserialize('signature', 'proof', 'binding', bytes);
+  };
+  assert.equal(matchesSponsoredOutputs(finalized([registry, change]), quote), true);
+  assert.equal(
+    matchesSponsoredOutputs(
+      finalized([
+        registry,
+        { ...change, value: 2n },
+        { value: 1n, owner: 'cd'.repeat(32), type: night.raw },
+      ]),
+      quote,
+    ),
+    false,
+  );
+  assert.equal(
+    matchesSponsoredOutputs(
+      finalized([registry, { ...change, owner: quote.accountAddress }]),
+      quote,
+    ),
+    false,
+  );
 });
 
 test('rejects unproved or malformed bytes before calling the sponsor wallet', async () => {

@@ -330,11 +330,13 @@ try {
         assert.equal(await reads.readClaim(quote.name, profile), undefined);
         assert.ok(await reads.isSupportedAccount(accountAddress, profile.networkId));
       };
-      dispatch = (quote, original) =>
+      dispatch = (quote, original, reviewedQuote, ownerProofSha256) =>
         qualifyBrowserClaim({
           output,
           quote,
           receipt: original,
+          reviewedQuote,
+          ownerProofSha256,
           ledger,
           submit: providers.midnightProvider.submitTx,
           readLive,

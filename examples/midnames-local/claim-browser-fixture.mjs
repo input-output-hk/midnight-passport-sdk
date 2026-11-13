@@ -10,6 +10,8 @@ import { admitNativeClaim } from '../../apps/passport-dapp/src/midnames/claim-na
 import { isolatedProcesses } from '../../scripts/qualification/native-isolation-control.mjs';
 import { saveIsolationReceipt } from '../../scripts/qualification/native-isolation-files.mjs';
 import { createClaimSponsorHandler } from './claim-sponsor-http.mts';
+import { createOnce } from './create-once.mts';
+import { claimQuoteDigest } from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
 
 const fixtureDustCeiling = 100_000_000_000_000_000n;
 const fixtureNightCeiling = 1n;
@@ -49,8 +51,30 @@ export async function runBrowser(output, port, timeoutMs = 270_000) {
 }
 
 /** Serve the one prepared original to the demo while it exercises recovery. */
-export async function qualifyBrowserClaim({ output, quote, receipt, ledger, submit, readLive }) {
+export async function qualifyBrowserClaim({
+  output,
+  quote,
+  receipt,
+  reviewedQuote,
+  ownerProofSha256,
+  ledger,
+  submit,
+  readLive,
+}) {
+  const digest = await claimQuoteDigest(reviewedQuote);
+  assert.equal(receipt.quoteSha256, digest);
+  createOnce(join(output, 'quote-' + reviewedQuote.id + '.json'), JSON.stringify(reviewedQuote));
+  createOnce(
+    join(output, 'claim-prepare-intent.json'),
+    JSON.stringify({
+      quoteId: reviewedQuote.id,
+      digest,
+      ownerCommitment: receipt.ownerCommitment,
+      proofSha256: ownerProofSha256,
+    }),
+  );
   saveIsolationReceipt(join(output, 'original-claim.json'), receipt);
+  saveIsolationReceipt(join(output, 'original-quote.json'), reviewedQuote);
   const evidence = {
     dispatches: 0,
     dustCeiling: String(fixtureDustCeiling),
@@ -58,39 +82,55 @@ export async function qualifyBrowserClaim({ output, quote, receipt, ledger, subm
   };
   const save = () => saveIsolationReceipt(join(output, 'native-claim-dispatch.json'), evidence);
   let submission;
-  const handler = createClaimSponsorHandler('http://127.0.0.1:15189', output, {
-    async authorize(bytes, acknowledged) {
-      assert.ok(quote.night > 0n && quote.night <= fixtureNightCeiling);
-      await readLive(quote);
-      evidence.admission = admitNativeClaim(bytes, acknowledged, quote, fixtureDustCeiling);
-      assert.throws(
-        () =>
-          admitNativeClaim(
-            bytes,
-            acknowledged,
-            quote,
-            BigInt(evidence.admission.maximumDustCharged) - 1n,
-          ),
-        /outside the sponsor budget/,
-      );
-      evidence.lowerFeeCeilingRefused = true;
-      save();
-    },
-    async submit(bytes) {
-      const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
-      evidence.dispatches += 1;
-      evidence.submitOutcome = 'pending';
-      save();
-      // The journal has fenced the original. Let HTTP acknowledge that
-      // pending state while the wallet observes the isolated node.
-      submission = Promise.resolve()
-        .then(() => submit({ version: 'v9', tx }))
-        .then(
-          (id) => ({ submitOutcome: 'reported', originalSubmittedId: String(id) }),
-          () => ({ submitOutcome: 'unknown' }),
+  const handler = createClaimSponsorHandler(
+    'http://127.0.0.1:15189',
+    output,
+    {
+      async authorize(bytes, acknowledged) {
+        assert.ok(quote.night > 0n && quote.night <= fixtureNightCeiling);
+        await readLive(quote);
+        evidence.admission = admitNativeClaim(bytes, acknowledged, quote, fixtureDustCeiling);
+        assert.throws(
+          () =>
+            admitNativeClaim(
+              bytes,
+              acknowledged,
+              quote,
+              BigInt(evidence.admission.maximumDustCharged) - 1n,
+            ),
+          /outside the sponsor budget/,
         );
+        evidence.lowerFeeCeilingRefused = true;
+        save();
+      },
+      async submit(bytes) {
+        const tx = ledger.Transaction.deserialize('signature', 'proof', 'binding', bytes);
+        evidence.dispatches += 1;
+        evidence.submitOutcome = 'pending';
+        save();
+        // The journal has fenced the original. Let HTTP acknowledge that
+        // pending state while the wallet observes the isolated node.
+        submission = Promise.resolve()
+          .then(() => submit({ version: 'v9', tx }))
+          .then(
+            (id) => ({ submitOutcome: 'reported', originalSubmittedId: String(id) }),
+            () => ({ submitOutcome: 'unknown' }),
+          );
+      },
     },
-  });
+    {
+      async issue() {
+        return reviewedQuote;
+      },
+      async authorizeQuote(candidate) {
+        assert.deepEqual(candidate, reviewedQuote);
+        await readLive(quote);
+      },
+      async balance() {
+        assert.fail('The native original is already prepared.');
+      },
+    },
+  );
   const server = createServer((request, response) => {
     void handler(request, response).then(
       (handled) => {

@@ -2,6 +2,7 @@ import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
 import { byId } from '../ui-dom.js';
 import { openClaimJournal } from './claim-journal.js';
 import { showClaimPreparation } from './claim-preparation-ui.js';
+import { createClaimSendReview } from './claim-send-review.js';
 import {
   claimDigest,
   claimReceipt,
@@ -9,6 +10,18 @@ import {
   normalizeClaimName,
   type ClaimRecovery,
 } from './claim-receipt.js';
+
+const messages = {
+  pending: 'Claim pending. Check this original receipt again after the indexer catches up.',
+  conflict: 'The registry owner or target differs from this receipt. Inspect the original claim.',
+  registered: 'Registered. The original claim and current registry record match this account.',
+} as const;
+
+const availabilityMessages = {
+  available: 'Unregistered at the last registry read. Registration is a separate step.',
+  taken: 'This name is already registered.',
+  unsupported: 'This Passport account is not active on the configured registry’s network.',
+} as const;
 
 export function showClaimRecovery(
   recovery: ClaimRecovery,
@@ -20,25 +33,17 @@ export function showClaimRecovery(
   const availability = byId<HTMLButtonElement>('claim-check-availability');
   const retain = byId<HTMLButtonElement>('claim-recovery-retain');
   const send = byId<HTMLButtonElement>('claim-dispatch');
+  const quoteSummary = byId('claim-quote-summary');
   send.hidden = !recovery.dispatch;
   const check = byId<HTMLButtonElement>('claim-recovery-check');
   const status = byId('claim-recovery-status');
   const preparation =
     recovery.preparation &&
     showClaimPreparation(recovery.preparation, recovery.registryAddress, status, name);
+  const sendReview = createClaimSendReview(send, quoteSummary);
   form.hidden = false;
   let busy = false;
-  const messages = {
-    pending: 'Claim pending. Check this original receipt again after the indexer catches up.',
-    conflict: 'The registry owner or target differs from this receipt. Inspect the original claim.',
-    registered: 'Registered. The original claim and current registry record match this account.',
-  } as const;
-
-  const availabilityMessages = {
-    available: 'Unregistered at the last registry read. Registration is a separate step.',
-    taken: 'This name is already registered.',
-    unsupported: 'This Passport account is not active on the configured registry’s network.',
-  } as const;
+  name.addEventListener('input', sendReview.clear);
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -51,6 +56,7 @@ export function showClaimRecovery(
     const checkingAvailability = event.submitter === availability;
     const saving = event.submitter === retain;
     const sending = event.submitter === send;
+    if (!sending) sendReview.clear();
     const raw = receipt.value;
     name.disabled = receipt.disabled = true;
     const ensureAccount = () => {
@@ -123,6 +129,8 @@ export function showClaimRecovery(
           return;
         }
         if (sending && recovery.dispatch) {
+          if (!(await sendReview.ready(account, original, journal, scope, ensureAccount, status)))
+            return;
           // Journal read above is the acknowledgement. A transport failure leaves
           // the same receipt available for reconciliation on this device.
           await recovery.dispatch(original).catch(() => undefined);
@@ -149,6 +157,7 @@ export function showClaimRecovery(
       });
   });
   return () => {
+    sendReview.clear();
     preparation?.clear();
     name.value = '';
     receipt.value = '';
