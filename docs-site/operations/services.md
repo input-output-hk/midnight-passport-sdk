@@ -63,11 +63,18 @@ with the isolated indexer, selected one spend, proved it, and used
 approved cap. A Node transport submitted the finalized bytes once at block 67,
 where the expected inbox append and fee spend were confirmed.
 
-The demo continues to use its configured proof service. Real credential and
-wallet custody profiles, browser submission, other circuits and browsers,
-and memory need separate checks. The fixture observations cover this call
-path. Production privacy also requires an observation policy for chain,
-transport, browser and operator data.
+An isolated browser submission run retained the hash, byte digest and
+transaction identifiers before the worker sent the finalized transaction to
+the node. The test dropped the inclusion acknowledgement. After a page
+reload, the browser recovered the original identity from its session and
+refused a second send. A read-only observer matched the original transaction
+at finalized block 69, with one DUST spend and the expected inbox append.
+
+The demo continues to use its configured proof service. Production wallet
+custody, real credentials, durable recovery after a closed tab, other
+circuits and browsers, and memory need separate checks. Production privacy
+also requires an observation policy for chain, transport, browser and
+operator data.
 [Browser proving qualification issue](https://github.com/input-output-hk/midnight-passport-sdk/issues/241)
 
 ## Fee sponsorship
