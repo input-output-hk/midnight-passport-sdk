@@ -55,10 +55,18 @@ merged the original proved ACC and fee transactions. Node submitted the exact
 bytes produced by Chromium and checked them at finalized block 67. The ledger
 recorded one inbox append with the expected digest and one DUST spend.
 
-The demo continues to use its configured proof service. Browser wallet custody
-and DUST selection, real credentials, other circuits and browsers, and memory
-need separate checks. The fixture observations cover this call path. A
-production privacy claim also requires an observation policy for chain,
+A later isolated Chromium run also moved wallet sync and DUST input selection
+into a browser worker. The Node deployment wallet stopped before the worker
+opened the same public test wallet. The worker derived its keys, synchronized
+with the isolated indexer, selected one spend, proved it, and used
+`assembleDustFee` to finalize the transaction. It refused a fee above the
+approved cap. A Node transport submitted the finalized bytes once at block 67,
+where the expected inbox append and fee spend were confirmed.
+
+The demo continues to use its configured proof service. Real credential and
+wallet custody profiles, browser submission, other circuits and browsers,
+and memory need separate checks. The fixture observations cover this call
+path. Production privacy also requires an observation policy for chain,
 transport, browser and operator data.
 [Browser proving qualification issue](https://github.com/input-output-hk/midnight-passport-sdk/issues/241)
 
