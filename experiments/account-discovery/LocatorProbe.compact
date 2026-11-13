@@ -1,0 +1,24 @@
+pragma language_version >= 0.23;
+import CompactStandardLibrary;
+
+witness lookup_secret(): Bytes<32>;
+
+export ledger namespace: Bytes<32>;
+export ledger records: Map<Bytes<32>, ContractAddress>;
+
+constructor(network: Bytes<32>) {
+  namespace = disclose(network);
+}
+
+export circuit register(locator: Bytes<32>, account: ContractAddress): [] {
+  const derived = persistentHash<Vector<4, Bytes<32>>>([
+    pad(32, "midnight:passport:locator:v1"),
+    namespace,
+    kernel.self().bytes,
+    lookup_secret()
+  ]);
+  assert(derived == locator, "locator witness mismatch");
+  const public_locator = disclose(locator);
+  assert(!records.member(public_locator), "locator already registered");
+  records.insert(public_locator, disclose(account));
+}
