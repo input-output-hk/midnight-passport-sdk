@@ -1,0 +1,12 @@
+pragma language_version >= 0.23;
+import CompactStandardLibrary;
+
+// Deliberately satisfies the interface without enforcing ownership.
+export ledger authorizations: Counter;
+
+export circuit authorize_registration(
+  registry: ContractAddress, account: ContractAddress, locator: Bytes<32>,
+  nonce: Uint<64>, r_x: Field, r_y: Field, s: Field, grind: Uint<64>
+): [] {
+  authorizations.increment(2);
+}
