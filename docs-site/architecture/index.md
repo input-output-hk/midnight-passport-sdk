@@ -28,5 +28,6 @@ The upstream [Passport architecture and plans](https://midnightntwrk.github.io/p
 - [Package selection](/packages/) maps the nine RC9 packages to host requirements.
 - [Architecture conformance](/architecture/conformance) compares this SDK with the Passport architecture's v1.0 target and current reference implementation.
 - [Upstream SDK comparison](/architecture/upstream-sdk) maps this fork's implemented surfaces to the upstream SDK's latest design revision.
+- [What remains for 0.2.0?](/architecture/milestone-0.2.0) distinguishes merged source slices from open milestone acceptance and recommends the next local demo step.
 - [Persistence and background work](/guides/durability) explains what must survive interruption.
 - [Public artifacts](/operations/artifacts) explains why proof keys have a different distribution path from private account keys.
