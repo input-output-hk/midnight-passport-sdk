@@ -82,8 +82,9 @@ outside the released binding. The standard shielded withdrawal remains
 exact-value. The opt-in #201 path requires a separately qualified host.
 [Unknown-address discovery](https://github.com/input-output-hk/midnight-passport-sdk/issues/20)
 has an offline locator experiment. The generated Compact runtime matched the
-host's locator for a synthetic PRF output, rejected reuse in another network or
-registry, and rejected a copied locator presented as the private witness. Reads
+host's locator for a synthetic PRF output, rejected reuse under a different
+configured namespace or registry address, and rejected a copied locator
+presented as the private witness. Reads
 and writes can be correlated when they expose the same locator. Registry-side
 ACC admission, owner-authorized updates and browser witness custody still need
 qualification. The experiment is outside the SDK and demo.

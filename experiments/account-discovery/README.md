@@ -13,7 +13,8 @@ against generated Compact code using synthetic witness bytes.
 - The network is a lowercase ASCII identifier with alphanumeric segments
   separated by single hyphens. The maximum length is 32 bytes. The constructor
   takes those bytes right-padded with zeros to 32 bytes. A client would have to
-  pin the canonical namespace and registry deployment together.
+  pin the canonical namespace and registry deployment together. The namespace is a constructor input.
+  This fixture does not authenticate a chain identifier.
 - The locator hashes four consecutive 32-byte values with SHA-256. They are the
   right-zero-padded ASCII tag `midnight:passport:locator:v1`, the network
   namespace, the raw registry address bytes and the discovery PRF output.
@@ -40,7 +41,7 @@ nix develop -c bash -euc '
 Compact 0.35.0 and runtime 0.20.0 are the workspace pins. The probe checks
 known-answer vectors, validates malformed inputs, compares the ledger key
 against the host digest, and tests duplicate registration, a wrong witness,
-a copied public locator as witness, and replay across network/registry scopes.
+a copied public locator as witness, and replay under a different configured namespace or registry address.
 This runs generated JavaScript with simulated ledger contexts.
 
 The experiment accepts a supplied account address. A deployable registry needs
