@@ -89,11 +89,23 @@ the same profile. The helper recovered the original, and the fixture refused
 another send. The observer matched the original at finalized block 66,
 with one inbox append and one DUST spend.
 
-The demo continues to use its configured proof service. The restart test
-preserved the profile and origin. Storage eviction, abrupt process loss,
-production wallet custody, real credentials, additional circuits and
-browsers, and memory need separate qualification. Production privacy also
-requires an observation policy for chain, transport, browser and operator data.
+The hard-kill follow-up sent SIGKILL to the dedicated Chromium process
+after the node proxy intercepted the inclusion acknowledgement. The
+in-flight page call ended without a result. With the same profile and origin,
+the SDK recovered the exact original identity and the fixture refused another
+send. The finality reader matched the original at finalized block 73.
+
+A fresh Chromium profile at the same origin had no local receipt. The host
+test retained a copy outside Chromium and used that copy for the read-only
+finality check. Hosts that require recovery after loss of browser storage
+need an independent receipt store. The fixture submitted once across all
+profiles.
+
+The demo continues to use its configured proof service. Browser-managed
+eviction, system power loss, production wallet custody, real credentials,
+additional circuits and browsers, and memory need separate qualification.
+Production privacy also requires an observation policy for chain, transport,
+browser and operator data.
 [Browser proving qualification issue](https://github.com/input-output-hk/midnight-passport-sdk/issues/241)
 
 ## Fee sponsorship

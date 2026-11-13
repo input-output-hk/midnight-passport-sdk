@@ -46,8 +46,15 @@ canonical finality check. Read the retained identity after interruption and
 reconcile it through your finality reader. The helper keeps the reservation
 after submission and treats a missing record as an absence in the selected
 store. Preserve the store and recover original state before making another
-attempt after storage loss. The host supplies the approved finalized bytes,
-consent, the transport, and a policy for retaining original receipts.
+attempt after storage loss. If recovery must survive loss of the browser
+profile, have your submitter copy the reserved identity to an independent
+durable store before forwarding any bytes. The submitter can call
+`readOriginal` with the same scope because the reservation has already
+committed. If the copy fails, stop before forwarding and reconcile the
+original request. The host supplies the approved finalized bytes, consent,
+transport, and receipt retention policy.
+
+<<< ../../docs/examples/browser-original-receipt.ts
 
 ## Midnames source preview
 

@@ -248,6 +248,10 @@
   ],
   "files": [
     {
+      "path": "docs/examples/browser-original-receipt.ts",
+      "targets": ["web"]
+    },
+    {
       "path": "docs/examples/browser-first-integration.ts",
       "targets": ["web"]
     },

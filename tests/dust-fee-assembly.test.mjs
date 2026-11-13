@@ -197,6 +197,49 @@ test('reserves one original across concurrent browser handles and recovers it af
   }
 });
 
+test('an independent receipt gates dispatch and recovers the original without browser storage', async () => {
+  const options = {
+    databaseName: 'independent-receipts',
+    allowPlaintext: /** @type {const} */ (true),
+    strictWrites: /** @type {const} */ (true),
+  };
+  const originalStore = await createBrowserSecretStore({ ...options, indexedDB: new IDBFactory() });
+  const freshStore = await createBrowserSecretStore({ ...options, indexedDB: new IDBFactory() });
+  const finalized = await assembleDustFee(input);
+  /** @type {Map<string, import('../packages/adapter-browser/dist/original-dispatch.js').OriginalDispatchIdentity>} */
+  const receipts = new Map();
+  let sends = 0;
+  /** @param {typeof originalStore} store */
+  function client(store) {
+    const dispatch = createBrowserOriginalDispatch(store, {
+      async submit() {
+        const receipt = await dispatch.readOriginal(dispatchScope);
+        assert.ok(receipt);
+        if (receipts.has(dispatchScope.requestId)) throw new Error('Receipt already committed.');
+        receipts.set(dispatchScope.requestId, receipt);
+        sends++;
+        throw new Error('Lost acknowledgement.');
+      },
+    });
+    return dispatch;
+  }
+
+  try {
+    const original = await client(originalStore).dispatch(dispatchScope, finalized);
+    assert.equal(original.acknowledged, false);
+    assert.equal(sends, 1);
+    const fresh = client(freshStore);
+    assert.equal(await fresh.readOriginal(dispatchScope), undefined);
+    assert.deepEqual(receipts.get(dispatchScope.requestId), original.original);
+    const repeated = await fresh.dispatch(dispatchScope, finalized);
+    assert.equal(repeated.acknowledged, false);
+    assert.equal(sends, 1);
+  } finally {
+    freshStore.close();
+    originalStore.close();
+  }
+});
+
 test('refuses wrong-network, wrong-account, and unavailable storage before dispatch', async () => {
   const store = await createBrowserSecretStore({
     indexedDB: new IDBFactory(),
