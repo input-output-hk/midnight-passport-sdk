@@ -81,6 +81,14 @@ A subsequent test closed Chromium and relaunched it with the same dedicated
 profile. The new process read the strict IndexedDB record and refused a
 second send. The observer matched the original at finalized block 66.
 
+The same isolated workflow later used the SDK’s
+`adapter-browser/original-dispatch` helper to record the transaction before
+calling the browser wallet submitter. After the node received one submission,
+the test dropped the inclusion acknowledgement and restarted Chromium with
+the same profile. The helper recovered the original, and the fixture refused
+another send. The observer matched the original at finalized block 66,
+with one inbox append and one DUST spend.
+
 The demo continues to use its configured proof service. The restart test
 preserved the profile and origin. Storage eviction, abrupt process loss,
 production wallet custody, real credentials, additional circuits and
