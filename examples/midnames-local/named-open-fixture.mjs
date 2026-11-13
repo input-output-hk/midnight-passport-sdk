@@ -33,10 +33,10 @@ export async function namedOpenOwner({
   contracts,
   wave,
   transactions,
+  privateStateId,
 }) {
   const identity = await createSoftwareIdentity();
   const participant = softwareParticipant(identity, arm);
-  const privateStateId = 'midnames-authorized-open';
   let address;
   const chainOptions = {
     network,

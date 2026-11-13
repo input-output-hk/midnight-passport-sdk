@@ -57,11 +57,11 @@ assert.ok(info.MemTotal >= 24 * 1024 ** 3);
 const images = isolatedImages(docker, info.Architecture === 'aarch64' ? 'arm64' : 'amd64');
 assert.match(
   out ?? '',
-  /^midnames-(?:deposit|night-send|claim-handoff|claim-browser|claim-owner-browser|named-open-(?:p256|jubjub))-[a-z0-9-]{1,48}$/,
+  /^midnames-(?:deposit|night-send|claim-handoff|claim-browser|claim-owner-browser|named-open-(?:p256|jubjub)|registry-authority)-[a-z0-9-]{1,48}$/,
 );
-const namedOpen = /^midnames-(named-open-(?:p256|jubjub))-/.exec(out)?.[1];
+const namedMode = /^midnames-(named-open-(?:p256|jubjub)|registry-authority)-/.exec(out)?.[1];
 const fixtureMode =
-  namedOpen ??
+  namedMode ??
   (out.startsWith('midnames-claim-browser-')
     ? 'claim-browser'
     : out.startsWith('midnames-claim-owner-browser-')

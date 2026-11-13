@@ -70,6 +70,7 @@ assert.ok(
     'claim-owner-browser',
     'named-open-p256',
     'named-open-jubjub',
+    'registry-authority',
   ].includes(mode),
 );
 const browserOwner = mode === 'claim-owner-browser' || mode === 'claim-browser';
@@ -85,6 +86,8 @@ const write = (name, data) => writeFileSync(join(output, name), data, { mode: 0o
 process.chdir(output);
 let wallet;
 let openOwner;
+let replacementOwner;
+let rootSecret;
 try {
   step('sync-wallet');
   wallet = await walletModule.createWallet('0'.repeat(63) + '1');
@@ -96,7 +99,14 @@ try {
     const raw = tx.tx.serialize(),
       ordinal = receipt.transactions.length + 1;
     write('tx-' + ordinal + '.private.bin', raw);
-    const row = { ordinal, sha256: sha(raw) };
+    const row = {
+      ordinal,
+      sha256: sha(raw),
+      ...(mode === 'registry-authority' && {
+        txHash: tx.tx.transactionHash(),
+        identifiers: tx.tx.identifiers(),
+      }),
+    };
     receipt.transactions.push(row);
     save();
     const id = await submit(tx);
@@ -145,17 +155,21 @@ try {
     return address;
   };
   const encKeys = inbox.generateEncKeyPair();
-  if (mode.startsWith('named-open-')) {
+  if (mode.startsWith('named-open-') || mode === 'registry-authority') {
     const { namedOpenOwner } = await import('./named-open-fixture.mjs');
-    openOwner = await namedOpenOwner({
-      arm: mode === 'named-open-p256' ? 'p256' : 'jubjub',
-      acc,
-      providers,
-      compiledContract: accountCompiled,
-      contracts,
-      wave,
-      transactions: receipt.transactions,
-    });
+    const setup = (privateStateId) =>
+      namedOpenOwner({
+        privateStateId,
+        arm: mode === 'named-open-p256' ? 'p256' : 'jubjub',
+        acc,
+        providers,
+        compiledContract: accountCompiled,
+        contracts,
+        wave,
+        transactions: receipt.transactions,
+      });
+    openOwner = await setup('midnames-authorized-open');
+    if (mode === 'registry-authority') replacementOwner = await setup('midnames-replacement-open');
   }
   const accountAddress =
     openOwner?.address ?? (await deployAccount('account', randomJubJubPoint(), encKeys.publicKey));
@@ -171,7 +185,7 @@ try {
     ),
   };
   // This root-owner fixture exercises lookup independently of paid claimant admission.
-  const rootSecret = new Uint8Array(randomBytes(32));
+  rootSecret = new Uint8Array(randomBytes(32));
   const compiled = (secret) =>
     CompiledContract.make('registry', registry.Contract).pipe(
       CompiledContract.withWitnesses({ domainSecretKey: () => [{}, secret] }),
@@ -317,7 +331,30 @@ try {
   );
   const claimIdentifier = receipt.transactions.at(-1).id;
   const getReferenceSigner = () => import(pathToFileURL(join(ref, 'src/wallet/signer.ts')).href);
-  if (openOwner) {
+  if (replacementOwner) {
+    const { qualifyRegistryAuthority } = await import('./registry-authority-fixture.mjs');
+    const evidence = await qualifyRegistryAuthority({
+      contracts,
+      providers: regProviders,
+      compiled,
+      registry,
+      registryAddress,
+      privateStateId,
+      ledger,
+      profile,
+      names: service,
+      reads,
+      rootId,
+      nameKey,
+      rootSecret,
+      owner,
+      original: openOwner,
+      replacement: replacementOwner,
+      transactions: receipt.transactions,
+    });
+    Object.assign(receipt, { ...evidence, registryAddress, claimIdentifier, passed: true });
+    step('verified-native-registry-authority');
+  } else if (openOwner) {
     const beforeOpen = receipt.transactions.length;
     const evidence = await openOwner.qualify(service);
     assert.equal(receipt.transactions.length, beforeOpen);
@@ -519,6 +556,8 @@ try {
   save();
   throw error;
 } finally {
+  rootSecret?.fill(0);
+  replacementOwner?.close();
   openOwner?.close();
   if (wallet) await wallet.wallet.stop();
 }
