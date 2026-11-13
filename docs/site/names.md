@@ -163,8 +163,12 @@ wallet to the sponsor. The claim finalized with exactly two DUST spends. The
 registry reader returned the expected distinct claimant commitment and the
 activated ACC. After restarting the isolated node and indexer, a fresh process
 confirmed the original transaction identifiers and read the target again with
-zero submissions. This is standalone fixture evidence. Browser claim preparation,
-name-owner custody and online profile qualification remain open.
+zero submissions. A later standalone demo run used a Chromium virtual passkey
+to prove one fixed claim, then recovered its original receipt after dropping
+the send response and restarting Chromium. That fixture injected a quote after
+proof to exercise dispatch recovery; it did not establish pre-proof user review.
+Real passkey provider recovery and
+online profile qualification remain open.
 
 The host registry reader can inspect the stored owner commitment and target
 from the same verifier-checked snapshot. Generated-state tests check the
@@ -176,7 +180,37 @@ that the original transaction finalized successfully.
 
 For `standalone-0.35` with namespace `night`, open the target Passport ACC
 with its passkey and go to **Settings → Developer tools → Name service**.
-Enter the name and paste the sponsor's original public receipt. Save it, then
+**Check availability** reads the pinned registry and verifies the open ACC
+before reporting an unregistered name. Availability is an observation at the
+time of the read. A retained receipt takes precedence and is reconciled
+against the original transaction.
+
+Start the [standalone owner and sponsor services](../../examples/midnames-local/README.md#send-an-acknowledged-receipt-from-the-browser)
+to enable **Review claim quote** in the local demo. The form shows the exact name, network, ACC,
+registry, payee, future subdomain payment address, sponsor payment wallet, NIGHT price,
+DUST ceiling and expiry. **Approve and
+prepare claim** records that quote before owner-side proving. The form records
+the public owner commitment before asking the sponsor to balance the proved
+transaction. It then saves the matching receipt automatically. **Send prepared
+claim** shows the saved payment terms again and requires a second confirmation
+click before dispatch. A public receipt imported without the matching saved
+quote can be checked and reconciled, but cannot be sent from this browser.
+
+If the preparation response is lost, reopen with the original credential,
+review the saved quote, and select **Recover prepared receipt**. The host
+looks up that original preparation. You can also import the original public
+receipt when its quote digest and owner commitment match. Once the owner commitment is recorded,
+the browser can recover the receipt after expiry and leaves preparation
+unchanged. The optional adapter requires an owner-side prover and a sponsor
+that can retrieve the prepared receipt by quote and owner commitment. The
+standard demo continues to support importing a public receipt.
+When the sponsor durably refuses before recording any balance intent, the
+browser releases that refused quote and asks the user to review fresh terms.
+An unavailable response or an already recorded intent keeps the original
+quote for recovery.
+
+To recover an external claim, enter the name and paste the sponsor's original
+public receipt. Save it, then
 use **Check original claim**. After a reload, open the same account with the
 same credential, enter the name again, and check the saved receipt.
 
@@ -184,17 +218,32 @@ The sponsor prepares this receipt before dispatch. Its fields are
 `networkId` (`undeployed`), `registryAddress`, `accountAddress`, `name`,
 `ownerCommitment`, and `transaction` with the original finalized
 `identifiers` and byte `sha256`. Keep the original receipt available when a
-response is lost. IndexedDB retains public fields scoped to the original
+response is lost. The preparation adapter also returns `quoteSha256`, the
+SHA-256 digest of the canonical quote JSON. IndexedDB retains public fields scoped to the original
 credential and protects the record from replacement by another tab. The
 checker reads the original identifiers, verifies the exact transaction bytes
 and the registry inserts linking the name to its domain ID, owner commitment
 and contract target. It then checks the current owner and activated ACC target. An absent, partial, aggregated or changed transaction stays pending.
 A mismatched owner or target is reported as a conflict.
 
-This recovery surface reads the isolated indexer. Claim preparation and
-submission run in a separate sponsor environment. Never paste passkey
-material, keys, raw transaction bytes or witnesses into the form. Recovering
-the receipt does not recover ownership after loss of the name-owner secret.
+The isolated fixture prepares the proof in a separate owner process. The
+sponsor balances it and accepts an explicit **Send prepared claim** action
+for a quote-bound receipt already saved to the open credential. The sponsor
+checks the exact registry payment and permits NIGHT inputs and change only at
+the quoted sponsor payment wallet. It also checks that the registered domain's
+future subdomain payment address matches the quote. This fixture constructs its dispatch quote
+after proving and seeds the browser journal; it tests quote-bound send and
+recovery, not a user's pre-proof quote review. It acknowledges the
+durable dispatch record while the wallet waits for the node. The demo shows
+the result as pending until the original receipt verifies against the indexer.
+
+In the standalone qualification, Chromium dropped the acknowledgement after
+one sponsored submission with two DUST spends. After restarting Chromium, the
+demo recovered the same claim from the live indexer. This run used a synthetic
+browser credential. The form accepts the public receipt. Name ownership
+depends on retaining the separate owner secret.
+The [browser claim design](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0018-standalone-midnames-claim.md) describes
+the proof and sponsor checks for browser-initiated onboarding.
 
 ### Deposit a shielded asset by name
 

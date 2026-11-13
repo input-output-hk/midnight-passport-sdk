@@ -6,7 +6,9 @@ import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium, type Page } from 'playwright-core';
 import { createServer } from 'vite';
+import { claimDispatchPath } from '../src/midnames/claim-dispatch.js';
 import { claimReceipt } from '../src/midnames/claim-receipt.js';
+import { claimQuote } from '../src/midnames/claim-quote.js';
 import { reveal } from './journeys/ui.js';
 
 assert.equal(process.env.PASSPORT_MIDNAMES_NATIVE, '1');
@@ -19,6 +21,20 @@ const indexer = 'http://127.0.0.1:18108/api/v4/graphql';
 assert.equal(process.env.MN_INDEXER_URL, indexer);
 assert.equal(process.env.MN_INDEXER_WS_URL, 'ws://127.0.0.1:18108/api/v4/graphql/ws');
 const file = (name: string) => resolve(output, name);
+const sponsorPort = process.env.PASSPORT_MIDNAMES_SPONSOR_PORT;
+if (sponsorPort !== undefined) {
+  assert.match(sponsorPort, /^[0-9]{1,5}$/);
+  assert.ok(Number(sponsorPort) > 0 && Number(sponsorPort) <= 65535);
+  // The native driver owns its own process group. If the worker is killed,
+  // SIGINT lets Playwright close its separately launched Chromium group.
+  const workerPid = process.ppid;
+  setInterval(() => {
+    if (process.ppid !== workerPid) process.kill(process.pid, 'SIGINT');
+  }, 250).unref();
+}
+const fixtureQuote = sponsorPort
+  ? claimQuote(JSON.parse(readFileSync(file('original-quote.json'), 'utf8')))
+  : undefined;
 Object.assign(process.env, {
   PASSPORT_MANIFEST_SHA256: '77fb9c17b0d59047456c43115d9a58f5cb99a226ee73b6b974fd724930c3153f',
   PASSPORT_NETWORK_ID: 'undeployed',
@@ -29,6 +45,7 @@ Object.assign(process.env, {
   VITE_MIDNAMES_INDEXER_URL: indexer,
   VITE_MIDNAMES_INDEXER_WS_URL: process.env.MN_INDEXER_WS_URL,
 });
+if (sponsorPort) process.env.VITE_MIDNAMES_CLAIM_SPONSOR = '1';
 const manifest = process.env.PASSPORT_MANIFEST_SHA256;
 const connector = `
   export const ARM = 'p256', SIGNING_MODE = 'passkey', NETWORK_ID = 'undeployed';
@@ -55,7 +72,17 @@ const vite = await createServer({
   root: process.cwd(),
   cacheDir: file('vite-cache'),
   logLevel: 'error',
-  server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false },
+  server: {
+    host: '127.0.0.1',
+    port: sponsorPort ? 15189 : 0,
+    strictPort: !!sponsorPort,
+    hmr: false,
+    ...(sponsorPort && {
+      proxy: {
+        [claimDispatchPath]: { target: 'http://127.0.0.1:' + sponsorPort, changeOrigin: false },
+      },
+    }),
+  },
   plugins: [
     {
       name: 'midnames-recovery-fixture',
@@ -68,6 +95,7 @@ const vite = await createServer({
 });
 
 const messages = {
+  available: /^Unregistered at the last registry read/,
   saved: /^Original receipt saved/,
   pending: /^Claim pending/,
   confirmed: /^Registered\./,
@@ -83,7 +111,8 @@ async function openPage(page: Page, origin: string, alternate = false) {
       assert.ok(typeof query === 'string' && query.startsWith('query'));
       indexerRequests++;
     }
-    if (request.url().endsWith('/__drop-claim-response')) submissionRequests++;
+    if (request.url().endsWith(sponsorPort ? claimDispatchPath : '/__drop-claim-response'))
+      submissionRequests++;
   });
   page.on('pageerror', (error) => console.error('Demo page:', error.message));
   await page.goto(origin + (alternate ? '/?alternate' : '/'));
@@ -112,21 +141,32 @@ const openBrowser = () =>
       '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     headless: true,
   });
-let browser: Awaited<ReturnType<typeof openBrowser>> | undefined;
-try {
-  await vite.listen();
-  const origin = vite.resolvedUrls?.local[0]?.replace(/\/$/, '');
-  assert.ok(origin);
-  browser = await openBrowser();
-  const first = await browser.newPage();
-  await openPage(first, origin);
-  await first.locator('#claim-recovery-receipt').fill(JSON.stringify(original));
-  await first.locator('#claim-recovery-retain').click();
-  await status(first, messages.saved);
-  await first.locator('#claim-recovery-check').click();
-  await status(first, messages.pending);
 
-  await first.route('**/__drop-claim-response', async (route) => {
+async function submitWithLostSponsorResponse(page: Page) {
+  if (sponsorPort) {
+    let responseStatus: number | undefined;
+    const lost = page.waitForEvent('requestfailed', {
+      predicate: (request) => request.url().endsWith(claimDispatchPath),
+    });
+    await page.route('**' + claimDispatchPath, async (route) => {
+      try {
+        const response = await route
+          .fetch({ maxRetries: 0, maxRedirects: 0 })
+          .catch(() => undefined);
+        responseStatus = response?.status();
+      } finally {
+        await route.abort('failed');
+      }
+    });
+    await page.locator('#claim-dispatch').click();
+    await status(page, /Review the saved payment terms above/);
+    await page.locator('#claim-dispatch').click();
+    await lost;
+    assert.equal(responseStatus, 202, 'The sponsor must accept the original before response loss.');
+    await status(page, messages.pending);
+    return;
+  }
+  await page.route('**/__drop-claim-response', async (route) => {
     assert.equal(route.request().method(), 'POST');
     writeFileSync(file('allow-original-submit'), '', { flag: 'wx' });
     const deadline = Date.now() + 120_000;
@@ -134,7 +174,7 @@ try {
     await route.abort('failed');
   });
   assert.equal(
-    await first.evaluate(async () => {
+    await page.evaluate(async () => {
       try {
         await fetch('/__drop-claim-response', { method: 'POST' });
         return 'received';
@@ -145,12 +185,87 @@ try {
     'lost',
   );
   assert.ok(existsSync(file('original-response-lost')));
+}
+
+async function seedFixtureOriginal(page: Page) {
+  assert.ok(fixtureQuote);
+  // The native fixture injects a quote and journal row after proof. This tests
+  // quote-bound dispatch and recovery, not pre-proof human quote review.
+  await page.evaluate(
+    async ({ quote, receipt }) => {
+      const journalUrl = '/src/midnames/claim-journal.ts';
+      const receiptUrl = '/src/midnames/claim-receipt.ts';
+      const { openClaimJournal } = (await import(
+        journalUrl
+      )) as typeof import('../src/midnames/claim-journal.js');
+      const { claimDigest } = (await import(
+        receiptUrl
+      )) as typeof import('../src/midnames/claim-receipt.js');
+      const journal = await openClaimJournal(indexedDB);
+      try {
+        const credential = await claimDigest(new Uint8Array(32).fill(1));
+        await journal.reserve(quote, credential);
+        await journal.bindOwner(quote, credential, receipt.ownerCommitment);
+        await journal.retain(receipt, credential, quote);
+      } finally {
+        journal.close();
+      }
+    },
+    { quote: fixtureQuote, receipt: original },
+  );
+}
+
+let browser: Awaited<ReturnType<typeof openBrowser>> | undefined;
+try {
+  await vite.listen();
+  const origin = vite.resolvedUrls?.local[0]?.replace(/\/$/, '');
+  assert.ok(origin);
+  browser = await openBrowser();
+  const first = await browser.newPage();
+  await openPage(first, origin);
+  await first.locator('#claim-check-availability').click();
+  await status(first, messages.available);
+  const checking = await browser.newPage();
+  await openPage(checking, origin);
+  let releaseRead = () => {};
+  const permitRead = new Promise<void>((resolve) => {
+    releaseRead = resolve;
+  });
+  let interrupted = false;
+  await checking.route(indexer, async (route) => {
+    if (route.request().method() === 'POST' && !interrupted) {
+      interrupted = true;
+      await permitRead;
+      await route.abort('failed');
+      return;
+    }
+    await route.continue();
+  });
+  const registryReadStarted = checking.waitForRequest(
+    (request) => request.url() === indexer && request.method() === 'POST',
+  );
+  try {
+    await checking.locator('#claim-check-availability').click();
+    await registryReadStarted;
+    if (sponsorPort) await seedFixtureOriginal(first);
+    await first.locator('#claim-recovery-receipt').fill(JSON.stringify(original));
+    await first.locator('#claim-recovery-retain').click();
+    await status(first, messages.saved);
+  } finally {
+    releaseRead();
+  }
+  await status(checking, messages.pending);
+  await checking.close();
+  await first.locator('#claim-check-availability').click();
+  await status(first, messages.pending);
+
+  await submitWithLostSponsorResponse(first);
   await browser.close();
   browser = await openBrowser();
 
   const wrong = await browser.newPage();
   await openPage(wrong, origin, true);
-  await wrong.locator('#claim-recovery-check').click();
+  await wrong.locator('#claim-check-availability').click();
   await status(wrong, messages.refused);
 
   const recovered = await browser.newPage();

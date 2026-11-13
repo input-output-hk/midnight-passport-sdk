@@ -1,9 +1,12 @@
 import type { PassportNameService } from '@input-output-hk/mn-passport-account/names';
 import { createMidnamesNameService } from './resolver.js';
+import { isClaimSponsorOrigin, requestClaimDispatch } from './claim-dispatch.js';
 import { registryProfile } from './registry-pins.js';
-import type { ClaimRecovery } from './claim-receipt.js';
+import { claimHex, claimName, type ClaimRecovery } from './claim-receipt.js';
+import type { ClaimPreparation } from './claim-quote.js';
 
 export interface MidnamesConfig {
+  readonly claimSponsor?: string | undefined;
   readonly registryProfile?: string | undefined;
   readonly registryAddress?: string | undefined;
   readonly namespace?: string | undefined;
@@ -31,9 +34,10 @@ export function configureMidnames(
   config: MidnamesConfig,
   expectedNetwork: string,
   bindingId: string,
+  preparation?: ClaimPreparation,
 ): (PassportNameService & { readonly recovery?: ClaimRecovery }) | undefined {
   const { registryAddress, namespace, networkId, indexerUrl, indexerWsUrl } = config;
-  if (Object.values(config).every((value) => value === undefined)) return undefined;
+  if (!preparation && Object.values(config).every((value) => value === undefined)) return undefined;
   if (
     !registryAddress ||
     !namespace ||
@@ -65,11 +69,31 @@ export function configureMidnames(
     readTarget: async (...args) => (await reads()).readTarget(...args),
     isSupportedAccount: async (...args) => (await reads()).isSupportedAccount(...args),
   });
-  if (profileId !== 'standalone-0.35' || namespace !== 'night') return service;
+  const standalone = profileId === 'standalone-0.35' && namespace === 'night';
+  if (preparation && config.claimSponsor !== '1')
+    throw new Error('Claim preparation requires the loopback standalone sponsor.');
+  if (
+    config.claimSponsor !== undefined &&
+    (config.claimSponsor !== '1' ||
+      !standalone ||
+      !isClaimSponsorOrigin(globalThis.location?.origin ?? ''))
+  )
+    throw new Error('Claim dispatch requires the loopback standalone sponsor.');
+  if (!standalone) return service;
   return {
     ...service,
     recovery: {
       registryAddress,
+      ...(config.claimSponsor === '1' && { dispatch: requestClaimDispatch }),
+      ...(preparation && { preparation }),
+      async availability(name, accountAddress) {
+        if (!claimName(name) || !claimHex(accountAddress)) throw new Error('Invalid claim scope.');
+        const reader = await reads();
+        if (await reader.hasDomain(name, profile)) return 'taken';
+        return (await reader.isSupportedAccount(accountAddress, networkId))
+          ? 'available'
+          : 'unsupported';
+      },
       async check(receipt) {
         if (receipt.networkId !== networkId || receipt.registryAddress !== registryAddress)
           return 'conflict';

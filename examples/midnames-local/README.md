@@ -85,3 +85,120 @@ the original intent can prepare its deposit. After either dispatch fence, check
 the original identifiers. A failed or uncertain original deposit stays fenced
 for operator reconciliation. If the name changes after withdrawal, the flow
 keeps the funds in the controlled wallet and refuses to redirect them.
+
+## Prepare an owner-proved claim for the sponsor
+
+Separate-process preparation passed on isolated Ledger 9 at local commit
+`72c9fbb`. The run used one DUST input and made zero claim broadcasts.
+
+Use the same isolated runner with a fresh output name starting with
+`midnames-claim-handoff-`. The setup activates a test ACC and deploys the pinned
+registry. The fixture creates a distinct synthetic claimant for
+`charlie.night` and reads the NIGHT price and payee from the registry root.
+A separate owner process builds the claim and uses the isolated local prover.
+The sponsor wallet adapter receives the public owner commitment and proved
+bytes, then supplies the wallet inputs and fees.
+
+The fixture checks that the proved call and registry charge survive balancing
+and writes the prepared public receipt to `review/<output-name>/claim-handoff.json`.
+The matching bytes and receipt are retained together in a private journal.
+The journal supports one dispatch after exact receipt acknowledgement and a
+live sponsor policy check. This runner stops after preparation. The setup transactions run on
+the isolated chain. Keep the binary transaction and wallet material local.
+Browser initiation, sponsor dispatch, two-DUST admission and lost-response
+qualification are separate steps.
+
+### Send an acknowledged receipt from the browser
+
+The local host can mount `createClaimSponsorHandler` on the demo's HTTP origin
+at `/v1/midnames/claim/dispatch`. It binds one private prepared journal and the
+host's live sponsor policy to that origin. Set `VITE_MIDNAMES_CLAIM_SPONSOR=1`
+with the standalone registry configuration and open the demo on `127.0.0.1`.
+
+Browser dispatch requires the handler's preparation ports and a receipt bound
+to its retained quote. Start
+the owner-side server with the prepared registry and the Compact reference ACC
+contract directory used by the isolated qualification command:
+
+```sh
+nix develop -c node --experimental-import-meta-resolve \
+  examples/midnames-local/claim-owner-demo-local.mjs \
+  /absolute/path/to/prepared-registry /absolute/path/to/acc-reference/contract \
+  /absolute/path/to/public-context.json
+```
+
+The JSON contains `networkId` (`undeployed`), `registryAddress`,
+`sponsorAddress` (the domain's future subdomain payment address),
+`indexerUrl` (`http://127.0.0.1:18108/api/v4/graphql`),
+`indexerWsUrl` (`ws://127.0.0.1:18108/api/v4/graphql/ws`), and
+`walletKeys` with `coin` and `encryption` public keys. Use lowercase
+32-byte hex for the two addresses and two public keys. Bind the registry and
+future payment address to the issued quote; `walletKeys` are the owner wallet's
+public keys.
+Keep the owner relay and its proof server at `127.0.0.1:16320` under the account
+owner's control. The command checks the prepared hashes before serving.
+
+Copy the printed `PASSPORT_MIDNAMES_OWNER_PORT` to the demo environment and
+set `PASSPORT_MIDNAMES_SPONSOR_PORT` to the separate sponsor server's port.
+Set `VITE_MIDNAMES_CLAIM_SPONSOR=1` and `VITE_MIDNAMES_CLAIM_PREPARATION=1`
+alongside the [standalone name service settings](../../docs/site/names.md#standalone-registry-profile).
+Start the demo on `http://localhost:5173`. For a different localhost port,
+pass the exact demo origin as the last argument to the owner command.
+The quote also pins `sponsorPaymentAddress`, the NIGHT input and change wallet.
+The browser transport accepts the literal loopback origins `localhost` and
+`127.0.0.1`. Keep the handler and browser on the same origin. The sponsor
+retains the exact quote, checks its live terms before balancing, and records
+a durable intent before invoking the wallet. **Recover prepared receipt**
+reads that original journal after a lost response. An intent with no
+prepared receipt stays pending after restart. The dispatch handler rechecks
+the approved quote and original transaction before opening the dispatch fence.
+If live terms change before any intent is recorded, the sponsor durably refuses
+that quote and the browser asks for fresh review. An uncertain response keeps
+the original quote. The browser requires a matching saved quote and a second
+send click after displaying the payment terms; quote-less imports are only
+reconciled.
+
+To exercise the actual loopback route on an isolated chain, run the same
+`qualify-deposit.mjs` command with a fresh name starting with
+`midnames-claim-browser-`. The browser driver uses port 15189 and a fresh
+Chromium profile. The fixture delegates two synthetic NIGHT outputs to the
+sponsor's DUST address. A separate owner process launches a browser page on
+`localhost`. Chromium uses a virtual WebAuthn credential to derive the naming
+witness, constructs the call, and sends proving requests through the owner
+process to the fixed loopback prover. The browser checks the compiled
+`create_domain` artifact hashes. Both HTTP hops refuse redirects.
+The relay and loopback prover receive sensitive proof payloads and run within
+the owner trust boundary. Use a prover the owner controls.
+The owner process returns the proved transaction and public commitment to
+the sponsor after checking that the same credential yields the same commitment
+after a reload. The sponsor rechecks the registry price, payee, name
+availability and target ACC. It accepts only the original Ledger IDs and an
+unexpired claim with exactly two DUST spends under its configured fixture
+ceiling. The native fixture injects a quote and matching journal row after
+proving to exercise quote-bound dispatch and recovery. It does not establish
+human quote review before proof; the opt-in browser preparation flow exercises
+that order separately. The browser driver drops the HTTP response after the
+sponsor accepts the acknowledgement, restarts Chromium, and checks the original
+on the isolated indexer. Inspect `native-claim-dispatch.json` and
+`browser-claim-recovery.json` under the run's private evidence directory.
+This test uses a virtual owner credential. Production credential enrollment
+and recovery after loss of that credential need separate qualification.
+
+Use an output name starting with `midnames-claim-owner-browser-` to prepare
+and retain the browser-proved claim without dispatch. This mode exercises
+the proof, credential continuity and sponsor balancing independently of
+the fixture's two-DUST admission test.
+
+Save the prepared public receipt while the matching ACC is open, then select
+**Send prepared claim**, review the saved terms, and confirm. **Check original claim** reads the original receipt
+after a reload or lost response. This route is a local fixture. The live browser run used a fixture login for
+an already activated ACC and a Chromium virtual passkey to prove the fixed
+claim. It observed one assertion, one proof, one wallet balance, one dispatch
+and original confirmation after restart.
+
+The Chromium test runs the actual form, IndexedDB, and HTTP sponsor fence with a
+simulated node and indexer:
+
+```sh
+nix develop -c pnpm --filter passport-dapp exec node --import tsx e2e/midnames-dispatch.e2e.ts
+```

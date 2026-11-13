@@ -61,7 +61,17 @@ const [
   import(pathToFileURL(join(ref, 'src/wallet/inbox.ts')).href),
 ]);
 const mode = process.env.PASSPORT_MIDNAMES_FIXTURE_MODE;
-assert.ok(mode === 'named-shielded-deposit' || mode === 'named-night-send');
+assert.ok(
+  [
+    'named-shielded-deposit',
+    'named-night-send',
+    'claim-handoff',
+    'claim-browser',
+    'claim-owner-browser',
+  ].includes(mode),
+);
+const browserOwner = mode === 'claim-owner-browser' || mode === 'claim-browser';
+const claimFixture = mode === 'claim-handoff' || browserOwner;
 const receipt = { transactions: [], steps: [], passed: false, mode };
 const save = () => saveIsolationReceipt(join(output, 'worker.json'), receipt);
 const step = (label) => {
@@ -152,6 +162,7 @@ try {
       CompiledContract.withCompiledFileAssets(assets),
     );
   const owner = { bytes: walletModule.userAddressBytes(wallet) };
+  const registryPayee = claimFixture ? { bytes: new Uint8Array(32).fill(0x22) } : owner;
   const price = {
     cost_short: 1n,
     cost_med: 1n,
@@ -175,7 +186,7 @@ try {
       registry.AddressType.ContractAddr,
       noDefault,
       price,
-      owner,
+      registryPayee,
       fields,
       { is_some: false, value: 0n },
       true,
@@ -290,7 +301,67 @@ try {
   );
   const claimIdentifier = receipt.transactions.at(-1).id;
   const getReferenceSigner = () => import(pathToFileURL(join(ref, 'src/wallet/signer.ts')).href);
-  if (mode === 'named-night-send') {
+  if (claimFixture) {
+    const { qualifyClaimHandoff } = await import('./claim-handoff-fixture.mjs');
+    let dispatch;
+    if (mode === 'claim-browser') {
+      const { delegateClaimDust } = await import('./claim-dust-fixture.mjs');
+      const { qualifyBrowserClaim } = await import('./claim-browser-fixture.mjs');
+      receipt.availableDust = await delegateClaimDust({
+        wallet,
+        walletModule,
+        providers,
+        ledger,
+        get,
+        step,
+      });
+      const readLive = async (quote) => {
+        const current = registry.ledger(
+          (await providers.publicDataProvider.queryContractState(registryAddress)).data,
+        );
+        assert.equal(current.ROOT_ZONE_ID, rootId);
+        const parent = current.id_to_data.lookup(rootId);
+        assert.equal(parent.payment_config.cost_long, quote.night);
+        assert.ok(
+          parent.payment_config.buy_enabled &&
+            parent.payment_config.coin_color.every((byte) => byte === 0),
+        );
+        assert.equal(Buffer.from(parent.owner_address.bytes).toString('hex'), quote.registryPayee);
+        assert.equal(await reads.readClaim(quote.name, profile), undefined);
+        assert.ok(await reads.isSupportedAccount(accountAddress, profile.networkId));
+      };
+      dispatch = (quote, original, fixtureQuote, ownerProofSha256) =>
+        qualifyBrowserClaim({
+          output,
+          quote,
+          receipt: original,
+          fixtureQuote,
+          ownerProofSha256,
+          ledger,
+          submit: providers.midnightProvider.submitTx,
+          readLive,
+        });
+    }
+    const handoff = await qualifyClaimHandoff({
+      output,
+      ref,
+      assets,
+      modulePath,
+      registryManifestHash: pins.compiled['compiler/contract-manifest.json'],
+      registryAddress,
+      accountAddress,
+      sponsorPaymentAddress: Buffer.from(owner.bytes).toString('hex'),
+      walletProvider: regProviders.walletProvider,
+      ledger,
+      rootId,
+      parentDomain: observed.id_to_data.lookup(rootId),
+      step,
+      dispatch,
+      browserOwner,
+    });
+    Object.assign(receipt, { ...handoff, passed: true });
+    step(mode === 'claim-browser' ? 'verified-browser-claim' : 'verified-prepared-claim-handoff');
+  } else if (mode === 'named-night-send') {
     const { qualifyNightSend } = await import('./night-send-fixture.mjs');
     const { JubjubDevice, jubjubChallenges } = await getReferenceSigner();
     const device = JubjubDevice.generate();

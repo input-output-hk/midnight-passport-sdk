@@ -27,6 +27,10 @@ native receipt does not qualify registry/images: RC8 publication has its separat
 [signed receipt](https://github.com/input-output-hk/midnight-passport-sdk/releases/download/sdk-v0.1.0-rc8/rc8-publication-receipt.json).
 Published RC7 does not gain this feature from a source test.
 
+In the current source, the grant-holder flow rereads the reviewed grant before
+signing and again before submission. A grant that changes or expires while the
+review is open stops before the grantee signs.
+
 The demo lets a user explicitly approve a narrow, short-lived spending session.
 Authentication alone does not grant spending authority. The account owner must
 issue an **on-chain grant** to the session's JubJub public key. Subsequent matching

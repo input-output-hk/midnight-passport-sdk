@@ -845,6 +845,11 @@ body[data-busy] .btn:disabled {
   margin: 0.75rem 0;
 }
 
+#claim-quote-summary {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 .evidence pre {
   max-height: 28rem;
   margin: 0;

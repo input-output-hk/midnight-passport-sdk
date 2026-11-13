@@ -1,6 +1,6 @@
-import { ContractCall, Transaction } from '@midnightntwrk/ledger-v9';
+import { Transaction } from '@midnightntwrk/ledger-v9';
 import { claimDigest, claimHex, type ClaimReceipt } from './claim-receipt.js';
-import { matchesClaimWrites } from './claim-transcript.js';
+import { findStandaloneClaimCall } from './claim-call.js';
 
 // This recovery profile is pinned to the isolated Ledger 9 standalone indexer.
 const protocolVersion = 2001000;
@@ -26,31 +26,6 @@ async function readBounded(response: Response): Promise<unknown> {
     void reader.cancel().catch(() => {});
     reader.releaseLock();
   }
-}
-
-function matchesOriginalCall(
-  tx: ReturnType<typeof Transaction.deserialize>,
-  original: ClaimReceipt,
-): boolean {
-  const actions = [...(tx.intents?.values() ?? [])].flatMap((intent) => intent.actions);
-  const [call] = actions;
-  if (
-    actions.length !== 1 ||
-    !(call instanceof ContractCall) ||
-    call.address !== original.registryAddress
-  )
-    return false;
-  const entry =
-    typeof call.entryPoint === 'string'
-      ? call.entryPoint
-      : new TextDecoder().decode(call.entryPoint);
-  return (
-    entry === 'create_domain' &&
-    matchesClaimWrites(
-      [call.guaranteedTranscript?.program ?? [], call.fallibleTranscript?.program ?? []],
-      original,
-    )
-  );
 }
 
 export async function confirmedClaim(
@@ -102,7 +77,7 @@ export async function confirmedClaim(
       !original.transaction.identifiers.every((id) => ids.includes(id))
     )
       return false;
-    return matchesOriginalCall(tx, original);
+    return findStandaloneClaimCall(tx, original) !== undefined;
   } catch {
     return false;
   }

@@ -70,6 +70,7 @@ export function createMidnamesLedgerReads(
   bindingId: string,
   profileId: MidnamesRegistryProfile = 'midnames-2.1.0',
 ): MidnamesReads & {
+  hasDomain(name: string, profile: Readonly<MidnamesProfile>): Promise<boolean>;
   readClaim(
     name: string,
     profile: Readonly<MidnamesProfile>,
@@ -106,6 +107,7 @@ export function createMidnamesLedgerReads(
       throw new PassportNameError('InvalidRecord');
     const id = resolveDomainIdInLedger(registry.data, name);
     if (id === null) return undefined;
+    if (!registry.data.id_to_data.member(id)) throw new PassportNameError('InvalidRecord');
     return registry.data.id_to_data.lookup(id);
   };
   const readClaim = async (name: string, profile: Readonly<MidnamesProfile>) => {
@@ -119,6 +121,9 @@ export function createMidnamesLedgerReads(
       return (await readClaim(name, profile))?.target;
     },
     readClaim,
+    async hasDomain(name, profile) {
+      return (await readDomain(name, profile)) !== undefined;
+    },
     async isSupportedAccount(address, requestedNetwork) {
       if (requestedNetwork !== networkId) return false;
       const observed = await provider.queryContractState(address);

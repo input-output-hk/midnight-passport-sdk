@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { claimReceipt, claimDigest } from '../src/midnames/claim-receipt.js';
+import { claimReceipt, claimDigest, normalizeClaimName } from '../src/midnames/claim-receipt.js';
 import type { AlignedValue, Op } from '@midnightntwrk/ledger-v9';
 import { matchesClaimWrites } from '../src/midnames/claim-transcript.js';
 import { confirmedClaim } from '../src/midnames/claim-finality.js';
+import {
+  claimQuote,
+  claimQuoteDigest,
+  reviewedDispatchQuote,
+} from '../src/midnames/claim-quote.js';
 
 const original = {
   networkId: 'undeployed',
@@ -13,6 +18,20 @@ const original = {
   ownerCommitment: '56'.repeat(32),
   transaction: { identifiers: ['00' + '78'.repeat(32)], sha256: '90'.repeat(32) },
 } as const;
+
+test('normalizes ASCII claim labels and refuses Unicode lookalikes and subdomains', () => {
+  assert.equal(normalizeClaimName('  Alice-2.NIGHT  '), 'alice-2.night');
+  assert.equal(normalizeClaimName('a.night'), 'a.night');
+  for (const value of [
+    'K.night',
+    'аlice.night',
+    '-alice.night',
+    'alice-.night',
+    'a.b.night',
+    'a'.repeat(33) + '.night',
+  ])
+    assert.equal(normalizeClaimName(value), undefined, value);
+});
 
 test('copies only the public original receipt fields and rejects ambiguous scopes', () => {
   assert.deepEqual(claimReceipt({ ...original, witness: 'discarded' }), original);
@@ -32,6 +51,35 @@ test('copies only the public original receipt fields and rejects ambiguous scope
     },
   ])
     assert.throws(() => claimReceipt({ ...original, ...change }), /Invalid standalone/);
+});
+
+test('only a saved exact quote can authorize a prepared receipt for send review', async () => {
+  const quote = claimQuote({
+    ...original,
+    id: '91'.repeat(32),
+    sponsorAddress: '92'.repeat(32),
+    sponsorPaymentAddress: '95'.repeat(32),
+    registryPayee: '93'.repeat(32),
+    night: '7',
+    maximumDust: '10000',
+    expiresAt: Date.now() + 60_000,
+  });
+  const saved = { quote, ownerCommitment: original.ownerCommitment };
+  const receipt = claimReceipt({ ...original, quoteSha256: await claimQuoteDigest(quote) });
+  assert.deepEqual(await reviewedDispatchQuote(receipt, saved), quote);
+  assert.equal(await reviewedDispatchQuote(claimReceipt(original), saved), undefined);
+  assert.equal(await reviewedDispatchQuote(receipt, undefined), undefined);
+  assert.equal(
+    await reviewedDispatchQuote(receipt, {
+      quote: { ...quote, night: '8' },
+      ownerCommitment: original.ownerCommitment,
+    }),
+    undefined,
+  );
+  assert.equal(
+    await reviewedDispatchQuote(receipt, { quote, ownerCommitment: 'ab'.repeat(32) }),
+    undefined,
+  );
 });
 
 test('requires an exact successful indexed claim, and looks up the original identifier', async () => {
@@ -74,7 +122,7 @@ test('requires an exact successful indexed claim, and looks up the original iden
   );
 });
 
-test('the two registry inserts must bind the same root name, domain ID, owner and ACC', () => {
+test('the two registry inserts bind the root name, owner, child payee and ACC', () => {
   const value = (...bytes: Uint8Array[]) => ({
     value: bytes,
     alignment: [],
@@ -100,25 +148,39 @@ test('the two registry inserts must bind the same root name, domain ID, owner an
   label.set(new TextEncoder().encode('alice'));
   const domainFields = [
     bytes(original.ownerCommitment),
-    bytes('ab'.repeat(32)),
+    bytes('92'.repeat(32)),
     bytes(original.accountAddress),
     ...Array.from({ length: 10 }, () => number(0)),
   ];
   const nameInsert = insert(3, push(false, label, number(0)), push(true, number(1)));
   const domainInsert = insert(4, push(false, number(1)), push(true, ...domainFields));
   const program = [...nameInsert, ...domainInsert];
-  assert.equal(matchesClaimWrites([program], original), true);
+  const quoted = { ...original, sponsorAddress: '92'.repeat(32) };
+  assert.equal(matchesClaimWrites([program], quoted), true);
+  assert.equal(
+    matchesClaimWrites([program], { ...quoted, sponsorAddress: 'ab'.repeat(32) }),
+    false,
+  );
+  const changedPaymentAddress = [...domainFields];
+  changedPaymentAddress[1] = bytes('ab'.repeat(32));
+  assert.equal(
+    matchesClaimWrites(
+      [[...nameInsert, ...insert(4, push(false, number(1)), push(true, ...changedPaymentAddress))]],
+      quoted,
+    ),
+    false,
+  );
   for (const mismatch of [
     { name: 'bob.night' },
     { ownerCommitment: 'aa'.repeat(32) },
     { accountAddress: 'bb'.repeat(32) },
   ]) {
-    assert.equal(matchesClaimWrites([program], { ...original, ...mismatch }), false);
+    assert.equal(matchesClaimWrites([program], { ...quoted, ...mismatch }), false);
   }
   assert.equal(
     matchesClaimWrites(
       [[...nameInsert, ...insert(4, push(false, number(2)), push(true, ...domainFields))]],
-      original,
+      quoted,
     ),
     false,
   );

@@ -21,5 +21,17 @@ For application-contract → ACC calls, use the [standards and implementation ma
 The reference demo can use Midnames 2.1.0 for read-only lookup. Configure the
 registry address, namespace, matching demo network, and public indexer URLs.
 The adapter reads the registry's contract target and checks the deployed ACC
-verifier roster before displaying the result. Claim and payment require
-separate qualification. See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).
+verifier roster before displaying the result. On the pinned standalone registry,
+the demo checks name availability and reconciles retained sponsor receipts.
+The opt-in standalone demo can prepare a reviewed claim with the open account's
+passkey. A definitive sponsor refusal before any balance intent permits a fresh
+quote review; an unknown outcome keeps the original. The browser shows the saved
+price, payee, fee ceiling and expiry before a second click sends. Imported
+quote-less receipts can only be reconciled. The sponsor bounds NIGHT inputs
+and change to the quoted payment wallet. An earlier isolated Chromium run
+recovered the original claim after one dispatch and a lost response. Its
+post-proof fixture quote did not establish pre-proof user review. It used
+fixture login and a virtual passkey. The shielded
+deposit and two-leg NIGHT payment have standalone Node fixtures. Online profiles
+and real passkey provider recovery require separate qualification.
+See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).
