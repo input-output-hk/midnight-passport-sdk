@@ -70,8 +70,16 @@ reload, the browser recovered the original identity from its session and
 refused a second send. A read-only observer matched the original transaction
 at finalized block 69, with one DUST spend and the expected inbox append.
 
-The demo continues to use its configured proof service. Production wallet
-custody, real credentials, durable recovery after a closed tab, other
+A follow-up used the browser adapter’s strict IndexedDB commit mode to
+retain the original identity before sending. The fixture stored only the
+hash, byte digest and identifiers. It closed the original tab after the
+dropped acknowledgement and opened a new tab in the same browser context.
+The new tab read the original identity and refused a second send. A read-only
+observer matched the original at finalized block 69.
+
+The demo continues to use its configured proof service. The closed-tab
+test used the same browser profile and origin. Browser-process restart,
+storage eviction, production wallet custody, real credentials, other
 circuits and browsers, and memory need separate checks. Production privacy
 also requires an observation policy for chain, transport, browser and
 operator data.
