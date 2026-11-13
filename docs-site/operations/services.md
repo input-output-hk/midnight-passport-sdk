@@ -101,6 +101,13 @@ finality check. Hosts that require recovery after loss of browser storage
 need an independent receipt store. The fixture submitted once across all
 profiles.
 
+In a separate run, Chromium cancelled a JubJub inbox-append proof built from
+the live ACC state after its worker received the verified parameters. The
+worker terminated, the old prover refused reuse, and the node observed zero
+submissions from that attempt. A fresh worker proved the same call with the
+isolated proof server still stopped. After browser-side DUST assembly, one
+submission settled at finalized block 72 and recorded the expected inbox entry.
+
 The demo continues to use its configured proof service. Browser-managed
 eviction, system power loss, production wallet custody, real credentials,
 additional circuits and browsers, and memory need separate qualification.
