@@ -164,7 +164,7 @@ export async function namedOpenOwner({
       try {
         await assert.rejects(
           cold(softwareParticipant(unrelated, arm)).openAccountAt(target.accountAddress),
-          (error) => ['NotAuthorised', 'EncryptionKeyMismatch'].includes(error.code),
+          { code: arm === 'p256' ? 'AccountNotFound' : 'NotAuthorised' },
         );
       } finally {
         unrelated.seed.fill(0);
