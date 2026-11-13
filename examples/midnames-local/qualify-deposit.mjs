@@ -57,17 +57,20 @@ assert.ok(info.MemTotal >= 24 * 1024 ** 3);
 const images = isolatedImages(docker, info.Architecture === 'aarch64' ? 'arm64' : 'amd64');
 assert.match(
   out ?? '',
-  /^midnames-(?:deposit|night-send|claim-handoff|claim-browser|claim-owner-browser)-[a-z0-9-]{1,48}$/,
+  /^midnames-(?:deposit|night-send|claim-handoff|claim-browser|claim-owner-browser|named-open-(?:p256|jubjub))-[a-z0-9-]{1,48}$/,
 );
-const fixtureMode = out.startsWith('midnames-claim-browser-')
-  ? 'claim-browser'
-  : out.startsWith('midnames-claim-owner-browser-')
-    ? 'claim-owner-browser'
-    : out.startsWith('midnames-claim-handoff-')
-      ? 'claim-handoff'
-      : out.startsWith('midnames-night-send-')
-        ? 'named-night-send'
-        : 'named-shielded-deposit';
+const namedOpen = /^midnames-(named-open-(?:p256|jubjub))-/.exec(out)?.[1];
+const fixtureMode =
+  namedOpen ??
+  (out.startsWith('midnames-claim-browser-')
+    ? 'claim-browser'
+    : out.startsWith('midnames-claim-owner-browser-')
+      ? 'claim-owner-browser'
+      : out.startsWith('midnames-claim-handoff-')
+        ? 'claim-handoff'
+        : out.startsWith('midnames-night-send-')
+          ? 'named-night-send'
+          : 'named-shielded-deposit');
 const review = join(root, 'review');
 mkdirSync(review, { recursive: true, mode: 0o700 });
 assert.equal(realpathSync(review), review);

@@ -68,6 +68,8 @@ assert.ok(
     'claim-handoff',
     'claim-browser',
     'claim-owner-browser',
+    'named-open-p256',
+    'named-open-jubjub',
   ].includes(mode),
 );
 const browserOwner = mode === 'claim-owner-browser' || mode === 'claim-browser';
@@ -82,6 +84,7 @@ const step = (label) => {
 const write = (name, data) => writeFileSync(join(output, name), data, { mode: 0o600, flag: 'wx' });
 process.chdir(output);
 let wallet;
+let openOwner;
 try {
   step('sync-wallet');
   wallet = await walletModule.createWallet('0'.repeat(63) + '1');
@@ -142,7 +145,20 @@ try {
     return address;
   };
   const encKeys = inbox.generateEncKeyPair();
-  const accountAddress = await deployAccount('account', randomJubJubPoint(), encKeys.publicKey);
+  if (mode.startsWith('named-open-')) {
+    const { namedOpenOwner } = await import('./named-open-fixture.mjs');
+    openOwner = await namedOpenOwner({
+      arm: mode === 'named-open-p256' ? 'p256' : 'jubjub',
+      acc,
+      providers,
+      compiledContract: accountCompiled,
+      contracts,
+      wave,
+      transactions: receipt.transactions,
+    });
+  }
+  const accountAddress =
+    openOwner?.address ?? (await deployAccount('account', randomJubJubPoint(), encKeys.publicKey));
 
   const regProviders = {
     ...providers,
@@ -301,7 +317,19 @@ try {
   );
   const claimIdentifier = receipt.transactions.at(-1).id;
   const getReferenceSigner = () => import(pathToFileURL(join(ref, 'src/wallet/signer.ts')).href);
-  if (claimFixture) {
+  if (openOwner) {
+    const beforeOpen = receipt.transactions.length;
+    const evidence = await openOwner.qualify(service);
+    assert.equal(receipt.transactions.length, beforeOpen);
+    Object.assign(receipt, {
+      ...evidence,
+      claimIdentifier,
+      registryAddress,
+      openSubmissions: 0,
+      passed: true,
+    });
+    step('verified-native-named-authorized-open');
+  } else if (claimFixture) {
     const { qualifyClaimHandoff } = await import('./claim-handoff-fixture.mjs');
     let dispatch;
     if (mode === 'claim-browser') {
@@ -491,5 +519,6 @@ try {
   save();
   throw error;
 } finally {
+  openOwner?.close();
   if (wallet) await wallet.wallet.stop();
 }
