@@ -45,6 +45,7 @@ const quote = {
   name: receipt.name,
   id: '91'.repeat(32),
   sponsorAddress: '92'.repeat(32),
+  sponsorPaymentAddress: '95'.repeat(32),
   registryPayee: '93'.repeat(32),
   night: '1',
   maximumDust: '100000',

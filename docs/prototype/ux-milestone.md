@@ -133,7 +133,9 @@ original claim. The loopback fixture offers **Send prepared claim** for an
 original receipt already saved to the open credential. A lost response keeps the original receipt available across
 browser reloads. Sending requires a saved matching quote and a second click
 after the exact payment terms are displayed. Older quote-less receipts remain
-available for reconciliation only. See [the recovery flow](../site/names.md#recover-the-sponsors-original-claim-in-the-demo).
+available for reconciliation only. The native dispatch fixture injects its
+quote after proof, so that run does not qualify pre-proof user review. See
+[the recovery flow](../site/names.md#recover-the-sponsors-original-claim-in-the-demo).
 
 ### Standalone shielded deposit by name
 

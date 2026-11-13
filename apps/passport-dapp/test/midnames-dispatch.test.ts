@@ -142,6 +142,36 @@ test('fails closed on corrupted original bytes or a mismatched fence', async (t)
   await assert.rejects(journal.dispatch(original, ports), /transaction differs/);
 });
 
+test('the HTTP sponsor cannot dispatch a quote-less original without preparation', async (t) => {
+  const { root, fence } = fixture(t);
+  let handler: ReturnType<typeof createClaimSponsorHandler>;
+  const server = createServer((request, response) => {
+    void handler(request, response).then(
+      () => {},
+      () => response.destroy(),
+    );
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(async () => new Promise<void>((resolve) => server.close(() => resolve())));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const origin = 'http://127.0.0.1:' + address.port;
+  handler = createClaimSponsorHandler(origin, root, {
+    async authorize() {},
+    async submit() {
+      assert.fail('Quote-less receipt must not be submitted.');
+    },
+  });
+  const response = await fetch(origin + claimDispatchPath, {
+    method: 'POST',
+    headers: { Origin: origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify(original),
+  });
+  assert.equal(response.status, 409);
+  assert.equal(existsSync(fence), false);
+});
+
 test('changed registry terms durably refuse before sponsor intent and allow a new quote', async (t) => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'midnames-refused-')));
   t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -150,6 +180,7 @@ test('changed registry terms durably refuse before sponsor intent and allow a ne
     ...destination,
     id: '91'.repeat(32),
     sponsorAddress: '92'.repeat(32),
+    sponsorPaymentAddress: '95'.repeat(32),
     registryPayee: '93'.repeat(32),
     night: '1',
     maximumDust: '10000',
@@ -193,6 +224,7 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
     ...destination,
     id: '91'.repeat(32),
     sponsorAddress: '92'.repeat(32),
+    sponsorPaymentAddress: '95'.repeat(32),
     registryPayee: '93'.repeat(32),
     night: '1',
     maximumDust: '10000',
@@ -276,5 +308,6 @@ test('recovers a retained sponsor preparation over HTTP after reopening the jour
   );
   handler = createClaimSponsorHandler(origin, root, dispatchPorts);
   assert.equal((await post(claimDispatchPath, retained)).status, 409);
+  assert.equal((await post(claimDispatchPath, original)).status, 409);
   assert.equal(existsSync(join(root, 'claim-dispatch-fence.json')), false);
 });

@@ -16,6 +16,7 @@ export async function qualifyClaimHandoff({
   registryManifestHash,
   registryAddress,
   accountAddress,
+  sponsorPaymentAddress,
   walletProvider,
   ledger,
   rootId,
@@ -59,6 +60,7 @@ export async function qualifyClaimHandoff({
     name: label + '.night',
     ownerCommitment: owner.ownerCommitment,
     registryPayee: Buffer.from(registryPayee.bytes).toString('hex'),
+    sponsorPaymentAddress,
     night: price.cost_long,
   };
 
@@ -74,19 +76,24 @@ export async function qualifyClaimHandoff({
     .flatMap((intent) => [intent.guaranteedUnshieldedOffer, intent.fallibleUnshieldedOffer])
     .filter(Boolean)
     .flatMap((offer) => offer.inputs)[0];
-  if (dispatch) assert.ok(sponsorInput, 'Balanced claim needs a sponsor NIGHT input.');
-  const reviewedQuote =
+  if (dispatch) {
+    assert.ok(sponsorInput, 'Balanced claim needs a sponsor NIGHT input.');
+    assert.equal(ledger.addressFromKey(sponsorInput.owner), sponsorPaymentAddress);
+  }
+  // The native fixture constructs this dispatch quote after proof. It does not
+  // exercise the opt-in browser's pre-proof review ceremony.
+  const fixtureQuote =
     dispatch &&
     claimQuote({
       ...quote,
       id: prepared.receipt.transaction.sha256,
-      sponsorAddress: ledger.addressFromKey(sponsorInput.owner),
+      sponsorAddress: '33'.repeat(32),
       night: String(quote.night),
       maximumDust: '100000000000000000',
       expiresAt: Date.now() + 600_000,
     });
-  const acknowledged = reviewedQuote
-    ? claimReceipt({ ...prepared.receipt, quoteSha256: await claimQuoteDigest(reviewedQuote) })
+  const acknowledged = fixtureQuote
+    ? claimReceipt({ ...prepared.receipt, quoteSha256: await claimQuoteDigest(fixtureQuote) })
     : prepared.receipt;
   const dustSpends = [...(final.intents?.values() ?? [])].reduce(
     (sum, intent) => sum + (intent.dustActions?.spends.length ?? 0),
@@ -105,7 +112,7 @@ export async function qualifyClaimHandoff({
     const result = await dispatch(
       quote,
       acknowledged,
-      reviewedQuote,
+      fixtureQuote,
       await claimDigest(owner.bytes),
     );
     return { ...result, ownerCredentialRestored: owner.restored };

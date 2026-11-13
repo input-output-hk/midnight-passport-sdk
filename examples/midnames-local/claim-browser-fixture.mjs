@@ -55,26 +55,26 @@ export async function qualifyBrowserClaim({
   output,
   quote,
   receipt,
-  reviewedQuote,
+  fixtureQuote,
   ownerProofSha256,
   ledger,
   submit,
   readLive,
 }) {
-  const digest = await claimQuoteDigest(reviewedQuote);
+  const digest = await claimQuoteDigest(fixtureQuote);
   assert.equal(receipt.quoteSha256, digest);
-  createOnce(join(output, 'quote-' + reviewedQuote.id + '.json'), JSON.stringify(reviewedQuote));
+  createOnce(join(output, 'quote-' + fixtureQuote.id + '.json'), JSON.stringify(fixtureQuote));
   createOnce(
     join(output, 'claim-prepare-intent.json'),
     JSON.stringify({
-      quoteId: reviewedQuote.id,
+      quoteId: fixtureQuote.id,
       digest,
       ownerCommitment: receipt.ownerCommitment,
       proofSha256: ownerProofSha256,
     }),
   );
   saveIsolationReceipt(join(output, 'original-claim.json'), receipt);
-  saveIsolationReceipt(join(output, 'original-quote.json'), reviewedQuote);
+  saveIsolationReceipt(join(output, 'original-quote.json'), fixtureQuote);
   const evidence = {
     dispatches: 0,
     dustCeiling: String(fixtureDustCeiling),
@@ -120,10 +120,10 @@ export async function qualifyBrowserClaim({
     },
     {
       async issue() {
-        return reviewedQuote;
+        return fixtureQuote;
       },
       async authorizeQuote(candidate) {
-        assert.deepEqual(candidate, reviewedQuote);
+        assert.deepEqual(candidate, fixtureQuote);
         await readLive(quote);
       },
       async balance() {

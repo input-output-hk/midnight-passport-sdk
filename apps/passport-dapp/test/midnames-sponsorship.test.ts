@@ -25,6 +25,7 @@ const quote: PaidClaimQuote = {
   name: 'alice.night',
   ownerCommitment: '56'.repeat(32),
   registryPayee: '78'.repeat(32),
+  sponsorPaymentAddress: '9a'.repeat(32),
   night: 7n,
 };
 const night: UnshieldedTokenType = { tag: 'unshielded', raw: '00'.repeat(32) };
@@ -75,6 +76,7 @@ test('admits only the single registry payment output in the owner-proved offer',
 test('finalized bytes admit the registry payment and sponsor change only', () => {
   const key = signatureVerifyingKey(sampleSigningKey());
   const sponsor = addressFromKey(key);
+  const paid = { ...quote, sponsorPaymentAddress: sponsor };
   const input = {
     value: 10n,
     owner: key,
@@ -84,15 +86,15 @@ test('finalized bytes admit the registry payment and sponsor change only', () =>
   };
   const registry = { value: quote.night, owner: quote.registryPayee, type: night.raw };
   const change = { value: 3n, owner: sponsor, type: night.raw };
-  const finalized = (outputs: (typeof registry)[]) => {
+  const finalized = (outputs: (typeof registry)[], extraInputs: (typeof input)[] = []) => {
     const intent = Intent.new(new Date(Date.now() + 60_000));
-    intent.guaranteedUnshieldedOffer = UnshieldedOffer.new([input], outputs, []);
+    intent.guaranteedUnshieldedOffer = UnshieldedOffer.new([input, ...extraInputs], outputs, []);
     const bytes = Transaction.fromParts('undeployed', undefined, undefined, intent)
       .mockProve()
       .serialize();
     return Transaction.deserialize('signature', 'proof', 'binding', bytes);
   };
-  assert.equal(matchesSponsoredOutputs(finalized([registry, change]), quote), true);
+  assert.equal(matchesSponsoredOutputs(finalized([registry, change]), paid), true);
   assert.equal(
     matchesSponsoredOutputs(
       finalized([
@@ -100,14 +102,27 @@ test('finalized bytes admit the registry payment and sponsor change only', () =>
         { ...change, value: 2n },
         { value: 1n, owner: 'cd'.repeat(32), type: night.raw },
       ]),
-      quote,
+      paid,
     ),
     false,
   );
   assert.equal(
     matchesSponsoredOutputs(
       finalized([registry, { ...change, owner: quote.accountAddress }]),
-      quote,
+      paid,
+    ),
+    false,
+  );
+  const otherKey = signatureVerifyingKey(sampleSigningKey());
+  const other = addressFromKey(otherKey);
+  assert.notEqual(other, sponsor);
+  assert.equal(
+    matchesSponsoredOutputs(
+      finalized(
+        [registry, { ...change, value: 4n, owner: other }],
+        [{ ...input, owner: otherKey, value: 1n }],
+      ),
+      paid,
     ),
     false,
   );

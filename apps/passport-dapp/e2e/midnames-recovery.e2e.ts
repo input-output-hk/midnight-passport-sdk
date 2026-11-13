@@ -32,7 +32,7 @@ if (sponsorPort !== undefined) {
     if (process.ppid !== workerPid) process.kill(process.pid, 'SIGINT');
   }, 250).unref();
 }
-const reviewedQuote = sponsorPort
+const fixtureQuote = sponsorPort
   ? claimQuote(JSON.parse(readFileSync(file('original-quote.json'), 'utf8')))
   : undefined;
 Object.assign(process.env, {
@@ -187,10 +187,10 @@ async function submitWithLostSponsorResponse(page: Page) {
   assert.ok(existsSync(file('original-response-lost')));
 }
 
-async function seedReviewedOriginal(page: Page) {
-  assert.ok(reviewedQuote);
-  // This native fixture's owner process completed the exact quote review and
-  // proof before the browser recovery driver starts. Restore that durable row.
+async function seedFixtureOriginal(page: Page) {
+  assert.ok(fixtureQuote);
+  // The native fixture injects a quote and journal row after proof. This tests
+  // quote-bound dispatch and recovery, not pre-proof human quote review.
   await page.evaluate(
     async ({ quote, receipt }) => {
       const journalUrl = '/src/midnames/claim-journal.ts';
@@ -211,7 +211,7 @@ async function seedReviewedOriginal(page: Page) {
         journal.close();
       }
     },
-    { quote: reviewedQuote, receipt: original },
+    { quote: fixtureQuote, receipt: original },
   );
 }
 
@@ -247,7 +247,7 @@ try {
   try {
     await checking.locator('#claim-check-availability').click();
     await registryReadStarted;
-    if (sponsorPort) await seedReviewedOriginal(first);
+    if (sponsorPort) await seedFixtureOriginal(first);
     await first.locator('#claim-recovery-receipt').fill(JSON.stringify(original));
     await first.locator('#claim-recovery-retain').click();
     await status(first, messages.saved);

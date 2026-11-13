@@ -58,6 +58,7 @@ test('only a saved exact quote can authorize a prepared receipt for send review'
     ...original,
     id: '91'.repeat(32),
     sponsorAddress: '92'.repeat(32),
+    sponsorPaymentAddress: '95'.repeat(32),
     registryPayee: '93'.repeat(32),
     night: '7',
     maximumDust: '10000',

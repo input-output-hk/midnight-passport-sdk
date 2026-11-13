@@ -27,8 +27,10 @@ The opt-in standalone demo can prepare a reviewed claim with the open account's
 passkey. A definitive sponsor refusal before any balance intent permits a fresh
 quote review; an unknown outcome keeps the original. The browser shows the saved
 price, payee, fee ceiling and expiry before a second click sends. Imported
-quote-less receipts can only be reconciled. An earlier isolated Chromium run
-recovered the original claim after one dispatch and a lost response. It used
+quote-less receipts can only be reconciled. The sponsor bounds NIGHT inputs
+and change to the quoted payment wallet. An earlier isolated Chromium run
+recovered the original claim after one dispatch and a lost response. Its
+post-proof fixture quote did not establish pre-proof user review. It used
 fixture login and a virtual passkey. The shielded
 deposit and two-leg NIGHT payment have standalone Node fixtures. Online profiles
 and real passkey provider recovery require separate qualification.

@@ -115,7 +115,8 @@ at `/v1/midnames/claim/dispatch`. It binds one private prepared journal and the
 host's live sponsor policy to that origin. Set `VITE_MIDNAMES_CLAIM_SPONSOR=1`
 with the standalone registry configuration and open the demo on `127.0.0.1`.
 
-For browser preparation, supply the handler's optional preparation ports. Start
+Browser dispatch requires the handler's preparation ports and a receipt bound
+to its retained quote. Start
 the owner-side server with the prepared registry and the Compact reference ACC
 contract directory used by the isolated qualification command:
 
@@ -127,7 +128,7 @@ nix develop -c node --experimental-import-meta-resolve \
 ```
 
 The JSON contains `networkId` (`undeployed`), `registryAddress`,
-`sponsorAddress`, `indexerUrl` (`http://127.0.0.1:18108/api/v4/graphql`),
+`sponsorAddress` (the naming authority), `indexerUrl` (`http://127.0.0.1:18108/api/v4/graphql`),
 `indexerWsUrl` (`ws://127.0.0.1:18108/api/v4/graphql/ws`), and
 `walletKeys` with `coin` and `encryption` public keys. Use lowercase
 32-byte hex for the two addresses and two public keys. Obtain these from the
@@ -141,6 +142,7 @@ Set `VITE_MIDNAMES_CLAIM_SPONSOR=1` and `VITE_MIDNAMES_CLAIM_PREPARATION=1`
 alongside the [standalone name service settings](../../docs/site/names.md#standalone-registry-profile).
 Start the demo on `http://localhost:5173`. For a different localhost port,
 pass the exact demo origin as the last argument to the owner command.
+The quote also pins `sponsorPaymentAddress`, the NIGHT input and change wallet.
 The browser transport accepts the literal loopback origins `localhost` and
 `127.0.0.1`. Keep the handler and browser on the same origin. The sponsor
 retains the exact quote, checks its live terms before balancing, and records
@@ -170,8 +172,11 @@ the sponsor after checking that the same credential yields the same commitment
 after a reload. The sponsor rechecks the registry price, payee, name
 availability and target ACC. It accepts only the original Ledger IDs and an
 unexpired claim with exactly two DUST spends under its configured fixture
-ceiling. The browser driver drops the HTTP response after the sponsor
-accepts the acknowledgement, restarts Chromium, and checks the original
+ceiling. The native fixture injects a quote and matching journal row after
+proving to exercise quote-bound dispatch and recovery. It does not establish
+human quote review before proof; the opt-in browser preparation flow exercises
+that order separately. The browser driver drops the HTTP response after the
+sponsor accepts the acknowledgement, restarts Chromium, and checks the original
 on the isolated indexer. Inspect `native-claim-dispatch.json` and
 `browser-claim-recovery.json` under the run's private evidence directory.
 This test uses a virtual owner credential. Production credential enrollment
@@ -185,7 +190,7 @@ the fixture's two-DUST admission test.
 Save the prepared public receipt while the matching ACC is open, then select
 **Send prepared claim**, review the saved terms, and confirm. **Check original claim** reads the original receipt
 after a reload or lost response. This route is a local fixture. The live browser run used a fixture login for
-an already activated ACC and a Chromium virtual passkey to prove the reviewed
+an already activated ACC and a Chromium virtual passkey to prove the fixed
 claim. It observed one assertion, one proof, one wallet balance, one dispatch
 and original confirmation after restart.
 

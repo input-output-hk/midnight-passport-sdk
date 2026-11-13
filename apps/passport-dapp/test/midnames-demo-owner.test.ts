@@ -27,6 +27,7 @@ test('the opt-in owner prover receives the reviewed quote and only the open pass
     name: 'alice.night',
     id: '23'.repeat(32),
     sponsorAddress: '24'.repeat(32),
+    sponsorPaymentAddress: '25'.repeat(32),
     registryPayee: '25'.repeat(32),
     night: '1',
     maximumDust: '1000',

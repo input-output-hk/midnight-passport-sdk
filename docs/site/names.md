@@ -164,8 +164,10 @@ registry reader returned the expected distinct claimant commitment and the
 activated ACC. After restarting the isolated node and indexer, a fresh process
 confirmed the original transaction identifiers and read the target again with
 zero submissions. A later standalone demo run used a Chromium virtual passkey
-to prove one reviewed claim, then recovered its original receipt after dropping
-the send response and restarting Chromium. Real passkey provider recovery and
+to prove one fixed claim, then recovered its original receipt after dropping
+the send response and restarting Chromium. That fixture injected a quote after
+proof to exercise dispatch recovery; it did not establish pre-proof user review.
+Real passkey provider recovery and
 online profile qualification remain open.
 
 The host registry reader can inspect the stored owner commitment and target
@@ -185,7 +187,8 @@ against the original transaction.
 
 Start the [standalone owner and sponsor services](../../examples/midnames-local/README.md#send-an-acknowledged-receipt-from-the-browser)
 to enable **Review claim quote** in the local demo. The form shows the exact name, network, ACC,
-registry, payee, sponsor, NIGHT price, DUST ceiling and expiry. **Approve and
+registry, payee, naming authority address, sponsor payment wallet, NIGHT price,
+DUST ceiling and expiry. **Approve and
 prepare claim** records that quote before owner-side proving. The form records
 the public owner commitment before asking the sponsor to balance the proved
 transaction. It then saves the matching receipt automatically. **Send prepared
@@ -226,8 +229,10 @@ A mismatched owner or target is reported as a conflict.
 The isolated fixture prepares the proof in a separate owner process. The
 sponsor balances it and accepts an explicit **Send prepared claim** action
 for a quote-bound receipt already saved to the open credential. The sponsor
-checks the exact registry payment and permits NIGHT change only back to the
-input owner's address. It acknowledges the
+checks the exact registry payment and permits NIGHT inputs and change only at
+the quoted sponsor payment wallet. This fixture constructs its dispatch quote
+after proving and seeds the browser journal; it tests quote-bound send and
+recovery, not a user's pre-proof quote review. It acknowledges the
 durable dispatch record while the wallet waits for the node. The demo shows
 the result as pending until the original receipt verifies against the indexer.
 

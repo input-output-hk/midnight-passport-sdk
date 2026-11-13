@@ -330,12 +330,12 @@ try {
         assert.equal(await reads.readClaim(quote.name, profile), undefined);
         assert.ok(await reads.isSupportedAccount(accountAddress, profile.networkId));
       };
-      dispatch = (quote, original, reviewedQuote, ownerProofSha256) =>
+      dispatch = (quote, original, fixtureQuote, ownerProofSha256) =>
         qualifyBrowserClaim({
           output,
           quote,
           receipt: original,
-          reviewedQuote,
+          fixtureQuote,
           ownerProofSha256,
           ledger,
           submit: providers.midnightProvider.submitTx,
@@ -350,6 +350,7 @@ try {
       registryManifestHash: pins.compiled['compiler/contract-manifest.json'],
       registryAddress,
       accountAddress,
+      sponsorPaymentAddress: Buffer.from(owner.bytes).toString('hex'),
       walletProvider: regProviders.walletProvider,
       ledger,
       rootId,

@@ -17,6 +17,7 @@ import {
 
 export interface PaidClaimQuote extends ClaimScope {
   readonly registryPayee: string;
+  readonly sponsorPaymentAddress: string;
   readonly night: bigint;
 }
 
@@ -87,10 +88,13 @@ export function matchesSponsoredOutputs(
   for (const intent of tx.intents?.values() ?? []) {
     for (const offer of [intent.guaranteedUnshieldedOffer, intent.fallibleUnshieldedOffer]) {
       if (!offer) continue;
-      const owners = new Set<string>();
       for (const input of offer.inputs) {
-        if (input.type !== nightType || input.value <= 0n) return false;
-        owners.add(addressFromKey(input.owner));
+        if (
+          input.type !== nightType ||
+          input.value <= 0n ||
+          addressFromKey(input.owner) !== quote.sponsorPaymentAddress
+        )
+          return false;
         inputs += input.value;
       }
       for (const output of offer.outputs) {
@@ -98,7 +102,7 @@ export function matchesSponsoredOutputs(
         outputs += output.value;
         if (output.owner === quote.registryPayee && output.value === quote.night && payees === 0) {
           payees++;
-        } else if (!owners.has(output.owner)) return false;
+        } else if (output.owner !== quote.sponsorPaymentAddress) return false;
       }
     }
   }
@@ -152,6 +156,7 @@ export async function prepareSponsoredClaim(
       expected.accountAddress,
       expected.ownerCommitment,
       expected.registryPayee,
+      expected.sponsorPaymentAddress,
     ].every(claimHex) ||
     typeof expected.night !== 'bigint' ||
     expected.night <= 0n ||

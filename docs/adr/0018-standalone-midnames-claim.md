@@ -89,6 +89,10 @@ exact Ledger identifiers, time to expiry, two DUST spends and a fixture fee
 ceiling before submission. The browser qualification uses a separate owner
 process to serve the proving page and relay requests to the fixed loopback
 prover. The browser, relay and prover form the trusted owner environment.
+That native fixture attaches its dispatch quote after proof and seeds the
+browser journal for recovery. It qualifies quote-bound dispatch and recovery,
+not pre-proof human review. The opt-in browser preparation flow tests review
+before proving separately.
 Both the relay and prover receive witness-bearing proof payloads, so the
 prover must be owner-operated and kept separate from the sponsor. Chromium
 derives the witness from WebAuthn PRF with a salt

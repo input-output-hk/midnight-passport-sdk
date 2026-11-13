@@ -70,13 +70,9 @@ export function createClaimSponsorHandler(
         await journal.dispatch(claimReceipt(input), {
           async authorize(bytes, receipt) {
             await ports.authorize(bytes, receipt);
-            if (receipt.quoteSha256 && !prep)
-              throw new Error('The original quote sponsor is unavailable.');
-            if (prep) {
-              if (!receipt.quoteSha256)
-                throw new Error('A reviewed claim quote is required for dispatch.');
-              await prep.authorizeDispatch(bytes, receipt);
-            }
+            if (!prep || !receipt.quoteSha256)
+              throw new Error('A reviewed claim quote and sponsor are required for dispatch.');
+            await prep.authorizeDispatch(bytes, receipt);
           },
           submit: (bytes) => ports.submit(bytes),
         });

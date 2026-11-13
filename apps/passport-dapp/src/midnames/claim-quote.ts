@@ -12,6 +12,7 @@ export type ClaimDestination = Omit<ClaimScope, 'ownerCommitment'>;
 export interface ClaimQuote extends ClaimDestination {
   readonly id: string;
   readonly sponsorAddress: string;
+  readonly sponsorPaymentAddress: string;
   readonly registryPayee: string;
   readonly night: string;
   readonly maximumDust: string;
@@ -68,13 +69,19 @@ export function claimDestination(value: unknown): ClaimDestination {
 
 export function claimQuote(value: unknown): ClaimQuote {
   const destination = claimDestination(value);
-  const { id, sponsorAddress, registryPayee, night, maximumDust, expiresAt } = value as Record<
-    string,
-    unknown
-  >;
+  const {
+    id,
+    sponsorAddress,
+    sponsorPaymentAddress,
+    registryPayee,
+    night,
+    maximumDust,
+    expiresAt,
+  } = value as Record<string, unknown>;
   if (
     !claimHex(id) ||
     !claimHex(sponsorAddress) ||
+    !claimHex(sponsorPaymentAddress) ||
     !claimHex(registryPayee) ||
     !positiveAmount(night) ||
     !positiveAmount(maximumDust) ||
@@ -88,6 +95,7 @@ export function claimQuote(value: unknown): ClaimQuote {
     ...destination,
     id,
     sponsorAddress,
+    sponsorPaymentAddress,
     registryPayee,
     night,
     maximumDust,
