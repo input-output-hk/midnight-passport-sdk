@@ -1,0 +1,37 @@
+pragma language_version >= 0.23;
+import CompactStandardLibrary;
+
+export ledger owner: JubjubPoint;
+export ledger authorizations: Counter;
+
+constructor(owner_key: JubjubPoint) {
+  assert(ecMul(owner_key, 8 as JubjubScalar) != ecMulGenerator(0 as JubjubScalar),
+         "owner key has small order");
+  owner = disclose(owner_key);
+}
+
+export pure circuit owner_challenge(
+  registry: ContractAddress, account: ContractAddress, locator: Bytes<32>,
+  nonce: Uint<64>, pk: JubjubPoint, r: JubjubPoint, grind: Uint<64>
+): Bytes<32> {
+  return persistentHash<[Bytes<32>, ContractAddress, ContractAddress, Bytes<32>, Uint<64>, JubjubPoint, JubjubPoint, Uint<64>]>(
+    [pad(32, "passport:discovery:owner:v1"), registry, account, locator, nonce, pk, r, grind]
+  );
+}
+
+export circuit authorize_registration(
+  registry: ContractAddress, account: ContractAddress, locator: Bytes<32>,
+  nonce: Uint<64>, r_x: Field, r_y: Field, s: Field, grind: Uint<64>
+): [] {
+  const caller = kernel.caller();
+  assert(caller.is_some && caller.value.is_left, "registry caller required");
+  assert(caller.value.left.bytes == registry.bytes, "wrong registry caller");
+  assert(kernel.self().bytes == account.bytes, "wrong owner account");
+  assert(authorizations.read() == nonce, "stale owner nonce");
+  const r = constructJubjubPoint(r_x, r_y);
+  const challenge = owner_challenge(registry, account, locator, nonce, owner, r, grind);
+  const c = challenge as Field;
+  assert(ecMulGenerator(s as JubjubScalar) == ecAdd(r, ecMul(owner, c as JubjubScalar)),
+         "invalid owner signature");
+  authorizations.increment(1);
+}

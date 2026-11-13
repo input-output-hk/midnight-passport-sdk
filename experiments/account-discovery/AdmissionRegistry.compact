@@ -1,0 +1,65 @@
+pragma language_version >= 0.23;
+import CompactStandardLibrary;
+
+contract AccountGate {
+  circuit authorize_registration(
+    registry: ContractAddress, account: ContractAddress, locator: Bytes<32>,
+    nonce: Uint<64>, r_x: Field, r_y: Field, s: Field, grind: Uint<64>
+  ): [];
+}
+
+witness lookup_secret(): Bytes<32>;
+
+export ledger namespace: Bytes<32>;
+export ledger binding_manifest: Bytes<32>;
+export ledger issuer: JubjubPoint;
+export ledger records: Map<Bytes<32>, ContractAddress>;
+
+constructor(network: Bytes<32>, manifest: Bytes<32>, issuer_key: JubjubPoint) {
+  assert(ecMul(issuer_key, 8 as JubjubScalar) != ecMulGenerator(0 as JubjubScalar),
+         "issuer key has small order");
+  namespace = disclose(network);
+  binding_manifest = disclose(manifest);
+  issuer = disclose(issuer_key);
+}
+
+export pure circuit admission_challenge(
+  network: Bytes<32>, registry: ContractAddress, account: ContractAddress, manifest: Bytes<32>,
+  pk: JubjubPoint, r: JubjubPoint, grind: Uint<64>
+): Bytes<32> {
+  return persistentHash<[Bytes<32>, Bytes<32>, ContractAddress, ContractAddress, Bytes<32>, JubjubPoint, JubjubPoint, Uint<64>]>(
+    [pad(32, "passport:discovery:admission:v1"), network, registry, account, manifest, pk, r, grind]
+  );
+}
+
+export circuit register(
+  account_gate: AccountGate, account: ContractAddress, locator: Bytes<32>,
+  issuer_r: JubjubPoint, issuer_s: Field, issuer_grind: Uint<64>,
+  owner_nonce: Uint<64>, owner_r: JubjubPoint, owner_s: Field, owner_grind: Uint<64>
+): [] {
+  const registry = kernel.self();
+  const gate = disclose(account_gate);
+  // Compact 0.35 encodes both types as one Bytes<32> value. Check the
+  // actual typed call target before trusting any callee behavior.
+  assert(persistentHash<AccountGate>(gate) == persistentHash<ContractAddress>(account),
+         "attested address does not match call target");
+  const attestation = admission_challenge(
+    namespace, registry, account, binding_manifest, issuer, issuer_r, issuer_grind
+  );
+  const c = attestation as Field;
+  assert(ecMulGenerator(issuer_s as JubjubScalar) == ecAdd(issuer_r, ecMul(issuer, c as JubjubScalar)),
+         "invalid deployment attestation");
+
+  const derived = persistentHash<Vector<4, Bytes<32>>>([
+    pad(32, "midnight:passport:locator:v1"), namespace, registry.bytes, lookup_secret()
+  ]);
+  assert(derived == locator, "locator witness mismatch");
+  const public_locator = disclose(locator);
+  assert(!records.member(public_locator), "locator already registered");
+  gate.authorize_registration(
+    disclose(registry), disclose(account), public_locator, disclose(owner_nonce),
+    disclose(jubjubPointX(owner_r)), disclose(jubjubPointY(owner_r)),
+    disclose(owner_s), disclose(owner_grind)
+  );
+  records.insert(public_locator, disclose(account));
+}
