@@ -103,6 +103,17 @@ credentials in Node with native proof-backed chain setup. The demo can
 look up a name and accept the returned address through its existing
 address login.
 
+## Qualify registry updates and ownership transfer
+
+Use a fresh output name beginning with `midnames-registry-authority-`.
+The isolated runner creates two sealed JubJub ACCs, a standalone registry
+and one name. It checks that an unrelated registry witness cannot construct
+a target update or ownership transfer. It then proves and finalizes a target
+update, transfers registry ownership and verifies that only the new owner
+can update the target again. Both resolved ACC targets still require their
+own enrolled credentials and sealed readers. The three exact mutation
+receipts and the opening results are in `worker.json`.
+
 ## Prepare an owner-proved claim for the sponsor
 
 Separate-process preparation passed on isolated Ledger 9 at local commit

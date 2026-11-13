@@ -77,6 +77,15 @@ path for P-256 and JubJub with synthetic credentials and a fresh opener.
 Unknown names made no credential request, and unrelated credentials were
 refused. Name ownership and registry administration have their own checks.
 
+The isolated registry authority fixture qualified target updates and a name
+transfer on the pinned standalone registry. An unrelated witness and the
+former registry owner were refused before submission. The new registry
+owner could update the target. Resolve again after a change and review the
+fresh address before opening it. The host may retain the previous address as
+an explicit account reference. Each ACC still verifies its own enrolled
+device and sealed reader. Registry-owner custody and continuity after ACC
+recovery require separate qualification.
+
 ## Private grant sponsorship in the source candidate
 
 On the standalone network, `PASSPORT_HOST_GRANT_ISSUE=1` opts the configured
