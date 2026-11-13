@@ -132,4 +132,30 @@ checks the issued signature against the Compact registry challenge. The node
 and indexer responses are simulated. The issuer trusts their configured
 endpoints for finality and state, and the fixture uses synthetic signing keys.
 Native settlement, independent state verification, and production issuer
-custody remain unqualified.
+custody remain unqualified for this offline issuer probe.
+
+### Isolated Ledger 9 qualification (source preview)
+
+On 13 November 2026, a separate synthetic localnet run used Compact 0.36.1
+caller and callee artifacts, runtime 0.21.0, and the issuer's finalized node and
+indexer checks. A registration finalized at block 56. The registry record count
+and the account owner-authorization count each advanced from zero to one in the
+same transaction. This establishes one native atomic registration for the tested
+artifacts and deployment; it does not qualify an SDK discovery flow or a public
+network.
+
+The retained deployments also supported a negative proof test. With the
+canonical registry `register` proof artifacts pinned, a caller module that used
+an alternate account entry point produced an unproven transaction containing
+`register` and `alternate_registration`. The canonical call proved, while the
+substituted call failed the proof server's `/check` step with a public transcript
+input mismatch. No transaction from that negative test was submitted. Across
+later finalized blocks, both complete contract state hashes, the owner nonce,
+and the registry record count were unchanged. This is proof-construction
+rejection, not evidence of node-side rejection of a submitted transaction.
+
+The fixture uses synthetic keys, a trusted pinned node and indexer, and private
+retained localnet state. Browser discovery and custody, production issuer
+custody, independent finalized-state verification, public-network use, and a
+new release remain open. The earlier #275 caller evidence predates the Compact
+entry-point binding fix and needs separate qualification with patched keys.
