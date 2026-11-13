@@ -3,6 +3,7 @@
 The [application setup](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/README.md) is the source for exact commands and service configuration. These scenarios explain what to observe once the local stack is healthy.
 
 1. **Create an ACC:** choose a supported P-256 or JubJub route, review maintenance-authority retirement and the actual passkey request, then wait for a confirmed address. Note the binding and network.
+   On the opt-in standalone Midnames profile, continue to **Finish Passport setup** on Balances. Select a local `.night` name for this same ACC, review the separate claim quote, and keep the original receipt until the transaction and registry binding are confirmed. A selected name is still pending.
 2. **Reopen it:** use the enrolled credential and stored record, or a known address where the route is supported. Observe that login does not automatically connect a wallet or enroll a full owner.
 3. **Compare balances:** view ACC holdings and separately connect or refresh the person's HD wallet. They have different addresses and balances.
 4. **Deposit:** use the separately enabled local funding path or an asset-holding wallet. Observe the funding transaction and later ACC balance. The sponsor pays fees only.

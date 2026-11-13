@@ -178,8 +178,16 @@ that the original transaction finalized successfully.
 
 ### Recover the sponsor's original claim in the demo
 
-For `standalone-0.35` with namespace `night`, open the target Passport ACC
-with its passkey and go to **Settings → Developer tools → Name service**.
+For `standalone-0.35` with namespace `night`, create or open the target Passport
+ACC with its passkey, then use **Finish Passport setup** on Passport account →
+Balances. This is a post-ACC step for the same address. Choosing a local
+`.night` name stores the selection per registry, ACC, and credential in this
+browser. Reopening with the same credential restores the selection and checks
+any retained original claim. Setup remains pending until the original
+transaction and current registry record match. Selection alone does not claim
+the name; browser storage loss or a different device requires recovery from
+the original receipt. Name-owner rotation after total credential loss is not
+qualified by this source preview.
 **Check availability** reads the pinned registry and verifies the open ACC
 before reporting an unregistered name. Availability is an observation at the
 time of the read. A retained receipt takes precedence and is reconciled

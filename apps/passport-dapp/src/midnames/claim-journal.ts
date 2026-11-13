@@ -1,4 +1,4 @@
-import { claimHex, claimReceipt, type ClaimReceipt } from './claim-receipt.js';
+import { claimHex, claimName, claimReceipt, type ClaimReceipt } from './claim-receipt.js';
 import {
   claimQuote,
   claimQuoteDigest,
@@ -16,6 +16,16 @@ interface StoredClaim {
 
 export type ClaimJournal = Awaited<ReturnType<typeof openClaimJournal>>;
 const storeName = 'claims';
+const selectionStore = 'selections';
+
+const selectionKey = (registry: string, account: string, credential: string) =>
+  JSON.stringify(['undeployed', registry, account, credential]);
+
+function selectedName(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (!claimName(value)) throw new Error('Stored name selection is invalid.');
+  return value;
+}
 
 function readStored(value: unknown): StoredClaim | undefined {
   if (value === undefined) return undefined;
@@ -45,12 +55,80 @@ function readStored(value: unknown): StoredClaim | undefined {
   };
 }
 
+function selection(
+  db: IDBDatabase,
+  registry: string,
+  account: string,
+  credential: string,
+  name?: string,
+): Promise<string | undefined> {
+  if (
+    !claimHex(registry) ||
+    !claimHex(account) ||
+    !claimHex(credential) ||
+    (name !== undefined && !claimName(name))
+  )
+    throw new Error('Invalid name selection scope.');
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(
+      name === undefined ? selectionStore : [selectionStore, storeName],
+      name === undefined ? 'readonly' : 'readwrite',
+      { durability: 'strict' },
+    );
+    const key = selectionKey(registry, account, credential);
+    const store = tx.objectStore(selectionStore);
+    let result: string | undefined;
+    let failure: unknown;
+    tx.oncomplete = () => resolve(result);
+    tx.onabort = () => reject(failure ?? new Error('Name selection could not commit.'));
+    const request = store.get(key);
+    request.onsuccess = () => {
+      try {
+        const previous = selectedName(request.result);
+        result = name ?? previous;
+        if (name === undefined || name === previous) return;
+        if (!previous) {
+          store.put(name, key);
+          return;
+        }
+        const old = tx
+          .objectStore(storeName)
+          .get(JSON.stringify(['undeployed', registry, previous]));
+        old.onsuccess = () => {
+          try {
+            const retained = readStored(old.result);
+            if (
+              retained?.credential === credential &&
+              (retained.receipt ||
+                retained.ownerCommitment ||
+                (retained.quote && retained.quote.expiresAt > Date.now()))
+            )
+              throw new Error('Recover the original claim before choosing another name.');
+            store.put(name, key);
+          } catch (error) {
+            failure = error;
+            tx.abort();
+          }
+        };
+      } catch (error) {
+        failure = error;
+        tx.abort();
+      }
+    };
+  });
+}
+
 /** A network/registry/name has one original receipt on this origin, including across tabs. */
 export async function openClaimJournal(indexedDB: IDBFactory) {
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open('mn-passport:midnames-claims', 1);
+    const request = indexedDB.open('mn-passport:midnames-claims', 2);
     let blocked = false;
-    request.onupgradeneeded = () => request.result.createObjectStore(storeName);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(storeName))
+        request.result.createObjectStore(storeName);
+      if (!request.result.objectStoreNames.contains(selectionStore))
+        request.result.createObjectStore(selectionStore);
+    };
     request.onerror = request.onblocked = () => {
       blocked = true;
       reject(new Error('Claim storage is unavailable.'));
@@ -103,6 +181,10 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
     });
   }
   return {
+    readSelection: (registry: string, account: string, credential: string) =>
+      selection(db, registry, account, credential),
+    selectName: (registry: string, account: string, credential: string, name: string) =>
+      selection(db, registry, account, credential, name),
     read: async (registry: string, name: string, credential: string) =>
       (await access(registry, name, credential))?.receipt,
     async readPreparation(registry: string, name: string, credential: string) {

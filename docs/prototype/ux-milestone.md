@@ -124,8 +124,13 @@ have their own isolated evidence.
 If the sponsor durably refuses changed terms before recording an intent, the
 browser can review a new quote. An unknown result stays bound to the original.
 
-The Name service panel under **Settings → Developer tools** can save a
-standalone sponsor receipt after the user opens the target ACC. **Check original
+The opt-in **Finish Passport setup** panel on Passport account → Balances
+appears after creation or passkey-based opening of the target ACC. It retains
+the selected local `.night` name per registry, ACC, and credential, restores
+the selection after reopening, and keeps the setup pending until the original
+transaction and current registry record match. It does not deploy another ACC
+or automatically send a claim. The panel can save a standalone sponsor receipt.
+**Check original
 claim** reconciles the stored transaction and the current registry owner and
 target. **Check availability** verifies the open ACC and checks whether the
 name is registered. When a receipt already exists, the button reconciles the

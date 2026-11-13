@@ -106,6 +106,7 @@ const vite = await createServer({
           response.setHeader('Content-Type', 'text/html');
           response.end(
             '<!doctype html><meta charset="utf-8">' +
+              '<p id="setup-status" role="status"></p>' +
               document.slice(start, end) +
               `<script type="module">
           import { showClaimRecovery } from '/src/midnames/claim-recovery-ui.ts';
@@ -116,7 +117,7 @@ const vite = await createServer({
           const preparing = new URLSearchParams(location.search).has('prepare');
           const account = { address: original.accountAddress, networkId: original.networkId,
             credentialId: new Uint8Array([other ? 2 : 1]) };
-          showClaimRecovery({
+          const reset = showClaimRecovery({
             registryAddress: original.registryAddress,
             availability: async () => 'available',
             check: async ({ quoteSha256, ...saved }) => JSON.stringify(saved) === JSON.stringify(original) ? 'registered' : 'conflict',
@@ -124,7 +125,10 @@ const vite = await createServer({
             ...(preparing && { preparation: createLocalClaimPreparation(
               async () => ({ ownerCommitment: original.ownerCommitment, bytes: new Uint8Array([2, 3, 5]) }),
             ) }),
-          }, () => account);
+          }, () => account, (message) => {
+            document.getElementById('setup-status').textContent = message;
+          });
+          if (new URLSearchParams(location.search).has('setup')) reset();
         </script>`,
           );
         });
@@ -146,7 +150,7 @@ async function restoreLegacyJournal(page: Page, complete = false) {
   await page.evaluate(
     ({ registry, name, complete }) =>
       new Promise<void>((resolve, reject) => {
-        const request = indexedDB.open('mn-passport:midnames-claims', 1);
+        const request = indexedDB.open('mn-passport:midnames-claims', 2);
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
           const db = request.result;
@@ -330,6 +334,42 @@ try {
   assert.equal((await post(origin, { ...receipt, name: 'alice.night' })).status, 409);
   assert.equal(requests.length, 0);
   const pageUrl = origin + fixturePage;
+  const setup = await openBrowser('chrome-setup-profile');
+  try {
+    const named = await setup.newPage();
+    await named.goto(pageUrl + '?setup');
+    assert.match(await named.locator('#setup-status').innerText(), /Pending Passport setup/);
+    await named.locator('#claim-recovery-name').fill(receipt.name);
+    await named.locator('#claim-check-availability').click();
+    await named
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /Unregistered/ })
+      .waitFor();
+    await named.reload();
+    await named.waitForFunction(
+      (expected) =>
+        (globalThis.document.getElementById('claim-recovery-name') as HTMLInputElement).value ===
+        expected,
+      receipt.name,
+    );
+    assert.match(await named.locator('#setup-status').innerText(), /selected name is pending/);
+    const unrelated = await setup.newPage();
+    await unrelated.goto(pageUrl + '?setup&other');
+    assert.equal(await unrelated.locator('#claim-recovery-name').inputValue(), '');
+    await named.locator('#claim-recovery-receipt').fill(JSON.stringify(receipt));
+    await named.locator('#claim-recovery-retain').click();
+    await named
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /Original receipt saved/ })
+      .waitFor();
+    await named.reload();
+    await named
+      .locator('#setup-status')
+      .filter({ hasText: /^Registered/ })
+      .waitFor();
+  } finally {
+    await setup.close();
+  }
   browser = await openBrowser();
   const first = await browser.newPage();
   await first.goto(pageUrl);

@@ -548,6 +548,8 @@ export function createDemoWorkspace(config: {
     activityRoot: content,
     operationDetails,
     show,
+    enableNameSetup: accountPages.enableNameSetup,
+    nameSetupStatus: accountPages.nameSetupStatus,
     selected: () => selected,
     showAccount() {
       accountOpened = true;
