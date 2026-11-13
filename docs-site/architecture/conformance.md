@@ -90,9 +90,12 @@ ACC admission, owner-authorized updates and browser witness custody still need
 qualification. An offline fixture exercised an issuer attestation and a
 JubJub owner signature over initial registration. It refused a substituted
 call target and accepted a counterfeit that the test issuer deliberately
-attested. A deployable issuer must verify the finalized roster and retired
-maintenance authority before signing. These fixtures are outside the SDK
-and demo.
+attested. A separate issuer fixture checked both deployments at a finalized
+block and verified the registry policy with simulated node and indexer responses. Ledger 9 WASM produced a
+dual-key deployment whose latest key matched the pin. Comparing complete
+operation bytes detected the older key and refused issuance. These fixtures are
+outside the SDK and demo. Native settlement and issuer custody still need
+qualification.
 
 For new cross-contract deployments, use a toolchain with the entry-point
 binding fix and verify that the deployed caller has no older affected keys.

@@ -99,3 +99,37 @@ qualification of the caller requires the cross-contract entry-point binding
 fix, new verifier keys, and a matching callee runtime and keys. See the
 [Compact 0.36.0 release notes](https://docs.midnight.network/relnotes/compact/toolchain-0.36.0#contracts-that-make-cross-contract-calls-must-be-recompiled-and-their-keys-replaced).
 Neither fixture run submits a transaction or qualifies proof settlement.
+
+## Issuer state policy
+
+The Node experiment in `issuer-policy.mjs` signs only for the requested account
+at the pinned genesis and a canonical finalized block. The trusted indexer must
+return the same block hash and height, a Ledger 9 protocol version, and the
+requested account and registry addresses. Both snapshots must have an empty
+maintenance committee with threshold one. The host supplies independently
+reviewed single-version verifier keys for both bindings and a policy check for
+the pinned registry. The probe decodes the generated registry state and checks
+its issuer, namespace and account roster commitment before signing.
+
+The commitment is SHA-256 of the UTF-8 JSON array
+`["passport:discovery:roster:v1", [[name, operationSha256], …]]`.
+Entry names are sorted ASCII strings. Each digest covers the complete serialized
+Ledger 9 operation built from a pinned key. Compare complete operations, since
+the ledger's `verifierKey` getter exposes only the latest key. Changes to the
+serialization or the allowed versions require a new reviewed profile.
+
+Run the probe with the Compact 0.36.1 and 0.35.0 fixture output directories from
+the previous section, in that order:
+
+```sh
+nix develop -c node experiments/account-discovery/issuer-probe.mjs \
+  review/path-to-036-output review/path-to-035-output
+```
+
+The probe uses real Ledger 9 WASM state transitions to retire the maintenance
+authority and build a dual-key deployment with both verifier versions. It also
+checks the issued signature against the Compact registry challenge. The node
+and indexer responses are simulated. The issuer trusts their configured
+endpoints for finality and state, and the fixture uses synthetic signing keys.
+Native settlement, independent state verification, and production issuer
+custody remain unqualified.
