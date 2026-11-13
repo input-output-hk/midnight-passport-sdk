@@ -77,12 +77,15 @@ dropped acknowledgement and opened a new tab in the same browser context.
 The new tab read the original identity and refused a second send. A read-only
 observer matched the original at finalized block 69.
 
-The demo continues to use its configured proof service. The closed-tab
-test used the same browser profile and origin. Browser-process restart,
-storage eviction, production wallet custody, real credentials, other
-circuits and browsers, and memory need separate checks. Production privacy
-also requires an observation policy for chain, transport, browser and
-operator data.
+A subsequent test closed Chromium and relaunched it with the same dedicated
+profile. The new process read the strict IndexedDB record and refused a
+second send. The observer matched the original at finalized block 66.
+
+The demo continues to use its configured proof service. The restart test
+preserved the profile and origin. Storage eviction, abrupt process loss,
+production wallet custody, real credentials, additional circuits and
+browsers, and memory need separate qualification. Production privacy also
+requires an observation policy for chain, transport, browser and operator data.
 [Browser proving qualification issue](https://github.com/input-output-hk/midnight-passport-sdk/issues/241)
 
 ## Fee sponsorship
