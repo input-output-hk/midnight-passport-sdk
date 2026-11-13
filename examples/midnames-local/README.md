@@ -86,6 +86,23 @@ the original identifiers. A failed or uncertain original deposit stays fenced
 for operator reconciliation. If the name changes after withdrawal, the flow
 keeps the funds in the controlled wallet and refuses to redirect them.
 
+## Qualify opening the account resolved from a name
+
+Use the same isolated runner with a fresh output name beginning with
+`midnames-named-open-jubjub-` or `midnames-named-open-p256-`. Each run
+deploys and activates the selected ACC with a sealed reader and provisions
+`alice.night` in its own pinned registry.
+
+The fixture resolves the name through the Midnames adapter and passes the
+resolved address to the SDK's known-account opener. It verifies that an
+unknown name makes no credential request, an unrelated credential is
+refused without writing an account record, and the enrolled credential
+opens the exact ACC and its sealed reader with no transaction submitted
+during open. The result is in `worker.json`. This profile uses synthetic
+credentials in Node with native proof-backed chain setup. The demo can
+look up a name and accept the returned address through its existing
+address login.
+
 ## Prepare an owner-proved claim for the sponsor
 
 Separate-process preparation passed on isolated Ledger 9 at local commit

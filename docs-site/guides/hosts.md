@@ -70,6 +70,13 @@ deposit and two-leg NIGHT payment have standalone Node fixtures. Online profiles
 and real passkey provider recovery require separate qualification.
 See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).
 
+For account opening, pass the resolved contract address to `openAccountAt`
+after the user has reviewed it. The opener verifies the enrolled device and
+sealed reader against ACC state. A standalone native fixture exercised this
+path for P-256 and JubJub with synthetic credentials and a fresh opener.
+Unknown names made no credential request, and unrelated credentials were
+refused. Name ownership and registry administration have their own checks.
+
 ## Private grant sponsorship in the source candidate
 
 On the standalone network, `PASSPORT_HOST_GRANT_ISSUE=1` opts the configured

@@ -11,3 +11,12 @@ The [application setup](https://github.com/input-output-hk/midnight-passport-sdk
 7. **Inspect Activity and Audit:** retain a public operation reference even after cancellation or uncertainty. A new click is not safe until the prior result is reconciled.
 
 Some scenarios require real provider capability, complete rosters, sufficient funding, and a compatible localnet. A synthetic browser test or source check does not establish all of these. [Testing and qualification](/operations/quality) identifies the evidence tier and remaining limits.
+
+## Reopen a named standalone account
+
+With a pinned Midnames registry configured, use **Name service** under
+**Settings → Developer tools** to look up the exact name. Copy the returned
+ACC address, then use
+**Log in with an account address** and approve the enrolled passkey. If the
+name was recently changed, look it up again before reviewing the address.
+Use a known registry and verify the address with the account owner.
