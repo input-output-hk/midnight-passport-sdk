@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { fetchJsonBounded, hostChainRpc } from '../../packages/service/dist/finality.js';
+import { fetchJsonBounded } from '../../packages/service/dist/bounded-json.js';
+import { hostChainRpc } from '../../packages/service/dist/host-finalized-block.js';
 import { discoveryNamespace } from './locator.mjs';
 
 const maxSnapshotBytes = 4 * 1024 * 1024;
