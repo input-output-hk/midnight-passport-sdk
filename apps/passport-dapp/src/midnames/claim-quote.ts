@@ -11,7 +11,9 @@ export type ClaimDestination = Omit<ClaimScope, 'ownerCommitment'>;
 
 export interface ClaimQuote extends ClaimDestination {
   readonly id: string;
+  /** Registered domain owner_address, which receives later subdomain payments. */
   readonly sponsorAddress: string;
+  /** Wallet allowed to supply the current claim's NIGHT inputs and receive change. */
   readonly sponsorPaymentAddress: string;
   readonly registryPayee: string;
   readonly night: string;

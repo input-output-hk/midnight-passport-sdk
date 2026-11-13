@@ -16,6 +16,7 @@ import {
 } from './claim-receipt.js';
 
 export interface PaidClaimQuote extends ClaimScope {
+  readonly sponsorAddress: string;
   readonly registryPayee: string;
   readonly sponsorPaymentAddress: string;
   readonly night: bigint;
@@ -155,6 +156,7 @@ export async function prepareSponsoredClaim(
       expected.registryAddress,
       expected.accountAddress,
       expected.ownerCommitment,
+      expected.sponsorAddress,
       expected.registryPayee,
       expected.sponsorPaymentAddress,
     ].every(claimHex) ||

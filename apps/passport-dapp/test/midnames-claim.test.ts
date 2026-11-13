@@ -122,7 +122,7 @@ test('requires an exact successful indexed claim, and looks up the original iden
   );
 });
 
-test('the two registry inserts must bind the same root name, domain ID, owner and ACC', () => {
+test('the two registry inserts bind the root name, owner, child payee and ACC', () => {
   const value = (...bytes: Uint8Array[]) => ({
     value: bytes,
     alignment: [],
@@ -148,25 +148,39 @@ test('the two registry inserts must bind the same root name, domain ID, owner an
   label.set(new TextEncoder().encode('alice'));
   const domainFields = [
     bytes(original.ownerCommitment),
-    bytes('ab'.repeat(32)),
+    bytes('92'.repeat(32)),
     bytes(original.accountAddress),
     ...Array.from({ length: 10 }, () => number(0)),
   ];
   const nameInsert = insert(3, push(false, label, number(0)), push(true, number(1)));
   const domainInsert = insert(4, push(false, number(1)), push(true, ...domainFields));
   const program = [...nameInsert, ...domainInsert];
-  assert.equal(matchesClaimWrites([program], original), true);
+  const quoted = { ...original, sponsorAddress: '92'.repeat(32) };
+  assert.equal(matchesClaimWrites([program], quoted), true);
+  assert.equal(
+    matchesClaimWrites([program], { ...quoted, sponsorAddress: 'ab'.repeat(32) }),
+    false,
+  );
+  const changedPaymentAddress = [...domainFields];
+  changedPaymentAddress[1] = bytes('ab'.repeat(32));
+  assert.equal(
+    matchesClaimWrites(
+      [[...nameInsert, ...insert(4, push(false, number(1)), push(true, ...changedPaymentAddress))]],
+      quoted,
+    ),
+    false,
+  );
   for (const mismatch of [
     { name: 'bob.night' },
     { ownerCommitment: 'aa'.repeat(32) },
     { accountAddress: 'bb'.repeat(32) },
   ]) {
-    assert.equal(matchesClaimWrites([program], { ...original, ...mismatch }), false);
+    assert.equal(matchesClaimWrites([program], { ...quoted, ...mismatch }), false);
   }
   assert.equal(
     matchesClaimWrites(
       [[...nameInsert, ...insert(4, push(false, number(2)), push(true, ...domainFields))]],
-      original,
+      quoted,
     ),
     false,
   );

@@ -27,7 +27,7 @@ export function claimQuoteSummary(quote: ClaimQuote): string {
     `Passport account ${quote.accountAddress}`,
     `Registry ${quote.registryAddress}`,
     `Registry payee ${quote.registryPayee}`,
-    `Naming authority address ${quote.sponsorAddress}`,
+    `Future subdomain payment address ${quote.sponsorAddress}`,
     `Sponsor payment wallet ${quote.sponsorPaymentAddress}`,
     `Registry price ${quote.night} smallest NIGHT units`,
     `Maximum sponsor fee ${quote.maximumDust} SPECKs`,

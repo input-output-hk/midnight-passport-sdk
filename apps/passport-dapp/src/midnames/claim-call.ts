@@ -4,7 +4,7 @@ import { matchesClaimWrites } from './claim-transcript.js';
 
 export function findStandaloneClaimCall(
   tx: ReturnType<typeof Transaction.deserialize>,
-  original: ClaimScope,
+  original: ClaimScope & { readonly sponsorAddress?: string },
 ) {
   const actions = [...(tx.intents?.values() ?? [])].flatMap((intent) => intent.actions);
   const [call] = actions;

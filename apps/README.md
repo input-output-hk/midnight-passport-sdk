@@ -880,7 +880,8 @@ the rejected quote for fresh review; an uncertain response retains it. Imported
 receipts without a matching saved quote are reconciliation-only. A send first
 shows the saved price, payee, fee ceiling and expiry, then requires confirmation.
 The quote pins the sponsor payment wallet; NIGHT inputs and change must use
-that wallet. The sponsor HTTP route requires a prepared, quote-bound receipt.
+that wallet. It also pins the registered domain's future subdomain payment
+address. The sponsor HTTP route requires a prepared, quote-bound receipt.
 The opt-in local demo loads an owner-side proving bundle
 on the same localhost origin. It requests PRF from the open account's passkey
 after quote approval and sends only proved bytes to the sponsor. See the

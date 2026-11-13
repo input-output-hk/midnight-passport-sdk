@@ -24,6 +24,7 @@ const quote: PaidClaimQuote = {
   accountAddress: '34'.repeat(32),
   name: 'alice.night',
   ownerCommitment: '56'.repeat(32),
+  sponsorAddress: '67'.repeat(32),
   registryPayee: '78'.repeat(32),
   sponsorPaymentAddress: '9a'.repeat(32),
   night: 7n,

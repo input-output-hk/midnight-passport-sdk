@@ -187,7 +187,7 @@ against the original transaction.
 
 Start the [standalone owner and sponsor services](../../examples/midnames-local/README.md#send-an-acknowledged-receipt-from-the-browser)
 to enable **Review claim quote** in the local demo. The form shows the exact name, network, ACC,
-registry, payee, naming authority address, sponsor payment wallet, NIGHT price,
+registry, payee, future subdomain payment address, sponsor payment wallet, NIGHT price,
 DUST ceiling and expiry. **Approve and
 prepare claim** records that quote before owner-side proving. The form records
 the public owner commitment before asking the sponsor to balance the proved
@@ -230,7 +230,8 @@ The isolated fixture prepares the proof in a separate owner process. The
 sponsor balances it and accepts an explicit **Send prepared claim** action
 for a quote-bound receipt already saved to the open credential. The sponsor
 checks the exact registry payment and permits NIGHT inputs and change only at
-the quoted sponsor payment wallet. This fixture constructs its dispatch quote
+the quoted sponsor payment wallet. It also checks that the registered domain's
+future subdomain payment address matches the quote. This fixture constructs its dispatch quote
 after proving and seeds the browser journal; it tests quote-bound send and
 recovery, not a user's pre-proof quote review. It acknowledges the
 durable dispatch record while the wallet waits for the node. The demo shows

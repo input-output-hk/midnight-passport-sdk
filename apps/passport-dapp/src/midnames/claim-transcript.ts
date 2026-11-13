@@ -54,10 +54,10 @@ function matchesBytes32(value: Uint8Array | undefined, expected: string): boolea
   );
 }
 
-/** Check the same new domain ID connects the root label to the stored owner and contract target. */
+/** Check the root label, owner commitment, quoted child payee and ACC target. */
 export function matchesClaimWrites(
   programs: readonly (readonly Op<AlignedValue>[])[],
-  original: ClaimScope,
+  original: ClaimScope & { readonly sponsorAddress?: string },
 ): boolean {
   const label = new Uint8Array(32).fill(255);
   label.set(new TextEncoder().encode(original.name.slice(0, -'.night'.length)));
@@ -79,6 +79,8 @@ export function matchesClaimWrites(
     sameBytes(domain.key[0], name.value[0]) &&
     domain.value.length === 13 &&
     matchesBytes32(domain.value[0], original.ownerCommitment) &&
+    (original.sponsorAddress === undefined ||
+      matchesBytes32(domain.value[1], original.sponsorAddress)) &&
     matchesBytes32(domain.value[2], original.accountAddress) &&
     domain.value[3]?.length === 0 // ContractAddr enum arm.
   );

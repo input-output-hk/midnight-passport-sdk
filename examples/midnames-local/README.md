@@ -128,11 +128,13 @@ nix develop -c node --experimental-import-meta-resolve \
 ```
 
 The JSON contains `networkId` (`undeployed`), `registryAddress`,
-`sponsorAddress` (the naming authority), `indexerUrl` (`http://127.0.0.1:18108/api/v4/graphql`),
+`sponsorAddress` (the domain's future subdomain payment address),
+`indexerUrl` (`http://127.0.0.1:18108/api/v4/graphql`),
 `indexerWsUrl` (`ws://127.0.0.1:18108/api/v4/graphql/ws`), and
 `walletKeys` with `coin` and `encryption` public keys. Use lowercase
-32-byte hex for the two addresses and two public keys. Obtain these from the
-same standalone registry and sponsor wallet used to issue the quote.
+32-byte hex for the two addresses and two public keys. Bind the registry and
+future payment address to the issued quote; `walletKeys` are the owner wallet's
+public keys.
 Keep the owner relay and its proof server at `127.0.0.1:16320` under the account
 owner's control. The command checks the prepared hashes before serving.
 

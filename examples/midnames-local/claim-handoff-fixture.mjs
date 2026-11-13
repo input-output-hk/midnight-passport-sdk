@@ -59,6 +59,7 @@ export async function qualifyClaimHandoff({
     accountAddress,
     name: label + '.night',
     ownerCommitment: owner.ownerCommitment,
+    sponsorAddress: '33'.repeat(32),
     registryPayee: Buffer.from(registryPayee.bytes).toString('hex'),
     sponsorPaymentAddress,
     night: price.cost_long,
@@ -87,7 +88,6 @@ export async function qualifyClaimHandoff({
     claimQuote({
       ...quote,
       id: prepared.receipt.transaction.sha256,
-      sponsorAddress: '33'.repeat(32),
       night: String(quote.night),
       maximumDust: '100000000000000000',
       expiresAt: Date.now() + 600_000,
