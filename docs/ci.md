@@ -18,6 +18,12 @@ cell refuses. The inventory job downloads exactly eight current-run receipts and
 checks their source, runtime/catalog hashes, case order/union, purpose observations,
 complete setup/body/cleanup and monotonic timing accounting. Credential-purpose
 expectations are shared with the browser observer and specific to each cell.
+Every cell installs Chrome for Testing `157.0.8103.78` through a SHA-pinned
+setup action, verifies that exact version and passes its binary path to the
+browser tests. This keeps the inventory's exact browser-version agreement while
+hosted runner images roll between preinstalled Chrome versions. The pinned
+download adds setup time, so the 90-second warm job target still needs hosted
+measurement.
 The isolated JubJub scoped-session bootstrap reuses its reviewed creation keys
 and therefore has no `verify-created` access. The P-256 cell and other account/owner
 flows retain their verification expectations. Missing or unexpected purposes refuse. A case count alone
@@ -344,12 +350,12 @@ timing guarantee; proof/outage matrices remain opt-in.
 ## Candidate deterministic demo browser lane — 2026-11-05
 
 PR checks now include a separate `demo_browser` job and require its success in the
-existing aggregate gate. It runs actual runner Chrome, fresh package outputs and
+existing aggregate gate. It runs pinned Chrome for Testing, fresh package outputs and
 26 grouped scenarios across both owner-arm selections using synthetic connector,
 chain and wallet drivers. The real UI, mock credential API, consent hooks, handoff
 parsing and public capability planner execute. Each authenticated action is also
-declined before its successful attempt. No key generation, native proof, browser
-download, credential/provider access or Docker stack is needed. Job summaries retain
+declined before its successful attempt. No key generation, native proof, real
+credential/provider access or Docker stack is needed. Job summaries retain
 the explicit scope/fingerprint receipt; no private mock state is exported.
 
 It reuses the frozen dependency cache and builds outputs freshly. At the time, the target was
