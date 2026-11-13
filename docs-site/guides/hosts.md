@@ -83,8 +83,21 @@ former registry owner were refused before submission. The new registry
 owner could update the target. Resolve again after a change and review the
 fresh address before opening it. The host may retain the previous address as
 an explicit account reference. Each ACC still verifies its own enrolled
-device and sealed reader. Registry-owner custody and continuity after ACC
-recovery require separate qualification.
+device and sealed reader.
+
+A separate isolated run tested a name pointing to the corrected ACC recovery
+candidate. The registry kept the same target and owner commitment through
+guardian recovery and successor restart. The successor recovered and spent an
+original shielded holding using the candidate's recovery path. A registry
+mutation using a separate test witness controlled by the successor was
+refused. In its own process, the retained registry owner proved and finalized
+a target lock.
+
+The current resolver still requires the configured ACC verifier roster. Its
+`acc-s3r1.1` profile rejected the corrected candidate before and after recovery.
+Opening that candidate through the resolver requires an approved binding
+profile and compatible opener. Production registry custody and online
+namespace continuity require separate qualification.
 
 ## Private grant sponsorship in the source candidate
 
