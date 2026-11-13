@@ -39,6 +39,10 @@
     "./dust-fee-assembly": {
       "types": "./dist/dust-fee-assembly.d.ts",
       "default": "./dist/dust-fee-assembly.js"
+    },
+    "./original-dispatch": {
+      "types": "./dist/original-dispatch.d.ts",
+      "default": "./dist/original-dispatch.js"
     }
   },
   "files": [

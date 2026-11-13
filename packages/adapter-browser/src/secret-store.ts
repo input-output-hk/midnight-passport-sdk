@@ -120,7 +120,11 @@ export async function createBrowserSecretStore(options: {
       };
     });
   return {
-    capabilities: Object.freeze({ persistence: 'persistent', protection: 'none' }),
+    capabilities: Object.freeze({
+      persistence: 'persistent',
+      protection: 'none',
+      ...(strictWrites ? { writeDurability: 'strict' as const } : {}),
+    }),
     async read(reference) {
       const key = secretReferenceKey(reference);
       return transact(

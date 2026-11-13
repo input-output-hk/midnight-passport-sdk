@@ -37,6 +37,18 @@ approved DUST limit and fee deadline. It returns finalized bytes for the host
 to submit and reconcile. Fee selection and proof generation remain host
 responsibilities. [Source example](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/background.md#assemble-a-proved-acc-call-with-a-dust-fee)
 
+For a browser-owned submission, `adapter-browser/original-dispatch` can reserve
+the transaction identity before calling your single-attempt transport. Use a
+compare-and-swap store with strict persistent writes. Set `strictWrites: true`
+when using the IndexedDB adapter. Reuse the same network, binding, account
+and request ID across tabs and restarts. An acknowledgement still requires a
+canonical finality check. Read the retained identity after interruption and
+reconcile it through your finality reader. The helper keeps the reservation
+after submission and treats a missing record as an absence in the selected
+store. Preserve the store and recover original state before making another
+attempt after storage loss. The host supplies the approved finalized bytes,
+consent, the transport, and a policy for retaining original receipts.
+
 ## Midnames source preview
 
 The reference demo can use Midnames 2.1.0 for read-only lookup. Configure the

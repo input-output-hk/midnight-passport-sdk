@@ -5,7 +5,10 @@ import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import { pathToFileURL } from 'node:url';
 import { gunzipSync } from 'node:zlib';
+import { IDBFactory } from 'fake-indexeddb';
 import { assembleDustFee } from '../packages/adapter-browser/dist/dust-fee-assembly.js';
+import { createBrowserOriginalDispatch } from '../packages/adapter-browser/dist/original-dispatch.js';
+import { createBrowserSecretStore } from '../packages/adapter-browser/dist/secret-store.js';
 
 const require = createRequire(new URL('../packages/adapter-browser/package.json', import.meta.url));
 const ledger =
@@ -133,6 +136,121 @@ const scope = {
   feeExpiresByMs,
 };
 const input = { ...scope, provedAccount: accountBytes, provedFee: feeBytes };
+
+const dispatchScope = { networkId, bindingId, account: address, requestId: 'original-1' };
+
+test('reserves one original across concurrent browser handles and recovers it after reopening', async () => {
+  const indexedDB = new IDBFactory();
+  const options = {
+    indexedDB,
+    databaseName: 'originals',
+    allowPlaintext: /** @type {const} */ (true),
+    strictWrites: /** @type {const} */ (true),
+  };
+  const first = await createBrowserSecretStore(options);
+  const second = await createBrowserSecretStore(options);
+  const finalized = await assembleDustFee(input);
+  let sends = 0;
+  let observedDigest;
+  let sentBytes;
+  const sender = {
+    async submit(/** @type {Uint8Array} */ bytes) {
+      sends++;
+      sentBytes = new Uint8Array(bytes);
+      const retained = await createBrowserOriginalDispatch(second, sender).readOriginal(
+        dispatchScope,
+      );
+      observedDigest = retained?.bytesSha256;
+      throw new Error('Lost acknowledgement.');
+    },
+  };
+  const a = createBrowserOriginalDispatch(first, sender);
+  const b = createBrowserOriginalDispatch(second, sender);
+  try {
+    const attempts = await Promise.allSettled([
+      a.dispatch(dispatchScope, finalized),
+      b.dispatch(dispatchScope, finalized),
+    ]);
+    assert.equal(sends, 1);
+    assert.deepEqual(sentBytes, finalized);
+    assert.equal(observedDigest, sha(finalized));
+    const [sent] = attempts.filter((result) => result.status === 'fulfilled');
+    assert.ok(sent);
+    assert.equal(sent.value.acknowledged, false);
+    assert.equal(attempts.filter((result) => result.status === 'rejected').length, 1);
+    first.close();
+    second.close();
+    const reopened = await createBrowserSecretStore(options);
+    try {
+      const recovery = createBrowserOriginalDispatch(reopened, sender);
+      assert.deepEqual(await recovery.readOriginal(dispatchScope), sent.value.original);
+      await assert.rejects(recovery.dispatch(dispatchScope, finalized), {
+        code: 'MutationUnsettled',
+      });
+      assert.equal(sends, 1);
+    } finally {
+      reopened.close();
+    }
+  } finally {
+    first.close();
+    second.close();
+  }
+});
+
+test('refuses wrong-network, wrong-account, and unavailable storage before dispatch', async () => {
+  const store = await createBrowserSecretStore({
+    indexedDB: new IDBFactory(),
+    databaseName: 'refusals',
+    allowPlaintext: true,
+    strictWrites: true,
+  });
+  const finalized = await assembleDustFee(input);
+  let sends = 0;
+  const dispatch = createBrowserOriginalDispatch(store, {
+    async submit() {
+      sends++;
+      return '';
+    },
+  });
+  try {
+    for (const scope of [
+      { ...dispatchScope, networkId: 'preview' },
+      { ...dispatchScope, account: 'ee'.repeat(32) },
+    ]) {
+      await assert.rejects(dispatch.dispatch(scope, finalized), { code: 'MutationUnsettled' });
+      assert.equal(await dispatch.readOriginal(scope), undefined);
+    }
+    store.close();
+    await assert.rejects(dispatch.dispatch(dispatchScope, finalized), {
+      code: 'MutationUnsettled',
+    });
+    await assert.rejects(dispatch.readOriginal(dispatchScope), { code: 'MutationUnsettled' });
+    assert.equal(sends, 0);
+  } finally {
+    store.close();
+  }
+});
+
+test('refuses persistent storage that has not enabled strict commits', async () => {
+  const store = await createBrowserSecretStore({
+    indexedDB: new IDBFactory(),
+    databaseName: 'relaxed',
+    allowPlaintext: true,
+  });
+  try {
+    assert.throws(
+      () =>
+        createBrowserOriginalDispatch(store, {
+          async submit() {
+            assert.fail('Relaxed storage cannot submit.');
+          },
+        }),
+      /requires strict persistent writes/,
+    );
+  } finally {
+    store.close();
+  }
+});
 
 /** @param {Uint8Array} assembled */
 function assertApprovedIntents(assembled) {

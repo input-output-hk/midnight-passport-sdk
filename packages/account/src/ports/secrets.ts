@@ -23,6 +23,8 @@ export interface SecretStore {
   readonly capabilities: {
     readonly persistence: 'memory' | 'persistent';
     readonly protection: 'none' | 'host-managed';
+    /** Acknowledged writes use the backend's strict commit guarantee. */
+    readonly writeDurability?: 'strict';
   };
   read(reference: SecretReference): Promise<StoredSecret | undefined>;
   /** null means create only. An opaque version means replace exactly that version. */
