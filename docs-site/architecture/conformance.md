@@ -87,7 +87,18 @@ configured namespace or registry address, and rejected a copied locator
 presented as the private witness. Reads
 and writes can be correlated when they expose the same locator. Registry-side
 ACC admission, owner-authorized updates and browser witness custody still need
-qualification. The experiment is outside the SDK and demo.
+qualification. An offline fixture exercised an issuer attestation and a
+JubJub owner signature over initial registration. It refused a substituted
+call target and accepted a counterfeit that the test issuer deliberately
+attested. A deployable issuer must verify the finalized roster and retired
+maintenance authority before signing. These fixtures are outside the SDK
+and demo.
+
+For new cross-contract deployments, use a toolchain with the entry-point
+binding fix and verify that the deployed caller has no older affected keys.
+Historical #275 evidence remains tied to its exact tested artifacts. Requalify
+the caller and callee together for an upgraded profile.
+[Compact 0.36.0 release notes](https://docs.midnight.network/relnotes/compact/toolchain-0.36.0#contracts-that-make-cross-contract-calls-must-be-recompiled-and-their-keys-replaced).
 
 ## Cryptographic integration gates
 

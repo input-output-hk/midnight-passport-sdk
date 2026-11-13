@@ -51,3 +51,51 @@ circuit interface compatibility alone cannot establish the callee's behavior.
 A complete implementation also needs browser PRF support and custody, native
 proof and atomic settlement tests, and a recovery/update policy. Use this
 fixture only with synthetic values.
+
+## Registry admission and owner authorization
+
+A separate three-contract fixture checks registration with a deployment issuer
+and a witness-free owner circuit. The registry pins the issuer and the binding
+manifest, verifies an attestation over the configured namespace, registry
+address, target ACC address and manifest, and checks that the address being
+attested matches the actual typed call target. Compact's host and circuit
+encodings agree on that comparison for the tested compiler versions. The
+registry also checks the private locator witness. The account verifies the
+immediate registry caller, its own address, the exact locator, the current
+owner nonce and the owner signature before advancing the nonce.
+
+The issuer is trusted to inspect the finalized deployment, including the
+complete verifier roster and irreversible retirement of maintenance
+authority. The fixture uses synthetic signatures and never reads finalized
+state. It deliberately demonstrates that an issuer who attests a counterfeit
+deployment can bypass the account-side ownership check. The issuer's
+operational policy, key custody and migration strategy need review before
+production use. The fixture covers initial registration. Updates, retirement,
+real passkey custody and recovery remain separate.
+
+With workspace dependencies installed, reproduce the pinned 0.35.0 offline run:
+
+```sh
+nix develop -c bash -euc '
+  pnpm run build
+  mkdir -p review
+  output=$(mktemp -d review/discovery-admission.XXXXXXXX)
+  for fixture in AdmittedAccount CounterfeitAccount AdmissionRegistry; do
+    compactc "experiments/account-discovery/$fixture.compact" "$output/$fixture"
+  done
+  node experiments/account-discovery/admission-probe.mjs "$output"
+'
+```
+
+The same fixture compiled and passed offline with Compact 0.36.1 and runtime
+0.21.0. To reproduce that run, use that compiler and provide runtime 0.21.0
+under the artifact directory's `node_modules`, so the probe and all generated
+modules resolve the same copy. Forwarding two field coordinates across the
+call boundary and reconstructing the JubJub point in the account avoids a
+0.36.1 ZKIR synthesis failure for a point-typed cross-contract argument.
+
+The pinned 0.35.0 run is historical compatibility evidence. Native
+qualification of the caller requires the cross-contract entry-point binding
+fix, new verifier keys, and a matching callee runtime and keys. See the
+[Compact 0.36.0 release notes](https://docs.midnight.network/relnotes/compact/toolchain-0.36.0#contracts-that-make-cross-contract-calls-must-be-recompiled-and-their-keys-replaced).
+Neither fixture run submits a transaction or qualifies proof settlement.
