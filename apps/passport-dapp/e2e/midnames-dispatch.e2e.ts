@@ -116,13 +116,18 @@ const vite = await createServer({
           const other = new URLSearchParams(location.search).has('other');
           const differentAccount = new URLSearchParams(location.search).has('account2');
           const preparing = new URLSearchParams(location.search).has('prepare');
+          const readOnly = new URLSearchParams(location.search).has('readonly');
+          const outage = new URLSearchParams(location.search).has('outage');
           const account = { address: differentAccount ? '78'.repeat(32) : original.accountAddress, networkId: original.networkId,
             credentialId: new Uint8Array([other ? 2 : 1]) };
           const reset = showClaimRecovery({
             registryAddress: original.registryAddress,
             availability: async () => 'available',
-            check: async ({ quoteSha256, ...saved }) => JSON.stringify(saved) === JSON.stringify(original) ? 'registered' : 'conflict',
-            dispatch: requestClaimDispatch,
+            check: async ({ quoteSha256, ...saved }) => {
+              if (outage) throw Error('indexer offline');
+              return JSON.stringify(saved) === JSON.stringify(original) ? 'registered' : 'conflict';
+            },
+            ...(!readOnly && { dispatch: requestClaimDispatch }),
             ...(preparing && { preparation: createLocalClaimPreparation(
               async () => ({ ownerCommitment: original.ownerCommitment, bytes: new Uint8Array([2, 3, 5]) }),
             ) }),
@@ -390,6 +395,14 @@ try {
     await setup.close();
   }
   browser = await openBrowser();
+  const readOnly = await browser.newPage();
+  await readOnly.goto(pageUrl + '?setup&readonly');
+  await readOnly
+    .locator('#claim-recovery-status')
+    .filter({ hasText: 'Read-only .night profile' })
+    .waitFor();
+  assert.equal(await readOnly.locator('#claim-dispatch').isVisible(), false);
+  await readOnly.close();
   const first = await browser.newPage();
   await first.goto(pageUrl);
   let browserDispatches = 0;
@@ -404,6 +417,17 @@ try {
   await first.locator('#claim-recovery-receipt').fill(JSON.stringify(receipt));
   await first.locator('#claim-recovery-retain').click();
   await status.filter({ hasText: 'Original receipt saved' }).waitFor();
+  const outage = await browser.newPage();
+  await outage.goto(pageUrl + '?setup&outage');
+  await outage
+    .locator('#claim-recovery-status')
+    .filter({ hasText: 'Name service unavailable' })
+    .waitFor();
+  await outage
+    .locator('#setup-status')
+    .filter({ hasText: 'Pending Passport setup. Name service unavailable' })
+    .waitFor();
+  await outage.close();
   await first.locator('#claim-dispatch').click();
   await status.filter({ hasText: /no matching reviewed quote/ }).waitFor();
   assert.equal(browserDispatches, 0);

@@ -894,6 +894,10 @@ the already deployed ACC; the browser retains that choice per registry, ACC,
 and credential. It restores the choice after reopening with the same credential
 and reconciles a retained original receipt. A pending claim stays visibly
 pending until the original transaction and current registry binding agree.
+An unavailable indexer stays an unavailable check rather than a pending claim;
+the original receipt remains available for retry. If neither preparation nor
+sponsor dispatch is configured, the panel labels itself as read-only receipt
+inspection and does not offer a claim action.
 The choice and public receipt live in this browser's IndexedDB, so a different
 device needs the original receipt and credential to recover it. This source
 preview does not establish name-owner recovery after total credential loss.

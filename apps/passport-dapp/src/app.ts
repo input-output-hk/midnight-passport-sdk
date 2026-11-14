@@ -260,7 +260,7 @@ try {
   );
   showDemoNameService(naming ?? createMockNameService(network), network);
   if (naming?.recovery) {
-    workspace.enableNameSetup();
+    workspace.enableNameSetup(Boolean(naming.recovery.preparation || naming.recovery.dispatch));
     resetClaimRecovery = showClaimRecovery(
       naming.recovery,
       () => appState.primaryAccount,

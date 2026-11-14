@@ -15,6 +15,7 @@ const messages = {
   pending: 'Claim pending. Check this original receipt again after the indexer catches up.',
   conflict: 'The registry owner or target differs from this receipt. Inspect the original claim.',
   registered: 'Registered. The original claim and current registry record match this account.',
+  unavailable: 'Name service unavailable. Keep the original receipt and check it again later.',
 } as const;
 
 const availabilityMessages = {
@@ -30,6 +31,13 @@ function claimReport(status: HTMLElement, onSetupStatus?: (message: string) => v
       message.startsWith('Registered.') ? message : `Pending Passport setup. ${message}`,
     );
   };
+}
+
+function initialClaimStatus(recovery: ClaimRecovery, account: PassportAccount | undefined): string {
+  if (!account) return 'Open an account with its passkey.';
+  return recovery.preparation || recovery.dispatch
+    ? 'Choose a .night name for this account.'
+    : 'Read-only .night profile. Check or retain an existing original receipt; claiming is unavailable.';
 }
 
 function assertClaimContext(
@@ -76,7 +84,7 @@ async function restoreSelection(
         );
         return;
       }
-      const result = await recovery.check(original);
+      const result = await recovery.check(original).catch(() => 'unavailable' as const);
       if (account !== currentAccount() || name.value !== selected) return;
       report(messages[result]);
     } finally {
@@ -234,9 +242,7 @@ export function showClaimRecovery(
     name.value = '';
     receipt.value = '';
     const account = currentAccount();
-    report(
-      account ? 'Choose a .night name for this account.' : 'Open an account with its passkey.',
-    );
+    report(initialClaimStatus(recovery, account));
     void restoreSelection(recovery, currentAccount, name, report);
   };
 }

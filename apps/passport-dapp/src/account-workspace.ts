@@ -125,8 +125,13 @@ export function createAccountWorkspace(
   return {
     ...navigation,
     select: (page: AccountPage, notify = true) => navigation.select(page, false, notify),
-    enableNameSetup() {
+    enableNameSetup(claimAvailable: boolean) {
       setup.hidden = false;
+      if (!claimAvailable) {
+        setupTitle.textContent = 'Inspect .night name receipt';
+        setupHelp.textContent =
+          'This local registry profile is read-only. Claim preparation and sponsor dispatch are not configured. You can retain or check an existing original receipt, but the name is not registered by this panel.';
+      }
     },
     nameSetupStatus(message: string) {
       setupStatus.textContent = message;

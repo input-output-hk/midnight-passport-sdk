@@ -28,11 +28,12 @@ async function readBounded(response: Response): Promise<unknown> {
   }
 }
 
-export async function confirmedClaim(
+/** Undefined means the indexer could not provide an authoritative answer. */
+export async function readClaimFinality(
   indexer: string,
   original: ClaimReceipt,
   request: typeof fetch = fetch,
-): Promise<boolean> {
+): Promise<boolean | undefined> {
   try {
     const response = await request(indexer, {
       method: 'POST',
@@ -44,7 +45,7 @@ export async function confirmedClaim(
       redirect: 'error',
       signal: AbortSignal.timeout(6000),
     });
-    if (!response.ok) return false;
+    if (!response.ok) return undefined;
     const body = (await readBounded(response)) as
       | {
           errors?: unknown;
@@ -52,7 +53,9 @@ export async function confirmedClaim(
         }
       | undefined;
     const rows = body?.data?.transactions;
-    if (body?.errors || !Array.isArray(rows) || rows.length !== 1) return false;
+    if (body?.errors || !Array.isArray(rows)) return undefined;
+    if (rows.length === 0) return false;
+    if (rows.length !== 1) return undefined;
     const row = rows[0] as Record<string, unknown>;
     if (
       row?.__typename !== 'RegularTransaction' ||
@@ -79,6 +82,14 @@ export async function confirmedClaim(
       return false;
     return findStandaloneClaimCall(tx, original) !== undefined;
   } catch {
-    return false;
+    return undefined;
   }
+}
+
+export async function confirmedClaim(
+  indexer: string,
+  original: ClaimReceipt,
+  request: typeof fetch = fetch,
+): Promise<boolean> {
+  return (await readClaimFinality(indexer, original, request)) === true;
 }

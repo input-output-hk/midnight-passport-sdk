@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { claimReceipt, claimDigest, normalizeClaimName } from '../src/midnames/claim-receipt.js';
 import type { AlignedValue, Op } from '@midnightntwrk/ledger-v9';
 import { matchesClaimWrites } from '../src/midnames/claim-transcript.js';
-import { confirmedClaim } from '../src/midnames/claim-finality.js';
+import { confirmedClaim, readClaimFinality } from '../src/midnames/claim-finality.js';
 import {
   claimQuote,
   claimQuoteDigest,
@@ -117,6 +117,26 @@ test('requires an exact successful indexed claim, and looks up the original iden
   assert.equal(
     await confirmedClaim('http://127.0.0.1:1/graphql', malformed, async () =>
       Response.json({ data: { transactions: [row] } }),
+    ),
+    false,
+  );
+});
+
+test('provider outage is distinct from an unconfirmed original claim', async () => {
+  const indexer = 'http://127.0.0.1:1/graphql';
+  assert.equal(
+    await readClaimFinality(indexer, original, async () => {
+      throw new Error('indexer offline');
+    }),
+    undefined,
+  );
+  assert.equal(
+    await readClaimFinality(indexer, original, async () => new Response('', { status: 503 })),
+    undefined,
+  );
+  assert.equal(
+    await readClaimFinality(indexer, original, async () =>
+      Response.json({ data: { transactions: [] } }),
     ),
     false,
   );

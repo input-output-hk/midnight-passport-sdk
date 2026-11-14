@@ -130,6 +130,9 @@ the selected local `.night` name per registry, ACC, and credential, restores
 the selection after reopening, and keeps the setup pending until the original
 transaction and current registry record match. It does not deploy another ACC
 or automatically send a claim. The panel can save a standalone sponsor receipt.
+An unavailable indexer leaves the original receipt intact and reports the
+check as unavailable. Without claim preparation or sponsor dispatch, the panel
+is labelled read-only receipt inspection and offers no claim action.
 **Check original
 claim** reconciles the stored transaction and the current registry owner and
 target. **Check availability** verifies the open ACC and checks whether the

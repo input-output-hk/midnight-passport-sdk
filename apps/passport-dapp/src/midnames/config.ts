@@ -97,8 +97,10 @@ export function configureMidnames(
       async check(receipt) {
         if (receipt.networkId !== networkId || receipt.registryAddress !== registryAddress)
           return 'conflict';
-        const { confirmedClaim } = await import('./claim-finality.js');
-        if (!(await confirmedClaim(http, receipt))) return 'pending';
+        const { readClaimFinality } = await import('./claim-finality.js');
+        const finality = await readClaimFinality(http, receipt);
+        if (finality === undefined) return 'unavailable';
+        if (!finality) return 'pending';
         const reader = await reads();
         const record = await reader.readClaim(receipt.name, profile);
         if (!record) return 'pending';
