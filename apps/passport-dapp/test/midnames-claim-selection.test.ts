@@ -108,11 +108,12 @@ test('a pre-upgrade claim without a selection blocks a second pending name', asy
     legacy.onerror = () => reject(legacy.error);
   });
   const journal = await openClaimJournal(factory);
+  assert.equal(await journal.readSelection(registry, account, credential), 'alice.night');
   await assert.rejects(
     journal.selectName(registry, account, credential, 'bob.night'),
     /Recover the original claim/,
   );
-  assert.equal(await journal.readSelection(registry, account, credential), undefined);
+  assert.equal(await journal.readSelection(registry, account, credential), 'alice.night');
   assert.equal(
     await journal.selectName(registry, account, credential, 'alice.night'),
     'alice.night',

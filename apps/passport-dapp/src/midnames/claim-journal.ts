@@ -55,6 +55,24 @@ function readStored(value: unknown): StoredClaim | undefined {
   };
 }
 
+function activeClaimName(
+  value: unknown,
+  registry: string,
+  account: string,
+  credential: string,
+): string | undefined {
+  const retained = readStored(value);
+  const destination = retained?.receipt ?? retained?.quote;
+  return retained?.credential === credential &&
+    destination?.registryAddress === registry &&
+    destination.accountAddress === account &&
+    (retained.receipt ||
+      retained.ownerCommitment ||
+      (retained.quote && retained.quote.expiresAt > Date.now()))
+    ? destination.name
+    : undefined;
+}
+
 function selection(
   db: IDBDatabase,
   registry: string,
@@ -71,9 +89,11 @@ function selection(
     throw new Error('Invalid name selection scope.');
   return new Promise((resolve, reject) => {
     const tx = db.transaction(
-      name === undefined ? selectionStore : [selectionStore, storeName],
+      [selectionStore, storeName],
       name === undefined ? 'readonly' : 'readwrite',
-      { durability: 'strict' },
+      {
+        durability: 'strict',
+      },
     );
     const key = selectionKey(registry, account, credential);
     const store = tx.objectStore(selectionStore);
@@ -86,29 +106,24 @@ function selection(
       try {
         const previous = selectedName(request.result);
         result = name ?? previous;
-        if (name === undefined) return;
-        // Version 1 has claims but no selections. Scan the original records in
-        // this transaction before admitting a new choice for this ACC.
+        // Version 1 has claims but no selections. Recover one unambiguous
+        // original name or refuse a conflicting new choice in this transaction.
+        let recovered: string | undefined;
         const scan = tx.objectStore(storeName).openCursor();
         scan.onsuccess = () => {
           try {
             const cursor = scan.result;
             if (!cursor) {
-              if (name !== previous) store.put(name, key);
+              if (name === undefined) result = recovered ?? previous;
+              else if (name !== previous) store.put(name, key);
               return;
             }
-            const retained = readStored(cursor.value);
-            const destination = retained?.receipt ?? retained?.quote;
-            if (
-              retained?.credential === credential &&
-              destination?.registryAddress === registry &&
-              destination.accountAddress === account &&
-              destination.name !== name &&
-              (retained.receipt ||
-                retained.ownerCommitment ||
-                (retained.quote && retained.quote.expiresAt > Date.now()))
-            )
+            const active = activeClaimName(cursor.value, registry, account, credential);
+            if (active && name !== undefined && active !== name)
               throw new Error('Recover the original claim before choosing another name.');
+            if (active && name === undefined && recovered && recovered !== active)
+              throw new Error('Multiple original claims require manual recovery.');
+            recovered = active ?? recovered;
             cursor.continue();
           } catch (error) {
             failure = error;
@@ -146,17 +161,8 @@ function guardReservation(
             allowed();
             return;
           }
-          const retained = readStored(cursor.value);
-          const destination = retained?.receipt ?? retained?.quote;
-          if (
-            retained?.credential === credential &&
-            destination?.registryAddress === registry &&
-            destination.accountAddress === account &&
-            destination.name !== name &&
-            (retained.receipt ||
-              retained.ownerCommitment ||
-              (retained.quote && retained.quote.expiresAt > Date.now()))
-          )
+          const active = activeClaimName(cursor.value, registry, account, credential);
+          if (active && active !== name)
             throw new Error('Recover the original claim before reserving another name.');
           cursor.continue();
         } catch (error) {
