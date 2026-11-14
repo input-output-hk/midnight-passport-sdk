@@ -1,5 +1,6 @@
 import {
   PassportNameError,
+  resolvePassportName,
   type PassportNameService,
 } from '@input-output-hk/mn-passport-account/names';
 
@@ -61,6 +62,36 @@ export function createMidnamesNameService(
       if (!(await reads.isSupportedAccount(accountAddress, networkId)))
         throw new PassportNameError('InvalidRecord');
       return Object.freeze({ name, networkId, accountAddress, namespace: profile.namespace });
+    },
+  });
+}
+
+/** An operator-supplied public observation pins every lookup to a known ACC. */
+export function requireKnownMidnamesMapping(
+  service: PassportNameService,
+  networkId: string,
+  name: string,
+  accountAddress: string,
+): PassportNameService {
+  if (
+    service.provider.mode !== 'external' ||
+    !canonicalName.test(name) ||
+    !name.endsWith(`.${service.provider.namespace}`) ||
+    !isContractAddress(accountAddress) ||
+    !/^[a-z0-9][a-z0-9-]{0,63}$/.test(networkId)
+  )
+    throw new PassportNameError('InvalidQuery');
+  const known = Object.freeze({ name, networkId });
+  return Object.freeze({
+    provider: service.provider,
+    async resolve(query: Parameters<PassportNameService['resolve']>[0]) {
+      if (query.networkId !== networkId) throw new PassportNameError('InvalidQuery');
+      // Do not cache: a missing, transferred, or unavailable observation must
+      // stop later lookups, including those for a different name.
+      const observed = await resolvePassportName(service, known);
+      if (!observed || observed.accountAddress !== accountAddress)
+        throw new PassportNameError('InvalidRecord');
+      return query.name === name ? observed : service.resolve(query);
     },
   });
 }

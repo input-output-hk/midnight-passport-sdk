@@ -6,7 +6,11 @@ import {
   type PassportNameErrorCode,
 } from '@input-output-hk/mn-passport-account/names';
 import { configureMidnames } from '../src/midnames/config.js';
-import { createMidnamesNameService, type MidnamesReads } from '../src/midnames/resolver.js';
+import {
+  createMidnamesNameService,
+  requireKnownMidnamesMapping,
+  type MidnamesReads,
+} from '../src/midnames/resolver.js';
 
 const profile = {
   networkId: 'undeployed',
@@ -115,4 +119,72 @@ test('configured name lookup requires an explicit matching network, registry and
     assert.throws(() =>
       configureMidnames({ ...config, ...change }, profile.networkId, 'acc-s3r1.1'),
     );
+});
+
+test('an online profile requires a complete known name-to-ACC pin before lookup', () => {
+  const config = {
+    ...profile,
+    networkId: 'preview',
+    indexerUrl: 'https://indexer.preview.midnight.network/api/v4/graphql',
+    indexerWsUrl: 'wss://indexer.preview.midnight.network/api/v4/graphql/ws',
+  };
+  for (const missing of [{}, { knownName: query.name }, { knownAccountAddress: account }])
+    assert.throws(() => configureMidnames({ ...config, ...missing }, 'preview', 'acc-s3r1.1'));
+  assert.equal(
+    configureMidnames(
+      { ...config, knownName: query.name, knownAccountAddress: account },
+      'preview',
+      'acc-s3r1.1',
+    )?.provider.mode,
+    'external',
+  );
+  for (const invalid of [
+    { knownName: 'Alice.passport.night', knownAccountAddress: account },
+    { knownName: query.name, knownAccountAddress: 'mn_wallet' },
+  ])
+    assert.throws(() => configureMidnames({ ...config, ...invalid }, 'preview', 'acc-s3r1.1'));
+});
+
+test('online known mapping is checked fresh and never turns absence or outage into another destination', async () => {
+  const scope = { ...profile, networkId: 'preview' };
+  const known = { name: query.name, networkId: scope.networkId };
+  const other = { name: 'bob.passport.night', networkId: scope.networkId };
+  let knownTarget: string | undefined = account;
+  let unavailable = false;
+  const calls: string[] = [];
+  const service = requireKnownMidnamesMapping(
+    createMidnamesNameService(scope, {
+      async readTarget(name, observed) {
+        assert.deepEqual(observed, scope);
+        calls.push(name);
+        if (unavailable) throw new Error('private provider detail');
+        if (name === known.name)
+          return knownTarget ? { kind: 'contract', address: knownTarget } : undefined;
+        return { kind: 'contract', address: repointed };
+      },
+      async isSupportedAccount(address, network) {
+        return network === scope.networkId && [account, repointed].includes(address);
+      },
+    }),
+    scope.networkId,
+    known.name,
+    account,
+  );
+  assert.equal((await resolvePassportName(service, other))?.accountAddress, repointed);
+  assert.deepEqual(calls, [known.name, other.name]);
+  calls.length = 0;
+  knownTarget = repointed;
+  await assert.rejects(resolvePassportName(service, other), code('InvalidRecord'));
+  assert.deepEqual(calls, [known.name]);
+  knownTarget = undefined;
+  await assert.rejects(resolvePassportName(service, other), code('InvalidRecord'));
+  knownTarget = account;
+  unavailable = true;
+  await assert.rejects(resolvePassportName(service, other), code('Unavailable'));
+  unavailable = false;
+  await assert.rejects(
+    resolvePassportName(service, { ...other, networkId: 'preprod' }),
+    code('InvalidQuery'),
+  );
+  assert.equal((await resolvePassportName(service, known))?.accountAddress, account);
 });

@@ -865,9 +865,13 @@ See the [funding image and operator guide](passport-funding-service/README.md).
 ## Midnames lookup source preview
 
 The demo's optional Midnames reader uses the existing **Name service** panel.
-Set all five build inputs in the [naming adapter guide](../docs/site/names.md#source-preview-midnames-210).
+Set the five base build inputs in the [naming adapter guide](../docs/site/names.md#source-preview-midnames-210).
 A configured lookup uses the registry's contract target and verifies the
-deployed ACC binding before displaying it. The default remains the mock.
+deployed ACC binding before displaying it. Online profiles also require an
+independently observed, public known-name and ACC pin; each lookup rechecks
+that pair and refuses a missing or changed binding. This readiness check does
+not replace an authenticated host indexer proxy or independent chain read.
+The default remains the mock.
 
 ### Standalone Midnames claim recovery
 

@@ -109,6 +109,8 @@ network as the Passport demo.
 | `VITE_MIDNAMES_REGISTRY_ADDRESS` | 64 lowercase hex characters for the pinned registry |
 | `VITE_MIDNAMES_INDEXER_URL` | Public HTTPS GraphQL endpoint, or HTTP on loopback |
 | `VITE_MIDNAMES_INDEXER_WS_URL` | Public WSS endpoint, or WS on loopback |
+| `VITE_MIDNAMES_KNOWN_NAME` | Exact canonical name from an independent, dated observation; required outside `undeployed` |
+| `VITE_MIDNAMES_KNOWN_ACC` | Its independently observed 64-hex deployed ACC address; required outside `undeployed` |
 
 The panel rejects partial configuration. It accepts exact canonical lowercase
 names within the chosen namespace. Each lookup checks the registry verifier
@@ -118,6 +120,15 @@ that the address is an activated ACC with the complete verifier roster for the
 pinned binding. Missing names, wrong target types and unavailable reads have
 separate outcomes. An indexer is a trusted read input, and a lookup reflects
 its observed state. The demo presents the result for inspection.
+
+For an online network, the two known-mapping inputs are a fail-closed readiness
+pin. Before **every** lookup, the adapter reads that known name through the
+configured registry and requires the expected deployed ACC. A missing, moved,
+malformed, or unavailable known record stops the requested lookup; it never
+falls back to a different destination. The operator must obtain and record the
+known pair from an independent source with its observation date before setting
+these public inputs. Matching one provider's response to a host-supplied pair
+does not establish an independent chain-read agreement or qualify that provider.
 
 Midnames 2.1.0 uses a Ledger 9 reader built with runtime 0.21.0 and Midnight JS
 5.0.0. The ACC still uses runtime 0.20.0. The indexer hands out tagged bytes,
@@ -134,10 +145,13 @@ before it is enabled.
 As checked on 14 November 2026, the pinned SDK's historical Midnight-hosted
 preprod indexer endpoints return HTTP 410. The [current network endpoint
 guide](https://docs.midnight.network/relnotes/network) uses Blockfrost project
-authentication for preprod. No independently known online name-to-ACC contract
+authentication for preprod. The same guide records a 6 November Preview reset;
+a read of the SDK's pinned Preview registry address through the current v4
+indexer returned no contract on 14 November. No independently known online name-to-ACC contract
 mapping has been qualified, so this demo does not enable an online Midnames
-profile. Keep a project token in a host-controlled provider, never in `VITE_`
-browser inputs.
+profile. Keep a project token in a host-controlled indexer proxy or provider,
+never in `VITE_` browser inputs; this reference browser does not provide that
+authenticated proxy itself.
 
 | Passport naming constraint | Implemented local subset | Deviation or remaining gate |
 | --- | --- | --- |

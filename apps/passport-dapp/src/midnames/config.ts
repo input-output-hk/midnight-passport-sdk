@@ -1,5 +1,5 @@
 import type { PassportNameService } from '@input-output-hk/mn-passport-account/names';
-import { createMidnamesNameService } from './resolver.js';
+import { createMidnamesNameService, requireKnownMidnamesMapping } from './resolver.js';
 import { isClaimSponsorOrigin, requestClaimDispatch } from './claim-dispatch.js';
 import { registryProfile } from './registry-pins.js';
 import { claimHex, claimName, type ClaimRecovery } from './claim-receipt.js';
@@ -13,6 +13,8 @@ export interface MidnamesConfig {
   readonly networkId?: string | undefined;
   readonly indexerUrl?: string | undefined;
   readonly indexerWsUrl?: string | undefined;
+  readonly knownName?: string | undefined;
+  readonly knownAccountAddress?: string | undefined;
 }
 
 function endpoint(value: string, secure: string, local: string): string {
@@ -36,7 +38,15 @@ export function configureMidnames(
   bindingId: string,
   preparation?: ClaimPreparation,
 ): (PassportNameService & { readonly recovery?: ClaimRecovery }) | undefined {
-  const { registryAddress, namespace, networkId, indexerUrl, indexerWsUrl } = config;
+  const {
+    registryAddress,
+    namespace,
+    networkId,
+    indexerUrl,
+    indexerWsUrl,
+    knownName,
+    knownAccountAddress,
+  } = config;
   if (!preparation && Object.values(config).every((value) => value === undefined)) return undefined;
   if (
     !registryAddress ||
@@ -46,6 +56,11 @@ export function configureMidnames(
     !indexerWsUrl
   )
     throw new Error('Configure the registry, namespace, matching network, and both indexer URLs.');
+  if (
+    (knownName === undefined) !== (knownAccountAddress === undefined) ||
+    (networkId !== 'undeployed' && knownName === undefined)
+  )
+    throw new Error('Online naming requires a complete independently observed name-to-ACC pin.');
   const profileId = registryProfile(config.registryProfile, networkId);
   const http = endpoint(indexerUrl, 'https:', 'http:');
   const ws = endpoint(indexerWsUrl, 'wss:', 'ws:');
@@ -65,10 +80,14 @@ export function configureMidnames(
       throw error;
     }));
   const profile = { registryAddress, namespace, networkId };
-  const service = createMidnamesNameService(profile, {
+  const readerService = createMidnamesNameService(profile, {
     readTarget: async (...args) => (await reads()).readTarget(...args),
     isSupportedAccount: async (...args) => (await reads()).isSupportedAccount(...args),
   });
+  const service =
+    knownName === undefined || knownAccountAddress === undefined
+      ? readerService
+      : requireKnownMidnamesMapping(readerService, networkId, knownName, knownAccountAddress);
   const standalone = profileId === 'standalone-0.35' && namespace === 'night';
   if (preparation && config.claimSponsor !== '1')
     throw new Error('Claim preparation requires the loopback standalone sponsor.');
