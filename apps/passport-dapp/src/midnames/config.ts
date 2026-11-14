@@ -99,6 +99,9 @@ export function configureMidnames(
     knownName === undefined || knownAccountAddress === undefined
       ? readerService
       : requireKnownMidnamesMapping(readerService, networkId, knownName, knownAccountAddress);
+  const guardKnown = async () => {
+    if (knownName !== undefined) await service.resolve({ name: knownName, networkId });
+  };
   const standalone = profileId === 'standalone-0.35' && namespace === 'night';
   if (preparation && config.claimSponsor !== '1')
     throw new Error('Claim preparation requires the loopback standalone sponsor.');
@@ -118,6 +121,7 @@ export function configureMidnames(
       ...(preparation && { preparation }),
       async availability(name, accountAddress) {
         if (!claimName(name) || !claimHex(accountAddress)) throw new Error('Invalid claim scope.');
+        await guardKnown();
         const reader = await reads();
         if (await reader.hasDomain(name, profile)) return 'taken';
         return (await reader.isSupportedAccount(accountAddress, networkId))
@@ -127,6 +131,11 @@ export function configureMidnames(
       async check(receipt) {
         if (receipt.networkId !== networkId || receipt.registryAddress !== registryAddress)
           return 'conflict';
+        try {
+          await guardKnown();
+        } catch {
+          return 'unavailable';
+        }
         const { readClaimFinality } = await import('./claim-finality.js');
         const finality = await readClaimFinality(http, receipt);
         if (finality === undefined) return 'unavailable';

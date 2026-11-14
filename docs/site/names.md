@@ -109,8 +109,8 @@ network as the Passport demo.
 | `VITE_MIDNAMES_REGISTRY_ADDRESS` | 64 lowercase hex characters for the pinned registry |
 | `VITE_MIDNAMES_INDEXER_URL` | Public HTTPS GraphQL endpoint, or HTTP on loopback |
 | `VITE_MIDNAMES_INDEXER_WS_URL` | Public WSS endpoint, or WS on loopback |
-| `VITE_MIDNAMES_KNOWN_NAME` | Exact canonical name from an independent, dated observation; required outside `undeployed` |
-| `VITE_MIDNAMES_KNOWN_ACC` | Its independently observed 64-hex deployed ACC address; required outside `undeployed` |
+| `VITE_MIDNAMES_KNOWN_NAME` | Exact canonical name from an independent, dated observation; required on non-`undeployed` networks or with a non-loopback indexer |
+| `VITE_MIDNAMES_KNOWN_ACC` | Its independently observed 64-hex deployed ACC address; required on non-`undeployed` networks or with a non-loopback indexer |
 
 The panel rejects partial configuration. It accepts exact canonical lowercase
 names within the chosen namespace. Each lookup checks the registry verifier
@@ -124,8 +124,9 @@ its observed state. The demo presents the result for inspection.
 For any non-`undeployed` network or non-loopback indexer, the two known-mapping
 inputs are a fail-closed readiness pin. Before **every** lookup, the adapter reads that known name through the
 configured registry and requires the expected deployed ACC. A missing, moved,
-malformed, or unavailable known record stops the requested lookup; it never
-falls back to a different destination. The operator must obtain and record the
+malformed, or unavailable known record stops the requested lookup and any
+remote standalone claim availability or receipt check; it never falls back to
+a different destination. The operator must obtain and record the
 known pair from an independent source with its observation date before setting
 these public inputs. Matching one provider's response to a host-supplied pair
 does not establish an independent chain-read agreement or qualify that provider.
