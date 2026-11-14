@@ -12,6 +12,7 @@ import {
   isolationProfile,
 } from '../../scripts/qualification/native-isolation-profile.mjs';
 import { saveIsolationReceipt } from '../../scripts/qualification/native-isolation-files.mjs';
+import { interactiveReviewRequested, reviewInTerminal } from './terminal-review.mjs';
 
 const [output, ref, registryAddress, name] = process.argv.slice(2);
 assert.equal(process.env.PASSPORT_MIDNAMES_NATIVE, '1');
@@ -145,8 +146,10 @@ try {
       },
       async review(intent) {
         receipt.review = { ...intent, amount: String(intent.amount) };
-        console.log('Synthetic sender approval', JSON.stringify(receipt.review));
         save();
+        if (interactiveReviewRequested())
+          return reviewInTerminal(receipt.review, intent.accountAddress);
+        console.log('Synthetic sender approval', JSON.stringify(receipt.review));
         return true;
       },
       async prepare({ account, coin, entry }) {

@@ -10,6 +10,7 @@ import {
 } from '../../scripts/qualification/native-isolation-profile.mjs';
 import { saveIsolationReceipt } from '../../scripts/qualification/native-isolation-files.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
+import { interactiveReviewRequested } from './terminal-review.mjs';
 
 const [output, prepared, ref] = process.argv.slice(2);
 assert.equal(process.env.PASSPORT_MIDNAMES_NATIVE, '1');
@@ -412,7 +413,7 @@ try {
       ],
       {
         cwd: join(import.meta.dirname, '../../apps/passport-dapp'),
-        stdio: ['ignore', 'inherit', 'inherit'],
+        stdio: [interactiveReviewRequested() ? 'inherit' : 'ignore', 'inherit', 'inherit'],
       },
     );
     await new Promise((resolve, reject) => {

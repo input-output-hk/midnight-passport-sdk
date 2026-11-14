@@ -29,11 +29,14 @@ import {
 } from '../../scripts/qualification/native-isolation-control.mjs';
 import { dedicatedIndexerReadiness } from '../../scripts/qualification/indexer-readiness.mjs';
 import { verifyPreparedRegistry } from './verify-prepared.mjs';
+import { assertReviewTerminal, interactiveReviewRequested } from './terminal-review.mjs';
 
 assert.ok(process.env.IN_NIX_SHELL);
 assert.equal(process.env.PASSPORT_MIDNAMES_NATIVE, '1');
 assert.equal(process.env.PASSPORT_RC_LOCALNET, '1');
 assertIsolationOverrides(process.env);
+const interactive = interactiveReviewRequested();
+if (interactive) assertReviewTerminal();
 const [out, prepared, ref, subnet] = process.argv.slice(2);
 assert.ok(prepared && ref && isAbsolute(prepared) && isAbsolute(ref));
 if (subnet !== undefined) {
@@ -68,13 +71,23 @@ const fixtureMode = out.startsWith('midnames-claim-browser-')
       : out.startsWith('midnames-night-send-')
         ? 'named-night-send'
         : 'named-shielded-deposit';
+if (interactive)
+  assert.ok(
+    fixtureMode === 'named-shielded-deposit' || fixtureMode === 'named-night-send',
+    'Terminal review supports only named value fixtures.',
+  );
 const review = join(root, 'review');
 mkdirSync(review, { recursive: true, mode: 0o700 });
 assert.equal(realpathSync(review), review);
 const output = join(review, out);
 mkdirSync(output, { mode: 0o700 });
 const profile = isolationProfile(randomBytes(8).toString('hex'), output);
-const receipt = { profile, images, status: 'RUNNING' };
+const receipt = {
+  profile,
+  images,
+  status: 'RUNNING',
+  reviewMode: interactive ? 'terminal' : 'synthetic',
+};
 const save = () => saveIsolationReceipt(join(output, 'parent.json'), receipt);
 const deadline = isolationDeadline(performance.now());
 const stack = isolatedStack(profile, docker, save, deadline.check);
@@ -181,7 +194,7 @@ try {
       cwd: join(root, 'apps/passport-dapp'),
       env,
       detached: true,
-      stdio: ['ignore', 'inherit', 'inherit'],
+      stdio: [interactive ? 'inherit' : 'ignore', 'inherit', 'inherit'],
     },
   );
   processes.register(worker);

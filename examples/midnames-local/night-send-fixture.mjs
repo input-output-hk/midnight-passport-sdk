@@ -9,6 +9,7 @@ import { readHostConfirmation } from '../../apps/passport-service/src/host-confi
 import { prepareLocalnetNight } from '../../apps/passport-funding-service/src/night-preparation.ts';
 
 import { createOnce } from './create-once.mts';
+import { interactiveReviewRequested, reviewInTerminal } from './terminal-review.mjs';
 
 function openJournal(directory) {
   const read = (name) => {
@@ -190,10 +191,15 @@ export async function qualifyNightSend({
       return (await reads.isSupportedAccount(address, networkId)) ? balance(address) : undefined;
     },
     async review(intent) {
-      approvals++;
       assert.equal(intent.target, target);
       assert.notEqual(intent.target, defaultField.value);
+      if (interactiveReviewRequested()) {
+        const approved = await reviewInTerminal(intent, intent.target);
+        if (approved) approvals++;
+        return approved;
+      }
       console.log('Synthetic owner approval', JSON.stringify(intent));
+      approvals++;
       return true;
     },
     async prepareWithdrawal(intent) {
