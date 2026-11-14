@@ -401,6 +401,18 @@ try {
     .locator('#claim-recovery-status')
     .filter({ hasText: 'Read-only .night profile' })
     .waitFor();
+  assert.equal(
+    await readOnly.locator('#claim-recovery-title').innerText(),
+    'Local .night name and receipt',
+  );
+  assert.equal(
+    await readOnly.locator('label[for="claim-recovery-name"]').innerText(),
+    'Exact .night name',
+  );
+  assert.equal(
+    await readOnly.locator('#claim-check-availability').innerText(),
+    'Check registry status',
+  );
   assert.equal(await readOnly.locator('#claim-dispatch').isVisible(), false);
   await readOnly.close();
   const first = await browser.newPage();
