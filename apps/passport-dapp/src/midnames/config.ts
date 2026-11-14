@@ -97,19 +97,26 @@ export function configureMidnames(
       async check(receipt) {
         if (receipt.networkId !== networkId || receipt.registryAddress !== registryAddress)
           return 'conflict';
-        const { confirmedClaim } = await import('./claim-finality.js');
-        if (!(await confirmedClaim(http, receipt))) return 'pending';
-        const reader = await reads();
-        const record = await reader.readClaim(receipt.name, profile);
-        if (!record) return 'pending';
-        if (
-          record.ownerCommitment !== receipt.ownerCommitment ||
-          record.target.kind !== 'contract' ||
-          record.target.address !== receipt.accountAddress ||
-          !(await reader.isSupportedAccount(receipt.accountAddress, networkId))
-        )
-          return 'conflict';
-        return 'registered';
+        const { readClaimFinality } = await import('./claim-finality.js');
+        const finality = await readClaimFinality(http, receipt);
+        if (finality === undefined) return 'unavailable';
+        if (finality === 'conflict') return 'conflict';
+        if (!finality) return 'pending';
+        try {
+          const reader = await reads();
+          const record = await reader.readClaim(receipt.name, profile);
+          if (!record) return 'pending';
+          if (
+            record.ownerCommitment !== receipt.ownerCommitment ||
+            record.target.kind !== 'contract' ||
+            record.target.address !== receipt.accountAddress ||
+            !(await reader.isSupportedAccount(receipt.accountAddress, networkId))
+          )
+            return 'conflict';
+          return 'registered';
+        } catch {
+          return 'unavailable';
+        }
       },
     },
   };

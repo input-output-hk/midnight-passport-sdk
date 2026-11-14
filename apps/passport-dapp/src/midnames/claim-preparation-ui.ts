@@ -124,6 +124,8 @@ export function showClaimPreparation(
         ensureAccount();
         if (!matchesDestination(quote, destination) || (!stored && quote.expiresAt <= Date.now()))
           throw new Error('Claim quote differs from the current account or has expired.');
+        await journal.selectName(registryAddress, account.address, credential, name);
+        ensureAccount();
         display(quote, account, !!stored?.ownerCommitment);
         status.textContent = stored
           ? 'The original quote is saved.'

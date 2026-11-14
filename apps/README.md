@@ -888,8 +888,20 @@ after quote approval and sends only proved bytes to the sponsor. See the
 [owner and sponsor setup](../examples/midnames-local/README.md#send-an-acknowledged-receipt-from-the-browser).
 
 On the pinned `standalone-0.35` registry with namespace `night`, the demo
-can retain a sponsor's original public receipt and reconcile it after a lost
-response. The form is under **Settings → Developer tools → Name service**.
+shows **Finish Passport setup** on the Passport account's Balances page after
+creation or passkey-based opening. Reviewing a valid quote for the already
+deployed ACC retains the selected `.night` name per registry, ACC, and
+credential. It restores that choice after reopening with the same credential
+and reconciles a retained original receipt. Availability and imported-receipt
+checks leave the name unselected; enter it again after a reload. A pending claim stays visibly
+pending until the original transaction and current registry binding agree.
+An unavailable indexer stays an unavailable check rather than a pending claim;
+the original receipt remains available for retry. If neither preparation nor
+sponsor dispatch is configured, the panel labels itself as read-only receipt
+inspection and does not offer a claim action.
+The choice and public receipt live in this browser's IndexedDB, so a different
+device needs the original receipt and credential to recover it. This source
+preview does not establish name-owner recovery after total credential loss.
 It also checks availability against the configured registry and verifies the
 open ACC's binding. A retained receipt takes precedence over availability.
 The sponsor prepares the claim separately. The opt-in loopback fixture lets

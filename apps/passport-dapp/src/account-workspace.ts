@@ -58,6 +58,22 @@ export function createAccountWorkspace(
   };
   pages.balances.append(accountCard);
   list(accountCard, ['refresh']);
+  const setup = element('section');
+  setup.id = 'passport-name-setup';
+  setup.className = 'panel';
+  setup.hidden = true;
+  const setupTitle = element('h3', 'Finish Passport setup');
+  const setupHelp = element(
+    'p',
+    'This local .night name is claimed after your ACC exists. It remains pending until the original transaction and current registry binding agree.',
+  );
+  const setupStatus = element('p', 'Pending Passport setup. Open the account with its passkey.');
+  setupStatus.id = 'passport-name-setup-status';
+  setupStatus.setAttribute('role', 'status');
+  const claimForm = document.getElementById('claim-recovery');
+  if (!claimForm) throw new Error('Missing claim recovery form.');
+  setup.append(setupTitle, setupHelp, setupStatus, claimForm);
+  pages.balances.append(setup);
   const shielded = element('section');
   shielded.className = 'panel';
   shielded.append(element('h3', 'Shielded holdings'));
@@ -109,5 +125,16 @@ export function createAccountWorkspace(
   return {
     ...navigation,
     select: (page: AccountPage, notify = true) => navigation.select(page, false, notify),
+    enableNameSetup(claimAvailable: boolean) {
+      setup.hidden = false;
+      if (!claimAvailable) {
+        setupTitle.textContent = 'Inspect .night name receipt';
+        setupHelp.textContent =
+          'This local registry profile is read-only. Claim preparation and sponsor dispatch are not configured. You can retain or check an existing original receipt, but the name is not registered by this panel.';
+      }
+    },
+    nameSetupStatus(message: string) {
+      setupStatus.textContent = message;
+    },
   };
 }

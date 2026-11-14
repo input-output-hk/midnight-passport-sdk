@@ -13,8 +13,10 @@ import {
 
 const messages = {
   pending: 'Claim pending. Check this original receipt again after the indexer catches up.',
-  conflict: 'The registry owner or target differs from this receipt. Inspect the original claim.',
+  conflict:
+    'The original transaction failed, or its claim differs from the registry owner or target. Inspect the original claim.',
   registered: 'Registered. The original claim and current registry record match this account.',
+  unavailable: 'Name service unavailable. Keep the original receipt and check it again later.',
 } as const;
 
 const availabilityMessages = {
@@ -23,9 +25,94 @@ const availabilityMessages = {
   unsupported: 'This Passport account is not active on the configured registry’s network.',
 } as const;
 
+function claimConflict(error: unknown): string | undefined {
+  if (!(error instanceof Error)) return undefined;
+  return /^(?:Multiple original claims require manual recovery|Recover the original claim before (?:choosing|reserving) another name|A different name is selected for this ACC)\.$/.test(
+    error.message,
+  )
+    ? `${error.message} Enter the original name to inspect its claim.`
+    : undefined;
+}
+
+function claimReport(status: HTMLElement, onSetupStatus?: (message: string) => void) {
+  return (message: string) => {
+    status.textContent = message;
+    onSetupStatus?.(
+      message.startsWith('Registered.') ? message : `Pending Passport setup. ${message}`,
+    );
+  };
+}
+
+function initialClaimStatus(recovery: ClaimRecovery, account: PassportAccount | undefined): string {
+  if (!account) return 'Open an account with its passkey.';
+  return recovery.preparation || recovery.dispatch
+    ? 'Choose a .night name for this account.'
+    : 'Read-only .night profile. Check or retain an existing original receipt; claiming is unavailable.';
+}
+
+function assertClaimContext(
+  account: PassportAccount | undefined,
+  currentAccount: () => PassportAccount | undefined,
+  selected: string | undefined,
+  name: HTMLInputElement,
+) {
+  if (account !== currentAccount() || selected !== normalizeClaimName(name.value))
+    throw new Error('Claim context changed.');
+}
+
+async function restoreSelection(
+  recovery: ClaimRecovery,
+  currentAccount: () => PassportAccount | undefined,
+  name: HTMLInputElement,
+  report: (message: string) => void,
+): Promise<void> {
+  const account = currentAccount();
+  const credentialId = account?.credentialId && Uint8Array.from(account.credentialId);
+  if (!account || !credentialId?.length || account.networkId !== 'undeployed') return;
+  try {
+    const scope = await claimDigest(credentialId);
+    const journal = await openClaimJournal(indexedDB);
+    try {
+      const selected = await journal.readSelection(
+        recovery.registryAddress,
+        account.address,
+        scope,
+      );
+      if (account !== currentAccount() || name.value !== '' || !selected) return;
+      name.value = selected;
+      const original = await journal.read(recovery.registryAddress, selected, scope);
+      if (account !== currentAccount() || name.value !== selected) return;
+      if (!original) {
+        report(
+          'The selected name is pending. Review the claim quote or recover the original preparation.',
+        );
+        return;
+      }
+      if (original.accountAddress !== account.address) {
+        report(
+          'The retained claim belongs to another Passport ACC. Open that account to recover it.',
+        );
+        return;
+      }
+      const result = await recovery.check(original).catch(() => 'unavailable' as const);
+      if (account !== currentAccount() || name.value !== selected) return;
+      report(messages[result]);
+    } finally {
+      journal.close();
+    }
+  } catch (error) {
+    if (account === currentAccount())
+      report(
+        claimConflict(error) ??
+          'Claim state unavailable. Preserve this browser’s data and inspect the original claim.',
+      );
+  }
+}
+
 export function showClaimRecovery(
   recovery: ClaimRecovery,
   currentAccount: () => PassportAccount | undefined,
+  onSetupStatus?: (message: string) => void,
 ): () => void {
   const form = byId<HTMLFormElement>('claim-recovery');
   const name = byId<HTMLInputElement>('claim-recovery-name');
@@ -37,20 +124,24 @@ export function showClaimRecovery(
   send.hidden = !recovery.dispatch;
   const check = byId<HTMLButtonElement>('claim-recovery-check');
   const status = byId('claim-recovery-status');
+  const report = claimReport(status, onSetupStatus);
   const preparation =
     recovery.preparation &&
     showClaimPreparation(recovery.preparation, recovery.registryAddress, status, name);
   const sendReview = createClaimSendReview(send, quoteSummary);
   form.hidden = false;
   let busy = false;
-  name.addEventListener('input', sendReview.clear);
+  name.addEventListener('input', () => {
+    sendReview.clear();
+    report('Name changed. Check the selected name before claiming.');
+  });
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     if (busy) return;
     busy = availability.disabled = retain.disabled = check.disabled = send.disabled = true;
     preparation?.setBusy(true);
-    status.textContent = 'Checking claim details…';
+    report('Checking claim details…');
     const account = currentAccount();
     const selected = normalizeClaimName(name.value);
     const checkingAvailability = event.submitter === availability;
@@ -59,17 +150,14 @@ export function showClaimRecovery(
     if (!sending) sendReview.clear();
     const raw = receipt.value;
     name.disabled = receipt.disabled = true;
-    const ensureAccount = () => {
-      if (account !== currentAccount() || selected !== normalizeClaimName(name.value))
-        throw new Error('Claim context changed.');
-    };
+    const ensureAccount = () => assertClaimContext(account, currentAccount, selected, name);
     void (async () => {
       if (account?.networkId !== 'undeployed' || !account.credentialId?.length) {
-        status.textContent = 'Open this Passport account with its passkey first.';
+        report('Open this Passport account with its passkey first.');
         return;
       }
       if (!selected) {
-        status.textContent = 'Enter a single label ending in .night.';
+        report('Enter a single label ending in .night.');
         return;
       }
       const scope = await claimDigest(account.credentialId);
@@ -99,8 +187,7 @@ export function showClaimRecovery(
           await journal.retain(original, scope);
           ensureAccount();
           receipt.value = '';
-          status.textContent =
-            'Original receipt saved. Check it after the sponsor sends the claim.';
+          report('Original receipt saved. Check it after the sponsor sends the claim.');
           return;
         }
         const readOriginal = () => journal.read(recovery.registryAddress, selected, scope);
@@ -116,16 +203,16 @@ export function showClaimRecovery(
           ensureAccount();
           if (!original) {
             if (result === undefined) throw new Error('Registry read failed.');
-            status.textContent = availabilityMessages[result];
+            report(availabilityMessages[result]);
             return;
           }
         }
         if (!original) {
-          status.textContent = 'Save the original claim receipt on this device first.';
+          report('Save the original claim receipt on this device first.');
           return;
         }
         if (original.accountAddress !== account.address) {
-          status.textContent = 'Use the original account and receipt to check this claim.';
+          report('Use the original account and receipt to check this claim.');
           return;
         }
         if (sending && recovery.dispatch) {
@@ -135,25 +222,28 @@ export function showClaimRecovery(
           // the same receipt available for reconciliation on this device.
           await recovery.dispatch(original).catch(() => undefined);
           ensureAccount();
-          status.textContent = messages.pending;
+          report(messages.pending);
           return;
         }
-        const result = await recovery.check(original);
+        const result = await recovery.check(original).catch(() => 'unavailable' as const);
         ensureAccount();
-        status.textContent = messages[result];
+        report(messages[result]);
       } finally {
         journal.close();
       }
     })()
-      .catch(() => {
+      .catch((error: unknown) => {
         if (account !== currentAccount()) return;
-        status.textContent =
-          'Claim check unavailable. Keep the original receipt and verify the open account, name and registry.';
+        report(
+          claimConflict(error) ??
+            'Claim check unavailable. Keep the original receipt and verify the open account, name and registry.',
+        );
       })
       .finally(() => {
         preparation?.setBusy(false);
         busy = availability.disabled = retain.disabled = check.disabled = send.disabled = false;
         name.disabled = receipt.disabled = false;
+        if (account === currentAccount() && status.textContent) report(status.textContent);
       });
   });
   return () => {
@@ -161,6 +251,8 @@ export function showClaimRecovery(
     preparation?.clear();
     name.value = '';
     receipt.value = '';
-    status.textContent = '';
+    const account = currentAccount();
+    report(initialClaimStatus(recovery, account));
+    void restoreSelection(recovery, currentAccount, name, report);
   };
 }

@@ -28,11 +28,12 @@ async function readBounded(response: Response): Promise<unknown> {
   }
 }
 
-export async function confirmedClaim(
+/** Undefined means the indexer could not provide an authoritative answer. */
+export async function readClaimFinality(
   indexer: string,
   original: ClaimReceipt,
   request: typeof fetch = fetch,
-): Promise<boolean> {
+): Promise<boolean | 'conflict' | undefined> {
   try {
     const response = await request(indexer, {
       method: 'POST',
@@ -44,7 +45,7 @@ export async function confirmedClaim(
       redirect: 'error',
       signal: AbortSignal.timeout(6000),
     });
-    if (!response.ok) return false;
+    if (!response.ok) return undefined;
     const body = (await readBounded(response)) as
       | {
           errors?: unknown;
@@ -52,23 +53,27 @@ export async function confirmedClaim(
         }
       | undefined;
     const rows = body?.data?.transactions;
-    if (body?.errors || !Array.isArray(rows) || rows.length !== 1) return false;
+    if (body?.errors || !Array.isArray(rows)) return undefined;
+    if (rows.length === 0) return false;
+    if (rows.length !== 1) return undefined;
     const row = rows[0] as Record<string, unknown>;
+    if (row?.__typename !== 'RegularTransaction' || row.protocolVersion !== protocolVersion)
+      return undefined;
     if (
-      row?.__typename !== 'RegularTransaction' ||
-      row.protocolVersion !== protocolVersion ||
-      (row.transactionResult as { status?: unknown } | undefined)?.status !== 'SUCCESS' ||
       !claimHex(row.hash) ||
       typeof row.raw !== 'string' ||
       row.raw.length > rawLimit ||
       row.raw.length % 2 !== 0 ||
       !/^[0-9a-f]+$/.test(row.raw)
     )
-      return false;
+      return undefined;
     const bytes = Uint8Array.from({ length: row.raw.length / 2 }, (_, index) =>
       Number.parseInt((row.raw as string).slice(index * 2, index * 2 + 2), 16),
     );
-    if ((await claimDigest(bytes)) !== original.transaction.sha256) return false;
+    if ((await claimDigest(bytes)) !== original.transaction.sha256) return 'conflict';
+    const status = (row.transactionResult as { status?: unknown } | undefined)?.status;
+    if (status === 'FAILURE' || status === 'PARTIAL_SUCCESS') return 'conflict';
+    if (status !== 'SUCCESS') return undefined;
     const tx = Transaction.deserialize('signature', 'proof', 'binding', bytes);
     const ids = tx.identifiers();
     if (
@@ -76,9 +81,17 @@ export async function confirmedClaim(
       ids.length !== original.transaction.identifiers.length ||
       !original.transaction.identifiers.every((id) => ids.includes(id))
     )
-      return false;
-    return findStandaloneClaimCall(tx, original) !== undefined;
+      return 'conflict';
+    return findStandaloneClaimCall(tx, original) !== undefined ? true : 'conflict';
   } catch {
-    return false;
+    return undefined;
   }
+}
+
+export async function confirmedClaim(
+  indexer: string,
+  original: ClaimReceipt,
+  request: typeof fetch = fetch,
+): Promise<boolean> {
+  return (await readClaimFinality(indexer, original, request)) === true;
 }

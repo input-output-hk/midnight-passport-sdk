@@ -106,6 +106,7 @@ const vite = await createServer({
           response.setHeader('Content-Type', 'text/html');
           response.end(
             '<!doctype html><meta charset="utf-8">' +
+              '<p id="setup-status" role="status"></p>' +
               document.slice(start, end) +
               `<script type="module">
           import { showClaimRecovery } from '/src/midnames/claim-recovery-ui.ts';
@@ -113,18 +114,27 @@ const vite = await createServer({
           import { createLocalClaimPreparation } from '/src/midnames/claim-preparation-transport.ts';
           const original = ${JSON.stringify(receipt)};
           const other = new URLSearchParams(location.search).has('other');
+          const differentAccount = new URLSearchParams(location.search).has('account2');
           const preparing = new URLSearchParams(location.search).has('prepare');
-          const account = { address: original.accountAddress, networkId: original.networkId,
+          const readOnly = new URLSearchParams(location.search).has('readonly');
+          const outage = new URLSearchParams(location.search).has('outage');
+          const account = { address: differentAccount ? '78'.repeat(32) : original.accountAddress, networkId: original.networkId,
             credentialId: new Uint8Array([other ? 2 : 1]) };
-          showClaimRecovery({
+          const reset = showClaimRecovery({
             registryAddress: original.registryAddress,
             availability: async () => 'available',
-            check: async ({ quoteSha256, ...saved }) => JSON.stringify(saved) === JSON.stringify(original) ? 'registered' : 'conflict',
-            dispatch: requestClaimDispatch,
+            check: async ({ quoteSha256, ...saved }) => {
+              if (outage) throw Error('indexer offline');
+              return JSON.stringify(saved) === JSON.stringify(original) ? 'registered' : 'conflict';
+            },
+            ...(!readOnly && { dispatch: requestClaimDispatch }),
             ...(preparing && { preparation: createLocalClaimPreparation(
               async () => ({ ownerCommitment: original.ownerCommitment, bytes: new Uint8Array([2, 3, 5]) }),
             ) }),
-          }, () => account);
+          }, () => account, (message) => {
+            document.getElementById('setup-status').textContent = message;
+          });
+          if (new URLSearchParams(location.search).has('setup')) reset();
         </script>`,
           );
         });
@@ -146,7 +156,7 @@ async function restoreLegacyJournal(page: Page, complete = false) {
   await page.evaluate(
     ({ registry, name, complete }) =>
       new Promise<void>((resolve, reject) => {
-        const request = indexedDB.open('mn-passport:midnames-claims', 1);
+        const request = indexedDB.open('mn-passport:midnames-claims', 2);
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
           const db = request.result;
@@ -330,7 +340,77 @@ try {
   assert.equal((await post(origin, { ...receipt, name: 'alice.night' })).status, 409);
   assert.equal(requests.length, 0);
   const pageUrl = origin + fixturePage;
+  const setup = await openBrowser('chrome-setup-profile');
+  try {
+    const named = await setup.newPage();
+    await named.goto(pageUrl + '?setup');
+    assert.match(await named.locator('#setup-status').innerText(), /Pending Passport setup/);
+    await named.locator('#claim-recovery-name').fill(receipt.name);
+    await named.locator('#claim-check-availability').click();
+    await named
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /Unregistered/ })
+      .waitFor();
+    await named.reload();
+    assert.equal(await named.locator('#claim-recovery-name').inputValue(), '');
+    assert.match(await named.locator('#setup-status').innerText(), /Choose a .night name/);
+    const unrelated = await setup.newPage();
+    await unrelated.goto(pageUrl + '?setup&other');
+    assert.equal(await unrelated.locator('#claim-recovery-name').inputValue(), '');
+    await named.locator('#claim-recovery-name').fill(receipt.name);
+    await named.locator('#claim-recovery-receipt').fill(JSON.stringify(receipt));
+    await named.locator('#claim-recovery-retain').click();
+    await named
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /Original receipt saved/ })
+      .waitFor();
+    await named.reload();
+    assert.equal(await named.locator('#claim-recovery-name').inputValue(), '');
+    await named.locator('#claim-recovery-name').fill(receipt.name);
+    await named.locator('#claim-recovery-check').click();
+    await named
+      .locator('#setup-status')
+      .filter({ hasText: /^Registered/ })
+      .waitFor();
+    await named.locator('#claim-recovery-name').fill('bob.night');
+    await named
+      .locator('#setup-status')
+      .filter({ hasText: /^Pending Passport setup/ })
+      .waitFor();
+    const secondAccount = await setup.newPage();
+    await secondAccount.goto(pageUrl + '?setup&account2');
+    await secondAccount.locator('#claim-recovery-name').fill(receipt.name);
+    await secondAccount.locator('#claim-check-availability').click();
+    await secondAccount
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /original account and receipt/ })
+      .waitFor();
+    await secondAccount.reload();
+    assert.equal(await secondAccount.locator('#claim-recovery-name').inputValue(), '');
+  } finally {
+    await setup.close();
+  }
   browser = await openBrowser();
+  const readOnly = await browser.newPage();
+  await readOnly.goto(pageUrl + '?setup&readonly');
+  await readOnly
+    .locator('#claim-recovery-status')
+    .filter({ hasText: 'Read-only .night profile' })
+    .waitFor();
+  assert.equal(
+    await readOnly.locator('#claim-recovery-title').innerText(),
+    'Local .night name and receipt',
+  );
+  assert.equal(
+    await readOnly.locator('label[for="claim-recovery-name"]').innerText(),
+    'Exact .night name',
+  );
+  assert.equal(
+    await readOnly.locator('#claim-check-availability').innerText(),
+    'Check registry status',
+  );
+  assert.equal(await readOnly.locator('#claim-dispatch').isVisible(), false);
+  await readOnly.close();
   const first = await browser.newPage();
   await first.goto(pageUrl);
   let browserDispatches = 0;
@@ -345,6 +425,20 @@ try {
   await first.locator('#claim-recovery-receipt').fill(JSON.stringify(receipt));
   await first.locator('#claim-recovery-retain').click();
   await status.filter({ hasText: 'Original receipt saved' }).waitFor();
+  const outage = await browser.newPage();
+  await outage.goto(pageUrl + '?setup&outage');
+  assert.equal(await outage.locator('#claim-recovery-name').inputValue(), '');
+  await outage.locator('#claim-recovery-name').fill(receipt.name);
+  await outage.locator('#claim-recovery-check').click();
+  await outage
+    .locator('#claim-recovery-status')
+    .filter({ hasText: 'Name service unavailable' })
+    .waitFor();
+  await outage
+    .locator('#setup-status')
+    .filter({ hasText: 'Pending Passport setup. Name service unavailable' })
+    .waitFor();
+  await outage.close();
   await first.locator('#claim-dispatch').click();
   await status.filter({ hasText: /no matching reviewed quote/ }).waitFor();
   assert.equal(browserDispatches, 0);
