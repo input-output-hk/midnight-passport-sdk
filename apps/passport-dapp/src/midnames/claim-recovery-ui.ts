@@ -70,6 +70,12 @@ async function restoreSelection(
         );
         return;
       }
+      if (original.accountAddress !== account.address) {
+        report(
+          'The retained claim belongs to another Passport ACC. Open that account to recover it.',
+        );
+        return;
+      }
       const result = await recovery.check(original);
       if (account !== currentAccount() || name.value !== selected) return;
       report(messages[result]);

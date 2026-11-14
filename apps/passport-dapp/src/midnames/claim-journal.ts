@@ -86,25 +86,30 @@ function selection(
       try {
         const previous = selectedName(request.result);
         result = name ?? previous;
-        if (name === undefined || name === previous) return;
-        if (!previous) {
-          store.put(name, key);
-          return;
-        }
-        const old = tx
-          .objectStore(storeName)
-          .get(JSON.stringify(['undeployed', registry, previous]));
-        old.onsuccess = () => {
+        if (name === undefined) return;
+        // Version 1 has claims but no selections. Scan the original records in
+        // this transaction before admitting a new choice for this ACC.
+        const scan = tx.objectStore(storeName).openCursor();
+        scan.onsuccess = () => {
           try {
-            const retained = readStored(old.result);
+            const cursor = scan.result;
+            if (!cursor) {
+              if (name !== previous) store.put(name, key);
+              return;
+            }
+            const retained = readStored(cursor.value);
+            const destination = retained?.receipt ?? retained?.quote;
             if (
               retained?.credential === credential &&
+              destination?.registryAddress === registry &&
+              destination.accountAddress === account &&
+              destination.name !== name &&
               (retained.receipt ||
                 retained.ownerCommitment ||
                 (retained.quote && retained.quote.expiresAt > Date.now()))
             )
               throw new Error('Recover the original claim before choosing another name.');
-            store.put(name, key);
+            cursor.continue();
           } catch (error) {
             failure = error;
             tx.abort();

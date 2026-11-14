@@ -114,8 +114,9 @@ const vite = await createServer({
           import { createLocalClaimPreparation } from '/src/midnames/claim-preparation-transport.ts';
           const original = ${JSON.stringify(receipt)};
           const other = new URLSearchParams(location.search).has('other');
+          const differentAccount = new URLSearchParams(location.search).has('account2');
           const preparing = new URLSearchParams(location.search).has('prepare');
-          const account = { address: original.accountAddress, networkId: original.networkId,
+          const account = { address: differentAccount ? '78'.repeat(32) : original.accountAddress, networkId: original.networkId,
             credentialId: new Uint8Array([other ? 2 : 1]) };
           const reset = showClaimRecovery({
             registryAddress: original.registryAddress,
@@ -366,6 +367,19 @@ try {
     await named
       .locator('#setup-status')
       .filter({ hasText: /^Registered/ })
+      .waitFor();
+    const secondAccount = await setup.newPage();
+    await secondAccount.goto(pageUrl + '?setup&account2');
+    await secondAccount.locator('#claim-recovery-name').fill(receipt.name);
+    await secondAccount.locator('#claim-check-availability').click();
+    await secondAccount
+      .locator('#claim-recovery-status')
+      .filter({ hasText: /original account and receipt/ })
+      .waitFor();
+    await secondAccount.reload();
+    await secondAccount
+      .locator('#setup-status')
+      .filter({ hasText: /retained claim belongs to another Passport ACC/ })
       .waitFor();
   } finally {
     await setup.close();
