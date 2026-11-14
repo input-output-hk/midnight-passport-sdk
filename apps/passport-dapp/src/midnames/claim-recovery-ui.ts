@@ -13,7 +13,8 @@ import {
 
 const messages = {
   pending: 'Claim pending. Check this original receipt again after the indexer catches up.',
-  conflict: 'The registry owner or target differs from this receipt. Inspect the original claim.',
+  conflict:
+    'The original transaction failed, or its claim differs from the registry owner or target. Inspect the original claim.',
   registered: 'Registered. The original claim and current registry record match this account.',
   unavailable: 'Name service unavailable. Keep the original receipt and check it again later.',
 } as const;
@@ -23,6 +24,15 @@ const availabilityMessages = {
   taken: 'This name is already registered.',
   unsupported: 'This Passport account is not active on the configured registry’s network.',
 } as const;
+
+function claimConflict(error: unknown): string | undefined {
+  if (!(error instanceof Error)) return undefined;
+  return /^(?:Multiple original claims require manual recovery|Recover the original claim before (?:choosing|reserving) another name|A different name is selected for this ACC)\.$/.test(
+    error.message,
+  )
+    ? `${error.message} Enter the original name to inspect its claim.`
+    : undefined;
+}
 
 function claimReport(status: HTMLElement, onSetupStatus?: (message: string) => void) {
   return (message: string) => {
@@ -90,10 +100,11 @@ async function restoreSelection(
     } finally {
       journal.close();
     }
-  } catch {
+  } catch (error) {
     if (account === currentAccount())
       report(
-        'Claim state unavailable. Preserve this browser’s data and inspect the original claim.',
+        claimConflict(error) ??
+          'Claim state unavailable. Preserve this browser’s data and inspect the original claim.',
       );
   }
 }
@@ -221,10 +232,11 @@ export function showClaimRecovery(
         journal.close();
       }
     })()
-      .catch(() => {
+      .catch((error: unknown) => {
         if (account !== currentAccount()) return;
         report(
-          'Claim check unavailable. Keep the original receipt and verify the open account, name and registry.',
+          claimConflict(error) ??
+            'Claim check unavailable. Keep the original receipt and verify the open account, name and registry.',
         );
       })
       .finally(() => {

@@ -204,6 +204,9 @@ transaction and current registry record match. Selection alone does not claim
 the name; browser storage loss or a different device requires recovery from
 the original receipt. Name-owner rotation after total credential loss is not
 qualified by this source preview.
+An indexed failed original is reported as a conflict rather than a claim still
+waiting for finality. If legacy storage contains multiple original claims,
+enter an original name to inspect it before preparing another.
 **Check registry status** reads the pinned registry and verifies the open ACC
 before reporting an unregistered name. Availability is an observation at the
 time of the read. A retained receipt takes precedence and is reconciled

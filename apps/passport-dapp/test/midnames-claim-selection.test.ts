@@ -231,6 +231,8 @@ test('selection skips corrupt rows belonging to another registry or credential',
   await new Promise<void>((resolve, reject) => {
     legacy.onupgradeneeded = () => {
       const store = legacy.result.createObjectStore('claims');
+      store.put({ broken: true }, 'not-json');
+      store.put({ broken: true }, 42);
       store.put({ broken: true }, JSON.stringify(['undeployed', 'ab'.repeat(32), 'bad.night']));
       store.put(
         { credential: '78'.repeat(32), broken: true },

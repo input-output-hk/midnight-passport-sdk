@@ -100,6 +100,7 @@ export function configureMidnames(
         const { readClaimFinality } = await import('./claim-finality.js');
         const finality = await readClaimFinality(http, receipt);
         if (finality === undefined) return 'unavailable';
+        if (finality === 'conflict') return 'conflict';
         if (!finality) return 'pending';
         try {
           const reader = await reads();

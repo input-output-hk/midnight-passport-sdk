@@ -140,6 +140,30 @@ test('provider outage is distinct from an unconfirmed original claim', async () 
     ),
     false,
   );
+  assert.equal(
+    await readClaimFinality(
+      indexer,
+      {
+        ...original,
+        transaction: { ...original.transaction, sha256: await claimDigest(Uint8Array.of(0, 1)) },
+      },
+      async () =>
+        Response.json({
+          data: {
+            transactions: [
+              {
+                __typename: 'RegularTransaction',
+                protocolVersion: 2001000,
+                hash: 'aa'.repeat(32),
+                raw: '0001',
+                transactionResult: { status: 'FAILURE' },
+              },
+            ],
+          },
+        }),
+    ),
+    'conflict',
+  );
 });
 
 test('the two registry inserts bind the root name, owner, child payee and ACC', () => {

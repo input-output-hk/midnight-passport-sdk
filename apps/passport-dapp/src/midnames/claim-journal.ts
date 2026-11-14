@@ -55,6 +55,21 @@ function readStored(value: unknown): StoredClaim | undefined {
   };
 }
 
+function claimKeyName(key: IDBValidKey, registry: string): string | undefined {
+  if (typeof key !== 'string') return undefined;
+  let scope: unknown;
+  try {
+    scope = JSON.parse(key);
+  } catch {
+    return undefined;
+  }
+  if (!Array.isArray(scope) || scope[0] !== 'undeployed') return undefined;
+  if (scope[1] !== registry) return undefined;
+  if (scope.length !== 3 || typeof scope[2] !== 'string')
+    throw new Error('Stored claim key is invalid.');
+  return scope[2];
+}
+
 function activeClaimName(
   value: unknown,
   key: IDBValidKey,
@@ -62,11 +77,8 @@ function activeClaimName(
   account: string,
   credential: string,
 ): string | undefined {
-  if (typeof key !== 'string') throw new Error('Stored claim key is invalid.');
-  const scope: unknown = JSON.parse(key);
-  if (!Array.isArray(scope) || scope.length !== 3 || scope[0] !== 'undeployed')
-    throw new Error('Stored claim key is invalid.');
-  if (scope[1] !== registry) return undefined;
+  const storedName = claimKeyName(key, registry);
+  if (!storedName) return undefined;
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     const row = value as Record<string, unknown>;
     if (claimHex(row.credential) && row.credential !== credential) return undefined;
@@ -83,7 +95,7 @@ function activeClaimName(
   }
   const retained = readStored(value);
   const destination = retained?.receipt ?? retained?.quote;
-  if (destination && (scope[2] !== destination.name || destination.registryAddress !== registry))
+  if (destination && (storedName !== destination.name || destination.registryAddress !== registry))
     throw new Error('Stored claim key differs from its original.');
   return retained?.credential === credential &&
     destination?.registryAddress === registry &&
