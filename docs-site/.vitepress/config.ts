@@ -86,6 +86,7 @@ export default defineConfig({
             { text: 'Keys, wallets and trust', link: '/architecture/keys-wallets' },
             { text: 'Standards and upstream design', link: '/architecture/standards' },
             { text: 'Architecture conformance', link: '/architecture/conformance' },
+            { text: 'Passport adoption gates', link: '/architecture/adoption-gates' },
             { text: 'Upstream SDK comparison', link: '/architecture/upstream-sdk' },
             { text: 'What remains for 0.2.0?', link: '/architecture/milestone-0.2.0' },
             { text: 'Glossary', link: '/architecture/glossary' },
