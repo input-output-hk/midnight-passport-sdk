@@ -901,9 +901,14 @@ and reconciles a retained original receipt. Availability and imported-receipt
 checks leave the name unselected; enter it again after a reload. A pending claim stays visibly
 pending until the original transaction and current registry binding agree.
 An unavailable indexer stays an unavailable check rather than a pending claim;
-the original receipt remains available for retry. If neither preparation nor
+the original receipt remains available for reconciliation. If neither preparation nor
 sponsor dispatch is configured, the panel labels itself as read-only receipt
 inspection and does not offer a claim action.
+An exact indexed `FAILURE` with an absent registry record enables an explicit
+**Release failed original for a new attempt** action. It rechecks the outcome,
+archives the original public receipt and IDs in IndexedDB, and requires fresh
+name and quote review before a new reservation. A partial success, uncertain
+result or unavailable registry cannot release the original.
 The choice and public receipt live in this browser's IndexedDB, so a different
 device needs the original receipt and credential to recover it. This source
 preview does not establish name-owner recovery after total credential loss.

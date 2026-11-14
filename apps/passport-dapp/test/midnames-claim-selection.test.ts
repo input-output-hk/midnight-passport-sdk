@@ -153,6 +153,8 @@ test('two tabs cannot reserve different pending names for one ACC', async () => 
   const factory = new IDBFactory();
   const first = await openClaimJournal(factory);
   const second = await openClaimJournal(factory);
+  await first.selectName(registry, account, credential, 'alice.night');
+  await second.selectName(registry, account, credential, 'bob.night');
   const attempts = await Promise.allSettled([
     first.reserve(quoteFor('alice.night'), credential),
     second.reserve(quoteFor('bob.night'), credential),
@@ -176,7 +178,7 @@ test('a later tab selection invalidates a stale tab before reservation', async (
   await second.selectName(registry, account, credential, 'bob.night');
   await assert.rejects(
     first.reserve(quoteFor('alice.night'), credential),
-    /different name is selected/,
+    /Review and select this name/,
   );
   await second.reserve(quoteFor('bob.night'), credential);
   assert.equal(await first.readPreparation(registry, 'alice.night', credential), undefined);
@@ -222,6 +224,89 @@ test('two legacy originals remain inspectable but cannot authorize a third name'
     /Recover the original claim/,
   );
   await assert.rejects(journal.reserve(quoteFor('carol.night'), credential));
+  journal.close();
+});
+
+test('verified failed original can be archived without losing its receipt, then retried', async () => {
+  const factory = new IDBFactory();
+  const first = await openClaimJournal(factory);
+  const original = receiptFor('alice.night');
+  await first.selectName(registry, account, credential, original.name);
+  await first.retain(original, credential);
+  await assert.rejects(
+    first.releaseFailed(
+      { ...original, transaction: { ...original.transaction, sha256: 'cd'.repeat(32) } },
+      credential,
+    ),
+    /failed original changed/,
+  );
+  assert.deepEqual(await first.read(registry, original.name, credential), original);
+  const second = await openClaimJournal(factory);
+  await second.releaseFailed(original, credential);
+  assert.equal(await first.read(registry, original.name, credential), undefined);
+  assert.equal(await first.readSelection(registry, account, credential), undefined);
+  assert.deepEqual(await first.readReleased(registry, original.name, account, credential), [
+    original,
+  ]);
+  await assert.rejects(first.retain(original, credential), /already released/);
+  await assert.rejects(first.reserve(quoteFor(original.name), credential), /Review and select/);
+  second.close();
+  first.close();
+
+  const reopened = await openClaimJournal(factory);
+  assert.deepEqual(await reopened.readReleased(registry, original.name, account, credential), [
+    original,
+  ]);
+  await reopened.selectName(registry, account, credential, original.name);
+  const next = { ...quoteFor(original.name), id: 'ef'.repeat(32) };
+  await reopened.reserve(next, credential);
+  assert.deepEqual(await reopened.readPreparation(registry, original.name, credential), {
+    quote: next,
+    ownerCommitment: undefined,
+  });
+  assert.deepEqual(await reopened.readReleased(registry, original.name, account, credential), [
+    original,
+  ]);
+  assert.deepEqual(
+    await reopened.readReleased(registry, original.name, 'ab'.repeat(32), credential),
+    [],
+  );
+  reopened.close();
+});
+
+test('release refuses a changed selection or an unsubmitted quote', async () => {
+  const factory = new IDBFactory();
+  const journal = await openClaimJournal(factory);
+  await journal.selectName(registry, account, credential, 'alice.night');
+  await journal.reserve(quoteFor('alice.night'), credential);
+  await assert.rejects(
+    journal.releaseFailed(receiptFor('alice.night'), credential),
+    /failed original changed/,
+  );
+  assert.deepEqual(await journal.readReleased(registry, 'alice.night', account, credential), []);
+  journal.close();
+});
+
+test('released history remains ordered across two fast failed attempts at one name', async () => {
+  const factory = new IDBFactory();
+  const journal = await openClaimJournal(factory);
+  const first = {
+    ...receiptFor('alice.night'),
+    transaction: { ...receiptFor('alice.night').transaction, sha256: 'ff'.repeat(32) },
+  };
+  const second = {
+    ...receiptFor('alice.night'),
+    transaction: { ...receiptFor('alice.night').transaction, sha256: '00'.repeat(32) },
+  };
+  for (const original of [first, second]) {
+    await journal.selectName(registry, account, credential, original.name);
+    await journal.retain(original, credential);
+    await journal.releaseFailed(original, credential);
+  }
+  assert.deepEqual(await journal.readReleased(registry, 'alice.night', account, credential), [
+    first,
+    second,
+  ]);
   journal.close();
 });
 

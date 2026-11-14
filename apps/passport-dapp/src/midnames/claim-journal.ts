@@ -17,6 +17,7 @@ interface StoredClaim {
 export type ClaimJournal = Awaited<ReturnType<typeof openClaimJournal>>;
 const storeName = 'claims';
 const selectionStore = 'selections';
+const releasedStore = 'released-claims';
 
 const selectionKey = (registry: string, account: string, credential: string) =>
   JSON.stringify(['undeployed', registry, account, credential]);
@@ -198,8 +199,8 @@ function guardReservation(
   selected.onsuccess = () => {
     try {
       const current = selectedName(selected.result);
-      if (current && current !== name)
-        throw new Error('A different name is selected for this ACC.');
+      if (current !== name)
+        throw new Error('Review and select this name before reserving a claim.');
       const scan = tx.objectStore(storeName).openCursor();
       scan.onsuccess = () => {
         try {
@@ -229,11 +230,16 @@ function makeAccess(db: IDBDatabase) {
     credential: string,
     update?: (previous: StoredClaim | undefined) => StoredClaim | undefined,
     guardAccount?: string,
+    guardReleasedSha?: string,
   ): Promise<StoredClaim | undefined> {
     return new Promise((resolve, reject) => {
       const key = JSON.stringify(['undeployed', registry, name]);
       const tx = db.transaction(
-        guardAccount ? [storeName, selectionStore] : storeName,
+        [
+          storeName,
+          ...(guardAccount ? [selectionStore] : []),
+          ...(guardReleasedSha ? [releasedStore] : []),
+        ],
         update ? 'readwrite' : 'readonly',
         { durability: 'strict' },
       );
@@ -261,12 +267,38 @@ function makeAccess(db: IDBDatabase) {
               else store.delete(key);
             }
           };
+          const checkArchive = () => {
+            if (!guardReleasedSha) return apply();
+            const archived = tx
+              .objectStore(releasedStore)
+              .get(JSON.stringify(['undeployed', registry, name, guardReleasedSha]));
+            archived.onsuccess = () => {
+              try {
+                if (archived.result !== undefined)
+                  throw new Error(
+                    'This failed original was already released. Review a fresh claim.',
+                  );
+                apply();
+              } catch (error) {
+                failure = error;
+                tx.abort();
+              }
+            };
+          };
           if (guardAccount)
-            guardReservation(tx, registry, name, credential, guardAccount, apply, (error) => {
-              failure = error;
-              tx.abort();
-            });
-          else apply();
+            guardReservation(
+              tx,
+              registry,
+              name,
+              credential,
+              guardAccount,
+              checkArchive,
+              (error) => {
+                failure = error;
+                tx.abort();
+              },
+            );
+          else checkArchive();
         } catch (error) {
           failure = error;
           tx.abort();
@@ -276,16 +308,158 @@ function makeAccess(db: IDBDatabase) {
   };
 }
 
+/** Archive only an exact, externally verified failed original. The caller must
+ * recheck finality and registry availability before this atomic release. */
+function releaseFailed(db: IDBDatabase, receipt: ClaimReceipt, credential: string): Promise<void> {
+  const original = claimReceipt(receipt);
+  if (!claimHex(credential)) throw new Error('Invalid claim credential scope.');
+  const key = JSON.stringify(['undeployed', original.registryAddress, original.name]);
+  const selectionId = selectionKey(original.registryAddress, original.accountAddress, credential);
+  const releasedId = JSON.stringify([
+    'undeployed',
+    original.registryAddress,
+    original.name,
+    original.transaction.sha256,
+  ]);
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([storeName, selectionStore, releasedStore], 'readwrite', {
+      durability: 'strict',
+    });
+    let failure: unknown;
+    tx.oncomplete = () => resolve();
+    tx.onabort = () => reject(failure ?? new Error('Failed claim release could not commit.'));
+    const claims = tx.objectStore(storeName);
+    const selected = tx.objectStore(selectionStore);
+    const history = tx.objectStore(releasedStore);
+    const current = claims.get(key);
+    current.onsuccess = () => {
+      try {
+        const stored = readStored(current.result);
+        if (
+          stored?.credential !== credential ||
+          !stored.receipt ||
+          JSON.stringify(stored.receipt) !== JSON.stringify(original)
+        )
+          throw new Error('The failed original changed. Check it again before release.');
+        const choice = selected.get(selectionId);
+        choice.onsuccess = () => {
+          try {
+            const name = selectedName(choice.result);
+            if (name !== undefined && name !== original.name)
+              throw new Error('The selected name changed. Check it again before release.');
+            let lastRelease = 0;
+            const scan = history.openCursor();
+            scan.onsuccess = () => {
+              try {
+                const cursor = scan.result;
+                if (cursor) {
+                  const row = cursor.value as Record<string, unknown>;
+                  if (row.credential === credential && row.receipt) {
+                    const prior = readStored(row);
+                    if (
+                      prior?.receipt?.registryAddress === original.registryAddress &&
+                      prior.receipt.name === original.name &&
+                      prior.receipt.accountAddress === original.accountAddress
+                    ) {
+                      const timestamp = Date.parse(String(row.releasedAt));
+                      if (row.reason !== 'FAILURE' || !Number.isFinite(timestamp))
+                        throw new Error('Released claim history is invalid.');
+                      lastRelease = Math.max(lastRelease, timestamp);
+                    }
+                  }
+                  cursor.continue();
+                  return;
+                }
+                const releasedAt = new Date(Math.max(Date.now(), lastRelease + 1)).toISOString();
+                history.add({ ...stored, releasedAt, reason: 'FAILURE' }, releasedId);
+                claims.delete(key);
+                if (name !== undefined) selected.delete(selectionId);
+              } catch (error) {
+                failure = error;
+                tx.abort();
+              }
+            };
+          } catch (error) {
+            failure = error;
+            tx.abort();
+          }
+        };
+      } catch (error) {
+        failure = error;
+        tx.abort();
+      }
+    };
+  });
+}
+
+function readReleased(
+  db: IDBDatabase,
+  registry: string,
+  name: string,
+  account: string,
+  credential: string,
+): Promise<ClaimReceipt[]> {
+  if (!claimHex(registry) || !claimName(name) || !claimHex(account) || !claimHex(credential))
+    throw new Error('Invalid released claim scope.');
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(releasedStore, 'readonly');
+    const receipts: { receipt: ClaimReceipt; releasedAt: string }[] = [];
+    let failure: unknown;
+    tx.oncomplete = () =>
+      resolve(
+        receipts
+          .sort((a, b) => a.releasedAt.localeCompare(b.releasedAt))
+          .map(({ receipt }) => receipt),
+      );
+    tx.onabort = () => reject(failure ?? new Error('Released claim history is unavailable.'));
+    const cursor = tx.objectStore(releasedStore).openCursor();
+    cursor.onsuccess = () => {
+      try {
+        if (!cursor.result) return;
+        const key = JSON.parse(String(cursor.result.key)) as unknown;
+        if (
+          Array.isArray(key) &&
+          key.length === 4 &&
+          key[0] === 'undeployed' &&
+          key[1] === registry &&
+          key[2] === name
+        ) {
+          const row = cursor.result.value as Record<string, unknown>;
+          if (row.credential === credential) {
+            const stored = readStored(row);
+            if (
+              row.reason !== 'FAILURE' ||
+              typeof row.releasedAt !== 'string' ||
+              !Number.isFinite(Date.parse(row.releasedAt)) ||
+              !stored?.receipt ||
+              stored.receipt.transaction.sha256 !== key[3]
+            )
+              throw new Error('Released claim history is invalid.');
+            if (stored.receipt.accountAddress === account)
+              receipts.push({ receipt: stored.receipt, releasedAt: row.releasedAt });
+          }
+        }
+        cursor.result.continue();
+      } catch (error) {
+        failure = error;
+        tx.abort();
+      }
+    };
+  });
+}
+
 /** A network/registry/name has one original receipt on this origin, including across tabs. */
 export async function openClaimJournal(indexedDB: IDBFactory) {
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open('mn-passport:midnames-claims', 2);
+    const request = indexedDB.open('mn-passport:midnames-claims', 3);
     let blocked = false;
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(storeName))
         request.result.createObjectStore(storeName);
       if (!request.result.objectStoreNames.contains(selectionStore))
         request.result.createObjectStore(selectionStore);
+      if (!request.result.objectStoreNames.contains(releasedStore))
+        request.result.createObjectStore(releasedStore);
     };
     request.onerror = request.onblocked = () => {
       blocked = true;
@@ -364,26 +538,37 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
       const expected = quote ?? saved?.quote;
       const digest = expected && (await claimQuoteDigest(expected));
       return (
-        await access(receipt.registryAddress, receipt.name, credential, (previous) => {
-          if (previous?.receipt) {
-            if (JSON.stringify(previous.receipt) !== JSON.stringify(receipt))
-              throw new Error('A different original claim is retained for this name.');
-            return previous;
-          }
-          if (JSON.stringify(previous?.quote) !== JSON.stringify(expected))
-            throw new Error('The receipt does not match the original reviewed quote.');
-          if (
-            previous?.quote &&
-            (!matchesDestination(receipt, previous.quote) ||
-              previous.ownerCommitment !== receipt.ownerCommitment ||
-              (previous.quoteSha256 !== undefined && previous.quoteSha256 !== digest) ||
-              receipt.quoteSha256 !== digest)
-          )
-            throw new Error('The receipt does not match the original reviewed quote.');
-          return { ...previous, credential, receipt, ...(digest && { quoteSha256: digest }) };
-        })
+        await access(
+          receipt.registryAddress,
+          receipt.name,
+          credential,
+          (previous) => {
+            if (previous?.receipt) {
+              if (JSON.stringify(previous.receipt) !== JSON.stringify(receipt))
+                throw new Error('A different original claim is retained for this name.');
+              return previous;
+            }
+            if (JSON.stringify(previous?.quote) !== JSON.stringify(expected))
+              throw new Error('The receipt does not match the original reviewed quote.');
+            if (
+              previous?.quote &&
+              (!matchesDestination(receipt, previous.quote) ||
+                previous.ownerCommitment !== receipt.ownerCommitment ||
+                (previous.quoteSha256 !== undefined && previous.quoteSha256 !== digest) ||
+                receipt.quoteSha256 !== digest)
+            )
+              throw new Error('The receipt does not match the original reviewed quote.');
+            return { ...previous, credential, receipt, ...(digest && { quoteSha256: digest }) };
+          },
+          undefined,
+          receipt.transaction.sha256,
+        )
       )?.receipt;
     },
+    releaseFailed: (receipt: ClaimReceipt, credential: string) =>
+      releaseFailed(db, receipt, credential),
+    readReleased: (registry: string, name: string, account: string, credential: string) =>
+      readReleased(db, registry, name, account, credential),
     close: () => db.close(),
   };
 }
