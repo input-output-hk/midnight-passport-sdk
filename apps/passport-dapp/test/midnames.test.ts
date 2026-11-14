@@ -173,6 +173,18 @@ test('online known mapping is checked fresh and never turns absence or outage in
   assert.equal((await resolvePassportName(service, other))?.accountAddress, repointed);
   assert.deepEqual(calls, [known.name, other.name]);
   calls.length = 0;
+  for (const badName of ['Bob.passport.night', 'bob..passport.night', 'bob.night'])
+    await assert.rejects(
+      resolvePassportName(service, { ...other, name: badName }),
+      code('InvalidQuery'),
+    );
+  unavailable = true;
+  await assert.rejects(
+    resolvePassportName(service, { ...other, name: 'Bob.passport.night' }),
+    code('InvalidQuery'),
+  );
+  unavailable = false;
+  assert.deepEqual(calls, []);
   knownTarget = repointed;
   await assert.rejects(resolvePassportName(service, other), code('InvalidRecord'));
   assert.deepEqual(calls, [known.name]);
