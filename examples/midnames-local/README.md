@@ -108,7 +108,10 @@ address, asset, amount, and applicable operations. Type the displayed
 `SEND <full ACC address> <amount>` phrase to authorize that one local intent.
 The registry appears in the review as `providerId: midnames:<registry address>`.
 Any other answer refuses the named deposit or withdrawal before that payment is
-dispatched. Local setup transactions, including test funding or token minting,
+dispatched; Ctrl+C at the prompt is also a decline. The shielded sender receipt
+records the review decision and zero named-payment dispatches on refusal. The
+NIGHT fixture checks zero owner signatures and payment dispatches on refusal.
+Local setup transactions, including test funding or token minting,
 may already have completed before the prompt. A refused run retains its failed
 receipt; use a new output name for a new run. The fixture still uses
 synthetic local funds and the pinned standalone registry. Its terminal review

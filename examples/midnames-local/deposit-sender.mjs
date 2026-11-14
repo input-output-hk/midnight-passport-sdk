@@ -147,10 +147,14 @@ try {
       async review(intent) {
         receipt.review = { ...intent, amount: String(intent.amount) };
         save();
-        if (interactiveReviewRequested())
-          return reviewInTerminal(receipt.review, intent.accountAddress);
-        console.log('Synthetic sender approval', JSON.stringify(receipt.review));
-        return true;
+        const interactive = interactiveReviewRequested();
+        if (!interactive) console.log('Synthetic sender approval', JSON.stringify(receipt.review));
+        const approved = interactive
+          ? await reviewInTerminal(receipt.review, intent.accountAddress)
+          : true;
+        receipt.reviewDecision = approved ? 'approved' : 'declined';
+        save();
+        return approved;
       },
       async prepare({ account, coin, entry }) {
         const {
@@ -206,6 +210,10 @@ try {
   receipt.passed = true;
   save();
 } catch (error) {
+  if (receipt.reviewDecision === 'declined') {
+    assert.equal(receipt.dispatches, 0);
+    assert.equal(receipt.preparedSha256, undefined);
+  }
   receipt.error = String(error);
   save();
   throw error;

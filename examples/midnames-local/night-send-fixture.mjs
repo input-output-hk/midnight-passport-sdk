@@ -3,7 +3,10 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { sendNightByName } from '../../apps/passport-dapp/src/midnames/night-send.ts';
+import {
+  NightPaymentDeclined,
+  sendNightByName,
+} from '../../apps/passport-dapp/src/midnames/night-send.ts';
 import { createMidnamesNameService } from '../../apps/passport-dapp/src/midnames/resolver.ts';
 import { readHostConfirmation } from '../../apps/passport-service/src/host-confirmation.ts';
 import { prepareLocalnetNight } from '../../apps/passport-funding-service/src/night-preparation.ts';
@@ -292,7 +295,7 @@ export async function qualifyNightSend({
     );
     assert.fail('Expected an interrupted withdrawal.');
   } catch (error) {
-    if (interactiveReviewRequested() && error?.message === 'NIGHT payment declined.') {
+    if (interactiveReviewRequested() && error instanceof NightPaymentDeclined) {
       assert.equal(signatures, 0);
       assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
       throw error;

@@ -26,6 +26,9 @@ export async function reviewInTerminal(intent, target) {
       (await input.question(`Type ${phrase} to approve, or anything else to cancel: `)).trim() ===
       phrase
     );
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') return false;
+    throw error;
   } finally {
     input.close();
   }
