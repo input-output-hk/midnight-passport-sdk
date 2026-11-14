@@ -112,7 +112,10 @@ export function showClaimRecovery(
   const sendReview = createClaimSendReview(send, quoteSummary);
   form.hidden = false;
   let busy = false;
-  name.addEventListener('input', sendReview.clear);
+  name.addEventListener('input', () => {
+    sendReview.clear();
+    report('Name changed. Check the selected name before claiming.');
+  });
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();

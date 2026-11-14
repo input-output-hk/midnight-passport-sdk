@@ -368,6 +368,11 @@ try {
       .locator('#setup-status')
       .filter({ hasText: /^Registered/ })
       .waitFor();
+    await named.locator('#claim-recovery-name').fill('bob.night');
+    await named
+      .locator('#setup-status')
+      .filter({ hasText: /^Pending Passport setup/ })
+      .waitFor();
     const secondAccount = await setup.newPage();
     await secondAccount.goto(pageUrl + '?setup&account2');
     await secondAccount.locator('#claim-recovery-name').fill(receipt.name);
