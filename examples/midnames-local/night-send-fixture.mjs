@@ -283,15 +283,22 @@ export async function qualifyNightSend({
   }
   const interrupted = new Error('Injected interruption after withdrawal finality');
   step('withdraw-then-interrupt-before-deposit');
-  await assert.rejects(
-    sendNightByName(
+  try {
+    await sendNightByName(
       request,
       openPorts(() => {
         throw interrupted;
       }),
-    ),
-    (error) => error.cause === interrupted,
-  );
+    );
+    assert.fail('Expected an interrupted withdrawal.');
+  } catch (error) {
+    if (interactiveReviewRequested() && error?.message === 'NIGHT payment declined.') {
+      assert.equal(signatures, 0);
+      assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
+      throw error;
+    }
+    assert.equal(error.cause, interrupted);
+  }
   const intermediate = {
     source: String(await balance(source)),
     target: String(await balance(target)),

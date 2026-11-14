@@ -55,9 +55,6 @@ const docker = (args) =>
       : args,
     { encoding: 'utf8', timeout: 30_000, stdio: ['ignore', 'pipe', 'pipe'] },
   ).trim();
-const info = JSON.parse(docker(['info', '--format', '{{json .}}']));
-assert.ok(info.MemTotal >= 24 * 1024 ** 3);
-const images = isolatedImages(docker, info.Architecture === 'aarch64' ? 'arm64' : 'amd64');
 assert.match(
   out ?? '',
   /^midnames-(?:deposit|night-send|claim-handoff|claim-browser|claim-owner-browser)-[a-z0-9-]{1,48}$/,
@@ -76,6 +73,9 @@ if (interactive)
     fixtureMode === 'named-shielded-deposit' || fixtureMode === 'named-night-send',
     'Terminal review supports only named value fixtures.',
   );
+const info = JSON.parse(docker(['info', '--format', '{{json .}}']));
+assert.ok(info.MemTotal >= 24 * 1024 ** 3);
+const images = isolatedImages(docker, info.Architecture === 'aarch64' ? 'arm64' : 'amd64');
 const review = join(root, 'review');
 mkdirSync(review, { recursive: true, mode: 0o700 });
 assert.equal(realpathSync(review), review);

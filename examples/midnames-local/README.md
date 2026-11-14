@@ -106,6 +106,7 @@ stack. After resolving a supported contract target, the separate sender or
 synthetic ACC owner displays the exact name, network, registry, full ACC
 address, asset, amount, and applicable operations. Type the displayed
 `SEND <full ACC address> <amount>` phrase to authorize that one local intent.
+The registry appears in the review as `providerId: midnames:<registry address>`.
 Any other answer refuses the named deposit or withdrawal before that payment is
 dispatched. Local setup transactions, including test funding or token minting,
 may already have completed before the prompt. A refused run retains its failed
