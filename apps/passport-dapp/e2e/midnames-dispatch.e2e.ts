@@ -352,16 +352,12 @@ try {
       .filter({ hasText: /Unregistered/ })
       .waitFor();
     await named.reload();
-    await named.waitForFunction(
-      (expected) =>
-        (globalThis.document.getElementById('claim-recovery-name') as HTMLInputElement).value ===
-        expected,
-      receipt.name,
-    );
-    assert.match(await named.locator('#setup-status').innerText(), /selected name is pending/);
+    assert.equal(await named.locator('#claim-recovery-name').inputValue(), '');
+    assert.match(await named.locator('#setup-status').innerText(), /Choose a .night name/);
     const unrelated = await setup.newPage();
     await unrelated.goto(pageUrl + '?setup&other');
     assert.equal(await unrelated.locator('#claim-recovery-name').inputValue(), '');
+    await named.locator('#claim-recovery-name').fill(receipt.name);
     await named.locator('#claim-recovery-receipt').fill(JSON.stringify(receipt));
     await named.locator('#claim-recovery-retain').click();
     await named
@@ -369,6 +365,9 @@ try {
       .filter({ hasText: /Original receipt saved/ })
       .waitFor();
     await named.reload();
+    assert.equal(await named.locator('#claim-recovery-name').inputValue(), '');
+    await named.locator('#claim-recovery-name').fill(receipt.name);
+    await named.locator('#claim-recovery-check').click();
     await named
       .locator('#setup-status')
       .filter({ hasText: /^Registered/ })
@@ -387,10 +386,7 @@ try {
       .filter({ hasText: /original account and receipt/ })
       .waitFor();
     await secondAccount.reload();
-    await secondAccount
-      .locator('#setup-status')
-      .filter({ hasText: /retained claim belongs to another Passport ACC/ })
-      .waitFor();
+    assert.equal(await secondAccount.locator('#claim-recovery-name').inputValue(), '');
   } finally {
     await setup.close();
   }
@@ -431,6 +427,9 @@ try {
   await status.filter({ hasText: 'Original receipt saved' }).waitFor();
   const outage = await browser.newPage();
   await outage.goto(pageUrl + '?setup&outage');
+  assert.equal(await outage.locator('#claim-recovery-name').inputValue(), '');
+  await outage.locator('#claim-recovery-name').fill(receipt.name);
+  await outage.locator('#claim-recovery-check').click();
   await outage
     .locator('#claim-recovery-status')
     .filter({ hasText: 'Name service unavailable' })

@@ -194,10 +194,12 @@ that the original transaction finalized successfully.
 
 For `standalone-0.35` with namespace `night`, create or open the target Passport
 ACC with its passkey, then use **Finish Passport setup** on Passport account →
-Balances. This is a post-ACC step for the same address. Choosing a local
-`.night` name stores the selection per registry, ACC, and credential in this
-browser. Reopening with the same credential restores the selection and checks
-any retained original claim. Setup remains pending until the original
+Balances. This is a post-ACC step for the same address. Reviewing a valid claim
+quote stores the selected `.night` name per registry, ACC, and credential in
+this browser. Reopening with the same credential restores that selection and
+checks any retained original claim. Checking availability and importing a
+receipt only inspect the entered name; after a reload, enter it again unless a
+quote was reviewed. Setup remains pending until the original
 transaction and current registry record match. Selection alone does not claim
 the name; browser storage loss or a different device requires recovery from
 the original receipt. Name-owner rotation after total credential loss is not

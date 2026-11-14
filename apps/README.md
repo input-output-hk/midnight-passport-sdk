@@ -889,10 +889,11 @@ after quote approval and sends only proved bytes to the sponsor. See the
 
 On the pinned `standalone-0.35` registry with namespace `night`, the demo
 shows **Finish Passport setup** on the Passport account's Balances page after
-creation or passkey-based opening. The user selects a local `.night` name for
-the already deployed ACC; the browser retains that choice per registry, ACC,
-and credential. It restores the choice after reopening with the same credential
-and reconciles a retained original receipt. A pending claim stays visibly
+creation or passkey-based opening. Reviewing a valid quote for the already
+deployed ACC retains the selected `.night` name per registry, ACC, and
+credential. It restores that choice after reopening with the same credential
+and reconciles a retained original receipt. Availability and imported-receipt
+checks leave the name unselected; enter it again after a reload. A pending claim stays visibly
 pending until the original transaction and current registry binding agree.
 An unavailable indexer stays an unavailable check rather than a pending claim;
 the original receipt remains available for retry. If neither preparation nor

@@ -101,17 +101,21 @@ export function configureMidnames(
         const finality = await readClaimFinality(http, receipt);
         if (finality === undefined) return 'unavailable';
         if (!finality) return 'pending';
-        const reader = await reads();
-        const record = await reader.readClaim(receipt.name, profile);
-        if (!record) return 'pending';
-        if (
-          record.ownerCommitment !== receipt.ownerCommitment ||
-          record.target.kind !== 'contract' ||
-          record.target.address !== receipt.accountAddress ||
-          !(await reader.isSupportedAccount(receipt.accountAddress, networkId))
-        )
-          return 'conflict';
-        return 'registered';
+        try {
+          const reader = await reads();
+          const record = await reader.readClaim(receipt.name, profile);
+          if (!record) return 'pending';
+          if (
+            record.ownerCommitment !== receipt.ownerCommitment ||
+            record.target.kind !== 'contract' ||
+            record.target.address !== receipt.accountAddress ||
+            !(await reader.isSupportedAccount(receipt.accountAddress, networkId))
+          )
+            return 'conflict';
+          return 'registered';
+        } catch {
+          return 'unavailable';
+        }
       },
     },
   };

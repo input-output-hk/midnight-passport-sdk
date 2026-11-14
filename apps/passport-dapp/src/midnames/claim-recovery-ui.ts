@@ -154,8 +154,6 @@ export function showClaimRecovery(
       const journal = await openClaimJournal(indexedDB);
       try {
         ensureAccount();
-        await journal.selectName(recovery.registryAddress, account.address, scope, selected);
-        ensureAccount();
         if (preparation?.handles(event.submitter)) {
           await preparation.run(event.submitter, {
             account,
@@ -216,7 +214,7 @@ export function showClaimRecovery(
           report(messages.pending);
           return;
         }
-        const result = await recovery.check(original);
+        const result = await recovery.check(original).catch(() => 'unavailable' as const);
         ensureAccount();
         report(messages[result]);
       } finally {

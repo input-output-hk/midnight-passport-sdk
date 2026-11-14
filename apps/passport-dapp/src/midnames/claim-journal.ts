@@ -57,12 +57,34 @@ function readStored(value: unknown): StoredClaim | undefined {
 
 function activeClaimName(
   value: unknown,
+  key: IDBValidKey,
   registry: string,
   account: string,
   credential: string,
 ): string | undefined {
+  if (typeof key !== 'string') throw new Error('Stored claim key is invalid.');
+  const scope: unknown = JSON.parse(key);
+  if (!Array.isArray(scope) || scope.length !== 3 || scope[0] !== 'undeployed')
+    throw new Error('Stored claim key is invalid.');
+  if (scope[1] !== registry) return undefined;
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const row = value as Record<string, unknown>;
+    if (claimHex(row.credential) && row.credential !== credential) return undefined;
+    const destinations = [row.receipt, row.quote].filter(
+      (entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object',
+    );
+    if (
+      destinations.length &&
+      destinations.every(
+        (entry) => claimHex(entry.accountAddress) && entry.accountAddress !== account,
+      )
+    )
+      return undefined;
+  }
   const retained = readStored(value);
   const destination = retained?.receipt ?? retained?.quote;
+  if (destination && (scope[2] !== destination.name || destination.registryAddress !== registry))
+    throw new Error('Stored claim key differs from its original.');
   return retained?.credential === credential &&
     destination?.registryAddress === registry &&
     destination.accountAddress === account &&
@@ -106,24 +128,37 @@ function selection(
       try {
         const previous = selectedName(request.result);
         result = name ?? previous;
-        // Version 1 has claims but no selections. Recover one unambiguous
-        // original name or refuse a conflicting new choice in this transaction.
-        let recovered: string | undefined;
+        // Version 1 has claims but no selections. Recover an unambiguous
+        // prepared quote, but do not turn an imported receipt into a selection.
+        const originals = new Set<string>();
+        const prepared = new Set<string>();
         const scan = tx.objectStore(storeName).openCursor();
         scan.onsuccess = () => {
           try {
             const cursor = scan.result;
             if (!cursor) {
-              if (name === undefined) result = recovered ?? previous;
-              else if (name !== previous) store.put(name, key);
+              if (name === undefined) {
+                const sole = originals.size === 1 ? [...originals][0] : undefined;
+                if (originals.size > 1 && (!previous || !originals.has(previous)))
+                  throw new Error('Multiple original claims require manual recovery.');
+                result =
+                  previous && (!originals.size || originals.has(previous))
+                    ? previous
+                    : sole && prepared.has(sole)
+                      ? sole
+                      : undefined;
+              } else {
+                if (originals.size && !originals.has(name))
+                  throw new Error('Recover the original claim before choosing another name.');
+                if (name !== previous) store.put(name, key);
+              }
               return;
             }
-            const active = activeClaimName(cursor.value, registry, account, credential);
-            if (active && name !== undefined && active !== name)
-              throw new Error('Recover the original claim before choosing another name.');
-            if (active && name === undefined && recovered && recovered !== active)
-              throw new Error('Multiple original claims require manual recovery.');
-            recovered = active ?? recovered;
+            const active = activeClaimName(cursor.value, cursor.key, registry, account, credential);
+            if (active) {
+              originals.add(active);
+              if ((cursor.value as StoredClaim).quote) prepared.add(active);
+            }
             cursor.continue();
           } catch (error) {
             failure = error;
@@ -161,7 +196,7 @@ function guardReservation(
             allowed();
             return;
           }
-          const active = activeClaimName(cursor.value, registry, account, credential);
+          const active = activeClaimName(cursor.value, cursor.key, registry, account, credential);
           if (active && active !== name)
             throw new Error('Recover the original claim before reserving another name.');
           cursor.continue();

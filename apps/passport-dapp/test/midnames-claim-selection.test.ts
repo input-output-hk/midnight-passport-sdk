@@ -20,6 +20,30 @@ const quoteFor = (name: string) => ({
   expiresAt: Date.now() + 60_000,
 });
 
+const receiptFor = (name: string) => ({
+  networkId: 'undeployed' as const,
+  registryAddress: registry,
+  accountAddress: account,
+  name,
+  ownerCommitment: '78'.repeat(32),
+  transaction: { identifiers: ['00' + '90'.repeat(32)], sha256: 'ab'.repeat(32) },
+});
+
+test('importing a receipt does not select its name on reopen', async () => {
+  const factory = new IDBFactory();
+  let journal = await openClaimJournal(factory);
+  await journal.retain(receiptFor('alice.night'), credential);
+  journal.close();
+  journal = await openClaimJournal(factory);
+  assert.equal(await journal.readSelection(registry, account, credential), undefined);
+  assert.equal((await journal.read(registry, 'alice.night', credential))?.name, 'alice.night');
+  await assert.rejects(
+    journal.selectName(registry, account, credential, 'bob.night'),
+    /Recover the original claim/,
+  );
+  journal.close();
+});
+
 test('a selected name survives database upgrade and reopen but stays scoped to one credential and ACC', async () => {
   const factory = new IDBFactory();
   const legacy = factory.open('mn-passport:midnames-claims', 1);
@@ -162,4 +186,76 @@ test('a later tab selection invalidates a stale tab before reservation', async (
   );
   first.close();
   second.close();
+});
+
+test('two legacy originals remain inspectable but cannot authorize a third name', async () => {
+  const factory = new IDBFactory();
+  const legacy = factory.open('mn-passport:midnames-claims', 1);
+  await new Promise<void>((resolve, reject) => {
+    legacy.onupgradeneeded = () => {
+      const store = legacy.result.createObjectStore('claims');
+      for (const name of ['alice.night', 'bob.night'])
+        store.put(
+          { credential, quote: quoteFor(name) },
+          JSON.stringify(['undeployed', registry, name]),
+        );
+    };
+    legacy.onsuccess = () => {
+      legacy.result.close();
+      resolve();
+    };
+    legacy.onerror = () => reject(legacy.error);
+  });
+  const journal = await openClaimJournal(factory);
+  await assert.rejects(journal.readSelection(registry, account, credential), /manual recovery/);
+  assert.equal(
+    (await journal.readPreparation(registry, 'alice.night', credential))?.quote.name,
+    'alice.night',
+  );
+  assert.equal(
+    (await journal.readPreparation(registry, 'bob.night', credential))?.quote.name,
+    'bob.night',
+  );
+  assert.equal(await journal.selectName(registry, account, credential, 'bob.night'), 'bob.night');
+  await assert.rejects(
+    journal.selectName(registry, account, credential, 'carol.night'),
+    /Recover the original claim/,
+  );
+  await assert.rejects(journal.reserve(quoteFor('carol.night'), credential));
+  journal.close();
+});
+
+test('selection skips corrupt rows belonging to another registry or credential', async () => {
+  const factory = new IDBFactory();
+  const legacy = factory.open('mn-passport:midnames-claims', 1);
+  await new Promise<void>((resolve, reject) => {
+    legacy.onupgradeneeded = () => {
+      const store = legacy.result.createObjectStore('claims');
+      store.put({ broken: true }, JSON.stringify(['undeployed', 'ab'.repeat(32), 'bad.night']));
+      store.put(
+        { credential: '78'.repeat(32), broken: true },
+        JSON.stringify(['undeployed', registry, 'other.night']),
+      );
+      store.put(
+        { credential, quote: quoteFor('alice.night') },
+        JSON.stringify(['undeployed', registry, 'alice.night']),
+      );
+    };
+    legacy.onsuccess = () => {
+      legacy.result.close();
+      resolve();
+    };
+    legacy.onerror = () => reject(legacy.error);
+  });
+  const journal = await openClaimJournal(factory);
+  assert.equal(await journal.readSelection(registry, account, credential), 'alice.night');
+  assert.equal(
+    await journal.selectName(registry, account, credential, 'alice.night'),
+    'alice.night',
+  );
+  await assert.rejects(
+    journal.selectName(registry, account, credential, 'bob.night'),
+    /Recover the original claim/,
+  );
+  journal.close();
 });

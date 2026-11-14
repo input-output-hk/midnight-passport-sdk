@@ -125,11 +125,12 @@ If the sponsor durably refuses changed terms before recording an intent, the
 browser can review a new quote. An unknown result stays bound to the original.
 
 The opt-in **Finish Passport setup** panel on Passport account → Balances
-appears after creation or passkey-based opening of the target ACC. It retains
-the selected local `.night` name per registry, ACC, and credential, restores
-the selection after reopening, and keeps the setup pending until the original
+appears after creation or passkey-based opening of the target ACC. Reviewing a
+valid quote retains the selected local `.night` name per registry, ACC, and
+credential. It restores that selection after reopening and keeps the setup pending until the original
 transaction and current registry record match. It does not deploy another ACC
-or automatically send a claim. The panel can save a standalone sponsor receipt.
+or automatically send a claim. Availability and imported-receipt checks do not
+select a name; enter it again after a reload. The panel can save a standalone sponsor receipt.
 An unavailable indexer leaves the original receipt intact and reports the
 check as unavailable. Without claim preparation or sponsor dispatch, the panel
 is labelled read-only receipt inspection and offers no claim action.
