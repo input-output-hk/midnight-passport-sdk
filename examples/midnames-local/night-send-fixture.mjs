@@ -286,6 +286,7 @@ export async function qualifyNightSend({
   }
   const interrupted = new Error('Injected interruption after withdrawal finality');
   step('withdraw-then-interrupt-before-deposit');
+  /** @type {unknown} */ let failure;
   try {
     await sendNightByName(
       request,
@@ -293,15 +294,21 @@ export async function qualifyNightSend({
         throw interrupted;
       }),
     );
-    assert.fail('Expected an interrupted withdrawal.');
   } catch (error) {
-    if (interactiveReviewRequested() && error instanceof NightPaymentDeclined) {
-      assert.equal(signatures, 0);
-      assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
-      throw error;
-    }
-    assert.equal(error.cause, interrupted);
+    failure = error;
   }
+  if (failure === undefined) assert.fail('Expected an interrupted withdrawal.');
+  if (interactiveReviewRequested() && failure instanceof NightPaymentDeclined) {
+    assert.equal(signatures, 0);
+    assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
+    createOnce(
+      join(directory, 'decline.json'),
+      JSON.stringify({ reviewDecision: 'declined', approvals, signatures, sent }),
+    );
+    throw failure;
+  }
+  assert.ok(failure instanceof Error);
+  assert.equal(failure.cause, interrupted);
   const intermediate = {
     source: String(await balance(source)),
     target: String(await balance(target)),

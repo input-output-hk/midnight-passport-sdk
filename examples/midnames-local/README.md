@@ -104,13 +104,14 @@ PASSPORT_MIDNAMES_INTERACTIVE=1 nix develop -c env -u LD_DYLD_PATH \
 The runner refuses this mode without an attached terminal before creating a
 stack. After resolving a supported contract target, the separate sender or
 synthetic ACC owner displays the exact name, network, registry, full ACC
-address, asset, amount, and applicable operations. Type the displayed
+address, asset, and amount. The NIGHT review also lists its two operations. Type the displayed
 `SEND <full ACC address> <amount>` phrase to authorize that one local intent.
 The registry appears in the review as `providerId: midnames:<registry address>`.
 Any other answer refuses the named deposit or withdrawal before that payment is
 dispatched; Ctrl+C at the prompt is also a decline. The shielded sender receipt
 records the review decision and zero named-payment dispatches on refusal. The
 NIGHT fixture checks zero owner signatures and payment dispatches on refusal.
+It retains those counters in `night-send/decline.json` for that failed run.
 Local setup transactions, including test funding or token minting,
 may already have completed before the prompt. A refused run retains its failed
 receipt; use a new output name for a new run. The fixture still uses

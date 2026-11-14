@@ -210,12 +210,12 @@ try {
   receipt.passed = true;
   save();
 } catch (error) {
+  receipt.error = String(error);
+  save();
   if (receipt.reviewDecision === 'declined') {
     assert.equal(receipt.dispatches, 0);
     assert.equal(receipt.preparedSha256, undefined);
   }
-  receipt.error = String(error);
-  save();
   throw error;
 } finally {
   if (wallet) await wallet.wallet.stop();
