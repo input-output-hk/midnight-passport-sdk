@@ -131,6 +131,20 @@ missing-contract response for an absent address. An online profile requires
 evidence for its deployed registry, a known name, and the corresponding chain
 before it is enabled.
 
+As checked on 14 November 2026, the pinned SDK's historical Midnight-hosted
+preprod indexer endpoints return HTTP 410. The [current network endpoint
+guide](https://docs.midnight.network/relnotes/network) uses Blockfrost project
+authentication for preprod. No independently known online name-to-ACC contract
+mapping has been qualified, so this demo does not enable an online Midnames
+profile. Keep a project token in a host-controlled provider, never in `VITE_`
+browser inputs.
+
+| Passport naming constraint | Implemented local subset | Deviation or remaining gate |
+| --- | --- | --- |
+| [MIP-0007](https://github.com/midnightntwrk/midnight-improvement-proposals/blob/main/mips/mip-0007-name-service-registry-and-resolver.md) contract-call routing | Resolve a canonical path from the configured registry root and accept only its contract target, never its default field or a wallet target. Check the target's deployed ACC verifier roster. | The live Midnames 2.1.0 single-contract registry has a transitional target field, not the proposed delegated operation-context resolver or contract-owned-name arm. |
+| [P2](https://github.com/midnightntwrk/passport/blob/main/docs/plans/PROMISES.md) on-chain name binding | Check the registry's pinned verifier roster and resolve from one observed state; require a matching owner commitment and ACC target for claim confirmation. | The indexer is still a trusted read input. Public `passport.night` ownership, complete named onboarding, independent chain-read agreement, and total-loss continuity remain open. |
+| [P8](https://github.com/midnightntwrk/passport/blob/main/docs/plans/PROMISES.md) substitutable infrastructure | The reader accepts an injected provider; local qualification uses an owned indexer and prover rather than a Midnames-hosted lookup service. | The online authenticated provider and independently known name-to-contract smoke are unqualified. The optional claim sponsor is a host policy and has no demonstrated online replacement. |
+
 The 2.1.0 tarball includes a read generation and an older managed write
 generation. Its root export can fail at load because the managed module expects
 runtime 0.15.0, and its write wrapper reports writes paused. The demo uses only
@@ -250,6 +264,12 @@ one sponsored submission with two DUST spends. After restarting Chromium, the
 demo recovered the same claim from the live indexer. This run used a synthetic
 browser credential. The form accepts the public receipt. Name ownership
 depends on retaining the separate owner secret.
+An owned rerun on signed source `979b9e2` again proved in a separate owner
+Chromium process, accepted exactly two DUST spends under the sponsor policy,
+made one browser submission, refused an alternate credential, and recovered
+the original receipt after a lost response and browser restart. The fixture
+attaches its quote after proof, so it does not qualify human pre-proof review
+or the Balances panel's full ACC create/open handoff.
 The [browser claim design](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0018-standalone-midnames-claim.md) describes
 the proof and sponsor checks for browser-initiated onboarding.
 
@@ -277,6 +297,10 @@ On the isolated Ledger 9 chain, the sender submitted once and the deposit of
 10 smallest units of a synthetic token finalized at block 73. The owner
 verified the original output and the held amount. Separate live reads covered
 an unknown name, a different network, and an incompatible contract.
+An owned rerun on signed source `979b9e2` finalized the independent sender's
+one dispatch at block 74 and again matched the original output, decrypted
+inbox coin, and current holdings. It used a fresh isolated registry and ACC;
+the prior run's block and contract addresses are not reused.
 
 Run the [standalone fixture](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local)
 from a source checkout containing #317. The fixture uses local `.night` on
@@ -310,5 +334,10 @@ withdrawal at block 147 and paused at 6 and 0. After the journal was reopened,
 the original wallet output funded the deposit at block 150, leaving balances
 of 6 and 4. Both legs dispatched once. An independent indexer read matched
 the withdrawal output to the deposit input.
+An owned rerun on signed source `979b9e2` reached the same 10/0 → 6/0 → 6/4
+balances. It finalized withdrawal and deposit at blocks 94 and 97, consumed
+the exact bridge output, and recorded one approval, one owner signature, one
+dispatch per leg, and zero replay broadcasts. The fresh registry and ACC
+addresses differ from the earlier run.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).
