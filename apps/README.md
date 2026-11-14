@@ -867,7 +867,8 @@ See the [funding image and operator guide](passport-funding-service/README.md).
 The demo's optional Midnames reader uses the existing **Name service** panel.
 Set the five base build inputs in the [naming adapter guide](../docs/site/names.md#source-preview-midnames-210).
 A configured lookup uses the registry's contract target and verifies the
-deployed ACC binding before displaying it. Online profiles also require an
+deployed ACC binding before displaying it. A non-`undeployed` network or
+non-loopback indexer also requires an
 independently observed, public known-name and ACC pin; each lookup rechecks
 that pair and refuses a missing or changed binding. This readiness check does
 not replace an authenticated host indexer proxy or independent chain read.

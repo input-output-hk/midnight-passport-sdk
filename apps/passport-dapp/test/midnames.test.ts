@@ -128,7 +128,12 @@ test('an online profile requires a complete known name-to-ACC pin before lookup'
     indexerUrl: 'https://indexer.preview.midnight.network/api/v4/graphql',
     indexerWsUrl: 'wss://indexer.preview.midnight.network/api/v4/graphql/ws',
   };
-  for (const missing of [{}, { knownName: query.name }, { knownAccountAddress: account }])
+  for (const missing of [
+    {},
+    { knownName: query.name },
+    { knownAccountAddress: account },
+    { knownName: '', knownAccountAddress: '' },
+  ])
     assert.throws(() => configureMidnames({ ...config, ...missing }, 'preview', 'acc-s3r1.1'));
   assert.equal(
     configureMidnames(
@@ -143,6 +148,26 @@ test('an online profile requires a complete known name-to-ACC pin before lookup'
     { knownName: query.name, knownAccountAddress: 'mn_wallet' },
   ])
     assert.throws(() => configureMidnames({ ...config, ...invalid }, 'preview', 'acc-s3r1.1'));
+});
+
+test('a remote indexer requires the known mapping even when labelled undeployed', () => {
+  const remote = {
+    ...profile,
+    indexerUrl: 'https://example.test/graphql',
+    indexerWsUrl: 'wss://example.test/graphql/ws',
+  };
+  assert.throws(
+    () => configureMidnames(remote, 'undeployed', 'acc-s3r1.1'),
+    /complete independently observed/,
+  );
+  assert.equal(
+    configureMidnames(
+      { ...remote, knownName: query.name, knownAccountAddress: account },
+      'undeployed',
+      'acc-s3r1.1',
+    )?.provider.mode,
+    'external',
+  );
 });
 
 test('online known mapping is checked fresh and never turns absence or outage into another destination', async () => {

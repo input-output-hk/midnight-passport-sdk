@@ -17,11 +17,13 @@ export interface MidnamesConfig {
   readonly knownAccountAddress?: string | undefined;
 }
 
+const loopback = (value: string) =>
+  ['localhost', '127.0.0.1', '[::1]'].includes(new URL(value).hostname);
+
 function endpoint(value: string, secure: string, local: string): string {
   const url = new URL(value);
-  const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
   if (
-    (url.protocol !== secure && !(loopback && url.protocol === local)) ||
+    (url.protocol !== secure && !(loopback(value) && url.protocol === local)) ||
     url.username ||
     url.password ||
     url.search ||
@@ -29,6 +31,19 @@ function endpoint(value: string, secure: string, local: string): string {
   )
     throw new Error('Invalid naming indexer URL.');
   return url.href;
+}
+
+function requireOnlinePin(
+  networkId: string,
+  http: string,
+  ws: string,
+  name: string | undefined,
+  account: string | undefined,
+): void {
+  const hasPin = name !== undefined || account !== undefined;
+  const online = networkId !== 'undeployed' || !loopback(http) || !loopback(ws);
+  if ((hasPin && (!name?.trim() || !account?.trim())) || (online && !hasPin))
+    throw new Error('Online naming requires a complete independently observed name-to-ACC pin.');
 }
 
 /** Absence selects the demo mock. Partial or mismatched configuration refuses. */
@@ -56,14 +71,10 @@ export function configureMidnames(
     !indexerWsUrl
   )
     throw new Error('Configure the registry, namespace, matching network, and both indexer URLs.');
-  if (
-    (knownName === undefined) !== (knownAccountAddress === undefined) ||
-    (networkId !== 'undeployed' && knownName === undefined)
-  )
-    throw new Error('Online naming requires a complete independently observed name-to-ACC pin.');
   const profileId = registryProfile(config.registryProfile, networkId);
   const http = endpoint(indexerUrl, 'https:', 'http:');
   const ws = endpoint(indexerWsUrl, 'wss:', 'ws:');
+  requireOnlinePin(networkId, http, ws, knownName, knownAccountAddress);
   const load = () =>
     import('./ledger-reader.js').then(({ createMidnamesIndexer, createMidnamesLedgerReads }) =>
       createMidnamesLedgerReads(

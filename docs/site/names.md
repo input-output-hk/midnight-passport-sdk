@@ -121,8 +121,8 @@ pinned binding. Missing names, wrong target types and unavailable reads have
 separate outcomes. An indexer is a trusted read input, and a lookup reflects
 its observed state. The demo presents the result for inspection.
 
-For an online network, the two known-mapping inputs are a fail-closed readiness
-pin. Before **every** lookup, the adapter reads that known name through the
+For any non-`undeployed` network or non-loopback indexer, the two known-mapping
+inputs are a fail-closed readiness pin. Before **every** lookup, the adapter reads that known name through the
 configured registry and requires the expected deployed ACC. A missing, moved,
 malformed, or unavailable known record stops the requested lookup; it never
 falls back to a different destination. The operator must obtain and record the

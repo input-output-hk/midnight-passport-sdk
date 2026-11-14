@@ -72,7 +72,7 @@ export function createMidnamesNameService(
   });
 }
 
-/** An operator-supplied public observation pins every lookup to a known ACC. */
+/** An operator-supplied public mapping gates every lookup before resolving its requested name. */
 export function requireKnownMidnamesMapping(
   service: PassportNameService,
   networkId: string,
