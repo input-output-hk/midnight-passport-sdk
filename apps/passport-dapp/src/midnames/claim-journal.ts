@@ -123,6 +123,106 @@ function selection(
   });
 }
 
+function guardReservation(
+  tx: IDBTransaction,
+  registry: string,
+  name: string,
+  credential: string,
+  account: string,
+  allowed: () => void,
+  failed: (error: unknown) => void,
+) {
+  const selected = tx.objectStore(selectionStore).get(selectionKey(registry, account, credential));
+  selected.onsuccess = () => {
+    try {
+      const current = selectedName(selected.result);
+      if (current && current !== name)
+        throw new Error('A different name is selected for this ACC.');
+      const scan = tx.objectStore(storeName).openCursor();
+      scan.onsuccess = () => {
+        try {
+          const cursor = scan.result;
+          if (!cursor) {
+            allowed();
+            return;
+          }
+          const retained = readStored(cursor.value);
+          const destination = retained?.receipt ?? retained?.quote;
+          if (
+            retained?.credential === credential &&
+            destination?.registryAddress === registry &&
+            destination.accountAddress === account &&
+            destination.name !== name &&
+            (retained.receipt ||
+              retained.ownerCommitment ||
+              (retained.quote && retained.quote.expiresAt > Date.now()))
+          )
+            throw new Error('Recover the original claim before reserving another name.');
+          cursor.continue();
+        } catch (error) {
+          failed(error);
+        }
+      };
+    } catch (error) {
+      failed(error);
+    }
+  };
+}
+
+function makeAccess(db: IDBDatabase) {
+  return function access(
+    registry: string,
+    name: string,
+    credential: string,
+    update?: (previous: StoredClaim | undefined) => StoredClaim | undefined,
+    guardAccount?: string,
+  ): Promise<StoredClaim | undefined> {
+    return new Promise((resolve, reject) => {
+      const key = JSON.stringify(['undeployed', registry, name]);
+      const tx = db.transaction(
+        guardAccount ? [storeName, selectionStore] : storeName,
+        update ? 'readwrite' : 'readonly',
+        { durability: 'strict' },
+      );
+      const store = tx.objectStore(storeName);
+      let result: StoredClaim | undefined;
+      let failure: unknown;
+      tx.oncomplete = () => resolve(result);
+      tx.onabort = () => reject(failure ?? new Error('Claim storage could not commit.'));
+      const request = store.get(key);
+      request.onsuccess = () => {
+        try {
+          const previous = readStored(request.result);
+          const destination = previous?.receipt ?? previous?.quote;
+          if (
+            previous &&
+            (previous.credential !== credential ||
+              destination?.registryAddress !== registry ||
+              destination.name !== name)
+          )
+            throw new Error('A different original claim is retained for this name.');
+          const apply = () => {
+            result = update ? update(previous) : previous;
+            if (result !== previous) {
+              if (result) store.put(result, key);
+              else store.delete(key);
+            }
+          };
+          if (guardAccount)
+            guardReservation(tx, registry, name, credential, guardAccount, apply, (error) => {
+              failure = error;
+              tx.abort();
+            });
+          else apply();
+        } catch (error) {
+          failure = error;
+          tx.abort();
+        }
+      };
+    });
+  };
+}
+
 /** A network/registry/name has one original receipt on this origin, including across tabs. */
 export async function openClaimJournal(indexedDB: IDBFactory) {
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -144,47 +244,7 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
     };
   });
   db.onversionchange = () => db.close();
-
-  function access(
-    registry: string,
-    name: string,
-    credential: string,
-    update?: (previous: StoredClaim | undefined) => StoredClaim | undefined,
-  ): Promise<StoredClaim | undefined> {
-    return new Promise((resolve, reject) => {
-      const key = JSON.stringify(['undeployed', registry, name]);
-      const tx = db.transaction(storeName, update ? 'readwrite' : 'readonly', {
-        durability: 'strict',
-      });
-      const store = tx.objectStore(storeName);
-      let result: StoredClaim | undefined;
-      let failure: unknown;
-      tx.oncomplete = () => resolve(result);
-      tx.onabort = () => reject(failure ?? new Error('Claim storage could not commit.'));
-      const request = store.get(key);
-      request.onsuccess = () => {
-        try {
-          const previous = readStored(request.result);
-          const destination = previous?.receipt ?? previous?.quote;
-          if (
-            previous &&
-            (previous.credential !== credential ||
-              destination?.registryAddress !== registry ||
-              destination.name !== name)
-          )
-            throw new Error('A different original claim is retained for this name.');
-          result = update ? update(previous) : previous;
-          if (result !== previous) {
-            if (result) store.put(result, key);
-            else store.delete(key);
-          }
-        } catch (error) {
-          failure = error;
-          tx.abort();
-        }
-      };
-    });
-  }
+  const access = makeAccess(db);
   return {
     readSelection: (registry: string, account: string, credential: string) =>
       selection(db, registry, account, credential),
@@ -198,18 +258,24 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
     },
     async reserve(quote: ClaimQuote, credential: string) {
       const quoteSha256 = await claimQuoteDigest(quote);
-      await access(quote.registryAddress, quote.name, credential, (previous) => {
-        if (quote.expiresAt <= Date.now()) throw new Error('The claim quote expired.');
-        if (previous) {
-          if (previous.receipt || !previous.quote)
-            throw new Error('A different original claim is retained for this name.');
-          if (JSON.stringify(previous.quote) === JSON.stringify(quote))
-            return previous.quoteSha256 === undefined ? { ...previous, quoteSha256 } : previous;
-          if (previous.ownerCommitment || previous.quote.expiresAt > Date.now())
-            throw new Error('A different original claim is retained for this name.');
-        }
-        return { credential, quote, quoteSha256 };
-      });
+      await access(
+        quote.registryAddress,
+        quote.name,
+        credential,
+        (previous) => {
+          if (quote.expiresAt <= Date.now()) throw new Error('The claim quote expired.');
+          if (previous) {
+            if (previous.receipt || !previous.quote)
+              throw new Error('A different original claim is retained for this name.');
+            if (JSON.stringify(previous.quote) === JSON.stringify(quote))
+              return previous.quoteSha256 === undefined ? { ...previous, quoteSha256 } : previous;
+            if (previous.ownerCommitment || previous.quote.expiresAt > Date.now())
+              throw new Error('A different original claim is retained for this name.');
+          }
+          return { credential, quote, quoteSha256 };
+        },
+        quote.accountAddress,
+      );
     },
     async bindOwner(quote: ClaimQuote, credential: string, ownerCommitment: string) {
       let first = false;

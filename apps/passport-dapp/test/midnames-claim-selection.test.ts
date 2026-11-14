@@ -6,6 +6,19 @@ import { openClaimJournal } from '../src/midnames/claim-journal.js';
 const registry = '12'.repeat(32);
 const account = '34'.repeat(32);
 const credential = '56'.repeat(32);
+const quoteFor = (name: string) => ({
+  networkId: 'undeployed' as const,
+  registryAddress: registry,
+  accountAddress: account,
+  name,
+  id: 'aa'.repeat(32),
+  sponsorAddress: 'bb'.repeat(32),
+  sponsorPaymentAddress: 'cc'.repeat(32),
+  registryPayee: 'dd'.repeat(32),
+  night: '7',
+  maximumDust: '10000',
+  expiresAt: Date.now() + 60_000,
+});
 
 test('a selected name survives database upgrade and reopen but stays scoped to one credential and ACC', async () => {
   const factory = new IDBFactory();
@@ -109,4 +122,43 @@ test('a pre-upgrade claim without a selection blocks a second pending name', asy
     'bob.night',
   );
   journal.close();
+});
+
+test('two tabs cannot reserve different pending names for one ACC', async () => {
+  const factory = new IDBFactory();
+  const first = await openClaimJournal(factory);
+  const second = await openClaimJournal(factory);
+  const attempts = await Promise.allSettled([
+    first.reserve(quoteFor('alice.night'), credential),
+    second.reserve(quoteFor('bob.night'), credential),
+  ]);
+  assert.equal(attempts.filter((result) => result.status === 'fulfilled').length, 1);
+  assert.equal(attempts.filter((result) => result.status === 'rejected').length, 1);
+  const retained = await Promise.all([
+    first.readPreparation(registry, 'alice.night', credential),
+    second.readPreparation(registry, 'bob.night', credential),
+  ]);
+  assert.equal(retained.filter(Boolean).length, 1);
+  first.close();
+  second.close();
+});
+
+test('a later tab selection invalidates a stale tab before reservation', async () => {
+  const factory = new IDBFactory();
+  const first = await openClaimJournal(factory);
+  const second = await openClaimJournal(factory);
+  await first.selectName(registry, account, credential, 'alice.night');
+  await second.selectName(registry, account, credential, 'bob.night');
+  await assert.rejects(
+    first.reserve(quoteFor('alice.night'), credential),
+    /different name is selected/,
+  );
+  await second.reserve(quoteFor('bob.night'), credential);
+  assert.equal(await first.readPreparation(registry, 'alice.night', credential), undefined);
+  assert.equal(
+    (await second.readPreparation(registry, 'bob.night', credential))?.quote.name,
+    'bob.night',
+  );
+  first.close();
+  second.close();
 });
