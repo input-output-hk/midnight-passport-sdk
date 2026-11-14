@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_MIDNAMES_NETWORK_ID?: string;
   readonly VITE_MIDNAMES_INDEXER_URL?: string;
   readonly VITE_MIDNAMES_INDEXER_WS_URL?: string;
+  readonly VITE_MIDNAMES_KNOWN_NAME?: string;
+  readonly VITE_MIDNAMES_KNOWN_ACC?: string;
   readonly VITE_PASSPORT_ARM?: string;
   readonly VITE_PASSPORT_SIGNING_MODE?: string;
 }
