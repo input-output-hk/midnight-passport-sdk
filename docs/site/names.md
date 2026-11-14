@@ -219,8 +219,17 @@ transaction and current registry record match. Selection alone does not claim
 the name; browser storage loss or a different device requires recovery from
 the original receipt. Name-owner rotation after total credential loss is not
 qualified by this source preview.
-An indexed failed original is reported as a conflict rather than a claim still
-waiting for finality. If legacy storage contains multiple original claims,
+An exact indexed `FAILURE` with matching transaction bytes, identifiers and
+claim call, plus an absent current registry record, is reported as failed rather
+than pending. **Release failed original for a new attempt** checks that failure
+again, checks that the name is still unregistered and the ACC is supported, then
+archives the original receipt and clears the selection in one durable browser
+transaction. The receipt and its original identifiers remain available in local
+history after reload; importing the same failed transaction again is refused.
+Review a fresh quote before preparing another claim. `PARTIAL_SUCCESS`, malformed
+or mismatched transactions, provider outages, and missing finality do not enable
+release. This is a source-preview local recovery path, not a new native or
+public-namespace qualification. If legacy storage contains multiple original claims,
 enter an original name to inspect it before preparing another.
 **Check registry status** reads the pinned registry and verifies the open ACC
 before reporting an unregistered name. Availability is an observation at the
@@ -265,8 +274,9 @@ SHA-256 digest of the canonical quote JSON. IndexedDB retains public fields scop
 credential and protects the record from replacement by another tab. The
 checker reads the original identifiers, verifies the exact transaction bytes
 and the registry inserts linking the name to its domain ID, owner commitment
-and contract target. It then checks the current owner and activated ACC target. An absent, partial, aggregated or changed transaction stays pending.
-A mismatched owner or target is reported as a conflict.
+and contract target. It then checks the current owner and activated ACC target. An absent
+transaction stays pending; an unavailable read is distinct. Partial success, malformed
+or changed transaction bytes, and a mismatched owner or target are conflicts.
 
 The isolated fixture prepares the proof in a separate owner process. The
 sponsor balances it and accepts an explicit **Send prepared claim** action

@@ -136,6 +136,12 @@ select a name; enter it again after a reload. The panel can save a standalone sp
 An unavailable indexer leaves the original receipt intact and reports the
 check as unavailable. Without claim preparation or sponsor dispatch, the panel
 is labelled read-only receipt inspection and offers no claim action.
+An exact failed original with no registry record exposes **Release failed
+original for a new attempt**. The action rechecks the failure and availability,
+archives the public receipt and original transaction IDs, and clears the prior
+selection atomically. A fresh quote review is required before another
+preparation. Partial success, outage, uncertainty and changed binding keep the
+original fenced. The archived receipt can be inspected after reload.
 **Check original
 claim** reconciles the stored transaction and the current registry owner and
 target. **Check registry status** verifies the open ACC and checks whether the
