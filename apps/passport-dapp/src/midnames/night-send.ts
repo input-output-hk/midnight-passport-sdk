@@ -55,6 +55,13 @@ export class NightDepositInterrupted extends Error {
   }
 }
 
+export class NightPaymentDeclined extends Error {
+  constructor() {
+    super('NIGHT payment declined.');
+    this.name = 'NightPaymentDeclined';
+  }
+}
+
 interface PreparedLeg {
   readonly original: NightSendLeg;
   dispatch(): Promise<void>;
@@ -189,7 +196,7 @@ export async function sendNightByName(input: NightSendRequest, ports: NightSendP
     const balance = await ports.readSourceBalance(intent.source);
     if (balance === undefined || balance < BigInt(intent.amount))
       throw new Error('Unsupported source account or insufficient NIGHT balance.');
-    if ((await ports.review(intent)) !== true) throw new Error('NIGHT payment declined.');
+    if ((await ports.review(intent)) !== true) throw new NightPaymentDeclined();
     if (!retained) await ports.journal.createIntent(intent);
     assertSameIntent(intent, await resolveIntent(request, ports));
     withdrawal = await submitLeg('withdraw', intent, await ports.prepareWithdrawal(intent), ports);

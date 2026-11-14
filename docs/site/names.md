@@ -317,8 +317,9 @@ qualification.
 
 The standalone Node fixture implements the named **NIGHT** route for
 `acc-s3r1.1` on `undeployed`. It requires an activated contract target and
-shows the source, network, registry, recipient, bridge wallet, amount and both
-operations before owner approval. The owner signs
+shows the source, network, recipient, bridge wallet, amount and both
+operations before owner approval. The pinned registry address is encoded in
+the displayed `providerId` as `midnames:<registry address>`. The owner signs
 `withdraw_unshielded_with_jubjub` to the controlled wallet. Once that leg is
 final, the wallet uses its exact output to call `deposit_unshielded` on the
 reviewed recipient ACC and update its balance. The ACC signature binds the

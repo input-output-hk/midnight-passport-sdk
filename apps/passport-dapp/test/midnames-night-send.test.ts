@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   NightDepositInterrupted,
+  NightPaymentDeclined,
   sendNightByName,
   type NightSendIntent,
   type NightSendLeg,
@@ -124,6 +125,22 @@ test('unsupported routes, target type and insufficient balance refuse before own
   state.balance = 3n;
   await assert.rejects(sendNightByName(request, ports()), /insufficient/);
   assert.deepEqual(calls, []);
+});
+
+test('an operator decline is typed and cannot sign or dispatch either leg', async () => {
+  const { calls, ports, legs } = fixture();
+  await assert.rejects(
+    sendNightByName(request, {
+      ...ports(),
+      async review() {
+        calls.push('review');
+        return false;
+      },
+    }),
+    NightPaymentDeclined,
+  );
+  assert.deepEqual(calls, ['review']);
+  assert.equal(legs.size, 0);
 });
 
 test('repoints before owner signing and after withdrawal proof refuse the original route', async () => {

@@ -86,6 +86,39 @@ the original identifiers. A failed or uncertain original deposit stays fenced
 for operator reconciliation. If the name changes after withdrawal, the flow
 keeps the funds in the controlled wallet and refuses to redirect them.
 
+### Run either value fixture with terminal review
+
+Set `PASSPORT_MIDNAMES_INTERACTIVE=1` for an operator-run demonstration. Use a
+fresh output name beginning with `midnames-deposit-` or
+`midnames-night-send-`, and keep the same prepared registry, reference ACC,
+and optional unused subnet arguments as above:
+
+```sh
+PASSPORT_MIDNAMES_INTERACTIVE=1 nix develop -c env -u LD_DYLD_PATH \
+  PASSPORT_MIDNAMES_NATIVE=1 PASSPORT_RC_LOCALNET=1 \
+  node examples/midnames-local/qualify-deposit.mjs \
+  midnames-deposit-my-review /absolute/path/to/prepared-registry \
+  /absolute/path/to/acc-reference/contract 10.250.124.0/29
+```
+
+The runner refuses this mode without an attached terminal before creating a
+stack. After resolving a supported contract target, the separate sender or
+synthetic ACC owner displays the exact name, network, registry, full ACC
+address, asset, and amount. The NIGHT review also lists its two operations. Type the displayed
+`SEND <full ACC address> <amount>` phrase to authorize that one local intent.
+The registry appears in the review as `providerId: midnames:<registry address>`.
+Any other answer refuses the named deposit or withdrawal before that payment is
+dispatched; Ctrl+C at the prompt is also a decline. The shielded sender receipt
+records the review decision and zero named-payment dispatches on refusal. The
+NIGHT fixture checks zero owner signatures and payment dispatches on refusal.
+It retains those counters in `night-send/decline.json` for that failed run.
+Local setup transactions, including test funding or token minting,
+may already have completed before the prompt. A refused run retains its failed
+receipt; use a new output name for a new run. The fixture still uses
+synthetic local funds and the pinned standalone registry. Its terminal review
+is an operator demonstration, not a production passkey consent or online
+Midnames profile.
+
 ## Prepare an owner-proved claim for the sponsor
 
 Separate-process preparation passed on isolated Ledger 9 at local commit

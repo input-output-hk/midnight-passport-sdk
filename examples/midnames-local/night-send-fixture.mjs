@@ -3,12 +3,16 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { sendNightByName } from '../../apps/passport-dapp/src/midnames/night-send.ts';
+import {
+  NightPaymentDeclined,
+  sendNightByName,
+} from '../../apps/passport-dapp/src/midnames/night-send.ts';
 import { createMidnamesNameService } from '../../apps/passport-dapp/src/midnames/resolver.ts';
 import { readHostConfirmation } from '../../apps/passport-service/src/host-confirmation.ts';
 import { prepareLocalnetNight } from '../../apps/passport-funding-service/src/night-preparation.ts';
 
 import { createOnce } from './create-once.mts';
+import { interactiveReviewRequested, reviewInTerminal } from './terminal-review.mjs';
 
 function openJournal(directory) {
   const read = (name) => {
@@ -190,10 +194,15 @@ export async function qualifyNightSend({
       return (await reads.isSupportedAccount(address, networkId)) ? balance(address) : undefined;
     },
     async review(intent) {
-      approvals++;
       assert.equal(intent.target, target);
       assert.notEqual(intent.target, defaultField.value);
+      if (interactiveReviewRequested()) {
+        const approved = await reviewInTerminal(intent, intent.target);
+        if (approved) approvals++;
+        return approved;
+      }
       console.log('Synthetic owner approval', JSON.stringify(intent));
+      approvals++;
       return true;
     },
     async prepareWithdrawal(intent) {
@@ -277,15 +286,29 @@ export async function qualifyNightSend({
   }
   const interrupted = new Error('Injected interruption after withdrawal finality');
   step('withdraw-then-interrupt-before-deposit');
-  await assert.rejects(
-    sendNightByName(
+  /** @type {unknown} */ let failure;
+  try {
+    await sendNightByName(
       request,
       openPorts(() => {
         throw interrupted;
       }),
-    ),
-    (error) => error.cause === interrupted,
-  );
+    );
+  } catch (error) {
+    failure = error;
+  }
+  if (failure === undefined) assert.fail('Expected an interrupted withdrawal.');
+  if (interactiveReviewRequested() && failure instanceof NightPaymentDeclined) {
+    assert.equal(signatures, 0);
+    assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
+    createOnce(
+      join(directory, 'decline.json'),
+      JSON.stringify({ reviewDecision: 'declined', approvals, signatures, sent }),
+    );
+    throw failure;
+  }
+  assert.ok(failure instanceof Error);
+  assert.equal(failure.cause, interrupted);
   const intermediate = {
     source: String(await balance(source)),
     target: String(await balance(target)),
