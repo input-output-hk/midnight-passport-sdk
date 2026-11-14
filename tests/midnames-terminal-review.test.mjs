@@ -15,9 +15,9 @@ test('interactive native runner refuses a nonterminal before touching Docker or 
   const runner = fileURLToPath(
     new URL('../examples/midnames-local/qualify-deposit.mjs', import.meta.url),
   );
-  assert.ok(process.env.IN_NIX_SHELL);
   const env = {
-    IN_NIX_SHELL: process.env.IN_NIX_SHELL,
+    // The child checks this guard before its TTY preflight; CI itself is not a Nix shell.
+    IN_NIX_SHELL: '1',
     PASSPORT_MIDNAMES_NATIVE: '1',
     PASSPORT_RC_LOCALNET: '1',
     PASSPORT_MIDNAMES_INTERACTIVE: '1',
