@@ -315,6 +315,11 @@ try {
         ledger,
         get,
         step,
+        recordSubmission: (kind, id) => {
+          receipt.dustSetup ??= {};
+          receipt.dustSetup[kind] = id;
+          save();
+        },
       });
       const readLive = async (quote) => {
         const current = registry.ledger(

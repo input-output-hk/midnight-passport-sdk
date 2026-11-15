@@ -200,6 +200,11 @@ sponsor's DUST address. A separate owner process launches a browser page on
 witness, constructs the call, and sends proving requests through the owner
 process to the fixed loopback prover. The browser checks the compiled
 `create_domain` artifact hashes. Both HTTP hops refuse redirects.
+The private `worker.json` records the original NIGHT split and DUST registration
+transaction identifiers as `dustSetup`. If the sponsor's DUST inputs do not
+appear within three minutes, the failure reports its last sync state and input
+count. Preserve that run and reconcile its original registration before any
+retry; a fresh isolated run has a different chain and transaction history.
 The relay and loopback prover receive sensitive proof payloads and run within
 the owner trust boundary. Use a prover the owner controls.
 The owner process returns the proved transaction and public commitment to
