@@ -8,6 +8,7 @@ import {
 import { configureMidnames } from '../src/midnames/config.js';
 import {
   createMidnamesNameService,
+  requireAgreeingMidnamesResolvers,
   requireKnownMidnamesMapping,
   type MidnamesReads,
 } from '../src/midnames/resolver.js';
@@ -82,6 +83,49 @@ test('absence, invalid targets, invalid query and provider failure are distinct'
   );
 });
 
+test('two verifier-checked readers must agree on every observed contract target', async () => {
+  const calls: string[] = [];
+  let primary: string | undefined = account;
+  let witness: string | undefined = account;
+  let witnessOutage = false;
+  const service = (path: 'primary' | 'witness') =>
+    createMidnamesNameService(profile, {
+      async readTarget(name) {
+        calls.push(`${path}:${name}`);
+        if (path === 'witness' && witnessOutage) throw new Error('private provider detail');
+        const target = path === 'primary' ? primary : witness;
+        return target ? { kind: 'contract', address: target } : undefined;
+      },
+      async isSupportedAccount() {
+        return true;
+      },
+    });
+  const agreeing = requireAgreeingMidnamesResolvers(service('primary'), service('witness'));
+  assert.equal((await resolvePassportName(agreeing, query))?.accountAddress, account);
+  assert.deepEqual(calls, [`primary:${query.name}`, `witness:${query.name}`]);
+  calls.length = 0;
+  witness = repointed;
+  await assert.rejects(resolvePassportName(agreeing, query), code('Unavailable'));
+  assert.deepEqual(calls, [`primary:${query.name}`, `witness:${query.name}`]);
+  witness = undefined;
+  await assert.rejects(resolvePassportName(agreeing, query), code('Unavailable'));
+  primary = undefined;
+  assert.equal(await resolvePassportName(agreeing, query), undefined);
+  witnessOutage = true;
+  await assert.rejects(resolvePassportName(agreeing, query), code('Unavailable'));
+  assert.throws(
+    () =>
+      requireAgreeingMidnamesResolvers(
+        service('primary'),
+        createMidnamesNameService(
+          { ...profile, registryAddress: repointed },
+          reads(async () => undefined),
+        ),
+      ),
+    code('InvalidQuery'),
+  );
+});
+
 test('configured name lookup requires an explicit matching network, registry and public indexer endpoints', () => {
   assert.equal(configureMidnames({}, profile.networkId, 'acc-s3r1.1'), undefined);
   const config = {
@@ -96,6 +140,17 @@ test('configured name lookup requires an explicit matching network, registry and
   assert.ok(
     configureMidnames(
       { ...config, registryProfile: 'standalone-0.35' },
+      profile.networkId,
+      'acc-s3r1.1',
+    ),
+  );
+  assert.throws(() =>
+    configureMidnames(
+      {
+        ...config,
+        verificationIndexerUrl: 'https://witness.example.test/graphql',
+        verificationIndexerWsUrl: 'wss://witness.example.test/graphql/ws',
+      },
       profile.networkId,
       'acc-s3r1.1',
     ),
@@ -127,6 +182,8 @@ test('an online profile requires a complete known name-to-ACC pin before lookup'
     networkId: 'preview',
     indexerUrl: 'https://indexer.preview.midnight.network/api/v4/graphql',
     indexerWsUrl: 'wss://indexer.preview.midnight.network/api/v4/graphql/ws',
+    verificationIndexerUrl: 'https://witness.preview.example.test/api/v4/graphql',
+    verificationIndexerWsUrl: 'wss://witness.preview.example.test/api/v4/graphql/ws',
   };
   for (const missing of [
     {},
@@ -146,6 +203,10 @@ test('an online profile requires a complete known name-to-ACC pin before lookup'
   for (const invalid of [
     { knownName: 'Alice.passport.night', knownAccountAddress: account },
     { knownName: query.name, knownAccountAddress: 'mn_wallet' },
+    { verificationIndexerUrl: undefined, verificationIndexerWsUrl: undefined },
+    { verificationIndexerUrl: undefined },
+    { verificationIndexerUrl: config.indexerUrl },
+    { verificationIndexerWsUrl: 'wss://user:password@witness.preview.example.test/graphql' },
   ])
     assert.throws(() => configureMidnames({ ...config, ...invalid }, 'preview', 'acc-s3r1.1'));
 });
@@ -155,6 +216,8 @@ test('a remote indexer requires the known mapping even when labelled undeployed'
     ...profile,
     indexerUrl: 'https://example.test/graphql',
     indexerWsUrl: 'wss://example.test/graphql/ws',
+    verificationIndexerUrl: 'https://witness.example.test/graphql',
+    verificationIndexerWsUrl: 'wss://witness.example.test/graphql/ws',
   };
   assert.throws(
     () => configureMidnames(remote, 'undeployed', 'acc-s3r1.1'),
