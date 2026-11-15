@@ -250,6 +250,8 @@ try {
       networkId: import.meta.env.VITE_MIDNAMES_NETWORK_ID,
       indexerUrl: import.meta.env.VITE_MIDNAMES_INDEXER_URL,
       indexerWsUrl: import.meta.env.VITE_MIDNAMES_INDEXER_WS_URL,
+      verificationIndexerUrl: import.meta.env.VITE_MIDNAMES_VERIFICATION_INDEXER_URL,
+      verificationIndexerWsUrl: import.meta.env.VITE_MIDNAMES_VERIFICATION_INDEXER_WS_URL,
       knownName: import.meta.env.VITE_MIDNAMES_KNOWN_NAME,
       knownAccountAddress: import.meta.env.VITE_MIDNAMES_KNOWN_ACC,
     },

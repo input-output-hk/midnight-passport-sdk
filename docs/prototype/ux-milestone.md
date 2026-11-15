@@ -104,8 +104,9 @@ The Name service panel can use an explicitly configured Midnames registry.
 A partial configuration disables lookup and shows the setup requirement.
 Lookup displays a checked contract target for inspection without initiating an
 account or wallet action. An online profile requires a public known-name-to-ACC
-pin, rechecked before each lookup; a changed or unavailable pin refuses the
-lookup. See the [configuration and evidence scope](../site/names.md#source-preview-midnames-210).
+pin and two distinct-origin indexer paths. Each lookup rechecks the pin and
+requires both paths to agree; changed, divergent or unavailable observations
+refuse the lookup. See the [configuration and evidence scope](../site/names.md#source-preview-midnames-210).
 
 ### Standalone .night claim recovery
 

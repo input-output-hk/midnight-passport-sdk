@@ -72,6 +72,57 @@ export function createMidnamesNameService(
   });
 }
 
+/** Refuse a stale or divergent read instead of choosing one indexer's destination. */
+export function requireAgreeingMidnamesResolvers(
+  primary: PassportNameService,
+  witness: PassportNameService,
+): PassportNameService {
+  if (
+    primary.provider.mode !== 'external' ||
+    witness.provider.mode !== 'external' ||
+    primary.provider.id !== witness.provider.id ||
+    primary.provider.namespace !== witness.provider.namespace
+  )
+    throw new PassportNameError('InvalidQuery');
+  const provider = Object.freeze({ ...primary.provider });
+  const sameProvider = () =>
+    [primary.provider, witness.provider].every(
+      (current) =>
+        current.mode === provider.mode &&
+        current.id === provider.id &&
+        current.namespace === provider.namespace,
+    );
+  return Object.freeze({
+    provider,
+    async resolve(query: Parameters<PassportNameService['resolve']>[0]) {
+      if (!sameProvider()) throw new PassportNameError('Unavailable');
+      const exact = Object.freeze({ name: query.name, networkId: query.networkId });
+      const [first, second] = await Promise.all([
+        resolvePassportName(primary, exact),
+        resolvePassportName(witness, exact),
+      ]);
+      if (!sameProvider()) throw new PassportNameError('Unavailable');
+      if (first === undefined && second === undefined) return undefined;
+      if (
+        first === undefined ||
+        second === undefined ||
+        first.providerId !== provider.id ||
+        second.providerId !== provider.id ||
+        first.accountAddress !== second.accountAddress ||
+        first.expiresAt !== second.expiresAt
+      )
+        throw new PassportNameError('Unavailable');
+      return Object.freeze({
+        name: first.name,
+        networkId: first.networkId,
+        namespace: first.namespace,
+        accountAddress: first.accountAddress,
+        ...(first.expiresAt !== undefined && { expiresAt: first.expiresAt }),
+      });
+    },
+  });
+}
+
 /** An operator-supplied public mapping gates every lookup before resolving its requested name. */
 export function requireKnownMidnamesMapping(
   service: PassportNameService,

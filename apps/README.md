@@ -865,13 +865,17 @@ See the [funding image and operator guide](passport-funding-service/README.md).
 ## Midnames lookup source preview
 
 The demo's optional Midnames reader uses the existing **Name service** panel.
-Set the five base build inputs in the [naming adapter guide](../docs/site/names.md#source-preview-midnames-210).
+Set the base build inputs in the [naming adapter guide](../docs/site/names.md#source-preview-midnames-210).
 A configured lookup uses the registry's contract target and verifies the
 deployed ACC binding before displaying it. A non-`undeployed` network or
-non-loopback indexer also requires an
-independently observed, public known-name and ACC pin; each lookup rechecks
-that pair and refuses a missing or changed binding. This readiness check does
-not replace an authenticated host indexer proxy or independent chain read.
+non-loopback indexer also requires an independently observed, public known-name
+and ACC pin plus a second, distinct-origin indexer endpoint pair. Each lookup
+rechecks the known pair through both paths and refuses an absent, changed or
+divergent binding. Configure `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` and
+`VITE_MIDNAMES_VERIFICATION_INDEXER_WS_URL` together. Distinct origins do not
+prove independent chain state; online qualification still needs a verified live
+mapping and authenticated host-controlled provider where required. Claim
+finality continues to use the primary path.
 The default remains the mock.
 
 ### Standalone Midnames claim recovery

@@ -109,6 +109,8 @@ network as the Passport demo.
 | `VITE_MIDNAMES_REGISTRY_ADDRESS` | 64 lowercase hex characters for the pinned registry |
 | `VITE_MIDNAMES_INDEXER_URL` | Public HTTPS GraphQL endpoint, or HTTP on loopback |
 | `VITE_MIDNAMES_INDEXER_WS_URL` | Public WSS endpoint, or WS on loopback |
+| `VITE_MIDNAMES_VERIFICATION_INDEXER_URL` | Second HTTPS GraphQL endpoint on a distinct origin; required for a non-`undeployed` network or non-loopback primary indexer |
+| `VITE_MIDNAMES_VERIFICATION_INDEXER_WS_URL` | Second WSS endpoint on a distinct origin; required together with its HTTP endpoint for those profiles |
 | `VITE_MIDNAMES_KNOWN_NAME` | Exact canonical name from an independent, dated observation; required on non-`undeployed` networks or with a non-loopback indexer |
 | `VITE_MIDNAMES_KNOWN_ACC` | Its independently observed 64-hex deployed ACC address; required on non-`undeployed` networks or with a non-loopback indexer |
 
@@ -122,14 +124,22 @@ separate outcomes. An indexer is a trusted read input, and a lookup reflects
 its observed state. The demo presents the result for inspection.
 
 For any non-`undeployed` network or non-loopback indexer, the two known-mapping
-inputs are a fail-closed readiness pin. Before **every** lookup, the adapter reads that known name through the
-configured registry and requires the expected deployed ACC. A missing, moved,
+inputs and a complete second indexer path are fail-closed readiness gates.
+Before **every** lookup, the adapter reads the known name through both
+configured paths and requires the expected deployed ACC. It then requires both
+paths to agree on the requested contract target. A missing, moved,
 malformed, or unavailable known record stops the requested lookup and any
 remote standalone claim availability or receipt check; it never falls back to
 a different destination. The operator must obtain and record the
 known pair from an independent source with its observation date before setting
-these public inputs. Matching one provider's response to a host-supplied pair
-does not establish an independent chain-read agreement or qualify that provider.
+these public inputs. The two paths use the same pinned network, registry and
+ACC verifier checks; a missing record on only one path, a changed target, or
+an unavailable path refuses the lookup. Different origins alone do not prove
+independent backends, matching chain height, or independently verified live
+mapping. The operator must establish those properties separately before
+claiming online qualification. Claim availability and finality still read the
+primary path after the known-name gate; this slice does not qualify an online
+claim flow.
 
 Midnames 2.1.0 uses a Ledger 9 reader built with runtime 0.21.0 and Midnight JS
 5.0.0. The ACC still uses runtime 0.20.0. The indexer hands out tagged bytes,
@@ -157,8 +167,8 @@ authenticated proxy itself.
 | Passport naming constraint | Implemented local subset | Deviation or remaining gate |
 | --- | --- | --- |
 | [MIP-0007](https://github.com/midnightntwrk/midnight-improvement-proposals/blob/main/mips/mip-0007-name-service-registry-and-resolver.md) contract-call routing | Resolve a canonical path from the configured registry root and accept only its contract target, never its default field or a wallet target. Check the target's deployed ACC verifier roster. | The live Midnames 2.1.0 single-contract registry has a transitional target field, not the proposed delegated operation-context resolver or contract-owned-name arm. |
-| [P2](https://github.com/midnightntwrk/passport/blob/main/docs/plans/PROMISES.md) on-chain name binding | Check the registry's pinned verifier roster and resolve from one observed state; require a matching owner commitment and ACC target for claim confirmation. | The indexer is still a trusted read input. Public `passport.night` ownership, complete named onboarding, independent chain-read agreement, and total-loss continuity remain open. |
-| [P8](https://github.com/midnightntwrk/passport/blob/main/docs/plans/PROMISES.md) substitutable infrastructure | The reader accepts an injected provider; local qualification uses an owned indexer and prover rather than a Midnames-hosted lookup service. | The online authenticated provider and independently known name-to-contract smoke are unqualified. The optional claim sponsor is a host policy and has no demonstrated online replacement. |
+| [P2](https://github.com/midnightntwrk/passport/blob/main/docs/plans/PROMISES.md) on-chain name binding | Check the registry's pinned verifier roster and require two configured readers to agree on a contract target for online profiles; require a matching owner commitment and ACC target for claim confirmation. | Each indexer remains a trusted read input. Independent backend/chain-state agreement, public `passport.night` ownership, complete named onboarding, and total-loss continuity remain open. |
+| [P8](https://github.com/midnightntwrk/passport/blob/main/docs/plans/PROMISES.md) substitutable infrastructure | The reader accepts injected providers; local qualification uses an owned indexer and prover rather than a Midnames-hosted lookup service. Online source configuration requires distinct indexer origins and fails closed on disagreement. | Distinct origins alone do not establish independent providers. The online authenticated provider and independently known name-to-contract smoke are unqualified. The optional claim sponsor is a host policy and has no demonstrated online replacement. |
 
 The 2.1.0 tarball includes a read generation and an older managed write
 generation. Its root export can fail at load because the managed module expects
