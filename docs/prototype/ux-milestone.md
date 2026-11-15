@@ -143,8 +143,11 @@ credential cannot inherit the first one's local receipt, and counts one stub
 `createAccount` invocation. It also checks the failed-original release and
 archived receipt across reload in an isolated browser profile. A conflicting
 status hides release; an unavailable recheck hides it until the user checks
-the original again. Native create/open, actual indexed failure and sponsored
-retry acceptance remain separate.
+the original again. A third isolated profile confirms that full quote display
+precedes any synthetic owner proof or sponsor preparation and that explicit
+approval calls each once before reopening the retained receipt. Native
+create/open, actual indexed failure, real passkey review and sponsored retry
+acceptance remain separate.
 An exact failed original with no registry record exposes **Release failed
 original for a new attempt**. The action rechecks the failure and availability,
 archives the public receipt and original transaction IDs, and clears the prior
