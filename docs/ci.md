@@ -357,6 +357,10 @@ parsing and public capability planner execute. Each authenticated action is also
 declined before its successful attempt. No key generation, native proof, real
 credential/provider access or Docker stack is needed. Job summaries retain
 the explicit scope/fingerprint receipt; no private mock state is exported.
+The P-256 presentation cell also runs a separate synthetic Midnames
+create/open handoff check. It uses a stubbed connector and name reader to
+exercise the Balances setup panel and per-credential receipt refusal; its
+result is not a native claim or part of the grouped-scenario receipt count.
 
 It reuses the frozen dependency cache and builds outputs freshly. At the time, the target was
 30–45 seconds per warm job, subject to actual hosted measurement after push. Slow

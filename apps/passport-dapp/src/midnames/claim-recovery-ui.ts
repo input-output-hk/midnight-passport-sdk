@@ -32,6 +32,8 @@ function claimConflict(error: unknown): string | undefined {
   if (!(error instanceof Error)) return undefined;
   if (error.message === 'This failed original was already released. Review a fresh claim.')
     return error.message;
+  if (error.message === 'A different original claim is retained for this name.')
+    return 'A different original claim is retained for this name. Inspect the original claim and credential before another attempt.';
   return /^(?:Multiple original claims require manual recovery|Recover the original claim before (?:choosing|reserving) another name|A different name is selected for this ACC)\.$/.test(
     error.message,
   )
