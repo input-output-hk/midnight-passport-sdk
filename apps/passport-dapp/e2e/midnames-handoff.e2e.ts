@@ -54,7 +54,7 @@ const connector = `
 `;
 
 const naming = `
-  import { claimQuoteDigest } from './claim-quote.js';
+  import { ClaimPreIntentRefusal, claimQuoteDigest } from './claim-quote.js';
   const quote = ${JSON.stringify(quote)};
   const original = ${JSON.stringify(original)};
   const count = (key) => localStorage.setItem(key,
@@ -75,6 +75,10 @@ const naming = `
               networkId: quote.networkId, registryAddress: quote.registryAddress,
               accountAddress: quote.accountAddress, name: quote.name,
             })) throw Error('Unexpected claim destination');
+            const mode = localStorage.getItem('handoff-quote-mode');
+            if (mode === 'unavailable') throw Error('Sponsor unavailable');
+            if (mode === 'wrong-account')
+              return { ...quote, accountAddress: 'ab'.repeat(32) };
             return quote;
           },
           async prove(reviewed, opened) {
@@ -87,6 +91,8 @@ const naming = `
             count('handoff-preparations');
             if (JSON.stringify(reviewed) !== JSON.stringify(quote) ||
                 proved.ownerCommitment !== original.ownerCommitment) throw Error('Unreviewed preparation');
+            const mode = localStorage.getItem('handoff-preparation-mode');
+            if (mode === 'refused') throw new ClaimPreIntentRefusal('Policy refused before intent');
             return { ...original, quoteSha256: await claimQuoteDigest(quote) };
           },
           async findPrepared() { throw Error('Recovery is outside this handoff fixture'); },
@@ -363,9 +369,80 @@ try {
   } finally {
     await preparationContext.close();
   }
+
+  // Full-app negative paths: no owner proof before a valid, displayed quote;
+  // a durable pre-intent sponsor refusal releases only this synthetic attempt.
+  const refusalContext = await browser.newContext();
+  try {
+    const refusalPage = await refusalContext.newPage();
+    refusalPage.on('pageerror', (error) => errors.push(error.message));
+    const counts = () =>
+      refusalPage.evaluate(() => ({
+        quotes: Number(localStorage.getItem('handoff-quotes') || '0'),
+        proofs: Number(localStorage.getItem('handoff-proofs') || '0'),
+        preparations: Number(localStorage.getItem('handoff-preparations') || '0'),
+        creates: Number(localStorage.getItem('handoff-fixture-creates') || '0'),
+      }));
+    await refusalPage.goto(`${origin}/?preproof`);
+    await refusalPage
+      .locator('#status')
+      .filter({ hasText: /^Ready\./ })
+      .waitFor({ state: 'attached' });
+    await refusalPage.locator('#create').click();
+    await refusalPage.locator('#passport-name-setup').waitFor({ state: 'visible' });
+    await refusalPage.locator('#claim-recovery-name').fill(original.name);
+
+    await refusalPage.evaluate(() => localStorage.setItem('handoff-quote-mode', 'unavailable'));
+    await refusalPage.locator('#claim-review-quote').click();
+    await refusalPage
+      .locator('#claim-recovery-status')
+      .getByText(/Claim check unavailable/)
+      .waitFor();
+    assert.equal(await refusalPage.locator('#claim-prepare').isVisible(), false);
+    assert.deepEqual(await counts(), { quotes: 1, proofs: 0, preparations: 0, creates: 1 });
+
+    await refusalPage.evaluate(() => localStorage.setItem('handoff-quote-mode', 'wrong-account'));
+    await refusalPage.locator('#claim-review-quote').click();
+    await refusalPage
+      .locator('#claim-recovery-status')
+      .getByText(/Claim check unavailable/)
+      .waitFor();
+    assert.equal(await refusalPage.locator('#claim-prepare').isVisible(), false);
+    assert.deepEqual(await counts(), { quotes: 2, proofs: 0, preparations: 0, creates: 1 });
+
+    await refusalPage.evaluate(() => localStorage.removeItem('handoff-quote-mode'));
+    await refusalPage.locator('#claim-review-quote').click();
+    await refusalPage.locator('#claim-quote-summary').getByText(original.name).waitFor();
+    assert.deepEqual(await counts(), { quotes: 3, proofs: 0, preparations: 0, creates: 1 });
+    await refusalPage.locator('#claim-recovery-name').fill('bob.night');
+    assert.equal(await refusalPage.locator('#claim-prepare').isVisible(), false);
+    await refusalPage.locator('#claim-recovery-name').fill(original.name);
+    await refusalPage.locator('#claim-review-quote').click();
+
+    await refusalPage.evaluate(() => localStorage.setItem('handoff-preparation-mode', 'refused'));
+    await refusalPage.locator('#claim-prepare').click();
+    await refusalPage
+      .locator('#claim-recovery-status')
+      .getByText(/sponsor refused before preparation/i)
+      .waitFor();
+    assert.equal(await refusalPage.locator('#claim-prepare').isVisible(), false);
+    assert.equal(await refusalPage.locator('#claim-recovery-receipt').inputValue(), '');
+    assert.deepEqual(await counts(), { quotes: 4, proofs: 1, preparations: 1, creates: 1 });
+
+    await refusalPage.evaluate(() => localStorage.removeItem('handoff-preparation-mode'));
+    await refusalPage.locator('#claim-review-quote').click();
+    await refusalPage.locator('#claim-prepare').click();
+    await refusalPage
+      .locator('#claim-recovery-status')
+      .getByText(/Original receipt saved\. Send the prepared claim/)
+      .waitFor();
+    assert.deepEqual(await counts(), { quotes: 5, proofs: 2, preparations: 2, creates: 1 });
+  } finally {
+    await refusalContext.close();
+  }
   assert.deepEqual(errors, []);
   console.log(
-    'Midnames synthetic create/open, credential scope, failed original, and pre-proof review: PASS',
+    'Midnames synthetic create/open, failed original, and pre-proof approval/refusal: PASS',
   );
 } finally {
   await browser?.close();

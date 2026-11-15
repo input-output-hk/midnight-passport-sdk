@@ -325,7 +325,13 @@ or the Balances panel's full ACC create/open handoff.
 The synthetic full-app handoff check (`nix develop -c pnpm --filter
 passport-dapp test:midnames-handoff` after the package build) exercises
 create/open navigation, the Balances panel, public-receipt checks and
-credential scoping. Its connector and naming responses are fixtures: it is
+credential scoping. It also checks that an unavailable quote, a quote for a
+different ACC, and a changed name cannot start owner proving or sponsor
+preparation. A synthetic durable pre-intent sponsor refusal releases its
+attempt for a fresh reviewed quote; the later retry retains one original
+receipt without creating another ACC. These are browser-source checks, not
+proof of an actual sponsor refusal or chain transaction. Its connector and
+naming responses are fixtures: it is
 not a native ACC deployment, real passkey, claim transaction or provider run.
 The [browser claim design](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0018-standalone-midnames-claim.md) describes
 the proof and sponsor checks for browser-initiated onboarding.

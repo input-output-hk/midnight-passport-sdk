@@ -920,6 +920,11 @@ An isolated profile checks that reviewing the full synthetic quote calls neither
 owner proving nor sponsor preparation; one explicit approval then calls each
 once and retains the receipt after reopening. The fixture does not deploy an
 ACC, use a real passkey or sponsor, send a claim, or qualify a chain/provider.
+Another isolated profile refuses an unavailable or wrong-ACC quote before proof,
+clears review after the name changes, and checks that a synthetic pre-intent
+sponsor refusal needs a fresh quote. A successful retry keeps the same ACC and
+saves one original receipt. These checks do not establish native sponsor
+failure, real passkey consent, or transaction finality.
 An exact indexed `FAILURE` with an absent registry record enables an explicit
 **Release failed original for a new attempt** action. It rechecks the outcome,
 archives the original public receipt and IDs in IndexedDB, and requires fresh
