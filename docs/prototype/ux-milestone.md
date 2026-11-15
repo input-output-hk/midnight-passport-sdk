@@ -136,6 +136,11 @@ select a name; enter it again after a reload. The panel can save a standalone sp
 An unavailable indexer leaves the original receipt intact and reports the
 check as unavailable. Without claim preparation or sponsor dispatch, the panel
 is labelled read-only receipt inspection and offers no claim action.
+An original retained under a different credential reports a claim conflict
+instead of a generic provider outage. A synthetic full-app browser check now
+opens the panel after creation and reopening, verifies that the second
+credential cannot inherit the first one's local receipt, and counts one stub
+`createAccount` invocation. Native create/open and claim acceptance remain separate.
 An exact failed original with no registry record exposes **Release failed
 original for a new attempt**. The action rechecks the failure and availability,
 archives the public receipt and original transaction IDs, and clears the prior

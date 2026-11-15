@@ -264,6 +264,9 @@ To recover an external claim, enter the name and paste the sponsor's original
 public receipt. Save it, then
 use **Check original claim**. After a reload, open the same account with the
 same credential, enter the name again, and check the saved receipt.
+If another credential opens the same ACC, its local check reports the retained
+original as a claim conflict rather than treating it as that credential's own
+record or as a provider outage. Reopen with the original credential and receipt.
 
 The sponsor prepares this receipt before dispatch. Its fields are
 `networkId` (`undeployed`), `registryAddress`, `accountAddress`, `name`,
@@ -300,6 +303,11 @@ made one browser submission, refused an alternate credential, and recovered
 the original receipt after a lost response and browser restart. The fixture
 attaches its quote after proof, so it does not qualify human pre-proof review
 or the Balances panel's full ACC create/open handoff.
+The synthetic full-app handoff check (`nix develop -c pnpm --filter
+passport-dapp test:midnames-handoff` after the package build) exercises
+create/open navigation, the Balances panel, public-receipt checks and
+credential scoping. Its connector and naming responses are fixtures: it is
+not a native ACC deployment, real passkey, claim transaction or provider run.
 The [browser claim design](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/adr/0018-standalone-midnames-claim.md) describes
 the proof and sponsor checks for browser-initiated onboarding.
 

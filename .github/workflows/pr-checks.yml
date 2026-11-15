@@ -136,6 +136,11 @@ jobs:
           test "$CHROME_VERSION" = '157.0.8103.78'
       - name: Fresh package outputs
         run: pnpm exec tsc -b tsconfig.build.json
+      - name: Midnames create/open handoff and credential scope
+        if: matrix.arm == 'p256' && matrix.group == 'presentation'
+        env:
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
+        run: pnpm --filter passport-dapp test:midnames-handoff
       - name: Browser worker and IndexedDB contracts
         if: matrix.arm == 'p256' && matrix.group == 'presentation'
         env:

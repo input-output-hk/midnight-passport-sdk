@@ -904,6 +904,13 @@ An unavailable indexer stays an unavailable check rather than a pending claim;
 the original receipt remains available for reconciliation. If neither preparation nor
 sponsor dispatch is configured, the panel labels itself as read-only receipt
 inspection and does not offer a claim action.
+An original retained under another credential is reported as a claim conflict,
+not a provider outage; reopening this ACC with that credential can inspect it.
+After building the workspace, `nix develop -c pnpm --filter passport-dapp
+test:midnames-handoff` checks the full demo create/open navigation with a
+synthetic connector and naming reader. It verifies the panel, receipt scope,
+and one stub `createAccount` invocation; it does not deploy an ACC, send a
+claim, or qualify a chain/provider.
 An exact indexed `FAILURE` with an absent registry record enables an explicit
 **Release failed original for a new attempt** action. It rechecks the outcome,
 archives the original public receipt and IDs in IndexedDB, and requires fresh
