@@ -99,7 +99,7 @@ const messages = {
   saved: /^Original receipt saved/,
   pending: /^Claim pending/,
   confirmed: /^Registered\./,
-  refused: /^Claim check unavailable/,
+  refused: /^A different original claim is retained for this name\./,
 };
 let indexerRequests = 0;
 let submissionRequests = 0;
