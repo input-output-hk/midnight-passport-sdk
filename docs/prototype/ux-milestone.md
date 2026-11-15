@@ -126,6 +126,10 @@ balance intent independently of the browser. Live browser proof preparation and 
 have their own isolated evidence.
 If the sponsor durably refuses changed terms before recording an intent, the
 browser can review a new quote. An unknown result stays bound to the original.
+The synthetic full-app fixture checks unavailable and wrong-ACC quotes before
+proof, review clearing when the name changes, and a pre-intent refusal followed
+by a newly reviewed retry. Native sponsor failure and real passkey consent
+remain open qualification.
 
 The opt-in **Finish Passport setup** panel on Passport account → Balances
 appears after creation or passkey-based opening of the target ACC. Reviewing a
