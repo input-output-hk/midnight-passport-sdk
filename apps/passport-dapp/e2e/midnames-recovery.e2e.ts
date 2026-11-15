@@ -204,6 +204,12 @@ async function seedFixtureOriginal(page: Page) {
       const journal = await openClaimJournal(indexedDB);
       try {
         const credential = await claimDigest(new Uint8Array(32).fill(1));
+        await journal.selectName(
+          quote.registryAddress,
+          quote.accountAddress,
+          credential,
+          quote.name,
+        );
         await journal.reserve(quote, credential);
         await journal.bindOwner(quote, credential, receipt.ownerCommitment);
         await journal.retain(receipt, credential, quote);
