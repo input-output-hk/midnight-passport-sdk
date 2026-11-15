@@ -231,6 +231,12 @@ or mismatched transactions, provider outages, and missing finality do not enable
 release. This is a source-preview local recovery path, not a new native or
 public-namespace qualification. If legacy storage contains multiple original claims,
 enter an original name to inspect it before preparing another.
+The synthetic full-app Chromium fixture now follows create/open into this form:
+it refuses release after a conflicting status or an unavailable recheck, then
+releases a failed fixture and retrieves its archived original after reload
+without creating a second ACC. The fixture substitutes the registry status; it
+does not prove an actual failed transaction, a fresh sponsor quote, or a native
+retry. Those remain required before closing the failed-claim follow-up.
 **Check registry status** reads the pinned registry and verifies the open ACC
 before reporting an unregistered name. Availability is an observation at the
 time of the read. A retained receipt takes precedence and is reconciled

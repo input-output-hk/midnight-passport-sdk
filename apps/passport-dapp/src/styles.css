@@ -1511,6 +1511,9 @@ main.workspace-shell[data-landing='true'] > .navigation-bar {
 #passport-name-setup #claim-recovery[hidden] {
   display: none;
 }
+#passport-name-setup #claim-recovery [hidden] {
+  display: none;
+}
 #passport-name-setup #claim-recovery > .btn {
   justify-self: start;
 }
