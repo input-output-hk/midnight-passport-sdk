@@ -413,13 +413,14 @@ of 6 and 4. Both legs dispatched once. An independent indexer read matched
 the withdrawal output to the deposit input.
 An owned rerun on signed source `979b9e2` reached the same 10/0 → 6/0 → 6/4
 balances. It finalized withdrawal and deposit at blocks 94 and 97, consumed
-the exact bridge output, and recorded one approval, one owner signature, one
-dispatch per leg, and zero replay broadcasts. The fresh registry and ACC
-addresses differ from the earlier run.
+the exact bridge output, and recorded one owner approval and signature for
+the withdrawal, one dispatch per leg, and zero replay broadcasts. The fresh
+registry and ACC addresses differ from the earlier run.
 The fresh signed `d492487` run also passed after an interruption between the
 two legs: the reopened journal consumed the exact withdrawal output and
-reached 10/0 → 6/0 → 6/4 with one approval and signature per leg, one
-dispatch per leg, and no replay broadcast. This is an earlier-head result;
+reached 10/0 → 6/0 → 6/4 with one owner approval and signature for the
+withdrawal, one dispatch per leg, and no replay broadcast. This is an
+earlier-head result;
 the merged `9a19757` fixture changes concern claim-browser diagnostics and
 assertions, not the named NIGHT route.
 
