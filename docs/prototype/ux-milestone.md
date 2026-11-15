@@ -140,7 +140,11 @@ An original retained under a different credential reports a claim conflict
 instead of a generic provider outage. A synthetic full-app browser check now
 opens the panel after creation and reopening, verifies that the second
 credential cannot inherit the first one's local receipt, and counts one stub
-`createAccount` invocation. Native create/open and claim acceptance remain separate.
+`createAccount` invocation. It also checks the failed-original release and
+archived receipt across reload in an isolated browser profile. A conflicting
+status hides release; an unavailable recheck hides it until the user checks
+the original again. Native create/open, actual indexed failure and sponsored
+retry acceptance remain separate.
 An exact failed original with no registry record exposes **Release failed
 original for a new attempt**. The action rechecks the failure and availability,
 archives the public receipt and original transaction IDs, and clears the prior

@@ -50,8 +50,11 @@ const naming = `
         async availability() { return 'available'; },
         async dispatch() { throw Error('Claim dispatch is outside this handoff fixture'); },
         async check(receipt) {
-          return receipt.name === 'alice.night' &&
-            receipt.accountAddress === ${JSON.stringify(account)} ? 'registered' : 'conflict';
+          if (receipt.name !== 'alice.night' ||
+              receipt.accountAddress !== ${JSON.stringify(account)}) return 'conflict';
+          const status = localStorage.getItem('handoff-claim-status');
+          return status === 'failed' || status === 'unavailable' || status === 'conflict'
+            ? status : 'registered';
         },
       },
     };
@@ -92,11 +95,25 @@ try {
   const page = await browser.newPage();
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  const ready = () =>
-    page
-      .locator('#status')
-      .filter({ hasText: /^Ready\./ })
-      .waitFor({ state: 'attached' });
+  page.on('requestfailed', (request) =>
+    errors.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText}`),
+  );
+  page.on('response', (response) => {
+    if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`);
+  });
+  const ready = async () => {
+    try {
+      await page
+        .locator('#status')
+        .filter({ hasText: /^Ready\./ })
+        .waitFor({
+          state: 'attached',
+          timeout: 10_000,
+        });
+    } catch (error) {
+      throw new Error(`App did not become ready: ${errors.join('; ')}`, { cause: error });
+    }
+  };
   await page.goto(origin);
   await ready();
   await page.locator('#create').click();
@@ -151,8 +168,93 @@ try {
     .getByText(/^Registered\./)
     .waitFor();
   assert.equal(await page.evaluate(() => localStorage.getItem('handoff-fixture-creates')), '1');
+
+  // A second, isolated browser profile exercises the full app's failed-original
+  // path. The naming statuses are synthetic; this does not qualify chain finality.
+  const retryContext = await browser.newContext();
+  try {
+    const retryPage = await retryContext.newPage();
+    retryPage.on('pageerror', (error) => errors.push(error.message));
+    await retryPage.goto(origin);
+    await retryPage
+      .locator('#status')
+      .filter({ hasText: /^Ready\./ })
+      .waitFor({ state: 'attached' });
+    await retryPage.locator('#create').click();
+    await retryPage.locator('#passport-name-setup').waitFor({ state: 'visible' });
+    await retryPage.locator('#claim-recovery-name').fill(original.name);
+    await retryPage.locator('#claim-recovery-receipt').fill(JSON.stringify(original));
+    await retryPage.locator('#claim-recovery-retain').click();
+    await retryPage
+      .locator('#claim-recovery-status')
+      .getByText(/Original receipt saved/)
+      .waitFor();
+
+    await retryPage.evaluate(() => localStorage.setItem('handoff-claim-status', 'conflict'));
+    await retryPage.locator('#claim-recovery-check').click();
+    await retryPage
+      .locator('#claim-recovery-status')
+      .getByText(/original transaction or current registry binding conflicts/)
+      .waitFor();
+    assert.equal(await retryPage.locator('#claim-release-failed').isVisible(), false);
+
+    await retryPage.evaluate(() => localStorage.setItem('handoff-claim-status', 'failed'));
+    await retryPage.locator('#claim-recovery-check').click();
+    await retryPage
+      .locator('#claim-recovery-status')
+      .getByText(/exact original transaction failed/)
+      .waitFor();
+    assert.equal(await retryPage.locator('#claim-release-failed').isVisible(), true);
+
+    await retryPage.evaluate(() => localStorage.setItem('handoff-claim-status', 'unavailable'));
+    await retryPage.locator('#claim-release-failed').click();
+    await retryPage
+      .locator('#claim-recovery-status')
+      .getByText(/Claim check unavailable/)
+      .waitFor();
+    assert.equal(await retryPage.locator('#claim-release-failed').isVisible(), false);
+
+    await retryPage.evaluate(() => localStorage.setItem('handoff-claim-status', 'failed'));
+    await retryPage.locator('#claim-recovery-check').click();
+    await retryPage
+      .locator('#claim-recovery-status')
+      .getByText(/exact original transaction failed/)
+      .waitFor();
+    await retryPage.locator('#claim-release-failed').click();
+    await retryPage
+      .locator('#claim-recovery-status')
+      .getByText(/Failed original retained in local history/)
+      .waitFor();
+    assert.equal(await retryPage.locator('#claim-release-failed').isVisible(), false);
+
+    await retryPage.goto(origin);
+    await retryPage
+      .locator('#status')
+      .filter({ hasText: /^Ready\./ })
+      .waitFor({ state: 'attached' });
+    await retryPage.locator('#open').click();
+    await retryPage.locator('#passport-name-setup').waitFor({ state: 'visible' });
+    await retryPage.locator('#claim-recovery-name').fill(original.name);
+    await retryPage.locator('#claim-recovery-check').click();
+    await retryPage
+      .locator('#claim-recovery-status')
+      .getByText(/retained in local history/)
+      .waitFor();
+    assert.deepEqual(
+      JSON.parse(await retryPage.locator('#claim-recovery-receipt').inputValue()),
+      original,
+    );
+    assert.equal(
+      await retryPage.evaluate(() => localStorage.getItem('handoff-fixture-creates')),
+      '1',
+    );
+  } finally {
+    await retryContext.close();
+  }
   assert.deepEqual(errors, []);
-  console.log('Midnames synthetic create/open handoff and credential scope: PASS');
+  console.log(
+    'Midnames synthetic create/open, credential scope, and failed-original handoff: PASS',
+  );
 } finally {
   await browser?.close();
   await server.close();

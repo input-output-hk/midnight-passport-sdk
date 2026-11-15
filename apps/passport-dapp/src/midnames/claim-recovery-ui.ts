@@ -270,6 +270,8 @@ async function runClaimAction(context: ClaimActionContext): Promise<void> {
     }
     if (releasing) {
       if (release.hidden) throw new Error('Check the failed original before release.');
+      // A failed recheck must not leave the previous failure observation actionable.
+      release.hidden = true;
       await releaseVerifiedFailure(
         recovery,
         journal,
