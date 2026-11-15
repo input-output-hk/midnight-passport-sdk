@@ -66,6 +66,16 @@ withdrawal output after reopening the journal. The browser's standalone claim
 availability check is a read-only preflight. Browser-initiated proof and sponsor
 submission are separate from the existing lost-response recovery evidence.
 
+The latest [native qualification review](https://github.com/input-output-hk/midnight-passport-sdk/pull/342)
+records another independent-sender deposit and two-leg NIGHT send on clean
+signed source `d492487`, whose tree matches merged PR #341. A separate
+browser claim run passed on clean signed source `9a19757`: one sponsored
+dispatch, recovery after a lost HTTP response and Chromium restart, and
+alternate-credential refusal. The runner verified unchanged inputs and
+released its lease in each run. These are synthetic localnet results; the
+browser claim fixture attaches the quote after proof and does not qualify
+real-passkey pre-proof approval, online naming, or total-loss name ownership.
+
 ## Current published release and evidence tiers
 
 The published preview is **0.1.0-rc9**. Its
@@ -89,8 +99,9 @@ Named shielded receive was qualified on later local source.
 | Plan operation proving requirements | `contract/capabilities`, `account/preflight`; SDK capabilities panel | Catalog drift, tamper, exact method/profile tests; browser operation/read-grant changes with no credential or driver calls | Advisory metadata only: no claim of host/key-endpoint readiness, ownership, available funds or proof success |
 | Compose an application→ACC payment | `mn-passport-export-compact`, merchant client example; engineer recipe link | Installed/compiler/offline checks; native positive payment and seven construction refusals | JubJub unshielded caller-pinned scope only; no browser merchant button, arbitrary contract acceptance or production privacy claim |
 | Review/resume a shielded deposit | `depositShielded`, protected journal and reviewed host example | Real encryption/filesystem revisions, captured original inputs, refusal, unknown and reconciliation tests | Host recipe, not a demo funding endpoint. Synthetic sender/finality tests do not establish native submission acceptance |
-| Deposit a shielded asset by name | Standalone Node sender using the real Midnames adapter and `deposit_shielded` | Native `undeployed` receipt: one finalized 10-unit test-token deposit to `alice.night`, with owner decryption and verified holding. Automated pre-dispatch refusal and unknown-outcome tests. | Source-only wallet-to-ACC receive on the standalone `.night` profile. |
-| Send NIGHT between named Passport ACCs | Standalone Node fixture using JubJub withdrawal and `deposit_unshielded` | Native `undeployed` payment interrupted after withdrawal. The reopened journal spent its exact output and confirmed 10→6 on the source, 0→4 on the target, with one dispatch per leg. Tests cover repoints, insufficient funds, invalid routes and retained receipts. | Source-only NIGHT route. Browser passkeys and online profiles require separate qualification. |
+| Deposit a shielded asset by name | Standalone Node sender using the real Midnames adapter and `deposit_shielded` | Native `undeployed` receipt on signed `d492487`: one finalized 10-unit test-token deposit to `alice.night`, with owner decryption and verified holding. Automated pre-dispatch refusal and unknown-outcome tests. | Source-only wallet-to-ACC receive on the standalone `.night` profile; earlier-head evidence relative to the claim-browser fix. |
+| Send NIGHT between named Passport ACCs | Standalone Node fixture using JubJub withdrawal and `deposit_unshielded` | Native `undeployed` payment on signed `d492487` interrupted after withdrawal. The reopened journal spent its exact output and confirmed 10→6 on the source, 0→4 on the target, with one dispatch per leg. Tests cover repoints, insufficient funds, invalid routes and retained receipts. | Source-only NIGHT route; earlier-head evidence. Browser passkeys and online profiles require separate qualification. |
+| Claim and reconcile a local name | Demo recovery form with a sponsor-prepared owner proof and durable original receipt | Native `undeployed` claim on signed `9a19757`: one sponsored dispatch, lost-response recovery after Chromium restart, alternate-credential refusal and 23 live indexer requests. | Synthetic browser credential and local `.night` registry. The fixture quote follows proof; real-provider pre-proof review, online namespace and total-loss continuity are open. |
 
 These are mapped tests, not exhaustive coverage of every parameter, circuit,
 interleaving or provider. The 52 proof/66 pure circuit inventory does not imply

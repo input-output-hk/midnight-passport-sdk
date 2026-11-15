@@ -322,6 +322,15 @@ made one browser submission, refused an alternate credential, and recovered
 the original receipt after a lost response and browser restart. The fixture
 attaches its quote after proof, so it does not qualify human pre-proof review
 or the Balances panel's full ACC create/open handoff.
+The [merged native qualification fix](https://github.com/input-output-hk/midnight-passport-sdk/pull/342)
+then passed the same isolated browser claim flow on clean signed source
+`9a19757`: one sponsored dispatch, recovery after the lost response and
+Chromium restart, alternate-credential refusal, and 23 live indexer requests.
+The native runner verified unchanged source and cached inputs, stopped its
+three owned containers, retained their volumes, and released its lease. The
+local receipt is preserved outside the public documentation. This is a
+synthetic localnet credential, not a real WebAuthn provider or an online
+`passport.night` claim; total-loss name-owner continuity remains open.
 The synthetic full-app handoff check (`nix develop -c pnpm --filter
 passport-dapp test:midnames-handoff` after the package build) exercises
 create/open navigation, the Balances panel, public-receipt checks and
@@ -364,6 +373,10 @@ An owned rerun on signed source `979b9e2` finalized the independent sender's
 one dispatch at block 74 and again matched the original output, decrypted
 inbox coin, and current holdings. It used a fresh isolated registry and ACC;
 the prior run's block and contract addresses are not reused.
+Another fresh isolated run on signed source `d492487` (the tree merged in
+PR #341) passed the same one-dispatch owner-holding checks. It is an
+earlier-head native result, separate from the later `9a19757` browser-claim
+qualification.
 
 Run the [standalone fixture](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local)
 from a source checkout containing #317. The fixture uses local `.night` on
@@ -403,5 +416,11 @@ balances. It finalized withdrawal and deposit at blocks 94 and 97, consumed
 the exact bridge output, and recorded one approval, one owner signature, one
 dispatch per leg, and zero replay broadcasts. The fresh registry and ACC
 addresses differ from the earlier run.
+The fresh signed `d492487` run also passed after an interruption between the
+two legs: the reopened journal consumed the exact withdrawal output and
+reached 10/0 → 6/0 → 6/4 with one approval and signature per leg, one
+dispatch per leg, and no replay broadcast. This is an earlier-head result;
+the merged `9a19757` fixture changes concern claim-browser diagnostics and
+assertions, not the named NIGHT route.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).
