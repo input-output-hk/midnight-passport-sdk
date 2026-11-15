@@ -15,6 +15,19 @@ const original = {
   ownerCommitment: '56'.repeat(32),
   transaction: { identifiers: ['00' + '78'.repeat(32)], sha256: '90'.repeat(32) },
 };
+const quote = {
+  networkId: original.networkId,
+  registryAddress: registry,
+  accountAddress: account,
+  name: original.name,
+  id: '91'.repeat(32),
+  sponsorAddress: '92'.repeat(32),
+  sponsorPaymentAddress: '93'.repeat(32),
+  registryPayee: '94'.repeat(32),
+  night: '1',
+  maximumDust: '100000',
+  expiresAt: Date.now() + 300_000,
+};
 
 const connector = `
   export const ARM = 'p256', SIGNING_MODE = 'passkey', NETWORK_ID = 'undeployed';
@@ -41,7 +54,13 @@ const connector = `
 `;
 
 const naming = `
+  import { claimQuoteDigest } from './claim-quote.js';
+  const quote = ${JSON.stringify(quote)};
+  const original = ${JSON.stringify(original)};
+  const count = (key) => localStorage.setItem(key,
+    String(Number(localStorage.getItem(key) || '0') + 1));
   export function configureMidnames() {
+    const preproof = new URLSearchParams(location.search).has('preproof');
     return {
       provider: { id: 'synthetic-handoff', mode: 'external' },
       async resolve() { return undefined; },
@@ -49,6 +68,29 @@ const naming = `
         registryAddress: ${JSON.stringify(registry)},
         async availability() { return 'available'; },
         async dispatch() { throw Error('Claim dispatch is outside this handoff fixture'); },
+        ...(preproof && { preparation: {
+          async quote(destination) {
+            count('handoff-quotes');
+            if (JSON.stringify(destination) !== JSON.stringify({
+              networkId: quote.networkId, registryAddress: quote.registryAddress,
+              accountAddress: quote.accountAddress, name: quote.name,
+            })) throw Error('Unexpected claim destination');
+            return quote;
+          },
+          async prove(reviewed, opened) {
+            count('handoff-proofs');
+            if (JSON.stringify(reviewed) !== JSON.stringify(quote) ||
+                opened.address !== quote.accountAddress) throw Error('Unreviewed owner proof');
+            return { ownerCommitment: original.ownerCommitment, bytes: new Uint8Array([2, 3, 5]) };
+          },
+          async prepare(reviewed, proved) {
+            count('handoff-preparations');
+            if (JSON.stringify(reviewed) !== JSON.stringify(quote) ||
+                proved.ownerCommitment !== original.ownerCommitment) throw Error('Unreviewed preparation');
+            return { ...original, quoteSha256: await claimQuoteDigest(quote) };
+          },
+          async findPrepared() { throw Error('Recovery is outside this handoff fixture'); },
+        } }),
         async check(receipt) {
           if (receipt.name !== 'alice.night' ||
               receipt.accountAddress !== ${JSON.stringify(account)}) return 'conflict';
@@ -251,9 +293,79 @@ try {
   } finally {
     await retryContext.close();
   }
+
+  // Exercise the full app's pre-proof decision with a synthetic owner/sponsor.
+  // The real credential ceremony and registry transaction need native evidence.
+  const preparationContext = await browser.newContext();
+  try {
+    const preparationPage = await preparationContext.newPage();
+    preparationPage.on('pageerror', (error) => errors.push(error.message));
+    const counts = () =>
+      preparationPage.evaluate(() => ({
+        quotes: Number(localStorage.getItem('handoff-quotes') || '0'),
+        proofs: Number(localStorage.getItem('handoff-proofs') || '0'),
+        preparations: Number(localStorage.getItem('handoff-preparations') || '0'),
+        creates: Number(localStorage.getItem('handoff-fixture-creates') || '0'),
+      }));
+    await preparationPage.goto(`${origin}/?preproof`);
+    await preparationPage
+      .locator('#status')
+      .filter({ hasText: /^Ready\./ })
+      .waitFor({ state: 'attached' });
+    await preparationPage.locator('#create').click();
+    await preparationPage.locator('#passport-name-setup').waitFor({ state: 'visible' });
+    await preparationPage.locator('#claim-recovery-name').fill(original.name);
+    assert.equal(await preparationPage.locator('#claim-review-quote').isVisible(), true);
+    assert.equal(await preparationPage.locator('#claim-prepare').isVisible(), false);
+    assert.deepEqual(await counts(), { quotes: 0, proofs: 0, preparations: 0, creates: 1 });
+
+    await preparationPage.locator('#claim-review-quote').click();
+    const summary = preparationPage.locator('#claim-quote-summary');
+    await summary.getByText(/Maximum sponsor fee 100000 SPECKs/).waitFor();
+    const reviewed = await summary.innerText();
+    for (const value of [
+      original.name,
+      original.networkId,
+      account,
+      registry,
+      quote.registryPayee,
+      quote.sponsorAddress,
+      quote.sponsorPaymentAddress,
+      'Registry price 1 smallest NIGHT units',
+      new Date(quote.expiresAt).toISOString(),
+    ])
+      assert.ok(reviewed.includes(value));
+    assert.match(reviewed, /Preparing uses the open account’s passkey/);
+    assert.equal(await preparationPage.locator('#claim-prepare').isVisible(), true);
+    assert.deepEqual(await counts(), { quotes: 1, proofs: 0, preparations: 0, creates: 1 });
+
+    await preparationPage.locator('#claim-prepare').click();
+    await preparationPage
+      .locator('#claim-recovery-status')
+      .getByText(/Original receipt saved\. Send the prepared claim/)
+      .waitFor();
+    assert.deepEqual(await counts(), { quotes: 1, proofs: 1, preparations: 1, creates: 1 });
+
+    await preparationPage.goto(origin);
+    await preparationPage
+      .locator('#status')
+      .filter({ hasText: /^Ready\./ })
+      .waitFor({ state: 'attached' });
+    await preparationPage.locator('#open').click();
+    await preparationPage.locator('#passport-name-setup').waitFor({ state: 'visible' });
+    await preparationPage.locator('#claim-recovery-name').fill(original.name);
+    await preparationPage.locator('#claim-recovery-check').click();
+    await preparationPage
+      .locator('#passport-name-setup-status')
+      .getByText(/^Registered\./)
+      .waitFor();
+    assert.deepEqual(await counts(), { quotes: 1, proofs: 1, preparations: 1, creates: 1 });
+  } finally {
+    await preparationContext.close();
+  }
   assert.deepEqual(errors, []);
   console.log(
-    'Midnames synthetic create/open, credential scope, and failed-original handoff: PASS',
+    'Midnames synthetic create/open, credential scope, failed original, and pre-proof review: PASS',
   );
 } finally {
   await browser?.close();

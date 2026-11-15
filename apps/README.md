@@ -912,7 +912,10 @@ synthetic connector and naming reader. It verifies the panel, receipt scope,
 one stub `createAccount` invocation, and failed-original release with archived
 history after reload. A conflicting status never shows the release action;
 an unavailable recheck hides it until the user checks the original again.
-The fixture does not deploy an ACC, send a claim, or qualify a chain/provider.
+An isolated profile checks that reviewing the full synthetic quote calls neither
+owner proving nor sponsor preparation; one explicit approval then calls each
+once and retains the receipt after reopening. The fixture does not deploy an
+ACC, use a real passkey or sponsor, send a claim, or qualify a chain/provider.
 An exact indexed `FAILURE` with an absent registry record enables an explicit
 **Release failed original for a new attempt** action. It rechecks the outcome,
 archives the original public receipt and IDs in IndexedDB, and requires fresh
