@@ -70,10 +70,19 @@ transactional per-leg fences and finality-gated archival of original IDs.
 Cross-tab/reload and corrupt-state checks pass with a synthetic IndexedDB.
 It is not yet wired to the demo owner-send UI or a two-leg host adapter and
 has no native or provider qualification of that browser storage path.
+
 The next source-only slice adds an opt-in finalized-ID callback for P-256 and
 JubJub unshielded owner withdrawals. The standard Midnight adapter awaits the
 host's fence before dispatch and other adapters refuse the opt-in call before
-owner signing. This does not yet connect the browser journal or complete #318.
+owner signing. The reference demo has not wired the browser journal or completed #318.
+
+The source-only named NIGHT orchestrator can now receive the account owner's
+finalized-ID callback, recheck the reviewed name at that point and fence the
+withdrawal in the browser journal before dispatch. It retains lost-response IDs
+and blocks an interrupted no-ID intent from starting a replacement withdrawal.
+A source helper maps the reviewed NIGHT amount and bridge to one selected JubJub
+account. The demo has not wired that helper, a bridge/finality adapter or a
+named-send UI; this route has no native/provider qualification.
 
 Qualify the original demo's **post-ACC name claim step** under [#316](https://github.com/input-output-hk/midnight-passport-sdk/issues/316). The source path reuses the opt-in preparation and sponsor fence after the ACC address is known, retains the selected name across reload for the same credential and network, and shows *pending Passport setup* until the original claim and current registry record agree. The fresh browser fixture covers the claim transport and recovery, but not the new panel's complete create/open handoff. Name-owner total-loss recovery, human review with a real provider and sponsor-issued quote, and the public namespace remain open gates.
 

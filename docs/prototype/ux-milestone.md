@@ -229,8 +229,16 @@ credential scope. It refuses another request while the original is active;
 both legs must pass a finality check before the host can archive it. The
 owner-send page and its passkey/bridge adapters remain to be connected and
 qualified, so this storage path is not a completed demo send journey.
+
 An opt-in source API now gives the host finalized unshielded-withdrawal IDs
 before submission and awaits its durable callback. Unsupported chain adapters
-refuse before owner signing. The browser journal still needs to be connected to
-this callback and to the second payment leg; no new native/provider run qualifies
-that composition.
+refuse before owner signing. The reference demo still needs to wire the browser
+journal and second payment leg; no new native/provider run qualifies that path.
+
+The source-only NIGHT orchestrator now accepts an account-owner callback path:
+it rechecks the named route at the finalized pre-submit point and commits the
+original withdrawal IDs before dispatch. An interrupted intent without those IDs
+blocks a new attempt, and a lost reply retains the original for lookup. A source
+helper binds the selected JubJub ACC to the reviewed NIGHT amount and bridge.
+The demo still needs to wire that helper, the bridge/finality adapter, send control
+and browser qualification.

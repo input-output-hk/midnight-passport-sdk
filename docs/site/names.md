@@ -505,10 +505,20 @@ only after its finality reader confirms both original legs; the archived IDs
 remain available for audit. This local storage neither authorizes a payment
 nor coordinates another website, and the Passport demo has no named-send
 control or two-leg host adapter yet.
+
 The current source exposes `beforeSubmit` on `withdrawUnshielded` so a host can
 commit those original IDs before the standard Midnight adapter dispatches a
 finalized transaction. An unsupported chain adapter refuses before owner signing;
 a rejected callback prevents dispatch. The demo has not wired this hook to the
-browser NIGHT journal or qualified a complete named-send browser journey.
+named-send UI or qualified a complete named-send browser journey.
+
+An optional source-only owner port now connects that callback to the named NIGHT
+orchestrator. The callback checks the finalized network, source ACC and JubJub
+withdrawal circuit, re-resolves the reviewed name, then fences the exact original
+withdrawal identifiers before allowing dispatch. A lost response keeps the
+original; a retained intent with no transaction ID refuses an automatic retry.
+A source helper maps the selected JubJub account to the reviewed NIGHT amount and
+bridge address. The demo still needs to wire it with a bridge/finality adapter
+and UI. This composition has no native or real-provider result.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).
