@@ -90,7 +90,10 @@ test('the optional host approval check runs at the finalized owner callback befo
   const { account } = owner();
   const order: string[] = [];
   const submit = createNightOwnerWithdrawal(account, (reviewed) => {
-    assert.equal(reviewed, intent);
+    assert.notEqual(reviewed, intent);
+    assert.deepEqual(reviewed, intent);
+    assert.ok(Object.isFrozen(reviewed));
+    assert.ok(Object.isFrozen(reviewed.operations));
     order.push('approved-scope');
   });
   await submit(intent, async () => {
@@ -108,6 +111,50 @@ test('the optional host approval check runs at the finalized owner callback befo
     /no longer has/,
   );
   assert.deepEqual(order, ['approved-scope', 'journal-fence']);
+});
+
+test('a mutable caller cannot present approved scope A for withdrawal arguments B', async () => {
+  let release = () => {};
+  const proof = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const { account } = owner();
+  const mutable = { ...intent, operations: [...intent.operations] as typeof NIGHT_SEND_OPERATIONS };
+  const approvedBridge = 'e'.repeat(64);
+  let fences = 0;
+  let dispatches = 0;
+  account.withdrawUnshielded = async (request, options) => {
+    assert.equal(request.recipient, intent.bridge);
+    await proof;
+    assert.ok(options?.beforeSubmit);
+    await options.beforeSubmit({
+      networkId: 'undeployed',
+      account: source,
+      circuit: 'withdraw_unshielded_with_jubjub',
+      transactionHash: 'f'.repeat(64),
+      identifiers: ['00' + 'f'.repeat(64)],
+    });
+    dispatches++;
+    return { txHash: 'f'.repeat(64), nextUseCounter: 2n };
+  };
+  const submit = createNightOwnerWithdrawal(account, (reviewed) => {
+    assert.equal(reviewed.bridge, intent.bridge);
+    assert.equal(reviewed.amount, intent.amount);
+    assert.equal(reviewed.target, intent.target);
+    assert.deepEqual(reviewed.operations, intent.operations);
+    if (reviewed.bridge !== approvedBridge) throw new Error('Named approval differs.');
+  });
+  const pending = submit(mutable, async () => {
+    fences++;
+  });
+  mutable.bridge = approvedBridge;
+  mutable.amount = '9';
+  mutable.target = 'f'.repeat(64);
+  Reflect.set(mutable, 'operations', [NIGHT_SEND_OPERATIONS[1], NIGHT_SEND_OPERATIONS[0]]);
+  release();
+  await assert.rejects(pending, /Named approval differs/);
+  assert.equal(fences, 0);
+  assert.equal(dispatches, 0);
 });
 
 test('wrong owner, changed account and missing fence refuse before withdrawal', async () => {

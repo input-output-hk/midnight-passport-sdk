@@ -23,6 +23,21 @@ export function createNightOwnerWithdrawal(
     intent: NightSendIntent,
     beforeSubmit: (submission: PreparedValueSubmission) => Promise<void>,
   ): Promise<void> => {
+    if (!Array.isArray(intent.operations))
+      throw new Error('The reviewed NIGHT withdrawal differs from the selected owner.');
+    const reviewed: NightSendIntent = Object.freeze({
+      requestId: intent.requestId,
+      name: intent.name,
+      networkId: intent.networkId,
+      source: intent.source,
+      bridge: intent.bridge,
+      asset: intent.asset,
+      amount: intent.amount,
+      target: intent.target,
+      providerId: intent.providerId,
+      namespace: intent.namespace,
+      operations: Object.freeze([...intent.operations]) as typeof NIGHT_SEND_OPERATIONS,
+    });
     if (
       selected.networkId !== 'undeployed' ||
       selected.bindingId !== 'acc-s3r1.1' ||
@@ -37,22 +52,22 @@ export function createNightOwnerWithdrawal(
     )
       throw new Error('The selected owner cannot fence this standalone NIGHT withdrawal.');
     if (
-      intent.networkId !== selected.networkId ||
-      intent.source !== selected.address ||
-      intent.asset !== 'NIGHT' ||
-      !ADDRESS.test(intent.bridge) ||
-      !/^[1-9][0-9]{0,38}$/.test(intent.amount) ||
-      BigInt(intent.amount) >= 1n << 128n ||
-      intent.operations.length !== NIGHT_SEND_OPERATIONS.length ||
-      intent.operations.some((operation, i) => operation !== NIGHT_SEND_OPERATIONS[i])
+      reviewed.networkId !== selected.networkId ||
+      reviewed.source !== selected.address ||
+      reviewed.asset !== 'NIGHT' ||
+      !ADDRESS.test(reviewed.bridge) ||
+      !/^[1-9][0-9]{0,38}$/.test(reviewed.amount) ||
+      BigInt(reviewed.amount) >= 1n << 128n ||
+      reviewed.operations.length !== NIGHT_SEND_OPERATIONS.length ||
+      reviewed.operations.some((operation, i) => operation !== NIGHT_SEND_OPERATIONS[i])
     )
       throw new Error('The reviewed NIGHT withdrawal differs from the selected owner.');
     await withdraw(
-      { color: NIGHT_COLOR, amount: intent.amount, recipient: intent.bridge },
+      { color: NIGHT_COLOR, amount: reviewed.amount, recipient: reviewed.bridge },
       {
         beforeSubmit: checkApproved
           ? async (submission) => {
-              checkApproved(intent);
+              checkApproved(reviewed);
               await beforeSubmit(submission);
             }
           : beforeSubmit,
