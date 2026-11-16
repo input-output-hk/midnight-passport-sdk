@@ -70,7 +70,7 @@ async function openClaim(page: Page, origin: string) {
   await page
     .locator('#status')
     .filter({ hasText: /^Ready\./ })
-    .waitFor();
+    .waitFor({ state: 'attached' });
   await page.locator('#open').click();
   await page.locator('#workspace-account').waitFor();
   await reveal(page, '#claim-recovery');
