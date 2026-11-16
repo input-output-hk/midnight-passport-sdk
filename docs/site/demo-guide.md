@@ -54,6 +54,18 @@ must hold each asset on that chain. See the
 Do not run a second wallet on occupied ports or delete existing state to repair a
 restart. An existing configured demo may already be ready to use.
 
+### Source preview: named NIGHT payment
+
+The opt-in local Midnames profile adds a separate **Send NIGHT to a Passport
+name** form under **Passport account → Withdraw**. It requires a JubJub ACC,
+connected built-in wallet, `undeployed` chain, pinned standalone registry and
+loopback endpoints. The form reviews the resolved ACC and two operations before
+the actual owner credential call. A pending original remains visible for
+reconciliation, and an owner attempt without a transaction ID blocks automatic
+retry. See the [app configuration](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/apps/README.md#source-preview-opt-in-local-named-night-send)
+and [naming limits]({{ '/names/' | relative_url }}). This page wiring has source
+checks only; a connected native payment and real-provider acceptance remain open.
+
 ## Enter and navigate
 
 The signed-out entry offers **Sign up**, **Log in** and account-address login. It has

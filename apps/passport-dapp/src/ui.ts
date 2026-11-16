@@ -94,6 +94,7 @@ class DemoUi {
   };
   private tick = () => this.activityView.renderProgress();
   refreshPrompts = () => this.controls.renderPrompts();
+  refreshActions = () => this.controls.renderButtons();
   knownAddress = () => this.dom.knownAddress.value;
   handoffJson = () => this.dom.handoffInput.value;
   grantInput = () => ({

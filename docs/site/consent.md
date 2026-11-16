@@ -119,9 +119,9 @@ registry, full recipient ACC, bridge wallet and both ACC operations to this
 actual credential review. An opt-in finalized-withdrawal callback checks that
 approved named scope before the journal fence. The ACC signature binds the
 withdrawal to the bridge, while the name and recipient ACC are checked by the
-host; the current circuit does not sign those naming fields. The demo has not
-connected this review seam to a send control or qualified a native/provider
-payment through it.
+host; the current circuit does not sign those naming fields. The opt-in local
+demo control now uses this review seam. A native/provider payment has not been
+qualified through it.
 
 A matching scoped JubJub grant transfer keeps its standalone exact decision because
 it makes no native credential call. Other device/grant/rotation reviews remain where

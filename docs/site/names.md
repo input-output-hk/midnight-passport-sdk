@@ -509,8 +509,8 @@ control; the source-only two-leg host is not wired to it.
 The current source exposes `beforeSubmit` on `withdrawUnshielded` so a host can
 commit those original IDs before the standard Midnight adapter dispatches a
 finalized transaction. An unsupported chain adapter refuses before owner signing;
-a rejected callback prevents dispatch. The demo has not wired this hook to the
-named-send UI or qualified a complete named-send browser journey.
+a rejected callback prevents dispatch. The opt-in local named-send UI now uses
+this hook; a complete native browser journey remains unqualified.
 
 An optional source-only owner port now connects that callback to the named NIGHT
 orchestrator. The callback checks the finalized network, source ACC and JubJub
@@ -521,8 +521,8 @@ unsubmitted intent with an audit record. A durable owner-start marker keeps
 later no-ID outcomes blocked, including a callback refusal.
 A source helper maps the selected JubJub account to the reviewed NIGHT amount and
 bridge address. The source host now wires it to the bridge and finality ports,
-but the demo page has no send control. This composition has no native or
-real-provider result.
+and the opt-in local demo page has a send control. This composition has no
+native or real-provider result.
 
 A source-only browser finality reader can check the original hash, ordered watch
 IDs and decoded Ledger 9 transaction against a successful indexer row, then
@@ -555,9 +555,9 @@ The internal browser wallet now has a device-held deposit adapter. It balances,
 signs and retains one exact prepared `deposit_unshielded` original, then accepts
 one dispatch of that original after independently reading the host's durable
 IndexedDB fence. It rejects extra
-ACC actions, other unshielded inputs and change outputs. The demo still needs
-the connected send control and native browser qualification; these source tests
-are not a new native result.
+ACC actions, other unshielded inputs and change outputs. The opt-in local demo
+control now uses this worker; native browser qualification is still needed.
+These source tests are not a new native result.
 
 A source-only host composition now joins the selected JubJub ACC, configured
 Midnames resolver, scope-bound browser journal, canonical-block finality reader,
@@ -566,14 +566,26 @@ output from the original finalized withdrawal, then asks the worker to prepare
 one exact deposit and fences that deposit before dispatch. Each attempt opens
 and closes its own journal handle, so a failed proof can resume from the stored
 withdrawal without a second withdrawal. The proof adapter has no native or
-real-provider qualification yet, and the reference page has no connected send
-control. Transaction inclusion still relies on the configured indexer.
+real-provider qualification yet. The reference page now has an opt-in local
+connected send control. Transaction inclusion still relies on the configured
+indexer.
 
 The demo wallet's separate internal worker port can report its raw bridge
 address and whether this exact output is available after NIGHT sync. It checks
 that the requested owner is the wallet's own address. The public connector API
-remains read-only. The separate internal deposit port is not yet used by a
-browser send control. Wallet startup checks the pinned v1 service configuration
+remains read-only. The opt-in local browser send control uses the internal
+deposit port. Wallet startup checks the pinned v1 service configuration
 before passing its proof-server URL to the worker.
+
+The source-only named NIGHT control is on **Passport account → Withdraw**. It is
+enabled only for the local `undeployed` JubJub demo with an external Midnames
+reader, pinned `standalone-0.35` registry profile, loopback service/indexer/
+chain endpoints, and `VITE_MIDNAMES_NIGHT_SEND=1`. It checks the recipient ACC
+and source balance, shows the full named route and both ACC operations, then
+stages that exact route for the actual owner credential review. It retains
+original transaction IDs across reloads and refuses an automatic second owner
+attempt when an existing journal has no withdrawal ID. This page wiring has
+source checks only; native connected payment and real-provider acceptance
+remain open.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

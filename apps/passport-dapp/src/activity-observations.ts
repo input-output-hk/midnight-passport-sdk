@@ -64,14 +64,20 @@ export function operationForRun(log: EventLog, run: LogRun, now: number) {
     run.error &&
     (run.error.submission !== undefined ||
       lastSessionState?.details.phase === 'blocked' ||
-      /unknown|pending|FundingRejected|reconcile|SessionBlocked/i.test(run.error.code));
-  const phase = uncertain
-    ? ('unknown' as const)
-    : declined
-      ? ('cancelled' as const)
-      : run.state === 'done'
-        ? ('succeeded' as const)
-        : run.state;
+      /unknown|pending|FundingRejected|reconcile|SessionBlocked|NightDepositInterrupted/i.test(
+        run.error.code,
+      ));
+  const pendingNamed =
+    run.action === 'sendNamedNight' &&
+    ownTrace.some((entry) => entry.kind === 'namedNight.pending');
+  const phase =
+    uncertain || pendingNamed
+      ? ('unknown' as const)
+      : declined
+        ? ('cancelled' as const)
+        : run.state === 'done'
+          ? ('succeeded' as const)
+          : run.state;
   return operationStatus(run, log.stagesOf(run), now, {
     id: `operation-${index + 1}`,
     phase,

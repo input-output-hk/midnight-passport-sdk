@@ -550,6 +550,7 @@ export function createDemoWorkspace(config: {
     show,
     enableNameSetup: accountPages.enableNameSetup,
     nameSetupStatus: accountPages.nameSetupStatus,
+    enableNamedNightSend: accountPages.enableNamedNightSend,
     selected: () => selected,
     showAccount() {
       accountOpened = true;

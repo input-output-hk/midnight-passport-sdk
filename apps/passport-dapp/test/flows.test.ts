@@ -50,6 +50,7 @@ const ACTIONS: readonly ActionId[] = [
   'walletRefresh',
   'fund',
   'withdraw',
+  'sendNamedNight',
 ];
 
 test('prompts per action, with and without an account open', () => {
@@ -83,6 +84,7 @@ test('prompts per action, with and without an account open', () => {
   assert.equal(promptsFor('walletRefresh', false), 0, 'refresh reuses the connected wallet');
   assert.equal(promptsFor('fund', true), 0, 'funding needs no passkey prompt');
   assert.equal(promptsFor('withdraw', true), 1, 'owner withdrawal needs passkey consent');
+  assert.deepEqual(promptsFor('sendNamedNight', true), [0, 1]);
 });
 
 test('the prompt table has an entry for each action and nothing the actions do not use', () => {
@@ -106,6 +108,7 @@ test('the prompt table has an entry for each action and nothing the actions do n
     'revokeSession',
     'roster',
     'rotate',
+    'sendNamedNight',
     'spendGrant',
     'startSession',
     'unlockOwner',
@@ -127,7 +130,8 @@ test('the prompt table has an entry for each action and nothing the actions do n
             action === 'refresh' ||
             action === 'walletRefresh' ||
             action === 'roster' ||
-            action === 'grantRoster'
+            action === 'grantRoster' ||
+            action === 'sendNamedNight'
               ? 0
               : 1) &&
           max >= min,

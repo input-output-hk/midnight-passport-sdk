@@ -91,11 +91,11 @@ test('staging is not approval; one actual signature review approves the immutabl
     });
   }));
 
-test('one actual owner approval binds the named NIGHT target and both ACC operations', async () =>
+test('named NIGHT page action binds the target and both ACC operations in one owner approval', async () =>
   withUi(async (controls, frames) => {
     const mutableNamed = { ...namedNight };
     const named = { ...intent, scheme: 'jubjub-schnorr' as const, namedNight: mutableNamed };
-    await reviewDemoAction('withdraw', { ...context, arm: 'jubjub' });
+    await reviewDemoAction('sendNamedNight', { ...context, arm: 'jubjub' });
     stageExactCredentialReview(named, () => {});
     mutableNamed.target = '34'.repeat(32);
     assert.throws(() => assertExactNamedNight(namedNight), { code: 'UserCancelled' });

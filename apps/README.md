@@ -891,8 +891,8 @@ The separate [named NIGHT owner payment](../examples/midnames-local/README.md#re
 can also review both ACC operations in a localhost browser before its
 synthetic owner signature. Its automated isolated `undeployed` run passed at
 signed source `ec83ce9`: one withdrawal, an interrupted deposit, recovery of
-the original wallet output and one recipient deposit. This example does not
-add a sender sheet or passkey ceremony to the Passport demo.
+the original wallet output and one recipient deposit. This example remains
+separate from the Passport demo's opt-in local owner control below.
 The separate signed `a20a9b9` native decline run left 10/0 ACC balances with
 zero owner signatures, payment-leg dispatches and admitted payment journals.
 Timeout and page close fail the fixture rather than count as a Decline click.
@@ -900,8 +900,8 @@ The separate signed `e8fd610` native run changed `alice.night` on-chain after
 the automated owner-browser approval. Fresh resolution saw the replacement
 ACC, while the original intent kept the reviewed recipient. It refused before
 any owner payment signature or payment-leg dispatch; source, old recipient and
-new recipient balances stayed 10/0/0. This remains a standalone fixture,
-without a Passport demo send page or qualified online provider.
+new recipient balances stayed 10/0/0. This remains a standalone fixture with
+no qualified online provider.
 
 The source-only browser NIGHT journal now provides an IndexedDB host port for
 one active payment per network and source ACC on this origin. It retains the
@@ -909,19 +909,19 @@ reviewed intent and exact withdrawal/deposit identifiers across reloads,
 fences each leg transactionally across tabs, and refuses another credential or
 request until the original is reconciled. Archiving requires both original
 legs to pass the caller's finality check and preserves their audit record.
-The demo does not yet wire this journal to a named-send control or an owner
-payment/bridge adapter; same-origin storage does not coordinate other sites.
+The opt-in local named NIGHT control below uses this journal and a device-held
+bridge. Same-origin storage does not coordinate other sites.
 Current source also adds an opt-in pre-submit fence to the standard Midnight
 adapter's unshielded owner withdrawal. It passes the finalized transaction hash
 and watch IDs to a caller callback before dispatch; a failed callback stops the
 send. The account flow rejects an unsupported adapter before owner signing.
-The reference demo has not wired this seam into its named-send page or two-leg host.
+The opt-in local named NIGHT page uses this seam through its two-leg host.
 
 A bounded source-only finality reader now checks the exact transaction hash,
 ordered watch IDs, successful Ledger 9 result, decoded raw transaction and the
 node's canonical finalized block before a host may advance either payment leg.
-It returns unknown on malformed or unavailable evidence. The demo still needs
-to connect this reader to its named-send host.
+It returns unknown on malformed or unavailable evidence. The opt-in local
+named NIGHT page uses this reader for both original legs.
 
 The source-only named NIGHT orchestrator can now accept an owner adapter that
 passes the account API's `beforeSubmit` callback through. Immediately before the
@@ -933,8 +933,8 @@ retire the unsubmitted intent with an audit record. Once the owner API starts,
 a durable marker keeps any no-ID outcome blocked, including a callback refusal.
 A separate source helper maps the reviewed amount and bridge address to
 the selected JubJub account's unshielded NIGHT withdrawal. The reference demo
-still has no named-send page or connected bridge/finality adapter, and this path
-has no native/provider qualification.
+now has an opt-in local named-send page and connected bridge/finality adapter.
+This path has no native/provider qualification.
 
 The source-only owner review model can now stage a named NIGHT route for the
 actual credential ceremony. It shows the exact name, pinned registry, full
@@ -942,8 +942,9 @@ recipient ACC, bridge wallet, amount and both ACC operations. At the finalized
 withdrawal callback, an opt-in host check requires that same named intent to
 remain approved before the journal fence. The ACC signature itself authorizes
 the withdrawal to the bridge; the name and destination ACC are checked by the
-host and are not fields signed by this ACC circuit. The demo has not connected
-this review seam to a send control or qualified a provider/browser payment.
+host and are not fields signed by this ACC circuit. The opt-in local send
+control now stages this review for the actual owner credential call. A
+provider/browser payment is not qualified yet.
 
 The local NIGHT deposit recipe and browser wallet share a source bridge guard
 for the decoded fenced withdrawal. It requires one exact controlled NIGHT
@@ -952,8 +953,8 @@ using another or additional unshielded input. The browser worker can now
 balance, sign and dispatch one prepared `deposit_unshielded` original after the
 host journals it. The worker independently reads the exact committed IndexedDB
 fence before dispatch. It refuses another ACC action, unshielded change, a different
-original or a second dispatch. The connected demo send control and native
-browser deposit qualification are still needed.
+original or a second dispatch. The opt-in demo send control uses this worker;
+native browser deposit qualification is still needed.
 
 The built-in wallet now offers a separate internal NIGHT bridge observation port
 for the demo host. It returns the device-held wallet's raw bridge address and
@@ -968,8 +969,33 @@ account, configured name resolver, original-only browser journal and finality
 reader. It prepares an unbound `deposit_unshielded` call for the device wallet to
 balance and sign, then fences the original before dispatch. Each attempt opens a
 fresh journal handle, retaining the withdrawal through proof failure and later
-resume. The host is not connected to a demo send button; native proof, connected
-browser payment and real-provider acceptance remain open.
+resume. The opt-in demo button uses this host. Native proof, connected browser
+payment and real-provider acceptance remain open.
+
+### Source preview: opt-in local named NIGHT send
+
+With a configured local Midnames 2.1.0 reader, the pinned `standalone-0.35`
+registry profile, `?signing=jubjub` and the owned `undeployed` demo stack,
+set `VITE_MIDNAMES_NIGHT_SEND=1` when building the page. The Passport service,
+Midnames HTTP/WS indexer and service-discovered chain endpoints must be on
+loopback. Open a JubJub ACC, connect the built-in wallet and use **Passport
+account → Withdraw → Send NIGHT to a Passport name**. Enter a canonical `.night`
+name and a positive amount in NIGHT smallest units. The page checks a deployed
+compatible recipient and source balance, then shows the full route, registry,
+target, bridge and both ACC operations before the owner's combined credential
+review. A declined or changed route does not start the payment.
+
+The selected account's original intent and each transaction ID stay in the
+browser journal. A pending withdrawal or deposit is displayed under the same
+control and resumes only those original legs. An owner attempt with no saved
+withdrawal ID blocks automatic retry; inspect Audit and chain state before
+another send. Preserve this site's data. The page and tests are source-only:
+no native connected payment, real passkey/provider or online profile is
+qualified by this control yet. The configured indexer is trusted for
+transaction inclusion; the finalized block check does not prove inclusion.
+The isolated `nix develop -c pnpm --filter passport-dapp test:midnames-night-page`
+browser check covers control visibility and the no-ID recovery refusal with a
+synthetic connector and registry; it does not perform a payment.
 
 ### Standalone Midnames claim recovery
 

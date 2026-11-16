@@ -68,13 +68,14 @@ A later source-only #318 browser journal adds one active named NIGHT intent
 per source ACC and network on the demo origin, credential-scoped retention,
 transactional per-leg fences and finality-gated archival of original IDs.
 Cross-tab/reload and corrupt-state checks pass with a synthetic IndexedDB.
-It is not yet wired to the demo owner-send UI or a two-leg host adapter and
-has no native or provider qualification of that browser storage path.
+The opt-in local demo owner-send UI and two-leg host adapter now use it; the
+browser storage path has no native or provider qualification.
 
 The next source-only slice adds an opt-in finalized-ID callback for P-256 and
 JubJub unshielded owner withdrawals. The standard Midnight adapter awaits the
 host's fence before dispatch and other adapters refuse the opt-in call before
-owner signing. The reference demo has not wired the browser journal or completed #318.
+owner signing. The opt-in local reference demo now uses the browser journal;
+#318 still needs native connected payment qualification.
 
 The source-only named NIGHT orchestrator can now receive the account owner's
 finalized-ID callback, recheck the reviewed name at that point and fence the
@@ -83,8 +84,8 @@ A name refusal before entering the owner API can retire its unsubmitted intent
 into audit history. A durable owner-start marker keeps later no-ID outcomes
 blocked, including a callback refusal.
 A source helper maps the reviewed NIGHT amount and bridge to one selected JubJub
-account. The demo has not wired that helper, a bridge/finality adapter or a
-named-send UI; this route has no native/provider qualification.
+account. The opt-in local demo now wires that helper, a bridge/finality adapter
+and a named-send UI; this route has no native/provider qualification.
 
 The source owner-review model can stage the exact name, registry, recipient
 ACC, bridge, amount and two operations in the actual credential ceremony.
@@ -111,15 +112,16 @@ balance and sign one exact ACC deposit call, expose its original for a durable
 host fence, independently read that committed IndexedDB record, and attempt
 that original's dispatch once. Wallet connection checks
 the pinned v1 service configuration before using the proof-server URL. The
-public connector remains read-only; the browser send control and native
-proven-call/payment qualification are still open.
+public connector remains read-only. An opt-in local browser send control now
+uses the internal wallet port; native proven-call/payment qualification is open.
 
 A source-only host now composes the selected JubJub ACC, Midnames resolver,
 scope-bound IndexedDB journal, finality reader, unbound deposit proof and
 device-held wallet. It reopens the journal after an interrupted deposit proof
 without repeating the withdrawal. It rejects a mismatched account credential
-scope or wallet chain configuration. This host is not wired to a page control, and its
-proof adapter has no native or real-provider acceptance yet.
+scope or wallet chain configuration. An opt-in local page control now shows the
+named route and original IDs and uses this host. Its proof adapter has no native
+or real-provider acceptance yet.
 
 Qualify the original demo's **post-ACC name claim step** under [#316](https://github.com/input-output-hk/midnight-passport-sdk/issues/316). The source path reuses the opt-in preparation and sponsor fence after the ACC address is known, retains the selected name across reload for the same credential and network, and shows *pending Passport setup* until the original claim and current registry record agree. The fresh browser fixture covers the claim transport and recovery, but not the new panel's complete create/open handoff. Name-owner total-loss recovery, human review with a real provider and sponsor-issued quote, and the public namespace remain open gates.
 

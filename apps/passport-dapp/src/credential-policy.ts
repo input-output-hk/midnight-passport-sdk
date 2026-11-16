@@ -13,6 +13,7 @@ export const CRITICAL_ACTIONS = new Set<ActionId>([
   'startSession',
   'revokeSession',
   'withdraw',
+  'sendNamedNight',
 ]);
 export const CRITICAL_METHODS = new Set<keyof PassportAccount>([
   'issueGrant',
@@ -38,6 +39,7 @@ const methods: Partial<Record<ActionId, readonly (keyof PassportAccount)[]>> = {
   startSession: ['issueGrant'],
   revokeSession: ['revokeGrant'],
   withdraw: ['withdrawUnshielded', 'withdrawShielded'],
+  sendNamedNight: ['withdrawUnshielded'],
 };
 export const permitsCriticalMethod = (action: ActionId, method: keyof PassportAccount) =>
   methods[action]?.includes(method) === true;

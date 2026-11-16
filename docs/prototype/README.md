@@ -309,8 +309,10 @@ balance or wallet action open. Refresh/reconnect revisions discard late results.
 The #318 named NIGHT host remains a source composition. It joins the selected
 JubJub owner, scope-bound journal, finality reader, unbound recipient deposit
 proof and device-held wallet. Its synthetic test resumes a failed deposit proof
-from the original withdrawal. The page has no send control for this host, and
-native proof or connected browser payment acceptance has not been recorded.
+from the original withdrawal. An opt-in local page control now uses this host,
+shows the full route before credential review, and displays retained original
+IDs for recovery. Native proof or connected browser payment acceptance has not
+been recorded.
 
 ## Exact review and P-256 withdrawal follow-up (source preview)
 

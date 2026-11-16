@@ -122,6 +122,19 @@ export function createAccountWorkspace(
     update();
     pages[id].append(panel);
   }
+  const namedNight = element('section');
+  namedNight.id = 'account-named-night';
+  namedNight.className = 'panel account-transfer';
+  namedNight.hidden = true;
+  namedNight.append(
+    element('h3', 'Send NIGHT to a Passport name'),
+    element(
+      'p',
+      'A .night name must resolve to a supported Passport ACC. This localnet route withdraws to your connected device wallet, then deposits the exact output into that ACC. Keep this site data and original transaction IDs until both legs finish.',
+    ),
+  );
+  const namedNightControl = list(namedNight, ['sendNamedNight']).firstElementChild as HTMLLIElement;
+  pages.withdraw.append(namedNight);
   return {
     ...navigation,
     select: (page: AccountPage, notify = true) => navigation.select(page, false, notify),
@@ -135,6 +148,11 @@ export function createAccountWorkspace(
     },
     nameSetupStatus(message: string) {
       setupStatus.textContent = message;
+    },
+    enableNamedNightSend(available: boolean) {
+      namedNight.hidden = false;
+      namedNightControl.hidden = false;
+      namedNight.dataset.available = String(available);
     },
   };
 }

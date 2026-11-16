@@ -232,8 +232,9 @@ qualified, so this storage path is not a completed demo send journey.
 
 An opt-in source API now gives the host finalized unshielded-withdrawal IDs
 before submission and awaits its durable callback. Unsupported chain adapters
-refuse before owner signing. The reference demo still needs to wire the browser
-journal and second payment leg; no new native/provider run qualifies that path.
+refuse before owner signing. The opt-in local reference demo now wires the
+browser journal and second payment leg; no new native/provider run qualifies
+that path.
 
 The source-only NIGHT orchestrator now accepts an account-owner callback path:
 it rechecks the named route at the finalized pre-submit point and commits the
@@ -242,15 +243,16 @@ owner API can retire the unsubmitted intent into audit history. A durable
 owner-start marker keeps later no-ID outcomes blocked; a lost reply retains
 the original for lookup. A source
 helper binds the selected JubJub ACC to the reviewed NIGHT amount and bridge.
-The demo still needs to wire that helper, the bridge/finality adapter, send control
-and browser qualification.
+The opt-in local demo now wires that helper, the bridge/finality adapter and
+send control. Native browser qualification remains open.
 
 The source owner-consent model can stage the exact named NIGHT request in the
 actual passkey review: name, registry, recipient ACC, bridge address, amount and
 withdraw/deposit operations. An opt-in finalized callback checks that approved
 scope again before the journal fence. The ACC signs the bridge withdrawal;
 the name and recipient ACC remain host-checked rather than signed circuit
-fields. This is a composition seam, not a connected demo screen or native run.
+fields. The opt-in local demo control now uses this seam, without a qualified
+native browser payment.
 
 The local NIGHT fixture now uses a reusable source guard for the exact bridge
 output and balanced deposit input. It refuses a different withdrawal identity,

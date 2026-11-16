@@ -28,7 +28,8 @@ export type ActionId =
   | 'wallet'
   | 'walletRefresh'
   | 'fund'
-  | 'withdraw';
+  | 'withdraw'
+  | 'sendNamedNight';
 
 /** A prompt count, or a range when it depends on the passkey provider. */
 export type PromptCount = number | readonly [min: number, max: number];
@@ -68,6 +69,7 @@ export const PASSKEY_PROMPTS = {
   rotate: 1,
   fund: 0,
   withdraw: 1,
+  sendNamedNight: [0, 1],
   walletRefresh: 0,
   walletWithAccount: 1,
   walletWithoutAccount: 1,
@@ -310,6 +312,18 @@ export const FLOWS: Record<ActionId, FlowDef> = {
       { id: 'read', label: 'Read confirmed ACC state and balance' },
     ],
   },
+  sendNamedNight: {
+    title: 'Send NIGHT by name',
+    summary:
+      'Resolve a .night name to a supported Passport ACC, review the exact route, then withdraw NIGHT to the device wallet and deposit that same output into the named ACC. Resume only the original pending legs.',
+    stages: [
+      { id: 'resolve', label: 'Read the named ACC and original payment journal' },
+      { id: 'review', label: 'Review the name, ACC, bridge, amount and both operations' },
+      { id: 'withdraw', label: 'Fence and submit the owner withdrawal' },
+      { id: 'deposit', label: 'Prove, fence and submit the exact ACC deposit' },
+      { id: 'reconcile', label: 'Read both original transaction outcomes' },
+    ],
+  },
 };
 
 /**
@@ -348,6 +362,7 @@ export const EVENT_STAGES: Readonly<Record<ActionId, Partial<Record<PassportStep
   walletRefresh: {},
   fund: {},
   withdraw: {},
+  sendNamedNight: {},
 };
 
 export const promptCountText = (n: PromptCount): string =>
@@ -387,6 +402,9 @@ const HINTS: Readonly<Record<string, string>> = {
   FundingRejected:
     'The funding service refused or could not confirm this deposit. Check the operation log; a pending request needs operator reconciliation before another attempt.',
   NetworkMismatch: 'The service is on a different network from this page.',
+  NightDepositInterrupted:
+    'The withdrawal has an original transaction ID. Keep this site data and resume only its deposit after finality; do not withdraw again.',
+  NightPaymentDeclined: 'The named payment was declined before either transaction started.',
   InternalError: 'Something went wrong inside the connector.',
 };
 

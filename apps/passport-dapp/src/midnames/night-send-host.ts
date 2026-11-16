@@ -33,6 +33,8 @@ interface ConnectedNightSendOptions {
   readonly checkScope: () => void;
   /** Check the exact named route after the actual owner credential ceremony. */
   readonly checkApproved: (intent: NightSendIntent) => void;
+  /** Progress presentation only; never authorizes or retries a payment leg. */
+  readonly onDeposit?: () => void;
   readonly network: NetworkConfig;
   readonly binding: MidnightBinding;
   readonly prover: Prover;
@@ -155,6 +157,7 @@ export async function createConnectedNightSend(
           finalized: async (original) => !!(await finalized(original)),
           async prepareDeposit(intent, withdrawal) {
             checkSelected();
+            options.onDeposit?.();
             const observed = await finalized(withdrawal);
             if (!observed) throw new Error('The original NIGHT withdrawal is not final.');
             const output = exactNightBridgeOutput(intent, withdrawal, observed.transaction);
