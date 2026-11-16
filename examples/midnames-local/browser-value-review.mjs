@@ -98,9 +98,14 @@ async function reviewInBrowser(spec, output, automation) {
     if (automation) await page.locator('#' + automation).click();
     const approved = await Promise.race([
       decision,
-      delay(120_000, undefined, { signal: timeout.signal }).then(() => false),
-      page.waitForEvent('close', { timeout: 0 }).then(() => false),
+      delay(120_000, undefined, { signal: timeout.signal }).then(() => {
+        throw new Error('Browser review timed out before a decision.');
+      }),
+      page.waitForEvent('close', { timeout: 0 }).then(() => {
+        throw new Error('Browser review closed before a decision.');
+      }),
     ]);
+    assert.equal(answered, true, 'Browser review has no explicit decision.');
     assert.deepEqual(errors, []);
     return { approved, displayed: true, mode: automation ? 'automated' : 'manual' };
   } finally {
