@@ -188,6 +188,8 @@ export async function qualifyNightSend({
   const finals = new Map();
   const browserReviewRequested = process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === '1';
   const manualBrowserReview = process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === '1';
+  const browserDecline = process.env.PASSPORT_MIDNAMES_BROWSER_DECISION === 'decline';
+  assert.ok(!browserDecline || (browserReviewRequested && !manualBrowserReview));
   let browserReview;
   const openPorts = (beforeDeposit) => ({
     names,
@@ -208,7 +210,7 @@ export async function qualifyNightSend({
           intent,
           registryAddress,
           join(directory, 'browser-review.png'),
-          manualBrowserReview ? undefined : 'approve',
+          manualBrowserReview ? undefined : browserDecline ? 'decline' : 'approve',
         );
         assert.equal(signatures, 0);
         assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
@@ -314,7 +316,7 @@ export async function qualifyNightSend({
     };
   }
   const interrupted = new Error('Injected interruption after withdrawal finality');
-  step('withdraw-then-interrupt-before-deposit');
+  step(browserDecline ? 'review-before-owner-signature' : 'withdraw-then-interrupt-before-deposit');
   /** @type {unknown} */ let failure;
   try {
     await sendNightByName(
@@ -337,8 +339,28 @@ export async function qualifyNightSend({
       join(directory, 'decline.json'),
       JSON.stringify({ reviewDecision: 'declined', approvals, signatures, sent }),
     );
-    throw failure;
+    if (!browserDecline) throw failure;
+    assert.equal(approvals, 0);
+    assert.deepEqual(browserReview, { approved: false, displayed: true, mode: 'automated' });
+    assert.equal(await openJournal(directory).readIntent(), undefined);
+    assert.equal(await openJournal(directory).readLeg('withdraw'), undefined);
+    assert.equal(await openJournal(directory).readLeg('deposit'), undefined);
+    const final = { source: String(await balance(source)), target: String(await balance(target)) };
+    assert.deepEqual(final, { source: '10', target: '0' });
+    return {
+      declined: true,
+      source,
+      target,
+      name: request.name,
+      fundingHash: funding.tx.transactionHash(),
+      browserReview,
+      approvals,
+      signatures,
+      sent,
+      final,
+    };
   }
+  if (browserDecline) assert.fail('The browser decline did not stop the named payment.');
   assert.ok(failure instanceof Error);
   assert.equal(failure.cause, interrupted);
   const intermediate = {

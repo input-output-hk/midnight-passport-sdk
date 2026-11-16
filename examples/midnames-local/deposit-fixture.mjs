@@ -468,15 +468,27 @@ try {
       step,
     });
     if (process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === '1') {
+      const declined = process.env.PASSPORT_MIDNAMES_BROWSER_DECISION === 'decline';
       assert.deepEqual(proofReceipt.browserReview, {
-        approved: true,
+        approved: !declined,
         displayed: true,
         mode: process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === '1' ? 'manual' : 'automated',
       });
-      step('verified-browser-owner-review-before-night-send');
+      if (declined) {
+        assert.equal(proofReceipt.declined, true);
+        assert.equal(proofReceipt.approvals, 0);
+        assert.equal(proofReceipt.signatures, 0);
+        assert.deepEqual(proofReceipt.sent, { withdraw: 0, deposit: 0 });
+        assert.deepEqual(proofReceipt.final, { source: '10', target: '0' });
+        step('verified-browser-owner-decline-before-night-send');
+      } else step('verified-browser-owner-review-before-night-send');
     }
     Object.assign(receipt, { ...proofReceipt, claimIdentifier, registryAddress, passed: true });
-    step('verified-native-named-night-send');
+    step(
+      proofReceipt.declined
+        ? 'verified-native-named-night-decline'
+        : 'verified-native-named-night-send',
+    );
   } else {
     await wallet.wallet.stop();
     wallet = undefined;
