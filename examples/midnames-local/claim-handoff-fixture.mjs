@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { prepareSponsoredClaim } from '../../apps/passport-dapp/src/midnames/claim-sponsorship.ts';
 import { claimQuote, claimQuoteDigest } from '../../apps/passport-dapp/src/midnames/claim-quote.ts';
@@ -24,13 +25,37 @@ export async function qualifyClaimHandoff({
   step,
   dispatch,
   browserOwner = false,
+  preproofReview = false,
 }) {
   const label = 'charlie';
   const { owner_address: registryPayee, payment_config: price } = parentDomain;
   assert.ok(price.buy_enabled);
   assert.ok(price.coin_color.every((byte) => byte === 0));
+  assert.ok(!preproofReview || browserOwner);
 
-  step(browserOwner ? 'prove-claim-in-owner-chromium' : 'prove-claim-in-owner-process');
+  const reviewedQuote = preproofReview
+    ? claimQuote({
+        networkId: 'undeployed',
+        registryAddress,
+        accountAddress,
+        name: label + '.night',
+        id: randomBytes(32).toString('hex'),
+        sponsorAddress: '33'.repeat(32),
+        registryPayee: Buffer.from(registryPayee.bytes).toString('hex'),
+        sponsorPaymentAddress,
+        night: String(price.cost_long),
+        maximumDust: '100000000000000000',
+        expiresAt: Date.now() + 600_000,
+      })
+    : undefined;
+
+  step(
+    preproofReview
+      ? 'review-quote-before-owner-proof-in-chromium'
+      : browserOwner
+        ? 'prove-claim-in-owner-chromium'
+        : 'prove-claim-in-owner-process',
+  );
   const owner = await proveInOwnerProcess(
     {
       ref,
@@ -50,6 +75,7 @@ export async function qualifyClaimHandoff({
       rootId,
       label,
       price,
+      ...(reviewedQuote && { reviewedQuote }),
     },
     browserOwner,
   );
@@ -81,17 +107,18 @@ export async function qualifyClaimHandoff({
     assert.ok(sponsorInput, 'Balanced claim needs a sponsor NIGHT input.');
     assert.equal(ledger.addressFromKey(sponsorInput.owner), sponsorPaymentAddress);
   }
-  // The native fixture constructs this dispatch quote after proof. It does not
-  // exercise the opt-in browser's pre-proof review ceremony.
+  // The dedicated pre-proof lane pins its quote before the naming credential
+  // is used. Other lanes retain their historical post-proof dispatch quote.
   const fixtureQuote =
     dispatch &&
-    claimQuote({
-      ...quote,
-      id: prepared.receipt.transaction.sha256,
-      night: String(quote.night),
-      maximumDust: '100000000000000000',
-      expiresAt: Date.now() + 600_000,
-    });
+    (reviewedQuote ??
+      claimQuote({
+        ...quote,
+        id: prepared.receipt.transaction.sha256,
+        night: String(quote.night),
+        maximumDust: '100000000000000000',
+        expiresAt: Date.now() + 600_000,
+      }));
   const acknowledged = fixtureQuote
     ? claimReceipt({ ...prepared.receipt, quoteSha256: await claimQuoteDigest(fixtureQuote) })
     : prepared.receipt;
@@ -107,6 +134,7 @@ export async function qualifyClaimHandoff({
     dispatches: 0,
     ownerProvedInSeparateProcess: true,
     ...(browserOwner && { ownerCredentialRestored: owner.restored }),
+    ...(preproofReview && { reviewedBeforeOwnerProof: owner.reviewedBeforeProof }),
   });
   if (dispatch) {
     const result = await dispatch(
@@ -115,7 +143,11 @@ export async function qualifyClaimHandoff({
       fixtureQuote,
       await claimDigest(owner.bytes),
     );
-    return { ...result, ownerCredentialRestored: owner.restored };
+    return {
+      ...result,
+      ownerCredentialRestored: owner.restored,
+      ...(preproofReview && { reviewedBeforeOwnerProof: owner.reviewedBeforeProof }),
+    };
   }
   return {
     claimPrepared: true,
