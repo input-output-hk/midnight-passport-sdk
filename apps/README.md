@@ -878,6 +878,14 @@ mapping and authenticated host-controlled provider where required. Claim
 finality continues to use the primary path.
 The default remains the mock.
 
+The separate [named shielded deposit sender](../examples/midnames-local/README.md#review-the-named-deposit-in-the-sender-browser)
+can display a localhost browser review before preparing and dispatching its
+payment. Its automated isolated `undeployed` run passed at signed source
+`b87ed6c` and the recipient verified the held coin. This is an example process
+with its own wallet; the Passport demo's Name service panel remains lookup and
+claim controls, not a sender payment form. Visible manual review is opt-in
+and has no qualified human/provider acceptance yet.
+
 ### Standalone Midnames claim recovery
 
 An opt-in host can supply the demo's preparation adapter. The user reviews the

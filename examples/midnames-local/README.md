@@ -88,6 +88,41 @@ jq '{review, txHash, inboxIndex, dispatches}' review/midnames-deposit-example/se
 jq '{ownerOpenedReceipt, originalOutputMatched, verifiedHeld, commitment}' review/midnames-deposit-example/worker.json
 ```
 
+### Review the named deposit in the sender browser
+
+Use a fresh output name beginning with `midnames-deposit-browser-` to open a
+sender-owned loopback review page before the deposit is prepared or proved:
+
+```sh
+nix develop -c env -u LD_DYLD_PATH PASSPORT_MIDNAMES_NATIVE=1 PASSPORT_RC_LOCALNET=1 \
+  node examples/midnames-local/qualify-deposit.mjs \
+  midnames-deposit-browser-my-run /absolute/path/to/prepared-registry \
+  /absolute/path/to/acc-reference/contract
+```
+
+Pass an unused private subnet as the final argument when Docker's default
+address pools are full.
+
+The default qualification mode launches headless Chromium and clicks **Approve
+deposit** after capturing the displayed name, network, registry, provider,
+namespace, full resolved ACC, `deposit_shielded` operation, synthetic asset
+color and smallest-unit amount. Set `PASSPORT_MIDNAMES_BROWSER_MANUAL=1` for a
+visible browser and a human decision. The local sender checks its prepared and
+dispatch counters are still zero before and after review, then rechecks the
+name and ACC key before one dispatch. Decline, closing the page or waiting two
+minutes refuses the named payment. Setup and token-mint transactions may have
+already completed; keep that run's receipt and choose a fresh name for another
+run. The browser receives no recipient signing key, viewing key or passkey.
+
+The automated native run on signed source `b87ed6c` passed on isolated
+`undeployed`: one sender dispatch finalized and the owner matched the original
+output to a decrypted, still-held coin. The screenshot and redacted receipts
+are in `review/midnames-deposit-browser-20261116a/`. The runner verified
+unchanged inputs, stopped its three exact owned containers, retained their
+volumes and released the lease. Automated clicking demonstrates page rendering
+and operation order; it does not establish human approval, an online provider,
+public `passport.night`, or MIP-0007 delegated routing.
+
 ## Run the named ACC-to-ACC NIGHT payment
 
 Use the same command with a fresh output name beginning with

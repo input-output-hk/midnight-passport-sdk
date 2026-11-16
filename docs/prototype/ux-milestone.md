@@ -180,6 +180,14 @@ The independent sender exercise covers a named ACC's shielded receive path on
 credentials or private state to the sender. See the
 [standalone recipe](../../examples/midnames-local/README.md#run-the-shielded-deposit-by-name).
 
+The optional sender-owned localhost page shows the exact resolved target and
+synthetic asset before preparation. A signed-source isolated run at `b87ed6c`
+passed with an automated browser approval, one finalized sender dispatch and
+an independently verified owner holding. Its visible manual mode is available
+for a human-run local demonstration but has not been qualified here. This does
+not add a named-send page to the Passport owner demo or qualify an online
+provider.
+
 ### Standalone ACC-to-ACC payment by name
 
 The isolated NIGHT fixture reviews both operations together and keeps original
