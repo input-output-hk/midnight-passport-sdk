@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { admitNativeClaim } from '../../apps/passport-dapp/src/midnames/claim-native-admission.ts';
@@ -8,10 +8,11 @@ import { saveIsolationReceipt } from '../../scripts/qualification/native-isolati
 import { openClaimDispatch } from './claim-dispatch.mts';
 import { qualifyClaimHandoff } from './claim-handoff-fixture.mjs';
 import { qualifyPartialClaim } from './claim-partial-probe.mjs';
+import { runBrowser } from './claim-browser-fixture.mjs';
 
 /** A separate, freshly prepared sponsored original follows the indexed failure.
- * This host-only lane checks native dispatch and registry finality; the browser
- * release/review ceremony has its own test until a combined lane is qualified. */
+ * The browser releases the first original on this chain; the new quote and
+ * dispatch still run in the host fixture, so pre-proof browser review is separate. */
 export async function qualifyClaimRetry(input) {
   const {
     output,
@@ -41,6 +42,15 @@ export async function qualifyClaimRetry(input) {
   const first = await qualifyPartialClaim(input);
   assert.equal(first.indexedClaimFailure, true);
   assert.equal(first.originalDispatches, 1);
+  step('release-indexed-claim-failure-in-browser');
+  saveIsolationReceipt(join(output, 'original-claim.json'), receipt);
+  await runBrowser(output, undefined, 270_000, 'e2e/midnames-claim-failed.e2e.ts');
+  const browserRelease = JSON.parse(
+    readFileSync(join(output, 'browser-claim-failed-release.json'), 'utf8'),
+  );
+  assert.equal(browserRelease.originalDigest, receipt.transaction.sha256);
+  assert.equal(browserRelease.releaseReason, 'CLAIM_SEGMENT_FAILURE');
+  assert.equal(browserRelease.liveIndexerRequests > 0, true);
   step('restore-parent-registration-for-fresh-claim');
   await contracts.submitCallTx(regProviders, {
     compiledContract: compiled,
@@ -116,6 +126,7 @@ export async function qualifyClaimRetry(input) {
     originalDispatches: first.originalDispatches,
     retryDispatches,
     parentRestored: true,
+    browserRelease,
     registryBoundToSameAccount: true,
   });
   return {
@@ -123,5 +134,6 @@ export async function qualifyClaimRetry(input) {
     indexedRetrySuccess: true,
     originalDispatches: first.originalDispatches,
     retryDispatches,
+    browserRelease,
   };
 }

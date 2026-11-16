@@ -36,13 +36,17 @@ is not a pass. The mode preserves its original bytes, identifiers and chain
 volumes; it does not release the browser journal or submit a replacement claim.
 
 `midnames-claim-retry-<fresh-name>` extends this isolated lane. After the
-indexed failure, it restores the root's registration policy, prepares a new
-owner-proved claim and sponsor quote for the same ACC and name, submits that
-new original once, and checks indexed success and the live binding. Its private
-`indexed-claim-retry.json` retains both public receipts and dispatch counts.
-This host fixture does not perform the browser's explicit release or quote
-review ceremony; its result must not be described as a combined browser/native
-retry until that ceremony is separately qualified on the same chain.
+indexed failure, a fresh persistent Chromium profile opens the reference app,
+retains the original receipt, checks the live indexed segment result and registry,
+and explicitly releases it. After a browser restart, the fixture checks that the
+same original is archived with `CLAIM_SEGMENT_FAILURE` and no active claim remains.
+Only then does the host restore the root's registration policy, prepare a new
+owner-proved claim and sponsor quote for the same ACC and name, submit that new
+original once, and check indexed success and the live binding. Its private
+`indexed-claim-retry.json` retains both public receipts, the browser release
+receipt and dispatch counts. The new quote and retry dispatch still run in the
+host fixture; this lane does not qualify pre-proof browser quote review or a
+real provider.
 
 ## Run the shielded deposit by name
 
