@@ -914,7 +914,18 @@ Current source also adds an opt-in pre-submit fence to the standard Midnight
 adapter's unshielded owner withdrawal. It passes the finalized transaction hash
 and watch IDs to a caller callback before dispatch; a failed callback stops the
 send. The account flow rejects an unsupported adapter before owner signing.
-The demo has not connected this seam to its NIGHT journal or the two-leg send.
+The reference demo has not wired this seam into its named-send page or two-leg host.
+
+The source-only named NIGHT orchestrator can now accept an owner adapter that
+passes the account API's `beforeSubmit` callback through. Immediately before the
+owner dispatch, it checks the finalized network, source ACC and JubJub withdrawal
+circuit, re-resolves the reviewed name, then transactionally fences the original
+hash and watch IDs in the browser journal. A lost submit response retains those
+IDs; an intent interrupted without an ID refuses a new owner attempt until it is
+inspected. A separate source helper maps the reviewed amount and bridge address to
+the selected JubJub account's unshielded NIGHT withdrawal. The reference demo
+still has no named-send page or connected bridge/finality adapter, and this path
+has no native/provider qualification.
 
 ### Standalone Midnames claim recovery
 
