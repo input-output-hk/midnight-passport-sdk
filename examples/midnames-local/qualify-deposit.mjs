@@ -57,8 +57,15 @@ const docker = (args) =>
   ).trim();
 assert.match(
   out ?? '',
-  /^midnames-(?:deposit|night-send|claim-handoff|claim-browser|claim-owner-browser|claim-partial-probe|claim-retry)-[a-z0-9-]{1,48}$/,
+  /^midnames-(?:deposit|deposit-browser|night-send|claim-handoff|claim-browser|claim-owner-browser|claim-partial-probe|claim-retry)-[a-z0-9-]{1,48}$/,
 );
+const browserReview = out.startsWith('midnames-deposit-browser-');
+const manualBrowserReview = process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === '1';
+assert.ok(
+  process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === undefined ||
+    ['0', '1'].includes(process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL),
+);
+assert.ok(!manualBrowserReview || browserReview);
 const fixtureMode = out.startsWith('midnames-claim-browser-')
   ? 'claim-browser'
   : out.startsWith('midnames-claim-owner-browser-')
@@ -74,7 +81,8 @@ const fixtureMode = out.startsWith('midnames-claim-browser-')
             : 'named-shielded-deposit';
 if (interactive)
   assert.ok(
-    fixtureMode === 'named-shielded-deposit' || fixtureMode === 'named-night-send',
+    !browserReview &&
+      (fixtureMode === 'named-shielded-deposit' || fixtureMode === 'named-night-send'),
     'Terminal review supports only named value fixtures.',
   );
 const info = JSON.parse(docker(['info', '--format', '{{json .}}']));
@@ -90,7 +98,13 @@ const receipt = {
   profile,
   images,
   status: 'RUNNING',
-  reviewMode: interactive ? 'terminal' : 'synthetic',
+  reviewMode: browserReview
+    ? manualBrowserReview
+      ? 'browser-manual'
+      : 'browser-automated'
+    : interactive
+      ? 'terminal'
+      : 'synthetic',
 };
 const save = () => saveIsolationReceipt(join(output, 'parent.json'), receipt);
 const deadline = isolationDeadline(performance.now());
@@ -182,6 +196,8 @@ try {
     MN_NETWORK_ID: 'undeployed',
     MIDNIGHT_NETWORK: 'local',
     PASSPORT_MIDNAMES_FIXTURE_MODE: fixtureMode,
+    PASSPORT_MIDNAMES_BROWSER_REVIEW: browserReview ? '1' : '0',
+    PASSPORT_MIDNAMES_BROWSER_MANUAL: manualBrowserReview ? '1' : '0',
   };
   const worker = spawn(
     process.execPath,

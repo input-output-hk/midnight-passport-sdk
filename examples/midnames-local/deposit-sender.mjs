@@ -25,6 +25,16 @@ for (const [key, value] of Object.entries(expectedEnvironment))
   assert.equal(process.env[key], value, `Unexpected fixture setting ${key}`);
 const target = join(output, 'sender');
 mkdirSync(target, { mode: 0o700 });
+const browserReview = process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === '1';
+const manualBrowserReview = process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === '1';
+assert.ok(
+  (process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === undefined ||
+    ['0', '1'].includes(process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW)) &&
+    (process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === undefined ||
+      ['0', '1'].includes(process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL)) &&
+    (!manualBrowserReview || browserReview) &&
+    !(browserReview && interactiveReviewRequested()),
+);
 const networkId = 'undeployed';
 const indexerUrl = process.env.MN_INDEXER_URL;
 const names = configureMidnames(
@@ -145,13 +155,35 @@ try {
         },
       },
       async review(intent) {
-        receipt.review = { ...intent, amount: String(intent.amount) };
+        assert.equal(receipt.preparedSha256, undefined);
+        assert.equal(receipt.dispatches, 0);
+        receipt.review = {
+          ...intent,
+          registryAddress,
+          operation: 'deposit_shielded',
+          amount: String(intent.amount),
+        };
         save();
         const interactive = interactiveReviewRequested();
-        if (!interactive) console.log('Synthetic sender approval', JSON.stringify(receipt.review));
-        const approved = interactive
-          ? await reviewInTerminal(receipt.review, intent.accountAddress)
-          : true;
+        let approved;
+        if (browserReview) {
+          const { reviewNamedDepositInBrowser } = await import('./browser-value-review.mjs');
+          const observed = await reviewNamedDepositInBrowser(
+            receipt.review,
+            join(target, 'browser-review.png'),
+            manualBrowserReview ? undefined : 'approve',
+          );
+          assert.equal(observed.displayed, true);
+          receipt.browserReview = observed;
+          approved = observed.approved;
+        } else if (interactive) {
+          approved = await reviewInTerminal(receipt.review, intent.accountAddress);
+        } else {
+          console.log('Synthetic sender approval', JSON.stringify(receipt.review));
+          approved = true;
+        }
+        assert.equal(receipt.preparedSha256, undefined);
+        assert.equal(receipt.dispatches, 0);
         receipt.reviewDecision = approved ? 'approved' : 'declined';
         save();
         return approved;

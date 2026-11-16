@@ -495,6 +495,18 @@ try {
     });
     const sent = JSON.parse(readFileSync(join(output, 'sender', 'sender.json')));
     assert.equal(sent.review.accountAddress, accountAddress);
+    assert.equal(sent.review.registryAddress, registryAddress);
+    assert.equal(sent.review.operation, 'deposit_shielded');
+    if (process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === '1') {
+      assert.deepEqual(sent.browserReview, {
+        approved: true,
+        displayed: true,
+        mode: process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === '1' ? 'manual' : 'automated',
+      });
+      assert.equal(sent.reviewDecision, 'approved');
+      receipt.browserReview = sent.browserReview;
+      step('verified-browser-sender-review-before-deposit');
+    }
     assert.equal(sent.dispatches, 1);
     const ownerState = acc.ledger(
       (await providers.publicDataProvider.queryContractState(accountAddress)).data,
