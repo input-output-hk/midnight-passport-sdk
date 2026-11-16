@@ -485,4 +485,15 @@ verified unchanged inputs, exact-owned cleanup and lease release. Page close
 and timeout now fail instead of masquerading as a decline; this remains an
 automated local refusal, not human passkey approval.
 
+A separate signed `e8fd610` isolated run tested a registry change after the
+same automated browser approval. The root-owned `alice.night` record was
+updated on-chain to a third activated ACC. Fresh resolution returned that new
+ACC, but the original payment journal retained the reviewed recipient. The
+payment refused before any owner signature or withdrawal/deposit dispatch;
+source, old recipient and new recipient balances stayed 10/0/0. The parent
+verified unchanged inputs, stopped only its three owned containers, retained
+volumes and released the lease. This demonstrates one local refusal when a
+name changes before signing; online provider reads, human approval and a
+Passport demo send page remain unqualified.
+
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

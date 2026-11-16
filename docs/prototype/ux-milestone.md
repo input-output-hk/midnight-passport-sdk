@@ -214,3 +214,11 @@ At signed `a20a9b9`, the isolated automated browser decline retained 10/0
 source/target ACC balances and made no owner signature, withdrawal, deposit or
 payment journal entry. The helper now treats page close and timeout as errors;
 only a completed **Decline** click qualifies this negative result.
+
+At signed `e8fd610`, another isolated run approved the original named NIGHT
+route in the localhost browser, then changed `alice.night` on-chain to a third
+activated ACC before owner signing. Fresh resolution saw the new target, but
+the reviewed intent kept the original target. The fixture refused the send
+with no owner signature or payment dispatch and 10/0/0 ACC balances. This is
+a local change-after-review case, not a Passport demo send page or online
+provider qualification.
