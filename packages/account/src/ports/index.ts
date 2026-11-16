@@ -21,6 +21,7 @@ import type {
   FlowOptions,
   PassportAccount,
   PassportTxResult,
+  ValueFlowOptions,
 } from '@input-output-hk/mn-passport-protocol';
 import type {
   AccLedgerView,
@@ -298,7 +299,7 @@ export interface MutationSubmissionContext {
   readonly requestId: string;
   readonly intentSha256: string;
 }
-export interface CallRequest extends FlowOptions {
+export interface CallRequest extends ValueFlowOptions {
   /** Host receipt correlation only; never substitute this for a finalized chain result. */
   readonly mutation?: MutationSubmissionContext;
   readonly address: string;
@@ -309,6 +310,8 @@ export interface CallRequest extends FlowOptions {
 }
 export type TxResult = PassportTxResult;
 export interface Chain {
+  /** The adapter calls `beforeSubmit` with finalized identity and awaits it before dispatch. */
+  readonly supportsBeforeSubmit?: true;
   call(request: CallRequest): Promise<TxResult>;
   /** Opt in to bounded inbox entries and live device commitments for owner flows. */
   readAccount(

@@ -910,6 +910,11 @@ request until the original is reconciled. Archiving requires both original
 legs to pass the caller's finality check and preserves their audit record.
 The demo does not yet wire this journal to a named-send control or an owner
 payment/bridge adapter; same-origin storage does not coordinate other sites.
+Current source also adds an opt-in pre-submit fence to the standard Midnight
+adapter's unshielded owner withdrawal. It passes the finalized transaction hash
+and watch IDs to a caller callback before dispatch; a failed callback stops the
+send. The account flow rejects an unsupported adapter before owner signing.
+The demo has not connected this seam to its NIGHT journal or the two-leg send.
 
 ### Standalone Midnames claim recovery
 

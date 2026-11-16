@@ -505,5 +505,10 @@ only after its finality reader confirms both original legs; the archived IDs
 remain available for audit. This local storage neither authorizes a payment
 nor coordinates another website, and the Passport demo has no named-send
 control or two-leg host adapter yet.
+The current source exposes `beforeSubmit` on `withdrawUnshielded` so a host can
+commit those original IDs before the standard Midnight adapter dispatches a
+finalized transaction. An unsupported chain adapter refuses before owner signing;
+a rejected callback prevents dispatch. The demo has not wired this hook to the
+browser NIGHT journal or qualified a complete named-send browser journey.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

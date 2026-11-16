@@ -149,6 +149,17 @@ sealed inbox append, encryption-key switch, add-device and remove-device for the
 selected arm. Additional actions, value offers, withdrawals, recovery and arbitrary
 maintenance transactions are refused. The path does not move tokens itself.
 
+**Current source preview for unshielded owner withdrawals:**
+`ValueFlowOptions.beforeSubmit` receives the finalized public transaction hash,
+all watch identifiers, network, ACC address and circuit. The standard
+`createMidnightChain` awaits that callback immediately before handing bytes to
+its submitter. A rejected fence prevents dispatch. The owner flow checks the
+chain's `supportsBeforeSubmit` capability before opening its key session; hosted
+handles and substituted call pipelines do not claim it. The callback must
+durably commit the original identifiers under the host's reviewed intent. This
+hook does not persist anything by itself, supply a finality reader, or make the
+remote host-mutation driver support value withdrawals. It is not in RC9.
+
 Responses are `200 { kind: 'unknown' }` or `200 { kind: 'confirmed', digest, result }`.
 A call result carries included `txHash`, `submissionId` and optional block height;
 a deployment result carries its original address and every wave's submission ID.

@@ -76,6 +76,16 @@ test('hosted chain maps Lace-shaped ledger and submits a pinned call through its
     },
   };
   const chain = createHostedAccChain(options);
+  assert.equal(chain.supportsBeforeSubmit, undefined);
+  await assert.rejects(
+    chain.call({
+      address: 'acc',
+      circuit: 'withdraw_unshielded_with_p256',
+      args: [],
+      beforeSubmit: async () => {},
+    }),
+    { code: 'BindingUnsupported' },
+  );
   const view = await chain.readAccount(address, { includeInbox: true, includeDevices: true });
   assert.ok(view);
   assert.equal(view.specVersion, 3);
