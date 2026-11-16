@@ -925,11 +925,13 @@ clears review after the name changes, and checks that a synthetic pre-intent
 sponsor refusal needs a fresh quote. A successful retry keeps the same ACC and
 saves one original receipt. These checks do not establish native sponsor
 failure, real passkey consent, or transaction finality.
-An exact indexed `FAILURE` with an absent registry record enables an explicit
-**Release failed original for a new attempt** action. It rechecks the outcome,
+An exact indexed `FAILURE`, or an exact `PARTIAL_SUCCESS` whose only failed
+segment is the standalone registration claim while the sponsor's DUST fee
+succeeds, can enable **Release failed original for a new attempt** when the
+registry record is absent. The fee is not refunded. The action rechecks the same outcome,
 archives the original public receipt and IDs in IndexedDB, and requires fresh
-name and quote review before a new reservation. A partial success, uncertain
-result or unavailable registry cannot release the original.
+name and quote review before a new reservation. Other partial outcomes,
+uncertain results or an unavailable registry cannot release the original.
 The choice and public receipt live in this browser's IndexedDB, so a different
 device needs the original receipt and credential to recover it. This source
 preview does not establish name-owner recovery after total credential loss.

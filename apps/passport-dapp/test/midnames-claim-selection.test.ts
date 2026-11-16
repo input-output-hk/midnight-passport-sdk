@@ -298,16 +298,26 @@ test('released history remains ordered across two fast failed attempts at one na
     ...receiptFor('alice.night'),
     transaction: { ...receiptFor('alice.night').transaction, sha256: '00'.repeat(32) },
   };
-  for (const original of [first, second]) {
+  for (const [index, original] of [first, second].entries()) {
     await journal.selectName(registry, account, credential, original.name);
     await journal.retain(original, credential);
-    await journal.releaseFailed(original, credential);
+    await journal.releaseFailed(
+      original,
+      credential,
+      index === 0 ? 'FAILURE' : 'CLAIM_SEGMENT_FAILURE',
+    );
   }
   assert.deepEqual(await journal.readReleased(registry, 'alice.night', account, credential), [
     first,
     second,
   ]);
   journal.close();
+  const reopened = await openClaimJournal(factory);
+  assert.deepEqual(await reopened.readReleased(registry, 'alice.night', account, credential), [
+    first,
+    second,
+  ]);
+  reopened.close();
 });
 
 test('selection skips corrupt rows belonging to another registry or credential', async () => {

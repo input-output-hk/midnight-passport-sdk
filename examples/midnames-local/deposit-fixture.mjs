@@ -70,10 +70,15 @@ assert.ok(
     'claim-browser',
     'claim-owner-browser',
     'claim-partial-probe',
+    'claim-retry',
   ].includes(mode),
 );
 const browserOwner = mode === 'claim-owner-browser' || mode === 'claim-browser';
-const claimFixture = mode === 'claim-handoff' || browserOwner || mode === 'claim-partial-probe';
+const claimFixture =
+  mode === 'claim-handoff' ||
+  browserOwner ||
+  mode === 'claim-partial-probe' ||
+  mode === 'claim-retry';
 const receipt = { transactions: [], steps: [], passed: false, mode };
 const save = () => saveIsolationReceipt(join(output, 'worker.json'), receipt);
 const step = (label) => {
@@ -306,7 +311,7 @@ try {
   if (claimFixture) {
     const { qualifyClaimHandoff } = await import('./claim-handoff-fixture.mjs');
     let dispatch;
-    if (mode === 'claim-browser' || mode === 'claim-partial-probe') {
+    if (mode === 'claim-browser' || mode === 'claim-partial-probe' || mode === 'claim-retry') {
       const { delegateClaimDust } = await import('./claim-dust-fixture.mjs');
       receipt.availableDust = await delegateClaimDust({
         wallet,
@@ -348,6 +353,34 @@ try {
             ledger,
             submit: providers.midnightProvider.submitTx,
             readLive,
+          });
+      } else if (mode === 'claim-retry') {
+        const { qualifyClaimRetry } = await import('./claim-retry-fixture.mjs');
+        dispatch = (quote, original, fixtureQuote) =>
+          qualifyClaimRetry({
+            output,
+            quote,
+            receipt: original,
+            fixtureQuote,
+            registryAddress,
+            accountAddress,
+            rootId,
+            price,
+            compiled: compiled(rootSecret),
+            registry,
+            regProviders,
+            contracts,
+            providers,
+            ledger,
+            reads,
+            profile,
+            step,
+            readLive,
+            ref,
+            assets,
+            modulePath,
+            registryManifestHash: pins.compiled['compiler/contract-manifest.json'],
+            sponsorPaymentAddress: Buffer.from(owner.bytes).toString('hex'),
           });
       } else {
         const { qualifyPartialClaim } = await import('./claim-partial-probe.mjs');
@@ -395,8 +428,10 @@ try {
       mode === 'claim-browser'
         ? 'verified-browser-claim'
         : mode === 'claim-partial-probe'
-          ? 'verified-indexed-partial-original-refusal'
-          : 'verified-prepared-claim-handoff',
+          ? 'verified-indexed-claim-segment-failure'
+          : mode === 'claim-retry'
+            ? 'verified-indexed-claim-failure-and-fresh-native-retry'
+            : 'verified-prepared-claim-handoff',
     );
   } else if (mode === 'named-night-send') {
     const { qualifyNightSend } = await import('./night-send-fixture.mjs');

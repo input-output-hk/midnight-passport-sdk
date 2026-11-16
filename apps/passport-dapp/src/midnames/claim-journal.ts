@@ -18,6 +18,9 @@ export type ClaimJournal = Awaited<ReturnType<typeof openClaimJournal>>;
 const storeName = 'claims';
 const selectionStore = 'selections';
 const releasedStore = 'released-claims';
+export type ClaimReleaseReason = 'FAILURE' | 'CLAIM_SEGMENT_FAILURE';
+const validReleaseReason = (value: unknown): value is ClaimReleaseReason =>
+  value === 'FAILURE' || value === 'CLAIM_SEGMENT_FAILURE';
 
 const selectionKey = (registry: string, account: string, credential: string) =>
   JSON.stringify(['undeployed', registry, account, credential]);
@@ -310,9 +313,15 @@ function makeAccess(db: IDBDatabase) {
 
 /** Archive only an exact, externally verified failed original. The caller must
  * recheck finality and registry availability before this atomic release. */
-function releaseFailed(db: IDBDatabase, receipt: ClaimReceipt, credential: string): Promise<void> {
+function releaseFailed(
+  db: IDBDatabase,
+  receipt: ClaimReceipt,
+  credential: string,
+  reason: ClaimReleaseReason,
+): Promise<void> {
   const original = claimReceipt(receipt);
   if (!claimHex(credential)) throw new Error('Invalid claim credential scope.');
+  if (!validReleaseReason(reason)) throw new Error('Invalid claim release reason.');
   const key = JSON.stringify(['undeployed', original.registryAddress, original.name]);
   const selectionId = selectionKey(original.registryAddress, original.accountAddress, credential);
   const releasedId = JSON.stringify([
@@ -362,7 +371,7 @@ function releaseFailed(db: IDBDatabase, receipt: ClaimReceipt, credential: strin
                       prior.receipt.accountAddress === original.accountAddress
                     ) {
                       const timestamp = Date.parse(String(row.releasedAt));
-                      if (row.reason !== 'FAILURE' || !Number.isFinite(timestamp))
+                      if (!validReleaseReason(row.reason) || !Number.isFinite(timestamp))
                         throw new Error('Released claim history is invalid.');
                       lastRelease = Math.max(lastRelease, timestamp);
                     }
@@ -371,7 +380,7 @@ function releaseFailed(db: IDBDatabase, receipt: ClaimReceipt, credential: strin
                   return;
                 }
                 const releasedAt = new Date(Math.max(Date.now(), lastRelease + 1)).toISOString();
-                history.add({ ...stored, releasedAt, reason: 'FAILURE' }, releasedId);
+                history.add({ ...stored, releasedAt, reason }, releasedId);
                 claims.delete(key);
                 if (name !== undefined) selected.delete(selectionId);
               } catch (error) {
@@ -428,7 +437,7 @@ function readReleased(
           if (row.credential === credential) {
             const stored = readStored(row);
             if (
-              row.reason !== 'FAILURE' ||
+              !validReleaseReason(row.reason) ||
               typeof row.releasedAt !== 'string' ||
               !Number.isFinite(Date.parse(row.releasedAt)) ||
               !stored?.receipt ||
@@ -565,8 +574,11 @@ export async function openClaimJournal(indexedDB: IDBFactory) {
         )
       )?.receipt;
     },
-    releaseFailed: (receipt: ClaimReceipt, credential: string) =>
-      releaseFailed(db, receipt, credential),
+    releaseFailed: (
+      receipt: ClaimReceipt,
+      credential: string,
+      reason: ClaimReleaseReason = 'FAILURE',
+    ) => releaseFailed(db, receipt, credential, reason),
     readReleased: (registry: string, name: string, account: string, credential: string) =>
       readReleased(db, registry, name, account, credential),
     close: () => db.close(),

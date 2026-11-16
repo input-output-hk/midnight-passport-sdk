@@ -25,16 +25,24 @@ wallets for this qualification and preserve all original transaction references
 when a submission has an uncertain result.
 
 For #334, `midnames-claim-partial-probe-<fresh-name>` selects an isolated
-negative mode. It prepares and fences one sponsored claim, then has the
+policy-race mode. It prepares and fences one sponsored claim, then has the
 registry owner disable registration after sponsor admission but before that
 original is submitted. The run passes only if the live indexer reports
-`PARTIAL_SUCCESS` for the exact original transaction, the name remains
-absent, and the SDK finality checker refuses to classify it as a releasable
-`FAILURE`. A node rejection, missing finality, or successful claim is not a
-pass. The mode preserves its original bytes, identifiers and chain volumes;
-it does not release the browser journal or submit a replacement claim. A
-separate full-`FAILURE` receipt and fresh sponsored retry remain necessary
-before #334 can close.
+`PARTIAL_SUCCESS` for the exact original transaction, its segments prove that
+only the registration claim failed while the DUST fee succeeded, the name
+remains absent, and the SDK classifies that exact claim segment as failed.
+A node rejection, missing finality, different partial result or successful claim
+is not a pass. The mode preserves its original bytes, identifiers and chain
+volumes; it does not release the browser journal or submit a replacement claim.
+
+`midnames-claim-retry-<fresh-name>` extends this isolated lane. After the
+indexed failure, it restores the root's registration policy, prepares a new
+owner-proved claim and sponsor quote for the same ACC and name, submits that
+new original once, and checks indexed success and the live binding. Its private
+`indexed-claim-retry.json` retains both public receipts and dispatch counts.
+This host fixture does not perform the browser's explicit release or quote
+review ceremony; its result must not be described as a combined browser/native
+retry until that ceremony is separately qualified on the same chain.
 
 ## Run the shielded deposit by name
 
