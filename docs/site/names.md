@@ -496,4 +496,14 @@ volumes and released the lease. This demonstrates one local refusal when a
 name changes before signing; online provider reads, human approval and a
 Passport demo send page remain unqualified.
 
+For a future browser host, the source-only NIGHT journal stores one active
+intent per source ACC and network on the same origin, scoped to a public
+credential identifier. IndexedDB transactions fence the original withdrawal
+and deposit IDs before dispatch, retain them across reloads, and refuse a
+different credential or new request while one is active. The host may archive
+only after its finality reader confirms both original legs; the archived IDs
+remain available for audit. This local storage neither authorizes a payment
+nor coordinates another website, and the Passport demo has no named-send
+control or two-leg host adapter yet.
+
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

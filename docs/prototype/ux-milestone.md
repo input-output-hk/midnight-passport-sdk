@@ -222,3 +222,10 @@ the reviewed intent kept the original target. The fixture refused the send
 with no owner signature or payment dispatch and 10/0/0 ACC balances. This is
 a local change-after-review case, not a Passport demo send page or online
 provider qualification.
+
+The source-only browser journal for this route retains one active reviewed
+intent per source ACC on the demo origin, with durable per-leg identifiers and
+credential scope. It refuses another request while the original is active;
+both legs must pass a finality check before the host can archive it. The
+owner-send page and its passkey/bridge adapters remain to be connected and
+qualified, so this storage path is not a completed demo send journey.
