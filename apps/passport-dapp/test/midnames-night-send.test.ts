@@ -75,7 +75,8 @@ function fixture() {
     async readSourceBalance() {
       return state.balance;
     },
-    async review(reviewed) {
+    async review(reviewed, observedBalance) {
+      assert.equal(observedBalance, state.balance);
       assert.equal(reviewed.target, target);
       assert.deepEqual(reviewed.operations, [
         'withdraw_unshielded_with_jubjub',

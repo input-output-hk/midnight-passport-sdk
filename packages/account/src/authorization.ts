@@ -268,17 +268,24 @@ function plainProperties(value: object): PropertyDescriptorMap {
 }
 
 /** Only these explicitly trusted host capabilities retain identity across fresh approval. */
-function snapshotFlowOptions(value: unknown): unknown {
+function snapshotFlowOptions(value: unknown, allowBeforeSubmit: boolean): unknown {
   if (value === undefined) return value;
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw new AccountAuthorisationError('InvalidContext');
   const properties = plainProperties(value);
-  if (Object.keys(properties).some((key) => !['signal', 'onEvent'].includes(key)))
+  if (
+    Object.keys(properties).some(
+      (key) =>
+        !['signal', 'onEvent'].includes(key) && !(allowBeforeSubmit && key === 'beforeSubmit'),
+    )
+  )
     throw new AccountAuthorisationError('InvalidContext');
   const signal: unknown = properties.signal?.value;
   const onEvent: unknown = properties.onEvent?.value;
+  const beforeSubmit: unknown = properties.beforeSubmit?.value;
   if (
     (onEvent !== undefined && typeof onEvent !== 'function') ||
+    (beforeSubmit !== undefined && (!allowBeforeSubmit || typeof beforeSubmit !== 'function')) ||
     (signal !== undefined &&
       (typeof signal !== 'object' ||
         signal === null ||
@@ -293,6 +300,7 @@ function snapshotFlowOptions(value: unknown): unknown {
   return Object.freeze({
     ...(signal !== undefined && { signal }),
     ...(onEvent !== undefined && { onEvent }),
+    ...(beforeSubmit !== undefined && { beforeSubmit }),
   });
 }
 
@@ -364,7 +372,9 @@ function snapshotOperationArgs(method: keyof PassportAccount, args: readonly unk
   };
   try {
     return args.map((value, index) =>
-      index === optionIndex ? snapshotFlowOptions(value) : copy(value),
+      index === optionIndex
+        ? snapshotFlowOptions(value, method === 'withdrawUnshielded')
+        : copy(value),
     );
   } catch {
     throw new AccountAuthorisationError('InvalidContext');

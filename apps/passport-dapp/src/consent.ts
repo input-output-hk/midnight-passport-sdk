@@ -9,6 +9,7 @@ import {
   refuseExactReview,
   type ExactReview,
 } from './exact-review.js';
+import type { NightSendIntent } from './midnames/night-send.js';
 
 const PURPOSES: Partial<Record<ActionId, string>> = {
   unlockOwner:
@@ -155,6 +156,31 @@ export function assertExactWithdrawal(input: {
     input.color !== intent.color ||
     input.amount !== intent.amount ||
     input.recipient !== intent.recipient
+  )
+    return refuseExactReview();
+}
+
+/** The host must still match the named route after the actual owner credential approval. */
+export function assertExactNamedNight(intent: NightSendIntent): void {
+  const approved = approvedExact('withdraw');
+  if (
+    approved.kind !== 'withdraw' ||
+    !approved.namedNight ||
+    approved.account !== intent.source ||
+    approved.networkId !== intent.networkId ||
+    approved.color !== '00'.repeat(32) ||
+    approved.amount !== intent.amount ||
+    approved.recipient !== intent.bridge ||
+    approved.namedNight.requestId !== intent.requestId ||
+    approved.namedNight.name !== intent.name ||
+    approved.namedNight.asset !== intent.asset ||
+    approved.namedNight.providerId !== intent.providerId ||
+    approved.namedNight.namespace !== intent.namespace ||
+    approved.namedNight.target !== intent.target ||
+    approved.namedNight.operations.length !== intent.operations.length ||
+    approved.namedNight.operations.some(
+      (operation, index) => operation !== intent.operations[index],
+    )
   )
     return refuseExactReview();
 }

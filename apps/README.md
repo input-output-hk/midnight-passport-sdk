@@ -929,6 +929,15 @@ the selected JubJub account's unshielded NIGHT withdrawal. The reference demo
 still has no named-send page or connected bridge/finality adapter, and this path
 has no native/provider qualification.
 
+The source-only owner review model can now stage a named NIGHT route for the
+actual credential ceremony. It shows the exact name, pinned registry, full
+recipient ACC, bridge wallet, amount and both ACC operations. At the finalized
+withdrawal callback, an opt-in host check requires that same named intent to
+remain approved before the journal fence. The ACC signature itself authorizes
+the withdrawal to the bridge; the name and destination ACC are checked by the
+host and are not fields signed by this ACC circuit. The demo has not connected
+this review seam to a send control or qualified a provider/browser payment.
+
 ### Standalone Midnames claim recovery
 
 An opt-in host can supply the demo's preparation adapter. The user reviews the

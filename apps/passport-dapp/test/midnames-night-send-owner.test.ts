@@ -86,6 +86,30 @@ test('the selected owner maps exactly NIGHT, amount and bridge and forwards the 
   ]);
 });
 
+test('the optional host approval check runs at the finalized owner callback before fencing', async () => {
+  const { account } = owner();
+  const order: string[] = [];
+  const submit = createNightOwnerWithdrawal(account, (reviewed) => {
+    assert.equal(reviewed, intent);
+    order.push('approved-scope');
+  });
+  await submit(intent, async () => {
+    order.push('journal-fence');
+  });
+  assert.deepEqual(order, ['approved-scope', 'journal-fence']);
+
+  const refused = createNightOwnerWithdrawal(account, () => {
+    throw new Error('The named route no longer has owner approval.');
+  });
+  await assert.rejects(
+    refused(intent, async () => {
+      order.push('wrong-fence');
+    }),
+    /no longer has/,
+  );
+  assert.deepEqual(order, ['approved-scope', 'journal-fence']);
+});
+
 test('wrong owner, changed account and missing fence refuse before withdrawal', async () => {
   for (const change of [
     { scheme: 'p256-webauthn' },

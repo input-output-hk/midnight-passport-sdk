@@ -523,4 +523,13 @@ A source helper maps the selected JubJub account to the reviewed NIGHT amount an
 bridge address. The demo still needs to wire it with a bridge/finality adapter
 and UI. This composition has no native or real-provider result.
 
+The source owner-review model can also include the full named route in the
+actual credential ceremony: canonical name, registry, recipient ACC, bridge,
+amount, and both ACC operations. The optional account-owner helper check
+requires that approved named scope again at the finalized withdrawal callback,
+before the journal fence. This is host authorization and a dispatch guard;
+the pinned ACC circuit signs the withdrawal to the bridge, not the name or
+recipient ACC. A complete demo control and native/provider qualification are
+still required.
+
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

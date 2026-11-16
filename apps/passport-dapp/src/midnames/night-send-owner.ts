@@ -8,7 +8,10 @@ const NIGHT_COLOR = '00'.repeat(32);
 const ADDRESS = /^[a-f0-9]{64}$/;
 
 /** Bind the reviewed standalone NIGHT intent to one selected JubJub account API. */
-export function createNightOwnerWithdrawal(account: PassportAccount) {
+export function createNightOwnerWithdrawal(
+  account: PassportAccount,
+  checkApproved?: (intent: NightSendIntent) => void,
+) {
   const selected = {
     address: account.address,
     networkId: account.networkId,
@@ -46,7 +49,14 @@ export function createNightOwnerWithdrawal(account: PassportAccount) {
       throw new Error('The reviewed NIGHT withdrawal differs from the selected owner.');
     await withdraw(
       { color: NIGHT_COLOR, amount: intent.amount, recipient: intent.bridge },
-      { beforeSubmit },
+      {
+        beforeSubmit: checkApproved
+          ? async (submission) => {
+              checkApproved(intent);
+              await beforeSubmit(submission);
+            }
+          : beforeSubmit,
+      },
     );
   };
 }
