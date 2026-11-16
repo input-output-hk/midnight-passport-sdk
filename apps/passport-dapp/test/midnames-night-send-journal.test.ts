@@ -1,0 +1,147 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { IDBFactory } from 'fake-indexeddb';
+import { openBrowserNightSendJournal } from '../src/midnames/night-send-journal.js';
+import { NIGHT_SEND_OPERATIONS, type NightSendIntent } from '../src/midnames/night-send.js';
+
+const source = 'a'.repeat(64);
+const credentialId = '1'.repeat(64);
+const scope = { networkId: 'undeployed' as const, source, credentialId };
+const intent: NightSendIntent = {
+  requestId: 'a1234567-a123-4123-8123-a123456789ab',
+  name: 'alice.night',
+  networkId: 'undeployed',
+  source,
+  bridge: 'b'.repeat(64),
+  target: 'c'.repeat(64),
+  asset: 'NIGHT',
+  amount: '4',
+  providerId: `midnames:${'d'.repeat(64)}`,
+  namespace: 'night',
+  operations: NIGHT_SEND_OPERATIONS,
+};
+const withdrawal = { hash: 'e'.repeat(64), identifiers: ['0'.repeat(66)] };
+const deposit = { hash: 'f'.repeat(64), identifiers: ['1'.repeat(66)] };
+
+test('one source ACC keeps one active intent across tabs, reload and credential changes', async () => {
+  const factory = new IDBFactory();
+  const first = await openBrowserNightSendJournal(factory, scope);
+  const second = await openBrowserNightSendJournal(factory, scope);
+  const results = await Promise.allSettled([
+    first.createIntent(intent),
+    second.createIntent(intent),
+  ]);
+  assert.deepEqual(results.map((result) => result.status).sort(), ['fulfilled', 'rejected']);
+  assert.deepEqual(await first.readIntent(), intent);
+  first.close();
+  second.close();
+
+  const reopened = await openBrowserNightSendJournal(factory, scope);
+  assert.deepEqual(await reopened.readIntent(), intent);
+  await assert.rejects(
+    reopened.createIntent({ ...intent, requestId: 'b1234567-a123-4123-8123-a123456789ab' }),
+    /Reconcile the original/,
+  );
+  reopened.close();
+
+  const otherCredential = await openBrowserNightSendJournal(factory, {
+    ...scope,
+    credentialId: '2'.repeat(64),
+  });
+  await assert.rejects(otherCredential.readIntent(), /another credential/);
+  await assert.rejects(otherCredential.createIntent(intent), /another credential/);
+  otherCredential.close();
+});
+
+test('each transaction fence is durable, ordered and never replaced after a lost reply', async () => {
+  const factory = new IDBFactory();
+  let journal = await openBrowserNightSendJournal(factory, scope);
+  await journal.createIntent(intent);
+  await assert.rejects(journal.fenceLeg('deposit', deposit), /cannot be fenced/);
+  await journal.fenceLeg('withdraw', withdrawal);
+  journal.close();
+
+  journal = await openBrowserNightSendJournal(factory, scope);
+  assert.deepEqual(await journal.readLeg('withdraw'), withdrawal);
+  assert.equal(await journal.readLeg('deposit'), undefined);
+  await assert.rejects(journal.fenceLeg('withdraw', withdrawal), /already fenced/);
+  await assert.rejects(
+    journal.fenceLeg('deposit', { ...deposit, hash: withdrawal.hash }),
+    /cannot be fenced/,
+  );
+  await journal.fenceLeg('deposit', deposit);
+  await assert.rejects(journal.fenceLeg('deposit', deposit), /cannot be fenced/);
+  assert.deepEqual(await journal.readActive(), {
+    version: 1,
+    credentialId,
+    intent,
+    withdrawal,
+    deposit,
+  });
+  journal.close();
+});
+
+test('completed original is archived without losing its IDs; a new request can then start', async () => {
+  const factory = new IDBFactory();
+  const journal = await openBrowserNightSendJournal(factory, scope);
+  await journal.createIntent(intent);
+  await journal.fenceLeg('withdraw', withdrawal);
+  const finalized = async () => true;
+  await assert.rejects(
+    journal.archiveCompleted(intent, withdrawal, deposit, finalized),
+    /not ready to archive/,
+  );
+  await journal.fenceLeg('deposit', deposit);
+  await assert.rejects(
+    journal.archiveCompleted(intent, withdrawal, deposit, async () => false),
+    /must be final/,
+  );
+  await assert.rejects(
+    journal.archiveCompleted({ ...intent, amount: '5' }, withdrawal, deposit, finalized),
+    /not ready to archive/,
+  );
+  await assert.rejects(
+    journal.archiveCompleted(intent, withdrawal, { ...deposit, hash: '8'.repeat(64) }, finalized),
+    /not ready to archive/,
+  );
+  await journal.archiveCompleted(intent, withdrawal, deposit, finalized);
+  assert.equal(await journal.readActive(), undefined);
+  assert.deepEqual(
+    (({ archivedAt: _archivedAt, ...rest }) => rest)(
+      (await journal.readArchived(intent.requestId))!,
+    ),
+    { version: 1, credentialId, intent, withdrawal, deposit },
+  );
+  await assert.rejects(journal.createIntent(intent), /already archived/);
+  const next = { ...intent, requestId: 'b1234567-a123-4123-8123-a123456789ab' };
+  await journal.createIntent(next);
+  assert.deepEqual(await journal.readIntent(), next);
+  await assert.rejects(journal.createIntent(intent), /Reconcile the original/);
+  journal.close();
+});
+
+test('malformed retained original fails closed before payment preparation', async () => {
+  const factory = new IDBFactory();
+  const journal = await openBrowserNightSendJournal(factory, scope);
+  await journal.createIntent(intent);
+  journal.close();
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = factory.open('mn-passport:night-send', 1);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction('active', 'readwrite');
+    tx.objectStore('active').put(
+      { version: 1, credentialId, intent: { ...intent, target: '0'.repeat(63) } },
+      JSON.stringify(['undeployed', source]),
+    );
+    tx.oncomplete = () => resolve();
+    tx.onabort = () => reject(tx.error);
+  });
+  db.close();
+  const reopened = await openBrowserNightSendJournal(factory, scope);
+  await assert.rejects(reopened.readIntent(), /Stored NIGHT intent is invalid/);
+  await assert.rejects(reopened.fenceLeg('withdraw', withdrawal), /Stored NIGHT intent is invalid/);
+  reopened.close();
+});

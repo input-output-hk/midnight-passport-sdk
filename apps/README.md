@@ -902,6 +902,15 @@ any owner payment signature or payment-leg dispatch; source, old recipient and
 new recipient balances stayed 10/0/0. This remains a standalone fixture,
 without a Passport demo send page or qualified online provider.
 
+The source-only browser NIGHT journal now provides an IndexedDB host port for
+one active payment per network and source ACC on this origin. It retains the
+reviewed intent and exact withdrawal/deposit identifiers across reloads,
+fences each leg transactionally across tabs, and refuses another credential or
+request until the original is reconciled. Archiving requires both original
+legs to pass the caller's finality check and preserves their audit record.
+The demo does not yet wire this journal to a named-send control or an owner
+payment/bridge adapter; same-origin storage does not coordinate other sites.
+
 ### Standalone Midnames claim recovery
 
 An opt-in host can supply the demo's preparation adapter. The user reviews the
