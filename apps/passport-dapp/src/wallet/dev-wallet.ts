@@ -51,6 +51,27 @@ export async function createDevWallet(
       throw walletBackgroundError(error);
     }
   };
+  const nightBridge: NonNullable<DevWallet['nightBridge']> = {
+    async getAddress() {
+      try {
+        const result = await client.request('nightBridgeAddress', undefined);
+        if (typeof result !== 'string' || !/^[a-f0-9]{64}$/.test(result))
+          throw new Error('Invalid bridge address reply.');
+        return result;
+      } catch (error) {
+        throw walletBackgroundError(error);
+      }
+    },
+    async hasOutput(expected) {
+      try {
+        const result = await client.request('hasNightBridgeOutput', expected);
+        if (typeof result !== 'boolean') throw new Error('Invalid bridge output reply.');
+        return result;
+      } catch (error) {
+        throw walletBackgroundError(error);
+      }
+    },
+  };
   return devWalletSession(
     config.networkId,
     {
@@ -66,6 +87,7 @@ export async function createDevWallet(
       // Termination releases owned sockets and any stalled sync without waiting two minutes.
       client.close();
     },
+    nightBridge,
   );
 }
 

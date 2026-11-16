@@ -39,3 +39,32 @@ test('failed runtime cleanup still leaves the old session invalid and is not rep
   await assert.rejects(wallet.descriptor.connect('undeployed'), { code: 'Disconnected' });
   assert.equal(stops, 1);
 });
+
+test('internal NIGHT observation is guarded by the wallet lifetime and absent from connector', async () => {
+  let finish!: (available: boolean) => void;
+  const wallet = devWalletSession('undeployed', {} as DevWalletConnectedApi, async () => {}, {
+    getAddress: async () => 'b'.repeat(64),
+    hasOutput: () =>
+      new Promise<boolean>((resolve) => {
+        finish = resolve;
+      }),
+  });
+  const bridge = wallet.nightBridge;
+  assert.ok(bridge);
+  const connector = await wallet.descriptor.connect('undeployed');
+  assert.equal('nightBridge' in connector, false);
+  assert.equal(await bridge.getAddress(), 'b'.repeat(64));
+  const pending = bridge.hasOutput({
+    transactionHash: 'e'.repeat(64),
+    intentHash: 'd'.repeat(64),
+    outputNo: 0,
+    owner: 'b'.repeat(64),
+    type: '00'.repeat(32),
+    value: 4n,
+  });
+  const refusal = assert.rejects(pending, { code: 'Disconnected' });
+  await wallet.stop();
+  finish(true);
+  await refusal;
+  await assert.rejects(bridge.getAddress(), { code: 'Disconnected' });
+});

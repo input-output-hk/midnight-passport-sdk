@@ -539,4 +539,9 @@ input before dispatch. A wallet balance alone cannot authorize a substitute
 coin. The browser still needs a device-held deposit adapter and end-to-end
 qualification; this source guard is not a new native result.
 
+The demo wallet's separate internal worker port can report its raw bridge
+address and whether this exact output is available after NIGHT sync. It checks
+that the requested owner is the wallet's own address. The public connector API
+remains read-only; no browser deposit balance, signature or dispatch is wired.
+
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

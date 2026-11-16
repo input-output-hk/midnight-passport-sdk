@@ -45,6 +45,38 @@ export interface NightBridgeOutput {
   readonly value: bigint;
 }
 
+/** Parse a page-to-wallet-worker observation request without trusting its TypeScript shape. */
+export function checkedNightBridgeOutput(value: unknown): NightBridgeOutput {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new Error('Invalid NIGHT bridge output.');
+  const output = value as Record<string, unknown>;
+  if (
+    typeof output.transactionHash !== 'string' ||
+    !HEX.test(output.transactionHash) ||
+    typeof output.intentHash !== 'string' ||
+    !HEX.test(output.intentHash) ||
+    typeof output.outputNo !== 'number' ||
+    !Number.isSafeInteger(output.outputNo) ||
+    output.outputNo < 0 ||
+    output.outputNo > 65_535 ||
+    typeof output.owner !== 'string' ||
+    !HEX.test(output.owner) ||
+    output.type !== NIGHT ||
+    typeof output.value !== 'bigint' ||
+    output.value <= 0n ||
+    output.value >= 1n << 128n
+  )
+    throw new Error('Invalid NIGHT bridge output.');
+  return Object.freeze({
+    transactionHash: output.transactionHash,
+    intentHash: output.intentHash,
+    outputNo: output.outputNo,
+    owner: output.owner,
+    type: NIGHT,
+    value: output.value,
+  });
+}
+
 function offers(tx: NightBridgeTransaction) {
   return [...(tx.intents ?? [])].flatMap(([segment, intent]) =>
     [intent.guaranteedUnshieldedOffer, intent.fallibleUnshieldedOffer]

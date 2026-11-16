@@ -2,6 +2,11 @@
 export async function createWalletRuntime(seed: Uint8Array, config: { networkId: string }) {
   if (typeof document !== 'undefined') throw new Error('Wallet runtime ran on the UI thread.');
   return {
+    nightBridge: {
+      getAddress: async () => 'b'.repeat(64),
+      hasOutput: async (expected: { owner: string; intentHash: string }) =>
+        expected.owner === 'b'.repeat(64) && expected.intentHash === 'd'.repeat(64),
+    },
     descriptor: {
       async connect() {
         return {

@@ -13,6 +13,7 @@ export function devWalletSession(
   networkId: string,
   api: DevWalletConnectedApi,
   stopRuntime: () => Promise<void>,
+  nightBridge?: NonNullable<DevWallet['nightBridge']>,
 ): DevWallet {
   let stopped = false;
   let stopping: Promise<void> | undefined;
@@ -53,6 +54,13 @@ export function devWalletSession(
         return connected;
       },
     },
+    ...(nightBridge && {
+      nightBridge: {
+        getAddress: guard(() => nightBridge.getAddress()),
+        hasOutput: (expected: Parameters<typeof nightBridge.hasOutput>[0]) =>
+          guard(() => nightBridge.hasOutput(expected))(),
+      },
+    }),
     stop() {
       stopped = true;
       stopping ??= Promise.resolve().then(stopRuntime);

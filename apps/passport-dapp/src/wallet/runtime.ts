@@ -21,6 +21,10 @@ import {
   UnshieldedWallet,
 } from '@midnightntwrk/wallet-sdk-unshielded-wallet';
 import * as Rx from 'rxjs';
+import {
+  checkedNightBridgeOutput,
+  hasExactNightBridgeCoin,
+} from '../midnames/night-bridge-output.js';
 import { devWalletSession, walletApiError as apiError } from './lifecycle.ts';
 import { walletSyncReady } from './sync.js';
 
@@ -143,5 +147,21 @@ export async function createWalletRuntime(
     },
   };
 
-  return devWalletSession(config.networkId, connected, () => facade.stop());
+  const rawBridge = unshieldedKeystore.getAddress();
+  return devWalletSession(config.networkId, connected, () => facade.stop(), {
+    async getAddress() {
+      if (config.networkId !== 'undeployed')
+        throw apiError('InvalidRequest', 'Named NIGHT bridge is unavailable on this network.');
+      return rawBridge;
+    },
+    async hasOutput(input) {
+      const expected = checkedNightBridgeOutput(input);
+      if (config.networkId !== 'undeployed' || expected.owner !== rawBridge)
+        throw apiError('InvalidRequest', 'The NIGHT output does not belong to this wallet.');
+      return hasExactNightBridgeCoin(
+        (await synced('unshielded')).unshielded.availableCoins,
+        expected,
+      );
+    },
+  });
 }
