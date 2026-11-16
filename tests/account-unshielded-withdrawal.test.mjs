@@ -104,7 +104,10 @@ test('P-256 owner withdrawal pins the challenge, passkey, consent and circuit ar
   assert.equal(transfers.length, 1);
   assert.equal(sessions.length - sessionsAfterCreate, 1);
   const beforeSubmit = async () => {};
-  await assert.rejects(account.withdrawUnshielded(request, { beforeSubmit }), {
+  const unsafeOptions = { beforeSubmit };
+  const refused = account.withdrawUnshielded(request, unsafeOptions);
+  Reflect.set(unsafeOptions, 'beforeSubmit', undefined);
+  await assert.rejects(refused, {
     code: 'BindingUnsupported',
   });
   assert.equal(
@@ -113,6 +116,9 @@ test('P-256 owner withdrawal pins the challenge, passkey, consent and circuit ar
     'no credential session on unsupported chain',
   );
   ports.chain.supportsBeforeSubmit = true;
-  await account.withdrawUnshielded(request, { beforeSubmit });
+  const supportedOptions = { beforeSubmit };
+  const sent = account.withdrawUnshielded(request, supportedOptions);
+  Reflect.set(supportedOptions, 'beforeSubmit', undefined);
+  await sent;
   assert.equal(transfers.at(-1)?.beforeSubmit, beforeSubmit, 'the flow forwards the caller fence');
 });

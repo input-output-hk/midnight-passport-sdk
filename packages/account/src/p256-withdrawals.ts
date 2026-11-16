@@ -24,6 +24,7 @@ export class P256Withdrawals {
     options: P256MethodArgs<'withdrawUnshielded'>[1] = {},
   ) => {
     const { network, binding, authoriser, useCounter, chain, run } = this.host;
+    const beforeSubmit = options.beforeSubmit;
     const record = this.record;
     return run(options, async (flow) => {
       const transfer = prepareUnshieldedWithdrawal(request);
@@ -40,7 +41,7 @@ export class P256Withdrawals {
         );
       if (record.status !== 'active')
         throw new PassportConnectorError('AccountNotFound', 'The P-256 ACC is not active.');
-      const valueChain = await requireValueSubmissionChain(chain, options.beforeSubmit);
+      const valueChain = await requireValueSubmissionChain(chain, beforeSubmit);
       return authoriser.withKeySession(
         async () => {
           const selected = await authoriser.devicePublicKey();
@@ -106,7 +107,7 @@ export class P256Withdrawals {
               },
             ],
             ...flow.ports,
-            ...(options.beforeSubmit && { beforeSubmit: options.beforeSubmit }),
+            ...(beforeSubmit && { beforeSubmit }),
           });
           return { ...tx, nextUseCounter: counter + 1n };
         },
