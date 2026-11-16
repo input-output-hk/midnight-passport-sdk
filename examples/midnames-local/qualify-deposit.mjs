@@ -79,7 +79,7 @@ const fixtureMode = out.startsWith('midnames-claim-browser-')
           ? 'claim-retry'
           : out.startsWith('midnames-claim-handoff-')
             ? 'claim-handoff'
-          : out.startsWith('midnames-night-send-') || out.startsWith('midnames-night-browser-')
+            : out.startsWith('midnames-night-send-') || out.startsWith('midnames-night-browser-')
               ? 'named-night-send'
               : 'named-shielded-deposit';
 if (interactive)

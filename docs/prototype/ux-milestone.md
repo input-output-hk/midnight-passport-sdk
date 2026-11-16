@@ -200,3 +200,12 @@ The isolated NIGHT fixture reviews both operations together and keeps original
 withdrawal and deposit references. An interrupted withdrawal-to-deposit flow
 remains visible in the journal. See the
 [standalone recipe](../../examples/midnames-local/README.md#run-the-named-acc-to-acc-night-payment).
+
+The optional localhost owner browser page now shows the source ACC, named
+recipient ACC, controlled bridge, amount and both operations before the
+synthetic owner signature. A signed `ec83ce9` isolated run passed with an
+automated approval, one withdrawal, an interruption before deposit, then
+original-intent recovery and one deposit to 6/4 balances. Its manual browser
+mode is available for a human-run local exercise but has not been qualified
+here. This does not add a send page to the Passport demo or establish real
+passkey consent.

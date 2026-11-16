@@ -886,6 +886,13 @@ with its own wallet; the Passport demo's Name service panel remains lookup and
 claim controls, not a sender payment form. Visible manual review is opt-in
 and has no qualified human/provider acceptance yet.
 
+The separate [named NIGHT owner payment](../examples/midnames-local/README.md#review-the-two-leg-night-payment-in-the-owner-browser)
+can also review both ACC operations in a localhost browser before its
+synthetic owner signature. Its automated isolated `undeployed` run passed at
+signed source `ec83ce9`: one withdrawal, an interrupted deposit, recovery of
+the original wallet output and one recipient deposit. This example does not
+add a sender sheet or passkey ceremony to the Passport demo.
+
 ### Standalone Midnames claim recovery
 
 An opt-in host can supply the demo's preparation adapter. The user reviews the
