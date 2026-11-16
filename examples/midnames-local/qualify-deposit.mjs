@@ -61,12 +61,14 @@ assert.match(
 );
 const browserReview =
   out.startsWith('midnames-deposit-browser-') || out.startsWith('midnames-night-browser-');
+const browserDecline = out.startsWith('midnames-night-browser-decline-');
 const manualBrowserReview = process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === '1';
 assert.ok(
   process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === undefined ||
     ['0', '1'].includes(process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL),
 );
 assert.ok(!manualBrowserReview || browserReview);
+assert.ok(!browserDecline || !manualBrowserReview);
 const fixtureMode = out.startsWith('midnames-claim-browser-')
   ? 'claim-browser'
   : out.startsWith('midnames-claim-preproof-')
@@ -202,6 +204,7 @@ try {
     PASSPORT_MIDNAMES_FIXTURE_MODE: fixtureMode,
     PASSPORT_MIDNAMES_BROWSER_REVIEW: browserReview ? '1' : '0',
     PASSPORT_MIDNAMES_BROWSER_MANUAL: manualBrowserReview ? '1' : '0',
+    PASSPORT_MIDNAMES_BROWSER_DECISION: browserDecline ? 'decline' : 'approve',
   };
   const worker = spawn(
     process.execPath,
