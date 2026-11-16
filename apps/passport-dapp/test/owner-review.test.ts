@@ -8,10 +8,13 @@ import { createOwnerReview } from '../src/owner-review.js';
 import {
   assertExactGrantExport,
   assertExactWithdrawal,
+  assertExactNamedNight,
   beforeDemoCeremony,
   reviewDemoAction,
 } from '../src/consent.js';
 import { approve, control, withUi } from './fixtures/consent-ui.js';
+import { NIGHT_SEND_OPERATIONS } from '../src/midnames/night-send.js';
+import { createNightOwnerWithdrawal } from '../src/midnames/night-send-owner.js';
 
 const address = 'ab'.repeat(32);
 const grantId = 'ef'.repeat(32);
@@ -63,10 +66,20 @@ function fixture(authenticated = true, primaryScheme: PassportAccount['scheme'] 
       specVersion: 1,
     }),
     rotateEncryptionKey: async () => ({ txHash: 'unused' }),
-    withdrawUnshielded: async (request) => {
+    withdrawUnshielded: async (request, options) => {
       if (!authenticated) await beforeDemoCeremony({ ...ceremony, purpose: 'sign' });
       assert.ok(scheme === 'p256-webauthn' || scheme === 'jubjub-schnorr');
       assertExactWithdrawal({ account: address, scheme, ...request });
+      await options?.beforeSubmit?.({
+        networkId: 'undeployed',
+        account: address,
+        circuit:
+          scheme === 'jubjub-schnorr'
+            ? 'withdraw_unshielded_with_jubjub'
+            : 'withdraw_unshielded_with_p256',
+        transactionHash: '34'.repeat(32),
+        identifiers: ['00' + '34'.repeat(32)],
+      });
       effects.push(scheme);
       return { txHash: '34'.repeat(32), nextUseCounter: 2n };
     },
@@ -149,6 +162,66 @@ test('P256 facade reviews its authenticated JubJub signer and dispatches only th
     assert.ok(text.includes(transfer.recipientAddress));
     await approve(controls, frames);
     assert.equal((await pending).txHash, '34'.repeat(32));
+    assert.deepEqual(f.effects, ['jubjub-schnorr']);
+  }));
+
+test('named NIGHT staging shows full ACC destination in the actual owner ceremony', async () =>
+  withUi(async (controls, frames) => {
+    const f = fixture();
+    const named = {
+      requestId: 'a1234567-a123-4123-8123-a123456789ab',
+      name: 'alice.night',
+      networkId: 'undeployed',
+      source: address,
+      bridge: recipient,
+      asset: 'NIGHT',
+      amount: '1',
+      target: 'cd'.repeat(32),
+      providerId: 'midnames:' + 'ef'.repeat(32),
+      namespace: 'night',
+      operations: NIGHT_SEND_OPERATIONS,
+    };
+    await reviewDemoAction('withdraw', f.context);
+    f.review.stageNamedNightWithdrawalReview(f.facade, named, '10');
+    assert.ok(f.facade.withdrawUnshielded);
+    const pending = f.facade.withdrawUnshielded(transfer);
+    const text = control(controls, 'ceremony-details').textContent;
+    assert.ok(text.includes(named.target));
+    assert.ok(text.includes(named.name));
+    assert.ok(text.includes(recipient));
+    await approve(controls, frames);
+    await pending;
+    assert.doesNotThrow(() => assertExactNamedNight(named));
+    assert.deepEqual(f.effects, ['jubjub-schnorr']);
+  }));
+
+test('named owner helper checks the same approved route at finalized callback before fencing', async () =>
+  withUi(async (controls, frames) => {
+    const f = fixture();
+    const named = {
+      requestId: 'a1234567-a123-4123-8123-a123456789ab',
+      name: 'alice.night',
+      networkId: 'undeployed',
+      source: address,
+      bridge: recipient,
+      asset: 'NIGHT',
+      amount: '1',
+      target: 'cd'.repeat(32),
+      providerId: 'midnames:' + 'ef'.repeat(32),
+      namespace: 'night',
+      operations: NIGHT_SEND_OPERATIONS,
+    };
+    await reviewDemoAction('withdraw', f.context);
+    f.review.stageNamedNightWithdrawalReview(f.facade, named, '10');
+    const fenced: string[] = [];
+    const submit = createNightOwnerWithdrawal(f.facade, assertExactNamedNight);
+    const pending = submit(named, async () => {
+      fenced.push('original');
+    });
+    assert.ok(control(controls, 'ceremony-details').textContent.includes(named.target));
+    await approve(controls, frames);
+    await pending;
+    assert.deepEqual(fenced, ['original']);
     assert.deepEqual(f.effects, ['jubjub-schnorr']);
   }));
 

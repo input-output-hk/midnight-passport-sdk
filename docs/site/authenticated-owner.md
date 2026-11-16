@@ -161,8 +161,11 @@ The exported source alone does not prove that its public key is a live owner.
 The low-level key factory does not perform WebAuthn access for each signature.
 Fresh approval is host policy, not a factory default: the demo wires the optional authenticated-operation
 hook of `routeAuthenticatedAccount`, snapshots public arguments before awaiting
-approval, and rechecks the selected account/lease afterward. Its critical guard
-requests a pinned PRF assertion and matches owner/reader without replacing the
+approval, and rechecks the selected account/lease afterward. The facade admits
+an opt-in `beforeSubmit` capability only for `withdrawUnshielded`, captures its
+callback before that await, and rejects it on unrelated operations. The named
+NIGHT host uses this to fence finalized original IDs before dispatch. Its
+critical guard requests a pinned PRF assertion and matches owner/reader without replacing the
 lease. Sensitive export/recovery actions also enter that same reviewed guard.
 A partner using the raw factory or another facade must provide its own equivalent
 policy. A copied full-owner scalar is not constrained by this browser guard.

@@ -5,6 +5,7 @@ import {
 } from '@input-output-hk/mn-passport-account/validation';
 import type { CallRequest } from '@input-output-hk/mn-passport-account/ports';
 import type { PassportAccount } from '@input-output-hk/mn-passport-protocol';
+import { NIGHT_SEND_OPERATIONS, type NightSendIntent } from './midnames/night-send.js';
 import { withdrawalRequest } from './withdrawal.js';
 
 interface ReviewContext {
@@ -14,6 +15,20 @@ interface ReviewContext {
   readonly route: 'primary' | 'authenticated-owner';
   readonly scheme: 'p256-webauthn' | 'jubjub-schnorr';
 }
+export type NamedNightReview = Pick<
+  NightSendIntent,
+  | 'requestId'
+  | 'name'
+  | 'networkId'
+  | 'source'
+  | 'bridge'
+  | 'asset'
+  | 'amount'
+  | 'target'
+  | 'providerId'
+  | 'namespace'
+  | 'operations'
+>;
 export type ExactReview = ReviewContext &
   (
     | {
@@ -24,6 +39,7 @@ export type ExactReview = ReviewContext &
         readonly recipientAddress: string;
         readonly balance: string;
         readonly outsideSession: boolean;
+        readonly namedNight?: NamedNightReview;
       }
     | { readonly kind: 'exportGrant'; readonly grantId: string }
   );
@@ -35,6 +51,56 @@ export function refuseExactReview(): never {
 export function exactOwnerScheme(scheme: PassportAccount['scheme']) {
   if (scheme === 'p256-webauthn' || scheme === 'jubjub-schnorr') return scheme;
   return refuseExactReview();
+}
+
+function admitNamedNight(
+  named: NamedNightReview,
+  context: ReviewContext,
+  transfer: { readonly color: string; readonly amount: string; readonly recipient: string },
+  outsideSession: boolean,
+): NamedNightReview {
+  if (
+    context.networkId !== 'undeployed' ||
+    context.bindingId !== 'acc-s3r1.1' ||
+    context.scheme !== 'jubjub-schnorr' ||
+    transfer.color !== '00'.repeat(32) ||
+    outsideSession
+  )
+    return refuseExactReview();
+  if (
+    !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(named.requestId) ||
+    !/^(?:[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?\.)+night$/.test(named.name) ||
+    named.name.length > 256 ||
+    !/^[a-f0-9]{64}$/.test(named.target) ||
+    named.target === context.account ||
+    !/^midnames:[a-f0-9]{64}$/.test(named.providerId) ||
+    named.namespace !== 'night'
+  )
+    return refuseExactReview();
+  if (
+    named.networkId !== context.networkId ||
+    named.source !== context.account ||
+    named.bridge !== transfer.recipient ||
+    named.asset !== 'NIGHT' ||
+    named.amount !== transfer.amount ||
+    !Array.isArray(named.operations) ||
+    named.operations.length !== NIGHT_SEND_OPERATIONS.length ||
+    named.operations.some((operation, index) => operation !== NIGHT_SEND_OPERATIONS[index])
+  )
+    return refuseExactReview();
+  return Object.freeze({
+    requestId: named.requestId,
+    name: named.name,
+    networkId: named.networkId,
+    source: named.source,
+    bridge: named.bridge,
+    asset: named.asset,
+    amount: named.amount,
+    target: named.target,
+    providerId: named.providerId,
+    namespace: named.namespace,
+    operations: NIGHT_SEND_OPERATIONS,
+  });
 }
 
 /** Owned public intent only. Neither this model nor its presence grants authority. */
@@ -76,6 +142,8 @@ export function admitExactReview(input: ExactReview): ExactReview {
     input.balance,
   );
   if (decoded.recipient !== transfer.recipient) return refuseExactReview();
+  const namedNight =
+    input.namedNight && admitNamedNight(input.namedNight, shared, transfer, input.outsideSession);
   return Object.freeze({
     ...shared,
     ...transfer,
@@ -83,6 +151,7 @@ export function admitExactReview(input: ExactReview): ExactReview {
     recipientAddress: address,
     balance: input.balance,
     outsideSession: input.outsideSession,
+    ...(namedNight && { namedNight }),
   });
 }
 
@@ -99,6 +168,14 @@ export function exactReviewText(intent: ExactReview): string {
     `Asset: ${intent.color}\nAmount: ${intent.amount} smallest units\n` +
     `Recipient: ${intent.recipientAddress}\nRecipient bytes: ${intent.recipient}\n` +
     `Observed balance: ${intent.balance} smallest units` +
+    (intent.namedNight
+      ? `\n\nNamed NIGHT payment: ${intent.namedNight.name}\n` +
+        `Registry: ${intent.namedNight.providerId.slice('midnames:'.length)}\n` +
+        `Recipient Passport ACC: ${intent.namedNight.target}\n` +
+        `Operations: ${intent.namedNight.operations.join(' → ')}\n` +
+        `Request: ${intent.namedNight.requestId}\n` +
+        'The ACC signs the withdrawal to the bridge. This app checks the name and recipient ACC before dispatch.'
+      : '') +
     (intent.outsideSession
       ? '\nThis transfer is outside the selected session; owner approval is required.'
       : '')

@@ -7,9 +7,11 @@ import {
   reviewDemoAction,
   stageExactCredentialReview,
   assertExactWithdrawal,
+  assertExactNamedNight,
   assertExactGrantExport,
 } from '../src/consent.ts';
 import { admitExactReview, withdrawalFromCall, type ExactReview } from '../src/exact-review.ts';
+import { NIGHT_SEND_OPERATIONS, type NightSendIntent } from '../src/midnames/night-send.ts';
 import { reviewedOwnerValueCall } from '../src/reviewed-value-call.ts';
 import { withUi, control, approve } from './fixtures/consent-ui.ts';
 
@@ -34,6 +36,19 @@ const intent: ExactReview = {
   recipientAddress,
   balance: '10',
   outsideSession: false,
+};
+const namedNight: NightSendIntent = {
+  requestId: 'a1234567-a123-4123-8123-a123456789ab',
+  name: 'alice.night',
+  networkId: 'undeployed',
+  source: account,
+  bridge: recipient,
+  asset: 'NIGHT',
+  amount: '1',
+  target: 'cd'.repeat(32),
+  providerId: 'midnames:' + 'ef'.repeat(32),
+  namespace: 'night',
+  operations: NIGHT_SEND_OPERATIONS,
 };
 const request = {
   address: account,
@@ -75,6 +90,56 @@ test('staging is not approval; one actual signature review approves the immutabl
       code: 'UserCancelled',
     });
   }));
+
+test('one actual owner approval binds the named NIGHT target and both ACC operations', async () =>
+  withUi(async (controls, frames) => {
+    const mutableNamed = { ...namedNight };
+    const named = { ...intent, scheme: 'jubjub-schnorr' as const, namedNight: mutableNamed };
+    await reviewDemoAction('withdraw', { ...context, arm: 'jubjub' });
+    stageExactCredentialReview(named, () => {});
+    mutableNamed.target = '34'.repeat(32);
+    assert.throws(() => assertExactNamedNight(namedNight), { code: 'UserCancelled' });
+    const pending = beforeDemoCeremony({ ...ceremony, purpose: 'derive-keys' });
+    const text = control(controls, 'ceremony-details').textContent;
+    for (const value of [
+      namedNight.name,
+      namedNight.providerId.slice('midnames:'.length),
+      namedNight.target,
+      namedNight.requestId,
+      ...namedNight.operations,
+      recipientAddress,
+    ])
+      assert.ok(text.includes(value), `missing ${value}`);
+    await approve(controls, frames);
+    await pending;
+    assert.doesNotThrow(() => assertExactNamedNight(namedNight));
+    for (const changed of [
+      { target: '34'.repeat(32) },
+      { name: 'bob.night' },
+      { providerId: 'midnames:' + '34'.repeat(32) },
+      { bridge: '34'.repeat(32) },
+      { amount: '2' },
+      { operations: [NIGHT_SEND_OPERATIONS[1], NIGHT_SEND_OPERATIONS[0]] as never },
+    ])
+      assert.throws(() => assertExactNamedNight({ ...namedNight, ...changed }), {
+        code: 'UserCancelled',
+      });
+  }));
+
+test('named NIGHT review refuses wrong route, target, provider and withdrawal bridge before consent', () => {
+  const base = { ...intent, scheme: 'jubjub-schnorr' as const, namedNight };
+  for (const changed of [
+    { scheme: 'p256-webauthn' as const },
+    { color: '12'.repeat(32) },
+    { recipient: '34'.repeat(32) },
+    { amount: '2' },
+    { namedNight: { ...namedNight, target: account } },
+    { namedNight: { ...namedNight, providerId: 'another-registry' } },
+    { namedNight: { ...namedNight, name: 'Alice.night' } },
+    { namedNight: { ...namedNight, operations: ['deposit_unshielded'] as never } },
+  ])
+    assert.throws(() => admitExactReview({ ...base, ...changed } as ExactReview));
+});
 
 test('wrong action, context, route, human address or malformed value cannot stage a transfer', async () =>
   withUi(async () => {

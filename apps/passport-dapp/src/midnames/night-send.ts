@@ -79,7 +79,7 @@ interface NightSendCorePorts {
   isSupportedRecipient(address: string, networkId: string): Promise<boolean>;
   /** Return undefined for a source that fails the pinned binding and activation checks. */
   readSourceBalance(source: string): Promise<bigint | undefined>;
-  review(intent: NightSendIntent): Promise<boolean>;
+  review(intent: NightSendIntent, observedBalance: bigint): Promise<boolean>;
   /** Prepare a deposit funded by the original withdrawal output to the controlled wallet. */
   prepareDeposit(intent: NightSendIntent, withdrawal: NightSendLeg): Promise<PreparedLeg>;
   /** Require canonical successful finality for the exact prepared transaction. */
@@ -294,7 +294,7 @@ export async function sendNightByName(input: NightSendRequest, ports: NightSendP
     const balance = await ports.readSourceBalance(intent.source);
     if (balance === undefined || balance < BigInt(intent.amount))
       throw new Error('Unsupported source account or insufficient NIGHT balance.');
-    if ((await ports.review(intent)) !== true) throw new NightPaymentDeclined();
+    if ((await ports.review(intent, balance)) !== true) throw new NightPaymentDeclined();
     if (!retained) await ports.journal.createIntent(intent);
     await recheckBeforeOwnerWithdrawal(
       intent,

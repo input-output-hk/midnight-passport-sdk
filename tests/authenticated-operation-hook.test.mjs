@@ -97,6 +97,68 @@ test('an authenticated method waits for its host hook and preserves method argum
   assert.deepEqual(f.calls, ['fresh-approval', 'owner-dispatched']);
 });
 
+test('authenticated withdrawal retains only its captured pre-submit fence across fresh approval', async () => {
+  const f = fixture();
+  const approval = gate();
+  /** @type {string[]} */
+  const seen = [];
+  /** @param {import('../packages/protocol/dist/index.js').PreparedValueSubmission} submission */
+  const original = async (submission) => {
+    seen.push(submission.transactionHash);
+  };
+  const options = { beforeSubmit: original };
+  f.owner.withdrawUnshielded = async (_request, actualOptions) => {
+    assert.notEqual(actualOptions, options);
+    assert.equal(actualOptions?.beforeSubmit, original);
+    await actualOptions.beforeSubmit({
+      networkId: 'undeployed',
+      account: f.owner.address,
+      circuit: 'withdraw_unshielded_with_jubjub',
+      transactionHash: 'cd'.repeat(32),
+      identifiers: ['00' + 'cd'.repeat(32)],
+    });
+    return { txHash: 'cd'.repeat(32), nextUseCounter: 1n };
+  };
+  const routed = routeAuthenticatedAccount(
+    f.primary,
+    f.selected,
+    f.check,
+    async () => approval.promise,
+  );
+  assert.ok(routed.withdrawUnshielded);
+  const pending = routed.withdrawUnshielded(
+    {
+      color: '00'.repeat(32),
+      amount: '1',
+      recipient: 'ef'.repeat(32),
+    },
+    options,
+  );
+  options.beforeSubmit = async () => {
+    throw new Error('Caller replaced the fence after approval started');
+  };
+  approval.release();
+  assert.equal((await pending).txHash, 'cd'.repeat(32));
+  assert.deepEqual(seen, ['cd'.repeat(32)]);
+});
+
+test('pre-submit callbacks on unrelated authenticated operations refuse before fresh approval', () => {
+  const f = fixture();
+  let prompts = 0;
+  const routed = routeAuthenticatedAccount(f.primary, f.selected, f.check, async () => {
+    prompts++;
+  });
+  assert.throws(
+    () =>
+      Reflect.apply(routed.rotateEncryptionKey, routed, [
+        new Uint8Array(32),
+        { beforeSubmit: async () => {} },
+      ]),
+    { code: 'InvalidContext' },
+  );
+  assert.equal(prompts, 0);
+});
+
 test('hook mutation cannot rewrite admitted Buffer bytes, nested scope data or joining-device policy', async () => {
   const f = fixture();
   const approval = gate();

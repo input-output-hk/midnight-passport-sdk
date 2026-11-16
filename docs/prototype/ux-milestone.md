@@ -244,3 +244,10 @@ the original for lookup. A source
 helper binds the selected JubJub ACC to the reviewed NIGHT amount and bridge.
 The demo still needs to wire that helper, the bridge/finality adapter, send control
 and browser qualification.
+
+The source owner-consent model can stage the exact named NIGHT request in the
+actual passkey review: name, registry, recipient ACC, bridge address, amount and
+withdraw/deposit operations. An opt-in finalized callback checks that approved
+scope again before the journal fence. The ACC signs the bridge withdrawal;
+the name and recipient ACC remain host-checked rather than signed circuit
+fields. This is a composition seam, not a connected demo screen or native run.
