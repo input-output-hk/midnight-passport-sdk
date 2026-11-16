@@ -17,7 +17,12 @@ const fixtureDustCeiling = 100_000_000_000_000_000n;
 const fixtureNightCeiling = 1n;
 const appRoot = fileURLToPath(new URL('../../apps/passport-dapp/', import.meta.url));
 
-export async function runBrowser(output, port, timeoutMs = 270_000) {
+export async function runBrowser(
+  output,
+  port,
+  timeoutMs = 270_000,
+  entry = 'e2e/midnames-recovery.e2e.ts',
+) {
   // Playwright's SIGINT handler closes the Chrome process it launched
   // in its own group and exits the driver before the owner escalates.
   const owner = isolatedProcesses((group, signal) =>
@@ -29,16 +34,15 @@ export async function runBrowser(output, port, timeoutMs = 270_000) {
   process.once('SIGINT', interrupt);
   process.once('SIGTERM', interrupt);
   try {
-    const child = spawn(
-      process.execPath,
-      ['--import', 'tsx', 'e2e/midnames-recovery.e2e.ts', output],
-      {
-        cwd: appRoot,
-        env: { ...process.env, PASSPORT_MIDNAMES_SPONSOR_PORT: String(port) },
-        detached: true,
-        stdio: 'inherit',
+    const child = spawn(process.execPath, ['--import', 'tsx', entry, output], {
+      cwd: appRoot,
+      env: {
+        ...process.env,
+        ...(port === undefined ? {} : { PASSPORT_MIDNAMES_SPONSOR_PORT: String(port) }),
       },
-    );
+      detached: true,
+      stdio: 'inherit',
+    });
     owner.register(child);
     const [code, signal] = await once(child, 'close', { signal: waitSignal });
     assert.equal(signal, null);

@@ -243,7 +243,14 @@ history after reload; importing the same failed transaction again is refused.
 Review a fresh quote before preparing another claim. Other `PARTIAL_SUCCESS`
 outcomes, malformed or mismatched transactions, provider outages, and missing
 finality do not enable release. This is a source-preview local recovery path;
-the segment-aware release and retry still need native browser qualification.
+the isolated `undeployed` Ledger 9 run at signed `c757388` qualified one exact
+indexed paid claim-segment failure, explicit Chromium release, archive recovery
+after browser restart, and one distinct host-sponsored retry that finalized to
+the same ACC. The original and retry each dispatched once. The runner verified
+unchanged inputs, stopped its three owned containers, retained volumes, and
+released its native lease. The retry's new quote, proof, and dispatch remained
+host-driven; this does not qualify browser review before proving or a real
+passkey provider. Issue #334 remains open for those broader paths.
 If legacy storage contains multiple original claims,
 enter an original name to inspect it before preparing another.
 The synthetic full-app Chromium fixture now follows create/open into this form:
@@ -252,9 +259,10 @@ releases a failed fixture and retrieves its archived original after reload
 without creating a second ACC. The fixture substitutes the registry status; it
 also checks that displaying an exact synthetic claim quote happens before the
 first owner-proof or sponsor-preparation call, and that explicit approval calls
-each once. It does not prove an actual failed transaction, a real sponsor quote,
-passkey ceremony, or native retry. Those remain required before closing the
-failed-claim follow-up.
+each once. This synthetic fixture alone does not prove an actual failed
+transaction, a real sponsor quote, or a passkey ceremony. The separate native
+run above proves the indexed failure, browser release, and host-driven retry;
+pre-proof browser quote review and real-provider custody remain unqualified.
 **Check registry status** reads the pinned registry and verifies the open ACC
 before reporting an unregistered name. Availability is an observation at the
 time of the read. A retained receipt takes precedence and is reconciled
