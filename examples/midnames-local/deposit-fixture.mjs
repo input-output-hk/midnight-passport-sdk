@@ -69,10 +69,11 @@ assert.ok(
     'claim-handoff',
     'claim-browser',
     'claim-owner-browser',
+    'claim-failure-probe',
   ].includes(mode),
 );
 const browserOwner = mode === 'claim-owner-browser' || mode === 'claim-browser';
-const claimFixture = mode === 'claim-handoff' || browserOwner;
+const claimFixture = mode === 'claim-handoff' || browserOwner || mode === 'claim-failure-probe';
 const receipt = { transactions: [], steps: [], passed: false, mode };
 const save = () => saveIsolationReceipt(join(output, 'worker.json'), receipt);
 const step = (label) => {
@@ -305,9 +306,8 @@ try {
   if (claimFixture) {
     const { qualifyClaimHandoff } = await import('./claim-handoff-fixture.mjs');
     let dispatch;
-    if (mode === 'claim-browser') {
+    if (mode === 'claim-browser' || mode === 'claim-failure-probe') {
       const { delegateClaimDust } = await import('./claim-dust-fixture.mjs');
-      const { qualifyBrowserClaim } = await import('./claim-browser-fixture.mjs');
       receipt.availableDust = await delegateClaimDust({
         wallet,
         walletModule,
@@ -336,17 +336,42 @@ try {
         assert.equal(await reads.readClaim(quote.name, profile), undefined);
         assert.ok(await reads.isSupportedAccount(accountAddress, profile.networkId));
       };
-      dispatch = (quote, original, fixtureQuote, ownerProofSha256) =>
-        qualifyBrowserClaim({
-          output,
-          quote,
-          receipt: original,
-          fixtureQuote,
-          ownerProofSha256,
-          ledger,
-          submit: providers.midnightProvider.submitTx,
-          readLive,
-        });
+      if (mode === 'claim-browser') {
+        const { qualifyBrowserClaim } = await import('./claim-browser-fixture.mjs');
+        dispatch = (quote, original, fixtureQuote, ownerProofSha256) =>
+          qualifyBrowserClaim({
+            output,
+            quote,
+            receipt: original,
+            fixtureQuote,
+            ownerProofSha256,
+            ledger,
+            submit: providers.midnightProvider.submitTx,
+            readLive,
+          });
+      } else {
+        const { qualifyIndexedFailure } = await import('./claim-failure-probe.mjs');
+        dispatch = (quote, original, fixtureQuote) =>
+          qualifyIndexedFailure({
+            output,
+            quote,
+            receipt: original,
+            fixtureQuote,
+            registryAddress,
+            rootId,
+            price,
+            compiled: compiled(rootSecret),
+            registry,
+            regProviders,
+            contracts,
+            providers,
+            ledger,
+            reads,
+            profile,
+            step,
+            readLive,
+          });
+      }
     }
     const handoff = await qualifyClaimHandoff({
       output,
@@ -366,7 +391,13 @@ try {
       browserOwner,
     });
     Object.assign(receipt, { ...handoff, passed: true });
-    step(mode === 'claim-browser' ? 'verified-browser-claim' : 'verified-prepared-claim-handoff');
+    step(
+      mode === 'claim-browser'
+        ? 'verified-browser-claim'
+        : mode === 'claim-failure-probe'
+          ? 'verified-indexed-failed-original'
+          : 'verified-prepared-claim-handoff',
+    );
   } else if (mode === 'named-night-send') {
     const { qualifyNightSend } = await import('./night-send-fixture.mjs');
     const { JubjubDevice, jubjubChallenges } = await getReferenceSigner();

@@ -57,17 +57,19 @@ const docker = (args) =>
   ).trim();
 assert.match(
   out ?? '',
-  /^midnames-(?:deposit|night-send|claim-handoff|claim-browser|claim-owner-browser)-[a-z0-9-]{1,48}$/,
+  /^midnames-(?:deposit|night-send|claim-handoff|claim-browser|claim-owner-browser|claim-failure-probe)-[a-z0-9-]{1,48}$/,
 );
 const fixtureMode = out.startsWith('midnames-claim-browser-')
   ? 'claim-browser'
   : out.startsWith('midnames-claim-owner-browser-')
     ? 'claim-owner-browser'
-    : out.startsWith('midnames-claim-handoff-')
-      ? 'claim-handoff'
-      : out.startsWith('midnames-night-send-')
-        ? 'named-night-send'
-        : 'named-shielded-deposit';
+    : out.startsWith('midnames-claim-failure-probe-')
+      ? 'claim-failure-probe'
+      : out.startsWith('midnames-claim-handoff-')
+        ? 'claim-handoff'
+        : out.startsWith('midnames-night-send-')
+          ? 'named-night-send'
+          : 'named-shielded-deposit';
 if (interactive)
   assert.ok(
     fixtureMode === 'named-shielded-deposit' || fixtureMode === 'named-night-send',
