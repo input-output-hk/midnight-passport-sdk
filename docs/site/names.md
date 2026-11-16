@@ -523,6 +523,12 @@ A source helper maps the selected JubJub account to the reviewed NIGHT amount an
 bridge address. The demo still needs to wire it with a bridge/finality adapter
 and UI. This composition has no native or real-provider result.
 
+A source-only browser finality reader can check the original hash, ordered watch
+IDs and decoded Ledger 9 transaction against a successful indexer row, then
+require the node's canonical finalized block at that height. It fails closed
+on missing, malformed or inconsistent evidence. The demo has not yet wired it
+into the named-send host or qualified it in a browser native payment.
+
 The source owner-review model can also include the full named route in the
 actual credential ceremony: canonical name, registry, recipient ACC, bridge,
 amount, and both ACC operations. The optional account-owner helper check
@@ -536,12 +542,22 @@ The source bridge-output guard is shared with the local NIGHT recipe. It binds
 the fenced withdrawal hash and watch IDs to a single exact controlled NIGHT
 output, observes that output in the wallet, then checks the balanced deposit's
 input before dispatch. A wallet balance alone cannot authorize a substitute
-coin. The browser still needs a device-held deposit adapter and end-to-end
-qualification; this source guard is not a new native result.
+coin. The browser still needs end-to-end qualification; this source guard is
+not a new native result.
+
+The internal browser wallet now has a device-held deposit adapter. It balances,
+signs and retains one exact prepared `deposit_unshielded` original, then accepts
+one dispatch of that original after independently reading the host's durable
+IndexedDB fence. It rejects extra
+ACC actions, other unshielded inputs and change outputs. The demo still needs
+the connected send control, proof-call preparation and native browser
+qualification; these source tests are not a new native result.
 
 The demo wallet's separate internal worker port can report its raw bridge
 address and whether this exact output is available after NIGHT sync. It checks
 that the requested owner is the wallet's own address. The public connector API
-remains read-only; no browser deposit balance, signature or dispatch is wired.
+remains read-only. The separate internal deposit port is not yet used by a
+browser send control. Wallet startup checks the pinned v1 service configuration
+before passing its proof-server URL to the worker.
 
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

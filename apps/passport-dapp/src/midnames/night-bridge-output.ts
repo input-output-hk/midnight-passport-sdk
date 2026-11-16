@@ -29,11 +29,15 @@ export interface NightBridgeTransaction {
         number,
         {
           intentHash(segment: number): string;
+          readonly actions?: readonly unknown[];
           readonly guaranteedUnshieldedOffer?: LedgerOffer;
           readonly fallibleUnshieldedOffer?: LedgerOffer;
         }
       >
     | undefined;
+  readonly rewards?: unknown;
+  readonly guaranteedOffer?: unknown;
+  readonly fallibleOffer?: ReadonlyMap<unknown, unknown>;
 }
 
 export interface NightBridgeOutput {

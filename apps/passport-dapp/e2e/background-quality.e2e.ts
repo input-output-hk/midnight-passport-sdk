@@ -124,6 +124,7 @@ try {
         indexerUri: 'http://synthetic',
         indexerWsUri: 'ws://synthetic',
         nodeUri: 'http://synthetic',
+        proofServerUri: 'http://synthetic',
       });
       let ticks = 0;
       const timer = setInterval(() => ticks++, 5);

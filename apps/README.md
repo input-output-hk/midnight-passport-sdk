@@ -394,7 +394,8 @@ and `assertionMaterial`.
   `window.midnight.devwallet`; Node probes use the direct runtime. The seed is derived
   from the passkey's root output, separately from the random sealed ACC viewing secret.
   Matching reviewed routine access can supply the seed without a new PRF request.
-  This is the demo's read-only evaluation wallet, with separate external-wallet
+  This is the demo's evaluation wallet with a read-only public connector and
+  a separate internal guarded NIGHT deposit path, with external-wallet
   provider selection and qualification. Without PRF it fails with
   `UnsupportedAuthenticator`: there is no fallback seed, so it never opens a different, empty
   wallet, and the web app never carries the genesis (sponsor) seed. The ACC flows do not depend
@@ -916,6 +917,12 @@ and watch IDs to a caller callback before dispatch; a failed callback stops the
 send. The account flow rejects an unsupported adapter before owner signing.
 The reference demo has not wired this seam into its named-send page or two-leg host.
 
+A bounded source-only finality reader now checks the exact transaction hash,
+ordered watch IDs, successful Ledger 9 result, decoded raw transaction and the
+node's canonical finalized block before a host may advance either payment leg.
+It returns unknown on malformed or unavailable evidence. The demo still needs
+to connect this reader to its named-send host.
+
 The source-only named NIGHT orchestrator can now accept an owner adapter that
 passes the account API's `beforeSubmit` callback through. Immediately before the
 owner dispatch, it checks the finalized network, source ACC and JubJub withdrawal
@@ -938,19 +945,23 @@ the withdrawal to the bridge; the name and destination ACC are checked by the
 host and are not fields signed by this ACC circuit. The demo has not connected
 this review seam to a send control or qualified a provider/browser payment.
 
-The local NIGHT deposit recipe now calls the same source bridge guard intended
-for a future browser host. It inspects the decoded fenced original withdrawal, requires
-one exact controlled NIGHT output, checks that output in the wallet view, and
-rejects a balanced deposit using another or additional unshielded input. This
-guard does not create, sign, or submit a browser deposit; the device-held wallet
-adapter and connected demo control are still needed.
+The local NIGHT deposit recipe and browser wallet share a source bridge guard
+for the decoded fenced withdrawal. It requires one exact controlled NIGHT
+output, checks that output in the wallet view, and rejects a balanced deposit
+using another or additional unshielded input. The browser worker can now
+balance, sign and dispatch one prepared `deposit_unshielded` original after the
+host journals it. The worker independently reads the exact committed IndexedDB
+fence before dispatch. It refuses another ACC action, unshielded change, a different
+original or a second dispatch. The connected demo send control and native
+browser deposit qualification are still needed.
 
 The built-in wallet now offers a separate internal NIGHT bridge observation port
 for the demo host. It returns the device-held wallet's raw bridge address and
 reports whether the exact original output is present in a strictly synced wallet
-snapshot. The worker rejects a different owner or malformed output request, and
-the public DApp Connector remains read-only. This port cannot balance, sign or
-submit the recipient deposit.
+snapshot. The worker rejects a different owner or malformed output request.
+It also exposes the guarded internal deposit methods; the public DApp Connector
+remains read-only. Wallet connection now checks the pinned v1 service binding,
+manifest and artefact URL before using its proof-server endpoint.
 
 ### Standalone Midnames claim recovery
 

@@ -32,6 +32,7 @@ const connector = `
   export const ARM = 'p256', SIGNING_MODE = 'passkey', NETWORK_ID = 'undeployed';
   export const BINDING_ID = 'acc-s3r1.1', RP_ID = 'localhost';
   export const ORIGIN = location.origin, SERVICE_URL = location.origin;
+  export const ARTEFACT_URL = SERVICE_URL + '/v1/zk/' + BINDING_ID;
   export const MANIFEST_SHA256 = ${JSON.stringify(process.env.PASSPORT_MANIFEST_SHA256)};
   export const exportDemoGrantOpening = async () => { throw Error('Outside claim fixture'); };
   export const connect = async () => ({ async openAccount() { return {

@@ -5,7 +5,7 @@ permalink: /demo-guide/
 ---
 
 The reference app shows one way to compose Passport accounts, local services, passkeys
-and a separate read-only wallet. Its UI, local journals, routine memory leases and
+and a separate demo wallet with a read-only public connector. Its UI, local journals, routine memory leases and
 funding setup belong to the demo. To integrate the packages into your own product,
 start with the [Library integration guide]({{ '/library-guide/' | relative_url }}) and
 [public runtime/export index]({{ '/packages/#runtime-and-host-requirements' | relative_url }}).
@@ -130,7 +130,8 @@ this demo's consent/custody policy or evidence of fresh ACC authentication.
 This demo explicitly creates a dedicated module Worker through
 `adapter-browser/background`; importing the account library does not start one.
 The page retains passkeys and blocking review. The worker hosts wallet/HD derivation,
-subscriptions and dust synchronization, with an allowlist of read methods. The page
+subscriptions and dust synchronization, with an allowlist of connector read methods and
+separate guarded internal NIGHT deposit methods. The page
 validates unknown replies before rendering and ignores completions after stop or
 scope replacement. NIGHT and DUST have separate progress/status; unavailable DUST
 does not turn NIGHT into zero.

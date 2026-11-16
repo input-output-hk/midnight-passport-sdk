@@ -1,6 +1,6 @@
 // The built-in wallet: a stand-in for lace-sdk's Midnight wallet, shaped like the DApp Connector
-// API 4.1.0 (spec §5.5). It is read-only: it never proves or pays, because the Passport flows are
-// sponsored by the service. The construction mirrors the reference `createWallet`
+// API 4.1.0 (spec §5.5). Its connector surface is read-only; the separately gated
+// internal NIGHT bridge may sign one exact reviewed deposit. The construction mirrors the reference `createWallet`
 // (experiments/acc-0.35/work/acc-45721e1/contract/src/node/wallet.ts), minus its Node-only pieces
 // (`ws`, `node:http`, Level storage): the browser's own WebSocket serves the indexer subscription.
 //
@@ -27,6 +27,8 @@ import {
 } from '../midnames/night-bridge-output.js';
 import { devWalletSession, walletApiError as apiError } from './lifecycle.ts';
 import { walletSyncReady } from './sync.js';
+import { deviceNightDeposit } from './night-deposit.js';
+import { exactFencedNightDeposit } from './night-deposit-fence.js';
 
 import type { DevWallet, DevWalletConfig, DevWalletConnectedApi } from './contracts.js';
 const SYNC_TIMEOUT_MS = 120_000;
@@ -63,8 +65,7 @@ export async function createWalletRuntime(
         indexerHttpUrl: config.indexerUri,
         indexerWsUrl: config.indexerWsUri,
       },
-      // Required by the configuration type; never contacted, since this wallet proves nothing.
-      provingServerUrl: new URL('http://localhost:6300'),
+      provingServerUrl: new URL(config.proofServerUri),
       relayURL: new URL(config.nodeUri.replace(/^http/, 'ws')),
       costParameters: { feeBlocksMargin: 100 },
       txHistoryStorage: new NoOpTransactionHistoryStorage(),
@@ -148,6 +149,15 @@ export async function createWalletRuntime(
   };
 
   const rawBridge = unshieldedKeystore.getAddress();
+  const deposit = deviceNightDeposit(
+    facade,
+    (bytes) => unshieldedKeystore.signDataAsync(bytes),
+    async () => (await synced('unshielded')).unshielded.availableCoins,
+    rawBridge,
+    config.networkId,
+    true,
+    exactFencedNightDeposit,
+  );
   return devWalletSession(config.networkId, connected, () => facade.stop(), {
     async getAddress() {
       if (config.networkId !== 'undeployed')
@@ -163,5 +173,7 @@ export async function createWalletRuntime(
         expected,
       );
     },
+    prepareDeposit: (request) => deposit.prepare(request),
+    submitDeposit: (original) => deposit.submit(original),
   });
 }

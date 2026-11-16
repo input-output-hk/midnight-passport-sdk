@@ -1,4 +1,6 @@
 import type { NightBridgeOutput } from '../midnames/night-bridge-output.js';
+import type { NightSendLeg } from '../midnames/night-send.js';
+import type { DeviceNightDepositRequest } from './night-deposit.js';
 
 /** The service's `/config` members the wallet needs. */
 export interface DevWalletConfig {
@@ -6,6 +8,7 @@ export interface DevWalletConfig {
   indexerUri: string;
   indexerWsUri: string;
   nodeUri: string;
+  proofServerUri: string;
 }
 
 /** The DApp Connector API's `APIError` shape: `type`, `code` and `reason`. */
@@ -47,6 +50,8 @@ export interface DevWallet {
   nightBridge?: {
     getAddress(): Promise<string>;
     hasOutput(expected: NightBridgeOutput): Promise<boolean>;
+    prepareDeposit(request: DeviceNightDepositRequest): Promise<NightSendLeg>;
+    submitDeposit(original: NightSendLeg): Promise<string>;
   };
   stop(): Promise<void>;
 }

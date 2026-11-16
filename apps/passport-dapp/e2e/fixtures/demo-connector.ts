@@ -21,6 +21,7 @@ export const NETWORK_ID = 'undeployed';
 export const RP_ID = 'localhost';
 export const ORIGIN = 'http://localhost:5173';
 export const BINDING_ID = 'acc-s3r1.1';
+export const ARTEFACT_URL = `${SERVICE_URL}/v1/zk/${BINDING_ID}`;
 export const ARM =
   new URL(location.href).searchParams.get('fixtureArm') === 'jubjub' ? 'jubjub' : 'p256';
 export const SIGNING_MODE = ARM === 'p256' ? 'passkey' : 'jubjub';

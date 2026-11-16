@@ -48,7 +48,7 @@ const PURPOSES: Partial<Record<ActionId, string>> = {
   rotate:
     'Unlock reader keys to inspect holdings, devices and read grants. Then review the live snapshot before publishing fresh seals and switching the ACC viewing key. Each P-256 signed transaction may need another passkey prompt.',
   wallet:
-    'Derive the separate built-in HD wallet seed from this passkey’s PRF and sync its balances. This is not the ACC viewing secret, fee sponsor wallet or a recovery mechanism. The demo wallet is read-only.',
+    'Derive the separate built-in HD wallet seed from this passkey’s PRF and sync its balances. This is not the ACC viewing secret, fee sponsor wallet or a recovery mechanism. Its public connector is read-only; a separate internal NIGHT deposit path needs an exact reviewed payment.',
   withdraw:
     'An active, matching session uses its scoped JubJub grant after the exact transfer review. Outside its scope, or when you select owner approval, a fresh passkey is required. Review the exact network, ACC, recipient, asset and base-unit amount before signing an unshielded withdrawal. Reader-key derivation and P-256 signing are separate purposes. A timeout after submission does not mean no transfer.',
 };

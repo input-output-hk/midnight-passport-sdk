@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { ContractCall } from '@midnightntwrk/ledger-v9';
 import {
   assertExactNightBridgeSpend,
   checkedNightBridgeOutput,
@@ -7,6 +8,7 @@ import {
   hasExactNightBridgeCoin,
   type NightBridgeTransaction,
 } from '../src/midnames/night-bridge-output.js';
+import { assertExactNightDeposit } from '../src/midnames/night-deposit-check.js';
 import { NIGHT_SEND_OPERATIONS, type NightSendIntent } from '../src/midnames/night-send.js';
 
 const bridge = 'b'.repeat(64);
@@ -30,6 +32,11 @@ const intent: NightSendIntent = {
 const withdrawal = { hash, identifiers: [identifier] };
 const output = { value: 4n, type: night, owner: bridge };
 const coin = { ...output, intentHash, outputNo: 0 };
+const call = (address = intent.target, entryPoint = 'deposit_unshielded') =>
+  Object.defineProperties(Object.create(ContractCall.prototype) as object, {
+    address: { value: address },
+    entryPoint: { value: entryPoint },
+  });
 
 function transaction(
   outputs: readonly (typeof output)[],
@@ -137,4 +144,40 @@ test('worker observation accepts only a bounded exact NIGHT output request', () 
     { ...expected, transactionHash: 'bad' },
   ])
     assert.throws(() => checkedNightBridgeOutput(changed), /Invalid NIGHT bridge output/);
+});
+
+test('the device signer refuses a different ACC action or an unshielded change output', () => {
+  const expected = exactNightBridgeOutput(intent, withdrawal, transaction([output]));
+  const deposit = (
+    actions: readonly unknown[],
+    outputs: readonly (typeof output)[] = [],
+    inputs: readonly (typeof coin)[] = [coin],
+  ): NightBridgeTransaction => ({
+    transactionHash: () => hash,
+    identifiers: () => [identifier],
+    intents: new Map([
+      [
+        7,
+        {
+          intentHash: () => intentHash,
+          actions,
+          guaranteedUnshieldedOffer: { inputs, outputs },
+        },
+      ],
+    ]),
+  });
+  assert.doesNotThrow(() =>
+    assertExactNightDeposit(deposit([call()]), expected, intent.target, () => bridge),
+  );
+  for (const changed of [
+    deposit([call('f'.repeat(64))]),
+    deposit([call(intent.target, 'withdraw_unshielded_with_jubjub')]),
+    deposit([call(), call()]),
+    deposit([call()], [output]),
+    deposit([call()], [], [{ ...coin, value: 3n }]),
+  ])
+    assert.throws(
+      () => assertExactNightDeposit(changed, expected, intent.target, () => bridge),
+      /reviewed ACC call|only the original/,
+    );
 });

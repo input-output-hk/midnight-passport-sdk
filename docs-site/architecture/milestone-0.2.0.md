@@ -93,15 +93,22 @@ the journal fence. The ACC transaction signs its withdrawal to the bridge;
 the name and destination ACC are host-checked, not signed circuit fields.
 This remains a source seam until the demo UI and bridge/finality host are wired.
 
-The source bridge-output guard is now shared with the standalone NIGHT fixture:
+The source bridge-output guard is shared with the standalone NIGHT fixture:
 the fenced withdrawal must contain one exact controlled output, and the
-balanced deposit must consume only that output. It is a source/fixture check,
-not a connected browser deposit or a new native qualification.
+balanced deposit must consume only that output. A bounded browser finality
+reader also checks the original hash, ordered watch IDs, successful raw Ledger
+9 transaction and canonical finalized block. These source checks are not a
+connected browser deposit or a new native qualification.
 
 The demo's device-held wallet worker also exposes a separate internal raw
 bridge-address and exact-output observation port. It waits for a strictly synced
-NIGHT snapshot and refuses another owner. The public connector remains
-read-only; preparing and submitting the recipient deposit are still open.
+NIGHT snapshot and refuses another owner. Its separate internal deposit path can
+balance and sign one exact ACC deposit call, expose its original for a durable
+host fence, independently read that committed IndexedDB record, and attempt
+that original's dispatch once. Wallet connection checks
+the pinned v1 service configuration before using the proof-server URL. The
+public connector remains read-only; the browser send control, proven call
+preparation and native browser payment qualification are still open.
 
 Qualify the original demo's **post-ACC name claim step** under [#316](https://github.com/input-output-hk/midnight-passport-sdk/issues/316). The source path reuses the opt-in preparation and sponsor fence after the ACC address is known, retains the selected name across reload for the same credential and network, and shows *pending Passport setup* until the original claim and current registry record agree. The fresh browser fixture covers the claim transport and recovery, but not the new panel's complete create/open handoff. Name-owner total-loss recovery, human review with a real provider and sponsor-issued quote, and the public namespace remain open gates.
 

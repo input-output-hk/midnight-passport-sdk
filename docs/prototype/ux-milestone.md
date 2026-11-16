@@ -258,7 +258,11 @@ extra output or substituted deposit coin before the second dispatch. The
 browser deposit wallet and send control remain open work; source tests do not
 establish another native payment.
 
-An internal built-in wallet worker port now observes the exact bridge output
-for a future demo send control. The worker checks its own raw address and a
-strict NIGHT sync snapshot. The public connector stays read-only and the worker
-cannot yet prepare or dispatch the recipient deposit.
+An internal built-in wallet worker port observes the exact bridge output and
+can prepare one device-held recipient deposit for a future demo send control.
+It checks its own raw address, a strict NIGHT sync snapshot, one ACC deposit
+action and exact original coin input before exposing the finalized original.
+The host must durably fence that original; the worker independently reads the
+matching IndexedDB record before accepting one dispatch.
+The public connector stays read-only. The browser send control and native
+qualification remain open work.
