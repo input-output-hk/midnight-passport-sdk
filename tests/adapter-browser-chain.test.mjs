@@ -618,7 +618,7 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
   const compiledContracts = [];
   /** @type {import('../packages/protocol/dist/index.js').PassportEvent[]} */
   const events = [];
-  const chain = midnight.createMidnightChain({
+  const opts = {
     network: {
       networkId: 'undeployed',
       bindingId: 'acc-45721e1',
@@ -673,7 +673,9 @@ test('the Midnight chain uses injected prover, sponsor and submitter ports', asy
       await providers.midnightProvider.submitTx(balanced);
       return { public: { txHash: 'hash', blockHeight: 7 } };
     },
-  });
+  };
+  const chain = midnight.createMidnightChain(opts);
+  Reflect.set(opts, 'submit', undefined);
   assert.equal(
     chain.supportsBeforeSubmit,
     undefined,

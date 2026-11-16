@@ -237,7 +237,7 @@ export function createMidnightChain(opts: {
   /** A call substitute for local tests. */
   submit?: typeof submitCallTx;
 }): Chain {
-  const { network, binding, prover, sponsor, submitter } = opts;
+  const { network, binding, prover, sponsor, submitter, submit } = opts;
   if (!/^[0-9a-f]{64}$/i.test(network.manifestSha256)) {
     throw new PassportConnectorError(
       'ArtefactIntegrity',
@@ -261,7 +261,7 @@ export function createMidnightChain(opts: {
   });
 
   return {
-    ...(opts.submit ? {} : { supportsBeforeSubmit: true as const }),
+    ...(submit ? {} : { supportsBeforeSubmit: true as const }),
     readAccount: (address, options) =>
       readAccLedger(publicDataProvider, binding, network, address, options),
     async call({
@@ -275,7 +275,7 @@ export function createMidnightChain(opts: {
       ...flowOptions
     }) {
       setNetworkId(network.networkId);
-      requireSupportedFence(beforeSubmit, opts.submit !== undefined, circuit);
+      requireSupportedFence(beforeSubmit, submit !== undefined, circuit);
       const shieldedSpend = circuit.startsWith('withdraw_shielded');
       if (shieldedSpend !== (heldCoin !== undefined))
         throw new PassportConnectorError(
@@ -387,7 +387,7 @@ export function createMidnightChain(opts: {
       };
       let result;
       try {
-        result = await (opts.submit ?? submitCallTx)(providers, {
+        result = await (submit ?? submitCallTx)(providers, {
           compiledContract,
           contractAddress: address,
           circuitId: circuit,
