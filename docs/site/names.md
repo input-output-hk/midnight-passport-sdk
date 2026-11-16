@@ -478,4 +478,11 @@ receipt; human passkey approval, an owner send page in the Passport demo,
 online `passport.night` and MIP-0007 delegated routing remain open. See the
 [browser NIGHT recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local#review-the-two-leg-night-payment-in-the-owner-browser).
 
+The separate signed `a20a9b9` isolated browser decline passed with an explicit
+**Decline** click, unchanged 10/0 ACC balances, no owner signature, no
+withdrawal/deposit dispatch and no admitted payment journal. The parent
+verified unchanged inputs, exact-owned cleanup and lease release. Page close
+and timeout now fail instead of masquerading as a decline; this remains an
+automated local refusal, not human passkey approval.
+
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).

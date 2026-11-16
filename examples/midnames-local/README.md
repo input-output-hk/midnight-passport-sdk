@@ -162,10 +162,18 @@ are full. The default mode uses headless Chromium to capture the exact name,
 network, registry/provider, source and recipient ACCs, controlled bridge
 wallet, amount in smallest NIGHT units and both contract operations, then
 clicks **Approve both operations**. Set `PASSPORT_MIDNAMES_BROWSER_MANUAL=1`
-to show the browser for a human-run local demonstration. Decline, page close or
-a two-minute timeout refuses before the owner signature and payment dispatch;
-setup funding transactions may already have completed. Preserve that failed
-run and use a fresh output name for another attempt.
+to show the browser for a human-run local demonstration. A manual Decline
+refuses the payment; page close and a two-minute timeout fail the run without
+an owner signature or payment dispatch. Setup funding transactions may already
+have completed. Preserve that failed run and use a fresh output name for
+another attempt.
+
+For an automated negative run, use a fresh output name beginning with
+`midnames-night-browser-decline-` and the same command and pinned inputs. This
+mode clicks **Decline** and passes only when Chromium records that decision,
+the source and target ACC balances remain 10/0, and the owner signature,
+payment-leg dispatch and durable payment journal counts remain zero. A timeout
+or page close is an error, never evidence of an explicit decline.
 
 The signed `ec83ce9` native run `midnames-night-browser-20261116a` passed on
 isolated `undeployed`. Its `night-send/browser-review.json` recorded zero owner
@@ -177,6 +185,14 @@ inputs, stopped its three exact owned containers, retained volumes and
 released the lease. This is a synthetic local owner and automated click; it
 does not qualify passkey consent, a Passport demo send page, public
 `passport.night`, online providers or MIP-0007 delegated routing.
+
+The signed `a20a9b9` negative run `midnames-night-browser-decline-20261116a`
+passed on isolated `undeployed`. Chromium displayed the same exact review and
+clicked **Decline**. The source/target balances stayed 10/0 with zero owner
+signatures, zero withdrawal/deposit dispatches and no admitted payment intent
+or leg. The parent verified unchanged inputs, stopped its three owned
+containers, retained volumes, controlled no unrelated resources and released
+the native lease. This is automated local refusal evidence, not human consent.
 
 ### Run either value fixture with terminal review
 

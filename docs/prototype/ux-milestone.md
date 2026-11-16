@@ -209,3 +209,8 @@ original-intent recovery and one deposit to 6/4 balances. Its manual browser
 mode is available for a human-run local exercise but has not been qualified
 here. This does not add a send page to the Passport demo or establish real
 passkey consent.
+
+At signed `a20a9b9`, the isolated automated browser decline retained 10/0
+source/target ACC balances and made no owner signature, withdrawal, deposit or
+payment journal entry. The helper now treats page close and timeout as errors;
+only a completed **Decline** click qualifies this negative result.
