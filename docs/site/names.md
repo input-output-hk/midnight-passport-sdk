@@ -496,15 +496,15 @@ volumes and released the lease. This demonstrates one local refusal when a
 name changes before signing; online provider reads, human approval and a
 Passport demo send page remain unqualified.
 
-For a future browser host, the source-only NIGHT journal stores one active
+For the source-only browser host, the NIGHT journal stores one active
 intent per source ACC and network on the same origin, scoped to a public
 credential identifier. IndexedDB transactions fence the original withdrawal
 and deposit IDs before dispatch, retain them across reloads, and refuse a
 different credential or new request while one is active. The host may archive
 only after its finality reader confirms both original legs; the archived IDs
 remain available for audit. This local storage neither authorizes a payment
-nor coordinates another website, and the Passport demo has no named-send
-control or two-leg host adapter yet.
+nor coordinates another website. The Passport demo page has no named-send
+control; the source-only two-leg host is not wired to it.
 
 The current source exposes `beforeSubmit` on `withdrawUnshielded` so a host can
 commit those original IDs before the standard Midnight adapter dispatches a
@@ -520,16 +520,17 @@ original. A name refusal before entering the owner API can retire the
 unsubmitted intent with an audit record. A durable owner-start marker keeps
 later no-ID outcomes blocked, including a callback refusal.
 A source helper maps the selected JubJub account to the reviewed NIGHT amount and
-bridge address. The demo still needs to wire it with a bridge/finality adapter
-and UI. This composition has no native or real-provider result.
+bridge address. The source host now wires it to the bridge and finality ports,
+but the demo page has no send control. This composition has no native or
+real-provider result.
 
 A source-only browser finality reader can check the original hash, ordered watch
 IDs and decoded Ledger 9 transaction against a successful indexer row, then
 require the node's canonical finalized block at that height. It fails closed
 on missing, malformed or inconsistent evidence. The indexer remains a trusted
 source for transaction inclusion in that block; the node check does not
-independently prove inclusion. The demo has not yet wired it into the named-send
-host or qualified it in a browser native payment.
+independently prove inclusion. The source host uses this reader, but the demo
+has not qualified it in a browser native payment.
 
 The source owner-review model can also include the full named route in the
 actual credential ceremony: canonical name, registry, recipient ACC, bridge,

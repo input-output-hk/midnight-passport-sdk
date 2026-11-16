@@ -121,6 +121,11 @@ export async function createConnectedNightSend(
   if (!ADDRESS.test(rawBridge)) throw new Error('The device-held NIGHT bridge is invalid.');
   const finalized = async (original: NightSendLeg) =>
     deps.finalized(network.indexerUrl, network.nodeUrl, original);
+  const ownerWithdrawal = createNightOwnerWithdrawal(account, (intent) => {
+    checkSelected();
+    options.checkApproved(intent);
+    checkSelected();
+  });
   return {
     async send(request: NightSendRequest) {
       checkSelected();
@@ -133,8 +138,20 @@ export async function createConnectedNightSend(
           journal,
           isSupportedRecipient: options.isSupportedRecipient,
           readSourceBalance: options.readSourceBalance,
-          review: options.review,
-          submitWithdrawal: createNightOwnerWithdrawal(account, options.checkApproved),
+          async review(intent, balance) {
+            checkSelected();
+            const approved = await options.review(intent, balance);
+            checkSelected();
+            return approved;
+          },
+          async submitWithdrawal(intent, beforeSubmit) {
+            checkSelected();
+            await ownerWithdrawal(intent, async (submission) => {
+              checkSelected();
+              await beforeSubmit(submission);
+              checkSelected();
+            });
+          },
           finalized: async (original) => !!(await finalized(original)),
           async prepareDeposit(intent, withdrawal) {
             checkSelected();

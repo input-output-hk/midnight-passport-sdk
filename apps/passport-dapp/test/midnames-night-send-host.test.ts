@@ -52,6 +52,8 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
   let address = bridgeAddress;
   let indexerUri = 'http://indexer';
   let failProof = true;
+  let selected = true;
+  let switchAt: 'review' | 'withdrawal' | undefined;
   const originalTransaction: NightBridgeTransaction = {
     transactionHash: () => withdrawal.hash,
     identifiers: () => [...withdrawal.identifiers],
@@ -86,6 +88,7 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
       calls.push('owner');
       assert.deepEqual(value, { color: '00'.repeat(32), amount: '4', recipient: bridgeAddress });
       assert.ok(options?.beforeSubmit);
+      if (switchAt === 'withdrawal') selected = false;
       await options.beforeSubmit({
         networkId: 'undeployed',
         account: source,
@@ -259,4 +262,45 @@ test('connected NIGHT host reopens the original journal through withdrawal, depo
       ),
     /configuration differ/,
   );
+
+  address = bridgeAddress;
+  indexerUri = network.indexerUrl;
+  const switched = await createConnectedNightSend(
+    {
+      account,
+      scope,
+      wallet,
+      names,
+      isSupportedRecipient: async () => true,
+      readSourceBalance: async () => 10n,
+      review: async () => {
+        if (switchAt === 'review') selected = false;
+        return true;
+      },
+      checkScope: () => {
+        if (!selected) throw new Error('The selected UI owner changed.');
+      },
+      checkApproved: () => calls.push('approved'),
+      network,
+      binding: accModule,
+      prover: {
+        proveTx: async () => {
+          throw new Error('Proof must not start during an owner switch.');
+        },
+      } satisfies Prover,
+    },
+    new IDBFactory(),
+  );
+  const ownerCalls = calls.filter((call) => call === 'owner').length;
+  switchAt = 'review';
+  await assert.rejects(() => switched.send(request), /selected UI owner changed/);
+  assert.equal(calls.filter((call) => call === 'owner').length, ownerCalls);
+  selected = true;
+  assert.equal(await switched.readActive(), undefined);
+
+  switchAt = 'withdrawal';
+  await assert.rejects(() => switched.send(request), /selected UI owner changed/);
+  assert.equal(calls.filter((call) => call === 'owner').length, ownerCalls + 1);
+  selected = true;
+  assert.equal((await switched.readActive())?.withdrawal, undefined);
 });
