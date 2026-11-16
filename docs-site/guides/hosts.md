@@ -42,4 +42,10 @@ recipient holding on isolated `undeployed`. The browser received public target
 details only; recipient secrets stayed with the owner. Human review, a sender
 page in the Passport demo, MIP-0007 delegated routing and public `passport.night`
 are still open.
+At signed `ec83ce9`, the local named NIGHT fixture showed one owner-browser
+review of the source, resolved recipient, bridge wallet and two ACC operations
+before any synthetic owner signature. An automated approval led to one
+withdrawal and one deposit after durable original-intent recovery, with 6/4
+final ACC balances. Human passkey consent, an owner send page in the reference
+demo and online naming remain separate qualification gates.
 See the [demo configuration and evidence](https://github.com/input-output-hk/midnight-passport-sdk/blob/passport-acc-prototype/docs/site/names.md#source-preview-midnames-210).

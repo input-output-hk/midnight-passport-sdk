@@ -145,6 +145,39 @@ the original identifiers. A failed or uncertain original deposit stays fenced
 for operator reconciliation. If the name changes after withdrawal, the flow
 keeps the funds in the controlled wallet and refuses to redirect them.
 
+### Review the two-leg NIGHT payment in the owner browser
+
+Use a fresh `midnames-night-browser-` output name to show one combined owner
+review before the withdrawal signature:
+
+```sh
+nix develop -c env -u LD_DYLD_PATH PASSPORT_MIDNAMES_NATIVE=1 PASSPORT_RC_LOCALNET=1 \
+  node examples/midnames-local/qualify-deposit.mjs \
+  midnames-night-browser-my-run /absolute/path/to/prepared-registry \
+  /absolute/path/to/acc-reference/contract
+```
+
+Pass an unused private subnet as the final argument if Docker's default pools
+are full. The default mode uses headless Chromium to capture the exact name,
+network, registry/provider, source and recipient ACCs, controlled bridge
+wallet, amount in smallest NIGHT units and both contract operations, then
+clicks **Approve both operations**. Set `PASSPORT_MIDNAMES_BROWSER_MANUAL=1`
+to show the browser for a human-run local demonstration. Decline, page close or
+a two-minute timeout refuses before the owner signature and payment dispatch;
+setup funding transactions may already have completed. Preserve that failed
+run and use a fresh output name for another attempt.
+
+The signed `ec83ce9` native run `midnames-night-browser-20261116a` passed on
+isolated `undeployed`. Its `night-send/browser-review.json` recorded zero owner
+signatures and zero payment dispatches at review. After the automated click,
+the existing durable intent withdrew once, paused at 6/0, reopened and
+deposited the exact original bridge output once, ending at 6/4. It recorded
+one owner signature and no replay broadcasts. The runner verified unchanged
+inputs, stopped its three exact owned containers, retained volumes and
+released the lease. This is a synthetic local owner and automated click; it
+does not qualify passkey consent, a Passport demo send page, public
+`passport.night`, online providers or MIP-0007 delegated routing.
+
 ### Run either value fixture with terminal review
 
 Set `PASSPORT_MIDNAMES_INTERACTIVE=1` for an operator-run demonstration. Use a

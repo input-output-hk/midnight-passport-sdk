@@ -12,31 +12,15 @@ const escape = (value) =>
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character],
   );
 
-function reviewPage(intent, challenge) {
-  const rows = [
-    ['Name', intent.name],
-    ['Network', intent.networkId],
-    ['Registry', intent.registryAddress],
-    ['Provider', intent.providerId],
-    ['Namespace', intent.namespace],
-    ['Resolved Passport ACC', intent.accountAddress],
-    ['Operation', 'deposit_shielded'],
-    ['Asset', 'shielded token'],
-    ['Asset color', intent.color],
-    ['Amount', intent.amount],
-  ];
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Review named ACC deposit</title><style>body{font:16px system-ui,sans-serif;max-width:52rem;margin:2rem auto;padding:0 1rem;color:#17212d}h1{line-height:1.2}dl{display:grid;grid-template-columns:minmax(9rem,13rem) minmax(0,1fr);gap:.6rem 1rem}dt{font-weight:700}dd{margin:0;overflow-wrap:anywhere}button{font:inherit;padding:.7rem 1.1rem;margin:1rem .6rem 0 0}p{line-height:1.5}@media(max-width:550px){dl{display:block}dt{margin-top:1rem}}</style></head><body><main><h1>Review named ACC deposit</h1><p>Approve only if the resolved account and amount match your intent. The sender will check the name and ACC again before dispatch.</p><dl>${rows.map(([label, value]) => `<dt>${escape(label)}</dt><dd>${escape(value)}</dd>`).join('')}</dl><form method="post" action="/decision"><input type="hidden" name="challenge" value="${challenge}"><button type="submit" name="decision" value="approve" id="approve">Approve deposit</button><button type="submit" name="decision" value="decline" id="decline">Decline</button></form></main></body></html>`;
+function reviewPage(spec, challenge) {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(spec.title)}</title><style>body{font:16px system-ui,sans-serif;max-width:52rem;margin:2rem auto;padding:0 1rem;color:#17212d}h1{line-height:1.2}dl{display:grid;grid-template-columns:minmax(9rem,13rem) minmax(0,1fr);gap:.6rem 1rem}dt{font-weight:700}dd{margin:0;overflow-wrap:anywhere}button{font:inherit;padding:.7rem 1.1rem;margin:1rem .6rem 0 0}p{line-height:1.5}@media(max-width:550px){dl{display:block}dt{margin-top:1rem}}</style></head><body><main><h1>${escape(spec.title)}</h1><p>${escape(spec.description)}</p><dl>${spec.rows.map(([label, value]) => `<dt>${escape(label)}</dt><dd>${escape(value)}</dd>`).join('')}</dl><form method="post" action="/decision"><input type="hidden" name="challenge" value="${challenge}"><button type="submit" name="decision" value="approve" id="approve">${escape(spec.approveLabel)}</button><button type="submit" name="decision" value="decline" id="decline">Decline</button></form></main></body></html>`;
 }
 
-/** A sender-owned localhost review page; no wallet or recipient secret enters it. */
-export async function reviewNamedDepositInBrowser(intent, output, automation) {
+/** A localhost review page that receives only the public intent. */
+async function reviewInBrowser(spec, output, automation) {
   assert.ok(automation === undefined || automation === 'approve' || automation === 'decline');
-  assert.match(intent.registryAddress, /^[a-f0-9]{64}$/);
-  assert.match(intent.accountAddress, /^[a-f0-9]{64}$/);
-  assert.match(intent.color, /^[a-f0-9]{64}$/);
-  assert.match(intent.amount, /^[1-9][0-9]*$/);
   const challenge = randomBytes(24).toString('hex');
-  const html = reviewPage(intent, challenge);
+  const html = reviewPage(spec, challenge);
   let resolveDecision;
   const decision = new Promise((resolve) => {
     resolveDecision = resolve;
@@ -107,17 +91,8 @@ export async function reviewNamedDepositInBrowser(intent, output, automation) {
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(origin, { waitUntil: 'domcontentloaded' });
     const displayed = await page.locator('main').innerText();
-    for (const value of [
-      intent.name,
-      intent.networkId,
-      intent.registryAddress,
-      intent.providerId,
-      intent.namespace,
-      intent.accountAddress,
-      intent.color,
-      intent.amount,
-    ])
-      assert.ok(displayed.includes(value), 'Exact sender intent was not displayed.');
+    for (const [, value] of spec.rows)
+      assert.ok(displayed.includes(value), 'Exact value intent was not displayed.');
     assert.equal(answered, false, 'Browser review answered before approval.');
     await page.screenshot({ path: output });
     if (automation) await page.locator('#' + automation).click();
@@ -137,4 +112,69 @@ export async function reviewNamedDepositInBrowser(intent, output, automation) {
       await once(server, 'close');
     }
   }
+}
+
+/** A sender-owned deposit review; the recipient's private state never enters it. */
+export function reviewNamedDepositInBrowser(intent, output, automation) {
+  assert.match(intent.registryAddress, /^[a-f0-9]{64}$/);
+  assert.match(intent.accountAddress, /^[a-f0-9]{64}$/);
+  assert.match(intent.color, /^[a-f0-9]{64}$/);
+  assert.match(intent.amount, /^[1-9][0-9]*$/);
+  return reviewInBrowser(
+    {
+      title: 'Review named ACC deposit',
+      description:
+        'Approve only if the resolved account and amount match your intent. The sender will check the name and ACC again before dispatch.',
+      approveLabel: 'Approve deposit',
+      rows: [
+        ['Name', intent.name],
+        ['Network', intent.networkId],
+        ['Registry', intent.registryAddress],
+        ['Provider', intent.providerId],
+        ['Namespace', intent.namespace],
+        ['Resolved Passport ACC', intent.accountAddress],
+        ['Operation', 'deposit_shielded'],
+        ['Asset', 'shielded token'],
+        ['Asset color', intent.color],
+        ['Amount', intent.amount],
+      ],
+    },
+    output,
+    automation,
+  );
+}
+
+/** Owner review of the exact two-leg NIGHT route before any owner signature. */
+export function reviewNamedNightSendInBrowser(intent, registryAddress, output, automation) {
+  for (const address of [registryAddress, intent.source, intent.target, intent.bridge])
+    assert.match(address, /^[a-f0-9]{64}$/);
+  assert.equal(intent.providerId, `midnames:${registryAddress}`);
+  assert.equal(intent.networkId, 'undeployed');
+  assert.equal(intent.asset, 'NIGHT');
+  assert.match(intent.amount, /^[1-9][0-9]*$/);
+  assert.deepEqual(intent.operations, ['withdraw_unshielded_with_jubjub', 'deposit_unshielded']);
+  return reviewInBrowser(
+    {
+      title: 'Review named ACC NIGHT payment',
+      description:
+        'The owner withdraws NIGHT to the controlled bridge wallet, then deposits that exact output into the named ACC. These transactions settle separately; an interrupted deposit needs original-intent recovery.',
+      approveLabel: 'Approve both operations',
+      rows: [
+        ['Name', intent.name],
+        ['Network', intent.networkId],
+        ['Registry', registryAddress],
+        ['Provider', intent.providerId],
+        ['Namespace', intent.namespace],
+        ['Source Passport ACC', intent.source],
+        ['Resolved recipient ACC', intent.target],
+        ['Bridge wallet', intent.bridge],
+        ['First operation', intent.operations[0]],
+        ['Second operation', intent.operations[1]],
+        ['Asset', intent.asset],
+        ['Amount (smallest NIGHT units)', intent.amount],
+      ],
+    },
+    output,
+    automation,
+  );
 }

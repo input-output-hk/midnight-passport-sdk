@@ -467,6 +467,14 @@ try {
       defaultField,
       step,
     });
+    if (process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === '1') {
+      assert.deepEqual(proofReceipt.browserReview, {
+        approved: true,
+        displayed: true,
+        mode: process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === '1' ? 'manual' : 'automated',
+      });
+      step('verified-browser-owner-review-before-night-send');
+    }
     Object.assign(receipt, { ...proofReceipt, claimIdentifier, registryAddress, passed: true });
     step('verified-native-named-night-send');
   } else {

@@ -57,9 +57,10 @@ const docker = (args) =>
   ).trim();
 assert.match(
   out ?? '',
-  /^midnames-(?:deposit|deposit-browser|night-send|claim-handoff|claim-browser|claim-preproof|claim-owner-browser|claim-partial-probe|claim-retry)-[a-z0-9-]{1,48}$/,
+  /^midnames-(?:deposit|deposit-browser|night-send|night-browser|claim-handoff|claim-browser|claim-preproof|claim-owner-browser|claim-partial-probe|claim-retry)-[a-z0-9-]{1,48}$/,
 );
-const browserReview = out.startsWith('midnames-deposit-browser-');
+const browserReview =
+  out.startsWith('midnames-deposit-browser-') || out.startsWith('midnames-night-browser-');
 const manualBrowserReview = process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === '1';
 assert.ok(
   process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === undefined ||
@@ -78,7 +79,7 @@ const fixtureMode = out.startsWith('midnames-claim-browser-')
           ? 'claim-retry'
           : out.startsWith('midnames-claim-handoff-')
             ? 'claim-handoff'
-            : out.startsWith('midnames-night-send-')
+            : out.startsWith('midnames-night-send-') || out.startsWith('midnames-night-browser-')
               ? 'named-night-send'
               : 'named-shielded-deposit';
 if (interactive)

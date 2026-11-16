@@ -466,4 +466,16 @@ earlier-head result;
 the merged `9a19757` fixture changes concern claim-browser diagnostics and
 assertions, not the named NIGHT route.
 
+At signed `ec83ce9`, the isolated owner fixture displayed the exact source and
+recipient ACCs, resolved name, registry/provider, bridge wallet, smallest-unit
+NIGHT amount and both operations in a localhost browser before any owner
+signature or payment dispatch. An automated Chromium click approved the
+combined review. The durable intent then withdrew once, paused at 6/0,
+reopened and deposited the exact original bridge output once, ending at 6/4
+with one owner signature and no replay broadcasts. Frozen inputs and exact
+owned cleanup passed. This supports the local browser ordering and two-leg
+receipt; human passkey approval, an owner send page in the Passport demo,
+online `passport.night` and MIP-0007 delegated routing remain open. See the
+[browser NIGHT recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local#review-the-two-leg-night-payment-in-the-owner-browser).
+
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).
