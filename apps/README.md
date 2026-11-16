@@ -938,6 +938,13 @@ the withdrawal to the bridge; the name and destination ACC are checked by the
 host and are not fields signed by this ACC circuit. The demo has not connected
 this review seam to a send control or qualified a provider/browser payment.
 
+The local NIGHT deposit recipe now calls the same source bridge guard intended
+for a future browser host. It decodes the fenced original withdrawal, requires
+one exact controlled NIGHT output, checks that output in the wallet view, and
+rejects a balanced deposit using another or additional unshielded input. This
+guard does not create, sign, or submit a browser deposit; the device-held wallet
+adapter and connected demo control are still needed.
+
 ### Standalone Midnames claim recovery
 
 An opt-in host can supply the demo's preparation adapter. The user reviews the

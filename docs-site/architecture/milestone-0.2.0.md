@@ -93,6 +93,11 @@ the journal fence. The ACC transaction signs its withdrawal to the bridge;
 the name and destination ACC are host-checked, not signed circuit fields.
 This remains a source seam until the demo UI and bridge/finality host are wired.
 
+The source bridge-output guard is now shared with the standalone NIGHT fixture:
+the fenced withdrawal must contain one exact controlled output, and the
+balanced deposit must consume only that output. It is a source/fixture check,
+not a connected browser deposit or a new native qualification.
+
 Qualify the original demo's **post-ACC name claim step** under [#316](https://github.com/input-output-hk/midnight-passport-sdk/issues/316). The source path reuses the opt-in preparation and sponsor fence after the ACC address is known, retains the selected name across reload for the same credential and network, and shows *pending Passport setup* until the original claim and current registry record agree. The fresh browser fixture covers the claim transport and recovery, but not the new panel's complete create/open handoff. Name-owner total-loss recovery, human review with a real provider and sponsor-issued quote, and the public namespace remain open gates.
 
 The next host integration can bring [#317](https://github.com/input-output-hk/midnight-passport-sdk/issues/317)'s independent sender review into a human-run browser journey and expose [#318](https://github.com/input-output-hk/midnight-passport-sdk/issues/318)'s durable two-leg owner journey in a browser. The #317 sender and #318 owner localhost reviews have automated native passes only. Online activation still waits for [#315](https://github.com/input-output-hk/midnight-passport-sdk/issues/315)'s independently known name-to-contract read-only smoke and a supported authenticated provider. The historical Midnight-hosted preprod indexer used by the pinned SDK returns HTTP 410; [current endpoints](https://docs.midnight.network/relnotes/network) require a Blockfrost project token for Preprod/Mainnet and record a 6 November Preview reset. The pinned Preview registry returned no contract through the current v4 indexer on 14 November. No token or unverified online registry mapping is shipped to the browser. Native qualification uses a separately owned stack; neither a documentation build nor a synthetic browser test substitutes for it.

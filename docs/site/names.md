@@ -532,4 +532,11 @@ the pinned ACC circuit signs the withdrawal to the bridge, not the name or
 recipient ACC. A complete demo control and native/provider qualification are
 still required.
 
+The source bridge-output guard is shared with the local NIGHT recipe. It binds
+the fenced withdrawal hash and watch IDs to a single exact controlled NIGHT
+output, observes that output in the wallet, then checks the balanced deposit's
+input before dispatch. A wallet balance alone cannot authorize a substitute
+coin. The browser still needs a device-held deposit adapter and end-to-end
+qualification; this source guard is not a new native result.
+
 See the [standalone recipe](https://github.com/input-output-hk/midnight-passport-sdk/tree/passport-acc-prototype/examples/midnames-local).
