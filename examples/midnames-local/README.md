@@ -24,6 +24,18 @@ semantics. A name claim needs an owner-controlled proof witness. Use synthetic
 wallets for this qualification and preserve all original transaction references
 when a submission has an uncertain result.
 
+For #334, `midnames-claim-partial-probe-<fresh-name>` selects an isolated
+negative mode. It prepares and fences one sponsored claim, then has the
+registry owner disable registration after sponsor admission but before that
+original is submitted. The run passes only if the live indexer reports
+`PARTIAL_SUCCESS` for the exact original transaction, the name remains
+absent, and the SDK finality checker refuses to classify it as a releasable
+`FAILURE`. A node rejection, missing finality, or successful claim is not a
+pass. The mode preserves its original bytes, identifiers and chain volumes;
+it does not release the browser journal or submit a replacement claim. A
+separate full-`FAILURE` receipt and fresh sponsored retry remain necessary
+before #334 can close.
+
 ## Run the shielded deposit by name
 
 Use a clean, GPG-signed SDK checkout with workspace dependencies installed and
