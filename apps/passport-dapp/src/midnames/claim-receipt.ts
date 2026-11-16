@@ -97,5 +97,5 @@ export interface ClaimRecovery {
   dispatch?(receipt: ClaimReceipt): Promise<void>;
   check(
     receipt: ClaimReceipt,
-  ): Promise<'pending' | 'conflict' | 'failed' | 'registered' | 'unavailable'>;
+  ): Promise<'pending' | 'conflict' | 'failed' | 'claim-failed' | 'registered' | 'unavailable'>;
 }

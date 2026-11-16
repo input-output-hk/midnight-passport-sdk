@@ -154,10 +154,12 @@ approval calls each once before reopening the retained receipt. Native
 create/open, actual indexed failure, real passkey review and sponsored retry
 acceptance remain separate.
 An exact failed original with no registry record exposes **Release failed
-original for a new attempt**. The action rechecks the failure and availability,
+original for a new attempt**. The indexed result can be `FAILURE`, or a
+`PARTIAL_SUCCESS` with a verified failed registration claim and only a successful
+sponsor DUST fee. The fee is not refunded. The action rechecks the same outcome and availability,
 archives the public receipt and original transaction IDs, and clears the prior
 selection atomically. A fresh quote review is required before another
-preparation. Partial success, outage, uncertainty and changed binding keep the
+preparation. Other partial outcomes, outage, uncertainty and changed binding keep the
 original fenced. The archived receipt can be inspected after reload.
 **Check original
 claim** reconciles the stored transaction and the current registry owner and

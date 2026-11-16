@@ -18,6 +18,8 @@ const messages = {
     'The original transaction or current registry binding conflicts with this claim. Preserve and inspect the original receipt.',
   failed:
     'The exact original transaction failed and the name is unregistered. You can explicitly release this attempt, then review a fresh claim quote.',
+  'claim-failed':
+    'The exact registration claim failed while the sponsor fee succeeded. The name is unregistered. You can explicitly release this attempt, then review a fresh quote; the fee is not returned.',
   registered: 'Registered. The original claim and current registry record match this account.',
   unavailable: 'Name service unavailable. Keep the original receipt and check it again later.',
 } as const;
@@ -97,7 +99,8 @@ async function releaseVerifiedFailure(
   scope: string,
   ensureAccount: () => void,
 ) {
-  if ((await recovery.check(original).catch(() => 'unavailable' as const)) !== 'failed')
+  const result = await recovery.check(original).catch(() => 'unavailable' as const);
+  if (result !== 'failed' && result !== 'claim-failed')
     throw new Error('The original failure is no longer confirmed. Preserve its receipt.');
   ensureAccount();
   const availability = await recovery
@@ -106,10 +109,14 @@ async function releaseVerifiedFailure(
   ensureAccount();
   if (availability !== 'available')
     throw new Error('Registry availability is not confirmed. Preserve the original receipt.');
-  if ((await recovery.check(original).catch(() => 'unavailable' as const)) !== 'failed')
+  if ((await recovery.check(original).catch(() => 'unavailable' as const)) !== result)
     throw new Error('The original failure changed. Preserve its receipt.');
   ensureAccount();
-  await journal.releaseFailed(original, scope);
+  await journal.releaseFailed(
+    original,
+    scope,
+    result === 'claim-failed' ? 'CLAIM_SEGMENT_FAILURE' : 'FAILURE',
+  );
   ensureAccount();
 }
 
@@ -150,7 +157,7 @@ async function restoreSelection(
       }
       const result = await recovery.check(original).catch(() => 'unavailable' as const);
       if (account !== currentAccount() || name.value !== selected) return;
-      release.hidden = result !== 'failed';
+      release.hidden = result !== 'failed' && result !== 'claim-failed';
       report(messages[result]);
     } finally {
       journal.close();
@@ -300,7 +307,7 @@ async function runClaimAction(context: ClaimActionContext): Promise<void> {
     }
     const result = await recovery.check(original).catch(() => 'unavailable' as const);
     ensureAccount();
-    release.hidden = result !== 'failed';
+    release.hidden = result !== 'failed' && result !== 'claim-failed';
     report(messages[result]);
   } finally {
     journal.close();

@@ -231,15 +231,20 @@ the original receipt. Name-owner rotation after total credential loss is not
 qualified by this source preview.
 An exact indexed `FAILURE` with matching transaction bytes, identifiers and
 claim call, plus an absent current registry record, is reported as failed rather
-than pending. **Release failed original for a new attempt** checks that failure
-again, checks that the name is still unregistered and the ACC is supported, then
+than pending. A `PARTIAL_SUCCESS` can also identify a failed registration claim
+when the indexed segments show only the sponsor's DUST fee succeeded and the
+sole claim intent failed. This requires the pinned standalone transaction shape;
+any missing, extra, duplicated or different segment remains a conflict. The fee
+is not refunded. **Release failed original for a new attempt** checks the same
+failure outcome again, checks that the name is still unregistered and the ACC is supported, then
 archives the original receipt and clears the selection in one durable browser
 transaction. The receipt and its original identifiers remain available in local
 history after reload; importing the same failed transaction again is refused.
-Review a fresh quote before preparing another claim. `PARTIAL_SUCCESS`, malformed
-or mismatched transactions, provider outages, and missing finality do not enable
-release. This is a source-preview local recovery path, not a new native or
-public-namespace qualification. If legacy storage contains multiple original claims,
+Review a fresh quote before preparing another claim. Other `PARTIAL_SUCCESS`
+outcomes, malformed or mismatched transactions, provider outages, and missing
+finality do not enable release. This is a source-preview local recovery path;
+the segment-aware release and retry still need native browser qualification.
+If legacy storage contains multiple original claims,
 enter an original name to inspect it before preparing another.
 The synthetic full-app Chromium fixture now follows create/open into this form:
 it refuses release after a conflicting status or an unavailable recheck, then

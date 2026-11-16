@@ -64,9 +64,10 @@ try {
         const reset = showClaimRecovery({
           registryAddress: ${JSON.stringify(registry)},
           availability: async () => 'available',
-          check: async () => 'failed',
+          check: async () => window.fixtureOutcome,
         }, () => opened);
         reset();
+        window.fixtureOutcome = 'claim-failed';
         window.fixtureError = '';
       } catch (error) {
         window.fixtureError = String(error);
@@ -86,9 +87,26 @@ try {
   await page.locator('#claim-recovery-check').click();
   await page
     .locator('#claim-recovery-status')
-    .getByText(/exact original transaction failed/)
+    .getByText(/registration claim failed while the sponsor fee succeeded/)
     .waitFor();
   assert.equal(await page.locator('#claim-release-failed').isVisible(), true);
+  await page.evaluate(
+    () => ((window as unknown as { fixtureOutcome: string }).fixtureOutcome = 'conflict'),
+  );
+  await page.locator('#claim-release-failed').click();
+  await page
+    .locator('#claim-recovery-status')
+    .getByText(/Claim check unavailable/)
+    .waitFor();
+  assert.equal(await page.locator('#claim-release-failed').isVisible(), false);
+  await page.evaluate(
+    () => ((window as unknown as { fixtureOutcome: string }).fixtureOutcome = 'claim-failed'),
+  );
+  await page.locator('#claim-recovery-check').click();
+  await page
+    .locator('#claim-recovery-status')
+    .getByText(/registration claim failed while the sponsor fee succeeded/)
+    .waitFor();
   await page.locator('#claim-release-failed').click();
   await page
     .locator('#claim-recovery-status')
@@ -109,7 +127,7 @@ try {
     .locator('#claim-recovery-status')
     .getByText(/already released/)
     .waitFor();
-  console.log('Midnames failed-original browser recovery: PASS');
+  console.log('Midnames failed-claim-segment browser recovery: PASS');
 } finally {
   await browser.close();
   await server.close();

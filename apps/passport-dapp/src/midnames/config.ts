@@ -183,10 +183,10 @@ export function configureMidnames(
         const finality = await readClaimFinality(http, receipt);
         if (finality === undefined) return 'unavailable';
         if (finality === 'conflict') return 'conflict';
-        if (finality === 'failed') {
+        if (finality === 'failed' || finality === 'claim-failed') {
           try {
             const reader = await reads();
-            return (await reader.readClaim(receipt.name, profile)) ? 'conflict' : 'failed';
+            return (await reader.readClaim(receipt.name, profile)) ? 'conflict' : finality;
           } catch {
             return 'unavailable';
           }
