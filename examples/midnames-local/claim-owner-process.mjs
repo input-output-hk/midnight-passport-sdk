@@ -2,6 +2,7 @@ import { fork } from 'node:child_process';
 
 /** The local fixture passes public settings in and accepts one proved reply. */
 export function proveInOwnerProcess(input, browser = false) {
+  const reviewed = browser && !!input.reviewedQuote;
   const entry = browser ? './claim-owner-browser-host.mjs' : './claim-owner-worker.mjs';
   const child = fork(new URL(entry, import.meta.url), [], {
     env: browser
@@ -41,8 +42,9 @@ export function proveInOwnerProcess(input, browser = false) {
       if (
         result ||
         !reply ||
-        Object.keys(reply).length !== (browser ? 3 : 2) ||
+        Object.keys(reply).length !== (browser ? (reviewed ? 4 : 3) : 2) ||
         (browser && reply.restored !== true) ||
+        (reviewed && reply.reviewedBeforeProof !== true) ||
         typeof reply.ownerCommitment !== 'string' ||
         !/^[0-9a-f]{64}$/.test(reply.ownerCommitment) ||
         !(reply.bytes instanceof Uint8Array) ||
@@ -56,6 +58,7 @@ export function proveInOwnerProcess(input, browser = false) {
         ownerCommitment: reply.ownerCommitment,
         bytes: reply.bytes,
         ...(browser && { restored: true }),
+        ...(reviewed && { reviewedBeforeProof: true }),
       };
     });
     child.once('close', (code, signal) => {

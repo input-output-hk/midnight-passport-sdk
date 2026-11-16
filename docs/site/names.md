@@ -209,6 +209,23 @@ proof to exercise dispatch recovery; it did not establish pre-proof user review.
 Real passkey provider recovery and
 online profile qualification remain open.
 
+A later isolated source run at signed `e456638` exercised a separate
+quote-before-naming-proof lane. After deploying the ACC and registry, the
+fixture issued a distinct quote, showed its exact fields in owner Chromium,
+and checked that no naming proof request preceded the automated approve click.
+The virtual credential's PRF and live-term-checked proof followed that click.
+The sponsor-balanced receipt retained the same quote digest; the browser then
+sent one claim, refused an alternate credential, and recovered the original
+after a lost response and Chromium restart with 20 live indexer requests.
+Fresh run `midnames-claim-preproof-20261116b` passed with unchanged inputs,
+three stopped owned containers, retained volumes, and a released lease. An
+earlier functional attempt on the same source had Docker cleanup time out;
+its parent remained `FAIL`, and its exact containers and lease were reconciled
+before the fresh run. The quote was made by this fixture, the approval was
+automated, and virtual credential enrollment occurred before the quote. This
+does not qualify the sponsor HTTP quote endpoint, the full demo create/open
+page, a human review, or a real passkey provider.
+
 The host registry reader can inspect the stored owner commitment and target
 from the same verifier-checked snapshot. Generated-state tests check the
 commitment of a claimant distinct from the root owner. Confirmation of a
@@ -262,7 +279,8 @@ first owner-proof or sponsor-preparation call, and that explicit approval calls
 each once. This synthetic fixture alone does not prove an actual failed
 transaction, a real sponsor quote, or a passkey ceremony. The separate native
 run above proves the indexed failure, browser release, and host-driven retry;
-pre-proof browser quote review and real-provider custody remain unqualified.
+the full demo's native sponsor-issued pre-proof quote and real-provider custody
+remain unqualified.
 **Check registry status** reads the pinned registry and verifies the open ACC
 before reporting an unregistered name. Availability is an observation at the
 time of the read. A retained receipt takes precedence and is reconciled

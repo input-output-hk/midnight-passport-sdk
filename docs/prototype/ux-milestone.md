@@ -172,6 +172,12 @@ after the exact payment terms are displayed. Older quote-less receipts remain
 available for reconciliation only. The native dispatch fixture injects its
 quote after proof, so that run does not qualify pre-proof user review. See
 [the recovery flow](../site/names.md#recover-the-sponsors-original-claim-in-the-demo).
+The separate native `claim-preproof` fixture displays a fixture-issued quote
+in owner Chromium and requires an automated approve click before naming PRF
+and proof. Its signed `e456638` fresh run passed with one sponsored claim and
+recovery after restart. Virtual credential enrollment happened before quote
+display; sponsor HTTP quote issuance, the full demo create/open panel, and
+human or real-provider approval remain separate gates.
 
 ### Standalone shielded deposit by name
 

@@ -178,6 +178,19 @@ export async function ownerPage(input, setPhase = () => {}) {
   assert.equal(input.proverUrl, endpoint);
   assert.equal(input.indexerUrl, 'http://127.0.0.1:18108/api/v4/graphql');
   assert.equal(input.indexerWsUrl, 'ws://127.0.0.1:18108/api/v4/graphql/ws');
+  const reviewedQuote = input.reviewedQuote;
+  if (reviewedQuote) {
+    assert.equal(reviewedQuote.networkId, 'undeployed');
+    assert.equal(reviewedQuote.registryAddress, input.registryAddress);
+    assert.equal(reviewedQuote.accountAddress, input.accountAddress);
+    assert.equal(reviewedQuote.name, input.label + '.night');
+    assert.equal(
+      reviewedQuote.sponsorAddress,
+      Buffer.from(input.childOwnerAddress).toString('hex'),
+    );
+    assert.equal(reviewedQuote.night, String(input.price.cost_long));
+    assert.ok(reviewedQuote.expiresAt > Date.now());
+  }
   const [{ build, preview }, { default: wasm }, { chromium }] = await Promise.all([
     load('vite'),
     load('vite-plugin-wasm'),
@@ -192,9 +205,17 @@ export async function ownerPage(input, setPhase = () => {}) {
     );
     writeFileSync(
       join(root, 'index.html'),
-      '<!doctype html><title>Midnames owner qualification</title><script type="module" src="/claim-owner-qualification-entry.mjs"></script>',
+      '<!doctype html><title>Midnames owner qualification</title><pre id="claim-review"></pre><button id="claim-approve" type="button">Approve this claim</button><script type="module" src="/claim-owner-qualification-entry.mjs"></script>',
     );
-    const config = ownerViteConfig(root, [wasm(), ownerMiddleware(input.assets)]);
+    const context = reviewedQuote && {
+      networkId: reviewedQuote.networkId,
+      registryAddress: input.registryAddress,
+      sponsorAddress: reviewedQuote.sponsorAddress,
+      indexerUrl: input.indexerUrl,
+      indexerWsUrl: input.indexerWsUrl,
+      walletKeys: input.walletKeys,
+    };
+    const config = ownerViteConfig(root, [wasm(), ownerMiddleware(input.assets, context)]);
     setPhase('browser-build');
     await build(config);
     const site = await preview(config);
@@ -207,6 +228,10 @@ export async function ownerPage(input, setPhase = () => {}) {
       });
       const context = await browser.newContext();
       const page = await context.newPage();
+      let proofRequests = 0;
+      page.on('request', (request) => {
+        if (request.url().endsWith('/owner-proof/prove')) proofRequests++;
+      });
       const cdp = await context.newCDPSession(page);
       await cdp.send('WebAuthn.enable');
       await cdp.send('WebAuthn.addVirtualAuthenticator', {
@@ -235,13 +260,37 @@ export async function ownerPage(input, setPhase = () => {}) {
       setPhase('browser-enroll');
       const id = await page.evaluate(() => globalThis.midnamesOwner.enroll());
       setPhase('browser-prove');
-      const result = await page.evaluate(
-        ({ scope, credential }) => globalThis.midnamesOwner.prove(scope, credential),
-        {
-          scope: publicInput,
-          credential: id,
-        },
-      );
+      let result;
+      if (reviewedQuote) {
+        const visible = JSON.stringify(reviewedQuote);
+        await page.evaluate(
+          ({ quote, credential, visible }) => {
+            document.querySelector('#claim-review').textContent = visible;
+            globalThis.midnamesReviewedProof = new Promise((resolve, reject) => {
+              document
+                .querySelector('#claim-approve')
+                .addEventListener(
+                  'click',
+                  () =>
+                    globalThis.midnamesOwner.proveReviewed(quote, credential).then(resolve, reject),
+                  { once: true },
+                );
+            });
+          },
+          { quote: reviewedQuote, credential: id, visible },
+        );
+        assert.equal(await page.locator('#claim-review').innerText(), visible);
+        assert.equal(proofRequests, 0, 'No naming proof before quote review.');
+        assert.ok(reviewedQuote.expiresAt > Date.now());
+        await page.locator('#claim-approve').click();
+        result = await page.evaluate(() => globalThis.midnamesReviewedProof);
+        assert.ok(proofRequests > 0, 'The approved browser performed naming proof.');
+      } else {
+        result = await page.evaluate(
+          ({ scope, credential }) => globalThis.midnamesOwner.prove(scope, credential),
+          { scope: publicInput, credential: id },
+        );
+      }
       setPhase('browser-recover');
       await page.reload();
       await page.waitForFunction(() => globalThis.midnamesOwner, undefined, { timeout: 15_000 });
@@ -257,6 +306,7 @@ export async function ownerPage(input, setPhase = () => {}) {
         ownerCommitment: result.ownerCommitment,
         bytes: Uint8Array.from(result.bytes),
         restored: true,
+        ...(reviewedQuote && { reviewedBeforeProof: true }),
       };
     } finally {
       try {

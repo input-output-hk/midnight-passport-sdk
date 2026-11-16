@@ -57,21 +57,23 @@ const docker = (args) =>
   ).trim();
 assert.match(
   out ?? '',
-  /^midnames-(?:deposit|night-send|claim-handoff|claim-browser|claim-owner-browser|claim-partial-probe|claim-retry)-[a-z0-9-]{1,48}$/,
+  /^midnames-(?:deposit|night-send|claim-handoff|claim-browser|claim-preproof|claim-owner-browser|claim-partial-probe|claim-retry)-[a-z0-9-]{1,48}$/,
 );
 const fixtureMode = out.startsWith('midnames-claim-browser-')
   ? 'claim-browser'
-  : out.startsWith('midnames-claim-owner-browser-')
-    ? 'claim-owner-browser'
-    : out.startsWith('midnames-claim-partial-probe-')
-      ? 'claim-partial-probe'
-      : out.startsWith('midnames-claim-retry-')
-        ? 'claim-retry'
-        : out.startsWith('midnames-claim-handoff-')
-          ? 'claim-handoff'
-          : out.startsWith('midnames-night-send-')
-            ? 'named-night-send'
-            : 'named-shielded-deposit';
+  : out.startsWith('midnames-claim-preproof-')
+    ? 'claim-preproof'
+    : out.startsWith('midnames-claim-owner-browser-')
+      ? 'claim-owner-browser'
+      : out.startsWith('midnames-claim-partial-probe-')
+        ? 'claim-partial-probe'
+        : out.startsWith('midnames-claim-retry-')
+          ? 'claim-retry'
+          : out.startsWith('midnames-claim-handoff-')
+            ? 'claim-handoff'
+            : out.startsWith('midnames-night-send-')
+              ? 'named-night-send'
+              : 'named-shielded-deposit';
 if (interactive)
   assert.ok(
     fixtureMode === 'named-shielded-deposit' || fixtureMode === 'named-night-send',
@@ -129,7 +131,8 @@ try {
   inputs = await isolatedInputs(root, ref, deadline.check);
   receipt.source = inputs.frozen.source;
   await Promise.all(Object.values(ISOLATED_PORTS).map(isolatedFreePort));
-  if (fixtureMode === 'claim-browser') await isolatedFreePort(15189);
+  if (fixtureMode === 'claim-browser' || fixtureMode === 'claim-preproof')
+    await isolatedFreePort(15189);
   try {
     stack.create(images);
   } catch (error) {
