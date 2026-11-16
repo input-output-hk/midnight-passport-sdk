@@ -46,6 +46,15 @@ Complete a safe local name-to-ACC journey, then qualify any online route against
 
 The [#244 adoption map](/architecture/adoption-gates) merged in [PR #336](https://github.com/input-output-hk/midnight-passport-sdk/pull/336) and its planning issue closed. Six implementation issues in this connected set remain open.
 
+The signed `a20a9b9` #318 native browser decline passed on isolated
+`undeployed`: Chromium displayed the exact two-leg NIGHT review and clicked
+**Decline**; source/recipient ACC balances stayed 10/0, with zero owner
+signatures, zero payment-leg dispatches and no admitted payment journal. The
+parent verified unchanged inputs, exact-owned cleanup and lease release.
+Timeout or page close now fails instead of qualifying as a decline. This is
+automated refusal evidence; human/real-passkey and provider acceptance remains
+open.
+
 Qualify the original demo's **post-ACC name claim step** under [#316](https://github.com/input-output-hk/midnight-passport-sdk/issues/316). The source path reuses the opt-in preparation and sponsor fence after the ACC address is known, retains the selected name across reload for the same credential and network, and shows *pending Passport setup* until the original claim and current registry record agree. The fresh browser fixture covers the claim transport and recovery, but not the new panel's complete create/open handoff. Name-owner total-loss recovery, human review with a real provider and sponsor-issued quote, and the public namespace remain open gates.
 
 The next host integration can bring [#317](https://github.com/input-output-hk/midnight-passport-sdk/issues/317)'s independent sender review into a human-run browser journey and expose [#318](https://github.com/input-output-hk/midnight-passport-sdk/issues/318)'s durable two-leg owner journey in a browser. The #317 sender and #318 owner localhost reviews have automated native passes only. Online activation still waits for [#315](https://github.com/input-output-hk/midnight-passport-sdk/issues/315)'s independently known name-to-contract read-only smoke and a supported authenticated provider. The historical Midnight-hosted preprod indexer used by the pinned SDK returns HTTP 410; [current endpoints](https://docs.midnight.network/relnotes/network) require a Blockfrost project token for Preprod/Mainnet and record a 6 November Preview reset. The pinned Preview registry returned no contract through the current v4 indexer on 14 November. No token or unverified online registry mapping is shipped to the browser. Native qualification uses a separately owned stack; neither a documentation build nor a synthetic browser test substitutes for it.

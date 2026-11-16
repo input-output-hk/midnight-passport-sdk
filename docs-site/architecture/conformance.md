@@ -22,6 +22,14 @@ Here, **implemented subset** means this fork has a source path for the named ope
 | Credentials and cross-chain · C18–C21, C25, P9–P10 | **Absent.** The [architecture's component map](https://github.com/midnightntwrk/passport/blob/99062671d939641cb9ed9274d3d18fce764d539a/docs/plans/components/README.md#credentials-and-attribute-privacy) treats these as separate surfaces. | No credential issuance/selective-disclosure/nullifier APIs or cross-chain solver, bridge, or foreign-asset integration. An ACC proof is not a selective-disclosure credential proof. |
 | Agent skills · C26 | **External/meta.** The SDK has documentation and reference recipes. | The architecture's agent-skills component is a project-level deliverable, not an account circuit or SDK runtime API. |
 
+The signed `a20a9b9` isolated owner-browser refusal adds a narrow #318 negative
+result: after Chromium displayed the exact named NIGHT route and clicked
+**Decline**, both ACC balances remained 10/0, with no owner signature, payment
+leg dispatch or admitted payment journal. The runner verified unchanged inputs,
+exact-owned cleanup and lease release. Timeout or page close is an error rather
+than evidence of an explicit decline. This does not establish human consent,
+real passkey custody, an in-app send page or online/delegated name routing.
+
 ## Security promises in the pinned architecture
 
 The pinned [promises revision](https://github.com/midnightntwrk/passport/blob/99062671d939641cb9ed9274d3d18fce764d539a/docs/plans/PROMISES.md) specifies P5′ and P11–P16. These are product-level properties, not automatic effects of exposing an ACC circuit. The SDK's bounded status is:

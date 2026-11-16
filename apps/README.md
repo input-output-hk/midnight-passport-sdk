@@ -892,6 +892,9 @@ synthetic owner signature. Its automated isolated `undeployed` run passed at
 signed source `ec83ce9`: one withdrawal, an interrupted deposit, recovery of
 the original wallet output and one recipient deposit. This example does not
 add a sender sheet or passkey ceremony to the Passport demo.
+The separate signed `a20a9b9` native decline run left 10/0 ACC balances with
+zero owner signatures, payment-leg dispatches and admitted payment journals.
+Timeout and page close fail the fixture rather than count as a Decline click.
 
 ### Standalone Midnames claim recovery
 
