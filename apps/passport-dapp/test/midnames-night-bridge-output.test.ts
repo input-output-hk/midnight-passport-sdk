@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   assertExactNightBridgeSpend,
+  checkedNightBridgeOutput,
   exactNightBridgeOutput,
   hasExactNightBridgeCoin,
   type NightBridgeTransaction,
@@ -119,4 +120,21 @@ test('wallet ambiguity and balanced coin substitution refuse before deposit disp
     () => assertExactNightBridgeSpend(transaction([], [coin]), expected, () => 'f'.repeat(64)),
     /only the original/,
   );
+});
+
+test('worker observation accepts only a bounded exact NIGHT output request', () => {
+  const expected = exactNightBridgeOutput(intent, withdrawal, transaction([output]));
+  assert.deepEqual(checkedNightBridgeOutput(structuredClone(expected)), expected);
+  for (const changed of [
+    { ...expected, owner: 'mn_addr_undeployed1other' },
+    { ...expected, type: '1'.repeat(64) },
+    { ...expected, value: '4' },
+    { ...expected, value: 0n },
+    { ...expected, value: 1n << 128n },
+    { ...expected, outputNo: -1 },
+    { ...expected, outputNo: 65_536 },
+    { ...expected, intentHash: 'bad' },
+    { ...expected, transactionHash: 'bad' },
+  ])
+    assert.throws(() => checkedNightBridgeOutput(changed), /Invalid NIGHT bridge output/);
 });

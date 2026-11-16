@@ -1,3 +1,5 @@
+import type { NightBridgeOutput } from '../midnames/night-bridge-output.js';
+
 /** The service's `/config` members the wallet needs. */
 export interface DevWalletConfig {
   networkId: string;
@@ -41,5 +43,10 @@ export interface DevWalletDescriptor {
 
 export interface DevWallet {
   descriptor: DevWalletDescriptor;
+  /** Internal device-held NIGHT output observation; never part of the public DApp Connector. */
+  nightBridge?: {
+    getAddress(): Promise<string>;
+    hasOutput(expected: NightBridgeOutput): Promise<boolean>;
+  };
   stop(): Promise<void>;
 }

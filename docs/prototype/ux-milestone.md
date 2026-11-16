@@ -257,3 +257,8 @@ output and balanced deposit input. It refuses a different withdrawal identity,
 extra output or substituted deposit coin before the second dispatch. The
 browser deposit wallet and send control remain open work; source tests do not
 establish another native payment.
+
+An internal built-in wallet worker port now observes the exact bridge output
+for a future demo send control. The worker checks its own raw address and a
+strict NIGHT sync snapshot. The public connector stays read-only and the worker
+cannot yet prepare or dispatch the recipient deposit.

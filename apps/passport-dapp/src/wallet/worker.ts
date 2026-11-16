@@ -1,6 +1,7 @@
 import '../polyfills.js';
 import { serveBackgroundTasks } from '@input-output-hk/mn-passport-account/background';
 import { browserBackgroundPort } from '@input-output-hk/mn-passport-adapter-browser/background';
+import { checkedNightBridgeOutput } from '../midnames/night-bridge-output.js';
 import type { DevWallet, DevWalletConfig, DevWalletConnectedApi } from './contracts.js';
 
 let wallet: DevWallet | undefined;
@@ -52,6 +53,14 @@ const methods: Record<string, (input: unknown) => Promise<unknown>> = {
       seed?.fill(0);
       initializing = false;
     }
+  },
+  async nightBridgeAddress() {
+    if (!wallet?.nightBridge) throw new Error('Wallet unavailable.');
+    return wallet.nightBridge.getAddress();
+  },
+  async hasNightBridgeOutput(input) {
+    if (!wallet?.nightBridge) throw new Error('Wallet unavailable.');
+    return wallet.nightBridge.hasOutput(checkedNightBridgeOutput(input));
   },
 };
 const reads = [

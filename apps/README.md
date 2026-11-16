@@ -945,6 +945,13 @@ rejects a balanced deposit using another or additional unshielded input. This
 guard does not create, sign, or submit a browser deposit; the device-held wallet
 adapter and connected demo control are still needed.
 
+The built-in wallet now offers a separate internal NIGHT bridge observation port
+for the demo host. It returns the device-held wallet's raw bridge address and
+reports whether the exact original output is present in a strictly synced wallet
+snapshot. The worker rejects a different owner or malformed output request, and
+the public DApp Connector remains read-only. This port cannot balance, sign or
+submit the recipient deposit.
+
 ### Standalone Midnames claim recovery
 
 An opt-in host can supply the demo's preparation adapter. The user reviews the
