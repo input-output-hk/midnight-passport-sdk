@@ -186,6 +186,9 @@ export async function qualifyNightSend({
     signatures = 0;
   const sent = { withdraw: 0, deposit: 0 };
   const finals = new Map();
+  const browserReviewRequested = process.env.PASSPORT_MIDNAMES_BROWSER_REVIEW === '1';
+  const manualBrowserReview = process.env.PASSPORT_MIDNAMES_BROWSER_MANUAL === '1';
+  let browserReview;
   const openPorts = (beforeDeposit) => ({
     names,
     journal: openJournal(directory),
@@ -196,6 +199,32 @@ export async function qualifyNightSend({
     async review(intent) {
       assert.equal(intent.target, target);
       assert.notEqual(intent.target, defaultField.value);
+      if (browserReviewRequested) {
+        assert.equal(signatures, 0);
+        assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
+        assert.equal(await openJournal(directory).readIntent(), undefined);
+        const { reviewNamedNightSendInBrowser } = await import('./browser-value-review.mjs');
+        browserReview = await reviewNamedNightSendInBrowser(
+          intent,
+          registryAddress,
+          join(directory, 'browser-review.png'),
+          manualBrowserReview ? undefined : 'approve',
+        );
+        assert.equal(signatures, 0);
+        assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
+        createOnce(
+          join(directory, 'browser-review.json'),
+          JSON.stringify({
+            intent,
+            registryAddress,
+            decision: browserReview,
+            signaturesBefore: signatures,
+            dispatchesBefore: sent,
+          }),
+        );
+        if (browserReview.approved) approvals++;
+        return browserReview.approved;
+      }
       if (interactiveReviewRequested()) {
         const approved = await reviewInTerminal(intent, intent.target);
         if (approved) approvals++;
@@ -298,7 +327,10 @@ export async function qualifyNightSend({
     failure = error;
   }
   if (failure === undefined) assert.fail('Expected an interrupted withdrawal.');
-  if (interactiveReviewRequested() && failure instanceof NightPaymentDeclined) {
+  if (
+    (interactiveReviewRequested() || browserReviewRequested) &&
+    failure instanceof NightPaymentDeclined
+  ) {
     assert.equal(signatures, 0);
     assert.deepEqual(sent, { withdraw: 0, deposit: 0 });
     createOnce(
@@ -329,6 +361,12 @@ export async function qualifyNightSend({
   assert.deepEqual(replay, result);
   assert.equal(approvals, 1);
   assert.equal(signatures, 1);
+  if (browserReviewRequested)
+    assert.deepEqual(browserReview, {
+      approved: true,
+      displayed: true,
+      mode: manualBrowserReview ? 'manual' : 'automated',
+    });
   assert.deepEqual(sent, { withdraw: 1, deposit: 1 });
   const final = { source: String(await balance(source)), target: String(await balance(target)) };
   assert.deepEqual(final, { source: '6', target: '4' });
@@ -351,6 +389,7 @@ export async function qualifyNightSend({
     final,
     approvals,
     signatures,
+    browserReview,
     sent,
     withdrawal,
     deposit,
