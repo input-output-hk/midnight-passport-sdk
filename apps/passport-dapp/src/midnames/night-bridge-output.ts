@@ -104,7 +104,6 @@ export function exactNightBridgeOutput(
 export function hasExactNightBridgeCoin(
   available: readonly { readonly utxo: LedgerCoin }[],
   expected: NightBridgeOutput,
-  walletOwner: string,
 ): boolean {
   const matches = available.filter(
     ({ utxo }) =>
@@ -112,7 +111,7 @@ export function hasExactNightBridgeCoin(
       utxo.outputNo === expected.outputNo &&
       utxo.value === expected.value &&
       utxo.type === expected.type &&
-      utxo.owner === walletOwner,
+      utxo.owner === expected.owner,
   );
   if (matches.length > 1) throw new Error('Ambiguous original NIGHT wallet output.');
   return matches.length === 1;

@@ -29,8 +29,6 @@ const intent: NightSendIntent = {
 const withdrawal = { hash, identifiers: [identifier] };
 const output = { value: 4n, type: night, owner: bridge };
 const coin = { ...output, intentHash, outputNo: 0 };
-const walletOwner = 'mn_addr_undeployed1controlled';
-const walletCoin = { ...coin, owner: walletOwner };
 
 function transaction(
   outputs: readonly (typeof output)[],
@@ -61,13 +59,9 @@ test('the original journaled output is the only acceptable deposit input', () =>
     type: night,
     value: 4n,
   });
-  assert.equal(hasExactNightBridgeCoin([{ utxo: walletCoin }], expected, walletOwner), true);
+  assert.equal(hasExactNightBridgeCoin([{ utxo: coin }], expected), true);
   assert.equal(
-    hasExactNightBridgeCoin(
-      [{ utxo: { ...walletCoin, intentHash: 'f'.repeat(64) } }],
-      expected,
-      walletOwner,
-    ),
+    hasExactNightBridgeCoin([{ utxo: { ...coin, intentHash: 'f'.repeat(64) } }], expected),
     false,
   );
   assertExactNightBridgeSpend(transaction([], [coin]), expected, () => bridge);
@@ -100,11 +94,13 @@ test('a changed original identity or extra/different withdrawal output refuses b
 test('wallet ambiguity and balanced coin substitution refuse before deposit dispatch', () => {
   const expected = exactNightBridgeOutput(intent, withdrawal, transaction([output]));
   assert.throws(
-    () =>
-      hasExactNightBridgeCoin([{ utxo: walletCoin }, { utxo: walletCoin }], expected, walletOwner),
+    () => hasExactNightBridgeCoin([{ utxo: coin }, { utxo: coin }], expected),
     /Ambiguous/,
   );
-  assert.equal(hasExactNightBridgeCoin([{ utxo: coin }], expected, walletOwner), false);
+  assert.equal(
+    hasExactNightBridgeCoin([{ utxo: { ...coin, owner: 'mn_addr_undeployed1other' } }], expected),
+    false,
+  );
   for (const changed of [
     { ...coin, intentHash: 'f'.repeat(64) },
     { ...coin, outputNo: 1 },
